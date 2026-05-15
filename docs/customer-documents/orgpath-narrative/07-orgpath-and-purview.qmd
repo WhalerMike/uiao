@@ -59,7 +59,199 @@ The following script reads the OrgTree registry, identifies all nodes flagged as
 
 ### PowerShell — Adaptive Scope and Sensitivity Label Policy Creation (Security & Compliance PowerShell)
 
-\#Requires -Modules ExchangeOnlineManagement \<# .SYNOPSIS Creates Purview Adaptive Policy Scopes and Sensitivity Label Policies for OrgPath-defined organizational segments. .DESCRIPTION Reads OrgTree nodes flagged as label policy boundaries and creates: 1. An Adaptive Policy Scope (User type) targeting the node's OrgPath branch using an OPATH filter expression against the extension attribute. 2. A Sensitivity Label Policy publishing segment-specific labels to users matching the Adaptive Scope. Run after new labels have been created and approved in Purview. Node.SegmentLabels must list label names exactly as they appear in Purview. Requires: Security and Compliance PowerShell (Connect-IPPSSession) ExchangeOnlineManagement module v3+ Install: Install-Module ExchangeOnlineManagement .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file produced by the governance pipeline. This file contains all active node definitions including LabelPolicyBoundary and SegmentLabels metadata. .PARAMETER AdminUPN UPN of an account with Compliance Administrator or higher role in Purview. Used for Connect-IPPSSession interactive auth. For unattended automation: replace with -CertificateThumbprint and -AppId. .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath as registered in Entra ID. Format: extension\_{AppIdWithoutHyphens}\_OrgPath Substitute the App Registration client ID with hyphens removed. .EXAMPLE .\New-PurviewLabelPolicies.ps1 \` -OrgTreeRegistryPath "C:\governance\orgtree\registry.json" \` -AdminUPN "governance-admin@contoso.com" \` -OrgPathAttrName "extension_a1b2c3d4e5f6_OrgPath" .NOTES Idempotent: existing scopes and policies are detected and skipped or updated rather than duplicated. Label names must exist in Purview before this script runs. \#\> param( \[Parameter(Mandatory)\]\[string\]\$OrgTreeRegistryPath, \[Parameter(Mandatory)\]\[string\]\$AdminUPN, \# e.g. governance-admin@contoso.com \[Parameter(Mandatory)\]\[string\]\$OrgPathAttrName \# e.g. extension\_{AppIdWithoutHyphens}\_OrgPath ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \# --------------------------------------------------------------------------- \# CONNECT \# In production automation, use certificate-based auth: \# Connect-IPPSSession -AppId \$AppId -CertificateThumbprint \$Thumbprint \` \# -Organization "contoso.onmicrosoft.com" \# --------------------------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connecting to Security and Compliance PowerShell..." Connect-IPPSSession -UserPrincipalName \$AdminUPN \# --------------------------------------------------------------------------- \# LOAD ORGTREE REGISTRY \# Filter to nodes that are Active and carry the LabelPolicyBoundary flag. \# --------------------------------------------------------------------------- if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found at: \$OrgTreeRegistryPath" } \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$labelNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.LabelPolicyBoundary -eq \$true } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Label policy boundary nodes found: \$(\$labelNodes.Count)" \$stats = @{ Created = 0; Updated = 0; Skipped = 0; Errors = 0 } foreach (\$node in \$labelNodes) { \$scopeName = "AdaptiveScope-LabelPolicy-\$(\$node.Id)" \$policyName = "LabelPolicy-OrgPath-\$(\$node.Id)" Write-Host "" Write-Host " Processing node: \$(\$node.Name) \[\$(\$node.Path)\]" try { \# ------------------------------------------------------------------- \# STEP 1: CREATE ADAPTIVE SCOPE \# FilterExpression uses OPATH syntax against Entra ID user attributes. \# The -like operator with a trailing wildcard covers all descendants. \# The -eq condition covers the node itself (users homed at this exact path). \# Both conditions are OR'd to cover the full branch. \# ------------------------------------------------------------------- \$filterExpression = "\$OrgPathAttrName -like '\$(\$node.Path)/\*' " + "-or \$OrgPathAttrName -eq '\$(\$node.Path)'" \$existingScope = Get-AdaptiveScope -Identity \$scopeName -ErrorAction SilentlyContinue if (-not \$existingScope) { New-AdaptiveScope \` -Name \$scopeName \` -LocationType "User" \` -FilterExpression \$filterExpression \` -Comment "OrgPath label scope — node \$(\$node.Id): \$(\$node.Name) \[\$(\$node.Path)\]" Write-Host " \[CREATED\] Adaptive scope: \$scopeName" } else { \# Update filter in case the node path changed since last run. Set-AdaptiveScope \` -Identity \$scopeName \` -FilterExpression \$filterExpression Write-Host " \[UPDATED\] Adaptive scope: \$scopeName" } \# ------------------------------------------------------------------- \# STEP 2: VALIDATE SEGMENT LABELS \# SegmentLabels is an array of label names as they appear in Purview. \# Labels must exist before a policy can reference them. \# ------------------------------------------------------------------- \$segmentLabels = \$node.SegmentLabels if (-not \$segmentLabels -or \$segmentLabels.Count -eq 0) { Write-Warning " \[SKIP\] No SegmentLabels defined for node \$(\$node.Id) — skipping policy creation." \$stats.Skipped++ continue } \# Verify each label exists in the tenant before attempting policy creation. \$verifiedLabels = @() foreach (\$labelName in \$segmentLabels) { \$exists = Get-Label -Identity \$labelName -ErrorAction SilentlyContinue if (\$exists) { \$verifiedLabels += \$labelName } else { Write-Warning " \[WARN\] Label not found in tenant: '\$labelName' — excluded from policy." } } if (\$verifiedLabels.Count -eq 0) { Write-Warning " \[SKIP\] No verified labels remain for node \$(\$node.Id). Create labels first." \$stats.Skipped++ continue } \# ------------------------------------------------------------------- \# STEP 3: CREATE OR UPDATE LABEL POLICY \# AddAdaptivePolicyScope associates the Adaptive Scope with the policy. \# AdvancedSettings can be used to set default labels per location; \# omitted here for segment overlay policies (base policy sets defaults). \# ------------------------------------------------------------------- \$existingPolicy = Get-LabelPolicy -Identity \$policyName -ErrorAction SilentlyContinue if (-not \$existingPolicy) { New-LabelPolicy \` -Name \$policyName \` -Labels \$verifiedLabels \` -AddAdaptivePolicyScope \$scopeName \` -Comment "Segment label policy — \$(\$node.Name), OrgPath: \$(\$node.Path)" Write-Host " \[CREATED\] Label policy: \$policyName" Write-Host " Labels: \$(\$verifiedLabels -join ', ')" \$stats.Created++ } else { \# Ensure all verified labels are present; add any that are missing. Set-LabelPolicy \` -Identity \$policyName \` -AddLabel \$verifiedLabels Write-Host " \[UPDATED\] Label policy: \$policyName" \$stats.Updated++ } } catch { Write-Warning " \[ERROR\] Node \$(\$node.Id): \$\_" \$stats.Errors++ } } Write-Host "" Write-Host "=== Label Policy Synchronization Complete ===" Write-Host " Created : \$(\$stats.Created)" Write-Host " Updated : \$(\$stats.Updated)" Write-Host " Skipped : \$(\$stats.Skipped)" Write-Host " Errors : \$(\$stats.Errors)" Disconnect-ExchangeOnline -Confirm:\$false Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Disconnected from Security and Compliance PowerShell."
+```powershell
+#Requires -Modules ExchangeOnlineManagement
+
+<#
+.SYNOPSIS
+    Creates Purview Adaptive Policy Scopes and Sensitivity Label Policies
+    for OrgPath-defined organizational segments.
+
+.DESCRIPTION
+    Reads OrgTree nodes flagged as label policy boundaries and creates:
+      1. An Adaptive Policy Scope (User type) targeting the node's OrgPath
+         branch using an OPATH filter expression against the extension attribute.
+      2. A Sensitivity Label Policy publishing segment-specific labels
+         to users matching the Adaptive Scope.
+
+    Run after new labels have been created and approved in Purview.
+    Node.SegmentLabels must list label names exactly as they appear in Purview.
+
+    Requires: Security and Compliance PowerShell (Connect-IPPSSession)
+              ExchangeOnlineManagement module v3+
+              Install: Install-Module ExchangeOnlineManagement
+
+.PARAMETER OrgTreeRegistryPath
+    Local path to the OrgTree registry JSON file produced by the governance
+    pipeline. This file contains all active node definitions including
+    LabelPolicyBoundary and SegmentLabels metadata.
+
+.PARAMETER AdminUPN
+    UPN of an account with Compliance Administrator or higher role in Purview.
+    Used for Connect-IPPSSession interactive auth.
+    For unattended automation: replace with -CertificateThumbprint and -AppId.
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath as registered in Entra ID.
+    Format: extension_{AppIdWithoutHyphens}_OrgPath
+    Substitute the App Registration client ID with hyphens removed.
+
+.EXAMPLE
+    .\New-PurviewLabelPolicies.ps1 `
+        -OrgTreeRegistryPath "C:\governance\orgtree\registry.json" `
+        -AdminUPN "governance-admin@contoso.com" `
+        -OrgPathAttrName "extension_a1b2c3d4e5f6_OrgPath"
+
+.NOTES
+    Idempotent: existing scopes and policies are detected and skipped or
+    updated rather than duplicated.
+    Label names must exist in Purview before this script runs.
+#>
+param(
+    [Parameter(Mandatory)][string]$OrgTreeRegistryPath,
+    [Parameter(Mandatory)][string]$AdminUPN,            # e.g. governance-admin@contoso.com
+    [Parameter(Mandatory)][string]$OrgPathAttrName      # e.g. extension_{AppIdWithoutHyphens}_OrgPath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# ---------------------------------------------------------------------------
+# CONNECT
+# In production automation, use certificate-based auth:
+#   Connect-IPPSSession -AppId $AppId -CertificateThumbprint $Thumbprint `
+#       -Organization "contoso.onmicrosoft.com"
+# ---------------------------------------------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+# ---------------------------------------------------------------------------
+# LOAD ORGTREE REGISTRY
+# Filter to nodes that are Active and carry the LabelPolicyBoundary flag.
+# ---------------------------------------------------------------------------
+if (-not (Test-Path $OrgTreeRegistryPath)) {
+    throw "OrgTree registry not found at: $OrgTreeRegistryPath"
+}
+
+$registry   = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$labelNodes = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and $_.LabelPolicyBoundary -eq $true
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Label policy boundary nodes found: $($labelNodes.Count)"
+
+$stats = @{ Created = 0; Updated = 0; Skipped = 0; Errors = 0 }
+
+foreach ($node in $labelNodes) {
+
+    $scopeName  = "AdaptiveScope-LabelPolicy-$($node.Id)"
+    $policyName = "LabelPolicy-OrgPath-$($node.Id)"
+
+    Write-Host ""
+    Write-Host "  Processing node: $($node.Name) [$($node.Path)]"
+
+    try {
+        # -------------------------------------------------------------------
+        # STEP 1: CREATE ADAPTIVE SCOPE
+        # FilterExpression uses OPATH syntax against Entra ID user attributes.
+        # The -like operator with a trailing wildcard covers all descendants.
+        # The -eq condition covers the node itself (users homed at this exact path).
+        # Both conditions are OR'd to cover the full branch.
+        # -------------------------------------------------------------------
+        $filterExpression = "$OrgPathAttrName -like '$($node.Path)/*' " +
+                            "-or $OrgPathAttrName -eq '$($node.Path)'"
+
+        $existingScope = Get-AdaptiveScope -Identity $scopeName -ErrorAction SilentlyContinue
+
+        if (-not $existingScope) {
+            New-AdaptiveScope `
+                -Name             $scopeName `
+                -LocationType     "User" `
+                -FilterExpression $filterExpression `
+                -Comment          "OrgPath label scope — node $($node.Id): $($node.Name) [$($node.Path)]"
+
+            Write-Host "    [CREATED] Adaptive scope: $scopeName"
+        } else {
+            # Update filter in case the node path changed since last run.
+            Set-AdaptiveScope `
+                -Identity         $scopeName `
+                -FilterExpression $filterExpression
+            Write-Host "    [UPDATED] Adaptive scope: $scopeName"
+        }
+
+        # -------------------------------------------------------------------
+        # STEP 2: VALIDATE SEGMENT LABELS
+        # SegmentLabels is an array of label names as they appear in Purview.
+        # Labels must exist before a policy can reference them.
+        # -------------------------------------------------------------------
+        $segmentLabels = $node.SegmentLabels
+
+        if (-not $segmentLabels -or $segmentLabels.Count -eq 0) {
+            Write-Warning "    [SKIP] No SegmentLabels defined for node $($node.Id) — skipping policy creation."
+            $stats.Skipped++
+            continue
+        }
+
+        # Verify each label exists in the tenant before attempting policy creation.
+        $verifiedLabels = @()
+        foreach ($labelName in $segmentLabels) {
+            $exists = Get-Label -Identity $labelName -ErrorAction SilentlyContinue
+            if ($exists) {
+                $verifiedLabels += $labelName
+            } else {
+                Write-Warning "    [WARN] Label not found in tenant: '$labelName' — excluded from policy."
+            }
+        }
+
+        if ($verifiedLabels.Count -eq 0) {
+            Write-Warning "    [SKIP] No verified labels remain for node $($node.Id). Create labels first."
+            $stats.Skipped++
+            continue
+        }
+
+        # -------------------------------------------------------------------
+        # STEP 3: CREATE OR UPDATE LABEL POLICY
+        # AddAdaptivePolicyScope associates the Adaptive Scope with the policy.
+        # AdvancedSettings can be used to set default labels per location;
+        # omitted here for segment overlay policies (base policy sets defaults).
+        # -------------------------------------------------------------------
+        $existingPolicy = Get-LabelPolicy -Identity $policyName -ErrorAction SilentlyContinue
+
+        if (-not $existingPolicy) {
+            New-LabelPolicy `
+                -Name                   $policyName `
+                -Labels                 $verifiedLabels `
+                -AddAdaptivePolicyScope $scopeName `
+                -Comment                "Segment label policy — $($node.Name), OrgPath: $($node.Path)"
+
+            Write-Host "    [CREATED] Label policy: $policyName"
+            Write-Host "              Labels: $($verifiedLabels -join ', ')"
+            $stats.Created++
+        } else {
+            # Ensure all verified labels are present; add any that are missing.
+            Set-LabelPolicy `
+                -Identity $policyName `
+                -AddLabel $verifiedLabels
+            Write-Host "    [UPDATED] Label policy: $policyName"
+            $stats.Updated++
+        }
+
+    } catch {
+        Write-Warning "    [ERROR] Node $($node.Id): $_"
+        $stats.Errors++
+    }
+}
+
+Write-Host ""
+Write-Host "=== Label Policy Synchronization Complete ==="
+Write-Host "  Created : $($stats.Created)"
+Write-Host "  Updated : $($stats.Updated)"
+Write-Host "  Skipped : $($stats.Skipped)"
+Write-Host "  Errors  : $($stats.Errors)"
+
+Disconnect-ExchangeOnline -Confirm:$false
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Disconnected from Security and Compliance PowerShell."
+```
 
 ### Label Inheritance Through the OrgPath Branch
 
@@ -97,7 +289,219 @@ The following script creates a complete DLP policy for the Finance organizationa
 
 ### PowerShell — Finance DLP Policy with Adaptive Scope (Security & Compliance PowerShell)
 
-\#Requires -Modules ExchangeOnlineManagement \<# .SYNOPSIS Creates an OrgPath-scoped DLP policy and rule for the Finance segment. .DESCRIPTION Creates a Microsoft Purview DLP policy applying only to users in the Finance OrgPath branch, using an Adaptive Policy Scope. Policy covers Exchange email, SharePoint, OneDrive for Business, Teams messages, and Endpoint DLP. Rule configuration: - Detects U.S. Bank Account Numbers, Credit Card Numbers, ABA Routing Numbers - Applies when content is sent to recipients outside the organization - Action: Block + Policy Tip notification to user - Alert: Generated to SiteAdmin on each match (aggregation window: 60 minutes) - Incident report: Generated with full detection detail Policy is created in TestWithNotifications (simulation) mode. After validation, switch to Enabled mode: Set-DlpCompliancePolicy -Identity \$policyName -Mode "Enable" .PARAMETER AdminUPN UPN of Compliance Administrator account for interactive auth. For unattended use, replace with certificate-based Connect-IPPSSession. .PARAMETER FinanceBranchOrgPath OrgPath value of the Finance division root node. Example: "/Root/Finance" All users at or below this path are covered by the Adaptive Scope. .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath. Example: "extension\_{AppIdWithoutHyphens}\_OrgPath" .NOTES Sensitive information types named in this script are built-in Purview SITs. To list available SITs: Get-DlpSensitiveInformationType \| Select-Object Name, Id Confidence levels: 75 = Medium, 85 = High, 95 = Very High. Minimum count of 1 means any single instance triggers the rule. Adjust MinCount, MaxCount, and MinConfidence for your risk tolerance. \#\> param( \[Parameter(Mandatory)\]\[string\]\$AdminUPN, \[Parameter(Mandatory)\]\[string\]\$FinanceBranchOrgPath, \# e.g. "/Root/Finance" \[Parameter(Mandatory)\]\[string\]\$OrgPathAttrName \# e.g. "extension\_{AppIdWithoutHyphens}\_OrgPath" ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connecting to Security and Compliance PowerShell..." Connect-IPPSSession -UserPrincipalName \$AdminUPN \$scopeName = "AdaptiveScope-DLP-Finance" \$policyName = "DLP-OrgPath-Finance" \$ruleName = "DLP-Finance-FinancialRegulatory-ExternalBlock" \# --------------------------------------------------------------------------- \# STEP 1: CREATE ADAPTIVE SCOPE FOR FINANCE DLP \# Same branch-inclusive filter pattern used throughout the OrgPath model. \# --------------------------------------------------------------------------- \$filterExpression = "\$OrgPathAttrName -like '\$FinanceBranchOrgPath/\*' " + "-or \$OrgPathAttrName -eq '\$FinanceBranchOrgPath'" \$existingScope = Get-AdaptiveScope -Identity \$scopeName -ErrorAction SilentlyContinue if (-not \$existingScope) { New-AdaptiveScope \` -Name \$scopeName \` -LocationType "User" \` -FilterExpression \$filterExpression \` -Comment "DLP adaptive scope — Finance branch: \$FinanceBranchOrgPath" Write-Host "\[OK\] Adaptive scope created: \$scopeName" Write-Host " Filter: \$filterExpression" } else { Set-AdaptiveScope -Identity \$scopeName -FilterExpression \$filterExpression Write-Host "\[UPDATED\] Adaptive scope: \$scopeName" } \# --------------------------------------------------------------------------- \# STEP 2: CREATE THE DLP COMPLIANCE POLICY \# \# Workload locations: "All" with an Adaptive Scope means the scope filter \# is applied to all items in that workload belonging to scoped users. \# ExchangeLocation "All" = all Exchange mailboxes for users in scope. \# SharePointLocation "All" = all SharePoint sites belonging to users in scope. \# OneDriveLocation "All" = all OneDrive accounts for users in scope. \# TeamsLocation "All" = all Teams chat/channel messages for users in scope. \# EndpointDlpLocation "All" = all enrolled endpoints for users in scope. \# \# Mode options: \# "TestWithNotifications" = simulation; policy tips shown, no blocking. \# "TestWithoutNotifications" = silent simulation; no user-visible tips. \# "Enable" = full enforcement; blocking and notifications active. \# \# Start with TestWithNotifications for 2+ weeks before enabling enforcement. \# --------------------------------------------------------------------------- \$existingPolicy = Get-DlpCompliancePolicy -Identity \$policyName -ErrorAction SilentlyContinue if (-not \$existingPolicy) { New-DlpCompliancePolicy \` -Name \$policyName \` -Comment "Finance DLP — OrgPath-scoped, adaptive, financial regulatory data" \` -Mode "TestWithNotifications" \` -AddAdaptivePolicyScope \$scopeName \` -ExchangeLocation "All" \` -SharePointLocation "All" \` -OneDriveLocation "All" \` -TeamsLocation "All" \` -EndpointDlpLocation "All" Write-Host "\[OK\] DLP policy created: \$policyName (mode: TestWithNotifications)" } else { Write-Host "\[EXISTS\] DLP policy already exists: \$policyName — skipping creation." } \# --------------------------------------------------------------------------- \# STEP 3: CREATE THE DLP RULE \# \# ContentContainsSensitiveInformation: hashtable array, one entry per SIT. \# Name: exact SIT name as it appears in Purview. \# MinCount: minimum occurrences required to trigger. 1 = any occurrence. \# MaxCount: \$null = no upper limit. \# MinConfidence: match confidence threshold. 75=Medium, 85=High, 95=VeryHigh. \# \# SentToScope "NotInOrganization": rule applies when content is sent externally. \# BlockAccess \$true: blocks the action (sharing, sending) that triggered match. \# BlockAccessScope "PerAnonymousLink": for SharePoint, blocks anonymous link use. \# \# NotifyPolicyTipCustomText: the text shown in the Outlook / browser policy tip. \# Customize to reference your organization's actual policy document or contact. \# \# GenerateAlert "SiteAdmin": sends alert to the compliance officer / site admin. \# AggregationType "SimpleAggregation": aggregate within the TimeWindow. \# Threshold 1, TimeWindow 60: alert after 1 match per 60-minute window. \# \# IncidentReportContent: data fields included in the incident report email. \# --------------------------------------------------------------------------- \$existingRule = Get-DlpComplianceRule -Identity \$ruleName -ErrorAction SilentlyContinue if (-not \$existingRule) { New-DlpComplianceRule \` -Name \$ruleName \` -Policy \$policyName \` -ContentContainsSensitiveInformation @( @{ \# U.S. Bank Account Number — built-in Purview SIT Name = "U.S. Bank Account Number" MinCount = 1 MaxCount = \$null MinConfidence = 75 }, @{ \# Credit Card Number — built-in Purview SIT (international coverage) Name = "Credit Card Number" MinCount = 1 MaxCount = \$null MinConfidence = 85 }, @{ \# ABA Routing Number — built-in Purview SIT Name = "ABA Routing Number" MinCount = 1 MaxCount = \$null MinConfidence = 75 } ) \` -SentToScope "NotInOrganization" \` -BlockAccess \$true \` -BlockAccessScope "PerAnonymousLink" \` -NotifyUser "LastModifiedBy" \` -NotifyPolicyTipCustomText ("This document or message contains financial account " + "information subject to your organization's data handling " + "policy. External sharing requires approval from your " + "Compliance Officer before proceeding.") \` -GenerateAlert "SiteAdmin" \` -AlertProperties @{ AggregationType = "SimpleAggregation" Threshold = 1 TimeWindow = 60 \# Minutes — alerts aggregate over this window } \` -GenerateIncidentReport "SiteAdmin" \` -IncidentReportContent @( "Title", "Severity", "MachineId", "SensitiveInformation", "DocumentLastModifiedBy", "DocumentLastModifiedDate", "Detections", "DetectionDetails", "Service" ) Write-Host "\[OK\] DLP rule created: \$ruleName" Write-Host " SITs: U.S. Bank Account Number, Credit Card Number, ABA Routing Number" Write-Host " Scope: External recipients only (NotInOrganization)" Write-Host " Action: Block + Policy Tip + Alert + Incident Report" } else { Write-Host "\[EXISTS\] DLP rule already exists: \$ruleName — no changes made." } Write-Host "" Write-Host "Finance DLP policy configuration complete." Write-Host "Review simulation results in the Purview compliance portal:" Write-Host " Compliance portal \> Data loss prevention \> Policies \> \$policyName \> Activity explorer" Write-Host "After validation period, enable enforcement with:" Write-Host " Set-DlpCompliancePolicy -Identity '\$policyName' -Mode 'Enable'" Disconnect-ExchangeOnline -Confirm:\$false
+```powershell
+#Requires -Modules ExchangeOnlineManagement
+
+<#
+.SYNOPSIS
+    Creates an OrgPath-scoped DLP policy and rule for the Finance segment.
+
+.DESCRIPTION
+    Creates a Microsoft Purview DLP policy applying only to users in the Finance
+    OrgPath branch, using an Adaptive Policy Scope. Policy covers Exchange email,
+    SharePoint, OneDrive for Business, Teams messages, and Endpoint DLP.
+
+    Rule configuration:
+      - Detects U.S. Bank Account Numbers, Credit Card Numbers, ABA Routing Numbers
+      - Applies when content is sent to recipients outside the organization
+      - Action: Block + Policy Tip notification to user
+      - Alert: Generated to SiteAdmin on each match (aggregation window: 60 minutes)
+      - Incident report: Generated with full detection detail
+
+    Policy is created in TestWithNotifications (simulation) mode.
+    After validation, switch to Enabled mode:
+      Set-DlpCompliancePolicy -Identity $policyName -Mode "Enable"
+
+.PARAMETER AdminUPN
+    UPN of Compliance Administrator account for interactive auth.
+    For unattended use, replace with certificate-based Connect-IPPSSession.
+
+.PARAMETER FinanceBranchOrgPath
+    OrgPath value of the Finance division root node.
+    Example: "/Root/Finance"
+    All users at or below this path are covered by the Adaptive Scope.
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.NOTES
+    Sensitive information types named in this script are built-in Purview SITs.
+    To list available SITs: Get-DlpSensitiveInformationType | Select-Object Name, Id
+    Confidence levels: 75 = Medium, 85 = High, 95 = Very High.
+    Minimum count of 1 means any single instance triggers the rule.
+    Adjust MinCount, MaxCount, and MinConfidence for your risk tolerance.
+#>
+param(
+    [Parameter(Mandatory)][string]$AdminUPN,
+    [Parameter(Mandatory)][string]$FinanceBranchOrgPath,  # e.g. "/Root/Finance"
+    [Parameter(Mandatory)][string]$OrgPathAttrName         # e.g. "extension_{AppIdWithoutHyphens}_OrgPath"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+$scopeName  = "AdaptiveScope-DLP-Finance"
+$policyName = "DLP-OrgPath-Finance"
+$ruleName   = "DLP-Finance-FinancialRegulatory-ExternalBlock"
+
+# ---------------------------------------------------------------------------
+# STEP 1: CREATE ADAPTIVE SCOPE FOR FINANCE DLP
+# Same branch-inclusive filter pattern used throughout the OrgPath model.
+# ---------------------------------------------------------------------------
+$filterExpression = "$OrgPathAttrName -like '$FinanceBranchOrgPath/*' " +
+                    "-or $OrgPathAttrName -eq '$FinanceBranchOrgPath'"
+
+$existingScope = Get-AdaptiveScope -Identity $scopeName -ErrorAction SilentlyContinue
+if (-not $existingScope) {
+    New-AdaptiveScope `
+        -Name             $scopeName `
+        -LocationType     "User" `
+        -FilterExpression $filterExpression `
+        -Comment          "DLP adaptive scope — Finance branch: $FinanceBranchOrgPath"
+
+    Write-Host "[OK] Adaptive scope created: $scopeName"
+    Write-Host "     Filter: $filterExpression"
+} else {
+    Set-AdaptiveScope -Identity $scopeName -FilterExpression $filterExpression
+    Write-Host "[UPDATED] Adaptive scope: $scopeName"
+}
+
+# ---------------------------------------------------------------------------
+# STEP 2: CREATE THE DLP COMPLIANCE POLICY
+#
+# Workload locations: "All" with an Adaptive Scope means the scope filter
+# is applied to all items in that workload belonging to scoped users.
+# ExchangeLocation "All" = all Exchange mailboxes for users in scope.
+# SharePointLocation "All" = all SharePoint sites belonging to users in scope.
+# OneDriveLocation "All" = all OneDrive accounts for users in scope.
+# TeamsLocation "All" = all Teams chat/channel messages for users in scope.
+# EndpointDlpLocation "All" = all enrolled endpoints for users in scope.
+#
+# Mode options:
+#   "TestWithNotifications" = simulation; policy tips shown, no blocking.
+#   "TestWithoutNotifications" = silent simulation; no user-visible tips.
+#   "Enable" = full enforcement; blocking and notifications active.
+#
+# Start with TestWithNotifications for 2+ weeks before enabling enforcement.
+# ---------------------------------------------------------------------------
+$existingPolicy = Get-DlpCompliancePolicy -Identity $policyName -ErrorAction SilentlyContinue
+
+if (-not $existingPolicy) {
+    New-DlpCompliancePolicy `
+        -Name                   $policyName `
+        -Comment                "Finance DLP — OrgPath-scoped, adaptive, financial regulatory data" `
+        -Mode                   "TestWithNotifications" `
+        -AddAdaptivePolicyScope $scopeName `
+        -ExchangeLocation       "All" `
+        -SharePointLocation     "All" `
+        -OneDriveLocation       "All" `
+        -TeamsLocation          "All" `
+        -EndpointDlpLocation    "All"
+
+    Write-Host "[OK] DLP policy created: $policyName (mode: TestWithNotifications)"
+} else {
+    Write-Host "[EXISTS] DLP policy already exists: $policyName — skipping creation."
+}
+
+# ---------------------------------------------------------------------------
+# STEP 3: CREATE THE DLP RULE
+#
+# ContentContainsSensitiveInformation: hashtable array, one entry per SIT.
+#   Name: exact SIT name as it appears in Purview.
+#   MinCount: minimum occurrences required to trigger. 1 = any occurrence.
+#   MaxCount: $null = no upper limit.
+#   MinConfidence: match confidence threshold. 75=Medium, 85=High, 95=VeryHigh.
+#
+# SentToScope "NotInOrganization": rule applies when content is sent externally.
+# BlockAccess $true: blocks the action (sharing, sending) that triggered match.
+# BlockAccessScope "PerAnonymousLink": for SharePoint, blocks anonymous link use.
+#
+# NotifyPolicyTipCustomText: the text shown in the Outlook / browser policy tip.
+#   Customize to reference your organization's actual policy document or contact.
+#
+# GenerateAlert "SiteAdmin": sends alert to the compliance officer / site admin.
+#   AggregationType "SimpleAggregation": aggregate within the TimeWindow.
+#   Threshold 1, TimeWindow 60: alert after 1 match per 60-minute window.
+#
+# IncidentReportContent: data fields included in the incident report email.
+# ---------------------------------------------------------------------------
+$existingRule = Get-DlpComplianceRule -Identity $ruleName -ErrorAction SilentlyContinue
+
+if (-not $existingRule) {
+    New-DlpComplianceRule `
+        -Name    $ruleName `
+        -Policy  $policyName `
+        -ContentContainsSensitiveInformation @(
+            @{
+                # U.S. Bank Account Number — built-in Purview SIT
+                Name          = "U.S. Bank Account Number"
+                MinCount      = 1
+                MaxCount      = $null
+                MinConfidence = 75
+            },
+            @{
+                # Credit Card Number — built-in Purview SIT (international coverage)
+                Name          = "Credit Card Number"
+                MinCount      = 1
+                MaxCount      = $null
+                MinConfidence = 85
+            },
+            @{
+                # ABA Routing Number — built-in Purview SIT
+                Name          = "ABA Routing Number"
+                MinCount      = 1
+                MaxCount      = $null
+                MinConfidence = 75
+            }
+        ) `
+        -SentToScope                  "NotInOrganization" `
+        -BlockAccess                  $true `
+        -BlockAccessScope             "PerAnonymousLink" `
+        -NotifyUser                   "LastModifiedBy" `
+        -NotifyPolicyTipCustomText    ("This document or message contains financial account " +
+                                       "information subject to your organization's data handling " +
+                                       "policy. External sharing requires approval from your " +
+                                       "Compliance Officer before proceeding.") `
+        -GenerateAlert                "SiteAdmin" `
+        -AlertProperties              @{
+            AggregationType = "SimpleAggregation"
+            Threshold       = 1
+            TimeWindow      = 60     # Minutes — alerts aggregate over this window
+        } `
+        -GenerateIncidentReport       "SiteAdmin" `
+        -IncidentReportContent        @(
+            "Title",
+            "Severity",
+            "MachineId",
+            "SensitiveInformation",
+            "DocumentLastModifiedBy",
+            "DocumentLastModifiedDate",
+            "Detections",
+            "DetectionDetails",
+            "Service"
+        )
+
+    Write-Host "[OK] DLP rule created: $ruleName"
+    Write-Host "     SITs: U.S. Bank Account Number, Credit Card Number, ABA Routing Number"
+    Write-Host "     Scope: External recipients only (NotInOrganization)"
+    Write-Host "     Action: Block + Policy Tip + Alert + Incident Report"
+} else {
+    Write-Host "[EXISTS] DLP rule already exists: $ruleName — no changes made."
+}
+
+Write-Host ""
+Write-Host "Finance DLP policy configuration complete."
+Write-Host "Review simulation results in the Purview compliance portal:"
+Write-Host "  Compliance portal > Data loss prevention > Policies > $policyName > Activity explorer"
+Write-Host "After validation period, enable enforcement with:"
+Write-Host "  Set-DlpCompliancePolicy -Identity '$policyName' -Mode 'Enable'"
+
+Disconnect-ExchangeOnline -Confirm:$false
+```
 
 ### Policy Tip Customization by Organizational Segment
 
@@ -150,7 +554,213 @@ The following script reads the OrgTree registry, identifies all active nodes car
 
 ### PowerShell — OrgPath-Scoped Retention Policy Creation (Security & Compliance PowerShell)
 
-\#Requires -Modules ExchangeOnlineManagement \<# .SYNOPSIS Creates Purview retention policies scoped to OrgPath branches using retention metadata defined in the OrgTree registry. .DESCRIPTION Processes each OrgTree node that carries a RetentionPolicy metadata object and creates: 1. An Adaptive Policy Scope (User type) targeting the node's OrgPath branch. 2. A Retention Compliance Policy covering the configured workload locations. 3. A Retention Compliance Rule enforcing the specified duration and action. RetentionPolicy metadata structure required on each node: RetentionDurationYears : number — retention period (use 0.25 for 90 days) RetentionAction : string — "Keep" \| "Delete" \| "KeepAndDelete" Locations : array — one or more of: "ExchangeEmail" "SharePointSites" "OneDriveAccounts" "TeamsChannels" "TeamsChatMessages" .PARAMETER OrgTreeRegistryPath Path to the OrgTree registry JSON file. .PARAMETER AdminUPN Compliance Administrator UPN for interactive auth. Replace with certificate-based auth for production automation. .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath. Example: "extension\_{AppIdWithoutHyphens}\_OrgPath" .NOTES Retention duration is passed to New-RetentionComplianceRule as days. Years are converted: \$retentionDays = \[int\]&#40;\$years \* 365) For 0.25 years (90 days): \[int\]&#40;0.25 \* 365) = 91 days — acceptable approximation. RetentionComplianceAction values map to RetentionAction: Keep -\> RetentionComplianceAction "Keep" Delete -\> RetentionComplianceAction "Delete" KeepAndDelete -\> RetentionComplianceAction "KeepAndDelete" Script is idempotent; safe to re-run after OrgTree registry updates. \#\> param( \[Parameter(Mandatory)\]\[string\]\$OrgTreeRegistryPath, \[Parameter(Mandatory)\]\[string\]\$AdminUPN, \[Parameter(Mandatory)\]\[string\]\$OrgPathAttrName ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connecting to Security and Compliance PowerShell..." Connect-IPPSSession -UserPrincipalName \$AdminUPN if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found at path: \$OrgTreeRegistryPath" } \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$retentionNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$null -ne \$\_.RetentionPolicy } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Retention policy nodes: \$(\$retentionNodes.Count)" \$stats = @{ Created = 0; Updated = 0; Skipped = 0; Errors = 0 } foreach (\$node in \$retentionNodes) { \$rp = \$node.RetentionPolicy \$scopeName = "AdaptiveScope-Retention-\$(\$node.Id)" \$policyName = "RetentionPolicy-OrgPath-\$(\$node.Id)" \$ruleName = "RetentionRule-OrgPath-\$(\$node.Id)" Write-Host "" Write-Host " Processing: \$(\$node.Name) \[\$(\$node.Path)\]" Write-Host " Duration: \$(\$rp.RetentionDurationYears) years \| Action: \$(\$rp.RetentionAction)" try { \# ------------------------------------------------------------------- \# STEP 1: ADAPTIVE SCOPE \# ------------------------------------------------------------------- \$filter = "\$OrgPathAttrName -like '\$(\$node.Path)/\*' " + "-or \$OrgPathAttrName -eq '\$(\$node.Path)'" \$existingScope = Get-AdaptiveScope -Identity \$scopeName -ErrorAction SilentlyContinue if (-not \$existingScope) { New-AdaptiveScope \` -Name \$scopeName \` -LocationType "User" \` -FilterExpression \$filter \` -Comment "Retention scope — \$(\$node.Name) \[\$(\$node.Path)\]" Write-Host " \[SCOPE CREATED\] \$scopeName" } else { Set-AdaptiveScope -Identity \$scopeName -FilterExpression \$filter Write-Host " \[SCOPE UPDATED\] \$scopeName" } \# ------------------------------------------------------------------- \# STEP 2: BUILD LOCATION PARAMETER HASHTABLE \# Map each Locations array entry to the corresponding cmdlet parameter. \# "All" means: cover all items in the location for users in the scope. \# ------------------------------------------------------------------- \$locationParams = @{} foreach (\$loc in \$rp.Locations) { switch (\$loc) { "ExchangeEmail" { \$locationParams\["ExchangeLocation"\] = "All" } "SharePointSites" { \$locationParams\["SharePointLocation"\] = "All" } "OneDriveAccounts" { \$locationParams\["OneDriveLocation"\] = "All" } "TeamsChannels" { \$locationParams\["TeamsChannelLocation"\] = "All" } "TeamsChatMessages" { \$locationParams\["TeamsChatLocation"\] = "All" } default { Write-Warning " \[WARN\] Unrecognized location type '\$loc' — skipped." } } } if (\$locationParams.Count -eq 0) { Write-Warning " \[SKIP\] No valid locations resolved for node \$(\$node.Id)." \$stats.Skipped++ continue } \# ------------------------------------------------------------------- \# STEP 3: RETENTION COMPLIANCE POLICY \# AddAdaptivePolicyScope links the Adaptive Scope to the policy. \# ------------------------------------------------------------------- \$existingPolicy = Get-RetentionCompliancePolicy -Identity \$policyName -ErrorAction SilentlyContinue if (-not \$existingPolicy) { New-RetentionCompliancePolicy \` -Name \$policyName \` -Comment "OrgPath retention — \$(\$node.Name), \$(\$rp.RetentionDurationYears)yr, \$(\$rp.RetentionAction)" \` -AddAdaptivePolicyScope \$scopeName \` @locationParams \| Out-Null Write-Host " \[POLICY CREATED\] \$policyName" \$stats.Created++ } else { Write-Host " \[POLICY EXISTS\] \$policyName — rule check follows." \$stats.Updated++ } \# ------------------------------------------------------------------- \# STEP 4: RETENTION COMPLIANCE RULE \# RetentionDuration is in days. Convert from years. \# RetentionDurationDisplayHint sets the UI display unit (Years/Days). \# ExpirationDateOption "CreationAgeInDays" starts the clock at creation. \# Alternatives: "ModificationAgeInDays", "LabelApplicationAgeInDays", \# "EventAgeInDays" (event-based retention). \# ------------------------------------------------------------------- \$existingRule = Get-RetentionComplianceRule -Identity \$ruleName -ErrorAction SilentlyContinue if (-not \$existingRule) { \$retentionDays = \[int\]&#40;\$rp.RetentionDurationYears \* 365) \$ruleParams = @{ Name = \$ruleName Policy = \$policyName RetentionDuration = \$retentionDays RetentionDurationDisplayHint = "Years" ExpirationDateOption = "CreationAgeInDays" } \# Map RetentionAction to cmdlet parameter value switch (\$rp.RetentionAction) { "Keep" { \$ruleParams\["RetentionComplianceAction"\] = "Keep" } "Delete" { \$ruleParams\["RetentionComplianceAction"\] = "Delete" } "KeepAndDelete" { \$ruleParams\["RetentionComplianceAction"\] = "KeepAndDelete" \# Content is preserved for RetentionDuration then deleted. \# No additional parameters required for KeepAndDelete. } } New-RetentionComplianceRule @ruleParams \| Out-Null Write-Host " \[RULE CREATED\] \$ruleName (\$retentionDays days, \$(\$rp.RetentionAction))" } else { Write-Host " \[RULE EXISTS\] \$ruleName — no changes applied." } } catch { Write-Warning " \[ERROR\] Node \$(\$node.Id): \$\_" \$stats.Errors++ } } Write-Host "" Write-Host "=== Retention Policy Synchronization Complete ===" Write-Host " Policies Created : \$(\$stats.Created)" Write-Host " Policies Updated : \$(\$stats.Updated)" Write-Host " Nodes Skipped : \$(\$stats.Skipped)" Write-Host " Errors : \$(\$stats.Errors)" Disconnect-ExchangeOnline -Confirm:\$false Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Disconnected."
+```powershell
+#Requires -Modules ExchangeOnlineManagement
+
+<#
+.SYNOPSIS
+    Creates Purview retention policies scoped to OrgPath branches using
+    retention metadata defined in the OrgTree registry.
+
+.DESCRIPTION
+    Processes each OrgTree node that carries a RetentionPolicy metadata object
+    and creates:
+      1. An Adaptive Policy Scope (User type) targeting the node's OrgPath branch.
+      2. A Retention Compliance Policy covering the configured workload locations.
+      3. A Retention Compliance Rule enforcing the specified duration and action.
+
+    RetentionPolicy metadata structure required on each node:
+      RetentionDurationYears : number  — retention period (use 0.25 for 90 days)
+      RetentionAction        : string  — "Keep" | "Delete" | "KeepAndDelete"
+      Locations              : array   — one or more of:
+                                         "ExchangeEmail"
+                                         "SharePointSites"
+                                         "OneDriveAccounts"
+                                         "TeamsChannels"
+                                         "TeamsChatMessages"
+
+.PARAMETER OrgTreeRegistryPath
+    Path to the OrgTree registry JSON file.
+
+.PARAMETER AdminUPN
+    Compliance Administrator UPN for interactive auth.
+    Replace with certificate-based auth for production automation.
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.NOTES
+    Retention duration is passed to New-RetentionComplianceRule as days.
+    Years are converted: $retentionDays = [int]($years * 365)
+    For 0.25 years (90 days): [int](0.25 * 365) = 91 days — acceptable approximation.
+
+    RetentionComplianceAction values map to RetentionAction:
+      Keep          -> RetentionComplianceAction "Keep"
+      Delete        -> RetentionComplianceAction "Delete"
+      KeepAndDelete -> RetentionComplianceAction "KeepAndDelete"
+
+    Script is idempotent; safe to re-run after OrgTree registry updates.
+#>
+param(
+    [Parameter(Mandatory)][string]$OrgTreeRegistryPath,
+    [Parameter(Mandatory)][string]$AdminUPN,
+    [Parameter(Mandatory)][string]$OrgPathAttrName
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+if (-not (Test-Path $OrgTreeRegistryPath)) {
+    throw "OrgTree registry not found at path: $OrgTreeRegistryPath"
+}
+
+$registry       = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$retentionNodes = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and $null -ne $_.RetentionPolicy
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Retention policy nodes: $($retentionNodes.Count)"
+
+$stats = @{ Created = 0; Updated = 0; Skipped = 0; Errors = 0 }
+
+foreach ($node in $retentionNodes) {
+
+    $rp         = $node.RetentionPolicy
+    $scopeName  = "AdaptiveScope-Retention-$($node.Id)"
+    $policyName = "RetentionPolicy-OrgPath-$($node.Id)"
+    $ruleName   = "RetentionRule-OrgPath-$($node.Id)"
+
+    Write-Host ""
+    Write-Host "  Processing: $($node.Name) [$($node.Path)]"
+    Write-Host "    Duration: $($rp.RetentionDurationYears) years | Action: $($rp.RetentionAction)"
+
+    try {
+        # -------------------------------------------------------------------
+        # STEP 1: ADAPTIVE SCOPE
+        # -------------------------------------------------------------------
+        $filter = "$OrgPathAttrName -like '$($node.Path)/*' " +
+                  "-or $OrgPathAttrName -eq '$($node.Path)'"
+
+        $existingScope = Get-AdaptiveScope -Identity $scopeName -ErrorAction SilentlyContinue
+        if (-not $existingScope) {
+            New-AdaptiveScope `
+                -Name             $scopeName `
+                -LocationType     "User" `
+                -FilterExpression $filter `
+                -Comment          "Retention scope — $($node.Name) [$($node.Path)]"
+            Write-Host "    [SCOPE CREATED] $scopeName"
+        } else {
+            Set-AdaptiveScope -Identity $scopeName -FilterExpression $filter
+            Write-Host "    [SCOPE UPDATED] $scopeName"
+        }
+
+        # -------------------------------------------------------------------
+        # STEP 2: BUILD LOCATION PARAMETER HASHTABLE
+        # Map each Locations array entry to the corresponding cmdlet parameter.
+        # "All" means: cover all items in the location for users in the scope.
+        # -------------------------------------------------------------------
+        $locationParams = @{}
+        foreach ($loc in $rp.Locations) {
+            switch ($loc) {
+                "ExchangeEmail"      { $locationParams["ExchangeLocation"]        = "All" }
+                "SharePointSites"    { $locationParams["SharePointLocation"]      = "All" }
+                "OneDriveAccounts"   { $locationParams["OneDriveLocation"]        = "All" }
+                "TeamsChannels"      { $locationParams["TeamsChannelLocation"]    = "All" }
+                "TeamsChatMessages"  { $locationParams["TeamsChatLocation"]       = "All" }
+                default {
+                    Write-Warning "    [WARN] Unrecognized location type '$loc' — skipped."
+                }
+            }
+        }
+
+        if ($locationParams.Count -eq 0) {
+            Write-Warning "    [SKIP] No valid locations resolved for node $($node.Id)."
+            $stats.Skipped++
+            continue
+        }
+
+        # -------------------------------------------------------------------
+        # STEP 3: RETENTION COMPLIANCE POLICY
+        # AddAdaptivePolicyScope links the Adaptive Scope to the policy.
+        # -------------------------------------------------------------------
+        $existingPolicy = Get-RetentionCompliancePolicy -Identity $policyName -ErrorAction SilentlyContinue
+
+        if (-not $existingPolicy) {
+            New-RetentionCompliancePolicy `
+                -Name                   $policyName `
+                -Comment                "OrgPath retention — $($node.Name), $($rp.RetentionDurationYears)yr, $($rp.RetentionAction)" `
+                -AddAdaptivePolicyScope $scopeName `
+                @locationParams | Out-Null
+
+            Write-Host "    [POLICY CREATED] $policyName"
+            $stats.Created++
+        } else {
+            Write-Host "    [POLICY EXISTS]  $policyName — rule check follows."
+            $stats.Updated++
+        }
+
+        # -------------------------------------------------------------------
+        # STEP 4: RETENTION COMPLIANCE RULE
+        # RetentionDuration is in days. Convert from years.
+        # RetentionDurationDisplayHint sets the UI display unit (Years/Days).
+        # ExpirationDateOption "CreationAgeInDays" starts the clock at creation.
+        # Alternatives: "ModificationAgeInDays", "LabelApplicationAgeInDays",
+        #               "EventAgeInDays" (event-based retention).
+        # -------------------------------------------------------------------
+        $existingRule = Get-RetentionComplianceRule -Identity $ruleName -ErrorAction SilentlyContinue
+
+        if (-not $existingRule) {
+            $retentionDays = [int]($rp.RetentionDurationYears * 365)
+
+            $ruleParams = @{
+                Name                        = $ruleName
+                Policy                      = $policyName
+                RetentionDuration           = $retentionDays
+                RetentionDurationDisplayHint = "Years"
+                ExpirationDateOption        = "CreationAgeInDays"
+            }
+
+            # Map RetentionAction to cmdlet parameter value
+            switch ($rp.RetentionAction) {
+                "Keep" {
+                    $ruleParams["RetentionComplianceAction"] = "Keep"
+                }
+                "Delete" {
+                    $ruleParams["RetentionComplianceAction"] = "Delete"
+                }
+                "KeepAndDelete" {
+                    $ruleParams["RetentionComplianceAction"] = "KeepAndDelete"
+                    # Content is preserved for RetentionDuration then deleted.
+                    # No additional parameters required for KeepAndDelete.
+                }
+            }
+
+            New-RetentionComplianceRule @ruleParams | Out-Null
+            Write-Host "    [RULE CREATED]   $ruleName ($retentionDays days, $($rp.RetentionAction))"
+        } else {
+            Write-Host "    [RULE EXISTS]    $ruleName — no changes applied."
+        }
+
+    } catch {
+        Write-Warning "    [ERROR] Node $($node.Id): $_"
+        $stats.Errors++
+    }
+}
+
+Write-Host ""
+Write-Host "=== Retention Policy Synchronization Complete ==="
+Write-Host "  Policies Created : $($stats.Created)"
+Write-Host "  Policies Updated : $($stats.Updated)"
+Write-Host "  Nodes Skipped    : $($stats.Skipped)"
+Write-Host "  Errors           : $($stats.Errors)"
+
+Disconnect-ExchangeOnline -Confirm:$false
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Disconnected."
+```
 
 ### Retention Label Deployment Within the OrgPath Model
 
@@ -176,7 +786,296 @@ The following script combines a Microsoft Graph API query for users by OrgPath s
 
 PowerShell — eDiscovery Premium Case Creation with OrgPath Custodian Identification (Graph + Security & Compliance PowerShell)
 
-\#Requires -Modules ExchangeOnlineManagement, Microsoft.Graph.Users \<# .SYNOPSIS Creates a Purview eDiscovery Premium case with custodians identified by OrgPath scope, and applies a legal hold to custodian content sources. .DESCRIPTION Given an OrgPath scope (a path prefix), this script: 1. Queries Entra ID (via Microsoft Graph) for all users whose OrgPath is within the scope — at or below the specified node. 2. Creates a Purview eDiscovery Premium (AdvancedEdiscovery) case. 3. Adds each identified user as a case member (custodian). 4. Creates a CaseHoldPolicy targeting custodian Exchange mailboxes. 5. Creates a CaseHoldRule applying a broad content match query (narrow with -ContentMatchQuery for date-scoped holds). The script logs all custodians added and errors encountered. Re-running against an existing case skips creation steps and proceeds to add any new custodians identified by the current OrgPath query. .PARAMETER CaseName Unique name for the eDiscovery case. Recommended format: "{Topic}-{Year}-{Sequence}", e.g. "FIN-Controls-2026-001" .PARAMETER CaseDescription Description of the investigation for the case record. .PARAMETER OrgPathScope OrgPath prefix defining the investigation population. All users whose OrgPath equals or begins with this value are added as custodians. Example: "/Root/Finance" covers all Finance division users. Example: "/Root/Finance/Accounting" covers only the Accounting department. .PARAMETER HoldName Name for the CaseHoldPolicy applied to custodian sources. Must be unique within the tenant. Default: "Hold-{CaseName}" .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath. Example: "extension\_{AppIdWithoutHyphens}\_OrgPath" .PARAMETER AdminUPN Compliance Administrator UPN for Security and Compliance PowerShell. The same account (or a separate Graph-authorized account) must have User.Read.All scope for the Graph API call. .PARAMETER ContentMatchQuery KQL query string for the hold rule. Default: matches all content. Narrow with date filters for scoped holds: Example: "received\>=2025-01-01 AND received\<=2026-01-01" .NOTES Prerequisites: - ExchangeOnlineManagement module v3+ (provides Connect-IPPSSession) - Microsoft.Graph.Users module (provides Get-MgUser) - eDiscovery Manager or eDiscovery Administrator role in Purview - User.Read.All app permission or delegated scope for Graph - E5 or eDiscovery Add-On license assigned to the running account and to each user designated as a custodian. The Add-ComplianceCaseMember cmdlet adds users to the case. Custodian designation and data source mapping (mailbox + OneDrive) are completed through the Purview eDiscovery portal UI or via the Purview eDiscovery Graph API endpoints (beta), which provide richer custodian management than the compliance cmdlets. This script uses cmdlets for broad compatibility. \#\> param( \[Parameter(Mandatory)\]\[string\]\$CaseName, \[Parameter(Mandatory)\]\[string\]\$CaseDescription, \[Parameter(Mandatory)\]\[string\]\$OrgPathScope, \# e.g. "/Root/Finance" \[Parameter(Mandatory)\]\[string\]\$OrgPathAttrName, \# e.g. "extension\_{AppIdWithoutHyphens}\_OrgPath" \[Parameter(Mandatory)\]\[string\]\$AdminUPN, \# e.g. "ediscovery-admin@contoso.com" \[string\]\$HoldName = "Hold-\$CaseName", \[string\]\$ContentMatchQuery = "received:\>01/01/1900" \# Default: all content; narrow as needed ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \$timestamp = Get-Date -f 'yyyy-MM-dd HH:mm:ss' Write-Host "\[\$timestamp\] eDiscovery case setup starting." Write-Host " Case : \$CaseName" Write-Host " Scope : \$OrgPathScope" \# =========================================================================== \# PHASE 1: CUSTODIAN IDENTIFICATION VIA MICROSOFT GRAPH \# =========================================================================== Write-Host "" Write-Host "\[GRAPH\] Connecting to Microsoft Graph (User.Read.All)..." Connect-MgGraph -Scopes "User.Read.All" -NoWelcome Write-Host "\[GRAPH\] Querying users with OrgPath in scope: \$OrgPathScope" \# --------------------------------------------------------------------------- \# Server-side Graph filter for extension attributes. \# Note: Graph API \$filter on extension attributes requires the attribute \# to be indexed in the Entra ID tenant. If the query returns a 400 error \# (filter not supported), use the client-side fallback below. \# \# The filter string uses OData \$filter syntax (not OPATH). \# "startsWith" is the Graph equivalent of the OPATH "-like '\*'" pattern. \# --------------------------------------------------------------------------- \$graphFilter = "(\$OrgPathAttrName eq '\$OrgPathScope') or " + "(startsWith(\$OrgPathAttrName,'\$OrgPathScope/'))" \$userProperties = @( "id", "displayName", "userPrincipalName", "mail", "accountEnabled", \$OrgPathAttrName ) \$custodianUsers = \$null try { \$custodianUsers = Get-MgUser \` -Filter \$graphFilter \` -Property (\$userProperties -join ",") \` -All \` -ConsistencyLevel "eventual" \` -CountVariable totalCount Write-Host "\[GRAPH\] Server-side filter returned \$(\$custodianUsers.Count) users." } catch { \# --------------------------------------------------------------------------- \# FALLBACK: Client-side filter when server-side extension attr filter fails. \# Retrieves all users with the OrgPath attribute and filters locally. \# Performance: acceptable for tenants up to ~50,000 users. \# For larger tenants, index the extension attribute in Entra ID. \# --------------------------------------------------------------------------- Write-Warning "\[GRAPH\] Server-side filter failed: \$\_" Write-Warning "\[GRAPH\] Falling back to client-side filter (may be slower for large tenants)." \$allUsers = Get-MgUser \` -Property (\$userProperties -join ",") \` -All \$custodianUsers = \$allUsers \| Where-Object { \$\_.AccountEnabled -eq \$true -and ( \$orgPathVal = \$\_.AdditionalProperties\[\$OrgPathAttrName\] \$orgPathVal -eq \$OrgPathScope -or \$orgPathVal -like "\$OrgPathScope/\*" ) } Write-Host "\[GRAPH\] Client-side filter result: \$(\$custodianUsers.Count) users." } \# Filter to only enabled users with a valid mail address (required for holds) \$validCustodians = \$custodianUsers \| Where-Object { \$\_.AccountEnabled -eq \$true -and -not \[string\]::IsNullOrWhiteSpace(\$\_.Mail) } \$custodianEmails = \$validCustodians \| Select-Object -ExpandProperty Mail Write-Host "\[GRAPH\] Valid custodians (enabled, mail present): \$(\$custodianEmails.Count)" if (\$custodianEmails.Count -eq 0) { Write-Warning "No valid custodians found for OrgPath scope '\$OrgPathScope'. Verify the scope path and that users have OrgPath values assigned." Disconnect-MgGraph return } \# Log custodian list to governance output Write-Host "\[GRAPH\] Custodian list:" foreach (\$email in \$custodianEmails) { \$u = \$validCustodians \| Where-Object { \$\_.Mail -eq \$email } Write-Host " - \$(\$u.DisplayName) \<\$email\>" } Disconnect-MgGraph Write-Host "\[GRAPH\] Disconnected from Microsoft Graph." \# =========================================================================== \# PHASE 2: EDISCOVERY CASE CREATION (Security and Compliance PowerShell) \# =========================================================================== Write-Host "" Write-Host "\[IPPS\] Connecting to Security and Compliance PowerShell..." Connect-IPPSSession -UserPrincipalName \$AdminUPN \# --------------------------------------------------------------------------- \# CREATE CASE \# CaseType "AdvancedEdiscovery" = eDiscovery Premium (E5 / add-on required). \# --------------------------------------------------------------------------- \$existingCase = Get-ComplianceCase -Identity \$CaseName -ErrorAction SilentlyContinue if (-not \$existingCase) { New-ComplianceCase \` -Name \$CaseName \` -Description \$CaseDescription \` -CaseType "AdvancedEdiscovery" Write-Host "\[IPPS\] eDiscovery case created: \$CaseName" } else { Write-Host "\[IPPS\] Case already exists: \$CaseName — proceeding to custodian and hold steps." } \# --------------------------------------------------------------------------- \# ADD CUSTODIANS \# Add-ComplianceCaseMember adds each user as a case member. \# Full custodian configuration (data source mapping, acknowledgment workflow) \# is completed in the Purview portal. This step establishes case membership. \# --------------------------------------------------------------------------- Write-Host "" Write-Host "\[IPPS\] Adding custodians to case: \$CaseName" \$addedCount = 0 \$skippedCount = 0 \$errorCount = 0 foreach (\$email in \$custodianEmails) { try { Add-ComplianceCaseMember -Case \$CaseName -Member \$email Write-Host " \[ADDED\] \$email" \$addedCount++ } catch { \$msg = \$\_.Exception.Message if (\$msg -like "\*already exists\*" -or \$msg -like "\*already a member\*") { Write-Host " \[EXISTS\] \$email" \$skippedCount++ } else { Write-Warning " \[ERROR\] \$email\`: \$msg" \$errorCount++ } } } Write-Host " Added: \$addedCount \| Already present: \$skippedCount \| Errors: \$errorCount" \# --------------------------------------------------------------------------- \# CREATE HOLD POLICY \# CaseHoldPolicy preserves custodian content in place. \# ExchangeLocation: list of custodian email addresses. \# SharePointLocation: OneDrive and SharePoint site URLs (see notes below). \# Enabled \$true: hold is active immediately upon creation. \# \# OneDrive URL format: https://{tenant}-my.sharepoint.com/personal/{UPN_normalized} \# where UPN normalization replaces '@' with '\_' and '.' with '\_' \# Example: user@contoso.com -\> contoso-my.sharepoint.com/personal/user_contoso_com \# \# The SharePointLocation parameter below is left empty; see the companion \# function New-OneDriveHoldUrls (below) to generate and add OneDrive URLs. \# --------------------------------------------------------------------------- Write-Host "" Write-Host "\[IPPS\] Creating hold policy: \$HoldName" \$existingHold = Get-CaseHoldPolicy -Case \$CaseName -Identity \$HoldName -ErrorAction SilentlyContinue if (-not \$existingHold) { New-CaseHoldPolicy \` -Name \$HoldName \` -Case \$CaseName \` -ExchangeLocation \$custodianEmails \` -Enabled \$true Write-Host "\[IPPS\] Hold policy created: \$HoldName" Write-Host " Exchange mailboxes on hold: \$(\$custodianEmails.Count)" \# Hold Rule: defines what content is held (KQL query) New-CaseHoldRule \` -Name \$("Rule-" + \$HoldName) \` -Policy \$HoldName \` -ContentMatchQuery \$ContentMatchQuery Write-Host "\[IPPS\] Hold rule created. Query: \$ContentMatchQuery" } else { Write-Host "\[IPPS\] Hold policy already exists: \$HoldName — no changes applied." } Write-Host "" Write-Host "=== eDiscovery Case Setup Complete ===" Write-Host " Case : \$CaseName" Write-Host " OrgPath Scope : \$OrgPathScope" Write-Host " Custodians : \$(\$custodianEmails.Count)" Write-Host " Hold Policy : \$HoldName" Write-Host "" Write-Host "Next steps:" Write-Host " 1. Open the Purview eDiscovery portal and navigate to case: \$CaseName" Write-Host " 2. Complete custodian data source mapping (mailbox + OneDrive) per custodian." Write-Host " 3. Add SharePoint site URLs for relevant collaboration workspaces." Write-Host " 4. Obtain custodian acknowledgment of legal hold notification." Write-Host " 5. Run content searches to identify and collect responsive content." Disconnect-ExchangeOnline -Confirm:\$false Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Disconnected from Security and Compliance PowerShell."
+```powershell
+#Requires -Modules ExchangeOnlineManagement, Microsoft.Graph.Users
+
+<#
+.SYNOPSIS
+    Creates a Purview eDiscovery Premium case with custodians identified
+    by OrgPath scope, and applies a legal hold to custodian content sources.
+
+.DESCRIPTION
+    Given an OrgPath scope (a path prefix), this script:
+      1. Queries Entra ID (via Microsoft Graph) for all users whose OrgPath
+         is within the scope — at or below the specified node.
+      2. Creates a Purview eDiscovery Premium (AdvancedEdiscovery) case.
+      3. Adds each identified user as a case member (custodian).
+      4. Creates a CaseHoldPolicy targeting custodian Exchange mailboxes.
+      5. Creates a CaseHoldRule applying a broad content match query
+         (narrow with -ContentMatchQuery for date-scoped holds).
+
+    The script logs all custodians added and errors encountered.
+    Re-running against an existing case skips creation steps and proceeds
+    to add any new custodians identified by the current OrgPath query.
+
+.PARAMETER CaseName
+    Unique name for the eDiscovery case.
+    Recommended format: "{Topic}-{Year}-{Sequence}", e.g. "FIN-Controls-2026-001"
+
+.PARAMETER CaseDescription
+    Description of the investigation for the case record.
+
+.PARAMETER OrgPathScope
+    OrgPath prefix defining the investigation population.
+    All users whose OrgPath equals or begins with this value are added as custodians.
+    Example: "/Root/Finance" covers all Finance division users.
+    Example: "/Root/Finance/Accounting" covers only the Accounting department.
+
+.PARAMETER HoldName
+    Name for the CaseHoldPolicy applied to custodian sources.
+    Must be unique within the tenant. Default: "Hold-{CaseName}"
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.PARAMETER AdminUPN
+    Compliance Administrator UPN for Security and Compliance PowerShell.
+    The same account (or a separate Graph-authorized account) must have
+    User.Read.All scope for the Graph API call.
+
+.PARAMETER ContentMatchQuery
+    KQL query string for the hold rule. Default: matches all content.
+    Narrow with date filters for scoped holds:
+    Example: "received>=2025-01-01 AND received<=2026-01-01"
+
+.NOTES
+    Prerequisites:
+      - ExchangeOnlineManagement module v3+ (provides Connect-IPPSSession)
+      - Microsoft.Graph.Users module (provides Get-MgUser)
+      - eDiscovery Manager or eDiscovery Administrator role in Purview
+      - User.Read.All app permission or delegated scope for Graph
+      - E5 or eDiscovery Add-On license assigned to the running account
+        and to each user designated as a custodian.
+
+    The Add-ComplianceCaseMember cmdlet adds users to the case.
+    Custodian designation and data source mapping (mailbox + OneDrive)
+    are completed through the Purview eDiscovery portal UI or via
+    the Purview eDiscovery Graph API endpoints (beta), which provide
+    richer custodian management than the compliance cmdlets.
+    This script uses cmdlets for broad compatibility.
+#>
+param(
+    [Parameter(Mandatory)][string]$CaseName,
+    [Parameter(Mandatory)][string]$CaseDescription,
+    [Parameter(Mandatory)][string]$OrgPathScope,        # e.g. "/Root/Finance"
+    [Parameter(Mandatory)][string]$OrgPathAttrName,     # e.g. "extension_{AppIdWithoutHyphens}_OrgPath"
+    [Parameter(Mandatory)][string]$AdminUPN,            # e.g. "ediscovery-admin@contoso.com"
+    [string]$HoldName              = "Hold-$CaseName",
+    [string]$ContentMatchQuery     = "received:>01/01/1900"  # Default: all content; narrow as needed
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$timestamp = Get-Date -f 'yyyy-MM-dd HH:mm:ss'
+Write-Host "[$timestamp] eDiscovery case setup starting."
+Write-Host "  Case      : $CaseName"
+Write-Host "  Scope     : $OrgPathScope"
+
+# ===========================================================================
+# PHASE 1: CUSTODIAN IDENTIFICATION VIA MICROSOFT GRAPH
+# ===========================================================================
+Write-Host ""
+Write-Host "[GRAPH] Connecting to Microsoft Graph (User.Read.All)..."
+Connect-MgGraph -Scopes "User.Read.All" -NoWelcome
+
+Write-Host "[GRAPH] Querying users with OrgPath in scope: $OrgPathScope"
+
+# ---------------------------------------------------------------------------
+# Server-side Graph filter for extension attributes.
+# Note: Graph API $filter on extension attributes requires the attribute
+# to be indexed in the Entra ID tenant. If the query returns a 400 error
+# (filter not supported), use the client-side fallback below.
+#
+# The filter string uses OData $filter syntax (not OPATH).
+# "startsWith" is the Graph equivalent of the OPATH "-like '*'" pattern.
+# ---------------------------------------------------------------------------
+$graphFilter = "($OrgPathAttrName eq '$OrgPathScope') or " +
+               "(startsWith($OrgPathAttrName,'$OrgPathScope/'))"
+
+$userProperties = @(
+    "id",
+    "displayName",
+    "userPrincipalName",
+    "mail",
+    "accountEnabled",
+    $OrgPathAttrName
+)
+
+$custodianUsers = $null
+
+try {
+    $custodianUsers = Get-MgUser `
+        -Filter  $graphFilter `
+        -Property ($userProperties -join ",") `
+        -All `
+        -ConsistencyLevel "eventual" `
+        -CountVariable totalCount
+
+    Write-Host "[GRAPH] Server-side filter returned $($custodianUsers.Count) users."
+} catch {
+    # ---------------------------------------------------------------------------
+    # FALLBACK: Client-side filter when server-side extension attr filter fails.
+    # Retrieves all users with the OrgPath attribute and filters locally.
+    # Performance: acceptable for tenants up to ~50,000 users.
+    # For larger tenants, index the extension attribute in Entra ID.
+    # ---------------------------------------------------------------------------
+    Write-Warning "[GRAPH] Server-side filter failed: $_"
+    Write-Warning "[GRAPH] Falling back to client-side filter (may be slower for large tenants)."
+
+    $allUsers = Get-MgUser `
+        -Property ($userProperties -join ",") `
+        -All
+
+    $custodianUsers = $allUsers | Where-Object {
+        $_.AccountEnabled -eq $true -and (
+            $orgPathVal = $_.AdditionalProperties[$OrgPathAttrName]
+            $orgPathVal -eq $OrgPathScope -or $orgPathVal -like "$OrgPathScope/*"
+        )
+    }
+
+    Write-Host "[GRAPH] Client-side filter result: $($custodianUsers.Count) users."
+}
+
+# Filter to only enabled users with a valid mail address (required for holds)
+$validCustodians = $custodianUsers | Where-Object {
+    $_.AccountEnabled -eq $true -and -not [string]::IsNullOrWhiteSpace($_.Mail)
+}
+
+$custodianEmails = $validCustodians | Select-Object -ExpandProperty Mail
+
+Write-Host "[GRAPH] Valid custodians (enabled, mail present): $($custodianEmails.Count)"
+
+if ($custodianEmails.Count -eq 0) {
+    Write-Warning "No valid custodians found for OrgPath scope '$OrgPathScope'. Verify the scope path and that users have OrgPath values assigned."
+    Disconnect-MgGraph
+    return
+}
+
+# Log custodian list to governance output
+Write-Host "[GRAPH] Custodian list:"
+foreach ($email in $custodianEmails) {
+    $u = $validCustodians | Where-Object { $_.Mail -eq $email }
+    Write-Host "  - $($u.DisplayName) <$email>"
+}
+
+Disconnect-MgGraph
+Write-Host "[GRAPH] Disconnected from Microsoft Graph."
+
+# ===========================================================================
+# PHASE 2: EDISCOVERY CASE CREATION (Security and Compliance PowerShell)
+# ===========================================================================
+Write-Host ""
+Write-Host "[IPPS] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+# ---------------------------------------------------------------------------
+# CREATE CASE
+# CaseType "AdvancedEdiscovery" = eDiscovery Premium (E5 / add-on required).
+# ---------------------------------------------------------------------------
+$existingCase = Get-ComplianceCase -Identity $CaseName -ErrorAction SilentlyContinue
+
+if (-not $existingCase) {
+    New-ComplianceCase `
+        -Name        $CaseName `
+        -Description $CaseDescription `
+        -CaseType    "AdvancedEdiscovery"
+
+    Write-Host "[IPPS] eDiscovery case created: $CaseName"
+} else {
+    Write-Host "[IPPS] Case already exists: $CaseName — proceeding to custodian and hold steps."
+}
+
+# ---------------------------------------------------------------------------
+# ADD CUSTODIANS
+# Add-ComplianceCaseMember adds each user as a case member.
+# Full custodian configuration (data source mapping, acknowledgment workflow)
+# is completed in the Purview portal. This step establishes case membership.
+# ---------------------------------------------------------------------------
+Write-Host ""
+Write-Host "[IPPS] Adding custodians to case: $CaseName"
+
+$addedCount  = 0
+$skippedCount = 0
+$errorCount  = 0
+
+foreach ($email in $custodianEmails) {
+    try {
+        Add-ComplianceCaseMember -Case $CaseName -Member $email
+        Write-Host "  [ADDED]   $email"
+        $addedCount++
+    } catch {
+        $msg = $_.Exception.Message
+        if ($msg -like "*already exists*" -or $msg -like "*already a member*") {
+            Write-Host "  [EXISTS]  $email"
+            $skippedCount++
+        } else {
+            Write-Warning "  [ERROR]   $email`: $msg"
+            $errorCount++
+        }
+    }
+}
+
+Write-Host "  Added: $addedCount | Already present: $skippedCount | Errors: $errorCount"
+
+# ---------------------------------------------------------------------------
+# CREATE HOLD POLICY
+# CaseHoldPolicy preserves custodian content in place.
+# ExchangeLocation: list of custodian email addresses.
+# SharePointLocation: OneDrive and SharePoint site URLs (see notes below).
+# Enabled $true: hold is active immediately upon creation.
+#
+# OneDrive URL format: https://{tenant}-my.sharepoint.com/personal/{UPN_normalized}
+# where UPN normalization replaces '@' with '_' and '.' with '_'
+# Example: user@contoso.com -> contoso-my.sharepoint.com/personal/user_contoso_com
+#
+# The SharePointLocation parameter below is left empty; see the companion
+# function New-OneDriveHoldUrls (below) to generate and add OneDrive URLs.
+# ---------------------------------------------------------------------------
+Write-Host ""
+Write-Host "[IPPS] Creating hold policy: $HoldName"
+
+$existingHold = Get-CaseHoldPolicy -Case $CaseName -Identity $HoldName -ErrorAction SilentlyContinue
+
+if (-not $existingHold) {
+    New-CaseHoldPolicy `
+        -Name             $HoldName `
+        -Case             $CaseName `
+        -ExchangeLocation $custodianEmails `
+        -Enabled          $true
+
+    Write-Host "[IPPS] Hold policy created: $HoldName"
+    Write-Host "       Exchange mailboxes on hold: $($custodianEmails.Count)"
+
+    # Hold Rule: defines what content is held (KQL query)
+    New-CaseHoldRule `
+        -Name                $("Rule-" + $HoldName) `
+        -Policy              $HoldName `
+        -ContentMatchQuery   $ContentMatchQuery
+
+    Write-Host "[IPPS] Hold rule created. Query: $ContentMatchQuery"
+} else {
+    Write-Host "[IPPS] Hold policy already exists: $HoldName — no changes applied."
+}
+
+Write-Host ""
+Write-Host "=== eDiscovery Case Setup Complete ==="
+Write-Host "  Case          : $CaseName"
+Write-Host "  OrgPath Scope : $OrgPathScope"
+Write-Host "  Custodians    : $($custodianEmails.Count)"
+Write-Host "  Hold Policy   : $HoldName"
+Write-Host ""
+Write-Host "Next steps:"
+Write-Host "  1. Open the Purview eDiscovery portal and navigate to case: $CaseName"
+Write-Host "  2. Complete custodian data source mapping (mailbox + OneDrive) per custodian."
+Write-Host "  3. Add SharePoint site URLs for relevant collaboration workspaces."
+Write-Host "  4. Obtain custodian acknowledgment of legal hold notification."
+Write-Host "  5. Run content searches to identify and collect responsive content."
+
+Disconnect-ExchangeOnline -Confirm:$false
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Disconnected from Security and Compliance PowerShell."
+```
 
 ### SharePoint and OneDrive Hold Scope
 
@@ -212,7 +1111,86 @@ The following KQL query provides the governance team with a structural view of D
 
 ### KQL — Purview DLP Policy Matches by OrgPath Segment (Log Analytics / Microsoft Sentinel)
 
-// ============================================================ // Purview DLP Policy Matches Organized by OrgPath Segment // ============================================================ // Purpose : Surface DLP alert volume, blocked actions, and top SIT // matches per OrgPath segment over the trailing 24 hours. // Sources : OfficeActivity (DLP events) // AuditLogs (Entra ID — OrgPath attribute change events // used to derive current user OrgPath values) // Notes : OrgPath values are derived from the most recent // "Update user" audit event carrying the OrgPath attribute. // Users with no recent OrgPath audit event appear as UNPOSITIONED. // Increase the AuditLogs lookback (currently 7d) if users have // not had their OrgPath updated recently. // ============================================================ // Step 1: Derive current OrgPath for each user from Entra ID audit logs let OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath"; // Substitute App ID let UserOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" \| extend UPN = tostring(TargetResources\[0\].userPrincipalName), OrgPath = tostring(Props.newValue) \| where isnotempty(UPN) and isnotempty(OrgPath) \| summarize arg_max(TimeGenerated, OrgPath) by UPN \| project UPN, OrgPath; // Step 2: Join DLP events with OrgPath and summarize by segment OfficeActivity \| where TimeGenerated \>= ago(24h) \| where Operation in ("DLPRuleMatch", "DLPPolicyMatch") \| extend UserUPN = tolower(UserId), PolicyName = tostring(parse_json(PolicyDetails)\[0\].PolicyName), RuleName = tostring(parse_json(PolicyDetails)\[0\].Rules\[0\].RuleName), SITMatched = tostring( parse_json(PolicyDetails)\[0\].Rules\[0\] .ConditionsMatched.SensitiveInformation\[0\].SensitiveType), ActionTaken = tostring( parse_json(PolicyDetails)\[0\].Rules\[0\].Actions\[0\].Name), Workload = Workload, MatchCount = 1 \| join kind=leftouter ( UserOrgPaths \| extend UPN = tolower(UPN) ) on \$left.UserUPN == \$right.UPN \| extend OrgPathLabel = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) // Simplify OrgPath to division level for summary grouping // Split on "/" and take the 3rd segment (index 2): "/Root/Finance" -\> "Finance" \| extend DivisionLabel = iif( OrgPathLabel == "UNPOSITIONED", "UNPOSITIONED", tostring(split(OrgPathLabel, "/")\[2\]) ) \| summarize TotalMatches = count(), BlockedActions = countif(ActionTaken has "Block"), NotifyActions = countif(ActionTaken has "Notify"), TopSIT = any(SITMatched), TopPolicy = any(PolicyName), Workloads = make_set(Workload), AffectedUsers = dcount(UserUPN) by DivisionLabel, OrgPathLabel, bin(TimeGenerated, 1h) \| order by TotalMatches desc \| project TimeWindow = TimeGenerated, Division = DivisionLabel, OrgPath = OrgPathLabel, TotalMatches, BlockedActions, NotifyActions, AffectedUsers, TopPolicy, TopSIT, Workloads
+```kql
+// ============================================================
+// Purview DLP Policy Matches Organized by OrgPath Segment
+// ============================================================
+// Purpose : Surface DLP alert volume, blocked actions, and top SIT
+//           matches per OrgPath segment over the trailing 24 hours.
+// Sources : OfficeActivity (DLP events)
+//           AuditLogs (Entra ID — OrgPath attribute change events
+//                      used to derive current user OrgPath values)
+// Notes   : OrgPath values are derived from the most recent
+//           "Update user" audit event carrying the OrgPath attribute.
+//           Users with no recent OrgPath audit event appear as UNPOSITIONED.
+//           Increase the AuditLogs lookback (currently 7d) if users have
+//           not had their OrgPath updated recently.
+// ============================================================
+
+// Step 1: Derive current OrgPath for each user from Entra ID audit logs
+let OrgPathAttrName = "extension_{AppIdWithoutHyphens}_OrgPath";  // Substitute App ID
+
+let UserOrgPaths = AuditLogs
+| where TimeGenerated >= ago(7d)
+| where OperationName == "Update user"
+| mv-expand Props = AdditionalDetails
+| where tostring(Props.displayName) contains "OrgPath"
+| extend
+    UPN     = tostring(TargetResources[0].userPrincipalName),
+    OrgPath = tostring(Props.newValue)
+| where isnotempty(UPN) and isnotempty(OrgPath)
+| summarize arg_max(TimeGenerated, OrgPath) by UPN
+| project UPN, OrgPath;
+
+// Step 2: Join DLP events with OrgPath and summarize by segment
+OfficeActivity
+| where TimeGenerated >= ago(24h)
+| where Operation in ("DLPRuleMatch", "DLPPolicyMatch")
+| extend
+    UserUPN     = tolower(UserId),
+    PolicyName  = tostring(parse_json(PolicyDetails)[0].PolicyName),
+    RuleName    = tostring(parse_json(PolicyDetails)[0].Rules[0].RuleName),
+    SITMatched  = tostring(
+                    parse_json(PolicyDetails)[0].Rules[0]
+                    .ConditionsMatched.SensitiveInformation[0].SensitiveType),
+    ActionTaken = tostring(
+                    parse_json(PolicyDetails)[0].Rules[0].Actions[0].Name),
+    Workload    = Workload,
+    MatchCount  = 1
+| join kind=leftouter (
+    UserOrgPaths
+    | extend UPN = tolower(UPN)
+) on $left.UserUPN == $right.UPN
+| extend OrgPathLabel = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath)
+// Simplify OrgPath to division level for summary grouping
+// Split on "/" and take the 3rd segment (index 2): "/Root/Finance" -> "Finance"
+| extend DivisionLabel = iif(
+    OrgPathLabel == "UNPOSITIONED",
+    "UNPOSITIONED",
+    tostring(split(OrgPathLabel, "/")[2])
+  )
+| summarize
+    TotalMatches    = count(),
+    BlockedActions  = countif(ActionTaken has "Block"),
+    NotifyActions   = countif(ActionTaken has "Notify"),
+    TopSIT          = any(SITMatched),
+    TopPolicy       = any(PolicyName),
+    Workloads       = make_set(Workload),
+    AffectedUsers   = dcount(UserUPN)
+    by DivisionLabel, OrgPathLabel, bin(TimeGenerated, 1h)
+| order by TotalMatches desc
+| project
+    TimeWindow      = TimeGenerated,
+    Division        = DivisionLabel,
+    OrgPath         = OrgPathLabel,
+    TotalMatches,
+    BlockedActions,
+    NotifyActions,
+    AffectedUsers,
+    TopPolicy,
+    TopSIT,
+    Workloads
+```
 
 ### Graph API Integration for Adaptive Scope Validation
 
