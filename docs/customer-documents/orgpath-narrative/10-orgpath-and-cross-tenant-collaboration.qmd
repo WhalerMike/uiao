@@ -53,7 +53,104 @@ The mechanism that stamps the OrgPath stub on a guest object at invitation time 
 
 The function requires the User.ReadWrite.All application permission granted to the Managed Identity via a Microsoft Graph application permission assignment. It requires no client secret or certificate, because Managed Identity token acquisition uses the Azure Instance Metadata Service endpoint. The partner registry file must be accessible from the function's network path; the recommended configuration is a storage account in the same resource group as the function app, with the Managed Identity granted the Storage Blob Data Reader role on the container that holds the registry file. The function does not cache the registry between invocations; it fetches the current version on each call, ensuring that partner registration changes take effect immediately for new invitations without requiring a function restart.
 
-\# \# .SYNOPSIS \# Azure Function — Guest OrgPath Stamp on B2B Invitation \# .DESCRIPTION \# Triggered by Event Grid event for "Invite external user" in Entra ID audit log, \# or via Logic App HTTP trigger. Extracts the partner domain from the invited \# user's email, looks up the OrgTree partner registry, and stamps OrgPath on the \# guest object via Microsoft Graph. \# Authentication: System-assigned Managed Identity with User.ReadWrite.All (application). \# Runtime: PowerShell 7.4 on Azure Functions v4. \# .NOTES \# Set environment variables in Function App Configuration: \# TENANT_ID - Your Entra ID tenant ID \# ORGPATH_EXTENSION_NAME - e.g. extension_abc123def456_OrgPath (no hyphens in app ID) \# PARTNER_REGISTRY_URI - URL to partner-registry.json in your governance storage account \# using namespace System.Net param(\$Request, \$TriggerMetadata) \$tenantId = \$env:TENANT_ID \$orgPathExtensionName = \$env:ORGPATH_EXTENSION_NAME \$partnerRegistryUri = \$env:PARTNER_REGISTRY_URI \$body = \$Request.Body \| ConvertFrom-Json \$userId = \$body.userId \$guestEmail = \$body.invitedUserEmailAddress \# e.g. alice@contoso-partner.com if (-not \$userId -or -not \$guestEmail) { Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::BadRequest Body = '{"error":"Missing userId or invitedUserEmailAddress"}' }) return } \$partnerDomain = (\$guestEmail -split "@")\[-1\].ToLower() Write-Host "Guest invitation: userId=\$userId domain=\$partnerDomain" \# Load partner registry from governance storage try { \$registry = Invoke-RestMethod -Uri \$partnerRegistryUri -Method Get \$partnerEntry = \$registry \| Where-Object { \$\_.Domain -eq \$partnerDomain } } catch { Write-Warning "Partner registry unavailable: \$\_" \$partnerEntry = \$null } \$orgPathValue = if (\$partnerEntry) { Write-Host "Matched partner registry entry for \$partnerDomain" \$partnerEntry.OrgPathStub } else { Write-Warning "Domain '\$partnerDomain' not in partner registry — assigning UNREGISTERED" \# TODO: Send alert to governance team queue for partner registration review "/EXTERNAL/B2B/UNREGISTERED" } \# Obtain Managed Identity token for Microsoft Graph \$tokenUri = "http://169.254.169.254/metadata/identity/oauth2/token" + "?api-version=2018-02-01&resource=https%3A%2F%2Fgraph.microsoft.com%2F" \$tokenResp = Invoke-RestMethod -Uri \$tokenUri -Headers @{ Metadata = "true" } \$bearerToken = \$tokenResp.access_token \$patchPayload = @{ \$orgPathExtensionName = \$orgPathValue } \| ConvertTo-Json try { Invoke-RestMethod \` -Uri "https://graph.microsoft.com/v1.0/users/\$userId" \` -Method PATCH \` -Headers @{ Authorization = "Bearer \$bearerToken"; "Content-Type" = "application/json" } \` -Body \$patchPayload Write-Host "OrgPath stamped: \$userId =\> \$orgPathValue" } catch { Write-Error "Graph PATCH failed for \$userId : \$\_" Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::InternalServerError Body = "{\`"error\`":\`"Graph PATCH failed\`"}" }) return } \# Emit structured audit record for the governance pipeline log \$auditRecord = \[ordered\]@{ Timestamp = (Get-Date -Format "o") Event = "GuestOrgPathStamp" UserId = \$userId GuestEmail = \$guestEmail Domain = \$partnerDomain OrgPath = \$orgPathValue Registered = (\$null -ne \$partnerEntry) } \| ConvertTo-Json -Compress Write-Host "AUDIT: \$auditRecord" Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::OK Body = "{\`"orgPath\`":\`"\$orgPathValue\`"}" })
+```powershell
+#
+# .SYNOPSIS
+#     Azure Function — Guest OrgPath Stamp on B2B Invitation
+# .DESCRIPTION
+#     Triggered by Event Grid event for "Invite external user" in Entra ID audit log,
+#     or via Logic App HTTP trigger. Extracts the partner domain from the invited
+#     user's email, looks up the OrgTree partner registry, and stamps OrgPath on the
+#     guest object via Microsoft Graph.
+#     Authentication: System-assigned Managed Identity with User.ReadWrite.All (application).
+#     Runtime: PowerShell 7.4 on Azure Functions v4.
+# .NOTES
+#     Set environment variables in Function App Configuration:
+#     TENANT_ID              - Your Entra ID tenant ID
+#     ORGPATH_EXTENSION_NAME - e.g. extension_abc123def456_OrgPath (no hyphens in app ID)
+#     PARTNER_REGISTRY_URI   - URL to partner-registry.json in your governance storage account
+#
+using namespace System.Net
+param($Request, $TriggerMetadata)
+
+$tenantId             = $env:TENANT_ID
+$orgPathExtensionName = $env:ORGPATH_EXTENSION_NAME
+$partnerRegistryUri   = $env:PARTNER_REGISTRY_URI
+
+$body       = $Request.Body | ConvertFrom-Json
+$userId     = $body.userId
+$guestEmail = $body.invitedUserEmailAddress   # e.g. alice@contoso-partner.com
+
+if (-not $userId -or -not $guestEmail) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::BadRequest
+        Body       = '{"error":"Missing userId or invitedUserEmailAddress"}'
+    })
+    return
+}
+
+$partnerDomain = ($guestEmail -split "@")[-1].ToLower()
+Write-Host "Guest invitation: userId=$userId domain=$partnerDomain"
+
+# Load partner registry from governance storage
+try {
+    $registry     = Invoke-RestMethod -Uri $partnerRegistryUri -Method Get
+    $partnerEntry = $registry | Where-Object { $_.Domain -eq $partnerDomain }
+} catch {
+    Write-Warning "Partner registry unavailable: $_"
+    $partnerEntry = $null
+}
+
+$orgPathValue = if ($partnerEntry) {
+    Write-Host "Matched partner registry entry for $partnerDomain"
+    $partnerEntry.OrgPathStub
+} else {
+    Write-Warning "Domain '$partnerDomain' not in partner registry — assigning UNREGISTERED"
+    # TODO: Send alert to governance team queue for partner registration review
+    "/EXTERNAL/B2B/UNREGISTERED"
+}
+
+# Obtain Managed Identity token for Microsoft Graph
+$tokenUri    = "http://169.254.169.254/metadata/identity/oauth2/token" +
+               "?api-version=2018-02-01&resource=https%3A%2F%2Fgraph.microsoft.com%2F"
+$tokenResp   = Invoke-RestMethod -Uri $tokenUri -Headers @{ Metadata = "true" }
+$bearerToken = $tokenResp.access_token
+
+$patchPayload = @{ $orgPathExtensionName = $orgPathValue } | ConvertTo-Json
+
+try {
+    Invoke-RestMethod `
+        -Uri     "https://graph.microsoft.com/v1.0/users/$userId" `
+        -Method  PATCH `
+        -Headers @{ Authorization = "Bearer $bearerToken"; "Content-Type" = "application/json" } `
+        -Body    $patchPayload
+    Write-Host "OrgPath stamped: $userId => $orgPathValue"
+} catch {
+    Write-Error "Graph PATCH failed for $userId : $_"
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::InternalServerError
+        Body       = "{`"error`":`"Graph PATCH failed`"}"
+    })
+    return
+}
+
+# Emit structured audit record for the governance pipeline log
+$auditRecord = [ordered]@{
+    Timestamp   = (Get-Date -Format "o")
+    Event       = "GuestOrgPathStamp"
+    UserId      = $userId
+    GuestEmail  = $guestEmail
+    Domain      = $partnerDomain
+    OrgPath     = $orgPathValue
+    Registered  = ($null -ne $partnerEntry)
+} | ConvertTo-Json -Compress
+Write-Host "AUDIT: $auditRecord"
+
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+    StatusCode = [HttpStatusCode]::OK
+    Body       = "{`"orgPath`":`"$orgPathValue`"}"
+})
+```
 
 ### Dynamic Group Library for the External Subtree
 
@@ -85,7 +182,102 @@ The third tier targets the group set that maps to RiskTier = Tier1 partners. The
 
 All three policies are created in enabledForReportingButNotEnforced (Report-Only) mode. This is not optional. Activating a Conditional Access policy against a guest population without first observing its effect in sign-in logs is an operational risk: guests from a specific partner may be using application types, locations, or device configurations that trigger unexpected deny conditions. The recommended observation period is fourteen days of sign-in log review per policy before promotion to enabled state. The promotion itself should be a pipeline-controlled change, gated by the same approval process as partner registry modifications.
 
-\# \# .SYNOPSIS \# Creates three-tier Conditional Access policies for external B2B guests, \# differentiated by their OrgPath stub (partner trust classification). \# .NOTES \# Requires: Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess","Group.Read.All" \# All policies are created in Report-Only mode (enabledForReportingButNotEnforced). \# Review sign-in logs for 14 days before switching each policy state to "enabled." \# Dynamic group IDs must exist before running — retrieve with: \# Get-MgGroup -Filter "displayName eq 'ORG-EXTERNAL-B2B-UNREGISTERED'" \| Select-Object Id \# param( \[string\]\$GroupId_Unregistered = "00000000-0000-0000-0000-aaaaaaaaaaaa", \# Substitute \[string\]\$GroupId_Standard = "00000000-0000-0000-0000-bbbbbbbbbbbb", \# Substitute \[string\]\$GroupId_HighTrust = "00000000-0000-0000-0000-cccccccccccc" \# Substitute ) Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess" -NoWelcome function New-CaPolicy(\[hashtable\]\$Body) { Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies" \` -Body (\$Body \| ConvertTo-Json -Depth 10) \` -ContentType "application/json" } \# Tier 3 — UNREGISTERED guests (maximum restriction) \$result1 = New-CaPolicy @{ displayName = "CA-EXT-001 — Unregistered B2B Guests — Maximum Restriction" state = "enabledForReportingButNotEnforced" conditions = @{ users = @{ includeGroups = @(\$GroupId_Unregistered) } applications = @{ includeApplications = @("All") } clientAppTypes = @("all") } grantControls = @{ operator = "AND" builtInControls = @("mfa", "compliantDevice") } sessionControls = @{ signInFrequency = @{ value = 1; type = "hours" frequencyInterval = "everyTime"; isEnabled = \$true } persistentBrowser = @{ mode = "never"; isEnabled = \$true } } } Write-Host "\[CREATED\] CA-EXT-001: \$(\$result1.id)" \# Tier 2 — Standard registered partners \$result2 = New-CaPolicy @{ displayName = "CA-EXT-002 — Standard B2B Partners — Compliant MFA" state = "enabledForReportingButNotEnforced" conditions = @{ users = @{ includeGroups = @(\$GroupId_Standard) } applications = @{ includeApplications = @("All") } clientAppTypes = @("browser", "mobileAppsAndDesktopClients") } grantControls = @{ operator = "OR" builtInControls = @("mfa", "compliantDevice") } sessionControls = @{ signInFrequency = @{ value = 8; type = "hours" frequencyInterval = "timeBased"; isEnabled = \$true } } } Write-Host "\[CREATED\] CA-EXT-002: \$(\$result2.id)" \# Tier 1 — High-trust partners \$result3 = New-CaPolicy @{ displayName = "CA-EXT-003 — High-Trust B2B Partners — Standard Internal Controls" state = "enabledForReportingButNotEnforced" conditions = @{ users = @{ includeGroups = @(\$GroupId_HighTrust) } applications = @{ includeApplications = @("All") } clientAppTypes = @("browser", "mobileAppsAndDesktopClients") } grantControls = @{ operator = "OR" builtInControls = @("mfa", "compliantDevice", "domainJoinedDevice") } sessionControls = @{ signInFrequency = @{ value = 24; type = "hours" frequencyInterval = "timeBased"; isEnabled = \$true } } } Write-Host "\[CREATED\] CA-EXT-003: \$(\$result3.id)" Write-Host "All external CA policies created in Report-Only mode."
+```powershell
+#
+# .SYNOPSIS
+#     Creates three-tier Conditional Access policies for external B2B guests,
+#     differentiated by their OrgPath stub (partner trust classification).
+# .NOTES
+#     Requires: Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess","Group.Read.All"
+#     All policies are created in Report-Only mode (enabledForReportingButNotEnforced).
+#     Review sign-in logs for 14 days before switching each policy state to "enabled."
+#     Dynamic group IDs must exist before running — retrieve with:
+#       Get-MgGroup -Filter "displayName eq 'ORG-EXTERNAL-B2B-UNREGISTERED'" | Select-Object Id
+#
+param(
+    [string]$GroupId_Unregistered = "00000000-0000-0000-0000-aaaaaaaaaaaa",  # Substitute
+    [string]$GroupId_Standard     = "00000000-0000-0000-0000-bbbbbbbbbbbb",  # Substitute
+    [string]$GroupId_HighTrust    = "00000000-0000-0000-0000-cccccccccccc"   # Substitute
+)
+
+Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess" -NoWelcome
+
+function New-CaPolicy([hashtable]$Body) {
+    Invoke-MgGraphRequest `
+        -Method      POST `
+        -Uri         "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies" `
+        -Body        ($Body | ConvertTo-Json -Depth 10) `
+        -ContentType "application/json"
+}
+
+# Tier 3 — UNREGISTERED guests (maximum restriction)
+$result1 = New-CaPolicy @{
+    displayName = "CA-EXT-001 — Unregistered B2B Guests — Maximum Restriction"
+    state       = "enabledForReportingButNotEnforced"
+    conditions  = @{
+        users        = @{ includeGroups = @($GroupId_Unregistered) }
+        applications = @{ includeApplications = @("All") }
+        clientAppTypes = @("all")
+    }
+    grantControls = @{
+        operator        = "AND"
+        builtInControls = @("mfa", "compliantDevice")
+    }
+    sessionControls = @{
+        signInFrequency = @{
+            value             = 1; type = "hours"
+            frequencyInterval = "everyTime"; isEnabled = $true
+        }
+        persistentBrowser = @{ mode = "never"; isEnabled = $true }
+    }
+}
+Write-Host "[CREATED] CA-EXT-001: $($result1.id)"
+
+# Tier 2 — Standard registered partners
+$result2 = New-CaPolicy @{
+    displayName = "CA-EXT-002 — Standard B2B Partners — Compliant MFA"
+    state       = "enabledForReportingButNotEnforced"
+    conditions  = @{
+        users        = @{ includeGroups = @($GroupId_Standard) }
+        applications = @{ includeApplications = @("All") }
+        clientAppTypes = @("browser", "mobileAppsAndDesktopClients")
+    }
+    grantControls = @{
+        operator        = "OR"
+        builtInControls = @("mfa", "compliantDevice")
+    }
+    sessionControls = @{
+        signInFrequency = @{
+            value             = 8; type = "hours"
+            frequencyInterval = "timeBased"; isEnabled = $true
+        }
+    }
+}
+Write-Host "[CREATED] CA-EXT-002: $($result2.id)"
+
+# Tier 1 — High-trust partners
+$result3 = New-CaPolicy @{
+    displayName = "CA-EXT-003 — High-Trust B2B Partners — Standard Internal Controls"
+    state       = "enabledForReportingButNotEnforced"
+    conditions  = @{
+        users        = @{ includeGroups = @($GroupId_HighTrust) }
+        applications = @{ includeApplications = @("All") }
+        clientAppTypes = @("browser", "mobileAppsAndDesktopClients")
+    }
+    grantControls = @{
+        operator        = "OR"
+        builtInControls = @("mfa", "compliantDevice", "domainJoinedDevice")
+    }
+    sessionControls = @{
+        signInFrequency = @{
+            value             = 24; type = "hours"
+            frequencyInterval = "timeBased"; isEnabled = $true
+        }
+    }
+}
+Write-Host "[CREATED] CA-EXT-003: $($result3.id)"
+Write-Host "All external CA policies created in Report-Only mode."
+```
 
 ::: {.callout-note title="⚠ Operational Note — CA Policy Ordering and Exclusion Hygiene"}
 Each tier policy must include the emergency access (break-glass) accounts in its exclude list, consistent with the exclusion pattern applied to all CA policies in the series. Confirm that the ORG-EXTERNAL-B2B-UNREGISTERED, standard-tier, and high-trust-tier groups are mutually exclusive by construction — a guest can only hold one OrgPath value, so membership in these groups is already exclusive. No additional exclusion logic between policies is required.
@@ -111,7 +303,73 @@ The third mechanism is Conditional Access App Control with Microsoft Defender fo
 
 Cross-Tenant Access Settings must be configured per partner tenant ID, not per domain. The partner registry includes the TenantId field for exactly this reason. The following script reads the partner registry and creates or updates one Cross-Tenant Access Settings entry per registered partner, setting inbound trust flags based on the partner's RiskTier classification. Tier1 partners receive both MFA claim trust and device compliance trust (both compliance and hybrid-join). Tier2 partners receive MFA claim trust only. The B2B collaboration inbound policy is set to allow all users and all applications for all registered partners, because access restriction at the application level is handled by the Conditional Access tier policies and by application assignment rather than by the Cross-Tenant Access blunt instrument. Unregistered partners, by definition, have no Cross-Tenant Access Settings entry, which means the default Cross-Tenant Access policy applies to them. The default policy should be configured to trust no claims from unverified external tenants, reinforcing the unregistered tier's maximum-restriction posture.
 
-\# \# .SYNOPSIS \# Synchronizes Entra ID Cross-Tenant Access Settings from the OrgTree \# partner registry. Creates or updates one partner configuration per \# registry entry based on RiskTier. \# .NOTES \# Requires: Connect-MgGraph with scopes: \# "Policy.ReadWrite.CrossTenantAccess","CrossTenantInformation.ReadBasic.All" \# TenantId for each partner must be in the registry. \# If unknown, resolve with: \# (Invoke-RestMethod "https://login.microsoftonline.com/{domain}/v2.0/.well-known/openid-configuration").issuer \# param( \[string\]\$PartnerRegistryPath = "C:\governance\orgtree\partner-registry.json" \# Substitute ) Connect-MgGraph -Scopes "Policy.ReadWrite.CrossTenantAccess" -NoWelcome \$registry = Get-Content \$PartnerRegistryPath -Raw \| ConvertFrom-Json foreach (\$partner in \$registry) { if (-not \$partner.TenantId) { Write-Warning "No TenantId for \$(\$partner.Domain) — skipping" continue } \# Tier1 = high-trust: trust both MFA and device compliance claims from partner \# Tier2 = standard: trust MFA claims only \$trustMfa = \$true \$trustCompliance = (\$partner.RiskTier -eq "Tier1") \$trustHybridJoin = (\$partner.RiskTier -eq "Tier1") \$policyBody = @{ tenantId = \$partner.TenantId inboundTrust = @{ isMfaAccepted = \$trustMfa isCompliantDeviceAccepted = \$trustCompliance isHybridAzureADJoinedDeviceAccepted = \$trustHybridJoin } b2bCollaborationInbound = @{ usersAndGroups = @{ accessType = "allowed" targets = @(@{ target = "AllUsers"; targetType = "user" }) } applications = @{ accessType = "allowed" targets = @(@{ target = "AllApplications"; targetType = "application" }) } } } \# Check if policy already exists try { Get-MgPolicyCrossTenantAccessPolicyPartner \` -CrossTenantAccessPolicyPartnerTenantId \$partner.TenantId -ErrorAction Stop \| Out-Null Update-MgPolicyCrossTenantAccessPolicyPartner \` -CrossTenantAccessPolicyPartnerTenantId \$partner.TenantId \` -BodyParameter \$policyBody Write-Host "\[UPDATED\] \$(\$partner.Domain) (Tier: \$(\$partner.RiskTier))" } catch { New-MgPolicyCrossTenantAccessPolicyPartner -BodyParameter \$policyBody \| Out-Null Write-Host "\[CREATED\] \$(\$partner.Domain) (Tier: \$(\$partner.RiskTier))" } } Write-Host "Cross-Tenant Access Settings synchronization complete."
+```powershell
+#
+# .SYNOPSIS
+#     Synchronizes Entra ID Cross-Tenant Access Settings from the OrgTree
+#     partner registry. Creates or updates one partner configuration per
+#     registry entry based on RiskTier.
+# .NOTES
+#     Requires: Connect-MgGraph with scopes:
+#     "Policy.ReadWrite.CrossTenantAccess","CrossTenantInformation.ReadBasic.All"
+#     TenantId for each partner must be in the registry.
+#     If unknown, resolve with:
+#       (Invoke-RestMethod "https://login.microsoftonline.com/{domain}/v2.0/.well-known/openid-configuration").issuer
+#
+param(
+    [string]$PartnerRegistryPath = "C:\governance\orgtree\partner-registry.json"  # Substitute
+)
+
+Connect-MgGraph -Scopes "Policy.ReadWrite.CrossTenantAccess" -NoWelcome
+
+$registry = Get-Content $PartnerRegistryPath -Raw | ConvertFrom-Json
+
+foreach ($partner in $registry) {
+    if (-not $partner.TenantId) {
+        Write-Warning "No TenantId for $($partner.Domain) — skipping"
+        continue
+    }
+
+    # Tier1 = high-trust: trust both MFA and device compliance claims from partner
+    # Tier2 = standard:   trust MFA claims only
+    $trustMfa         = $true
+    $trustCompliance  = ($partner.RiskTier -eq "Tier1")
+    $trustHybridJoin  = ($partner.RiskTier -eq "Tier1")
+
+    $policyBody = @{
+        tenantId     = $partner.TenantId
+        inboundTrust = @{
+            isMfaAccepted                       = $trustMfa
+            isCompliantDeviceAccepted           = $trustCompliance
+            isHybridAzureADJoinedDeviceAccepted = $trustHybridJoin
+        }
+        b2bCollaborationInbound = @{
+            usersAndGroups = @{
+                accessType = "allowed"
+                targets    = @(@{ target = "AllUsers"; targetType = "user" })
+            }
+            applications = @{
+                accessType = "allowed"
+                targets    = @(@{ target = "AllApplications"; targetType = "application" })
+            }
+        }
+    }
+
+    # Check if policy already exists
+    try {
+        Get-MgPolicyCrossTenantAccessPolicyPartner `
+            -CrossTenantAccessPolicyPartnerTenantId $partner.TenantId -ErrorAction Stop | Out-Null
+        Update-MgPolicyCrossTenantAccessPolicyPartner `
+            -CrossTenantAccessPolicyPartnerTenantId $partner.TenantId `
+            -BodyParameter $policyBody
+        Write-Host "[UPDATED] $($partner.Domain) (Tier: $($partner.RiskTier))"
+    } catch {
+        New-MgPolicyCrossTenantAccessPolicyPartner -BodyParameter $policyBody | Out-Null
+        Write-Host "[CREATED] $($partner.Domain) (Tier: $($partner.RiskTier))"
+    }
+}
+Write-Host "Cross-Tenant Access Settings synchronization complete."
+```
 
 ### MAM-Only Policy Targeting for Guest Devices
 
@@ -135,7 +393,106 @@ For each registered partner domain, the governance pipeline creates one recurrin
 
 The review instance duration is fourteen days, giving sponsors a two-week window to complete their decisions. The defaultDecision is set to Deny, which means that any guest account for which the reviewer takes no action — either because the reviewer is unavailable, has left the organization, or simply fails to respond — is automatically denied at the close of the review window. The autoApplyDecisionsEnabled flag ensures that deny decisions are applied without requiring a manual administrative step. The apply action is disableAndDeleteUserApplyAction, which disables the guest account immediately on deny rather than deleting it, preserving the account object for the thirty-day retention window required for audit trail continuity and for the governance cleanup pipeline to confirm deletion after the retention period expires. Recommendations are enabled, so that the review UI surfaces Entra ID's activity-based recommendation (approve or deny based on whether the guest has signed in during the past thirty days) to assist reviewers in making decisions for large partner populations. The recurrence pattern is absoluteMonthly with an interval of three months and a noEnd range, creating a perpetual quarterly cadence that continues until the partner's registry entry is removed and the review definition is decommissioned by the pipeline.
 
-\# \# .SYNOPSIS \# Creates quarterly Access Reviews for each B2B partner group, with \# reviewers drawn from the partner's sponsor security group. \# .NOTES \# Requires: Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Group.Read.All" \# Requires Entra ID Governance license for Access Reviews. \# defaultDecision = "Deny" means: if reviewer takes no action, access is denied. \# autoApplyDecisionsEnabled = true applies the decision automatically at review close. \# disableAndDeleteUserApplyAction disables the account immediately on Deny; \# permanent deletion occurs 30 days later via the governance cleanup script. \# param( \[string\]\$PartnerRegistryPath = "C:\governance\orgtree\partner-registry.json" \# Substitute ) Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Group.Read.All" -NoWelcome \$registry = Get-Content \$PartnerRegistryPath -Raw \| ConvertFrom-Json \# Start next review cycle on the coming Monday \$daysToMonday = ((1 - \[int\]&#40;Get-Date).DayOfWeek + 7) % 7) if (\$daysToMonday -eq 0) { \$daysToMonday = 7 } \$startDate = (Get-Date).AddDays(\$daysToMonday).ToString("yyyy-MM-dd") foreach (\$partner in \$registry) { \# Resolve the partner's Entra ID dynamic group \$groupName = "ORG-EXTERNAL-B2B-\$(\$partner.Domain -replace '\[\\\\\]','-')" \$group = Get-MgGroup -Filter "displayName eq '\$groupName'" -ErrorAction SilentlyContinue if (-not \$group) { Write-Warning "Group '\$groupName' not found — skipping \$(\$partner.Domain)" continue } \# Resolve the sponsor reviewer group \$sponsorGroup = Get-MgGroup \` -Filter "displayName eq '\$(\$partner.SponsorGroupName)'" \` -ErrorAction SilentlyContinue \$reviewers = if (\$sponsorGroup) { @(@{ query = "/groups/\$(\$sponsorGroup.Id)/transitiveMembers" queryType = "MicrosoftGraph" }) } else { Write-Warning "Sponsor group '\$(\$partner.SponsorGroupName)' not found — using group owners" @(@{ query = "/groups/\$(\$group.Id)/owners"; queryType = "MicrosoftGraph" }) } \$reviewName = "AccessReview-External-\$(\$partner.Domain)-Quarterly" \# Skip if already exists \$exists = Get-MgIdentityGovernanceAccessReviewDefinition \` -Filter "displayName eq '\$reviewName'" -ErrorAction SilentlyContinue if (\$exists) { Write-Host "\[EXISTS\] \$reviewName" continue } \$body = @{ displayName = \$reviewName descriptionForAdmins = "Quarterly access review for B2B guests from \$(\$partner.Domain)" descriptionForReviewers = "Review each guest user's continued need for access. Deny removes their access automatically." scope = @{ query = "/groups/\$(\$group.Id)/transitiveMembers" queryType = "MicrosoftGraph" } reviewers = \$reviewers settings = @{ mailNotificationsEnabled = \$true reminderNotificationsEnabled = \$true justificationRequiredOnApproval = \$true defaultDecisionEnabled = \$true defaultDecision = "Deny" instanceDurationInDays = 14 autoApplyDecisionsEnabled = \$true recommendationsEnabled = \$true applyActions = @( @{ "@odata.type" = "#microsoft.graph.disableAndDeleteUserApplyAction" } ) recurrence = @{ pattern = @{ type = "absoluteMonthly"; interval = 3 } range = @{ type = "noEnd"; startDate = \$startDate } } } } \| ConvertTo-Json -Depth 10 Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" \` -Body \$body \` -ContentType "application/json" \| Out-Null Write-Host "\[CREATED\] \$reviewName (reviewers: \$(\$partner.SponsorGroupName))" } Write-Host "Guest access review configuration complete."
+```powershell
+#
+# .SYNOPSIS
+#     Creates quarterly Access Reviews for each B2B partner group, with
+#     reviewers drawn from the partner's sponsor security group.
+# .NOTES
+#     Requires: Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Group.Read.All"
+#     Requires Entra ID Governance license for Access Reviews.
+#     defaultDecision = "Deny" means: if reviewer takes no action, access is denied.
+#     autoApplyDecisionsEnabled = true applies the decision automatically at review close.
+#     disableAndDeleteUserApplyAction disables the account immediately on Deny;
+#     permanent deletion occurs 30 days later via the governance cleanup script.
+#
+param(
+    [string]$PartnerRegistryPath = "C:\governance\orgtree\partner-registry.json"  # Substitute
+)
+
+Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Group.Read.All" -NoWelcome
+
+$registry = Get-Content $PartnerRegistryPath -Raw | ConvertFrom-Json
+
+# Start next review cycle on the coming Monday
+$daysToMonday = ((1 - [int](Get-Date).DayOfWeek + 7) % 7)
+if ($daysToMonday -eq 0) { $daysToMonday = 7 }
+$startDate = (Get-Date).AddDays($daysToMonday).ToString("yyyy-MM-dd")
+
+foreach ($partner in $registry) {
+
+    # Resolve the partner's Entra ID dynamic group
+    $groupName = "ORG-EXTERNAL-B2B-$($partner.Domain -replace '[\.\-]','-')"
+    $group     = Get-MgGroup -Filter "displayName eq '$groupName'" -ErrorAction SilentlyContinue
+    if (-not $group) {
+        Write-Warning "Group '$groupName' not found — skipping $($partner.Domain)"
+        continue
+    }
+
+    # Resolve the sponsor reviewer group
+    $sponsorGroup = Get-MgGroup `
+        -Filter "displayName eq '$($partner.SponsorGroupName)'" `
+        -ErrorAction SilentlyContinue
+
+    $reviewers = if ($sponsorGroup) {
+        @(@{
+            query     = "/groups/$($sponsorGroup.Id)/transitiveMembers"
+            queryType = "MicrosoftGraph"
+        })
+    } else {
+        Write-Warning "Sponsor group '$($partner.SponsorGroupName)' not found — using group owners"
+        @(@{ query = "/groups/$($group.Id)/owners"; queryType = "MicrosoftGraph" })
+    }
+
+    $reviewName = "AccessReview-External-$($partner.Domain)-Quarterly"
+
+    # Skip if already exists
+    $exists = Get-MgIdentityGovernanceAccessReviewDefinition `
+        -Filter "displayName eq '$reviewName'" -ErrorAction SilentlyContinue
+    if ($exists) {
+        Write-Host "[EXISTS] $reviewName"
+        continue
+    }
+
+    $body = @{
+        displayName            = $reviewName
+        descriptionForAdmins   = "Quarterly access review for B2B guests from $($partner.Domain)"
+        descriptionForReviewers = "Review each guest user's continued need for access. Deny removes their access automatically."
+        scope      = @{
+            query     = "/groups/$($group.Id)/transitiveMembers"
+            queryType = "MicrosoftGraph"
+        }
+        reviewers  = $reviewers
+        settings   = @{
+            mailNotificationsEnabled        = $true
+            reminderNotificationsEnabled    = $true
+            justificationRequiredOnApproval = $true
+            defaultDecisionEnabled          = $true
+            defaultDecision                 = "Deny"
+            instanceDurationInDays          = 14
+            autoApplyDecisionsEnabled       = $true
+            recommendationsEnabled          = $true
+            applyActions                    = @(
+                @{ "@odata.type" = "#microsoft.graph.disableAndDeleteUserApplyAction" }
+            )
+            recurrence = @{
+                pattern = @{ type = "absoluteMonthly"; interval = 3 }
+                range   = @{ type = "noEnd"; startDate = $startDate }
+            }
+        }
+    } | ConvertTo-Json -Depth 10
+
+    Invoke-MgGraphRequest `
+        -Method      POST `
+        -Uri         "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" `
+        -Body        $body `
+        -ContentType "application/json" | Out-Null
+
+    Write-Host "[CREATED] $reviewName (reviewers: $($partner.SponsorGroupName))"
+}
+
+Write-Host "Guest access review configuration complete."
+```
 
 ::: {.callout-note title="ⓘ License Requirement"}
 Entra ID Governance licensing is required for the Access Review features used in this configuration, specifically for the autoApplyDecisionsEnabled setting, the disableAndDeleteUserApplyAction apply action, and the recommendations engine. Confirm that the Entra ID Governance license is applied at the tenant level before deploying this script. Guest users themselves do not consume Entra ID Governance seats for Access Review purposes — only the host tenant's configuration requires the license.
@@ -153,11 +510,82 @@ The governance WatchList named GuestOrgPathWatchlist is the infrastructure that 
 
 The three queries presented in this chapter represent three distinct monitoring objectives. The first is a dashboard workbook query that provides an operational summary of external guest sign-in activity, aggregated by OrgPath stub and partner domain, for a one-day lookback window. It is designed to be run as a Workbook tile, providing at-a-glance visibility into the volume, success rate, geographic distribution, and application diversity of guest sign-ins across all partners simultaneously. The second is an alert rule that fires on risky sign-ins from unregistered guests, the highest-priority monitoring target in the external subtree. The third is a scheduled analytics rule that detects file activity volume anomalies in the Office 365 activity data, identifying individual guest users whose data access volume in a given day exceeds three times the thirty-day rolling average for their partner cohort.
 
-// Query 1: External Guest Sign-In Summary Dashboard // Run as Workbook query — 1-day lookback // Join guest sign-ins against OrgPath WatchList for enrichment SigninLogs \| where TimeGenerated \>= ago(1d) \| where HomeTenantId != ResourceTenantId // B2B guest sign-ins \| join kind=leftouter ( \_GetWatchlist("GuestOrgPathWatchlist") \| project WL_UPN = SearchKey, OrgPath, PartnerDomain, RiskTier ) on \$left.UserPrincipalName == \$right.WL_UPN \| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "/EXTERNAL/B2B/UNKNOWN") \| summarize TotalSignIns = count(), Successful = countif(ResultType == 0), Failed = countif(ResultType != 0), UniqueLocations = dcount(Location), UniqueApps = dcount(AppDisplayName), RiskLevels = make_set(RiskLevelDuringSignIn) by OrgPathResolved, PartnerDomain, RiskTier, bin(TimeGenerated, 1d) \| order by TotalSignIns desc
+```kql
+// Query 1: External Guest Sign-In Summary Dashboard
+// Run as Workbook query — 1-day lookback
+// Join guest sign-ins against OrgPath WatchList for enrichment
+SigninLogs
+| where TimeGenerated >= ago(1d)
+| where HomeTenantId != ResourceTenantId   // B2B guest sign-ins
+| join kind=leftouter (
+    _GetWatchlist("GuestOrgPathWatchlist")
+    | project WL_UPN = SearchKey, OrgPath, PartnerDomain, RiskTier
+) on $left.UserPrincipalName == $right.WL_UPN
+| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "/EXTERNAL/B2B/UNKNOWN")
+| summarize
+    TotalSignIns    = count(),
+    Successful      = countif(ResultType == 0),
+    Failed          = countif(ResultType != 0),
+    UniqueLocations = dcount(Location),
+    UniqueApps      = dcount(AppDisplayName),
+    RiskLevels      = make_set(RiskLevelDuringSignIn)
+    by OrgPathResolved, PartnerDomain, RiskTier, bin(TimeGenerated, 1d)
+| order by TotalSignIns desc
+// Query 2: High-Risk Sign-Ins from Unregistered External Guests
+// Alert rule — run every 4 hours, lookback 4 hours
+// Fire on any risky sign-in from /EXTERNAL/B2B/UNREGISTERED
+_GetWatchlist("GuestOrgPathWatchlist")
+| where OrgPath == "/EXTERNAL/B2B/UNREGISTERED"
+| project UPN = SearchKey, OrgPath, PartnerDomain
+| join kind=inner (
+    SigninLogs
+    | where TimeGenerated >= ago(4h)
+    | where RiskLevelDuringSignIn in ("low","medium","high")
+    | project TimeGenerated, UserPrincipalName, Location, IPAddress,
+              AppDisplayName, RiskLevelDuringSignIn, RiskDetail,
+              ConditionalAccessStatus, ResultType
+) on $left.UPN == $right.UserPrincipalName
+| project
+    TimeGenerated, UserPrincipalName, OrgPath, PartnerDomain,
+    RiskLevel = RiskLevelDuringSignIn, RiskDetail,
+    Location, IPAddress, Application = AppDisplayName,
+    CAStatus = ConditionalAccessStatus
+| order by TimeGenerated desc
+// Query 3: Guest Data Volume Anomaly Detector
+// Detects B2B guests with file access volumes above 3x their partner cohort 30-day average
+// Run daily as scheduled analytics rule
+let threshold      = 3.0;
+let baselineWindow = 30d;
+let alertWindow    = 1d;
 
-// Query 2: High-Risk Sign-Ins from Unregistered External Guests // Alert rule — run every 4 hours, lookback 4 hours // Fire on any risky sign-in from /EXTERNAL/B2B/UNREGISTERED \_GetWatchlist("GuestOrgPathWatchlist") \| where OrgPath == "/EXTERNAL/B2B/UNREGISTERED" \| project UPN = SearchKey, OrgPath, PartnerDomain \| join kind=inner ( SigninLogs \| where TimeGenerated \>= ago(4h) \| where RiskLevelDuringSignIn in ("low","medium","high") \| project TimeGenerated, UserPrincipalName, Location, IPAddress, AppDisplayName, RiskLevelDuringSignIn, RiskDetail, ConditionalAccessStatus, ResultType ) on \$left.UPN == \$right.UserPrincipalName \| project TimeGenerated, UserPrincipalName, OrgPath, PartnerDomain, RiskLevel = RiskLevelDuringSignIn, RiskDetail, Location, IPAddress, Application = AppDisplayName, CAStatus = ConditionalAccessStatus \| order by TimeGenerated desc
+let cohortBaseline =
+    OfficeActivity
+    | where TimeGenerated between (ago(baselineWindow) .. ago(alertWindow))
+    | where Operation in ("FileDownloaded","FileAccessed","FileCopied","SharingInvitationCreated")
+    | join kind=inner (
+        _GetWatchlist("GuestOrgPathWatchlist")
+        | project UserId = SearchKey, OrgPath, PartnerDomain
+    ) on $left.UserId == $right.UserId
+    | where OrgPath startswith "/EXTERNAL/"
+    | summarize AvgDailyOps = avg(countif(TimeGenerated > ago(alertWindow))) by OrgPath
+    ;
 
-// Query 3: Guest Data Volume Anomaly Detector // Detects B2B guests with file access volumes above 3x their partner cohort 30-day average // Run daily as scheduled analytics rule let threshold = 3.0; let baselineWindow = 30d; let alertWindow = 1d; let cohortBaseline = OfficeActivity \| where TimeGenerated between (ago(baselineWindow) .. ago(alertWindow)) \| where Operation in ("FileDownloaded","FileAccessed","FileCopied","SharingInvitationCreated") \| join kind=inner ( \_GetWatchlist("GuestOrgPathWatchlist") \| project UserId = SearchKey, OrgPath, PartnerDomain ) on \$left.UserId == \$right.UserId \| where OrgPath startswith "/EXTERNAL/" \| summarize AvgDailyOps = avg(countif(TimeGenerated \> ago(alertWindow))) by OrgPath ; OfficeActivity \| where TimeGenerated \>= ago(alertWindow) \| where Operation in ("FileDownloaded","FileAccessed","FileCopied","SharingInvitationCreated") \| join kind=inner ( \_GetWatchlist("GuestOrgPathWatchlist") \| project UserId = SearchKey, OrgPath, PartnerDomain, RiskTier ) on \$left.UserId == \$right.UserId \| where OrgPath startswith "/EXTERNAL/" \| summarize TodayOps = count() by UserId, OrgPath, PartnerDomain, RiskTier \| join kind=inner cohortBaseline on OrgPath \| extend VolumeRatio = TodayOps / AvgDailyOps \| where VolumeRatio \>= threshold \| project UserId, OrgPath, PartnerDomain, RiskTier, TodayOps, AvgDailyOps, VolumeRatio \| order by VolumeRatio desc
+OfficeActivity
+| where TimeGenerated >= ago(alertWindow)
+| where Operation in ("FileDownloaded","FileAccessed","FileCopied","SharingInvitationCreated")
+| join kind=inner (
+    _GetWatchlist("GuestOrgPathWatchlist")
+    | project UserId = SearchKey, OrgPath, PartnerDomain, RiskTier
+) on $left.UserId == $right.UserId
+| where OrgPath startswith "/EXTERNAL/"
+| summarize TodayOps = count() by UserId, OrgPath, PartnerDomain, RiskTier
+| join kind=inner cohortBaseline on OrgPath
+| extend VolumeRatio = TodayOps / AvgDailyOps
+| where VolumeRatio >= threshold
+| project UserId, OrgPath, PartnerDomain, RiskTier,
+          TodayOps, AvgDailyOps, VolumeRatio
+| order by VolumeRatio desc
+```
 
 Query One produces output that is appropriate for an operations team reviewing external collaboration activity at the start of each shift. The OrgPathResolved column captures guests whose WatchList entry is missing — typically due to a WatchList synchronization lag — under the /EXTERNAL/B2B/UNKNOWN sentinel value, distinguishing them from guests with a properly assigned /EXTERNAL/B2B/UNREGISTERED stub. A non-zero count in the UNKNOWN category is itself a monitoring signal indicating that WatchList maintenance has fallen behind directory state and requires attention. Query Two is an alert-generating rule. Its threshold of any risky sign-in from an unregistered guest reflects the policy stance of Chapter Three: unregistered guests have no behavioral history, no Cross-Tenant Access trust, and no verified identity security posture, and any Identity Protection risk signal from that population is therefore an event that warrants immediate investigation rather than queuing for a next-business-day review. Query Three uses a cohort baseline rather than a personal baseline because individual guest behavioral history is thin. The cohort — all guests sharing the same OrgPath stub — provides a more statistically meaningful reference frame: if three hundred guests from a given partner typically download forty files per day collectively, a single guest downloading four hundred files in one day is an outlier against the cohort norm even if that individual has no personal baseline for comparison. The three-times multiplier is a starting point; organizations with large guest populations and established cohort histories should tune the threshold based on observed alert rates during a validation period.
 
@@ -181,7 +609,89 @@ A domain reassignment event occurs when a partner organization changes their ema
 
 A partner offboarding event occurs when the business relationship ends and all guests from the offboarding partner must be removed from the tenant. The pipeline approach is a two-phase operation. In the first phase, the re-stamp script is invoked with the new stub set to /EXTERNAL/B2B/OFFBOARDED and the DisableAccounts flag set to true. This immediately disables all guest accounts from the offboarding partner and moves them into a distinct OrgPath stub that carries no dynamic group membership, no Conditional Access tier, and no resource access. The accounts are disabled but not immediately deleted, preserving the audit trail and satisfying the thirty-day retention requirement for identity lifecycle records. In the second phase, executed thirty days later by a scheduled pipeline task, the governance cleanup script permanently deletes all guest objects carrying the /EXTERNAL/B2B/OFFBOARDED stub, removes the partner's registry entry, decommissions the partner's dynamic group and Access Review definition, and removes the partner's Cross-Tenant Access Settings entry. The WatchList is synchronized at both phases to reflect the current state accurately.
 
-\# \# .SYNOPSIS \# Re-stamps OrgPath on all B2B guests from a partner whose registry entry changed. \# Also used for partner offboarding: set NewOrgPathStub = "/EXTERNAL/B2B/OFFBOARDED" \# and set Disable = \$true to immediately disable all guests from that partner. \# .PARAMETER PartnerDomain \# The partner domain to re-process. Example: "contoso-partner.com" \# .PARAMETER NewOrgPathStub \# The new OrgPath stub. Example: "/EXTERNAL/B2B/contoso-partner.com" (reclassification) \# or "/EXTERNAL/B2B/OFFBOARDED" (partner relationship ended) \# .PARAMETER DisableAccounts \# If \$true, disables all matching guest accounts (used for partner offboarding). \# .NOTES \# Requires: Connect-MgGraph -Scopes "User.ReadWrite.All" \# B2B guest UPNs follow the pattern: \# original_alias_partnerDomain-com#EXT#@yourtenant.onmicrosoft.com \# Dots in the domain are replaced with underscores in the UPN. \# param( \[string\]\$PartnerDomain = "contoso-partner.com", \# Substitute \[string\]\$NewOrgPathStub = "/EXTERNAL/B2B/contoso-partner.com", \# Substitute \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath", \# Substitute \[switch\]\$DisableAccounts = \$false ) Connect-MgGraph -Scopes "User.ReadWrite.All" -NoWelcome \# B2B UPN encodes dots as underscores in the domain portion before \#EXT# \$domainEncoded = (\$PartnerDomain -replace "\\", "\_").ToLower() Write-Host "\[\$((Get-Date).ToString('HH:mm:ss'))\] Searching for guests from: \$PartnerDomain" \$guests = Get-MgUser \` -Filter "UserType eq 'Guest'" \` -Property "id,displayName,userPrincipalName,accountEnabled,\$OrgPathAttrName" \` -All \` \| Where-Object { \$\_.UserPrincipalName -like "\*\_\$domainEncoded#EXT#\*" } Write-Host " Found \$(\$guests.Count) guests from \$PartnerDomain" \$updated = 0; \$errors = 0; \$skipped = 0 foreach (\$guest in \$guests) { \$currentOrgPath = \$guest.AdditionalProperties\[\$OrgPathAttrName\] \$patchBody = @{} if (\$currentOrgPath -ne \$NewOrgPathStub) { \$patchBody\[\$OrgPathAttrName\] = \$NewOrgPathStub } if (\$DisableAccounts -and \$guest.AccountEnabled) { \$patchBody\["accountEnabled"\] = \$false } if (\$patchBody.Count -eq 0) { \$skipped++ continue } try { Invoke-MgGraphRequest \` -Method PATCH \` -Uri "https://graph.microsoft.com/v1.0/users/\$(\$guest.Id)" \` -Body (\$patchBody \| ConvertTo-Json) \` -ContentType "application/json" \$action = if (\$DisableAccounts) { "UPDATED+DISABLED" } else { "UPDATED" } Write-Host " \[\$action\] \$(\$guest.UserPrincipalName) =\> \$NewOrgPathStub" \$updated++ } catch { Write-Error " \[ERROR\] \$(\$guest.UserPrincipalName): \$\_" \$errors++ } } Write-Host "" Write-Host "=== Guest Re-Stamp Complete === Updated: \$updated \| Errors: \$errors \| Skipped: \$skipped" \# Commit audit record to governance log @{ Timestamp = (Get-Date -Format "o") Event = if (\$DisableAccounts) { "GuestPartnerOffboard" } else { "GuestOrgPathReclassify" } PartnerDomain = \$PartnerDomain NewOrgPathStub = \$NewOrgPathStub GuestsUpdated = \$updated GuestsErrored = \$errors } \| ConvertTo-Json -Compress \| Out-File -Append "C:\governance\logs\guest-pipeline.jsonl" \# Substitute path
+```powershell
+#
+# .SYNOPSIS
+#     Re-stamps OrgPath on all B2B guests from a partner whose registry entry changed.
+#     Also used for partner offboarding: set NewOrgPathStub = "/EXTERNAL/B2B/OFFBOARDED"
+#     and set Disable = $true to immediately disable all guests from that partner.
+# .PARAMETER PartnerDomain
+#     The partner domain to re-process. Example: "contoso-partner.com"
+# .PARAMETER NewOrgPathStub
+#     The new OrgPath stub. Example: "/EXTERNAL/B2B/contoso-partner.com" (reclassification)
+#     or "/EXTERNAL/B2B/OFFBOARDED" (partner relationship ended)
+# .PARAMETER DisableAccounts
+#     If $true, disables all matching guest accounts (used for partner offboarding).
+# .NOTES
+#     Requires: Connect-MgGraph -Scopes "User.ReadWrite.All"
+#     B2B guest UPNs follow the pattern:
+#       original_alias_partnerDomain-com#EXT#@yourtenant.onmicrosoft.com
+#     Dots in the domain are replaced with underscores in the UPN.
+#
+param(
+    [string]$PartnerDomain       = "contoso-partner.com",                     # Substitute
+    [string]$NewOrgPathStub      = "/EXTERNAL/B2B/contoso-partner.com",       # Substitute
+    [string]$OrgPathAttrName     = "extension_{AppIdWithoutHyphens}_OrgPath", # Substitute
+    [switch]$DisableAccounts     = $false
+)
+
+Connect-MgGraph -Scopes "User.ReadWrite.All" -NoWelcome
+
+# B2B UPN encodes dots as underscores in the domain portion before #EXT#
+$domainEncoded = ($PartnerDomain -replace "\.", "_").ToLower()
+
+Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] Searching for guests from: $PartnerDomain"
+
+$guests = Get-MgUser `
+    -Filter "UserType eq 'Guest'" `
+    -Property "id,displayName,userPrincipalName,accountEnabled,$OrgPathAttrName" `
+    -All `
+    | Where-Object { $_.UserPrincipalName -like "*_$domainEncoded#EXT#*" }
+
+Write-Host "  Found $($guests.Count) guests from $PartnerDomain"
+
+$updated = 0; $errors = 0; $skipped = 0
+
+foreach ($guest in $guests) {
+    $currentOrgPath = $guest.AdditionalProperties[$OrgPathAttrName]
+
+    $patchBody = @{}
+    if ($currentOrgPath -ne $NewOrgPathStub) { $patchBody[$OrgPathAttrName] = $NewOrgPathStub }
+    if ($DisableAccounts -and $guest.AccountEnabled) { $patchBody["accountEnabled"] = $false }
+
+    if ($patchBody.Count -eq 0) {
+        $skipped++
+        continue
+    }
+
+    try {
+        Invoke-MgGraphRequest `
+            -Method      PATCH `
+            -Uri         "https://graph.microsoft.com/v1.0/users/$($guest.Id)" `
+            -Body        ($patchBody | ConvertTo-Json) `
+            -ContentType "application/json"
+        $action = if ($DisableAccounts) { "UPDATED+DISABLED" } else { "UPDATED" }
+        Write-Host "  [$action] $($guest.UserPrincipalName) => $NewOrgPathStub"
+        $updated++
+    } catch {
+        Write-Error "  [ERROR] $($guest.UserPrincipalName): $_"
+        $errors++
+    }
+}
+
+Write-Host ""
+Write-Host "=== Guest Re-Stamp Complete === Updated: $updated | Errors: $errors | Skipped: $skipped"
+
+# Commit audit record to governance log
+@{
+    Timestamp      = (Get-Date -Format "o")
+    Event          = if ($DisableAccounts) { "GuestPartnerOffboard" } else { "GuestOrgPathReclassify" }
+    PartnerDomain  = $PartnerDomain
+    NewOrgPathStub = $NewOrgPathStub
+    GuestsUpdated  = $updated
+    GuestsErrored  = $errors
+} | ConvertTo-Json -Compress | Out-File -Append "C:\governance\logs\guest-pipeline.jsonl"  # Substitute path
+```
 
 ### Governance Synthesis
 
