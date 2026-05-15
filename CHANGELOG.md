@@ -2,6 +2,57 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [0.6.1] — 2026-05-15
+
+**Theme: ServiceNow tier-1 adapter completion.** Closes the tier-1
+conformance gap identified in #458 (child of #447 Microsoft Tier-1
+umbrella). Same parallel-batch shape as v0.6.0 HRIT productization.
+
+### Added
+
+- **WS-A1** write-side methods on `ServiceNowAdapter`: `create_incident`,
+  `update_incident`, `create_change_request`, `create_problem`, plus
+  `_emit_ticket_manifest` and `_build_evidence` helpers
+- **WS-A1** `ServiceNowCollector.post_record` and `patch_record` with
+  bearer auth, JSON headers, `raise_for_status`, empty-scaffold fallback
+- **WS-A2** `src/uiao/oscal/servicenow_evidence.py` —
+  `emit_servicenow_component_definition` producing OSCAL 1.1.2
+  component-definition with HMAC-SHA256 signing, IR-4/IR-5/IR-6/CM-3
+  control mapping (51 tests, golden-file regression pinned)
+- **WS-A3** KSI-SNOW-001 through KSI-SNOW-005 in
+  `src/uiao/rules/ksi/servicenow/` (cadence, ATO mapping, closure
+  evidence, change-request approval chain, SLA-violation findings);
+  mapping registry grows from 181 to 186 entries
+- **WS-A4** 6 tier-2 contract fixtures under
+  `tests/fixtures/tier-2/servicenow/` (incident-create, incident-update,
+  change-request-create, problem-create, query-result-empty,
+  query-result-3-records)
+- **WS-A5** real `detect_drift()` implementation backed by registry-
+  expected scope and `collector.compare_for_drift`
+- **WS-A5** `tests/test_servicenow_adapter.py` (34 tests) and
+  `tests/conformance/test_servicenow_conformance.py` (6 tests)
+
+### Changed
+
+- `servicenow_adapter.py` line count grew 263 → 441 reflecting the new
+  modernization (write) surface
+- KSI control mapping registry: append-only growth, no existing entries
+  modified
+
+### CI
+
+- `ruff check`: clean
+- `ruff format --check`: 394 files clean
+- `pytest`: 3495 passed, 0 failed, 163 skipped, 8 xfailed (~72 s)
+
+### Out of scope (queued)
+
+- Real ServiceNow tenant validation (#458 follow-up, lab-tenant access)
+- #459 v0.6.2 Palo Alto NGFW adapter completion
+- #460 v0.6.3 CyberArk PAM adapter completion
+
+
+
 ## [0.6.0] — 2026-05-11
 
 **Theme: HRIT Single-ATO Productization.** Closes the runtime gap deferred by
