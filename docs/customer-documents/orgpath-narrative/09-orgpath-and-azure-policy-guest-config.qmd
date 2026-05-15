@@ -10,8 +10,20 @@ series-order: 09
 status: Published
 canon-source: "src/uiao/canon/UIAO_155_Governance_Workflow_Catalog.md"
 source-document: "OrgPath and Azure Policy Guest Configuration — DSC-Based Machine State Enforcement Across Organizational Tiers.md"
-rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
+rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; code blocks restored from .docx source 2026-05-15."
 ---
+
+::: {.callout-note title="Authoritative canon"}
+The substrate-internal canonical specification for OrgPath-driven Azure
+Policy targeting is [UIAO_010 — OrgPath in Azure Policy](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_010_OrgPath_in_Azure_Policy.md),
+which wraps [ADR-039](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-039-policy-targeting.md)
+plus [`canon/data/orgpath/policy-targets.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/policy-targets.yaml).
+The Guest Configuration patterns in this chapter sit *below* that
+targeting layer — Azure Policy assignments deliver Guest Configuration
+packages to Arc machines whose `OrgPath` ARM tag matches the canonical
+selector. This chapter is the customer-facing narrative; the canon doc
+is the operator/spec reference.
+:::
 
 ## Chapter 1 — The Machine State Governance Gap
 
@@ -71,25 +83,432 @@ The authoring workstation or pipeline agent must have all four modules installed
 
 The Tier0 configuration is the most complete of the three and serves as the reference implementation for the Guest Configuration authoring pattern used across this series. Every environment-specific parameter — management subnet CIDRs, script deployment paths, storage account names — is marked in comments with the token \# ENV-PARAM so that engineers working in a specific environment can locate every value that requires substitution without reading the full configuration.
 
-\# \# .SYNOPSIS \# PowerShell DSC configuration for OrgPath Tier0 servers (hardened baseline). \# .DESCRIPTION \# Compile this configuration with: \# . .\OrgPath-Tier0-Baseline.ps1 \# OrgPath_Tier0_Baseline -OutputPath "C:\GuestConfig\Tier0" \# Then package with New-GuestConfigurationPackage (see packaging script). \# .NOTES \# Required DSC modules: \# PSDesiredStateConfiguration 2.x \# PSDscResources \# ComputerManagementDsc \# AuditPolicyDsc \# Environment-specific parameters are marked with: \# ENV-PARAM \# Configuration OrgPath_Tier0_Baseline { Import-DscResource -ModuleName PSDesiredStateConfiguration Import-DscResource -ModuleName PSDscResources Import-DscResource -ModuleName ComputerManagementDsc Import-DscResource -ModuleName AuditPolicyDsc Node localhost { \#region — Disable SMBv1 Script DisableSMBv1 { GetScript = { @{ Result = (Get-SmbServerConfiguration).EnableSMB1Protocol } } TestScript = { -not (Get-SmbServerConfiguration).EnableSMB1Protocol } SetScript = { Set-SmbServerConfiguration -EnableSMB1Protocol \$false -Force } } \#endregion \#region — Disable LLMNR Registry DisableLLMNR { Key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" ValueName = "EnableMulticast" ValueType = "DWORD" ValueData = "0" Ensure = "Present" } \#endregion \#region — Disable NetBIOS over TCP/IP (Tier0 only) Script DisableNetBIOS { GetScript = { \$adapters = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" \$values = \$adapters \| ForEach-Object { (Get-ItemProperty \$\_.PSPath).NetbiosOptions } @{ Result = (\$values \| Where-Object { \$\_ -ne 2 }).Count -eq 0 } } TestScript = { \$adapters = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" \$values = \$adapters \| ForEach-Object { (Get-ItemProperty \$\_.PSPath).NetbiosOptions } (\$values \| Where-Object { \$\_ -ne 2 }).Count -eq 0 } SetScript = { Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" \| ForEach-Object { Set-ItemProperty \$\_.PSPath -Name NetbiosOptions -Value 2 } } } \#endregion \#region — Local Administrator disabled (Tier0: all local admins except LAPS account) User LocalAdministrator { UserName = "Administrator" Ensure = "Present" Disabled = \$true } \#endregion \#region — Disable Remote Desktop (Tier0: management via WinRM only) Registry DisableRDP { Key = "HKLM:\System\CurrentControlSet\Control\Terminal Server" ValueName = "fDenyTSConnections" ValueType = "DWORD" ValueData = "1" Ensure = "Present" } \#endregion \#region — Disable Telnet client WindowsOptionalFeature DisableTelnet { Name = "TelnetClient" Ensure = "Disable" } \#endregion \#region — Disable TFTP client WindowsOptionalFeature DisableTFTP { Name = "TFTP" Ensure = "Disable" } \#endregion \#region — Disable SNMP WindowsOptionalFeature DisableSNMP { Name = "SNMP" Ensure = "Disable" } \#endregion \#region — PowerShell Constrained Language Mode (Tier0) Registry PSConstrainedLanguage { Key = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" ValueName = "\_\_PSLockdownPolicy" ValueType = "String" ValueData = "4" Ensure = "Present" } \#endregion \#region — Audit Policy (Tier0: maximum verbosity) AuditPolicySubcategory AuditLogon { Name = "Logon" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditAccountLogon { Name = "Credential Validation" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditProcessCreation { Name = "Process Creation" AuditFlag = "Success" Ensure = "Present" } AuditPolicySubcategory AuditPrivilegeUse { Name = "Sensitive Privilege Use" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditPolicyChange { Name = "Audit Policy Change" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditObjectAccess { Name = "File System" AuditFlag = "Success,Failure" Ensure = "Present" } \#endregion \#region — OrgPath integrity validation scheduled task ScheduledTask OrgPathIntegrityCheck { TaskName = "OrgPath-Tier0-IntegrityCheck" TaskPath = "\Governance\\ \# Script checks for the OrgPath tag via Arc metadata endpoint ActionExecutable = "powershell.exe" ActionArguments = @( "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", "C:\Governance\Scripts\Test-OrgPathTag.ps1" \# ENV-PARAM: script path ) ScheduleType = "RepetitionInterval" RepetitionIntervalMinutes = 360 \# 6 hours for Tier0 RepetitionDurationUnbounded = \$true Enable = \$true Ensure = "Present" RunLevel = "Highest" ExecuteAsAccount = "SYSTEM" } \#endregion } \# Node localhost } \# Configuration
+```powershell
+#
+# .SYNOPSIS
+#     PowerShell DSC configuration for OrgPath Tier0 servers (hardened baseline).
+# .DESCRIPTION
+#     Compile this configuration with:
+#         . .\OrgPath-Tier0-Baseline.ps1
+#         OrgPath_Tier0_Baseline -OutputPath "C:\GuestConfig\Tier0"
+#     Then package with New-GuestConfigurationPackage (see packaging script).
+# .NOTES
+#     Required DSC modules:
+#         PSDesiredStateConfiguration 2.x
+#         PSDscResources
+#         ComputerManagementDsc
+#         AuditPolicyDsc
+#     Environment-specific parameters are marked with: # ENV-PARAM
+#
+
+Configuration OrgPath_Tier0_Baseline {
+
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName PSDscResources
+    Import-DscResource -ModuleName ComputerManagementDsc
+    Import-DscResource -ModuleName AuditPolicyDsc
+
+    Node localhost {
+
+        #region — Disable SMBv1
+        Script DisableSMBv1 {
+            GetScript  = { @{ Result = (Get-SmbServerConfiguration).EnableSMB1Protocol } }
+            TestScript = { -not (Get-SmbServerConfiguration).EnableSMB1Protocol }
+            SetScript  = { Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force }
+        }
+        #endregion
+
+        #region — Disable LLMNR
+        Registry DisableLLMNR {
+            Key       = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+            ValueName = "EnableMulticast"
+            ValueType = "DWORD"
+            ValueData = "0"
+            Ensure    = "Present"
+        }
+        #endregion
+
+        #region — Disable NetBIOS over TCP/IP (Tier0 only)
+        Script DisableNetBIOS {
+            GetScript  = {
+                $adapters = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces"
+                $values   = $adapters | ForEach-Object { (Get-ItemProperty $_.PSPath).NetbiosOptions }
+                @{ Result = ($values | Where-Object { $_ -ne 2 }).Count -eq 0 }
+            }
+            TestScript = {
+                $adapters = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces"
+                $values   = $adapters | ForEach-Object { (Get-ItemProperty $_.PSPath).NetbiosOptions }
+                ($values | Where-Object { $_ -ne 2 }).Count -eq 0
+            }
+            SetScript  = {
+                Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" |
+                    ForEach-Object { Set-ItemProperty $_.PSPath -Name NetbiosOptions -Value 2 }
+            }
+        }
+        #endregion
+
+        #region — Local Administrator disabled (Tier0: all local admins except LAPS account)
+        User LocalAdministrator {
+            UserName = "Administrator"
+            Ensure   = "Present"
+            Disabled = $true
+        }
+        #endregion
+
+        #region — Disable Remote Desktop (Tier0: management via WinRM only)
+        Registry DisableRDP {
+            Key       = "HKLM:\System\CurrentControlSet\Control\Terminal Server"
+            ValueName = "fDenyTSConnections"
+            ValueType = "DWORD"
+            ValueData = "1"
+            Ensure    = "Present"
+        }
+        #endregion
+
+        #region — Disable Telnet client
+        WindowsOptionalFeature DisableTelnet {
+            Name   = "TelnetClient"
+            Ensure = "Disable"
+        }
+        #endregion
+
+        #region — Disable TFTP client
+        WindowsOptionalFeature DisableTFTP {
+            Name   = "TFTP"
+            Ensure = "Disable"
+        }
+        #endregion
+
+        #region — Disable SNMP
+        WindowsOptionalFeature DisableSNMP {
+            Name   = "SNMP"
+            Ensure = "Disable"
+        }
+        #endregion
+
+        #region — PowerShell Constrained Language Mode (Tier0)
+        Registry PSConstrainedLanguage {
+            Key       = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+            ValueName = "__PSLockdownPolicy"
+            ValueType = "String"
+            ValueData = "4"
+            Ensure    = "Present"
+        }
+        #endregion
+
+        #region — Audit Policy (Tier0: maximum verbosity)
+        AuditPolicySubcategory AuditLogon {
+            Name      = "Logon"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditAccountLogon {
+            Name      = "Credential Validation"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditProcessCreation {
+            Name      = "Process Creation"
+            AuditFlag = "Success"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditPrivilegeUse {
+            Name      = "Sensitive Privilege Use"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditPolicyChange {
+            Name      = "Audit Policy Change"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditObjectAccess {
+            Name      = "File System"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        #endregion
+
+        #region — OrgPath integrity validation scheduled task
+        ScheduledTask OrgPathIntegrityCheck {
+            TaskName  = "OrgPath-Tier0-IntegrityCheck"
+            TaskPath  = "\Governance\"
+            # Script checks for the OrgPath tag via Arc metadata endpoint
+            ActionExecutable  = "powershell.exe"
+            ActionArguments   = @(
+                "-NonInteractive",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "C:\Governance\Scripts\Test-OrgPathTag.ps1"  # ENV-PARAM: script path
+            )
+            ScheduleType                = "RepetitionInterval"
+            RepetitionIntervalMinutes   = 360   # 6 hours for Tier0
+            RepetitionDurationUnbounded = $true
+            Enable                      = $true
+            Ensure                      = "Present"
+            RunLevel                    = "Highest"
+            ExecuteAsAccount            = "SYSTEM"
+        }
+        #endregion
+
+    } # Node localhost
+} # Configuration
+```
 
 ### Tier1 DSC Configuration
 
 The Tier1 configuration follows the same structural pattern as the Tier0 configuration. The key differences reflect the production-appropriate trade-offs described in Chapter Two: Remote Desktop is enabled rather than disabled, PowerShell Constrained Language Mode is not enforced (to preserve compatibility with production automation tooling), the OrgPath integrity check interval is extended to 24 hours, and the audit policy subcategory set is reduced to the logon, account management, and process creation categories that are most relevant to identity-based attacks against production workloads. All controls that are universally applicable across tiers — SMBv1 disabled, LLMNR disabled, local Administrator disabled, audit logon events — are present in the Tier1 configuration.
 
-\# \# .SYNOPSIS \# PowerShell DSC configuration for OrgPath Tier1 servers (production baseline). \# .NOTES \# Same authoring/packaging workflow as Tier0 configuration. \# Key differences from Tier0: RDP enabled (restricted), audit policy reduced, \# LAPS 24h password age, OrgPath check every 24h, no PowerShell CLM. \# Configuration OrgPath_Tier1_Baseline { Import-DscResource -ModuleName PSDesiredStateConfiguration Import-DscResource -ModuleName PSDscResources Import-DscResource -ModuleName ComputerManagementDsc Import-DscResource -ModuleName AuditPolicyDsc Node localhost { Script DisableSMBv1 { GetScript = { @{ Result = (Get-SmbServerConfiguration).EnableSMB1Protocol } } TestScript = { -not (Get-SmbServerConfiguration).EnableSMB1Protocol } SetScript = { Set-SmbServerConfiguration -EnableSMB1Protocol \$false -Force } } Registry DisableLLMNR { Key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" ValueName = "EnableMulticast" ValueType = "DWORD" ValueData = "0" Ensure = "Present" } User LocalAdministrator { UserName = "Administrator" Ensure = "Present" Disabled = \$true } \# Tier1: RDP enabled but restricted to management group via GPP (separate channel) Registry EnableRDPTier1 { Key = "HKLM:\System\CurrentControlSet\Control\Terminal Server" ValueName = "fDenyTSConnections" ValueType = "DWORD" ValueData = "0" Ensure = "Present" } AuditPolicySubcategory AuditLogon { Name = "Logon" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditAccountLogon { Name = "Credential Validation" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditProcessCreation { Name = "Process Creation" AuditFlag = "Success" Ensure = "Present" } ScheduledTask OrgPathIntegrityCheck { TaskName = "OrgPath-Tier1-IntegrityCheck" TaskPath = "\Governance\\ ActionExecutable = "powershell.exe" ActionArguments = @( "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", "C:\Governance\Scripts\Test-OrgPathTag.ps1" \# ENV-PARAM ) ScheduleType = "RepetitionInterval" RepetitionIntervalMinutes = 1440 \# 24 hours for Tier1 RepetitionDurationUnbounded = \$true Enable = \$true Ensure = "Present" RunLevel = "Highest" ExecuteAsAccount = "SYSTEM" } } }
+```powershell
+#
+# .SYNOPSIS
+#     PowerShell DSC configuration for OrgPath Tier1 servers (production baseline).
+# .NOTES
+#     Same authoring/packaging workflow as Tier0 configuration.
+#     Key differences from Tier0: RDP enabled (restricted), audit policy reduced,
+#     LAPS 24h password age, OrgPath check every 24h, no PowerShell CLM.
+#
+
+Configuration OrgPath_Tier1_Baseline {
+
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName PSDscResources
+    Import-DscResource -ModuleName ComputerManagementDsc
+    Import-DscResource -ModuleName AuditPolicyDsc
+
+    Node localhost {
+
+        Script DisableSMBv1 {
+            GetScript  = { @{ Result = (Get-SmbServerConfiguration).EnableSMB1Protocol } }
+            TestScript = { -not (Get-SmbServerConfiguration).EnableSMB1Protocol }
+            SetScript  = { Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force }
+        }
+
+        Registry DisableLLMNR {
+            Key       = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+            ValueName = "EnableMulticast"
+            ValueType = "DWORD"
+            ValueData = "0"
+            Ensure    = "Present"
+        }
+
+        User LocalAdministrator {
+            UserName = "Administrator"
+            Ensure   = "Present"
+            Disabled = $true
+        }
+
+        # Tier1: RDP enabled but restricted to management group via GPP (separate channel)
+        Registry EnableRDPTier1 {
+            Key       = "HKLM:\System\CurrentControlSet\Control\Terminal Server"
+            ValueName = "fDenyTSConnections"
+            ValueType = "DWORD"
+            ValueData = "0"
+            Ensure    = "Present"
+        }
+
+        AuditPolicySubcategory AuditLogon {
+            Name      = "Logon"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditAccountLogon {
+            Name      = "Credential Validation"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditProcessCreation {
+            Name      = "Process Creation"
+            AuditFlag = "Success"
+            Ensure    = "Present"
+        }
+
+        ScheduledTask OrgPathIntegrityCheck {
+            TaskName  = "OrgPath-Tier1-IntegrityCheck"
+            TaskPath  = "\Governance\"
+            ActionExecutable = "powershell.exe"
+            ActionArguments  = @(
+                "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                "-File", "C:\Governance\Scripts\Test-OrgPathTag.ps1"  # ENV-PARAM
+            )
+            ScheduleType                = "RepetitionInterval"
+            RepetitionIntervalMinutes   = 1440   # 24 hours for Tier1
+            RepetitionDurationUnbounded = $true
+            Enable                      = $true
+            Ensure                      = "Present"
+            RunLevel                    = "Highest"
+            ExecuteAsAccount            = "SYSTEM"
+        }
+    }
+}
+```
 
 ### Tier2 DSC Configuration
 
 The Tier2 configuration enforces the organizational security minimum. It carries only the controls that the organization's security baseline requires of every managed server regardless of tier, making it the floor below which no Arc-enrolled machine in the environment should fall. The OrgPath integrity check interval at 72 hours reflects the lower sensitivity of Tier2 systems; a missed check window on a Tier2 server is a governance concern but not an incident response trigger in the way that a missed check on a Tier0 server would be.
 
-\# \# .SYNOPSIS \# PowerShell DSC configuration for OrgPath Tier2 servers (standard baseline). \# .NOTES \# Minimum organizational security baseline. Tier2 servers carry no sensitive \# data classification and host non-critical workloads. \# Key differences: LAPS 72h password age, OrgPath check every 72h. \# Configuration OrgPath_Tier2_Baseline { Import-DscResource -ModuleName PSDesiredStateConfiguration Import-DscResource -ModuleName PSDscResources Import-DscResource -ModuleName AuditPolicyDsc Node localhost { Script DisableSMBv1 { GetScript = { @{ Result = (Get-SmbServerConfiguration).EnableSMB1Protocol } } TestScript = { -not (Get-SmbServerConfiguration).EnableSMB1Protocol } SetScript = { Set-SmbServerConfiguration -EnableSMB1Protocol \$false -Force } } AuditPolicySubcategory AuditLogon { Name = "Logon" AuditFlag = "Success,Failure" Ensure = "Present" } AuditPolicySubcategory AuditAccountLogon { Name = "Credential Validation" AuditFlag = "Success,Failure" Ensure = "Present" } ScheduledTask OrgPathIntegrityCheck { TaskName = "OrgPath-Tier2-IntegrityCheck" TaskPath = "\Governance\\ ActionExecutable = "powershell.exe" ActionArguments = @( "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", "C:\Governance\Scripts\Test-OrgPathTag.ps1" \# ENV-PARAM ) ScheduleType = "RepetitionInterval" RepetitionIntervalMinutes = 4320 \# 72 hours for Tier2 RepetitionDurationUnbounded = \$true Enable = \$true Ensure = "Present" RunLevel = "Highest" ExecuteAsAccount = "SYSTEM" } } }
+```powershell
+#
+# .SYNOPSIS
+#     PowerShell DSC configuration for OrgPath Tier2 servers (standard baseline).
+# .NOTES
+#     Minimum organizational security baseline. Tier2 servers carry no sensitive
+#     data classification and host non-critical workloads.
+#     Key differences: LAPS 72h password age, OrgPath check every 72h.
+#
+
+Configuration OrgPath_Tier2_Baseline {
+
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName PSDscResources
+    Import-DscResource -ModuleName AuditPolicyDsc
+
+    Node localhost {
+
+        Script DisableSMBv1 {
+            GetScript  = { @{ Result = (Get-SmbServerConfiguration).EnableSMB1Protocol } }
+            TestScript = { -not (Get-SmbServerConfiguration).EnableSMB1Protocol }
+            SetScript  = { Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force }
+        }
+
+        AuditPolicySubcategory AuditLogon {
+            Name      = "Logon"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+        AuditPolicySubcategory AuditAccountLogon {
+            Name      = "Credential Validation"
+            AuditFlag = "Success,Failure"
+            Ensure    = "Present"
+        }
+
+        ScheduledTask OrgPathIntegrityCheck {
+            TaskName  = "OrgPath-Tier2-IntegrityCheck"
+            TaskPath  = "\Governance\"
+            ActionExecutable = "powershell.exe"
+            ActionArguments  = @(
+                "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                "-File", "C:\Governance\Scripts\Test-OrgPathTag.ps1"  # ENV-PARAM
+            )
+            ScheduleType                = "RepetitionInterval"
+            RepetitionIntervalMinutes   = 4320   # 72 hours for Tier2
+            RepetitionDurationUnbounded = $true
+            Enable                      = $true
+            Ensure                      = "Present"
+            RunLevel                    = "Highest"
+            ExecuteAsAccount            = "SYSTEM"
+        }
+    }
+}
+```
 
 ### Package Compilation and Publishing
 
 Once the three DSC configuration scripts are authored, each must be compiled to a MOF document and then wrapped in a Guest Configuration package zip archive using New-GuestConfigurationPackage. The packaging script below handles all three tiers in sequence, computes the SHA256 content hash of each zip (the hash is required in the policy definition to prevent the Guest Configuration extension from downloading a tampered or corrupted package), uploads each zip to the Azure Blob Storage container that the policy definitions will reference, and writes a structured governance log entry for each published package. The log entries are in JSON Lines format and feed the governance repository established in earlier parts of this series.
 
-\# \# .SYNOPSIS \# Compiles DSC configurations into Guest Configuration packages and \# publishes them to Azure Blob Storage for policy assignment. \# .DESCRIPTION \# For each tier, compiles the DSC configuration to MOF, wraps it in a \# Guest Configuration package zip archive using New-GuestConfigurationPackage, \# and uploads to a dedicated Azure Storage account. The blob URL and content \# hash are written to the governance repository for traceability. \# .PARAMETER StorageAccountName \# Name of the Azure Storage account hosting Guest Configuration packages. \# .PARAMETER ContainerName \# Blob container name within the storage account. \# .PARAMETER ResourceGroupName \# Resource group containing the storage account. \# .NOTES \# Requires: Install-Module GuestConfiguration, PSDesiredStateConfiguration, \# PSDscResources, ComputerManagementDsc, AuditPolicyDsc \# Requires: Az.Storage, Az.Accounts modules \# The GuestConfiguration module installs GuestConfig compilation tools. \# param( \[string\]\$StorageAccountName = "orgpathguestconfig", \# ENV-PARAM: substitute \[string\]\$ContainerName = "packages", \[string\]\$ResourceGroupName = "rg-governance", \# ENV-PARAM: substitute \[string\]\$DscScriptPath = "C:\GuestConfig\DSC", \[string\]\$OutputBasePath = "C:\GuestConfig\Packages", \[string\]\$GovernanceLogPath = "C:\governance\logs\guestconfig-publish.jsonl" ) \# Ensure output directory exists New-Item -ItemType Directory -Path \$OutputBasePath -Force \| Out-Null \# Connect to Azure Connect-AzAccount -UseDeviceAuthentication \# Or use managed identity in pipeline \$storageCtx = (Get-AzStorageAccount \` -ResourceGroupName \$ResourceGroupName \` -Name \$StorageAccountName).Context \$tiers = @( @{ Name = "Tier0"; ConfigFile = "OrgPath-Tier0-Baseline.ps1"; ConfigName = "OrgPath_Tier0_Baseline" }, @{ Name = "Tier1"; ConfigFile = "OrgPath-Tier1-Baseline.ps1"; ConfigName = "OrgPath_Tier1_Baseline" }, @{ Name = "Tier2"; ConfigFile = "OrgPath-Tier2-Baseline.ps1"; ConfigName = "OrgPath_Tier2_Baseline" } ) foreach (\$tier in \$tiers) { Write-Host "\[\$(\$tier.Name)\] Compiling DSC configuration..." \$configPath = Join-Path \$DscScriptPath \$tier.ConfigFile \$mofOutPath = Join-Path \$OutputBasePath \$tier.Name \# Dot-source the configuration and compile to MOF . \$configPath & \$tier.ConfigName -OutputPath \$mofOutPath \$mofFile = Get-ChildItem \$mofOutPath -Filter "\*.mof" \| Select-Object -First 1 if (-not \$mofFile) { Write-Error "MOF not generated for \$(\$tier.Name)"; continue } Write-Host " MOF: \$(\$mofFile.FullName)" \# Build Guest Configuration package \$packagePath = Join-Path \$OutputBasePath "\$(\$tier.Name).zip" New-GuestConfigurationPackage \` -Name "OrgPath-\$(\$tier.Name)-Baseline" \` -Version "1.0.0" \` -Path \$mofFile.FullName \` -Destination \$packagePath \` -Force Write-Host " Package: \$packagePath" \# Compute content hash for policy definition \$hash = (Get-FileHash \$packagePath -Algorithm SHA256).Hash \# Upload to Azure Blob Storage \$blobName = "OrgPath-\$(\$tier.Name)-Baseline.zip" Set-AzStorageBlobContent \` -File \$packagePath \` -Container \$ContainerName \` -Blob \$blobName \` -Context \$storageCtx \` -Force \| Out-Null \$blobUrl = "https://\$StorageAccountName.blob.core.windows.net/\$ContainerName/\$blobName" Write-Host " Published: \$blobUrl" Write-Host " SHA256 : \$hash" \# Log to governance repository @{ Timestamp = (Get-Date -Format "o") Event = "GuestConfigPackagePublished" Tier = \$tier.Name PackageName = "OrgPath-\$(\$tier.Name)-Baseline" Version = "1.0.0" BlobUrl = \$blobUrl ContentHash = \$hash } \| ConvertTo-Json -Compress \| Out-File -Append \$GovernanceLogPath } Write-Host "All Guest Configuration packages published."
+```powershell
+#
+# .SYNOPSIS
+#     Compiles DSC configurations into Guest Configuration packages and
+#     publishes them to Azure Blob Storage for policy assignment.
+# .DESCRIPTION
+#     For each tier, compiles the DSC configuration to MOF, wraps it in a
+#     Guest Configuration package zip archive using New-GuestConfigurationPackage,
+#     and uploads to a dedicated Azure Storage account. The blob URL and content
+#     hash are written to the governance repository for traceability.
+# .PARAMETER StorageAccountName
+#     Name of the Azure Storage account hosting Guest Configuration packages.
+# .PARAMETER ContainerName
+#     Blob container name within the storage account.
+# .PARAMETER ResourceGroupName
+#     Resource group containing the storage account.
+# .NOTES
+#     Requires: Install-Module GuestConfiguration, PSDesiredStateConfiguration,
+#               PSDscResources, ComputerManagementDsc, AuditPolicyDsc
+#     Requires: Az.Storage, Az.Accounts modules
+#     The GuestConfiguration module installs GuestConfig compilation tools.
+#
+param(
+    [string]$StorageAccountName = "orgpathguestconfig",    # ENV-PARAM: substitute
+    [string]$ContainerName      = "packages",
+    [string]$ResourceGroupName  = "rg-governance",         # ENV-PARAM: substitute
+    [string]$DscScriptPath      = "C:\GuestConfig\DSC",
+    [string]$OutputBasePath     = "C:\GuestConfig\Packages",
+    [string]$GovernanceLogPath  = "C:\governance\logs\guestconfig-publish.jsonl"
+)
+
+# Ensure output directory exists
+New-Item -ItemType Directory -Path $OutputBasePath -Force | Out-Null
+
+# Connect to Azure
+Connect-AzAccount -UseDeviceAuthentication  # Or use managed identity in pipeline
+
+$storageCtx = (Get-AzStorageAccount `
+    -ResourceGroupName $ResourceGroupName `
+    -Name $StorageAccountName).Context
+
+$tiers = @(
+    @{ Name = "Tier0"; ConfigFile = "OrgPath-Tier0-Baseline.ps1"; ConfigName = "OrgPath_Tier0_Baseline" },
+    @{ Name = "Tier1"; ConfigFile = "OrgPath-Tier1-Baseline.ps1"; ConfigName = "OrgPath_Tier1_Baseline" },
+    @{ Name = "Tier2"; ConfigFile = "OrgPath-Tier2-Baseline.ps1"; ConfigName = "OrgPath_Tier2_Baseline" }
+)
+
+foreach ($tier in $tiers) {
+
+    Write-Host "[$($tier.Name)] Compiling DSC configuration..."
+
+    $configPath = Join-Path $DscScriptPath $tier.ConfigFile
+    $mofOutPath = Join-Path $OutputBasePath $tier.Name
+
+    # Dot-source the configuration and compile to MOF
+    . $configPath
+    & $tier.ConfigName -OutputPath $mofOutPath
+
+    $mofFile = Get-ChildItem $mofOutPath -Filter "*.mof" | Select-Object -First 1
+    if (-not $mofFile) { Write-Error "MOF not generated for $($tier.Name)"; continue }
+
+    Write-Host "  MOF: $($mofFile.FullName)"
+
+    # Build Guest Configuration package
+    $packagePath = Join-Path $OutputBasePath "$($tier.Name).zip"
+    New-GuestConfigurationPackage `
+        -Name        "OrgPath-$($tier.Name)-Baseline" `
+        -Version     "1.0.0" `
+        -Path        $mofFile.FullName `
+        -Destination $packagePath `
+        -Force
+
+    Write-Host "  Package: $packagePath"
+
+    # Compute content hash for policy definition
+    $hash = (Get-FileHash $packagePath -Algorithm SHA256).Hash
+
+    # Upload to Azure Blob Storage
+    $blobName = "OrgPath-$($tier.Name)-Baseline.zip"
+    Set-AzStorageBlobContent `
+        -File      $packagePath `
+        -Container $ContainerName `
+        -Blob      $blobName `
+        -Context   $storageCtx `
+        -Force | Out-Null
+
+    $blobUrl = "https://$StorageAccountName.blob.core.windows.net/$ContainerName/$blobName"
+    Write-Host "  Published: $blobUrl"
+    Write-Host "  SHA256   : $hash"
+
+    # Log to governance repository
+    @{
+        Timestamp   = (Get-Date -Format "o")
+        Event       = "GuestConfigPackagePublished"
+        Tier        = $tier.Name
+        PackageName = "OrgPath-$($tier.Name)-Baseline"
+        Version     = "1.0.0"
+        BlobUrl     = $blobUrl
+        ContentHash = $hash
+    } | ConvertTo-Json -Compress | Out-File -Append $GovernanceLogPath
+}
+
+Write-Host "All Guest Configuration packages published."
+```
 
 ::: {.callout-note title="⚠ Important: Hash Propagation"}
 The SHA256 content hash logged by the publishing script must be injected into each Azure Policy definition before assignment. The policy deployment script in Chapter Four reads the hash from the governance log. Any manual edit to a published package without re-running the publishing script will produce a hash mismatch and the Guest Configuration extension will refuse to apply the package, generating a NonCompliant state on all affected machines until the correct hash is updated in the policy definition parameters.
@@ -109,13 +528,203 @@ The OrgTier tag is the critical targeting filter. Using the OrgTier tag rather t
 
 The policy definition below is for Tier0 enforcement. The equivalent Tier1 and Tier2 definitions follow the identical structure with the OrgTier tag condition value and Guest Configuration assignment name changed accordingly. All three definitions are stored in the governance repository alongside their deployment scripts.
 
-{ "name": "orgpath-guestconfig-tier0-enforce", "properties": { "displayName": "OrgPath — Deploy Tier0 Guest Configuration hardened baseline", "description": "Deploys the OrgPath Tier0 Guest Configuration package to all Arc-enabled machines tagged with OrgTier=0. Enforces the hardened DSC baseline appropriate for infrastructure-tier servers.", "policyType": "Custom", "mode": "Indexed", "parameters": { "packageUrl": { "type": "String", "defaultValue": "https://orgpathguestconfig.blob.core.windows.net/packages/OrgPath-Tier0-Baseline.zip", "metadata": { "displayName": "Guest Configuration package URL" } }, "packageHash": { "type": "String", "defaultValue": "REPLACE_WITH_SHA256_HASH_FROM_PUBLISH_SCRIPT", "metadata": { "displayName": "SHA256 hash of Guest Configuration package" } } }, "policyRule": { "if": { "allOf": \[ { "field": "type", "equals": "Microsoft.HybridCompute/machines" }, { "field": "tags\['OrgTier'\]", "equals": "0" }, { "field": "Microsoft.HybridCompute/machines/osType", "equals": "Windows" } \] }, "then": { "effect": "deployIfNotExists", "details": { "type": "Microsoft.GuestConfiguration/guestConfigurationAssignments", "name": "OrgPath-Tier0-Baseline", "roleDefinitionIds": \[ "/providers/Microsoft.Authorization/roleDefinitions/088ab73d-1256-47ae-bea9-9de8e7131f31" \], "existenceCondition": { "allOf": \[ { "field": "Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.name", "equals": "OrgPath-Tier0-Baseline" }, { "field": "Microsoft.GuestConfiguration/guestConfigurationAssignments/complianceStatus", "equals": "Compliant" } \] }, "deployment": { "properties": { "mode": "incremental", "parameters": { "vmName": { "value": "\[field('name')\]" }, "location": { "value": "\[field('location')\]" }, "packageUrl": { "value": "\[parameters('packageUrl')\]" }, "packageHash": { "value": "\[parameters('packageHash')\]" } }, "template": { "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#", "contentVersion": "1.0.0.0", "parameters": { "vmName": { "type": "string" }, "location": { "type": "string" }, "packageUrl": { "type": "string" }, "packageHash": { "type": "string" } }, "resources": \[ { "type": "Microsoft.HybridCompute/machines/providers/guestConfigurationAssignments", "apiVersion": "2020-06-25", "name": "\[concat(parameters('vmName'), '/Microsoft.GuestConfiguration/OrgPath-Tier0-Baseline')\]", "location": "\[parameters('location')\]", "properties": { "guestConfiguration": { "name": "OrgPath-Tier0-Baseline", "version": "1.0.0", "contentUri": "\[parameters('packageUrl')\]", "contentHash": "\[parameters('packageHash')\]" } } } \] } } } } } } } }
+```json
+{
+  "name": "orgpath-guestconfig-tier0-enforce",
+  "properties": {
+    "displayName": "OrgPath — Deploy Tier0 Guest Configuration hardened baseline",
+    "description": "Deploys the OrgPath Tier0 Guest Configuration package to all Arc-enabled
+                    machines tagged with OrgTier=0. Enforces the hardened DSC baseline
+                    appropriate for infrastructure-tier servers.",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "parameters": {
+      "packageUrl": {
+        "type": "String",
+        "defaultValue": "https://orgpathguestconfig.blob.core.windows.net/packages/OrgPath-Tier0-Baseline.zip",
+        "metadata": { "displayName": "Guest Configuration package URL" }
+      },
+      "packageHash": {
+        "type": "String",
+        "defaultValue": "REPLACE_WITH_SHA256_HASH_FROM_PUBLISH_SCRIPT",
+        "metadata": { "displayName": "SHA256 hash of Guest Configuration package" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.HybridCompute/machines"
+          },
+          {
+            "field": "tags['OrgTier']",
+            "equals": "0"
+          },
+          {
+            "field": "Microsoft.HybridCompute/machines/osType",
+            "equals": "Windows"
+          }
+        ]
+      },
+      "then": {
+        "effect": "deployIfNotExists",
+        "details": {
+          "type": "Microsoft.GuestConfiguration/guestConfigurationAssignments",
+          "name": "OrgPath-Tier0-Baseline",
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/088ab73d-1256-47ae-bea9-9de8e7131f31"
+          ],
+          "existenceCondition": {
+            "allOf": [
+              {
+                "field": "Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.name",
+                "equals": "OrgPath-Tier0-Baseline"
+              },
+              {
+                "field": "Microsoft.GuestConfiguration/guestConfigurationAssignments/complianceStatus",
+                "equals": "Compliant"
+              }
+            ]
+          },
+          "deployment": {
+            "properties": {
+              "mode": "incremental",
+              "parameters": {
+                "vmName":      { "value": "[field('name')]" },
+                "location":    { "value": "[field('location')]" },
+                "packageUrl":  { "value": "[parameters('packageUrl')]" },
+                "packageHash": { "value": "[parameters('packageHash')]" }
+              },
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "vmName":      { "type": "string" },
+                  "location":    { "type": "string" },
+                  "packageUrl":  { "type": "string" },
+                  "packageHash": { "type": "string" }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.HybridCompute/machines/providers/guestConfigurationAssignments",
+                    "apiVersion": "2020-06-25",
+                    "name": "[concat(parameters('vmName'),
+                             '/Microsoft.GuestConfiguration/OrgPath-Tier0-Baseline')]",
+                    "location": "[parameters('location')]",
+                    "properties": {
+                      "guestConfiguration": {
+                        "name":        "OrgPath-Tier0-Baseline",
+                        "version":     "1.0.0",
+                        "contentUri":  "[parameters('packageUrl')]",
+                        "contentHash": "[parameters('packageHash')]"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ### Policy Deployment Script
 
 The following script deploys policy definitions for all three tiers from ARM JSON files stored in the governance repository and creates policy assignments at the specified management group scope. The deployment principal requires Policy Contributor at management group scope and Guest Configuration Resource Contributor on the Arc machine resources. In an automated pipeline context, a managed identity with these roles pre-assigned should replace the interactive device authentication shown in the development version of this script; the comment marks every such substitution point with the \# ENV-PARAM token.
 
-\# \# .SYNOPSIS \# Deploys OrgPath Guest Configuration policy definitions and assignments \# for all three organizational tiers at management group scope. \# .DESCRIPTION \# For each tier (0, 1, 2), creates the Azure Policy definition from the \# corresponding ARM JSON template and assigns it at the specified management \# group scope. Uses Managed Identity authentication for the deployment \# principal. \# .PARAMETER ManagementGroupId \# Management group ID at which to assign the policies. \# .PARAMETER PackageUrlBase \# Base URL for Guest Configuration packages in Azure Blob Storage. \# Format: https://{storageAccount}.blob.core.windows.net/{container} \# .PARAMETER HashManifestPath \# Path to JSON file containing SHA256 hashes output by the publish script. \# .NOTES \# Requires: Az.PolicyInsights, Az.Resources modules \# The deployment principal requires Policy Contributor at management group scope \# and Guest Configuration Resource Contributor on Arc machines. \# param( \[string\]\$ManagementGroupId = "mg-governance-root", \# ENV-PARAM: substitute \[string\]\$PackageUrlBase = "https://orgpathguestconfig.blob.core.windows.net/packages", \[string\]\$HashManifestPath = "C:\governance\guestconfig\package-hashes.json", \[string\]\$PolicyDefinitionDir = "C:\governance\guestconfig\policies" ) Connect-AzAccount -UseDeviceAuthentication \# ENV-PARAM: use managed identity in pipeline \$hashes = Get-Content \$HashManifestPath -Raw \| ConvertFrom-Json \$tiers = @( @{ TierNum = 0; PolicyFile = "tier0-policy.json"; DefinitionName = "orgpath-guestconfig-tier0-enforce" }, @{ TierNum = 1; PolicyFile = "tier1-policy.json"; DefinitionName = "orgpath-guestconfig-tier1-enforce" }, @{ TierNum = 2; PolicyFile = "tier2-policy.json"; DefinitionName = "orgpath-guestconfig-tier2-enforce" } ) foreach (\$tier in \$tiers) { Write-Host "\[Tier\$(\$tier.TierNum)\] Deploying policy definition..." \$policyJson = Get-Content (Join-Path \$PolicyDefinitionDir \$tier.PolicyFile) -Raw \$tierHash = \$hashes."Tier\$(\$tier.TierNum)" if (-not \$tierHash) { Write-Warning " Hash not found for Tier\$(\$tier.TierNum) — re-run package publish script." continue } \# Inject computed SHA256 hash into policy JSON before deployment \$policyJson = \$policyJson -replace "REPLACE_WITH_SHA256_HASH_FROM_PUBLISH_SCRIPT", \$tierHash \$tempFile = \[System.IO.Path\]::GetTempFileName() Set-Content \$tempFile -Value \$policyJson \# Create or update the policy definition at management group scope \$definition = New-AzPolicyDefinition \` -Name \$tier.DefinitionName \` -DisplayName "OrgPath — Deploy Tier\$(\$tier.TierNum) Guest Configuration baseline" \` -Policy \$tempFile \` -ManagementGroupName \$ManagementGroupId \` -Mode "Indexed" Write-Host " Definition ID: \$(\$definition.PolicyDefinitionId)" \# Create the policy assignment at management group scope \$assignmentName = "assign-orgpath-guestconfig-tier\$(\$tier.TierNum)" \$params = @{ packageUrl = @{ value = "\$PackageUrlBase/OrgPath-Tier\$(\$tier.TierNum)-Baseline.zip" } packageHash = @{ value = \$tierHash } } New-AzPolicyAssignment \` -Name \$assignmentName \` -DisplayName "OrgPath GuestConfig Tier\$(\$tier.TierNum) — Management Group" \` -Scope "/providers/Microsoft.Management/managementGroups/\$ManagementGroupId" \` -PolicyDefinition \$definition \` -PolicyParameterObject \$params \` -IdentityType "SystemAssigned" \` -Location "eastus" \| Out-Null \# ENV-PARAM: substitute location Write-Host " Assignment created: \$assignmentName" Remove-Item \$tempFile -Force } Write-Host "OrgPath Guest Configuration policy deployment complete."
+```powershell
+#
+# .SYNOPSIS
+#     Deploys OrgPath Guest Configuration policy definitions and assignments
+#     for all three organizational tiers at management group scope.
+# .DESCRIPTION
+#     For each tier (0, 1, 2), creates the Azure Policy definition from the
+#     corresponding ARM JSON template and assigns it at the specified management
+#     group scope. Uses Managed Identity authentication for the deployment
+#     principal.
+# .PARAMETER ManagementGroupId
+#     Management group ID at which to assign the policies.
+# .PARAMETER PackageUrlBase
+#     Base URL for Guest Configuration packages in Azure Blob Storage.
+#     Format: https://{storageAccount}.blob.core.windows.net/{container}
+# .PARAMETER HashManifestPath
+#     Path to JSON file containing SHA256 hashes output by the publish script.
+# .NOTES
+#     Requires: Az.PolicyInsights, Az.Resources modules
+#     The deployment principal requires Policy Contributor at management group scope
+#     and Guest Configuration Resource Contributor on Arc machines.
+#
+param(
+    [string]$ManagementGroupId   = "mg-governance-root",        # ENV-PARAM: substitute
+    [string]$PackageUrlBase      = "https://orgpathguestconfig.blob.core.windows.net/packages",
+    [string]$HashManifestPath    = "C:\governance\guestconfig\package-hashes.json",
+    [string]$PolicyDefinitionDir = "C:\governance\guestconfig\policies"
+)
+
+Connect-AzAccount -UseDeviceAuthentication  # ENV-PARAM: use managed identity in pipeline
+
+$hashes = Get-Content $HashManifestPath -Raw | ConvertFrom-Json
+
+$tiers = @(
+    @{ TierNum = 0; PolicyFile = "tier0-policy.json"; DefinitionName = "orgpath-guestconfig-tier0-enforce" },
+    @{ TierNum = 1; PolicyFile = "tier1-policy.json"; DefinitionName = "orgpath-guestconfig-tier1-enforce" },
+    @{ TierNum = 2; PolicyFile = "tier2-policy.json"; DefinitionName = "orgpath-guestconfig-tier2-enforce" }
+)
+
+foreach ($tier in $tiers) {
+
+    Write-Host "[Tier$($tier.TierNum)] Deploying policy definition..."
+
+    $policyJson = Get-Content (Join-Path $PolicyDefinitionDir $tier.PolicyFile) -Raw
+    $tierHash   = $hashes."Tier$($tier.TierNum)"
+
+    if (-not $tierHash) {
+        Write-Warning "  Hash not found for Tier$($tier.TierNum) — re-run package publish script."
+        continue
+    }
+
+    # Inject computed SHA256 hash into policy JSON before deployment
+    $policyJson = $policyJson -replace "REPLACE_WITH_SHA256_HASH_FROM_PUBLISH_SCRIPT", $tierHash
+    $tempFile   = [System.IO.Path]::GetTempFileName()
+    Set-Content $tempFile -Value $policyJson
+
+    # Create or update the policy definition at management group scope
+    $definition = New-AzPolicyDefinition `
+        -Name                $tier.DefinitionName `
+        -DisplayName         "OrgPath — Deploy Tier$($tier.TierNum) Guest Configuration baseline" `
+        -Policy              $tempFile `
+        -ManagementGroupName $ManagementGroupId `
+        -Mode                "Indexed"
+
+    Write-Host "  Definition ID: $($definition.PolicyDefinitionId)"
+
+    # Create the policy assignment at management group scope
+    $assignmentName = "assign-orgpath-guestconfig-tier$($tier.TierNum)"
+
+    $params = @{
+        packageUrl  = @{ value = "$PackageUrlBase/OrgPath-Tier$($tier.TierNum)-Baseline.zip" }
+        packageHash = @{ value = $tierHash }
+    }
+
+    New-AzPolicyAssignment `
+        -Name                  $assignmentName `
+        -DisplayName           "OrgPath GuestConfig Tier$($tier.TierNum) — Management Group" `
+        -Scope                 "/providers/Microsoft.Management/managementGroups/$ManagementGroupId" `
+        -PolicyDefinition      $definition `
+        -PolicyParameterObject $params `
+        -IdentityType          "SystemAssigned" `
+        -Location              "eastus" | Out-Null   # ENV-PARAM: substitute location
+
+    Write-Host "  Assignment created: $assignmentName"
+    Remove-Item $tempFile -Force
+}
+
+Write-Host "OrgPath Guest Configuration policy deployment complete."
+```
 
 ::: {.callout-note title="ℹ Role Assignment Note"}
 When a policy assignment uses a system-assigned managed identity with the deployIfNotExists effect, Azure Policy automatically grants the identity the roles specified in roleDefinitionIds at the assignment scope. The role GUID 088ab73d-1256-47ae-bea9-9de8e7131f31 is the Guest Configuration Resource Contributor role, which grants the managed identity permission to create Guest Configuration assignment resources on Arc machines. This role grant occurs at deployment time and does not require a separate role assignment step.
@@ -129,13 +738,68 @@ Guest Configuration compliance results are surfaced through two complementary qu
 
 The Resource Graph query below joins the PolicyResources table, which contains policy compliance states, against the Resources table, which contains Arc machine properties including OrgPath and OrgTier tags. The join produces a per-segment compliance summary showing compliant, non-compliant, and pending machine counts for each combination of OrgPath and OrgTier, organized in ascending tier order so that Tier0 non-compliance — the highest-priority concern — appears at the top of the output.
 
-// OrgPath Guest Configuration Compliance Dashboard // Run in Azure Resource Graph Explorer (portal or az graph query) // Replace OrgTier tag values to match your OrgTree tier classification PolicyResources \| where type == "microsoft.policyinsights/policystates" \| where properties.policyDefinitionName contains "orgpath-guestconfig" \| extend ComplianceState = tostring(properties.complianceState), PolicyName = tostring(properties.policyDefinitionName), ResourceId = tostring(properties.resourceId) \| join kind=leftouter ( Resources \| where type == "microsoft.hybridcompute/machines" \| project ResourceId = id, MachineName = name, OrgPath = tostring(tags\['OrgPath'\]), OrgTier = tostring(tags\['OrgTier'\]), OrgNodeId = tostring(tags\['OrgNodeId'\]) ) on ResourceId \| summarize CompliantCount = countif(ComplianceState == "Compliant"), NonCompliantCount = countif(ComplianceState == "NonCompliant"), PendingCount = countif(ComplianceState == "Pending"), TotalMachines = count() by OrgPath, OrgTier, PolicyName \| extend CompliancePercent = round(toreal(CompliantCount) / toreal(TotalMachines) \* 100, 1) \| order by OrgTier asc, CompliancePercent asc
+```kql
+// OrgPath Guest Configuration Compliance Dashboard
+// Run in Azure Resource Graph Explorer (portal or az graph query)
+// Replace OrgTier tag values to match your OrgTree tier classification
+
+PolicyResources
+| where type == "microsoft.policyinsights/policystates"
+| where properties.policyDefinitionName contains "orgpath-guestconfig"
+| extend
+    ComplianceState = tostring(properties.complianceState),
+    PolicyName      = tostring(properties.policyDefinitionName),
+    ResourceId      = tostring(properties.resourceId)
+| join kind=leftouter (
+    Resources
+    | where type == "microsoft.hybridcompute/machines"
+    | project
+        ResourceId  = id,
+        MachineName = name,
+        OrgPath     = tostring(tags['OrgPath']),
+        OrgTier     = tostring(tags['OrgTier']),
+        OrgNodeId   = tostring(tags['OrgNodeId'])
+) on ResourceId
+| summarize
+    CompliantCount    = countif(ComplianceState == "Compliant"),
+    NonCompliantCount = countif(ComplianceState == "NonCompliant"),
+    PendingCount      = countif(ComplianceState == "Pending"),
+    TotalMachines     = count()
+    by OrgPath, OrgTier, PolicyName
+| extend CompliancePercent = round(toreal(CompliantCount) / toreal(TotalMachines) * 100, 1)
+| order by OrgTier asc, CompliancePercent asc
+```
 
 ### Sentinel Integration for Compliance Alerting
 
 Compliance state reporting through Resource Graph provides the daily governance summary view. Real-time alerting on new Guest Configuration non-compliance in high-sensitivity segments requires Sentinel integration. The architecture established in Part Four routes Azure Activity Log events, including Guest Configuration assignment write operations, into the Sentinel workspace. The KQL query below is designed for use as a Sentinel Analytics Rule with a one-hour frequency and a four-hour lookback window. It alerts on any new non-compliant Guest Configuration state detected on a machine whose OrgTier tag is 0 or 1, which are the tiers where non-compliance represents an active security concern rather than a routine drift remediation task.
 
-// Alert: New NonCompliant Arc machines in high-sensitivity OrgPath segments // Feed into Sentinel Analytics Rule with frequency = 1h, lookback = 4h AzureActivity \| where OperationNameValue == "Microsoft.GuestConfiguration/guestConfigurationAssignments/write" \| where ActivityStatusValue == "Success" \| extend ResourceId = tolower(ResourceId), PolicyResult = tostring(parse_json(Properties).complianceStatus) \| where PolicyResult == "NonCompliant" \| join kind=inner ( Resources \| where type == "microsoft.hybridcompute/machines" \| project ResourceId = tolower(id), MachineName = name, OrgPath = tostring(tags\['OrgPath'\]), OrgTier = tostring(tags\['OrgTier'\]) ) on ResourceId \| where OrgTier in ("0", "1") // Alert only on Tier0 and Tier1 non-compliance \| project TimeGenerated, MachineName, OrgPath, OrgTier, PolicyResult, ResourceId \| order by TimeGenerated desc
+```kql
+// Alert: New NonCompliant Arc machines in high-sensitivity OrgPath segments
+// Feed into Sentinel Analytics Rule with frequency = 1h, lookback = 4h
+
+AzureActivity
+| where OperationNameValue == "Microsoft.GuestConfiguration/guestConfigurationAssignments/write"
+| where ActivityStatusValue == "Success"
+| extend
+    ResourceId   = tolower(ResourceId),
+    PolicyResult = tostring(parse_json(Properties).complianceStatus)
+| where PolicyResult == "NonCompliant"
+| join kind=inner (
+    Resources
+    | where type == "microsoft.hybridcompute/machines"
+    | project
+        ResourceId  = tolower(id),
+        MachineName = name,
+        OrgPath     = tostring(tags['OrgPath']),
+        OrgTier     = tostring(tags['OrgTier'])
+) on ResourceId
+| where OrgTier in ("0", "1")    // Alert only on Tier0 and Tier1 non-compliance
+| project
+    TimeGenerated, MachineName, OrgPath, OrgTier,
+    PolicyResult, ResourceId
+| order by TimeGenerated desc
+```
 
 The Sentinel rule produces incidents that are automatically enriched with the OrgPath context of the affected machine through the incident enrichment workflow established in Part Four. This means that when a Tier0 machine reports a non-compliant Guest Configuration state, the resulting Sentinel incident carries the machine's full organizational position, the name of the OrgTree node it belongs to, the tier classification, and links to the associated Tier0 policy assignment. The on-call engineer receives an incident that already answers the first three triage questions — what machine, where in the organization, what policy — without any manual lookup.
 
@@ -151,7 +815,107 @@ The 24-hour automatic evaluation cycle is acceptable for routine tier changes in
 
 The following script is the pipeline extension that responds to OrgTree tier change events. It is called by the OrgPath propagation pipeline immediately after the OrgTier tag update has been applied to all resources in the changed node's branch. The script queries Resource Graph to enumerate all Arc-enrolled machines in the affected branch, confirms that the OrgTier tag has been updated on each, and then starts a Policy remediation task for the new tier's Guest Configuration assignment. The remediation task uses the ReEvaluateCompliance discovery mode, which forces a full compliance re-evaluation before determining which resources need the deployment template applied, rather than relying on the last cached compliance state.
 
-\# \# .SYNOPSIS \# Triggers Azure Policy remediation tasks when OrgTree node tier changes, \# ensuring immediate Guest Configuration baseline reassignment on all \# Arc-enrolled servers in the affected node's branch. \# .DESCRIPTION \# Called by the OrgPath propagation pipeline when an OrgTree node's Tier \# value changes. Identifies all Arc-enrolled servers in the affected branch \# by querying for resources tagged with OrgPath values that start with the \# changed node's path. For each affected machine, triggers a policy \# remediation task against the new tier's Guest Configuration policy. \# .PARAMETER ChangedNodePath \# OrgPath of the node whose tier changed (e.g., /Root/Operations/DataCenter). \# .PARAMETER OldTier \# Previous tier value (0, 1, or 2). \# .PARAMETER NewTier \# New tier value (0, 1, or 2). \# .PARAMETER ManagementGroupId \# Management group ID where policy assignments are scoped. \# .NOTES \# Requires: Az.PolicyInsights, Az.Resources, Az.ResourceGraph modules \# The remediation principal requires Resource Policy Contributor role. \# param( \[string\]\$ChangedNodePath = "", \# ENV-PARAM: provided by calling pipeline \[int\] \$OldTier = 2, \# ENV-PARAM: provided by calling pipeline \[int\] \$NewTier = 1, \# ENV-PARAM: provided by calling pipeline \[string\]\$ManagementGroupId = "mg-governance-root" \# ENV-PARAM: substitute ) if (-not \$ChangedNodePath) { throw "ChangedNodePath parameter is required." } Connect-AzAccount -Identity \# Managed Identity in pipeline Write-Host "Tier change detected: \$ChangedNodePath changed from Tier\$OldTier to Tier\$NewTier" \# Query Resource Graph for all Arc machines in the affected branch \$query = @" Resources \| where type == 'microsoft.hybridcompute/machines' \| where tags\['OrgPath'\] startswith '\$ChangedNodePath' \| project id, name, resourceGroup, subscriptionId, OrgPath = tostring(tags\['OrgPath'\]), OrgTier = tostring(tags\['OrgTier'\]) "@ \$affectedMachines = Search-AzGraph -Query \$query -ManagementGroup \$ManagementGroupId Write-Host "Affected machines: \$(\$affectedMachines.Count)" if (\$affectedMachines.Count -eq 0) { Write-Host "No Arc-enrolled machines found in path \$ChangedNodePath — no remediation needed." return } \# Update OrgTier tag on all affected machines foreach (\$machine in \$affectedMachines) { \$resource = Get-AzResource -ResourceId \$machine.id \$tags = \$resource.Tags \$tags\['OrgTier'\] = \$NewTier.ToString() Set-AzResource -ResourceId \$machine.id -Tag \$tags -Force \| Out-Null Write-Host " Updated OrgTier tag: \$(\$machine.name) =\> Tier\$NewTier" } \# Trigger remediation task for the new tier's Guest Configuration policy \$newPolicyAssignmentName = "assign-orgpath-guestconfig-tier\$NewTier" \$mgScope = "/providers/Microsoft.Management/managementGroups/\$ManagementGroupId" \$assignment = Get-AzPolicyAssignment -Scope \$mgScope \| Where-Object { \$\_.Name -eq \$newPolicyAssignmentName } if (-not \$assignment) { Write-Error "Policy assignment '\$newPolicyAssignmentName' not found at \$mgScope" return } \# Start a remediation task scoped to the changed node's OrgPath prefix \$remediationName = "remediate-tier\$NewTier-\$((Get-Date).ToString('yyyyMMddHHmm'))" Start-AzPolicyRemediation \` -ManagementGroupName \$ManagementGroupId \` -Name \$remediationName \` -PolicyAssignmentId \$assignment.PolicyAssignmentId \` -ResourceDiscoveryMode "ReEvaluateCompliance" Write-Host "Remediation task started: \$remediationName" \# Log event to governance repository @{ Timestamp = (Get-Date -Format "o") Event = "GuestConfigTierReassignment" ChangedNodePath = \$ChangedNodePath OldTier = \$OldTier NewTier = \$NewTier AffectedMachines = \$affectedMachines.Count RemediationTask = \$remediationName } \| ConvertTo-Json -Compress \| Out-File -Append "C:\governance\logs\guestconfig-pipeline.jsonl" \# ENV-PARAM: substitute path Write-Host "Tier change remediation complete."
+```powershell
+#
+# .SYNOPSIS
+#     Triggers Azure Policy remediation tasks when OrgTree node tier changes,
+#     ensuring immediate Guest Configuration baseline reassignment on all
+#     Arc-enrolled servers in the affected node's branch.
+# .DESCRIPTION
+#     Called by the OrgPath propagation pipeline when an OrgTree node's Tier
+#     value changes. Identifies all Arc-enrolled servers in the affected branch
+#     by querying for resources tagged with OrgPath values that start with the
+#     changed node's path. For each affected machine, triggers a policy
+#     remediation task against the new tier's Guest Configuration policy.
+# .PARAMETER ChangedNodePath
+#     OrgPath of the node whose tier changed (e.g., /Root/Operations/DataCenter).
+# .PARAMETER OldTier
+#     Previous tier value (0, 1, or 2).
+# .PARAMETER NewTier
+#     New tier value (0, 1, or 2).
+# .PARAMETER ManagementGroupId
+#     Management group ID where policy assignments are scoped.
+# .NOTES
+#     Requires: Az.PolicyInsights, Az.Resources, Az.ResourceGraph modules
+#     The remediation principal requires Resource Policy Contributor role.
+#
+param(
+    [string]$ChangedNodePath   = "",          # ENV-PARAM: provided by calling pipeline
+    [int]   $OldTier           = 2,           # ENV-PARAM: provided by calling pipeline
+    [int]   $NewTier           = 1,           # ENV-PARAM: provided by calling pipeline
+    [string]$ManagementGroupId = "mg-governance-root"   # ENV-PARAM: substitute
+)
+
+if (-not $ChangedNodePath) { throw "ChangedNodePath parameter is required." }
+
+Connect-AzAccount -Identity  # Managed Identity in pipeline
+
+Write-Host "Tier change detected: $ChangedNodePath changed from Tier$OldTier to Tier$NewTier"
+
+# Query Resource Graph for all Arc machines in the affected branch
+$query = @"
+Resources
+| where type == 'microsoft.hybridcompute/machines'
+| where tags['OrgPath'] startswith '$ChangedNodePath'
+| project id, name, resourceGroup, subscriptionId,
+    OrgPath = tostring(tags['OrgPath']),
+    OrgTier = tostring(tags['OrgTier'])
+"@
+
+$affectedMachines = Search-AzGraph -Query $query -ManagementGroup $ManagementGroupId
+Write-Host "Affected machines: $($affectedMachines.Count)"
+
+if ($affectedMachines.Count -eq 0) {
+    Write-Host "No Arc-enrolled machines found in path $ChangedNodePath — no remediation needed."
+    return
+}
+
+# Update OrgTier tag on all affected machines
+foreach ($machine in $affectedMachines) {
+    $resource      = Get-AzResource -ResourceId $machine.id
+    $tags          = $resource.Tags
+    $tags['OrgTier'] = $NewTier.ToString()
+    Set-AzResource -ResourceId $machine.id -Tag $tags -Force | Out-Null
+    Write-Host "  Updated OrgTier tag: $($machine.name) => Tier$NewTier"
+}
+
+# Trigger remediation task for the new tier's Guest Configuration policy
+$newPolicyAssignmentName = "assign-orgpath-guestconfig-tier$NewTier"
+$mgScope = "/providers/Microsoft.Management/managementGroups/$ManagementGroupId"
+
+$assignment = Get-AzPolicyAssignment -Scope $mgScope |
+    Where-Object { $_.Name -eq $newPolicyAssignmentName }
+
+if (-not $assignment) {
+    Write-Error "Policy assignment '$newPolicyAssignmentName' not found at $mgScope"
+    return
+}
+
+# Start a remediation task scoped to the changed node's OrgPath prefix
+$remediationName = "remediate-tier$NewTier-$((Get-Date).ToString('yyyyMMddHHmm'))"
+
+Start-AzPolicyRemediation `
+    -ManagementGroupName   $ManagementGroupId `
+    -Name                  $remediationName `
+    -PolicyAssignmentId    $assignment.PolicyAssignmentId `
+    -ResourceDiscoveryMode "ReEvaluateCompliance"
+
+Write-Host "Remediation task started: $remediationName"
+
+# Log event to governance repository
+@{
+    Timestamp        = (Get-Date -Format "o")
+    Event            = "GuestConfigTierReassignment"
+    ChangedNodePath  = $ChangedNodePath
+    OldTier          = $OldTier
+    NewTier          = $NewTier
+    AffectedMachines = $affectedMachines.Count
+    RemediationTask  = $remediationName
+} | ConvertTo-Json -Compress |
+    Out-File -Append "C:\governance\logs\guestconfig-pipeline.jsonl"   # ENV-PARAM: substitute path
+
+Write-Host "Tier change remediation complete."
+```
 
 ### Handling the Old Tier Assignment
 
@@ -167,7 +931,74 @@ The correct decommission sequence is therefore: remove the Guest Configuration a
 
 ### Decommission Script
 
-\# \# .SYNOPSIS \# Removes Guest Configuration assignments and Arc enrollment from servers \# whose OrgTree node has been archived, completing clean decommission. \# .PARAMETER MachineName \# Name of the Arc-enrolled machine to decommission. \# .PARAMETER MachineResourceGroup \# Resource group of the Arc machine resource. \# .PARAMETER SubscriptionId \# Subscription containing the Arc machine. \# .NOTES \# Requires: Az.HybridCompute, Az.Resources modules \# Must be run with sufficient permissions to delete Arc resources. \# Always run the OrgPath propagation pipeline BEFORE this script to \# confirm the machine's OrgTree node is truly archived. \# param( \[string\]\$MachineName = "", \# ENV-PARAM: provided by calling pipeline \[string\]\$MachineResourceGroup = "", \# ENV-PARAM: provided by calling pipeline \[string\]\$SubscriptionId = "" \# ENV-PARAM: provided by calling pipeline ) Connect-AzAccount -Identity \# Managed Identity in pipeline Set-AzContext -SubscriptionId \$SubscriptionId \$arcMachineId = "/subscriptions/\$SubscriptionId/resourceGroups/\$MachineResourceGroup" + "/providers/Microsoft.HybridCompute/machines/\$MachineName" \# Delete Guest Configuration assignments for all tiers (remove whichever exists) \$gcAssignmentNames = @( "OrgPath-Tier0-Baseline", "OrgPath-Tier1-Baseline", "OrgPath-Tier2-Baseline" ) foreach (\$gcName in \$gcAssignmentNames) { \$gcResourceId = "\$arcMachineId/providers/Microsoft.GuestConfiguration" + "/guestConfigurationAssignments/\$gcName" try { \$existing = Get-AzResource -ResourceId \$gcResourceId -ErrorAction SilentlyContinue if (\$existing) { Remove-AzResource -ResourceId \$gcResourceId -Force \| Out-Null Write-Host "\[REMOVED\] Guest Configuration assignment: \$gcName from \$MachineName" } } catch { Write-Warning " Could not remove \$gcName from \$MachineName : \$\_" } } \# Unenroll from Azure Arc (removes the machine from Arc management plane) Remove-AzResource -ResourceId \$arcMachineId -Force \| Out-Null Write-Host "\[REMOVED\] Arc enrollment: \$MachineName" \# Log decommission event to governance repository @{ Timestamp = (Get-Date -Format "o") Event = "ArcMachineDecommissioned" Machine = \$MachineName ResourceGroup = \$MachineResourceGroup SubscriptionId = \$SubscriptionId } \| ConvertTo-Json -Compress \| Out-File -Append "C:\governance\logs\decommission-audit.jsonl" \# ENV-PARAM: substitute path Write-Host "Decommission complete for \$MachineName."
+```powershell
+#
+# .SYNOPSIS
+#     Removes Guest Configuration assignments and Arc enrollment from servers
+#     whose OrgTree node has been archived, completing clean decommission.
+# .PARAMETER MachineName
+#     Name of the Arc-enrolled machine to decommission.
+# .PARAMETER MachineResourceGroup
+#     Resource group of the Arc machine resource.
+# .PARAMETER SubscriptionId
+#     Subscription containing the Arc machine.
+# .NOTES
+#     Requires: Az.HybridCompute, Az.Resources modules
+#     Must be run with sufficient permissions to delete Arc resources.
+#     Always run the OrgPath propagation pipeline BEFORE this script to
+#     confirm the machine's OrgTree node is truly archived.
+#
+param(
+    [string]$MachineName          = "",   # ENV-PARAM: provided by calling pipeline
+    [string]$MachineResourceGroup = "",   # ENV-PARAM: provided by calling pipeline
+    [string]$SubscriptionId       = ""    # ENV-PARAM: provided by calling pipeline
+)
+
+Connect-AzAccount -Identity  # Managed Identity in pipeline
+Set-AzContext -SubscriptionId $SubscriptionId
+
+$arcMachineId = "/subscriptions/$SubscriptionId/resourceGroups/$MachineResourceGroup" +
+                "/providers/Microsoft.HybridCompute/machines/$MachineName"
+
+# Delete Guest Configuration assignments for all tiers (remove whichever exists)
+$gcAssignmentNames = @(
+    "OrgPath-Tier0-Baseline",
+    "OrgPath-Tier1-Baseline",
+    "OrgPath-Tier2-Baseline"
+)
+
+foreach ($gcName in $gcAssignmentNames) {
+
+    $gcResourceId = "$arcMachineId/providers/Microsoft.GuestConfiguration" +
+                    "/guestConfigurationAssignments/$gcName"
+
+    try {
+        $existing = Get-AzResource -ResourceId $gcResourceId -ErrorAction SilentlyContinue
+        if ($existing) {
+            Remove-AzResource -ResourceId $gcResourceId -Force | Out-Null
+            Write-Host "[REMOVED] Guest Configuration assignment: $gcName from $MachineName"
+        }
+    } catch {
+        Write-Warning "  Could not remove $gcName from $MachineName : $_"
+    }
+}
+
+# Unenroll from Azure Arc (removes the machine from Arc management plane)
+Remove-AzResource -ResourceId $arcMachineId -Force | Out-Null
+Write-Host "[REMOVED] Arc enrollment: $MachineName"
+
+# Log decommission event to governance repository
+@{
+    Timestamp     = (Get-Date -Format "o")
+    Event         = "ArcMachineDecommissioned"
+    Machine       = $MachineName
+    ResourceGroup = $MachineResourceGroup
+    SubscriptionId = $SubscriptionId
+} | ConvertTo-Json -Compress |
+    Out-File -Append "C:\governance\logs\decommission-audit.jsonl"   # ENV-PARAM: substitute path
+
+Write-Host "Decommission complete for $MachineName."
+```
 
 ### Post-Decommission Compliance State Refresh
 
