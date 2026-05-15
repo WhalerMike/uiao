@@ -29,6 +29,9 @@ canon_refs:
   - UIAO_132
 related_discussions:
   - https://github.com/FedRAMP/community/discussions/130
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-043-fedramp-rfc-0026-ca7-integration.html
 ---
 
 # ADR-043: FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration
@@ -317,4 +320,3 @@ Before this ADR can move from `PROPOSED` to `ACCEPTED`:
 |---|---|---|---|
 | 0.1 | 2026-04-21 | Drafted during RFC-0026 comment window | Automation |
 | 0.2 | 2026-04-23 | Added interlocking FedRAMP Notice 0009 deadlines (CCM BIR 2027-04-01, VDR 2027-06-01) and the `ccm-bir` / `vdr-bir` adapter-registry slots they drive. Paired with `scripts/conmon/migration_readiness.py` and the new E8 enhancement in `docs/docs/uiao-rfc-0026-roadmap.md`. | Automation |
-

@@ -20,6 +20,9 @@ hrit_traceability:
   - "Solicitation 24322626R0007 Amd 4, Clause 1752.224-70(c) — Identification and Authentication"
   - "Solicitation 24322626R0007 Amd 4, Clause 1752.224-71 — Identification and Authentication Certification"
   - "NIST SP 800-53 Rev 5, IA-02 (01, 02)"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-051-saml-trust-anchor.html
 ---
 
 # ADR-051: SAML as a Third Trust-Anchor Type for Application Identity

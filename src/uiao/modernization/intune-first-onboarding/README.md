@@ -7,7 +7,7 @@ owner: "Michael Stratton"
 created_at: "2026-05-13"
 updated_at: "2026-05-14"
 boundary: GCC-Moderate
-canon_anchor: ADR-067
+canon_anchor: ADR-071
 provenance:
   promoted_from: "inbox/drafts/intune-first-asset-onboarding/"
   promoted_at: "2026-05-14"
@@ -15,7 +15,7 @@ provenance:
 
 # Intune-First Asset Onboarding — Doctrine, Process, and Per-Platform Procedures
 
-> **Status:** CANONICAL as of 2026-05-14, anchored by [ADR-067](../../canon/adr/adr-067-intune-first-asset-onboarding.md).
+> **Status:** CANONICAL as of 2026-05-14, anchored by [ADR-071](../../canon/adr/adr-071-intune-first-asset-onboarding.md).
 > Companion to the AD→Intune migration path under
 > [`src/uiao/modernization/directory-migration/`](../directory-migration/README.md).
 > This module covers the *inverse* path: net-new assets that should never
@@ -89,7 +89,7 @@ the existence of any ungoverned device in the first place.
 | [`platforms/arc-managed-servers.md`](platforms/arc-managed-servers.md) | Servers via Azure Arc onboarding into the same governance plane |
 | [`validation-and-evidence.md`](validation-and-evidence.md) | Validation checklist, drift classes raised, evidence emitted per onboarding |
 
-The doctrinal anchor lives separately at [`../../canon/adr/adr-067-intune-first-asset-onboarding.md`](../../canon/adr/adr-067-intune-first-asset-onboarding.md).
+The doctrinal anchor lives separately at [`../../canon/adr/adr-071-intune-first-asset-onboarding.md`](../../canon/adr/adr-071-intune-first-asset-onboarding.md).
 
 ---
 
@@ -109,7 +109,7 @@ The doctrinal anchor lives separately at [`../../canon/adr/adr-067-intune-first-
   here describe the *governance integration*, not vendor-program
   enrollment mechanics that the vendor's own documentation covers.
 - **Does not modify** `adapter-registry.yaml` or `modernization-registry.yaml`.
-  Per ADR-067 and repo invariant **I5**, registry slot allocation for the
+  Per ADR-071 and repo invariant **I5**, registry slot allocation for the
   paired procurement-integration adapters is a follow-up activity.
 
 ---

@@ -18,6 +18,9 @@ canon_refs:
   - UIAO_152_Dynamic_Group_Library
   - UIAO_154_Delegation_Matrix_AUs_Roles
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-037-admin-unit-provisioning.html
 ---
 
 # ADR-037: Delegation Matrix — Executable Canon + Entra AU/Role Provisioning Adapter

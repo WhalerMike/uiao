@@ -16,6 +16,9 @@ canon_refs:
   - UIAO_151_OrgPath_Codebook
   - UIAO_158_OrgPath_JSON_Schema
   - UIAO_163_Drift_Detection_Engine_Specification
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-063-orgpath-storage-slot-binding.html
 ---
 
 # ADR-063: OrgPath Storage Slot — extensionAttribute1 Binding

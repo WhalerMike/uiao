@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-004-workload-identity-federation-default.html
 ---
 
 # ADR-004: Workload Identity Federation as Default for External Integrations

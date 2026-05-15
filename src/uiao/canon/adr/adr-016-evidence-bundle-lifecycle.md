@@ -4,6 +4,9 @@ adr: "ADR-016"
 status: ACCEPTED
 date: "2026-02-10"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-016-evidence-bundle-lifecycle.html
 ---
 
 # ADR-016: Evidence Bundle Lifecycle

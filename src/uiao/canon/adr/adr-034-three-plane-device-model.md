@@ -18,6 +18,9 @@ canon_refs:
   - Appendix_A_OrgPath_Codebook
   - Appendix_C_Attribute_Mapping_Table
   - Appendix_F_Migration_Runbook
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-034-three-plane-device-model.html
 ---
 
 # ADR-031: Three-Plane Device Model and OrgPath Plane-Aware Architecture
