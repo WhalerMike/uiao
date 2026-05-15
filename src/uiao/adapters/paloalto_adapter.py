@@ -24,6 +24,8 @@ from __future__ import annotations
 import contextlib
 from typing import Any, Dict, List, Optional
 
+from uiao.collectors.paloalto_collector import PaloAltoCollector
+
 from .database_base import (
     ClaimObject,
     ClaimSet,
@@ -63,6 +65,17 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         self._host: str = self._config.get("host", "")
         self._api_port: int = self._config.get("api_port", 443)
         self._vsys: str = self._config.get("vsys", "vsys1")
+        self.collector: PaloAltoCollector = PaloAltoCollector(
+            host=self._host,
+            api_key=self._config.get("api_key", ""),
+            api_port=self._api_port,
+            vsys=self._vsys,
+            tls_version=self._config.get("tls_version", "TLSv1.3"),
+            mtls_enabled=self._config.get("mtls_enabled", True),
+            cert_path=self._config.get("cert_path"),
+            key_path=self._config.get("key_path"),
+            verify_path=self._config.get("verify_path"),
+        )
 
     # ------------------------------------------------------------------
     # 2.1 Connection & Identity
@@ -196,7 +209,7 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         """Retrieve and parse the running configuration.
 
         Can accept pre-loaded XML content (for testing/offline use) or
-        would call the PAN-OS API in a real deployment.
+        calls the PAN-OS XML API via the collector in a real deployment.
 
         Args:
             scope: security-policies, nat-rules, or None for all
@@ -218,13 +231,30 @@ class PaloAltoAdapter(DatabaseAdapterBase):
                 with contextlib.suppress(Exception):
                     all_rules.extend(parse_security_rules_xml(xml_content))
         else:
-            # In real usage, call PAN-OS XML API here
-            config_data = self._config.get("_security_rules_xml", "")
-            if config_data:
-                all_rules.extend(parse_security_rules_xml(config_data))
-            nat_data = self._config.get("_nat_rules_xml", "")
-            if nat_data:
-                all_rules.extend(parse_nat_rules_xml(nat_data))
+            # Call PAN-OS XML API via collector; falls back to empty scaffold
+            # when no api_key is configured (e.g. CI / unit-test environments).
+            # Legacy config-dict keys (_security_rules_xml / _nat_rules_xml)
+            # are preserved for backward compatibility with existing tests.
+            legacy_sec = self._config.get("_security_rules_xml", "")
+            legacy_nat = self._config.get("_nat_rules_xml", "")
+            if legacy_sec or legacy_nat:
+                # Offline/test path: use pre-loaded XML from config dict
+                if legacy_sec:
+                    with contextlib.suppress(Exception):
+                        all_rules.extend(parse_security_rules_xml(legacy_sec))
+                if legacy_nat:
+                    with contextlib.suppress(Exception):
+                        all_rules.extend(parse_nat_rules_xml(legacy_nat))
+            else:
+                # Live path: fetch from PAN-OS XML API via collector
+                if scope == "nat-rules" or scope is None:
+                    with contextlib.suppress(Exception):
+                        nat_xml = self.collector.fetch_running_config("nat")
+                        all_rules.extend(parse_nat_rules_xml(nat_xml))
+                if scope == "security-policies" or scope is None:
+                    with contextlib.suppress(Exception):
+                        sec_xml = self.collector.fetch_running_config("security")
+                        all_rules.extend(parse_security_rules_xml(sec_xml))
 
         return self.normalize(all_rules)
 
@@ -233,20 +263,38 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         rule_type: str,
         rule_name: str,
         config_delta: Dict[str, Any],
+        commit: bool = False,
     ) -> DriftReport:
         """Compare a proposed change against current config and report drift.
 
-        In a full implementation, this would also PUSH the change via
-        PAN-OS XML API and commit. Currently it only reports.
+        When *commit* is ``True`` the change is also pushed to the PAN-OS
+        candidate configuration via :meth:`PaloAltoCollector.post_config_edit`
+        and then committed via :meth:`PaloAltoCollector.post_commit`.  When
+        *commit* is ``False`` (the default) the method remains drift-reporting
+        only — no HTTP calls are made (lane discipline: real push is opt-in).
 
         Args:
-            rule_type: security-rule, nat-rule, or threat-profile
-            rule_name: Name of the rule to modify
-            config_delta: Dict of fields to change
+            rule_type:    security-rule, nat-rule, or threat-profile.
+            rule_name:    Name of the rule to modify.
+            config_delta: Dict of fields to change.
+            commit:       When ``True``, push the edit and issue a commit.
 
         Returns:
-            DriftReport showing what would change.
+            DriftReport showing what would/did change.
         """
+        edit_response: Optional[str] = None
+        commit_response: Optional[str] = None
+
+        if commit:
+            vsys_entry = f"/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='{self._vsys}']"
+            xpath = f"{vsys_entry}/rulebase/{rule_type}/rules/entry[@name='{rule_name}']"
+            fields_xml = "".join(f"<{k}>{v}</{k}>" for k, v in config_delta.items())
+            element = f'<entry name="{rule_name}">{fields_xml}</entry>'
+            edit_response = self.collector.post_config_edit(xpath, element)
+            commit_response = self.collector.post_commit(
+                description=f"UIAO push_config_change: {rule_type}/{rule_name}"
+            )
+
         return DriftReport(
             drift_type="palo-alto-config-change",
             severity="warning",
@@ -258,6 +306,9 @@ class PaloAltoAdapter(DatabaseAdapterBase):
                 "rule_type": rule_type,
                 "rule_name": rule_name,
                 "proposed_changes": config_delta,
+                "committed": commit,
+                "edit_response": edit_response,
+                "commit_response": commit_response,
                 "message": (
                     f"Proposed change to {rule_type}/{rule_name}: {len(config_delta)} field(s). Commit required."
                 ),
