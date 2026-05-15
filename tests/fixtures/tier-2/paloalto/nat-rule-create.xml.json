@@ -1,0 +1,35 @@
+{
+  "adapter": "palo-alto",
+  "operation": "push_config_change",
+  "cloud_variant": ["onprem"],
+  "request": {
+    "method": "POST",
+    "url": "https://pa-test.example.com/api/",
+    "body": "type=config&action=set&xpath=/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/rulebase/nat/rules/entry[@name='SRC-NAT-001']&element=<entry name='SRC-NAT-001'><from><member>trust</member></from><to><member>untrust</member></to><source><member>192.0.2.0/24</member></source><destination><member>any</member></destination><service>any</service><nat-type>ipv4</nat-type><source-translation><dynamic-ip-and-port><interface-address><interface>ethernet1/1</interface></interface-address></dynamic-ip-and-port></source-translation><tag><member>uiao-managed</member></tag></entry>&key=<API-KEY>"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/xml; charset=utf-8"
+    },
+    "body": "<response status=\"success\" code=\"20\"><msg>command succeeded</msg></response>",
+    "body_xml": "<response status=\"success\" code=\"20\"><msg>command succeeded</msg></response>"
+  },
+  "expected_behavior": [
+    "Adapter MUST parse response status='success' code=20 and confirm the NAT rule SRC-NAT-001 was staged in candidate config.",
+    "Adapter MUST record the source-translation type as 'dynamic-ip-and-port' when parsing the rule entry.",
+    "Adapter MUST emit a KSI-PAN audit event noting the NAT rule cites a security rule scope (trust-to-untrust matches the security policy direction).",
+    "Adapter MUST NOT activate the NAT rule without a subsequent commit operation.",
+    "Adapter MUST surface the rule name and xpath in the push_config_change return value for downstream drift tracking."
+  ],
+  "provenance": {
+    "source": "vendor-docs",
+    "primary_citation": {
+      "url": "https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-panorama-api/pan-os-xml-api-request-types-and-mutations/set-configuration",
+      "quote": "NAT rules are set under rulebase/nat/rules using the same action=set mechanism as security rules.",
+      "accessed": "2026-05-15"
+    },
+    "captured_by": "synthetic-fixture-authoring-WS-A4",
+    "sanitization": "API key replaced with <API-KEY>. Host replaced with pa-test.example.com (synthetic). IP subnet 192.0.2.0/24 is RFC 5737 documentation range. Interface name ethernet1/1 is synthetic. No real PAN-OS device or production config captured."
+  }
+}

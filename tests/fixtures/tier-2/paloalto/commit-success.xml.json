@@ -1,0 +1,35 @@
+{
+  "adapter": "palo-alto",
+  "operation": "commit_config",
+  "cloud_variant": ["onprem"],
+  "request": {
+    "method": "POST",
+    "url": "https://pa-test.example.com/api/",
+    "body": "type=commit&cmd=<commit/>&key=<API-KEY>"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/xml; charset=utf-8"
+    },
+    "body": "<response status=\"success\"><result><msg><line>commit job enqueued with jobid 42</line></msg><job>42</job></result></response>",
+    "body_xml": "<response status=\"success\"><result><msg><line>commit job enqueued with jobid 42</line></msg><job>42</job></result></response>"
+  },
+  "expected_behavior": [
+    "Adapter MUST parse response status='success' and extract the job ID (42) from result/job.",
+    "Adapter MUST record the commit job ID in its audit trail so the caller can poll for job completion.",
+    "Adapter MUST treat a successful commit-enqueue as the final step that activates all previously staged config changes.",
+    "Adapter MUST expose the job ID in the return value of commit_config() so callers can invoke get_job_status(job_id=42).",
+    "Adapter MUST NOT consider the config active until the job status polling confirms the commit completed successfully."
+  ],
+  "provenance": {
+    "source": "vendor-docs",
+    "primary_citation": {
+      "url": "https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-panorama-api/pan-os-xml-api-request-types-and-mutations/commit-configuration",
+      "quote": "After issuing a commit, the response returns a job ID. Use the job ID with the operational command 'show jobs id <jobid>' to monitor commit progress.",
+      "accessed": "2026-05-15"
+    },
+    "captured_by": "synthetic-fixture-authoring-WS-A4",
+    "sanitization": "API key replaced with <API-KEY>. Host replaced with pa-test.example.com (synthetic). Job ID 42 is synthetic. No real PAN-OS device or production config captured."
+  }
+}

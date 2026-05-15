@@ -1,0 +1,35 @@
+{
+  "adapter": "palo-alto",
+  "operation": "commit_config",
+  "cloud_variant": ["onprem"],
+  "request": {
+    "method": "POST",
+    "url": "https://pa-test.example.com/api/",
+    "body": "type=commit&cmd=<commit/>&key=<API-KEY>"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/xml; charset=utf-8"
+    },
+    "body": "<response status=\"error\" code=\"13\"><msg><line>commit lock held by user 'admin' from session 1 started 2026-05-15 10:00:00</line></msg></response>",
+    "body_xml": "<response status=\"error\" code=\"13\"><msg><line>commit lock held by user 'admin' from session 1 started 2026-05-15 10:00:00</line></msg></response>"
+  },
+  "expected_behavior": [
+    "Adapter MUST parse response status='error' code=13 and raise or return a CommitLockError (or equivalent adapter-defined exception) rather than silently ignoring the failure.",
+    "Adapter MUST extract the lock-holder identity ('admin') and session info from the msg/line text and include it in the error payload.",
+    "Adapter MUST NOT retry the commit automatically on a lock conflict; the caller is responsible for back-off and retry logic.",
+    "Adapter MUST emit a DRIFT-COMMIT-CONFLICT event so the upstream orchestrator can detect that staged config changes are blocked.",
+    "Adapter MUST preserve the HTTP 200 outer status distinction: PAN-OS returns HTTP 200 even for API-level errors; the adapter MUST inspect response status attribute, not HTTP status code, to determine success."
+  ],
+  "provenance": {
+    "source": "vendor-docs",
+    "primary_citation": {
+      "url": "https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-panorama-api/pan-os-xml-api-request-types-and-mutations/commit-configuration",
+      "quote": "If another administrator holds the commit lock, the commit request fails with code=13 and a message identifying the lock holder. The HTTP response code remains 200; error state is indicated by status='error' in the XML.",
+      "accessed": "2026-05-15"
+    },
+    "captured_by": "synthetic-fixture-authoring-WS-A4",
+    "sanitization": "API key replaced with <API-KEY>. Host replaced with pa-test.example.com (synthetic). Username 'admin', session ID 1, and timestamp are synthetic. No real PAN-OS device, session, or production config captured."
+  }
+}
