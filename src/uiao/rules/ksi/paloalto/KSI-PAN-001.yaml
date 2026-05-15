@@ -1,0 +1,74 @@
+ksi_id: KSI-PAN-001
+title: All Security Rules Log Session Events (log-setting Populated)
+category: monitoring-logging
+description: >
+  Every security rule configured on the Palo Alto NGFW must reference a
+  populated log-setting profile that forwards session-start and session-end
+  events to an authorised log destination (Panorama, syslog, or SIEM).
+  Rules whose log-setting is absent or set to the default (none) produce no
+  forwarded telemetry, creating blind spots in the continuous-monitoring
+  evidence chain and violating the event-generation obligations of AU-2 and
+  AU-12.
+security_objective: >
+  Guarantee that every firewall security rule generates and forwards
+  session-level log events to a designated log collector, ensuring the
+  boundary-protection posture is fully observable and that AU-2 / AU-12
+  evidence is continuously available to the continuous-monitoring programme.
+related_controls:
+  - AU-2
+  - AU-12
+  - SC-7
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero security rules whose log-setting field is NULL, empty, or set to the
+    implicit none default.  Every rule must name an explicit log-forwarding
+    profile.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT r.rule_name, r.rule_uuid, r.log_setting
+    FROM pan_security_rules r
+    WHERE r.enabled = TRUE
+      AND (
+           r.log_setting IS NULL
+        OR TRIM(r.log_setting) = ''
+        OR TRIM(r.log_setting) = 'none'
+      )
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: paloalto.validators.rule_log_setting_populated
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-15"
+enabled: true
+tags:
+  - palo-alto
+  - ngfw
+  - logging
+  - session-events
+  - au-2
+  - au-12
+  - sc-7
+severity: HIGH
+nist_mappings:
+  primary: AU-2
+  secondary:
+    - AU-12
+    - SC-7
+fedramp_controls:
+  - AU-2
+  - AU-12
+  - SC-7
+provenance:
+  spec_ref: v0.6.2-paloalto
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3

@@ -1,0 +1,74 @@
+ksi_id: KSI-PAN-006
+title: NAT Rules Cite a Justifying Security Rule (No Orphan NAT)
+category: boundary-protection
+description: >
+  Every NAT rule configured on the Palo Alto NGFW must reference at least one
+  existing enabled security rule that justifies the address translation (via a
+  rule_tag, description reference, or explicit association in the NAT rule
+  metadata).  Orphan NAT rules — those that perform address translation without
+  a corresponding security rule governing the traffic — bypass intended
+  information-flow controls under AC-4 and introduce unreviewed
+  configuration elements contrary to the least-functionality principle of CM-7.
+security_objective: >
+  Ensure that every NAT rule is anchored to a corresponding security rule,
+  preventing orphan address translations from opening unintended traffic
+  paths that circumvent the security policy and go undetected during
+  configuration audits and continuous-monitoring reviews.
+related_controls:
+  - AC-4
+  - CM-7
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero enabled NAT rules whose justifying_security_rule_ref is NULL or
+    empty, or whose referenced security rule does not exist and is not enabled
+    in the current committed policy.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT n.nat_rule_name, n.nat_rule_uuid,
+           n.justifying_security_rule_ref
+    FROM pan_nat_rules n
+    LEFT JOIN pan_security_rules sr
+           ON sr.rule_name = n.justifying_security_rule_ref
+          AND sr.enabled = TRUE
+    WHERE n.enabled = TRUE
+      AND (
+           n.justifying_security_rule_ref IS NULL
+        OR TRIM(n.justifying_security_rule_ref) = ''
+        OR sr.rule_uuid IS NULL
+      )
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: paloalto.validators.nat_rule_security_rule_citation
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-15"
+enabled: true
+tags:
+  - palo-alto
+  - ngfw
+  - nat
+  - orphan-rules
+  - ac-4
+  - cm-7
+severity: MEDIUM
+nist_mappings:
+  primary: AC-4
+  secondary:
+    - CM-7
+fedramp_controls:
+  - AC-4
+  - CM-7
+provenance:
+  spec_ref: v0.6.2-paloalto
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3

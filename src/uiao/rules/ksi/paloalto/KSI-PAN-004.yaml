@@ -1,0 +1,75 @@
+ksi_id: KSI-PAN-004
+title: Decryption Policy in Place for Non-Bypass Traffic Categories
+category: boundary-protection
+description: >
+  The Palo Alto NGFW decryption policy must include at least one active
+  decryption rule covering each non-bypass traffic category (outbound SSL/TLS
+  inspection and inbound server-certificate verification as applicable).
+  Traffic categories not addressed by an explicit decryption or no-decrypt rule
+  leave encrypted sessions uninspected, undermining the transmission
+  confidentiality protections of SC-8 and the cryptographic-mechanism
+  obligations of SC-13, and weakening information-flow enforcement under AC-4.
+security_objective: >
+  Ensure that decryption policy systematically covers all non-exempt traffic
+  categories so that encrypted sessions traversing the perimeter can be
+  inspected by threat-prevention profiles, maintaining end-to-end visibility
+  and preventing encrypted tunnels from being used as covert exfiltration or
+  infiltration channels.
+related_controls:
+  - SC-8
+  - SC-13
+  - AC-4
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero required non-bypass traffic categories that lack a matching enabled
+    decryption rule.  Each category in the authorised decryption coverage list
+    must have at least one rule with action 'decrypt' or 'no-decrypt' (explicit
+    bypass) and enabled = TRUE.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT c.category_name
+    FROM pan_required_decryption_categories c
+    LEFT JOIN pan_decryption_rules dr
+           ON dr.traffic_category = c.category_name
+          AND dr.enabled = TRUE
+          AND dr.action IN ('decrypt', 'no-decrypt')
+    WHERE dr.rule_uuid IS NULL
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: paloalto.validators.decryption_policy_coverage
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-15"
+enabled: true
+tags:
+  - palo-alto
+  - ngfw
+  - decryption
+  - ssl-inspection
+  - sc-8
+  - sc-13
+  - ac-4
+severity: MEDIUM
+nist_mappings:
+  primary: SC-8
+  secondary:
+    - SC-13
+    - AC-4
+fedramp_controls:
+  - SC-8
+  - SC-13
+  - AC-4
+provenance:
+  spec_ref: v0.6.2-paloalto
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3
