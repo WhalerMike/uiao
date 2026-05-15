@@ -168,6 +168,32 @@ Before OrgPath stub assignment, the only Conditional Access targeting predicate 
 
 With OrgPath stubs assigned, three differentiated Conditional Access tiers become implementable using the dynamic group targeting established in Chapter Two. Each tier maps to a specific OrgPath stub classification and applies controls calibrated to the trust level encoded in that stub. The three tiers are ordered by restriction level, and the Conditional Access engine evaluates them in that order: a guest who matches multiple groups will receive the most restrictive applicable policy, a behavior enforced by targeting each tier at the appropriate group exclusively rather than using broad include-with-exclude patterns.
 
+```{mermaid}
+graph TB
+    REG["Partner Registry<br/>(JSON in governance repo, PR-gated)"]
+    INV["Invitation-time Azure Function<br/>(Event Grid + Managed Identity)"]
+    STUB["Guest OrgPath stub<br/>/EXTERNAL/B2B/{domain} or /UNREGISTERED"]
+    REG --> INV
+    INV --> STUB
+    subgraph "Dynamic group library (external subtree)"
+        G1["ORG-EXTERNAL-B2B-UNREGISTERED"]
+        G2["ORG-EXTERNAL-B2B-{partner} (Tier2)"]
+        G3["ORG-EXTERNAL-B2B-{partner} (Tier1)"]
+    end
+    STUB --> G1
+    STUB --> G2
+    STUB --> G3
+    subgraph "Conditional Access tiers"
+        T3["Tier 3 - UNREGISTERED<br/>MFA every time + compliant device AND<br/>no persistent browser"]
+        T2["Tier 2 - Standard registered<br/>MFA OR compliant device<br/>8h sign-in frequency"]
+        T1["Tier 1 - High-trust attested<br/>MFA OR compliant OR hybrid-joined<br/>24h sign-in frequency"]
+    end
+    G1 --> T3
+    G2 --> T2
+    G3 --> T1
+    REG -.->|"per-partner trust"| CTAS["Cross-Tenant Access Settings<br/>(MFA + device claim trust by tier)"]
+```
+
 ### Tier Three — Unregistered Guests
 
 The strictest tier targets the ORG-EXTERNAL-B2B-UNREGISTERED dynamic group. Guests in this group have arrived at the tenant boundary without a corresponding partner registration in the governance registry. Their presence may be the result of an ad-hoc invitation sent by an internal user without following the formal partner onboarding process, a domain change at the partner organization that invalidated their previous stub, or a genuine security concern. Until the governance team classifies the guest's domain, these users are treated as maximally untrusted. Every session requires MFA re-authentication, enforced through a sign-in frequency of one hour with a frequency interval of everyTime, meaning MFA is required on every token issuance, not merely at the start of a session window. Device compliance or hybrid-join is required in addition to MFA, with grant controls combined by the AND operator rather than OR. Persistent browser sessions are blocked. Because unmanaged personal devices cannot satisfy the device compliance requirement and no Cross-Tenant Access trust is configured for unregistered partners, this tier effectively forces unregistered guests into a browser-only path that requires MFA on every interaction and cannot maintain a persistent session. This is not a usable collaboration posture, which is intentional: the policy creates pressure on internal sponsors to complete the partner registration process rather than allowing unregistered guests to operate indefinitely in a degraded-access state.

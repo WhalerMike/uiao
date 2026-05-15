@@ -29,6 +29,33 @@ The integration architecture described in this document positions the third-part
 
 The transition from this architecture to the pure Azure-native state described in Part Eight is governed by a migration phase tracking mechanism that this document describes in detail. Each DNS zone and IP network object in the DDI platform carries a MigrationPhase attribute that moves through four states: Assessment, Migration, Parallel, and Complete. Assessment means the object exists in the DDI platform and has been tagged with OrgPath attributes but has no corresponding Azure DNS Private Zone. Migration means an Azure DNS Private Zone has been created but is not yet serving live resolution traffic. Parallel means both the DDI platform zone and the Azure DNS Private Zone are active and serving resolution for their respective client populations — this is the steady-state during the main body of the transition. Complete means the Azure DNS Private Zone is the sole authoritative source, all clients have been redirected, and the DDI platform zone is retired. When every object in the DDI platform carries a MigrationPhase of Complete, the decommissioning criteria described in Chapter Five are met and the DDI platform can be retired.
 
+```{mermaid}
+graph TB
+    REG["OrgTree Registry<br/>(DnsBoundary, NetworkCidr, MigrationPhase)"]
+    PIPE["Governance pipeline<br/>(orchestrator, per-platform adapters)"]
+    REG --> PIPE
+    subgraph "Third-party DDI (unified hybrid management plane)"
+        NIOS["Infoblox NIOS Grid<br/>Extensible Attributes<br/>(WAPI, Basic auth)"]
+        BLOX["Infoblox BloxOne DDI<br/>tags<br/>(CSP API, Bearer token)"]
+        BAM["BlueCat Address Manager<br/>User-Defined Fields<br/>(REST v1, session token)"]
+    end
+    subgraph "Azure-native (target state)"
+        AZDNS["Azure DNS Private Zones<br/>+ Private Resolver"]
+    end
+    PIPE --> NIOS
+    PIPE --> BLOX
+    PIPE --> BAM
+    PIPE --> AZDNS
+    subgraph "MigrationPhase state machine (per zone)"
+        P1["Assessment<br/>(DDI tagged, no Azure zone)"]
+        P2["Migration<br/>(Azure zone created, idle)"]
+        P3["Parallel<br/>(both serving live traffic)"]
+        P4["Complete<br/>(Azure sole authority, DDI retired)"]
+    end
+    P1 --> P2 --> P3 --> P4
+    P3 -.->|"webhook on record change<br/>(NIOS Outbound API / BAM events)"| AZDNS
+```
+
 ## Chapter 2 — Infoblox — Extensible Attributes as the OrgPath Bridge
 
 Infoblox offers two deployment models that are relevant to this integration, and the choice between them is typically determined by what an organization already has in place rather than by a fresh architectural decision. Infoblox NIOS is the on-premises Grid deployment: a set of physical or virtual appliances — Grid Members and a Grid Master — managed through the NIOS web interface and through the WAPI REST API. NIOS has been the dominant enterprise DDI platform for more than a decade and the majority of large enterprise networks that operate an Infoblox deployment are running NIOS in some form. Infoblox BloxOne DDI is the cloud-native SaaS successor, managed through the Infoblox Cloud Services Portal at csp.infoblox.com and delivered as a managed service. BloxOne can coexist with a NIOS Grid or operate independently; organizations migrating from NIOS to BloxOne may run both simultaneously during the transition.

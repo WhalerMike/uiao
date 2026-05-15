@@ -101,6 +101,30 @@ Azure data SSOT trustworthy.
 
 ## Chapter 2 — OrgPath as the Join Key Across Two Policy Planes
 
+```{mermaid}
+graph TB
+    REG["UIAO OrgTree Registry<br/>(governed identity namespace)"]
+    subgraph "User Plane (Part 7)"
+        ATTR_U["OrgPath on every user"]
+        ASC["Purview Adaptive Policy Scopes<br/>OPATH filter on OrgPath"]
+        POL_U["Sensitivity Labels, DLP,<br/>Retention, eDiscovery"]
+    end
+    subgraph "Data Plane (Part 7a)"
+        ATTR_D["OrgPath metadata on data assets<br/>(Fabric Domain, OneLake security, Purview catalog)"]
+        DOM["Fabric Domain assignment<br/>workspace inheritance"]
+        POL_D["Default sensitivity context,<br/>lakehouse / mirror authorization"]
+    end
+    REG --> ATTR_U
+    REG --> ATTR_D
+    ATTR_U --> ASC
+    ASC --> POL_U
+    ATTR_D --> DOM
+    DOM --> POL_D
+    REG -.->|"join key on lineage + audit"| AUDIT["Compliant lineage + audit evidence<br/>(only meaningful if identity namespace is governed)"]
+    POL_U -.-> AUDIT
+    POL_D -.-> AUDIT
+```
+
 ### The User Plane and the Data Plane Are Not the Same Plane
 
 The single most important conceptual move in this chapter is to refuse the

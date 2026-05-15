@@ -35,6 +35,33 @@ The translation table is straightforward in concept but demanding in execution. 
 
 What does not translate is hierarchy itself. OrgPath carries the value of the hierarchy — the string that encodes where an identity sits in the organizational structure — but Entra ID has no native concept of what that string means. The meaning lives in the UIAO OrgTree registry: the schema of allowed segments, the normalization rules, the mapping rules from Active Directory OU paths to OrgPath values, and the drift detection rules that fire when an identity's OrgPath value diverges from the authoritative governance record maintained in the UIAO repository. The registry is a governed artifact, versioned in Git, reviewed by the Canon Steward, and enforced at the identity provisioning layer before any object enters production. This governance envelope around the OrgPath attribute is what transforms a simple string field into a structural governance primitive.
 
+```{mermaid}
+graph LR
+    subgraph "Active Directory (structural hierarchy)"
+        OU["OU container path"]
+        GPO["GPO linked to OU"]
+        DEL["OU-based delegation"]
+        NEST["Nested group inheritance"]
+    end
+    subgraph "Entra ID (flat) + OrgPath overlay"
+        OPATH["OrgPath<br/>schema extension attribute<br/>on every user and device"]
+        BG["Branch group<br/>OrgPath -startsWith"]
+        NG["Node group<br/>OrgPath -eq"]
+        AU["Administrative Unit<br/>same membership rule"]
+        POL["Intune / Conditional Access<br/>assigned to groups"]
+    end
+    REG["UIAO OrgTree Registry<br/>governs the meaning"]
+    OU -->|"path becomes attribute value"| OPATH
+    GPO -->|"replaced by group-scoped policy"| POL
+    DEL -->|"becomes"| AU
+    NEST -->|"becomes layered dynamic groups"| BG
+    OPATH --> BG
+    OPATH --> NG
+    BG --> POL
+    NG --> POL
+    REG -.->|"validates, normalizes, drift-detects"| OPATH
+```
+
 ## Part TWO
 
 ### The Platform
@@ -104,6 +131,42 @@ All assessment output follows a consistent JSON schema with governance-tagged me
 ## Part FOUR
 
 ### The Five Pillars
+
+```{mermaid}
+graph TB
+    REG["OrgTree Registry<br/>governed, versioned"]
+    ATTR["OrgPath Attribute<br/>users, devices, servers"]
+    REG -->|"derive + validate"| ATTR
+    subgraph "Five Pillars"
+        ID["Identity Modernization<br/>users, groups, service accounts, PIM"]
+        DNS["DNS Modernization<br/>AD-integrated to Azure DNS Private"]
+        PKI["PKI Modernization<br/>ADCS to Cloud PKI"]
+        DEV["Device Modernization<br/>GPO to Intune"]
+        SRV["Server Modernization<br/>Arc as hybrid plane"]
+    end
+    ATTR --> ID
+    ATTR --> DNS
+    ATTR --> PKI
+    ATTR --> DEV
+    ATTR --> SRV
+    subgraph "Policy Architecture"
+        CA["Conditional Access<br/>OrgPath-scoped"]
+        AP["Azure Policy + Guest Config<br/>OrgTier-scoped"]
+    end
+    ID --> CA
+    DEV --> CA
+    SRV --> AP
+    subgraph "Governance Fabric"
+        REPO["Versioned governance repository"]
+        DRIFT["Drift detection"]
+        COMP["Compliance mapping<br/>NIST / FedRAMP / BOD"]
+    end
+    REG -.-> REPO
+    CA -.-> DRIFT
+    AP -.-> DRIFT
+    DRIFT -.-> COMP
+    COMP -.-> REPO
+```
 
 ## Chapter 9 — Identity Modernization: From Object to Lifecycle
 

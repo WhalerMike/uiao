@@ -31,6 +31,35 @@ This is the key architectural insight of this document. The Adaptive Scope filte
 
 The Adaptive Scope mechanism restores to Purview the same structural inheritance that Group Policy Object linkage provided for on-premises Active Directory policy: membership in a structural node implies coverage by the policies linked to that node. A new user provisioned into the Finance division inherits Finance's retention policy, Finance's DLP rules, and Finance's segment-specific label policy — not because anyone added them to a group, but because their OrgPath reflects their position, and the Adaptive Scopes that cover Finance reflect that position in their filter expressions.
 
+```{mermaid}
+graph TB
+    REG["OrgTree Registry<br/>(LabelPolicyBoundary, SegmentLabels, retention metadata)"]
+    ATTR["OrgPath on every user"]
+    REG --> ATTR
+    ASC["Purview Adaptive Policy Scopes<br/>OPATH filter on OrgPath extension attribute"]
+    ATTR --> ASC
+    subgraph "Three-layer policy architecture"
+        L1["Baseline layer<br/>tenant-wide, conservative thresholds<br/>(CC, SSN, passport blocking)"]
+        L2["Restrictive overlay layer<br/>OrgPath-scoped tighter rules<br/>(Finance, Legal, Executive, Security)"]
+        L3["Permissive carve-out layer<br/>OrgPath-scoped exceptions<br/>(Data analytics, Sales, Procurement)"]
+    end
+    ASC --> L2
+    ASC --> L3
+    subgraph "Purview policy surfaces"
+        LABEL["Sensitivity Labels"]
+        DLP["Data Loss Prevention"]
+        RET["Retention"]
+        EDIS["eDiscovery"]
+    end
+    L1 --> LABEL
+    L1 --> DLP
+    L2 --> LABEL
+    L2 --> DLP
+    L2 --> RET
+    L3 --> DLP
+    ASC --> EDIS
+```
+
 ### What This Document Establishes
 
 This document develops the full Purview integration across four capability areas, then describes the pipeline extensions and operational model required to keep that integration current. Chapter Two addresses sensitivity labels and label policies: how the two-layer label architecture works, how Adaptive Scopes deliver segment-specific labels to organizational segments without manual group maintenance, and the complete PowerShell implementation using the Security and Compliance PowerShell module. Chapter Three addresses Data Loss Prevention: why uniform DLP policies fail at enterprise scale, how the three-layer DLP architecture — baseline, restrictive overlay, and permissive carve-out — maps onto the OrgPath hierarchy, and the complete DLP policy and rule creation script for a representative high-sensitivity segment. Chapter Four addresses retention: why differentiated retention schedules are the most operationally significant Purview integration for compliance-obligated organizations, how the OrgTree node metadata carries retention policy definitions, and the complete script that creates retention policies and rules for every node in the registry that carries a retention requirement. Chapter Five addresses eDiscovery: how OrgPath transforms custodian identification from a manual enumeration process into a deterministic directory query, and the complete script that creates a Purview eDiscovery Premium case, populates the custodian list from an OrgPath scope query, and applies a legal hold to custodian content sources. Chapter Six describes the governance pipeline extensions that wire Purview into the same propagation model established for other integrations. Chapter Seven addresses the operational cadence and the compliance evidence the integrated model produces for audit purposes.
