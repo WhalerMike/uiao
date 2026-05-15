@@ -211,7 +211,13 @@ def test_collect_normalize_oscal_end_to_end() -> None:
     result = adapter.collect_and_align()
     claims = result.get("claims", {}).get("claims", [])
 
-    component_def = emit_servicenow_component_definition(claims)
+    # WS-A2 signature: (claims, tenant_id, signer, signing_key)
+    component_def = emit_servicenow_component_definition(
+        claims,
+        tenant_id="test-tenant-conformance",
+        signer="conformance-test",
+        signing_key=b"conformance-test-key-do-not-use-in-prod",
+    )
     assert component_def is not None
     assert isinstance(component_def, dict)
 

@@ -14,8 +14,11 @@ File: src/uiao/impl/adapters/servicenow_adapter.py
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+import requests  # type: ignore[import-untyped]
 
 from ..collectors.servicenow_collector import ServiceNowCollector
 from .database_base import (
@@ -261,3 +264,232 @@ class ServiceNowAdapter(DatabaseAdapterBase):
                 "instance": self.collector.instance,
             },
         }
+
+    # ------------------------------------------------------------------
+    # Write-side methods — create / update records in ServiceNow
+    # ------------------------------------------------------------------
+
+    def create_incident(
+        self,
+        short_description: str,
+        uiao_control_id: str = "AC-2",
+        **fields: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a new incident record in ServiceNow.
+
+        Args:
+            short_description: Human-readable summary of the incident.
+            uiao_control_id: UIAO canonical control ID (default 'AC-2').
+            **fields: Additional ServiceNow field values merged into the payload.
+
+        Returns:
+            ClaimObject-shaped evidence dict with keys:
+            ``ok``, ``sys_id``, ``error``, ``evidence``.
+        """
+        payload: Dict[str, Any] = {
+            "short_description": short_description,
+            "u_uiao_control_id": uiao_control_id,
+            **fields,
+        }
+        try:
+            response = self.collector.post_record("incident", payload)
+            result = response.get("result", {})
+            sys_id: str = result.get("sys_id", "")
+            evidence = self._build_evidence(
+                operation="create_incident",
+                table="incident",
+                sys_id=sys_id,
+                payload=payload,
+                response=result,
+            )
+            return {"ok": True, "sys_id": sys_id, "error": None, "evidence": evidence}
+        except requests.HTTPError as exc:
+            return {"ok": False, "sys_id": "", "error": str(exc), "evidence": {}}
+
+    def update_incident(
+        self,
+        sys_id: str,
+        **fields: Any,
+    ) -> Dict[str, Any]:
+        """
+        Update an existing incident record in ServiceNow via PATCH.
+
+        Args:
+            sys_id: ServiceNow sys_id of the incident to update.
+            **fields: Field values to apply to the existing record.
+
+        Returns:
+            ClaimObject-shaped evidence dict with keys:
+            ``ok``, ``sys_id``, ``error``, ``evidence``.
+        """
+        payload: Dict[str, Any] = {**fields}
+        try:
+            response = self.collector.patch_record("incident", sys_id, payload)
+            result = response.get("result", {})
+            evidence = self._build_evidence(
+                operation="update_incident",
+                table="incident",
+                sys_id=sys_id,
+                payload=payload,
+                response=result,
+            )
+            return {"ok": True, "sys_id": sys_id, "error": None, "evidence": evidence}
+        except requests.HTTPError as exc:
+            return {"ok": False, "sys_id": sys_id, "error": str(exc), "evidence": {}}
+
+    def create_change_request(
+        self,
+        short_description: str,
+        uiao_control_id: str,
+        **fields: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a new change request record in ServiceNow.
+
+        Args:
+            short_description: Human-readable summary of the change request.
+            uiao_control_id: UIAO canonical control ID (e.g. 'CM-3').
+            **fields: Additional ServiceNow field values merged into the payload.
+
+        Returns:
+            ClaimObject-shaped evidence dict with keys:
+            ``ok``, ``sys_id``, ``error``, ``evidence``.
+        """
+        payload: Dict[str, Any] = {
+            "short_description": short_description,
+            "u_uiao_control_id": uiao_control_id,
+            **fields,
+        }
+        try:
+            response = self.collector.post_record("change_request", payload)
+            result = response.get("result", {})
+            sys_id: str = result.get("sys_id", "")
+            evidence = self._build_evidence(
+                operation="create_change_request",
+                table="change_request",
+                sys_id=sys_id,
+                payload=payload,
+                response=result,
+            )
+            return {"ok": True, "sys_id": sys_id, "error": None, "evidence": evidence}
+        except requests.HTTPError as exc:
+            return {"ok": False, "sys_id": "", "error": str(exc), "evidence": {}}
+
+    def create_problem(
+        self,
+        short_description: str,
+        uiao_control_id: str,
+        **fields: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a new problem record in ServiceNow.
+
+        Args:
+            short_description: Human-readable summary of the problem.
+            uiao_control_id: UIAO canonical control ID (e.g. 'IR-4').
+            **fields: Additional ServiceNow field values merged into the payload.
+
+        Returns:
+            ClaimObject-shaped evidence dict with keys:
+            ``ok``, ``sys_id``, ``error``, ``evidence``.
+        """
+        payload: Dict[str, Any] = {
+            "short_description": short_description,
+            "u_uiao_control_id": uiao_control_id,
+            **fields,
+        }
+        try:
+            response = self.collector.post_record("problem", payload)
+            result = response.get("result", {})
+            sys_id: str = result.get("sys_id", "")
+            evidence = self._build_evidence(
+                operation="create_problem",
+                table="problem",
+                sys_id=sys_id,
+                payload=payload,
+                response=result,
+            )
+            return {"ok": True, "sys_id": sys_id, "error": None, "evidence": evidence}
+        except requests.HTTPError as exc:
+            return {"ok": False, "sys_id": "", "error": str(exc), "evidence": {}}
+
+    # ------------------------------------------------------------------
+    # Ticket-manifest emitter (declared output in modernization-registry)
+    # ------------------------------------------------------------------
+
+    def _emit_ticket_manifest(
+        self,
+        claims: List[Dict[str, Any]],
+        out_dir: Path,
+    ) -> Path:
+        """
+        Write ``ticket-manifest.json`` to *out_dir*.
+
+        The filename matches the ``outputs`` entry declared in
+        ``modernization-registry.yaml`` for the ``service-now`` adapter.
+        If the file already exists a timestamp suffix is appended to avoid
+        silent overwrites (append-only contract).
+
+        Args:
+            claims: List of ClaimObject-shaped dicts to persist.
+            out_dir: Directory where the manifest file will be written.
+
+        Returns:
+            Path to the written manifest file.
+        """
+        out_dir.mkdir(parents=True, exist_ok=True)
+        target = out_dir / "ticket-manifest.json"
+        if target.exists():
+            ts = self._now().strftime("%Y%m%dT%H%M%SZ")
+            target = out_dir / f"ticket-manifest-{ts}.json"
+
+        manifest: Dict[str, Any] = {
+            "adapter_id": self.ADAPTER_ID,
+            "generated_at": self._now().isoformat(),
+            "instance": self.collector.instance,
+            "claims": claims,
+        }
+        target.write_text(json.dumps(manifest, indent=2, default=str))
+        return target
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _build_evidence(
+        self,
+        operation: str,
+        table: str,
+        sys_id: str,
+        payload: Dict[str, Any],
+        response: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Build a ClaimObject-shaped evidence dict for a write operation."""
+        claim_payload: Dict[str, Any] = {
+            "identity": f"servicenow:ticket:{sys_id}",
+            "operation": operation,
+            "table": table,
+            "vendor_overlay_ref": "servicenow.yaml",
+            "telemetry_enabled": True,
+            "raw_link": (f"https://{self.collector.instance}.service-now.com/{table}.do?sys_id={sys_id}"),
+        }
+        return {
+            "claim_id": f"servicenow:{operation}:{sys_id}",
+            "entity": f"servicenow:ticket:{sys_id}",
+            "fields": claim_payload,
+            "source": self.ADAPTER_ID,
+            "provenance_hash": self._hash(
+                {
+                    "operation": operation,
+                    "table": table,
+                    "sys_id": sys_id,
+                    "payload": payload,
+                    "response": response,
+                    "timestamp": self._now().isoformat(),
+                }
+            ),
+        }
+
+    # Expose Optional so mypy is satisfied on callers that annotate with it
+    _OptionalStr = Optional[str]
