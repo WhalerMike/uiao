@@ -22,6 +22,8 @@ File: src/uiao/impl/adapters/paloalto_adapter.py
 from __future__ import annotations
 
 import contextlib
+import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .database_base import (
@@ -34,6 +36,8 @@ from .database_base import (
     QueryProvenance,
     SchemaMappingObject,
 )
+
+_LOG = logging.getLogger(__name__)
 
 
 class PaloAltoAdapter(DatabaseAdapterBase):
@@ -118,7 +122,10 @@ class PaloAltoAdapter(DatabaseAdapterBase):
     def execute_query(self, canonical_query: Dict[str, Any]) -> QueryProvenance:
         """Translate canonical query to PAN-OS XML API request."""
         rule_type = canonical_query.get("from", "security-rule")
-        xpath = f"/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='{self._vsys}']/rulebase/{rule_type}/rules"
+        xpath = (
+            f"/config/devices/entry[@name='localhost.localdomain']"
+            f"/vsys/entry[@name='{self._vsys}']/rulebase/{rule_type}/rules"
+        )
         vendor_query = f"GET /api/?type=config&action=show&xpath={xpath}"
         return QueryProvenance(
             canonical_query=canonical_query,
@@ -164,25 +171,172 @@ class PaloAltoAdapter(DatabaseAdapterBase):
     # ------------------------------------------------------------------
 
     def detect_drift(self) -> DriftReport:
-        """Detect drift between PAN-OS running config and UIAO canon."""
+        """Detect drift between PAN-OS running config and UIAO canon.
+
+        Algorithm:
+        1. Load expected scope for the ``palo-alto`` adapter from
+           ``src/uiao/canon/modernization-registry.yaml``.
+        2. Fetch running-config via the collector (empty-scaffold fallback
+           when no API key is configured) or from inline config-dict XML.
+        3. Fetch candidate-config the same way.
+        4. Compute three-way diff: running vs candidate vs canon-expected.
+        5. Return a :class:`DriftReport` with severity ``"high"`` if any
+           divergence is found, ``"info"`` if all scopes match.
+        """
+        from .paloalto_parser import parse_nat_rules_xml, parse_security_rules_xml
+
+        # ------------------------------------------------------------------
+        # Step 1 — expected scope from modernization-registry.yaml
+        # ------------------------------------------------------------------
+        expected_scope: List[str] = list(self.SCOPE)  # fallback to class constant
+        registry_path = Path(__file__).parent.parent / "canon" / "modernization-registry.yaml"
+        try:
+            import yaml  # type: ignore[import-untyped]
+
+            registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+            for entry in registry.get("adapters", []):
+                if entry.get("id") == "palo-alto":
+                    expected_scope = list(entry.get("scope", self.SCOPE))
+                    break
+        except Exception as exc:  # noqa: BLE001
+            _LOG.info("modernization-registry.yaml unavailable; using SCOPE constant: %s", exc)
+
+        # ------------------------------------------------------------------
+        # Step 2 — fetch running-config (inline XML or live collector)
+        # ------------------------------------------------------------------
+        running_rules: List[Dict[str, Any]] = []
+        candidate_rules: List[Dict[str, Any]] = []
+
+        legacy_sec = self._config.get("_security_rules_xml", "")
+        legacy_nat = self._config.get("_nat_rules_xml", "")
+        if legacy_sec or legacy_nat:
+            # Offline/test path: inline XML from config dict
+            if legacy_sec:
+                with contextlib.suppress(Exception):
+                    running_rules.extend(parse_security_rules_xml(legacy_sec))
+            if legacy_nat:
+                with contextlib.suppress(Exception):
+                    running_rules.extend(parse_nat_rules_xml(legacy_nat))
+            cand_sec = self._config.get("_candidate_security_xml", "")
+            cand_nat = self._config.get("_candidate_nat_xml", "")
+            if cand_sec:
+                with contextlib.suppress(Exception):
+                    candidate_rules.extend(parse_security_rules_xml(cand_sec))
+            if cand_nat:
+                with contextlib.suppress(Exception):
+                    candidate_rules.extend(parse_nat_rules_xml(cand_nat))
+        else:
+            # Live path — collector returns empty scaffold when no api_key
+            collector = self._get_collector()
+            if collector is not None:
+                for rule_type, parser in (
+                    ("security", parse_security_rules_xml),
+                    ("nat", parse_nat_rules_xml),
+                ):
+                    with contextlib.suppress(Exception):
+                        xml_str = collector.fetch_running_config(rule_type)
+                        running_rules.extend(parser(xml_str))
+                # ------------------------------------------------------------------
+                # Step 3 — fetch candidate-config
+                # ------------------------------------------------------------------
+                for rule_type, parser in (
+                    ("security", parse_security_rules_xml),
+                    ("nat", parse_nat_rules_xml),
+                ):
+                    with contextlib.suppress(Exception):
+                        xml_str = collector.fetch_candidate_config(rule_type)
+                        candidate_rules.extend(parser(xml_str))
+
+        # ------------------------------------------------------------------
+        # Step 4 — three-way diff: running vs candidate vs expected scope
+        # ------------------------------------------------------------------
+        running_names = {r["name"] for r in running_rules}
+        candidate_names = {r["name"] for r in candidate_rules}
+
+        # Rules present in candidate but absent from running = pending commit
+        pending_rule_names = candidate_names - running_names
+        pending_commits = bool(pending_rule_names)
+
+        running_map = {r["name"]: r for r in running_rules}
+        candidate_map = {r["name"]: r for r in candidate_rules}
+
+        divergent_rules: List[str] = []
+        # Rules in both that differ (field-level change)
+        for name in running_names & candidate_names:
+            if running_map[name] != candidate_map[name]:
+                divergent_rules.append(name)
+        # Rules only in candidate (pending)
+        divergent_rules.extend(sorted(pending_rule_names))
+        # Rules only in running (removed in candidate)
+        divergent_rules.extend(sorted(running_names - candidate_names))
+
+        # Canon scope check — verify each expected scope type is represented
+        running_types = {r.get("type", "") for r in running_rules}
+        canon_type_map = {
+            "security-policies": "security-rule",
+            "nat-rules": "nat-rule",
+            "threat-prevention-profiles": "threat-profile",
+        }
+        for scope_item in expected_scope:
+            expected_type = canon_type_map.get(scope_item, scope_item)
+            if expected_type not in running_types and running_rules:
+                divergent_rules.append(f"missing-scope:{scope_item}")
+
+        divergent_rules = sorted(set(divergent_rules))
+
+        # ------------------------------------------------------------------
+        # Step 5 — assemble DriftReport
+        # ------------------------------------------------------------------
+        severity = "high" if divergent_rules else "info"
+        if divergent_rules:
+            remediation = (
+                f"Divergent rules detected on {self._host} (vsys={self._vsys}). "
+                f"Review {len(divergent_rules)} rule(s): "
+                f"{', '.join(divergent_rules[:5])}. "
+                "Commit pending changes or reconcile running-config against the "
+                "UIAO canon scope (SC-7 / CM-7 / AC-4)."
+            )
+        else:
+            remediation = (
+                "No drift detected — running-config aligns with candidate-config "
+                "and UIAO canon scope (SC-7 / CM-7 / AC-4)."
+            )
+
+        now = self._now()
         return DriftReport(
-            drift_type="palo-alto-config",
-            severity="info",
-            first_observed=self._now(),
-            last_observed=self._now(),
+            drift_type="palo-alto-rule-divergence",
+            severity=severity,
+            first_observed=now,
+            last_observed=now,
             details={
-                "message": (
-                    "Drift detection scaffold — implement running-config "
-                    "vs candidate-config vs canon baseline comparison."
-                ),
+                "running_rules_count": len(running_rules),
+                "candidate_rules_count": len(candidate_rules),
+                "divergent_rules": divergent_rules,
+                "pending_commits": pending_commits,
                 "adapter": self.ADAPTER_ID,
                 "host": self._host,
                 "vsys": self._vsys,
             },
-            remediation=(
-                "Compare normalize() output of running config against YAML canon SC-7/CM-7/AC-4 control mappings."
-            ),
+            remediation=remediation,
         )
+
+    def _get_collector(self) -> Any:
+        """Return a PaloAltoCollector if the module is importable, else None."""
+        try:
+            from ..collectors.paloalto_collector import PaloAltoCollector  # noqa: PLC0415
+
+            return PaloAltoCollector(
+                host=self._host,
+                api_key=self._config.get("api_key", ""),
+                api_port=self._api_port,
+                vsys=self._vsys,
+                mtls_enabled=self._config.get("mtls_enabled", True),
+                cert_path=self._config.get("cert_path"),
+                key_path=self._config.get("key_path"),
+                verify_path=self._config.get("verify_path"),
+            )
+        except ImportError:
+            return None
 
     # ==================================================================
     # PAN-OS-Specific Extension Methods
@@ -233,20 +387,37 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         rule_type: str,
         rule_name: str,
         config_delta: Dict[str, Any],
+        commit: bool = False,
     ) -> DriftReport:
         """Compare a proposed change against current config and report drift.
 
-        In a full implementation, this would also PUSH the change via
-        PAN-OS XML API and commit. Currently it only reports.
+        When *commit* is ``True`` the change is also pushed to the PAN-OS
+        candidate configuration via the collector and then committed.
+        When *commit* is ``False`` (default) the method is drift-reporting
+        only — no HTTP calls are made.
 
         Args:
-            rule_type: security-rule, nat-rule, or threat-profile
-            rule_name: Name of the rule to modify
-            config_delta: Dict of fields to change
+            rule_type:    security-rule, nat-rule, or threat-profile.
+            rule_name:    Name of the rule to modify.
+            config_delta: Dict of fields to change.
+            commit:       When ``True``, push the edit and issue a commit.
 
         Returns:
-            DriftReport showing what would change.
+            DriftReport showing what would/did change.
         """
+        edit_response: Optional[str] = None
+        commit_response: Optional[str] = None
+
+        if commit:
+            collector = self._get_collector()
+            if collector is not None:
+                vsys_entry = f"/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='{self._vsys}']"
+                xpath = f"{vsys_entry}/rulebase/{rule_type}/rules/entry[@name='{rule_name}']"
+                fields_xml = "".join(f"<{k}>{v}</{k}>" for k, v in config_delta.items())
+                element = f'<entry name="{rule_name}">{fields_xml}</entry>'
+                edit_response = collector.post_config_edit(xpath, element)
+                commit_response = collector.post_commit(description=f"UIAO push_config_change: {rule_type}/{rule_name}")
+
         return DriftReport(
             drift_type="palo-alto-config-change",
             severity="warning",
@@ -258,6 +429,9 @@ class PaloAltoAdapter(DatabaseAdapterBase):
                 "rule_type": rule_type,
                 "rule_name": rule_name,
                 "proposed_changes": config_delta,
+                "committed": commit,
+                "edit_response": edit_response,
+                "commit_response": commit_response,
                 "message": (
                     f"Proposed change to {rule_type}/{rule_name}: {len(config_delta)} field(s). Commit required."
                 ),
