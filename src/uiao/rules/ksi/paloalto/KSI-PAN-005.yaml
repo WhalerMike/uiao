@@ -1,0 +1,81 @@
+ksi_id: KSI-PAN-005
+title: Commit Operations Have Approver Signature in Change Record
+category: configuration-management
+description: >
+  Every Panorama or device-level commit operation that modifies the running
+  configuration must be traceable to a change record that carries an explicit
+  approver signature (approver identity, approval timestamp, and approval
+  reference).  Commits that lack a paired, approved change record violate the
+  configuration-change-control obligations of CM-3, the access-restriction-
+  for-change obligations of CM-5, and the audit-event-generation requirements
+  of AU-2, and introduce unauthorised changes that cannot be reconstructed
+  during an audit.
+security_objective: >
+  Guarantee that every firewall configuration commit is preceded by a formal
+  change-approval record with an identified approver and timestamp, ensuring
+  that no unauthorised or ad-hoc change reaches the running policy and that
+  the full approval chain is available for continuous-monitoring and ATO
+  evidence purposes.
+related_controls:
+  - CM-3
+  - CM-5
+  - AU-2
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero commit operations whose corresponding change record is absent, or
+    whose change record lacks a non-null approver_identity, a non-null
+    approval_timestamp, and a non-empty approval_reference.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT co.commit_id, co.commit_timestamp, co.admin_user,
+           cr.change_record_id, cr.approver_identity,
+           cr.approval_timestamp, cr.approval_reference
+    FROM pan_commit_operations co
+    LEFT JOIN pan_change_records cr
+           ON cr.commit_id = co.commit_id
+    WHERE co.commit_timestamp >= DATEADD(DAY, -90, CURRENT_TIMESTAMP)
+      AND (
+           cr.change_record_id IS NULL
+        OR cr.approver_identity IS NULL OR TRIM(cr.approver_identity) = ''
+        OR cr.approval_timestamp IS NULL
+        OR cr.approval_reference IS NULL OR TRIM(cr.approval_reference) = ''
+      )
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: paloalto.validators.commit_approver_signature
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-15"
+enabled: true
+tags:
+  - palo-alto
+  - ngfw
+  - change-management
+  - commit-approval
+  - cm-3
+  - cm-5
+  - au-2
+severity: HIGH
+nist_mappings:
+  primary: CM-3
+  secondary:
+    - CM-5
+    - AU-2
+fedramp_controls:
+  - CM-3
+  - CM-5
+  - AU-2
+provenance:
+  spec_ref: v0.6.2-paloalto
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3

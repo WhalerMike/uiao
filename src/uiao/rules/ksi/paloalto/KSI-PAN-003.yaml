@@ -1,0 +1,84 @@
+ksi_id: KSI-PAN-003
+title: Threat-Prevention Profile Attached to Every Internet-Facing Rule
+category: boundary-protection
+description: >
+  Every security rule whose traffic traverses an internet-facing zone must
+  reference an active threat-prevention security profile (or profile group)
+  that covers antivirus, anti-spyware, and vulnerability-protection
+  sub-profiles.  Rules that lack a threat-prevention profile attachment allow
+  malicious payloads to traverse the perimeter uninspected, violating the
+  intrusion-detection obligations of SI-4 and malicious-code protection
+  obligations of SI-3, as well as the boundary-protection requirements of SC-7.
+security_objective: >
+  Guarantee that every ingress and egress path through internet-facing
+  firewall rules is subject to inline threat prevention inspection, providing
+  continuous detection of exploits, malware, and command-and-control traffic
+  at the network boundary.
+related_controls:
+  - SC-7
+  - SI-3
+  - SI-4
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero enabled internet-facing security rules whose profile_type is neither
+    'profiles' nor 'group', or whose threat_prevention sub-profile
+    (antivirus, anti-spyware, vulnerability-protection) is NULL or empty.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT r.rule_name, r.rule_uuid,
+           r.source_zone, r.destination_zone,
+           r.profile_type,
+           r.profile_antivirus,
+           r.profile_anti_spyware,
+           r.profile_vulnerability
+    FROM pan_security_rules r
+    WHERE r.enabled = TRUE
+      AND (
+           r.source_zone IN (SELECT zone_name FROM pan_zones WHERE internet_facing = TRUE)
+        OR r.destination_zone IN (SELECT zone_name FROM pan_zones WHERE internet_facing = TRUE)
+      )
+      AND (
+           r.profile_type NOT IN ('profiles', 'group')
+        OR r.profile_antivirus IS NULL OR TRIM(r.profile_antivirus) = ''
+        OR r.profile_anti_spyware IS NULL OR TRIM(r.profile_anti_spyware) = ''
+        OR r.profile_vulnerability IS NULL OR TRIM(r.profile_vulnerability) = ''
+      )
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: paloalto.validators.threat_prevention_profile_attached
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-15"
+enabled: true
+tags:
+  - palo-alto
+  - ngfw
+  - threat-prevention
+  - internet-facing
+  - sc-7
+  - si-3
+  - si-4
+severity: HIGH
+nist_mappings:
+  primary: SC-7
+  secondary:
+    - SI-3
+    - SI-4
+fedramp_controls:
+  - SC-7
+  - SI-3
+  - SI-4
+provenance:
+  spec_ref: v0.6.2-paloalto
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3
