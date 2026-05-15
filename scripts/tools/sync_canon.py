@@ -259,6 +259,11 @@ def render_frontmatter(adapter: dict[str, Any], doc_kind: str, doc_title: str) -
         "derived-from": "uiao/canon (sync_canon.py)",
         "generated": date.today().isoformat(),
     }
+    # Reserved / draft / proposed adapter slots are aspirational by definition;
+    # surface that consistently so the triage_aspirational_signals.py audit
+    # classifies them as "flagged-already" instead of "needs author judgment".
+    if str(adapter["status"]).lower() in {"reserved", "draft", "proposed", "stub"}:
+        fm["aspirational"] = True
     # Drop None values for a clean block
     fm = {k: v for k, v in fm.items() if v is not None}
     yaml_block = yaml.safe_dump(fm, sort_keys=False, default_flow_style=False, allow_unicode=True).rstrip()
