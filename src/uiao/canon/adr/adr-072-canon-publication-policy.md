@@ -1,27 +1,31 @@
 ---
-adr_id: adr-068
+adr_id: adr-072
 title: "Canon Publication Policy — `publish_to_site` Frontmatter Field and Publication-Gap Scanner"
 status: ACCEPTED
 decided: 2026-05-14
 deciders: Michael Stratton
-updated: 2026-05-14
+updated: 2026-05-15
 next_review: 2026-11-01
-review_trigger: Substantive change to the published-site Quarto pipeline; introduction of an auto-include publication mode; first publication-gap scanner CI gate promotion
-impact: Adds optional `publish_to_site` and `publication_style` frontmatter fields recognized by `src/uiao/schemas/metadata-schema.json`; introduces `scripts/scan_publication_gaps.py` as advisory tooling; declares default publication intent per content class
+review_trigger: Substantive change to the published-site Quarto pipeline; introduction of an auto-include publication mode
+impact: Adds optional `publish_to_site` and `publication_style` frontmatter fields recognized by `src/uiao/schemas/metadata-schema.json`; introduces `scripts/scan_publication_gaps.py` as a blocking CI gate (promoted from advisory on 2026-05-15) and as a pre-commit hook; declares default publication intent per content class
 supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-068-canon-publication-policy.html
+published_at: docs/adr/adr-072-canon-publication-policy.html
+enforcement_mode: blocking
+enforcement_promoted_at: 2026-05-15
 ---
 
-# ADR-068: Canon Publication Policy — `publish_to_site` Frontmatter Field and Publication-Gap Scanner
+# ADR-072: Canon Publication Policy — `publish_to_site` Frontmatter Field and Publication-Gap Scanner
 
 ## Status
 
-**ACCEPTED** — 2026-05-14
+**ACCEPTED** — 2026-05-14. Enforcement promoted from advisory to **blocking** on 2026-05-15 after the publication backlog closed (159 / 159 publishable canon docs surfaced; zero gaps; see ADR-068's history below for renumbering note).
+
+> **Note on numbering:** This ADR was originally drafted as ADR-068 in PR #502. After PR #477 landed concurrent ADR-068 (`adr-068-kerberos-ntlm-elimination.md`) the same day, this ADR was renumbered to ADR-072 per the SailPoint NERM precedent (ADR-058 collision, see ADR-059). Companion ADR-067 (Intune-First Asset Onboarding) was renumbered to ADR-071 in the same migration.
 
 ## Context
 
@@ -200,6 +204,10 @@ makes it exit 1 if any gap is detected.
   followed within a defined window (target: scanner promoted to CI
   advisory within 30 days of this ADR; promoted to blocking gate
   after publication backlog closes, target ≤ 90 days).
+  **Resolved 2026-05-15:** The scanner is now wired as a blocking CI
+  gate at `.github/workflows/publication-gap.yml` and as a
+  pre-commit hook at `.pre-commit-config.yaml` (`id: publication-gap`).
+  Backlog closed at 159 / 159 publishable canon docs surfaced.
 
 ## Verification Sources
 
@@ -208,7 +216,7 @@ makes it exit 1 if any gap is detected.
 | Metadata schema | [`src/uiao/schemas/metadata-schema.json`](../../schemas/metadata-schema.json) — `additionalProperties: true` permits new fields | 2026-05-14 |
 | Frontmatter validator | [`scripts/validate_canon_frontmatter.py`](../../../../scripts/validate_canon_frontmatter.py) — runs the schema against `src/uiao/canon/*.md` | 2026-05-14 |
 | Published-site sidebar source | [`docs/_quarto.yml`](../../../../docs/_quarto.yml) — single source of truth for what is on the site | 2026-05-14 |
-| ADR-067 — first promotion that exposed the gap | [`adr-067-intune-first-asset-onboarding.md`](adr-067-intune-first-asset-onboarding.md) | 2026-05-14 |
+| ADR-071 — first promotion that exposed the gap | [`adr-071-intune-first-asset-onboarding.md`](adr-071-intune-first-asset-onboarding.md) | 2026-05-14 |
 
 ## Review Triggers
 
@@ -220,8 +228,8 @@ This ADR must be re-evaluated when any of the following occur:
 - [ ] The metadata schema validator switches to schema-driven
       validation (the schema already has `additionalProperties: true`,
       but a stricter mode might be introduced for the new field)
-- [ ] The publication-gap scanner is promoted from advisory to
-      blocking CI gate
+- [x] The publication-gap scanner is promoted from advisory to
+      blocking CI gate (completed 2026-05-15)
 - [ ] The scanner's default-true rule for `src/uiao/canon/UIAO_*.md`
       proves to mis-classify a substantial fraction (≥ 20%) of canon
       docs, suggesting the default should be flipped or the path
@@ -231,7 +239,7 @@ This ADR must be re-evaluated when any of the following occur:
 ## Related Documents
 
 - [ADR-000 — ADR Process and Lifecycle](adr-000-adr-process.md)
-- [ADR-067 — Intune-First Asset Onboarding](adr-067-intune-first-asset-onboarding.md) (the promotion that exposed the gap this ADR closes)
+- [ADR-071 — Intune-First Asset Onboarding](adr-071-intune-first-asset-onboarding.md) (the promotion that exposed the gap this ADR closes)
 - [`src/uiao/schemas/metadata-schema.json`](../../schemas/metadata-schema.json) — schema updated by this ADR to document the new fields
 - [`scripts/scan_publication_gaps.py`](../../../../scripts/scan_publication_gaps.py) — the scanner introduced by this ADR
 - [`docs/_quarto.yml`](../../../../docs/_quarto.yml) — the publication sidebar the scanner reads

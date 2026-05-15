@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-069-ldap-dependent-application-migration.html
 ---
 
 # ADR-069: LDAP-Dependent Application Migration — Four-Class Migration Pattern

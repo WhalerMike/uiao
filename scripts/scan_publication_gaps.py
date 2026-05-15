@@ -492,7 +492,17 @@ def main() -> int:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Exit 1 if any gap is detected (otherwise always exit 0).",
+        help="Exit 1 if any gap is detected (otherwise always exit 0). "
+        "In --strict mode the scanner is read-only by default — no report "
+        "files are written, so pre-commit / CI gates do not trip the "
+        '"hook modified files" detector. Pass --write-reports to override.',
+    )
+    parser.add_argument(
+        "--write-reports",
+        action="store_true",
+        help="Force writing tools/publication-gaps/report.{md,json} even in "
+        "--strict mode. Default behavior writes reports in advisory mode "
+        "and skips writing in --strict mode.",
     )
     parser.add_argument(
         "--json-only",
@@ -502,17 +512,21 @@ def main() -> int:
     args = parser.parse_args()
 
     candidates = scan()
-
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    REPORT_MD.write_text(render_markdown_report(candidates), encoding="utf-8")
-    REPORT_JSON.write_text(render_json_report(candidates), encoding="utf-8")
-
     gap_count = sum(1 for c in candidates if c.publish_to_site and not c.in_sidebar)
+
+    # Read-only by default in --strict mode (so pre-commit / CI do not see
+    # files modified by this hook). Always write in advisory mode.
+    write_reports = args.write_reports or not args.strict
+    if write_reports:
+        REPORT_DIR.mkdir(parents=True, exist_ok=True)
+        REPORT_MD.write_text(render_markdown_report(candidates), encoding="utf-8")
+        REPORT_JSON.write_text(render_json_report(candidates), encoding="utf-8")
 
     if not args.json_only:
         print(render_summary_table(candidates))
-        print(f"Full report:    {REPORT_MD.relative_to(REPO_ROOT)}")
-        print(f"JSON report:    {REPORT_JSON.relative_to(REPO_ROOT)}")
+        if write_reports:
+            print(f"Full report:    {REPORT_MD.relative_to(REPO_ROOT)}")
+            print(f"JSON report:    {REPORT_JSON.relative_to(REPO_ROOT)}")
         print(f"Gap count:      {gap_count}")
         if gap_count > 0 and not args.strict:
             print("Mode:           ADVISORY (use --strict to fail on gaps)")
