@@ -49,36 +49,7 @@ The tier classification model used throughout this series was established in Par
 
 What is important to state explicitly at this point is that the three baselines described here are not three points on a single sliding scale of restriction. They are three distinct configuration profiles, each targeting a specific threat model appropriate to the server population it governs. Tier0 servers are targeted by adversaries who understand that compromising the governance substrate is the highest-leverage attack against an organization's security architecture. Tier2 servers face a broader but less sophisticated threat surface. The controls in each baseline are selected for the threat model of that tier, not simply dialed up or down from a shared template.
 
-```{mermaid}
-graph TB
-    subgraph "Tier0 - Substrate (DCs, KMS, PKI, Entra Connect)"
-        T0A["BitLocker: TPM + PIN"]
-        T0B["WDAC: enforcement mode"]
-        T0C["RDP off, WinRM only"]
-        T0D["Credential Guard on"]
-        T0E["Audit: maximum verbosity"]
-        T0F["LAPS: 8 hour rotation"]
-        T0G["SMBv1 / LLMNR / NetBIOS off"]
-        T0H["PS Constrained Language Mode"]
-        T0I["OrgPath integrity check: 6h"]
-    end
-    subgraph "Tier1 - Production workloads"
-        T1A["BitLocker: TPM only"]
-        T1B["RDP restricted to admin group"]
-        T1C["Audit: elevated (logon, account mgmt)"]
-        T1D["LAPS: 24 hour rotation"]
-        T1E["SMBv1 / LLMNR off"]
-        T1F["OrgPath integrity check: 24h"]
-    end
-    subgraph "Tier2 - Standard organizational"
-        T2A["BitLocker: TPM only"]
-        T2B["Defender real-time on"]
-        T2C["Audit: standard subcategories"]
-        T2D["LAPS: 72 hour rotation"]
-        T2E["SMBv1 off"]
-        T2F["OrgPath integrity check: 72h"]
-    end
-```
+[DIAGRAM-01: Three-tier comparison matrix arranged as three labeled vertical columns of increasing color saturation top-down (most restrictive at top). Column "Tier0 — Substrate (DCs, KMS, PKI, Entra Connect)" lists nine control rows: BitLocker (TPM + PIN); WDAC (enforcement mode); RDP off, WinRM only; Credential Guard on; Audit (maximum verbosity); LAPS (8 hour rotation); SMBv1 / LLMNR / NetBIOS off; PS Constrained Language Mode; OrgPath integrity check (6h). Column "Tier1 — Production workloads" lists six rows: BitLocker (TPM only); RDP restricted to admin group; Audit (elevated — logon, account mgmt); LAPS (24 hour rotation); SMBv1 / LLMNR off; OrgPath integrity check (24h). Column "Tier2 — Standard organizational" lists six rows: BitLocker (TPM only); Defender real-time on; Audit (standard subcategories); LAPS (72 hour rotation); SMBv1 off; OrgPath integrity check (72h). The matrix is a static comparison — no arrows between columns; each cell stands alone. Engineering blueprint style, deeper federal-navy (#1F3A5F) fill for Tier0, mid teal (#1A9E8F) for Tier1, light slate for Tier2, monospace control values, 16:9 landscape.]
 
 ### Tier0: Infrastructure Hardening Baseline
 
@@ -110,26 +81,7 @@ Guest Configuration packages are authored in PowerShell DSC and compiled using t
 
 The authoring workstation or pipeline agent must have all four modules installed before any of the DSC configuration scripts in this chapter can be dot-sourced and compiled. Module installation is a one-time environment setup step and is not part of the per-tier compilation workflow. Once the authoring environment is prepared, the workflow for each tier is: dot-source the configuration script, invoke the configuration function to compile the MOF, pass the MOF to New-GuestConfigurationPackage to produce the zip archive, compute the SHA256 hash of the zip, and upload the zip to the Azure Blob Storage container that the policy definitions reference.
 
-```{mermaid}
-graph LR
-    DSC["PowerShell DSC config<br/>OrgPath_TierN_Baseline.ps1"]
-    MOF["Compiled MOF<br/>declarative state document"]
-    PKG["Guest Configuration package<br/>.zip archive"]
-    BLOB["Azure Blob Storage<br/>stable URL + SHA256 hash"]
-    POL["Azure Policy definition<br/>references URL + hash"]
-    ASSIGN["Policy Assignment<br/>scoped by OrgTier tag"]
-    EXT["Arc Guest Configuration extension<br/>on each Arc-enrolled machine"]
-    STATE["Compliance state<br/>Compliant / NonCompliant / Pending"]
-    DASH["Azure Policy compliance<br/>+ Resource Graph + Sentinel"]
-    DSC -->|"Configuration cmdlet"| MOF
-    MOF -->|"New-GuestConfigurationPackage"| PKG
-    PKG -->|"upload"| BLOB
-    BLOB -->|"referenced by"| POL
-    POL -->|"assigned at MG scope"| ASSIGN
-    ASSIGN -->|"OrgTier match condition"| EXT
-    EXT -->|"applies DSC + reports back"| STATE
-    STATE --> DASH
-```
+[DIAGRAM-02: Left-to-right linear pipeline diagram of nine sequential build-and-deploy stages connected by labeled arrows. Stage 1 box "PowerShell DSC config — OrgPath_TierN_Baseline.ps1" → arrow labeled "Configuration cmdlet" → Stage 2 "Compiled MOF — declarative state document" → arrow labeled "New-GuestConfigurationPackage" → Stage 3 "Guest Configuration package — .zip archive" → arrow labeled "upload" → Stage 4 "Azure Blob Storage — stable URL + SHA256 hash" → arrow labeled "referenced by" → Stage 5 "Azure Policy definition — references URL + hash" → arrow labeled "assigned at MG scope" → Stage 6 "Policy Assignment — scoped by OrgTier tag" → arrow labeled "OrgTier match condition" → Stage 7 "Arc Guest Configuration extension — on each Arc-enrolled machine" → arrow labeled "applies DSC + reports back" → Stage 8 "Compliance state — Compliant / NonCompliant / Pending" → unlabeled arrow → Stage 9 "Azure Policy compliance + Resource Graph + Sentinel". Engineering blueprint style, monospace filenames and cmdlet names on the arrows, neutral slate, federal navy (#1F3A5F) accents, 16:9 landscape.]
 
 ### Tier0 DSC Configuration
 
