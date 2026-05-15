@@ -19,6 +19,9 @@ hrit_traceability:
   - "Solicitation 24322626R0007 Amd 4, Appendix B p. 82 — Integration Layer Requirements"
   - "Solicitation 24322626R0007 Amd 4, Appendix B p. 84 — Core-HCM API Boundary"
   - "Q&A #149 — APIM access scope"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-053-opm-azure-apim-adapter.html
 ---
 
 # ADR-053: OPM Azure APIM Integration Adapter — Centralized Federal API Gateway Authority

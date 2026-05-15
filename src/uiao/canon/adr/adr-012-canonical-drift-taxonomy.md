@@ -4,6 +4,9 @@ adr: "ADR-012"
 status: ACCEPTED
 date: "2026-02-01"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-012-canonical-drift-taxonomy.html
 ---
 
 # ADR-012: Canonical Drift Taxonomy

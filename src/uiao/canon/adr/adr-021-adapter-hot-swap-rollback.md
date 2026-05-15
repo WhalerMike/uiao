@@ -4,6 +4,9 @@ adr: "ADR-021"
 status: ACCEPTED
 date: "2026-02-22"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-021-adapter-hot-swap-rollback.html
 ---
 
 # ADR-021: Adapter Hot-Swap and Rollback

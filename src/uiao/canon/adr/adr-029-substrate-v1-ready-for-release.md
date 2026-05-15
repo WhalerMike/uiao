@@ -5,6 +5,9 @@ status: ACCEPTED
 date: "2026-04-17"
 deciders: ["WhalerMike"]
 extends: ["ADR-028"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-029-substrate-v1-ready-for-release.html
 ---
 
 # ADR-029: Substrate v1 Ready for Release

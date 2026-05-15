@@ -7,8 +7,11 @@ owner: "Michael Stratton"
 created_at: "2026-05-13"
 updated_at: "2026-05-14"
 boundary: GCC-Moderate
-canon_anchor: ADR-067
+canon_anchor: ADR-071
 platform: mobile
+publish_to_site: true
+publication_style: narrative
+published_at: docs/modernization/intune-first.qmd
 ---
 
 # Platform Annex — Mobile (iOS/iPadOS and Android Enterprise)

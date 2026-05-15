@@ -4,6 +4,9 @@ adr: "ADR-024"
 status: ACCEPTED
 date: "2026-03-03"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-024-evidence-diffing.html
 ---
 
 # ADR-024: Evidence Diffing

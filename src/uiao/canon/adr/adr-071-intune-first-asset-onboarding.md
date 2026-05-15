@@ -1,5 +1,5 @@
 ---
-adr_id: adr-067
+adr_id: adr-071
 title: "Intune-First Asset Onboarding — All-Platform Doctrine for Net-New Assets"
 status: ACCEPTED
 decided: 2026-05-14
@@ -12,9 +12,12 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-071-intune-first-asset-onboarding.html
 ---
 
-# ADR-067: Intune-First Asset Onboarding — All-Platform Doctrine for Net-New Assets
+# ADR-071: Intune-First Asset Onboarding — All-Platform Doctrine for Net-New Assets
 
 ## Status
 

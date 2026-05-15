@@ -37,6 +37,9 @@ related_discussions:
   - https://www.fedramp.gov/rfcs/0014/
   - https://www.fedramp.gov/rfcs/0024/
   - https://github.com/FedRAMP/community/discussions/2
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-047-fedramp-20x-integration.html
 ---
 
 # ADR-047: FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption

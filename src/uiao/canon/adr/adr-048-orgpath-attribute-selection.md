@@ -5,6 +5,9 @@ adr: "ADR‑048"
 status: Accepted
 date: "2026-04-28"
 deciders: Michael Stratton
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-048-orgpath-attribute-selection.html
 ---
 
 # ADR‑048: OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes

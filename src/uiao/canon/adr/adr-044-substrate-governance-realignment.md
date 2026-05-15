@@ -10,6 +10,9 @@ related:
   - ADR-028  # monorepo consolidation
   - ADR-031  # namespace package rename (superseded by ADR-032)
   - ADR-032  # single-package consolidation
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-044-substrate-governance-realignment.html
 ---
 
 # ADR-044: Substrate Governance Realignment to Post-ADR-032 Single Package

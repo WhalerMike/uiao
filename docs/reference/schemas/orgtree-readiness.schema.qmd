@@ -1,0 +1,592 @@
+---
+title: "UIAO OrgTree Readiness Bundle Schema"
+subtitle: "Schema Reference · orgtree-readiness.schema.json"
+date: 2026-05-14
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../../src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/orgtree-readiness/orgtree-readiness.schema.json`
+:::
+
+## Description
+
+Schema for the UIAO OrgTree Readiness evidence bundle (WS-A5). Captures the AD forest archaeological survey output, OrgPath/Intune/ARC readiness plans, and HMAC-signed provenance for FedRAMP-Moderate evidence pipelines.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `version` | string | ✓ | Semantic version of the bundle format. |
+| `generated_at` | string | ✓ | ISO 8601 UTC timestamp when this bundle was generated. |
+| `users` | array&lt;`$ref: #/definitions/adUser`&gt; | ✓ | AD user objects captured during the survey. |
+| `groups` | array&lt;`$ref: #/definitions/adGroup`&gt; | ✓ | AD group objects captured during the survey. |
+| `computers` | array&lt;`$ref: #/definitions/adComputer`&gt; | ✓ | AD computer (workstation) objects captured during the survey. |
+| `servers` | array&lt;`$ref: #/definitions/adComputer`&gt; | ✓ | AD server objects captured during the survey. |
+| `orgpath_plan` | `$ref: #/definitions/orgpathPlan` | ✓ | OrgPath assignment readiness plan derived from the AD survey. |
+| `intune_plan` | `$ref: #/definitions/intunePlan` | ✓ | Intune device-enrollment readiness plan derived from the AD survey. |
+| `arc_plan` | `$ref: #/definitions/arcPlan` | ✓ | Azure Arc server-onboarding readiness plan derived from the AD survey. |
+| `findings` | array&lt;`$ref: #/definitions/driftFinding`&gt; | ✓ | Drift findings emitted during the survey (DRIFT-IDENTITY, DRIFT-SCHEMA, DRIFT-PROVENANCE, DRIFT-SEMANTIC). |
+| `provenance` | `$ref: #/definitions/bundleProvenance` | ✓ | Bundle provenance: canon references, source survey hash, and HMAC-SHA256 signature. |
+| `spn_inventory` | `$ref: #/definitions/spnInventory` |  | Optional Service Principal Name inventory artifact (MSSQLSvc/* and related service-class SPNs) captured during the AD survey. Pre/post-migration phase-tagged. Drives Kerberos delegation-chain preservation and Azure SSOT stack identity-foundation evidence per the Federal SSOT Alignment whitepaper §3.3 and OrgPath Narrative chapter 07a. |
+
+## Full Schema
+
+```{.json filename="orgtree-readiness.schema.json"}
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/orgtree-readiness/orgtree-readiness.schema.json",
+  "title": "UIAO OrgTree Readiness Bundle Schema",
+  "description": "Schema for the UIAO OrgTree Readiness evidence bundle (WS-A5). Captures the AD forest archaeological survey output, OrgPath/Intune/ARC readiness plans, and HMAC-signed provenance for FedRAMP-Moderate evidence pipelines.",
+  "type": "object",
+  "required": [
+    "version",
+    "generated_at",
+    "users",
+    "groups",
+    "computers",
+    "servers",
+    "orgpath_plan",
+    "intune_plan",
+    "arc_plan",
+    "findings",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the bundle format.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+].+)?$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this bundle was generated."
+    },
+    "users": {
+      "type": "array",
+      "description": "AD user objects captured during the survey.",
+      "items": {
+        "$ref": "#/definitions/adUser"
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "AD group objects captured during the survey.",
+      "items": {
+        "$ref": "#/definitions/adGroup"
+      }
+    },
+    "computers": {
+      "type": "array",
+      "description": "AD computer (workstation) objects captured during the survey.",
+      "items": {
+        "$ref": "#/definitions/adComputer"
+      }
+    },
+    "servers": {
+      "type": "array",
+      "description": "AD server objects captured during the survey.",
+      "items": {
+        "$ref": "#/definitions/adComputer"
+      }
+    },
+    "orgpath_plan": {
+      "$ref": "#/definitions/orgpathPlan",
+      "description": "OrgPath assignment readiness plan derived from the AD survey."
+    },
+    "intune_plan": {
+      "$ref": "#/definitions/intunePlan",
+      "description": "Intune device-enrollment readiness plan derived from the AD survey."
+    },
+    "arc_plan": {
+      "$ref": "#/definitions/arcPlan",
+      "description": "Azure Arc server-onboarding readiness plan derived from the AD survey."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Drift findings emitted during the survey (DRIFT-IDENTITY, DRIFT-SCHEMA, DRIFT-PROVENANCE, DRIFT-SEMANTIC).",
+      "items": {
+        "$ref": "#/definitions/driftFinding"
+      }
+    },
+    "provenance": {
+      "$ref": "#/definitions/bundleProvenance",
+      "description": "Bundle provenance: canon references, source survey hash, and HMAC-SHA256 signature."
+    },
+    "spn_inventory": {
+      "$ref": "#/definitions/spnInventory",
+      "description": "Optional Service Principal Name inventory artifact (MSSQLSvc/* and related service-class SPNs) captured during the AD survey. Pre/post-migration phase-tagged. Drives Kerberos delegation-chain preservation and Azure SSOT stack identity-foundation evidence per the Federal SSOT Alignment whitepaper \u00a73.3 and OrgPath Narrative chapter 07a."
+    }
+  },
+  "definitions": {
+    "adUser": {
+      "type": "object",
+      "description": "Minimal AD user record from the survey pass.",
+      "required": [
+        "dn"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "dn": {
+          "type": "string",
+          "description": "Canonical distinguished name."
+        },
+        "sam_account_name": {
+          "type": "string"
+        },
+        "user_principal_name": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "orgpath": {
+          "type": "string",
+          "description": "Resolved OrgPath (ORG-XX or empty when unresolved)."
+        },
+        "source_forest": {
+          "type": "string"
+        },
+        "last_logon_timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "adGroup": {
+      "type": "object",
+      "description": "AD group record from the survey pass.",
+      "required": [
+        "dn"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "dn": {
+          "type": "string"
+        },
+        "sam_account_name": {
+          "type": "string"
+        },
+        "group_scope": {
+          "type": "string",
+          "enum": [
+            "DomainLocal",
+            "Global",
+            "Universal"
+          ]
+        },
+        "group_type": {
+          "type": "string",
+          "enum": [
+            "Security",
+            "Distribution"
+          ]
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_forest": {
+          "type": "string"
+        }
+      }
+    },
+    "adComputer": {
+      "type": "object",
+      "description": "AD computer or server record from the survey pass.",
+      "required": [
+        "dn"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "dn": {
+          "type": "string"
+        },
+        "dns_host_name": {
+          "type": "string"
+        },
+        "operating_system": {
+          "type": "string"
+        },
+        "operating_system_version": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "last_logon_timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_forest": {
+          "type": "string"
+        }
+      }
+    },
+    "orgpathPlan": {
+      "type": "object",
+      "description": "OrgPath assignment readiness plan.",
+      "additionalProperties": true,
+      "properties": {
+        "total_users": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resolved_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolved_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unresolved_dns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ou_orgpath_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "intunePlan": {
+      "type": "object",
+      "description": "Intune device-enrollment readiness plan.",
+      "additionalProperties": true,
+      "properties": {
+        "total_computers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enroll_ready_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enroll_blocked_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_dns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "readiness_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "arcPlan": {
+      "type": "object",
+      "description": "Azure Arc server-onboarding readiness plan.",
+      "additionalProperties": true,
+      "properties": {
+        "total_servers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onboard_ready_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onboard_blocked_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_dns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "readiness_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "driftFinding": {
+      "type": "object",
+      "description": "A single drift finding emitted by the AD survey.",
+      "required": [
+        "drift_class",
+        "severity",
+        "path",
+        "detail"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "drift_class": {
+          "type": "string",
+          "enum": [
+            "DRIFT-SCHEMA",
+            "DRIFT-SEMANTIC",
+            "DRIFT-PROVENANCE",
+            "DRIFT-IDENTITY"
+          ],
+          "description": "Five-class drift taxonomy per UIAO DriftDetectionStandard."
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "description": "Canonical object path or distinguished name."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Human-readable description of the finding."
+        },
+        "error_code": {
+          "type": "string",
+          "description": "GOV-MIG-NNN or GOV-DRF-NNN error code."
+        },
+        "object_type": {
+          "type": "string",
+          "description": "AD object type (User, Computer, OU, GPO, ServiceAccount, Site)."
+        },
+        "source_forest": {
+          "type": "string"
+        },
+        "suggested_orgpath": {
+          "type": "string",
+          "description": "Best-effort OrgPath candidate; empty when unresolvable."
+        }
+      }
+    },
+    "bundleProvenance": {
+      "type": "object",
+      "description": "Provenance block: canon document references, source hash, and HMAC signature.",
+      "required": [
+        "schema_id",
+        "schema_version",
+        "source_hash",
+        "signature",
+        "hmac_alg"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "description": "$id of the validating JSON Schema."
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "Version of the schema used to validate this bundle."
+        },
+        "canon_refs": {
+          "type": "array",
+          "description": "UIAO_NNN canon document IDs referenced by this bundle.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_hash": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the canonicalized survey input JSON.",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "signature": {
+          "type": "string",
+          "description": "HMAC-SHA256 hex digest of the canonicalized bundle content (env var UIAO_BUNDLE_HMAC_KEY).",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "hmac_alg": {
+          "type": "string",
+          "description": "HMAC algorithm identifier.",
+          "enum": [
+            "hmac-sha256"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "description": "Identity that produced this bundle (CLI invocation context)."
+        }
+      }
+    },
+    "spnInventory": {
+      "type": "object",
+      "description": "Service Principal Name inventory artifact. Captures MSSQLSvc/* (and related service-class) SPNs registered in the AD forest, with pre/post-migration phase tagging, OrgPath attribution, and drift-finding back-reference when the SPN cannot be attributed to a verified organizational position.",
+      "required": [
+        "phase",
+        "discovery_timestamp",
+        "discovery_method",
+        "records"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": [
+            "pre_migration",
+            "post_migration",
+            "unspecified"
+          ],
+          "description": "Migration phase the inventory was captured in. 'unspecified' is used when the caller does not assert a migration phase (e.g. baseline scans outside of a migration window)."
+        },
+        "discovery_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp when the SPN enumeration was performed."
+        },
+        "discovery_method": {
+          "type": "string",
+          "enum": [
+            "AD-SPN-LDAP",
+            "AD-SPN-POWERSHELL",
+            "AD-SPN-DSQUERY"
+          ],
+          "description": "Mechanism used to enumerate SPNs from the directory. AD-SPN-LDAP is the survey adapter's default."
+        },
+        "discovery_scope": {
+          "type": "string",
+          "description": "Free-form scope label (domain DN, forest root, or 'GC://forest-root' for Global Catalog queries)."
+        },
+        "service_class_filter": {
+          "type": "array",
+          "description": "Service-class prefixes the inventory was filtered to. Empty/omitted means MSSQLSvc only.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "description": "Per-SPN records.",
+          "items": {
+            "$ref": "#/definitions/spnRecord"
+          }
+        }
+      }
+    },
+    "spnRecord": {
+      "type": "object",
+      "description": "Single SPN registration record. One row per SPN string (a principal with N MSSQLSvc SPNs produces N records).",
+      "required": [
+        "spn",
+        "service_class",
+        "principal_name",
+        "object_class"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "spn": {
+          "type": "string",
+          "description": "Full SPN string, e.g. 'MSSQLSvc/sql01.corp.example.com:1433'."
+        },
+        "service_class": {
+          "type": "string",
+          "description": "Service-class prefix of the SPN, e.g. 'MSSQLSvc'."
+        },
+        "host_or_fqdn": {
+          "type": "string",
+          "description": "Hostname or FQDN portion of the SPN (everything after the service class, before the first ':')."
+        },
+        "port_or_instance": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Port number (e.g. '1433') or named instance ('SQL2K22'); null when the SPN has no ':' suffix."
+        },
+        "principal_name": {
+          "type": "string",
+          "description": "Common name of the AD principal that registered the SPN."
+        },
+        "sam_account_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "object_class": {
+          "type": "string",
+          "enum": [
+            "user",
+            "computer",
+            "msDS-GroupManagedServiceAccount",
+            "msDS-ManagedServiceAccount",
+            "other"
+          ],
+          "description": "AD objectClass of the SPN-registering principal."
+        },
+        "distinguished_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "when_created": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "when_changed": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "principal_orgpath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "OrgPath of the SPN-registering principal (preferred attribution hook). Null when the principal cannot be resolved to an OrgPath."
+        },
+        "hosting_computer_orgpath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "OrgPath of the hosting computer derived from host_or_fqdn (fallback attribution hook). Null when the host computer cannot be resolved."
+        },
+        "drift_finding_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reference (path or error_code) into the bundle 'findings' array when neither principal_orgpath nor hosting_computer_orgpath resolves and a DRIFT-IDENTITY finding has been emitted. Null when attribution succeeded."
+        }
+      }
+    }
+  }
+}
+```

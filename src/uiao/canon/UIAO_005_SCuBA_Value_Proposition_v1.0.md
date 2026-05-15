@@ -9,6 +9,9 @@ author: "Michal Doroszewski"
 created_at: "2026-04-18"
 updated_at: "2026-04-18"
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/canon/UIAO_005_SCuBA_Value_Proposition_v1.0.html
 audience: "CISOs, Federal Modernization Leads, Venture Capital, Analysts, Agency Security Architects"
 provenance:
   source: "inbox/UIAO SCuBA Value Proposition - Two-Way Governance Architecture/UIAO SCuBA Value Proposition - Two-Way Governance Architecture.docx"

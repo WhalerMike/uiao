@@ -4,6 +4,9 @@ adr: "ADR-006"
 status: ACCEPTED
 date: "2026-01-15"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-006-evidence-determinism.html
 ---
 
 # ADR-006: Evidence Determinism

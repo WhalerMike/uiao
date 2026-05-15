@@ -18,6 +18,9 @@ related:
   - ADR-052  # PIV / USAccess Adapter (cardholder identity binding)
   - ADR-054  # Single-ATO Reciprocity Model (downstream consumer of bundle integrity)
   - ADR-056  # Login.gov Federation Service Activation (Stage 2)
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-066-application-aware-networking-and-token-bound-transport.html
 ---
 
 # ADR-066: Application-Aware Networking and Token-Bound Transport Plane

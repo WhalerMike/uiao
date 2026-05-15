@@ -22,6 +22,9 @@ canon_refs:
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
   - UIAO_135_identity-directory-transformation-inventory
   - UIAO_136_priority1-transformation-project-plans
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-049-microsoft-adapter-coverage-expansion.html
 ---
 
 # ADR-049: Microsoft Modernization Adapter Coverage Expansion

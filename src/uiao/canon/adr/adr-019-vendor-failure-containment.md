@@ -4,6 +4,9 @@ adr: "ADR-019"
 status: ACCEPTED
 date: "2026-02-18"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-019-vendor-failure-containment.html
 ---
 
 # ADR-019: Vendor Failure Containment

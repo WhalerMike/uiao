@@ -21,7 +21,7 @@ risk: "Non-deterministic policy application without clean device groups"
 | Adapter | Use Case | Operational canon |
 |---|---|---|
 | sccm-intune/ | SCCM co-management to full Intune transition (existing AD-joined fleet) | This interface + the directory-migration five-phase process |
-| intune-native/ | Greenfield Intune deployment (net-new asset acquisition) | [`src/uiao/modernization/intune-first-onboarding/`](../../../intune-first-onboarding/README.md), anchored by [ADR-067](../../../../canon/adr/adr-067-intune-first-asset-onboarding.md) |
+| intune-native/ | Greenfield Intune deployment (net-new asset acquisition) | [`src/uiao/modernization/intune-first-onboarding/`](../../../intune-first-onboarding/README.md), anchored by [ADR-071](../../../../canon/adr/adr-071-intune-first-asset-onboarding.md) |
 
 The `intune-native/` operational canon was hoisted from a sub-adapter
 folder under this directory to a top-level sibling under
@@ -58,4 +58,4 @@ See [`src/uiao/modernization/intune-first-onboarding/process.md`](../../../intun
 
 ## Onboarding Sequence (intune-native)
 
-Net-new assets follow the five-phase Intune-first onboarding process (Procure → Pre-stage → Position → Provision → Validate) defined in [`src/uiao/modernization/intune-first-onboarding/process.md`](../../../intune-first-onboarding/process.md). Doctrine is anchored by [ADR-067](../../../../canon/adr/adr-067-intune-first-asset-onboarding.md).
+Net-new assets follow the five-phase Intune-first onboarding process (Procure → Pre-stage → Position → Provision → Validate) defined in [`src/uiao/modernization/intune-first-onboarding/process.md`](../../../intune-first-onboarding/process.md). Doctrine is anchored by [ADR-071](../../../../canon/adr/adr-071-intune-first-asset-onboarding.md).

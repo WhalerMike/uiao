@@ -1,0 +1,163 @@
+---
+title: "UIAO Reciprocal-Consumption Entitlement Registry Schema"
+subtitle: "Schema Reference · registry.schema.json"
+date: 2026-05-14
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/reciprocal-consumption/registry.schema.json`](../../../src/uiao/schemas/reciprocal-consumption/registry.schema.json)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/reciprocal-consumption/registry.schema.json`
+:::
+
+## Description
+
+JSON Schema for the UIAO reciprocal-consumption entitlement registry. Entitlements authorize a consumer (federal agency, state, employer, or external party) to fetch a specific attribute from an authority of record under a documented legal basis. Required reading: UIAO_141 §6 (Reciprocal-Consumption Entitlements) and UIAO_142 §5 (Reciprocity provisioning). Every entitlement MUST cite a legal basis (Privacy Act SORN routine use, CMPPA matching agreement, statute, or customer consent reference) — CI rejects entitlements without one. Established by ADR-055.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema-version` | string | ✓ | Semantic version of this registry document schema. |
+| `updated` | string |  | ISO 8601 date of the most recent registry update. |
+| `entitlements` | array&lt;`$ref: #/definitions/entitlement`&gt; | ✓ | Ordered list of reciprocal-consumption entitlement entries. |
+
+## Full Schema
+
+```{.json filename="registry.schema.json"}
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/reciprocal-consumption/registry.schema.json",
+  "title": "UIAO Reciprocal-Consumption Entitlement Registry Schema",
+  "description": "JSON Schema for the UIAO reciprocal-consumption entitlement registry. Entitlements authorize a consumer (federal agency, state, employer, or external party) to fetch a specific attribute from an authority of record under a documented legal basis. Required reading: UIAO_141 \u00a76 (Reciprocal-Consumption Entitlements) and UIAO_142 \u00a75 (Reciprocity provisioning). Every entitlement MUST cite a legal basis (Privacy Act SORN routine use, CMPPA matching agreement, statute, or customer consent reference) \u2014 CI rejects entitlements without one. Established by ADR-055.",
+  "type": "object",
+  "required": [
+    "schema-version",
+    "entitlements"
+  ],
+  "properties": {
+    "schema-version": {
+      "type": "string",
+      "description": "Semantic version of this registry document schema.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the most recent registry update."
+    },
+    "entitlements": {
+      "type": "array",
+      "description": "Ordered list of reciprocal-consumption entitlement entries.",
+      "items": {
+        "$ref": "#/definitions/entitlement"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "entitlement": {
+      "type": "object",
+      "required": [
+        "id",
+        "attribute_id",
+        "authority_of_record",
+        "consumer_principal",
+        "legal_basis",
+        "scope",
+        "freshness_window_hours",
+        "effective_date",
+        "signed_by"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Kebab-case stable identifier for the entitlement; never renamed once assigned. Format: <consumer>-<attribute>-<seq>, e.g. irs-ssa-ssn-001.",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "attribute_id": {
+          "type": "string",
+          "description": "Canonical attribute identifier in the form <authority>.<attribute>, e.g. ssa.ssn, irs.tin, gsa.uei, uscis.immigration-status.",
+          "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$"
+        },
+        "authority_of_record": {
+          "type": "string",
+          "description": "Adapter ID of the authority that owns the attribute. Must resolve to an entry in adapter-registry.yaml or modernization-registry.yaml.",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "consumer_principal": {
+          "type": "string",
+          "description": "The principal entitled to consume the attribute. Free-form: an agency name (e.g., 'irs.gov'), a state DMV ('state.ca.dmv'), an employer ('employer-X'), a customer-consent reference, or a service-principal ID."
+        },
+        "legal_basis": {
+          "type": "object",
+          "description": "Required citation for the legal basis authorizing this entitlement. CI rejects entries without a documented legal basis.",
+          "required": [
+            "type",
+            "citation"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "privacy-act-sorn-routine-use",
+                "cmppa-matching-agreement",
+                "statute",
+                "customer-consent",
+                "interagency-mou"
+              ]
+            },
+            "citation": {
+              "type": "string",
+              "description": "Specific citation (SORN ID + routine-use number; CMPPA agreement ID; U.S.C. section; consent record reference; MOU document ID)."
+            },
+            "url": {
+              "type": "string",
+              "description": "Optional link to the authoritative source.",
+              "format": "uri"
+            }
+          },
+          "additionalProperties": false
+        },
+        "scope": {
+          "type": "array",
+          "description": "Attribute fields the consumer is entitled to. Examples: ['full-ssn'], ['last-four-ssn', 'name'], ['tin', 'tax-year-2024'].",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "freshness_window_hours": {
+          "type": "integer",
+          "description": "Maximum cache age in hours before the consumer must re-fetch from the authority of record. Beyond this window, cached values emit a DRIFT-SEMANTIC finding.",
+          "minimum": 1
+        },
+        "effective_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date the entitlement becomes valid."
+        },
+        "expiry_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date the entitlement expires. Optional; absent means no fixed expiry, but an audit must occur at least annually."
+        },
+        "signed_by": {
+          "type": "string",
+          "description": "Signing identity of the authority of record (PIV-bound DN, service principal ID, or CIO identity)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes. Not machine-consumed."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+```

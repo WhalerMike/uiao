@@ -26,6 +26,9 @@ mandate_traceability:
   - "Privacy Act of 1974 (5 U.S.C. §552a)"
   - "Computer Matching and Privacy Protection Act of 1988"
   - "NIST SP 800-63-3 / -4 (draft) — IAL/AAL/FAL"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-055-customer-identity-canon-block.html
 ---
 
 # ADR-055: Customer Identity Canon Block — KYC Protocol & Reciprocal Attribute Exchange

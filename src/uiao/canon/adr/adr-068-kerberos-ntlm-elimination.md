@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-068-kerberos-ntlm-elimination.html
 ---
 
 # ADR-068: Kerberos / NTLM Elimination — Cloud Kerberos Trust, Certificate-Based Auth, and the NTLM Deprecation Timeline

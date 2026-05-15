@@ -22,6 +22,9 @@ related_findings:
   - FINDING-008
 related_issues:
   - WhalerMike/uiao#322
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-058-microsoft-purview-conformance-adapter-coverage.html
 ---
 
 # ADR-058: Microsoft Purview Conformance Adapter Coverage

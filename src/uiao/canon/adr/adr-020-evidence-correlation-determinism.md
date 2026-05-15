@@ -4,6 +4,9 @@ title: "Evidence Correlation Determinism"
 family: "D - Evidence Fabric"
 status: "Proposed"
 date: "2026-04-07"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-020-evidence-correlation-determinism.html
 ---
 
 # ADR-020 - Evidence Correlation Determinism

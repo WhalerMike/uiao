@@ -4,6 +4,9 @@ adr: "ADR-005"
 status: ACCEPTED
 date: "2026-01-15"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-005-canonical-claim-schema.html
 ---
 
 # ADR-005: Canonical Claim Schema

@@ -4,6 +4,9 @@ adr: "ADR-007"
 status: ACCEPTED
 date: "2026-01-20"
 deciders: ["UIAO Governance Board", "ARB"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-007-multi-cloud-adapter.html
 ---
 
 # ADR-007: Multi-Cloud Adapter Model

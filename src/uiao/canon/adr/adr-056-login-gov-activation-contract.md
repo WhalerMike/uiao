@@ -20,6 +20,9 @@ mandate_traceability:
   - "OMB M-19-17 — Enabling Mission Delivery through Improved ICAM"
   - "OMB M-22-09 — Federal Zero Trust Strategy"
   - "NIST SP 800-63-3 — IAL/AAL/FAL"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-056-login-gov-activation-contract.html
 ---
 
 # ADR-056: Login.gov Federation Service — Activation Contract (Stage 2)

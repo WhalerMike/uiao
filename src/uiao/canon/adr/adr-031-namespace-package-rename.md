@@ -5,6 +5,9 @@ status: ACCEPTED
 date: "2026-04-17"
 deciders: ["WhalerMike"]
 extends: ["ADR-028"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-031-namespace-package-rename.html
 ---
 
 # ADR-031: Rename Python Package `uiao_impl` to `uiao.impl` (PEP 420 Namespace)

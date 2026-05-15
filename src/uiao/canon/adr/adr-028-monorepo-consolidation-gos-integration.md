@@ -5,6 +5,9 @@ status: ACCEPTED
 date: "2026-04-17"
 deciders: ["WhalerMike"]
 supersedes: ["ADR-025 §D7 (federal/commercial firewall with uiao-gos)"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-028-monorepo-consolidation-gos-integration.html
 ---
 
 # ADR-028: Monorepo Consolidation and Integration of `uiao-gos`

@@ -27,6 +27,9 @@ mandate_traceability:
   - "OMB M-22-09 — Federal Zero Trust Strategy (machine-identity governance)"
   - "FICAM (Federal Identity, Credential, and Access Management) — service alignment"
   - "OMB M-19-17 — Enabling Mission Delivery through Improved ICAM"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-059-sailpoint-adapter-family.html
 ---
 
 # ADR-059: SailPoint NERM Adapter — Boundary-Exception Carve-Out and Slot Allocation

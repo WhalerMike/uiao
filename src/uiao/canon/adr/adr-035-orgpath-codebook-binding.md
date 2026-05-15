@@ -15,6 +15,9 @@ canon_refs:
   - UIAO_151_OrgPath_Codebook
   - UIAO_158_OrgPath_JSON_Schema
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-035-orgpath-codebook-binding.html
 ---
 
 # ADR-035: OrgPath Codebook — Executable Canon Binding

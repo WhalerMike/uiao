@@ -4,6 +4,9 @@ adr: "ADR-008"
 status: ACCEPTED
 date: "2026-01-22"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-008-zero-trust-identity.html
 ---
 
 # ADR-008: Zero-Trust Identity Anchoring

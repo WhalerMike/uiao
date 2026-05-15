@@ -21,6 +21,9 @@ hrit_traceability:
   - "OMB M-22-09 — Federal Zero Trust Strategy"
   - "HSPD-12 — Common Identification Standard for Federal Employees and Contractors"
   - "FIPS 201-3 — Personal Identity Verification of Federal Employees and Contractors"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-052-piv-usaccess-adapter.html
 ---
 
 # ADR-052: PIV / USAccess Conformance Adapter — Federal Personnel Trust-Anchor Authority

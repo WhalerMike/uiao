@@ -4,6 +4,9 @@ adr: "ADR-015"
 status: ACCEPTED
 date: "2026-02-08"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-015-adapter-extensibility.html
 ---
 
 # ADR-015: Adapter Extensibility

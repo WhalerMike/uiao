@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-067-ad-security-group-rationalization.html
 ---
 
 # ADR-067: AD Security Group Rationalization — Distribution Lists, Mail-Enabled Groups, and Nested-Group Flattening

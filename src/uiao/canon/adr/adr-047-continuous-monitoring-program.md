@@ -5,6 +5,9 @@ status: PROPOSED
 date: "2026-04-14"
 deciders: ["Michael Stratton"]
 tags: ["continuous-monitoring", "iscm", "scubagear", "fedramp", "nist-800-137", "quarto", "git-lfs", "azure-government"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-047-continuous-monitoring-program.html
 ---
 
 # ADR-047: Continuous Monitoring Program and Customer Documentation Platform Architecture
@@ -1446,7 +1449,7 @@ Summary:
    - UIAO No-Hallucination Protocol: mark as `NEW (Proposed)`, `UNSURE`, `MISSING`
 
 3. Files and Code Sections:
-   
+
    - `/sessions/dreamy-blissful-hamilton/mnt/uiao-docs/docs/customer-documents/` — Scaffolded earlier (45 dirs, 53 files), matches user's canonical spec exactly including unhyphenated filenames like `ats-paloalto.md` inside `palo-alto/` folders.
 
    - `/sessions/dreamy-blissful-hamilton/ARCHITECTURE.md` (24175 bytes, scratchpad) → copied to `/sessions/dreamy-blissful-hamilton/mnt/uiao-core/ARCHITECTURE.md`
@@ -1547,7 +1550,7 @@ Summary:
 
 8. Current Work:
    Immediately before the summary request, I was executing placement of approved architecture docs in all three repositories' working trees (no git commits yet — per user's standing instruction to review before commit). I had just finished:
-   
+
    - Copied `/sessions/dreamy-blissful-hamilton/ARCHITECTURE.md` to `/sessions/dreamy-blissful-hamilton/mnt/uiao-core/ARCHITECTURE.md` (24175 bytes)
    - Copied `/sessions/dreamy-blissful-hamilton/uiao-gos-ARCHITECTURE.md` to `/sessions/dreamy-blissful-hamilton/mnt/uiao-gos/ARCHITECTURE.md` (9865 bytes)
    - Added pointer paragraphs to `uiao-core/README.md`, `uiao-docs/README.md`, and `uiao-gos/README.md`
@@ -1558,7 +1561,7 @@ Summary:
 
 9. Optional Next Step:
    The next step directly in line with user's most recent request ("Approve. Where will they be in the Repository?") is to report the completed staging state back to the user and request explicit commit approval. All five placement actions are complete in working trees but no git commits have been executed, per the user's earlier standing instruction: "Reply and confirm before building anything in the GitHub."
-   
+
    Once the user confirms commit approval, proceed to Step 0a per the established plan, quoted from my earlier message: "On your confirmations I'll (a) patch in the `uiao-gos` details, (b) commit the document to `uiao-core/ARCHITECTURE.md` with short pointer paragraphs added to both READMEs, then (c) start executing step 0a — seeding `canon/adapter-registry.yaml` and `canon/modernization-registry.yaml` in `uiao-core` with the five adapters and six domains already in the scaffold."
 
    The immediate text-only next step: report to user that all files are placed in working trees and ready for commit, list the exact paths and byte sizes, flag the packed-refs issue in uiao-core as something they should investigate before committing, and request explicit go-ahead for the three git commits plus step 0a.
@@ -2023,4 +2026,3 @@ Go Ahead.  Use Track 1.  Keep all of this in a document, including this whole ch
 ADR folder exists — `docs/adr/adr-024` is the latest. I'll place this as `adr-025`. Let me look at the format and check the transcript.
 
 ---
-

@@ -4,6 +4,9 @@ adr: "ADR-014"
 status: ACCEPTED
 date: "2026-02-05"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-014-evidence-severity-model.html
 ---
 
 # ADR-014: Evidence Severity Model

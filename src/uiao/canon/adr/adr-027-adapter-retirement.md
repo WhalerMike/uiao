@@ -4,6 +4,9 @@ adr: "ADR-027"
 status: ACCEPTED
 date: "2026-03-10"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-027-adapter-retirement.html
 ---
 
 # ADR-027: Adapter Retirement

@@ -19,6 +19,9 @@ canon_refs:
   - UIAO_153_Attribute_Mapping_Table
   - UIAO_164_Execution_Substrate_Integration_Layer
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-039-policy-targeting.html
 ---
 
 # ADR-039: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport

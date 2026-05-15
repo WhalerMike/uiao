@@ -4,6 +4,9 @@ adr: "ADR-011"
 status: ACCEPTED
 date: "2026-01-28"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-011-multi-adapter-correlation.html
 ---
 
 # ADR-011: Multi-Adapter Correlation

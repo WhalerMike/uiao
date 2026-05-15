@@ -2,7 +2,7 @@
 
 > **Status:** PROMOTED to canon on **2026-05-14**.
 > Canon location: [`src/uiao/modernization/intune-first-onboarding/`](../../../src/uiao/modernization/intune-first-onboarding/README.md)
-> Doctrinal anchor: [`src/uiao/canon/adr/adr-067-intune-first-asset-onboarding.md`](../../../src/uiao/canon/adr/adr-067-intune-first-asset-onboarding.md)
+> Doctrinal anchor: [`src/uiao/canon/adr/adr-071-intune-first-asset-onboarding.md`](../../../src/uiao/canon/adr/adr-071-intune-first-asset-onboarding.md)
 >
 > This inbox copy is retained as the original draft snapshot (matching the
 > KYC/HRIT precedent of preserving `inbox/.../proposed-canon-additions/`
@@ -79,7 +79,7 @@ the existence of any ungoverned device in the first place.
 | [`README.md`](README.md) | This file — entry point, scope, taxonomy |
 | [`doctrine.md`](doctrine.md) | The five Intune-first doctrine pillars; explicit exception paths |
 | [`process.md`](process.md) | The canonical five-phase onboarding process (Procure → Pre-stage → Position → Provision → Validate) |
-| [`adr-067-intune-first-asset-onboarding.md`](adr-067-intune-first-asset-onboarding.md) | Proposed ADR (draft, next-available number as of 2026-05-13) |
+| [`adr-071-intune-first-asset-onboarding.md`](adr-071-intune-first-asset-onboarding.md) | Proposed ADR (draft, next-available number as of 2026-05-13) |
 | [`procurement-handoff.md`](procurement-handoff.md) | The procurement-side intake checklist that triggers the rest of the process |
 | [`platforms/windows-autopilot.md`](platforms/windows-autopilot.md) | Windows endpoints via Autopilot Device Preparation (v2) |
 | [`platforms/macos-abm-ade.md`](platforms/macos-abm-ade.md) | macOS via Apple Business / School Manager and Automated Device Enrollment |
@@ -104,7 +104,7 @@ the existence of any ungoverned device in the first place.
 - **Not Apple/Google/Samsung product documentation.** Per-platform docs
   here describe the *governance integration*, not vendor-program
   enrollment mechanics that the vendor's own documentation covers.
-- **Does not allocate the final ADR-NNN identifier.** ADR-067 is the
+- **Does not allocate the final ADR-NNN identifier.** ADR-071 is the
   next-available number as of 2026-05-13 and may shift if other PRs land
   first. The registry steward assigns the final number at promotion.
 - **Does not modify** `src/uiao/canon/`, `adapter-registry.yaml`, or
@@ -155,7 +155,7 @@ required justifications and compensating controls.
 If accepted, the suggested promotion sequence is:
 
 ```
-1. ADR-067 alone, with placeholder references to the sibling docs.
+1. ADR-071 alone, with placeholder references to the sibling docs.
    Establishes the doctrine before any operational content lands.
 
 2. doctrine.md + process.md + procurement-handoff.md +

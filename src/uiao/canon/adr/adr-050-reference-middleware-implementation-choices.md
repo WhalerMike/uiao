@@ -17,6 +17,9 @@ related_adrs:
 canon_refs:
   - UIAO_136_priority1-transformation-project-plans
   - "Spec2-D3.1-APIDrivenInboundProvisioningArchitecture (canon/specs/)"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-050-reference-middleware-implementation-choices.html
 ---
 
 # ADR-050: D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices

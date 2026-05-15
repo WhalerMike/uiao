@@ -18,6 +18,9 @@ canon_refs:
 governs:
   - src/uiao/canon/charter/
   - src/uiao/canon/charter-registry.yaml
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-070-foundational-primacy-charter-tier.html
 ---
 
 # ADR-070: Foundational Primacy — Charter Tier and Amendment Process

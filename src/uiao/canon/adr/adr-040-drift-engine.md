@@ -24,6 +24,9 @@ canon_refs:
   - UIAO_163_Drift_Detection_Engine_Specification
   - UIAO_164_Execution_Substrate_Integration_Layer
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-040-drift-engine.html
 ---
 
 # ADR-040: OrgTree Drift Detection Engine — Six-Phase Orchestrator

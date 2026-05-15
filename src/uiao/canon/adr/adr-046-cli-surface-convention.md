@@ -9,6 +9,9 @@ superseded_by: null
 related:
   - ADR-032  # single-package consolidation
   - ADR-044  # substrate governance realignment
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-046-cli-surface-convention.html
 ---
 
 # ADR-046: CLI Surface Convention — Sub-App-per-Domain

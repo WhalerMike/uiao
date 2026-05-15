@@ -27,6 +27,9 @@ canon_refs:
   - UIAO_136  # Priority 1 Transformation Specs — Track 2 sister
   - UIAO_200  # Substrate Manifest — registry resolver
   - UIAO_201  # Workspace Contract — registry resolver
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-060-mod-namespace-flatten-into-uiao-canon.html
 ---
 
 # ADR-060: Flatten MOD_xxx Namespace into UIAO_NNN Canon — Single-Registry Consolidation

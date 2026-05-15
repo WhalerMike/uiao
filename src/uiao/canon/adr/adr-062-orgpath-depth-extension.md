@@ -22,6 +22,9 @@ provenance:
   renumbered_from: "ADR-045"
   renumbered_at: "2026-05-11"
   reason: "ADR-045 number was claimed concurrently by adr-045-scan-redaction-policy.md on main; this ADR was renumbered to the next free slot. The ADR-060 namespace flatten also renamed MOD_A → UIAO_151 and MOD_H → UIAO_158 after this ADR was authored — canon_refs updated to match."
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-062-orgpath-depth-extension.html
 ---
 
 # ADR-062: OrgPath Hierarchy Depth Extension — 4 Levels to 8 Levels

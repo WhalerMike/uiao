@@ -4,6 +4,9 @@ adr: "ADR-009"
 status: ACCEPTED
 date: "2026-01-22"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-009-drift-ledger-immutability.html
 ---
 
 # ADR-009: Drift Ledger Immutability
