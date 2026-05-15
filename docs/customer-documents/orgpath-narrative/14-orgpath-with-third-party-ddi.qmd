@@ -29,32 +29,7 @@ The integration architecture described in this document positions the third-part
 
 The transition from this architecture to the pure Azure-native state described in Part Eight is governed by a migration phase tracking mechanism that this document describes in detail. Each DNS zone and IP network object in the DDI platform carries a MigrationPhase attribute that moves through four states: Assessment, Migration, Parallel, and Complete. Assessment means the object exists in the DDI platform and has been tagged with OrgPath attributes but has no corresponding Azure DNS Private Zone. Migration means an Azure DNS Private Zone has been created but is not yet serving live resolution traffic. Parallel means both the DDI platform zone and the Azure DNS Private Zone are active and serving resolution for their respective client populations — this is the steady-state during the main body of the transition. Complete means the Azure DNS Private Zone is the sole authoritative source, all clients have been redirected, and the DDI platform zone is retired. When every object in the DDI platform carries a MigrationPhase of Complete, the decommissioning criteria described in Chapter Five are met and the DDI platform can be retired.
 
-```{mermaid}
-graph TB
-    REG["OrgTree Registry<br/>(DnsBoundary, NetworkCidr, MigrationPhase)"]
-    PIPE["Governance pipeline<br/>(orchestrator, per-platform adapters)"]
-    REG --> PIPE
-    subgraph "Third-party DDI (unified hybrid management plane)"
-        NIOS["Infoblox NIOS Grid<br/>Extensible Attributes<br/>(WAPI, Basic auth)"]
-        BLOX["Infoblox BloxOne DDI<br/>tags<br/>(CSP API, Bearer token)"]
-        BAM["BlueCat Address Manager<br/>User-Defined Fields<br/>(REST v1, session token)"]
-    end
-    subgraph "Azure-native (target state)"
-        AZDNS["Azure DNS Private Zones<br/>+ Private Resolver"]
-    end
-    PIPE --> NIOS
-    PIPE --> BLOX
-    PIPE --> BAM
-    PIPE --> AZDNS
-    subgraph "MigrationPhase state machine (per zone)"
-        P1["Assessment<br/>(DDI tagged, no Azure zone)"]
-        P2["Migration<br/>(Azure zone created, idle)"]
-        P3["Parallel<br/>(both serving live traffic)"]
-        P4["Complete<br/>(Azure sole authority, DDI retired)"]
-    end
-    P1 --> P2 --> P3 --> P4
-    P3 -.->|"webhook on record change<br/>(NIOS Outbound API / BAM events)"| AZDNS
-```
+[DIAGRAM-01: Top-down diagram combining a fan-out integration view with a horizontal state-machine band. Top-center pair: OrgTree Registry (DnsBoundary, NetworkCidr, MigrationPhase) → Governance pipeline (orchestrator, per-platform adapters). The pipeline fans down into two parallel labeled clusters. Left cluster "Third-party DDI (unified hybrid management plane)" contains three platform boxes side-by-side: Infoblox NIOS Grid — Extensible Attributes (WAPI, Basic auth); Infoblox BloxOne DDI — tags (CSP API, Bearer token); BlueCat Address Manager — User-Defined Fields (REST v1, session token). Right cluster "Azure-native (target state)" contains a single box: Azure DNS Private Zones + Private Resolver. Below both clusters, a horizontal state-machine band labeled "MigrationPhase state machine (per zone)" shows four sequential states connected left-to-right by solid arrows: Assessment (DDI tagged, no Azure zone) → Migration (Azure zone created, idle) → Parallel (both serving live traffic) → Complete (Azure sole authority, DDI retired). A dashed arrow from the "Parallel" state upward to the Azure-native cluster's Private Zones box, labeled "webhook on record change (NIOS Outbound API / BAM events)". Engineering blueprint style, neutral slate, teal (#1A9E8F) for third-party DDI, federal navy (#1F3A5F) for Azure-native, amber (#D4A017) for the state-machine band, 16:9 landscape.]
 
 ## Chapter 2 — Infoblox — Extensible Attributes as the OrgPath Bridge
 

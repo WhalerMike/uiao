@@ -29,40 +29,7 @@ This document covers the complete implementation of that reporting layer. Chapte
 
 ## Chapter 2 — Data Source Architecture and Export Pipeline
 
-```{mermaid}
-graph LR
-    subgraph "Six governance source surfaces"
-        S1["OrgTree registry JSON<br/>(authoritative dimension)"]
-        S2["Intune Graph API<br/>device compliance"]
-        S3["Microsoft Sentinel<br/>drift / PIM / alerts / DLP"]
-        S4["Defender for Cloud<br/>+ Resource Graph"]
-        S5["Azure Policy Guest Config<br/>compliance state"]
-        S6["Entra ID Graph<br/>B2B guest accounts"]
-    end
-    PIPE["Export orchestrator<br/>(PowerShell, daily, cert auth)"]
-    STAGE["Staging directory<br/>(timestamped + -latest JSON files)"]
-    GW["Power BI Gateway"]
-    MODEL["Semantic Model<br/>(7 tables, OrgTree dimension as spine)"]
-    DAX["DAX measure library<br/>(KPIs + RAG status)"]
-    subgraph "Report pages"
-        R1["Per-division Governance Posture"]
-        R2["Executive Summary (RAG)"]
-        R3["Trend Analysis"]
-    end
-    S1 --> PIPE
-    S2 --> PIPE
-    S3 --> PIPE
-    S4 --> PIPE
-    S5 --> PIPE
-    S6 --> PIPE
-    PIPE --> STAGE
-    STAGE --> GW
-    GW --> MODEL
-    MODEL --> DAX
-    DAX --> R1
-    DAX --> R2
-    DAX --> R3
-```
+[DIAGRAM-01: Left-to-right end-to-end reporting pipeline diagram. Far-left labeled cluster "Six governance source surfaces" stacks six boxes: OrgTree registry JSON (authoritative dimension); Intune Graph API (device compliance); Microsoft Sentinel (drift / PIM / alerts / DLP); Defender for Cloud + Resource Graph; Azure Policy Guest Config (compliance state); Entra ID Graph (B2B guest accounts). All six sources converge into a single middle box "Export orchestrator (PowerShell, daily, cert auth)". From there a linear chain progresses rightward: Staging directory (timestamped + -latest JSON files) → Power BI Gateway → Semantic Model (7 tables, OrgTree dimension as spine) → DAX measure library (KPIs + RAG status). The DAX library fans into a right-side labeled cluster "Report pages" with three boxes: Per-division Governance Posture, Executive Summary (RAG), Trend Analysis. Engineering blueprint style, neutral slate, federal navy (#1F3A5F) for orchestrator and model, teal (#1A9E8F) for the six sources, amber (#D4A017) for the three report pages, monospace file/API names, 16:9 landscape.]
 
 The semantic model consumes data from six distinct sources, each representing a governance surface that the preceding parts of this series instrumented with OrgPath awareness. These sources do not share a common query interface, a common data format, or a common authentication model, which is precisely why an export pipeline layer exists between them and the Power BI semantic model. The pipeline normalizes heterogeneous source data into a consistent set of JSON files that the semantic model's Power Query M definitions can load and shape uniformly.
 
