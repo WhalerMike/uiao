@@ -14,6 +14,7 @@ File: src/uiao/impl/adapters/servicenow_adapter.py
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List
 
 from ..collectors.servicenow_collector import ServiceNowCollector
@@ -167,18 +168,72 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     def detect_drift(self) -> DriftReport:
         """
         Detect drift between ServiceNow state and UIAO canon.
-        Engine handles the full comparison; this returns a lightweight report.
+
+        Algorithm:
+        1. Load the documented scope set for the 'service-now' adapter from
+           modernization-registry.yaml (expected state).
+        2. Fetch current records via the collector (empty-scaffold fallback
+           when no token is configured — safe for CI).
+        3. Delegate the comparison to collector.compare_for_drift().
+        4. Return a DriftReport with severity 'high' when drifted records
+           exist, 'info' otherwise.
         """
+        # Step 1 — expected state from canon
+        registry_path = Path(__file__).parent.parent / "canon" / "modernization-registry.yaml"
+        expected_records: List[Dict[str, Any]] = []
+        try:
+            import yaml  # type: ignore[import-untyped]
+
+            registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+            adapters = registry.get("adapters", [])
+            for entry in adapters:
+                if entry.get("id") == "service-now":
+                    for scope_item in entry.get("scope", []):
+                        expected_records.append(
+                            {
+                                "sys_id": scope_item,
+                                "short_description": scope_item,
+                            }
+                        )
+                    break
+        except Exception:
+            # Registry unavailable — proceed with empty expected set
+            expected_records = []
+
+        # Step 2 — current state from collector (empty scaffold when no token)
+        raw = self.collector.fetch_relevant_records()
+        current_records: List[Dict[str, Any]] = raw.get("result", [])
+
+        # Step 3 — compute drift
+        drifted = self.collector.compare_for_drift(current_records, expected_records)
+
+        # Step 4 — classify
+        new_sys_ids = [r.get("sys_id", "") for r in drifted if r.get("_drift") == "new_record"]
+        changed_sys_ids = [r.get("sys_id", "") for r in drifted if r.get("_drift") == "changed"]
+        severity = "high" if drifted else "info"
+
+        remediation = (
+            "Review drifted records returned by ServiceNowCollector.compare_for_drift() "
+            "and reconcile them against the scope entries in modernization-registry.yaml. "
+            "New records may indicate undocumented change activity; changed records may "
+            "reflect manual edits that bypass the UIAO change-management workflow."
+            if drifted
+            else "No drift detected — ServiceNow records align with canon scope."
+        )
+
+        now = self._now()
         return DriftReport(
-            drift_type="servicenow-schema",
-            severity="info",
-            first_observed=self._now(),
-            last_observed=self._now(),
+            drift_type="servicenow-record-divergence",
+            severity=severity,
+            first_observed=now,
+            last_observed=now,
             details={
-                "message": "Drift detection scaffold — implement query comparison against canon.",
+                "drifted_count": len(drifted),
+                "new_records": new_sys_ids,
+                "changed_records": changed_sys_ids,
                 "adapter": self.ADAPTER_ID,
             },
-            remediation="Compare normalize() output against YAML canon control_id mappings.",
+            remediation=remediation,
         )
 
     # ------------------------------------------------------------------
