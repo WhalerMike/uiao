@@ -393,6 +393,27 @@ For any non-AD-migrated device in the steady-state Intune tenant:
 These invariants are the device-plane analog of the user-plane
 invariants in [UIAO_153](../../canon/UIAO_153_Attribute_Mapping_Table.md).
 
+### §5.6 — Network-edge enforcement of the chain
+
+The chain stamps OrgPath onto the device's directory object (and, for
+Intune-issued certs, into the device certificate's SAN OtherName per
+[ADR-073](../../canon/adr/adr-073-policy-targeting-nac-third-transport.md)
+§D5). That stamp becomes a network-admission decision at the next
+802.1X authentication: the AAA server reads the device's OrgPath,
+looks up the matching `nac_assignments[]` entry per
+[UIAO_012](../../canon/UIAO_012_OrgPath_in_NAC_and_8021X.md), and
+returns the VLAN / dACL / posture-policy enforcement payload on
+RADIUS Access-Accept. Devices with `/UNPOSITIONED` OrgPath land on
+the quarantine VLAN at the port — *before* Intune compliance
+evaluation completes, closing the pre-compliance-evaluation window
+that this pillar is fundamentally about.
+
+This makes the network edge the first enforcement point of Pillar 1,
+the Intune device object the second, and Conditional Access the
+third. Three layers of the same governance fact, derived from one
+OrgPath value, evaluated in priority order at three distinct moments
+in the device's first sign-in.
+
 ---
 
 ## §6. What the pillars are not
