@@ -21,10 +21,14 @@ from uiao.adapters.database_base import (
 
 @pytest.fixture
 def adapter() -> ServiceNowAdapter:
+    # Empty token triggers the documented empty-scaffold fallback in
+    # ServiceNowCollector.fetch_relevant_records(), so detect_drift() and
+    # other adapter methods that exercise the collector path do not make
+    # real network calls during unit tests / CI.
     return ServiceNowAdapter(
         {
             "instance": "contoso-gov",
-            "token": "test-token-placeholder",
+            "token": "",
         }
     )
 
