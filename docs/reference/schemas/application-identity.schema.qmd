@@ -1,0 +1,202 @@
+---
+title: "UIAO Application Identity Schema (UIAO_129)"
+subtitle: "Schema Reference · application-identity.schema.json"
+date: 2026-05-14
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/application-identity/application-identity.schema.json`](../../../src/uiao/schemas/application-identity/application-identity.schema.json)
+- **Dialect:** `https://json-schema.org/draft/2020-12/schema`
+- **`$id`:** `https://uiao.gov/schemas/application-identity/application-identity.schema.json`
+:::
+
+## Description
+
+JSON Schema for ApplicationIdentity records consumed by uiao.governance.application_identity. Per UIAO_129 §2, every application identity carries six required bindings — dns, address, iam, trust, segmentation, location — with exactly one authority each. The schema enforces presence; runtime drift detection enforces correctness against the authority registries.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `id` | string | ✓ | Stable application identity URN. Format 'app:<slug>'. Slug is kebab-case, 2-64 chars, no leading/trailing hyphens. Once allocated this id is immutable for the application's lifetime — retirement deallocates the id but it MUST NOT be re-issued. |
+| `name` | string | ✓ | Human-readable application name. Authoritative for documentation; runtime decisions use 'id'. |
+| `tenant_id` | string | ✓ | Tenant id from src/uiao/canon/tenants.yaml (UIAO_112). Application identities are tenant-scoped; cross-tenant references are DRIFT-AUTHZ findings. |
+| `lifecycle_state` | enum: 'proposed', 'provisioned', 'active', 'quarantined', 'retired' | ✓ | UIAO_129 §4 lifecycle state. Transitions are constrained — see ApplicationIdentity.transition_to in the runtime. |
+| `bindings` | object | ✓ | All six bindings required per UIAO_129 §2. Missing binding emits DRIFT-SCHEMA at P2. |
+| `created_at` | string |  | ISO 8601 UTC timestamp of initial canon allocation. Immutable. |
+| `updated_at` | string |  | ISO 8601 UTC timestamp of the most recent canon edit (any field). Refreshed on every commit. |
+| `transition_history` | array&lt;`$ref: #/$defs/transition`&gt; |  | Append-only log of lifecycle transitions. Each entry is a signed event in the evidence graph (UIAO_113); this canon copy is the readability surface, the evidence graph is the authority. |
+
+## Full Schema
+
+```{.json filename="application-identity.schema.json"}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/application-identity/application-identity.schema.json",
+  "title": "UIAO Application Identity Schema (UIAO_129)",
+  "description": "JSON Schema for ApplicationIdentity records consumed by uiao.governance.application_identity. Per UIAO_129 \u00a72, every application identity carries six required bindings \u2014 dns, address, iam, trust, segmentation, location \u2014 with exactly one authority each. The schema enforces presence; runtime drift detection enforces correctness against the authority registries.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "tenant_id",
+    "lifecycle_state",
+    "bindings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^app:[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$",
+      "description": "Stable application identity URN. Format 'app:<slug>'. Slug is kebab-case, 2-64 chars, no leading/trailing hyphens. Once allocated this id is immutable for the application's lifetime \u2014 retirement deallocates the id but it MUST NOT be re-issued."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable application name. Authoritative for documentation; runtime decisions use 'id'."
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Tenant id from src/uiao/canon/tenants.yaml (UIAO_112). Application identities are tenant-scoped; cross-tenant references are DRIFT-AUTHZ findings."
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "provisioned",
+        "active",
+        "quarantined",
+        "retired"
+      ],
+      "description": "UIAO_129 \u00a74 lifecycle state. Transitions are constrained \u2014 see ApplicationIdentity.transition_to in the runtime."
+    },
+    "bindings": {
+      "type": "object",
+      "required": [
+        "dns",
+        "address",
+        "iam",
+        "trust",
+        "segmentation",
+        "location"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "dns": {
+          "$ref": "#/$defs/binding"
+        },
+        "address": {
+          "$ref": "#/$defs/binding"
+        },
+        "iam": {
+          "$ref": "#/$defs/binding"
+        },
+        "trust": {
+          "$ref": "#/$defs/binding"
+        },
+        "segmentation": {
+          "$ref": "#/$defs/binding"
+        },
+        "location": {
+          "$ref": "#/$defs/binding"
+        }
+      },
+      "description": "All six bindings required per UIAO_129 \u00a72. Missing binding emits DRIFT-SCHEMA at P2."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of initial canon allocation. Immutable."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of the most recent canon edit (any field). Refreshed on every commit."
+    },
+    "transition_history": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/transition"
+      },
+      "description": "Append-only log of lifecycle transitions. Each entry is a signed event in the evidence graph (UIAO_113); this canon copy is the readability surface, the evidence graph is the authority."
+    }
+  },
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "required": [
+        "authority_adapter",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "authority_adapter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Adapter id from src/uiao/canon/adapter-registry.yaml or modernization-registry.yaml that owns this binding. The binding's value is sourced from this adapter and only this adapter; cross-authority overrides are DRIFT-SEMANTIC findings."
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Binding value as understood by the authority adapter. Format depends on the binding kind: dns is FQDN; address is CIDR or VPC/VNet ARN; iam is workload-identity URI (SPIFFE / managed-identity ARN / service-principal id); trust is cert thumbprint or token-issuer URL; segmentation is policy-engine label; location is region/cloud/zone identifier."
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the binding was reconciled against the authority adapter's live state. Stale verified_at (> freshness-window-hours per the adapter's registry entry) emits DRIFT-PROVENANCE."
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": [
+        "from_state",
+        "to_state",
+        "at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from_state": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "provisioned",
+            "active",
+            "quarantined",
+            "retired"
+          ]
+        },
+        "to_state": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "provisioned",
+            "active",
+            "quarantined",
+            "retired"
+          ]
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp of the transition."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Human-readable transition cause. Quarantine transitions MUST cite a drift_finding_id."
+        },
+        "drift_finding_id": {
+          "type": "string",
+          "description": "Drift engine finding id; required when to_state is 'quarantined'."
+        }
+      }
+    }
+  }
+}
+```

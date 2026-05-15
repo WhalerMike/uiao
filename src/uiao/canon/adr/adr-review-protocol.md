@@ -8,6 +8,8 @@ owner: Michael Stratton
 boundary: GCC-Moderate
 created_at: "2026-04-28"
 updated_at: "2026-04-28"
+publish_to_site: false
+publish_to_site_reason: "Process meta-document parallel to adr-000-adr-process.md; defines ADR review cadence and responsibilities. Internal governance process, not a customer-facing decision record. Per ADR-068 §Defaults table, process docs are explicit-false."
 ---
 
 # ADR Review Protocol — Keeping Architectural Decisions Current

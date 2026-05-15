@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-001-haadj-deprecated-entra-join-only.html
 ---
 
 # ADR-001: HAADJ Deprecated — Entra ID Join as Sole Device Join Target

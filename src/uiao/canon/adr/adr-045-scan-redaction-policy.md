@@ -21,6 +21,9 @@ tags:
   - redaction
   - multi-agency
   - disclosure
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-045-scan-redaction-policy.html
 ---
 
 # ADR-045: Scan Artifact Redaction Policy for Multi-Agency Distribution

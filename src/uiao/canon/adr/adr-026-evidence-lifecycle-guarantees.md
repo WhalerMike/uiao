@@ -4,6 +4,9 @@ adr: "ADR-026"
 status: ACCEPTED
 date: "2026-03-08"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-026-evidence-lifecycle-guarantees.html
 ---
 
 # ADR-026: Evidence Lifecycle Guarantees
