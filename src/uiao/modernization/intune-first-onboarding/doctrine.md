@@ -1,11 +1,11 @@
 ---
 document_id: IFO_001
 title: "Intune-First Asset Onboarding — Doctrine"
-version: "1.0"
+version: "1.1"
 status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-13"
-updated_at: "2026-05-14"
+updated_at: "2026-05-15"
 boundary: GCC-Moderate
 canon_anchor: ADR-071
 publish_to_site: true
@@ -266,7 +266,136 @@ AD, which is sub-optimal but tolerated for a finite duration.
 
 ---
 
-## §5. What the pillars are not
+## §5. OrgPath assignment authority chain (non-AD-migrated devices)
+
+The pillars require that every governed device carries an OrgPath value
+matching an Active node in the OrgTree registry (Pillar 1). The
+migration path — assets that already exist in Active Directory —
+derives OrgPath from the AD-side computer object via the
+[`directory-migration/`](../directory-migration/README.md) adapters and
+`ADR-038` device-plane mapping. For devices that **do not** originate
+in AD — every asset onboarded under this doctrine, plus the BYOD and
+exception-path devices that never had an AD record at all — OrgPath
+comes from one of four sources, evaluated in strict priority order.
+
+This section makes the source-priority chain canonical and
+platform-neutral. The per-platform annexes implement it; this section
+governs them.
+
+### §5.1 — The four sources, in priority order
+
+| Priority | Source | Where the value lives | When it applies |
+|---|---|---|---|
+| 1 (authoritative) | **Procurement record** | The vendor program record's OrgPath carrier — Autopilot Group Tag, ABM device note, Android Zero-Touch / Knox managed config, or Arc onboarding resource tag — populated from `governance/procurement/orders/{PO-number}.json` at Phase 2 | Asset acquired through the procurement integration; the procurement record exists at validation time |
+| 2 (fallback) | **Hardware-hash mapping CSV** | `governance/autopilot/orgpath-mapping.csv` (or the per-platform equivalent under `governance/{platform}/orgpath-mapping.csv`), pre-staged to the device via a configuration profile | Asset has a procurement record but the vendor-program carrier failed to write or was stripped; the mapping CSV preserves the procurement intent out-of-band |
+| 3 (fallback) | **User derivation** | Read from the provisioning user's OrgPath extension attribute on their Entra ID user object via Graph | Asset has no procurement record (pre-doctrine asset, BYOD under Exception Path A, or user-driven enrollment carve-out); only valid when a single primary user is in scope at enrollment time |
+| 4 (terminal) | **Quarantine `/UNPOSITIONED`** | The branch group `ORG-BRANCH-UNPOSITIONED` and the restricted-compliance policy attached to it | No prior source produced a value matching an Active OrgTree node; the device exists in the governance model but is blocked from organizational resources until a human dispositions it |
+
+A source produces a value only if that value is non-empty **and**
+resolves to a Status: Active node in the OrgTree registry as of stamp
+time. A source that produces a value failing either check is treated
+as having produced no value; evaluation falls through to the next
+priority.
+
+### §5.2 — Where the chain is implemented
+
+The chain is evaluated by the platform-specific stamping mechanism
+during Phase 4. The mechanism varies by platform but the priority
+order does not:
+
+| Platform | Stamping mechanism | Implemented in |
+|---|---|---|
+| Windows endpoint | OrgPath stamping PowerShell script run during Autopilot ESP Account Setup | [`platforms/windows-autopilot.md`](platforms/windows-autopilot.md) §4.3 |
+| macOS endpoint | LaunchAgent shell script deployed via Intune macOS shell script feature, run as root post-enrollment | [`platforms/macos-abm-ade.md`](platforms/macos-abm-ade.md) §4.3 |
+| iOS / iPadOS | Intune-side Azure Function triggered by `iosUpdatedManagedDevices` Graph webhook (scripts forbidden on iOS) | [`platforms/mobile-ios-android.md`](platforms/mobile-ios-android.md) Part A §A.4.3 |
+| Android Enterprise | Intune-side Azure Function triggered by Android check-in webhook, reading managed configuration delivered via Company Portal | [`platforms/mobile-ios-android.md`](platforms/mobile-ios-android.md) Part B §B.4.3 |
+| Arc-managed server | Arc onboarding writes the OrgPath resource tag directly; for Server 2025+, Entra device object is stamped via the same Graph write the endpoint script performs | [`platforms/arc-managed-servers.md`](platforms/arc-managed-servers.md) §4.4 |
+
+Each annex implements the same four-source priority. An annex that
+diverges from this chain — for instance, by promoting user-derivation
+above the vendor-program carrier — is a doctrinal drift signal and
+requires an ADR amendment, not a platform-local exception.
+
+### §5.3 — Why procurement is priority 1 (not user-derivation)
+
+The historical default — the OrgPath/Intune narrative's original
+runtime stamping logic — used **user derivation** as the primary
+source. That default works but is non-deterministic: a Finance laptop
+provisioned by an IT technician would inherit the technician's OrgPath
+instead of the recipient's, until the post-enrollment ETL pipeline ran
+and overwrote it from the device's eventual primary-user assignment.
+
+The procurement-first ordering eliminates the window during which the
+device carries the wrong OrgPath. Three properties hold under
+procurement-first ordering that did not hold under user-derivation-
+first ordering:
+
+1. **Determinism.** The OrgPath stamped at enrollment is the OrgPath
+   intended at PO time, not a function of whoever happened to power
+   on the device.
+2. **Auditability.** The procurement record provides the chain-of-
+   custody from "the organization decided to buy this asset for that
+   purpose" through "the device now carries that OrgPath in
+   production." User-derivation provides no such chain.
+3. **Pre-user-logon governance.** Self-deploying and shared-device
+   enrollment vectors complete with no user signed in. Under
+   user-derivation-first ordering these devices have no OrgPath
+   source at enrollment time. Under procurement-first ordering they
+   stamp correctly without any user present.
+
+User derivation is preserved at priority 3 specifically to keep
+backward compatibility with deployments that have not yet implemented
+procurement-side integration, and to handle the BYOD / Exception
+Path A case where procurement-time assignment is structurally
+impossible.
+
+### §5.4 — Pre-doctrine and procurement-record-absent devices
+
+A device that pre-dates the doctrine's effective date, or that
+arrived outside the procurement integration (grey-market, user-funded,
+historical inventory, BYOD), has no procurement record and no Phase 2
+vendor-program carrier. The authority chain still applies — sources
+1 and 2 produce no value, evaluation falls through to source 3
+(user derivation), and on failure to source 4 (`/UNPOSITIONED`
+quarantine).
+
+This is intentional. Such devices surface as
+`DRIFT-PROCUREMENT-RECORD-ABSENT` findings (see
+[`validation-and-evidence.md`](validation-and-evidence.md) §2.5)
+and are reconciled through governance review — either by retroactively
+filing a procurement record (for legitimately-acquired assets that
+escaped procurement), by re-classifying as migration assets (for
+pre-doctrine inventory with AD lineage), or by quarantine-then-
+disposition (for assets the organization should not own).
+
+The chain guarantees that **every device enrolled in Intune carries
+some OrgPath value**, even if only `/UNPOSITIONED`. There is no enrolled
+device whose extension attribute is empty. That invariant is what
+makes the OrgTree-* dynamic group population deterministic and the
+drift detection engine's correlation joins sound.
+
+### §5.5 — Invariants the chain enforces
+
+For any non-AD-migrated device in the steady-state Intune tenant:
+
+- The device's OrgPath extension attribute (Entra device object) or
+  Arc resource tag (Arc-enabled machine) is **non-empty**.
+- The value either matches an Active node in the OrgTree registry,
+  or equals the canonical quarantine value `/UNPOSITIONED`.
+- The value can be traced back to exactly one source via the audit
+  log: a procurement record commit, a mapping-CSV row, a Graph
+  user-object read, or the quarantine fallback event.
+- A value that fails the format check or matches no codebook entry is
+  a `device-phantom-orgpath` finding handled by
+  [`adapters/entra_device_orgpath.py`](../../adapters/entra_device_orgpath.py)
+  and never auto-overwritten.
+
+These invariants are the device-plane analog of the user-plane
+invariants in [UIAO_153](../../canon/UIAO_153_Attribute_Mapping_Table.md).
+
+---
+
+## §6. What the pillars are not
 
 The pillars do not require:
 

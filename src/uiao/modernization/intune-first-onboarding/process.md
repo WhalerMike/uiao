@@ -1,11 +1,11 @@
 ---
 document_id: IFO_002
 title: "Intune-First Asset Onboarding — The Five-Phase Process"
-version: "1.0"
+version: "1.1"
 status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-13"
-updated_at: "2026-05-14"
+updated_at: "2026-05-15"
 boundary: GCC-Moderate
 canon_anchor: ADR-071
 publish_to_site: true
@@ -261,11 +261,28 @@ platforms:
    status page (where applicable) can wait for membership to converge
    before completing.
 
-3. The OrgPath value is stamped on the device object in Entra ID.
-   For Windows, this is the runtime stamping script from the
-   OrgPath/Intune narrative §4.2 with procurement-provided OrgPath as
-   the priority source over user-derivation. For other platforms,
-   stamping is via the equivalent enrollment-time hook.
+3. The OrgPath value is stamped on the device object in Entra ID
+   (or, for Arc-managed servers, on the ARM resource tag) by the
+   platform-specific stamping mechanism. The mechanism varies — a
+   PowerShell script on Windows, a LaunchAgent shell script on macOS,
+   an Intune-side Azure Function on iOS / iPadOS / Android (scripts
+   are forbidden on those platforms), the Arc onboarding tag write on
+   servers — but every mechanism evaluates the same four-source
+   priority chain canonicalized in [`doctrine.md`](doctrine.md) §5:
+
+   1. **Procurement record** (vendor-program carrier from Phase 2)
+   2. **Hardware-hash mapping CSV** (pre-staged to the device)
+   3. **User derivation** (the provisioning user's OrgPath, if any)
+   4. **Quarantine `/UNPOSITIONED`** (terminal fallback)
+
+   A source produces a value only if that value is non-empty and
+   resolves to a Status: Active node in the OrgTree registry; a source
+   that fails either check is treated as having produced no value and
+   evaluation falls through to the next priority. The chain
+   guarantees that every device enrolled in Intune — including
+   pre-doctrine and BYOD devices with no procurement record — carries
+   a non-empty OrgPath value at the moment compliance evaluation
+   begins.
 
 4. Compliance policies assigned to the device's branch group are
    evaluated. If the device meets the compliance policy, it is
