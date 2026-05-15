@@ -1,7 +1,7 @@
 ---
 title: "Intune-First Asset Onboarding — Net-New Devices into Governance from Day Zero"
 subtitle: "The Inverse of the AD Migration Path: Refuse the Existence of Any Ungoverned Device"
-date: 2026-05-14
+date: 2026-05-15
 ---
 
 ::: {.callout-warning}
@@ -79,6 +79,87 @@ justification, compensating control, and an audit entry:
 | **C — Pre-Server-2025 Windows servers** | Windows Server 2019 and 2022 hosts whose OS upgrade is not yet feasible | [ADR-002](../../src/uiao/canon/adr/adr-002-arc-entra-join-no-domain-join.md) explicitly notes Server 2019/2022 cannot use AADLoginForWindows. Arc-managed-only is acceptable as an interim state. |
 
 Full text in [`src/uiao/modernization/intune-first-onboarding/doctrine.md`](../../src/uiao/modernization/intune-first-onboarding/doctrine.md) §4.
+
+## OrgPath Assignment for Non-AD-Migrated Devices
+
+Every governed device must carry an OrgPath value matching an Active
+node in the [OrgTree](orgtree.qmd) registry (Pillar 1). For devices
+that **do** originate in Active Directory, the
+[Directory Migration](directory-migration.qmd) path derives OrgPath
+from the AD-side computer object via `ADR-038` device-plane mapping.
+
+For devices that **do not** originate in AD — every asset onboarded
+under this doctrine, plus BYOD and exception-path devices that never
+had an AD record — OrgPath comes from one of four sources, evaluated
+in strict priority order. This is the **OrgPath assignment authority
+chain**, canonicalized in
+[`doctrine.md`](../../src/uiao/modernization/intune-first-onboarding/doctrine.md) §5.
+
+| # | Source | When it applies |
+|---|---|---|
+| 1 | **Procurement record** — the OrgPath written to the vendor-program carrier at Phase 2 (Autopilot Group Tag, ABM device note, Android Zero-Touch / Knox managed config, or Arc onboarding resource tag) | Asset acquired through the procurement integration; this is the authoritative source for every net-new device |
+| 2 | **Hardware-hash mapping CSV** — `governance/{platform}/orgpath-mapping.csv`, pre-staged to the device via a configuration profile | The vendor-program carrier failed to write or was stripped; the mapping CSV preserves procurement intent out-of-band |
+| 3 | **User derivation** — the provisioning user's OrgPath, read from their Entra ID user object via Graph | Asset has no procurement record (pre-doctrine asset, BYOD under Exception Path A, or user-driven enrollment carve-out) |
+| 4 | **Quarantine `/UNPOSITIONED`** — the terminal fallback | No prior source produced a value matching an Active OrgTree node |
+
+A source produces a value only if that value is non-empty **and**
+resolves to a Status: Active node in the OrgTree registry as of stamp
+time. A source that fails either check is treated as having produced
+no value; evaluation falls through to the next priority.
+
+The chain is implemented by the platform-specific stamping mechanism in
+Phase 4 — a PowerShell script on Windows, a LaunchAgent shell script
+on macOS, an Intune-side Azure Function on iOS / iPadOS / Android (where
+on-device scripts are forbidden), and the Arc onboarding resource tag
+write on servers. The mechanism varies by platform; the priority order
+does not.
+
+### Why procurement is priority 1 (not user-derivation)
+
+The historical default used user-derivation as the primary source.
+That works, but it is non-deterministic — a Finance laptop provisioned
+by an IT technician would inherit the technician's OrgPath until a
+later ETL pass corrected it. Procurement-first ordering gives three
+properties the user-derivation-first ordering did not:
+
+- **Determinism** — the OrgPath stamped at enrollment is the OrgPath
+  intended at PO time, not a function of whoever happened to power on
+  the device.
+- **Auditability** — the procurement record provides chain-of-custody
+  from "the organization decided to buy this asset" through "the
+  device now carries that OrgPath in production."
+- **Pre-user-logon governance** — self-deploying and shared-device
+  enrollment vectors complete with no user signed in. Under
+  user-derivation-first ordering these devices have no OrgPath source
+  at enrollment time; procurement-first ordering stamps them
+  correctly without any user present.
+
+User-derivation is preserved at priority 3 to keep backward
+compatibility with deployments that have not yet implemented
+procurement-side integration, and to handle the BYOD / Exception
+Path A case where procurement-time assignment is structurally
+impossible.
+
+### Pre-doctrine and procurement-record-absent devices
+
+Devices that pre-date the doctrine or arrived outside procurement
+(grey-market, user-funded, historical inventory, BYOD) have no
+procurement record and no Phase 2 vendor-program carrier. The chain
+still applies — sources 1 and 2 produce no value, evaluation falls
+through to source 3 (user derivation), and on failure to source 4
+(`/UNPOSITIONED`).
+
+Such devices surface as `DRIFT-PROCUREMENT-RECORD-ABSENT` findings
+(see [`validation-and-evidence.md`](../../src/uiao/modernization/intune-first-onboarding/validation-and-evidence.md) §2.5)
+and are reconciled through governance review — either by retroactively
+filing a procurement record, by re-classifying as migration assets,
+or by quarantine-then-disposition.
+
+The chain guarantees that **every device enrolled in Intune carries
+some OrgPath value**, even if only `/UNPOSITIONED`. No enrolled device
+has an empty extension attribute. That invariant is what keeps the
+OrgTree-* dynamic group population deterministic and the drift
+detection engine's correlation joins sound.
 
 ## The Five-Phase Onboarding Process
 
