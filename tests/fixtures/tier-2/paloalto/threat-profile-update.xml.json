@@ -1,0 +1,35 @@
+{
+  "adapter": "palo-alto",
+  "operation": "push_config_change",
+  "cloud_variant": ["onprem"],
+  "request": {
+    "method": "POST",
+    "url": "https://pa-test.example.com/api/",
+    "body": "type=config&action=edit&xpath=/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/profiles/virus/entry[@name='strict-av-profile']&element=<entry name='strict-av-profile'><decoder><entry name='ftp'><action>reset-both</action><wildfire-action>reset-both</wildfire-action></entry><entry name='http'><action>reset-both</action><wildfire-action>reset-both</wildfire-action></entry><entry name='smtp'><action>reset-both</action><wildfire-action>reset-both</wildfire-action></entry></decoder><description>UIAO-managed strict AV profile — all decoders set to reset-both per KSI-PAN-003</description></entry>&key=<API-KEY>"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/xml; charset=utf-8"
+    },
+    "body": "<response status=\"success\" code=\"20\"><msg>command succeeded</msg></response>",
+    "body_xml": "<response status=\"success\" code=\"20\"><msg>command succeeded</msg></response>"
+  },
+  "expected_behavior": [
+    "Adapter MUST parse response status='success' code=20 and confirm the threat-prevention profile 'strict-av-profile' was updated.",
+    "Adapter MUST record that all configured decoders (ftp, http, smtp) have action=reset-both, satisfying KSI-PAN-003 (threat-profile-attached).",
+    "Adapter MUST distinguish a profile update (action=edit on a profiles/ xpath) from a rulebase mutation in its audit trail.",
+    "Adapter MUST NOT activate the updated profile without a subsequent commit operation.",
+    "Adapter MUST capture the profile description field to verify UIAO-managed annotation is present."
+  ],
+  "provenance": {
+    "source": "vendor-docs",
+    "primary_citation": {
+      "url": "https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-panorama-api/pan-os-xml-api-request-types-and-mutations/edit-configuration",
+      "quote": "Threat prevention profiles are stored under vsys/profiles/virus (antivirus), profiles/vulnerability, and profiles/spyware. The edit command replaces the entire entry at the given xpath.",
+      "accessed": "2026-05-15"
+    },
+    "captured_by": "synthetic-fixture-authoring-WS-A4",
+    "sanitization": "API key replaced with <API-KEY>. Host replaced with pa-test.example.com (synthetic). Profile name 'strict-av-profile' is synthetic. No real PAN-OS device or production config captured."
+  }
+}
