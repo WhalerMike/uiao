@@ -10,8 +10,18 @@ series-order: 05
 status: Published
 canon-source: "src/uiao/canon/UIAO_152_Dynamic_Group_Library.md"
 source-document: "OrgPath and Microsoft Intune — Structural Device Governance at Enterprise Scale.md"
-rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
+rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; code blocks restored from .docx source 2026-05-15."
 ---
+
+::: {.callout-note title="Authoritative canon"}
+The substrate-internal canonical specification for OrgPath-driven Intune
+targeting is [UIAO_011 — OrgPath in Intune & Device Governance](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_011_OrgPath_in_Intune_and_Device_Governance.md),
+which wraps [ADR-036](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-036-dynamic-group-provisioning.md)
+and [ADR-039](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-039-policy-targeting.md)
+plus [`canon/data/orgpath/policy-targets.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/policy-targets.yaml).
+This chapter is the customer-facing narrative; the canon doc is the
+operator/spec reference.
+:::
 
 ## Chapter 2 — Node Groups and Branch Groups: The Foundation of Structural Intune Targeting
 
@@ -149,11 +159,17 @@ The dynamic membership rules for both group types use the OrgPath schema extensi
 
 Using the Finance division node as the concrete example, where the Finance node's OrgPath is /Root/Finance and the App ID (hyphens removed) is the tenant-specific value substituted into every script in this document, the node group membership rule is:
 
-### (device.extension\_{AppIdWithoutHyphens}\_OrgPath -eq "/Root/Finance")
+```
+(device.extension_{AppIdWithoutHyphens}_OrgPath -eq "/Root/Finance")
+```
 
 The branch group membership rule for the same node, which covers the Finance node itself and every organizational unit at any depth beneath it, is:
 
-(device.extension\_{AppIdWithoutHyphens}\_OrgPath -eq "/Root/Finance") -or (device.extension\_{AppIdWithoutHyphens}\_OrgPath -startsWith "/Root/Finance/")
+```
+(device.extension_{AppIdWithoutHyphens}_OrgPath -eq "/Root/Finance")
+    -or
+(device.extension_{AppIdWithoutHyphens}_OrgPath -startsWith "/Root/Finance/")
+```
 
 The trailing slash in the -startsWith clause of the branch group rule is critical and must not be omitted. Without the trailing slash, a branch group for /Root/Finance would incorrectly include devices whose OrgPath begins with /Root/FinanceAdjacent or any other path that starts with the string /Root/Finance but represents a different organizational unit. The trailing slash ensures that the match is structural — it matches only paths that are genuinely subordinate to the Finance node in the hierarchy.
 
@@ -163,7 +179,188 @@ In both rules, {AppIdWithoutHyphens} must be substituted with the Application ID
 
 The following script creates and maintains the full dynamic device group library. It is named New-OrgPathDeviceGroupLibrary.ps1 and is stored in the governance repository under governance/intune/groups/. It runs as a pipeline step immediately after any change to the OrgTree registry is committed and validated. The script is designed to be fully idempotent: running it multiple times against the same registry state produces the same result as running it once, and it never creates duplicate groups or corrupts existing groups whose membership rules are already correct.
 
-\<# data-id="133" .SYNOPSIS Creates and maintains the OrgPath dynamic device group library in Entra ID. .DESCRIPTION Reads the OrgTree registry and ensures that every active node has both a node group and a branch group with the correct dynamic membership rules. Creates missing groups, updates stale membership rules, and archives groups for nodes that have been removed from the registry. .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file, checked out from the governance repository before this script runs. Example: "C:\governance\orgtree\registry.json" .PARAMETER OrgPathAppId The Application ID (with hyphens) of the Entra ID app registration that owns the OrgPath schema extension. Used to construct the extension attribute name in dynamic membership rules. Example: "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" Substitute your tenant's actual App ID for this value. .PARAMETER WhatIf When set, reports what would be created or updated without making changes. .NOTES Requires Microsoft.Graph PowerShell SDK 2.x or later. Required Graph permission scopes: Group.ReadWrite.All, Directory.ReadWrite.All Run under the automation service account (Managed Identity preferred in CI/CD). PowerShell 7.4 or later recommended. This script is safe to run on every OrgTree change — it will not create duplicate groups or overwrite correct membership rules unnecessarily. \#\> param( \[string\] \$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \# Substitute with your tenant's OrgPath app registration Application ID (with hyphens): \[string\] \$OrgPathAppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4", \[switch\] \$WhatIf ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \# --- Build the extension attribute name from the App ID --- \# Entra ID schema extension names require the App ID with NO hyphens. \# This derivation must match exactly what was used in the Part Four ETL pipeline. \$appIdNoHyphens = \$OrgPathAppId -replace "-", "" \$extensionAttrName = "extension\_\${appIdNoHyphens}\_OrgPath" Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Extension attribute name: \$extensionAttrName" \# --- Authentication --- \# In production CI/CD pipelines, replace with Managed Identity or \# certificate-based authentication. Do not use interactive browser auth \# in unattended automation contexts. Connect-MgGraph -Scopes "Group.ReadWrite.All", "Directory.ReadWrite.All" -NoWelcome \# --- Load OrgTree Registry --- \$registry = Get-Content -Path \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$activeNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] OrgTree loaded: \$(\$activeNodes.Count) active nodes." \# --- Load Existing ORG-NODE and ORG-BRANCH Groups --- \# This retrieves ALL governance-managed device groups in a single batched call \# rather than querying per-node, which is significantly more efficient for \# large OrgTrees with hundreds of nodes. \$existingGroups = Get-MgGroup \` -Filter "startsWith(displayName,'ORG-NODE-') or startsWith(displayName,'ORG-BRANCH-')" \` -All \` -Property "Id,DisplayName,MembershipRule,Description" \# Index existing groups by display name for O(1) lookup during the sync loop. \$groupIndex = @{} foreach (\$g in \$existingGroups) { \$groupIndex\[\$g.DisplayName\] = \$g } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Existing governance groups found: \$(\$existingGroups.Count)" \# --- Helper: Build Node Group Membership Rule --- \# Returns the rule that matches ONLY devices assigned exactly to this node. function Build-NodeRule { param(\[string\]\$NodePath, \[string\]\$ExtAttr) return "(device.\${ExtAttr} -eq \`"\${NodePath}\`")" } \# --- Helper: Build Branch Group Membership Rule --- \# Returns the rule that matches devices at this node OR any descendant node. \# The trailing slash in the -startsWith clause is mandatory — see Section 2.3. function Build-BranchRule { param(\[string\]\$NodePath, \[string\]\$ExtAttr) return "(device.\${ExtAttr} -eq \`"\${NodePath}\`") " + "-or (device.\${ExtAttr} -startsWith \`"\${NodePath}/\`")" } \# --- Helper: Create or Update a Dynamic Device Group --- \# This function is the core idempotency mechanism. It checks existence and \# rule correctness before making any write calls to the Graph API. function Sync-DeviceGroup { param( \[string\] \$DisplayName, \[string\] \$MembershipRule, \[string\] \$Description, \[hashtable\] \$GroupIndex, \[switch\] \$WhatIf ) if (\$GroupIndex.ContainsKey(\$DisplayName)) { \$existing = \$GroupIndex\[\$DisplayName\] if (\$existing.MembershipRule -ne \$MembershipRule) { \# Rule has drifted — update it. if (\$WhatIf) { Write-Host " \[WHATIF\] Would update rule for: \$DisplayName" Write-Host " Old rule: \$(\$existing.MembershipRule)" Write-Host " New rule: \$MembershipRule" } else { Update-MgGroup -GroupId \$existing.Id -MembershipRule \$MembershipRule Write-Host " \[UPDATED\] \$DisplayName" } } else { \# Rule is correct. No action needed. Write-Host " \[OK\] \$DisplayName (rule current, no change)" } } else { \# Group does not yet exist — create it. if (\$WhatIf) { Write-Host " \[WHATIF\] Would create: \$DisplayName" } else { \# MailNickname must be unique. Strip non-alphanumeric characters. \# The ORG-NODE- and ORG-BRANCH- prefixes contain hyphens which are removed here. \$mailNick = \$DisplayName -replace "\[^a-zA-Z0-9\]", "" \$params = @{ DisplayName = \$DisplayName Description = \$Description MailEnabled = \$false MailNickname = \$mailNick SecurityEnabled = \$true GroupTypes = @("DynamicMembership") MembershipRule = \$MembershipRule MembershipRuleProcessingState = "On" } \$null = New-MgGroup -BodyParameter \$params Write-Host " \[CREATED\] \$DisplayName" } } } \# --- Main Loop: Synchronize Groups for Every Active OrgTree Node --- foreach (\$node in \$activeNodes) { \$nodeGroupName = "ORG-NODE-\$(\$node.Id)" \$branchGroupName = "ORG-BRANCH-\$(\$node.Id)" \# Build membership rules for this node. \$nodeRule = Build-NodeRule -NodePath \$node.Path -ExtAttr \$extensionAttrName \$branchRule = Build-BranchRule -NodePath \$node.Path -ExtAttr \$extensionAttrName Write-Host "" Write-Host "Node: \$(\$node.Id) \| Name: \$(\$node.Name) \| Path: \$(\$node.Path)" Sync-DeviceGroup \` -DisplayName \$nodeGroupName \` -MembershipRule \$nodeRule \` -Description "OrgPath node group — devices assigned exactly to \$(\$node.Name) \[\$(\$node.Path)\]" \` -GroupIndex \$groupIndex \` -WhatIf:\$WhatIf Sync-DeviceGroup \` -DisplayName \$branchGroupName \` -MembershipRule \$branchRule \` -Description "OrgPath branch group — devices at \$(\$node.Name) and all descendant units \[\$(\$node.Path)\]" \` -GroupIndex \$groupIndex \` -WhatIf:\$WhatIf } Write-Host "" Write-Host "=== Device Group Library Synchronization Complete ===" Write-Host " Active nodes processed : \$(\$activeNodes.Count)" Write-Host " Groups before sync : \$(\$existingGroups.Count)" Write-Host " Run timestamp (UTC) : \$(Get-Date -f 'o')" Disconnect-MgGraph
+```powershell
+<# data-id="133"
+.SYNOPSIS
+    Creates and maintains the OrgPath dynamic device group library in Entra ID.
+
+.DESCRIPTION
+    Reads the OrgTree registry and ensures that every active node has both a
+    node group and a branch group with the correct dynamic membership rules.
+    Creates missing groups, updates stale membership rules, and archives groups
+    for nodes that have been removed from the registry.
+
+.PARAMETER OrgTreeRegistryPath
+    Local path to the OrgTree registry JSON file, checked out from the
+    governance repository before this script runs.
+    Example: "C:\governance\orgtree\registry.json"
+
+.PARAMETER OrgPathAppId
+    The Application ID (with hyphens) of the Entra ID app registration that
+    owns the OrgPath schema extension. Used to construct the extension attribute
+    name in dynamic membership rules.
+    Example: "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
+    Substitute your tenant's actual App ID for this value.
+
+.PARAMETER WhatIf
+    When set, reports what would be created or updated without making changes.
+
+.NOTES
+    Requires Microsoft.Graph PowerShell SDK 2.x or later.
+    Required Graph permission scopes: Group.ReadWrite.All, Directory.ReadWrite.All
+    Run under the automation service account (Managed Identity preferred in CI/CD).
+    PowerShell 7.4 or later recommended.
+    This script is safe to run on every OrgTree change — it will not create
+    duplicate groups or overwrite correct membership rules unnecessarily.
+#>
+param(
+    [string] $OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    # Substitute with your tenant's OrgPath app registration Application ID (with hyphens):
+    [string] $OrgPathAppId        = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4",
+    [switch] $WhatIf
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# --- Build the extension attribute name from the App ID ---
+# Entra ID schema extension names require the App ID with NO hyphens.
+# This derivation must match exactly what was used in the Part Four ETL pipeline.
+$appIdNoHyphens    = $OrgPathAppId -replace "-", ""
+$extensionAttrName = "extension_${appIdNoHyphens}_OrgPath"
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Extension attribute name: $extensionAttrName"
+
+# --- Authentication ---
+# In production CI/CD pipelines, replace with Managed Identity or
+# certificate-based authentication. Do not use interactive browser auth
+# in unattended automation contexts.
+Connect-MgGraph -Scopes "Group.ReadWrite.All", "Directory.ReadWrite.All" -NoWelcome
+
+# --- Load OrgTree Registry ---
+$registry    = Get-Content -Path $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$activeNodes = $registry.nodes | Where-Object { $_.Status -eq "Active" }
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] OrgTree loaded: $($activeNodes.Count) active nodes."
+
+# --- Load Existing ORG-NODE and ORG-BRANCH Groups ---
+# This retrieves ALL governance-managed device groups in a single batched call
+# rather than querying per-node, which is significantly more efficient for
+# large OrgTrees with hundreds of nodes.
+$existingGroups = Get-MgGroup `
+    -Filter "startsWith(displayName,'ORG-NODE-') or startsWith(displayName,'ORG-BRANCH-')" `
+    -All `
+    -Property "Id,DisplayName,MembershipRule,Description"
+
+# Index existing groups by display name for O(1) lookup during the sync loop.
+$groupIndex = @{}
+foreach ($g in $existingGroups) { $groupIndex[$g.DisplayName] = $g }
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Existing governance groups found: $($existingGroups.Count)"
+
+# --- Helper: Build Node Group Membership Rule ---
+# Returns the rule that matches ONLY devices assigned exactly to this node.
+function Build-NodeRule {
+    param([string]$NodePath, [string]$ExtAttr)
+    return "(device.${ExtAttr} -eq `"${NodePath}`")"
+}
+
+# --- Helper: Build Branch Group Membership Rule ---
+# Returns the rule that matches devices at this node OR any descendant node.
+# The trailing slash in the -startsWith clause is mandatory — see Section 2.3.
+function Build-BranchRule {
+    param([string]$NodePath, [string]$ExtAttr)
+    return "(device.${ExtAttr} -eq `"${NodePath}`") " +
+           "-or (device.${ExtAttr} -startsWith `"${NodePath}/`")"
+}
+
+# --- Helper: Create or Update a Dynamic Device Group ---
+# This function is the core idempotency mechanism. It checks existence and
+# rule correctness before making any write calls to the Graph API.
+function Sync-DeviceGroup {
+    param(
+        [string]    $DisplayName,
+        [string]    $MembershipRule,
+        [string]    $Description,
+        [hashtable] $GroupIndex,
+        [switch]    $WhatIf
+    )
+
+    if ($GroupIndex.ContainsKey($DisplayName)) {
+        $existing = $GroupIndex[$DisplayName]
+        if ($existing.MembershipRule -ne $MembershipRule) {
+            # Rule has drifted — update it.
+            if ($WhatIf) {
+                Write-Host "  [WHATIF] Would update rule for: $DisplayName"
+                Write-Host "    Old rule: $($existing.MembershipRule)"
+                Write-Host "    New rule: $MembershipRule"
+            } else {
+                Update-MgGroup -GroupId $existing.Id -MembershipRule $MembershipRule
+                Write-Host "  [UPDATED] $DisplayName"
+            }
+        } else {
+            # Rule is correct. No action needed.
+            Write-Host "  [OK]      $DisplayName (rule current, no change)"
+        }
+    } else {
+        # Group does not yet exist — create it.
+        if ($WhatIf) {
+            Write-Host "  [WHATIF] Would create: $DisplayName"
+        } else {
+            # MailNickname must be unique. Strip non-alphanumeric characters.
+            # The ORG-NODE- and ORG-BRANCH- prefixes contain hyphens which are removed here.
+            $mailNick = $DisplayName -replace "[^a-zA-Z0-9]", ""
+
+            $params = @{
+                DisplayName                        = $DisplayName
+                Description                        = $Description
+                MailEnabled                        = $false
+                MailNickname                       = $mailNick
+                SecurityEnabled                    = $true
+                GroupTypes                         = @("DynamicMembership")
+                MembershipRule                     = $MembershipRule
+                MembershipRuleProcessingState      = "On"
+            }
+            $null = New-MgGroup -BodyParameter $params
+            Write-Host "  [CREATED] $DisplayName"
+        }
+    }
+}
+
+# --- Main Loop: Synchronize Groups for Every Active OrgTree Node ---
+foreach ($node in $activeNodes) {
+    $nodeGroupName   = "ORG-NODE-$($node.Id)"
+    $branchGroupName = "ORG-BRANCH-$($node.Id)"
+
+    # Build membership rules for this node.
+    $nodeRule   = Build-NodeRule   -NodePath $node.Path -ExtAttr $extensionAttrName
+    $branchRule = Build-BranchRule -NodePath $node.Path -ExtAttr $extensionAttrName
+
+    Write-Host ""
+    Write-Host "Node: $($node.Id) | Name: $($node.Name) | Path: $($node.Path)"
+
+    Sync-DeviceGroup `
+        -DisplayName    $nodeGroupName `
+        -MembershipRule $nodeRule `
+        -Description    "OrgPath node group — devices assigned exactly to $($node.Name) [$($node.Path)]" `
+        -GroupIndex     $groupIndex `
+        -WhatIf:$WhatIf
+
+    Sync-DeviceGroup `
+        -DisplayName    $branchGroupName `
+        -MembershipRule $branchRule `
+        -Description    "OrgPath branch group — devices at $($node.Name) and all descendant units [$($node.Path)]" `
+        -GroupIndex     $groupIndex `
+        -WhatIf:$WhatIf
+}
+
+Write-Host ""
+Write-Host "=== Device Group Library Synchronization Complete ==="
+Write-Host "    Active nodes processed : $($activeNodes.Count)"
+Write-Host "    Groups before sync     : $($existingGroups.Count)"
+Write-Host "    Run timestamp (UTC)    : $(Get-Date -f 'o')"
+
+Disconnect-MgGraph
+```
 
 The script's processing logic deserves detailed attention because several of its decisions are not obvious from reading the code alone. The extension attribute name is constructed from the App ID by removing hyphens and prepending the extension\_ prefix and appending the attribute name — this is the format Entra ID uses internally for all schema extension attributes, and the dynamic group membership rule must use exactly this format or the rule will evaluate as invalid and the group will have zero members regardless of how many devices carry an OrgPath value. The App ID used here must be the same one used in the Part Four ETL pipeline when stamping OrgPath values; using a different App ID produces a different extension attribute name and the group rule will never match anything in the directory.
 
@@ -199,7 +396,75 @@ The OrgPath model supports both approaches and allows them to coexist. A single 
 
 Intune policy assignments made through the portal are not version-controlled, not auditable in the governance repository, and will drift from the intended assignment state over time as administrators make manual changes. The governance pipeline must manage all compliance policy assignments through the Graph API. The following script establishes the pattern for programmatic compliance policy assignment and is called by the pipeline whenever a new compliance policy is introduced or an existing assignment needs to change:
 
-\<# data-id="159" .SYNOPSIS Assigns an Intune compliance policy to an OrgPath branch group via Graph API. .DESCRIPTION Used by the governance pipeline to ensure that compliance policy assignments are managed programmatically and match the OrgTree registry rather than being configured manually through the Intune portal. This script is idempotent: re-running it with the same parameters produces the same assignment state without creating duplicate assignments. .PARAMETER PolicyId GUID of the target Intune compliance policy. Retrieve via: Get-MgDeviceManagementDeviceCompliancePolicy -All \| Where-Object { \$\_.DisplayName -eq "Your Policy Name" } .PARAMETER GroupId GUID of the ORG-BRANCH-{NodeId} group to assign the policy to. Retrieve via: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-{NodeId}'" .NOTES Required Graph scope: DeviceManagementConfiguration.ReadWrite.All Assignment is a POST to the /assign endpoint. This replaces ALL existing assignments on the policy with the assignments specified in the body. If the policy should be assigned to multiple branch groups, pass all group IDs in the same call rather than calling this script multiple times. Calling /assign multiple times with different groups will overwrite the previous call's assignments. \#\> param( \[Parameter(Mandatory=\$true)\] \[string\]\$PolicyId, \# GUID of the target Intune compliance policy \[Parameter(Mandatory=\$true)\] \[string\[\]\]\$GroupIds \# One or more ORG-BRANCH-{NodeId} group GUIDs ) Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome \# Build the assignments array with one entry per group. \# The @odata.type for a standard included group assignment is: \# \#microsoft.graph.groupAssignmentTarget \# For excluded groups, use: \#microsoft.graph.exclusionGroupAssignmentTarget \$assignmentTargets = \$GroupIds \| ForEach-Object { @{ target = @{ "@odata.type" = "#microsoft.graph.groupAssignmentTarget" groupId = \$\_ } } } \$assignmentBody = @{ assignments = @(\$assignmentTargets) } \# POST to the /assign action. This is a full replace, not an additive merge. Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies/\$PolicyId/assign" \` -Body (\$assignmentBody \| ConvertTo-Json -Depth 10) \` -ContentType "application/json" Write-Host "Compliance policy '\$PolicyId' assigned to \$(\$GroupIds.Count) group(s):" \$GroupIds \| ForEach-Object { Write-Host " - \$\_" } Disconnect-MgGraph
+```powershell
+<# data-id="159"
+.SYNOPSIS
+    Assigns an Intune compliance policy to an OrgPath branch group via Graph API.
+
+.DESCRIPTION
+    Used by the governance pipeline to ensure that compliance policy assignments
+    are managed programmatically and match the OrgTree registry rather than
+    being configured manually through the Intune portal.
+    This script is idempotent: re-running it with the same parameters produces
+    the same assignment state without creating duplicate assignments.
+
+.PARAMETER PolicyId
+    GUID of the target Intune compliance policy.
+    Retrieve via: Get-MgDeviceManagementDeviceCompliancePolicy -All |
+                  Where-Object { $_.DisplayName -eq "Your Policy Name" }
+
+.PARAMETER GroupId
+    GUID of the ORG-BRANCH-{NodeId} group to assign the policy to.
+    Retrieve via: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-{NodeId}'"
+
+.NOTES
+    Required Graph scope: DeviceManagementConfiguration.ReadWrite.All
+    Assignment is a POST to the /assign endpoint. This replaces ALL existing
+    assignments on the policy with the assignments specified in the body.
+    If the policy should be assigned to multiple branch groups, pass all group
+    IDs in the same call rather than calling this script multiple times.
+    Calling /assign multiple times with different groups will overwrite the
+    previous call's assignments.
+#>
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$PolicyId,   # GUID of the target Intune compliance policy
+
+    [Parameter(Mandatory=$true)]
+    [string[]]$GroupIds  # One or more ORG-BRANCH-{NodeId} group GUIDs
+)
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome
+
+# Build the assignments array with one entry per group.
+# The @odata.type for a standard included group assignment is:
+#   #microsoft.graph.groupAssignmentTarget
+# For excluded groups, use: #microsoft.graph.exclusionGroupAssignmentTarget
+$assignmentTargets = $GroupIds | ForEach-Object {
+    @{
+        target = @{
+            "@odata.type" = "#microsoft.graph.groupAssignmentTarget"
+            groupId       = $_
+        }
+    }
+}
+
+$assignmentBody = @{
+    assignments = @($assignmentTargets)
+}
+
+# POST to the /assign action. This is a full replace, not an additive merge.
+Invoke-MgGraphRequest `
+    -Method      POST `
+    -Uri         "https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies/$PolicyId/assign" `
+    -Body        ($assignmentBody | ConvertTo-Json -Depth 10) `
+    -ContentType "application/json"
+
+Write-Host "Compliance policy '$PolicyId' assigned to $($GroupIds.Count) group(s):"
+$GroupIds | ForEach-Object { Write-Host "  - $_" }
+
+Disconnect-MgGraph
+```
 
 One behavioral detail of the Graph API /assign endpoint warrants emphasis: it performs a full replace of all existing assignments, not an additive merge. Calling the endpoint with a single group ID when the policy was previously assigned to three groups will result in the policy being assigned to only one group after the call. The governance pipeline must always supply the complete intended assignment list for a policy when calling this endpoint, which is why the policy assignment manifest is the authoritative record — the pipeline reads the full intended assignment state for each policy from the manifest and passes the complete list in every assignment call.
 
@@ -237,7 +502,161 @@ The first strategy derives the device's OrgPath from the provisioning user's Org
 
 The script below is deployed as a PowerShell script in the Intune script library and associated with the Autopilot profile's enrollment status page. It runs during the Account Setup phase, at which point the provisioning user has authenticated and the device object exists in Entra ID. The script authenticates using a certificate-based service principal — the same service account identity used by the ETL pipeline — whose certificate is pre-provisioned on the device through a configuration profile applied during the Device Setup phase of the ESP.
 
-\<# data-id="184" .SYNOPSIS Stamps OrgPath on the device object during Autopilot provisioning by deriving the device's organizational position from the provisioning user. .DESCRIPTION This script is deployed as a PowerShell script in Microsoft Intune and executed during the Autopilot enrollment status page (Account Setup phase). It authenticates as a governance service principal (certificate-based), reads the provisioning user's OrgPath extension attribute, and writes the same value to the device object. Deploy via: Intune \> Devices \> Scripts \> Add \> Windows 10 and later - Run this script using the logged-on credentials : No (Script runs as SYSTEM; certificate must be in the LocalMachine store) - Run script in 64-bit PowerShell host : Yes - Enforce script signature check : Yes (sign before production deployment) .NOTES The provisioning user account must have been assigned OrgPath by the ETL pipeline before Autopilot provisioning begins. If the user has no OrgPath, the device is stamped as /UNPOSITIONED and queued for review. The governance service principal requires the following Graph permissions: Device.ReadWrite.All — to write OrgPath to the device object User.Read.All — to read the provisioning user's OrgPath attribute The service principal's certificate must be available in the machine certificate store (LocalMachine\My) under the thumbprint specified below. Pre-provision the certificate via a PKCS certificate profile in Intune targeted to the Autopilot pre-provisioning device group. \#\> \# --- Configuration: Substitute all values below for your environment --- \# The Application (client) ID of the governance service principal. \# This is the same App ID used by the Part Four ETL pipeline. \$OrgPathAppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" \# SUBSTITUTE: Your App ID \# Your Entra ID tenant ID. \$TenantId = "f1e2d3c4-b5a6-f1e2-d3c4-b5a6f1e2d3c4" \# SUBSTITUTE: Your Tenant ID \# Thumbprint of the governance service principal's certificate, \# pre-provisioned into the LocalMachine\My certificate store. \$ClientCertThumb = "AABBCCDDEEFF112233445566778899AABBCCDDEE" \# SUBSTITUTE: Your cert thumbprint \# --- Derive extension attribute names from App ID --- \$appIdNoHyphens = \$OrgPathAppId -replace "-", "" \$userOrgPathAttr = "extension\_\${appIdNoHyphens}\_OrgPath" \$deviceOrgPathAttr = "extension\_\${appIdNoHyphens}\_OrgPath" \# --- Authenticate to Graph using certificate-based service principal --- \# This avoids storing client secrets on the device and survives offline re-enrollment. try { Connect-MgGraph \` -ClientId \$OrgPathAppId \` -TenantId \$TenantId \` -CertificateThumbprint \$ClientCertThumb \` -NoWelcome } catch { Write-Error "Authentication to Microsoft Graph failed: \$\_" exit 1 } \# --- Determine the provisioning user's UPN --- \# During the Autopilot Account Setup phase, the signed-in user is the provisioning user. \# Get-MgContext returns the identity of the current Graph session. \# Because this script runs as SYSTEM with a service principal, we need to \# identify the provisioning user from the Windows session instead. \$currentUserUPN = (Get-WmiObject -Class Win32_ComputerSystem).UserName \# Strip the domain prefix if present (DOMAIN\username format) if (\$currentUserUPN -like "\*\\") { \$currentUserUPN = \$currentUserUPN.Split("\\)\[1\] } \# If UPN lookup fails, query Entra ID for the user based on the signed-in account. \# In practice, supplement this with the Intune enrollment user API if needed. if (-not \$currentUserUPN) { Write-Error "Could not determine provisioning user UPN. Cannot derive OrgPath." Disconnect-MgGraph exit 1 } Write-Host "Provisioning user identified: \$currentUserUPN" \# --- Read the user's OrgPath attribute --- try { \$user = Get-MgUser \` -UserId \$currentUserUPN \` -Property "id,displayName,\$userOrgPathAttr" } catch { Write-Error "Failed to retrieve user object for '\$currentUserUPN': \$\_" Disconnect-MgGraph exit 1 } \$userOrgPath = \$user.AdditionalProperties\[\$userOrgPathAttr\] if (-not \$userOrgPath) { Write-Warning "User '\$currentUserUPN' has no OrgPath attribute." Write-Warning "Stamping device as /UNPOSITIONED. Queue for governance review." \$deviceOrgPath = "/UNPOSITIONED" } else { \# Device inherits the provisioning user's OrgPath. \# For shared or kiosk devices, replace this with the hardware hash mapping \# strategy described in Section 4.3 instead of this user-derivation path. \$deviceOrgPath = \$userOrgPath Write-Host "Derived device OrgPath from user: \$deviceOrgPath" } \# --- Find this device's Entra ID object by computer name --- \# The device registers with Entra ID during the Device Setup phase of Autopilot, \# using the displayName assigned by the Autopilot naming template. By the time \# this script runs in Account Setup, the device object exists in Entra ID. \$deviceName = \$env:COMPUTERNAME try { \$device = Get-MgDevice \` -Filter "displayName eq '\$deviceName'" \` -Property "id,displayName" } catch { Write-Error "Error querying Entra ID for device '\$deviceName': \$\_" Disconnect-MgGraph exit 1 } if (-not \$device) { Write-Error "Device '\$deviceName' not found in Entra ID. OrgPath stamp cannot proceed." Disconnect-MgGraph exit 1 } Write-Host "Entra device object located: \$(\$device.DisplayName) (ID: \$(\$device.Id))" \# --- Stamp OrgPath on the device object --- \# The AdditionalProperties dictionary is used for schema extension attributes. \# The attribute name must match exactly what the ETL pipeline writes — \# any discrepancy produces a second attribute rather than overwriting the first. \$updateBody = @{ AdditionalProperties = @{ \$deviceOrgPathAttr = \$deviceOrgPath } } try { Update-MgDevice -DeviceId \$device.Id -BodyParameter \$updateBody Write-Host "SUCCESS: OrgPath '\$deviceOrgPath' stamped on device '\$deviceName'." } catch { Write-Error "Failed to write OrgPath to device object: \$\_" Disconnect-MgGraph exit 1 } Disconnect-MgGraph exit 0
+```powershell
+<# data-id="184"
+.SYNOPSIS
+    Stamps OrgPath on the device object during Autopilot provisioning
+    by deriving the device's organizational position from the provisioning user.
+
+.DESCRIPTION
+    This script is deployed as a PowerShell script in Microsoft Intune and
+    executed during the Autopilot enrollment status page (Account Setup phase).
+    It authenticates as a governance service principal (certificate-based),
+    reads the provisioning user's OrgPath extension attribute, and writes
+    the same value to the device object.
+
+    Deploy via: Intune > Devices > Scripts > Add > Windows 10 and later
+      - Run this script using the logged-on credentials : No
+        (Script runs as SYSTEM; certificate must be in the LocalMachine store)
+      - Run script in 64-bit PowerShell host             : Yes
+      - Enforce script signature check                   : Yes (sign before production deployment)
+
+.NOTES
+    The provisioning user account must have been assigned OrgPath by the
+    ETL pipeline before Autopilot provisioning begins. If the user has no
+    OrgPath, the device is stamped as /UNPOSITIONED and queued for review.
+
+    The governance service principal requires the following Graph permissions:
+      Device.ReadWrite.All   — to write OrgPath to the device object
+      User.Read.All          — to read the provisioning user's OrgPath attribute
+
+    The service principal's certificate must be available in the machine
+    certificate store (LocalMachine\My) under the thumbprint specified below.
+    Pre-provision the certificate via a PKCS certificate profile in Intune
+    targeted to the Autopilot pre-provisioning device group.
+#>
+
+# --- Configuration: Substitute all values below for your environment ---
+
+# The Application (client) ID of the governance service principal.
+# This is the same App ID used by the Part Four ETL pipeline.
+$OrgPathAppId    = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"  # SUBSTITUTE: Your App ID
+
+# Your Entra ID tenant ID.
+$TenantId        = "f1e2d3c4-b5a6-f1e2-d3c4-b5a6f1e2d3c4"  # SUBSTITUTE: Your Tenant ID
+
+# Thumbprint of the governance service principal's certificate,
+# pre-provisioned into the LocalMachine\My certificate store.
+$ClientCertThumb = "AABBCCDDEEFF112233445566778899AABBCCDDEE" # SUBSTITUTE: Your cert thumbprint
+
+# --- Derive extension attribute names from App ID ---
+$appIdNoHyphens    = $OrgPathAppId -replace "-", ""
+$userOrgPathAttr   = "extension_${appIdNoHyphens}_OrgPath"
+$deviceOrgPathAttr = "extension_${appIdNoHyphens}_OrgPath"
+
+# --- Authenticate to Graph using certificate-based service principal ---
+# This avoids storing client secrets on the device and survives offline re-enrollment.
+try {
+    Connect-MgGraph `
+        -ClientId              $OrgPathAppId `
+        -TenantId              $TenantId `
+        -CertificateThumbprint $ClientCertThumb `
+        -NoWelcome
+} catch {
+    Write-Error "Authentication to Microsoft Graph failed: $_"
+    exit 1
+}
+
+# --- Determine the provisioning user's UPN ---
+# During the Autopilot Account Setup phase, the signed-in user is the provisioning user.
+# Get-MgContext returns the identity of the current Graph session.
+# Because this script runs as SYSTEM with a service principal, we need to
+# identify the provisioning user from the Windows session instead.
+$currentUserUPN = (Get-WmiObject -Class Win32_ComputerSystem).UserName
+# Strip the domain prefix if present (DOMAIN\username format)
+if ($currentUserUPN -like "*\*") {
+    $currentUserUPN = $currentUserUPN.Split("\")[1]
+}
+# If UPN lookup fails, query Entra ID for the user based on the signed-in account.
+# In practice, supplement this with the Intune enrollment user API if needed.
+if (-not $currentUserUPN) {
+    Write-Error "Could not determine provisioning user UPN. Cannot derive OrgPath."
+    Disconnect-MgGraph
+    exit 1
+}
+
+Write-Host "Provisioning user identified: $currentUserUPN"
+
+# --- Read the user's OrgPath attribute ---
+try {
+    $user = Get-MgUser `
+        -UserId     $currentUserUPN `
+        -Property   "id,displayName,$userOrgPathAttr"
+} catch {
+    Write-Error "Failed to retrieve user object for '$currentUserUPN': $_"
+    Disconnect-MgGraph
+    exit 1
+}
+
+$userOrgPath = $user.AdditionalProperties[$userOrgPathAttr]
+
+if (-not $userOrgPath) {
+    Write-Warning "User '$currentUserUPN' has no OrgPath attribute."
+    Write-Warning "Stamping device as /UNPOSITIONED. Queue for governance review."
+    $deviceOrgPath = "/UNPOSITIONED"
+} else {
+    # Device inherits the provisioning user's OrgPath.
+    # For shared or kiosk devices, replace this with the hardware hash mapping
+    # strategy described in Section 4.3 instead of this user-derivation path.
+    $deviceOrgPath = $userOrgPath
+    Write-Host "Derived device OrgPath from user: $deviceOrgPath"
+}
+
+# --- Find this device's Entra ID object by computer name ---
+# The device registers with Entra ID during the Device Setup phase of Autopilot,
+# using the displayName assigned by the Autopilot naming template. By the time
+# this script runs in Account Setup, the device object exists in Entra ID.
+$deviceName = $env:COMPUTERNAME
+try {
+    $device = Get-MgDevice `
+        -Filter   "displayName eq '$deviceName'" `
+        -Property "id,displayName"
+} catch {
+    Write-Error "Error querying Entra ID for device '$deviceName': $_"
+    Disconnect-MgGraph
+    exit 1
+}
+
+if (-not $device) {
+    Write-Error "Device '$deviceName' not found in Entra ID. OrgPath stamp cannot proceed."
+    Disconnect-MgGraph
+    exit 1
+}
+
+Write-Host "Entra device object located: $($device.DisplayName) (ID: $($device.Id))"
+
+# --- Stamp OrgPath on the device object ---
+# The AdditionalProperties dictionary is used for schema extension attributes.
+# The attribute name must match exactly what the ETL pipeline writes —
+# any discrepancy produces a second attribute rather than overwriting the first.
+$updateBody = @{
+    AdditionalProperties = @{
+        $deviceOrgPathAttr = $deviceOrgPath
+    }
+}
+
+try {
+    Update-MgDevice -DeviceId $device.Id -BodyParameter $updateBody
+    Write-Host "SUCCESS: OrgPath '$deviceOrgPath' stamped on device '$deviceName'."
+} catch {
+    Write-Error "Failed to write OrgPath to device object: $_"
+    Disconnect-MgGraph
+    exit 1
+}
+
+Disconnect-MgGraph
+exit 0
+```
 
 ### 4.3   Strategy Two — Hardware Hash Mapping for Shared and Kiosk Devices
 
@@ -279,7 +698,134 @@ Implementing the compliance bridge follows a precise sequence of steps. The step
 
 The following script creates the Finance segment compliance policy in Intune via the Graph API. It is stored in the governance repository under governance/intune/compliance/ and is the canonical definition of the Finance compliance standard. When the Finance compliance requirements change — for example, when the minimum Windows build is raised to a newer release — the script is updated in the repository, reviewed, and re-executed to update the policy in Intune. The pipeline uses the policy's ID, stored in the governance repository after first creation, to issue update calls for subsequent changes.
 
-\<# data-id="223" .SYNOPSIS Creates an Intune device compliance policy for the Finance organizational segment. .DESCRIPTION This script creates a Windows 10/11 compliance policy targeting the Finance branch group (ORG-BRANCH-FINANCE) with settings appropriate for financial data processing workstations. After creation, the policy ID is written to the governance repository so subsequent pipeline runs can reference it for updates and assignment reconciliation. To update an existing policy rather than creating a new one, use: Update-MgDeviceManagementDeviceCompliancePolicy -DeviceCompliancePolicyId \$PolicyId .PARAMETER FinanceBranchGroupId GUID of the ORG-BRANCH-FINANCE group in Entra ID. Retrieve via: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-FINANCE'" .NOTES Required Graph scope: DeviceManagementConfiguration.ReadWrite.All Store the created policy ID in the governance repository: governance/intune/compliance/finance-policy-id.txt This ID is required for all subsequent assignment and update operations. \#\> param( \[Parameter(Mandatory=\$true)\] \[string\]\$FinanceBranchGroupId \# GUID of the ORG-BRANCH-FINANCE Entra ID group ) Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome \# --- Compliance Policy Settings --- \# All values below should be reviewed and confirmed by the security and \# compliance teams before this script is executed against the production tenant. \# Substitute osMinimumVersion with the minimum build your organization supports. \# 10.0.22621.0 = Windows 11 22H2. Raise this as new baselines are adopted. \$policyBody = @{ "@odata.type" = "#microsoft.graph.windows10CompliancePolicy" displayName = "Compliance — Finance Branch (ORG-BRANCH-FINANCE)" description = "OrgPath-derived compliance policy for the Finance division and all subordinate organizational units. Managed by the governance pipeline — do not modify directly in the portal." \# OS version floor. Update when the minimum supported build changes. osMinimumVersion = "10.0.22621.0" \# SUBSTITUTE: Your org's minimum build \# Encryption requirements bitLockerEnabled = \$true \# Secure Boot — required for TPM-attested device health secureBootEnabled = \$true \# Code Integrity — verifies that only signed, unmodified code runs codeIntegrityEnabled = \$true \# Defender Antivirus requirements defenderEnabled = \$true defenderVersion = "" \# Any current version accepted signatureOutOfDate = \$false \# Signatures must be current; \$false = current required rtpEnabled = \$true \# Real-time protection must be active antivirusRequired = \$true antiSpywareRequired = \$true \# Firewall firewallRequired = \$true \# TPM 2.0 — required for Secure Boot attestation and BitLocker key binding tpmRequired = \$true \# Password / PIN requirements passwordRequired = \$true passwordMinimumLength = 12 \# SUBSTITUTE: Your org's minimum (12 recommended for Finance) passwordRequiredType = "alphanumericWithSymbols" passwordMinutesOfInactivityBeforeLock = 10 passwordExpirationDays = 90 passwordPreviousPasswordBlockCount = 10 \# Non-compliance action: block access immediately, no grace period. \# Adjust gracePeriodHours if the organization requires a remediation window. scheduledActionsForRule = @( @{ ruleName = "FinanceComplianceRule" scheduledActionConfigurations = @( @{ actionType = "block" \# Immediately revoke access token on non-compliance gracePeriodHours = 0 \# SUBSTITUTE: Set to 24 or 48 if a remediation window is required notificationTemplateId = "" \# SUBSTITUTE: GUID of your Intune notification template, if configured notificationMessageCCList = @() } ) } ) } \# --- Create the Policy --- \$policy = New-MgDeviceManagementDeviceCompliancePolicy -BodyParameter \$policyBody Write-Host "Policy created:" Write-Host " ID : \$(\$policy.Id)" Write-Host " DisplayName : \$(\$policy.DisplayName)" \# --- Assign to the Finance Branch Group --- \# This POST replaces all existing assignments. If this policy should also be \# assigned to additional groups (e.g., a secondary Finance contractor group), \# include all group GUIDs in the assignments array here. \$assignBody = @{ assignments = @( @{ target = @{ "@odata.type" = "#microsoft.graph.groupAssignmentTarget" groupId = \$FinanceBranchGroupId } } ) } Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies/\$(\$policy.Id)/assign" \` -Body (\$assignBody \| ConvertTo-Json -Depth 10) \` -ContentType "application/json" Write-Host "Policy assigned to ORG-BRANCH-FINANCE (Group ID: \$FinanceBranchGroupId)." Write-Host "" Write-Host "IMPORTANT: Store the following policy ID in the governance repository:" Write-Host " governance/intune/compliance/finance-policy-id.txt" Write-Host " Policy ID: \$(\$policy.Id)" Disconnect-MgGraph
+```powershell
+<# data-id="223"
+.SYNOPSIS
+    Creates an Intune device compliance policy for the Finance organizational segment.
+
+.DESCRIPTION
+    This script creates a Windows 10/11 compliance policy targeting the Finance
+    branch group (ORG-BRANCH-FINANCE) with settings appropriate for financial
+    data processing workstations. After creation, the policy ID is written to
+    the governance repository so subsequent pipeline runs can reference it
+    for updates and assignment reconciliation.
+
+    To update an existing policy rather than creating a new one, use:
+      Update-MgDeviceManagementDeviceCompliancePolicy -DeviceCompliancePolicyId $PolicyId
+
+.PARAMETER FinanceBranchGroupId
+    GUID of the ORG-BRANCH-FINANCE group in Entra ID.
+    Retrieve via: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-FINANCE'"
+
+.NOTES
+    Required Graph scope: DeviceManagementConfiguration.ReadWrite.All
+    Store the created policy ID in the governance repository:
+      governance/intune/compliance/finance-policy-id.txt
+    This ID is required for all subsequent assignment and update operations.
+#>
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$FinanceBranchGroupId  # GUID of the ORG-BRANCH-FINANCE Entra ID group
+)
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome
+
+# --- Compliance Policy Settings ---
+# All values below should be reviewed and confirmed by the security and
+# compliance teams before this script is executed against the production tenant.
+# Substitute osMinimumVersion with the minimum build your organization supports.
+# 10.0.22621.0 = Windows 11 22H2. Raise this as new baselines are adopted.
+$policyBody = @{
+    "@odata.type"                         = "#microsoft.graph.windows10CompliancePolicy"
+    displayName                           = "Compliance — Finance Branch (ORG-BRANCH-FINANCE)"
+    description                           = "OrgPath-derived compliance policy for the Finance division and all subordinate organizational units. Managed by the governance pipeline — do not modify directly in the portal."
+
+    # OS version floor. Update when the minimum supported build changes.
+    osMinimumVersion                      = "10.0.22621.0"  # SUBSTITUTE: Your org's minimum build
+
+    # Encryption requirements
+    bitLockerEnabled                      = $true
+
+    # Secure Boot — required for TPM-attested device health
+    secureBootEnabled                     = $true
+
+    # Code Integrity — verifies that only signed, unmodified code runs
+    codeIntegrityEnabled                  = $true
+
+    # Defender Antivirus requirements
+    defenderEnabled                       = $true
+    defenderVersion                       = ""              # Any current version accepted
+    signatureOutOfDate                    = $false          # Signatures must be current; $false = current required
+    rtpEnabled                            = $true           # Real-time protection must be active
+    antivirusRequired                     = $true
+    antiSpywareRequired                   = $true
+
+    # Firewall
+    firewallRequired                      = $true
+
+    # TPM 2.0 — required for Secure Boot attestation and BitLocker key binding
+    tpmRequired                           = $true
+
+    # Password / PIN requirements
+    passwordRequired                      = $true
+    passwordMinimumLength                 = 12              # SUBSTITUTE: Your org's minimum (12 recommended for Finance)
+    passwordRequiredType                  = "alphanumericWithSymbols"
+    passwordMinutesOfInactivityBeforeLock = 10
+    passwordExpirationDays                = 90
+    passwordPreviousPasswordBlockCount    = 10
+
+    # Non-compliance action: block access immediately, no grace period.
+    # Adjust gracePeriodHours if the organization requires a remediation window.
+    scheduledActionsForRule = @(
+        @{
+            ruleName = "FinanceComplianceRule"
+            scheduledActionConfigurations = @(
+                @{
+                    actionType                = "block"   # Immediately revoke access token on non-compliance
+                    gracePeriodHours          = 0         # SUBSTITUTE: Set to 24 or 48 if a remediation window is required
+                    notificationTemplateId    = ""        # SUBSTITUTE: GUID of your Intune notification template, if configured
+                    notificationMessageCCList = @()
+                }
+            )
+        }
+    )
+}
+
+# --- Create the Policy ---
+$policy = New-MgDeviceManagementDeviceCompliancePolicy -BodyParameter $policyBody
+Write-Host "Policy created:"
+Write-Host "  ID          : $($policy.Id)"
+Write-Host "  DisplayName : $($policy.DisplayName)"
+
+# --- Assign to the Finance Branch Group ---
+# This POST replaces all existing assignments. If this policy should also be
+# assigned to additional groups (e.g., a secondary Finance contractor group),
+# include all group GUIDs in the assignments array here.
+$assignBody = @{
+    assignments = @(
+        @{
+            target = @{
+                "@odata.type" = "#microsoft.graph.groupAssignmentTarget"
+                groupId       = $FinanceBranchGroupId
+            }
+        }
+    )
+}
+
+Invoke-MgGraphRequest `
+    -Method      POST `
+    -Uri         "https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies/$($policy.Id)/assign" `
+    -Body        ($assignBody | ConvertTo-Json -Depth 10) `
+    -ContentType "application/json"
+
+Write-Host "Policy assigned to ORG-BRANCH-FINANCE (Group ID: $FinanceBranchGroupId)."
+Write-Host ""
+Write-Host "IMPORTANT: Store the following policy ID in the governance repository:"
+Write-Host "  governance/intune/compliance/finance-policy-id.txt"
+Write-Host "  Policy ID: $($policy.Id)"
+
+Disconnect-MgGraph
+```
 
 After the script runs, the policy ID is stored in the governance repository so that the pipeline can reference it for subsequent update and assignment operations without performing a display-name lookup on every run. Display-name lookups are fragile because policy display names can be edited through the portal, while the policy ID is immutable once assigned. The governance repository stores one policy ID file per managed compliance policy, and the pipeline fails with an explicit error if a required ID file is absent — which would indicate that either the policy has not yet been created or the ID file was accidentally deleted, both of which require a human decision before the pipeline can proceed.
 
@@ -299,7 +845,179 @@ Second, Intune maintains a device category field that provides a secondary class
 
 The following script runs immediately after the ETL pipeline stamps OrgPath on a device object. It is passed the device's Entra ID object ID, the new OrgPath value, and the OrgTree node type of the leaf node. It resolves the Intune managed device record from the Entra ID device ID, requests a policy sync, updates the device category, and writes a governance audit log entry. The script is called once per device per ETL pipeline run where OrgPath changed — it is not called for devices whose OrgPath value did not change, to avoid unnecessary sync requests and API calls for the steady-state population.
 
-\<# data-id="235" .SYNOPSIS Post-OrgPath-stamp Intune operations: triggers policy sync and updates the device category to reflect the OrgTree node type. .DESCRIPTION Runs immediately after the Part Four OrgPath ETL pipeline stamps a device object. Must be called only for devices whose OrgPath value changed in the current run. Three operations are performed in sequence: 1. Resolve the Intune managed device record from the Entra device ID. 2. Request an immediate policy sync to minimize the policy coverage gap. 3. Update the Intune device category to match the OrgTree node type. 4. Write a structured audit log entry to the governance audit trail. .PARAMETER DeviceId The Entra ID device object ID (a GUID — not the Intune managed device ID, not the Azure AD device ID displayed in the Intune portal, but the object ID from the Entra ID device object). .PARAMETER OrgPath The OrgPath value just stamped on the device. Used for the audit log. .PARAMETER OrgNodeType The node type of the leaf node from the OrgTree registry. Valid values: Division, Department, Unit, Kiosk, Server, Default. Extend the \$categoryMap hashtable below to add additional types. .NOTES Required Graph scopes: DeviceManagementManagedDevices.ReadWrite.All DeviceManagementConfiguration.ReadWrite.All The Intune managed device ID differs from the Entra ID device object ID. Resolution is performed via the azureADDeviceId filter on managedDevices. Script produces a JSONL audit entry appended to .\audit\intune-post-stamp.jsonl. The pipeline commits this file to the governance repository at run end. \#\> param( \[Parameter(Mandatory=\$true)\] \[string\]\$DeviceId, \[Parameter(Mandatory=\$true)\] \[string\]\$OrgPath, \[Parameter(Mandatory=\$true)\] \[string\]\$OrgNodeType ) \$ErrorActionPreference = "Stop" \$SyncSuccess = \$false \$CategorySuccess = \$false Connect-MgGraph \` -Scopes "DeviceManagementManagedDevices.ReadWrite.All", "DeviceManagementConfiguration.ReadWrite.All" \` -NoWelcome \# --- Step 1: Resolve the Intune Managed Device Record --- \# azureADDeviceId on the managedDevices endpoint corresponds to the \# Entra ID device object ID, which is what the ETL pipeline passes as \$DeviceId. \$managedDevice = Get-MgDeviceManagementManagedDevice \` -Filter "azureADDeviceId eq '\$DeviceId'" \` -Property "id,deviceName,complianceState,managedDeviceOwnerType,azureADDeviceId" \` -ErrorAction SilentlyContinue if (-not \$managedDevice) { Write-Warning "Device with Entra ID '\$DeviceId' is not enrolled in Intune." Write-Warning "Post-stamp Intune operations skipped. ETL pipeline will retry on next run." Disconnect-MgGraph \# Write a partial audit entry indicating the skip. @{ Timestamp = (Get-Date).ToUniversalTime().ToString("o") Operation = "IntunePostStamp" DeviceId = \$DeviceId IntuneId = \$null DeviceName = \$null NewOrgPath = \$OrgPath OrgNodeType = \$OrgNodeType Category = \$null SyncRequested = \$false Skipped = \$true SkipReason = "Not enrolled in Intune" } \| ConvertTo-Json -Compress \| Out-File -FilePath ".\audit\intune-post-stamp.jsonl" -Append -Encoding utf8 return } \$intuneDeviceId = \$managedDevice.Id Write-Host "Intune device resolved: \$(\$managedDevice.DeviceName) \| Intune ID: \$intuneDeviceId" Write-Host " Compliance state : \$(\$managedDevice.ComplianceState)" Write-Host " Owner type : \$(\$managedDevice.ManagedDeviceOwnerType)" \# --- Step 2: Request an Immediate Policy Sync --- \# syncDevice instructs Intune to schedule the next MDM sync as soon as \# the device checks in, rather than waiting for the standard check-in interval. \# This does NOT guarantee immediate sync — it guarantees the sync occurs at \# the next check-in, which may still be minutes away if the device is sleeping. try { Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/\$intuneDeviceId/syncDevice" Write-Host "Policy sync requested for \$(\$managedDevice.DeviceName)." \$SyncSuccess = \$true } catch { \# Sync request failure is non-fatal. The device will sync on its next scheduled interval. Write-Warning "Sync request failed for device \$intuneDeviceId: \$\_" Write-Warning "Device will sync on its next scheduled MDM check-in interval." } \# --- Step 3: Update Device Category --- \# Map OrgTree node types to Intune device category display names. \# Extend this map to include additional node types your OrgTree uses. \# Category names here must exactly match the display names of categories \# configured in Intune (Tenant Administration \> Device Categories). \$categoryMap = @{ "Division" = "Corporate — Division Level" \# SUBSTITUTE: Must match Intune category names exactly "Department" = "Corporate — Department Level" \# SUBSTITUTE: Must match Intune category names exactly "Unit" = "Corporate — Unit Level" \# SUBSTITUTE: Must match Intune category names exactly "Kiosk" = "Kiosk Device" \# SUBSTITUTE: Must match Intune category names exactly "Server" = "Managed Server" \# SUBSTITUTE: Must match Intune category names exactly "Default" = "Corporate — Unclassified" \# SUBSTITUTE: Must match Intune category names exactly } \$categoryName = if (\$categoryMap.ContainsKey(\$OrgNodeType)) { \$categoryMap\[\$OrgNodeType\] } else { \$categoryMap\["Default"\] } \# Verify the category exists in Intune before attempting assignment. \$category = Get-MgDeviceManagementDeviceCategory \` -Filter "displayName eq '\$categoryName'" \` -ErrorAction SilentlyContinue if (\$category) { try { Invoke-MgGraphRequest \` -Method PATCH \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/\$intuneDeviceId" \` -Body (@{ deviceCategoryDisplayName = \$categoryName } \| ConvertTo-Json) \` -ContentType "application/json" Write-Host "Device category updated to: '\$categoryName'." \$CategorySuccess = \$true } catch { Write-Warning "Category update failed for \$(\$managedDevice.DeviceName): \$\_" } } else { Write-Warning "Category '\$categoryName' not found in Intune device categories." Write-Warning "Create this category in Intune before rerunning the pipeline." } \# --- Step 4: Governance Audit Log Entry --- \# Append a structured JSON line to the governance audit file. \# The pipeline commits this file to the governance repository after the full run. \# Each line is a self-contained JSON object (JSONL format) for streaming compatibility. \$auditEntry = @{ Timestamp = (Get-Date).ToUniversalTime().ToString("o") Operation = "IntunePostStamp" DeviceId = \$DeviceId IntuneId = \$intuneDeviceId DeviceName = \$managedDevice.DeviceName NewOrgPath = \$OrgPath OrgNodeType = \$OrgNodeType Category = \$categoryName SyncRequested = \$SyncSuccess CategoryUpdated = \$CategorySuccess ComplianceBefore = \$managedDevice.ComplianceState } \$null = New-Item -ItemType Directory -Path ".\audit" -Force \$auditEntry \| ConvertTo-Json -Compress \| Out-File -FilePath ".\audit\intune-post-stamp.jsonl" -Append -Encoding utf8 Write-Host "Audit entry written for \$(\$managedDevice.DeviceName)." Disconnect-MgGraph
+```powershell
+<# data-id="235"
+.SYNOPSIS
+    Post-OrgPath-stamp Intune operations: triggers policy sync and
+    updates the device category to reflect the OrgTree node type.
+
+.DESCRIPTION
+    Runs immediately after the Part Four OrgPath ETL pipeline stamps a device object.
+    Must be called only for devices whose OrgPath value changed in the current run.
+    Three operations are performed in sequence:
+      1. Resolve the Intune managed device record from the Entra device ID.
+      2. Request an immediate policy sync to minimize the policy coverage gap.
+      3. Update the Intune device category to match the OrgTree node type.
+      4. Write a structured audit log entry to the governance audit trail.
+
+.PARAMETER DeviceId
+    The Entra ID device object ID (a GUID — not the Intune managed device ID,
+    not the Azure AD device ID displayed in the Intune portal, but the
+    object ID from the Entra ID device object).
+
+.PARAMETER OrgPath
+    The OrgPath value just stamped on the device. Used for the audit log.
+
+.PARAMETER OrgNodeType
+    The node type of the leaf node from the OrgTree registry.
+    Valid values: Division, Department, Unit, Kiosk, Server, Default.
+    Extend the $categoryMap hashtable below to add additional types.
+
+.NOTES
+    Required Graph scopes:
+      DeviceManagementManagedDevices.ReadWrite.All
+      DeviceManagementConfiguration.ReadWrite.All
+    The Intune managed device ID differs from the Entra ID device object ID.
+    Resolution is performed via the azureADDeviceId filter on managedDevices.
+    Script produces a JSONL audit entry appended to .\audit\intune-post-stamp.jsonl.
+    The pipeline commits this file to the governance repository at run end.
+#>
+param(
+    [Parameter(Mandatory=$true)] [string]$DeviceId,
+    [Parameter(Mandatory=$true)] [string]$OrgPath,
+    [Parameter(Mandatory=$true)] [string]$OrgNodeType
+)
+
+$ErrorActionPreference = "Stop"
+$SyncSuccess           = $false
+$CategorySuccess       = $false
+
+Connect-MgGraph `
+    -Scopes "DeviceManagementManagedDevices.ReadWrite.All",
+            "DeviceManagementConfiguration.ReadWrite.All" `
+    -NoWelcome
+
+# --- Step 1: Resolve the Intune Managed Device Record ---
+# azureADDeviceId on the managedDevices endpoint corresponds to the
+# Entra ID device object ID, which is what the ETL pipeline passes as $DeviceId.
+$managedDevice = Get-MgDeviceManagementManagedDevice `
+    -Filter   "azureADDeviceId eq '$DeviceId'" `
+    -Property "id,deviceName,complianceState,managedDeviceOwnerType,azureADDeviceId" `
+    -ErrorAction SilentlyContinue
+
+if (-not $managedDevice) {
+    Write-Warning "Device with Entra ID '$DeviceId' is not enrolled in Intune."
+    Write-Warning "Post-stamp Intune operations skipped. ETL pipeline will retry on next run."
+    Disconnect-MgGraph
+
+    # Write a partial audit entry indicating the skip.
+    @{
+        Timestamp     = (Get-Date).ToUniversalTime().ToString("o")
+        Operation     = "IntunePostStamp"
+        DeviceId      = $DeviceId
+        IntuneId      = $null
+        DeviceName    = $null
+        NewOrgPath    = $OrgPath
+        OrgNodeType   = $OrgNodeType
+        Category      = $null
+        SyncRequested = $false
+        Skipped       = $true
+        SkipReason    = "Not enrolled in Intune"
+    } | ConvertTo-Json -Compress |
+        Out-File -FilePath ".\audit\intune-post-stamp.jsonl" -Append -Encoding utf8
+
+    return
+}
+
+$intuneDeviceId = $managedDevice.Id
+Write-Host "Intune device resolved: $($managedDevice.DeviceName) | Intune ID: $intuneDeviceId"
+Write-Host "  Compliance state     : $($managedDevice.ComplianceState)"
+Write-Host "  Owner type           : $($managedDevice.ManagedDeviceOwnerType)"
+
+# --- Step 2: Request an Immediate Policy Sync ---
+# syncDevice instructs Intune to schedule the next MDM sync as soon as
+# the device checks in, rather than waiting for the standard check-in interval.
+# This does NOT guarantee immediate sync — it guarantees the sync occurs at
+# the next check-in, which may still be minutes away if the device is sleeping.
+try {
+    Invoke-MgGraphRequest `
+        -Method POST `
+        -Uri    "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/$intuneDeviceId/syncDevice"
+    Write-Host "Policy sync requested for $($managedDevice.DeviceName)."
+    $SyncSuccess = $true
+} catch {
+    # Sync request failure is non-fatal. The device will sync on its next scheduled interval.
+    Write-Warning "Sync request failed for device $intuneDeviceId: $_"
+    Write-Warning "Device will sync on its next scheduled MDM check-in interval."
+}
+
+# --- Step 3: Update Device Category ---
+# Map OrgTree node types to Intune device category display names.
+# Extend this map to include additional node types your OrgTree uses.
+# Category names here must exactly match the display names of categories
+# configured in Intune (Tenant Administration > Device Categories).
+$categoryMap = @{
+    "Division"   = "Corporate — Division Level"    # SUBSTITUTE: Must match Intune category names exactly
+    "Department" = "Corporate — Department Level"  # SUBSTITUTE: Must match Intune category names exactly
+    "Unit"       = "Corporate — Unit Level"        # SUBSTITUTE: Must match Intune category names exactly
+    "Kiosk"      = "Kiosk Device"                  # SUBSTITUTE: Must match Intune category names exactly
+    "Server"     = "Managed Server"                # SUBSTITUTE: Must match Intune category names exactly
+    "Default"    = "Corporate — Unclassified"      # SUBSTITUTE: Must match Intune category names exactly
+}
+
+$categoryName = if ($categoryMap.ContainsKey($OrgNodeType)) {
+    $categoryMap[$OrgNodeType]
+} else {
+    $categoryMap["Default"]
+}
+
+# Verify the category exists in Intune before attempting assignment.
+$category = Get-MgDeviceManagementDeviceCategory `
+    -Filter "displayName eq '$categoryName'" `
+    -ErrorAction SilentlyContinue
+
+if ($category) {
+    try {
+        Invoke-MgGraphRequest `
+            -Method      PATCH `
+            -Uri         "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/$intuneDeviceId" `
+            -Body        (@{ deviceCategoryDisplayName = $categoryName } | ConvertTo-Json) `
+            -ContentType "application/json"
+        Write-Host "Device category updated to: '$categoryName'."
+        $CategorySuccess = $true
+    } catch {
+        Write-Warning "Category update failed for $($managedDevice.DeviceName): $_"
+    }
+} else {
+    Write-Warning "Category '$categoryName' not found in Intune device categories."
+    Write-Warning "Create this category in Intune before rerunning the pipeline."
+}
+
+# --- Step 4: Governance Audit Log Entry ---
+# Append a structured JSON line to the governance audit file.
+# The pipeline commits this file to the governance repository after the full run.
+# Each line is a self-contained JSON object (JSONL format) for streaming compatibility.
+$auditEntry = @{
+    Timestamp        = (Get-Date).ToUniversalTime().ToString("o")
+    Operation        = "IntunePostStamp"
+    DeviceId         = $DeviceId
+    IntuneId         = $intuneDeviceId
+    DeviceName       = $managedDevice.DeviceName
+    NewOrgPath       = $OrgPath
+    OrgNodeType      = $OrgNodeType
+    Category         = $categoryName
+    SyncRequested    = $SyncSuccess
+    CategoryUpdated  = $CategorySuccess
+    ComplianceBefore = $managedDevice.ComplianceState
+}
+
+$null = New-Item -ItemType Directory -Path ".\audit" -Force
+$auditEntry | ConvertTo-Json -Compress |
+    Out-File -FilePath ".\audit\intune-post-stamp.jsonl" -Append -Encoding utf8
+
+Write-Host "Audit entry written for $($managedDevice.DeviceName)."
+Disconnect-MgGraph
+```
 
 The audit log produced by this script serves two purposes. First, it creates a time-stamped record of every OrgPath change on Intune-enrolled devices, which is required for compliance reporting in environments where device governance decisions must be auditable. Second, it provides the raw data for the compliance-state-before-and-after analysis that the governance team runs quarterly to measure whether OrgPath reassignments are being handled correctly — whether devices that moved from a lenient segment to a stricter segment are showing the expected compliance state change within a reasonable time after the OrgPath stamp.
 
@@ -325,7 +1043,115 @@ Scope tags are named using the convention OrgPath-{NodeId}, which is consistent 
 
 The following script creates scope tags for all scope-tag-enabled OrgTree nodes and assigns them to all managed devices whose OrgPath falls within each node's branch. It is run after the ETL pipeline's OrgPath stamping phase completes, so scope tag assignments reflect the current OrgPath state of the device population.
 
-\<# data-id="254" .SYNOPSIS Creates Intune scope tags from OrgTree registry nodes and assigns them to managed devices based on OrgPath values. .DESCRIPTION Reads OrgTree registry nodes where ScopeTagEnabled is true. Creates scope tags for any that do not yet exist. Assigns each scope tag to all Intune managed devices whose OrgPath begins with the corresponding node's path. Scope tag assignment is additive for devices in multiple branches; this script does not remove previously assigned scope tags except through a full-replace PATCH, which would require loading the existing scope tag list per device. For simplicity this script sets the single authoritative scope tag per device based on the most specific matching node. .NOTES Required Graph scope: DeviceManagementConfiguration.ReadWrite.All For large device populations, the inner device loop may be slow. Consider parallelizing with ForEach-Object -Parallel in PowerShell 7+, adding a -ThrottleLimit parameter to control concurrency. Run after OrgPath stamping is complete for the current pipeline run. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \# SUBSTITUTE: Your OrgPath App Registration Application ID (with hyphens) \[string\]\$OrgPathAppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" ) \$appIdNoHyphens = \$OrgPathAppId -replace "-", "" \$deviceOrgPathAttr = "extension\_\${appIdNoHyphens}\_OrgPath" Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome \$registry = Get-Content -Path \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \# Filter to only nodes that have ScopeTagEnabled set to true and are Active. \$scopeTagNodes = \$registry.nodes \| Where-Object { \$\_.ScopeTagEnabled -eq \$true -and \$\_.Status -eq "Active" } Write-Host "Scope-tag-enabled nodes: \$(\$scopeTagNodes.Count)" \# Load all existing scope tags once for efficient lookup. \$existingScopeTags = Get-MgDeviceManagementRoleScopeTag -All \$scopeTagIndex = @{} foreach (\$st in \$existingScopeTags) { \$scopeTagIndex\[\$st.DisplayName\] = \$st } foreach (\$node in \$scopeTagNodes) { \$tagName = "OrgPath-\$(\$node.Id)" \# --- Create scope tag if it does not exist --- if (-not \$scopeTagIndex.ContainsKey(\$tagName)) { \$newTag = New-MgDeviceManagementRoleScopeTag \` -DisplayName \$tagName \` -Description "OrgPath administrative scope for \$(\$node.Name) \[\$(\$node.Path)\] and all subordinate units." \$scopeTagIndex\[\$tagName\] = \$newTag Write-Host " \[CREATED\] Scope tag: \$tagName (ID: \$(\$newTag.Id))" } else { Write-Host " \[EXISTS\] Scope tag: \$tagName (ID: \$(\$scopeTagIndex\[\$tagName\].Id))" } \$scopeTagId = \$scopeTagIndex\[\$tagName\].Id \# --- Find managed devices in this node's branch --- \# The filter uses startsWith on the OrgPath extension attribute. \# Note: Graph API filter support for extension attributes varies by tenant \# configuration. If the startsWith filter returns an error, retrieve all \# managed devices and filter client-side as the fallback approach. try { \$devices = Get-MgDeviceManagementManagedDevice \` -Filter "startsWith(\$deviceOrgPathAttr,'\$(\$node.Path)')" \` -Property "id,deviceName,\$deviceOrgPathAttr" \` -All } catch { Write-Warning " Graph filter on OrgPath not supported — falling back to client-side filter." \$allDevices = Get-MgDeviceManagementManagedDevice \` -Property "id,deviceName,\$deviceOrgPathAttr" -All \$devices = \$allDevices \| Where-Object { \$\_.AdditionalProperties\[\$deviceOrgPathAttr\] -like "\$(\$node.Path)\*" } } Write-Host " Assigning scope tag '\$tagName' to \$(\$devices.Count) device(s) in \$(\$node.Name) branch..." foreach (\$device in \$devices) { \# roleScopeTagIds is a full-replace array — not additive per call. \# If a device should carry multiple scope tags (e.g., from nested \# scope-tag-bearing nodes), load the existing list first and append. \# For the common case of one scope tag per device, this direct set is correct. \$patchBody = @{ roleScopeTagIds = @(\$scopeTagId) } try { Invoke-MgGraphRequest \` -Method PATCH \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/\$(\$device.Id)" \` -Body (\$patchBody \| ConvertTo-Json) \` -ContentType "application/json" } catch { Write-Warning " Scope tag assignment failed for \$(\$device.DeviceName): \$\_" } } Write-Host " Complete for \$(\$node.Name)." } Write-Host "" Write-Host "=== Scope Tag Assignment Complete ===" Disconnect-MgGraph
+```powershell
+<# data-id="254"
+.SYNOPSIS
+    Creates Intune scope tags from OrgTree registry nodes and assigns them
+    to managed devices based on OrgPath values.
+
+.DESCRIPTION
+    Reads OrgTree registry nodes where ScopeTagEnabled is true. Creates scope
+    tags for any that do not yet exist. Assigns each scope tag to all Intune
+    managed devices whose OrgPath begins with the corresponding node's path.
+    Scope tag assignment is additive for devices in multiple branches; this
+    script does not remove previously assigned scope tags except through
+    a full-replace PATCH, which would require loading the existing scope tag
+    list per device. For simplicity this script sets the single authoritative
+    scope tag per device based on the most specific matching node.
+
+.NOTES
+    Required Graph scope: DeviceManagementConfiguration.ReadWrite.All
+    For large device populations, the inner device loop may be slow.
+    Consider parallelizing with ForEach-Object -Parallel in PowerShell 7+,
+    adding a -ThrottleLimit parameter to control concurrency.
+    Run after OrgPath stamping is complete for the current pipeline run.
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    # SUBSTITUTE: Your OrgPath App Registration Application ID (with hyphens)
+    [string]$OrgPathAppId        = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
+)
+
+$appIdNoHyphens    = $OrgPathAppId -replace "-", ""
+$deviceOrgPathAttr = "extension_${appIdNoHyphens}_OrgPath"
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome
+
+$registry      = Get-Content -Path $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+# Filter to only nodes that have ScopeTagEnabled set to true and are Active.
+$scopeTagNodes = $registry.nodes | Where-Object {
+    $_.ScopeTagEnabled -eq $true -and $_.Status -eq "Active"
+}
+
+Write-Host "Scope-tag-enabled nodes: $($scopeTagNodes.Count)"
+
+# Load all existing scope tags once for efficient lookup.
+$existingScopeTags = Get-MgDeviceManagementRoleScopeTag -All
+$scopeTagIndex     = @{}
+foreach ($st in $existingScopeTags) { $scopeTagIndex[$st.DisplayName] = $st }
+
+foreach ($node in $scopeTagNodes) {
+    $tagName = "OrgPath-$($node.Id)"
+
+    # --- Create scope tag if it does not exist ---
+    if (-not $scopeTagIndex.ContainsKey($tagName)) {
+        $newTag = New-MgDeviceManagementRoleScopeTag `
+            -DisplayName $tagName `
+            -Description "OrgPath administrative scope for $($node.Name) [$($node.Path)] and all subordinate units."
+        $scopeTagIndex[$tagName] = $newTag
+        Write-Host "  [CREATED] Scope tag: $tagName (ID: $($newTag.Id))"
+    } else {
+        Write-Host "  [EXISTS]  Scope tag: $tagName (ID: $($scopeTagIndex[$tagName].Id))"
+    }
+
+    $scopeTagId = $scopeTagIndex[$tagName].Id
+
+    # --- Find managed devices in this node's branch ---
+    # The filter uses startsWith on the OrgPath extension attribute.
+    # Note: Graph API filter support for extension attributes varies by tenant
+    # configuration. If the startsWith filter returns an error, retrieve all
+    # managed devices and filter client-side as the fallback approach.
+    try {
+        $devices = Get-MgDeviceManagementManagedDevice `
+            -Filter   "startsWith($deviceOrgPathAttr,'$($node.Path)')" `
+            -Property "id,deviceName,$deviceOrgPathAttr" `
+            -All
+    } catch {
+        Write-Warning "  Graph filter on OrgPath not supported — falling back to client-side filter."
+        $allDevices = Get-MgDeviceManagementManagedDevice `
+            -Property "id,deviceName,$deviceOrgPathAttr" -All
+        $devices = $allDevices | Where-Object {
+            $_.AdditionalProperties[$deviceOrgPathAttr] -like "$($node.Path)*"
+        }
+    }
+
+    Write-Host "  Assigning scope tag '$tagName' to $($devices.Count) device(s) in $($node.Name) branch..."
+
+    foreach ($device in $devices) {
+        # roleScopeTagIds is a full-replace array — not additive per call.
+        # If a device should carry multiple scope tags (e.g., from nested
+        # scope-tag-bearing nodes), load the existing list first and append.
+        # For the common case of one scope tag per device, this direct set is correct.
+        $patchBody = @{
+            roleScopeTagIds = @($scopeTagId)
+        }
+        try {
+            Invoke-MgGraphRequest `
+                -Method      PATCH `
+                -Uri         "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/$($device.Id)" `
+                -Body        ($patchBody | ConvertTo-Json) `
+                -ContentType "application/json"
+        } catch {
+            Write-Warning "    Scope tag assignment failed for $($device.DeviceName): $_"
+        }
+    }
+    Write-Host "  Complete for $($node.Name)."
+}
+
+Write-Host ""
+Write-Host "=== Scope Tag Assignment Complete ==="
+Disconnect-MgGraph
+```
 
 After scope tags are created and assigned to devices, the Intune role assignment configuration must be updated to associate each scope tag with the appropriate delegated administrator role and the appropriate user or group representing the divisional IT administrators. This step is performed once after the scope tags are created and is updated whenever the governance team adds a new scope-tag-bearing node to the OrgTree or changes the membership of a delegated administrator group. The role assignment configuration is documented in the governance repository's RBAC manifest and is managed using the same Graph API patterns established in the Part Five Azure RBAC integration.
 
@@ -347,19 +1173,132 @@ Before these queries will return results, Intune diagnostic settings must be con
 
 This query produces a compliance rate summary organized by organizational division and OrgPath segment. It is the primary governance dashboard query and is intended to be run on a 24-hour lookback window as the top-level view in a Log Analytics workbook. Divisions with compliance rates below the governance threshold appear at the top of the result set because the query orders by ascending compliance rate.
 
-// --------------------------------------------------------------- // Query 1: Intune Device Compliance by OrgPath // Purpose : Compliance rate per organizational segment, updated daily. // Table : IntuneDeviceComplianceOrg // (requires Intune \> Tenant Admin \> Diagnostic Settings \> // DeviceComplianceOrg export to this Log Analytics workspace) // OrgPath : Populated via the OrgPath ETL pipeline on device objects. // Flows into the compliance export via the device record. // Lookback: 24 hours (adjust the ago() parameter to change the window) // --------------------------------------------------------------- IntuneDeviceComplianceOrg \| where TimeGenerated \>= ago(24h) \| extend // column_ifexists() handles tenants where OrgPath is not yet in all records OrgPath = tostring(column_ifexists("OrgPath", "")), DeviceName = tostring(DeviceName), ComplianceState = tostring(ComplianceState), OS = tostring(OS) // Normalize missing OrgPath values to the UNPOSITIONED sentinel \| extend OrgPathDisplay = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) // Extract the division segment from the OrgPath // OrgPath format: /Root/Division/Department/Unit (leading slash, slash-delimited) // split() on "/" produces: \["", "Root", "Division", "Department", "Unit"\] // Index 2 is the Division segment; adjust for your OrgTree's root depth. \| extend Division = tostring(split(OrgPathDisplay, "/")\[2\]) \| extend Division = iif(isempty(Division) or Division == "UNPOSITIONED", "UNPOSITIONED", Division) // Aggregate by Division and full OrgPath for drill-down capability \| summarize TotalDevices = count(), CompliantCount = countif(ComplianceState == "Compliant"), NonCompliantCount = countif(ComplianceState == "NonCompliant"), UnknownCount = countif(ComplianceState == "Unknown") by Division, OrgPathDisplay, OS, bin(TimeGenerated, 1d) \| extend ComplianceRate = round(100.0 \* CompliantCount / TotalDevices, 1) // Surface lowest-compliance segments first for governance prioritization \| order by ComplianceRate asc, Division asc
+```kql
+// ---------------------------------------------------------------
+// Query 1: Intune Device Compliance by OrgPath
+// Purpose : Compliance rate per organizational segment, updated daily.
+// Table   : IntuneDeviceComplianceOrg
+//           (requires Intune > Tenant Admin > Diagnostic Settings >
+//            DeviceComplianceOrg export to this Log Analytics workspace)
+// OrgPath : Populated via the OrgPath ETL pipeline on device objects.
+//           Flows into the compliance export via the device record.
+// Lookback: 24 hours (adjust the ago() parameter to change the window)
+// ---------------------------------------------------------------
+
+IntuneDeviceComplianceOrg
+| where TimeGenerated >= ago(24h)
+| extend
+    // column_ifexists() handles tenants where OrgPath is not yet in all records
+    OrgPath         = tostring(column_ifexists("OrgPath", "")),
+    DeviceName      = tostring(DeviceName),
+    ComplianceState = tostring(ComplianceState),
+    OS              = tostring(OS)
+// Normalize missing OrgPath values to the UNPOSITIONED sentinel
+| extend OrgPathDisplay = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath)
+// Extract the division segment from the OrgPath
+// OrgPath format: /Root/Division/Department/Unit (leading slash, slash-delimited)
+// split() on "/" produces: ["", "Root", "Division", "Department", "Unit"]
+// Index 2 is the Division segment; adjust for your OrgTree's root depth.
+| extend Division = tostring(split(OrgPathDisplay, "/")[2])
+| extend Division = iif(isempty(Division) or Division == "UNPOSITIONED",
+                        "UNPOSITIONED", Division)
+// Aggregate by Division and full OrgPath for drill-down capability
+| summarize
+    TotalDevices      = count(),
+    CompliantCount    = countif(ComplianceState == "Compliant"),
+    NonCompliantCount = countif(ComplianceState == "NonCompliant"),
+    UnknownCount      = countif(ComplianceState == "Unknown")
+    by Division, OrgPathDisplay, OS, bin(TimeGenerated, 1d)
+| extend ComplianceRate = round(100.0 * CompliantCount / TotalDevices, 1)
+// Surface lowest-compliance segments first for governance prioritization
+| order by ComplianceRate asc, Division asc
+```
 
 ### 8.3   Query 2 — Unpositioned and Mismatched Devices
 
 This query identifies managed devices that represent governance gaps: devices with no OrgPath, devices stamped with the /UNPOSITIONED quarantine value, and devices whose OrgPath value does not correspond to any node in the OrgTree registry. The third category is particularly important because it catches OrgPath values that were once valid but are now stale — for example, a device that still carries the OrgPath of a unit that has since been decommissioned from the OrgTree. This query requires that the OrgTree registry has been imported as a Microsoft Sentinel Watchlist named OrgTreeNodes with at minimum a NodePath column containing the fully-qualified path of each active node.
 
-// --------------------------------------------------------------- // Query 2: Unpositioned and Mismatched Devices // Purpose : Identify managed devices with missing, quarantine, or // invalid OrgPath values. Results drive a daily Sentinel // incident when count \> 0. // Requires: Microsoft Sentinel Watchlist named "OrgTreeNodes" // with column NodePath (string) — one row per active // OrgTree node path. Populated by the governance pipeline // after every OrgTree change. // --------------------------------------------------------------- // Load valid OrgPath values from the OrgTree Watchlist. // This Watchlist is refreshed by the governance pipeline after every // OrgTree registry change. If the Watchlist is stale, this query // will produce false positives for recently decommissioned paths. let ValidPaths = \_GetWatchlist("OrgTreeNodes") \| project NodePath; IntuneDeviceComplianceOrg \| where TimeGenerated \>= ago(24h) \| extend OrgPath = tostring(column_ifexists("OrgPath", "")) // Identify the two primary gap types \| extend IsUnpositioned = (isempty(OrgPath) or OrgPath == "/UNPOSITIONED"), OrgPathPresent = isnotempty(OrgPath) // Left join to check whether the OrgPath is in the valid registry \| join kind=leftouter ( ValidPaths \| extend ValidPath = NodePath ) on \$left.OrgPath == \$right.ValidPath // An invalid path is: OrgPath is present AND not the quarantine sentinel // AND did NOT match any row in the Watchlist join \| extend IsInvalidPath = (OrgPathPresent and OrgPath != "/UNPOSITIONED" and isempty(ValidPath)) // Keep only gap devices \| where IsUnpositioned or IsInvalidPath \| project TimeGenerated, DeviceName, OrgPath, ComplianceState, OS, // ProblemType drives the incident severity classification ProblemType = iif(IsUnpositioned, "UNPOSITIONED", "INVALID_PATH") \| order by ProblemType asc, DeviceName asc
+```kql
+// ---------------------------------------------------------------
+// Query 2: Unpositioned and Mismatched Devices
+// Purpose : Identify managed devices with missing, quarantine, or
+//           invalid OrgPath values. Results drive a daily Sentinel
+//           incident when count > 0.
+// Requires: Microsoft Sentinel Watchlist named "OrgTreeNodes"
+//           with column NodePath (string) — one row per active
+//           OrgTree node path. Populated by the governance pipeline
+//           after every OrgTree change.
+// ---------------------------------------------------------------
+
+// Load valid OrgPath values from the OrgTree Watchlist.
+// This Watchlist is refreshed by the governance pipeline after every
+// OrgTree registry change. If the Watchlist is stale, this query
+// will produce false positives for recently decommissioned paths.
+let ValidPaths = _GetWatchlist("OrgTreeNodes")
+    | project NodePath;
+
+IntuneDeviceComplianceOrg
+| where TimeGenerated >= ago(24h)
+| extend OrgPath = tostring(column_ifexists("OrgPath", ""))
+// Identify the two primary gap types
+| extend
+    IsUnpositioned = (isempty(OrgPath) or OrgPath == "/UNPOSITIONED"),
+    OrgPathPresent = isnotempty(OrgPath)
+// Left join to check whether the OrgPath is in the valid registry
+| join kind=leftouter (
+    ValidPaths | extend ValidPath = NodePath
+) on $left.OrgPath == $right.ValidPath
+// An invalid path is: OrgPath is present AND not the quarantine sentinel
+// AND did NOT match any row in the Watchlist join
+| extend IsInvalidPath = (OrgPathPresent
+                           and OrgPath != "/UNPOSITIONED"
+                           and isempty(ValidPath))
+// Keep only gap devices
+| where IsUnpositioned or IsInvalidPath
+| project
+    TimeGenerated,
+    DeviceName,
+    OrgPath,
+    ComplianceState,
+    OS,
+    // ProblemType drives the incident severity classification
+    ProblemType = iif(IsUnpositioned, "UNPOSITIONED", "INVALID_PATH")
+| order by ProblemType asc, DeviceName asc
+```
 
 ### 8.4   Query 3 — Compliance Drift Trend by Organizational Division
 
 This query tracks compliance rates by division over a thirty-day window, producing a time series that reveals whether any division's device compliance posture is degrading. A division whose compliance rate was 98% three weeks ago and is 91% today is on a trajectory toward triggering Conditional Access blocks unless the governance team intervenes. This query is rendered as a multi-line time series chart in the Log Analytics workbook, with one line per division and a horizontal threshold line marking the governance minimum compliance rate. Divisions whose lines cross below the threshold trigger an alert.
 
-// --------------------------------------------------------------- // Query 3: Compliance Drift Trend by Organizational Division // Purpose : Track compliance rate per division over 30 days. // Rendered as a time-series line chart in the governance // workbook. Alert threshold line set at 95.0%. // Adjust the governance threshold value in the // BelowThreshold extend expression to match your SLA. // --------------------------------------------------------------- IntuneDeviceComplianceOrg \| where TimeGenerated \>= ago(30d) \| extend OrgPath = tostring(column_ifexists("OrgPath", "/Unknown")), Division = tostring(split(column_ifexists("OrgPath", "/Unknown"), "/")\[2\]) // Normalize missing or malformed division segments \| extend Division = iif(isempty(Division) or Division == "Unknown", "UNPOSITIONED", Division) // Aggregate per division per day \| summarize TotalDevices = count(), CompliantDevices = countif(ComplianceState == "Compliant") by Division, bin(TimeGenerated, 1d) \| extend ComplianceRate = round(100.0 \* CompliantDevices / TotalDevices, 1) // Flag days where compliance fell below the governance SLA threshold. // SUBSTITUTE 95.0 with your organization's minimum compliance rate SLA. \| extend BelowThreshold = (ComplianceRate \< 95.0) \| order by Division asc, TimeGenerated asc
+```kql
+// ---------------------------------------------------------------
+// Query 3: Compliance Drift Trend by Organizational Division
+// Purpose : Track compliance rate per division over 30 days.
+//           Rendered as a time-series line chart in the governance
+//           workbook. Alert threshold line set at 95.0%.
+//           Adjust the governance threshold value in the
+//           BelowThreshold extend expression to match your SLA.
+// ---------------------------------------------------------------
+
+IntuneDeviceComplianceOrg
+| where TimeGenerated >= ago(30d)
+| extend
+    OrgPath  = tostring(column_ifexists("OrgPath", "/Unknown")),
+    Division = tostring(split(column_ifexists("OrgPath", "/Unknown"), "/")[2])
+// Normalize missing or malformed division segments
+| extend Division = iif(isempty(Division) or Division == "Unknown",
+                        "UNPOSITIONED", Division)
+// Aggregate per division per day
+| summarize
+    TotalDevices     = count(),
+    CompliantDevices = countif(ComplianceState == "Compliant")
+    by Division, bin(TimeGenerated, 1d)
+| extend ComplianceRate = round(100.0 * CompliantDevices / TotalDevices, 1)
+// Flag days where compliance fell below the governance SLA threshold.
+// SUBSTITUTE 95.0 with your organization's minimum compliance rate SLA.
+| extend BelowThreshold = (ComplianceRate < 95.0)
+| order by Division asc, TimeGenerated asc
+```
 
 ### 8.5   Operationalizing the Queries
 
