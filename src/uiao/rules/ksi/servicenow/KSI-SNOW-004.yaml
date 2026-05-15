@@ -1,0 +1,70 @@
+ksi_id: KSI-SNOW-004
+title: Approval Chain Present on Every Change Request (approval_history Non-Empty)
+category: configuration-management
+description: >
+  Every ServiceNow change_request record must contain a non-empty
+  `approval_history` array documenting at least one formal approval action
+  before the change transitions to the 'implement' or 'closed' state.
+  Change requests that proceed to implementation without a recorded approval
+  chain violate the change-control obligations of CM-3 and the policy-level
+  requirements of CA-1, and represent unauthorised modifications to the
+  authorisation boundary.
+security_objective: >
+  Ensure that no change to a controlled configuration item is implemented
+  without a documented, auditable approval chain, providing the evidentiary
+  basis required to demonstrate compliance with the change-management policy
+  under the controlling ATO and to support post-incident root-cause analysis.
+related_controls:
+  - CM-3
+  - CA-1
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero change_request records in state 'implement', 'review', or 'closed'
+    whose `approval_history` array is null, empty, or contains zero entries
+    with state = 'approved'.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT cr.sys_id, cr.number, cr.state,
+           COUNT(ah.sys_id) AS approval_count
+    FROM servicenow_change_requests cr
+    LEFT JOIN servicenow_approval_history ah
+           ON ah.document_id = cr.sys_id
+          AND ah.state = 'approved'
+    WHERE cr.state IN ('implement', 'review', 'closed')
+    GROUP BY cr.sys_id, cr.number, cr.state
+    HAVING approval_count = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: servicenow.validators.change_approval_chain
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-14"
+enabled: true
+tags:
+  - servicenow
+  - change-management
+  - approval-chain
+  - change-request
+  - cm-3
+  - ca-1
+severity: high
+nist_mappings:
+  primary: CM-3
+  secondary:
+    - CA-1
+fedramp_controls:
+  - CM-3
+  - CA-1
+provenance:
+  spec_ref: v0.6.1-servicenow
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3
