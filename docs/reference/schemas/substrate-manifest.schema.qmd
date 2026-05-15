@@ -1,0 +1,288 @@
+---
+title: "UIAO Substrate Manifest Schema"
+subtitle: "Schema Reference · substrate-manifest.schema.json"
+date: 2026-05-14
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-068](../../adr/adr-068-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json`](../../../src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json)
+- **Dialect:** `https://json-schema.org/draft/2020-12/schema`
+- **`$id`:** `https://whalermike.github.io/uiao/schemas/substrate-manifest/substrate-manifest.schema.json`
+:::
+
+## Description
+
+Schema for the top-level substrate manifest that declares the modules, roles, and drift-scan scope of the UIAO monorepo.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `metadata` | object | ✓ | Canonical frontmatter per src/uiao/schemas/metadata-schema.json. |
+| `workspace` | object | ✓ |  |
+| `github` | object | ✓ |  |
+| `modules` | array&lt;`$ref: #/$defs/module`&gt; | ✓ |  |
+| `sub_boundaries` | object |  | Optional sub-boundaries inside a top-level module. |
+| `drift_scan` | object | ✓ |  |
+| `registry_refs` | object | ✓ |  |
+| `retired_slugs` | array&lt;object&gt; |  | Slugs that have been renamed by an ADR. The substrate walker scans canon/ and docs/ for any literal occurrence of `slug` and emits a P2 DRIFT-PROVENANCE advisory naming the `replacement`. Optional `rationale` is surfaced in the finding detail. The intended workflow is: an ADR retires a slug, adds an entry here, and the walker keeps subsequent PRs honest by flagging any drift back to the old name. |
+
+## Full Schema
+
+```{.json filename="substrate-manifest.schema.json"}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whalermike.github.io/uiao/schemas/substrate-manifest/substrate-manifest.schema.json",
+  "title": "UIAO Substrate Manifest Schema",
+  "description": "Schema for the top-level substrate manifest that declares the modules, roles, and drift-scan scope of the UIAO monorepo.",
+  "type": "object",
+  "required": [
+    "metadata",
+    "workspace",
+    "github",
+    "modules",
+    "drift_scan",
+    "registry_refs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "description": "Canonical frontmatter per src/uiao/schemas/metadata-schema.json.",
+      "type": "object"
+    },
+    "workspace": {
+      "type": "object",
+      "required": [
+        "root_env"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "root_env": {
+          "type": "string",
+          "description": "Name of the environment variable that holds the absolute workspace root path. Never hardcode the path value itself.",
+          "const": "UIAO_WORKSPACE_ROOT"
+        },
+        "fallbacks": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Documented platform-specific fallback examples. Informational only; runtime MUST read the env var.",
+          "properties": {
+            "linux": {
+              "type": "string"
+            },
+            "macos": {
+              "type": "string"
+            },
+            "windows": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "github": {
+      "type": "object",
+      "required": [
+        "root"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical GitHub URL for the monorepo."
+        },
+        "default_branch": {
+          "type": "string",
+          "default": "main"
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "sub_boundaries": {
+      "type": "object",
+      "description": "Optional sub-boundaries inside a top-level module.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "name",
+            "path",
+            "role"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "drift_scan": {
+      "type": "object",
+      "required": [
+        "classes",
+        "roots"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "classes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "DRIFT-SCHEMA",
+              "DRIFT-SEMANTIC",
+              "DRIFT-PROVENANCE",
+              "DRIFT-AUTHZ",
+              "DRIFT-IDENTITY"
+            ]
+          },
+          "description": "Drift classes the manifest declares itself subject to. Full taxonomy defined in docs/docs/16_DriftDetectionStandard.qmd."
+        },
+        "roots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "Module paths that the drift detector walks when validating the substrate."
+        },
+        "severity_model": {
+          "type": "string",
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4"
+          ],
+          "description": "Optional upper bound on severity."
+        }
+      }
+    },
+    "registry_refs": {
+      "type": "object",
+      "required": [
+        "document_registry"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "document_registry": {
+          "type": "string"
+        },
+        "adapter_registry": {
+          "type": "string"
+        },
+        "modernization_registry": {
+          "type": "string"
+        },
+        "metadata_schema": {
+          "type": "string"
+        },
+        "adapter_registry_schema": {
+          "type": "string"
+        },
+        "orgtree_readiness_schema": {
+          "type": "string",
+          "description": "Path to OrgTree readiness bundle schema (UIAO_006/007 OrgTree modernization). Added in v0.6.0."
+        }
+      }
+    },
+    "retired_slugs": {
+      "type": "array",
+      "description": "Slugs that have been renamed by an ADR. The substrate walker scans canon/ and docs/ for any literal occurrence of `slug` and emits a P2 DRIFT-PROVENANCE advisory naming the `replacement`. Optional `rationale` is surfaced in the finding detail. The intended workflow is: an ADR retires a slug, adds an entry here, and the walker keeps subsequent PRs honest by flagging any drift back to the old name.",
+      "items": {
+        "type": "object",
+        "required": [
+          "slug",
+          "replacement"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The retired slug (e.g., `MOD_A`). Matched as a literal with word boundaries."
+          },
+          "replacement": {
+            "type": "string",
+            "description": "The current canonical slug that replaces it (e.g., `UIAO_151`)."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Short citation of the ADR or PR that retired the slug (e.g., `ADR-060`)."
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "required": [
+        "name",
+        "path",
+        "role",
+        "canon_consumer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Module identifier (matches the top-level directory name)."
+        },
+        "path": {
+          "type": "string",
+          "description": "Repo-relative path to the module root."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "authority",
+            "consumer",
+            "package",
+            "tooling",
+            "staging",
+            "deploy"
+          ],
+          "description": "Module role. Post-ADR-032 the canonical set is: authority (defines canon), consumer (derives from canon), package (single installable distribution carrying both canon and code), tooling (workspace scripts), staging (draft surface \u2014 not canon), deploy (deployment artifacts)."
+        },
+        "canon_consumer": {
+          "type": "boolean",
+          "description": "True if the module derives artifacts from canon (see src/uiao/rules/canon-consumer.md)."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "registry_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+```

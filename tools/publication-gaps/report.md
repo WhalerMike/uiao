@@ -10,10 +10,10 @@ Class              Total  Publishable  Published    Gap
 uiao-spec             37           37         37      0
 adr                   74           71         71      0
 modernization         23           20         18      2
-schema                26           25          3     22
+schema                26           25         25      0
 other                106            0          0      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                266          153        129     24
+TOTAL                266          153        151      2
 ```
 
 ## Gaps — Modernization-module docs (2)
@@ -22,33 +22,6 @@ TOTAL                266          153        129     24
 |---|---|---|---|
 | [`src/uiao/modernization/directory-migration/ad-dependency-inventory.md`](src/uiao/modernization/directory-migration/ad-dependency-inventory.md) | default | include | `docs/modernization/directory-migration/ad-dependency-inventory.qmd` |
 | [`src/uiao/modernization/directory-migration/eight-core-concepts.md`](src/uiao/modernization/directory-migration/eight-core-concepts.md) | default | include | `docs/modernization/directory-migration/eight-core-concepts.qmd` |
-
-## Gaps — Schemas (22)
-
-| Source | Intent source | Style | Expected .qmd candidates |
-|---|---|---|---|
-| [`src/uiao/schemas/application-identity/application-identity.schema.json`](src/uiao/schemas/application-identity/application-identity.schema.json) | default | reference | `docs/reference/schemas/application-identity.schema.qmd` |
-| [`src/uiao/schemas/image-registry/image-registry.schema.json`](src/uiao/schemas/image-registry/image-registry.schema.json) | default | reference | `docs/reference/schemas/image-registry.schema.qmd` |
-| [`src/uiao/schemas/ksi/ksi.schema.json`](src/uiao/schemas/ksi/ksi.schema.json) | default | reference | `docs/reference/schemas/ksi.schema.qmd` |
-| [`src/uiao/schemas/orgpath/admin-units.schema.json`](src/uiao/schemas/orgpath/admin-units.schema.json) | default | reference | `docs/reference/schemas/admin-units.schema.qmd` |
-| [`src/uiao/schemas/orgpath/device-planes.schema.json`](src/uiao/schemas/orgpath/device-planes.schema.json) | default | reference | `docs/reference/schemas/device-planes.schema.qmd` |
-| [`src/uiao/schemas/orgpath/drift-engine-config.schema.json`](src/uiao/schemas/orgpath/drift-engine-config.schema.json) | default | reference | `docs/reference/schemas/drift-engine-config.schema.qmd` |
-| [`src/uiao/schemas/orgpath/dynamic-groups.schema.json`](src/uiao/schemas/orgpath/dynamic-groups.schema.json) | default | reference | `docs/reference/schemas/dynamic-groups.schema.qmd` |
-| [`src/uiao/schemas/orgpath/policy-targets.schema.json`](src/uiao/schemas/orgpath/policy-targets.schema.json) | default | reference | `docs/reference/schemas/policy-targets.schema.qmd` |
-| [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json) | default | reference | `docs/reference/schemas/orgtree-readiness.schema.qmd` |
-| [`src/uiao/schemas/reciprocal-consumption/registry.schema.json`](src/uiao/schemas/reciprocal-consumption/registry.schema.json) | default | reference | `docs/reference/schemas/registry.schema.qmd` |
-| [`src/uiao/schemas/reciprocity-record/reciprocity-record.schema.json`](src/uiao/schemas/reciprocity-record/reciprocity-record.schema.json) | default | reference | `docs/reference/schemas/reciprocity-record.schema.qmd` |
-| [`src/uiao/schemas/scim/common.schema.json`](src/uiao/schemas/scim/common.schema.json) | default | reference | `docs/reference/schemas/common.schema.qmd` |
-| [`src/uiao/schemas/scim/enterprise-user.schema.json`](src/uiao/schemas/scim/enterprise-user.schema.json) | default | reference | `docs/reference/schemas/enterprise-user.schema.qmd` |
-| [`src/uiao/schemas/scim/group.schema.json`](src/uiao/schemas/scim/group.schema.json) | default | reference | `docs/reference/schemas/group.schema.qmd` |
-| [`src/uiao/schemas/scim/user.schema.json`](src/uiao/schemas/scim/user.schema.json) | default | reference | `docs/reference/schemas/user.schema.qmd` |
-| [`src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json`](src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json) | default | reference | `docs/reference/schemas/substrate-manifest.schema.qmd` |
-| [`src/uiao/schemas/tier2-fixture/tier2-fixture.schema.json`](src/uiao/schemas/tier2-fixture/tier2-fixture.schema.json) | default | reference | `docs/reference/schemas/tier2-fixture.schema.qmd` |
-| [`src/uiao/schemas/udc/udc_export.schema.json`](src/uiao/schemas/udc/udc_export.schema.json) | default | reference | `docs/reference/schemas/udc_export.schema.qmd` |
-| [`src/uiao/schemas/udc/udc_metadata.schema.json`](src/uiao/schemas/udc/udc_metadata.schema.json) | default | reference | `docs/reference/schemas/udc_metadata.schema.qmd` |
-| [`src/uiao/schemas/udc/udc_pipeline.schema.json`](src/uiao/schemas/udc/udc_pipeline.schema.json) | default | reference | `docs/reference/schemas/udc_pipeline.schema.qmd` |
-| [`src/uiao/schemas/udc/udc_templates.schema.json`](src/uiao/schemas/udc/udc_templates.schema.json) | default | reference | `docs/reference/schemas/udc_templates.schema.qmd` |
-| [`src/uiao/schemas/workspace-contract/workspace-contract.schema.json`](src/uiao/schemas/workspace-contract/workspace-contract.schema.json) | default | reference | `docs/reference/schemas/workspace-contract.schema.qmd` |
 
 ## Methodology
 
