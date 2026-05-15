@@ -69,7 +69,239 @@ The following script is the complete implementation of the PIM eligibility synch
 
 ### Script 2-A: Set-PIMEligibleGroupsFromOrgPath.ps1 — PIM Eligibility Synchronization Pipeline Step
 
-\#Requires -Version 7.4 \#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups, \# Microsoft.Graph.Identity.Governance \<# .SYNOPSIS Synchronizes PIM group eligibility assignments with the current OrgTree registry. .DESCRIPTION Reads the OrgTree registry from the governance repository and ensures that every active branch node has a corresponding PIM-eligible group with an active eligibility schedule. Nodes without a corresponding schedule receive one. Groups whose nodes have been archived are flagged in the pipeline output for human review — they are NOT automatically removed. Run as part of the governance propagation pipeline, triggered by OrgTree commits to the governance repository. .PARAMETER OrgPathExtensionName The full schema extension attribute name for OrgPath on directory objects. Format: extension\_{AppId without hyphens}\_OrgPath SUBSTITUTE: Replace {AppId without hyphens} with the Application (client) ID of the app registration used to define the OrgPath schema extension, with all hyphens removed. Example: extension_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4_OrgPath .PARAMETER RoleDisplayName The display name of the directory role or custom role for which PIM eligibility will be assigned at each organizational node scope. SUBSTITUTE: Replace with the exact display name of the role in your tenant. For a custom role, this must match the role definition name exactly. Example: "Organizational Unit Administrator" .PARAMETER OrgTreeRegistryPath Local filesystem path to the OrgTree registry JSON file, checked out from the governance repository before this script runs. SUBSTITUTE: Replace with the actual path on the automation runner. Example: "C:\governance\orgtree\registry.json" .PARAMETER DryRun If set to \$true, the script reports what it would do without creating any PIM eligibility schedule requests. Use for pipeline validation. .NOTES Requires Microsoft.Graph PowerShell SDK 2.x or later. Requires PowerShell 7.4 or later. Run under the automation service account with appropriate Graph permissions. In production, replace Connect-MgGraph interactive auth with Managed Identity or certificate-based service principal authentication. \#\> param( \[string\]\$OrgPathExtensionName = "extension\_{AppIdWithoutHyphens}\_OrgPath", \[string\]\$RoleDisplayName = "Organizational Unit Administrator", \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[bool\] \$DryRun = \$false ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \# --------------------------------------------------------------- \# AUTHENTICATION \# --------------------------------------------------------------- \# Interactive authentication is used here for clarity. \# In production automation pipelines, replace with one of: \# Managed Identity: Connect-MgGraph -Identity -NoWelcome \# Certificate-based SPN: Connect-MgGraph -ClientId "{ClientId}" \` \# -TenantId "{TenantId}" \` \# -CertificateThumbprint "{Thumbprint}" \` \# -NoWelcome \# \# SUBSTITUTE: {ClientId} — the Application (client) ID of the service principal \# SUBSTITUTE: {TenantId} — the tenant (directory) ID \# SUBSTITUTE: {Thumbprint} — the certificate thumbprint from the automation runner store Connect-MgGraph \` -Scopes "Directory.ReadWrite.All", "RoleManagement.ReadWrite.Directory" \` -NoWelcome \# --------------------------------------------------------------- \# LOAD ORGTREE REGISTRY \# --------------------------------------------------------------- \# The registry file is a JSON document committed to the governance repository. \# Each node object contains: Id, Name, Type, ParentId, Path, Status \# Status values: "Active" \| "Archived" \| "Pending" \# Only "Active" nodes receive PIM eligibility schedule requests. if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found at '\$OrgTreeRegistryPath'. " + "Ensure the repository checkout step ran before this script." } \$registryContent = Get-Content -Path \$OrgTreeRegistryPath -Raw \$orgTree = \$registryContent \| ConvertFrom-Json \$activeNodes = \$orgTree.nodes \| Where-Object { \$\_.Status -eq "Active" } \$archivedNodes = \$orgTree.nodes \| Where-Object { \$\_.Status -eq "Archived" } Write-Host "\[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')\] Registry loaded." Write-Host " Active nodes : \$(\$activeNodes.Count)" Write-Host " Archived nodes: \$(\$archivedNodes.Count)" \# --------------------------------------------------------------- \# ENUMERATE EXISTING ORG-BRANCH GROUPS \# --------------------------------------------------------------- \$existingGroups = Get-MgGroup \` -Filter "startsWith(displayName,'ORG-BRANCH-')" \` -All \` -Property "Id,DisplayName,Description" \$existingGroupMap = @{} foreach (\$g in \$existingGroups) { \$nodeId = \$g.DisplayName -replace "^ORG-BRANCH-", "" \$existingGroupMap\[\$nodeId\] = \$g } Write-Host "\[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')\] Found \$(\$existingGroups.Count) existing ORG-BRANCH groups." \# --------------------------------------------------------------- \# RESOLVE ROLE DEFINITION \# --------------------------------------------------------------- \$roleDefinition = Get-MgRoleManagementDirectoryRoleDefinition \` -Filter "displayName eq '\$RoleDisplayName'" if (-not \$roleDefinition) { throw "Role definition '\$RoleDisplayName' not found in this tenant. " + "Verify the RoleDisplayName parameter matches the exact role name." } Write-Host "\[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')\] Role definition resolved: \$(\$roleDefinition.DisplayName) \[\$(\$roleDefinition.Id)\]" \# --------------------------------------------------------------- \# SYNCHRONIZE PIM ELIGIBILITY PER ACTIVE NODE \# --------------------------------------------------------------- \$results = @{ Created = 0; Skipped = 0; Failed = 0; FlaggedArchived = 0 } foreach (\$node in \$activeNodes) { \$groupName = "ORG-BRANCH-\$(\$node.Id)" if (-not \$existingGroupMap.ContainsKey(\$node.Id)) { Write-Warning " \[MISSING\] No ORG-BRANCH group found for node '\$(\$node.Id)' (\$(\$node.Name))." Write-Warning " Run the dynamic group provisioning step before PIM synchronization." \$results.Failed++ continue } \$group = \$existingGroupMap\[\$node.Id\] \# Check whether an active eligibility schedule already exists for this group \$existingSchedule = Get-MgRoleManagementDirectoryRoleEligibilitySchedule \` -Filter "principalId eq '\$(\$group.Id)' and roleDefinitionId eq '\$(\$roleDefinition.Id)'" if (\$existingSchedule) { Write-Host " \[SKIP\] Active eligibility exists for \$groupName — no action required." \$results.Skipped++ continue } \# Build the eligibility schedule request body. \# \# DirectoryScopeId is set to "/" (tenant root) in this template. \# For organizations using Administrative Units scoped to each organizational node, \# replace "/" with the AU resource path: \# DirectoryScopeId = "/administrativeUnits/{AdministrativeUnitId}" \# SUBSTITUTE: {AdministrativeUnitId} — the object ID of the AU for this node. \# \# The expiration type "NoExpiration" creates a standing eligibility. \# To enforce annual review cycles, use: \# Type = "AfterDuration" \# Duration = "P365D" \$requestBody = @{ Action = "AdminAssign" PrincipalId = \$group.Id RoleDefinitionId = \$roleDefinition.Id DirectoryScopeId = "/" Justification = "OrgPath governance pipeline — node \$(\$node.Id) (\$(\$node.Name)) \| Path: \$(\$node.Path)" ScheduleInfo = @{ StartDateTime = (Get-Date).ToUniversalTime().ToString("o") Expiration = @{ Type = "NoExpiration" } } } if (\$DryRun) { Write-Host " \[DRYRUN\] Would create PIM eligibility for \$groupName (Path: \$(\$node.Path))" \$results.Created++ continue } try { \$null = New-MgRoleManagementDirectoryRoleEligibilityScheduleRequest \` -BodyParameter \$requestBody Write-Host " \[CREATED\] PIM eligibility schedule created for \$groupName (Path: \$(\$node.Path))" \$results.Created++ } catch { Write-Warning " \[FAILED\] Could not create PIM eligibility for \$groupName. Error: \$\_" \$results.Failed++ } } \# --------------------------------------------------------------- \# FLAG ARCHIVED NODE GROUPS FOR REVIEW \# --------------------------------------------------------------- foreach (\$node in \$archivedNodes) { if (\$existingGroupMap.ContainsKey(\$node.Id)) { \$g = \$existingGroupMap\[\$node.Id\] Write-Warning " \[REVIEW\] ORG-BRANCH-\$(\$node.Id) exists in directory but node is ARCHIVED." Write-Warning " Review and revoke PIM eligibility manually if no longer required." \$results.FlaggedArchived++ } } \# --------------------------------------------------------------- \# SUMMARY \# --------------------------------------------------------------- Write-Host "" Write-Host "================================================================" Write-Host " PIM Eligibility Synchronization — Complete" Write-Host "================================================================" Write-Host " Created : \$(\$results.Created)" Write-Host " Skipped (exists) : \$(\$results.Skipped)" Write-Host " Failed : \$(\$results.Failed)" Write-Host " Flagged (archive): \$(\$results.FlaggedArchived)" if (\$DryRun) { Write-Host " \*\*\* DRY RUN — no changes were made \*\*\*" } Write-Host "================================================================" Disconnect-MgGraph
+```powershell
+#Requires -Version 7.4
+#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups,
+#           Microsoft.Graph.Identity.Governance
+
+<#
+.SYNOPSIS
+    Synchronizes PIM group eligibility assignments with the current OrgTree registry.
+
+.DESCRIPTION
+    Reads the OrgTree registry from the governance repository and ensures that
+    every active branch node has a corresponding PIM-eligible group with an active
+    eligibility schedule. Nodes without a corresponding schedule receive one.
+    Groups whose nodes have been archived are flagged in the pipeline output
+    for human review — they are NOT automatically removed.
+
+    Run as part of the governance propagation pipeline, triggered by OrgTree
+    commits to the governance repository.
+
+.PARAMETER OrgPathExtensionName
+    The full schema extension attribute name for OrgPath on directory objects.
+    Format: extension_{AppId without hyphens}_OrgPath
+
+    SUBSTITUTE: Replace {AppId without hyphens} with the Application (client) ID
+    of the app registration used to define the OrgPath schema extension,
+    with all hyphens removed.
+    Example: extension_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4_OrgPath
+
+.PARAMETER RoleDisplayName
+    The display name of the directory role or custom role for which PIM eligibility
+    will be assigned at each organizational node scope.
+
+    SUBSTITUTE: Replace with the exact display name of the role in your tenant.
+    For a custom role, this must match the role definition name exactly.
+    Example: "Organizational Unit Administrator"
+
+.PARAMETER OrgTreeRegistryPath
+    Local filesystem path to the OrgTree registry JSON file, checked out from
+    the governance repository before this script runs.
+
+    SUBSTITUTE: Replace with the actual path on the automation runner.
+    Example: "C:\governance\orgtree\registry.json"
+
+.PARAMETER DryRun
+    If set to $true, the script reports what it would do without creating
+    any PIM eligibility schedule requests. Use for pipeline validation.
+
+.NOTES
+    Requires Microsoft.Graph PowerShell SDK 2.x or later.
+    Requires PowerShell 7.4 or later.
+    Run under the automation service account with appropriate Graph permissions.
+    In production, replace Connect-MgGraph interactive auth with Managed Identity
+    or certificate-based service principal authentication.
+#>
+param(
+    [string]$OrgPathExtensionName  = "extension_{AppIdWithoutHyphens}_OrgPath",
+    [string]$RoleDisplayName       = "Organizational Unit Administrator",
+    [string]$OrgTreeRegistryPath   = "C:\governance\orgtree\registry.json",
+    [bool]  $DryRun                = $false
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# ---------------------------------------------------------------
+# AUTHENTICATION
+# ---------------------------------------------------------------
+# Interactive authentication is used here for clarity.
+# In production automation pipelines, replace with one of:
+#   Managed Identity:           Connect-MgGraph -Identity -NoWelcome
+#   Certificate-based SPN:      Connect-MgGraph -ClientId "{ClientId}" `
+#                                   -TenantId "{TenantId}" `
+#                                   -CertificateThumbprint "{Thumbprint}" `
+#                                   -NoWelcome
+#
+# SUBSTITUTE: {ClientId}   — the Application (client) ID of the service principal
+# SUBSTITUTE: {TenantId}   — the tenant (directory) ID
+# SUBSTITUTE: {Thumbprint} — the certificate thumbprint from the automation runner store
+Connect-MgGraph `
+    -Scopes "Directory.ReadWrite.All", "RoleManagement.ReadWrite.Directory" `
+    -NoWelcome
+
+# ---------------------------------------------------------------
+# LOAD ORGTREE REGISTRY
+# ---------------------------------------------------------------
+# The registry file is a JSON document committed to the governance repository.
+# Each node object contains: Id, Name, Type, ParentId, Path, Status
+# Status values: "Active" | "Archived" | "Pending"
+# Only "Active" nodes receive PIM eligibility schedule requests.
+if (-not (Test-Path $OrgTreeRegistryPath)) {
+    throw "OrgTree registry not found at '$OrgTreeRegistryPath'. " +
+          "Ensure the repository checkout step ran before this script."
+}
+
+$registryContent = Get-Content -Path $OrgTreeRegistryPath -Raw
+$orgTree         = $registryContent | ConvertFrom-Json
+$activeNodes     = $orgTree.nodes | Where-Object { $_.Status -eq "Active" }
+$archivedNodes   = $orgTree.nodes | Where-Object { $_.Status -eq "Archived" }
+
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Registry loaded."
+Write-Host "  Active nodes  : $($activeNodes.Count)"
+Write-Host "  Archived nodes: $($archivedNodes.Count)"
+
+# ---------------------------------------------------------------
+# ENUMERATE EXISTING ORG-BRANCH GROUPS
+# ---------------------------------------------------------------
+$existingGroups = Get-MgGroup `
+    -Filter "startsWith(displayName,'ORG-BRANCH-')" `
+    -All `
+    -Property "Id,DisplayName,Description"
+
+$existingGroupMap = @{}
+foreach ($g in $existingGroups) {
+    $nodeId = $g.DisplayName -replace "^ORG-BRANCH-", ""
+    $existingGroupMap[$nodeId] = $g
+}
+
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Found $($existingGroups.Count) existing ORG-BRANCH groups."
+
+# ---------------------------------------------------------------
+# RESOLVE ROLE DEFINITION
+# ---------------------------------------------------------------
+$roleDefinition = Get-MgRoleManagementDirectoryRoleDefinition `
+    -Filter "displayName eq '$RoleDisplayName'"
+
+if (-not $roleDefinition) {
+    throw "Role definition '$RoleDisplayName' not found in this tenant. " +
+          "Verify the RoleDisplayName parameter matches the exact role name."
+}
+
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Role definition resolved: $($roleDefinition.DisplayName) [$($roleDefinition.Id)]"
+
+# ---------------------------------------------------------------
+# SYNCHRONIZE PIM ELIGIBILITY PER ACTIVE NODE
+# ---------------------------------------------------------------
+$results = @{ Created = 0; Skipped = 0; Failed = 0; FlaggedArchived = 0 }
+
+foreach ($node in $activeNodes) {
+    $groupName = "ORG-BRANCH-$($node.Id)"
+
+    if (-not $existingGroupMap.ContainsKey($node.Id)) {
+        Write-Warning "  [MISSING] No ORG-BRANCH group found for node '$($node.Id)' ($($node.Name))."
+        Write-Warning "            Run the dynamic group provisioning step before PIM synchronization."
+        $results.Failed++
+        continue
+    }
+
+    $group = $existingGroupMap[$node.Id]
+
+    # Check whether an active eligibility schedule already exists for this group
+    $existingSchedule = Get-MgRoleManagementDirectoryRoleEligibilitySchedule `
+        -Filter "principalId eq '$($group.Id)' and roleDefinitionId eq '$($roleDefinition.Id)'"
+
+    if ($existingSchedule) {
+        Write-Host "  [SKIP]    Active eligibility exists for $groupName — no action required."
+        $results.Skipped++
+        continue
+    }
+
+    # Build the eligibility schedule request body.
+    #
+    # DirectoryScopeId is set to "/" (tenant root) in this template.
+    # For organizations using Administrative Units scoped to each organizational node,
+    # replace "/" with the AU resource path:
+    #   DirectoryScopeId = "/administrativeUnits/{AdministrativeUnitId}"
+    # SUBSTITUTE: {AdministrativeUnitId} — the object ID of the AU for this node.
+    #
+    # The expiration type "NoExpiration" creates a standing eligibility.
+    # To enforce annual review cycles, use:
+    #   Type     = "AfterDuration"
+    #   Duration = "P365D"
+    $requestBody = @{
+        Action           = "AdminAssign"
+        PrincipalId      = $group.Id
+        RoleDefinitionId = $roleDefinition.Id
+        DirectoryScopeId = "/"
+        Justification    = "OrgPath governance pipeline — node $($node.Id) ($($node.Name)) | Path: $($node.Path)"
+        ScheduleInfo     = @{
+            StartDateTime = (Get-Date).ToUniversalTime().ToString("o")
+            Expiration    = @{
+                Type = "NoExpiration"
+            }
+        }
+    }
+
+    if ($DryRun) {
+        Write-Host "  [DRYRUN]  Would create PIM eligibility for $groupName (Path: $($node.Path))"
+        $results.Created++
+        continue
+    }
+
+    try {
+        $null = New-MgRoleManagementDirectoryRoleEligibilityScheduleRequest `
+            -BodyParameter $requestBody
+        Write-Host "  [CREATED] PIM eligibility schedule created for $groupName (Path: $($node.Path))"
+        $results.Created++
+    }
+    catch {
+        Write-Warning "  [FAILED]  Could not create PIM eligibility for $groupName. Error: $_"
+        $results.Failed++
+    }
+}
+
+# ---------------------------------------------------------------
+# FLAG ARCHIVED NODE GROUPS FOR REVIEW
+# ---------------------------------------------------------------
+foreach ($node in $archivedNodes) {
+    if ($existingGroupMap.ContainsKey($node.Id)) {
+        $g = $existingGroupMap[$node.Id]
+        Write-Warning "  [REVIEW]  ORG-BRANCH-$($node.Id) exists in directory but node is ARCHIVED."
+        Write-Warning "            Review and revoke PIM eligibility manually if no longer required."
+        $results.FlaggedArchived++
+    }
+}
+
+# ---------------------------------------------------------------
+# SUMMARY
+# ---------------------------------------------------------------
+Write-Host ""
+Write-Host "================================================================"
+Write-Host "  PIM Eligibility Synchronization — Complete"
+Write-Host "================================================================"
+Write-Host "  Created          : $($results.Created)"
+Write-Host "  Skipped (exists) : $($results.Skipped)"
+Write-Host "  Failed           : $($results.Failed)"
+Write-Host "  Flagged (archive): $($results.FlaggedArchived)"
+if ($DryRun) {
+    Write-Host "  *** DRY RUN — no changes were made ***"
+}
+Write-Host "================================================================"
+
+Disconnect-MgGraph
+```
 
 ### Script Walkthrough and Decision Rationale
 
@@ -119,7 +351,23 @@ The Lifecycle Workflow custom task extension receives a payload in the format sh
 
 ### Schema 3-A: Lifecycle Workflow Custom Task Extension — HTTP Trigger Payload
 
-// Logic App or Azure Function HTTP trigger payload schema. // Sent by the Lifecycle Workflow engine when the custom task extension task executes. // Fields are defined by the Lifecycle Workflows custom extension API contract. { "data": { "subject": "users/{userId}", "odataType": "microsoft.graph.user", "id": "{userId}", // The objectId of the user being processed by the workflow "tenantId": "{tenantId}" // SUBSTITUTE: Your Azure AD tenant (directory) ID }, "source": "identityGovernance/lifecycleWorkflows/workflows/{workflowId}/tasks/{taskId}", // workflowId: The GUID of the triggering Lifecycle Workflow // taskId: The GUID of the specific task within the workflow "type": "microsoft.graph.lifecycleWorkflows.workflowTaskExecution" }
+```kql
+// Logic App or Azure Function HTTP trigger payload schema.
+// Sent by the Lifecycle Workflow engine when the custom task extension task executes.
+// Fields are defined by the Lifecycle Workflows custom extension API contract.
+{
+    "data": {
+        "subject": "users/{userId}",
+        "odataType": "microsoft.graph.user",
+        "id": "{userId}",         // The objectId of the user being processed by the workflow
+        "tenantId": "{tenantId}"  // SUBSTITUTE: Your Azure AD tenant (directory) ID
+    },
+    "source": "identityGovernance/lifecycleWorkflows/workflows/{workflowId}/tasks/{taskId}",
+    // workflowId: The GUID of the triggering Lifecycle Workflow
+    // taskId:     The GUID of the specific task within the workflow
+    "type": "microsoft.graph.lifecycleWorkflows.workflowTaskExecution"
+}
+```
 
 ### Implementation: Mover PIM Realignment Handler
 
@@ -127,7 +375,255 @@ The following script implements the custom task extension handler. It runs as an
 
 ### Script 3-B: Mover PIM Realignment Handler — Azure Function (run.ps1)
 
-\#Requires -Version 7.4 \#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Users, \# Microsoft.Graph.Groups, Microsoft.Graph.Identity.Governance using namespace System.Net \# --------------------------------------------------------------- \# AZURE FUNCTION ENTRY POINT \# Triggered by Lifecycle Workflow custom task extension HTTP POST \# --------------------------------------------------------------- param(\$Request, \$TriggerMetadata) \$userId = \$Request.Body.data.id \$tenantId = \$Request.Body.data.tenantId Write-Host "\[\$(Get-Date -Format 'o')\] Mover handler invoked for userId: \$userId" if (-not \$userId) { Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::BadRequest Body = "Missing required field: data.id (userId)" }) return } \# --------------------------------------------------------------- \# AUTHENTICATION — MANAGED IDENTITY \# The Function App's system-assigned Managed Identity must have: \# Microsoft Graph application permissions: \# Directory.Read.All \# RoleManagement.ReadWrite.Directory \# AccessReview.ReadWrite.All \# These are granted via the Azure portal or via: \# New-MgServicePrincipalAppRoleAssignment (Microsoft.Graph) \# --------------------------------------------------------------- Connect-MgGraph -Identity -NoWelcome \# --------------------------------------------------------------- \# READ USER'S CURRENT ORGPATH \# SUBSTITUTE: Replace {AppIdWithoutHyphens} in the extension attribute name \# with your schema extension application registration ID, hyphens removed. \# Format: extension\_{AppId}\_OrgPath \# Example: extension_a1b2c3d4e5f64321a1b2c3d4e5f64321_OrgPath \# --------------------------------------------------------------- \$extensionAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath" \$user = Get-MgUser -UserId \$userId -Property "id,displayName,mail,\$extensionAttrName" \$newOrgPath = \$user.AdditionalProperties\[\$extensionAttrName\] if (-not \$newOrgPath) { Write-Warning "OrgPath not set for user \$userId. Cannot perform PIM realignment." Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::BadRequest Body = "OrgPath attribute not set for userId \$userId. Ensure the OrgPath propagation pipeline ran before this workflow executed." }) Disconnect-MgGraph return } Write-Host " OrgPath resolved: \$newOrgPath" \# --------------------------------------------------------------- \# RESOLVE TARGET PIM ELIGIBLE GROUP FROM ORGPATH \# OrgPath format: /Root/Division/Department/Unit \# The leaf segment identifies the user's current organizational node. \# That node's group name follows the ORG-BRANCH-{NodeId} convention. \# --------------------------------------------------------------- \$pathSegments = \$newOrgPath -split "/" \| Where-Object { \$\_ -ne "" } \$leafNodeId = \$pathSegments\[-1\] \$groupName = "ORG-BRANCH-\$leafNodeId" \$targetGroup = Get-MgGroup \` -Filter "displayName eq '\$groupName'" \` -Property "Id,DisplayName" if (-not \$targetGroup) { Write-Warning "PIM group '\$groupName' not found. OrgTree may need re-propagation." Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::NotFound Body = "PIM group not found: \$groupName. Run OrgPath pipeline and retry." }) Disconnect-MgGraph return } Write-Host " Target PIM group: \$(\$targetGroup.DisplayName) \[\$(\$targetGroup.Id)\]" \# --------------------------------------------------------------- \# REMOVE USER FROM PREVIOUS ORGPATH PIM GROUPS \# The previous OrgPath is read from the Entra ID audit log. \# The most recent "Update user" event for this user that modified \# the OrgPath attribute carries the old value in oldValue. \# --------------------------------------------------------------- \$auditFilter = "activityDisplayName eq 'Update user' and targetResources/any(t: t/id eq '\$userId')" \$recentAudit = Get-MgAuditLogDirectoryAudit \` -Filter \$auditFilter \` -Top 10 \| Where-Object { \$\_.AdditionalDetails \| Where-Object { \$\_.Key -like "\*OrgPath\*" } } \| Select-Object -First 1 if (\$recentAudit) { \$orgPathDetail = \$recentAudit.AdditionalDetails \| Where-Object { \$\_.Key -like "\*OrgPath\*" } \| Select-Object -First 1 \$oldOrgPath = \$orgPathDetail.DisplayName \# oldValue is in the ModifiedProperties if (\$oldOrgPath) { \$oldPathSegments = \$oldOrgPath -split "/" \| Where-Object { \$\_ -ne "" } \$oldLeafNodeId = \$oldPathSegments\[-1\] \$oldGroupName = "ORG-BRANCH-\$oldLeafNodeId" \$oldGroup = Get-MgGroup \` -Filter "displayName eq '\$oldGroupName'" \` -Property "Id,DisplayName" \` -ErrorAction SilentlyContinue if (\$oldGroup) { try { Remove-MgGroupMemberByRef \` -GroupId \$oldGroup.Id \` -DirectoryObjectId \$userId \` -ErrorAction SilentlyContinue Write-Host " Removed user from previous PIM group: \$oldGroupName" } catch { Write-Warning " Could not remove user from \$oldGroupName (may not have been a direct member): \$\_" } } } } \# --------------------------------------------------------------- \# RESOLVE ROLE DEFINITION FOR PIM ELIGIBILITY \# SUBSTITUTE: Replace the displayName filter value with the exact \# name of the custom or built-in role used for OrgPath PIM eligibility. \# --------------------------------------------------------------- \$role = Get-MgRoleManagementDirectoryRoleDefinition \` -Filter "displayName eq 'Organizational Unit Administrator'" if (-not \$role) { Write-Warning "Role definition not found. Verify RoleDisplayName in handler configuration." Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::InternalServerError Body = "Role definition not found. Check Function App configuration." }) Disconnect-MgGraph return } \# --------------------------------------------------------------- \# CHECK FOR EXISTING ELIGIBILITY (IDEMPOTENCY GUARD) \# --------------------------------------------------------------- \$existingEligibility = Get-MgRoleManagementDirectoryRoleEligibilitySchedule \` -Filter "principalId eq '\$userId' and roleDefinitionId eq '\$(\$role.Id)'" if (-not \$existingEligibility) { \# CREATE NEW PIM ELIGIBILITY SCHEDULE REQUEST \# DirectoryScopeId "/" = tenant root scope. \# SUBSTITUTE with AU path if AU-scoped PIM is configured: \# DirectoryScopeId = "/administrativeUnits/{AdministrativeUnitId}" \$scheduleRequest = @{ Action = "AdminAssign" PrincipalId = \$userId RoleDefinitionId = \$role.Id DirectoryScopeId = "/" Justification = "Lifecycle Workflow mover realignment \| OrgPath: \$newOrgPath \| \$(Get-Date -Format 'yyyy-MM-dd')" ScheduleInfo = @{ StartDateTime = (Get-Date).ToUniversalTime().ToString("o") Expiration = @{ Type = "NoExpiration" } } } try { \$null = New-MgRoleManagementDirectoryRoleEligibilityScheduleRequest \` -BodyParameter \$scheduleRequest Write-Host " PIM eligibility schedule created for user \$userId \| Role: \$(\$role.DisplayName)" } catch { Write-Warning " Failed to create PIM eligibility: \$\_" } } else { Write-Host " PIM eligibility already exists for user \$userId — skipping creation (idempotency)." } \# --------------------------------------------------------------- \# INITIATE IMMEDIATE ACCESS REVIEW FOR MOVER \# The access review is scoped to the user's current privileged \# group memberships and assigned to the user's current manager. \# Review window is 7 days from now. Adjust EndDateTime as needed. \# --------------------------------------------------------------- \$reviewStartTime = (Get-Date).AddMinutes(15).ToUniversalTime().ToString("o") \$reviewEndTime = (Get-Date).AddDays(7).ToUniversalTime().ToString("o") \$reviewDefinition = @{ DisplayName = "Mover Access Review — \$(\$user.DisplayName) — \$(Get-Date -Format 'yyyy-MM-dd')" DescriptionForAdmins = "Triggered automatically by OrgPath mover Lifecycle Workflow. " + "User moved to: \$newOrgPath" StartDateTime = \$reviewStartTime EndDateTime = \$reviewEndTime Reviewers = @( @{ Query = "/users/\$userId/manager" QueryType = "MicrosoftGraph" } ) Scope = @{ "@odata.type" = "#microsoft.graph.accessReviewQueryScope" Query = "/users/\$userId/memberOf/microsoft.graph.group" QueryType = "MicrosoftGraph" } Settings = @{ MailNotificationsEnabled = \$true ReminderNotificationsEnabled = \$true AutoApplyDecisionsEnabled = \$false DefaultDecision = "None" InstanceDurationInDays = 7 RecommendationsEnabled = \$true } } try { \$null = Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" \` -Body (\$reviewDefinition \| ConvertTo-Json -Depth 10) \` -ContentType "application/json" Write-Host " Access review initiated for user \$userId." } catch { Write-Warning " Failed to create access review: \$\_" \# Non-fatal: PIM realignment succeeded; log access review failure for retry } \# --------------------------------------------------------------- \# RESPOND TO LIFECYCLE WORKFLOW ENGINE \# --------------------------------------------------------------- Push-OutputBinding -Name Response -Value (\[HttpResponseContext\]@{ StatusCode = \[HttpStatusCode\]::OK Body = "Mover PIM realignment complete \| userId: \$userId \| OrgPath: \$newOrgPath" }) Disconnect-MgGraph
+```powershell
+#Requires -Version 7.4
+#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Users,
+#           Microsoft.Graph.Groups, Microsoft.Graph.Identity.Governance
+
+using namespace System.Net
+
+# ---------------------------------------------------------------
+# AZURE FUNCTION ENTRY POINT
+# Triggered by Lifecycle Workflow custom task extension HTTP POST
+# ---------------------------------------------------------------
+param($Request, $TriggerMetadata)
+
+$userId   = $Request.Body.data.id
+$tenantId = $Request.Body.data.tenantId
+
+Write-Host "[$(Get-Date -Format 'o')] Mover handler invoked for userId: $userId"
+
+if (-not $userId) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::BadRequest
+        Body       = "Missing required field: data.id (userId)"
+    })
+    return
+}
+
+# ---------------------------------------------------------------
+# AUTHENTICATION — MANAGED IDENTITY
+# The Function App's system-assigned Managed Identity must have:
+#   Microsoft Graph application permissions:
+#     Directory.Read.All
+#     RoleManagement.ReadWrite.Directory
+#     AccessReview.ReadWrite.All
+# These are granted via the Azure portal or via:
+#   New-MgServicePrincipalAppRoleAssignment (Microsoft.Graph)
+# ---------------------------------------------------------------
+Connect-MgGraph -Identity -NoWelcome
+
+# ---------------------------------------------------------------
+# READ USER'S CURRENT ORGPATH
+# SUBSTITUTE: Replace {AppIdWithoutHyphens} in the extension attribute name
+# with your schema extension application registration ID, hyphens removed.
+# Format: extension_{AppId}_OrgPath
+# Example: extension_a1b2c3d4e5f64321a1b2c3d4e5f64321_OrgPath
+# ---------------------------------------------------------------
+$extensionAttrName = "extension_{AppIdWithoutHyphens}_OrgPath"
+
+$user = Get-MgUser -UserId $userId -Property "id,displayName,mail,$extensionAttrName"
+$newOrgPath = $user.AdditionalProperties[$extensionAttrName]
+
+if (-not $newOrgPath) {
+    Write-Warning "OrgPath not set for user $userId. Cannot perform PIM realignment."
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::BadRequest
+        Body       = "OrgPath attribute not set for userId $userId. Ensure the OrgPath propagation pipeline ran before this workflow executed."
+    })
+    Disconnect-MgGraph
+    return
+}
+
+Write-Host "  OrgPath resolved: $newOrgPath"
+
+# ---------------------------------------------------------------
+# RESOLVE TARGET PIM ELIGIBLE GROUP FROM ORGPATH
+# OrgPath format: /Root/Division/Department/Unit
+# The leaf segment identifies the user's current organizational node.
+# That node's group name follows the ORG-BRANCH-{NodeId} convention.
+# ---------------------------------------------------------------
+$pathSegments = $newOrgPath -split "/" | Where-Object { $_ -ne "" }
+$leafNodeId   = $pathSegments[-1]
+$groupName    = "ORG-BRANCH-$leafNodeId"
+
+$targetGroup = Get-MgGroup `
+    -Filter "displayName eq '$groupName'" `
+    -Property "Id,DisplayName"
+
+if (-not $targetGroup) {
+    Write-Warning "PIM group '$groupName' not found. OrgTree may need re-propagation."
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::NotFound
+        Body       = "PIM group not found: $groupName. Run OrgPath pipeline and retry."
+    })
+    Disconnect-MgGraph
+    return
+}
+
+Write-Host "  Target PIM group: $($targetGroup.DisplayName) [$($targetGroup.Id)]"
+
+# ---------------------------------------------------------------
+# REMOVE USER FROM PREVIOUS ORGPATH PIM GROUPS
+# The previous OrgPath is read from the Entra ID audit log.
+# The most recent "Update user" event for this user that modified
+# the OrgPath attribute carries the old value in oldValue.
+# ---------------------------------------------------------------
+$auditFilter = "activityDisplayName eq 'Update user' and targetResources/any(t: t/id eq '$userId')"
+
+$recentAudit = Get-MgAuditLogDirectoryAudit `
+    -Filter $auditFilter `
+    -Top 10 |
+    Where-Object {
+        $_.AdditionalDetails |
+        Where-Object { $_.Key -like "*OrgPath*" }
+    } |
+    Select-Object -First 1
+
+if ($recentAudit) {
+    $orgPathDetail = $recentAudit.AdditionalDetails |
+        Where-Object { $_.Key -like "*OrgPath*" } |
+        Select-Object -First 1
+
+    $oldOrgPath = $orgPathDetail.DisplayName  # oldValue is in the ModifiedProperties
+    if ($oldOrgPath) {
+        $oldPathSegments = $oldOrgPath -split "/" | Where-Object { $_ -ne "" }
+        $oldLeafNodeId   = $oldPathSegments[-1]
+        $oldGroupName    = "ORG-BRANCH-$oldLeafNodeId"
+
+        $oldGroup = Get-MgGroup `
+            -Filter "displayName eq '$oldGroupName'" `
+            -Property "Id,DisplayName" `
+            -ErrorAction SilentlyContinue
+
+        if ($oldGroup) {
+            try {
+                Remove-MgGroupMemberByRef `
+                    -GroupId $oldGroup.Id `
+                    -DirectoryObjectId $userId `
+                    -ErrorAction SilentlyContinue
+                Write-Host "  Removed user from previous PIM group: $oldGroupName"
+            }
+            catch {
+                Write-Warning "  Could not remove user from $oldGroupName (may not have been a direct member): $_"
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------
+# RESOLVE ROLE DEFINITION FOR PIM ELIGIBILITY
+# SUBSTITUTE: Replace the displayName filter value with the exact
+# name of the custom or built-in role used for OrgPath PIM eligibility.
+# ---------------------------------------------------------------
+$role = Get-MgRoleManagementDirectoryRoleDefinition `
+    -Filter "displayName eq 'Organizational Unit Administrator'"
+
+if (-not $role) {
+    Write-Warning "Role definition not found. Verify RoleDisplayName in handler configuration."
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::InternalServerError
+        Body       = "Role definition not found. Check Function App configuration."
+    })
+    Disconnect-MgGraph
+    return
+}
+
+# ---------------------------------------------------------------
+# CHECK FOR EXISTING ELIGIBILITY (IDEMPOTENCY GUARD)
+# ---------------------------------------------------------------
+$existingEligibility = Get-MgRoleManagementDirectoryRoleEligibilitySchedule `
+    -Filter "principalId eq '$userId' and roleDefinitionId eq '$($role.Id)'"
+
+if (-not $existingEligibility) {
+    # CREATE NEW PIM ELIGIBILITY SCHEDULE REQUEST
+    # DirectoryScopeId "/" = tenant root scope.
+    # SUBSTITUTE with AU path if AU-scoped PIM is configured:
+    # DirectoryScopeId = "/administrativeUnits/{AdministrativeUnitId}"
+    $scheduleRequest = @{
+        Action           = "AdminAssign"
+        PrincipalId      = $userId
+        RoleDefinitionId = $role.Id
+        DirectoryScopeId = "/"
+        Justification    = "Lifecycle Workflow mover realignment | OrgPath: $newOrgPath | $(Get-Date -Format 'yyyy-MM-dd')"
+        ScheduleInfo     = @{
+            StartDateTime = (Get-Date).ToUniversalTime().ToString("o")
+            Expiration    = @{ Type = "NoExpiration" }
+        }
+    }
+
+    try {
+        $null = New-MgRoleManagementDirectoryRoleEligibilityScheduleRequest `
+            -BodyParameter $scheduleRequest
+        Write-Host "  PIM eligibility schedule created for user $userId | Role: $($role.DisplayName)"
+    }
+    catch {
+        Write-Warning "  Failed to create PIM eligibility: $_"
+    }
+}
+else {
+    Write-Host "  PIM eligibility already exists for user $userId — skipping creation (idempotency)."
+}
+
+# ---------------------------------------------------------------
+# INITIATE IMMEDIATE ACCESS REVIEW FOR MOVER
+# The access review is scoped to the user's current privileged
+# group memberships and assigned to the user's current manager.
+# Review window is 7 days from now. Adjust EndDateTime as needed.
+# ---------------------------------------------------------------
+$reviewStartTime = (Get-Date).AddMinutes(15).ToUniversalTime().ToString("o")
+$reviewEndTime   = (Get-Date).AddDays(7).ToUniversalTime().ToString("o")
+
+$reviewDefinition = @{
+    DisplayName    = "Mover Access Review — $($user.DisplayName) — $(Get-Date -Format 'yyyy-MM-dd')"
+    DescriptionForAdmins = "Triggered automatically by OrgPath mover Lifecycle Workflow. " +
+                           "User moved to: $newOrgPath"
+    StartDateTime  = $reviewStartTime
+    EndDateTime    = $reviewEndTime
+    Reviewers      = @(
+        @{
+            Query     = "/users/$userId/manager"
+            QueryType = "MicrosoftGraph"
+        }
+    )
+    Scope = @{
+        "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
+        Query         = "/users/$userId/memberOf/microsoft.graph.group"
+        QueryType     = "MicrosoftGraph"
+    }
+    Settings = @{
+        MailNotificationsEnabled = $true
+        ReminderNotificationsEnabled = $true
+        AutoApplyDecisionsEnabled    = $false
+        DefaultDecision              = "None"
+        InstanceDurationInDays       = 7
+        RecommendationsEnabled       = $true
+    }
+}
+
+try {
+    $null = Invoke-MgGraphRequest `
+        -Method POST `
+        -Uri "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" `
+        -Body ($reviewDefinition | ConvertTo-Json -Depth 10) `
+        -ContentType "application/json"
+    Write-Host "  Access review initiated for user $userId."
+}
+catch {
+    Write-Warning "  Failed to create access review: $_"
+    # Non-fatal: PIM realignment succeeded; log access review failure for retry
+}
+
+# ---------------------------------------------------------------
+# RESPOND TO LIFECYCLE WORKFLOW ENGINE
+# ---------------------------------------------------------------
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+    StatusCode = [HttpStatusCode]::OK
+    Body       = "Mover PIM realignment complete | userId: $userId | OrgPath: $newOrgPath"
+})
+
+Disconnect-MgGraph
+```
 
 ### Notification and Access Review Closure
 
@@ -169,7 +665,79 @@ The first query aggregates PIM role activations by organizational segment over a
 
 ### Query 4-A: PIM Activations by OrgPath — Daily Dashboard (KQL)
 
-// --------------------------------------------------------------- // Query 1: PIM Activations by OrgPath — Daily Dashboard // --------------------------------------------------------------- // Purpose: // Summarize PIM role activations by organizational position // over a rolling 24-hour window. // Target table: AuditLogs // Prerequisite: Entra ID diagnostic settings must export AuditLogs // to the Log Analytics workspace connected to Sentinel. // --------------------------------------------------------------- // Step 1: Extract PIM activation events from the audit log. // The OperationName value "Add member to role completed (PIM activation)" // is generated by Entra ID PIM when a user successfully activates // an eligible role assignment. Validate this string against your // tenant's AuditLogs if activations are not appearing — the exact // string may vary slightly between PIM v2 and PIM for Groups. let PIMActivations = AuditLogs \| where TimeGenerated \>= ago(24h) \| where OperationName == "Add member to role completed (PIM activation)" \| extend UserId = tostring(InitiatedBy.user.id), UserPrincipalName = tostring(InitiatedBy.user.userPrincipalName), RoleName = tostring(TargetResources\[0\].displayName), // RequestDuration is recorded in AdditionalDetails as a key-value pair. // If this field is not present in your tenant's logs, remove the // ActivationDurationMin column and the AvgDurationMin aggregation below. ActivationDurationMin = tolong( parse_json(tostring( AdditionalDetails \| where Key == "RequestDuration" )).Value ) \| where isnotempty(UserId) \| project TimeGenerated, UserId, UserPrincipalName, RoleName, ActivationDurationMin; // Step 2: Resolve the current OrgPath for each user. // This reads the most recent OrgPath attribute change audit event // within the past 7 days. Users whose OrgPath has not changed // recently will not appear here; extend the lookback window if needed. // // NOTE: The ModifiedProperties displayName filter uses "OrgPath" as a // substring match. Replace "OrgPath" with the full attribute name if // your audit log records the full extension attribute name in this field. // Example: "extension_a1b2c3d4e5f6_OrgPath" let UserOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand ModifiedProperties = AdditionalDetails \| where tostring(ModifiedProperties.displayName) contains "OrgPath" \| extend UserId = tostring(TargetResources\[0\].id), OrgPath = tostring(ModifiedProperties.newValue) \| where isnotempty(UserId) and isnotempty(OrgPath) \| summarize OrgPath = arg_max(TimeGenerated, OrgPath) by UserId \| project UserId, OrgPath; // Step 3: Join and aggregate. // Users whose OrgPath cannot be resolved (no recent attribute write) // are placed in the UNPOSITIONED bucket — a governance signal that // should be investigated if it contains non-trivial activation counts. PIMActivations \| join kind=leftouter UserOrgPaths on UserId \| extend OrgPath = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) \| summarize Activations = count(), UniqueUsers = dcount(UserPrincipalName), AvgDurationMin = round(avg(ActivationDurationMin), 1), Roles = make_set(RoleName) by OrgPath, bin(TimeGenerated, 1h) \| order by Activations desc
+```kql
+// ---------------------------------------------------------------
+// Query 1: PIM Activations by OrgPath — Daily Dashboard
+// ---------------------------------------------------------------
+// Purpose:
+//   Summarize PIM role activations by organizational position
+//   over a rolling 24-hour window.
+// Target table: AuditLogs
+// Prerequisite: Entra ID diagnostic settings must export AuditLogs
+//   to the Log Analytics workspace connected to Sentinel.
+// ---------------------------------------------------------------
+
+// Step 1: Extract PIM activation events from the audit log.
+// The OperationName value "Add member to role completed (PIM activation)"
+// is generated by Entra ID PIM when a user successfully activates
+// an eligible role assignment. Validate this string against your
+// tenant's AuditLogs if activations are not appearing — the exact
+// string may vary slightly between PIM v2 and PIM for Groups.
+let PIMActivations = AuditLogs
+| where TimeGenerated >= ago(24h)
+| where OperationName == "Add member to role completed (PIM activation)"
+| extend
+    UserId            = tostring(InitiatedBy.user.id),
+    UserPrincipalName = tostring(InitiatedBy.user.userPrincipalName),
+    RoleName          = tostring(TargetResources[0].displayName),
+    // RequestDuration is recorded in AdditionalDetails as a key-value pair.
+    // If this field is not present in your tenant's logs, remove the
+    // ActivationDurationMin column and the AvgDurationMin aggregation below.
+    ActivationDurationMin = tolong(
+        parse_json(tostring(
+            AdditionalDetails
+            | where Key == "RequestDuration"
+        )).Value
+    )
+| where isnotempty(UserId)
+| project TimeGenerated, UserId, UserPrincipalName, RoleName, ActivationDurationMin;
+
+// Step 2: Resolve the current OrgPath for each user.
+// This reads the most recent OrgPath attribute change audit event
+// within the past 7 days. Users whose OrgPath has not changed
+// recently will not appear here; extend the lookback window if needed.
+//
+// NOTE: The ModifiedProperties displayName filter uses "OrgPath" as a
+// substring match. Replace "OrgPath" with the full attribute name if
+// your audit log records the full extension attribute name in this field.
+// Example: "extension_a1b2c3d4e5f6_OrgPath"
+let UserOrgPaths = AuditLogs
+| where TimeGenerated >= ago(7d)
+| where OperationName == "Update user"
+| mv-expand ModifiedProperties = AdditionalDetails
+| where tostring(ModifiedProperties.displayName) contains "OrgPath"
+| extend
+    UserId  = tostring(TargetResources[0].id),
+    OrgPath = tostring(ModifiedProperties.newValue)
+| where isnotempty(UserId) and isnotempty(OrgPath)
+| summarize OrgPath = arg_max(TimeGenerated, OrgPath) by UserId
+| project UserId, OrgPath;
+
+// Step 3: Join and aggregate.
+// Users whose OrgPath cannot be resolved (no recent attribute write)
+// are placed in the UNPOSITIONED bucket — a governance signal that
+// should be investigated if it contains non-trivial activation counts.
+PIMActivations
+| join kind=leftouter UserOrgPaths on UserId
+| extend OrgPath = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath)
+| summarize
+    Activations       = count(),
+    UniqueUsers       = dcount(UserPrincipalName),
+    AvgDurationMin    = round(avg(ActivationDurationMin), 1),
+    Roles             = make_set(RoleName)
+    by OrgPath, bin(TimeGenerated, 1h)
+| order by Activations desc
+```
 
 *This query is intended for a Sentinel Workbook tile refreshed on a one-hour schedule. Pin it as a heat-map visualization with OrgPath on the Y axis and hour-of-day on the X axis, with activation count as the color intensity. The UNPOSITIONED row should be visually distinct — a dark color regardless of count — because any activation from a user without a resolved OrgPath is a data quality issue as well as a potential security signal.*
 
@@ -179,7 +747,79 @@ The second query drives a near-real-time alert rule. It evaluates PIM activation
 
 ### Query 4-B: High-Risk PIM Activations in Sensitive OrgPath Segments (KQL)
 
-// --------------------------------------------------------------- // Query 2: High-Risk PIM Activations in Sensitive OrgPath Segments // --------------------------------------------------------------- // Purpose: // Alert on PIM activations by users whose current OrgPath // belongs to a designated sensitive organizational segment. // Intended use: Sentinel Analytics Rule, High severity. // Query frequency: Every 1 hour. // Lookback window: Last 1 hour. // Alert threshold: Any result row generates an incident. // --------------------------------------------------------------- // SUBSTITUTE: Update SensitivePaths to match your OrgTree node // path structure. Each entry is an OrgPath prefix for an // organizational segment considered high-value or high-risk. // Use the exact path format used in your OrgPath attribute values. // Example entries below are illustrative — replace with real paths. let SensitivePaths = dynamic(\[ "/Root/Executive/", "/Root/Finance/", "/Root/Legal/", "/Root/Operations/Security/", "/Root/Engineering/Infrastructure/Tier0/" // Add additional sensitive OrgPath prefixes as required \]); // Resolve the most recent OrgPath for each user from audit log. // Lookback is 7 days to catch users who have not been repositioned recently. let RecentOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand ModifiedProperties = AdditionalDetails \| where tostring(ModifiedProperties.displayName) contains "OrgPath" \| extend UserId = tostring(TargetResources\[0\].id), OrgPath = tostring(ModifiedProperties.newValue) \| where isnotempty(UserId) and isnotempty(OrgPath) \| summarize OrgPath = arg_max(TimeGenerated, OrgPath) by UserId \| project UserId, OrgPath; // PIM activation events in the past 1 hour AuditLogs \| where TimeGenerated \>= ago(1h) \| where OperationName == "Add member to role completed (PIM activation)" \| extend UserId = tostring(InitiatedBy.user.id), UserPrincipalName = tostring(InitiatedBy.user.userPrincipalName), RoleName = tostring(TargetResources\[0\].displayName), // Extract user-supplied justification from AdditionalDetails. // Key name may vary — validate against your tenant's audit log schema. Justification = tostring( parse_json(tostring( AdditionalDetails \| where Key == "Justification" )).Value ), IpAddress = tostring(InitiatedBy.user.ipAddress) \| where isnotempty(UserId) // Join to OrgPath values \| join kind=inner RecentOrgPaths on UserId // Filter to sensitive organizational segments \| where OrgPath has_any (SensitivePaths) // Present alert-relevant columns in consistent order \| project TimeGenerated, UserPrincipalName, OrgPath, RoleName, Justification, IpAddress, UserId \| order by TimeGenerated desc
+```kql
+// ---------------------------------------------------------------
+// Query 2: High-Risk PIM Activations in Sensitive OrgPath Segments
+// ---------------------------------------------------------------
+// Purpose:
+//   Alert on PIM activations by users whose current OrgPath
+//   belongs to a designated sensitive organizational segment.
+// Intended use: Sentinel Analytics Rule, High severity.
+// Query frequency: Every 1 hour.
+// Lookback window: Last 1 hour.
+// Alert threshold: Any result row generates an incident.
+// ---------------------------------------------------------------
+
+// SUBSTITUTE: Update SensitivePaths to match your OrgTree node
+// path structure. Each entry is an OrgPath prefix for an
+// organizational segment considered high-value or high-risk.
+// Use the exact path format used in your OrgPath attribute values.
+// Example entries below are illustrative — replace with real paths.
+let SensitivePaths = dynamic([
+    "/Root/Executive/",
+    "/Root/Finance/",
+    "/Root/Legal/",
+    "/Root/Operations/Security/",
+    "/Root/Engineering/Infrastructure/Tier0/"
+    // Add additional sensitive OrgPath prefixes as required
+]);
+
+// Resolve the most recent OrgPath for each user from audit log.
+// Lookback is 7 days to catch users who have not been repositioned recently.
+let RecentOrgPaths = AuditLogs
+| where TimeGenerated >= ago(7d)
+| where OperationName == "Update user"
+| mv-expand ModifiedProperties = AdditionalDetails
+| where tostring(ModifiedProperties.displayName) contains "OrgPath"
+| extend
+    UserId  = tostring(TargetResources[0].id),
+    OrgPath = tostring(ModifiedProperties.newValue)
+| where isnotempty(UserId) and isnotempty(OrgPath)
+| summarize OrgPath = arg_max(TimeGenerated, OrgPath) by UserId
+| project UserId, OrgPath;
+
+// PIM activation events in the past 1 hour
+AuditLogs
+| where TimeGenerated >= ago(1h)
+| where OperationName == "Add member to role completed (PIM activation)"
+| extend
+    UserId            = tostring(InitiatedBy.user.id),
+    UserPrincipalName = tostring(InitiatedBy.user.userPrincipalName),
+    RoleName          = tostring(TargetResources[0].displayName),
+    // Extract user-supplied justification from AdditionalDetails.
+    // Key name may vary — validate against your tenant's audit log schema.
+    Justification = tostring(
+        parse_json(tostring(
+            AdditionalDetails | where Key == "Justification"
+        )).Value
+    ),
+    IpAddress = tostring(InitiatedBy.user.ipAddress)
+| where isnotempty(UserId)
+// Join to OrgPath values
+| join kind=inner RecentOrgPaths on UserId
+// Filter to sensitive organizational segments
+| where OrgPath has_any (SensitivePaths)
+// Present alert-relevant columns in consistent order
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    OrgPath,
+    RoleName,
+    Justification,
+    IpAddress,
+    UserId
+| order by TimeGenerated desc
+```
 
 *The has_any operator against the SensitivePaths dynamic array performs a substring match, which correctly handles OrgPath values for nodes deeper in the hierarchy than the prefix defines — a user at /Root/Finance/Accounting/Payroll/ will match the /Root/Finance/ prefix. Review the SensitivePaths list quarterly in alignment with the organization's risk assessment cycle. The incident generated by this rule routes to the security operations queue, not the governance queue — a PIM activation from a sensitive segment is a security operations matter requiring active analyst review, not a governance finding to be triaged at the next business day.*
 
@@ -189,7 +829,82 @@ The third query identifies users who hold PIM eligibility for an organizational 
 
 ### Query 4-C: PIM Eligibility vs. OrgPath Drift Detection (KQL)
 
-// --------------------------------------------------------------- // Query 3: PIM Eligibility vs. OrgPath Drift Detection // --------------------------------------------------------------- // Purpose: // Identify users who hold PIM eligibility for an ORG-BRANCH group // that does not correspond to any node in their current OrgPath. // These users have stale eligibilities that survived a position // change without realignment. // Intended use: Scheduled daily query. Results drive a governance // incident when stale eligibility count exceeds threshold. // Incident routing: Identity governance queue (not SOC). // --------------------------------------------------------------- // Step 1: Identify current PIM eligible group assignments. // We look for audit events that assigned a user as an eligible // member of a group whose name starts with "ORG-BRANCH-". // The 90-day lookback covers the standard PIM eligibility audit window. // Extend if your eligibilities were created more than 90 days ago // and no renewal events exist in that window. let PIMEligible = AuditLogs \| where TimeGenerated \>= ago(90d) \| where OperationName in ( "Add eligible member to role (PIM activation)", "Add eligible member to role", "Add member to role (eligible)" ) \| extend UserId = tostring(TargetResources\[0\].id), GroupName = tostring(TargetResources\[1\].displayName) \| where isnotempty(GroupName) and GroupName startswith "ORG-BRANCH-" \| extend NodeId = replace_string(GroupName, "ORG-BRANCH-", "") \| where isnotempty(NodeId) and isnotempty(UserId) \| summarize EligibleNodes = make_set(NodeId) by UserId; // Step 2: Resolve each user's current OrgPath. let CurrentOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand ModifiedProperties = AdditionalDetails \| where tostring(ModifiedProperties.displayName) contains "OrgPath" \| extend UserId = tostring(TargetResources\[0\].id), UserPrincipalName = tostring(TargetResources\[0\].userPrincipalName), OrgPath = tostring(ModifiedProperties.newValue) \| where isnotempty(UserId) and isnotempty(OrgPath) \| summarize arg_max(TimeGenerated, OrgPath, UserPrincipalName) by UserId \| project UserId, UserPrincipalName, CurrentOrgPath = OrgPath; // Step 3: Identify drift. // For each user, expand their set of eligible node IDs and test // whether each eligible node ID appears anywhere in the user's // current OrgPath value. An eligible node ID that does NOT appear // in the current OrgPath is a stale eligibility — the user is // eligible for a branch they are no longer part of. // // NOTE: This check uses a substring test (OrgPath contains NodeId). // This is valid because NodeIds are unique and appear as complete // path segments. If your NodeId values are numeric or very short, // consider using segment-level matching to prevent false positives // from partial string matches within longer segment names. CurrentOrgPaths \| join kind=inner PIMEligible on UserId \| mv-expand EligibleNode = EligibleNodes \| extend NodeId = tostring(EligibleNode), IsCurrentlyInPath = CurrentOrgPath contains tostring(EligibleNode) \| where IsCurrentlyInPath == false \| project UserId, UserPrincipalName, CurrentOrgPath, StaleEligibilityNode = NodeId, StaleGroupName = strcat("ORG-BRANCH-", NodeId) \| order by UserPrincipalName asc
+```kql
+// ---------------------------------------------------------------
+// Query 3: PIM Eligibility vs. OrgPath Drift Detection
+// ---------------------------------------------------------------
+// Purpose:
+//   Identify users who hold PIM eligibility for an ORG-BRANCH group
+//   that does not correspond to any node in their current OrgPath.
+//   These users have stale eligibilities that survived a position
+//   change without realignment.
+// Intended use: Scheduled daily query. Results drive a governance
+//   incident when stale eligibility count exceeds threshold.
+// Incident routing: Identity governance queue (not SOC).
+// ---------------------------------------------------------------
+
+// Step 1: Identify current PIM eligible group assignments.
+// We look for audit events that assigned a user as an eligible
+// member of a group whose name starts with "ORG-BRANCH-".
+// The 90-day lookback covers the standard PIM eligibility audit window.
+// Extend if your eligibilities were created more than 90 days ago
+// and no renewal events exist in that window.
+let PIMEligible = AuditLogs
+| where TimeGenerated >= ago(90d)
+| where OperationName in (
+    "Add eligible member to role (PIM activation)",
+    "Add eligible member to role",
+    "Add member to role (eligible)"
+  )
+| extend
+    UserId    = tostring(TargetResources[0].id),
+    GroupName = tostring(TargetResources[1].displayName)
+| where isnotempty(GroupName) and GroupName startswith "ORG-BRANCH-"
+| extend NodeId = replace_string(GroupName, "ORG-BRANCH-", "")
+| where isnotempty(NodeId) and isnotempty(UserId)
+| summarize EligibleNodes = make_set(NodeId) by UserId;
+
+// Step 2: Resolve each user's current OrgPath.
+let CurrentOrgPaths = AuditLogs
+| where TimeGenerated >= ago(7d)
+| where OperationName == "Update user"
+| mv-expand ModifiedProperties = AdditionalDetails
+| where tostring(ModifiedProperties.displayName) contains "OrgPath"
+| extend
+    UserId            = tostring(TargetResources[0].id),
+    UserPrincipalName = tostring(TargetResources[0].userPrincipalName),
+    OrgPath           = tostring(ModifiedProperties.newValue)
+| where isnotempty(UserId) and isnotempty(OrgPath)
+| summarize arg_max(TimeGenerated, OrgPath, UserPrincipalName) by UserId
+| project UserId, UserPrincipalName, CurrentOrgPath = OrgPath;
+
+// Step 3: Identify drift.
+// For each user, expand their set of eligible node IDs and test
+// whether each eligible node ID appears anywhere in the user's
+// current OrgPath value. An eligible node ID that does NOT appear
+// in the current OrgPath is a stale eligibility — the user is
+// eligible for a branch they are no longer part of.
+//
+// NOTE: This check uses a substring test (OrgPath contains NodeId).
+// This is valid because NodeIds are unique and appear as complete
+// path segments. If your NodeId values are numeric or very short,
+// consider using segment-level matching to prevent false positives
+// from partial string matches within longer segment names.
+CurrentOrgPaths
+| join kind=inner PIMEligible on UserId
+| mv-expand EligibleNode = EligibleNodes
+| extend
+    NodeId            = tostring(EligibleNode),
+    IsCurrentlyInPath = CurrentOrgPath contains tostring(EligibleNode)
+| where IsCurrentlyInPath == false
+| project
+    UserId,
+    UserPrincipalName,
+    CurrentOrgPath,
+    StaleEligibilityNode = NodeId,
+    StaleGroupName       = strcat("ORG-BRANCH-", NodeId)
+| order by UserPrincipalName asc
+```
 
 *This query is saved as a Sentinel Analytics Rule scheduled to run daily. When the result set count exceeds a threshold configured by the governance team — a reasonable starting value is five distinct users, adjusted downward as the mover workflow matures and drift becomes genuinely exceptional — the rule creates a Sentinel incident assigned to the identity governance queue. The incident title is populated with the count of users with stale eligibilities. The governance team's remediation action is to run the PIM eligibility synchronization pipeline manually for the affected users or, if the mover workflow did not fire correctly, to investigate why the Lifecycle Workflow did not trigger and resolve the root cause before processing the next batch of movers.*
 
@@ -232,7 +947,63 @@ The tag requirement is enforced by an Azure Policy definition assigned at the ma
 
 ### Policy 5-A: Azure Policy Definition — Require OrgPath Tags on Arc-Connected Machines
 
-{ "mode": "Indexed", "displayName": "Require OrgPath Governance Tags on Arc-Connected Machines", "description": "Denies Arc machine registration if any of the four required OrgPath governance tags are absent. Tags required: OrgPath, OrgNodeId, OrgTier, MigrationPhase.", "policyRule": { "if": { "allOf": \[ { "field": "type", "equals": "Microsoft.HybridCompute/machines" }, { "anyOf": \[ { "field": "tags\['OrgPath'\]", "exists": "false" }, { "field": "tags\['OrgPath'\]", "equals": "" }, { "field": "tags\['OrgNodeId'\]", "exists": "false" }, { "field": "tags\['OrgNodeId'\]", "equals": "" }, { "field": "tags\['OrgTier'\]", "exists": "false" }, { "field": "tags\['OrgTier'\]", "notIn": \["Tier0", "Tier1", "Tier2"\] }, { "field": "tags\['MigrationPhase'\]", "exists": "false" }, { "field": "tags\['MigrationPhase'\]", "equals": "" } \] } \] }, "then": { "effect": "deny" } }, "parameters": {} }
+```json
+{
+    "mode": "Indexed",
+    "displayName": "Require OrgPath Governance Tags on Arc-Connected Machines",
+    "description": "Denies Arc machine registration if any of the four required OrgPath governance tags are absent. Tags required: OrgPath, OrgNodeId, OrgTier, MigrationPhase.",
+    "policyRule": {
+        "if": {
+            "allOf": [
+                {
+                    "field": "type",
+                    "equals": "Microsoft.HybridCompute/machines"
+                },
+                {
+                    "anyOf": [
+                        {
+                            "field": "tags['OrgPath']",
+                            "exists": "false"
+                        },
+                        {
+                            "field": "tags['OrgPath']",
+                            "equals": ""
+                        },
+                        {
+                            "field": "tags['OrgNodeId']",
+                            "exists": "false"
+                        },
+                        {
+                            "field": "tags['OrgNodeId']",
+                            "equals": ""
+                        },
+                        {
+                            "field": "tags['OrgTier']",
+                            "exists": "false"
+                        },
+                        {
+                            "field": "tags['OrgTier']",
+                            "notIn": ["Tier0", "Tier1", "Tier2"]
+                        },
+                        {
+                            "field": "tags['MigrationPhase']",
+                            "exists": "false"
+                        },
+                        {
+                            "field": "tags['MigrationPhase']",
+                            "equals": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        "then": {
+            "effect": "deny"
+        }
+    },
+    "parameters": {}
+}
+```
 
 *This policy definition is deployed as a standalone assignment rather than as part of a policy initiative, so that it can be assigned at a scope that covers only Arc-connected machine resources. For organizations that also wish to enforce the tagging requirement on Azure virtual machines, add a second if condition block for Microsoft.Compute/virtualMachines resource type, or create a parallel policy definition. The OrgTier field uses notIn rather than exists to enforce valid enumerated values — an empty or misspelled tier designation is caught at enrollment time rather than propagating through the governance model.*
 
@@ -242,7 +1013,12 @@ With tags in place at the resource level, the RBAC assignment pattern can be est
 
 The groups in this pattern follow the naming convention AZ-RBAC-{RoleShortName}-{NodeId}. For example, the group that provides Reader access to Finance Accounting resources is named AZ-RBAC-READER-FIN-ACCT-001, where FIN-ACCT-001 is the OrgTree node identifier for the Finance Accounting unit. The dynamic membership rule on this group is:
 
-(user.extension\_{AppIdWithoutHyphens}\_OrgPath -startsWith "/Root/Finance/Accounting/") // SUBSTITUTE: Replace extension\_{AppIdWithoutHyphens}\_OrgPath with the full schema // extension attribute name for OrgPath in your tenant. // Replace "/Root/Finance/Accounting/" with the correct OrgPath prefix for the node.
+```
+(user.extension_{AppIdWithoutHyphens}_OrgPath -startsWith "/Root/Finance/Accounting/")
+// SUBSTITUTE: Replace extension_{AppIdWithoutHyphens}_OrgPath with the full schema
+// extension attribute name for OrgPath in your tenant.
+// Replace "/Root/Finance/Accounting/" with the correct OrgPath prefix for the node.
+```
 
 Any user whose OrgPath value starts with the Finance Accounting prefix is automatically a member of this group. The group is then assigned the Azure Reader role at the resource group or subscription scope where Finance Accounting-owned resources reside. The result: every Finance Accounting user gets Reader access to Finance Accounting resources automatically, through the structural position encoded in their OrgPath, without any manual RBAC assignment.
 
@@ -254,7 +1030,215 @@ The following script is the pipeline extension that creates and maintains the RB
 
 ### Script 5-B: Set-AzRbacOrgPathGroups.ps1 — Dynamic RBAC Group Provisioning Pipeline Step
 
-\#Requires -Version 7.4 \#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Az.Resources \<# .SYNOPSIS Creates Azure AD dynamic groups and Azure RBAC role assignments scoped to OrgPath-based organizational nodes. .DESCRIPTION For each active node in the OrgTree registry, this script ensures that: 1. An Entra ID dynamic security group named AZ-RBAC-{RoleShortName}-{NodeId} exists with a membership rule based on the OrgPath extension attribute. 2. The specified Azure RBAC role is assigned to that group at the configured Azure Resource Manager scope. Run for each role/scope combination that needs to be governed by OrgPath. .PARAMETER RoleDefinitionName The Azure RBAC built-in or custom role name. SUBSTITUTE: Replace with the exact role name as it appears in Azure. Examples: "Reader", "Contributor", "Virtual Machine Contributor" For custom roles: use the exact custom role definition display name. .PARAMETER RoleShortName Short label used in the dynamic group display name. Keep to 12 characters or fewer to avoid display name length issues. Examples: "READER", "CONTRIB", "VM-CONTRIB" .PARAMETER Scope The Azure Resource Manager scope at which the role is assigned. SUBSTITUTE with the appropriate scope for your environment: Subscription: /subscriptions/{SubscriptionId} Resource group: /subscriptions/{SubscriptionId}/resourceGroups/{RgName} Management group: /providers/Microsoft.Management/managementGroups/{MgId} .PARAMETER OrgPathExtensionName Full schema extension attribute name for OrgPath. SUBSTITUTE: Replace {AppIdWithoutHyphens} with your schema extension app ID. Format: extension\_{AppIdWithoutHyphens}\_OrgPath .PARAMETER OrgTreeRegistryPath Local path to the checked-out OrgTree registry JSON file. .PARAMETER DryRun If \$true, reports planned actions without creating groups or assignments. \#\> param( \[string\]\$RoleDefinitionName = "Reader", \[string\]\$RoleShortName = "READER", \[string\]\$Scope = "/subscriptions/{SubscriptionId}", \[string\]\$OrgPathExtensionName = "extension\_{AppIdWithoutHyphens}\_OrgPath", \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[bool\] \$DryRun = \$false ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \# --------------------------------------------------------------- \# AUTHENTICATION \# --------------------------------------------------------------- \# Authenticate to Microsoft Graph (for Entra ID group management) \# In production, use Managed Identity or certificate-based SPN. \# The Managed Identity or SPN requires: \# Microsoft Graph: Directory.ReadWrite.All, Group.ReadWrite.All \# Azure ARM: Owner or User Access Administrator on target scope Connect-MgGraph -Scopes "Directory.ReadWrite.All", "Group.ReadWrite.All" -NoWelcome \# Authenticate to Azure Resource Manager for RBAC assignments. \# Connect-AzAccount -Identity uses the Managed Identity of the automation runner. \# SUBSTITUTE: If running outside Azure, use: \# Connect-AzAccount -ServicePrincipal -Credential \$cred -Tenant "{TenantId}" Connect-AzAccount -Identity Write-Host "\[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')\] Authentication complete." \# --------------------------------------------------------------- \# LOAD ORGTREE REGISTRY \# --------------------------------------------------------------- if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found at '\$OrgTreeRegistryPath'." } \$orgTree = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$activeNodes = \$orgTree.nodes \| Where-Object { \$\_.Status -eq "Active" } Write-Host "\[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')\] Loaded \$(\$activeNodes.Count) active nodes from registry." \$results = @{ GroupsCreated = 0; GroupsExisting = 0; RbacAssigned = 0; Failed = 0 } \# --------------------------------------------------------------- \# PROCESS EACH ACTIVE ORGTREE NODE \# --------------------------------------------------------------- foreach (\$node in \$activeNodes) { \$groupName = "AZ-RBAC-\$RoleShortName-\$(\$node.Id)" \$mailNick = (\$groupName.ToLower() -replace "\[^a-z0-9\]", "-").TrimEnd("-") \$description = "Azure RBAC '\$RoleDefinitionName' — OrgPath: \$(\$node.Path)" \# Membership rule: all users whose OrgPath starts with this node's path. \# The -startsWith operator on extension attributes is supported in \# dynamic membership rules as of Entra ID dynamic groups API v2. \$memberRule = "(user.\$OrgPathExtensionName -startsWith \`"\$(\$node.Path)\`")" Write-Host "" Write-Host "Processing node: \$(\$node.Name) \[\$(\$node.Id)\] \| Path: \$(\$node.Path)" \# ------------------------------------------------------- \# STEP 1: Ensure the dynamic group exists \# ------------------------------------------------------- \$existingGroup = Get-MgGroup \` -Filter "displayName eq '\$groupName'" \` -Property "Id,DisplayName,MembershipRule,MembershipRuleProcessingState" \` -ErrorAction SilentlyContinue if (-not \$existingGroup) { \$groupBody = @{ DisplayName = \$groupName Description = \$description MailEnabled = \$false MailNickname = \$mailNick SecurityEnabled = \$true GroupTypes = @("DynamicMembership") MembershipRule = \$memberRule MembershipRuleProcessingState = "On" } if (\$DryRun) { Write-Host " \[DRYRUN\] Would create group: \$groupName" Write-Host " Rule: \$memberRule" \$results.GroupsCreated++ continue } try { \$newGroup = New-MgGroup -BodyParameter \$groupBody Write-Host " \[CREATED\] Group: \$groupName \[\$(\$newGroup.Id)\]" \$groupId = \$newGroup.Id \$results.GroupsCreated++ } catch { Write-Warning " \[FAILED\] Could not create group '\$groupName': \$\_" \$results.Failed++ continue } } else { \$groupId = \$existingGroup.Id Write-Host " \[EXISTS\] Group: \$groupName \[\$groupId\]" \# Validate membership rule is current — update if the node's path has changed if (\$existingGroup.MembershipRule -ne \$memberRule) { Write-Host " \[UPDATE\] Membership rule updated for \$groupName" if (-not \$DryRun) { Update-MgGroup -GroupId \$groupId -MembershipRule \$memberRule } } \$results.GroupsExisting++ } \# ------------------------------------------------------- \# STEP 2: Assign Azure RBAC role to the group at scope \# ------------------------------------------------------- \$existingAssignment = Get-AzRoleAssignment \` -ObjectId \$groupId \` -RoleDefinitionName \$RoleDefinitionName \` -Scope \$Scope \` -ErrorAction SilentlyContinue if (-not \$existingAssignment) { if (\$DryRun) { Write-Host " \[DRYRUN\] Would assign '\$RoleDefinitionName' at scope \$Scope for \$groupName" \$results.RbacAssigned++ continue } try { New-AzRoleAssignment \` -ObjectId \$groupId \` -RoleDefinitionName \$RoleDefinitionName \` -Scope \$Scope \| Out-Null Write-Host " \[ASSIGNED\] '\$RoleDefinitionName' at \$Scope for \$groupName" \$results.RbacAssigned++ } catch { Write-Warning " \[FAILED\] RBAC assignment failed for \$groupName at \$Scope\`: \$\_" \$results.Failed++ } } else { Write-Host " \[EXISTS\] RBAC assignment already in place for \$groupName" } } \# --------------------------------------------------------------- \# SUMMARY \# --------------------------------------------------------------- Write-Host "" Write-Host "================================================================" Write-Host " Azure RBAC OrgPath Group Provisioning — Complete" Write-Host "================================================================" Write-Host " Groups created : \$(\$results.GroupsCreated)" Write-Host " Groups existing : \$(\$results.GroupsExisting)" Write-Host " RBAC assigned : \$(\$results.RbacAssigned)" Write-Host " Failed : \$(\$results.Failed)" if (\$DryRun) { Write-Host " \*\*\* DRY RUN — no changes were made \*\*\*" } Write-Host "================================================================" Disconnect-MgGraph
+```powershell
+#Requires -Version 7.4
+#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Az.Resources
+
+<#
+.SYNOPSIS
+    Creates Azure AD dynamic groups and Azure RBAC role assignments
+    scoped to OrgPath-based organizational nodes.
+
+.DESCRIPTION
+    For each active node in the OrgTree registry, this script ensures that:
+      1. An Entra ID dynamic security group named AZ-RBAC-{RoleShortName}-{NodeId}
+         exists with a membership rule based on the OrgPath extension attribute.
+      2. The specified Azure RBAC role is assigned to that group at the
+         configured Azure Resource Manager scope.
+    Run for each role/scope combination that needs to be governed by OrgPath.
+
+.PARAMETER RoleDefinitionName
+    The Azure RBAC built-in or custom role name.
+    SUBSTITUTE: Replace with the exact role name as it appears in Azure.
+    Examples: "Reader", "Contributor", "Virtual Machine Contributor"
+    For custom roles: use the exact custom role definition display name.
+
+.PARAMETER RoleShortName
+    Short label used in the dynamic group display name.
+    Keep to 12 characters or fewer to avoid display name length issues.
+    Examples: "READER", "CONTRIB", "VM-CONTRIB"
+
+.PARAMETER Scope
+    The Azure Resource Manager scope at which the role is assigned.
+    SUBSTITUTE with the appropriate scope for your environment:
+      Subscription:      /subscriptions/{SubscriptionId}
+      Resource group:    /subscriptions/{SubscriptionId}/resourceGroups/{RgName}
+      Management group:  /providers/Microsoft.Management/managementGroups/{MgId}
+
+.PARAMETER OrgPathExtensionName
+    Full schema extension attribute name for OrgPath.
+    SUBSTITUTE: Replace {AppIdWithoutHyphens} with your schema extension app ID.
+    Format: extension_{AppIdWithoutHyphens}_OrgPath
+
+.PARAMETER OrgTreeRegistryPath
+    Local path to the checked-out OrgTree registry JSON file.
+
+.PARAMETER DryRun
+    If $true, reports planned actions without creating groups or assignments.
+#>
+param(
+    [string]$RoleDefinitionName   = "Reader",
+    [string]$RoleShortName        = "READER",
+    [string]$Scope                = "/subscriptions/{SubscriptionId}",
+    [string]$OrgPathExtensionName = "extension_{AppIdWithoutHyphens}_OrgPath",
+    [string]$OrgTreeRegistryPath  = "C:\governance\orgtree\registry.json",
+    [bool]  $DryRun               = $false
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# ---------------------------------------------------------------
+# AUTHENTICATION
+# ---------------------------------------------------------------
+# Authenticate to Microsoft Graph (for Entra ID group management)
+# In production, use Managed Identity or certificate-based SPN.
+# The Managed Identity or SPN requires:
+#   Microsoft Graph:  Directory.ReadWrite.All, Group.ReadWrite.All
+#   Azure ARM:        Owner or User Access Administrator on target scope
+Connect-MgGraph -Scopes "Directory.ReadWrite.All", "Group.ReadWrite.All" -NoWelcome
+
+# Authenticate to Azure Resource Manager for RBAC assignments.
+# Connect-AzAccount -Identity uses the Managed Identity of the automation runner.
+# SUBSTITUTE: If running outside Azure, use:
+#   Connect-AzAccount -ServicePrincipal -Credential $cred -Tenant "{TenantId}"
+Connect-AzAccount -Identity
+
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Authentication complete."
+
+# ---------------------------------------------------------------
+# LOAD ORGTREE REGISTRY
+# ---------------------------------------------------------------
+if (-not (Test-Path $OrgTreeRegistryPath)) {
+    throw "OrgTree registry not found at '$OrgTreeRegistryPath'."
+}
+
+$orgTree     = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$activeNodes = $orgTree.nodes | Where-Object { $_.Status -eq "Active" }
+
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Loaded $($activeNodes.Count) active nodes from registry."
+
+$results = @{ GroupsCreated = 0; GroupsExisting = 0; RbacAssigned = 0; Failed = 0 }
+
+# ---------------------------------------------------------------
+# PROCESS EACH ACTIVE ORGTREE NODE
+# ---------------------------------------------------------------
+foreach ($node in $activeNodes) {
+    $groupName   = "AZ-RBAC-$RoleShortName-$($node.Id)"
+    $mailNick    = ($groupName.ToLower() -replace "[^a-z0-9]", "-").TrimEnd("-")
+    $description = "Azure RBAC '$RoleDefinitionName' — OrgPath: $($node.Path)"
+
+    # Membership rule: all users whose OrgPath starts with this node's path.
+    # The -startsWith operator on extension attributes is supported in
+    # dynamic membership rules as of Entra ID dynamic groups API v2.
+    $memberRule  = "(user.$OrgPathExtensionName -startsWith `"$($node.Path)`")"
+
+    Write-Host ""
+    Write-Host "Processing node: $($node.Name) [$($node.Id)] | Path: $($node.Path)"
+
+    # -------------------------------------------------------
+    # STEP 1: Ensure the dynamic group exists
+    # -------------------------------------------------------
+    $existingGroup = Get-MgGroup `
+        -Filter "displayName eq '$groupName'" `
+        -Property "Id,DisplayName,MembershipRule,MembershipRuleProcessingState" `
+        -ErrorAction SilentlyContinue
+
+    if (-not $existingGroup) {
+        $groupBody = @{
+            DisplayName                   = $groupName
+            Description                   = $description
+            MailEnabled                   = $false
+            MailNickname                  = $mailNick
+            SecurityEnabled               = $true
+            GroupTypes                    = @("DynamicMembership")
+            MembershipRule                = $memberRule
+            MembershipRuleProcessingState = "On"
+        }
+
+        if ($DryRun) {
+            Write-Host "  [DRYRUN] Would create group: $groupName"
+            Write-Host "           Rule: $memberRule"
+            $results.GroupsCreated++
+            continue
+        }
+
+        try {
+            $newGroup = New-MgGroup -BodyParameter $groupBody
+            Write-Host "  [CREATED] Group: $groupName [$($newGroup.Id)]"
+            $groupId = $newGroup.Id
+            $results.GroupsCreated++
+        }
+        catch {
+            Write-Warning "  [FAILED]  Could not create group '$groupName': $_"
+            $results.Failed++
+            continue
+        }
+    }
+    else {
+        $groupId = $existingGroup.Id
+        Write-Host "  [EXISTS]  Group: $groupName [$groupId]"
+
+        # Validate membership rule is current — update if the node's path has changed
+        if ($existingGroup.MembershipRule -ne $memberRule) {
+            Write-Host "  [UPDATE]  Membership rule updated for $groupName"
+            if (-not $DryRun) {
+                Update-MgGroup -GroupId $groupId -MembershipRule $memberRule
+            }
+        }
+        $results.GroupsExisting++
+    }
+
+    # -------------------------------------------------------
+    # STEP 2: Assign Azure RBAC role to the group at scope
+    # -------------------------------------------------------
+    $existingAssignment = Get-AzRoleAssignment `
+        -ObjectId           $groupId `
+        -RoleDefinitionName $RoleDefinitionName `
+        -Scope              $Scope `
+        -ErrorAction SilentlyContinue
+
+    if (-not $existingAssignment) {
+        if ($DryRun) {
+            Write-Host "  [DRYRUN] Would assign '$RoleDefinitionName' at scope $Scope for $groupName"
+            $results.RbacAssigned++
+            continue
+        }
+
+        try {
+            New-AzRoleAssignment `
+                -ObjectId           $groupId `
+                -RoleDefinitionName $RoleDefinitionName `
+                -Scope              $Scope | Out-Null
+            Write-Host "  [ASSIGNED] '$RoleDefinitionName' at $Scope for $groupName"
+            $results.RbacAssigned++
+        }
+        catch {
+            Write-Warning "  [FAILED]   RBAC assignment failed for $groupName at $Scope`: $_"
+            $results.Failed++
+        }
+    }
+    else {
+        Write-Host "  [EXISTS]   RBAC assignment already in place for $groupName"
+    }
+}
+
+# ---------------------------------------------------------------
+# SUMMARY
+# ---------------------------------------------------------------
+Write-Host ""
+Write-Host "================================================================"
+Write-Host "  Azure RBAC OrgPath Group Provisioning — Complete"
+Write-Host "================================================================"
+Write-Host "  Groups created   : $($results.GroupsCreated)"
+Write-Host "  Groups existing  : $($results.GroupsExisting)"
+Write-Host "  RBAC assigned    : $($results.RbacAssigned)"
+Write-Host "  Failed           : $($results.Failed)"
+if ($DryRun) { Write-Host "  *** DRY RUN — no changes were made ***" }
+Write-Host "================================================================"
+
+Disconnect-MgGraph
+```
 
 ### RBAC Scope Strategy
 

@@ -67,7 +67,76 @@ The extension recreation script below deletes and recreates the extension proper
 
 ### Script 2.1 — Extend OrgPath Schema to Application Object Type (PowerShell)
 
-\<# data-id="60" .SYNOPSIS Extends the OrgPath schema extension to include Application objects. .DESCRIPTION The OrgPath schema extension was registered in Part Four for User and Device object types. This script updates the extension definition to also include Application, enabling the OrgPath attribute to be written to app registration objects. .PARAMETER OrgPathAppId The Application (client) ID of the app registration that owns the OrgPath schema extension. Same App ID used throughout the series. .NOTES Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All" Run once. After updating the extension definition, the attribute becomes writable on Application objects immediately. \#\> param( \[string\]\$OrgPathAppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4", \# Substitute \[string\]\$OrgPathPropName = "OrgPath" \# The property name registered in Part Four ) Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome \# Find the existing extension property definition \$app = Get-MgApplication -Filter "appId eq '\$OrgPathAppId'" \$extensions = Get-MgApplicationExtensionProperty -ApplicationId \$app.Id \$orgPathExt = \$extensions \| Where-Object { \$\_.Name -like "\*\_\$OrgPathPropName" } if (-not \$orgPathExt) { throw "OrgPath extension property not found on app \$OrgPathAppId. Run Part Four registration first." } Write-Host "Found extension: \$(\$orgPathExt.Name)" Write-Host "Current targetObjects: \$(\$orgPathExt.TargetObjects -join ', ')" \# If Application is already in targetObjects, no action needed if (\$orgPathExt.TargetObjects -contains "Application") { Write-Host "Application is already a target object type. No change needed." Disconnect-MgGraph return } \# Add Application to the target object types \$updatedTargets = @(\$orgPathExt.TargetObjects) + @("Application") \# Extension properties cannot be updated via PATCH — must delete and recreate \# WARNING: Deleting the extension removes all existing values from current objects. \# Only proceed during initial setup when no application objects have been stamped yet. \# If application objects already carry OrgPath values, export them first. Write-Host "WARNING: This operation recreates the extension property." Write-Host "Press Ctrl+C to cancel, or wait 10 seconds to continue..." Start-Sleep -Seconds 10 \# Delete the old extension Remove-MgApplicationExtensionProperty \` -ApplicationId \$app.Id \` -ExtensionPropertyId \$orgPathExt.Id \# Recreate with Application added to targetObjects \$newExtension = New-MgApplicationExtensionProperty \` -ApplicationId \$app.Id \` -DataType "String" \` -Name \$OrgPathPropName \` -TargetObjects \$updatedTargets Write-Host "Extension recreated: \$(\$newExtension.Name)" Write-Host "Target objects: \$(\$newExtension.TargetObjects -join ', ')" Disconnect-MgGraph
+```powershell
+<# data-id="60"
+.SYNOPSIS
+    Extends the OrgPath schema extension to include Application objects.
+.DESCRIPTION
+    The OrgPath schema extension was registered in Part Four for User and Device
+    object types. This script updates the extension definition to also include
+    Application, enabling the OrgPath attribute to be written to app registration objects.
+.PARAMETER OrgPathAppId
+    The Application (client) ID of the app registration that owns the OrgPath
+    schema extension. Same App ID used throughout the series.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All"
+    Run once. After updating the extension definition, the attribute becomes
+    writable on Application objects immediately.
+#>
+param(
+    [string]$OrgPathAppId      = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4",  # Substitute
+    [string]$OrgPathPropName   = "OrgPath"  # The property name registered in Part Four
+)
+
+Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome
+
+# Find the existing extension property definition
+$app        = Get-MgApplication -Filter "appId eq '$OrgPathAppId'"
+$extensions = Get-MgApplicationExtensionProperty -ApplicationId $app.Id
+
+$orgPathExt = $extensions | Where-Object { $_.Name -like "*_$OrgPathPropName" }
+
+if (-not $orgPathExt) {
+    throw "OrgPath extension property not found on app $OrgPathAppId. Run Part Four registration first."
+}
+
+Write-Host "Found extension: $($orgPathExt.Name)"
+Write-Host "Current targetObjects: $($orgPathExt.TargetObjects -join ', ')"
+
+# If Application is already in targetObjects, no action needed
+if ($orgPathExt.TargetObjects -contains "Application") {
+    Write-Host "Application is already a target object type. No change needed."
+    Disconnect-MgGraph
+    return
+}
+
+# Add Application to the target object types
+$updatedTargets = @($orgPathExt.TargetObjects) + @("Application")
+
+# Extension properties cannot be updated via PATCH — must delete and recreate
+# WARNING: Deleting the extension removes all existing values from current objects.
+# Only proceed during initial setup when no application objects have been stamped yet.
+# If application objects already carry OrgPath values, export them first.
+Write-Host "WARNING: This operation recreates the extension property."
+Write-Host "Press Ctrl+C to cancel, or wait 10 seconds to continue..."
+Start-Sleep -Seconds 10
+
+# Delete the old extension
+Remove-MgApplicationExtensionProperty `
+    -ApplicationId          $app.Id `
+    -ExtensionPropertyId    $orgPathExt.Id
+
+# Recreate with Application added to targetObjects
+$newExtension = New-MgApplicationExtensionProperty `
+    -ApplicationId $app.Id `
+    -DataType      "String" `
+    -Name          $OrgPathPropName `
+    -TargetObjects $updatedTargets
+
+Write-Host "Extension recreated: $($newExtension.Name)"
+Write-Host "Target objects: $($newExtension.TargetObjects -join ', ')"
+Disconnect-MgGraph
+```
 
 ### Phase Zero: App Registration Inventory
 
@@ -77,7 +146,94 @@ The report is structured to support triage. Each application entry carries a com
 
 ### Script 2.2 — App Registration Inventory and Ownership Gap Report (PowerShell)
 
-\<# data-id="68" .SYNOPSIS Inventories all app registrations and reports those lacking OrgPath ownership. .DESCRIPTION Reads all app registrations from Entra ID. For each app, checks whether the OrgPath extension attribute is set. Outputs a JSON report of unowned apps committed to the governance repository for triage and ownership assignment. This is the Phase Zero assessment for application identity governance. .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath on Application objects. Format: extension\_{AppIdWithoutHyphens}\_OrgPath .PARAMETER OutputPath Path for the JSON inventory report. .NOTES Requires: Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All" Large tenants may have thousands of app registrations. Use -All to retrieve the complete set regardless of count. \#\> param( \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath", \# Substitute \[string\]\$OutputPath = "C:\governance\assessment\app-inventory.json" ) Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All" -NoWelcome Write-Host "\[\$((Get-Date).ToString('HH:mm:ss'))\] Retrieving all app registrations..." \$apps = Get-MgApplication \` -All \` -Property "id,appId,displayName,createdDateTime,signInAudience,owners, passwordCredentials,keyCredentials,\$OrgPathAttrName" Write-Host " Total app registrations: \$(\$apps.Count)" \$inventory = foreach (\$app in \$apps) { \$orgPath = \$app.AdditionalProperties\[\$OrgPathAttrName\] \$owners = \$app.Owners \| ForEach-Object { \$\_.Id } \$hasSecret = (\$app.PasswordCredentials.Count -gt 0) \$hasCert = (\$app.KeyCredentials.Count -gt 0) \# Flag expired credentials \$expiredSecrets = \$app.PasswordCredentials \| Where-Object { \$\_.EndDateTime -and (\[DateTime\]\$\_.EndDateTime) -lt (Get-Date) } \$expiringSoon = \$app.PasswordCredentials \| Where-Object { \$\_.EndDateTime -and (\[DateTime\]\$\_.EndDateTime) -lt (Get-Date).AddDays(30) \` -and (\[DateTime\]\$\_.EndDateTime) -gt (Get-Date) } \[ordered\]@{ AppId = \$app.AppId ObjectId = \$app.Id DisplayName = \$app.DisplayName CreatedDateTime = \$app.CreatedDateTime SignInAudience = \$app.SignInAudience OrgPathOwner = if (\$orgPath) { \$orgPath } else { \$null } IsOwned = (\$null -ne \$orgPath -and \$orgPath -ne "") HasDirectoryOwners = (\$owners.Count -gt 0) OwnerObjectIds = \$owners HasClientSecret = \$hasSecret HasCertCredential = \$hasCert ExpiredSecretCount = \$expiredSecrets.Count ExpiringIn30Days = \$expiringSoon.Count CredentialRisk = if (\$expiredSecrets.Count -gt 0) { "Critical" } elseif (\$expiringSoon.Count -gt 0) { "Warning" } elseif (\$hasSecret -and -not \$orgPath) { "Elevated" } else { "Normal" } } } \$report = @{ GeneratedAt = (Get-Date -Format "o") TotalApps = \$inventory.Count UnownedApps = (\$inventory \| Where-Object { -not \$\_.IsOwned }).Count CriticalCredRisk = (\$inventory \| Where-Object { \$\_.CredentialRisk -eq "Critical" }).Count WarningCredRisk = (\$inventory \| Where-Object { \$\_.CredentialRisk -eq "Warning" }).Count Applications = \$inventory } \$report \| ConvertTo-Json -Depth 10 \| Set-Content -Path \$OutputPath -Encoding UTF8 Write-Host "Report written: \$OutputPath" Write-Host " Unowned apps : \$(\$report.UnownedApps) of \$(\$report.TotalApps)" Write-Host " Critical cred : \$(\$report.CriticalCredRisk)" Write-Host " Warning cred : \$(\$report.WarningCredRisk)" Disconnect-MgGraph
+```powershell
+<# data-id="68"
+.SYNOPSIS
+    Inventories all app registrations and reports those lacking OrgPath ownership.
+.DESCRIPTION
+    Reads all app registrations from Entra ID. For each app, checks whether the
+    OrgPath extension attribute is set. Outputs a JSON report of unowned apps
+    committed to the governance repository for triage and ownership assignment.
+    This is the Phase Zero assessment for application identity governance.
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath on Application objects.
+    Format: extension_{AppIdWithoutHyphens}_OrgPath
+.PARAMETER OutputPath
+    Path for the JSON inventory report.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All"
+    Large tenants may have thousands of app registrations.
+    Use -All to retrieve the complete set regardless of count.
+#>
+param(
+    [string]$OrgPathAttrName = "extension_{AppIdWithoutHyphens}_OrgPath",  # Substitute
+    [string]$OutputPath      = "C:\governance\assessment\app-inventory.json"
+)
+
+Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All" -NoWelcome
+
+Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] Retrieving all app registrations..."
+
+$apps = Get-MgApplication `
+    -All `
+    -Property "id,appId,displayName,createdDateTime,signInAudience,owners,
+               passwordCredentials,keyCredentials,$OrgPathAttrName"
+
+Write-Host "  Total app registrations: $($apps.Count)"
+
+$inventory = foreach ($app in $apps) {
+
+    $orgPath    = $app.AdditionalProperties[$OrgPathAttrName]
+    $owners     = $app.Owners | ForEach-Object { $_.Id }
+    $hasSecret  = ($app.PasswordCredentials.Count -gt 0)
+    $hasCert    = ($app.KeyCredentials.Count -gt 0)
+
+    # Flag expired credentials
+    $expiredSecrets = $app.PasswordCredentials | Where-Object {
+        $_.EndDateTime -and ([DateTime]$_.EndDateTime) -lt (Get-Date)
+    }
+    $expiringSoon = $app.PasswordCredentials | Where-Object {
+        $_.EndDateTime -and ([DateTime]$_.EndDateTime) -lt (Get-Date).AddDays(30) `
+        -and ([DateTime]$_.EndDateTime) -gt (Get-Date)
+    }
+
+    [ordered]@{
+        AppId               = $app.AppId
+        ObjectId            = $app.Id
+        DisplayName         = $app.DisplayName
+        CreatedDateTime     = $app.CreatedDateTime
+        SignInAudience      = $app.SignInAudience
+        OrgPathOwner        = if ($orgPath) { $orgPath } else { $null }
+        IsOwned             = ($null -ne $orgPath -and $orgPath -ne "")
+        HasDirectoryOwners  = ($owners.Count -gt 0)
+        OwnerObjectIds      = $owners
+        HasClientSecret     = $hasSecret
+        HasCertCredential   = $hasCert
+        ExpiredSecretCount  = $expiredSecrets.Count
+        ExpiringIn30Days    = $expiringSoon.Count
+        CredentialRisk      = if ($expiredSecrets.Count -gt 0) { "Critical" }
+                              elseif ($expiringSoon.Count -gt 0) { "Warning" }
+                              elseif ($hasSecret -and -not $orgPath) { "Elevated" }
+                              else { "Normal" }
+    }
+}
+
+$report = @{
+    GeneratedAt         = (Get-Date -Format "o")
+    TotalApps           = $inventory.Count
+    UnownedApps         = ($inventory | Where-Object { -not $_.IsOwned }).Count
+    CriticalCredRisk    = ($inventory | Where-Object { $_.CredentialRisk -eq "Critical" }).Count
+    WarningCredRisk     = ($inventory | Where-Object { $_.CredentialRisk -eq "Warning" }).Count
+    Applications        = $inventory
+}
+
+$report | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
+Write-Host "Report written: $OutputPath"
+Write-Host "  Unowned apps    : $($report.UnownedApps) of $($report.TotalApps)"
+Write-Host "  Critical cred   : $($report.CriticalCredRisk)"
+Write-Host "  Warning cred    : $($report.WarningCredRisk)"
+Disconnect-MgGraph
+```
 
 ### Ownership Assignment and OrgPath Stamping
 
@@ -85,7 +241,70 @@ With the triage file produced by the governance team's review of the inventory r
 
 ### Script 2.3 — OrgPath Ownership Stamping from Triage Assignment File (PowerShell)
 
-\<# data-id="75" .SYNOPSIS Stamps OrgPath ownership on app registrations from a triage assignment file. .DESCRIPTION Reads a triage JSON file produced by the governance team after reviewing the app-inventory.json report. Each entry in the triage file specifies an app ObjectId and the OrgPath of the owning organizational node. Validates each OrgPath against the OrgTree registry before writing. .PARAMETER TriageFilePath Path to the triage JSON file. Format: \[ { "ObjectId": "...", "OrgPathOwner": "/Root/Finance" }, ... \] .PARAMETER OrgTreeRegistryPath Path to OrgTree registry JSON for validation. .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath on Application objects. .NOTES Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All" \#\> param( \[string\]\$TriageFilePath = "C:\governance\assessment\app-triage.json", \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath" \# Substitute ) Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome \$triage = Get-Content \$TriageFilePath -Raw \| ConvertFrom-Json \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \# Build valid path set from OrgTree for validation \$validPaths = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" } \| ForEach-Object { \$\_.Path } \$stats = @{ Stamped = 0; Invalid = 0; Skipped = 0; Failed = 0 } foreach (\$entry in \$triage) { if (-not (\$validPaths -contains \$entry.OrgPathOwner)) { Write-Warning " \[INVALID\] OrgPath '\$(\$entry.OrgPathOwner)' not in registry — skipping \$(\$entry.ObjectId)" \$stats.Invalid++ continue } try { \# PATCH the OrgPath extension attribute on the application object Invoke-MgGraphRequest \` -Method PATCH \` -Uri "https://graph.microsoft.com/v1.0/applications/\$(\$entry.ObjectId)" \` -Body (@{ \$OrgPathAttrName = \$entry.OrgPathOwner } \| ConvertTo-Json) \` -ContentType "application/json" Write-Host " \[OK\] \$(\$entry.ObjectId) =\> \$(\$entry.OrgPathOwner)" \$stats.Stamped++ } catch { Write-Error " \[FAIL\] \$(\$entry.ObjectId): \$\_" \$stats.Failed++ } } Write-Host "" Write-Host "=== App OrgPath Stamp Complete ===" Write-Host " Stamped : \$(\$stats.Stamped) \| Invalid: \$(\$stats.Invalid) \| Failed: \$(\$stats.Failed)" Disconnect-MgGraph
+```powershell
+<# data-id="75"
+.SYNOPSIS
+    Stamps OrgPath ownership on app registrations from a triage assignment file.
+.DESCRIPTION
+    Reads a triage JSON file produced by the governance team after reviewing
+    the app-inventory.json report. Each entry in the triage file specifies
+    an app ObjectId and the OrgPath of the owning organizational node.
+    Validates each OrgPath against the OrgTree registry before writing.
+.PARAMETER TriageFilePath
+    Path to the triage JSON file.
+    Format: [ { "ObjectId": "...", "OrgPathOwner": "/Root/Finance" }, ... ]
+.PARAMETER OrgTreeRegistryPath
+    Path to OrgTree registry JSON for validation.
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath on Application objects.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All"
+#>
+param(
+    [string]$TriageFilePath      = "C:\governance\assessment\app-triage.json",
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    [string]$OrgPathAttrName     = "extension_{AppIdWithoutHyphens}_OrgPath"  # Substitute
+)
+
+Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome
+
+$triage   = Get-Content $TriageFilePath   -Raw | ConvertFrom-Json
+$registry = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+
+# Build valid path set from OrgTree for validation
+$validPaths = $registry.nodes | Where-Object { $_.Status -eq "Active" } | ForEach-Object { $_.Path }
+
+$stats = @{ Stamped = 0; Invalid = 0; Skipped = 0; Failed = 0 }
+
+foreach ($entry in $triage) {
+
+    if (-not ($validPaths -contains $entry.OrgPathOwner)) {
+        Write-Warning "  [INVALID] OrgPath '$($entry.OrgPathOwner)' not in registry — skipping $($entry.ObjectId)"
+        $stats.Invalid++
+        continue
+    }
+
+    try {
+        # PATCH the OrgPath extension attribute on the application object
+        Invoke-MgGraphRequest `
+            -Method      PATCH `
+            -Uri         "https://graph.microsoft.com/v1.0/applications/$($entry.ObjectId)" `
+            -Body        (@{ $OrgPathAttrName = $entry.OrgPathOwner } | ConvertTo-Json) `
+            -ContentType "application/json"
+
+        Write-Host "  [OK] $($entry.ObjectId) => $($entry.OrgPathOwner)"
+        $stats.Stamped++
+    } catch {
+        Write-Error "  [FAIL] $($entry.ObjectId): $_"
+        $stats.Failed++
+    }
+}
+
+Write-Host ""
+Write-Host "=== App OrgPath Stamp Complete ==="
+Write-Host "  Stamped : $($stats.Stamped) | Invalid: $($stats.Invalid) | Failed: $($stats.Failed)"
+Disconnect-MgGraph
+```
 
 ::: {.callout-note title="Operational Note: Sentinel WatchList Refresh"}
 After each stamping run, the pipeline should regenerate the Sentinel WatchList described in Chapter Seven. The WatchList is the bridge between the Graph-side OrgPath attribute and the Sentinel KQL environment; stale WatchList data means that newly stamped applications will continue to appear as UNOWNED in monitoring queries until the refresh completes. Schedule the WatchList refresh as a downstream step in the stamping pipeline or as a nightly automated task.
@@ -109,7 +328,86 @@ The OrgTree registry node schema is extended with two additional fields for appl
 
 ### Script 3.1 — Admin Consent Workflow and OrgPath Approver Routing Configuration (PowerShell)
 
-\<# data-id="92" .SYNOPSIS Configures admin consent request approvers for each OrgPath-owned application category, routing consent requests to the appropriate organizational governance group. .DESCRIPTION Reads the OrgTree registry for nodes flagged as AppConsentBoundary. For each such node, configures the Entra ID admin consent request policy to route consent requests for applications owned by that node to the node's designated consent approver group. .NOTES Requires: Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Group.Read.All" The global admin consent workflow must be enabled first: Update-MgPolicyAdminConsentRequestPolicy -IsEnabled \$true -Version 1 -Notifiers @( ... ) in the tenant before per-app routing applies. This script sets the tenant-level approvers; per-app routing uses the appConsentPolicies framework available in Entra ID Governance. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json" ) Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Policy.ReadWrite.AdminConsent","Group.Read.All" -NoWelcome \# Enable the admin consent request workflow at the tenant level \$consentPolicyBody = @{ isEnabled = \$true version = 1 notifiers = @( @{ notificationTemplate = "ReviewerEmailTemplate" notificationChannel = "Email" receivers = @( @{ receiverType = "InitiatorAndAdmins" } ) } ) } Update-MgPolicyAdminConsentRequestPolicy -BodyParameter \$consentPolicyBody Write-Host "\[OK\] Admin consent request workflow enabled." \# Load OrgTree and configure per-node approver groups \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$consentNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.AppConsentBoundary -eq \$true -and \$\_.ConsentApproverGroupName } Write-Host "AppConsent boundary nodes: \$(\$consentNodes.Count)" foreach (\$node in \$consentNodes) { \$approverGroup = Get-MgGroup \` -Filter "displayName eq '\$(\$node.ConsentApproverGroupName)'" \` -Property "Id,DisplayName" \| Select-Object -First 1 if (-not \$approverGroup) { Write-Warning " Approver group '\$(\$node.ConsentApproverGroupName)' not found for node \$(\$node.Id)" continue } \# Log the approver mapping to the governance audit log @{ Timestamp = (Get-Date -Format "o") Event = "AppConsentApproverConfigured" OrgPathNode = \$node.Path ApproverGroup = \$approverGroup.DisplayName ApproverGroupId = \$approverGroup.Id } \| ConvertTo-Json -Compress \| Out-File -Append "C:\governance\logs\app-consent-audit.jsonl" \# Substitute path Write-Host " \[OK\] Node \$(\$node.Id) (\$(\$node.Name)) =\> Approver: \$(\$approverGroup.DisplayName)" } Write-Host "Admin consent approver configuration complete." Disconnect-MgGraph
+```powershell
+<# data-id="92"
+.SYNOPSIS
+    Configures admin consent request approvers for each OrgPath-owned
+    application category, routing consent requests to the appropriate
+    organizational governance group.
+.DESCRIPTION
+    Reads the OrgTree registry for nodes flagged as AppConsentBoundary.
+    For each such node, configures the Entra ID admin consent request
+    policy to route consent requests for applications owned by that node
+    to the node's designated consent approver group.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Group.Read.All"
+    The global admin consent workflow must be enabled first:
+      Update-MgPolicyAdminConsentRequestPolicy -IsEnabled $true -Version 1
+      -Notifiers @( ... ) in the tenant before per-app routing applies.
+    This script sets the tenant-level approvers; per-app routing uses
+    the appConsentPolicies framework available in Entra ID Governance.
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json"
+)
+
+Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Policy.ReadWrite.AdminConsent","Group.Read.All" -NoWelcome
+
+# Enable the admin consent request workflow at the tenant level
+$consentPolicyBody = @{
+    isEnabled = $true
+    version   = 1
+    notifiers = @(
+        @{
+            notificationTemplate  = "ReviewerEmailTemplate"
+            notificationChannel   = "Email"
+            receivers             = @(
+                @{
+                    receiverType = "InitiatorAndAdmins"
+                }
+            )
+        }
+    )
+}
+
+Update-MgPolicyAdminConsentRequestPolicy -BodyParameter $consentPolicyBody
+Write-Host "[OK] Admin consent request workflow enabled."
+
+# Load OrgTree and configure per-node approver groups
+$registry      = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$consentNodes  = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and $_.AppConsentBoundary -eq $true -and $_.ConsentApproverGroupName
+}
+
+Write-Host "AppConsent boundary nodes: $($consentNodes.Count)"
+
+foreach ($node in $consentNodes) {
+
+    $approverGroup = Get-MgGroup `
+        -Filter "displayName eq '$($node.ConsentApproverGroupName)'" `
+        -Property "Id,DisplayName" | Select-Object -First 1
+
+    if (-not $approverGroup) {
+        Write-Warning "  Approver group '$($node.ConsentApproverGroupName)' not found for node $($node.Id)"
+        continue
+    }
+
+    # Log the approver mapping to the governance audit log
+    @{
+        Timestamp        = (Get-Date -Format "o")
+        Event            = "AppConsentApproverConfigured"
+        OrgPathNode      = $node.Path
+        ApproverGroup    = $approverGroup.DisplayName
+        ApproverGroupId  = $approverGroup.Id
+    } | ConvertTo-Json -Compress |
+        Out-File -Append "C:\governance\logs\app-consent-audit.jsonl"  # Substitute path
+
+    Write-Host "  [OK] Node $($node.Id) ($($node.Name)) => Approver: $($approverGroup.DisplayName)"
+}
+
+Write-Host "Admin consent approver configuration complete."
+Disconnect-MgGraph
+```
 
 ::: {.callout-note title="Architecture Note: Permission Grant Policies"}
 For tenants with Entra ID Governance licensing, the permission grant policy framework — accessible via POST /policies/permissionGrantPolicies — provides a more granular mechanism for pre-approving specific permission sets for specific organizational segments. The OrgPath model integrates naturally with this framework: the policy condition set references the OrgPath of the application's owner, and the permitted permission set is scoped to the delegated permissions appropriate for that organizational segment. This is the recommended approach for engineering and platform teams that require broad self-service consent latitude within a defined permission envelope.
@@ -131,7 +429,110 @@ The OrgTree registry node schema is extended with two additional fields for appl
 
 ### Script 4.1 — Semi-Annual OrgPath-Scoped Access Reviews for Application Permissions (PowerShell)
 
-\<# data-id="111" .SYNOPSIS Creates semi-annual Access Reviews for application permissions, grouped by the owning OrgPath organizational node. .DESCRIPTION For each OrgTree node flagged as AppReviewBoundary, creates an Access Review scoped to service principals owned by that node (identified by OrgPath extension attribute on the application object). Reviewers are the node's designated app review group. defaultDecision = "Deny" removes permissions if reviewers take no action. .NOTES Requires: Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Application.Read.All" Requires Entra ID Governance licensing. Access Reviews for service principal permissions use the /v1.0/identityGovernance/accessReviews/definitions endpoint. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath" \# Substitute ) Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Application.Read.All" -NoWelcome \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$reviewNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.AppReviewBoundary -eq \$true -and \$\_.AppReviewGroupName } \# Start reviews on the coming Monday \$startDate = (Get-Date).AddDays(((1 - \[int\]&#40;Get-Date).DayOfWeek + 7) % 7)).ToString("yyyy-MM-dd") if (\$startDate -eq (Get-Date).ToString("yyyy-MM-dd")) { \$startDate = (Get-Date).AddDays(7).ToString("yyyy-MM-dd") } foreach (\$node in \$reviewNodes) { \$reviewName = "AppPermReview-\$(\$node.Id)-SemiAnnual" \$exists = Get-MgIdentityGovernanceAccessReviewDefinition \` -Filter "displayName eq '\$reviewName'" -ErrorAction SilentlyContinue if (\$exists) { Write-Host "\[EXISTS\] \$reviewName"; continue } \$reviewerGroup = Get-MgGroup -Filter "displayName eq '\$(\$node.AppReviewGroupName)'" \` -ErrorAction SilentlyContinue if (-not \$reviewerGroup) { Write-Warning "Review group '\$(\$node.AppReviewGroupName)' not found for node \$(\$node.Id)" continue } \$body = @{ displayName = \$reviewName descriptionForAdmins = "Semi-annual review of application permissions for apps owned by \$(\$node.Name)" descriptionForReviewers = "Review each application's API permissions. Deny removes the permission grant." scope = @{ \# Review service principal permission grants (OAuth2 delegated + app role assignments) "@odata.type" = "#microsoft.graph.principalResourceMembershipsScope" principalScopes = @( @{ "@odata.type" = "#microsoft.graph.accessReviewQueryScope" \# Filter service principals by OrgPath owner — adjust filter as needed query = "/servicePrincipals?\`\$filter=\$OrgPathAttrName eq '\$(\$node.Path)'" queryType = "MicrosoftGraph" } ) resourceScopes = @( @{ "@odata.type" = "#microsoft.graph.accessReviewQueryScope" query = "/servicePrincipals" queryType = "MicrosoftGraph" } ) } reviewers = @( @{ query = "/groups/\$(\$reviewerGroup.Id)/transitiveMembers" queryType = "MicrosoftGraph" } ) settings = @{ mailNotificationsEnabled = \$true reminderNotificationsEnabled = \$true justificationRequiredOnApproval = \$true defaultDecisionEnabled = \$true defaultDecision = "Deny" instanceDurationInDays = 21 autoApplyDecisionsEnabled = \$true recommendationsEnabled = \$true recurrence = @{ pattern = @{ type = "absoluteMonthly"; interval = 6 } range = @{ type = "noEnd"; startDate = \$startDate } } } } \| ConvertTo-Json -Depth 10 Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" \` -Body \$body -ContentType "application/json" \| Out-Null Write-Host "\[CREATED\] \$reviewName (reviewer: \$(\$node.AppReviewGroupName))" } Write-Host "Application permission Access Review configuration complete." Disconnect-MgGraph
+```powershell
+<# data-id="111"
+.SYNOPSIS
+    Creates semi-annual Access Reviews for application permissions,
+    grouped by the owning OrgPath organizational node.
+.DESCRIPTION
+    For each OrgTree node flagged as AppReviewBoundary, creates an
+    Access Review scoped to service principals owned by that node
+    (identified by OrgPath extension attribute on the application object).
+    Reviewers are the node's designated app review group.
+    defaultDecision = "Deny" removes permissions if reviewers take no action.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Application.Read.All"
+    Requires Entra ID Governance licensing.
+    Access Reviews for service principal permissions use the
+    /v1.0/identityGovernance/accessReviews/definitions endpoint.
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    [string]$OrgPathAttrName     = "extension_{AppIdWithoutHyphens}_OrgPath"  # Substitute
+)
+
+Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Application.Read.All" -NoWelcome
+
+$registry    = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$reviewNodes = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and $_.AppReviewBoundary -eq $true -and $_.AppReviewGroupName
+}
+
+# Start reviews on the coming Monday
+$startDate = (Get-Date).AddDays(((1 - [int](Get-Date).DayOfWeek + 7) % 7)).ToString("yyyy-MM-dd")
+if ($startDate -eq (Get-Date).ToString("yyyy-MM-dd")) { $startDate = (Get-Date).AddDays(7).ToString("yyyy-MM-dd") }
+
+foreach ($node in $reviewNodes) {
+
+    $reviewName  = "AppPermReview-$($node.Id)-SemiAnnual"
+
+    $exists = Get-MgIdentityGovernanceAccessReviewDefinition `
+        -Filter "displayName eq '$reviewName'" -ErrorAction SilentlyContinue
+    if ($exists) { Write-Host "[EXISTS] $reviewName"; continue }
+
+    $reviewerGroup = Get-MgGroup -Filter "displayName eq '$($node.AppReviewGroupName)'" `
+        -ErrorAction SilentlyContinue
+    if (-not $reviewerGroup) {
+        Write-Warning "Review group '$($node.AppReviewGroupName)' not found for node $($node.Id)"
+        continue
+    }
+
+    $body = @{
+        displayName            = $reviewName
+        descriptionForAdmins   = "Semi-annual review of application permissions for apps owned by $($node.Name)"
+        descriptionForReviewers = "Review each application's API permissions. Deny removes the permission grant."
+        scope = @{
+            # Review service principal permission grants (OAuth2 delegated + app role assignments)
+            "@odata.type"         = "#microsoft.graph.principalResourceMembershipsScope"
+            principalScopes       = @(
+                @{
+                    "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
+                    # Filter service principals by OrgPath owner — adjust filter as needed
+                    query         = "/servicePrincipals?`$filter=$OrgPathAttrName eq '$($node.Path)'"
+                    queryType     = "MicrosoftGraph"
+                }
+            )
+            resourceScopes = @(
+                @{
+                    "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
+                    query         = "/servicePrincipals"
+                    queryType     = "MicrosoftGraph"
+                }
+            )
+        }
+        reviewers = @(
+            @{
+                query     = "/groups/$($reviewerGroup.Id)/transitiveMembers"
+                queryType = "MicrosoftGraph"
+            }
+        )
+        settings = @{
+            mailNotificationsEnabled        = $true
+            reminderNotificationsEnabled    = $true
+            justificationRequiredOnApproval = $true
+            defaultDecisionEnabled          = $true
+            defaultDecision                 = "Deny"
+            instanceDurationInDays          = 21
+            autoApplyDecisionsEnabled       = $true
+            recommendationsEnabled          = $true
+            recurrence = @{
+                pattern = @{ type = "absoluteMonthly"; interval = 6 }
+                range   = @{ type = "noEnd"; startDate = $startDate }
+            }
+        }
+    } | ConvertTo-Json -Depth 10
+
+    Invoke-MgGraphRequest `
+        -Method POST `
+        -Uri "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" `
+        -Body $body -ContentType "application/json" | Out-Null
+
+    Write-Host "[CREATED] $reviewName (reviewer: $($node.AppReviewGroupName))"
+}
+
+Write-Host "Application permission Access Review configuration complete."
+Disconnect-MgGraph
+```
 
 ::: {.callout-note title="Important: Reviewer Preparation"}
 The effectiveness of application permission reviews depends almost entirely on reviewer preparation. Unlike user access reviews where reviewers can rely on context they already have (they know whether the user is still on the team), application permission reviews require reviewers to understand what each service principal does and whether each permission grant is necessary for its operation. The governance team should maintain a supplemental application catalog — a plain-language description of each governed application, its purpose, and its expected API permission profile — and make it available to reviewers at review launch. Applications whose permission grants have not changed since the last review cycle should be surfaced with a recommendation of Approve; applications with new permission grants since the last review should be surfaced with a recommendation of Deny, requiring the reviewer to affirmatively confirm that the new grant is appropriate.
@@ -149,7 +550,119 @@ The drift detection pipeline runs on the same schedule as the user OrgPath drift
 
 ### Script 5.1 — Application Orphan and Credential Drift Detection (PowerShell)
 
-\<# data-id="123" .SYNOPSIS Detects orphaned and high-risk app registrations by checking OrgPath validity against the OrgTree registry and flagging expired credentials. .DESCRIPTION Combines two signals: (1) OrgPath validity — apps with no OrgPath or whose OrgPath node is no longer active in the OrgTree, and (2) credential health — apps with expired client secrets or certificates. Outputs a JSON drift report committed to the governance repository. High-severity findings (no OrgPath + expired creds) are flagged for immediate remediation (disable the app). .NOTES Requires: Connect-MgGraph -Scopes "Application.Read.All","AuditLog.Read.All" \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath", \# Substitute \[string\]\$OutputPath = "C:\governance\reports\app-drift-report.json" ) Connect-MgGraph -Scopes "Application.Read.All","AuditLog.Read.All" -NoWelcome \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$activePaths = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" } \| ForEach-Object { \$\_.Path } \$archivedPaths = \$registry.nodes \| Where-Object { \$\_.Status -ne "Active" } \| ForEach-Object { \$\_.Path } \$apps = Get-MgApplication -All \` -Property "id,appId,displayName,createdDateTime,passwordCredentials,keyCredentials, signInAudience,owners,\$OrgPathAttrName" \$now = Get-Date \$report = @{ GeneratedAt = (\$now.ToString("o")) Findings = @() } foreach (\$app in \$apps) { \$orgPath = \$app.AdditionalProperties\[\$OrgPathAttrName\] \$hasOwners = (\$app.Owners.Count -gt 0) \# --- OrgPath validity --- \$orgPathStatus = if (-not \$orgPath) { "Missing" } elseif (\$activePaths -contains \$orgPath) { "Valid" } elseif (\$archivedPaths -contains \$orgPath) { "Archived" \# Node was in OrgTree but has been removed } else { "Invalid" \# Value does not match any known node path } \# --- Credential health --- \$expiredSecrets = \$app.PasswordCredentials \| Where-Object { \$\_.EndDateTime -and \[DateTime\]\$\_.EndDateTime -lt \$now } \$expiringSoon = \$app.PasswordCredentials \| Where-Object { \$\_.EndDateTime -and \[DateTime\]\$\_.EndDateTime -gt \$now -and \[DateTime\]\$\_.EndDateTime -lt \$now.AddDays(30) } \$expiredCerts = \$app.KeyCredentials \| Where-Object { \$\_.EndDateTime -and \[DateTime\]\$\_.EndDateTime -lt \$now } \$credStatus = if (\$expiredSecrets.Count -gt 0 -or \$expiredCerts.Count -gt 0) { "Expired" } elseif (\$expiringSoon.Count -gt 0) { "ExpiringSoon" } else { "Healthy" } \# --- Risk score --- \$riskLevel = switch -Wildcard ("\$orgPathStatus\|\$credStatus") { "Missing\|Expired" { "Critical" } "Invalid\|Expired" { "Critical" } "Archived\|Expired" { "Critical" } "Missing\|\*" { "High" } "\*\|Expired" { "High" } "Archived\|\*" { "High" } "Invalid\|\*" { "High" } "\*\|ExpiringSoon" { "Medium" } default { "Low" } } if (\$riskLevel -ne "Low") { \$report.Findings += \[ordered\]@{ AppId = \$app.AppId ObjectId = \$app.Id DisplayName = \$app.DisplayName CreatedDate = \$app.CreatedDateTime OrgPath = \$orgPath OrgPathStatus = \$orgPathStatus HasOwners = \$hasOwners CredStatus = \$credStatus ExpiredSecrets = \$expiredSecrets.Count ExpiredCerts = \$expiredCerts.Count RiskLevel = \$riskLevel } } } \$report \| ConvertTo-Json -Depth 10 \| Set-Content -Path \$OutputPath -Encoding UTF8 \$critical = (\$report.Findings \| Where-Object { \$\_.RiskLevel -eq "Critical" }).Count \$high = (\$report.Findings \| Where-Object { \$\_.RiskLevel -eq "High" }).Count \$medium = (\$report.Findings \| Where-Object { \$\_.RiskLevel -eq "Medium" }).Count Write-Host "App drift report written: \$OutputPath" Write-Host " Critical: \$critical \| High: \$high \| Medium: \$medium" Disconnect-MgGraph
+```powershell
+<# data-id="123"
+.SYNOPSIS
+    Detects orphaned and high-risk app registrations by checking OrgPath
+    validity against the OrgTree registry and flagging expired credentials.
+.DESCRIPTION
+    Combines two signals: (1) OrgPath validity — apps with no OrgPath or
+    whose OrgPath node is no longer active in the OrgTree, and (2) credential
+    health — apps with expired client secrets or certificates.
+    Outputs a JSON drift report committed to the governance repository.
+    High-severity findings (no OrgPath + expired creds) are flagged for
+    immediate remediation (disable the app).
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.Read.All","AuditLog.Read.All"
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    [string]$OrgPathAttrName     = "extension_{AppIdWithoutHyphens}_OrgPath",  # Substitute
+    [string]$OutputPath          = "C:\governance\reports\app-drift-report.json"
+)
+
+Connect-MgGraph -Scopes "Application.Read.All","AuditLog.Read.All" -NoWelcome
+
+$registry     = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$activePaths  = $registry.nodes | Where-Object { $_.Status -eq "Active" } | ForEach-Object { $_.Path }
+$archivedPaths = $registry.nodes | Where-Object { $_.Status -ne "Active" } | ForEach-Object { $_.Path }
+
+$apps = Get-MgApplication -All `
+    -Property "id,appId,displayName,createdDateTime,passwordCredentials,keyCredentials,
+               signInAudience,owners,$OrgPathAttrName"
+
+$now    = Get-Date
+$report = @{
+    GeneratedAt = ($now.ToString("o"))
+    Findings    = @()
+}
+
+foreach ($app in $apps) {
+
+    $orgPath     = $app.AdditionalProperties[$OrgPathAttrName]
+    $hasOwners   = ($app.Owners.Count -gt 0)
+
+    # --- OrgPath validity ---
+    $orgPathStatus = if (-not $orgPath) {
+        "Missing"
+    } elseif ($activePaths -contains $orgPath) {
+        "Valid"
+    } elseif ($archivedPaths -contains $orgPath) {
+        "Archived"   # Node was in OrgTree but has been removed
+    } else {
+        "Invalid"    # Value does not match any known node path
+    }
+
+    # --- Credential health ---
+    $expiredSecrets = $app.PasswordCredentials | Where-Object {
+        $_.EndDateTime -and [DateTime]$_.EndDateTime -lt $now
+    }
+    $expiringSoon = $app.PasswordCredentials | Where-Object {
+        $_.EndDateTime -and [DateTime]$_.EndDateTime -gt $now -and
+        [DateTime]$_.EndDateTime -lt $now.AddDays(30)
+    }
+    $expiredCerts = $app.KeyCredentials | Where-Object {
+        $_.EndDateTime -and [DateTime]$_.EndDateTime -lt $now
+    }
+
+    $credStatus = if ($expiredSecrets.Count -gt 0 -or $expiredCerts.Count -gt 0) {
+        "Expired"
+    } elseif ($expiringSoon.Count -gt 0) {
+        "ExpiringSoon"
+    } else {
+        "Healthy"
+    }
+
+    # --- Risk score ---
+    $riskLevel = switch -Wildcard ("$orgPathStatus|$credStatus") {
+        "Missing|Expired"    { "Critical" }
+        "Invalid|Expired"    { "Critical" }
+        "Archived|Expired"   { "Critical" }
+        "Missing|*"          { "High" }
+        "*|Expired"          { "High" }
+        "Archived|*"         { "High" }
+        "Invalid|*"          { "High" }
+        "*|ExpiringSoon"     { "Medium" }
+        default              { "Low" }
+    }
+
+    if ($riskLevel -ne "Low") {
+        $report.Findings += [ordered]@{
+            AppId          = $app.AppId
+            ObjectId       = $app.Id
+            DisplayName    = $app.DisplayName
+            CreatedDate    = $app.CreatedDateTime
+            OrgPath        = $orgPath
+            OrgPathStatus  = $orgPathStatus
+            HasOwners      = $hasOwners
+            CredStatus     = $credStatus
+            ExpiredSecrets = $expiredSecrets.Count
+            ExpiredCerts   = $expiredCerts.Count
+            RiskLevel      = $riskLevel
+        }
+    }
+}
+
+$report | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
+
+$critical = ($report.Findings | Where-Object { $_.RiskLevel -eq "Critical" }).Count
+$high     = ($report.Findings | Where-Object { $_.RiskLevel -eq "High" }).Count
+$medium   = ($report.Findings | Where-Object { $_.RiskLevel -eq "Medium" }).Count
+
+Write-Host "App drift report written: $OutputPath"
+Write-Host "  Critical: $critical | High: $high | Medium: $medium"
+Disconnect-MgGraph
+```
 
 ### Remediation Workflow for High-Risk Findings
 
@@ -173,7 +686,37 @@ The tagging policy for user-assigned managed identities follows the same pattern
 
 ### Policy 6.1 — Azure Policy: Require OrgPath Tags on User-Assigned Managed Identities (JSON)
 
-{ "properties": { "displayName": "OrgPath — Require governance tags on User-Assigned Managed Identities", "description": "Denies creation of user-assigned managed identities that do not carry all four OrgPath governance tags.", "mode": "Indexed", "parameters": {}, "policyRule": { "if": { "allOf": \[ { "field": "type", "equals": "Microsoft.ManagedIdentity/userAssignedIdentities" }, { "anyOf": \[ { "field": "tags\['OrgPath'\]", "exists": "false" }, { "field": "tags\['OrgNodeId'\]", "exists": "false" }, { "field": "tags\['OrgTier'\]", "exists": "false" }, { "field": "tags\['MigrationPhase'\]", "exists": "false" } \] } \] }, "then": { "effect": "deny" } } } }
+```json
+{
+  "properties": {
+    "displayName": "OrgPath — Require governance tags on User-Assigned Managed Identities",
+    "description": "Denies creation of user-assigned managed identities that do not carry all four OrgPath governance tags.",
+    "mode": "Indexed",
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.ManagedIdentity/userAssignedIdentities"
+          },
+          {
+            "anyOf": [
+              { "field": "tags['OrgPath']",       "exists": "false" },
+              { "field": "tags['OrgNodeId']",      "exists": "false" },
+              { "field": "tags['OrgTier']",        "exists": "false" },
+              { "field": "tags['MigrationPhase']", "exists": "false" }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    }
+  }
+}
+```
 
 ### Managed Identity Drift Detection
 
@@ -201,15 +744,81 @@ The three queries below form the core of the application identity monitoring lay
 
 ### Query 7.1 — Service Principal Sign-Ins by OrgPath Owner: Daily Dashboard (KQL)
 
-// Query 1: Service Principal Sign-Ins by OrgPath Owner — Daily Dashboard // Surfaces application authentication volume organized by owning organizational segment. // Join ServicePrincipalSignInLogs against app OrgPath from a Sentinel WatchList // WatchList "AppOrgPathWatchlist" columns: AppId, OrgPath, OrgNodeId, DisplayName ServicePrincipalSignInLogs \| where TimeGenerated \>= ago(1d) \| join kind=leftouter ( \_GetWatchlist("AppOrgPathWatchlist") \| project AppId = SearchKey, OrgPath, OrgNodeId, AppDisplayName = DisplayName ) on \$left.AppId == \$right.AppId \| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "UNOWNED") \| summarize TotalAuths = count(), Successful = countif(ResultType == 0), Failed = countif(ResultType != 0), UniqueResources = dcount(ResourceDisplayName), UniqueIPAddresses = dcount(IPAddress) by OrgPathResolved, OrgNodeId, bin(TimeGenerated, 1d) \| order by TotalAuths desc
+```kql
+// Query 1: Service Principal Sign-Ins by OrgPath Owner — Daily Dashboard
+// Surfaces application authentication volume organized by owning organizational segment.
+// Join ServicePrincipalSignInLogs against app OrgPath from a Sentinel WatchList
+// WatchList "AppOrgPathWatchlist" columns: AppId, OrgPath, OrgNodeId, DisplayName
+ServicePrincipalSignInLogs
+| where TimeGenerated >= ago(1d)
+| join kind=leftouter (
+    _GetWatchlist("AppOrgPathWatchlist")
+    | project AppId = SearchKey, OrgPath, OrgNodeId, AppDisplayName = DisplayName
+) on $left.AppId == $right.AppId
+| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "UNOWNED")
+| summarize
+    TotalAuths        = count(),
+    Successful        = countif(ResultType == 0),
+    Failed            = countif(ResultType != 0),
+    UniqueResources   = dcount(ResourceDisplayName),
+    UniqueIPAddresses = dcount(IPAddress)
+    by OrgPathResolved, OrgNodeId, bin(TimeGenerated, 1d)
+| order by TotalAuths desc
+```
 
 ### Query 7.2 — High-Risk Authentication from Unowned Applications: Hourly Alert (KQL)
 
-// Query 2: High-Risk App Credential Usage from Unowned Applications // Alert on service principal authentications where the app has no OrgPath owner. // Run every 1 hour, lookback 1 hour. Fire when UnownedAuthCount \> 0. ServicePrincipalSignInLogs \| where TimeGenerated \>= ago(1h) \| where ResultType == 0 // Successful authentications only \| join kind=leftouter ( \_GetWatchlist("AppOrgPathWatchlist") \| project AppId = SearchKey, OrgPath ) on \$left.AppId == \$right.AppId \| where isempty(OrgPath) or OrgPath == "UNOWNED" \| summarize UnownedAuthCount = count(), AppIds = make_set(AppId), Resources = make_set(ResourceDisplayName), IPAddresses = make_set(IPAddress) by bin(TimeGenerated, 1h) \| where UnownedAuthCount \> 0
+```kql
+// Query 2: High-Risk App Credential Usage from Unowned Applications
+// Alert on service principal authentications where the app has no OrgPath owner.
+// Run every 1 hour, lookback 1 hour. Fire when UnownedAuthCount > 0.
+ServicePrincipalSignInLogs
+| where TimeGenerated >= ago(1h)
+| where ResultType == 0   // Successful authentications only
+| join kind=leftouter (
+    _GetWatchlist("AppOrgPathWatchlist")
+    | project AppId = SearchKey, OrgPath
+) on $left.AppId == $right.AppId
+| where isempty(OrgPath) or OrgPath == "UNOWNED"
+| summarize
+    UnownedAuthCount = count(),
+    AppIds           = make_set(AppId),
+    Resources        = make_set(ResourceDisplayName),
+    IPAddresses      = make_set(IPAddress)
+    by bin(TimeGenerated, 1h)
+| where UnownedAuthCount > 0
+```
 
 ### Query 7.3 — Anomalous Permission Grant Events by OrgPath: Daily Audit (KQL)
 
-// Query 3: Anomalous Permission Grant Events by OrgPath // Detects new OAuth permission grants and admin consent events, // enriched with the OrgPath of the application receiving the grant. AuditLogs \| where TimeGenerated \>= ago(24h) \| where Category == "ApplicationManagement" \| where OperationName in ( "Add delegated permission grant", "Add app role assignment to service principal", "Consent to application" ) \| extend AppId = tostring(TargetResources\[0\].id), AppName = tostring(TargetResources\[0\].displayName), PermGranted = tostring(TargetResources\[0\].modifiedProperties\[0\].newValue), InitiatedBy = tostring(InitiatedBy.user.userPrincipalName) \| join kind=leftouter ( \_GetWatchlist("AppOrgPathWatchlist") \| project AppId = SearchKey, OrgPath, OrgNodeId ) on \$left.AppId == \$right.AppId \| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "UNOWNED") \| project TimeGenerated, OperationName, AppName, AppId, OrgPathResolved, OrgNodeId, PermGranted, InitiatedBy, CorrelationId \| order by TimeGenerated desc
+```kql
+// Query 3: Anomalous Permission Grant Events by OrgPath
+// Detects new OAuth permission grants and admin consent events,
+// enriched with the OrgPath of the application receiving the grant.
+AuditLogs
+| where TimeGenerated >= ago(24h)
+| where Category == "ApplicationManagement"
+| where OperationName in (
+    "Add delegated permission grant",
+    "Add app role assignment to service principal",
+    "Consent to application"
+  )
+| extend
+    AppId         = tostring(TargetResources[0].id),
+    AppName       = tostring(TargetResources[0].displayName),
+    PermGranted   = tostring(TargetResources[0].modifiedProperties[0].newValue),
+    InitiatedBy   = tostring(InitiatedBy.user.userPrincipalName)
+| join kind=leftouter (
+    _GetWatchlist("AppOrgPathWatchlist")
+    | project AppId = SearchKey, OrgPath, OrgNodeId
+) on $left.AppId == $right.AppId
+| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "UNOWNED")
+| project
+    TimeGenerated, OperationName, AppName, AppId,
+    OrgPathResolved, OrgNodeId,
+    PermGranted, InitiatedBy, CorrelationId
+| order by TimeGenerated desc
+```
 
 ::: {.callout-note title="Detection Engineering Note: Behavioral Baseline"}
 The three queries above establish the organizational and operational context layer for application identity monitoring. For production detection coverage, these queries should be supplemented with behavioral baseline analytics: time-series models for each application's normal authentication volume, IP-to-OrgPath consistency checks (detecting authentications from IP ranges inconsistent with the owning OrgPath's geographic or network footprint), and resource access pattern analysis (detecting application authentications to resources the application has not previously accessed). These behavioral detections require sufficient historical telemetry to establish baselines and are best implemented as Sentinel Analytics Rules with a lookback window of fourteen or more days.

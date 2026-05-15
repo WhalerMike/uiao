@@ -121,7 +121,195 @@ During the AD transition, Windows Server IPAM performs a specific and bounded fu
 
 The PowerShell module installed with the IPAM role exposes the full IPAM database through structured cmdlets. Get-IpamDnsZone returns all DNS zones known to IPAM, including their zone type, record count, and associated update policy. Get-IpamDhcpScope returns all DHCP scopes with their address range, utilization percentages, and the DHCP server that owns each scope. Get-IpamRange returns all IP address ranges defined in the address space registry. Get-IpamAddress returns individual address assignments with client identifiers, host names, and assignment types. The export script below calls each of these in sequence and writes the output as structured JSON committed to the governance repository.
 
-\#Requires -Version 5.1 \<# .SYNOPSIS Exports the Windows Server IPAM inventory to JSON for governance repository commitment. .DESCRIPTION Queries the Windows Server IPAM role for all DNS zones, DHCP scopes, IP ranges, and address assignments. Exports each collection as a structured JSON file to a local output directory for subsequent Git commit to the governance repository. This export establishes the on-premises infrastructure baseline used to measure DNS and IP address migration progress toward Azure. Designed to run during the Assessment phase of the OrgPath migration pipeline and on each subsequent weekly pipeline run to capture delta. .PARAMETER OutputPath Directory path where JSON export files will be written before Git commit. Example: "C:\governance\assessment\ipam" The directory will be created if it does not exist. .PARAMETER IpamServer FQDN or NetBIOS name of the IPAM server hosting the IPAM database. Defaults to localhost for execution directly on the IPAM server. Example: "ipam01.corp.contoso.com" \<-- substitute your IPAM server .NOTES Requirements: - Windows Server 2019 or 2022 with the IPAM Server role installed. - PowerShell module IpamServer (installed automatically with the role). - The executing account must hold the IPAM Administrator or IPAM ASM Administrator role in the IPAM database. - IPAM database must be populated via scheduled IPAM discovery and audit tasks (configured in IPAM Server Tasks in Server Manager). Output files: ipam-dns-zones.json -- All DNS zones known to IPAM ipam-dhcp-scopes.json -- All DHCP scopes with utilization data ipam-ranges.json -- All IP address ranges in the space registry ipam-addresses.json -- All individual address assignments After this script completes, run the following from the governance repository root to commit the export: git add assessment/ipam/ git commit -m "chore: IPAM baseline export \$(Get-Date -f 'yyyy-MM-dd')" git push \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = "C:\governance\assessment\ipam", \[Parameter(Mandatory = \$false)\] \[string\]\$IpamServer = "localhost" \# \<-- substitute your IPAM server FQDN ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \#region --- Preflight ----------------------------------------------------------- \# Verify the IpamServer module is available (installed with the IPAM role) if (-not (Get-Module -ListAvailable -Name IpamServer)) { throw "Module IpamServer not found. Confirm the IPAM Server role is installed " + "on this machine or run this script on the designated IPAM server." } Import-Module IpamServer -ErrorAction Stop \# Create output directory if it does not exist New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Output directory: \$OutputPath" \# Establish CIM session to IPAM server Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connecting to IPAM server: \$IpamServer" \$session = New-CimSession -ComputerName \$IpamServer -ErrorAction Stop Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connected." \#endregion \#region --- DNS Zones ----------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting IPAM DNS zones..." \$dnsZones = Get-IpamDnsZone -CimSession \$session \| Select-Object \` Name, ZoneType, \# Primary, Secondary, Stub, Forwarder ZoneCategory, \# Forward, Reverse AssociatedDhcpServer, UpdateStatus, \# Secure, Unsecure, None RecordCount, LastModifiedTime \$dnsZones \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-dns-zones.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Zones exported: \$(\$dnsZones.Count)" \#endregion \#region --- DHCP Scopes --------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting DHCP scopes..." \$dhcpScopes = Get-IpamDhcpScope -CimSession \$session \| Select-Object \` ScopeId, SubnetId, Name, StartRange, EndRange, PercentUtilized, TotalAddresses, InUseAddresses, FreeAddresses, AssociatedServer \# The DHCP server that owns this scope \$dhcpScopes \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-dhcp-scopes.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scopes exported: \$(\$dhcpScopes.Count)" \#endregion \#region --- IP Ranges ----------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting IP address ranges..." \$ipRanges = Get-IpamRange -CimSession \$session \| Select-Object \` NetworkId, StartAddress, EndAddress, Owner, AssignedAddresses, PercentUtilized, Description \$ipRanges \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-ranges.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Ranges exported: \$(\$ipRanges.Count)" \#endregion \#region --- Address Assignments ------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting address assignments..." \$addresses = Get-IpamAddress -CimSession \$session \| Select-Object \` IpAddress, MacAddress, HostName, ClientId, AssignmentType, \# Static, Dynamic, VIP, Reserved AssignedDate, DeviceType, \# Host, NetworkDevice, Printer, VirtualMachine, etc. Description \$addresses \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-addresses.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Addresses exported: \$(\$addresses.Count)" \#endregion \#region --- Cleanup and Summary ------------------------------------------------- Remove-CimSession \$session Write-Host "" Write-Host "=== IPAM Export Complete ===" Write-Host " DNS Zones : \$(\$dnsZones.Count)" Write-Host " DHCP Scopes : \$(\$dhcpScopes.Count)" Write-Host " IP Ranges : \$(\$ipRanges.Count)" Write-Host " Address Records: \$(\$addresses.Count)" Write-Host " Output path : \$OutputPath" Write-Host "" Write-Host "Next step: commit the output directory to the governance repository." Write-Host " git add assessment/ipam/" Write-Host " git commit -m \`"chore: IPAM baseline export \$(Get-Date -f 'yyyy-MM-dd')\`"" Write-Host " git push" \#endregion
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Exports the Windows Server IPAM inventory to JSON for governance
+    repository commitment.
+
+.DESCRIPTION
+    Queries the Windows Server IPAM role for all DNS zones, DHCP scopes,
+    IP ranges, and address assignments. Exports each collection as a
+    structured JSON file to a local output directory for subsequent
+    Git commit to the governance repository.
+
+    This export establishes the on-premises infrastructure baseline used
+    to measure DNS and IP address migration progress toward Azure.
+
+    Designed to run during the Assessment phase of the OrgPath migration
+    pipeline and on each subsequent weekly pipeline run to capture delta.
+
+.PARAMETER OutputPath
+    Directory path where JSON export files will be written before Git commit.
+    Example: "C:\governance\assessment\ipam"
+    The directory will be created if it does not exist.
+
+.PARAMETER IpamServer
+    FQDN or NetBIOS name of the IPAM server hosting the IPAM database.
+    Defaults to localhost for execution directly on the IPAM server.
+    Example: "ipam01.corp.contoso.com"   <-- substitute your IPAM server
+
+.NOTES
+    Requirements:
+      - Windows Server 2019 or 2022 with the IPAM Server role installed.
+      - PowerShell module IpamServer (installed automatically with the role).
+      - The executing account must hold the IPAM Administrator or IPAM ASM
+        Administrator role in the IPAM database.
+      - IPAM database must be populated via scheduled IPAM discovery and
+        audit tasks (configured in IPAM Server Tasks in Server Manager).
+
+    Output files:
+      ipam-dns-zones.json    -- All DNS zones known to IPAM
+      ipam-dhcp-scopes.json  -- All DHCP scopes with utilization data
+      ipam-ranges.json       -- All IP address ranges in the space registry
+      ipam-addresses.json    -- All individual address assignments
+
+    After this script completes, run the following from the governance
+    repository root to commit the export:
+      git add assessment/ipam/
+      git commit -m "chore: IPAM baseline export $(Get-Date -f 'yyyy-MM-dd')"
+      git push
+#>
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$OutputPath = "C:\governance\assessment\ipam",
+
+    [Parameter(Mandatory = $false)]
+    [string]$IpamServer = "localhost"    # <-- substitute your IPAM server FQDN
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+#region --- Preflight -----------------------------------------------------------
+
+# Verify the IpamServer module is available (installed with the IPAM role)
+if (-not (Get-Module -ListAvailable -Name IpamServer)) {
+    throw "Module IpamServer not found. Confirm the IPAM Server role is installed " +
+          "on this machine or run this script on the designated IPAM server."
+}
+
+Import-Module IpamServer -ErrorAction Stop
+
+# Create output directory if it does not exist
+New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Output directory: $OutputPath"
+
+# Establish CIM session to IPAM server
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to IPAM server: $IpamServer"
+$session = New-CimSession -ComputerName $IpamServer -ErrorAction Stop
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connected."
+
+#endregion
+
+#region --- DNS Zones -----------------------------------------------------------
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Exporting IPAM DNS zones..."
+
+$dnsZones = Get-IpamDnsZone -CimSession $session |
+    Select-Object `
+        Name,
+        ZoneType,          # Primary, Secondary, Stub, Forwarder
+        ZoneCategory,      # Forward, Reverse
+        AssociatedDhcpServer,
+        UpdateStatus,      # Secure, Unsecure, None
+        RecordCount,
+        LastModifiedTime
+
+$dnsZones | ConvertTo-Json -Depth 5 |
+    Set-Content -Path "$OutputPath\ipam-dns-zones.json" -Encoding UTF8
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')]   Zones exported: $($dnsZones.Count)"
+
+#endregion
+
+#region --- DHCP Scopes ---------------------------------------------------------
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Exporting DHCP scopes..."
+
+$dhcpScopes = Get-IpamDhcpScope -CimSession $session |
+    Select-Object `
+        ScopeId,
+        SubnetId,
+        Name,
+        StartRange,
+        EndRange,
+        PercentUtilized,
+        TotalAddresses,
+        InUseAddresses,
+        FreeAddresses,
+        AssociatedServer   # The DHCP server that owns this scope
+
+$dhcpScopes | ConvertTo-Json -Depth 5 |
+    Set-Content -Path "$OutputPath\ipam-dhcp-scopes.json" -Encoding UTF8
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')]   Scopes exported: $($dhcpScopes.Count)"
+
+#endregion
+
+#region --- IP Ranges -----------------------------------------------------------
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Exporting IP address ranges..."
+
+$ipRanges = Get-IpamRange -CimSession $session |
+    Select-Object `
+        NetworkId,
+        StartAddress,
+        EndAddress,
+        Owner,
+        AssignedAddresses,
+        PercentUtilized,
+        Description
+
+$ipRanges | ConvertTo-Json -Depth 5 |
+    Set-Content -Path "$OutputPath\ipam-ranges.json" -Encoding UTF8
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')]   Ranges exported: $($ipRanges.Count)"
+
+#endregion
+
+#region --- Address Assignments -------------------------------------------------
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Exporting address assignments..."
+
+$addresses = Get-IpamAddress -CimSession $session |
+    Select-Object `
+        IpAddress,
+        MacAddress,
+        HostName,
+        ClientId,
+        AssignmentType,    # Static, Dynamic, VIP, Reserved
+        AssignedDate,
+        DeviceType,        # Host, NetworkDevice, Printer, VirtualMachine, etc.
+        Description
+
+$addresses | ConvertTo-Json -Depth 5 |
+    Set-Content -Path "$OutputPath\ipam-addresses.json" -Encoding UTF8
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')]   Addresses exported: $($addresses.Count)"
+
+#endregion
+
+#region --- Cleanup and Summary -------------------------------------------------
+
+Remove-CimSession $session
+
+Write-Host ""
+Write-Host "=== IPAM Export Complete ==="
+Write-Host "  DNS Zones      : $($dnsZones.Count)"
+Write-Host "  DHCP Scopes    : $($dhcpScopes.Count)"
+Write-Host "  IP Ranges      : $($ipRanges.Count)"
+Write-Host "  Address Records: $($addresses.Count)"
+Write-Host "  Output path    : $OutputPath"
+Write-Host ""
+Write-Host "Next step: commit the output directory to the governance repository."
+Write-Host "  git add assessment/ipam/"
+Write-Host "  git commit -m `"chore: IPAM baseline export $(Get-Date -f 'yyyy-MM-dd')`""
+Write-Host "  git push"
+
+#endregion
+```
 
 ### Azure DNS Private Zone Architecture and OrgPath Tagging
 
@@ -135,7 +323,195 @@ The Microsoft Azure IPAM open-source tool, available at github.com/Azure/ipam, s
 
 The following script creates and tags Azure DNS Private Zones for each active OrgTree node designated as a DNS boundary. It runs as part of the weekly governance pipeline and is idempotent — zones that already exist are tagged but not recreated. The script also links each zone to the hub VNet if the link does not already exist.
 
-\#Requires -Version 5.1 \<# .SYNOPSIS Creates and tags Azure DNS Private Zones for each active OrgTree node designated as a DNS governance boundary. .DESCRIPTION Reads the OrgTree registry and creates an Azure DNS Private Zone for each node whose DnsBoundary property is true and whose Status is Active. Tags each zone with the four OrgPath governance tags. Links each zone to the designated hub virtual network. This script is idempotent: zones that already exist are tagged and linked if they are not already; they are not recreated. Existing tags are overwritten to reflect any OrgTree registry changes (e.g., Tier promotion, MigrationPhase advancement). Triggered by OrgTree registry commits as part of the governance propagation pipeline. Also runs as a scheduled weekly job to catch drift. .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file checked out from the governance repository. Example: "C:\governance\orgtree\registry.json" .PARAMETER ResourceGroupName Name of the Azure Resource Group where all Private DNS Zones are managed. All zones created by this script are placed in this resource group. Example: "rg-governance-dns" \<-- substitute your RG name .PARAMETER HubVNetResourceId Full Azure resource ID of the hub virtual network to which all Private DNS Zones are linked for resolution. Format: /subscriptions/{subscriptionId}/resourceGroups/{rg}/ providers/Microsoft.Network/virtualNetworks/{vnetName} Example: "/subscriptions/00000000-0000-0000-0000-000000000000/ resourceGroups/rg-network-hub/ providers/Microsoft.Network/virtualNetworks/vnet-hub-eastus" \<-- substitute all three values .PARAMETER BaseDomainSuffix The base DNS suffix appended to node IDs to form zone names. Example: "internal.contoso.com" \<-- substitute your internal domain Resulting zone example: "finance.internal.contoso.com" .NOTES Required PowerShell modules: Az.PrivateDns (Install-Module Az.PrivateDns) Az.Network (Install-Module Az.Network) Authenticate before running: Connect-AzAccount The automation service principal requires: - DNS Zone Contributor on the DNS resource group - Network Contributor on the hub VNet resource group Run after OrgTree registry has been validated and committed. \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[Parameter(Mandatory = \$false)\] \[string\]\$ResourceGroupName = "rg-governance-dns", \# \<-- substitute \[Parameter(Mandatory = \$false)\] \[string\]\$HubVNetResourceId = "/subscriptions/{subscriptionId}/resourceGroups/{vnetRg}" + "/providers/Microsoft.Network/virtualNetworks/{hubVNetName}", \# \<-- substitute all three \[Parameter(Mandatory = \$false)\] \[string\]\$BaseDomainSuffix = "internal.contoso.com" \# \<-- substitute ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \#region --- Preflight ----------------------------------------------------------- foreach (\$mod in @('Az.PrivateDns', 'Az.Network')) { if (-not (Get-Module -ListAvailable -Name \$mod)) { throw "Required module not found: \$mod. Run: Install-Module \$mod" } } if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found at: \$OrgTreeRegistryPath" } \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \# Select nodes that are Active and marked as DNS boundaries \$dnsNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.DnsBoundary -eq \$true } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] DNS boundary nodes found: \$(\$dnsNodes.Count)" \$results = @{ Created = 0; Tagged = 0; Skipped = 0; Linked = 0; Errors = 0 } \#endregion \#region --- Zone Creation, Tagging, and Linking --------------------------------- foreach (\$node in \$dnsNodes) { \$zoneName = "\$(\$node.Id.ToLower()).\$BaseDomainSuffix" \$linkName = "link-hub-\$(\$node.Id.ToLower())" try { \#-- Step 1: Create the zone if it does not exist ---------------------- \$zone = Get-AzPrivateDnsZone \` -ResourceGroupName \$ResourceGroupName \` -Name \$zoneName \` -ErrorAction SilentlyContinue if (-not \$zone) { Write-Host " \[CREATE\] \$zoneName" \$zone = New-AzPrivateDnsZone \` -ResourceGroupName \$ResourceGroupName \` -Name \$zoneName \$results.Created++ } else { Write-Host " \[EXISTS\] \$zoneName — verifying tags and link..." \$results.Skipped++ } \#-- Step 2: Apply OrgPath governance tags (overwrite to catch drift) -- \$tags = @{ OrgPath = \$node.Path \# e.g. "/Org/Finance" OrgNodeId = \$node.Id \# e.g. "finance" OrgTier = \$node.Tier \# T0 \| T1 \| T2 \| T3 MigrationPhase = \$node.MigrationPhase \# Assessment \| Migration \| Complete } Update-AzPrivateDnsZone \` -ResourceGroupName \$ResourceGroupName \` -Name \$zoneName \` -Tag \$tags \| Out-Null \$results.Tagged++ \#-- Step 3: Link to hub VNet if not already linked -------------------- \$existingLink = Get-AzPrivateDnsVirtualNetworkLink \` -ResourceGroupName \$ResourceGroupName \` -ZoneName \$zoneName \` -Name \$linkName \` -ErrorAction SilentlyContinue if (-not \$existingLink) { New-AzPrivateDnsVirtualNetworkLink \` -ResourceGroupName \$ResourceGroupName \` -ZoneName \$zoneName \` -Name \$linkName \` -VirtualNetworkId \$HubVNetResourceId \` -EnableRegistration \$false \| Out-Null \# EnableRegistration = false: record management is governed, not automatic Write-Host " \[LINKED\] \$zoneName linked to hub VNet" \$results.Linked++ } } catch { Write-Warning " \[ERROR\] \$zoneName : \$\_" \$results.Errors++ } } \#endregion \#region --- Summary ------------------------------------------------------------- Write-Host "" Write-Host "=== DNS Zone Synchronization Complete ===" Write-Host " Created : \$(\$results.Created)" Write-Host " Tagged : \$(\$results.Tagged)" Write-Host " Linked : \$(\$results.Linked)" Write-Host " Skipped : \$(\$results.Skipped)" Write-Host " Errors : \$(\$results.Errors)" if (\$results.Errors -gt 0) { Write-Warning "Errors occurred. Review output above and rerun after remediation." exit 1 } \#endregion
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Creates and tags Azure DNS Private Zones for each active OrgTree node
+    designated as a DNS governance boundary.
+
+.DESCRIPTION
+    Reads the OrgTree registry and creates an Azure DNS Private Zone for each
+    node whose DnsBoundary property is true and whose Status is Active.
+    Tags each zone with the four OrgPath governance tags. Links each zone to
+    the designated hub virtual network.
+
+    This script is idempotent: zones that already exist are tagged and linked
+    if they are not already; they are not recreated. Existing tags are
+    overwritten to reflect any OrgTree registry changes (e.g., Tier promotion,
+    MigrationPhase advancement).
+
+    Triggered by OrgTree registry commits as part of the governance propagation
+    pipeline. Also runs as a scheduled weekly job to catch drift.
+
+.PARAMETER OrgTreeRegistryPath
+    Local path to the OrgTree registry JSON file checked out from the
+    governance repository.
+    Example: "C:\governance\orgtree\registry.json"
+
+.PARAMETER ResourceGroupName
+    Name of the Azure Resource Group where all Private DNS Zones are managed.
+    All zones created by this script are placed in this resource group.
+    Example: "rg-governance-dns"    <-- substitute your RG name
+
+.PARAMETER HubVNetResourceId
+    Full Azure resource ID of the hub virtual network to which all Private DNS
+    Zones are linked for resolution.
+    Format:
+      /subscriptions/{subscriptionId}/resourceGroups/{rg}/
+      providers/Microsoft.Network/virtualNetworks/{vnetName}
+    Example:
+      "/subscriptions/00000000-0000-0000-0000-000000000000/
+       resourceGroups/rg-network-hub/
+       providers/Microsoft.Network/virtualNetworks/vnet-hub-eastus"
+                                      <-- substitute all three values
+
+.PARAMETER BaseDomainSuffix
+    The base DNS suffix appended to node IDs to form zone names.
+    Example: "internal.contoso.com"    <-- substitute your internal domain
+    Resulting zone example: "finance.internal.contoso.com"
+
+.NOTES
+    Required PowerShell modules:
+      Az.PrivateDns  (Install-Module Az.PrivateDns)
+      Az.Network     (Install-Module Az.Network)
+    Authenticate before running: Connect-AzAccount
+    The automation service principal requires:
+      - DNS Zone Contributor on the DNS resource group
+      - Network Contributor on the hub VNet resource group
+    Run after OrgTree registry has been validated and committed.
+#>
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+
+    [Parameter(Mandatory = $false)]
+    [string]$ResourceGroupName = "rg-governance-dns",       # <-- substitute
+
+    [Parameter(Mandatory = $false)]
+    [string]$HubVNetResourceId =
+        "/subscriptions/{subscriptionId}/resourceGroups/{vnetRg}" +
+        "/providers/Microsoft.Network/virtualNetworks/{hubVNetName}",
+                                                            # <-- substitute all three
+
+    [Parameter(Mandatory = $false)]
+    [string]$BaseDomainSuffix = "internal.contoso.com"      # <-- substitute
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+#region --- Preflight -----------------------------------------------------------
+
+foreach ($mod in @('Az.PrivateDns', 'Az.Network')) {
+    if (-not (Get-Module -ListAvailable -Name $mod)) {
+        throw "Required module not found: $mod. Run: Install-Module $mod"
+    }
+}
+
+if (-not (Test-Path $OrgTreeRegistryPath)) {
+    throw "OrgTree registry not found at: $OrgTreeRegistryPath"
+}
+
+$registry = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+
+# Select nodes that are Active and marked as DNS boundaries
+$dnsNodes = $registry.nodes | Where-Object {
+    $_.Status      -eq "Active" -and
+    $_.DnsBoundary -eq $true
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] DNS boundary nodes found: $($dnsNodes.Count)"
+
+$results = @{ Created = 0; Tagged = 0; Skipped = 0; Linked = 0; Errors = 0 }
+
+#endregion
+
+#region --- Zone Creation, Tagging, and Linking ---------------------------------
+
+foreach ($node in $dnsNodes) {
+
+    $zoneName = "$($node.Id.ToLower()).$BaseDomainSuffix"
+    $linkName = "link-hub-$($node.Id.ToLower())"
+
+    try {
+        #-- Step 1: Create the zone if it does not exist ----------------------
+        $zone = Get-AzPrivateDnsZone `
+            -ResourceGroupName $ResourceGroupName `
+            -Name              $zoneName `
+            -ErrorAction       SilentlyContinue
+
+        if (-not $zone) {
+            Write-Host "  [CREATE] $zoneName"
+            $zone = New-AzPrivateDnsZone `
+                -ResourceGroupName $ResourceGroupName `
+                -Name              $zoneName
+            $results.Created++
+        } else {
+            Write-Host "  [EXISTS] $zoneName — verifying tags and link..."
+            $results.Skipped++
+        }
+
+        #-- Step 2: Apply OrgPath governance tags (overwrite to catch drift) --
+        $tags = @{
+            OrgPath        = $node.Path          # e.g. "/Org/Finance"
+            OrgNodeId      = $node.Id            # e.g. "finance"
+            OrgTier        = $node.Tier          # T0 | T1 | T2 | T3
+            MigrationPhase = $node.MigrationPhase # Assessment | Migration | Complete
+        }
+
+        Update-AzPrivateDnsZone `
+            -ResourceGroupName $ResourceGroupName `
+            -Name              $zoneName `
+            -Tag               $tags | Out-Null
+
+        $results.Tagged++
+
+        #-- Step 3: Link to hub VNet if not already linked --------------------
+        $existingLink = Get-AzPrivateDnsVirtualNetworkLink `
+            -ResourceGroupName $ResourceGroupName `
+            -ZoneName          $zoneName `
+            -Name              $linkName `
+            -ErrorAction       SilentlyContinue
+
+        if (-not $existingLink) {
+            New-AzPrivateDnsVirtualNetworkLink `
+                -ResourceGroupName $ResourceGroupName `
+                -ZoneName          $zoneName `
+                -Name              $linkName `
+                -VirtualNetworkId  $HubVNetResourceId `
+                -EnableRegistration $false | Out-Null
+            # EnableRegistration = false: record management is governed, not automatic
+
+            Write-Host "  [LINKED] $zoneName linked to hub VNet"
+            $results.Linked++
+        }
+    }
+    catch {
+        Write-Warning "  [ERROR] $zoneName : $_"
+        $results.Errors++
+    }
+}
+
+#endregion
+
+#region --- Summary -------------------------------------------------------------
+
+Write-Host ""
+Write-Host "=== DNS Zone Synchronization Complete ==="
+Write-Host "  Created : $($results.Created)"
+Write-Host "  Tagged  : $($results.Tagged)"
+Write-Host "  Linked  : $($results.Linked)"
+Write-Host "  Skipped : $($results.Skipped)"
+Write-Host "  Errors  : $($results.Errors)"
+
+if ($results.Errors -gt 0) {
+    Write-Warning "Errors occurred. Review output above and rerun after remediation."
+    exit 1
+}
+
+#endregion
+```
 
 ### Azure DNS Private Resolver and Forwarding Ruleset Configuration
 
@@ -153,7 +529,53 @@ The Azure DNS Private Resolver requires dedicated subnets that cannot contain an
 
 The Azure Policy definition below is assigned at the subscription or management group scope that contains the DNS resource group. It enforces the governance model at the resource creation plane by denying the creation or update of any Azure DNS Private Zone that does not carry all four required OrgPath governance tags. This prevents ad-hoc zone creation outside the governance pipeline — if a network administrator creates a zone manually through the portal or through an uncontrolled automation script, the policy blocks it, and the zone can only be created by supplying the governance tags. This drives zone creation through the Sync-OrgPathDnsZones.ps1 script, which creates zones with correct tags by construction.
 
-{ "properties": { "displayName": "OrgPath — Require governance tags on Private DNS Zones", "description": "Denies creation or update of Azure DNS Private Zones that do not carry all four required OrgPath governance tags: OrgPath, OrgNodeId, OrgTier, and MigrationPhase. Assign at subscription or management group scope covering the DNS resource group. Excludes the governance pipeline service principal from the deny effect via an exclusion parameter if needed.", "mode": "Indexed", "parameters": {}, "policyRule": { "if": { "allOf": \[ { "field": "type", "equals": "Microsoft.Network/privateDnsZones" }, { "anyOf": \[ { "field": "tags\['OrgPath'\]", "exists": "false" }, { "field": "tags\['OrgNodeId'\]", "exists": "false" }, { "field": "tags\['OrgTier'\]", "exists": "false" }, { "field": "tags\['MigrationPhase'\]", "exists": "false" } \] } \] }, "then": { "effect": "deny" } } } }
+```json
+{
+  "properties": {
+    "displayName": "OrgPath — Require governance tags on Private DNS Zones",
+    "description": "Denies creation or update of Azure DNS Private Zones that do not
+      carry all four required OrgPath governance tags: OrgPath, OrgNodeId,
+      OrgTier, and MigrationPhase. Assign at subscription or management group
+      scope covering the DNS resource group. Excludes the governance pipeline
+      service principal from the deny effect via an exclusion parameter if needed.",
+    "mode": "Indexed",
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Network/privateDnsZones"
+          },
+          {
+            "anyOf": [
+              {
+                "field": "tags['OrgPath']",
+                "exists": "false"
+              },
+              {
+                "field": "tags['OrgNodeId']",
+                "exists": "false"
+              },
+              {
+                "field": "tags['OrgTier']",
+                "exists": "false"
+              },
+              {
+                "field": "tags['MigrationPhase']",
+                "exists": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    }
+  }
+}
+```
 
 The policy uses the Indexed mode, which evaluates only resources that support tags and location — all Private DNS Zone resources qualify. The anyOf condition in the policy rule means the zone is denied if any one of the four tags is absent, not only if all four are absent. This prevents partial tagging, which would pass a simpler existence check for a single tag while leaving the zone ungoverned on the remaining three dimensions.
 
@@ -177,13 +599,251 @@ Each entry in the CertificateProfiles array carries four fields. ProfileDisplayN
 
 An example node entry in the registry JSON, showing the extended schema:
 
-{ "Id": "finance", "Path": "/Org/Finance", "Tier": "T1", "Status": "Active", "MigrationPhase": "Migration", "DnsBoundary": true, "CertificateProfiles": \[ { "ProfileDisplayName": "ROOT-CloudPKI-Issuing", "Type": "TrustedRoot", "Purpose": "Device", "TemplateReplaces": null }, { "ProfileDisplayName": "CERT-SCEP-WIFI-FINANCE", "Type": "SCEP", "Purpose": "Device", "TemplateReplaces": "WorkstationAuthentication" // \<-- AD CS template name }, { "ProfileDisplayName": "CERT-SCEP-VPN-FINANCE", "Type": "SCEP", "Purpose": "Device", "TemplateReplaces": "IPSecIntermediateOffline" // \<-- AD CS template name } \] }
+```json
+{
+  "Id": "finance",
+  "Path": "/Org/Finance",
+  "Tier": "T1",
+  "Status": "Active",
+  "MigrationPhase": "Migration",
+  "DnsBoundary": true,
+  "CertificateProfiles": [
+    {
+      "ProfileDisplayName": "ROOT-CloudPKI-Issuing",
+      "Type": "TrustedRoot",
+      "Purpose": "Device",
+      "TemplateReplaces": null
+    },
+    {
+      "ProfileDisplayName": "CERT-SCEP-WIFI-FINANCE",
+      "Type": "SCEP",
+      "Purpose": "Device",
+      "TemplateReplaces": "WorkstationAuthentication"   // <-- AD CS template name
+    },
+    {
+      "ProfileDisplayName": "CERT-SCEP-VPN-FINANCE",
+      "Type": "SCEP",
+      "Purpose": "Device",
+      "TemplateReplaces": "IPSecIntermediateOffline"    // <-- AD CS template name
+    }
+  ]
+}
+```
 
 ### Certificate Profile Assignment Pipeline
 
 The certificate profile assignment pipeline script reads the OrgTree registry, identifies nodes with CertificateProfiles metadata, retrieves the named profiles from Intune through the Microsoft Graph API, and assigns each profile to the corresponding OrgPath branch group. The script is idempotent — profiles already assigned to the correct group are detected and skipped without modification, so the script can be run repeatedly as part of the weekly pipeline without creating duplicate assignments. Profiles that cannot be found in Intune — because they have not yet been created — are logged as missing and counted in the summary, prompting the PKI team to create them before the next pipeline run.
 
-\#Requires -Version 5.1 \<# .SYNOPSIS Assigns Intune certificate profiles to OrgPath branch groups based on CertificateProfiles metadata in the OrgTree registry. .DESCRIPTION For each active OrgTree node carrying a non-empty CertificateProfiles metadata array, this script retrieves the named Intune certificate configuration profiles and assigns them to the corresponding ORG-BRANCH-{NodeId} device group in Entra ID. Profiles must already exist in Intune before this script runs. This script manages assignments only — it does not create profiles. Profile creation is performed by the PKI team using the Cloud PKI console in the Intune admin center. This script is idempotent. Re-running it on an already-correct environment makes no changes and completes cleanly. .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file. Example: "C:\governance\orgtree\registry.json" .PARAMETER TenantId Azure AD / Entra ID Tenant ID. Example: "00000000-0000-0000-0000-000000000000" \<-- substitute .NOTES Required Microsoft Graph scopes: DeviceManagementConfiguration.ReadWrite.All Group.Read.All Authentication: Run under the OrgPath automation service account. The account must have the Intune Administrator or Policy and Profile Manager role in Intune. Profile naming conventions assumed by this script: SCEP profiles : display name starts with "CERT-" PKCS profiles : display name starts with "PKCS-" Root profiles : display name starts with "ROOT-" Adjust the \$filter queries below if your naming convention differs. \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[Parameter(Mandatory = \$false)\] \[string\]\$TenantId = "00000000-0000-0000-0000-000000000000" \# \<-- substitute ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \#region --- Authentication ------------------------------------------------------ Connect-MgGraph \` -TenantId \$TenantId \` -Scopes "DeviceManagementConfiguration.ReadWrite.All", "Group.Read.All" \` -NoWelcome Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connected to Microsoft Graph." \#endregion \#region --- Load OrgTree and Select Nodes with Certificate Metadata ------------- if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found: \$OrgTreeRegistryPath" } \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$nodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.CertificateProfiles -and \$\_.CertificateProfiles.Count -gt 0 } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Nodes with certificate profile metadata: \$(\$nodes.Count)" \#endregion \#region --- Cache Intune Certificate Profiles ----------------------------------- \# Cache all relevant profiles to avoid N\*M Graph API calls. \# Retrieve SCEP, PKCS, and TrustedRoot profiles using naming convention filters. \$allProfiles = @{} \$profileQueries = @( "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" + "?\`\$filter=startsWith(displayName,'CERT-')", "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" + "?\`\$filter=startsWith(displayName,'PKCS-')", "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" + "?\`\$filter=startsWith(displayName,'ROOT-')" ) foreach (\$query in \$profileQueries) { \$response = Invoke-MgGraphRequest -Method GET -Uri \$query foreach (\$profile in \$response.value) { \$allProfiles\[\$profile.displayName\] = \$profile } } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Certificate profiles cached from Intune: \$(\$allProfiles.Count)" \#endregion \#region --- Assignment Loop ----------------------------------------------------- \$stats = @{ Assigned = 0 AlreadyAssigned = 0 MissingProfile = 0 MissingGroup = 0 Failed = 0 } foreach (\$node in \$nodes) { \$branchGroupName = "ORG-BRANCH-\$(\$node.Id)" \# Retrieve the branch group from Entra ID \$branchGroup = Get-MgGroup \` -Filter "displayName eq '\$branchGroupName'" \` -Property "Id,DisplayName" \| Select-Object -First 1 if (-not \$branchGroup) { Write-Warning " Branch group not found in Entra ID: \$branchGroupName" + " — run device group library sync (Part Four) first." \$stats.MissingGroup++ continue } foreach (\$certMeta in \$node.CertificateProfiles) { \$profileName = \$certMeta.ProfileDisplayName if (-not \$allProfiles.ContainsKey(\$profileName)) { Write-Warning " Profile not found in Intune: '\$profileName'" + " (node: \$(\$node.Id)) — create this profile in Cloud PKI first." \$stats.MissingProfile++ continue } \$profile = \$allProfiles\[\$profileName\] \# Check existing assignments for this profile to maintain idempotency \$existingAssignmentsResponse = Invoke-MgGraphRequest \` -Method GET \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations/\$(\$profile.id)/assignments" \$alreadyAssigned = \$existingAssignmentsResponse.value \| Where-Object { \$\_.target.groupId -eq \$branchGroup.Id } if (\$alreadyAssigned) { Write-Host " \[SKIP\] \$profileName already assigned to \$branchGroupName" \$stats.AlreadyAssigned++ continue } \# Build the assignment request body \$assignBody = @{ assignments = @( @{ target = @{ "@odata.type" = "#microsoft.graph.groupAssignmentTarget" groupId = \$branchGroup.Id } } ) } \| ConvertTo-Json -Depth 10 try { Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations/\$(\$profile.id)/assign" \` -Body \$assignBody \` -ContentType "application/json" \| Out-Null Write-Host " \[OK\] \$profileName → \$branchGroupName" \$stats.Assigned++ } catch { Write-Warning " \[FAIL\] \$profileName → \$branchGroupName : \$\_" \$stats.Failed++ } } } \#endregion \#region --- Summary and Disconnect ---------------------------------------------- Write-Host "" Write-Host "=== Certificate Profile Assignment Complete ===" Write-Host " Assigned : \$(\$stats.Assigned)" Write-Host " Already Assigned : \$(\$stats.AlreadyAssigned)" Write-Host " Missing Profiles : \$(\$stats.MissingProfile)" Write-Host " Missing Groups : \$(\$stats.MissingGroup)" Write-Host " Failed : \$(\$stats.Failed)" Disconnect-MgGraph \#endregion
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Assigns Intune certificate profiles to OrgPath branch groups based on
+    CertificateProfiles metadata in the OrgTree registry.
+
+.DESCRIPTION
+    For each active OrgTree node carrying a non-empty CertificateProfiles
+    metadata array, this script retrieves the named Intune certificate
+    configuration profiles and assigns them to the corresponding
+    ORG-BRANCH-{NodeId} device group in Entra ID.
+
+    Profiles must already exist in Intune before this script runs.
+    This script manages assignments only — it does not create profiles.
+    Profile creation is performed by the PKI team using the Cloud PKI
+    console in the Intune admin center.
+
+    This script is idempotent. Re-running it on an already-correct
+    environment makes no changes and completes cleanly.
+
+.PARAMETER OrgTreeRegistryPath
+    Local path to the OrgTree registry JSON file.
+    Example: "C:\governance\orgtree\registry.json"
+
+.PARAMETER TenantId
+    Azure AD / Entra ID Tenant ID.
+    Example: "00000000-0000-0000-0000-000000000000"   <-- substitute
+
+.NOTES
+    Required Microsoft Graph scopes:
+      DeviceManagementConfiguration.ReadWrite.All
+      Group.Read.All
+    Authentication: Run under the OrgPath automation service account.
+    The account must have the Intune Administrator or Policy and Profile
+    Manager role in Intune.
+
+    Profile naming conventions assumed by this script:
+      SCEP profiles  : display name starts with "CERT-"
+      PKCS profiles  : display name starts with "PKCS-"
+      Root profiles  : display name starts with "ROOT-"
+    Adjust the $filter queries below if your naming convention differs.
+#>
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+
+    [Parameter(Mandatory = $false)]
+    [string]$TenantId = "00000000-0000-0000-0000-000000000000"  # <-- substitute
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+#region --- Authentication ------------------------------------------------------
+
+Connect-MgGraph `
+    -TenantId $TenantId `
+    -Scopes "DeviceManagementConfiguration.ReadWrite.All", "Group.Read.All" `
+    -NoWelcome
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connected to Microsoft Graph."
+
+#endregion
+
+#region --- Load OrgTree and Select Nodes with Certificate Metadata -------------
+
+if (-not (Test-Path $OrgTreeRegistryPath)) {
+    throw "OrgTree registry not found: $OrgTreeRegistryPath"
+}
+
+$registry = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$nodes    = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and
+    $_.CertificateProfiles -and
+    $_.CertificateProfiles.Count -gt 0
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Nodes with certificate profile metadata: $($nodes.Count)"
+
+#endregion
+
+#region --- Cache Intune Certificate Profiles -----------------------------------
+# Cache all relevant profiles to avoid N*M Graph API calls.
+# Retrieve SCEP, PKCS, and TrustedRoot profiles using naming convention filters.
+
+$allProfiles = @{}
+
+$profileQueries = @(
+    "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" +
+        "?`$filter=startsWith(displayName,'CERT-')",
+    "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" +
+        "?`$filter=startsWith(displayName,'PKCS-')",
+    "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" +
+        "?`$filter=startsWith(displayName,'ROOT-')"
+)
+
+foreach ($query in $profileQueries) {
+    $response = Invoke-MgGraphRequest -Method GET -Uri $query
+    foreach ($profile in $response.value) {
+        $allProfiles[$profile.displayName] = $profile
+    }
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Certificate profiles cached from Intune: $($allProfiles.Count)"
+
+#endregion
+
+#region --- Assignment Loop -----------------------------------------------------
+
+$stats = @{
+    Assigned        = 0
+    AlreadyAssigned = 0
+    MissingProfile  = 0
+    MissingGroup    = 0
+    Failed          = 0
+}
+
+foreach ($node in $nodes) {
+
+    $branchGroupName = "ORG-BRANCH-$($node.Id)"
+
+    # Retrieve the branch group from Entra ID
+    $branchGroup = Get-MgGroup `
+        -Filter "displayName eq '$branchGroupName'" `
+        -Property "Id,DisplayName" |
+        Select-Object -First 1
+
+    if (-not $branchGroup) {
+        Write-Warning "  Branch group not found in Entra ID: $branchGroupName" +
+                      " — run device group library sync (Part Four) first."
+        $stats.MissingGroup++
+        continue
+    }
+
+    foreach ($certMeta in $node.CertificateProfiles) {
+
+        $profileName = $certMeta.ProfileDisplayName
+
+        if (-not $allProfiles.ContainsKey($profileName)) {
+            Write-Warning "  Profile not found in Intune: '$profileName'" +
+                          " (node: $($node.Id)) — create this profile in Cloud PKI first."
+            $stats.MissingProfile++
+            continue
+        }
+
+        $profile = $allProfiles[$profileName]
+
+        # Check existing assignments for this profile to maintain idempotency
+        $existingAssignmentsResponse = Invoke-MgGraphRequest `
+            -Method GET `
+            -Uri "https://graph.microsoft.com/v1.0/deviceManagement" +
+                 "/deviceConfigurations/$($profile.id)/assignments"
+
+        $alreadyAssigned = $existingAssignmentsResponse.value | Where-Object {
+            $_.target.groupId -eq $branchGroup.Id
+        }
+
+        if ($alreadyAssigned) {
+            Write-Host "  [SKIP]   $profileName already assigned to $branchGroupName"
+            $stats.AlreadyAssigned++
+            continue
+        }
+
+        # Build the assignment request body
+        $assignBody = @{
+            assignments = @(
+                @{
+                    target = @{
+                        "@odata.type" = "#microsoft.graph.groupAssignmentTarget"
+                        groupId       = $branchGroup.Id
+                    }
+                }
+            )
+        } | ConvertTo-Json -Depth 10
+
+        try {
+            Invoke-MgGraphRequest `
+                -Method      POST `
+                -Uri         "https://graph.microsoft.com/v1.0/deviceManagement" +
+                             "/deviceConfigurations/$($profile.id)/assign" `
+                -Body        $assignBody `
+                -ContentType "application/json" | Out-Null
+
+            Write-Host "  [OK]     $profileName → $branchGroupName"
+            $stats.Assigned++
+        }
+        catch {
+            Write-Warning "  [FAIL]   $profileName → $branchGroupName : $_"
+            $stats.Failed++
+        }
+    }
+}
+
+#endregion
+
+#region --- Summary and Disconnect ----------------------------------------------
+
+Write-Host ""
+Write-Host "=== Certificate Profile Assignment Complete ==="
+Write-Host "  Assigned            : $($stats.Assigned)"
+Write-Host "  Already Assigned    : $($stats.AlreadyAssigned)"
+Write-Host "  Missing Profiles    : $($stats.MissingProfile)"
+Write-Host "  Missing Groups      : $($stats.MissingGroup)"
+Write-Host "  Failed              : $($stats.Failed)"
+
+Disconnect-MgGraph
+
+#endregion
+```
 
 ### Strong Mapping and KB5014754 Compliance
 
@@ -193,7 +853,136 @@ For Intune SCEP profiles targeting device certificate authentication, the strong
 
 The governance pipeline must verify that every SCEP profile in the OrgPath certificate profile registry has this SAN variable configured correctly before the profile is assigned to a branch group. A SCEP profile that lacks the {{onPremisesSecurityIdentifier}} SAN will issue certificates that pass enrollment silently but fail KDC validation at the moment a device attempts certificate-based authentication after the KB5014754 enforcement date. The verification script queries each SCEP profile's configuration through the Graph API and flags non-compliant profiles for remediation.
 
-\#Requires -Version 5.1 \<# .SYNOPSIS Verifies that all SCEP profiles in the OrgPath certificate registry have KB5014754-compliant strong mapping SAN configuration. .DESCRIPTION Queries Intune for all SCEP profiles whose display names appear in any node's CertificateProfiles metadata. For each SCEP profile, retrieves the subjectAlternativeNameType and customSubjectAlternativeName settings and verifies that the onPremisesSecurityIdentifier variable is present in the SAN configuration. Non-compliant profiles are written to a compliance report JSON committed to the governance repository. Profiles flagged as non-compliant must be remediated before they are assigned to branch groups. .PARAMETER OrgTreeRegistryPath Path to the OrgTree registry JSON. .PARAMETER OutputPath Path for the compliance report JSON output. Example: "C:\governance\reports\pki" .NOTES Required Graph scope: DeviceManagementConfiguration.Read.All Strong mapping SAN requirement: KB5014754 (enforced post May 2025 patch) The {{onPremisesSecurityIdentifier}} variable requires device objects to have a valid onPremisesSecurityIdentifier in Entra ID, which requires Entra Connect hybrid join sync or a manually synchronized SID attribute. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OutputPath = "C:\governance\reports\pki" ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null Connect-MgGraph \` -Scopes "DeviceManagementConfiguration.Read.All" \` -NoWelcome \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$scepProfiles = @{} \# Collect all SCEP profile names referenced in registry CertificateProfiles metadata foreach (\$node in \$registry.nodes) { if (\$node.CertificateProfiles) { foreach (\$cp in \$node.CertificateProfiles) { if (\$cp.Type -eq "SCEP") { \$scepProfiles\[\$cp.ProfileDisplayName\] = \$true } } } } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] SCEP profiles to verify: \$(\$scepProfiles.Count)" \$report = @{ AssessedAt = (Get-Date -f 'o'); Profiles = @() } \$compliant = 0 \$nonCompliant = 0 foreach (\$profileName in \$scepProfiles.Keys) { \$graphUri = "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations?\`\$filter=displayName eq '\$profileName'" \$response = Invoke-MgGraphRequest -Method GET -Uri \$graphUri \$profile = \$response.value \| Select-Object -First 1 if (-not \$profile) { Write-Warning " Profile not found in Intune: \$profileName" continue } \# Retrieve full profile details (OData type contains SCEP-specific properties) \$fullProfile = Invoke-MgGraphRequest \` -Method GET \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations/\$(\$profile.id)" \# Check for onPremisesSecurityIdentifier in customSubjectAlternativeNames \$sans = \$fullProfile.customSubjectAlternativeNames \$hasSidSan = \$false if (\$sans) { \$hasSidSan = (\$sans \| Where-Object { \$\_.sanType -eq "onPremisesUserPrincipalName" -or \# Graph API exposes the SID SAN variable as onPremisesSecurityIdentifier \# in the customSubjectAlternativeName sanType field \$\_.sanType -contains "onPremisesSecurityIdentifier" }).Count -gt 0 } \$entry = @{ ProfileName = \$profileName ProfileId = \$profile.id HasSidSan = \$hasSidSan Compliant = \$hasSidSan Remediation = if (-not \$hasSidSan) { "Add onPremisesSecurityIdentifier to customSubjectAlternativeNames in the SCEP profile." } else { \$null } } \$report.Profiles += \$entry if (\$hasSidSan) { Write-Host " \[OK\] \$profileName — SID SAN present" \$compliant++ } else { Write-Warning " \[FAIL\] \$profileName — SID SAN missing (KB5014754 non-compliant)" \$nonCompliant++ } } \$report \| ConvertTo-Json -Depth 10 \| Set-Content -Path "\$OutputPath\scep-strongmapping-compliance.json" -Encoding UTF8 Write-Host "" Write-Host "=== SCEP Strong Mapping Compliance Report ===" Write-Host " Compliant : \$compliant" Write-Host " Non-Compliant : \$nonCompliant" Write-Host " Report written: \$OutputPath\scep-strongmapping-compliance.json" Disconnect-MgGraph
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Verifies that all SCEP profiles in the OrgPath certificate registry
+    have KB5014754-compliant strong mapping SAN configuration.
+
+.DESCRIPTION
+    Queries Intune for all SCEP profiles whose display names appear in any
+    node's CertificateProfiles metadata. For each SCEP profile, retrieves
+    the subjectAlternativeNameType and customSubjectAlternativeName settings
+    and verifies that the onPremisesSecurityIdentifier variable is present
+    in the SAN configuration.
+
+    Non-compliant profiles are written to a compliance report JSON committed
+    to the governance repository. Profiles flagged as non-compliant must be
+    remediated before they are assigned to branch groups.
+
+.PARAMETER OrgTreeRegistryPath
+    Path to the OrgTree registry JSON.
+
+.PARAMETER OutputPath
+    Path for the compliance report JSON output.
+    Example: "C:\governance\reports\pki"
+
+.NOTES
+    Required Graph scope: DeviceManagementConfiguration.Read.All
+    Strong mapping SAN requirement: KB5014754 (enforced post May 2025 patch)
+    The {{onPremisesSecurityIdentifier}} variable requires device objects to
+    have a valid onPremisesSecurityIdentifier in Entra ID, which requires
+    Entra Connect hybrid join sync or a manually synchronized SID attribute.
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    [string]$OutputPath          = "C:\governance\reports\pki"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+
+Connect-MgGraph `
+    -Scopes "DeviceManagementConfiguration.Read.All" `
+    -NoWelcome
+
+$registry    = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$scepProfiles = @{}
+
+# Collect all SCEP profile names referenced in registry CertificateProfiles metadata
+foreach ($node in $registry.nodes) {
+    if ($node.CertificateProfiles) {
+        foreach ($cp in $node.CertificateProfiles) {
+            if ($cp.Type -eq "SCEP") {
+                $scepProfiles[$cp.ProfileDisplayName] = $true
+            }
+        }
+    }
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] SCEP profiles to verify: $($scepProfiles.Count)"
+
+$report      = @{ AssessedAt = (Get-Date -f 'o'); Profiles = @() }
+$compliant   = 0
+$nonCompliant = 0
+
+foreach ($profileName in $scepProfiles.Keys) {
+
+    $graphUri = "https://graph.microsoft.com/v1.0/deviceManagement" +
+                "/deviceConfigurations?`$filter=displayName eq '$profileName'"
+
+    $response = Invoke-MgGraphRequest -Method GET -Uri $graphUri
+    $profile  = $response.value | Select-Object -First 1
+
+    if (-not $profile) {
+        Write-Warning "  Profile not found in Intune: $profileName"
+        continue
+    }
+
+    # Retrieve full profile details (OData type contains SCEP-specific properties)
+    $fullProfile = Invoke-MgGraphRequest `
+        -Method GET `
+        -Uri "https://graph.microsoft.com/v1.0/deviceManagement" +
+             "/deviceConfigurations/$($profile.id)"
+
+    # Check for onPremisesSecurityIdentifier in customSubjectAlternativeNames
+    $sans = $fullProfile.customSubjectAlternativeNames
+    $hasSidSan = $false
+
+    if ($sans) {
+        $hasSidSan = ($sans | Where-Object {
+            $_.sanType -eq "onPremisesUserPrincipalName" -or
+            # Graph API exposes the SID SAN variable as onPremisesSecurityIdentifier
+            # in the customSubjectAlternativeName sanType field
+            $_.sanType -contains "onPremisesSecurityIdentifier"
+        }).Count -gt 0
+    }
+
+    $entry = @{
+        ProfileName = $profileName
+        ProfileId   = $profile.id
+        HasSidSan   = $hasSidSan
+        Compliant   = $hasSidSan
+        Remediation = if (-not $hasSidSan) {
+            "Add onPremisesSecurityIdentifier to customSubjectAlternativeNames in the SCEP profile."
+        } else { $null }
+    }
+
+    $report.Profiles += $entry
+
+    if ($hasSidSan) {
+        Write-Host "  [OK]    $profileName — SID SAN present"
+        $compliant++
+    } else {
+        Write-Warning "  [FAIL]  $profileName — SID SAN missing (KB5014754 non-compliant)"
+        $nonCompliant++
+    }
+}
+
+$report | ConvertTo-Json -Depth 10 |
+    Set-Content -Path "$OutputPath\scep-strongmapping-compliance.json" -Encoding UTF8
+
+Write-Host ""
+Write-Host "=== SCEP Strong Mapping Compliance Report ==="
+Write-Host "  Compliant     : $compliant"
+Write-Host "  Non-Compliant : $nonCompliant"
+Write-Host "  Report written: $OutputPath\scep-strongmapping-compliance.json"
+
+Disconnect-MgGraph
+```
 
 ## Chapter 4 — CROSS-SURFACE DRIFT DETECTION FOR INFRASTRUCTURE SERVICES
 
@@ -209,17 +998,138 @@ Infrastructure surfaces introduce three additional drift categories that the gov
 
 The KQL query below is scheduled as a weekly Log Analytics alert rule against the Azure Resource Graph connector. It returns all Private DNS Zones in the governance subscription that are missing any of the four required OrgPath tags. A result count greater than zero triggers an alert, generating an incident in Microsoft Sentinel and an email notification to the DNS governance distribution group. The alert cadence matches the weekly pipeline run — DNS zones that fail the policy deny effect because the policy was briefly disabled will be caught by this query on the next scheduled run.
 
-// --------------------------------------------------------------- // Drift Detection: Azure DNS Private Zones Without Valid OrgPath Tags // Source: Azure Resource Graph via ARG connector in Log Analytics // Schedule: Weekly (Sunday 22:00 UTC) — alert on result count \> 0 // Severity: Medium (policy misconfiguration or out-of-band creation) // --------------------------------------------------------------- arg("").Resources \| where type == "microsoft.network/privatednszones" \| extend OrgPath = tostring(tags\['OrgPath'\]), OrgNodeId = tostring(tags\['OrgNodeId'\]), OrgTier = tostring(tags\['OrgTier'\]), MigrationPhase = tostring(tags\['MigrationPhase'\]) \| extend MissingOrgPath = isempty(OrgPath), MissingOrgNodeId = isempty(OrgNodeId), MissingOrgTier = isempty(OrgTier), MissingMigrationPhase = isempty(MigrationPhase) \| extend AnyTagMissing = MissingOrgPath or MissingOrgNodeId or MissingOrgTier or MissingMigrationPhase \| where AnyTagMissing == true \| project ZoneName = name, ResourceGroup = resourceGroup, SubscriptionId = subscriptionId, OrgPath, OrgNodeId, MissingOrgPath, MissingOrgNodeId, MissingOrgTier, MissingMigrationPhase, CreatedTime = tostring(properties.provisioningState) \| order by ZoneName asc
+```kql
+// ---------------------------------------------------------------
+// Drift Detection: Azure DNS Private Zones Without Valid OrgPath Tags
+// Source: Azure Resource Graph via ARG connector in Log Analytics
+// Schedule: Weekly (Sunday 22:00 UTC) — alert on result count > 0
+// Severity: Medium (policy misconfiguration or out-of-band creation)
+// ---------------------------------------------------------------
+
+arg("").Resources
+| where type == "microsoft.network/privatednszones"
+| extend
+    OrgPath        = tostring(tags['OrgPath']),
+    OrgNodeId      = tostring(tags['OrgNodeId']),
+    OrgTier        = tostring(tags['OrgTier']),
+    MigrationPhase = tostring(tags['MigrationPhase'])
+| extend
+    MissingOrgPath        = isempty(OrgPath),
+    MissingOrgNodeId      = isempty(OrgNodeId),
+    MissingOrgTier        = isempty(OrgTier),
+    MissingMigrationPhase = isempty(MigrationPhase)
+| extend
+    AnyTagMissing = MissingOrgPath or MissingOrgNodeId
+                    or MissingOrgTier or MissingMigrationPhase
+| where AnyTagMissing == true
+| project
+    ZoneName              = name,
+    ResourceGroup         = resourceGroup,
+    SubscriptionId        = subscriptionId,
+    OrgPath,
+    OrgNodeId,
+    MissingOrgPath,
+    MissingOrgNodeId,
+    MissingOrgTier,
+    MissingMigrationPhase,
+    CreatedTime           = tostring(properties.provisioningState)
+| order by ZoneName asc
+```
 
 The Azure Resource Graph query below complements the KQL query by cross-referencing the OrgNodeId tag on each DNS zone against the active node list from the governance repository. Zones whose OrgNodeId tag value does not correspond to any active OrgTree node represent orphaned zones — they were created for a node that has since been archived or had its ID changed. Orphaned zones are not deleted automatically; they are flagged in the drift report for manual review, because they may contain DNS records that are still in use by workloads that have not yet been migrated.
 
-// --------------------------------------------------------------- // Azure Resource Graph: Orphaned DNS Zones (OrgNodeId Mismatch) // Run via: Search-AzGraph -Query ... // Use to identify zones whose OrgNodeId tag does not match any // active node in the OrgTree registry. // --------------------------------------------------------------- Resources \| where type == "microsoft.network/privatednszones" \| extend OrgNodeId = tostring(tags\['OrgNodeId'\]) \| where isnotempty(OrgNodeId) \| project ZoneName = name, ResourceGroup = resourceGroup, OrgNodeId, OrgPath = tostring(tags\['OrgPath'\]), MigrationPhase = tostring(tags\['MigrationPhase'\]) \| order by ZoneName asc // Post-process in PowerShell: compare OrgNodeId values against the // active node IDs from the governance repository registry.json // to identify mismatched (orphaned) zones.
+```kql
+// ---------------------------------------------------------------
+// Azure Resource Graph: Orphaned DNS Zones (OrgNodeId Mismatch)
+// Run via: Search-AzGraph -Query ...
+// Use to identify zones whose OrgNodeId tag does not match any
+// active node in the OrgTree registry.
+// ---------------------------------------------------------------
+
+Resources
+| where type == "microsoft.network/privatednszones"
+| extend OrgNodeId = tostring(tags['OrgNodeId'])
+| where isnotempty(OrgNodeId)
+| project
+    ZoneName      = name,
+    ResourceGroup = resourceGroup,
+    OrgNodeId,
+    OrgPath = tostring(tags['OrgPath']),
+    MigrationPhase = tostring(tags['MigrationPhase'])
+| order by ZoneName asc
+// Post-process in PowerShell: compare OrgNodeId values against the
+// active node IDs from the governance repository registry.json
+// to identify mismatched (orphaned) zones.
+```
 
 ### Certificate-OrgPath Misalignment Detection
 
 The KQL query below joins device OrgPath values from the Entra ID audit log against certificate enrollment events from the Intune audit log to identify devices whose most recently enrolled certificate profile is associated with a different OrgPath node than their current OrgPath value. The query assumes the naming convention established in the OrgPath certificate profile assignment script: SCEP profile names contain the node ID as the final hyphen-delimited segment (e.g., CERT-SCEP-WIFI-FINANCE, where FINANCE is the node ID). Organizations using a different naming convention must adjust the CertNodeId extraction logic accordingly.
 
-// --------------------------------------------------------------- // Certificate Drift: Devices with Certificates Misaligned to OrgPath // Source: AuditLogs (Entra ID + Intune unified audit log) // Schedule: Weekly — alert when result count \> 0 // Severity: Medium (certificate coverage does not match current position) // Remediation: Re-run certificate profile assignment pipeline; the // device will receive a new SCEP certificate from the correct profile // on its next Intune check-in (typically within 8 hours). // --------------------------------------------------------------- // Step 1: Capture the most recent OrgPath value for each device // from Entra ID audit log device update events. let DeviceOrgPaths = AuditLogs \| where TimeGenerated \>= ago(14d) \| where Category == "Device" and OperationName == "Update device" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" \| extend DeviceId = tostring(TargetResources\[0\].id), OrgPath = tostring(Props.newValue) \| where isnotempty(OrgPath) \| summarize arg_max(TimeGenerated, OrgPath) by DeviceId \| project DeviceId, CurrentOrgPath = OrgPath; // Step 2: Capture the most recently enrolled certificate profile // for each device from the Intune certificate enrollment audit events. let CertEnrollments = AuditLogs \| where TimeGenerated \>= ago(30d) \| where OperationName == "Create deviceConfigurationDeviceStatus" \| extend DeviceId = tostring(TargetResources\[0\].id), ProfileName = tostring(TargetResources\[0\].displayName) \| where ProfileName startswith "CERT-" or ProfileName startswith "PKCS-" \| summarize LastCertProfile = arg_max(TimeGenerated, ProfileName) by DeviceId \| project DeviceId, LastCertProfile; // Step 3: Join and identify misaligned devices. // Naming convention: CERT-SCEP-{PURPOSE}-{NODEID} // Extract the NODEID as the last hyphen-delimited segment of the profile name. // Extract the OrgPath leaf node as the last slash-delimited segment. DeviceOrgPaths \| join kind=inner CertEnrollments on DeviceId \| extend CertNodeId = toupper(tostring(split(LastCertProfile, "-")\[-1\])), OrgNodeId = toupper(tostring(split(CurrentOrgPath, "/")\[-1\])) \| where CertNodeId != OrgNodeId \| extend RemediationAction = strcat( "Verify OrgPath branch group membership for device ", DeviceId, ". Re-run certificate profile assignment pipeline to issue new CERT-SCEP-\*-", OrgNodeId, " profile." ) \| project DeviceId, CurrentOrgPath, OrgNodeId, LastCertProfile, CertNodeId, RemediationAction \| order by CurrentOrgPath asc
+```kql
+// ---------------------------------------------------------------
+// Certificate Drift: Devices with Certificates Misaligned to OrgPath
+// Source: AuditLogs (Entra ID + Intune unified audit log)
+// Schedule: Weekly — alert when result count > 0
+// Severity: Medium (certificate coverage does not match current position)
+// Remediation: Re-run certificate profile assignment pipeline; the
+//   device will receive a new SCEP certificate from the correct profile
+//   on its next Intune check-in (typically within 8 hours).
+// ---------------------------------------------------------------
+
+// Step 1: Capture the most recent OrgPath value for each device
+//   from Entra ID audit log device update events.
+let DeviceOrgPaths = AuditLogs
+| where TimeGenerated >= ago(14d)
+| where Category == "Device" and OperationName == "Update device"
+| mv-expand Props = AdditionalDetails
+| where tostring(Props.displayName) contains "OrgPath"
+| extend
+    DeviceId = tostring(TargetResources[0].id),
+    OrgPath  = tostring(Props.newValue)
+| where isnotempty(OrgPath)
+| summarize arg_max(TimeGenerated, OrgPath) by DeviceId
+| project DeviceId, CurrentOrgPath = OrgPath;
+
+// Step 2: Capture the most recently enrolled certificate profile
+//   for each device from the Intune certificate enrollment audit events.
+let CertEnrollments = AuditLogs
+| where TimeGenerated >= ago(30d)
+| where OperationName == "Create deviceConfigurationDeviceStatus"
+| extend
+    DeviceId    = tostring(TargetResources[0].id),
+    ProfileName = tostring(TargetResources[0].displayName)
+| where ProfileName startswith "CERT-" or ProfileName startswith "PKCS-"
+| summarize LastCertProfile = arg_max(TimeGenerated, ProfileName) by DeviceId
+| project DeviceId, LastCertProfile;
+
+// Step 3: Join and identify misaligned devices.
+//   Naming convention: CERT-SCEP-{PURPOSE}-{NODEID}
+//   Extract the NODEID as the last hyphen-delimited segment of the profile name.
+//   Extract the OrgPath leaf node as the last slash-delimited segment.
+DeviceOrgPaths
+| join kind=inner CertEnrollments on DeviceId
+| extend
+    CertNodeId = toupper(tostring(split(LastCertProfile, "-")[-1])),
+    OrgNodeId  = toupper(tostring(split(CurrentOrgPath, "/")[-1]))
+| where CertNodeId != OrgNodeId
+| extend
+    RemediationAction = strcat(
+        "Verify OrgPath branch group membership for device ",
+        DeviceId,
+        ". Re-run certificate profile assignment pipeline to issue new CERT-SCEP-*-",
+        OrgNodeId,
+        " profile."
+    )
+| project
+    DeviceId,
+    CurrentOrgPath,
+    OrgNodeId,
+    LastCertProfile,
+    CertNodeId,
+    RemediationAction
+| order by CurrentOrgPath asc
+```
 
 ::: {.callout-note title="Remediation Pathway for Certificate-OrgPath Drift"}
 When a device appears in the certificate-OrgPath drift query, the remediation sequence is straightforward. First, confirm that the device's OrgPath value in Entra ID is correct and reflects an intentional move, not an erroneous attribute update. Second, verify that the correct SCEP profile for the device's new OrgPath node is assigned to the corresponding branch group. Third, trigger an Intune synchronization on the device (through the Intune admin center or via the Sync-MgDeviceManagementManagedDevice cmdlet). The device will evaluate its profile assignments on the next check-in and begin the SCEP enrollment process for the new profile. The old certificate remains valid until it expires — it is not revoked automatically. If the old certificate grants access to resources scoped to the device's former organizational segment, those resources should be reviewed to confirm that continued access by the migrated device is appropriate.
@@ -251,7 +1161,298 @@ Each dimension score is computed as a simple percentage: items in a resolved or 
 
 ### Readiness Score Calculation Script
 
-\#Requires -Version 5.1 \<# .SYNOPSIS Calculates and reports the Decommissioning Readiness Score for a specified domain controller. .DESCRIPTION Queries the governance repository registries, the Entra ID directory, and the Intune compliance data to compute a multi-dimensional readiness score for the target domain controller. Outputs a structured JSON report committed to the governance repository as a versioned assessment artifact, and writes a console summary. The readiness score is the arithmetic mean of five dimension scores: 1. Identity Migration Score 2. Dependency Resolution Score 3. DNS Migration Score 4. Certificate Migration Score (simplified: template coverage) 5. GPO Migration Score .PARAMETER TargetDC FQDN of the domain controller being evaluated. Example: "dc01.corp.contoso.com" \<-- substitute .PARAMETER DomainName DNS name of the domain the target DC serves. Example: "corp.contoso.com" \<-- substitute .PARAMETER RegistryBasePath Local path to the governance repository registries directory. Example: "C:\governance\registries" .PARAMETER OutputPath Directory path where the readiness report JSON will be written. Example: "C:\governance\reports\decommission" .PARAMETER AppId Application (client) ID of the Entra ID app registration used to construct the OrgPath extension attribute name. The extension attribute name is: extension\_{AppIdNoHyphens}\_OrgPath Example: "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" \<-- substitute .NOTES Required modules: Az, Microsoft.Graph, ActiveDirectory Run from a domain-joined management workstation. The executing account requires: - User.Read.All and Device.Read.All on Microsoft Graph - Read access to the governance repository registries \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$TargetDC = "dc01.corp.contoso.com", \# \<-- substitute \[Parameter(Mandatory = \$false)\] \[string\]\$DomainName = "corp.contoso.com", \# \<-- substitute \[Parameter(Mandatory = \$false)\] \[string\]\$RegistryBasePath = "C:\governance\registries", \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = "C:\governance\reports\decommission", \[Parameter(Mandatory = \$false)\] \[string\]\$AppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" \# \<-- substitute ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null Connect-MgGraph -Scopes "User.Read.All", "Device.Read.All" -NoWelcome \$report = @{ TargetDC = \$TargetDC Domain = \$DomainName AssessedAt = (Get-Date).ToUniversalTime().ToString("o") Scores = @{} Warnings = @() OverallReadinessScore = 0 ReadyToDecommission = \$false } \$appIdNoHyphens = \$AppId -replace '-', '' \$orgPathAttr = "extension\_\${appIdNoHyphens}\_OrgPath" \#region --- Score 1: Identity Migration ---------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring identity migration..." \$allUsers = Get-MgUser -All -Property "id,displayName,\$orgPathAttr" \$totalUsers = (\$allUsers \| Measure-Object).Count \$positioned = (\$allUsers \| Where-Object { \$\_.AdditionalProperties\[\$orgPathAttr\] -ne \$null -and \$\_.AdditionalProperties\[\$orgPathAttr\] -ne "" } \| Measure-Object).Count if (\$totalUsers -eq 0) { \$identityScore = 100 \$report.Warnings += "IdentityMigration: No user objects found — verify Graph permissions." } else { \$identityScore = \[math\]::Round((\$positioned / \$totalUsers) \* 100, 1) } \$report.Scores\["IdentityMigration"\] = @{ Score = \$identityScore Total = \$totalUsers Positioned = \$positioned Unpositioned = (\$totalUsers - \$positioned) Note = if (\$totalUsers -eq 0) { "Empty baseline" } else { \$null } } Write-Host " Identity Migration Score: \$identityScore%" \#endregion \#region --- Score 2: Dependency Resolution ------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring dependency resolution..." \$depMapPath = "\$RegistryBasePath\server\dependency-map.json" if (-not (Test-Path \$depMapPath)) { \$depScore = 100 \$report.Warnings += "DependencyResolution: dependency-map.json not found. " + "Run Part Five dependency mapping before scoring." } else { \$depRegistry = Get-Content \$depMapPath -Raw \| ConvertFrom-Json \$dcDeps = \$depRegistry.dependencies \| Where-Object { \$\_.Provider -eq \$TargetDC } \$totalDeps = \$dcDeps.Count \$resolvedDeps = (\$dcDeps \| Where-Object { \$\_.Status -eq "Resolved" }).Count if (\$totalDeps -eq 0) { \$depScore = 100 \$report.Warnings += "DependencyResolution: No dependencies recorded for \$TargetDC. " + "Confirm the dependency discovery pass has been completed." } else { \$depScore = \[math\]::Round((\$resolvedDeps / \$totalDeps) \* 100, 1) } \$report.Scores\["DependencyResolution"\] = @{ Score = \$depScore Total = \$totalDeps Resolved = \$resolvedDeps Pending = (\$totalDeps - \$resolvedDeps) } } Write-Host " Dependency Resolution Score: \$depScore%" \#endregion \#region --- Score 3: DNS Migration --------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring DNS migration..." \$ipamZonesPath = "\$RegistryBasePath\dns\ipam-dns-zones.json" if (-not (Test-Path \$ipamZonesPath)) { \$dnsScore = 0 \$report.Warnings += "DnsMigration: ipam-dns-zones.json not found. " + "Run IPAM export script before scoring." } else { \$ipamZones = Get-Content \$ipamZonesPath -Raw \| ConvertFrom-Json \| Where-Object { \$\_.ZoneCategory -ne "ReverseZone" } \# Forward zones only \$totalZones = \$ipamZones.Count \$migratedZones = (\$ipamZones \| Where-Object { \$\_.MigrationStatus -eq "Complete" }).Count if (\$totalZones -eq 0) { \$dnsScore = 100 \$report.Warnings += "DnsMigration: No forward zones found in IPAM export." } else { \$dnsScore = \[math\]::Round((\$migratedZones / \$totalZones) \* 100, 1) } \$report.Scores\["DnsMigration"\] = @{ Score = \$dnsScore Total = \$totalZones Migrated = \$migratedZones Pending = (\$totalZones - \$migratedZones) } } Write-Host " DNS Migration Score: \$dnsScore%" \#endregion \#region --- Score 4: Certificate Migration ------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring certificate migration..." \$certReportPath = "\$RegistryBasePath\\.\reports\pki\scep-strongmapping-compliance.json" if (-not (Test-Path \$certReportPath)) { \$certScore = 0 \$report.Warnings += "CertMigration: SCEP compliance report not found. " + "Run the strong mapping verification script first." } else { \$certReport = Get-Content \$certReportPath -Raw \| ConvertFrom-Json \$totalProfiles = \$certReport.Profiles.Count \$compliant = (\$certReport.Profiles \| Where-Object { \$\_.Compliant -eq \$true }).Count if (\$totalProfiles -eq 0) { \$certScore = 100 \$report.Warnings += "CertMigration: No SCEP profiles found in compliance report." } else { \$certScore = \[math\]::Round((\$compliant / \$totalProfiles) \* 100, 1) } \$report.Scores\["CertificateMigration"\] = @{ Score = \$certScore TotalProfiles = \$totalProfiles Compliant = \$compliant NonCompliant = (\$totalProfiles - \$compliant) } } Write-Host " Certificate Migration Score: \$certScore%" \#endregion \#region --- Score 5: GPO Migration --------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring GPO migration..." \$gpoMapPath = "\$RegistryBasePath\gpo\migration-map.json" if (-not (Test-Path \$gpoMapPath)) { \$gpoScore = 100 \$report.Warnings += "GpoMigration: gpo/migration-map.json not found — scored as 100% " + "with empty-baseline warning. Create the GPO migration map." } else { \$gpoMap = Get-Content \$gpoMapPath -Raw \| ConvertFrom-Json \$totalGpoSettings = (\$gpoMap.settings \| Measure-Object).Count \$deployedSettings = (\$gpoMap.settings \| Where-Object { \$\_.MigrationStatus -eq "Deployed" } \| Measure-Object).Count if (\$totalGpoSettings -eq 0) { \$gpoScore = 100 \$report.Warnings += "GpoMigration: No GPO settings found in migration map." } else { \$gpoScore = \[math\]::Round((\$deployedSettings / \$totalGpoSettings) \* 100, 1) } \$report.Scores\["GpoMigration"\] = @{ Score = \$gpoScore Total = \$totalGpoSettings Deployed = \$deployedSettings Pending = (\$totalGpoSettings - \$deployedSettings) } } Write-Host " GPO Migration Score: \$gpoScore%" \#endregion \#region --- Overall Score and Report ------------------------------------------- \$allDimensionScores = @(\$identityScore, \$depScore, \$dnsScore, \$certScore, \$gpoScore) \$overallScore = \[math\]::Round( (\$allDimensionScores \| Measure-Object -Average).Average, 1 ) \$report\["OverallReadinessScore"\] = \$overallScore \$report\["ReadyToDecommission"\] = (\$overallScore -eq 100 -and \$report.Warnings.Count -eq 0) \$safeDate = Get-Date -f 'yyyyMMdd' \$reportFileName = "\$(\$TargetDC -replace '\\', '-')-\$safeDate-readiness.json" \$reportFilePath = "\$OutputPath\\reportFileName" \$report \| ConvertTo-Json -Depth 10 \| Set-Content -Path \$reportFilePath -Encoding UTF8 Write-Host "" Write-Host "=== Decommissioning Readiness Report — \$TargetDC ===" Write-Host (" Identity Migration : " + \$identityScore + "%") Write-Host (" Dependency Resolution: " + \$depScore + "%") Write-Host (" DNS Migration : " + \$dnsScore + "%") Write-Host (" Certificate Migration: " + \$certScore + "%") Write-Host (" GPO Migration : " + \$gpoScore + "%") Write-Host (" ─────────────────────────────────────────") Write-Host (" OVERALL SCORE : " + \$overallScore + "%") Write-Host (" Safe to Decommission : " + \$report.ReadyToDecommission) if (\$report.Warnings.Count -gt 0) { Write-Host "" Write-Host " Warnings:" foreach (\$w in \$report.Warnings) { Write-Warning " \$w" } } Write-Host "" Write-Host " Report written: \$reportFilePath" Write-Host " Commit to governance repository before the weekly review meeting." Disconnect-MgGraph \#endregion
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Calculates and reports the Decommissioning Readiness Score for a
+    specified domain controller.
+
+.DESCRIPTION
+    Queries the governance repository registries, the Entra ID directory,
+    and the Intune compliance data to compute a multi-dimensional
+    readiness score for the target domain controller.
+
+    Outputs a structured JSON report committed to the governance repository
+    as a versioned assessment artifact, and writes a console summary.
+
+    The readiness score is the arithmetic mean of five dimension scores:
+      1. Identity Migration Score
+      2. Dependency Resolution Score
+      3. DNS Migration Score
+      4. Certificate Migration Score (simplified: template coverage)
+      5. GPO Migration Score
+
+.PARAMETER TargetDC
+    FQDN of the domain controller being evaluated.
+    Example: "dc01.corp.contoso.com"    <-- substitute
+
+.PARAMETER DomainName
+    DNS name of the domain the target DC serves.
+    Example: "corp.contoso.com"         <-- substitute
+
+.PARAMETER RegistryBasePath
+    Local path to the governance repository registries directory.
+    Example: "C:\governance\registries"
+
+.PARAMETER OutputPath
+    Directory path where the readiness report JSON will be written.
+    Example: "C:\governance\reports\decommission"
+
+.PARAMETER AppId
+    Application (client) ID of the Entra ID app registration used to
+    construct the OrgPath extension attribute name.
+    The extension attribute name is: extension_{AppIdNoHyphens}_OrgPath
+    Example: "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"   <-- substitute
+
+.NOTES
+    Required modules: Az, Microsoft.Graph, ActiveDirectory
+    Run from a domain-joined management workstation.
+    The executing account requires:
+      - User.Read.All and Device.Read.All on Microsoft Graph
+      - Read access to the governance repository registries
+#>
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$TargetDC = "dc01.corp.contoso.com",           # <-- substitute
+
+    [Parameter(Mandatory = $false)]
+    [string]$DomainName = "corp.contoso.com",              # <-- substitute
+
+    [Parameter(Mandatory = $false)]
+    [string]$RegistryBasePath = "C:\governance\registries",
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputPath = "C:\governance\reports\decommission",
+
+    [Parameter(Mandatory = $false)]
+    [string]$AppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"  # <-- substitute
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+
+Connect-MgGraph -Scopes "User.Read.All", "Device.Read.All" -NoWelcome
+
+$report = @{
+    TargetDC            = $TargetDC
+    Domain              = $DomainName
+    AssessedAt          = (Get-Date).ToUniversalTime().ToString("o")
+    Scores              = @{}
+    Warnings            = @()
+    OverallReadinessScore = 0
+    ReadyToDecommission = $false
+}
+
+$appIdNoHyphens = $AppId -replace '-', ''
+$orgPathAttr    = "extension_${appIdNoHyphens}_OrgPath"
+
+#region --- Score 1: Identity Migration ----------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Scoring identity migration..."
+
+$allUsers    = Get-MgUser -All -Property "id,displayName,$orgPathAttr"
+$totalUsers  = ($allUsers | Measure-Object).Count
+$positioned  = ($allUsers | Where-Object {
+    $_.AdditionalProperties[$orgPathAttr] -ne $null -and
+    $_.AdditionalProperties[$orgPathAttr] -ne ""
+} | Measure-Object).Count
+
+if ($totalUsers -eq 0) {
+    $identityScore = 100
+    $report.Warnings += "IdentityMigration: No user objects found — verify Graph permissions."
+} else {
+    $identityScore = [math]::Round(($positioned / $totalUsers) * 100, 1)
+}
+
+$report.Scores["IdentityMigration"] = @{
+    Score        = $identityScore
+    Total        = $totalUsers
+    Positioned   = $positioned
+    Unpositioned = ($totalUsers - $positioned)
+    Note         = if ($totalUsers -eq 0) { "Empty baseline" } else { $null }
+}
+Write-Host "  Identity Migration Score: $identityScore%"
+
+#endregion
+
+#region --- Score 2: Dependency Resolution -------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Scoring dependency resolution..."
+
+$depMapPath = "$RegistryBasePath\server\dependency-map.json"
+if (-not (Test-Path $depMapPath)) {
+    $depScore = 100
+    $report.Warnings += "DependencyResolution: dependency-map.json not found. " +
+                        "Run Part Five dependency mapping before scoring."
+} else {
+    $depRegistry  = Get-Content $depMapPath -Raw | ConvertFrom-Json
+    $dcDeps       = $depRegistry.dependencies | Where-Object {
+        $_.Provider -eq $TargetDC
+    }
+    $totalDeps    = $dcDeps.Count
+    $resolvedDeps = ($dcDeps | Where-Object { $_.Status -eq "Resolved" }).Count
+
+    if ($totalDeps -eq 0) {
+        $depScore = 100
+        $report.Warnings += "DependencyResolution: No dependencies recorded for $TargetDC. " +
+                            "Confirm the dependency discovery pass has been completed."
+    } else {
+        $depScore = [math]::Round(($resolvedDeps / $totalDeps) * 100, 1)
+    }
+
+    $report.Scores["DependencyResolution"] = @{
+        Score    = $depScore
+        Total    = $totalDeps
+        Resolved = $resolvedDeps
+        Pending  = ($totalDeps - $resolvedDeps)
+    }
+}
+Write-Host "  Dependency Resolution Score: $depScore%"
+
+#endregion
+
+#region --- Score 3: DNS Migration ---------------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Scoring DNS migration..."
+
+$ipamZonesPath = "$RegistryBasePath\dns\ipam-dns-zones.json"
+if (-not (Test-Path $ipamZonesPath)) {
+    $dnsScore = 0
+    $report.Warnings += "DnsMigration: ipam-dns-zones.json not found. " +
+                        "Run IPAM export script before scoring."
+} else {
+    $ipamZones = Get-Content $ipamZonesPath -Raw | ConvertFrom-Json |
+        Where-Object { $_.ZoneCategory -ne "ReverseZone" }   # Forward zones only
+
+    $totalZones    = $ipamZones.Count
+    $migratedZones = ($ipamZones | Where-Object {
+        $_.MigrationStatus -eq "Complete"
+    }).Count
+
+    if ($totalZones -eq 0) {
+        $dnsScore = 100
+        $report.Warnings += "DnsMigration: No forward zones found in IPAM export."
+    } else {
+        $dnsScore = [math]::Round(($migratedZones / $totalZones) * 100, 1)
+    }
+
+    $report.Scores["DnsMigration"] = @{
+        Score    = $dnsScore
+        Total    = $totalZones
+        Migrated = $migratedZones
+        Pending  = ($totalZones - $migratedZones)
+    }
+}
+Write-Host "  DNS Migration Score: $dnsScore%"
+
+#endregion
+
+#region --- Score 4: Certificate Migration -------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Scoring certificate migration..."
+
+$certReportPath = "$RegistryBasePath\..\reports\pki\scep-strongmapping-compliance.json"
+if (-not (Test-Path $certReportPath)) {
+    $certScore = 0
+    $report.Warnings += "CertMigration: SCEP compliance report not found. " +
+                        "Run the strong mapping verification script first."
+} else {
+    $certReport    = Get-Content $certReportPath -Raw | ConvertFrom-Json
+    $totalProfiles = $certReport.Profiles.Count
+    $compliant     = ($certReport.Profiles | Where-Object { $_.Compliant -eq $true }).Count
+
+    if ($totalProfiles -eq 0) {
+        $certScore = 100
+        $report.Warnings += "CertMigration: No SCEP profiles found in compliance report."
+    } else {
+        $certScore = [math]::Round(($compliant / $totalProfiles) * 100, 1)
+    }
+
+    $report.Scores["CertificateMigration"] = @{
+        Score         = $certScore
+        TotalProfiles = $totalProfiles
+        Compliant     = $compliant
+        NonCompliant  = ($totalProfiles - $compliant)
+    }
+}
+Write-Host "  Certificate Migration Score: $certScore%"
+
+#endregion
+
+#region --- Score 5: GPO Migration ---------------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Scoring GPO migration..."
+
+$gpoMapPath = "$RegistryBasePath\gpo\migration-map.json"
+if (-not (Test-Path $gpoMapPath)) {
+    $gpoScore = 100
+    $report.Warnings += "GpoMigration: gpo/migration-map.json not found — scored as 100% " +
+                        "with empty-baseline warning. Create the GPO migration map."
+} else {
+    $gpoMap      = Get-Content $gpoMapPath -Raw | ConvertFrom-Json
+    $totalGpoSettings = ($gpoMap.settings | Measure-Object).Count
+    $deployedSettings = ($gpoMap.settings | Where-Object {
+        $_.MigrationStatus -eq "Deployed"
+    } | Measure-Object).Count
+
+    if ($totalGpoSettings -eq 0) {
+        $gpoScore = 100
+        $report.Warnings += "GpoMigration: No GPO settings found in migration map."
+    } else {
+        $gpoScore = [math]::Round(($deployedSettings / $totalGpoSettings) * 100, 1)
+    }
+
+    $report.Scores["GpoMigration"] = @{
+        Score    = $gpoScore
+        Total    = $totalGpoSettings
+        Deployed = $deployedSettings
+        Pending  = ($totalGpoSettings - $deployedSettings)
+    }
+}
+Write-Host "  GPO Migration Score: $gpoScore%"
+
+#endregion
+
+#region --- Overall Score and Report -------------------------------------------
+
+$allDimensionScores = @($identityScore, $depScore, $dnsScore, $certScore, $gpoScore)
+$overallScore = [math]::Round(
+    ($allDimensionScores | Measure-Object -Average).Average, 1
+)
+
+$report["OverallReadinessScore"] = $overallScore
+$report["ReadyToDecommission"]   = ($overallScore -eq 100 -and $report.Warnings.Count -eq 0)
+
+$safeDate = Get-Date -f 'yyyyMMdd'
+$reportFileName = "$($TargetDC -replace '\.', '-')-$safeDate-readiness.json"
+$reportFilePath = "$OutputPath\$reportFileName"
+
+$report | ConvertTo-Json -Depth 10 |
+    Set-Content -Path $reportFilePath -Encoding UTF8
+
+Write-Host ""
+Write-Host "=== Decommissioning Readiness Report — $TargetDC ==="
+Write-Host ("  Identity Migration   : " + $identityScore + "%")
+Write-Host ("  Dependency Resolution: " + $depScore + "%")
+Write-Host ("  DNS Migration        : " + $dnsScore + "%")
+Write-Host ("  Certificate Migration: " + $certScore + "%")
+Write-Host ("  GPO Migration        : " + $gpoScore + "%")
+Write-Host ("  ─────────────────────────────────────────")
+Write-Host ("  OVERALL SCORE        : " + $overallScore + "%")
+Write-Host ("  Safe to Decommission : " + $report.ReadyToDecommission)
+
+if ($report.Warnings.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  Warnings:"
+    foreach ($w in $report.Warnings) { Write-Warning "    $w" }
+}
+
+Write-Host ""
+Write-Host "  Report written: $reportFilePath"
+Write-Host "  Commit to governance repository before the weekly review meeting."
+
+Disconnect-MgGraph
+
+#endregion
+```
 
 ### Operational Use of the Score
 
