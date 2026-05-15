@@ -205,6 +205,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | [ADR-064](adr-064-drift-schema-slot-occupied-subclass.md) | DRIFT-SCHEMA::slot-occupied — Sub-class for Pre-existing Non-OrgPath Values | ACCEPTED | 2026-05-11 |
 | [ADR-065](adr-065-hrit-productization-mission.md) | HRIT Single-ATO Productization as v0.6.0 Mission Theme (renumbered from ADR-058) | ACCEPTED | 2026-05-11 |
 | [ADR-066](adr-066-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane (renumbered from ADR-057) | PROPOSED | 2026-05-05 |
+| [ADR-070](adr-070-foundational-primacy-charter-tier.md) | Foundational Primacy — Charter Tier and Amendment Process | ACCEPTED | 2026-05-15 |
 
 ### Known frontmatter inconsistencies (deferred for separate cleanup)
 
