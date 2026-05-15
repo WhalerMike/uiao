@@ -27,34 +27,7 @@ The migration from Active Directory to the Microsoft cloud stack is not, as it i
 
 Entra ID does not know what Intune knows about a device's organizational assignment. Intune does not know what Azure Arc knows about a server's on-premises heritage. Azure Policy does not know what Entra ID Governance knows about a user's lifecycle state. Azure DNS does not know what AD-integrated DNS knew about the organizational context of the machines that registered records in it. Microsoft Cloud PKI does not know what AD CS knew about the certificate templates that were appropriate for a given organizational unit's machines. The Defender products each see a slice of the environment and generate intelligence within that slice, but the correlation of that intelligence across slices requires custom integration work that does not exist natively in any of the products. This is the architecture of the Microsoft cloud identity and governance stack as it actually exists — not as a unified platform, but as a collection of individually capable point tools that do not inherit from one another and do not share a structural model of the organization they govern.
 
-```{mermaid}
-graph TB
-    subgraph "On-prem: one unified substrate"
-        AD["Active Directory<br/>OU tree + GPO + Kerberos + AD-integrated DNS + ADCS + LDAP"]
-        OUT1["Organizational position<br/>(DN expresses lineage)"]
-        OUT2["Policy inheritance<br/>(GPO flows down OU tree)"]
-        OUT3["Delegated authority<br/>(ACL on container, inherited)"]
-        OUT4["Dependency graph<br/>(LDAP traversal)"]
-        AD --> OUT1
-        AD --> OUT2
-        AD --> OUT3
-        AD --> OUT4
-    end
-    subgraph "Cloud: decomposed point tools, no shared substrate"
-        ENTRA["Entra ID<br/>(flat directory)"]
-        INTUNE["Intune<br/>(group-based targeting)"]
-        ARC["Azure Arc<br/>(ARM control plane)"]
-        DNS["Azure DNS"]
-        PKI["Microsoft Cloud PKI"]
-        DEF["Defender suite<br/>(siloed signals)"]
-    end
-    AD -.->|"cloud migration decomposes into"| ENTRA
-    AD -.-> INTUNE
-    AD -.-> ARC
-    AD -.-> DNS
-    AD -.-> PKI
-    AD -.-> DEF
-```
+[DIAGRAM-01: Side-by-side comparison diagram. Left panel labeled "On-prem: one unified substrate" centers on a single Active Directory box (OU tree + GPO + Kerberos + AD-integrated DNS + ADCS + LDAP) with four downward arrows to outputs: Organizational position (DN expresses lineage), Policy inheritance (GPO flows down OU tree), Delegated authority (ACL on container, inherited), Dependency graph (LDAP traversal). Right panel labeled "Cloud: decomposed point tools, no shared substrate" shows six disconnected boxes with no connecting lines between them: Entra ID (flat directory), Intune (group-based targeting), Azure Arc (ARM control plane), Azure DNS, Microsoft Cloud PKI, Defender suite (siloed signals). Six dashed arrows fan out from the left-panel AD box to each of the six cloud boxes, labeled "cloud migration decomposes into" on the topmost arrow only. Engineering blueprint style, neutral slate background with federal navy (#1F3A5F) for AD and teal (#1A9E8F) for cloud boxes, no human figures, 16:9 landscape.]
 
 ### The Governance Questions That Cannot Be Answered Without Custom Engineering
 

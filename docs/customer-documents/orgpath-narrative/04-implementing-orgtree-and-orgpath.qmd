@@ -19,38 +19,7 @@ This document describes how to build OrgTree and OrgPath. The proposal in Part T
 
 The implementation proceeds in three broad stages. The first stage is assessment. Assessment captures the current state of the Active Directory environment and produces the raw material from which the initial OrgTree is derived. It is not a bureaucratic formality — it is the foundation on which the entire construction depends. An OrgTree built without a rigorous assessment of the existing directory will misrepresent the organization's actual governance boundaries, and that misrepresentation will propagate through every subsequent stage, producing invalid OrgPath values, misconfigured policy groups, and a governance model that the engineering team will spend months correcting after the fact. The second stage is construction. Construction builds the OrgTree registry, registers the OrgPath directory schema extensions, populates the initial attribute values across the user and device object populations, and establishes the dynamic group library that translates OrgPath values into policy-targetable group memberships. The third stage is operations. Operations puts the drift detection pipeline, the automation layer, and the version-controlled governance record into steady-state production — the running configuration that maintains the model's accuracy over time as the organization changes. None of these stages can be skipped, and they cannot be run out of order. The assessment produces the data the construction depends on. The construction produces the substrate the operations layer maintains. This document works through all three in sequence.
 
-```{mermaid}
-graph LR
-    subgraph "Stage 1: Assessment"
-        A1["AD forest + OU + GPO + DNS + PKI inventory"]
-        A2["Org chart from authoritative source"]
-        A3["Dependency + ACL data<br/>(BloodHound, ADRecon, PingCastle)"]
-    end
-    subgraph "Stage 2: Construction"
-        B1["OrgTree registry<br/>YAML in Git"]
-        B2["Schema extensions<br/>OrgPath, OrgNodeId, OrgDepth, OrgLastValidated"]
-        B3["OrgPath stamped on users + devices + Arc tags"]
-        B4["Dynamic group library<br/>ORG-NODE-* / ORG-BRANCH-*"]
-    end
-    subgraph "Stage 3: Operations (steady state)"
-        C1["Drift detection<br/>(scheduled + event-driven)"]
-        C2["OrgTree change PR -> propagation"]
-        C3["Dependency map maintenance"]
-        C4["Version-controlled governance record"]
-    end
-    A1 --> B1
-    A2 --> B1
-    A3 --> B1
-    B1 --> B2
-    B2 --> B3
-    B1 --> B4
-    B3 --> C1
-    B4 --> C1
-    B1 --> C2
-    C2 --> B3
-    C1 --> C4
-    C3 --> C4
-```
+[DIAGRAM-01: Left-to-right pipeline diagram with three labeled sequential phases. Stage 1 "Assessment" contains three input boxes: AD forest + OU + GPO + DNS + PKI inventory; Org chart from authoritative source; Dependency + ACL data (BloodHound, ADRecon, PingCastle). Stage 2 "Construction" contains four boxes: OrgTree registry (YAML in Git); Schema extensions (OrgPath, OrgNodeId, OrgDepth, OrgLastValidated); OrgPath stamped on users + devices + Arc tags; Dynamic group library (ORG-NODE-* / ORG-BRANCH-*). Stage 3 "Operations (steady state)" contains four boxes: Drift detection (scheduled + event-driven); OrgTree change PR → propagation; Dependency map maintenance; Version-controlled governance record. All three Assessment boxes converge into the OrgTree registry box in Stage 2. Stage 2 internal flow: registry → schema extensions → stamped attribute, and registry → dynamic group library. Stage 2 outputs (stamped attribute, group library) feed Stage 3's drift detection. Stage 3 OrgTree change PR loops back to Stage 2 to update the stamped attribute. Drift detection and dependency map maintenance both terminate at the version-controlled governance record. Engineering blueprint style, neutral slate, federal navy (#1F3A5F) for stage frames, 16:9 landscape.]
 
 Before any implementation work begins, three conditions must be in place. The first is intellectual: the engineering team must have read and internalized the full content of Parts One, Two, and Three of this series. This is not a formality. The implementation decisions made throughout this document are traceable to the requirements established in Part Two and the design choices resolved in Part Three. A team that begins implementation without that context will encounter decision points — about node naming conventions, about which OUs to promote into the OrgTree, about how to handle synchronized versus cloud-only objects, about what to do with users whose AD organizational placement is ambiguous — and will make those decisions inconsistently, without the benefit of the reasoning that went into the design. The implementation will still proceed, but it will accumulate technical debt at every ambiguous decision point, and that debt will compound. The investment in reading the prior parts pays back immediately.
 
@@ -268,32 +237,7 @@ In a mature Active Directory environment that has been synchronized to Entra ID 
 
 ### Pipeline Architecture: The Four Stages
 
-```{mermaid}
-graph LR
-    CONFIG["pipeline/config.json<br/>OrgTree path, ext-attr names, Graph creds"]
-    subgraph "Extract"
-        E1["Read OrgTree YAML<br/>build path + OU mapping tables"]
-        E2["GET /v1.0/users + /devices<br/>with extension attrs, paginated"]
-    end
-    subgraph "Transform"
-        T1["Per object: derive OrgPath<br/>from DN (sync) or department/company (cloud)"]
-        T2["Validate against registry<br/>reject if no mapped ancestor"]
-    end
-    subgraph "Load"
-        L1["Diff: skip confirmed assignments<br/>queue new assignments"]
-        L2["POST /v1.0/$batch<br/>(20 PATCH per batch, retry on 429)"]
-    end
-    subgraph "Audit"
-        AU["etl-report-{ts}.json<br/>counts, unmapped UPNs, errors<br/>committed to pipeline-reports/etl/"]
-    end
-    CONFIG --> E1
-    E1 --> E2
-    E2 --> T1
-    T1 --> T2
-    T2 --> L1
-    L1 --> L2
-    L2 --> AU
-```
+[DIAGRAM-02: Left-to-right four-stage ETL pipeline diagram. A leading config box on the far left labeled "pipeline/config.json (OrgTree path, ext-attr names, Graph creds)" feeds into the first stage. Four labeled stages follow sequentially: Extract (two boxes — Read OrgTree YAML to build path + OU mapping tables; GET /v1.0/users + /devices with extension attrs, paginated); Transform (two boxes — Per object: derive OrgPath from DN for sync or department/company for cloud; Validate against registry, reject if no mapped ancestor); Load (two boxes — Diff: skip confirmed assignments, queue new assignments; POST /v1.0/$batch — 20 PATCH per batch, retry on 429); Audit (one box — etl-report-{ts}.json with counts, unmapped UPNs, errors, committed to pipeline-reports/etl/). Single solid arrow connects each box to the next, advancing through the four stages. Engineering blueprint style, monospace API paths and filenames, neutral slate, federal navy (#1F3A5F) and teal (#1A9E8F) accents, 16:9 landscape.]
 
 The ETL pipeline is a PowerShell script named Invoke-OrgPathETL.ps1 that reads all of its configuration from a JSON file at pipeline/config.json and executes in four sequential stages. The configuration file records the OrgTree registry path, the schema extension application id, the registered names of all four extension attributes, the Graph API authentication parameters, the maximum batch size for Graph API batch requests, the retry parameters for throttle handling, and the path to the output directory for the audit report.
 
