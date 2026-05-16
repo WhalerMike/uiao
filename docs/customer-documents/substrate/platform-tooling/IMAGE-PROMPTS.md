@@ -85,30 +85,28 @@ on white, no human figures.
 
 **Aspect:** 1600×600 (landscape)
 
-**Generator:** `mermaid-cli@11.12.0` (rendered, not generative — see
-"Generation notes" below for the regen recipe).
+**Generator:** Gemini 2.5 Flash Image ("Nano Banana") via
+`scripts/generate_images.py`.
 
-**Source mermaid:**
+**Prompt:**
 
-```mermaid
-flowchart LR
-  Canon["Canon YAML<br/>(src/uiao/canon/)"]
-  OSCAL["generate ssp /<br/>oscal validate"]
-  Visuals["generate visuals /<br/>diagrams / gemini"]
-  Artifacts["generate docx /<br/>pptx / artifacts"]
-  Adapter["adapter run /<br/>run-scuba"]
-  IR["ir scuba-transform /<br/>evidence-bundle / ..."]
-  ConMon["conmon process /<br/>export-oa / dashboard"]
-  Audit["ir auditor-bundle /<br/>evidence graph"]
-  Canon --> OSCAL --> Visuals --> Artifacts
-  Canon --> Adapter --> IR --> ConMon
-  IR --> Audit
-  Artifacts --> Audit
-  classDef canon fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
-  classDef stage fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
-  class Canon canon;
-  class OSCAL,Visuals,Artifacts,Adapter,IR,ConMon,Audit stage;
-```
+> A horizontal engineering-blueprint diagram, left-to-right flow, dark
+> navy `#0D1B2E` and teal `#1E8C8C` palette on white. Single root box
+> on the left, dark navy with white monospace text:
+> `Canon YAML (src/uiao/canon/)`. From the canon box, two parallel
+> arrows fan rightward into two horizontal tracks. **Top track (four
+> teal boxes left-to-right with arrows between each):**
+> `generate ssp / oscal validate` → `generate visuals / diagrams /
+> gemini` → `generate docx / pptx / artifacts`. **Bottom track (four
+> teal boxes left-to-right with arrows between each):**
+> `adapter run / run-scuba` → `ir scuba-transform / evidence-bundle /
+> ...` → `conmon process / export-oa / dashboard`. A final terminal
+> teal box on the right labelled `ir auditor-bundle / evidence graph`
+> receives convergence arrows from both the top-track terminal
+> (`generate docx / pptx / artifacts`) and the IR box on the bottom
+> track. Every label rendered in monospace. Clean white background,
+> no gradients, no human figures, no vendor logos. Engineering-blueprint
+> aesthetic.
 
 **`fig-alt`:** Pipeline overview: Canon YAML branches into two parallel
 tracks. Top: generate ssp/oscal validate → generate visuals/diagrams/gemini
@@ -126,32 +124,24 @@ tracks converge into ir auditor-bundle/evidence graph.
 
 **Aspect:** 1600×600 (landscape)
 
-**Generator:** `mermaid-cli@11.12.0`.
+**Generator:** Gemini 2.5 Flash Image ("Nano Banana") via
+`scripts/generate_images.py`.
 
-**Source mermaid:**
+**Prompt:**
 
-```mermaid
-flowchart LR
-  Scuba["adapter run-scuba<br/>(normalized JSON)"]
-  Trans["ir scuba-transform"]
-  Bundle["ir evidence-bundle"]
-  Poam["ir poam-export"]
-  Drift["ir drift-detect /<br/>ir diff"]
-  Gov["ir governance-report"]
-  SSP["ir ssp-report"]
-  Audit["ir auditor-bundle"]
-  Fresh["ir freshness /<br/>ir dashboard"]
-  Scuba --> Trans --> Bundle
-  Bundle --> Poam
-  Bundle --> Drift
-  Bundle --> Gov --> SSP
-  Bundle --> Audit
-  Bundle --> Fresh
-  classDef ir fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
-  classDef sink fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
-  class Trans,Bundle,Poam,Drift,Gov,SSP,Audit,Fresh ir;
-  class Scuba sink;
-```
+> A horizontal engineering-blueprint diagram, left-to-right fan-out
+> flow, dark navy `#0D1B2E` and teal `#1E8C8C` palette on white. On
+> the left, a single dark-navy source box with white monospace text:
+> `adapter run-scuba (normalized JSON)`. An arrow leads right to a
+> teal box `ir scuba-transform`. Another arrow leads from there to a
+> central teal box `ir evidence-bundle`. From `ir evidence-bundle`,
+> six fan-out arrows lead rightward to six terminal teal boxes
+> arranged vertically: `ir poam-export`; `ir drift-detect / ir diff`;
+> `ir governance-report` → (sequential arrow continues to)
+> `ir ssp-report`; `ir auditor-bundle`; `ir freshness / ir dashboard`.
+> Every label rendered in monospace. Clean white background, no
+> gradients, no human figures, no vendor logos. Engineering-blueprint
+> aesthetic.
 
 **`fig-alt`:** IR pipeline: adapter run-scuba produces normalized JSON,
 which feeds ir scuba-transform, which produces ir evidence-bundle. The
@@ -169,28 +159,29 @@ ir auditor-bundle, and ir freshness/ir dashboard.
 
 **Aspect:** 1200×1000 (portrait)
 
-**Generator:** `mermaid-cli@11.12.0`.
+**Generator:** Gemini 2.5 Flash Image ("Nano Banana") via
+`scripts/generate_images.py`.
 
-**Source mermaid:**
+**Prompt:**
 
-```mermaid
-flowchart TD
-  A[Canon YAML SSOT] --> B[Core OSCAL Generation]
-  B --> C[Visual Rendering]
-  C --> D[Artifact Packaging]
-  D --> E[Continuous Monitoring]
-  A --> F[Adapter Ingestion]
-  F --> G[IR Pipeline]
-  G --> H[Governance Reporting]
-  H --> I[Auditor Delivery]
-  E --> I
-  classDef canon fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
-  classDef stage fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
-  classDef sink fill:#C74040,color:#fff,stroke:#C74040;
-  class A canon;
-  class B,C,D,E,F,G,H stage;
-  class I sink;
-```
+> A vertical engineering-blueprint diagram, top-down flow with two
+> parallel streams converging into a single auditor sink, dark navy
+> `#0D1B2E`, teal `#1E8C8C`, and red `#C74040` palette on white. At
+> the top center, a single dark-navy root box with white text:
+> `Canon YAML SSOT`. From the root, two arrows fan downward to two
+> parallel vertical stream-heads. **Left stream (four teal boxes
+> stacked top-to-bottom with arrows between each):** `Core OSCAL
+> Generation` → `Visual Rendering` → `Artifact Packaging` →
+> `Continuous Monitoring`. **Right stream (three teal boxes stacked
+> top-to-bottom with arrows between each):** `Adapter Ingestion` →
+> `IR Pipeline` → `Governance Reporting`. At the bottom center, a
+> single red sink box with white text: `Auditor Delivery`. The
+> terminal of the left stream (`Continuous Monitoring`) and the
+> terminal of the right stream (`Governance Reporting`) both
+> connect via convergence arrows into the red Auditor Delivery box.
+> Every label rendered in clean sans-serif; box outlines crisp;
+> arrows thin and unambiguous. Clean white background, no gradients,
+> no human figures, no vendor logos. Engineering-blueprint aesthetic.
 
 **`fig-alt`:** Full pipeline architecture, top-down. Canon YAML SSOT
 branches into two streams. Stream one: Core OSCAL Generation → Visual
@@ -202,17 +193,16 @@ converge into Auditor Delivery at the bottom.
 
 ## Generation notes
 
-- **Why pre-rendered, not inline `{mermaid}`.** GitHub Actions DOCX
-  render hangs on inline mermaid blocks because `mermaid-cli` requires
-  a headless Chromium that the runner does not provide. Pre-rendering
-  the PNGs locally with `mmdc` and embedding them with `![]()` makes
-  the DOCX pipeline deterministic and self-contained.
-- **Regenerating an IMAGE-0N PNG.** Save the source mermaid block above
-  to a temporary `.mmd` file and run:
-  `mmdc -i <source>.mmd -o images/<name>.png -b white -w <W> -H <H>`
-  using the aspect dimensions listed for that image. Then update the
-  `sha256` field in the matching `.png.json` sidecar.
-- IMAGE-01 (hero) is the only Gemini-generated figure on this page;
-  IMAGE-02, IMAGE-03, IMAGE-04 are mermaid-rendered diagrams.
+- **Single generator.** All four figures on this page are generated
+  by Gemini 2.5 Flash Image ("Nano Banana") via
+  `scripts/generate_images.py`. Mermaid is not used anywhere in the
+  authored diagram surface (see AGENTS.md §"Operating principles" #7).
+- **Regenerating an IMAGE-0N PNG.** Edit the **Prompt** block above,
+  then run `python scripts/generate_images.py` (with `GEMINI_API_KEY`
+  exported), or trigger the `Image generation pipeline` workflow
+  (`workflow_dispatch`, `dry_run=false`). The generator computes a
+  SHA-256 of the prompt block; an unchanged prompt hits the cache and
+  reuses the existing PNG, while a changed prompt regenerates and
+  updates the `.png.json` sidecar deterministically.
 - CI link-check tolerates missing images under `images/` by convention
   (see `.lycheeignore`).
