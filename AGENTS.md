@@ -39,6 +39,7 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 4. **Schema-first governance** — five JSON Schemas under `src/uiao/schemas/` validate every registry, manifest, and frontmatter edit in CI.
 5. **Drift is explicit** — five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in [`docs/docs/16_DriftDetectionStandard.qmd`](docs/docs/16_DriftDetectionStandard.qmd).
 6. **Version isolation** — no references to any previous version in active canon context; ADRs are append-only with supersession markers.
+7. **Diagram source of truth — Gemini Nano Banana, not Mermaid.** Authored documents (`.md` / `.qmd`) **must not** introduce new ```` ```mermaid ```` fenced code blocks. New diagrams are expressed as `[DIAGRAM-NN: <prompt>]` or `[IMAGE-NN: <prompt>]` placeholders harvested by `scripts/generate_images.py` and rendered via the Gemini 2.5 Flash Image ("Nano Banana") pipeline in `.github/workflows/image-gen.yml`. Canonical reuse uses `[IMAGE-REF: UIAO-FIG-NNN]`. Existing Mermaid blocks are progressively swapped to placeholders per the established pattern (see commit `beb60fd`). The `uiao.generators.mermaid` module is retained only for rendering pre-existing blocks during the migration window — not for authoring new ones.
 
 ## Key artifacts
 
