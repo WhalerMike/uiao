@@ -5,7 +5,7 @@
 .DESCRIPTION
     Resolves input/output paths, creates the output directory when absent,
     and delegates to:
-        python -m uiao_core.cli ksi evaluate --ir <ir> --out <out> [--config <cfg>]
+        python -m uiao.cli.app ksi evaluate --ir <ir> --out <out> [--config <cfg>]
 
     Mirrors the structure of uiao-scuba-to-ir.ps1 (Plane 1).
 
@@ -81,7 +81,7 @@ if (-not (Test-Path $OutputRoot)) {
 # Build argument list
 # ---------------------------------------------------------------------------
 $arguments = @(
-    "-m", "uiao_core.cli",
+    "-m", "uiao.cli.app",
     "ksi", "evaluate",
     "--ir",  $irPath,
     "--out", $outPath

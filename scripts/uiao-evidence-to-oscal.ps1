@@ -5,7 +5,7 @@
 .DESCRIPTION
     Resolves input/output paths, validates the evidence bundle exists,
     creates the output directory when absent, and delegates to:
-        python -m uiao_core.cli oscal generate --evidence <dir> --output <dir> [--config <cfg>]
+        python -m uiao.cli.app oscal generate --evidence <dir> --output <dir> [--config <cfg>]
 
     Mirrors the structure of uiao-ksi-to-evidence.ps1 (Plane 3).
 
@@ -96,7 +96,7 @@ if (-not (Test-Path $outputDir)) {
 # Build argument list
 # ---------------------------------------------------------------------------
 $arguments = @(
-    "-m", "uiao_core.cli",
+    "-m", "uiao.cli.app",
     "oscal", "generate",
     "--evidence", $evidenceDir,
     "--output",   $outputDir

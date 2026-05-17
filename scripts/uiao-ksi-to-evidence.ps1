@@ -5,7 +5,7 @@
 .DESCRIPTION
     Resolves input/output paths, creates the output directory when absent,
     and delegates to:
-        python -m uiao_core.cli evidence build --input <ksi> --output <dir> [--config <cfg>]
+        python -m uiao.cli.app evidence build --input <ksi> --output <dir> [--config <cfg>]
 
     Mirrors the structure of uiao-ir-to-ksi.ps1 (Plane 2).
 
@@ -87,7 +87,7 @@ if (-not (Test-Path $bundleDir)) {
 # Build argument list
 # ---------------------------------------------------------------------------
 $arguments = @(
-    "-m", "uiao_core.cli",
+    "-m", "uiao.cli.app",
     "evidence", "build",
     "--input",  $ksiPath,
     "--output", $bundleDir
