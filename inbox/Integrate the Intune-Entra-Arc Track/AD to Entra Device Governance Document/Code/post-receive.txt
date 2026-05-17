@@ -1,0 +1,159 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    UIAO Git Post-Receive Hook — Audit Logging and Webhook Trigger
+.DESCRIPTION
+    Runs on the Gitea server after a push is accepted. Performs:
+    1. Audit Logging — Records every push with timestamp, user, ref, and commit range
+    2. Webhook Trigger — Notifies configured endpoints of governance-relevant changes
+    3. Canon Change Detection — Flags pushes that modify canon/ for stewardship review
+    4. GitHub Mirror Trigger — Queues sync to GitHub mirror if enabled
+.NOTES
+    Classification: Controlled | Boundary: GCC-Moderate
+    Install: D:\GitRepos\UIAO\uiao.git\hooks\post-receive
+    Requires: PowerShell 5.1+, Git in PATH
+#>
+
+$ErrorActionPreference = 'Continue'
+
+# --- Configuration ---
+$AuditLogPath = 'D:\UIAO\Logs\git-audit.jsonl'
+$CanonChangeLogPath = 'D:\UIAO\Logs\canon-changes.jsonl'
+$EnableGitHubSync = $true
+$GitHubSyncScript = 'D:\UIAO\Scripts\Sync-UIAOToGitHub.ps1'
+$GiteaApiBase = 'http://localhost:3000/api/v1'
+$WebhookEndpoints = @()  # Add URLs here when configured
+
+# --- Ensure log directories exist ---
+$logDir = Split-Path $AuditLogPath -Parent
+if (-not (Test-Path $logDir)) {
+    New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+}
+
+# --- Process each ref update ---
+while ($line = [Console]::In.ReadLine()) {
+    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+
+    $parts = $line -split ' '
+    $oldRev = $parts[0]
+    $newRev = $parts[1]
+    $refName = $parts[2]
+
+    # --- Gather push metadata ---
+    $timestamp = (Get-Date).ToUniversalTime().ToString('o')
+    $pusher = $env:GITEA_PUSHER_NAME
+    $repo = $env:GITEA_REPO_NAME
+    $repoOwner = $env:GITEA_REPO_OWNER_NAME
+
+    # Get commit count
+    $commitCount = 0
+    $commitMessages = @()
+    if ($oldRev -ne '0000000000000000000000000000000000000000' -and
+        $newRev -ne '0000000000000000000000000000000000000000') {
+        try {
+            $commits = git log --oneline "$oldRev..$newRev" 2>$null
+            $commitCount = ($commits | Measure-Object).Count
+            $commitMessages = $commits | Select-Object -First 10
+        } catch { }
+    }
+
+    # Detect operation type
+    $operation = 'push'
+    if ($oldRev -eq '0000000000000000000000000000000000000000') { $operation = 'create' }
+    if ($newRev -eq '0000000000000000000000000000000000000000') { $operation = 'delete' }
+
+    # --- Rule 1: Audit Log Entry ---
+    $auditEntry = @{
+        timestamp     = $timestamp
+        classification = 'Controlled'
+        boundary      = 'GCC-Moderate'
+        event         = 'git.push'
+        operation     = $operation
+        pusher        = $pusher
+        repository    = "$repoOwner/$repo"
+        ref           = $refName
+        old_rev       = $oldRev.Substring(0, [Math]::Min(8, $oldRev.Length))
+        new_rev       = $newRev.Substring(0, [Math]::Min(8, $newRev.Length))
+        commit_count  = $commitCount
+        commits       = ($commitMessages -join '; ')
+    } | ConvertTo-Json -Compress
+
+    try {
+        Add-Content -Path $AuditLogPath -Value $auditEntry -Encoding UTF8
+    } catch {
+        Write-Host "WARNING: Failed to write audit log: $_" -ForegroundColor Yellow
+    }
+
+    # --- Rule 2: Canon Change Detection ---
+    if ($newRev -ne '0000000000000000000000000000000000000000') {
+        try {
+            if ($oldRev -eq '0000000000000000000000000000000000000000') {
+                $changedFiles = git diff-tree --no-commit-id --name-only -r $newRev 2>$null
+            } else {
+                $changedFiles = git diff --name-only $oldRev $newRev 2>$null
+            }
+
+            $canonChanges = $changedFiles | Where-Object { $_ -like 'canon/*' }
+
+            if ($canonChanges) {
+                $canonEntry = @{
+                    timestamp      = $timestamp
+                    classification = 'Controlled'
+                    boundary       = 'GCC-Moderate'
+                    event          = 'canon.change_detected'
+                    pusher         = $pusher
+                    repository     = "$repoOwner/$repo"
+                    ref            = $refName
+                    canon_files    = ($canonChanges -join '; ')
+                    file_count     = ($canonChanges | Measure-Object).Count
+                    review_status  = 'pending_stewardship_review'
+                } | ConvertTo-Json -Compress
+
+                Add-Content -Path $CanonChangeLogPath -Value $canonEntry -Encoding UTF8
+
+                Write-Host ""
+                Write-Host "========================================"
+                Write-Host " CANON CHANGE DETECTED" -ForegroundColor Yellow
+                Write-Host "========================================"
+                Write-Host " $(($canonChanges | Measure-Object).Count) canon file(s) modified:"
+                foreach ($cf in $canonChanges) {
+                    Write-Host "   - $cf"
+                }
+                Write-Host " Stewardship review has been queued."
+                Write-Host "========================================"
+                Write-Host ""
+            }
+        } catch {
+            Write-Host "WARNING: Canon change detection failed: $_" -ForegroundColor Yellow
+        }
+    }
+
+    # --- Rule 3: Webhook Notifications ---
+    foreach ($endpoint in $WebhookEndpoints) {
+        try {
+            $payload = @{
+                event      = 'push'
+                repository = "$repoOwner/$repo"
+                ref        = $refName
+                pusher     = $pusher
+                timestamp  = $timestamp
+            } | ConvertTo-Json -Compress
+
+            Invoke-RestMethod -Uri $endpoint -Method Post -Body $payload -ContentType 'application/json' -TimeoutSec 10 | Out-Null
+        } catch {
+            Write-Host "WARNING: Webhook delivery to $endpoint failed: $_" -ForegroundColor Yellow
+        }
+    }
+
+    # --- Rule 4: GitHub Mirror Sync ---
+    if ($EnableGitHubSync -and (Test-Path $GitHubSyncScript)) {
+        try {
+            Start-Process -FilePath 'pwsh' -ArgumentList "-File `"$GitHubSyncScript`"" -NoNewWindow -PassThru | Out-Null
+            Write-Host "GitHub mirror sync triggered." -ForegroundColor Green
+        } catch {
+            Write-Host "WARNING: GitHub mirror sync trigger failed: $_" -ForegroundColor Yellow
+        }
+    }
+}
+
+Write-Host "Push accepted. Audit log updated." -ForegroundColor Green

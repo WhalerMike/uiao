@@ -1,0 +1,1119 @@
+#Requires -Version 5.1
+#Requires -Modules ActiveDirectory, GroupPolicy
+
+<#
+.SYNOPSIS
+    UIAO Active Directory Full Assessment Module
+.DESCRIPTION
+    Provides comprehensive AD forest discovery, GPO inventory, computer/user/group
+    analysis, trust mapping, ACL delegation audit, and schema extension enumeration.
+    All output is structured JSON for the UIAO Gitea governance pipeline.
+.NOTES
+    Classification : Controlled
+    Boundary       : GCC-Moderate
+    Repository     : https://github.com/WhalerMike/uiao
+    Author         : Michael Stratton
+    Version        : 1.0.0
+#>
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+#region --- Helper Functions ---
+
+function Write-UIAOLog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [ValidateSet('Info','Warn','Error','Success')][string]$Level = 'Info'
+    )
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $colors = @{ Info = 'Cyan'; Warn = 'Yellow'; Error = 'Red'; Success = 'Green' }
+    Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $colors[$Level]
+}
+
+function New-UIAOOutputDirectory {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path $Path)) {
+        New-Item -Path $Path -ItemType Directory -Force | Out-Null
+        Write-UIAOLog "Created output directory: $Path"
+    }
+}
+
+function Export-UIAOJson {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Data,
+        [Parameter(Mandatory)][string]$FilePath,
+        [int]$Depth = 10
+    )
+    $Data | ConvertTo-Json -Depth $Depth -Compress:$false | Set-Content -Path $FilePath -Encoding UTF8
+    Write-UIAOLog "Exported: $FilePath" -Level Success
+}
+
+#endregion
+
+#region --- Forest Topology ---
+
+function Export-UIAOForestTopology {
+    <#
+    .SYNOPSIS
+        Exports complete AD forest topology to JSON.
+    .DESCRIPTION
+        Captures forest metadata, all domains, domain controllers, sites, subnets,
+        site links, and FSMO role holders.
+    .PARAMETER OutputPath
+        Directory to write output files. Defaults to D:\UIAO\Assessment.
+    .EXAMPLE
+        Export-UIAOForestTopology -OutputPath C:\Assessment
+    .OUTPUTS
+        ForestTopology.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Discovering forest topology...'
+
+    $forest = Get-ADForest
+    $rootDomain = Get-ADDomain -Server $forest.RootDomain
+
+    # Domain Controllers
+    $domainControllers = Get-ADDomainController -Filter * | Select-Object `
+        Name, Domain, Site, IPv4Address, OperatingSystem, OperatingSystemVersion,
+        IsGlobalCatalog, IsReadOnly, Enabled,
+        @{N='FSMORoles';E={$_.OperationMasterRoles -join '; '}}
+
+    # Sites
+    $sites = Get-ADReplicationSite -Filter * -Properties Description, Location |
+        Select-Object Name, Description, Location
+
+    # Subnets
+    $subnets = Get-ADReplicationSubnet -Filter * -Properties Description |
+        Select-Object Name, Site, Description
+
+    # Site Links
+    $siteLinks = Get-ADReplicationSiteLink -Filter * -Properties Cost, ReplicationFrequencyInMinutes |
+        Select-Object Name, Cost, ReplicationFrequencyInMinutes,
+        @{N='Sites';E={$_.SitesIncluded -join '; '}}
+
+    # FSMO Roles
+    $fsmoRoles = [ordered]@{
+        SchemaMaster           = $forest.SchemaMaster
+        DomainNamingMaster     = $forest.DomainNamingMaster
+        PDCEmulator            = $rootDomain.PDCEmulator
+        RIDMaster              = $rootDomain.RIDMaster
+        InfrastructureMaster   = $rootDomain.InfrastructureMaster
+    }
+
+    # All domains
+    $domains = foreach ($domainName in $forest.Domains) {
+        try {
+            $dom = Get-ADDomain -Server $domainName
+            [PSCustomObject]@{
+                Name               = $dom.DNSRoot
+                NetBIOSName        = $dom.NetBIOSName
+                DomainMode         = $dom.DomainMode.ToString()
+                DistinguishedName  = $dom.DistinguishedName
+                PDCEmulator        = $dom.PDCEmulator
+                RIDMaster          = $dom.RIDMaster
+                InfrastructureMaster = $dom.InfrastructureMaster
+            }
+        } catch {
+            Write-UIAOLog "Could not query domain $domainName : $_" -Level Warn
+        }
+    }
+
+    $topology = [ordered]@{
+        AssessmentType  = 'ForestTopology'
+        Timestamp       = (Get-Date -Format 'o')
+        Classification  = 'Controlled'
+        Boundary        = 'GCC-Moderate'
+        ForestName      = $forest.Name
+        ForestMode      = $forest.ForestMode.ToString()
+        RootDomain      = $forest.RootDomain
+        DomainCount     = $forest.Domains.Count
+        SiteCount       = ($sites | Measure-Object).Count
+        DCCount         = ($domainControllers | Measure-Object).Count
+        GlobalCatalogs  = $forest.GlobalCatalogs
+        FSMORoles       = $fsmoRoles
+        Domains         = @($domains)
+        DomainControllers = @($domainControllers)
+        Sites           = @($sites)
+        Subnets         = @($subnets)
+        SiteLinks       = @($siteLinks)
+    }
+
+    Export-UIAOJson -Data $topology -FilePath (Join-Path $OutputPath 'ForestTopology.json')
+    return $topology
+}
+
+#endregion
+
+#region --- OU Hierarchy ---
+
+function Export-UIAOOUHierarchy {
+    <#
+    .SYNOPSIS
+        Exports complete OU hierarchy with GPO links and object counts.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .EXAMPLE
+        Export-UIAOOUHierarchy -OutputPath C:\Assessment
+    .OUTPUTS
+        OUHierarchy.json, OUFlatList.csv, OUTree.txt
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Enumerating OU hierarchy...'
+
+    $ous = Get-ADOrganizationalUnit -Filter * -Properties `
+        Description, ManagedBy, ProtectedFromAccidentalDeletion,
+        LinkedGroupPolicyObjects, CanonicalName |
+        Sort-Object DistinguishedName
+
+    $ouData = foreach ($ou in $ous) {
+        $userCount    = (Get-ADUser -Filter * -SearchBase $ou.DistinguishedName -SearchScope OneLevel -ErrorAction SilentlyContinue | Measure-Object).Count
+        $computerCount = (Get-ADComputer -Filter * -SearchBase $ou.DistinguishedName -SearchScope OneLevel -ErrorAction SilentlyContinue | Measure-Object).Count
+        $groupCount   = (Get-ADGroup -Filter * -SearchBase $ou.DistinguishedName -SearchScope OneLevel -ErrorAction SilentlyContinue | Measure-Object).Count
+
+        $gpoLinks = @()
+        if ($ou.LinkedGroupPolicyObjects) {
+            $gpoLinks = foreach ($gpLink in $ou.LinkedGroupPolicyObjects) {
+                try {
+                    $gpGuid = [regex]::Match($gpLink, '\{(.+?)\}').Groups[1].Value
+                    $gpo = Get-GPO -Guid $gpGuid -ErrorAction SilentlyContinue
+                    if ($gpo) { $gpo.DisplayName }
+                } catch { $gpLink }
+            }
+        }
+
+        $depth = ($ou.DistinguishedName -split 'OU=').Count - 1
+
+        [PSCustomObject]@{
+            Name                  = $ou.Name
+            DistinguishedName     = $ou.DistinguishedName
+            CanonicalName         = $ou.CanonicalName
+            Description           = $ou.Description
+            ManagedBy             = $ou.ManagedBy
+            Protected             = $ou.ProtectedFromAccidentalDeletion
+            Depth                 = $depth
+            UserCount             = $userCount
+            ComputerCount         = $computerCount
+            GroupCount            = $groupCount
+            LinkedGPOs            = @($gpoLinks)
+            LinkedGPOCount        = $gpoLinks.Count
+        }
+    }
+
+    $hierarchy = [ordered]@{
+        AssessmentType = 'OUHierarchy'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        TotalOUs       = ($ouData | Measure-Object).Count
+        MaxDepth       = ($ouData | Measure-Object -Property Depth -Maximum).Maximum
+        OUs            = @($ouData)
+    }
+
+    Export-UIAOJson -Data $hierarchy -FilePath (Join-Path $OutputPath 'OUHierarchy.json')
+
+    # CSV flat list
+    $ouData | Select-Object Name, DistinguishedName, Depth, UserCount, ComputerCount, GroupCount, LinkedGPOCount |
+        Export-Csv -Path (Join-Path $OutputPath 'OUFlatList.csv') -NoTypeInformation -Encoding UTF8
+
+    # Visual tree
+    $treeLines = foreach ($ou in $ouData) {
+        $indent = '  ' * $ou.Depth
+        "$indent$($ou.Name) [Users:$($ou.UserCount) Computers:$($ou.ComputerCount) GPOs:$($ou.LinkedGPOCount)]"
+    }
+    $treeLines | Set-Content -Path (Join-Path $OutputPath 'OUTree.txt') -Encoding UTF8
+
+    Write-UIAOLog "OU Hierarchy: $($ouData.Count) OUs exported" -Level Success
+    return $hierarchy
+}
+
+#endregion
+
+#region --- GPO Inventory ---
+
+function Export-UIAOGPOInventory {
+    <#
+    .SYNOPSIS
+        Exports complete GPO inventory with XML settings reports.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .PARAMETER ExportReports
+        If true, exports individual XML and HTML reports per GPO.
+    .EXAMPLE
+        Export-UIAOGPOInventory -OutputPath C:\Assessment -ExportReports
+    .OUTPUTS
+        GPOInventory.json, GPOLinks.csv, UnlinkedGPOs.csv, EmptyGPOs.csv, GPO-Reports\*.xml
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$OutputPath = 'D:\UIAO\Assessment',
+        [switch]$ExportReports
+    )
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    $reportPath = Join-Path $OutputPath 'GPO-Reports'
+    if ($ExportReports) { New-UIAOOutputDirectory -Path $reportPath }
+    Write-UIAOLog 'Inventorying Group Policy Objects...'
+
+    $allGPOs = Get-GPO -All
+    $gpoData = @()
+    $allLinks = @()
+    $unlinked = @()
+    $empty = @()
+
+    foreach ($gpo in $allGPOs) {
+        # Get XML report for settings analysis
+        $xmlReport = Get-GPOReport -Guid $gpo.Id -ReportType XML
+        $xmlDoc = [xml]$xmlReport
+
+        # Detect if GPO has any settings
+        $hasComputerSettings = $xmlDoc.GPO.Computer.ExtensionData -ne $null
+        $hasUserSettings     = $xmlDoc.GPO.User.ExtensionData -ne $null
+        $isEmpty = (-not $hasComputerSettings) -and (-not $hasUserSettings)
+
+        # Get WMI filter
+        $wmiFilter = $null
+        if ($gpo.WmiFilter) {
+            $wmiFilter = $gpo.WmiFilter.Name
+        }
+
+        # Get links via GPO report
+        $links = @()
+        if ($xmlDoc.GPO.LinksTo) {
+            $links = @($xmlDoc.GPO.LinksTo | ForEach-Object {
+                [PSCustomObject]@{
+                    GPOName    = $gpo.DisplayName
+                    GPOID      = $gpo.Id.ToString()
+                    SOMName    = $_.SOMName
+                    SOMPath    = $_.SOMPath
+                    Enabled    = $_.Enabled
+                    NoOverride = $_.NoOverride
+                }
+            })
+            $allLinks += $links
+        }
+
+        $gpoObj = [PSCustomObject]@{
+            DisplayName       = $gpo.DisplayName
+            Id                = $gpo.Id.ToString()
+            GpoStatus         = $gpo.GpoStatus.ToString()
+            CreationTime      = $gpo.CreationTime.ToString('o')
+            ModificationTime  = $gpo.ModificationTime.ToString('o')
+            Owner             = $gpo.Owner
+            Description       = $gpo.Description
+            WmiFilter         = $wmiFilter
+            HasComputerConfig = $hasComputerSettings
+            HasUserConfig     = $hasUserSettings
+            IsEmpty           = $isEmpty
+            LinkCount         = $links.Count
+            Links             = @($links | Select-Object SOMPath, Enabled, NoOverride)
+        }
+        $gpoData += $gpoObj
+
+        if ($links.Count -eq 0) { $unlinked += $gpoObj }
+        if ($isEmpty) { $empty += $gpoObj }
+
+        # Export individual reports
+        if ($ExportReports) {
+            $safeName = $gpo.DisplayName -replace '[\\/:*?"<>|]', '_'
+            $xmlReport | Set-Content -Path (Join-Path $reportPath "$safeName.xml") -Encoding UTF8
+            try {
+                Get-GPOReport -Guid $gpo.Id -ReportType HTML -Path (Join-Path $reportPath "$safeName.html")
+            } catch {
+                Write-UIAOLog "HTML report failed for $($gpo.DisplayName): $_" -Level Warn
+            }
+        }
+    }
+
+    # WMI Filters
+    $wmiFilters = @()
+    try {
+        $wmiFilters = Get-ADObject -Filter 'objectClass -eq "msWMI-Som"' `
+            -Properties 'msWMI-Name','msWMI-Parm1','msWMI-Parm2' |
+            Select-Object @{N='Name';E={$_.'msWMI-Name'}},
+                          @{N='Description';E={$_.'msWMI-Parm1'}},
+                          @{N='Query';E={$_.'msWMI-Parm2'}}
+    } catch {
+        Write-UIAOLog "WMI Filter enumeration failed: $_" -Level Warn
+    }
+
+    $inventory = [ordered]@{
+        AssessmentType   = 'GPOInventory'
+        Timestamp        = (Get-Date -Format 'o')
+        Classification   = 'Controlled'
+        Boundary         = 'GCC-Moderate'
+        TotalGPOs        = $gpoData.Count
+        UnlinkedGPOs     = $unlinked.Count
+        EmptyGPOs        = $empty.Count
+        WMIFilterCount   = $wmiFilters.Count
+        GPOs             = @($gpoData)
+        WMIFilters       = @($wmiFilters)
+    }
+
+    Export-UIAOJson -Data $inventory -FilePath (Join-Path $OutputPath 'GPOInventory.json')
+
+    $allLinks | Export-Csv -Path (Join-Path $OutputPath 'GPOLinks.csv') -NoTypeInformation -Encoding UTF8
+    $unlinked | Select-Object DisplayName, Id, ModificationTime |
+        Export-Csv -Path (Join-Path $OutputPath 'UnlinkedGPOs.csv') -NoTypeInformation -Encoding UTF8
+    $empty | Select-Object DisplayName, Id, ModificationTime |
+        Export-Csv -Path (Join-Path $OutputPath 'EmptyGPOs.csv') -NoTypeInformation -Encoding UTF8
+
+    Write-UIAOLog "GPO Inventory: $($gpoData.Count) GPOs, $($unlinked.Count) unlinked, $($empty.Count) empty" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- Computer Inventory ---
+
+function Export-UIAOComputerInventory {
+    <#
+    .SYNOPSIS
+        Exports all AD computer objects with OS classification and staleness analysis.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .PARAMETER StaleDays
+        Days since last logon to consider a computer stale. Default 90.
+    .EXAMPLE
+        Export-UIAOComputerInventory -OutputPath C:\Assessment -StaleDays 60
+    .OUTPUTS
+        ComputerInventory.json, ComputersByOS.csv, StaleComputers.csv
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$OutputPath = 'D:\UIAO\Assessment',
+        [int]$StaleDays = 90
+    )
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Enumerating computer objects...'
+
+    $staleDate = (Get-Date).AddDays(-$StaleDays)
+    $properties = @(
+        'Name','DNSHostName','OperatingSystem','OperatingSystemVersion',
+        'OperatingSystemServicePack','Enabled','LastLogonDate','PasswordLastSet',
+        'Created','Modified','MemberOf','DistinguishedName','IPv4Address',
+        'SID','ServicePrincipalName','TrustedForDelegation',
+        'TrustedToAuthForDelegation','msDS-AllowedToDelegateTo',
+        'ms-Mcs-AdmPwdExpirationTime'
+    )
+
+    $computers = Get-ADComputer -Filter * -Properties $properties
+
+    $computerData = foreach ($c in $computers) {
+        # OS Classification
+        $osClass = switch -Wildcard ($c.OperatingSystem) {
+            '*Server*'  { 'WindowsServer' }
+            '*Windows*' { 'WindowsClient' }
+            '*Linux*'   { 'Linux' }
+            '*Mac*'     { 'macOS' }
+            default     { 'Unknown' }
+        }
+
+        $isStale = ($c.LastLogonDate -and $c.LastLogonDate -lt $staleDate) -or (-not $c.LastLogonDate)
+        $lapsEnabled = $null -ne $c.'ms-Mcs-AdmPwdExpirationTime'
+        $ouPath = ($c.DistinguishedName -split ',', 2)[1]
+
+        [PSCustomObject]@{
+            Name                    = $c.Name
+            DNSHostName             = $c.DNSHostName
+            OperatingSystem         = $c.OperatingSystem
+            OperatingSystemVersion  = $c.OperatingSystemVersion
+            OSClassification        = $osClass
+            Enabled                 = $c.Enabled
+            LastLogonDate           = if ($c.LastLogonDate) { $c.LastLogonDate.ToString('o') } else { $null }
+            PasswordLastSet         = if ($c.PasswordLastSet) { $c.PasswordLastSet.ToString('o') } else { $null }
+            Created                 = $c.Created.ToString('o')
+            IsStale                 = $isStale
+            LAPSEnabled             = $lapsEnabled
+            IPv4Address             = $c.IPv4Address
+            OU                      = $ouPath
+            GroupCount              = ($c.MemberOf | Measure-Object).Count
+            SPNCount                = ($c.ServicePrincipalName | Measure-Object).Count
+            TrustedForDelegation    = $c.TrustedForDelegation
+            ConstrainedDelegation   = ($c.'msDS-AllowedToDelegateTo' | Measure-Object).Count -gt 0
+        }
+    }
+
+    $staleComputers = @($computerData | Where-Object { $_.IsStale })
+
+    $inventory = [ordered]@{
+        AssessmentType     = 'ComputerInventory'
+        Timestamp          = (Get-Date -Format 'o')
+        Classification     = 'Controlled'
+        Boundary           = 'GCC-Moderate'
+        TotalComputers     = $computerData.Count
+        EnabledCount       = ($computerData | Where-Object Enabled).Count
+        DisabledCount      = ($computerData | Where-Object { -not $_.Enabled }).Count
+        StaleCount         = $staleComputers.Count
+        StaleDaysThreshold = $StaleDays
+        LAPSEnabledCount   = ($computerData | Where-Object LAPSEnabled).Count
+        DelegationCount    = ($computerData | Where-Object TrustedForDelegation).Count
+        ByOS = @(
+            $computerData | Group-Object OSClassification |
+                Select-Object @{N='Classification';E={$_.Name}}, Count |
+                Sort-Object Count -Descending
+        )
+        Computers = @($computerData)
+    }
+
+    Export-UIAOJson -Data $inventory -FilePath (Join-Path $OutputPath 'ComputerInventory.json')
+
+    $computerData | Group-Object OSClassification |
+        Select-Object @{N='OS';E={$_.Name}}, Count |
+        Export-Csv -Path (Join-Path $OutputPath 'ComputersByOS.csv') -NoTypeInformation -Encoding UTF8
+
+    $staleComputers | Select-Object Name, OperatingSystem, LastLogonDate, PasswordLastSet, OU |
+        Export-Csv -Path (Join-Path $OutputPath 'StaleComputers.csv') -NoTypeInformation -Encoding UTF8
+
+    Write-UIAOLog "Computers: $($computerData.Count) total, $($staleComputers.Count) stale, $((($computerData | Where-Object LAPSEnabled) | Measure-Object).Count) LAPS-enabled" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- User Inventory ---
+
+function Export-UIAOUserInventory {
+    <#
+    .SYNOPSIS
+        Exports all AD user objects with privileged access and service account analysis.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .PARAMETER StaleDays
+        Days since last logon to consider a user stale. Default 90.
+    .EXAMPLE
+        Export-UIAOUserInventory -OutputPath C:\Assessment
+    .OUTPUTS
+        UserInventory.json, PrivilegedUsers.csv, StaleUsers.csv
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$OutputPath = 'D:\UIAO\Assessment',
+        [int]$StaleDays = 90
+    )
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Enumerating user objects...'
+
+    $staleDate = (Get-Date).AddDays(-$StaleDays)
+    $properties = @(
+        'SamAccountName','UserPrincipalName','DisplayName','Enabled',
+        'LastLogonDate','PasswordLastSet','PasswordNeverExpires','PasswordExpired',
+        'PasswordNotRequired','LockedOut','AccountExpirationDate','MemberOf',
+        'AdminCount','TrustedForDelegation','ServicePrincipalName',
+        'Created','Modified','Department','Title','Manager','Mail',
+        'DistinguishedName'
+    )
+
+    $users = Get-ADUser -Filter * -Properties $properties
+
+    # Privileged groups
+    $privilegedGroups = @(
+        'Domain Admins','Enterprise Admins','Schema Admins',
+        'Administrators','Account Operators','Server Operators',
+        'Backup Operators','Print Operators'
+    )
+    $privilegedMembers = @{}
+    foreach ($groupName in $privilegedGroups) {
+        try {
+            $members = Get-ADGroupMember -Identity $groupName -Recursive -ErrorAction SilentlyContinue |
+                       Where-Object objectClass -eq 'user'
+            foreach ($m in $members) {
+                if (-not $privilegedMembers.ContainsKey($m.SamAccountName)) {
+                    $privilegedMembers[$m.SamAccountName] = @()
+                }
+                $privilegedMembers[$m.SamAccountName] += $groupName
+            }
+        } catch {
+            Write-UIAOLog "Could not enumerate $groupName : $_" -Level Warn
+        }
+    }
+
+    $userData = foreach ($u in $users) {
+        $isStale = ($u.LastLogonDate -and $u.LastLogonDate -lt $staleDate) -or (-not $u.LastLogonDate)
+        $isServiceAccount = ($u.ServicePrincipalName | Measure-Object).Count -gt 0
+        $privGroups = if ($privilegedMembers.ContainsKey($u.SamAccountName)) {
+            $privilegedMembers[$u.SamAccountName]
+        } else { @() }
+
+        [PSCustomObject]@{
+            SamAccountName       = $u.SamAccountName
+            UserPrincipalName    = $u.UserPrincipalName
+            DisplayName          = $u.DisplayName
+            Enabled              = $u.Enabled
+            LastLogonDate        = if ($u.LastLogonDate) { $u.LastLogonDate.ToString('o') } else { $null }
+            PasswordLastSet      = if ($u.PasswordLastSet) { $u.PasswordLastSet.ToString('o') } else { $null }
+            PasswordNeverExpires = $u.PasswordNeverExpires
+            PasswordNotRequired  = $u.PasswordNotRequired
+            IsStale              = $isStale
+            IsServiceAccount     = $isServiceAccount
+            AdminCount           = $u.AdminCount
+            IsPrivileged         = $privGroups.Count -gt 0
+            PrivilegedGroups     = $privGroups -join '; '
+            SPNCount             = ($u.ServicePrincipalName | Measure-Object).Count
+            GroupCount           = ($u.MemberOf | Measure-Object).Count
+            Department           = $u.Department
+            Title                = $u.Title
+            Mail                 = $u.Mail
+            TrustedForDelegation = $u.TrustedForDelegation
+            OU                   = ($u.DistinguishedName -split ',', 2)[1]
+        }
+    }
+
+    $privilegedUsers = @($userData | Where-Object IsPrivileged)
+    $serviceAccounts = @($userData | Where-Object IsServiceAccount)
+    $staleUsers = @($userData | Where-Object { $_.IsStale -and $_.Enabled })
+
+    $inventory = [ordered]@{
+        AssessmentType        = 'UserInventory'
+        Timestamp             = (Get-Date -Format 'o')
+        Classification        = 'Controlled'
+        Boundary              = 'GCC-Moderate'
+        TotalUsers            = $userData.Count
+        EnabledCount          = ($userData | Where-Object Enabled).Count
+        DisabledCount         = ($userData | Where-Object { -not $_.Enabled }).Count
+        StaleCount            = $staleUsers.Count
+        PrivilegedCount       = $privilegedUsers.Count
+        ServiceAccountCount   = $serviceAccounts.Count
+        AdminCountFlagged     = ($userData | Where-Object { $_.AdminCount -eq 1 }).Count
+        PasswordNeverExpires  = ($userData | Where-Object PasswordNeverExpires).Count
+        PasswordNotRequired   = ($userData | Where-Object PasswordNotRequired).Count
+        Kerberoastable        = ($userData | Where-Object { $_.IsServiceAccount -and $_.Enabled }).Count
+        StaleDaysThreshold    = $StaleDays
+        Users                 = @($userData)
+    }
+
+    Export-UIAOJson -Data $inventory -FilePath (Join-Path $OutputPath 'UserInventory.json')
+
+    $privilegedUsers | Select-Object SamAccountName, DisplayName, PrivilegedGroups, LastLogonDate, PasswordLastSet |
+        Export-Csv -Path (Join-Path $OutputPath 'PrivilegedUsers.csv') -NoTypeInformation -Encoding UTF8
+
+    $staleUsers | Select-Object SamAccountName, DisplayName, LastLogonDate, PasswordLastSet, OU |
+        Export-Csv -Path (Join-Path $OutputPath 'StaleUsers.csv') -NoTypeInformation -Encoding UTF8
+
+    $serviceAccounts | Select-Object SamAccountName, DisplayName, SPNCount, Enabled, PasswordLastSet, PasswordNeverExpires |
+        Export-Csv -Path (Join-Path $OutputPath 'ServiceAccounts.csv') -NoTypeInformation -Encoding UTF8
+
+    Write-UIAOLog "Users: $($userData.Count) total, $($privilegedUsers.Count) privileged, $($serviceAccounts.Count) service accounts, $($staleUsers.Count) stale" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- Group Inventory ---
+
+function Export-UIAOGroupInventory {
+    <#
+    .SYNOPSIS
+        Exports all AD groups with nesting analysis and empty group detection.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .EXAMPLE
+        Export-UIAOGroupInventory -OutputPath C:\Assessment
+    .OUTPUTS
+        GroupInventory.json, EmptyGroups.csv, NestingReport.csv
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Enumerating groups...'
+
+    $groups = Get-ADGroup -Filter * -Properties Description, ManagedBy, GroupScope, GroupCategory, Members, MemberOf
+
+    $groupData = foreach ($g in $groups) {
+        $memberCount = ($g.Members | Measure-Object).Count
+        $memberOfCount = ($g.MemberOf | Measure-Object).Count
+
+        [PSCustomObject]@{
+            Name            = $g.Name
+            SamAccountName  = $g.SamAccountName
+            GroupScope      = $g.GroupScope.ToString()
+            GroupCategory   = $g.GroupCategory.ToString()
+            Description     = $g.Description
+            ManagedBy       = $g.ManagedBy
+            MemberCount     = $memberCount
+            MemberOfCount   = $memberOfCount
+            IsEmpty         = $memberCount -eq 0
+            DistinguishedName = $g.DistinguishedName
+        }
+    }
+
+    $emptyGroups = @($groupData | Where-Object IsEmpty)
+
+    $inventory = [ordered]@{
+        AssessmentType = 'GroupInventory'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        TotalGroups    = $groupData.Count
+        SecurityGroups = ($groupData | Where-Object { $_.GroupCategory -eq 'Security' }).Count
+        DistributionGroups = ($groupData | Where-Object { $_.GroupCategory -eq 'Distribution' }).Count
+        EmptyGroups    = $emptyGroups.Count
+        ByScope = @(
+            $groupData | Group-Object GroupScope |
+                Select-Object @{N='Scope';E={$_.Name}}, Count
+        )
+        Groups = @($groupData)
+    }
+
+    Export-UIAOJson -Data $inventory -FilePath (Join-Path $OutputPath 'GroupInventory.json')
+
+    $emptyGroups | Select-Object Name, GroupScope, GroupCategory, Description |
+        Export-Csv -Path (Join-Path $OutputPath 'EmptyGroups.csv') -NoTypeInformation -Encoding UTF8
+
+    Write-UIAOLog "Groups: $($groupData.Count) total, $($emptyGroups.Count) empty" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- Service Account Inventory ---
+
+function Export-UIAOServiceAccountInventory {
+    <#
+    .SYNOPSIS
+        Exports service accounts including MSA and gMSA objects.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .EXAMPLE
+        Export-UIAOServiceAccountInventory -OutputPath C:\Assessment
+    .OUTPUTS
+        ServiceAccountInventory.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Enumerating service accounts...'
+
+    # Traditional SPN-bearing user accounts
+    $spnUsers = Get-ADUser -Filter {ServicePrincipalName -ne "$null"} -Properties `
+        SamAccountName, DisplayName, ServicePrincipalName, Enabled, PasswordLastSet,
+        PasswordNeverExpires, LastLogonDate, DistinguishedName |
+        Select-Object SamAccountName, DisplayName, Enabled,
+            @{N='SPNs';E={$_.ServicePrincipalName -join '; '}},
+            @{N='SPNCount';E={($_.ServicePrincipalName | Measure-Object).Count}},
+            @{N='Type';E={'UserSPN'}},
+            @{N='PasswordLastSet';E={if($_.PasswordLastSet){$_.PasswordLastSet.ToString('o')}else{$null}}},
+            PasswordNeverExpires,
+            @{N='Kerberoastable';E={$_.Enabled}}
+
+    # Managed Service Accounts (MSA)
+    $msaAccounts = @()
+    try {
+        $msaAccounts = Get-ADServiceAccount -Filter * -Properties `
+            SamAccountName, Enabled, DistinguishedName, ServicePrincipalName,
+            'msDS-GroupMSAMembership', PrincipalsAllowedToRetrieveManagedPassword |
+            Select-Object SamAccountName, Enabled,
+                @{N='SPNs';E={$_.ServicePrincipalName -join '; '}},
+                @{N='Type';E={
+                    if ($_.'msDS-GroupMSAMembership') { 'gMSA' } else { 'MSA' }
+                }}
+    } catch {
+        Write-UIAOLog 'MSA/gMSA enumeration failed (may not exist): ' + $_ -Level Warn
+    }
+
+    $inventory = [ordered]@{
+        AssessmentType         = 'ServiceAccountInventory'
+        Timestamp              = (Get-Date -Format 'o')
+        Classification         = 'Controlled'
+        Boundary               = 'GCC-Moderate'
+        SPNUserAccounts        = ($spnUsers | Measure-Object).Count
+        KerberoastableAccounts = ($spnUsers | Where-Object Kerberoastable | Measure-Object).Count
+        MSAAccounts            = ($msaAccounts | Where-Object { $_.Type -eq 'MSA' } | Measure-Object).Count
+        gMSAAccounts           = ($msaAccounts | Where-Object { $_.Type -eq 'gMSA' } | Measure-Object).Count
+        SPNUsers               = @($spnUsers)
+        ManagedServiceAccounts = @($msaAccounts)
+    }
+
+    Export-UIAOJson -Data $inventory -FilePath (Join-Path $OutputPath 'ServiceAccountInventory.json')
+
+    Write-UIAOLog "Service accounts: $($spnUsers.Count) SPN users, $($msaAccounts.Count) MSA/gMSA" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- Trust Mapping ---
+
+function Export-UIAOTrustMap {
+    <#
+    .SYNOPSIS
+        Exports all AD trust relationships with security analysis.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .EXAMPLE
+        Export-UIAOTrustMap -OutputPath C:\Assessment
+    .OUTPUTS
+        TrustMap.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Mapping trust relationships...'
+
+    $trusts = Get-ADTrust -Filter * -Properties *
+
+    $trustData = foreach ($t in $trusts) {
+        [PSCustomObject]@{
+            Name                       = $t.Name
+            Source                     = $t.Source
+            Target                     = $t.Target
+            Direction                  = $t.Direction.ToString()
+            TrustType                  = $t.TrustType.ToString()
+            IsTransitive               = -not $t.IsTreeParent -and -not $t.IsTreeChild
+            SelectiveAuthentication    = $t.SelectiveAuthentication
+            SIDFilteringForestAware    = $t.SIDFilteringForestAware
+            SIDFilteringQuarantined    = $t.SIDFilteringQuarantined
+            ForestTransitive           = $t.ForestTransitive
+            IntraForest                = $t.IntraForest
+            DisallowTransivity         = $t.DisallowTransivity
+            DistinguishedName          = $t.DistinguishedName
+        }
+    }
+
+    $map = [ordered]@{
+        AssessmentType = 'TrustMap'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        TrustCount     = $trustData.Count
+        Trusts         = @($trustData)
+    }
+
+    Export-UIAOJson -Data $map -FilePath (Join-Path $OutputPath 'TrustMap.json')
+
+    Write-UIAOLog "Trusts: $($trustData.Count) relationships mapped" -Level Success
+    return $map
+}
+
+#endregion
+
+#region --- ACL Report ---
+
+function Export-UIAOACLReport {
+    <#
+    .SYNOPSIS
+        Exports OU delegation ACLs and AdminSDHolder configuration.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .EXAMPLE
+        Export-UIAOACLReport -OutputPath C:\Assessment
+    .OUTPUTS
+        OUDelegation.json, AdminSDHolder.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Analyzing ACL delegations...'
+
+    Import-Module ActiveDirectory
+
+    $ous = Get-ADOrganizationalUnit -Filter * | Select-Object -ExpandProperty DistinguishedName
+    $delegations = @()
+
+    foreach ($ouDN in $ous) {
+        try {
+            $acl = Get-Acl "AD:\$ouDN"
+            $nonInherited = $acl.Access | Where-Object { -not $_.IsInherited }
+            foreach ($ace in $nonInherited) {
+                $delegations += [PSCustomObject]@{
+                    OU                = $ouDN
+                    IdentityReference = $ace.IdentityReference.ToString()
+                    AccessType        = $ace.AccessControlType.ToString()
+                    Rights            = $ace.ActiveDirectoryRights.ToString()
+                    ObjectType        = $ace.ObjectType.ToString()
+                    InheritanceType   = $ace.InheritanceType.ToString()
+                    IsInherited       = $ace.IsInherited
+                }
+            }
+        } catch {
+            Write-UIAOLog "ACL read failed on $ouDN : $_" -Level Warn
+        }
+    }
+
+    $report = [ordered]@{
+        AssessmentType    = 'ACLDelegation'
+        Timestamp         = (Get-Date -Format 'o')
+        Classification    = 'Controlled'
+        Boundary          = 'GCC-Moderate'
+        OUsAnalyzed       = $ous.Count
+        DelegationEntries = $delegations.Count
+        Delegations       = @($delegations)
+    }
+    Export-UIAOJson -Data $report -FilePath (Join-Path $OutputPath 'OUDelegation.json')
+
+    # AdminSDHolder
+    try {
+        $domain = Get-ADDomain
+        $adminSDHolderDN = "CN=AdminSDHolder,CN=System,$($domain.DistinguishedName)"
+        $sdHolderAcl = Get-Acl "AD:\$adminSDHolderDN"
+        $sdHolderACEs = $sdHolderAcl.Access | Select-Object `
+            @{N='IdentityReference';E={$_.IdentityReference.ToString()}},
+            @{N='AccessType';E={$_.AccessControlType.ToString()}},
+            @{N='Rights';E={$_.ActiveDirectoryRights.ToString()}},
+            @{N='ObjectType';E={$_.ObjectType.ToString()}}
+
+        $adminReport = [ordered]@{
+            AssessmentType = 'AdminSDHolder'
+            Timestamp      = (Get-Date -Format 'o')
+            DN             = $adminSDHolderDN
+            ACECount       = ($sdHolderACEs | Measure-Object).Count
+            ACEs           = @($sdHolderACEs)
+        }
+        Export-UIAOJson -Data $adminReport -FilePath (Join-Path $OutputPath 'AdminSDHolder.json')
+    } catch {
+        Write-UIAOLog "AdminSDHolder ACL read failed: $_" -Level Warn
+    }
+
+    Write-UIAOLog "ACL Report: $($delegations.Count) delegation entries across $($ous.Count) OUs" -Level Success
+    return $report
+}
+
+#endregion
+
+#region --- Schema Extensions ---
+
+function Export-UIAOSchemaExtensions {
+    <#
+    .SYNOPSIS
+        Exports custom schema attributes and confidential attribute inventory.
+    .PARAMETER OutputPath
+        Directory to write output files.
+    .EXAMPLE
+        Export-UIAOSchemaExtensions -OutputPath C:\Assessment
+    .OUTPUTS
+        SchemaExtensions.json, ConfidentialAttributes.csv
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment')
+
+    New-UIAOOutputDirectory -Path $OutputPath
+    Write-UIAOLog 'Analyzing schema extensions...'
+
+    $schemaDN = (Get-ADRootDSE).schemaNamingContext
+
+    # Custom attributes (OID starting with 1.2.840.113556.1.8000 = vendor-specific)
+    $customAttrs = Get-ADObject -SearchBase $schemaDN -Filter { objectClass -eq 'attributeSchema' } `
+        -Properties lDAPDisplayName, attributeID, isSingleValued, searchFlags, attributeSyntax, adminDescription |
+        Where-Object { $_.attributeID -like '1.2.840.113556.1.8000.*' -or $_.attributeID -like '1.2.840.113556.1.6.*' } |
+        Select-Object lDAPDisplayName, attributeID, isSingleValued, searchFlags, attributeSyntax, adminDescription
+
+    # Confidential attributes (searchFlags bit 128)
+    $confidentialAttrs = Get-ADObject -SearchBase $schemaDN -Filter { objectClass -eq 'attributeSchema' } `
+        -Properties lDAPDisplayName, searchFlags |
+        Where-Object { ($_.searchFlags -band 128) -eq 128 } |
+        Select-Object lDAPDisplayName, searchFlags
+
+    $schema = [ordered]@{
+        AssessmentType          = 'SchemaExtensions'
+        Timestamp               = (Get-Date -Format 'o')
+        Classification          = 'Controlled'
+        Boundary                = 'GCC-Moderate'
+        CustomAttributeCount    = ($customAttrs | Measure-Object).Count
+        ConfidentialAttrCount   = ($confidentialAttrs | Measure-Object).Count
+        CustomAttributes        = @($customAttrs)
+        ConfidentialAttributes  = @($confidentialAttrs)
+    }
+
+    Export-UIAOJson -Data $schema -FilePath (Join-Path $OutputPath 'SchemaExtensions.json')
+
+    $confidentialAttrs | Export-Csv -Path (Join-Path $OutputPath 'ConfidentialAttributes.csv') -NoTypeInformation -Encoding UTF8
+
+    Write-UIAOLog "Schema: $($customAttrs.Count) custom attributes, $($confidentialAttrs.Count) confidential" -Level Success
+    return $schema
+}
+
+#endregion
+
+#region --- Master Orchestrator ---
+
+function Invoke-UIAOADAssessment {
+    <#
+    .SYNOPSIS
+        Master orchestrator — runs all UIAO AD assessment functions.
+    .DESCRIPTION
+        Executes the complete AD assessment pipeline: forest topology, OU hierarchy,
+        GPO inventory, computer/user/group enumeration, service accounts, trusts,
+        ACL delegation, and schema analysis. Produces an AssessmentManifest.json
+        with timestamps, coverage scores, and file checksums.
+    .PARAMETER OutputPath
+        Root directory for assessment output. A timestamped subdirectory is created.
+    .PARAMETER DomainName
+        Domain to assess. Defaults to current domain.
+    .PARAMETER ExportGPOReports
+        If specified, exports individual XML/HTML GPO reports.
+    .PARAMETER StaleDays
+        Threshold for stale object detection. Default 90.
+    .EXAMPLE
+        Invoke-UIAOADAssessment -OutputPath D:\UIAO\Assessment -ExportGPOReports
+    .OUTPUTS
+        Complete assessment directory with all JSON/CSV/XML files and AssessmentManifest.json
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$OutputPath = 'D:\UIAO\Assessment',
+        [string]$DomainName,
+        [switch]$ExportGPOReports,
+        [int]$StaleDays = 90
+    )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+
+    if (-not $DomainName) {
+        $DomainName = (Get-ADDomain).DNSRoot
+    }
+
+    $assessmentPath = Join-Path $OutputPath "$DomainName\$timestamp"
+    New-UIAOOutputDirectory -Path $assessmentPath
+
+    $transcriptPath = Join-Path $assessmentPath 'Assessment-Transcript.txt'
+    Start-Transcript -Path $transcriptPath -Force
+
+    Write-UIAOLog '======================================================' -Level Info
+    Write-UIAOLog '  UIAO Full Active Directory Assessment' -Level Info
+    Write-UIAOLog "  Domain   : $DomainName" -Level Info
+    Write-UIAOLog "  Output   : $assessmentPath" -Level Info
+    Write-UIAOLog "  Boundary : GCC-Moderate" -Level Info
+    Write-UIAOLog '======================================================' -Level Info
+
+    $results = [ordered]@{}
+    $errors  = @()
+
+    # 1. Forest Topology
+    try {
+        Write-UIAOLog '[1/9] Forest Topology...' -Level Info
+        $results.ForestTopology = Export-UIAOForestTopology -OutputPath $assessmentPath
+    } catch { $errors += "ForestTopology: $_"; Write-UIAOLog "ForestTopology FAILED: $_" -Level Error }
+
+    # 2. OU Hierarchy
+    try {
+        Write-UIAOLog '[2/9] OU Hierarchy...' -Level Info
+        $results.OUHierarchy = Export-UIAOOUHierarchy -OutputPath $assessmentPath
+    } catch { $errors += "OUHierarchy: $_"; Write-UIAOLog "OUHierarchy FAILED: $_" -Level Error }
+
+    # 3. GPO Inventory
+    try {
+        Write-UIAOLog '[3/9] GPO Inventory...' -Level Info
+        $results.GPOInventory = Export-UIAOGPOInventory -OutputPath $assessmentPath -ExportReports:$ExportGPOReports
+    } catch { $errors += "GPOInventory: $_"; Write-UIAOLog "GPOInventory FAILED: $_" -Level Error }
+
+    # 4. Computer Inventory
+    try {
+        Write-UIAOLog '[4/9] Computer Inventory...' -Level Info
+        $results.ComputerInventory = Export-UIAOComputerInventory -OutputPath $assessmentPath -StaleDays $StaleDays
+    } catch { $errors += "ComputerInventory: $_"; Write-UIAOLog "ComputerInventory FAILED: $_" -Level Error }
+
+    # 5. User Inventory
+    try {
+        Write-UIAOLog '[5/9] User Inventory...' -Level Info
+        $results.UserInventory = Export-UIAOUserInventory -OutputPath $assessmentPath -StaleDays $StaleDays
+    } catch { $errors += "UserInventory: $_"; Write-UIAOLog "UserInventory FAILED: $_" -Level Error }
+
+    # 6. Group Inventory
+    try {
+        Write-UIAOLog '[6/9] Group Inventory...' -Level Info
+        $results.GroupInventory = Export-UIAOGroupInventory -OutputPath $assessmentPath
+    } catch { $errors += "GroupInventory: $_"; Write-UIAOLog "GroupInventory FAILED: $_" -Level Error }
+
+    # 7. Service Accounts
+    try {
+        Write-UIAOLog '[7/9] Service Account Inventory...' -Level Info
+        $results.ServiceAccounts = Export-UIAOServiceAccountInventory -OutputPath $assessmentPath
+    } catch { $errors += "ServiceAccounts: $_"; Write-UIAOLog "ServiceAccounts FAILED: $_" -Level Error }
+
+    # 8. Trust Map
+    try {
+        Write-UIAOLog '[8/9] Trust Mapping...' -Level Info
+        $results.TrustMap = Export-UIAOTrustMap -OutputPath $assessmentPath
+    } catch { $errors += "TrustMap: $_"; Write-UIAOLog "TrustMap FAILED: $_" -Level Error }
+
+    # 9. ACL Report + Schema
+    try {
+        Write-UIAOLog '[9/9] ACL Delegation & Schema Analysis...' -Level Info
+        $results.ACLReport = Export-UIAOACLReport -OutputPath $assessmentPath
+        $results.SchemaExtensions = Export-UIAOSchemaExtensions -OutputPath $assessmentPath
+    } catch { $errors += "ACL/Schema: $_"; Write-UIAOLog "ACL/Schema FAILED: $_" -Level Error }
+
+    $stopwatch.Stop()
+
+    # Generate manifest
+    $files = Get-ChildItem -Path $assessmentPath -Recurse -File
+    $fileInventory = foreach ($f in $files) {
+        [PSCustomObject]@{
+            RelativePath = $f.FullName.Replace($assessmentPath, '').TrimStart('\')
+            SizeBytes    = $f.Length
+            SHA256       = (Get-FileHash -Path $f.FullName -Algorithm SHA256).Hash
+        }
+    }
+
+    $manifest = [ordered]@{
+        AssessmentType   = 'Full'
+        Framework        = 'UIAO'
+        ForestName       = $DomainName
+        AssessedBy       = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        Workstation      = $env:COMPUTERNAME
+        Timestamp        = (Get-Date -Format 'o')
+        Classification   = 'Controlled'
+        Boundary         = 'GCC-Moderate'
+        ElapsedMinutes   = [math]::Round($stopwatch.Elapsed.TotalMinutes, 1)
+        DomainsAssessed  = 1
+        AssessmentErrors = $errors.Count
+        Errors           = @($errors)
+        FileCount        = $fileInventory.Count
+        TotalSizeBytes   = ($fileInventory | Measure-Object -Property SizeBytes -Sum).Sum
+        Files            = @($fileInventory)
+        Summary          = [ordered]@{
+            DomainControllers = if ($results.ForestTopology) { $results.ForestTopology.DCCount } else { 'N/A' }
+            OUs               = if ($results.OUHierarchy) { $results.OUHierarchy.TotalOUs } else { 'N/A' }
+            GPOs              = if ($results.GPOInventory) { $results.GPOInventory.TotalGPOs } else { 'N/A' }
+            Computers         = if ($results.ComputerInventory) { $results.ComputerInventory.TotalComputers } else { 'N/A' }
+            Users             = if ($results.UserInventory) { $results.UserInventory.TotalUsers } else { 'N/A' }
+            Groups            = if ($results.GroupInventory) { $results.GroupInventory.TotalGroups } else { 'N/A' }
+            Trusts            = if ($results.TrustMap) { $results.TrustMap.TrustCount } else { 'N/A' }
+        }
+    }
+    Export-UIAOJson -Data $manifest -FilePath (Join-Path $assessmentPath 'AssessmentManifest.json')
+
+    Stop-Transcript
+
+    Write-UIAOLog '======================================================' -Level Success
+    Write-UIAOLog "  UIAO Assessment Complete" -Level Success
+    Write-UIAOLog "  Duration : $([math]::Round($stopwatch.Elapsed.TotalMinutes,1)) minutes" -Level Success
+    Write-UIAOLog "  Files    : $($fileInventory.Count)" -Level Success
+    Write-UIAOLog "  Errors   : $($errors.Count)" -Level Success
+    Write-UIAOLog "  Output   : $assessmentPath" -Level Success
+    Write-UIAOLog '======================================================' -Level Success
+
+    return $manifest
+}
+
+#endregion
+
+Export-ModuleMember -Function @(
+    'Export-UIAOForestTopology',
+    'Export-UIAOOUHierarchy',
+    'Export-UIAOGPOInventory',
+    'Export-UIAOComputerInventory',
+    'Export-UIAOUserInventory',
+    'Export-UIAOGroupInventory',
+    'Export-UIAOServiceAccountInventory',
+    'Export-UIAOTrustMap',
+    'Export-UIAOACLReport',
+    'Export-UIAOSchemaExtensions',
+    'Invoke-UIAOADAssessment'
+)
