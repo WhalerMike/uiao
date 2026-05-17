@@ -62,7 +62,7 @@ if (-not (Test-Path $OutputRoot)) {
 $outputPath = Join-Path $OutputRoot "$SourceName.ir.json"
 
 # Build arguments
-$arguments = @("-m","uiao_core.cli","scuba","transform","--input",$inputPath,"--out",$outputPath)
+$arguments = @("-m","uiao.cli.app","scuba","transform","--input",$inputPath,"--out",$outputPath)
 if (Test-Path $ConfigPath) { $arguments += @("--config", $ConfigPath) }
 
 # Invoke
