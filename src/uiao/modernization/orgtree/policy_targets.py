@@ -142,7 +142,9 @@ class NacAssignment:
     intent: str  # permit | quarantine | deny
     purpose: str
 
-    def dedup_key(self) -> Tuple[Tuple[str, str, str], str, Tuple[int, bool, Optional[str], Optional[int], Optional[str]]]:
+    def dedup_key(
+        self,
+    ) -> Tuple[Tuple[str, str, str], str, Tuple[int, bool, Optional[str], Optional[int], Optional[str]]]:
         return (self.policy_ref.cache_key(), self.target_group, self.enforcement.cache_key())
 
 
@@ -259,7 +261,9 @@ def _validate_integrity(
     #   - enforcement.vlan_id existence in IPAM canon (DM_010)
     #   - enforcement.dacl_name / posture_profile existence on AAA server
     #   - aaa_server: nps paired-twin rule (ADR-073 §D4)
-    nac_seen: Set[Tuple[Tuple[str, str, str], str, Tuple[int, bool, Optional[str], Optional[int], Optional[str]]]] = set()
+    nac_seen: Set[Tuple[Tuple[str, str, str], str, Tuple[int, bool, Optional[str], Optional[int], Optional[str]]]] = (
+        set()
+    )
     for i, assignment in enumerate(document.get("nac_assignments", []) or []):
         if assignment["target_group"] not in dynamic_groups.names:
             raise PolicyTargetingValidationError(
