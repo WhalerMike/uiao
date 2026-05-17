@@ -41,7 +41,9 @@ class TestLibraryIntegrity:
     def test_default_library_loads(self) -> None:
         lib = default_dynamic_group_library()
         assert lib.document_id == "UIAO_152"
-        assert len(lib.groups) == 32
+        # 32 user/CA/license groups (ADR-036 baseline) +
+        # 5 device-targeting groups for NAC (ADR-073 Phase B).
+        assert len(lib.groups) == 37
         assert lib.naming_regex.startswith("^OrgTree-")
 
     def test_every_group_name_matches_naming_regex(self) -> None:
@@ -151,9 +153,10 @@ class TestLibraryValidation:
 class TestPlan:
     def test_empty_tenant_plans_full_create(self, adapter: EntraDynamicGroupsAdapter) -> None:
         plan = adapter.plan(current_tenant_state=[])
-        assert plan.total_canonical == 32
+        # 32 user-targeting groups + 5 device-targeting groups (ADR-073 Phase B).
+        assert plan.total_canonical == 37
         assert plan.total_tenant == 0
-        assert len(plan.by_op(OP_CREATE)) == 32
+        assert len(plan.by_op(OP_CREATE)) == 37
         assert len(plan.by_op(OP_UPDATE)) == 0
         assert len(plan.by_op(OP_DELETE_PHANTOM)) == 0
 
@@ -168,8 +171,9 @@ class TestPlan:
         creates = plan.by_op(OP_CREATE)
         updates = plan.by_op(OP_UPDATE)
         phantoms = plan.by_op(OP_DELETE_PHANTOM)
-        # 32 canonical - 3 already present (FIN, IT, IT-SEC) = 29 creates
-        assert len(creates) == 29
+        # 37 canonical - 3 already present (FIN, IT, IT-SEC) = 34 creates
+        # (32 user-targeting + 5 device-targeting per ADR-073 Phase B)
+        assert len(creates) == 34
         assert len(updates) == 1
         assert updates[0].group_name == "OrgTree-IT-SEC-Users"
         assert "Rule drift" in updates[0].reason
@@ -195,10 +199,10 @@ class TestApply:
         assert report.dry_run is True
         assert report.succeeded == 0
         assert report.failed == 0
-        # 29 create + 1 update = 30 skipped-dry-run; 1 phantom = skipped-manual
+        # 34 create + 1 update = 35 skipped-dry-run; 1 phantom = skipped-manual
         dry = [r for r in report.results if r.status == "skipped-dry-run"]
         manual = [r for r in report.results if r.status == "skipped-manual"]
-        assert len(dry) == 30
+        assert len(dry) == 35
         assert len(manual) == 1
 
     def test_phantom_never_auto_applied_even_without_dry_run(
@@ -215,7 +219,7 @@ class TestApply:
         report = adapter.apply(plan, dry_run=False)
         assert OP_DELETE_PHANTOM not in called_ops
         # Every create + update was dispatched to _execute.
-        assert called_ops.count(OP_CREATE) == 29
+        assert called_ops.count(OP_CREATE) == 34
         assert called_ops.count(OP_UPDATE) == 1
         phantom_results = [r for r in report.results if r.op == OP_DELETE_PHANTOM]
         assert len(phantom_results) == 1
