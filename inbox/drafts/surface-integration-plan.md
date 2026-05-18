@@ -2,9 +2,24 @@
 
 > **Branch:** `claude/modest-lamarr-9cd649`
 > **Date:** 2026-05-18
-> **Status:** draft (not committed)
-> **Anchor ADR:** ADR-071 (Intune-First Asset Onboarding) — Surface is a sub-pattern of windows-endpoint, not a new vehicle
+> **Status:** LANDED — canon promotion completed 2026-05-18 (this plan retained as historical record)
+> **Anchor ADRs:** ADR-071 (Intune-First Asset Onboarding); ADR-075 (Surface Hub Reconciliation — ACCEPTED 2026-05-18)
 > **Pattern model:** the existing platform-annex pattern under `src/uiao/modernization/intune-first-onboarding/platforms/`
+>
+> **Promotion record (2026-05-18):**
+> - IFO_014 windows-surface annex → [`src/uiao/modernization/intune-first-onboarding/platforms/windows-surface.md`](../../src/uiao/modernization/intune-first-onboarding/platforms/windows-surface.md) (CANONICAL)
+> - `surface-management-portal` adapter entry → merged into [`src/uiao/canon/adapter-registry.yaml`](../../src/uiao/canon/adapter-registry.yaml) (reserved, phase-planning)
+> - ADR-075 → [`src/uiao/canon/adr/adr-075-surface-hub-reconciliation.md`](../../src/uiao/canon/adr/adr-075-surface-hub-reconciliation.md) (ACCEPTED) + [`docs/adr/adr-075-surface-hub-reconciliation.qmd`](../../docs/adr/adr-075-surface-hub-reconciliation.qmd) wrapper
+> - ADR index updated: [`src/uiao/canon/adr/index.md`](../../src/uiao/canon/adr/index.md)
+>
+> **Pre-promotion verification corrections applied:**
+> - Three of four Microsoft Learn URLs in ADR-075 were placeholders that returned 404; replaced with verified URLs (`surface-hub-3-get-started`, `surface-hub-2s-migrate-to-mtr-w`, `managed-meeting-rooms-portal`).
+> - DFCI URL in the annex was redirecting; updated to canonical (`intune/device-configuration/templates/configure-dfci-windows`).
+> - SMP described as "first-party fleet telemetry surface" was structurally wrong; it is "a workspace within the Microsoft Intune admin center" per Microsoft Learn. Adapter notes corrected.
+> - DFCI prerequisites: organization-collected (manually-imported) hardware hashes are not eligible for DFCI by Microsoft design. Annex now states this explicitly.
+> - Pluton was described as Surface-specific; corrected to chipset-feature framing (AMD Ryzen 6000+, Intel Core Ultra 200V+, Qualcomm Snapdragon 8cx Gen 3+) — Surface gets Pluton when the underlying silicon supports it.
+> - ADR-075 Consequences: the Migration Launcher app path expired 2025-12-14, removing the cheapest software-only migration path for Surface Hub 2S. Surface Hub 2S customers now have only Compute Cartridge install or USB recovery image install. Recorded explicitly in the canonical ADR.
+> - Windows 10 Team edition end-of-support already occurred (2025-10-14). ADR-075 reframed from "sunsetting OS" to "out-of-support OS", strengthening Option B's argument.
 
 ## 1. Goal
 

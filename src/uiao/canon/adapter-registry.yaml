@@ -313,6 +313,91 @@ adapters:
         pathway-transition-trigger: Publication of the VDR Balance Improvement Release
         adr: ADR-043
 
+  - id: surface-management-portal
+    name: Microsoft Surface Management Portal Fleet Telemetry Adapter
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - surface-fleet-inventory
+      - surface-firmware-versions
+      - surface-dfci-compliance
+      - surface-warranty-lifecycle
+      - surface-device-health
+    outputs:
+      - surface-fleet-inventory.json
+      - surface-firmware-drift-report.json
+      - surface-dfci-compliance-report.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - CM-8
+      - SI-2
+      - CA-7
+      - SC-7
+    automation-domain:
+      - configuration-management
+      - patch-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-071
+      - ADR-075
+      - UIAO_132
+      - https://learn.microsoft.com/en-us/surface/surface-management-portal
+    notes: >-
+      Reserved Tier 4 conformance slot for the Microsoft Surface
+      Management Portal (SMP). SMP is a workspace within the
+      Microsoft Intune admin center providing Surface-specific
+      fleet telemetry — firmware versions across the fleet, DFCI
+      compliance status, warranty and lifecycle drift, and device-
+      health signals (the SMP "Insights" dashboard cards). SMP
+      shares the Intune admin center surface with the `intune`
+      adapter but exposes a distinct data class: Surface-vendor-
+      specific inventory and warranty/lifecycle signals that the
+      generic `intune` `/deviceManagement/managedDevices` endpoint
+      does not surface.
+
+
+      Read-only — observes Surface fleet state, never mutates
+      configuration. Surface configuration authoring (DFCI
+      profiles, Surface-specific compliance settings) flows
+      through the existing `intune` modernization-side reserved
+      slot (ADR-049) and is NOT covered here.
+
+
+      Implementation deferred. Slot allocation only. When promoted
+      to `active`, a per-adapter ADR will document the chosen
+      Microsoft Graph / SMP API endpoint set (the Surface API
+      Management Service provides programmatic access to coverage
+      and entitlement information), OAuth scope minimization
+      (read-only), runtime pin, and evidence-pack shape. Parent
+      doctrine for Surface as a first-class asset class lives in
+      `src/uiao/modernization/intune-first-onboarding/platforms/
+      windows-surface.md` (IFO_014). Surface Hub treatment is
+      governed by ADR-075.
+
+
+      fedramp-rfc-0026 (advisory; per ADR-043 D4 / UIAO_132 §5):
+        requirement: RV5-CA07-VLN (endpoint-compliance telemetry — Surface-fleet supplement)
+        pathway: pathway-2-traditional
+        planned-pathway: pathway-1-modernized
+        pathway-transition-trigger: Publication of the VDR Balance Improvement Release
+        adr: ADR-043
+
   - id: pki-ca
     name: PKI / Certificate Authority Adapter
     class: conformance
