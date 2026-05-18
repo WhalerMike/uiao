@@ -881,6 +881,27 @@ def doc_local_output_path(document: Path, placeholder_id: str, slug: str) -> Pat
     return images_dir / f"{doc_slug}-{placeholder_id.lower()}-{slug}.png"
 
 
+def _extract_explicit_slug_from_body(body: str, document: Path, placeholder_id: str) -> str | None:
+    """If `body` starts with a backticked filename matching
+    `<doc_stem>-<placeholder_id_lower>-<slug>.<ext>`, return the `<slug>`
+    portion. IMAGE-PROMPTS.md heading-style sources declare their canonical
+    filenames this way (e.g. ``## IMAGE-01 — `uiao-cli-reference-image-01-cli-subapp-topology.png` ``).
+    Without this extraction the slug derivation re-slugifies the entire
+    filename, producing doubled-prefix output that doesn't match the .qmd's
+    image references.
+    """
+    doc_slug = _slugify(document.stem, maxlen=32)
+    prefix = f"{doc_slug}-{placeholder_id.lower()}-"
+    m = re.match(
+        r"^\s*`" + re.escape(prefix) + r"(?P<slug>[a-z0-9][a-z0-9-]*)\.(?:png|webp|jpg|jpeg)`",
+        body,
+        re.IGNORECASE,
+    )
+    if m:
+        return m.group("slug")
+    return None
+
+
 # ──────────────────────────────────────────────────────────────
 # Image generator. Wraps the Gemini client call. Centralized so
 # error handling, retry, and rate limiting have one home.
@@ -995,7 +1016,11 @@ def process_doc_local_placeholders(
             report.auto_placeholders_skipped += 1
             continue
 
-        slug = _slugify(p.body.split(".")[0], maxlen=32) or "image"
+        slug = (
+            _extract_explicit_slug_from_body(p.body, p.document, p.placeholder_id)
+            or _slugify(p.body.split(".")[0], maxlen=32)
+            or "image"
+        )
         output_path = doc_local_output_path(p.document, p.placeholder_id, slug)
         sidecar_path = output_path.with_suffix(output_path.suffix + ".json")
 
