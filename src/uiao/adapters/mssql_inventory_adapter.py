@@ -407,21 +407,31 @@ class MSSQLInventoryAdapter(DatabaseAdapterBase):
     # Private fetch helpers
     # ------------------------------------------------------------------
     def _fetch_spn_inventory(self) -> List[Dict[str, Any]]:
-        """Return SPN inventory records; reuses dependency-injected data if present."""
+        """Return SPN inventory records; requires dependency-injected data.
+
+        The adapter does not perform LDAP queries itself — federal estates
+        typically run AD surveys via a separate authorization gate (per
+        ``uiao.adapters.modernization.active_directory.survey``, which is
+        a normalizer over pre-fetched principal records, not a fetcher).
+        The expected flow:
+
+        1. AD survey runs out-of-band, produces an ``SpnInventory``.
+        2. Caller serializes ``SpnInventory.records`` to a list of dicts
+           (one per SPN) matching the parser's expected input shape.
+        3. List is passed to this adapter via ``spn_inventory_input``.
+
+        When no input is supplied, the AD half of the inventory is empty
+        and ``DRIFT-IDENTITY`` is fired only for the ARG-discovered
+        instances that lack an OrgPath ARM tag.
+        """
         if self._spn_inventory_input is not None:
             return self._spn_inventory_input
-        try:
-            from uiao.adapters.modernization.active_directory.survey import (
-                extract_spn_inventory,
-            )
-
-            return list(extract_spn_inventory(phase="pre_migration"))
-        except Exception:
-            logger.warning(
-                "AD survey unavailable; SPN inventory will be empty. "
-                "Provide spn_inventory_input config key to inject pre-fetched data."
-            )
-            return []
+        logger.warning(
+            "No spn_inventory_input configured; AD-side inventory will be empty. "
+            "Pass pre-fetched SPN records (from the AD survey) via the "
+            "spn_inventory_input config key."
+        )
+        return []
 
     def _fetch_arg_resources(self) -> List[Dict[str, Any]]:
         """Return ARG records; reuses dependency-injected data if present."""
