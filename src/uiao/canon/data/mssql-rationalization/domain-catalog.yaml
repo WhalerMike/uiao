@@ -1,0 +1,127 @@
+# yaml-language-server: $schema=../../../schemas/mssql-rationalization/domain-catalog.schema.json
+#
+# MS SQL Rationalization — Data Domain Catalog (seed)
+# ===================================================
+# Canonical source: spec Appendix B of
+#   inbox/Modernization/sql-modernization-research/2026-05-17-orgpath-mssql-estate-rationalization-process.md
+# Binding ADR:      src/uiao/canon/adr/adr-074-drift-ssot-contention.md (consumer)
+#
+# Seeds federal-typical data domains used by Phase 3 SSOT designation.
+# Agencies extend with mission-specific domains via PR + governance review.
+# The <AGENCY> placeholder in canonical_orgpath_segment is substituted at
+# runtime per the agency's UIAO_151 codebook root.
+
+schema-version: "1.0.0"
+document_id: mssql-rationalization-domain-catalog
+updated: "2026-05-18"
+
+domains:
+  - name: HR
+    canonical_orgpath_segment: "ORG-<AGENCY>-HR"
+    anchor_tables:
+      - employees
+      - positions
+      - organizational_units
+      - manager_chain
+      - time_attendance
+      - leave_balance
+    authoritative_source_signal: "HR system-of-record (Workday, Oracle HCM, inherited PeopleSoft, agency-specific). Post-OPM-HCM rollout, the cross-agency Workday tenant is canonical for civilian-personnel data."
+    cross_domain_dependencies:
+      - Finance
+      - Citizen-Services
+
+  - name: Finance
+    canonical_orgpath_segment: "ORG-<AGENCY>-FIN"
+    anchor_tables:
+      - general_ledger
+      - accounts_payable
+      - accounts_receivable
+      - budget
+      - obligations
+      - disbursements
+    authoritative_source_signal: "Financial system-of-record (Oracle Federal Financials, Momentum, agency-specific). Tracks GL, AP, AR, budget execution, and obligation status. Treasury reporting consumer."
+    cross_domain_dependencies:
+      - Procurement
+      - Logistics
+
+  - name: Procurement
+    canonical_orgpath_segment: "ORG-<AGENCY>-PROC"
+    anchor_tables:
+      - vendors
+      - contracts
+      - requisitions
+      - purchase_orders
+      - receipts
+      - invoices
+    authoritative_source_signal: "Procurement system-of-record (PRISM, SAP Ariba, agency-specific). Tracks vendor master, contract lifecycle, and PO-to-payment chain."
+    cross_domain_dependencies:
+      - Finance
+      - Logistics
+
+  - name: Logistics
+    canonical_orgpath_segment: "ORG-<AGENCY>-LOG"
+    anchor_tables:
+      - assets
+      - inventory
+      - facilities
+      - transportation
+      - equipment_maintenance
+    authoritative_source_signal: "Asset-management system-of-record (DPAS, Maximo, agency-specific). Tracks property accountability, equipment lifecycle, facility assignment, and transportation operations."
+
+  - name: FOIA
+    canonical_orgpath_segment: "ORG-<AGENCY>-FOIA"
+    anchor_tables:
+      - requests
+      - responses
+      - exemptions
+      - appeals
+      - litigation_cases
+    authoritative_source_signal: "FOIA-tracking system-of-record (FOIAxpress, agency-specific). Manages 5 USC 552 request lifecycle, exemption invocation chain, appeals routing, and litigation tracking."
+
+  - name: Records-Management
+    canonical_orgpath_segment: "ORG-<AGENCY>-RM"
+    anchor_tables:
+      - record_series
+      - dispositions
+      - holds
+      - transfers_to_nara
+    authoritative_source_signal: "Records-management system-of-record (Records-Manager, agency-specific). Implements 44 USC 3301 obligations, schedules dispositions, applies legal-hold preservation, executes NARA transfers."
+
+  - name: Security
+    canonical_orgpath_segment: "ORG-<AGENCY>-SEC"
+    anchor_tables:
+      - incidents
+      - classifications
+      - clearances
+      - pii_disclosures
+      - audit_findings
+    authoritative_source_signal: "SOC system-of-record (ServiceNow Security, Microsoft Sentinel, agency SOC). Tracks incident lifecycle, classification overlays, clearance status, Privacy Act disclosures, and audit findings."
+
+  - name: Citizen-Services
+    canonical_orgpath_segment: "ORG-<AGENCY>-CITZ"
+    anchor_tables:
+      - applicants
+      - applications
+      - eligibility_determinations
+      - benefits_issued
+    authoritative_source_signal: "Program-specific system-of-record (BSA, SSA, VA, agency benefits registries). Manages applicant intake, eligibility determination, benefits delivery, and program-specific case management."
+
+  - name: Compliance
+    canonical_orgpath_segment: "ORG-<AGENCY>-COMP"
+    anchor_tables:
+      - audits
+      - findings
+      - remediations
+      - poa_m_items
+      - control_assessments
+    authoritative_source_signal: "GRC system-of-record (RSA Archer, ServiceNow GRC, Xacta). Tracks audit cycles, finding lifecycles, POA&M items, and continuous-monitoring control-assessment evidence chains."
+
+  - name: IT-Operations
+    canonical_orgpath_segment: "ORG-<AGENCY>-IT"
+    anchor_tables:
+      - cmdb
+      - applications
+      - infrastructure
+      - change_records
+      - service_tickets
+    authoritative_source_signal: "ITSM system-of-record (ServiceNow, BMC Remedy). Tracks the CMDB, application portfolio, infrastructure inventory, change-management workflow, and service-desk ticket lifecycle."

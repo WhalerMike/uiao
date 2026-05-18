@@ -1,0 +1,62 @@
+---
+title: "MS SQL Rationalization Domain Catalog Schema"
+subtitle: "Schema Reference · mssql-rationalization/domain-catalog.schema.json"
+date: 2026-05-18
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/mssql-rationalization/domain-catalog.schema.json`](../../../src/uiao/schemas/mssql-rationalization/domain-catalog.schema.json)
+- **Canon data:** [`src/uiao/canon/data/mssql-rationalization/domain-catalog.yaml`](../../../src/uiao/canon/data/mssql-rationalization/domain-catalog.yaml)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/mssql-rationalization/domain-catalog.schema.json`
+:::
+
+## Description
+
+Schema for the **data-domain catalog** consumed by Phase 3 SSOT designation in the MS SQL Estate Rationalization Process. Seeds federal-typical data domains; agencies extend with mission-specific entries via PR + governance review.
+
+Each entry declares:
+
+- **Domain name** — short identifier (e.g., `HR`, `Finance`, `Procurement`).
+- **Canonical OrgPath segment** — template like `ORG-<AGENCY>-HR`; the `<AGENCY>` placeholder is substituted at runtime per the agency's UIAO_151 codebook root.
+- **Anchor tables** — tables whose presence in a discovered SQL instance identifies it as participating in the domain.
+- **Authoritative-source signal** — operational hint about the incumbent system-of-record (vendor name, product line, agency-specific designation).
+- **Cross-domain dependencies** — other domains in the catalog this one references (e.g., HR → Finance via payroll-GL flow).
+
+## Seed entries (10 federal-typical domains)
+
+`HR`, `Finance`, `Procurement`, `Logistics`, `FOIA`, `Records-Management`, `Security`, `Citizen-Services`, `Compliance`, `IT-Operations`. See the canon-data YAML for the full set with anchor tables and source signals.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema-version` | string (semver) | ✓ | Document schema version. |
+| `document_id` | const `mssql-rationalization-domain-catalog` |   | Stable document handle. |
+| `updated` | string (date) |   | ISO 8601 date of last edit. |
+| `domains` | array&lt;DomainEntry&gt; | ✓ | One entry per data domain. |
+
+## `DomainEntry` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `name` | string (kebab/camel) | ✓ | Short identifier; unique within the catalog. |
+| `canonical_orgpath_segment` | string (pattern `^ORG-<AGENCY>-[A-Z0-9]{2,6}...$`) | ✓ | OrgPath segment template. |
+| `anchor_tables` | array&lt;table-name&gt; | ✓ | ≥ 1 tables whose presence identifies an instance as in this domain. |
+| `authoritative_source_signal` | string | ✓ | Operational vendor/product hint for the incumbent system-of-record. |
+| `cross_domain_dependencies` | array&lt;domain-name&gt; |   | Other domain names this one references. |
+| `notes` | string |   | Free-text governance notes. |
+
+## Related canon
+
+| Canon | Relationship |
+|---|---|
+| [ADR-074](../../adr/adr-074-drift-ssot-contention.qmd) | Drift class that uses the SSOT roster consuming this catalog. |
+| MS SQL Estate Rationalization Process spec (Appendix B) | Defines the seed entries. |
+| [`reference-data-patterns.schema.qmd`](mssql-rationalization-reference-data-patterns.schema.qmd) | Sibling canon-data file used by Phase 2's overlap-detection layer. |
+| [`abbreviation-dictionary.schema.qmd`](mssql-rationalization-abbreviation-dictionary.schema.qmd) | Sibling canon-data file used by Phase 2's name-similarity heuristic. |
