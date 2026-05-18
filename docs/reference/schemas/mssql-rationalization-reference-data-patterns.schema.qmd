@@ -1,0 +1,71 @@
+---
+title: "MS SQL Rationalization Reference-Data Pattern Library Schema"
+subtitle: "Schema Reference · mssql-rationalization/reference-data-patterns.schema.json"
+date: 2026-05-18
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/mssql-rationalization/reference-data-patterns.schema.json`](../../../src/uiao/schemas/mssql-rationalization/reference-data-patterns.schema.json)
+- **Canon data:** [`src/uiao/canon/data/mssql-rationalization/reference-data-patterns.yaml`](../../../src/uiao/canon/data/mssql-rationalization/reference-data-patterns.yaml)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/mssql-rationalization/reference-data-patterns.schema.json`
+:::
+
+## Description
+
+Schema for the **canon-blessed reference-data pattern library** consumed by Phase 2's `IDENTICAL-REFERENCE-DATA` overlap detector. Each pattern declares an expected row-count window, a representative schema fingerprint, and the authoritative external source.
+
+Phase 2's overlap detection hashes the candidate reference tables in each discovered SQL instance and matches them against this library. A match means the substrate has discovered another agency-instance carrying the same canonical reference set — a consolidation candidate.
+
+## Seed entries (11 federal-typical patterns)
+
+| Pattern | Source authority | Expected rows |
+|---|---|---|
+| `us-state-codes` | USPS / ISO 3166-2:US | 50–60 |
+| `country-codes-iso3166` | ISO 3166 | 240–260 |
+| `currency-codes-iso4217` | ISO 4217 | 170–180 |
+| `opm-occupation-series` | OPM | 450–520 |
+| `opm-pay-plan-codes` | OPM | 70–90 |
+| `gs-grade-codes` | OPM | 15–20 |
+| `dod-service-component-codes` | DoD | 10–15 |
+| `employment-status-enums` | Agency HR canon | 8–15 |
+| `pii-classification-levels` | NIST 800-122 / Privacy Act | 5–10 |
+| `fedramp-impact-levels` | FedRAMP PMO | 3 |
+| `nist-control-families` | NIST 800-53r5 | 20–22 |
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema-version` | string (semver) | ✓ | Document schema version. |
+| `document_id` | const `mssql-rationalization-reference-data-patterns` |   | Stable document handle. |
+| `updated` | string (date) |   | ISO 8601 date of last edit. |
+| `patterns` | array&lt;ReferenceDataPattern&gt; | ✓ | One entry per canon-blessed pattern. |
+
+## `ReferenceDataPattern` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `pattern_id` | string (kebab-case) | ✓ | Unique stable id within the library. |
+| `description` | string | ✓ | One-sentence operational description. |
+| `expected_row_count` | object `{min, max}` | ✓ | Bounds on row count for the canonical content. |
+| `schema_fingerprint` | array&lt;column-name&gt; | ✓ | Minimum column set required to match the pattern. |
+| `reference_content_hash` | string (SHA-256 hex) |   | Optional hash of a canonical serialization of the authoritative reference content. |
+| `reference_url` | URI |   | Pointer to the authoritative external source. |
+| `source_authority` | string | ✓ | Owner of the canonical content. |
+| `reference_version` | string |   | Version pin of the authoritative external source. |
+| `notes` | string |   | Free-text governance notes. |
+
+## Related canon
+
+| Canon | Relationship |
+|---|---|
+| [ADR-074](../../adr/adr-074-drift-ssot-contention.qmd) | Drift class that consumes overlap-detection findings. |
+| MS SQL Estate Rationalization Process spec (Appendix A) | Defines the seed entries. |
+| [`domain-catalog.schema.qmd`](mssql-rationalization-domain-catalog.schema.qmd) | Sibling canon-data file used by Phase 3 SSOT designation. |
+| [`abbreviation-dictionary.schema.qmd`](mssql-rationalization-abbreviation-dictionary.schema.qmd) | Sibling canon-data file used by Phase 2's name-similarity heuristic. |
