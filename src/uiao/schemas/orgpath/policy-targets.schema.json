@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://uiao.io/schemas/orgpath/policy-targets.schema.json",
   "title": "UIAO OrgTree Policy Targeting Canon",
-  "description": "Machine-readable declarations of how Intune device policies and Azure Policy assignments target the OrgTree. Bound to UIAO_164 by ADR-039. Depends on UIAO_151 codebook (ADR-035), UIAO_152 dynamic groups (ADR-036), UIAO_153 device planes (ADR-038). Policy bodies are out of scope.",
+  "description": "Machine-readable declarations of how Intune device policies, Azure Policy assignments, and NAC policy bindings target the OrgTree. Bound to UIAO_164 by ADR-039 (Intune + Azure Policy) and extended by ADR-073 (NAC third transport). Depends on UIAO_151 codebook (ADR-035), UIAO_152 dynamic groups (ADR-036), UIAO_153 device planes (ADR-038). Policy bodies are out of scope.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -29,6 +29,12 @@
       "type": "array",
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/arcPolicyAssignment" }
+    },
+    "nac_assignments": {
+      "type": "array",
+      "description": "NAC policy bindings introduced by ADR-073 as the third targeting transport (alongside Intune + Azure Policy). Each entry binds an AAA-server policy to an OrgTree-* device dynamic group with a network-edge enforcement payload (VLAN / dACL / SGT / posture-profile). The AAA server (Cisco ISE / Aruba ClearPass / Entra RADIUS Proxy / NPS during the hybrid window) returns this payload on RADIUS Access-Accept. Per ADR-073 §D6 Phase B, schema validates well-formedness; cross-canon checks against IPAM (VLAN existence) and AAA-server inventories (dACL / posture profile existence) are Phase C.",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nacAssignment" }
     }
   },
   "$defs": {
@@ -98,6 +104,88 @@
             },
             "match_mode": { "enum": ["startsWith", "equals"] }
           }
+        },
+        "purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nacAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Binds an AAA-server policy to an OrgTree-* device dynamic group with a network-edge enforcement payload. See ADR-073 §D1.",
+      "required": [
+        "assignment_name",
+        "aaa_server",
+        "policy_ref",
+        "target_group",
+        "enforcement",
+        "intent",
+        "purpose"
+      ],
+      "properties": {
+        "assignment_name": {
+          "type": "string",
+          "description": "Human-readable binding name. Unique across the file (shares the namespace with arc_policy_assignments[]).",
+          "pattern": "^OrgTree-NAC-[A-Za-z0-9]+(-[A-Za-z0-9]+)*$"
+        },
+        "aaa_server": {
+          "description": "Which AAA-tier registered adapter (per ADR-047) services this policy.",
+          "enum": ["cisco-ise", "aruba-clearpass", "entra-radius", "nps"]
+        },
+        "policy_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policy_kind", "match_by", "value"],
+          "properties": {
+            "policy_kind": {
+              "description": "AAA-vendor policy kind. policy-set is ISE; service is ClearPass; connection-policy is Entra RADIUS / NPS; posture-profile is cross-vendor.",
+              "enum": ["policy-set", "service", "connection-policy", "posture-profile"]
+            },
+            "match_by": { "enum": ["name", "id"] },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^NAC-[A-Z0-9-]+$"
+            }
+          }
+        },
+        "target_group": {
+          "type": "string",
+          "description": "OrgTree-* device dynamic group (UIAO_152). Cross-canon resolution against dynamic-groups.yaml is loader-enforced.",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Devices|UNPOSITIONED)$"
+        },
+        "enforcement": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Network-edge enforcement payload returned on RADIUS Access-Accept. Phase B validates well-formedness; cross-canon checks against IPAM (vlan_id existence) and AAA-server inventory (dacl_name / posture_profile existence) are Phase C.",
+          "required": ["vlan_id", "change_of_authorization"],
+          "properties": {
+            "vlan_id": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4094
+            },
+            "dacl_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sgt_tag": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65519
+            },
+            "posture_profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "change_of_authorization": {
+              "type": "boolean",
+              "description": "If true, the AAA server issues CoA on Intune-compliance-state transitions to force re-evaluation."
+            }
+          }
+        },
+        "intent": {
+          "description": "permit returns the enforcement payload; quarantine forces a quarantine VLAN regardless of other matches (used for ORG-BRANCH-UNPOSITIONED); deny issues RADIUS Access-Reject. Per ADR-073, every new deny intent requires governance review.",
+          "enum": ["permit", "quarantine", "deny"]
         },
         "purpose": { "type": "string", "minLength": 1 }
       }

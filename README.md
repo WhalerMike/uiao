@@ -2,7 +2,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](src/uiao/canon/compliance/executive-orders.md)
+[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/compliance/executive-orders.md)
 [![Substrate](https://img.shields.io/badge/substrate-3%20modules%20%7C%2027%20canon%20docs-blueviolet.svg)](src/uiao/canon/substrate-manifest.yaml)
 [![Adapters](https://img.shields.io/badge/modernization%20adapters-9%20active%20%7C%201%20reserved-success.svg)](src/uiao/canon/modernization-registry.yaml)
 [![CI](https://img.shields.io/badge/CI-7%20workflows-informational.svg)](.github/workflows/)
@@ -13,7 +13,7 @@ modernization. Identity-first. Canon-anchored. Drift-detected.
 > **Canonical substrate manifest:** [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200).
 > **Document registry:** [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml).
 > **Schemas:** [`src/uiao/schemas/`](src/uiao/schemas/).
-> **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) · **Security:** [`SECURITY.md`](SECURITY.md) · **Changelog:** [`CHANGELOG.md`](CHANGELOG.md).
+> **Contributing:** [`CONTRIBUTING.md`](https://github.com/WhalerMike/uiao/blob/main/CONTRIBUTING.md) · **Security:** [`SECURITY.md`](https://github.com/WhalerMike/uiao/blob/main/SECURITY.md) · **Changelog:** [`CHANGELOG.md`](https://github.com/WhalerMike/uiao/blob/main/CHANGELOG.md).
 
 ## What UIAO is
 
@@ -34,20 +34,20 @@ UIAO is a governance substrate, not a product. It defines:
 - **Drift** — deviation between live state and canon, detected in five
   classes (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`,
   `DRIFT-IDENTITY`) at four severities (`P1`–`P4`). Taxonomy defined in
-  [`docs/docs/16_DriftDetectionStandard.qmd`](docs/docs/16_DriftDetectionStandard.qmd).
+  [`docs/docs/16_DriftDetectionStandard.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/docs/16_DriftDetectionStandard.qmd).
 - **KSI** — Key Security Indicators. 163 continuous-compliance signals,
   cryptographically signed.
 
-The **v0.6.0 mission theme** is [HRIT Single-ATO Productization](src/uiao/canon/adr/adr-058-hrit-productization-mission.md) (ADR-058): runtime emission of signed, OSCAL-mapped reciprocity records per consuming agency, with ConMon SLA enforcement and configuration-latitude drift detection.
+The **v0.6.0 mission theme** is [HRIT Single-ATO Productization](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-065-hrit-productization-mission.md) (ADR-065): runtime emission of signed, OSCAL-mapped reciprocity records per consuming agency, with ConMon SLA enforcement and configuration-latitude drift detection.
 
 ## Repository layout
 
-As of [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md) (2026-04-20) UIAO is a **single Python package** rooted at `src/uiao/`. The pre-consolidation `core/` and `impl/` directories no longer exist — every concern they held now lives under `src/uiao/<subpackage>/`.
+As of [ADR-032](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-032-single-package-consolidation.md) (2026-04-20) UIAO is a **single Python package** rooted at `src/uiao/`. The pre-consolidation `core/` and `impl/` directories no longer exist — every concern they held now lives under `src/uiao/<subpackage>/`.
 
 | Path | Role | Notes |
 |---|---|---|
 | [`src/uiao/`](src/uiao/) | Installable `uiao` distribution | Single source of all runtime code, canon, schemas, rules, KSI library, adapters. |
-| [`src/uiao/canon/`](src/uiao/canon/) | Canon authority (SSOT) | Governance documents, ADRs, registries, control library, specs. Canon-change rules in [`AGENTS.md`](AGENTS.md#repository-invariants). |
+| [`src/uiao/canon/`](src/uiao/canon/) | Canon authority (SSOT) | Governance documents, ADRs, registries, control library, specs. Canon-change rules in [`AGENTS.md`](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md#repository-invariants). |
 | [`src/uiao/schemas/`](src/uiao/schemas/) | Schema authority | JSON Schema drafts 07 and 2020-12. Validates registries, manifest, workspace contract, metadata. |
 | [`src/uiao/adapters/`](src/uiao/adapters/) | Connector implementations | 13 adapters across modernization (change-making) and conformance (read-only) classes. |
 | [`src/uiao/cli/`](src/uiao/cli/) | Typer CLI entry point | `uiao` console script → `uiao.cli.app:app`. |
@@ -55,16 +55,16 @@ As of [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md) (202
 | [`docs/`](docs/) | Documentation source | `.qmd`/`.md`/`.yml` only; Quarto site renders to `docs/_site/` (gitignored). |
 | [`scripts/`](scripts/) | Workspace tooling | Bootstrap, schema validators, link check, doc generators. |
 | [`inbox/`](inbox/) | Draft staging | Not canon. Promote to `src/uiao/canon/` or `docs/` when ready. |
-| [`deploy/windows-server/`](deploy/windows-server/) | Windows IIS deploy artifacts | uvicorn entrypoint + `web.config` referenced by [`src/uiao/api/app.py`](src/uiao/api/app.py). |
+| [`deploy/windows-server/`](deploy/windows-server/) | Windows IIS deploy artifacts | uvicorn entrypoint + `web.config` referenced by [`src/uiao/api/app.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/api/app.py). |
 | [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, ruff, mypy (non-blocking), quarto, link-check, release. |
 
-Canon authority lives in [`src/uiao/canon/`](src/uiao/canon/) and is **protected**: changes require a UIAO_NNN allocation in [`document-registry.yaml`](src/uiao/canon/document-registry.yaml), and doctrinal changes require an ADR under [`src/uiao/canon/adr/`](src/uiao/canon/adr/). See [AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants) for the full invariant set.
+Canon authority lives in [`src/uiao/canon/`](src/uiao/canon/) and is **protected**: changes require a UIAO_NNN allocation in [`document-registry.yaml`](src/uiao/canon/document-registry.yaml), and doctrinal changes require an ADR under [`src/uiao/canon/adr/`](src/uiao/canon/adr/). See [AGENTS.md § Repository Invariants](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md#repository-invariants) for the full invariant set.
 
 ## Quick start
 
-**New to UIAO?** Walk the [10-minute quickstart](docs/docs/quickstart.md) — it runs a full auditor bundle (evidence, POA&M, SSP narrative) against a synthetic ScubaGear fixture. No Azure tenant, no API keys, no live data.
+**New to UIAO?** Walk the [10-minute quickstart](https://github.com/WhalerMike/uiao/blob/main/docs/docs/quickstart.qmd) — it runs a full auditor bundle (evidence, POA&M, SSP narrative) against a synthetic ScubaGear fixture. No Azure tenant, no API keys, no live data.
 
-**Writing an adapter?** Follow the [30-minute adapter authoring tutorial](docs/docs/adapter-authoring-tutorial.md) — walks from zero to a merged PR using the shipped ScubaGear adapter as the worked example.
+**Writing an adapter?** Follow the [30-minute adapter authoring tutorial](https://github.com/WhalerMike/uiao/blob/main/docs/docs/adapter-authoring-tutorial.qmd) — walks from zero to a merged PR using the shipped ScubaGear adapter as the worked example.
 
 ```bash
 # Install the package + CLI in editable mode

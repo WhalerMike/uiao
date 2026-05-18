@@ -39,6 +39,7 @@ class TestConfigLoader:
             "DRIFT-AUTHZ",
             "DRIFT-IDENTITY",
             "DRIFT-BOUNDARY",
+            "DRIFT-SSOT-CONTENTION",
         }
         for phase in cfg.phases:
             for entry in phase.op_map.values():
