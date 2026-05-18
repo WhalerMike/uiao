@@ -35,9 +35,9 @@ Proposed
 ## Context
 
 [UIAO_001](../UIAO_001_UIAO-SSOT.md) defines the substrate's drift
-taxonomy as five canonical classes: `DRIFT-SCHEMA`,
-`DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, and
-`DRIFT-IDENTITY`. [ADR-012](adr-012-canonical-drift-taxonomy.md) is
+taxonomy as six canonical classes: `DRIFT-SCHEMA`,
+`DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`,
+and `DRIFT-BOUNDARY` (ADR-033). [ADR-012](adr-012-canonical-drift-taxonomy.md) is
 explicit that this taxonomy can only be extended via Governance-
 Plane-approved ADRs and that existing classes cannot be modified.
 ADR-064 ratified the sub-class qualifier mechanism
@@ -78,6 +78,7 @@ The existing drift classes cannot fit this condition:
 | `DRIFT-PROVENANCE` | Provenance is intact on both instances; the question is which instance *should* be the source. |
 | `DRIFT-AUTHZ` | Authorization may be granted; the granted writer is writing to the wrong place. |
 | `DRIFT-IDENTITY` | Identity resolution is correct; the principal genuinely exists and is genuinely the writer. |
+| `DRIFT-BOUNDARY` | Boundary is enforced correctly; the issue is *which instance* within the same boundary should be authoritative, not where the boundary itself sits. |
 
 The condition is operationally distinct: a write that is structurally
 correct, semantically correct, properly provenance-anchored,
@@ -98,7 +99,7 @@ its own future ADR; the two classes are peers, not parent-child.
 ## Decision
 
 1. **New top-level drift class.** Add `DRIFT-SSOT-CONTENTION` as the
-   sixth canonical drift class in the substrate's taxonomy. Per
+   seventh canonical drift class in the substrate's taxonomy. Per
    ADR-012's extension protocol, the existing five classes are
    unchanged.
 
@@ -192,7 +193,7 @@ its own future ADR; the two classes are peers, not parent-child.
       domain in question is also part of an inter-agency
       reciprocity bundle.
 
-7. **Placement in taxonomy.** The six-class taxonomy after this
+7. **Placement in taxonomy.** The seven-class taxonomy after this
    ADR:
 
    | Class | Detects |
@@ -202,9 +203,10 @@ its own future ADR; the two classes are peers, not parent-child.
    | `DRIFT-PROVENANCE` | Source-attribution chain broken or malformed |
    | `DRIFT-AUTHZ` | Authorization grants or denials diverged from policy |
    | `DRIFT-IDENTITY` | Identity-attribution failure (unattributed instance, missing OrgPath cascade) |
+   | `DRIFT-BOUNDARY` | GCC-Moderate boundary enforcement divergence (ADR-033) |
    | **`DRIFT-SSOT-CONTENTION`** (new) | **Write directed at a canonically-demoted instance** |
 
-   The new class sits at the same level as the original five; it is
+   The new class sits at the same level as the original six; it is
    not a sub-class of any of them.
 
 ## Consequences
