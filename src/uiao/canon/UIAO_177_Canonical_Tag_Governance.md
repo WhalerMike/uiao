@@ -8,6 +8,9 @@ owner: Michael Stratton
 created_at: "2026-05-18"
 updated_at: "2026-05-18"
 boundary: GCC-Moderate
+# Draft canon, pending reconciliation review (see PR #556). Will flip
+# to true and gain a docs/.qmd entry once status moves to Current.
+publish_to_site: false
 ---
 
 # UIAO_177 — Canonical Tag Governance

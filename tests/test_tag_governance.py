@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from uiao.governance.tag_governance import (
     CANONICAL_KEYS,
@@ -18,12 +17,12 @@ from uiao.governance.tag_governance import (
 
 
 def test_canonical_keys_are_the_four_from_uiao_177():
-    assert CANONICAL_KEYS == {
+    assert {
         "uiao.org.path",
         "uiao.identity.lifecycle",
         "uiao.owner",
         "uiao.boundary",
-    }
+    } == CANONICAL_KEYS
 
 
 def test_bare_uiao_lifecycle_is_forbidden():

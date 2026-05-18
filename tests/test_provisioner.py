@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
-import pytest
 
 from uiao.governance.drift_output import DriftRecord
 from uiao.orchestrator.provisioner import (
@@ -12,7 +11,6 @@ from uiao.orchestrator.provisioner import (
     DeterministicProvisioner,
     ProvisioningRequest,
     ProvisioningStepRecord,
-    StepBinding,
 )
 
 

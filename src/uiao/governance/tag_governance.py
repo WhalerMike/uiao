@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional
 
-from uiao.governance.drift_output import DriftRecord
+from uiao.governance.drift_output import DriftClass, DriftRecord, Severity
 
 # Canonical boundary enum, sourced from UIAO substrate-manifest (ADR-033,
 # ADR-059). The bare strings are encoded here to avoid a runtime
@@ -177,12 +177,14 @@ def compute_tag_drift(
                 )
             )
         elif actual[key] != expected:
-            drift_class = (
+            drift_class: DriftClass = (
                 "DRIFT-BOUNDARY"
                 if key == CanonicalTagKey.BOUNDARY.value
                 else "DRIFT-SEMANTIC"
             )
-            severity = "critical" if drift_class == "DRIFT-BOUNDARY" else "medium"
+            severity: Severity = (
+                "critical" if drift_class == "DRIFT-BOUNDARY" else "medium"
+            )
             records.append(
                 DriftRecord(
                     object_id=object_id,
