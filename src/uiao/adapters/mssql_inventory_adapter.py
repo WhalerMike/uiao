@@ -48,8 +48,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
@@ -58,6 +57,7 @@ from .database_base import (
     ClaimSet,
     ConnectionProvenance,
     DatabaseAdapterBase,
+    DriftReport,
     QueryProvenance,
     SchemaMappingObject,
 )
@@ -169,12 +169,8 @@ class MSSQLInventoryAdapter(DatabaseAdapterBase):
         super().__init__(config or {})
         self._tenant_id: Optional[str] = self._config.get("tenant_id")
         self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
-        self._spn_inventory_input: Optional[List[Dict[str, Any]]] = self._config.get(
-            "spn_inventory_input"
-        )
-        self._arg_query_results: Optional[List[Dict[str, Any]]] = self._config.get(
-            "arg_query_results"
-        )
+        self._spn_inventory_input: Optional[List[Dict[str, Any]]] = self._config.get("spn_inventory_input")
+        self._arg_query_results: Optional[List[Dict[str, Any]]] = self._config.get("arg_query_results")
         self._arg_client_factory = self._config.get("arg_client_factory")
         # Graph endpoint resolved for consistency with other adapters; not
         # used directly here (ARG is a separate API surface), but the cloud
@@ -296,9 +292,7 @@ class MSSQLInventoryAdapter(DatabaseAdapterBase):
         return QueryProvenance(
             canonical_query=canonical_query,
             vendor_query="ad-ldap(MSSQLSvc/*) + " + ARG_QUERY_MSSQL_RESOURCES.strip(),
-            execution_plan_hash=self._hash(
-                {"spn_count": len(spn_records), "arg_count": len(arg_records)}
-            ),
+            execution_plan_hash=self._hash({"spn_count": len(spn_records), "arg_count": len(arg_records)}),
             row_count=len(claims),
             timestamp=self._now(),
         )
@@ -338,7 +332,7 @@ class MSSQLInventoryAdapter(DatabaseAdapterBase):
     # ------------------------------------------------------------------
     # 2.5 Drift Detection & Version Integrity Domain
     # ------------------------------------------------------------------
-    def detect_drift(self) -> "DriftReport":  # noqa: F821 — forward reference
+    def detect_drift(self) -> DriftReport:
         """Identify policy violations in the discovered inventory.
 
         Drift conditions surfaced by this adapter (Tier-A1 scope):
@@ -356,8 +350,6 @@ class MSSQLInventoryAdapter(DatabaseAdapterBase):
         if no findings, ``drift_type`` is ``no-drift`` and ``severity`` is
         ``P4`` (informational).
         """
-        from .database_base import DriftReport
-
         if self._claims_cache is None:
             self.execute_query({"select": ["mssql_instances"]})
 
@@ -393,11 +385,7 @@ class MSSQLInventoryAdapter(DatabaseAdapterBase):
         else:
             classes_present = {f["drift_class"] for f in per_claim_findings}
             # DRIFT-IDENTITY ranked above DRIFT-PROVENANCE for severity rollup.
-            drift_type = (
-                "DRIFT-IDENTITY"
-                if "DRIFT-IDENTITY" in classes_present
-                else "DRIFT-PROVENANCE"
-            )
+            drift_type = "DRIFT-IDENTITY" if "DRIFT-IDENTITY" in classes_present else "DRIFT-PROVENANCE"
             severity = "P2"
 
         now = self._now()
