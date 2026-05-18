@@ -44,7 +44,7 @@ jobs:
         run: quarto render customer-documents --to docx
 
       - name: Upload site artifact
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: docs/_site
@@ -59,7 +59,9 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Allow workflow_dispatch to redeploy from main without requiring a no-op
+    # commit (see history: bc0e8eb / 3fe6d8d / 0ca3b76 were nudge-commits).
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: render
     runs-on: ubuntu-latest
     permissions:
