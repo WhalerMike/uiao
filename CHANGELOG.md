@@ -628,7 +628,7 @@ $ python -m pytest -q
 ## [0.3.0] — 2026-04-20
 
 ### Added
-- **Single-package monorepo** consolidating `core/`, `impl/`, and partial `src/` into one `src/uiao/` Python package. `pip install -e .` now installs everything in one step; canon, rules, schemas, and KSI library ship as package data via `importlib.resources`. See [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md).
+- **Single-package monorepo** consolidating `core/`, `impl/`, and partial `src/` into one `src/uiao/` Python package. `pip install -e .` now installs everything in one step; canon, rules, schemas, and KSI library ship as package data via `importlib.resources`. See [ADR-032](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-032-single-package-consolidation.md).
 - Full runtime dependency declarations in `pyproject.toml` (`jinja2`, `jsonschema`, `python-docx`, `python-pptx`, `openpyxl`, `matplotlib`, `compliance-trestle`, `compliance-trestle-fedramp`, `lxml`, etc.) — previously inherited from the separate `uiao-impl` editable install.
 - Dynamic version from `src/uiao/__version__.py` via `[tool.setuptools.dynamic]` (SSOT; resolves prior drift between `pyproject.toml` and the module).
 - Optional extras: `[dev]`, `[visuals]`, `[plantuml]`. Classifiers, keywords, `[project.urls]`, and root-level `[tool.pytest.ini_options]` added.

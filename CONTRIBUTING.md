@@ -6,7 +6,7 @@ with strong canon invariants, so contribution flow is more disciplined
 than a typical OSS project. The payoff: every change is traceable,
 schema-validated, and drift-scanned before it lands.
 
-[AGENTS.md](AGENTS.md) is the agent-facing companion to this document
+[AGENTS.md](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md) is the agent-facing companion to this document
 and the source of truth for module topology, invariants, and the CI
 stack — when this guide and AGENTS.md diverge, AGENTS.md wins.
 
@@ -54,7 +54,7 @@ UIAO is a **single installable Python package** rooted at
 | [`docs/`](docs/) | Quarto documentation source (`.qmd`, `.md`, `.yml`) |
 | [`scripts/`](scripts/) | Workspace tooling — bootstrap, validators, generators |
 | [`inbox/`](inbox/) | Draft staging — not canon. Promote to `src/uiao/canon/` or `docs/` when ready |
-| [`.github/workflows/`](.github/workflows/) | CI — see [AGENTS.md § CI stack](AGENTS.md#ci-stack-all-live-at-repo-root-githubworkflows) |
+| [`.github/workflows/`](.github/workflows/) | CI — see [AGENTS.md § CI stack](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md#ci-stack-all-live-at-repo-root-githubworkflows) |
 
 Module topology is also declared machine-readably in
 [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml)
@@ -78,11 +78,11 @@ Module topology is also declared machine-readably in
    - `mission-class:` — `identity | telemetry | policy | enforcement | integration`
 
    See
-   [UIAO_003](src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
+   [UIAO_003](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
 
 ## Commit convention
 
-Per [AGENTS.md § Commit convention](AGENTS.md#commit-convention):
+Per [AGENTS.md § Commit convention](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md#commit-convention):
 
 ```
 <verb>: <module-or-area> — <description>
@@ -127,20 +127,20 @@ mypy src/uiao
 ### 3. Open the PR
 
 Use the PR template
-([`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md)).
+([`.github/PULL_REQUEST_TEMPLATE.md`](https://github.com/WhalerMike/uiao/blob/main/.github/PULL_REQUEST_TEMPLATE.md)).
 Fill in **Summary**, **Diff stat**, **Test plan**.
 
 ### 4. CI
 
 Ten workflows run on every PR — see
-[AGENTS.md § CI stack](AGENTS.md#ci-stack-all-live-at-repo-root-githubworkflows)
+[AGENTS.md § CI stack](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md#ci-stack-all-live-at-repo-root-githubworkflows)
 for the full list. All are blocking except `link-check.yml` (soft-fail).
 
 ## Repository invariants
 
 The monorepo structure and packaging rules are load-bearing. Six named
 technical invariants (I1–I6) are defined in
-[AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants):
+[AGENTS.md § Repository Invariants](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md#repository-invariants):
 
 - **I1** — `src/uiao/` is a single regular package
 - **I2** — Single CLI entry point: `uiao.cli.app:app`
@@ -191,7 +191,7 @@ Promoting an adapter from `status: reserved, phase: phase-planning` to
 
 ## Code of conduct
 
-This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
+This project follows the [Contributor Covenant](https://github.com/WhalerMike/uiao/blob/main/CODE_OF_CONDUCT.md).
 Be respectful, constructive, and collaborative.
 
 ## License

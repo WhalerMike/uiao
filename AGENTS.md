@@ -22,14 +22,14 @@ Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao
 | [`docs/`](docs/) | Derived documentation | Articles, guides, narratives, Quarto site. Every published doc traces provenance to canon under `src/uiao/canon/`. |
 | [`scripts/`](scripts/) | Maintenance scripts | Validators, canon-sync, doc generators, one-shot tooling. |
 | [`tools/`](tools/) | PowerShell generators | `Write-Phase2TSA.ps1`, `Write-Phase2Diagrams.ps1`, `Write-CanonFiles*.ps1` — author-time generators that read source models (`.psd1`/`.txt`) and write derived markdown into `phase2/` and other targets. Not invoked at runtime; not on the CI path. |
-| [`diagrams/`](diagrams/) | Diagram-pipeline subsystem | Self-contained Mermaid SSOT system covering all 9 UIAO document categories. Own README, governance ([`diagrams/governance/DIAGRAM-GOVERNANCE.md`](diagrams/governance/DIAGRAM-GOVERNANCE.md), UIAO_DG_001 v2.0), metadata schema, registry of 17 active diagrams, render/validate/inject Python scripts, and CI workflow definition. Independent of phase numbering — uses `DIAG_NNN` namespace. |
-| [`phase2/`](phase2/) | Phase 2 architecture artifacts | Generated output of `tools/Write-Phase2TSA.ps1` from the source model at `models/phase2/UIAO_Phase2_TSA.psd1`. Feeds the customer-facing **Phase 2 — Governance OS** chapter ([`docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd`](docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)). Uses the `UIAO_P2_NNN` namespace (not the canonical `UIAO_NNN` allocation). Most domain/lifecycle/transformation files are placeholder scaffolds pending design sessions; `_legacy/` holds the prior generator output. Index at [`phase2/UIAO_Phase2_Index.md`](phase2/UIAO_Phase2_Index.md). |
+| [`diagrams/`](diagrams/) | Diagram-pipeline subsystem | Self-contained Mermaid SSOT system covering all 9 UIAO document categories. Own README, governance ([`diagrams/governance/DIAGRAM-GOVERNANCE.md`](https://github.com/WhalerMike/uiao/blob/main/diagrams/governance/DIAGRAM-GOVERNANCE.md), UIAO_DG_001 v2.0), metadata schema, registry of 17 active diagrams, render/validate/inject Python scripts, and CI workflow definition. Independent of phase numbering — uses `DIAG_NNN` namespace. |
+| [`phase2/`](phase2/) | Phase 2 architecture artifacts | Generated output of `tools/Write-Phase2TSA.ps1` from the source model at `models/phase2/UIAO_Phase2_TSA.psd1`. Feeds the customer-facing **Phase 2 — Governance OS** chapter ([`docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)). Uses the `UIAO_P2_NNN` namespace (not the canonical `UIAO_NNN` allocation). Most domain/lifecycle/transformation files are placeholder scaffolds pending design sessions; `_legacy/` holds the prior generator output. Index at [`phase2/UIAO_Phase2_Index.md`](https://github.com/WhalerMike/uiao/blob/main/phase2/UIAO_Phase2_Index.md). |
 | [`models/`](models/) | **Phase 2 source models — NOT canon authority.** | Holds `models/phase2/UIAO_Phase2_TSA.psd1`, the PowerShell-data-file source model that `tools/Write-Phase2TSA.ps1` consumes to generate `phase2/`. Renamed from `canon/` (which collided with `src/uiao/canon/`) so the role is explicit: generator-input source models, not canonical governance. Canon authority lives **only** at `src/uiao/canon/`. |
 | [`inbox/`](inbox/) | Scratch surface | Agent-authored drafts. Nothing here is canon. |
 | [`deploy/`](deploy/) | Deployment artifacts | `deploy/windows-server/` holds the IIS deployment surface (`run.py`, `web.config`, `requirements-windows.txt`) for the FastAPI service in `src/uiao/api/`. |
 | [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, mypy (non-blocking), ruff, quarto, link-check, release. |
 
-Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](src/uiao/cli/app.py).
+Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/cli/app.py).
 
 ## Operating principles (substrate-wide)
 
@@ -37,7 +37,7 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 2. **Canon-anchored evidence** — every artifact the substrate produces cites the canon document ID and version it derives from.
 3. **Dual-axis adapter taxonomy** — every adapter declares `class` (modernization | conformance) × `mission-class` (identity | telemetry | policy | enforcement | integration) per UIAO_003.
 4. **Schema-first governance** — five JSON Schemas under `src/uiao/schemas/` validate every registry, manifest, and frontmatter edit in CI.
-5. **Drift is explicit** — five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in [`docs/docs/16_DriftDetectionStandard.qmd`](docs/docs/16_DriftDetectionStandard.qmd).
+5. **Drift is explicit** — five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in [`docs/docs/16_DriftDetectionStandard.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/docs/16_DriftDetectionStandard.qmd).
 6. **Version isolation** — no references to any previous version in active canon context; ADRs are append-only with supersession markers.
 
 ## Key artifacts
@@ -104,7 +104,7 @@ uiao substrate walk --json       # machine-readable
 uiao substrate drift             # exit-code-only summary (CI-friendly)
 ```
 
-Source: [`src/uiao/substrate/walker.py`](src/uiao/substrate/walker.py).
+Source: [`src/uiao/substrate/walker.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/substrate/walker.py).
 
 Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs resolve) findings.
 
@@ -147,9 +147,9 @@ Common `<verb>`s: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Use 
 
 ## History
 
-The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved ([ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md)). The `uiao-gos` federal/commercial firewall was retired in that pass; its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters.
+The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved ([ADR-028](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md)). The `uiao-gos` federal/commercial firewall was retired in that pass; its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters.
 
-On 2026-04-20 the hybrid `core/` + `impl/` + partial `src/` tree was flattened into a single `src/uiao/` package with `pip install -e .` packaging and full runtime deps declared ([ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md)). Everything that used to import from `uiao.impl.*` now imports from `uiao.*`; canon ships inside the package via `importlib.resources`.
+On 2026-04-20 the hybrid `core/` + `impl/` + partial `src/` tree was flattened into a single `src/uiao/` package with `pip install -e .` packaging and full runtime deps declared ([ADR-032](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-032-single-package-consolidation.md)). Everything that used to import from `uiao.impl.*` now imports from `uiao.*`; canon ships inside the package via `importlib.resources`.
 
 ## Writing patterns
 
