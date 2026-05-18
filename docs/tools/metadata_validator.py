@@ -176,7 +176,11 @@ def validate_frontmatter(filepath: Path, fm: dict, body: str, base_path: Path) -
                 "Remove reference or add boundary-exception: true",
             )
     if MERMAID_PATTERN.search(body):
-        add("Body contains Mermaid diagram (PlantUML required)", SEVERITY_WARNING, "Convert diagram to PlantUML")
+        add(
+            "Body contains Mermaid diagram (Gemini Nano Banana required)",
+            SEVERITY_WARNING,
+            "Convert diagram to a [DIAGRAM-NN: <prompt>] placeholder; generation runs through scripts/generate_images.py + image-gen.yml (model gemini-2.5-flash-image)",
+        )
     return findings
 
 

@@ -265,8 +265,8 @@ def detect_cosmetic_drift(filepath: Path, body: str, base_path: Path) -> list[di
                 "file": rel,
                 "category": "COSMETIC_DRIFT",
                 "severity": SEVERITY_INFO,
-                "detail": "Uses Mermaid diagrams (PlantUML preferred)",
-                "remediation": "Convert to PlantUML",
+                "detail": "Uses Mermaid diagrams (Gemini Nano Banana preferred)",
+                "remediation": "Convert to [DIAGRAM-NN: <prompt>] placeholder; image-gen.yml generates via gemini-2.5-flash-image",
             }
         )
     return findings

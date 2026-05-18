@@ -96,20 +96,7 @@ Every active reciprocity record must be reachable from an `ato-decision` node
 via a directed edge; records that are not so anchored are flagged by
 KSI-RECIP-008.
 
-```{mermaid}
-graph TD
-    AO[Authorising Official] -->|issues| ATD[ato-decision node\nControlling ATO]
-    ATD -->|edge: ato-decision → reciprocity-record| RR1[reciprocity-record\nAgency 1]
-    ATD -->|edge: ato-decision → reciprocity-record| RR2[reciprocity-record\nAgency 2]
-    ATD -->|edge: ato-decision → reciprocity-record| RRN[reciprocity-record\nAgency N]
-    RR1 --> CA1[Consuming Agency 1\nAO acknowledgement]
-    RR2 --> CA2[Consuming Agency 2\nAO acknowledgement]
-    RRN --> CAN[Consuming Agency N\nAO acknowledgement]
-    ATD -->|conmon evidence attaches here| CM[Continuous-Monitoring\nevidence stream]
-    CM -.->|single platform-scope stream| RR1
-    CM -.->|single platform-scope stream| RR2
-    CM -.->|single platform-scope stream| RRN
-```
+[DIAGRAM-01: Top-down hub-and-spoke evidence graph for the Single ATO Reciprocity Model. Root box at top "Authorising Official" connects via arrow labeled "issues" to a central hub box "ato-decision node (Controlling ATO)". From the hub, three labeled "ato-decision → reciprocity-record" arrows fan downward to three sibling boxes in a row: "reciprocity-record (Agency 1)"; "reciprocity-record (Agency 2)"; "reciprocity-record (Agency N)". Each reciprocity-record connects downward to a consuming-agency box labeled "Consuming Agency N (AO acknowledgement)". A separate side branch from the hub: an arrow labeled "conmon evidence attaches here" to a single shared box "Continuous-Monitoring evidence stream". Three dashed feedback arrows from the evidence stream back to each of the three reciprocity-records, each labeled "single platform-scope stream", to convey that one shared evidence pipeline feeds all consuming agencies. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for AO and hub, teal (#1A9E8F) for reciprocity records, amber (#D4A017) for consuming agencies, monospace identifiers, 16:9 landscape.]
 
 **Key invariants (UIAO_140 §6):**
 
@@ -128,17 +115,7 @@ A reciprocity record moves through five states from creation to retirement.
 The lifecycle is triggered by events in the ATO pipeline, the consuming-agency
 onboarding workflow, and the continuous-monitoring stream.
 
-```{mermaid}
-stateDiagram-v2
-    [*] --> Draft : Agency onboarding request\nreceived; SSP latitude\ntable reviewed
-    Draft --> Issued : Authorising Official\nsigns controlling ATO;\nreciprocity record\ngenerated
-    Issued --> Active : Consuming-agency CIO\nor delegate provides\nPIV-anchored acknowledgement
-    Active --> Expiring : expires_at within 60 days;\nreauthorization window opens
-    Expiring --> Active : Renewal record created\n(renewed_from back-ref);\nupdated expires_at set
-    Expiring --> Expired : No renewal within 30-day\nSLA (KSI-RECIP-006 FAIL)
-    Expired --> [*] : Record archived;\nconsuming agency\noffboarded
-    Active --> Expired : AO formally withdraws\nreciprocity grant
-```
+[DIAGRAM-02: Horizontal state-machine diagram for the reciprocity-record lifecycle. Five labeled state circles arranged left-to-right: Draft → Issued → Active → Expiring → Expired. A pill-shaped start node on the far left and a pill-shaped end node on the far right. Transition arrows with labels: start → Draft labeled "Agency onboarding request received; SSP latitude table reviewed"; Draft → Issued labeled "Authorising Official signs controlling ATO; reciprocity record generated"; Issued → Active labeled "Consuming-agency CIO or delegate provides PIV-anchored acknowledgement"; Active → Expiring labeled "expires_at within 60 days; reauthorization window opens"; Expiring → Active (curved return arrow above the spine) labeled "Renewal record created (renewed_from back-ref); updated expires_at set"; Expiring → Expired labeled "No renewal within 30-day SLA (KSI-RECIP-006 FAIL)"; Active → Expired (curved arrow below the spine) labeled "AO formally withdraws reciprocity grant"; Expired → end labeled "Record archived; consuming agency offboarded". Engineering blueprint style, neutral slate background, teal (#1A9E8F) for Draft/Issued/Active, amber (#D4A017) for Expiring, red (#C74040) for Expired, monospace KSI identifiers in transition labels, 16:9 landscape.]
 
 **Transition triggers:**
 
@@ -214,24 +191,7 @@ See also:
 The per-agency bundle is assembled from four upstream sources and verified by
 the consuming-agency Authorising Official before acceptance.
 
-```{mermaid}
-flowchart TD
-    SSP[Controlling SSP\nPlatform-scope security plan] --> REC[Reciprocity Record\nAgency elections + legal_basis]
-    LAT[Configuration Latitude Table\nSSP-declared tenant elections] --> REC
-    TCFG[Tenant Configuration\nActual agency settings] --> DRIFT{Latitude\nDrift Check}
-    LAT --> DRIFT
-    DRIFT -- No drift --> REC
-    DRIFT -- Drift found --> FIND[Config-Latitude Finding\nremediation_owner required\nKSI-RECIP-004]
-    FIND --> REC
-    REC --> CDEF[OSCAL component-definition\nPlatform components]
-    REC --> ARES[OSCAL assessment-results\nContinuous monitoring]
-    CDEF --> BUNDLE[Per-Agency Bundle\nbundle_id + bundle_hash]
-    ARES --> BUNDLE
-    BUNDLE --> SIG{HMAC-SHA256\nSignature}
-    SIG -- Verified --> AO_VER[Consuming-Agency AO\nVerification + Acceptance]
-    SIG -- Fails --> QUAR[Bundle Quarantined\nKSI-RECIP-007 FAIL]
-    AO_VER --> ACTIVE[Reciprocity Record\nstatus = Active]
-```
+[DIAGRAM-03: Top-down per-agency bundle aggregation pipeline. Top-tier inputs (left to right): "Controlling SSP (Platform-scope security plan)"; "Configuration Latitude Table (SSP-declared tenant elections)"; "Tenant Configuration (Actual agency settings)". The Tenant Configuration and the Latitude Table both feed a diamond decision box "Latitude Drift Check". From the diamond: "No drift" advances to a central convergence box "Reciprocity Record (Agency elections + legal_basis)"; "Drift found" branches to "Config-Latitude Finding (remediation_owner required, KSI-RECIP-004)" which then also rejoins the Reciprocity Record. The Controlling SSP also feeds the Reciprocity Record directly. The Reciprocity Record fans down to two OSCAL artifact boxes: "OSCAL component-definition (Platform components)" and "OSCAL assessment-results (Continuous monitoring)". Both OSCAL artifacts converge into "Per-Agency Bundle (bundle_id + bundle_hash)". The bundle flows into a second diamond decision: "HMAC-SHA256 Signature". From the diamond: "Verified" advances to "Consuming-Agency AO Verification + Acceptance" → final terminal "Reciprocity Record (status = Active)"; "Fails" branches to "Bundle Quarantined (KSI-RECIP-007 FAIL)" (red). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary spine, amber (#D4A017) for the two diamond gates, teal (#1A9E8F) for OSCAL artifacts, red (#C74040) for the quarantine branch, monospace KSI identifiers, 16:9 landscape.]
 
 ---
 

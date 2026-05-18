@@ -80,18 +80,7 @@ survey timestamp. This hash anchors the integrity chain (see Section 7).
 The end-to-end pipeline moves from AD forest survey through OrgPath projection
 to signed evidence bundle.
 
-```{mermaid}
-flowchart TD
-    A[AD Forest Survey\ncomputer-objects SHA-256] --> B[OrgPath Projection\ncodebook validation]
-    B --> C{Codebook\nMatch?}
-    C -- Yes --> D[Projected OrgPath\nattached to device record]
-    C -- No --> E[Finding: DRIFT-PROVENANCE\nunmapped OU path]
-    D --> F[Device-Plane Scan\nIntune + Arc adapters]
-    F --> G[Readiness Findings\nper device]
-    G --> H[Evidence Bundle\nbundle_hash + HMAC-SHA256]
-    H --> I[OSCAL Emission\nobservations + findings]
-    E --> H
-```
+[DIAGRAM-01: Top-down end-to-end OrgTree readiness pipeline diagram. Linear spine top to bottom: "AD Forest Survey (computer-objects SHA-256)" → "OrgPath Projection (codebook validation)" → a diamond decision box "Codebook Match?". From the diamond: "Yes" advances to "Projected OrgPath (attached to device record)" → "Device-Plane Scan (Intune + Arc adapters)" → "Readiness Findings (per device)" → "Evidence Bundle (bundle_hash + HMAC-SHA256)" → "OSCAL Emission (observations + findings)". "No" branches off to "Finding: DRIFT-PROVENANCE (unmapped OU path)" which then rejoins the spine at the Evidence Bundle. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary spine, amber (#D4A017) for decision diamond, red (#C74040) for the DRIFT-PROVENANCE branch, monospace identifiers, 16:9 landscape.]
 
 **Pipeline invariants (per UIAO_002 §4):**
 
@@ -107,17 +96,7 @@ flowchart TD
 OrgPath projection converts legacy OU distinguished names into the canonical
 `orgPath` string hierarchy defined in **ADR-035**.
 
-```{mermaid}
-graph TD
-    OU[AD OU Distinguished Name\ne.g. OU=IT,OU=Baltimore,OU=East] --> PROJ[OrgPath Projector\nsrc/uiao/modernization/orgtree/]
-    PROJ --> CB{Codebook\nLookup}
-    CB -- match --> VP[Validated OrgPath\nCORP/US/EAST/BALTIMORE/IT]
-    CB -- no match --> UNK[Unmapped Path\nquarantined]
-    VP --> DG[Dynamic Group Rule\nstartsWith / eq]
-    VP --> AU[Administrative Unit\nscoped role assignment]
-    VP --> CONF[Conformant\ndevice record]
-    UNK --> FND[Finding emitted\nDRIFT-PROVENANCE]
-```
+[DIAGRAM-02: Top-down OrgPath projection diagram showing how AD OU distinguished names become validated OrgPath values. Root box: "AD OU Distinguished Name (e.g. OU=IT,OU=Baltimore,OU=East)" → "OrgPath Projector (src/uiao/modernization/orgtree/)" → a diamond decision box "Codebook Lookup". From the diamond: "match" advances to "Validated OrgPath (CORP/US/EAST/BALTIMORE/IT)" which fans out to three downstream consumer boxes — "Dynamic Group Rule (startsWith / eq)"; "Administrative Unit (scoped role assignment)"; "Conformant device record". "no match" branches to "Unmapped Path (quarantined)" which terminates at "Finding emitted (DRIFT-PROVENANCE)". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for projector and validated path, teal (#1A9E8F) for consumers, red (#C74040) for the unmapped/quarantine branch, monospace OrgPath strings and module paths, 16:9 landscape.]
 
 **Codebook validation rules (ADR-035):**
 
@@ -135,34 +114,14 @@ graph TD
 Per **ADR-038**, Intune readiness gates on four sequential checks. A device is
 `READY` only when all gates pass.
 
-```{mermaid}
-flowchart TD
-    START([Device record\n+ projected OrgPath]) --> OS{OS Version\nmeets baseline?}
-    OS -- No --> FAIL_OS[FAIL: OS out of baseline\nfinding emitted]
-    OS -- Yes --> TPM{TPM 2.0\npresent + active?}
-    TPM -- No --> FAIL_TPM[FAIL: No TPM binding\nfinding emitted]
-    TPM -- Yes --> HVCI{HVCI / Memory\nIntegrity enabled?}
-    HVCI -- No --> WARN_HVCI[WARN: HVCI not enforced\nfinding emitted]
-    HVCI -- Yes --> CO{Co-management\nstate enrolled?}
-    CO -- No --> WARN_CO[WARN: Not co-managed\nfinding emitted]
-    CO -- Yes --> INTUNE_READY([READY: Intune\nconformant])
-```
+[DIAGRAM-03: Top-down four-gate decision tree for Intune readiness. Pill-shaped start node at top: "Device record + projected OrgPath". Four sequential diamond decision gates flow vertically down the spine: Gate 1 "OS Version meets baseline?"; Gate 2 "TPM 2.0 present + active?"; Gate 3 "HVCI / Memory Integrity enabled?"; Gate 4 "Co-management state enrolled?". Each "No" branch exits to the right into a labeled failure or warning box: Gate 1 No → "FAIL: OS out of baseline (finding emitted)" (red); Gate 2 No → "FAIL: No TPM binding (finding emitted)" (red); Gate 3 No → "WARN: HVCI not enforced (finding emitted)" (amber); Gate 4 No → "WARN: Not co-managed (finding emitted)" (amber). Each "Yes" advances downward to the next gate. After Gate 4 Yes, the spine terminates in a pill-shaped success node: "READY: Intune conformant" (green/teal). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the spine and diamonds, red (#C74040) for FAIL, amber (#D4A017) for WARN, teal (#1A9E8F) for READY, monospace labels, 16:9 landscape.]
 
 ### 5.2 Arc Readiness Decision Tree
 
 Arc readiness gates on network reachability, extension health, and policy scope
 alignment with the device's projected OrgPath (ADR-038).
 
-```{mermaid}
-flowchart TD
-    START2([Device record\n+ projected OrgPath]) --> NET{Arc endpoint\nreachable?}
-    NET -- No --> FAIL_NET[FAIL: Network path blocked\nfinding emitted]
-    NET -- Yes --> EXT{Connected Machine\nagent healthy?}
-    EXT -- No --> FAIL_EXT[FAIL: Agent unhealthy\nfinding emitted]
-    EXT -- Yes --> POL{Policy scope\naligns OrgPath?}
-    POL -- No --> WARN_POL[WARN: Policy scope mismatch\nfinding emitted]
-    POL -- Yes --> ARC_READY([READY: Arc\nconformant])
-```
+[DIAGRAM-04: Top-down three-gate decision tree for Azure Arc readiness. Pill-shaped start node at top: "Device record + projected OrgPath". Three sequential diamond decision gates flow vertically down the spine: Gate 1 "Arc endpoint reachable?"; Gate 2 "Connected Machine agent healthy?"; Gate 3 "Policy scope aligns OrgPath?". Each "No" branch exits to the right into a labeled failure or warning box: Gate 1 No → "FAIL: Network path blocked (finding emitted)" (red); Gate 2 No → "FAIL: Agent unhealthy (finding emitted)" (red); Gate 3 No → "WARN: Policy scope mismatch (finding emitted)" (amber). Each "Yes" advances downward. After Gate 3 Yes, the spine terminates in a pill-shaped success node: "READY: Arc conformant" (green/teal). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for spine and diamonds, red (#C74040) for FAIL, amber (#D4A017) for WARN, teal (#1A9E8F) for READY, monospace labels, 16:9 landscape.]
 
 ---
 
