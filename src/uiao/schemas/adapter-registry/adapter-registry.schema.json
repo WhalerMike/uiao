@@ -242,6 +242,30 @@
         "notes": {
           "type": "string",
           "description": "Free-text notes. Not machine-consumed."
+        },
+        "implementation": {
+          "type": "object",
+          "description": "Structured binding from a registry entry to its in-repo Python implementation and tests. Optional today (additive); expected on entries with status=active or status=proposed once population catches up. Replaces the prior practice of citing implementation paths in free-text `notes`, which is not machine-enforceable and drifts silently. Validators MAY treat absence as a warning when status is in {active, proposed}; presence with a non-existent `python_module` path MUST be a hard error.",
+          "additionalProperties": false,
+          "properties": {
+            "python_module": {
+              "type": "string",
+              "description": "Primary Python file or package path implementing this adapter, relative to repo root. Examples: 'src/uiao/adapters/scubagear_adapter.py' (single-file), 'src/uiao/adapters/fedramp_cr26_catalog' (package), 'src/uiao/governance/drift_engine.py' (cross-tree implementation for adapters whose logic lives outside src/uiao/adapters/, e.g. orgtree-drift-engine).",
+              "pattern": "^src/uiao/.+$"
+            },
+            "supporting_modules": {
+              "type": "array",
+              "description": "Additional Python files this adapter legitimately composes with (config loaders, helper modules, parsers). Use only when the adapter's logic spans multiple files by design; do not list import dependencies.",
+              "items": { "type": "string", "pattern": "^src/uiao/.+$" },
+              "uniqueItems": true
+            },
+            "tests": {
+              "type": "string",
+              "description": "Primary pytest file exercising this adapter, relative to repo root. Example: 'tests/test_uiao_git_server_adapter.py'.",
+              "pattern": "^tests/.+\\.py$"
+            }
+          },
+          "required": ["python_module"]
         }
       },
       "additionalProperties": false,
