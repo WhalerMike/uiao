@@ -320,3 +320,61 @@ class DatabaseAdapterBase(abc.ABC):
         )
 
         return evidence
+
+    # ----------------------------------------------------------------------
+    # Thin Adapter Convenience Surface (UIAO_180 §Adapter delegation)
+    # ----------------------------------------------------------------------
+    #
+    # The four methods below are convenience wrappers that map the
+    # canonical thin-adapter contract (UIAO_180) onto the existing
+    # seven-domain DatabaseAdapterBase. They keep `get_state / set_state /
+    # list_changes / apply_change` callable by the canonical function
+    # library without requiring adapters to implement a second protocol.
+    #
+    # Defaults raise NotImplementedError; adapters opt in by overriding.
+    # This means the existing 44 adapters remain conformance-valid and
+    # only adapters that participate in change-making (modernization)
+    # flows need to implement the write side.
+
+    def get_state(self, object_id: str) -> Dict[str, Any]:
+        """Return the canonical observed state for `object_id`.
+
+        Default delegates to `normalize([])`; adapters with read paths
+        SHOULD override to return the canonical fields the canonical
+        function library expects.
+        """
+        raise NotImplementedError(
+            f"{self.ADAPTER_ID} does not implement get_state"
+        )
+
+    def set_state(self, object_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Write `payload` as the desired state for `object_id`.
+
+        MUST be idempotent. Returns a delta dict describing fields
+        actually changed; an already-converged write returns an empty
+        delta.
+        """
+        raise NotImplementedError(
+            f"{self.ADAPTER_ID} does not implement set_state"
+        )
+
+    def list_changes(self, since_timestamp: datetime) -> List[Dict[str, Any]]:
+        """Return change events emitted since `since_timestamp`.
+
+        Adapters that lack a native change-feed MAY emulate this by
+        diffing snapshots; the return shape is `[{ "object_id": ...,
+        "timestamp": ..., "delta": { ... } }]`.
+        """
+        raise NotImplementedError(
+            f"{self.ADAPTER_ID} does not implement list_changes"
+        )
+
+    def apply_change(self, object_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply a partial change `payload` to `object_id`.
+
+        Distinct from `set_state` (full desired state). MUST be
+        idempotent on the supplied fields. Returns the post-write delta.
+        """
+        raise NotImplementedError(
+            f"{self.ADAPTER_ID} does not implement apply_change"
+        )
