@@ -358,8 +358,10 @@ def render(entries: list[DocEntry]) -> str:
     out.append("## Integrity")
     out.append("")
     out.append(_health_section(entries))
-    out.append("")
-    return "\n".join(out) + "\n"
+    # Normalize to exactly one trailing newline so pre-commit's
+    # end-of-file-fixer doesn't disagree with raw CI output (which would
+    # otherwise make the drift gate flap on every regeneration).
+    return "\n".join(out).rstrip() + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +390,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         out_path = args.output.resolve()
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(rendered, encoding="utf-8")
+        # Force LF newlines so output is byte-identical between Windows
+        # authoring and Linux CI (text-mode `write_text` translates "\n"
+        # to "\r\n" on Windows, which would trip the drift gate).
+        out_path.write_bytes(rendered.encode("utf-8"))
         try:
             shown = out_path.relative_to(REPO_ROOT)
         except ValueError:

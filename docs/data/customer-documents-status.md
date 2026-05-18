@@ -264,7 +264,7 @@
 | [`docs/customer-documents/substrate/platform-tooling/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/index.qmd) | 27 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) | 1740 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd) | 1031 | Substantial | ✅ | — | — |
-| [`docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd) | 524 | Substantial | ✅ | ⚠️ 3/4 | 1 missing image ref(s) |
+| [`docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd) | 524 | Substantial | ✅ | 4/4 | — |
 
 ### `validation-suites/`
 
@@ -345,10 +345,4 @@
 
 ## Integrity
 
-### Documents with missing image references
-
-Each row points to a `.qmd` that references one or more PNGs that are not present on disk. Regenerate via `python scripts/generate_images.py` after adding the missing prompts to `docs/data/image-registry.yaml`.
-
-| Document | Missing references |
-|---|---|
-| [`docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd) | `images/uiao-cli-reference-image-01-cli-subapp-topology.png` |
+All customer-documents pass image-ref and frontmatter integrity checks.
