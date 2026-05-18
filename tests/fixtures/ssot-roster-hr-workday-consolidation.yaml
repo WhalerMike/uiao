@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=../../src/uiao/schemas/ssot-roster/ssot-roster.schema.json
+#
+# REFERENCE FIXTURE — NOT CANON
+# =============================
+# A worked example of an SSOT roster, validating end-to-end shape and
+# exercising the SSOTContentionEvaluator (src/uiao/governance/ssot_contention.py)
+# in tests. The values below are illustrative only.
+#
+# A *real* roster lands under src/uiao/canon/data/<adapter-family>/ssot-roster.yaml
+# after a Phase 3 SSOT designation has been ratified by the governance board.
+# This fixture exists so:
+#
+#   1. Schema authors can see a realistic shape under test.
+#   2. Adapter authors can copy the structure as a starting point.
+#   3. The CI test suite has an end-to-end target exercising the evaluator
+#      against a multi-instance roster with a mix of severity bands.
+#
+# Scenario depicted: a federal agency consolidating its HR data plane onto
+# the cross-agency Workday SSOT after OPM HCM rollout. Three legacy
+# instances are demoted across two patterns:
+#
+#   - peoplesoft-hr01 (the agency's primary legacy HR-SQL): inside a planned
+#     cutover_window, with a cache_eligible_columns allowlist for the
+#     downstream reporting cache.
+#   - peoplesoft-hr02 (a redundant standby): outside the cutover window,
+#     within the roster-level remediation_window_days (30 days).
+#   - peoplesoft-hr-archive (a legacy archive): outside the cutover window,
+#     past the roster's remediation_window_days (escalation candidate).
+
+schema-version: "1.0.0"
+domain: "HR"
+ratification_date: "2026-05-01"
+governance_review_pr: "https://github.com/example/agency-canon/pull/000"
+
+authoritative_instance:
+  identifier: "workday::tenant-fed-001"
+  boundary_classification: "gcc-moderate"
+  selection_rationale: |
+    Cross-agency Workday consolidation per OPM HCM rollout trajectory.
+    Selected over the three legacy PeopleSoft instances per Phase 3
+    weighted criteria: dominant boundary fit (gcc-moderate), 100% column
+    coverage of the HR domain anchor tables, lowest operational
+    complexity for the consolidated workload, lowest aggregate
+    population redirect cost, and ADR-058 multi-tenant doctrine
+    alignment.
+  discovery_source: "workday-conformance-adapter"
+
+demoted_instances:
+  # Primary legacy HR-SQL — inside a planned cutover_window (P3 expected
+  # for writes during this window).
+  - identifier: "ad-spn::peoplesoft-hr01.corp.example:1433"
+    demotion_date: "2026-05-01"
+    status: "cutover-in-progress"
+    cutover_window:
+      planned_start: "2026-08-15T22:00:00+00:00"
+      planned_end: "2026-08-16T06:00:00+00:00"
+    cache_eligible_columns:
+      - "hr.employees.last_synced_at"
+      - "hr.employees.cache_hash"
+      - "hr.positions.last_synced_at"
+      - "hr.positions.cache_hash"
+    discovery_source: "mssql-inventory"
+
+  # Standby HR-SQL — outside cutover, within remediation_window_days
+  # (P2 default for writes here).
+  - identifier: "ad-spn::peoplesoft-hr02.corp.example:1433"
+    demotion_date: "2026-05-15"
+    status: "demoted"
+    cache_eligible_columns:
+      - "hr.employees.cache_hash"
+    discovery_source: "mssql-inventory"
+
+  # Legacy archive — outside cutover, past remediation_window_days
+  # (P1 escalated for writes here). Per-instance window tightened to 7
+  # days to reflect the archive's accelerated decommission schedule.
+  - identifier: "ad-spn::peoplesoft-hr-archive.corp.example:1433"
+    demotion_date: "2026-04-01"
+    status: "demoted"
+    retirement_date: "2026-09-01"
+    remediation_window_days: 7
+    discovery_source: "mssql-inventory"
+
+remediation_window_days: 30
+
+notes: |
+  Fixture-only. Does not represent any real agency's SSOT designation.
+  See tests/test_ssot_contention_integration.py for the end-to-end
+  evaluator behavior driven by this fixture.
