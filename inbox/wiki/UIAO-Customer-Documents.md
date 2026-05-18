@@ -10,43 +10,43 @@
 2. Click through to the published Quarto URL for the section you need.
 3. If a section link lands on an "index only" page with a "Content pending" note,
    that section is scaffolded but not yet authored — see the
-   [Customer Documents Roadmap](https://whalermike.github.io/uiao/docs/customer-documents/ROADMAP.html)
+   [Customer Documents Roadmap](https://whalermike.github.io/uiao/customer-documents/ROADMAP.html)
    for planned delivery.
 
 ## Sections
 
 ### Canon-derived (authored)
 
-- **[Adapter Technical Specifications](https://whalermike.github.io/uiao/docs/customer-documents/adapter-technical-specifications/index.html)**
+- **[Adapter Technical Specifications](https://whalermike.github.io/uiao/customer-documents/adapter-specs/index.html)**
   — 49 per-adapter operational specs, NIST control mappings.
   Derived from `src/uiao/canon/adapter-registry.yaml` +
   `modernization-registry.yaml`.
-- **[Adapter Validation Suites](https://whalermike.github.io/uiao/docs/customer-documents/adapter-validation-suites/index.html)**
+- **[Adapter Validation Suites](https://whalermike.github.io/uiao/customer-documents/validation-suites/adapters/index.html)**
   — 49 per-adapter validation tests and evidence expectations.
   Same canon source as above.
 
 ### Scaffolded (content pending)
 
-- **[Architecture Series](https://whalermike.github.io/uiao/docs/customer-documents/architecture-series/index.html)**
+- **[Architecture Series](https://whalermike.github.io/uiao/customer-documents/architecture-series/index.html)**
   — Customer-facing explainers for the six-plane architecture, drift
   engine, evidence chain, three-layer rule model, and boundary impact
   model. 5 stubs.
-- **[Case Studies](https://whalermike.github.io/uiao/docs/customer-documents/case-studies/index.html)**
+- **[Case Studies](https://whalermike.github.io/uiao/customer-documents/case-studies/index.html)**
   — Applied UIAO scenarios (cloud boundary, federal modernization,
   identity modernization). 3 stubs.
-- **[Executive Briefs](https://whalermike.github.io/uiao/docs/customer-documents/executive-briefs/index.html)**
+- **[Executive Briefs](https://whalermike.github.io/uiao/customer-documents/executive-briefs/index.html)**
   — Single-page CIO/CISO summaries for governance OS, drift engine,
   evidence fabric, modernization, zero-trust. 5 stubs.
-- **[Executive Governance Series](https://whalermike.github.io/uiao/docs/customer-documents/executive-governance-series/index.html)**
+- **[Executive Governance Series](https://whalermike.github.io/uiao/customer-documents/executive-governance-series/index.html)**
   — 9-chapter book-length narrative, from introduction through executive
   summary.
-- **[Modernization Technical Specifications](https://whalermike.github.io/uiao/docs/customer-documents/modernization-technical-specifications/index.html)**
+- **[Modernization Technical Specifications](https://whalermike.github.io/uiao/customer-documents/modernization-specs/index.html)**
   — Cross-adapter domain specs (cloud, identity, SASE, SD-WAN, telemetry,
   zero-trust). 6 domain stubs + 1 template.
-- **[Modernization Validation Suites](https://whalermike.github.io/uiao/docs/customer-documents/modernization-validation-suites/index.html)**
+- **[Modernization Validation Suites](https://whalermike.github.io/uiao/customer-documents/validation-suites/domains/index.html)**
   — Cross-adapter domain validation approach. 6 domain stubs + 1
   template.
-- **[Whitepapers](https://whalermike.github.io/uiao/docs/customer-documents/whitepapers/index.html)**
+- **[Whitepapers](https://whalermike.github.io/uiao/customer-documents/whitepapers/index.html)**
   — Long-form position papers (modernization governance, ScubaGear
   integration, UIAO governance OS, zero-trust governance). 4 stubs.
 
