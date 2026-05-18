@@ -1,0 +1,153 @@
+# yaml-language-server: $schema=../../../schemas/mssql-rationalization/reference-data-patterns.schema.json
+#
+# MS SQL Rationalization — Reference-Data Overlap Pattern Library (seed)
+# ======================================================================
+# Canonical source: spec Appendix A of
+#   inbox/Modernization/sql-modernization-research/2026-05-17-orgpath-mssql-estate-rationalization-process.md
+# Binding ADR:      src/uiao/canon/adr/adr-074-drift-ssot-contention.md (consumer)
+#
+# Each pattern declares the expected row-count window, a representative
+# schema fingerprint, and the authoritative external source. Phase 2's
+# IDENTICAL-REFERENCE-DATA detector hashes candidate tables and matches
+# them against this library to surface stacked-reference-data cases
+# (e.g., 12 instances all carrying a near-identical us_states table).
+#
+# Agencies extend via PR + governance review.
+
+schema-version: "1.0.0"
+document_id: mssql-rationalization-reference-data-patterns
+updated: "2026-05-18"
+
+patterns:
+  - pattern_id: us-state-codes
+    description: "US states plus DC plus US territories (PR, VI, GU, MP, AS)."
+    expected_row_count:
+      min: 50
+      max: 60
+    schema_fingerprint:
+      - code
+      - name
+      - type
+    reference_url: "https://www.iso.org/standard/63546.html"
+    source_authority: "USPS / ISO 3166-2:US"
+    reference_version: "ISO 3166-2:2020"
+
+  - pattern_id: country-codes-iso3166
+    description: "ISO 3166-1 alpha-2 and alpha-3 country codes."
+    expected_row_count:
+      min: 240
+      max: 260
+    schema_fingerprint:
+      - alpha2
+      - alpha3
+      - numeric
+      - name
+    reference_url: "https://www.iso.org/iso-3166-country-codes.html"
+    source_authority: "ISO 3166"
+    reference_version: "ISO 3166-1:2020"
+
+  - pattern_id: currency-codes-iso4217
+    description: "ISO 4217 currency codes."
+    expected_row_count:
+      min: 170
+      max: 180
+    schema_fingerprint:
+      - code
+      - name
+      - numeric
+      - minor_unit
+    reference_url: "https://www.iso.org/iso-4217-currency-codes.html"
+    source_authority: "ISO 4217"
+    reference_version: "ISO 4217:2015"
+
+  - pattern_id: opm-occupation-series
+    description: "OPM occupation series codes (e.g., 2210 Information Technology Management)."
+    expected_row_count:
+      min: 450
+      max: 520
+    schema_fingerprint:
+      - series_code
+      - title
+      - group_code
+    reference_url: "https://www.opm.gov/policy-data-oversight/classification-qualifications/classifying-general-schedule-positions/"
+    source_authority: "OPM"
+
+  - pattern_id: opm-pay-plan-codes
+    description: "OPM pay-plan codes (GS, FW, AD, etc.)."
+    expected_row_count:
+      min: 70
+      max: 90
+    schema_fingerprint:
+      - code
+      - title
+      - type
+    reference_url: "https://www.opm.gov/policy-data-oversight/data-analysis-documentation/data-policy-guidance/reporting-guidance/pay-plan-codes/"
+    source_authority: "OPM"
+
+  - pattern_id: gs-grade-codes
+    description: "General Schedule grades (GS-01 through GS-15)."
+    expected_row_count:
+      min: 15
+      max: 20
+    schema_fingerprint:
+      - grade
+    source_authority: "OPM"
+
+  - pattern_id: dod-service-component-codes
+    description: "DoD military service components (Army, Navy, Marine Corps, Air Force, Space Force, Coast Guard reserve components)."
+    expected_row_count:
+      min: 10
+      max: 15
+    schema_fingerprint:
+      - code
+      - name
+      - branch
+    source_authority: "DoD"
+
+  - pattern_id: employment-status-enums
+    description: "Employment status enumeration (Active, Separated, Retired, LOA, etc.)."
+    expected_row_count:
+      min: 8
+      max: 15
+    schema_fingerprint:
+      - code
+      - name
+      - is_active
+    source_authority: "Agency HR canon"
+
+  - pattern_id: pii-classification-levels
+    description: "PII / Privacy Act classification levels with retention windows."
+    expected_row_count:
+      min: 5
+      max: 10
+    schema_fingerprint:
+      - level
+      - name
+      - retention_years
+    reference_url: "https://csrc.nist.gov/publications/detail/sp/800-122/final"
+    source_authority: "NIST 800-122 / Privacy Act"
+    reference_version: "NIST SP 800-122"
+
+  - pattern_id: fedramp-impact-levels
+    description: "FedRAMP impact levels (Low, Moderate, High)."
+    expected_row_count:
+      min: 3
+      max: 3
+    schema_fingerprint:
+      - level
+      - name
+    reference_url: "https://www.fedramp.gov/"
+    source_authority: "FedRAMP PMO"
+
+  - pattern_id: nist-control-families
+    description: "NIST 800-53 control families (AC, AT, AU, CA, CM, ..., SR, SI)."
+    expected_row_count:
+      min: 20
+      max: 22
+    schema_fingerprint:
+      - family_code
+      - family_name
+      - control_count
+    reference_url: "https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final"
+    source_authority: "NIST 800-53r5"
+    reference_version: "NIST SP 800-53 Rev 5"
