@@ -1,0 +1,56 @@
+---
+title: "MS SQL Rationalization Abbreviation Dictionary Schema"
+subtitle: "Schema Reference · mssql-rationalization/abbreviation-dictionary.schema.json"
+date: 2026-05-18
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/mssql-rationalization/abbreviation-dictionary.schema.json`](../../../src/uiao/schemas/mssql-rationalization/abbreviation-dictionary.schema.json)
+- **Canon data:** [`src/uiao/canon/data/mssql-rationalization/abbreviation-dictionary.yaml`](../../../src/uiao/canon/data/mssql-rationalization/abbreviation-dictionary.yaml)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/mssql-rationalization/abbreviation-dictionary.schema.json`
+:::
+
+## Description
+
+Schema for the **federal-IT abbreviation dictionary** consumed by Phase 2's name-similarity heuristic. Each entry maps an abbreviation (e.g., `emp`, `acct`) to its canonical expansion (`employee`, `account`) so column-name similarity scoring can normalize tokens before comparing.
+
+Normalization recipe: lowercase the column name → tokenize → substitute each token that matches an `abbreviation` (or one of its `aliases`) with the canonical `expansion` → compute string similarity.
+
+## Domain hints
+
+Each entry optionally carries a `domain_hint` so abbreviations with different meanings in different domains can be disambiguated. The seed entries cover HR, Finance, Procurement, Logistics, IT-Operations, and a Generic (cross-domain) bucket.
+
+Example: `inv` expands to `inventory` in the Logistics domain but to `invoice` in the Finance domain. The dictionary carries both entries with different `domain_hint` values; the heuristic chooses based on the candidate table's anchor-domain match.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema-version` | string (semver) | ✓ | Document schema version. |
+| `document_id` | const `mssql-rationalization-abbreviation-dictionary` |   | Stable document handle. |
+| `updated` | string (date) |   | ISO 8601 date of last edit. |
+| `abbreviations` | array&lt;AbbreviationEntry&gt; | ✓ | One entry per canonical abbreviation. |
+
+## `AbbreviationEntry` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `abbreviation` | string (lowercase) | ✓ | The abbreviated form as it appears in column / table names. |
+| `expansion` | string (lowercase) | ✓ | The canonical expansion to use during normalization. |
+| `aliases` | array&lt;string&gt; |   | Other equivalent abbreviations that normalize to the same expansion. |
+| `domain_hint` | enum |   | One of `HR`, `Finance`, `Procurement`, `Logistics`, `FOIA`, `Records-Management`, `Security`, `Citizen-Services`, `Compliance`, `IT-Operations`, `Generic`. |
+
+## Related canon
+
+| Canon | Relationship |
+|---|---|
+| [ADR-074](../../adr/adr-074-drift-ssot-contention.qmd) | Drift class that consumes the overlap-detection outputs. |
+| MS SQL Estate Rationalization Process spec (§9.7) | Specifies the dictionary's role in the semantic-overlap layer. |
+| [`reference-data-patterns.schema.qmd`](mssql-rationalization-reference-data-patterns.schema.qmd) | Sibling canon-data file used by the strict overlap-detection layer. |
+| [`domain-catalog.schema.qmd`](mssql-rationalization-domain-catalog.schema.qmd) | Sibling canon-data file used by Phase 3 SSOT designation. |
