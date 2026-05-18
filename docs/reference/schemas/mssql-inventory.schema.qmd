@@ -1,0 +1,124 @@
+---
+title: "UIAO MS SQL Estate Inventory Schema"
+subtitle: "Schema Reference · mssql-inventory.schema.json"
+date: 2026-05-18
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/mssql-inventory/mssql-inventory.schema.json`](../../../src/uiao/schemas/mssql-inventory/mssql-inventory.schema.json)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/mssql-inventory/mssql-inventory.schema.json`
+:::
+
+## Description
+
+Normalized output of `MSSQLInventoryAdapter` — the read-only Tier-A1 conformance adapter that discovers and attributes the Microsoft SQL Server estate across an agency tenant. One claim per discovered SQL instance.
+
+Tier-A1 scope is the WHERE and the WHO: instance topology (AD-joined or Azure-resident), ownership cascade per UIAO_153 / ADR-063 (owning principal → host → ARM tag → `ORG-BRANCH-UNPOSITIONED`), and OrgPath attribution. The schema deliberately stops at the boundary of inside-the-instance enumeration (databases, schemas, tables, row counts) — that is Tier-A2, specified separately as a DM_090 amendment and requiring a per-instance read-only SQL login (`VIEW SERVER STATE` + `VIEW ANY DEFINITION`).
+
+Discovery covers five surfaces via two sources:
+
+| Source | Resource family |
+|---|---|
+| AD LDAP — `MSSQLSvc/*` SPN scan | All Kerberos-registered SQL Server instances (Windows + Linux + AlwaysOn AGs) |
+| Azure Resource Graph (read-only) | `microsoft.sql/servers`, `microsoft.sql/servers/databases`, `microsoft.sql/managedinstances`, `microsoft.sql/managedinstances/databases`, `microsoft.azurearcdata/sqlserverinstances`, `microsoft.sqlvirtualmachine/sqlvirtualmachines` |
+
+Companion to the rationalization process spec at `inbox/Modernization/sql-modernization-research/2026-05-17-orgpath-mssql-estate-rationalization-process.md` (Phase 1, "Estate Enumeration with OrgPath Attribution").
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `adapter_id` | const: `mssql-inventory` | ✓ | Adapter identifier; pins this payload to the canonical adapter. |
+| `evaluated_at` | string (date-time) | ✓ | ISO-8601 UTC timestamp of the discovery run. |
+| `tenant_id` | string \| null |   | Entra tenant ID for the Azure-side discovery; null if AD-only run. |
+| `cloud` | enum: `commercial`, `gcc-high`, `dod` |   | Azure cloud boundary the ARG query targeted; aligns with `_graph_clouds.resolve_graph_base`. |
+| `claims` | array&lt;`$ref: #/definitions/MSSQLInstanceClaim`&gt; | ✓ | Discovered SQL instances, one claim per instance. |
+| `drift_summary` | `$ref: #/definitions/DriftSummary` |   | Aggregate drift findings emitted by `detect_drift()`. |
+
+## `MSSQLInstanceClaim` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `identifier` | string | ✓ | Canonical identifier — `host\instance` for AD-discovered; ARM resource id for cloud-discovered. |
+| `source` | enum (5 values) | ✓ | `ad-spn`, `arg-azure-sql`, `arg-managed-instance`, `arg-arc-sql`, `arg-sql-on-vm`. |
+| `host` | string \| null |   | Host FQDN (AD-discovered) or null (cloud-discovered). |
+| `port` | integer \| null |   | TCP port (1–65535). |
+| `instance_name` | string \| null |   | Named-instance identifier or resource name. |
+| `owning_principal` | string \| null |   | SPN principal (AD-discovered); null for cloud (identity resolves via managed identity). |
+| `orgpath` | string | ✓ | Cascaded OrgPath per UIAO_153 / ADR-063. Pattern matches the UIAO_151 codebook or the `ORG-BRANCH-UNPOSITIONED` sentinel. |
+| `orgpath_attribution_source` | enum | ✓ | `principal-extension`, `host-extension`, `arm-tag`, or `unpositioned`. |
+| `azure_resource_id` | string \| null |   | Full ARM id for cloud-discovered instances. |
+| `azure_resource_type` | string \| null |   | ARM type (e.g., `microsoft.sql/servers`). |
+| `azure_subscription_id` | string \| null |   | ARM subscription id. |
+| `azure_location` | string \| null |   | Azure region. |
+| `discovered_at` | string (date-time) | ✓ | ISO-8601 UTC timestamp of when this instance was observed. |
+
+## `DriftSummary` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `adapter_id` | string |   | Adapter that emitted the findings. |
+| `evaluated_claims` | integer (≥ 0) | ✓ | Total instances evaluated. |
+| `findings_count` | integer (≥ 0) | ✓ | Number of drift findings produced. |
+| `findings` | array&lt;finding&gt; | ✓ | One entry per claim that violated policy. |
+
+Each finding carries:
+
+| Field | Type | Description |
+|---|---|---|
+| `claim_id` | string | The claim that triggered the finding. |
+| `drift_class` | enum | One of `DRIFT-IDENTITY`, `DRIFT-PROVENANCE`, `DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-AUTHZ`. |
+| `severity` | enum | `P1`–`P4`. |
+| `reason` | string | Machine-readable reason code. |
+| `orgpath` | string | The offending OrgPath value (when applicable). |
+
+## Drift conditions surfaced (Tier-A1 scope)
+
+| Class | Trigger |
+|---|---|
+| `DRIFT-IDENTITY` | Instance has no resolvable OrgPath — cascades to `ORG-BRANCH-UNPOSITIONED`. |
+| `DRIFT-PROVENANCE` | ARM tag `OrgPath` present but does not match the UIAO_151 codebook regex. |
+
+The rationalization-specific drift classes (`DRIFT-SSOT-CONTENTION`, `DRIFT-RATIONALIZATION-SCHEMA-OVERLAP`, etc.) are emitted by a sibling analytics module that consumes this adapter's output plus historical baselines. See the rationalization process spec §7 for the full drift surface.
+
+## Full Schema
+
+```{.json filename="mssql-inventory.schema.json"}
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/mssql-inventory/mssql-inventory.schema.json",
+  "title": "MS SQL Estate Inventory — Tier-A1 Output Schema",
+  "description": "Normalized output of MSSQLInventoryAdapter (read-only AD + Azure Resource Graph). One claim per discovered SQL instance. Tier-A1 scope: no inside-the-instance content. Companion to the rationalization process spec at inbox/Modernization/sql-modernization-research/2026-05-17-orgpath-mssql-estate-rationalization-process.md.",
+  "type": "object",
+  "required": ["adapter_id", "evaluated_at", "claims"],
+  "additionalProperties": false,
+  "properties": {
+    "adapter_id": {
+      "type": "string",
+      "const": "mssql-inventory"
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenant_id": { "type": ["string", "null"] },
+    "cloud": {
+      "type": "string",
+      "enum": ["commercial", "gcc-high", "dod"]
+    },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/MSSQLInstanceClaim" }
+    },
+    "drift_summary": { "$ref": "#/definitions/DriftSummary" }
+  }
+}
+```
+
+The complete schema (including `definitions/MSSQLInstanceClaim` and `definitions/DriftSummary` with their full property constraints, enum members, and pattern matches) lives at [`src/uiao/schemas/mssql-inventory/mssql-inventory.schema.json`](../../../src/uiao/schemas/mssql-inventory/mssql-inventory.schema.json). The page above abbreviates the top-level structure; the source file is the canonical definition and the only one validated by the substrate's schema-validation gate.
