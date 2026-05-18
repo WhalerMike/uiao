@@ -51,6 +51,34 @@ umbrella). Same parallel-batch shape as v0.6.0 HRIT productization.
 - #459 v0.6.2 Palo Alto NGFW adapter completion
 - #460 v0.6.3 CyberArk PAM adapter completion
 
+## [0.6.3] — 2026-05-18
+
+**Theme: CyberArk PAM tier-1 conformance completion.** Closes CyberArk scope
+under #460 (child of #447).
+
+### Added
+
+- CyberArk tier-2 fixtures under `tests/fixtures/tier-2/cyberark/`:
+  `account-create.json`, `account-rotate-success.json`,
+  `account-rotate-failure.json`, `account-verify.json`,
+  `activity-audit.json`
+- `src/uiao/oscal/cyberark_evidence.py` OSCAL component-definition emitter
+  for IA-5, IA-5(1), AC-2, AC-6 with rotation-cause and verification props
+- KSI-CARK-001 through KSI-CARK-005 under `src/uiao/rules/ksi/cyberark/`
+  plus mapping entries in `uiao-control-to-ksi-mapping.yaml`
+- `tests/conformance/test_cyberark_conformance.py` synthetic-vault conformance
+  pack (mocked vault flow + KSI verdict assertions)
+- `tests/test_cyberark_oscal_emitter.py` + golden regression fixture
+  (`tests/fixtures/oscal/cyberark-component-definition-golden.json`)
+
+### Changed
+
+- `src/uiao/adapters/cyberark_adapter.py` now uses CyberArk PAS Web Services
+  API paths for account create, change, verify, and activities retrieval with
+  vault-scoped headers and token authentication
+- Tier-1 integration guidance now explicitly documents the on-prem-self-hosted
+  runner prerequisite for vault-reachable CyberArk validation
+
 
 
 ## [0.6.0] — 2026-05-11

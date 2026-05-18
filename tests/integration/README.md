@@ -88,6 +88,11 @@ simulation mutates account state, so the operator must name the Safe
 explicitly to confirm intent. Provision a dedicated Safe in the trial
 tenant (e.g. `uiao-tier1-rotation`) and never point this at production.
 
+**Runner prerequisite:** Tier-1 CyberArk validation requires an
+**on-prem-self-hosted runner** with network reachability to the vault
+endpoint. `ubuntu-latest` cannot reach private vault management planes by
+default.
+
 ## Running locally
 
 Tier-1 tests run only against accounts you own. **Do not** point them at a
