@@ -32,9 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 # ``MSSQLSvc/host.fqdn:1433`` or ``MSSQLSvc/host.fqdn:INSTANCE_NAME``
-_SPN_MSSQL_PATTERN = re.compile(
-    r"^MSSQLSvc/(?P<host>[A-Za-z0-9_.-]+?)(?::(?P<port_or_instance>[A-Za-z0-9_-]+))?$"
-)
+_SPN_MSSQL_PATTERN = re.compile(r"^MSSQLSvc/(?P<host>[A-Za-z0-9_.-]+?)(?::(?P<port_or_instance>[A-Za-z0-9_-]+))?$")
 
 # ARM resource-type → MSSQLInstanceClaim source enum mapping.
 _ARG_TYPE_TO_SOURCE = {
@@ -103,9 +101,7 @@ def normalize_spn_record(record: Dict[str, Any]) -> Optional[Any]:
         orgpath = ORGPATH_UNPOSITIONED
         attribution_source = "unpositioned"
 
-    identifier = (
-        f"{host}\\{instance_name}" if instance_name else f"{host}:{port or 1433}"
-    )
+    identifier = f"{host}\\{instance_name}" if instance_name else f"{host}:{port or 1433}"
 
     return MSSQLInstanceClaim(
         identifier=identifier,

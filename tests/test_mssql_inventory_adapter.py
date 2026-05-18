@@ -316,9 +316,7 @@ class TestAdapterNoInputs:
         ("discovered_at", str),
     ],
 )
-def test_mssql_instance_claim_serializes_required_fields(
-    claim_dict_field: str, expected_type: type
-) -> None:
+def test_mssql_instance_claim_serializes_required_fields(claim_dict_field: str, expected_type: type) -> None:
     """The Tier-A1 schema requires these fields non-null on every claim."""
     claim = MSSQLInstanceClaim(
         identifier="sql01.corp.example:1433",
