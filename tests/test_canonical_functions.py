@@ -141,9 +141,7 @@ def test_add_and_remove_from_group_target_group_id_not_user_id():
 
 
 def test_create_group_idempotent_on_converged_state():
-    spec = GroupSpec(
-        object_id="g-1", display_name="Finance", membership_type="assigned"
-    )
+    spec = GroupSpec(object_id="g-1", display_name="Finance", membership_type="assigned")
     adapter = FakeAdapter({"g-1": {"displayName": "Finance", "membershipType": "assigned"}})
     result = create_group(adapter, spec)
     assert result.outcome == "noop"
@@ -217,9 +215,7 @@ def test_detect_tag_drift_finds_missing_canonical_key():
 
 def test_correct_tag_drift_applies_canonical_state():
     adapter = FakeAdapter({"u-1": {"tags": {}}})
-    result = correct_tag_drift(
-        adapter, "u-1", desired={"uiao.org.path": "ORG-A"}
-    )
+    result = correct_tag_drift(adapter, "u-1", desired={"uiao.org.path": "ORG-A"})
     assert result.outcome == "updated"
     assert result.written == {"uiao.org.path": "ORG-A"}
     assert len(result.drift_records) == 1
@@ -227,8 +223,6 @@ def test_correct_tag_drift_applies_canonical_state():
 
 def test_correct_tag_drift_is_noop_when_already_converged():
     adapter = FakeAdapter({"u-1": {"tags": {"uiao.org.path": "ORG-A"}}})
-    result = correct_tag_drift(
-        adapter, "u-1", desired={"uiao.org.path": "ORG-A"}
-    )
+    result = correct_tag_drift(adapter, "u-1", desired={"uiao.org.path": "ORG-A"})
     assert result.outcome == "noop"
     assert result.drift_records == []

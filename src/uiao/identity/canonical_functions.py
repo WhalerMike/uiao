@@ -158,12 +158,8 @@ class _ThinAdapter(Protocol):
     ADAPTER_ID: str
 
     def get_state(self, object_id: str) -> Dict[str, Any]: ...
-    def set_state(
-        self, object_id: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]: ...
-    def apply_change(
-        self, object_id: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]: ...
+    def set_state(self, object_id: str, payload: Dict[str, Any]) -> Dict[str, Any]: ...
+    def apply_change(self, object_id: str, payload: Dict[str, Any]) -> Dict[str, Any]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -215,9 +211,7 @@ def create_user(
         outcome: Outcome = "updated" if "userPrincipalName" not in delta else "created"
     else:
         outcome = "noop"
-    return IdentityResult(
-        object_id=spec.object_id, outcome=outcome, delta=delta, correlation_id=correlation_id
-    )
+    return IdentityResult(object_id=spec.object_id, outcome=outcome, delta=delta, correlation_id=correlation_id)
 
 
 def disable_user(
@@ -381,9 +375,7 @@ def assign_rbac(
     *,
     correlation_id: Optional[str] = None,
 ) -> RbacAssignmentResult:
-    delta = adapter.apply_change(
-        object_id, {"rbac_scope": scope, "rbac_role": role}
-    )
+    delta = adapter.apply_change(object_id, {"rbac_scope": scope, "rbac_role": role})
     return RbacAssignmentResult(
         object_id=object_id,
         outcome="updated" if delta else "noop",
@@ -497,9 +489,7 @@ def correct_tag_drift(
     correlation_id: Optional[str] = None,
 ) -> TagWriteResult:
     """Detect tag drift and apply corrections in a single pass."""
-    records = detect_tag_drift(
-        adapter, object_id, desired=desired, correlation_id=correlation_id
-    )
+    records = detect_tag_drift(adapter, object_id, desired=desired, correlation_id=correlation_id)
     if not records:
         return TagWriteResult(
             object_id=object_id,

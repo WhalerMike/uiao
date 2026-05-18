@@ -343,9 +343,7 @@ class DatabaseAdapterBase(abc.ABC):
         SHOULD override to return the canonical fields the canonical
         function library expects.
         """
-        raise NotImplementedError(
-            f"{self.ADAPTER_ID} does not implement get_state"
-        )
+        raise NotImplementedError(f"{self.ADAPTER_ID} does not implement get_state")
 
     def set_state(self, object_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Write `payload` as the desired state for `object_id`.
@@ -354,9 +352,7 @@ class DatabaseAdapterBase(abc.ABC):
         actually changed; an already-converged write returns an empty
         delta.
         """
-        raise NotImplementedError(
-            f"{self.ADAPTER_ID} does not implement set_state"
-        )
+        raise NotImplementedError(f"{self.ADAPTER_ID} does not implement set_state")
 
     def list_changes(self, since_timestamp: datetime) -> List[Dict[str, Any]]:
         """Return change events emitted since `since_timestamp`.
@@ -365,9 +361,7 @@ class DatabaseAdapterBase(abc.ABC):
         diffing snapshots; the return shape is `[{ "object_id": ...,
         "timestamp": ..., "delta": { ... } }]`.
         """
-        raise NotImplementedError(
-            f"{self.ADAPTER_ID} does not implement list_changes"
-        )
+        raise NotImplementedError(f"{self.ADAPTER_ID} does not implement list_changes")
 
     def apply_change(self, object_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Apply a partial change `payload` to `object_id`.
@@ -375,6 +369,4 @@ class DatabaseAdapterBase(abc.ABC):
         Distinct from `set_state` (full desired state). MUST be
         idempotent on the supplied fields. Returns the post-write delta.
         """
-        raise NotImplementedError(
-            f"{self.ADAPTER_ID} does not implement apply_change"
-        )
+        raise NotImplementedError(f"{self.ADAPTER_ID} does not implement apply_change")

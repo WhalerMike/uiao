@@ -76,12 +76,8 @@ class DriftRecord:
     severity: Severity
     recommended_action: str
     source_adapter: str
-    first_observed: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    last_observed: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    first_observed: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_observed: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     correlation_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:

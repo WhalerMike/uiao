@@ -18,9 +18,7 @@ def _noop_handler(_: ProvisioningRequest, payload: Dict[str, Any]) -> Tuple[Dict
     return ({}, [])
 
 
-def _change_handler(
-    _: ProvisioningRequest, payload: Dict[str, Any]
-) -> Tuple[Dict[str, Any], List[DriftRecord]]:
+def _change_handler(_: ProvisioningRequest, payload: Dict[str, Any]) -> Tuple[Dict[str, Any], List[DriftRecord]]:
     # Echo payload as the delta -> outcome=applied
     return (dict(payload), [])
 
@@ -54,9 +52,7 @@ def test_request_with_no_steps_produces_eight_skipped_records():
 def test_request_with_payload_runs_handler_and_emits_applied():
     provisioner = DeterministicProvisioner()
     provisioner.register("identity_create", _change_handler)
-    req = ProvisioningRequest(
-        request_id="r1", object_id="u-1", steps={"identity_create": {"upn": "alice@a"}}
-    )
+    req = ProvisioningRequest(request_id="r1", object_id="u-1", steps={"identity_create": {"upn": "alice@a"}})
     records = provisioner.run(req)
     by_step = {r.step: r for r in records}
     assert by_step["identity_create"].outcome == "applied"
@@ -70,9 +66,7 @@ def test_request_with_payload_runs_handler_and_emits_applied():
 def test_handler_returning_empty_delta_is_noop():
     provisioner = DeterministicProvisioner()
     provisioner.register("identity_create", _noop_handler)
-    req = ProvisioningRequest(
-        request_id="r1", object_id="u-1", steps={"identity_create": {"upn": "alice"}}
-    )
+    req = ProvisioningRequest(request_id="r1", object_id="u-1", steps={"identity_create": {"upn": "alice"}})
     records = provisioner.run(req)
     by_step = {r.step: r for r in records}
     assert by_step["identity_create"].outcome == "noop"
@@ -80,9 +74,7 @@ def test_handler_returning_empty_delta_is_noop():
 
 def test_missing_handler_for_requested_step_fails():
     provisioner = DeterministicProvisioner()
-    req = ProvisioningRequest(
-        request_id="r1", object_id="u-1", steps={"identity_create": {"upn": "alice"}}
-    )
+    req = ProvisioningRequest(request_id="r1", object_id="u-1", steps={"identity_create": {"upn": "alice"}})
     records = provisioner.run(req)
     failed = [r for r in records if r.outcome == "failed"]
     assert len(failed) == 1

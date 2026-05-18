@@ -78,18 +78,14 @@ def test_split_tags_partitions_three_buckets():
 def test_compute_tag_drift_returns_empty_when_converged():
     desired = {"uiao.org.path": "ORG-A", "uiao.owner": "alice"}
     actual = {"uiao.org.path": "ORG-A", "uiao.owner": "alice"}
-    records = compute_tag_drift(
-        "obj-1", desired=desired, actual=actual, source_adapter="test"
-    )
+    records = compute_tag_drift("obj-1", desired=desired, actual=actual, source_adapter="test")
     assert records == []
 
 
 def test_compute_tag_drift_flags_missing_canonical_key():
     desired = {"uiao.org.path": "ORG-A"}
     actual = {}
-    records = compute_tag_drift(
-        "obj-1", desired=desired, actual=actual, source_adapter="test"
-    )
+    records = compute_tag_drift("obj-1", desired=desired, actual=actual, source_adapter="test")
     assert len(records) == 1
     r = records[0]
     assert r.drift_class == "DRIFT-SCHEMA"
@@ -102,9 +98,7 @@ def test_compute_tag_drift_flags_missing_canonical_key():
 def test_compute_tag_drift_flags_value_mismatch_as_semantic():
     desired = {"uiao.org.path": "ORG-A"}
     actual = {"uiao.org.path": "ORG-B"}
-    records = compute_tag_drift(
-        "obj-1", desired=desired, actual=actual, source_adapter="test"
-    )
+    records = compute_tag_drift("obj-1", desired=desired, actual=actual, source_adapter="test")
     assert len(records) == 1
     assert records[0].drift_class == "DRIFT-SEMANTIC"
 
@@ -112,9 +106,7 @@ def test_compute_tag_drift_flags_value_mismatch_as_semantic():
 def test_compute_tag_drift_boundary_mismatch_is_critical():
     desired = {"uiao.boundary": "GCC-Moderate"}
     actual = {"uiao.boundary": "GCC-Moderate-Exception:AmazonConnect"}
-    records = compute_tag_drift(
-        "obj-1", desired=desired, actual=actual, source_adapter="test"
-    )
+    records = compute_tag_drift("obj-1", desired=desired, actual=actual, source_adapter="test")
     assert len(records) == 1
     assert records[0].drift_class == "DRIFT-BOUNDARY"
     assert records[0].severity == "critical"
@@ -123,9 +115,7 @@ def test_compute_tag_drift_boundary_mismatch_is_critical():
 def test_compute_tag_drift_emits_finding_for_forbidden_key():
     desired = {}
     actual = {"uiao.lifecycle": "active"}
-    records = compute_tag_drift(
-        "obj-1", desired=desired, actual=actual, source_adapter="test"
-    )
+    records = compute_tag_drift("obj-1", desired=desired, actual=actual, source_adapter="test")
     assert len(records) == 1
     assert records[0].drift_class == "DRIFT-SCHEMA"
     assert records[0].recommended_action == "remove-forbidden-key"
@@ -134,9 +124,7 @@ def test_compute_tag_drift_emits_finding_for_forbidden_key():
 def test_compute_tag_drift_invalid_desired_value_flagged():
     desired = {"uiao.identity.lifecycle": "retired"}
     actual = {"uiao.identity.lifecycle": "retired"}
-    records = compute_tag_drift(
-        "obj-1", desired=desired, actual=actual, source_adapter="test"
-    )
+    records = compute_tag_drift("obj-1", desired=desired, actual=actual, source_adapter="test")
     assert len(records) == 1
     assert records[0].severity == "high"
     assert "fix-desired-state" in records[0].recommended_action

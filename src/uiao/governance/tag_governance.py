@@ -177,14 +177,8 @@ def compute_tag_drift(
                 )
             )
         elif actual[key] != expected:
-            drift_class: DriftClass = (
-                "DRIFT-BOUNDARY"
-                if key == CanonicalTagKey.BOUNDARY.value
-                else "DRIFT-SEMANTIC"
-            )
-            severity: Severity = (
-                "critical" if drift_class == "DRIFT-BOUNDARY" else "medium"
-            )
+            drift_class: DriftClass = "DRIFT-BOUNDARY" if key == CanonicalTagKey.BOUNDARY.value else "DRIFT-SEMANTIC"
+            severity: Severity = "critical" if drift_class == "DRIFT-BOUNDARY" else "medium"
             records.append(
                 DriftRecord(
                     object_id=object_id,
