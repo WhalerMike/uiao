@@ -38,7 +38,7 @@ UIAO is a governance substrate, not a product. It defines:
 - **KSI** — Key Security Indicators. 163 continuous-compliance signals,
   cryptographically signed.
 
-The **v0.6.0 mission theme** is [HRIT Single-ATO Productization](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-058-hrit-productization-mission.md) (ADR-058): runtime emission of signed, OSCAL-mapped reciprocity records per consuming agency, with ConMon SLA enforcement and configuration-latitude drift detection.
+The **v0.6.0 mission theme** is [HRIT Single-ATO Productization](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-065-hrit-productization-mission.md) (ADR-065): runtime emission of signed, OSCAL-mapped reciprocity records per consuming agency, with ConMon SLA enforcement and configuration-latitude drift detection.
 
 ## Repository layout
 
@@ -62,9 +62,9 @@ Canon authority lives in [`src/uiao/canon/`](src/uiao/canon/) and is **protected
 
 ## Quick start
 
-**New to UIAO?** Walk the [10-minute quickstart](https://github.com/WhalerMike/uiao/blob/main/docs/docs/quickstart.md) — it runs a full auditor bundle (evidence, POA&M, SSP narrative) against a synthetic ScubaGear fixture. No Azure tenant, no API keys, no live data.
+**New to UIAO?** Walk the [10-minute quickstart](https://github.com/WhalerMike/uiao/blob/main/docs/docs/quickstart.qmd) — it runs a full auditor bundle (evidence, POA&M, SSP narrative) against a synthetic ScubaGear fixture. No Azure tenant, no API keys, no live data.
 
-**Writing an adapter?** Follow the [30-minute adapter authoring tutorial](https://github.com/WhalerMike/uiao/blob/main/docs/docs/adapter-authoring-tutorial.md) — walks from zero to a merged PR using the shipped ScubaGear adapter as the worked example.
+**Writing an adapter?** Follow the [30-minute adapter authoring tutorial](https://github.com/WhalerMike/uiao/blob/main/docs/docs/adapter-authoring-tutorial.qmd) — walks from zero to a merged PR using the shipped ScubaGear adapter as the worked example.
 
 ```bash
 # Install the package + CLI in editable mode
