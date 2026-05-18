@@ -50,6 +50,7 @@ DriftClassLiteral = Literal[
     "DRIFT-AUTHZ",
     "DRIFT-IDENTITY",
     "DRIFT-BOUNDARY",
+    "DRIFT-SSOT-CONTENTION",
 ]
 DRIFT_SCHEMA: DriftClassLiteral = "DRIFT-SCHEMA"
 DRIFT_SEMANTIC: DriftClassLiteral = "DRIFT-SEMANTIC"
@@ -57,6 +58,7 @@ DRIFT_PROVENANCE: DriftClassLiteral = "DRIFT-PROVENANCE"
 DRIFT_AUTHZ: DriftClassLiteral = "DRIFT-AUTHZ"
 DRIFT_IDENTITY: DriftClassLiteral = "DRIFT-IDENTITY"
 DRIFT_BOUNDARY: DriftClassLiteral = "DRIFT-BOUNDARY"
+DRIFT_SSOT_CONTENTION: DriftClassLiteral = "DRIFT-SSOT-CONTENTION"
 
 
 # ---------------------------------------------------------------------------
