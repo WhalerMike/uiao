@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/ssot-roster/ssot-roster.schema.json",
+  "title": "UIAO SSOT Roster Schema",
+  "description": "JSON Schema for SSOT (single-source-of-truth) roster documents. Each roster declares, for one data domain, which instance is authoritative and which instances are canonically demoted in favor of it. The substrate's drift engine (SSOTContentionEvaluator) reads these rosters to evaluate DRIFT-SSOT-CONTENTION findings per ADR-074. Companion to the MS SQL Estate Rationalization Process spec (§3 SSOT Designation, §7.2 DRIFT-SSOT-CONTENTION detection).",
+  "type": "object",
+  "required": [
+    "schema-version",
+    "domain",
+    "ratification_date",
+    "authoritative_instance",
+    "demoted_instances"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema-version": {
+      "type": "string",
+      "description": "Semantic version of this roster document schema.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Canonical data-domain identifier from the seed domain catalog (spec Appendix B) or an agency-ratified extension. Examples: 'HR', 'Finance', 'Procurement', 'Logistics', 'FOIA'. One roster per domain.",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "domain_scope": {
+      "type": "string",
+      "description": "Optional sub-domain qualifier when one domain is split across mission boundaries. Example: domain='HR', domain_scope='Civilian-Personnel-Only'. The (domain, domain_scope) pair must be unique across the agency's roster set.",
+      "maxLength": 128
+    },
+    "ratification_date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date the governance board ratified this roster."
+    },
+    "governance_review_pr": {
+      "type": "string",
+      "description": "Repo-relative or absolute reference to the PR that ratified the roster. Required for FedRAMP audit traceability.",
+      "pattern": "^(https?://|#)[A-Za-z0-9._/#-]+$"
+    },
+    "authoritative_instance": {
+      "$ref": "#/definitions/AuthoritativeInstance"
+    },
+    "demoted_instances": {
+      "type": "array",
+      "description": "Instances canonically demoted in favor of the authoritative instance. Writes against these (outside cache_eligible_columns) trigger DRIFT-SSOT-CONTENTION per ADR-074. Empty array permitted only when the roster is a placeholder pre-cutover; the drift engine emits a warning if it loads a roster with no demoted instances.",
+      "items": {
+        "$ref": "#/definitions/DemotedInstance"
+      },
+      "minItems": 0
+    },
+    "remediation_window_days": {
+      "type": "integer",
+      "description": "Default time-to-remediate window for DRIFT-SSOT-CONTENTION findings. Findings unresolved past this window escalate from P2 to P1. Per-demoted-instance overrides apply when present on the DemotedInstance entry.",
+      "minimum": 1,
+      "maximum": 365,
+      "default": 30
+    },
+    "remediation_events": {
+      "type": "array",
+      "description": "Audit log of DRIFT-SSOT-CONTENTION findings that have been closed against this roster. Append-only; entries are never removed.",
+      "items": {
+        "$ref": "#/definitions/RemediationEvent"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text notes. Not machine-consumed.",
+      "maxLength": 2048
+    }
+  },
+  "definitions": {
+    "AuthoritativeInstance": {
+      "type": "object",
+      "description": "The single instance the governance board has designated as the SSOT for this domain.",
+      "required": ["identifier", "boundary_classification", "selection_rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Stable identifier for the instance. Format depends on the instance's source — e.g., 'ad-spn::sql01.corp.example:1433' for AD-discovered MS SQL, '/subscriptions/.../Microsoft.Sql/servers/foo' for ARM resources, 'workday::tenant-id-001' for SaaS HR systems. Must match an identifier already discovered by the relevant conformance adapter (MSSQLInventoryAdapter, EntraAdapter, etc.).",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "boundary_classification": {
+          "type": "string",
+          "description": "Governance boundary the instance sits in. Drives boundary-fit eligibility per the rationalization spec §4.2 (the hard eligibility gate).",
+          "enum": [
+            "gcc-moderate",
+            "gcc-high",
+            "dod-il4",
+            "dod-il5",
+            "commercial-exception-amazon-connect",
+            "commercial-exception-sailpoint-nerm"
+          ]
+        },
+        "selection_rationale": {
+          "type": "string",
+          "description": "Free-text governance-board rationale for this instance's selection over alternatives. Should reference the §3 weighted-criteria scoring outcome from the rationalization process.",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "discovery_source": {
+          "type": "string",
+          "description": "The conformance adapter that surfaces this instance. Pin to a registered adapter id from adapter-registry.yaml when possible.",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "DemotedInstance": {
+      "type": "object",
+      "description": "An instance canonically demoted in favor of the authoritative instance for this domain.",
+      "required": ["identifier", "demotion_date", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Stable identifier (same format conventions as AuthoritativeInstance.identifier).",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "demotion_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date this instance was marked demoted in the roster."
+        },
+        "cutover_window": {
+          "type": "object",
+          "description": "Planned operational window during which write traffic moves from this instance to the authoritative instance. During this window, DRIFT-SSOT-CONTENTION findings are emitted at P3 (informational) rather than P2.",
+          "additionalProperties": false,
+          "properties": {
+            "planned_start": { "type": "string", "format": "date-time" },
+            "planned_end": { "type": "string", "format": "date-time" }
+          },
+          "required": ["planned_start", "planned_end"]
+        },
+        "cache_eligible_columns": {
+          "type": "array",
+          "description": "Allowlist of table.column references on this demoted instance that are permitted to receive writes after the cutover (because they are downstream caches replicated from the authoritative SSOT). Writes outside this allowlist trigger DRIFT-SSOT-CONTENTION. Format: 'schema.table.column' or 'table.column'.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*){1,2}$",
+            "minLength": 3,
+            "maxLength": 256
+          },
+          "uniqueItems": true
+        },
+        "retirement_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "ISO 8601 date the instance is scheduled to be decommissioned. Null until scheduled. Once past this date, status should transition to 'retired'."
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle state of the demoted instance.",
+          "enum": [
+            "demoted",
+            "cutover-in-progress",
+            "cutover-complete",
+            "retired"
+          ]
+        },
+        "remediation_window_days": {
+          "type": "integer",
+          "description": "Per-instance override of the roster-level remediation_window_days. Optional; defaults to the roster value when absent.",
+          "minimum": 1,
+          "maximum": 365
+        },
+        "discovery_source": {
+          "type": "string",
+          "description": "The conformance adapter that surfaces this demoted instance.",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "RemediationEvent": {
+      "type": "object",
+      "description": "Audit-trail entry recording how a DRIFT-SSOT-CONTENTION finding was closed.",
+      "required": [
+        "finding_id",
+        "decision",
+        "decision_date"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "description": "The DriftFinding identifier the remediation closes.",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "decision": {
+          "type": "string",
+          "description": "Per ADR-074 §5 and rationalization spec §7.3: how the contention was resolved.",
+          "enum": ["re-ratify", "re-direct", "retire"]
+        },
+        "decision_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date the governance steward (or named delegate) recorded the decision."
+        },
+        "decision_pr": {
+          "type": "string",
+          "description": "Repo-relative or absolute reference to the PR that landed the decision. Required when the decision is 're-ratify' (because the roster mutates).",
+          "pattern": "^(https?://|#)[A-Za-z0-9._/#-]+$"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes on the remediation.",
+          "maxLength": 2048
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "re-ratify" }
+            }
+          },
+          "then": {
+            "required": ["decision_pr"]
+          }
+        }
+      ]
+    }
+  }
+}
