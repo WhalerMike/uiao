@@ -1,28 +1,96 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : PE-5
+# Title      : Access Control for Output Devices
+# Schema     : data/control-library (uiao canonical format)
+# Inheritance: Inapplicable to substrate physical-output devices (none
+#              exist); tenant-side residual scoped to agency-operated
+#              workstation output handling
+
 control_id: PE-5
 title: Access Control for Output Devices
-family: Physical and Environmental Protection (PE)
-status: Implemented
+family: Physical and Environmental Protection
+status: implemented
+
 implemented_by:
-  - Physical Security Office
-  - IT Operations
+    - microsoft-azure-fedramp-attestation
+    - agency-physical-security-program
+    - microsoft-purview
+    - intune
+
 evidence:
-  - artifact: Output Device Placement Records
-    location: IT Operations > Device Inventory
-    format: XLSX/PDF
+    - microsoft-azure-fedramp-marketplace-record  # Azure Commercial Cloud F1209051525 (FedRAMP High since 2019-05-03; fedramp.gov/marketplace/products/F1209051525/) OR Azure Government F1603087869 (FedRAMP High Class D since 2020-04-29, DOD IL4/IL5; fedramp.gov/marketplace/products/F1603087869/); substrate operator cites the applicable package per actual deployment
+    - agency-physical-security-program-attestation  # [TBD: insert reference from agency SSP appendix at SSP submission]
+    - intune-endpoint-dlp-policy-export
+    - purview-sensitivity-label-encryption-policy
+
 parameters:
-  - id: PARAM-PE-005-001
-    text: Frequency of output device placement review
-    value: Annually
+    - id: PARAM-PE-005-001
+      description: >-
+          Output-device scope applicable to the substrate's
+          authorization boundary.
+      value: "The substrate has no tenant-operated output devices (no printers, plotters, scanners, copiers, or fixed displays). Output devices used by substrate-administration personnel are agency-operated workstation surfaces governed by the agency physical-security program and by tenant-side endpoint policy (Intune DLP, Microsoft Purview sensitivity-label encryption)"
+    - id: PARAM-PE-005-002
+      description: >-
+          Tenant-side endpoint protections that govern output of
+          substrate data at the agency workstation surface.
+      value: "Microsoft Intune endpoint DLP blocks unauthorized print, copy-to-removable-media, and screen-capture of classified content; Microsoft Purview sensitivity labels encrypt content such that an unauthorized output destination cannot decrypt it; Conditional Access session policies disable download for high-sensitivity workloads in unmanaged browser contexts"
+
 narrative: |
-  **Output Device Controls**
-  The organization controls physical access to output devices (printers, monitors, copiers, scanners) to prevent unauthorized individuals from viewing or obtaining sensitive output. Output devices processing CUI or sensitive UIAO data are located in controlled areas with restricted access.
+  **No Tenant-Operated Output Devices**
+  The substrate has no tenant-operated output devices within its
+  authorization boundary. There are no substrate-managed printers,
+  scanners, copiers, plotters, or fixed display surfaces. All
+  substrate interaction occurs through Microsoft-managed
+  Azure / M365 endpoints accessed from agency-operated workstations.
+  PE-5 has no tenant-operated physical-output surface to protect.
 
-  **Device Placement**
-  Printers and display monitors in UIAO work areas are positioned to prevent unauthorized viewing. Secure print release (pull printing) is required for all networked printers within the system boundary. Output device placement is reviewed annually (PARAM-PE-005-001).
+  **Datacenter-Side Inheritance**
+  Microsoft Azure datacenter output handling (operations terminals,
+  break-fix workstations within the datacenter, etc.) is inherited
+  from Microsoft under the FedRAMP authorization. The
+  Microsoft-side implementation is documented in the Service Trust
+  Portal attestation. The Microsoft Azure FedRAMP High P-ATO is
+  publicly recorded in the FedRAMP Marketplace as Azure Commercial
+  Cloud package F1209051525 (authorized 2019-05-03) at
+  fedramp.gov/marketplace/products/F1209051525/ and Azure
+  Government package F1603087869 (authorized 2020-04-29, FedRAMP
+  High Class D, DOD IL4/IL5 compliant) at
+  fedramp.gov/marketplace/products/F1603087869/; the substrate
+  operator cites the applicable package per actual deployment.
 
-  **Secure Output Handling**
-  Sensitive printed output is collected promptly. Uncollected print jobs are automatically purged after 4 hours. Screen privacy filters are required for workstations in shared or open areas.
+  **Agency-Workstation Output Handling**
+  Substrate-administration personnel use agency-provided
+  Intune-managed workstations to administer the substrate. Output
+  of substrate data at the agency workstation surface is governed
+  by the agency physical-security program (workstation placement
+  in controlled areas, screen privacy filters, secure-print
+  workflows where agency print infrastructure is used) and by
+  tenant-side endpoint policy as defined in PARAM PE-005-002.
+  Cross-reference: **MP-2** (Media Access), **MP-4** (Media
+  Storage), **AC-4** (Information Flow Enforcement).
+
+  **Data-Layer Protection at Endpoint**
+  Microsoft Purview sensitivity labels carry encryption that
+  protects classified output beyond the agency workstation
+  boundary. Intune endpoint DLP blocks the unauthorized output
+  vectors (print, removable-media copy, screen capture) for
+  content carrying classified labels. This data-layer protection
+  is the substrate's primary control on substrate-data output
+  regardless of the physical output device involved, supporting
+  **AC-4** (Information Flow Enforcement) and **MP-2** (Media
+  Access).
+
+  **Inheritance Attestation Review**
+  The inheritance from Microsoft for datacenter-side output
+  handling, and the agency-side responsibility for workstation-
+  surface output handling, are reviewed annually in the
+  inheritance-attestation review per **PE-1** and **CA-7**
+  (Continuous Monitoring).
+
 related_controls:
-  - PE-1  # Physical and Environmental Protection Policy
-  - PE-3  # Physical Access Control
-  - MP-4  # Media Storage
+    - AC-4   # Information Flow Enforcement
+    - CA-7   # Continuous Monitoring
+    - MP-2   # Media Access
+    - MP-4   # Media Storage
+    - PE-1   # Policy and Procedures
+    - PE-3   # Physical Access Control

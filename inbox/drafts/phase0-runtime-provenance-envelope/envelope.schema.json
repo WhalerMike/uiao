@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.example.com/schemas/provenance/envelope.schema.json",
+  "title": "UIAO Runtime Provenance Envelope",
+  "description": "Schema for the provenance envelope every canonical claim emitted by a UIAO adapter MUST carry. Promotes 15_ProvenanceProfile.qmd §3 from documentation prose into the wire-format contract. Validated inline at BaseAdapter.emit() per ADR-070.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "issuer_identity",
+    "source_system",
+    "source_classification",
+    "extraction_timestamp",
+    "extraction_method",
+    "transformation_chain",
+    "lineage_hash",
+    "schema_version",
+    "signature"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "description": "Deterministic claim URI of the form urn:uiao:claim:{domain}:{claim_type}:{uuid}. Required by adr-005 canonical claim schema.",
+      "pattern": "^urn:uiao:claim:[a-z0-9-]+:[a-z0-9-]+:[A-Za-z0-9-]+$"
+    },
+    "issuer_identity": {
+      "type": "string",
+      "description": "Identifier of the issuing principal as resolved against the identity plane. Default identity plane is Entra ID; the value is an Entra object ID (UUID). Federal-only deployments may substitute a non-Microsoft identity plane via the adapter manifest's identity_resolver field.",
+      "minLength": 1
+    },
+    "source_system": {
+      "type": "string",
+      "description": "Name and version of the originating system in the form {system_name}:{version}. Examples: ssa-titan:v2.4.1, irs-modernization-platform:v3.0.0.",
+      "pattern": "^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+$"
+    },
+    "source_classification": {
+      "type": "string",
+      "description": "Provenance class of the claim per 15_ProvenanceProfile.qmd §4. authoritative = emitted directly by the truth source; derived = computed from a single authoritative source; synthesized = assembled from multiple sources with confidence weighting.",
+      "enum": ["authoritative", "derived", "synthesized"]
+    },
+    "extraction_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp at which the source record was extracted from the source system. UTC required."
+    },
+    "extraction_method": {
+      "type": "string",
+      "description": "How the source record was acquired. api = synchronous API call; batch = scheduled bulk export; stream = event-driven push; manual = operator-curated.",
+      "enum": ["api", "batch", "stream", "manual"]
+    },
+    "transformation_chain": {
+      "type": "array",
+      "description": "Ordered transformation steps applied between extraction and emission. Empty array for authoritative claims; one or more entries for derived/synthesized. No step may be removed or reordered after sealing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step", "transform", "applied_by", "applied_at"],
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based ordinal position in the chain. MUST be strictly increasing."
+          },
+          "transform": {
+            "type": "string",
+            "description": "Canonical transform name. Refers to a registered transform in src/uiao/canon/transform-registry.yaml (deferred to Phase 2)."
+          },
+          "applied_by": {
+            "type": "string",
+            "description": "Adapter ID that applied this transform. MUST match an active entry in adapter-registry.yaml or modernization-registry.yaml."
+          },
+          "applied_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp of transform application. UTC required."
+          }
+        }
+      }
+    },
+    "lineage_hash": {
+      "type": "string",
+      "description": "Hex-encoded SHA-256 of the canonical-JSON serialization of the source record at extraction time. The hash is computed once at seal() and never recomputed; runtime chain verification compares this stored hash against a re-computed hash of the source record fetched at verification time.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Envelope schema version. Versioned per the canon-change ADR process; no in-place schema mutation.",
+      "enum": ["1.0"]
+    },
+    "signature": {
+      "type": "string",
+      "description": "Hex-encoded SHA-256 thumbprint of the mTLS certificate that signed the envelope. The substrate verifies the thumbprint resolves to a trusted issuer registered in the adapter's trust-anchor: declaration (per UIAO_110 trust-chain canon).",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "consent_envelope": {
+      "type": "object",
+      "description": "Optional consent-envelope reference. Required when the claim is subject to authorization gating (e.g., citizen data with explicit consent scope). Empty/absent means no consent gating applies. Validated against 17_ConsentEnvelope.qmd at adapter emit per Phase 2.",
+      "additionalProperties": false,
+      "required": ["consent_id", "scope"],
+      "properties": {
+        "consent_id": {
+          "type": "string",
+          "description": "URI of the consent record this claim is governed by."
+        },
+        "scope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Authorized claim destinations under the consent envelope."
+        }
+      }
+    }
+  }
+}

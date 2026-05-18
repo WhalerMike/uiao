@@ -1,0 +1,95 @@
+---
+title: Microsoft Defender for Cloud Apps — Discovery (Reserved Slot) — Adapter Technical
+  Specification
+doc-type: ats
+adapter-id: defender-for-cloud-apps
+adapter-class: conformance
+mission-class: telemetry
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Microsoft Defender for Cloud Apps — Discovery (Reserved Slot) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `conformance` · **Mission:** `telemetry` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Microsoft Defender for Cloud Apps — Discovery Adapter is the **CASB observation edge** in the UIAO substrate. As a conformance-class telemetry adapter, it consumes the read-only feeds the Microsoft CASB exposes — Shadow IT discovery, OAuth app inventory, app risk scoring, and session analytics — and routes them through the canonical evidence chain so OrgPath-keyed user populations carry an authoritative SaaS-usage posture.
+
+This adapter is the read-only half of a two-axis pair: the change-making counterpart [`defender-for-cloud-apps-actions`](../defender-for-cloud-apps-actions/defender-for-cloud-apps-actions.html) handles OAuth governance, session-control policy writes, and Conditional Access App Control bindings. Per ADR-049 §Decision 1, the dual-axis split is justified by ODA-15 (modernization = change-making, conformance = read-only).
+
+Three primary functions:
+
+1. **Shadow IT discovery.** Ingests the cloud-app discovery output that Microsoft CASB derives from firewall / proxy logs, normalizing app identifier, risk score, user count, traffic volume, and sanctioned-status into canonical claim shape per OrgPath segment.
+2. **OAuth app inventory + risk scoring.** Pulls OAuth app inventory (which third-party apps users have consented to) plus per-app risk scores. The inventory is the canonical input to OAuth governance reviews — the change-making side decides revoke / restrict actions, but the inventory itself is observation.
+3. **Session analytics.** Captures session-level analytics (anomalous downloads, impossible travel, mass deletion, etc.) and emits them as evidence keyed to OrgPath user segment for SOC correlation. Session events flow into the standard evidence chain for tamper-evident retention.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR.
+
+## Scope
+
+Target surfaces / subsystems: `shadow-it-discovery`, `oauth-app-inventory`, `app-risk-scoring`, `session-analytics`
+
+**Reads:** Microsoft Defender for Cloud Apps APIs for cloud-app catalog, discovery-data inventory, OAuth app records, app risk scores, and session-level activity feeds. Read-only client-credential OAuth flow.
+
+**Emits:** `mcas-discovery-findings.json` (Shadow IT cloud-app inventory with risk scores and OrgPath segment counts), `mcas-oauth-inventory.json` (per-user OAuth app consents with app metadata), `mcas-risk-scores.json` (per-app risk scores with contributing factors), plus `EvidenceObject` records keyed to OrgPath user segment.
+
+**Does NOT:** modify any Defender for Cloud Apps configuration (alert rules, app sanctioning state, OAuth app block-lists, session policies, Conditional Access App Control bindings) — those are [`defender-for-cloud-apps-actions`](../defender-for-cloud-apps-actions/defender-for-cloud-apps-actions.html)'s role. Does not access protected content (mailbox or document content; file-event metadata only). Does not bypass the GCC-Moderate tenant boundary.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `AC-2`, `AC-3`, `AC-6`, `AU-2`, `CA-7`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AC-2** Account Management | Supporting | OAuth app inventory plus session analytics surface accounts whose access patterns warrant Access Review or de-provisioning. |
+| **AC-3** Access Enforcement | Supporting | Session-level analytics observe access decisions made by upstream enforcement (Conditional Access, Conditional Access App Control); the adapter does not enforce. |
+| **AC-6** Least Privilege | Primary | OAuth app inventory + app risk scoring identify over-permissioned third-party app consents — the canonical observation feed for least-privilege review of SaaS access. |
+| **AU-2** Event Logging | Primary | Session-level event ingestion is the canonical observation feed for SaaS audit events that don't appear in tenant audit logs. |
+| **CA-7** Continuous Monitoring | Primary | Scheduled telemetry collection provides continuous SaaS posture evidence with the freshness-window semantics defined in canon. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `interval` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Reserved slot per ADR-049. Read-only telemetry side of the Defender for Cloud Apps surface — Shadow IT discovery, OAuth app inventory, app risk scoring, session analytics. Pairs with [`defender-for-cloud-apps-actions`](../defender-for-cloud-apps-actions/defender-for-cloud-apps-actions.html) (modernization-registry) for the change-making OAuth governance / session control side. Per ADR-049 §Decision 1, the dual-axis split is justified by ODA-15 (modernization = change-making).
+
+ZTMM pillars: applications-and-workloads, data.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework + dual-axis split rationale
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

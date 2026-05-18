@@ -7,7 +7,7 @@ mission-class: telemetry
 status: reserved
 phase: phase-planning
 gcc-boundary: gcc-moderate
-canon-source: canon/adapter-registry.yaml
+canon-source: src/uiao/canon/adapter-registry.yaml
 derived-from: uiao/canon (sync_canon.py)
 generated: '2026-04-16'
 aspirational: true
@@ -25,27 +25,42 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the SIEM / Audit Event Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The SIEM / Audit Event Adapter is the **enterprise audit-event ingestion edge** of the UIAO substrate. As a conformance-class telemetry adapter, it consumes audit events, security alerts, and aggregated logs from the customer's SIEM platform — Microsoft Sentinel, Splunk, Elastic, QRadar, or any other SIEM that exposes events through a documented API — and normalizes them into the canonical claim shape that downstream evidence and drift consumers expect.
+
+The adapter is tool-agnostic by design. The vendor-specific SIEM backend (Sentinel KQL, Splunk SPL, Elastic ES|QL, QRadar AQL) is injected via configuration; the canonical event model is identical regardless of source. This means a customer who switches SIEMs mid-engagement does not have to re-author any downstream control mapping — only the SIEM driver changes.
+
+Three primary functions:
+
+1. **Audit-event ingestion.** Pulls audit events from the customer's SIEM via the documented API (or pushes via the SIEM's webhook surface where pull is unavailable), normalizing event identifier, timestamp, source-system, principal, action, and result into canonical claim shape with full provenance envelope.
+2. **Security-alert correlation.** Captures higher-level security alerts (incidents, detections, anomalies) and routes them to the canonical alert claim shape, with per-alert references to the underlying audit events so SOC consumers can trace alert → events without leaving the substrate.
+3. **Log-aggregation summary.** Emits per-source-system event counts, error-rate trends, and ingestion-lag findings so operators can verify that the SIEM itself is observing what canon expects it to observe.
+
+The adapter is the **highest-value telemetry adapter** for the evidence fabric per canon — most of the AU-* control evidence stream ultimately originates here.
+
+**Implementation:** Reserved slot per ADR-049 / FIMF Tier 5. Activation requires a per-adapter ADR for the specific SIEM driver.
 
 ## Scope
 
 Target surfaces / subsystems: `audit-events`, `security-alerts`, `log-aggregation`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Customer SIEM via documented API (Sentinel `/api/query`, Splunk REST `/services/search/jobs`, Elastic `_search`, QRadar `/api/ariel/searches`, etc.). Read-only client-credential OAuth or API-key authentication per the SIEM-specific driver.
+
+**Emits:** `audit-event-claims.json` (canonical audit-event records with provenance envelope, one per ingested event), `alert-summary.json` (per-alert records plus the audit-event references that contributed), plus `EvidenceObject` records that feed the AU-* and SI-4 control evidence stream.
+
+**Does NOT:** modify SIEM configuration (search definitions, alert rules, retention policies, data ingestion pipelines), inject events into the SIEM, modify the customer's data sources upstream of the SIEM, or correlate person identity from audit events (object identity only per canon invariant). The adapter is the *read-out* edge; configuration of the SIEM itself is outside scope.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `AU-2`, `AU-3`, `AU-6`, `SI-4`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AU-2** Event Logging | Primary | Audit-event ingestion provides the canonical evidence of which events were captured by the customer's audit infrastructure. |
+| **AU-3** Content of Audit Records | Primary | Canonical event normalization enforces the substrate's audit-record content contract (timestamp, principal, action, result, source-system) regardless of the SIEM's native schema. |
+| **AU-6** Audit Record Review, Analysis, and Reporting | Primary | Security-alert correlation plus log-aggregation summary are the canonical evidence sources for the audit-review process. |
+| **SI-4** System Monitoring | Primary | Aggregated security alerts plus event-trend findings provide the canonical system-monitoring evidence. |
 
 ## Operational profile
 
@@ -67,11 +82,14 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-FIMF Tier 5 conformance adapter. Ingests audit events and security alerts from SIEM platforms (Sentinel, Splunk, etc.). Highest-value telemetry adapter for the evidence fabric.
+FIMF Tier 5 conformance adapter. Ingests audit events and security alerts from SIEM platforms (Sentinel, Splunk, Elastic, QRadar, etc.). **Highest-value telemetry adapter** for the evidence fabric — most AU-* control evidence ultimately originates from this surface.
+
+Pairs naturally with [`purview-audit`](../purview-audit/purview-audit.html) (which observes the Purview-native audit retention tier and DLP / sensitivity-label state — a M365-specific subset of what SIEM covers more broadly) and with the rest of the conformance telemetry quartet ([`vuln-scan`](../vuln-scan/vuln-scan.html), [`stig-compliance`](../stig-compliance/stig-compliance.html), [`patch-state`](../patch-state/patch-state.html)) that together produce the continuous-monitoring evidence pack.
 
 ## References
 
 - UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
 
 ---
 

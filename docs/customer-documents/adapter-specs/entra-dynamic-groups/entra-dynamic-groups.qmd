@@ -1,0 +1,98 @@
+---
+title: Entra ID Dynamic Group Provisioning (OrgTree UIAO_152) — Adapter Technical Specification
+doc-type: ats
+adapter-id: entra-dynamic-groups
+adapter-class: modernization
+mission-class: integration
+status: active
+phase: phase-1
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/modernization-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Entra ID Dynamic Group Provisioning (OrgTree UIAO_152) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `active` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-1`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Entra ID Dynamic Group Provisioning Adapter is the **OrgPath actuator** of the UIAO substrate — the component that turns canonical OrgPath values into policy-targetable Entra ID security groups. As a modernization-class integration adapter, it provisions one OrgTree-* dynamic security group per UIAO_152 library entry, with membership rules that reference the OrgPath extension attribute written by the [`active-directory`](../active-directory/active-directory.html) and [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html) adapters.
+
+Three primary functions:
+
+1. **Dynamic group provisioning.** Creates one Entra ID dynamic security group per UIAO_152 row, with the membership rule generated deterministically from the OrgPath prefix and operator (`-eq`, `-startsWith`). Groups follow the canonical naming convention `OrgTree-<NodeId>` so policy authors can refer to them by stable identifier rather than by display name.
+2. **Membership rule maintenance.** Patches existing groups when the UIAO_152 library changes — for example, when an organizational segment's NodeId, scope operator, or evaluation precedence is updated. The adapter never silently rewrites a membership rule that has drifted away from canon; out-of-band edits surface as findings.
+3. **Phantom group detection.** Identifies Entra groups whose name matches the OrgTree-* convention but whose UIAO_152 row has been retired or whose membership rule no longer matches canon. Phantom groups are **not** auto-deleted; per UIAO_152 §Drift they route through the Workflow 3 review in UIAO_155 so a human approves the deprovisioning.
+
+These groups are the connective tissue for every downstream OrgPath consumer: [`entra-admin-units`](../entra-admin-units/entra-admin-units.html) scopes role assignments by them, [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) targets Intune profiles to them, and Conditional Access and PIM bindings reference them by object id.
+
+**Implementation:** `src/uiao/adapters/entra_dynamic_groups.py`. `plan()` and `apply(dry_run=True)` are offline-safe; `apply(dry_run=False)` issues `POST /groups` and `PATCH /groups/{id}` against Microsoft Graph.
+
+## Scope
+
+Target surfaces / subsystems: `dynamic-membership-groups`, `orgpath-governed-groups`
+
+**Reads:** UIAO_152 dynamic-group library (executable canon at `canon/data/orgpath/dynamic-groups.yaml`), UIAO_151 codebook for OrgPath prefix validation, and the live Entra ID group state via Microsoft Graph (filtered to the OrgTree-* naming convention).
+
+**Emits:** `dynamic-group-plan.json` (planned group creates and rule patches with per-row provenance back to UIAO_152), `dynamic-group-report.json` (post-apply audit trail), and phantom-group findings for the governance findings stream.
+
+**Does NOT:** provision static (assigned) groups, modify membership rules that were not authored from UIAO_152, manage on-premises-synced groups, touch app-role assignments or group-to-group nesting, or auto-delete phantom groups. Apply paths are gated on `dry_run=False`; phantom remediation is human-approved through UIAO_155 Workflow 3.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `AC-2`, `AC-3`, `AC-6`, `CM-8`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AC-2** Account Management | Primary | Dynamic membership rules express account-group binding declaratively from OrgPath — membership tracks the OrgPath assignment rather than a separate group-management process. |
+| **AC-3** Access Enforcement | Primary | Downstream policy systems (Conditional Access, PIM, Intune, Azure Policy) enforce access decisions by referencing these groups as the canonical OrgPath population. |
+| **AC-6** Least Privilege | Supporting | OrgPath-bounded membership enables the [`entra-admin-units`](../entra-admin-units/entra-admin-units.html) adapter to scope administrative authority to the appropriate organizational segment. |
+| **CM-8** Information System Component Inventory | Supporting | The plan and report artifacts enumerate every OrgTree-* group, its UIAO_152 row, and its membership rule for inventory and audit. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `github-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Binds to UIAO_152 (Dynamic Group Library) through ADR-036; executable canon at `canon/data/orgpath/dynamic-groups.yaml`, JSON Schema at `schemas/orgpath/dynamic-groups.schema.json`. `plan()` and `apply(dry_run=True)` are offline-safe; `apply(dry_run=False)` issues `POST /groups` and `PATCH /groups/{id}` against Microsoft Graph.
+
+Phantom groups are never auto-applied: per UIAO_152 §Drift they surface as governance findings and route through the Workflow 3 review in UIAO_155.
+
+ZTMM pillar: identity.
+
+## References
+
+- UIAO-CANON-003
+- UIAO_007 — OrgTree Modernization: AD to Entra ID
+- UIAO_151 — OrgPath Codebook
+- UIAO_152 — Dynamic Group Library
+- UIAO_155 — Governance Workflow Catalog
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

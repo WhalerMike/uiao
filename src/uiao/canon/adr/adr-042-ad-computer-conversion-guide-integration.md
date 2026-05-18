@@ -12,11 +12,14 @@ extends:
   - ADR-034
   - ADR-038
 canon_refs:
-  - MOD_C_Attribute_Mapping_Table
+  - UIAO_153_Attribute_Mapping_Table
   - UIAO_GAE_AD_Computer_Object_Decomposition
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
 pending_inputs:
   - "inbox/AD Computer Object Conversion Guide — Entra ID, Intune, and Azure Arc Governance.docx"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-042-ad-computer-conversion-guide-integration.html
 ---
 
 # ADR-042: AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes
@@ -77,7 +80,7 @@ consume via Quarto.
    once the markdown lands. The manifest's `phase_map` stays
    the F1/F2/F3 user-plane shape; the device-plane workflow gets its
    own section in the guide.
-4. **Drift-engine configuration (MOD_M) stays unchanged.** Phase 6's
+4. **Drift-engine configuration (UIAO_163) stays unchanged.** Phase 6's
    op → drift_class → severity map already covers every op Phase 4
    can emit; the guide is operator documentation, not a new rule
    set.

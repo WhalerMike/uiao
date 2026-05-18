@@ -1,0 +1,97 @@
+---
+title: Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree UIAO_153) — Adapter
+  Technical Specification
+doc-type: ats
+adapter-id: entra-device-orgpath
+adapter-class: modernization
+mission-class: integration
+status: active
+phase: phase-1
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/modernization-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree UIAO_153) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `active` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-1`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Device OrgPath Provisioning Adapter is the **device-plane writer** of the UIAO OrgTree substrate. As a modernization-class integration adapter, it writes the canonical OrgPath value onto every governed device — but the device plane is split: Entra-registered clients live in Microsoft Graph, Arc-enrolled servers live in Azure Resource Manager. This adapter handles both, routing each device to the correct plane and the correct attribute per the UIAO_153 attribute mapping table.
+
+Two primary functions:
+
+1. **Graph-side write (Entra-registered devices).** For clients registered to Entra ID, writes OrgPath into `device.onPremisesExtensionAttributes.extensionAttribute1` via Microsoft Graph. This places the value on the same logical surface as the user-side OrgPath, so Conditional Access and Intune policy expressions can reference both without crossing API boundaries.
+2. **ARM-side write (Azure Arc machines).** For Microsoft.HybridCompute/machines (Arc-enrolled physical and virtual servers), writes the `OrgPath` ARM resource tag via Azure Resource Manager. ARM tags are the natural targeting surface for Azure Policy / Guest Configuration assignments, which lets the [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) adapter scope server policy by OrgPath without leaving the ARM plane.
+
+Phantom OrgPath values — those that fail format validation against the UIAO_151 codebook regex, or that resolve to a retired node — are **never** auto-remediated. They surface as skipped-manual findings per UIAO_153 §Phantom and route through governance review before any correction lands.
+
+**Implementation:** `src/uiao/adapters/entra_device_orgpath.py`. `plan()` and `apply(dry_run=True)` are offline-safe. `apply(dry_run=False)` requires a subclass override of `_execute` because the two transports (Graph and ARM) need distinct credentials and authentication flows.
+
+## Scope
+
+Target surfaces / subsystems: `entra-device-objects`, `azure-arc-machines`, `orgpath-device-plane`
+
+**Reads:** UIAO_153 attribute mapping table (executable canon at `canon/data/orgpath/device-planes.yaml`), UIAO_151 codebook for OrgPath prefix validation (the ARM-tag regex is cross-checked against the codebook regex at load), plus live device inventory from Microsoft Graph (`/devices`) and Azure Resource Manager (`Microsoft.HybridCompute/machines`).
+
+**Emits:** `device-orgpath-plan.json` (planned writes per device with target plane, attribute name, and current vs. proposed value), `device-orgpath-report.json` (post-apply audit trail with one provenance record per write), and skipped-manual findings for phantom-OrgPath devices.
+
+**Does NOT:** modify any device attribute outside the documented OrgPath extension attribute or ARM tag, change device compliance state, register or deregister devices, manage device certificates, or touch Intune managed-device records (Intune profile targeting is the [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) adapter's responsibility). Apply paths are gated on `dry_run=False`.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `AC-2`, `AC-3`, `CA-7`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-8** Information System Component Inventory | Primary | Per-device OrgPath assignment turns the directory and ARM resource graph into an organizationally-keyed inventory — every device row carries its position in the OrgTree. |
+| **AC-2** Account Management | Supporting | Device-side OrgPath enables OrgPath-bounded dynamic group membership for the device population (UIAO_152), parallel to the user-side bindings. |
+| **AC-3** Access Enforcement | Supporting | Downstream Conditional Access / Intune / Azure Policy decisions use the OrgPath attribute as a targeting filter, so this adapter is the data source those enforcement points read. |
+| **CA-7** Continuous Monitoring | Supporting | Post-apply reports provide the continuous evidence that device-side OrgPath remains aligned with canon; phantom-OrgPath findings are first-class monitoring outputs. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `github-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Binds to UIAO_153 (Attribute Mapping Table) through ADR-038; executable canon at `canon/data/orgpath/device-planes.yaml`, JSON Schema at `schemas/orgpath/device-planes.schema.json`. Depends on UIAO_151 (codebook, ADR-035) — the ARM-tag regex is cross-checked against the codebook regex at load. `apply(dry_run=False)` requires a subclass override of `_execute` because the two transports (Graph vs ARM) need distinct credentials.
+
+Phantom OrgPath values (format-invalid or outside the UIAO_151 codebook) are never auto-remediated — they surface as skipped-manual per UIAO_153 §Phantom.
+
+ZTMM pillars: identity, devices.
+
+## References
+
+- UIAO-CANON-003
+- UIAO_007 — OrgTree Modernization: AD to Entra ID
+- UIAO_151 — OrgPath Codebook
+- UIAO_153 — Attribute Mapping Table
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

@@ -1,0 +1,97 @@
+---
+title: Social Security Administration Attribute Service — Adapter Technical Specification
+doc-type: ats
+adapter-id: ssa-attribute-service
+adapter-class: conformance
+mission-class: identity
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Social Security Administration Attribute Service — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `conformance` · **Mission:** `identity` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The SSA Attribute Service Adapter is the **Social Security Administration attribute observer** of the UIAO substrate. As a conformance-class identity adapter, it observes attribute-disclosure events from the SSA — the federal authority of record for SSN per **42 U.S.C. §405** — via the canonical disclosure channels (Consent-Based SSN Verification, IVES income records, SSA eAuthentication / data exchange) and emits canonical claims with the disclosure-audit envelope.
+
+Every disclosure must be tied to a **reciprocal-consumption entitlement** in `canon/reciprocal-consumption-registry.yaml` with a Privacy Act SORN routine-use citation. The entitlement requirement is canonical, not optional.
+
+Three primary functions:
+
+1. **Consent-Based SSN Verification (CBSV) ingestion.** Observes SSN-match disclosures from SSA's CBSV channel for consenting subjects, emitting canonical claims with the SSN-match result and the consent token reference.
+2. **IVES income-record ingestion.** Captures income-record disclosures from the Income Verification Express Service (IRS-hosted but SSA-derived income records) while keeping the SSA derivation explicit in the provenance envelope.
+3. **eAuthentication / data-exchange channel ingestion.** Wraps SSA's eAuth and data-exchange channels for benefit-eligibility and earnings-record disclosures, normalizing into canonical claim shape with full provenance.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
+
+## Scope
+
+Target surfaces / subsystems: `ssn-verification`, `earnings-record`, `benefit-eligibility`, `consent-based-ssn-verification`
+
+**Reads:** SSA Consent-Based SSN Verification, IVES income records, SSA eAuthentication and data-exchange channels. Access requires explicit subject consent (CBSV) or a documented reciprocal-consumption entitlement.
+
+**Emits:** `ssa-attribute-response.json` (per-disclosure canonical claim with disclosed attribute, SSA channel, authority citation), `ssa-disclosure-audit.json` (per-disclosure audit record with entitlement reference, Privacy Act SORN, consent-token reference for CBSV), plus `EvidenceObject` records that feed the IA-2 / IA-4 / AU-2 control evidence stream.
+
+**Does NOT:** issue or modify SSN records (SSA is the authority of record), bulk-pull SSN data (per-subject disclosures only), access benefit-payment detail outside the disclosure, or store SSN values outside the documented retention and encryption envelope.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-4`, `AU-2`, `AU-12`, `SC-8`, `SC-13`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Supporting | SSN-verification claims supplement identification when an SSN-anchored attribute is required by a downstream business process. |
+| **IA-4** Identifier Management | Primary | SSA disclosure record id is the stable identifier for each disclosure event. |
+| **AU-2** Event Logging | Primary | Every disclosure is logged with the canonical disclosure-audit envelope, entitlement reference, SORN citation. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | All SSA channels are TLS-protected. |
+| **SC-13** Cryptographic Protection | Supporting | Validation uses FIPS-validated cryptographic libraries. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+SSA is the federal authority of record for SSN per 42 U.S.C. §405. This adapter observes attribute-disclosure events through SSA Consent-Based SSN Verification (CBSV), Income Verification Express Service (IVES — IRS-hosted but SSA-derived income records), and SSA's eAuthentication / data-exchange channels. Every disclosure must be tied to a reciprocal-consumption entitlement in `canon/reciprocal-consumption-registry.yaml` with a Privacy Act SORN routine-use citation. Activation requires a per-adapter ADR modeled on ADR-035.
+
+Member of the federal attribute-service family — pairs with [`irs-tin-attribute-service`](../irs-tin-attribute-service/irs-tin-attribute-service.html) (IVES is IRS-hosted) and [`dhs-everify-attribute-service`](../dhs-everify-attribute-service/dhs-everify-attribute-service.html) (E-Verify composite authority includes SSA).
+
+ZTMM pillars: identity, data.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

@@ -1,0 +1,272 @@
+---
+title: "Drift Detection — A Walk-through"
+subtitle: "Five Categories, One Engine Loop, Concrete OrgPath Examples"
+date: 2026-05-11
+---
+
+::: {.callout-note}
+## Companion to the storage explainer
+
+If you have not yet read [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd),
+start there. This page picks up from that mental model and answers the
+next question: *once the three storage layers exist, how does the
+governance engine catch when they disagree?* The authoritative spec is
+[UIAO_163 (Drift Detection Engine)](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md);
+this page is the prose tour.
+:::
+
+[IMAGE-REF: UIAO-FIG-013]
+
+## The job of the drift engine
+
+Every governance pipeline rests on the assumption that three things
+agree: the HR system's view of who works where, the Entra ID directory's
+`extensionAttribute1` values, and the codebook's enumeration of valid
+OrgPath codes. The drift engine's job is to *not believe that
+assumption*. It re-checks, on a schedule, that the three layers still
+line up — and when they don't, it emits a structured finding that names
+the disagreement precisely enough for a human to fix it (or, in some
+cases, fixes it automatically).
+
+The engine runs a six-phase loop:
+
+```
+Snapshot ──▶ Compare ──▶ Classify ──▶ Alert ──▶ Remediate ──▶ Verify
+   │                                                              │
+   └──────────────────────── re-scan ◀────────────────────────────┘
+```
+
+1. **Snapshot.** Pull current tenant state via Microsoft Graph — users,
+   groups, AUs, role assignments, device records.
+2. **Compare.** Diff the snapshot against the canonical baseline
+   (codebook, dynamic group library, AU definitions, role catalog).
+3. **Classify.** Map each diff to one of the five categories below,
+   with severity (P1–P4) and an auto-fix policy.
+4. **Alert.** Emit `DriftFinding` objects into the Evidence Fabric for
+   immutable, hash-chained recording — see UIAO-FIG-011.
+5. **Remediate.** If `dry_run=false` and the finding is auto-remediable,
+   apply the fix via the Execution Substrate. Governance-review ops
+   (phantom deletions, AU cascades) are never auto-applied.
+6. **Verify.** Re-snapshot to confirm. In v1 this is operator-triggered;
+   future versions close the loop automatically.
+
+## The five drift categories
+
+These are the canonical five from
+[UIAO_163](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md).
+Each is paired below with a concrete OrgPath example so it stops being
+abstract.
+
+| Category | What broke | Severity | Auto-fix? |
+|----------|-----------|----------|-----------|
+| **Schema Drift** | The structure of a governance artifact changed | P1 | No |
+| **Value Drift** | An attribute value disagrees with the canonical source | P2 | Sometimes |
+| **Hierarchy Drift** | Parent–child governance relationships are broken | P1 | No |
+| **Orphan Drift** | A tenant object has no canonical governance anchor | P3 | Flag only |
+| **Phantom Drift** | A canonical artifact references an object that no longer exists | P3 | Reassign |
+
+### Schema Drift — "the shape changed"
+
+The structure of a governance artifact no longer matches the schema it
+must conform to. For OrgPath this most often means a value that fails
+the regex `^ORG(-[A-Z0-9]{2,6}){0,8}$` (UIAO_151).
+
+**Concrete example.** A device-provisioning script lowercases its inputs
+before writing them to Entra. After the next run, `device.extensionAttribute1`
+on `LAPTOP-0421` reads `org-fin-ap-east` instead of `ORG-FIN-AP-EAST`.
+
+```json
+{
+  "phase": "mod-c-device-orgpath",
+  "op": "device-ext-validate",
+  "target": "device|LAPTOP-0421",
+  "reason": "extensionAttribute1 'org-fin-ap-east' fails OrgPath regex (lowercase segments not permitted)",
+  "drift_class": "DRIFT-SCHEMA",
+  "severity": "P1",
+  "auto_remediate": false
+}
+```
+
+**Why no auto-fix?** Auto-uppercasing the value would hide the upstream
+script bug. P1 forces a human to look at *why* the malformed value got
+written, not just patch the symptom.
+
+### Value Drift — "the layers disagree"
+
+The OrgPath value matches the schema and exists in the codebook, but
+disagrees with the authoritative source (the HR system).
+
+**Concrete example.** Jane Smith was promoted from Budget to Tax
+Accounting on April 1. HR's record shows `ORG-FIN-TAX-EAST` effective
+that date. But the HR-to-Entra provisioning job failed silently, and her
+`extensionAttribute1` still reads `ORG-FIN-BUD-EAST`.
+
+```json
+{
+  "phase": "mod-a-identity-sync",
+  "op": "user-ext-update",
+  "target": "user|jane.smith@contoso.com",
+  "reason": "extensionAttribute1 mismatch: tenant='ORG-FIN-BUD-EAST', HR='ORG-FIN-TAX-EAST'",
+  "drift_class": "DRIFT-IDENTITY",
+  "severity": "P2",
+  "auto_remediate": true
+}
+```
+
+**Sometimes auto-fixed.** When the HR source is trusted as authoritative
+(the default), Value Drift is remediated by writing the HR value back
+into `extensionAttribute1`. If HR is suspected of being stale, the
+finding is escalated for human review instead.
+
+### Hierarchy Drift — "the parent vanished"
+
+A user, group, or AU references an OrgPath segment whose parent no
+longer exists in the codebook. The value is still well-formed and still
+matches *something*, but the something is dangling.
+
+**Concrete example.** The codebook used to define `ORG-FIN-TAX` at
+Level 2. A reorganization deprecated `TAX` and moved tax accounting
+under `ORG-FIN-AP`. The codebook entry for `ORG-FIN-TAX` is gone, but
+ten users still carry `ORG-FIN-TAX-EAST` and the AU `AU-FIN-TAX` is
+still attached to them.
+
+```json
+{
+  "phase": "mod-d-admin-units",
+  "op": "au-membership-rule-validate",
+  "target": "au|AU-FIN-TAX",
+  "reason": "Membership rule references parent OrgPath 'ORG-FIN-TAX' which no longer exists in codebook (deprecated by ADR-XXX)",
+  "drift_class": "DRIFT-AUTHZ",
+  "severity": "P1",
+  "auto_remediate": false
+}
+```
+
+**Why P1?** A broken parent chain means delegation boundaries no longer
+enforce what governance designers intended. That's an authorization
+posture change, not a typo.
+
+### Orphan Drift — "no one is home"
+
+A codebook entry has zero matching principals. The OrgPath is canonical
+and well-formed but no user, device, or AU points at it.
+
+**Concrete example.** `ORG-OPS-LOG-TEMP` was provisioned for a
+temporary logistics surge during a six-month construction project. The
+project ended in March, all four members were reassigned, and nobody
+removed the codebook entry.
+
+```json
+{
+  "phase": "mod-b-dynamic-groups",
+  "op": "orgpath-population-validate",
+  "target": "orgpath|ORG-OPS-LOG-TEMP",
+  "reason": "Codebook entry has zero matching extensionAttribute1 values (last member departed 2026-03-15)",
+  "drift_class": "DRIFT-SEMANTIC",
+  "severity": "P3",
+  "auto_remediate": false
+}
+```
+
+**Flag-only.** Auto-deleting empty codebook entries would erase
+audit-relevant history. The engine flags for governance review; an
+operator either deprecates the code (Phase 2) or restores members.
+
+### Phantom Drift — "the ghost still walks"
+
+A user carries an OrgPath value that has been deprecated in the
+codebook. The codebook says it's gone; the directory says it's still
+there.
+
+**Concrete example.** The same `ORG-FIN-TAX` deprecation. Five
+contractors who left during the reorg never had their offboarding
+completed, so their tombstoned accounts still show
+`ORG-FIN-TAX-EAST`.
+
+```json
+{
+  "phase": "mod-a-identity-sync",
+  "op": "user-ext-reassign",
+  "target": "user|alex.contractor@contoso.com",
+  "reason": "extensionAttribute1='ORG-FIN-TAX-EAST' is deprecated; codebook recommends replaced_by='ORG-FIN-AP-TAX-EAST'",
+  "drift_class": "DRIFT-PROVENANCE",
+  "severity": "P3",
+  "auto_remediate": true
+}
+```
+
+**Reassign.** When the codebook entry has a `replaced_by` successor,
+the engine writes the successor into `extensionAttribute1` and records
+the substitution in the Evidence Fabric. Without a `replaced_by` the
+finding flags for manual handling.
+
+## What the engine emits
+
+Every classified diff becomes a `DriftFinding` with this exact shape
+([source](https://github.com/WhalerMike/uiao/blob/main/src/uiao/governance/drift_engine.py)):
+
+```python
+@dataclass
+class DriftFinding:
+    phase: str              # which governance phase fired
+    op: str                 # the planned operation
+    target: str             # object id (user UPN, device, group, AU, codebook entry)
+    reason: str             # human-readable explanation
+    drift_class: str        # DRIFT-SCHEMA | DRIFT-IDENTITY | DRIFT-AUTHZ | DRIFT-SEMANTIC | DRIFT-PROVENANCE | DRIFT-BOUNDARY
+    severity: str           # P1 | P2 | P3 | P4
+    auto_remediate: bool    # True if remediation is automatic
+```
+
+A complete `DriftScanReport` bundles the findings, a `dry_run` flag, and
+a `halted` boundary — if any P1 finding fires with `halt_on_critical`
+set, the entire remediation pass aborts before any other change lands.
+
+## What happens after the finding fires
+
+| Severity | SLA Behavior (per UIAO_167) |
+|----------|------------------------------|
+| **P1 Critical** | Halt remediation pass; escalate to Governance Board (Level 3+) immediately |
+| **P2 High** | Standard ticket; escalate to Level 2 (manager) at 100% SLA |
+| **P3 Medium** | Standard ticket; Level 1 warning at 75% SLA |
+| **P4 Low** | Logged for trend analysis; no individual escalation |
+
+Findings are written into the Evidence Fabric's Active tier with
+cryptographic hash-chain anchoring (see [UIAO-FIG-011](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/image-prompts/UIAO-FIG-011.md)).
+The three operational fabrics — Truth, Drift, and Evidence — are
+required to operate orthogonally: drift detection cannot suppress
+evidence emission, and evidence storage cannot influence drift
+classification. Operators reading the Evidence Fabric query interface
+see the full immutable trail.
+
+## How to think about the categories
+
+A useful shortcut for figuring out which category a given anomaly
+belongs to:
+
+| Question | If yes → |
+|----------|---------|
+| Does the value violate the schema (regex, type, length)? | **Schema** |
+| Does the value pass schema but disagree with HR? | **Value** |
+| Does the value reference a parent that doesn't exist? | **Hierarchy** |
+| Does a codebook entry have zero users pointing at it? | **Orphan** |
+| Does a user point at a codebook entry that's been deprecated? | **Phantom** |
+
+Schema and Hierarchy are P1 because they break governance
+*structure*. Value is P2 because the structure is intact but the data
+is wrong. Orphan and Phantom are P3 because the structure is intact and
+the data is internally consistent — there's just a stale reference at
+one end or the other.
+
+## Related
+
+- [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) — the
+  three-layer storage model this walk-through assumes
+- [OrgPath Codebook (UIAO_151)](codebook.qmd) — the canonical
+  enumeration the engine validates against
+- [OrgTree A-Z Suite](orgtree.qmd) — the full 27-artifact governance
+  stack (UIAO_150 + the A–Z series UIAO_151–UIAO_176)
+- [UIAO_163 Drift Detection Engine Specification](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md) — the canon
+- [UIAO_167 SLA Escalation Playbooks](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_167_SLA_Escalation_Playbooks.md) — the
+  severity-to-escalation ladder
+- [UIAO_173 Canonical Error Taxonomy](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_173_Canonical_Error_Taxonomy.md) — the
+  full DRIFT-* error code dictionary

@@ -1,0 +1,113 @@
+---
+title: "Cloud Modernization Validation Suite"
+subtitle: "Conformance tests and validation criteria for the cloud domain"
+doc-type: domain-validation-suite
+audience: [Customer, Assessor, Adapter Owner]
+classification: Controlled
+boundary: GCC-Moderate
+domain: cloud
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+canon-reference:
+  - "docs/customer-documents/modernization-specs/cloud/cloud.qmd"
+  - "src/uiao/canon/adr/adr-059-named-commercial-exceptions.md"
+derived-from: "uiao canon"
+---
+
+# Cloud Modernization Validation Suite
+
+## Scope
+
+Conformance tests and validation criteria for the cloud domain under
+the UIAO substrate. Pairs with the
+[Cloud Modernization Spec](../../../modernization-specs/cloud/cloud.qmd).
+The suite gates whether a cloud-domain modernization program meets
+substrate conformance — primary focus is GCC-Moderate boundary
+treatment and named-exception handling per ADR-059.
+
+![Cloud validation suite diagram](images/cloud-image-01-cloud-validation-suite-diagram.png){#fig-cloud-image-01 fig-alt="Center shows a \"Boundary Conformance Gate\" rectangle with the GCC-Moderate boundary line running vertically through it. Test categories enter from the left: Endpoint Resolution, Boundary Disposition, Schema Conformance, Drift Coverage. On the right, a \"Pass / Fail / Exception ADR Required\" outcome panel. Below the gate, a footer band lists the named exceptions per ADR-059 (Amazon Connect, SailPoint NERM). Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="85%"}
+
+## Test categories
+
+### 1. Endpoint resolution conformance
+
+Microsoft Graph adapters must:
+
+- Resolve their endpoint via
+  `uiao.adapters._graph_clouds.resolve_graph_base()`.
+- Accept canonical config keys (`cloud`, `graph_api_version`,
+  explicit overrides).
+- Fail closed at construction for unknown clouds.
+- Track API version (v1.0 / beta) explicitly per adapter.
+
+### 2. Boundary disposition
+
+Each cloud adapter must:
+
+- Declare `gcc-boundary` from the canonical enum (`gcc-moderate`,
+  `amazon-connect-cc`, `sailpoint-nerm`, or future ADR-authorized
+  values).
+- Carry the `boundary` field in every cloud-decision claim.
+- Honor the `endpoint_class` field
+  (`graph-v1.0 | graph-beta | arm | arc`) for boundary-aware OSCAL
+  emission.
+
+### 3. Schema conformance
+
+- Every cloud adapter passes `schema-validation.yml` and
+  `adapter-conformance.yml`.
+- Cloud-decision claims validate against the cloud claim schema.
+- Provenance envelope is complete on every emission.
+
+### 4. Drift detection coverage
+
+- `DRIFT-PROVENANCE` for boundary-crossing claims (the chain must
+  remain valid; if not, the crossing must adjust
+  `source_classification` to `derived`).
+- `DRIFT-SCHEMA` for Graph API version transitions.
+- `DRIFT-AUTHZ` for cross-boundary emissions outside declared scope.
+
+## Evidence expectations
+
+A conformant cloud domain produces:
+
+- Per-claim cloud disposition records with full envelope.
+- Boundary capability disposition data (which features actually
+  function on each side of the boundary).
+- OSCAL artifacts for cloud-related controls (SC, SI families) with
+  per-claim provenance.
+- Compensating-mechanism declarations where GCC-Moderate platform
+  features are unavailable.
+
+## Conformance gates
+
+| Gate | Required | Tier |
+|---|---|---|
+| **T1 — endpoint resolution** | Graph adapters use canonical resolver | Required |
+| **T2 — boundary disposition** | Every cloud claim carries boundary field | Required |
+| **T3 — drift coverage** | Boundary-aware drift detection across all four classes | Target |
+| **T4 — exception ADR coverage** | Every named exception has an authorizing ADR | Required (canon enforced) |
+
+T4 is canon-enforced rather than test-enforced: an unauthorized
+exception cannot be added to the schema enum without its ADR.
+
+## Drift procedures
+
+Boundary-crossing drift findings are typically `DRIFT-PROVENANCE` with
+`P2` severity (1-hour SLA). They auto-remediate when deterministic
+(e.g. the adapter can re-classify the claim as `derived`); otherwise
+escalate to the Canon Steward or Architecture Lead.
+
+## Honest limits
+
+- Vendor maturity in GCC-Moderate varies; passing T1+T2 does not
+  imply functional parity with commercial deployments.
+- Some cloud adapter conformance tests require a live tenant; the
+  CI gate runs static checks plus mocked-tenant tests.
+- Named-exception authorization is canon-enforced, not test-enforced.
+  Tests verify the enum is honored; ADR review is a separate process.
+
+## Related documents
+
+- [Modernization Spec — Cloud](../../../modernization-specs/cloud/cloud.qmd)
+- [ADR-059: Named Commercial Exceptions](../../../../../src/uiao/canon/adr/adr-059-named-commercial-exceptions.md)
+- [Validation Suites Index](../../../index.qmd)

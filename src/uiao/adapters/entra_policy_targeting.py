@@ -1,11 +1,11 @@
-"""Policy-targeting adapter (Phase 5, MOD_N / ADR-039).
+"""Policy-targeting adapter (Phase 5, UIAO_164 / ADR-039).
 
 Closes the "policy consumer" layer of the OrgTree. Phases 2–4 produced
 the governance surface:
 
-* Phase 2 — OrgTree-* dynamic groups (MOD_B)
-* Phase 3 — Restricted Management AUs + scoped roles (MOD_D)
-* Phase 4 — device-plane OrgPath on Entra devices + Arc machines (MOD_C)
+* Phase 2 — OrgTree-* dynamic groups (UIAO_152)
+* Phase 3 — Restricted Management AUs + scoped roles (UIAO_154)
+* Phase 4 — device-plane OrgPath on Entra devices + Arc machines (UIAO_153)
 
 Phase 5 **binds existing policy objects to that surface**:
 
@@ -189,10 +189,27 @@ class EntraPolicyTargetingAdapter:
             Map ``{definition_displayName → policyDefinitionId}`` for
             Azure Policy.
         """
-        profiles_by_name = {p.get("displayName"): p for p in (current_intune_profiles or [])}
-        profiles_by_id = {p.get("id"): p for p in (current_intune_profiles or [])}
+        # By-name/by-id dicts: filter to entries with a usable str key so the
+        # resulting maps satisfy `Mapping[str, dict[str, Any]]` downstream.
+        # In practice every tenant profile has both `id` and `displayName`,
+        # but Graph occasionally omits one during eventual-consistency windows;
+        # silently dropping such entries is preferable to keyed-by-None
+        # collisions in the by-name lookup.
+        profiles_by_name: Dict[str, Dict[str, Any]] = {}
+        profiles_by_id: Dict[str, Dict[str, Any]] = {}
+        for p in current_intune_profiles or []:
+            name = p.get("displayName")
+            pid = p.get("id")
+            if isinstance(name, str):
+                profiles_by_name[name] = p
+            if isinstance(pid, str):
+                profiles_by_id[pid] = p
         assignments_by_profile_id = current_intune_assignments or {}
-        arc_by_name = {a.get("name"): a for a in (current_arc_assignments or [])}
+        arc_by_name: Dict[str, Dict[str, Any]] = {}
+        for a in current_arc_assignments or []:
+            arc_name = a.get("name")
+            if isinstance(arc_name, str):
+                arc_by_name[arc_name] = a
         group_resolver = group_id_resolver or {}
         arc_def_resolver = arc_definition_id_resolver or {}
 
@@ -205,9 +222,9 @@ class EntraPolicyTargetingAdapter:
         )
 
         # ---- Intune ----
-        for assignment in self._canon.intune_assignments:
+        for intune_assignment in self._canon.intune_assignments:
             self._plan_intune(
-                assignment,
+                intune_assignment,
                 profiles_by_name,
                 profiles_by_id,
                 assignments_by_profile_id,
@@ -216,9 +233,12 @@ class EntraPolicyTargetingAdapter:
             )
 
         # ---- Arc ----
-        for _name, assignment in self._canon.arc_policy_assignments.items():
+        # Distinct loop variable name from the Intune loop above so mypy
+        # doesn't narrow `assignment` to `IntuneAssignment` and then reject
+        # the `ArcPolicyAssignment` value here.
+        for _name, arc_assignment in self._canon.arc_policy_assignments.items():
             self._plan_arc(
-                assignment,
+                arc_assignment,
                 arc_by_name,
                 arc_def_resolver,
                 plan,
@@ -254,7 +274,13 @@ class EntraPolicyTargetingAdapter:
 
         profile_id = profile.get("id")
         group_id = group_resolver.get(assignment.target_group)
-        current_targets = assignments_by_profile_id.get(profile_id, [])
+        # When the matched profile has no `id` we can't look it up in
+        # `assignments_by_profile_id`; treat as "no current assignments"
+        # rather than erroring. Downstream `PlannedOperation.intune_profile_id`
+        # is `Optional[str]` so propagating None there is fine.
+        current_targets: List[Dict[str, Any]] = (
+            assignments_by_profile_id.get(profile_id, []) if isinstance(profile_id, str) else []
+        )
 
         matching = [a for a in current_targets if _intune_assignment_matches(a, assignment, group_id)]
         non_matching_same_group = [

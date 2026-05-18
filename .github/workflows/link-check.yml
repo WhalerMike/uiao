@@ -7,11 +7,13 @@ on:
       - '**/*.qmd'
       - '.github/workflows/link-check.yml'
       - '.lychee.toml'
+      - '.lycheeignore'
   push:
     branches: [main]
     paths:
       - '**/*.md'
       - '**/*.qmd'
+      - '.lycheeignore'
   schedule:
     # Weekly catch-all to detect upstream link rot even when no MD/QMD
     # changed in the repo itself.
@@ -22,23 +24,28 @@ jobs:
   link-check:
     name: Check markdown + quarto links
     runs-on: ubuntu-latest
-    # Fail-soft: first run establishes a baseline. Flip to blocking once
-    # the baseline is clean and any drift gets fixed in-PR.
-    continue-on-error: true
+    # Blocking. Baseline is clean (0 errors with the current
+    # `.lycheeignore`); any new genuinely broken link should be fixed
+    # in-PR or, if the URL is a CI-side false positive (e.g. cloud-IP
+    # geo-gating), added to `.lycheeignore` in the same PR with an
+    # explanatory comment.
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Run lychee link checker
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --verbose
             --no-progress
-            --max-retries 2
+            --max-retries 3
+            --retry-wait-time 5
             --timeout 20
             --accept 200,206,403,429,503
-            --exclude-file .lycheeignore
+            --exclude '^https?://(www\.)?onedrive\.com(/|$)'
+            --exclude '^https?://onedrive\.live\.com(/|$)'
+            --exclude '^https?://download\.microsoft\.com/download/'
             --exclude-path docs/site
             --exclude-path docs/_site
             --exclude-path docs/docx
@@ -48,6 +55,7 @@ jobs:
             --exclude '^https://your-tenant'
             --exclude '^https://uiao\.gov/'
             --exclude '^http://localhost'
+            --exclude '^http://127\.0\.0\.1'
             --exclude 'github\.com/WhalerMike/uiao-docs/'
             --exclude '^https://claude\.ai/'
             --exclude '^https://github\.com/WhalerMike/[^/]+/settings/'

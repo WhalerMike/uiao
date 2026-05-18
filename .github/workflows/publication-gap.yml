@@ -1,0 +1,57 @@
+name: Publication Gap Scanner
+
+# Enforces ADR-072: every canon doc whose publish_to_site is true (or
+# defaults to true via the path-pattern rules in scripts/scan_publication_gaps.py)
+# must have a corresponding .qmd entry in docs/_quarto.yml.
+#
+# Runs in --strict mode: fails the PR if any gap is detected. The repo
+# went from advisory to blocking enforcement on 2026-05-15 after closing
+# the publication backlog (see ADR-072 §Consequences).
+
+on:
+  pull_request:
+    paths:
+      - 'src/uiao/canon/**'
+      - 'src/uiao/modernization/**'
+      - 'src/uiao/schemas/**'
+      - 'docs/_quarto.yml'
+      - 'docs/**/*.qmd'
+      - 'scripts/scan_publication_gaps.py'
+      - '.github/workflows/publication-gap.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/**'
+      - 'src/uiao/modernization/**'
+      - 'src/uiao/schemas/**'
+      - 'docs/_quarto.yml'
+      - 'docs/**/*.qmd'
+      - 'scripts/scan_publication_gaps.py'
+
+jobs:
+  publication-gap:
+    name: Scan for canon docs missing from the published site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install scanner dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Run scanner in --strict mode
+        run: python scripts/scan_publication_gaps.py --strict
+
+      - name: Upload gap report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publication-gap-report
+          path: |
+            tools/publication-gaps/report.md
+            tools/publication-gaps/report.json

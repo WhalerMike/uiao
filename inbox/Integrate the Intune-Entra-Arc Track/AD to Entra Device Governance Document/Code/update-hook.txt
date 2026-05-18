@@ -1,0 +1,162 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    UIAO Git Update Hook — Branch Naming and Tag Enforcement
+.DESCRIPTION
+    Runs once per ref being updated (before pre-receive processes all refs).
+    Enforces:
+    1. Branch Naming Convention — All branches must follow UIAO naming patterns
+    2. Tag Format Validation — Tags must follow semantic versioning or UIAO conventions
+    3. Protected Tag Enforcement — Release tags cannot be overwritten or deleted
+    4. Stale Branch Prevention — Warns on deeply nested or unusually named branches
+.NOTES
+    Classification: Controlled | Boundary: GCC-Moderate
+    Install: D:\GitRepos\UIAO\uiao.git\hooks\update
+    Requires: PowerShell 5.1+, Git in PATH
+    Arguments: $args[0]=refname, $args[1]=oldrev, $args[2]=newrev
+#>
+
+param(
+    [Parameter(Position=0)][string]$RefName,
+    [Parameter(Position=1)][string]$OldRev,
+    [Parameter(Position=2)][string]$NewRev
+)
+
+$ErrorActionPreference = 'Stop'
+$exitCode = 0
+
+# --- Configuration ---
+# Allowed branch naming patterns (regex)
+$AllowedBranchPatterns = @(
+    '^refs/heads/main$',                          # Main branch
+    '^refs/heads/canon$',                         # Canon branch
+    '^refs/heads/develop$',                       # Development branch
+    '^refs/heads/feature/[a-z0-9\-]+$',           # feature/my-feature
+    '^refs/heads/fix/[a-z0-9\-]+$',               # fix/bug-description
+    '^refs/heads/hotfix/[a-z0-9\-]+$',            # hotfix/critical-fix
+    '^refs/heads/release/v?\d+\.\d+(\.\d+)?$',    # release/v1.0 or release/1.0.0
+    '^refs/heads/doc/[a-z0-9\-]+$',               # doc/update-readme
+    '^refs/heads/sprint/[a-z0-9\-]+$',            # sprint/sprint-1
+    '^refs/heads/governance/[a-z0-9\-]+$',        # governance/drift-fix
+    '^refs/heads/assessment/[a-z0-9\-]+$',        # assessment/ad-forest
+    '^refs/heads/module/[a-z0-9\-]+$',            # module/pki-assessment
+    '^refs/heads/canon-update/[a-z0-9\-]+$'       # canon-update/metadata-fix
+)
+
+# Tag patterns
+$AllowedTagPatterns = @(
+    '^refs/tags/v\d+\.\d+\.\d+$',                # v1.0.0 (semantic versioning)
+    '^refs/tags/v\d+\.\d+\.\d+-(alpha|beta|rc)\.\d+$',  # v1.0.0-alpha.1
+    '^refs/tags/sprint-\d+$',                     # sprint-1
+    '^refs/tags/assessment-\d{8}$',               # assessment-20260421
+    '^refs/tags/canon-v\d+\.\d+$'                 # canon-v1.0
+)
+
+# Protected tags (cannot be deleted or force-pushed)
+$ProtectedTagPatterns = @(
+    '^refs/tags/v\d+\.\d+\.\d+$'                 # All release tags are immutable
+)
+
+# --- Helper: Write rejection message ---
+function Write-Rejection {
+    param([string]$Rule, [string]$Message)
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host " UIAO GOVERNANCE GATE — UPDATE REJECTED" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host " Rule:    $Rule"
+    Write-Host " Ref:     $RefName"
+    Write-Host " Detail:  $Message"
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host ""
+    $script:exitCode = 1
+}
+
+# --- Detect operation type ---
+$isCreate = ($OldRev -eq '0000000000000000000000000000000000000000')
+$isDelete = ($NewRev -eq '0000000000000000000000000000000000000000')
+$isUpdate = (-not $isCreate -and -not $isDelete)
+
+# =============================================================================
+# BRANCH VALIDATION
+# =============================================================================
+if ($RefName -like 'refs/heads/*') {
+
+    # --- Rule 1: Branch Naming Convention (on create only) ---
+    if ($isCreate) {
+        $nameValid = $false
+        foreach ($pattern in $AllowedBranchPatterns) {
+            if ($RefName -match $pattern) {
+                $nameValid = $true
+                break
+            }
+        }
+
+        if (-not $nameValid) {
+            $branchName = $RefName -replace '^refs/heads/', ''
+            $allowedPrefixes = @(
+                'feature/<description>',
+                'fix/<description>',
+                'hotfix/<description>',
+                'release/v<version>',
+                'doc/<description>',
+                'sprint/<name>',
+                'governance/<description>',
+                'assessment/<description>',
+                'module/<name>',
+                'canon-update/<description>'
+            )
+            $prefixList = $allowedPrefixes -join "`n          "
+            Write-Rejection -Rule "BRANCH-NAMING" -Message "Branch name '$branchName' does not match any allowed pattern.`n          Allowed patterns:`n          $prefixList`n          Use lowercase letters, numbers, and hyphens only."
+        }
+    }
+
+    # --- Rule 2: Prevent deletion of protected branches ---
+    if ($isDelete -and $RefName -in @('refs/heads/main', 'refs/heads/canon', 'refs/heads/develop')) {
+        Write-Rejection -Rule "BRANCH-PROTECT" -Message "Deletion of protected branch '$RefName' is prohibited."
+    }
+
+    # --- Warning: Deep nesting detection ---
+    if ($isCreate) {
+        $depth = ($RefName -replace '^refs/heads/' -split '/').Count
+        if ($depth -gt 3) {
+            Write-Host "WARNING: Branch '$RefName' has $depth levels of nesting. Consider a flatter naming structure." -ForegroundColor Yellow
+        }
+    }
+}
+
+# =============================================================================
+# TAG VALIDATION
+# =============================================================================
+if ($RefName -like 'refs/tags/*') {
+
+    # --- Rule 3: Tag Format Validation (on create) ---
+    if ($isCreate) {
+        $tagValid = $false
+        foreach ($pattern in $AllowedTagPatterns) {
+            if ($RefName -match $pattern) {
+                $tagValid = $true
+                break
+            }
+        }
+
+        if (-not $tagValid) {
+            $tagName = $RefName -replace '^refs/tags/', ''
+            Write-Rejection -Rule "TAG-FORMAT" -Message "Tag '$tagName' does not match allowed formats: v1.0.0, v1.0.0-alpha.1, sprint-1, assessment-YYYYMMDD, canon-v1.0"
+        }
+    }
+
+    # --- Rule 4: Protected Tag Enforcement ---
+    if ($isDelete -or $isUpdate) {
+        foreach ($protectedPattern in $ProtectedTagPatterns) {
+            if ($RefName -match $protectedPattern) {
+                $tagName = $RefName -replace '^refs/tags/', ''
+                $action = if ($isDelete) { 'Deletion' } else { 'Overwrite' }
+                Write-Rejection -Rule "TAG-PROTECT" -Message "$action of release tag '$tagName' is prohibited. Release tags are immutable per UIAO Canon stewardship rules."
+                break
+            }
+        }
+    }
+}
+
+exit $exitCode

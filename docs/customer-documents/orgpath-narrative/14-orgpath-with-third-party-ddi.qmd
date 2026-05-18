@@ -1,0 +1,1173 @@
+---
+title: "OrgPath with Third-Party DDI Platforms"
+subtitle: "Infoblox and BlueCat Integration Supplement"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+series-order: 14
+status: Published
+canon-source: "src/uiao/canon/UIAO_153_Attribute_Mapping_Table.md"
+source-document: "OrgPath with Third-Party DDI Platforms — Infoblox and BlueCat Integration Supplement.md"
+rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
+---
+
+## Chapter 1 — The Case for Third-Party DDI During the Hybrid Transition
+
+The most direct way to describe what Infoblox and BlueCat provide that Azure-native tooling does not is to describe the view from the operations center during an active hybrid migration. On one screen, an administrator has the Azure portal open, displaying the DNS Private Zones blade for the hub subscription — a list of zones, some populated with records, some still empty stubs waiting for their on-premises counterparts to be migrated. On a second screen, the same administrator has a Windows Server IPAM console open, displaying the DHCP scopes and DNS zones managed by the on-premises domain controllers. These are two distinct management planes. They share no query interface, no audit trail, and no change workflow. A query against one does not produce results from the other. An audit log entry in Azure Monitor tells the administrator what changed in Azure DNS; a Windows Event Log entry on the IPAM server tells the administrator what changed on-premises. The two logs are not correlated, and there is no native mechanism to correlate them.
+
+Azure DNS Private Zones manages cloud-hosted private namespaces with precision and at scale. The Windows Server IPAM role manages the on-premises DHCP and DNS estate through a Microsoft-native interface that integrates cleanly with Active Directory and with the DHCP and DNS roles on Windows Server. What neither provides is a single unified management plane that spans both surfaces simultaneously — a console where an administrator can query every subnet, every DHCP scope, every DNS zone, and every IP address allocation across both on-premises and Azure, side by side, using a single query language, producing a single audit trail, and enforcing a single change workflow. This is the capability gap that third-party DDI platforms fill, and it is a gap that becomes operationally significant the moment an organization begins moving workloads between environments at any meaningful pace.
+
+The consequences of managing two uncoordinated address spaces during a hybrid transition are concrete and predictable. IP address conflicts between on-premises ranges and cloud-allocated virtual network address spaces cause connectivity failures that are difficult to diagnose because neither side reports the conflict — each system believes its allocations are authoritative, and the failure manifests only when a packet attempts to route to an address that is claimed by both environments. DNS mismatches between zones that are still authoritative on on-premises domain controllers and zones that are being built out in Azure DNS Private Zones cause name resolution failures for specific client populations: Azure-hosted workloads resolve from Azure DNS and may see an incomplete or divergent zone, while on-premises clients resolve from domain controller DNS and see the original zone in full. DHCP scopes that are partially migrated — some addresses managed on-premises, others implicitly allocated by Azure Virtual Network — produce stale leases on both sides, with on-premises DHCP servers offering addresses that Azure may have already assigned to a virtual machine NIC and Azure offering address ranges that on-premises DHCP scopes have not been told to exclude.
+
+A third-party DDI platform — Infoblox NIOS, Infoblox BloxOne, or BlueCat Address Manager — provides the unified view that prevents these failures. All three platforms are designed specifically for the problem of managing heterogeneous network address and DNS infrastructure from a single management plane. They maintain a master record of every allocated subnet, every DHCP scope and its lease history, and every DNS zone and its record set, regardless of where those objects physically reside. An administrator working in the Infoblox Grid Manager or the BlueCat Address Manager interface can query the entire IP space with a single search and see, in a single result set, subnets allocated to on-premises VLANs and subnets assigned to Azure virtual networks. A change to a DNS zone travels through the DDI platform's change workflow — approval, audit, rollback — before being committed to the authoritative name server, whether that name server is an on-premises domain controller DNS or a BlueCat-managed DNS server. The unified audit trail that the platform produces satisfies operational governance requirements that two disconnected audit logs do not.
+
+### The Architecture This Document Describes
+
+The integration architecture described in this document positions the third-party DDI platform as the system of record for IP address management and DNS authority during the hybrid transition period. This is not a parallel or shadow system — it is the primary management interface through which network and DNS changes are made, reviewed, and approved. The OrgPath governance pipeline extends to include the DDI platform's REST API as a target alongside the Entra ID directory, the Intune endpoint management plane, and Azure Resource Manager. When an OrgTree node is created, modified, or retired in the governance repository, the pipeline propagates the change to every downstream system: Entra ID receives updated dynamic group membership rules, Intune receives updated compliance policy assignments, Azure Resource Manager receives updated resource tags on Arc-enrolled servers and Azure workloads, and the DDI platform receives updated extensible attributes on the DNS zones and IP networks that correspond to the changed node. The organizational context — the OrgPath identifier, the node ID, the management tier, the migration phase — is stamped on every object in every system simultaneously by the same pipeline run.
+
+The transition from this architecture to the pure Azure-native state described in Part Eight is governed by a migration phase tracking mechanism that this document describes in detail. Each DNS zone and IP network object in the DDI platform carries a MigrationPhase attribute that moves through four states: Assessment, Migration, Parallel, and Complete. Assessment means the object exists in the DDI platform and has been tagged with OrgPath attributes but has no corresponding Azure DNS Private Zone. Migration means an Azure DNS Private Zone has been created but is not yet serving live resolution traffic. Parallel means both the DDI platform zone and the Azure DNS Private Zone are active and serving resolution for their respective client populations — this is the steady-state during the main body of the transition. Complete means the Azure DNS Private Zone is the sole authoritative source, all clients have been redirected, and the DDI platform zone is retired. When every object in the DDI platform carries a MigrationPhase of Complete, the decommissioning criteria described in Chapter Five are met and the DDI platform can be retired.
+
+![Top-down diagram combining a fan-out integration view with a horizontal state-machine band](images/14-orgpath-with-third-party-ddi-diagram-01-top-down-diagram-combining-a-fan.png){#fig-14-orgpath-with-third-party-ddi-diagram-01 fig-alt="Top-center pair: OrgTree Registry (DnsBoundary, NetworkCidr, MigrationPhase) → Governance pipeline (orchestrator, per-platform adapters). The pipeline fans down into two parallel labeled clusters. Left cluster \"Third-party DDI (unified hybrid management plane)\" contains three platform boxes side-by-side: Infoblox NIOS Grid — Extensible Attributes (WAPI, Basic auth); Infoblox BloxOne DDI — tags (CSP API, Bearer token); BlueCat Address Manager — User-Defined Fields (REST v1, session token). Right cluster \"Azure-native (target state)\" contains a single box: Azure DNS Private Zones + Private Resolver. Below both clusters, a horizontal state-machine band labeled \"MigrationPhase state machine (per zone)\" shows four sequential states connected left-to-right by solid arrows: Assessment (DDI tagged, no Azure zone) → Migration (Azure zone created, idle) → Parallel (both serving live traffic) → Complete (Azure sole authority, DDI retired). A dashed arrow from the \"Parallel\" state upward to the Azure-native cluster's Private Zones box, labeled \"webhook on record change (NIOS Outbound API / BAM events)\". Engineering blueprint style, neutral slate, teal (#1A9E8F) for third-party DDI, federal navy (#1F3A5F) for Azure-native, amber (#D4A017) for the state-machine band, 16:9 landscape." width="85%"}
+
+## Chapter 2 — Infoblox — Extensible Attributes as the OrgPath Bridge
+
+Infoblox offers two deployment models that are relevant to this integration, and the choice between them is typically determined by what an organization already has in place rather than by a fresh architectural decision. Infoblox NIOS is the on-premises Grid deployment: a set of physical or virtual appliances — Grid Members and a Grid Master — managed through the NIOS web interface and through the WAPI REST API. NIOS has been the dominant enterprise DDI platform for more than a decade and the majority of large enterprise networks that operate an Infoblox deployment are running NIOS in some form. Infoblox BloxOne DDI is the cloud-native SaaS successor, managed through the Infoblox Cloud Services Portal at csp.infoblox.com and delivered as a managed service. BloxOne can coexist with a NIOS Grid or operate independently; organizations migrating from NIOS to BloxOne may run both simultaneously during the transition.
+
+Both platforms expose a REST API surface for network, zone, and object management, and the OrgPath integration pattern is identical in concept on both. NIOS WAPI calls are directed to the base URL https://{gridmaster-fqdn}/wapi/v2.12/, where v2.12 corresponds to NIOS 8.x builds; earlier NIOS versions use earlier WAPI versions and the version component in the URL should be adjusted accordingly. BloxOne API calls are directed to https://csp.infoblox.com/api/ddi/v1/ and authenticated with a Bearer token rather than HTTP Basic credentials. Beyond the authentication model and the base URL, the structural intent of the API calls is the same: network objects, DNS zones, and DHCP scope objects carry OrgPath values as metadata — Extensible Attributes in the NIOS model, tags in the BloxOne model — and the governance pipeline reads and writes those metadata values through the respective API endpoints. The downstream effect, from the OrgPath model's perspective, is identical: every object in the DDI system expresses the same organizational context that every object in Entra ID, Intune, and Azure Resource Manager expresses.
+
+### Infoblox Extensible Attributes — Structure and Definition
+
+Extensible Attributes are custom metadata fields that Infoblox administrators define globally in the NIOS system and then assign to any object type — networks, zones, hosts, fixed addresses, DHCP scopes, and DNS records. An EA definition has a name, a data type, and optionally a list of allowed values for Enum-type attributes. Once defined, an EA is available across the entire Grid and can be set on any supported object. The inheritance flag on an EA definition controls whether child objects — subnets within a network container, zones within a parent zone — automatically inherit the EA value from their parent unless explicitly overridden. This inheritance behavior is useful for OrgPath integration because it means that setting the OrgPath EA on a top-level network container automatically propagates the value to all subnets within it, without requiring the governance pipeline to enumerate and tag every child object individually.
+
+For OrgPath integration, four EA definitions are required in the NIOS Grid. OrgPath is a String EA carrying the full hierarchy path from the OrgTree root to the governing node, expressed in the standard OrgPath path notation established in earlier parts of this series — for example, /root/operations/infrastructure/network. The inheritable flag is set on this EA so that child objects within a tagged container inherit the path unless a more specific OrgPath value is assigned at a lower level. OrgNodeId is a String EA carrying the leaf node identifier from the OrgTree registry — the short, stable identifier used as the primary key for lookups in the governance pipeline. It is also marked inheritable. OrgTier is an Enum EA with allowed values of Tier0, Tier1, Tier2, and Unclassified, representing the management tier classification applied to the node in the OrgTree registry; the inheritable flag is set here as well so that all objects within a Tier0 network container are treated as Tier0 by default. MigrationPhase is an Enum EA with values of Assessment, Migration, Parallel, and Complete; this attribute is not inheritable because migration phase is a property of individual zones and networks, not a property that should cascade from a container to every child object automatically.
+
+These four EA definitions are created once as a setup step, before any governance pipeline synchronization runs against the Grid. The following PowerShell function performs this registration via the NIOS WAPI REST API. It is idempotent: it checks for the existence of each EA definition before attempting to create it, so it can be run safely against a Grid where some or all of the definitions already exist.
+
+```powershell
+#
+# Register-NiosOrgPathAttributes.ps1
+#
+# .SYNOPSIS
+#     Creates the four OrgPath Extensible Attribute definitions in an
+#     Infoblox NIOS Grid via the WAPI REST API.
+#
+# .DESCRIPTION
+#     Extensible Attributes must be defined globally in NIOS before they can
+#     be applied to individual network, zone, or host objects. Run this
+#     function once against the Grid Master before running any OrgPath
+#     synchronization script. The function is idempotent and safe to re-run.
+#
+# .PARAMETER GridMasterFqdn
+#     Fully qualified domain name of the NIOS Grid Master.
+#     ENVIRONMENT VALUE — replace with your Grid Master hostname.
+#     Example: "gridmaster.corp.contoso.com"
+#
+# .PARAMETER Credential
+#     PSCredential with NIOS API access. Use a dedicated API-only service
+#     account rather than a shared admin credential.
+#     Obtain with: $cred = Get-Credential
+#
+# .NOTES
+#     NIOS WAPI version: v2.12 (NIOS 8.x).
+#     Adjust the version segment in $baseUri for older Grid builds:
+#       NIOS 7.x = wapi/v2.5
+#       NIOS 8.2 = wapi/v2.10
+#       NIOS 8.5 = wapi/v2.12
+#     TLS: Uses the system certificate trust store. In lab environments with
+#     a self-signed Grid Master certificate, add -SkipCertificateCheck to
+#     each Invoke-RestMethod call (PowerShell 7.1+) or set a bypass callback.
+#     API reference: POST /wapi/v{version}/extensibleattributedef
+#
+
+function Register-NiosOrgPathAttributes {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]      $GridMasterFqdn,   # ENVIRONMENT VALUE
+
+        [Parameter(Mandatory = $true)]
+        [PSCredential]$Credential
+    )
+
+    $baseUri  = "https://$GridMasterFqdn/wapi/v2.12"
+    $headers  = @{ "Content-Type" = "application/json" }
+    $authArgs = @{
+        Credential     = $Credential
+        Authentication = "Basic"
+    }
+
+    # Define the four required OrgPath EA definitions.
+    # Each entry maps to one POST /wapi/v2.12/extensibleattributedef call.
+    $attributeDefinitions = @(
+        @{
+            name    = "OrgPath"
+            comment = "OrgPath governance substrate — full hierarchy path from root to this object node"
+            type    = "STRING"
+            flags   = "I"   # I = inheritable; child objects inherit if not explicitly overridden
+        },
+        @{
+            name    = "OrgNodeId"
+            comment = "Leaf node identifier from the OrgTree registry (primary key for pipeline lookups)"
+            type    = "STRING"
+            flags   = "I"   # Inheritable — propagates from network containers to child subnets
+        },
+        @{
+            name    = "OrgTier"
+            comment = "Management tier classification — Tier0 (highest), Tier1, Tier2, or Unclassified"
+            type    = "ENUM"
+            flags   = "I"   # Inheritable — objects within a Tier0 network inherit Tier0 by default
+            listValues = @(
+                @{ value = "Tier0" },
+                @{ value = "Tier1" },
+                @{ value = "Tier2" },
+                @{ value = "Unclassified" }
+            )
+        },
+        @{
+            name    = "MigrationPhase"
+            comment = "Current migration state of this network or zone object"
+            type    = "ENUM"
+            flags   = ""    # NOT inheritable — migration phase is per-object, not per-container
+            listValues = @(
+                @{ value = "Assessment" },   # Tagged; no Azure DNS counterpart yet
+                @{ value = "Migration" },    # Azure DNS zone created; not yet serving live traffic
+                @{ value = "Parallel" },     # Both NIOS and Azure DNS active simultaneously
+                @{ value = "Complete" }      # Fully migrated; NIOS zone retired
+            )
+        }
+    )
+
+    foreach ($attrDef in $attributeDefinitions) {
+
+        # Check whether the EA definition already exists to keep this idempotent.
+        # The NIOS API returns an array; an empty array means the EA does not exist.
+        $checkUri = "$baseUri/extensibleattributedef?name=$($attrDef.name)"
+        $existing = Invoke-RestMethod `
+            -Uri      $checkUri `
+            -Method   GET `
+            @authArgs `
+            -Headers  $headers
+
+        if ($existing.Count -gt 0) {
+            Write-Host "  [EXISTS]   EA definition already present: $($attrDef.name)"
+            continue
+        }
+
+        # Serialize and POST the new EA definition.
+        # The WAPI returns the object reference (_ref) of the new definition.
+        $body   = $attrDef | ConvertTo-Json -Depth 5
+        $result = Invoke-RestMethod `
+            -Uri     "$baseUri/extensibleattributedef" `
+            -Method  POST `
+            -Body    $body `
+            @authArgs `
+            -Headers $headers
+
+        Write-Host "  [CREATED]  EA definition registered: $($attrDef.name) — ref: $result"
+    }
+
+    Write-Host ""
+    Write-Host "OrgPath EA definitions registered in NIOS Grid: $GridMasterFqdn"
+}
+
+# Invocation example — run interactively or from the pipeline with stored credentials:
+#   $cred = Get-Credential -Message "NIOS API service account"
+#   Register-NiosOrgPathAttributes -GridMasterFqdn "gridmaster.corp.contoso.com" -Credential $cred
+```
+
+### The NIOS Synchronization Pipeline Script
+
+With the EA definitions in place, the governance pipeline can begin stamping OrgPath values on network and zone objects in the Grid. The synchronization script below is the NIOS counterpart to the Sync-OrgPathDnsZones.ps1 script described in Part Eight for Azure DNS Private Zones. It reads the OrgTree registry JSON file that is checked out from the governance repository at the start of each pipeline run, iterates over every active node, and for each node that is flagged as a DNS boundary or carries a network CIDR in its metadata, either creates the corresponding NIOS object or updates the Extensible Attributes on an existing object. The script is triggered on OrgTree commits as part of the governance propagation pipeline and runs on the automation server — a Windows Server host that has network access to the Grid Master WAPI endpoint and the necessary credentials stored in the Windows Credential Manager or a secrets vault.
+
+```powershell
+#
+# Sync-OrgPathToNios.ps1
+#
+# .SYNOPSIS
+#     Synchronizes OrgTree nodes to Infoblox NIOS network objects and
+#     DNS zones, stamping OrgPath Extensible Attributes on each object.
+#
+# .DESCRIPTION
+#     This script is the NIOS equivalent of Sync-OrgPathDnsZones.ps1
+#     (Part Eight, Azure DNS). For each active OrgTree node that is flagged
+#     as a DNS boundary or carries a network CIDR, it creates or updates
+#     the corresponding NIOS zone_auth and network objects with all four
+#     OrgPath EAs.
+#
+#     Run by the governance pipeline on every OrgTree commit. The pipeline
+#     checks out the registry file before invocation and commits the
+#     resulting log to the governance repository after completion.
+#
+# .PARAMETER OrgTreeRegistryPath
+#     Local filesystem path to the checked-out OrgTree registry JSON file.
+#     ENVIRONMENT VALUE — set to the checkout path used by your pipeline agent.
+#     Default: "C:\governance\orgtree\registry.json"
+#
+# .PARAMETER GridMasterFqdn
+#     FQDN of the NIOS Grid Master WAPI endpoint.
+#     ENVIRONMENT VALUE — replace with your Grid Master hostname.
+#     Default: "gridmaster.corp.contoso.com"
+#
+# .PARAMETER Credential
+#     PSCredential for the NIOS API service account. In pipeline execution,
+#     retrieve from the secrets vault rather than prompting interactively.
+#
+# .PARAMETER NetworkView
+#     The NIOS Network View in which to create or tag network objects.
+#     ENVIRONMENT VALUE — set to "default" unless your Grid uses named views.
+#     Default: "default"
+#
+# .PARAMETER DnsView
+#     The NIOS DNS View in which to create or tag zones.
+#     ENVIRONMENT VALUE — set to "default" unless your Grid uses split DNS views.
+#     Default: "default"
+#
+# .PARAMETER BaseDomainSuffix
+#     The base DNS suffix appended to each OrgTree node ID to form zone FQDNs.
+#     ENVIRONMENT VALUE — replace with your organization's internal DNS suffix.
+#     Example: "corp.contoso.com" produces zones like "finance.corp.contoso.com"
+#
+
+param(
+    [string]      $OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", # ENVIRONMENT VALUE
+    [string]      $GridMasterFqdn      = "gridmaster.corp.contoso.com",          # ENVIRONMENT VALUE
+    [PSCredential]$Credential          = (Get-Credential -Message "NIOS API credentials"),
+    [string]      $NetworkView         = "default",                              # ENVIRONMENT VALUE
+    [string]      $DnsView             = "default",                              # ENVIRONMENT VALUE
+    [string]      $BaseDomainSuffix    = "corp.contoso.com"                     # ENVIRONMENT VALUE
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$baseUri  = "https://$GridMasterFqdn/wapi/v2.12"
+$authArgs = @{ Credential = $Credential; Authentication = "Basic" }
+$jsonHdr  = @{ "Content-Type" = "application/json" }
+
+# Load and parse the OrgTree registry. The registry is a JSON file produced
+# by the OrgTree management tooling and stored in the governance repository.
+# Schema: { "nodes": [ { "Id": "...", "Name": "...", "Path": "...",
+#           "Status": "Active|Retired", "Tier": "Tier0|...",
+#           "DnsBoundary": true|false, "NetworkCidr": "10.x.x.x/nn",
+#           "MigrationPhase": "Assessment|Migration|Parallel|Complete" }, ... ] }
+$registry    = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$activeNodes = $registry.nodes | Where-Object { $_.Status -eq "Active" }
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Starting NIOS OrgPath synchronization."
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Active OrgTree nodes to process: $($activeNodes.Count)"
+Write-Host ""
+
+$stats = @{
+    ZonesCreated   = 0
+    ZonesUpdated   = 0
+    NetworksTagged = 0
+    Skipped        = 0
+    Errors         = 0
+}
+
+foreach ($node in $activeNodes) {
+
+    # ---------------------------------------------------------------
+    # Build the Extensible Attribute payload for this node.
+    # NIOS EA format in the REST body:
+    #   { "extensible_attributes": { "AttrName": { "value": "AttrValue" } } }
+    # The MigrationPhase and OrgTier fields fall back to safe defaults
+    # if the registry entry does not carry an explicit value.
+    # ---------------------------------------------------------------
+    $eaPayload = @{
+        extensible_attributes = @{
+            OrgPath        = @{ value = $node.Path }
+            OrgNodeId      = @{ value = $node.Id }
+            OrgTier        = @{ value = if ($node.Tier)            { $node.Tier }            else { "Unclassified" } }
+            MigrationPhase = @{ value = if ($node.MigrationPhase)  { $node.MigrationPhase }  else { "Assessment"   } }
+        }
+    }
+
+    # ---------------------------------------------------------------
+    # DNS Zone Synchronization
+    # Applies when the OrgTree node is flagged as a DNS boundary —
+    # meaning it represents a distinct DNS namespace within the tree.
+    # ---------------------------------------------------------------
+    if ($node.DnsBoundary -eq $true) {
+
+        # Construct the zone FQDN from the node ID and the base domain suffix.
+        # Node IDs are lowercased for DNS compatibility.
+        $zoneFqdn = "$($node.Id.ToLower()).$BaseDomainSuffix"
+
+        try {
+            # Search for an existing authoritative zone with this FQDN.
+            # The query uses the NIOS URL-encoded search parameter syntax.
+            $zoneSearchUri = "$baseUri/zone_auth?fqdn=$zoneFqdn&view=$DnsView"
+            $existingZone  = Invoke-RestMethod `
+                -Uri     $zoneSearchUri `
+                -Method  GET `
+                @authArgs
+
+            if ($existingZone.Count -gt 0) {
+
+                # Zone exists — update its Extensible Attributes only.
+                # Use the _ref returned by NIOS to target the specific object.
+                $zoneRef = $existingZone[0]._ref
+
+                Invoke-RestMethod `
+                    -Uri     "$baseUri/$zoneRef" `
+                    -Method  PUT `
+                    -Body    ($eaPayload | ConvertTo-Json -Depth 5) `
+                    @authArgs `
+                    -Headers $jsonHdr | Out-Null
+
+                Write-Host "  [UPDATED-ZONE]  $zoneFqdn"
+                $stats.ZonesUpdated++
+
+            } else {
+
+                # Zone does not exist — create it with OrgPath EAs embedded
+                # in the creation body. Merging the zone properties and the
+                # EA payload into a single object sends both in one POST call.
+                $zoneBody = (@{
+                    fqdn        = $zoneFqdn
+                    view        = $DnsView
+                    zone_format = "FORWARD"
+                    comment     = "OrgPath governance zone — $($node.Name) [$($node.Path)]"
+                } + $eaPayload)
+
+                Invoke-RestMethod `
+                    -Uri     "$baseUri/zone_auth" `
+                    -Method  POST `
+                    -Body    ($zoneBody | ConvertTo-Json -Depth 5) `
+                    @authArgs `
+                    -Headers $jsonHdr | Out-Null
+
+                Write-Host "  [CREATED-ZONE]  $zoneFqdn"
+                $stats.ZonesCreated++
+            }
+
+        } catch {
+            Write-Warning "  [ERROR-ZONE]    $zoneFqdn — $_"
+            $stats.Errors++
+        }
+    }
+
+    # ---------------------------------------------------------------
+    # Network Container Tagging
+    # Applies when the OrgTree node carries a NetworkCidr value,
+    # indicating it governs a specific IP address range. The network
+    # object must already exist in NIOS — this script tags it with
+    # OrgPath EAs but does not create new network containers from scratch.
+    # New network containers should be created through the standard NIOS
+    # IPAM workflow before this script is run against them.
+    # ---------------------------------------------------------------
+    if ($node.NetworkCidr) {
+
+        try {
+            # Search for the network in NIOS by CIDR notation.
+            $netSearchUri = "$baseUri/network?network=$($node.NetworkCidr)&network_view=$NetworkView"
+            $existingNet  = Invoke-RestMethod `
+                -Uri    $netSearchUri `
+                -Method GET `
+                @authArgs
+
+            if ($existingNet.Count -gt 0) {
+
+                $netRef = $existingNet[0]._ref
+                Invoke-RestMethod `
+                    -Uri     "$baseUri/$netRef" `
+                    -Method  PUT `
+                    -Body    ($eaPayload | ConvertTo-Json -Depth 5) `
+                    @authArgs `
+                    -Headers $jsonHdr | Out-Null
+
+                Write-Host "  [TAGGED-NET]    $($node.NetworkCidr) → $($node.Path)"
+                $stats.NetworksTagged++
+
+            } else {
+                # The network does not exist in NIOS yet. This is a warning,
+                # not an error — it is expected for nodes that have been added
+                # to the OrgTree registry before the NIOS network container
+                # has been provisioned through the IPAM workflow.
+                Write-Warning "  [NOT-FOUND-NET] $($node.NetworkCidr) — node $($node.Id) — create the network in NIOS first."
+                $stats.Skipped++
+            }
+
+        } catch {
+            Write-Warning "  [ERROR-NET]     $($node.NetworkCidr) — $_"
+            $stats.Errors++
+        }
+    }
+}
+
+# ---------------------------------------------------------------
+# Summary report — printed to pipeline log and committed to the
+# governance repository as part of the pipeline run artifact.
+# ---------------------------------------------------------------
+Write-Host ""
+Write-Host "========================================================"
+Write-Host "  Infoblox NIOS OrgPath Synchronization — Complete"
+Write-Host "========================================================"
+Write-Host "  DNS Zones Created  : $($stats.ZonesCreated)"
+Write-Host "  DNS Zones Updated  : $($stats.ZonesUpdated)"
+Write-Host "  Networks Tagged    : $($stats.NetworksTagged)"
+Write-Host "  Skipped (missing)  : $($stats.Skipped)"
+Write-Host "  Errors             : $($stats.Errors)"
+Write-Host "  Run completed at   : $(Get-Date -f 'yyyy-MM-dd HH:mm:ss') UTC"
+Write-Host "========================================================"
+```
+
+### Infoblox BloxOne DDI — Bearer Token Authentication and Tag Structure
+
+BloxOne DDI uses a fundamentally different authentication model and a different metadata structure than NIOS, even though the conceptual purpose of the integration is identical. Where NIOS uses HTTP Basic authentication against the Grid Master, BloxOne uses Bearer token authentication: an API key is generated in the Cloud Services Portal under Administration, then API Keys, then Create API Key. That key is presented in the Authorization header of every API call as Token {api-key-value}. The key should never appear in a script file; it should be stored in the Windows Credential Manager, a secrets vault such as Azure Key Vault, or the pipeline runtime's secure variable storage, and retrieved into a PowerShell variable at runtime.
+
+Where NIOS carries metadata in the extensible_attributes object with the value nested as { "value": "..." }, BloxOne carries metadata in a flat tags object where each key maps directly to a string value. The BloxOne resource paths also differ from NIOS: subnets are managed at /api/ddi/v1/ipam/subnet, authoritative zones at /api/ddi/v1/dns/auth_zone, and DNS records at /api/ddi/v1/dns/record. The following function demonstrates the BloxOne authentication pattern and the zone creation call with embedded OrgPath tags. It is structured as a function rather than a script so it can be called from the main governance pipeline orchestrator, which handles the OrgTree registry iteration and passes individual node values to platform-specific functions like this one.
+
+```powershell
+#
+# New-BloxOneAuthZoneWithOrgPath
+#
+# .SYNOPSIS
+#     Creates an authoritative DNS zone in Infoblox BloxOne DDI and stamps
+#     OrgPath governance tags on the resulting zone object.
+#
+# .DESCRIPTION
+#     BloxOne uses Bearer token authentication. Tags are a flat key-value
+#     object in the request body — not the nested NIOS extensible_attributes
+#     structure. This function wraps the BloxOne auth_zone creation call
+#     and is designed to be called from the governance pipeline orchestrator
+#     for each OrgTree node flagged as a DNS boundary.
+#
+#     If the zone already exists, the function retrieves it by FQDN and
+#     issues a PATCH request to update the tags only, leaving all other
+#     zone properties unchanged.
+#
+# .PARAMETER ApiKey
+#     BloxOne API key from CSP: Administration > API Keys > Create API Key.
+#     ENVIRONMENT VALUE — retrieve from secrets vault at runtime.
+#     NEVER hardcode this value in the script file or in source control.
+#
+# .PARAMETER ZoneFqdn
+#     Fully qualified domain name of the authoritative zone to create.
+#     Example: "finance.corp.contoso.com"
+#
+# .PARAMETER OrgPath
+#     Full OrgPath hierarchy string from the OrgTree registry node.
+#     Example: "/root/operations/infrastructure/network/finance"
+#
+# .PARAMETER OrgNodeId
+#     Node identifier from the OrgTree registry. Used as the primary
+#     key for governance pipeline lookups.
+#
+# .PARAMETER OrgTier
+#     Management tier classification. Accepted values: Tier0, Tier1,
+#     Tier2, Unclassified. Defaults to "Unclassified" if not specified.
+#
+# .PARAMETER MigrationPhase
+#     Current migration state. Accepted values: Assessment, Migration,
+#     Parallel, Complete. Defaults to "Assessment" if not specified.
+#
+# .PARAMETER PrimaryType
+#     BloxOne zone primary type. "cloud" = BloxOne-hosted (default).
+#     "external" = delegated to an external name server.
+#     ENVIRONMENT VALUE — set to "cloud" for BloxOne-managed zones.
+#
+
+function New-BloxOneAuthZoneWithOrgPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ApiKey,            # ENVIRONMENT VALUE — from secrets vault
+
+        [Parameter(Mandatory = $true)]
+        [string]$ZoneFqdn,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OrgPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OrgNodeId,
+
+        [string]$OrgTier        = "Unclassified",
+        [string]$MigrationPhase = "Assessment",
+        [string]$PrimaryType    = "cloud"         # ENVIRONMENT VALUE
+    )
+
+    # Build request headers — Bearer token auth is the only authentication
+    # method supported by the BloxOne Cloud Services Portal API.
+    $headers = @{
+        Authorization  = "Token $ApiKey"
+        "Content-Type" = "application/json"
+    }
+
+    $bloxOneBaseUri = "https://csp.infoblox.com/api/ddi/v1"
+
+    # ---------------------------------------------------------------
+    # Check whether the zone already exists before attempting to create it.
+    # BloxOne zone lookup: GET /api/ddi/v1/dns/auth_zone?_filter=fqdn==""
+    # The response body contains a "results" array; an empty array = not found.
+    # ---------------------------------------------------------------
+    $filterParam = [System.Uri]::EscapeDataString("fqdn==""$ZoneFqdn""")
+    $searchUri   = "$bloxOneBaseUri/dns/auth_zone?_filter=$filterParam"
+
+    $searchResponse = Invoke-RestMethod `
+        -Uri     $searchUri `
+        -Method  GET `
+        -Headers $headers
+
+    # ---------------------------------------------------------------
+    # Build the tags object. BloxOne tags are a flat string-to-string map.
+    # This is the BloxOne equivalent of the NIOS extensible_attributes block.
+    # ---------------------------------------------------------------
+    $orgPathTags = @{
+        OrgPath        = $OrgPath
+        OrgNodeId      = $OrgNodeId
+        OrgTier        = $OrgTier
+        MigrationPhase = $MigrationPhase
+    }
+
+    if ($searchResponse.results.Count -gt 0) {
+
+        # Zone exists — issue a PATCH to update tags only.
+        $zoneId      = $searchResponse.results[0].id
+        $patchBody   = @{ tags = $orgPathTags } | ConvertTo-Json -Depth 5
+
+        Invoke-RestMethod `
+            -Uri     "$bloxOneBaseUri/dns/auth_zone/$zoneId" `
+            -Method  PATCH `
+            -Headers $headers `
+            -Body    $patchBody | Out-Null
+
+        Write-Host "  [BLOXONE-UPDATED-ZONE]  $ZoneFqdn (ID: $zoneId)"
+
+    } else {
+
+        # Zone does not exist — create it with OrgPath tags in the body.
+        # primary_type "cloud" means BloxOne manages the zone directly.
+        # Change to "external" if delegating to an external resolver.
+        $createBody = @{
+            fqdn         = $ZoneFqdn
+            primary_type = $PrimaryType
+            comment      = "OrgPath governance zone — $OrgNodeId"
+            tags         = $orgPathTags
+        } | ConvertTo-Json -Depth 5
+
+        $createResponse = Invoke-RestMethod `
+            -Uri     "$bloxOneBaseUri/dns/auth_zone" `
+            -Method  POST `
+            -Headers $headers `
+            -Body    $createBody
+
+        Write-Host "  [BLOXONE-CREATED-ZONE]  $ZoneFqdn (ID: $($createResponse.result.id))"
+        return $createResponse.result
+    }
+}
+
+# ---------------------------------------------------------------
+# Subnet tagging function for BloxOne — companion to the zone function above.
+# Tags an existing BloxOne subnet object with OrgPath governance metadata.
+# The subnet must already exist in BloxOne IPAM; this function does not
+# create new subnets from scratch.
+#
+# BloxOne subnet API: GET /api/ddi/v1/ipam/subnet?_filter=address==""
+#                     PATCH /api/ddi/v1/ipam/subnet/{id}
+# ---------------------------------------------------------------
+function Set-BloxOneSubnetOrgPathTags {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ApiKey,            # ENVIRONMENT VALUE — from secrets vault
+
+        [Parameter(Mandatory = $true)]
+        [string]$SubnetCidr,        # e.g., "10.12.4.0/24"
+
+        [Parameter(Mandatory = $true)]
+        [string]$OrgPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OrgNodeId,
+
+        [string]$OrgTier        = "Unclassified",
+        [string]$MigrationPhase = "Assessment"
+    )
+
+    $headers = @{
+        Authorization  = "Token $ApiKey"
+        "Content-Type" = "application/json"
+    }
+
+    $bloxOneBaseUri = "https://csp.infoblox.com/api/ddi/v1"
+
+    # Parse CIDR into address and prefix length for the BloxOne filter query.
+    # BloxOne subnet filter uses the "address" field for the base IP address.
+    $cidrParts = $SubnetCidr -split "/"
+    $address   = $cidrParts[0]
+    $cidrLen   = $cidrParts[1]
+
+    $filterParam    = [System.Uri]::EscapeDataString("address==""$address"" and cidr==$cidrLen")
+    $searchUri      = "$bloxOneBaseUri/ipam/subnet?_filter=$filterParam"
+    $searchResponse = Invoke-RestMethod -Uri $searchUri -Method GET -Headers $headers
+
+    if ($searchResponse.results.Count -gt 0) {
+
+        $subnetId  = $searchResponse.results[0].id
+        $patchBody = @{
+            tags = @{
+                OrgPath        = $OrgPath
+                OrgNodeId      = $OrgNodeId
+                OrgTier        = $OrgTier
+                MigrationPhase = $MigrationPhase
+            }
+        } | ConvertTo-Json -Depth 5
+
+        Invoke-RestMethod `
+            -Uri     "$bloxOneBaseUri/ipam/subnet/$subnetId" `
+            -Method  PATCH `
+            -Headers $headers `
+            -Body    $patchBody | Out-Null
+
+        Write-Host "  [BLOXONE-TAGGED-SUBNET] $SubnetCidr → $OrgPath"
+
+    } else {
+        Write-Warning "  [BLOXONE-NOT-FOUND]     Subnet $SubnetCidr not found in BloxOne IPAM."
+    }
+}
+```
+
+::: {.callout-note title="Note — BloxOne Tag Governance"}
+BloxOne tag keys are case-sensitive and the values are free-form strings with no Enum validation at the API layer. The governance pipeline is responsible for enforcing valid values for OrgTier and MigrationPhase before calling the BloxOne API. Consider adding a validation step in the orchestrator that checks each value against the allowed set before issuing any API call, so that invalid values are caught at the pipeline layer rather than silently accepted by BloxOne and surfaced only during a later audit query.
+:::
+
+## Chapter 3 — BlueCat — OrgPath via User-Defined Fields and the REST API
+
+BlueCat Address Manager organizes its data model around a hierarchy of Configurations, each of which contains all the IP address space and DNS infrastructure under its governance. Within a Configuration, IP address space is organized into a Block and Network hierarchy — a Block is a large address range, and a Network is a specific subnet within a Block. DNS infrastructure is organized into a View and Zone hierarchy — a View is a logical DNS namespace (used for split-horizon DNS), and Zones exist within Views. This hierarchical structure maps naturally to the OrgTree model: an OrgTree node that governs a specific DNS namespace maps to a Zone in a BlueCat View, and an OrgTree node that governs a specific IP address range maps to a Network within a BlueCat Block.
+
+Every object in the BlueCat model supports User-Defined Fields — metadata fields that administrators define in the BAM Administration interface under User-Defined Fields and then attach to specific object types. UDFs are the BlueCat equivalent of Infoblox Extensible Attributes and serve the same purpose in the OrgPath integration: they carry OrgPath governance values on each object so that the same organizational context readable in Entra ID, Intune, and Azure Resource Manager is also readable by querying the BlueCat API. Before running the synchronization script in this chapter, an administrator must pre-define four UDFs in the BAM Administration interface: OrgPath (Text type), OrgNodeId (Text type), OrgTier (Text type), and MigrationPhase (Text type). Unlike Infoblox EAs, BlueCat does not offer an Enum UDF type in all versions; Text is used for all four fields and the governance pipeline enforces value constraints, as with the BloxOne integration described in the previous chapter.
+
+### The BlueCat REST API — Session Model and Key Endpoints
+
+BlueCat Address Manager exposes a REST API at https://{bam-host}/Services/REST/v1/ that supports HTTP Basic authentication through a session model. A login call authenticated with Basic credentials returns a session token string in the form BAMAuthToken: {token-value}; that token is then passed as the Authorization header value in all subsequent calls within the session. The session must be explicitly closed with a logout call when the script completes. Leaving sessions open is not a security risk in itself, since the token expires, but it does consume BAM server-side session resources and should be avoided in automation scripts that run frequently.
+
+BlueCat has introduced a v2 REST API at https://{bam-host}/api/v2/ in more recent BAM versions. The v2 API is more RESTful in design — it uses standard HTTP verbs against resource-oriented URLs rather than the action-based URLs of the v1 API — and it will eventually supersede the v1 API. However, because many enterprise BAM deployments are running versions that do not yet fully support the v2 API, and because the v1 API is stable and well-documented across all current BAM versions, the integration script in this chapter uses the v1 API. The conceptual structure — authenticate, retrieve configuration, look up objects, write UDF values — is identical in both API versions.
+
+The key v1 API endpoints for OrgPath integration are as follows. The /login endpoint performs session establishment. The /getEntityByName endpoint retrieves an object by name within a parent entity — this is the primary lookup mechanism for finding Configurations, Views, Zones, and Networks by name. The /getEntities endpoint retrieves all child objects of a given type under a parent entity — used to enumerate Views within a Configuration. The /updateObject endpoint updates the properties and UDF values of an existing object by its internal numeric ID. The /addZone endpoint creates a new DNS zone as a child of a View. The /logout endpoint closes the session.
+
+### The BlueCat Synchronization Script
+
+The synchronization script below authenticates to BlueCat BAM, retrieves the target Configuration, and for each active OrgTree node with a DNS boundary flag, creates or updates the corresponding BAM zone object with OrgPath UDF values. The structure mirrors the NIOS synchronization script: the OrgTree registry is loaded, each active node is iterated, and the platform-specific API calls branch based on what the node's metadata declares. The same comment conventions are used — environment-specific values are explicitly marked with the comment \# ENVIRONMENT VALUE so they can be found by anyone reading the script for the first time.
+
+```powershell
+#
+# Sync-OrgPathToBlueCat.ps1
+#
+# .SYNOPSIS
+#     Synchronizes OrgTree nodes to BlueCat Address Manager DNS zones
+#     and IP networks with OrgPath User-Defined Field values.
+#
+# .DESCRIPTION
+#     Authenticates to the BAM REST API v1, retrieves the target Configuration,
+#     and for each active OrgTree node flagged as a DNS boundary or carrying a
+#     NetworkCidr, creates or updates the corresponding BAM zone or network
+#     object with all four OrgPath UDF values.
+#
+#     UDFs must be pre-defined in BAM Administration > User-Defined Fields
+#     before this script runs. Required UDFs (all Text type):
+#       OrgPath, OrgNodeId, OrgTier, MigrationPhase
+#
+# .PARAMETER OrgTreeRegistryPath
+#     Local path to the checked-out OrgTree registry JSON file.
+#     ENVIRONMENT VALUE — set to the path used by your pipeline agent.
+#
+# .PARAMETER BamHost
+#     Hostname or FQDN of the BlueCat Address Manager server.
+#     ENVIRONMENT VALUE — replace with your BAM server hostname.
+#
+# .PARAMETER BamUsername
+#     BAM REST API service account username.
+#     ENVIRONMENT VALUE — replace with your API service account name.
+#
+# .PARAMETER BamPassword
+#     SecureString password for the BAM API service account.
+#     In pipeline execution, retrieve from secrets vault:
+#       ConvertTo-SecureString (Get-AzKeyVaultSecret -Name "bam-api-pass").SecretValue
+#
+# .PARAMETER ConfigurationName
+#     The name of the BAM Configuration object containing the target zones
+#     and networks. ENVIRONMENT VALUE — replace with your Configuration name.
+#     Example: "Corporate"
+#
+# .PARAMETER BaseDomainSuffix
+#     Base DNS suffix for zone names.
+#     ENVIRONMENT VALUE — replace with your organization's DNS suffix.
+#
+
+param(
+    [string]       $OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", # ENVIRONMENT VALUE
+    [string]       $BamHost             = "bam.corp.contoso.com",                # ENVIRONMENT VALUE
+    [string]       $BamUsername         = "svc-governance-bam",                  # ENVIRONMENT VALUE
+    [SecureString] $BamPassword,
+    [string]       $ConfigurationName   = "Corporate",                           # ENVIRONMENT VALUE
+    [string]       $BaseDomainSuffix    = "corp.contoso.com"                     # ENVIRONMENT VALUE
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$baseUri = "https://$BamHost/Services/REST/v1"
+
+# ---------------------------------------------------------------
+# Authenticate — BAM v1 login returns a session token string.
+# The token value is the last whitespace-delimited segment of the
+# response string: "BAMAuthToken: "
+# ---------------------------------------------------------------
+$plainPwd = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($BamPassword)
+)
+
+$loginResponse = Invoke-RestMethod `
+    -Uri    "$baseUri/login?username=$BamUsername&password=$plainPwd" `
+    -Method GET
+
+# Extract the token value from the response string.
+$token      = ($loginResponse -split " ")[-1].Trim()
+$authHeader = @{ Authorization = "BAMAuthToken $token" }
+
+# Immediately null the plain-text password from memory.
+$plainPwd = $null
+[System.GC]::Collect()
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] BAM session established against: $BamHost"
+
+# ---------------------------------------------------------------
+# Retrieve the Configuration entity by name.
+# In BAM, all objects exist within a Configuration. The root parentId
+# is always 0. A Configuration's numeric ID is needed as the parentId
+# for all subsequent child object lookups.
+# ---------------------------------------------------------------
+$config = Invoke-RestMethod `
+    -Uri    "$baseUri/getEntityByName?parentId=0&name=$ConfigurationName&type=Configuration" `
+    -Method GET `
+    -Headers $authHeader
+
+$configId = $config.id
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Configuration '$ConfigurationName' resolved — ID: $configId"
+
+# ---------------------------------------------------------------
+# Retrieve the first DNS View within the Configuration.
+# Most enterprise BAM deployments use a single View named "default"
+# or by the organization name. If your deployment uses multiple Views
+# for split-horizon DNS, enumerate them and select the correct one.
+# ENVIRONMENT VALUE — adjust $viewId selection logic if needed.
+# ---------------------------------------------------------------
+$views  = Invoke-RestMethod `
+    -Uri    "$baseUri/getEntities?parentId=$configId&type=View&start=0&count=10" `
+    -Method GET `
+    -Headers $authHeader
+
+$viewId = $views[0].id
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] DNS View ID: $viewId (using first View in Configuration)"
+
+# ---------------------------------------------------------------
+# Load OrgTree registry and filter to active nodes.
+# ---------------------------------------------------------------
+$registry    = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$activeNodes = $registry.nodes | Where-Object { $_.Status -eq "Active" }
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Active OrgTree nodes to process: $($activeNodes.Count)"
+Write-Host ""
+
+$stats = @{ ZoneCreated = 0; ZoneUpdated = 0; NetTagged = 0; Failed = 0 }
+
+foreach ($node in $activeNodes) {
+
+    # ---------------------------------------------------------------
+    # Build the UDF properties string.
+    # BAM v1 API uses a pipe-delimited "properties" string to carry both
+    # system properties and User-Defined Field values on an object.
+    # Format: "field1=value1|field2=value2|..."
+    # The BAM API parses this string server-side; no JSON body is used
+    # for v1 property updates.
+    # ---------------------------------------------------------------
+    $tier   = if ($node.Tier)           { $node.Tier }           else { "Unclassified" }
+    $phase  = if ($node.MigrationPhase) { $node.MigrationPhase } else { "Assessment"   }
+
+    $udfString = "OrgPath=$($node.Path)|OrgNodeId=$($node.Id)|OrgTier=$tier|MigrationPhase=$phase"
+
+    # ---------------------------------------------------------------
+    # DNS Zone Synchronization
+    # ---------------------------------------------------------------
+    if ($node.DnsBoundary -eq $true) {
+
+        $zoneName = "$($node.Id.ToLower()).$BaseDomainSuffix"
+
+        try {
+            # Look up whether a Zone with this absolute name exists under the View.
+            # BAM getEntityByName on a Zone uses the absolute (FQDN) zone name.
+            $existingZone = $null
+            try {
+                $existingZone = Invoke-RestMethod `
+                    -Uri    "$baseUri/getEntityByName?parentId=$viewId&name=$zoneName&type=Zone" `
+                    -Method GET `
+                    -Headers $authHeader `
+                    -ErrorAction Stop
+            } catch {
+                # getEntityByName returns an HTTP error if the object does not exist.
+                # Treat any error here as "not found" and proceed to create.
+                $existingZone = $null
+            }
+
+            if ($existingZone -and $existingZone.id -and $existingZone.id -ne 0) {
+
+                # Zone exists — update its properties string to include OrgPath UDFs.
+                # The updateObject call requires the full object body including the
+                # existing system properties merged with the new UDF values.
+                $zoneObj = @{
+                    id         = $existingZone.id
+                    name       = $existingZone.name
+                    type       = "Zone"
+                    properties = "absoluteName=$zoneName|deployable=true|$udfString"
+                }
+
+                Invoke-RestMethod `
+                    -Uri         "$baseUri/updateObject" `
+                    -Method      PUT `
+                    -Body        ($zoneObj | ConvertTo-Json) `
+                    -ContentType "application/json" `
+                    -Headers     $authHeader | Out-Null
+
+                Write-Host "  [UPDATED-ZONE]  $zoneName"
+                $stats.ZoneUpdated++
+
+            } else {
+
+                # Zone does not exist — create it under the View.
+                # addZone takes the parent View ID and the absolute zone name.
+                # The properties string carries the UDF values at creation time.
+                $newZoneId = Invoke-RestMethod `
+                    -Uri    "$baseUri/addZone?parentId=$viewId&absoluteName=$zoneName&properties=$udfString" `
+                    -Method POST `
+                    -Headers $authHeader
+
+                Write-Host "  [CREATED-ZONE]  $zoneName (ID: $newZoneId)"
+                $stats.ZoneCreated++
+            }
+
+        } catch {
+            Write-Warning "  [FAILED-ZONE]   $zoneName — $_"
+            $stats.Failed++
+        }
+    }
+
+    # ---------------------------------------------------------------
+    # Network Tagging
+    # Retrieves an existing BAM Network by CIDR and updates its
+    # properties string with OrgPath UDF values. Does not create networks.
+    # ENVIRONMENT VALUE — adjust $blockId lookup if your Block hierarchy
+    # is multi-level or identified by means other than CIDR search.
+    # ---------------------------------------------------------------
+    if ($node.NetworkCidr) {
+
+        try {
+            # BAM network lookup: search within the Configuration by CIDR.
+            # getEntitiesByName on type "IP4Network" with the CIDR as the name.
+            $netSearch = Invoke-RestMethod `
+                -Uri    "$baseUri/searchByObjectTypes?keyword=$($node.NetworkCidr)&types=IP4Network&start=0&count=5" `
+                -Method GET `
+                -Headers $authHeader
+
+            if ($netSearch.Count -gt 0) {
+
+                $netObj = $netSearch[0]
+                $updatedNetObj = @{
+                    id         = $netObj.id
+                    name       = $netObj.name
+                    type       = "IP4Network"
+                    properties = "$($netObj.properties)|$udfString"
+                }
+
+                Invoke-RestMethod `
+                    -Uri         "$baseUri/updateObject" `
+                    -Method      PUT `
+                    -Body        ($updatedNetObj | ConvertTo-Json) `
+                    -ContentType "application/json" `
+                    -Headers     $authHeader | Out-Null
+
+                Write-Host "  [TAGGED-NET]    $($node.NetworkCidr) → $($node.Path)"
+                $stats.NetTagged++
+
+            } else {
+                Write-Warning "  [NOT-FOUND-NET] $($node.NetworkCidr) — create the IP4Network in BAM first."
+            }
+
+        } catch {
+            Write-Warning "  [FAILED-NET]    $($node.NetworkCidr) — $_"
+            $stats.Failed++
+        }
+    }
+}
+
+# ---------------------------------------------------------------
+# Close the BAM session. Always call logout regardless of earlier errors
+# so the server-side session resource is freed.
+# ---------------------------------------------------------------
+try {
+    Invoke-RestMethod -Uri "$baseUri/logout" -Method GET -Headers $authHeader | Out-Null
+    Write-Host ""
+    Write-Host "[$(Get-Date -f 'HH:mm:ss')] BAM session closed."
+} catch {
+    Write-Warning "Logout call failed — session may need to expire naturally."
+}
+
+# ---------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------
+Write-Host ""
+Write-Host "========================================================"
+Write-Host "  BlueCat Address Manager OrgPath Synchronization — Complete"
+Write-Host "========================================================"
+Write-Host "  Zones Created    : $($stats.ZoneCreated)"
+Write-Host "  Zones Updated    : $($stats.ZoneUpdated)"
+Write-Host "  Networks Tagged  : $($stats.NetTagged)"
+Write-Host "  Failed           : $($stats.Failed)"
+Write-Host "  Completed at     : $(Get-Date -f 'yyyy-MM-dd HH:mm:ss') UTC"
+Write-Host "========================================================"
+```
+
+::: {.callout-note title="Important — BAM Properties String Collision"}
+The BAM v1 updateObject call replaces the entire properties string on the object. If the existing zone or network carries system properties beyond those reproduced in the script — for example, deployment options, DHCP policies, or DNS deployment role references — those values must be read from the existing object and merged into the updated properties string before the PUT call is issued. The script above demonstrates the pattern with absoluteName and deployable on zones; extend the merge logic to include any additional system properties that exist on objects in your specific BAM Configuration.
+:::
+
+## Chapter 4 — Running Two Systems in Parallel — How OrgPath Keeps Them Coherent
+
+The Parallel migration phase is the most operationally demanding period in the hybrid transition. It is the period during which both the third-party DDI platform and Azure DNS Private Zones are simultaneously active and serving live DNS resolution traffic — the former for on-premises clients, the latter for Azure-hosted workloads. A zone in the Parallel phase exists in two places: as an authoritative zone in the NIOS Grid or the BlueCat DNS View, with its records managed through the DDI platform's change workflow, and as an Azure DNS Private Zone in the hub subscription, with its records propagated from the DDI platform or maintained in parallel by the Azure DNS team. The OrgPath governance pipeline is the single agent that writes organizational context to both simultaneously, and the MigrationPhase extensible attribute is the shared state variable that tells both systems — and the operators managing them — exactly where in the transition sequence each zone currently sits.
+
+Understanding the state machine that governs zone lifecycle during the Parallel phase requires understanding what each state transition represents in concrete operational terms. A zone enters the Assessment state when the OrgPath synchronization script first creates it in the DDI platform or first stamps OrgPath EAs on an existing zone that predates the OrgPath integration. Assessment means that the zone is tagged but no migration work has begun — no Azure DNS Private Zone exists, no records have been replicated, and the zone is fully authoritative in the DDI platform. A zone moves to Migration state when the governance team has created an Azure DNS Private Zone with a matching FQDN and stamped it with the same OrgPath values, but has not yet pointed any clients at the Azure zone — it exists as an empty or partially populated zone in Azure, not yet serving live traffic. A zone enters the Parallel state when the Azure DNS Private Zone is active and receiving resolution queries from Azure-hosted workloads, while the NIOS or BAM zone remains the authoritative source for on-premises clients. In this state, any record change must be applied to both zones — to the DDI platform zone through its normal change workflow, and to the Azure zone through the Azure DNS API or the governance pipeline's Azure synchronization component.
+
+The transition from Parallel to Complete is the most consequential state change in the entire migration sequence, because it is the point at which on-premises clients are redirected from the DDI platform's name servers to the Azure DNS Private Resolver. The governance pipeline enforces this transition through a prerequisite check: a zone's MigrationPhase attribute cannot be updated to Complete unless the pipeline can confirm, through live API calls, that an Azure DNS Private Zone with the matching FQDN exists, carries a matching OrgPath tag, is linked to the hub virtual network, and is accessible from the Azure DNS Private Resolver's inbound endpoint. If any of these conditions are not met, the pipeline blocks the state transition and writes a blocking reason to the governance log. This is the same Decommissioning Readiness Score pattern introduced in Part Eight, applied at the individual zone level.
+
+### The Parallel-Phase Record Synchronization Problem
+
+One operational challenge specific to the Parallel phase is record synchronization: when a new DNS record is created in the DDI platform zone — because a new on-premises server is being deployed, for example — that record must also be created in the Azure DNS Private Zone so that Azure-hosted clients can resolve it without waiting for the next scheduled synchronization run. The governance pipeline addresses this through a change-feed subscription pattern. Both Infoblox NIOS and BlueCat BAM support outbound notifications or webhook-style integrations that fire when a record is created or modified. In NIOS, the Grid's Outbound API notification feature can be configured to POST a JSON payload to the pipeline webhook URL whenever a record change is committed to a zone in the Parallel migration phase. The pipeline webhook receiver, running as an Azure Function or as a Logic App, receives the notification, extracts the record data, and issues an Azure DNS record creation or update call through the Az.PrivateDns module. The record is in Azure DNS within seconds of being committed in NIOS, without any polling delay.
+
+In environments where the DDI platform's outbound notification feature is not available — older NIOS versions, certain BlueCat configurations, or network policy restrictions that prevent the DDI appliance from making outbound HTTP calls to cloud endpoints — the pipeline falls back to a polling approach: a scheduled task runs every fifteen minutes, queries the DDI platform for zone records modified in the last fifteen minutes, and replays any changes to the Azure DNS Private Zone. The polling interval should be chosen based on the organization's tolerance for DNS replication lag; fifteen minutes is conservative and appropriate for most workloads. Latency-sensitive workloads that require near-real-time record propagation should be migrated to the Complete phase — and therefore out of the Parallel split-brain configuration — before the on-premises host publishing those records is migrated to Azure.
+
+### The Reconciliation Script
+
+The reconciliation script below addresses the audit and compliance dimension of the Parallel phase: it provides a point-in-time comparison of the NIOS zone inventory and the Azure DNS Private Zone inventory, surfacing gaps and mismatches so that the operations team has a clear picture of where the migration stands. It is run on demand and on a scheduled basis — weekly at minimum during an active migration, daily if the migration is in a fast-moving phase — and its output is committed to the governance repository as a dated artifact. The report format is JSON so that it can be consumed by downstream reporting tools, or by the governance pipeline itself as a gating input for the state transition logic.
+
+```powershell
+#
+# Get-OrgPathDnsReconciliationReport.ps1
+#
+# .SYNOPSIS
+#     Reconciles Infoblox NIOS DNS zones against Azure DNS Private Zones,
+#     identifying synchronization gaps and MigrationPhase mismatches.
+#
+# .DESCRIPTION
+#     Queries both NIOS (via WAPI) and Azure (via Az.PrivateDns) for all
+#     OrgPath-tagged DNS zones. Compares the two inventories and produces
+#     a structured JSON report covering:
+#       - Zones in NIOS with no Azure counterpart (migration not started)
+#       - Zones in Azure with no NIOS counterpart (tagging gap or orphan)
+#       - Zones in both systems with mismatched MigrationPhase values
+#       - Zones that are fully synchronized across both systems
+#
+#     The report is committed to the governance repository after each run
+#     and consumed by the pipeline's state transition gating logic.
+#
+# .PARAMETER GridMasterFqdn
+#     FQDN of the NIOS Grid Master.
+#     ENVIRONMENT VALUE — replace with your Grid Master hostname.
+#
+# .PARAMETER NiosCredential
+#     PSCredential for the NIOS API service account.
+#
+# .PARAMETER AzureDnsResourceGroup
+#     Azure resource group containing the Azure DNS Private Zones.
+#     ENVIRONMENT VALUE — replace with your DNS resource group name.
+#
+# .PARAMETER AzureSubscriptionId
+#     Azure subscription ID containing the DNS resource group.
+#     ENVIRONMENT VALUE — replace with your subscription GUID.
+#
+# .PARAMETER OutputPath
+#     Local filesystem path where the JSON report is written.
+#     ENVIRONMENT VALUE — set to the governance repository working directory.
+#
+# .NOTES
+#     Requires: Az.PrivateDns PowerShell module (Install-Module Az.PrivateDns)
+#     Run: Connect-AzAccount before executing if not running in a pipeline
+#     context where the service principal is already authenticated.
+#
+
+param(
+    [string]       $GridMasterFqdn          = "gridmaster.corp.contoso.com",  # ENVIRONMENT VALUE
+    [PSCredential] $NiosCredential          = (Get-Credential -Message "NIOS API credentials"),
+    [string]       $AzureDnsResourceGroup   = "rg-governance-dns",            # ENVIRONMENT VALUE
+    [string]       $AzureSubscriptionId     = "00000000-0000-0000-0000-000000000000", # ENVIRONMENT VALUE
+    [string]       $OutputPath              = "C:\governance\reports\dns-reconciliation-$(Get-Date -f 'yyyyMMdd').json" # ENVIRONMENT VALUE
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# Set the Azure context to the correct subscription before querying Azure DNS.
+Set-AzContext -SubscriptionId $AzureSubscriptionId | Out-Null
+
+$niosBaseUri  = "https://$GridMasterFqdn/wapi/v2.12"
+$niosAuthArgs = @{ Credential = $NiosCredential; Authentication = "Basic" }
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Querying NIOS for OrgPath-tagged zones..."
+
+# ---------------------------------------------------------------
+# Query NIOS for all authoritative zones, requesting the fqdn and
+# extensible_attributes return fields in addition to the default fields.
+# _return_fields%2B appends the listed fields to the default field set.
+# _max_results caps the query at 2000 zones; increase if your Grid
+# manages more zones than this.
+# ---------------------------------------------------------------
+$niosZonesRaw = Invoke-RestMethod `
+    -Uri    "$niosBaseUri/zone_auth?_return_fields%2B=fqdn,extensible_attributes&_max_results=2000" `
+    -Method GET `
+    @niosAuthArgs
+
+# Filter to zones that carry an OrgPath EA value and project to a normalized shape.
+$niosTaggedZones = $niosZonesRaw | Where-Object {
+    $_.extensible_attributes -and $_.extensible_attributes.OrgPath.value
+} | ForEach-Object {
+    @{
+        FQDN           = $_.fqdn
+        OrgPath        = $_.extensible_attributes.OrgPath.value
+        OrgNodeId      = $_.extensible_attributes.OrgNodeId.value
+        OrgTier        = $_.extensible_attributes.OrgTier.value
+        MigrationPhase = $_.extensible_attributes.MigrationPhase.value
+        Source         = "NIOS"
+    }
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] NIOS OrgPath-tagged zones found: $($niosTaggedZones.Count)"
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Querying Azure for OrgPath-tagged Private DNS zones..."
+
+# ---------------------------------------------------------------
+# Query Azure DNS Private Zones — all zones in the resource group
+# that carry an OrgPath tag. Project to the same normalized shape
+# used for the NIOS result set to allow direct comparison.
+# ---------------------------------------------------------------
+$azureZones = Get-AzPrivateDnsZone -ResourceGroupName $AzureDnsResourceGroup |
+    Where-Object { $_.Tags -and $_.Tags["OrgPath"] } |
+    ForEach-Object {
+        @{
+            FQDN           = $_.Name
+            OrgPath        = $_.Tags["OrgPath"]
+            OrgNodeId      = $_.Tags["OrgNodeId"]
+            OrgTier        = $_.Tags["OrgTier"]
+            MigrationPhase = $_.Tags["MigrationPhase"]
+            ResourceId     = $_.ResourceId
+            Source         = "Azure"
+        }
+    }
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Azure OrgPath-tagged Private DNS zones found: $($azureZones.Count)"
+
+# ---------------------------------------------------------------
+# Build lookup hashtables keyed by FQDN for O(1) cross-system lookup.
+# ---------------------------------------------------------------
+$niosMap  = @{}; foreach ($z in $niosTaggedZones) { $niosMap[$z.FQDN]  = $z }
+$azureMap = @{}; foreach ($z in $azureZones)       { $azureMap[$z.FQDN] = $z }
+
+# ---------------------------------------------------------------
+# Reconcile the two inventories into four categories.
+# ---------------------------------------------------------------
+$report = @{
+    GeneratedAt           = (Get-Date -Format "o")                   # ISO 8601 timestamp
+    GridMaster            = $GridMasterFqdn                          # ENVIRONMENT VALUE
+    AzureDnsResourceGroup = $AzureDnsResourceGroup                   # ENVIRONMENT VALUE
+    AzureSubscriptionId   = $AzureSubscriptionId                     # ENVIRONMENT VALUE
+    NiosOnlyZones         = [System.Collections.Generic.List[object]]::new()  # In NIOS, not in Azure
+    AzureOnlyZones        = [System.Collections.Generic.List[object]]::new()  # In Azure, not in NIOS
+    PhaseMismatches       = [System.Collections.Generic.List[object]]::new()  # Phase differs between systems
+    FullySynchronized     = [System.Collections.Generic.List[object]]::new()  # Identical in both
+}
+
+foreach ($fqdn in $niosMap.Keys) {
+    if (-not $azureMap.ContainsKey($fqdn)) {
+        # In NIOS but not in Azure — migration not started for this zone.
+        $report.NiosOnlyZones.Add($niosMap[$fqdn])
+    }
+    elseif ($niosMap[$fqdn].MigrationPhase -ne $azureMap[$fqdn].MigrationPhase) {
+        # In both systems but MigrationPhase values differ — state mismatch.
+        $report.PhaseMismatches.Add(@{
+            FQDN            = $fqdn
+            OrgPath         = $niosMap[$fqdn].OrgPath
+            OrgNodeId       = $niosMap[$fqdn].OrgNodeId
+            NiosPhase       = $niosMap[$fqdn].MigrationPhase
+            AzurePhase      = $azureMap[$fqdn].MigrationPhase
+            AzureResourceId = $azureMap[$fqdn].ResourceId
+        })
+    }
+    else {
+        # In both systems with matching MigrationPhase — fully synchronized.
+        $report.FullySynchronized.Add(@{
+            FQDN           = $fqdn
+            OrgPath        = $niosMap[$fqdn].OrgPath
+            MigrationPhase = $niosMap[$fqdn].MigrationPhase
+        })
+    }
+}
+
+foreach ($fqdn in $azureMap.Keys) {
+    if (-not $niosMap.ContainsKey($fqdn)) {
+        # In Azure but not in NIOS — could be a new zone created directly in
+        # Azure, or a NIOS zone that has completed migration and been retired
+        # from NIOS without the reconciliation script being notified.
+        $report.AzureOnlyZones.Add($azureMap[$fqdn])
+    }
+}
+
+# ---------------------------------------------------------------
+# Write the report to the output path as formatted UTF-8 JSON.
+# The governance pipeline's CI system will commit this file to the
+# repository after the script completes.
+# ---------------------------------------------------------------
+$report | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
+
+Write-Host ""
+Write-Host "========================================================"
+Write-Host "  DNS Reconciliation Report — Summary"
+Write-Host "========================================================"
+Write-Host "  NIOS-only zones       : $($report.NiosOnlyZones.Count)  (migration not started)"
+Write-Host "  Azure-only zones      : $($report.AzureOnlyZones.Count)  (check for orphaned zones)"
+Write-Host "  Phase mismatches      : $($report.PhaseMismatches.Count)  (requires manual resolution)"
+Write-Host "  Fully synchronized    : $($report.FullySynchronized.Count)"
+Write-Host "  Report written to     : $OutputPath"
+Write-Host "========================================================"
+```
+
+The reconciliation report's four categories map directly to operational actions. Zones in the NIOS-only category require the team to begin the Azure DNS Private Zone creation sequence for those zones — they represent the backlog of migration work remaining. Zones in the Azure-only category require investigation: they may be legitimate new zones created directly in Azure by cloud platform teams who bypassed the DDI platform's change workflow, in which case they need to be registered in the governance system; or they may be orphaned zones from a previous migration wave that were not properly tracked. Phase mismatches require manual resolution — someone must review both sides, determine which system's state value is correct, and update the other to match. The fully synchronized count is the health metric: as the migration progresses, this number should grow toward the total zone count while the other three categories shrink toward zero.
+
+## Chapter 5 — The Exit Criteria — When Azure Native Takes Full Ownership
+
+Retiring the third-party DDI platform is not a single event — it is the conclusion of a sequence of verifiable conditions, each of which must be confirmed before the next step proceeds. The platform has been the system of record for the organization's DNS and IP address estate, in some cases for a decade or more, and its retirement cannot be treated as a routine infrastructure decommission. The following exit criteria define the state that the environment must reach before the retirement sequence can begin. They are organized around the same Decommissioning Readiness Score framework introduced in Part Eight, extended here to account for the additional surface area introduced by the third-party DDI platform.
+
+The first criterion is zone completion. Every DNS zone that was authoritative in the NIOS Grid or the BlueCat DNS View must carry a MigrationPhase value of Complete, and must have a corresponding Azure DNS Private Zone tagged with a matching OrgPath value, linked to the hub virtual network, and accessible from the Azure DNS Private Resolver's inbound endpoint. This is a hard requirement: the existence of even a single zone in the Assessment, Migration, or Parallel state means that some DNS resolution is still being served from the DDI platform, and retiring it would cause resolution failures for clients that depend on those zones. The reconciliation script in Chapter Four is the mechanism that verifies this criterion: the report must show zero NIOS-only zones, zero Azure-only zones without a corresponding Complete-phase NIOS entry, and zero phase mismatches before the first criterion is considered met.
+
+The second criterion is DHCP scope migration. Every DHCP scope that was managed through the DDI platform must be accounted for in one of two ways. Either the address range that the scope served has been absorbed into Azure Virtual Network address space, meaning that all hosts that formerly received dynamic addresses from the on-premises DHCP scope are now Azure-hosted and receive their address assignments through Azure's built-in DHCP mechanism. Or the scope has been migrated to a Windows Server DHCP server managed through the Windows Server IPAM role as described in Part Eight, with the DHCP failover relationship between the migrated server and its partner verified and the DDI platform's scope record marked as decommissioned in the governance log. No DHCP scope that was active in the DDI platform can be left without an explicit migration disposition in the governance record. A scope that is simply deleted from the DDI platform without being migrated represents an address management gap that may not surface immediately but will cause lease conflicts or addressing failures later.
+
+The third criterion is forwarder removal. All conditional forwarding rules on the Azure DNS Private Resolver Forwarding Ruleset that were created to forward queries for on-premises zones to the NIOS or BAM name server IP addresses must have been removed. The presence of a forwarding rule for a zone whose NIOS or BAM counterpart has been marked Complete indicates a configuration inconsistency: the zone is fully hosted in Azure DNS, but the resolver is still forwarding queries for it to an on-premises name server that is no longer the authoritative source. In an active system this would cause resolution failures for those queries. Removing the forwarding rule for each zone as its MigrationPhase is advanced to Complete — rather than waiting until the end of the entire migration — is the recommended approach, both because it validates the Complete state in real time and because it ensures that the resolver configuration converges to its final state incrementally rather than all at once. The final check before retirement is simply confirming that no forwarding rules remain that reference any of the DDI platform's name server addresses.
+
+The fourth criterion is the final reconciliation. The reconciliation script from Chapter Four is run one final time, and its output must show zero entries in the NIOS-only, Azure-only, and phase mismatch categories. The fully synchronized count must equal the total number of zones that were previously managed in the DDI platform, confirming that every zone has been accounted for in Azure DNS and that no zone has been lost during the migration. This report is archived in the governance repository as the definitive migration completion record.
+
+### The Operational Retirement Procedure
+
+Once all four exit criteria have been verified, the retirement procedure begins. The first step is placing the DDI platform in read-only mode. In Infoblox NIOS, this is accomplished through the Grid's access control system: the service account used by the governance pipeline and the day-to-day DNS administration accounts are demoted to read-only roles, removing the ability to create, modify, or delete any DNS record, zone, or network object in the Grid. The Grid Master interface remains accessible for monitoring and audit log queries but accepts no write operations. In BlueCat Address Manager, the equivalent is achieved through the BAM access control mechanism, setting all non-administrative user accounts to read-only access at the Configuration level. The network operations team is notified of the read-only transition and advised that any DNS or IPAM changes that arise during the monitoring window must be made through Azure-native tooling — the Azure portal, the Az.PrivateDns module, or the governance pipeline — rather than through the DDI platform interface.
+
+The monitoring window is thirty calendar days from the date of the read-only transition. During this period, DNS query logs from the Azure DNS Private Resolver are the primary monitoring artifact. The resolver logs — streamed to an Azure Monitor Log Analytics workspace through the diagnostic settings on the resolver resource — are queried daily to verify that no queries are being forwarded to the DDI platform's name server IP addresses. A query that reaches the resolver and matches no local Azure DNS Private Zone would normally generate a SERVFAIL or NXDOMAIN response; if such responses are observed at a rate higher than baseline during the monitoring window, the resolution path for those queries must be traced to determine whether they represent a forwarding rule that was missed during the cleanup step or a client configuration that is bypassing the resolver entirely and querying the old DDI platform name servers directly.
+
+If the thirty-day monitoring window passes without any forwarded queries to the DDI platform's name servers, the Grid Master or BAM appliances are decommissioned following the organization's standard server decommission procedure. The virtual machines or physical appliances are powered off, snapshots are taken for archive purposes, and the licenses are returned to the vendor. The governance repository receives a final commit recording the retirement date in ISO 8601 format, the path to the final reconciliation report, the names of the engineers who performed the verification steps, and the names of the approvers who authorized the retirement. This commit message becomes the permanent record of the DDI platform's lifecycle within the OrgPath governance model.
+
+Every OrgTree node whose MigrationPhase field has not already been updated to Complete during the zone-by-zone migration sequence is updated in this final commit. The MigrationPhase field in the OrgTree registry, from this point forward, is a historical attribute — it records the migration state at the time of retirement, not an active governance control. The active governance controls for DNS and IP address management are now entirely the Azure DNS Private Zones, the Azure Virtual Network address space assignments, and the Azure DNS Private Resolver forwarding configuration, all of which carry OrgPath tags set and maintained by the same governance pipeline that formerly wrote to the DDI platform's REST API. The pipeline target list shrinks by one entry: the DDI platform's API endpoint is removed, and the pipeline routes all DNS and IPAM governance operations to Azure-native APIs.
+
+### What the DDI Platform Leaves Behind
+
+The third-party DDI platform's role in the OrgPath architecture was always defined by its temporality. It was a bridge — a system of record that maintained visibility and operational control during the period when neither the on-premises Active Directory-integrated DNS and DHCP nor the Azure-native DNS and virtual network address management was sufficient on its own to govern the full network estate. The bridge served its purpose: it prevented IP address conflicts by maintaining a unified address inventory, it prevented DNS split-brain failures by providing a single authoritative view of the zone inventory during the transition, and it provided the audit trail and change workflow that the organization's operational governance requirements demanded during the period when two separate environments were being managed simultaneously.
+
+OrgPath was the thread that ran through the bridge. The same organizational context — the same node identifiers, the same hierarchy paths, the same tier classifications — that was encoded on Entra ID user objects, Intune device objects, Arc resource tags, and Microsoft Defender device groups was also encoded on NIOS zones and networks, on BlueCat zones and IP networks, and on Azure DNS Private Zones. Every system that touched a governed resource could answer the same question — what organizational context does this object belong to? — through its own native query interface, without any cross-system lookup. This is the value that the OrgPath model provides that no individual system provides alone.
+
+When the bridge is retired, the organizational context does not retire with it. It has already been propagated — zone by zone, network by network, device by device — to every Azure-native construct that carries organizational identity forward. The DDI platform leaves, and what remains is an environment where every DNS zone, every virtual network subnet, every resource tag, every device object, and every identity object carries the same coherent organizational context, expressed entirely through Azure-native mechanisms that require no additional platform to maintain. The OrgPath model has not changed. The substrate it runs on has converged, at last, to a single system — and the governance pipeline that enforces it runs lighter, faster, and with fewer moving parts than at any point during the transition. That convergence is what the entire hybrid migration was building toward, and the retirement of the DDI platform is the operational marker that confirms it has been reached.
+
+*OrgPath Governance Series — Part Eight Supplement. This document is part of the OrgPath technical implementation library. Refer to Part Eight for the Azure-native DDI baseline. Refer to earlier parts of the series for the OrgTree data model, the Entra ID and Intune governance pipeline, and the Azure Arc and Defender integration patterns.*

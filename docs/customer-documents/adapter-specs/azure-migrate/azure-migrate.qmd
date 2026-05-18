@@ -1,0 +1,95 @@
+---
+title: Azure Migrate Dependency Discovery (Reserved Slot) — Adapter Technical Specification
+doc-type: ats
+adapter-id: azure-migrate
+adapter-class: conformance
+mission-class: telemetry
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Azure Migrate Dependency Discovery (Reserved Slot) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `conformance` · **Mission:** `telemetry` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Azure Migrate Dependency Discovery Adapter is the **server-dependency observation edge** of the UIAO substrate. As a conformance-class telemetry adapter, it consumes the read-only dependency-graph output that Azure Migrate produces — server-to-server connections, port and protocol mapping, service-call patterns, and discovered application footprints — and routes them through the canonical evidence chain so OrgPath server-plane edges have an authoritative source.
+
+The adapter solves a narrow but operationally critical problem: **deterministic domain-retirement sequencing**. Migrating from on-premises to cloud, or retiring an aging Active Directory domain, requires knowing precisely which servers depend on which others — which app servers depend on which databases, which file shares are accessed by which workstations, which authentication targets back which apps. Microsoft does not expose this dependency graph through any other surface; Azure Migrate's dependency analyzer is the primary native source.
+
+Three primary functions:
+
+1. **Server dependency inventory.** Pulls the discovered server-to-server connection graph from Azure Migrate, normalizing source / destination / port / protocol / observed-frequency into canonical claim shape per OrgPath server segment.
+2. **Port and protocol discovery.** Captures per-server listening port inventory plus observed outbound protocol usage. Feeds the canonical input for firewall-rule derivation and zero-trust micro-segmentation planning.
+3. **Service call mapping + application discovery.** Detects service-call relationships (e.g., "this IIS server calls this SQL Server on port 1433 every 30 seconds") and infers application boundaries from the dependency graph — the input to the application-decomposition planning that precedes any non-trivial migration step.
+
+The adapter is a **primary native input** for OrgPath server-plane edges per the UIAO_007 OrgPath ingestion contract. Without it, server-plane OrgPath assignments are based on operator declaration rather than observed dependency — exactly the failure mode UIAO_007 was written to prevent.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR.
+
+## Scope
+
+Target surfaces / subsystems: `server-dependency-inventory`, `port-and-protocol-discovery`, `service-call-mapping`, `application-discovery`
+
+**Reads:** Azure Migrate project APIs for discovered server inventory, dependency analysis output (agentless and agent-based collection paths), and the application-discovery output where the customer has configured the optional discovery extension. Read-only access via Azure Resource Manager and the Azure Migrate REST surface.
+
+**Emits:** `azure-migrate-dependency-graph.json` (canonical server-to-server dependency graph with per-edge frequency, port, protocol, and observed-since timestamp), `azure-migrate-server-inventory.json` (per-server inventory with OS, applications, network adapters, and OrgPath segment), plus `EvidenceObject` records that feed OrgPath server-plane edge construction and migration-sequencing planning.
+
+**Does NOT:** modify any Azure Migrate configuration (project state, discovery scope, agent deployment), trigger Azure Migrate replication or migration runs, install or remove the dependency-analysis agent, or write to discovered servers. This is the *observation* surface; migration execution is a separate workflow outside the substrate.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `CA-7`, `SC-7`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-8** Information System Component Inventory | Primary | Per-server inventory + dependency graph is the canonical server-side component inventory with relationship context (not just a flat list). |
+| **CA-7** Continuous Monitoring | Supporting | Scheduled discovery runs provide continuous server-dependency evidence; new connections appear as new edges in subsequent runs. |
+| **SC-7** Boundary Protection | Primary | The dependency graph is the canonical input for derived firewall rules, micro-segmentation policies, and zero-trust boundary decisions on the server plane. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Reserved slot per ADR-049. Read-only discovery feed for server-to-server dependencies, port / protocol mapping, and service-call graphs. **Primary native input** for OrgPath server-plane edges (per UIAO_007 OrgPath ingestion contract). Critical for deterministic domain-retirement sequencing — the cross-server dependency graph that Microsoft does not provide via any other surface.
+
+ZTMM pillars: devices, network.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+- UIAO_007 — OrgTree Modernization: AD to Entra ID (OrgPath ingestion contract)
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

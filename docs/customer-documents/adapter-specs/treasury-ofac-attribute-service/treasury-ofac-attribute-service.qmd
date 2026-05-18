@@ -1,0 +1,95 @@
+---
+title: Treasury OFAC Sanctions Screening Attribute Service — Adapter Technical Specification
+doc-type: ats
+adapter-id: treasury-ofac-attribute-service
+adapter-class: conformance
+mission-class: policy
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Treasury OFAC Sanctions Screening Attribute Service — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `conformance` · **Mission:** `policy` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Treasury OFAC Sanctions Screening Attribute Service Adapter is the **sanctions-screening attribute observer** of the UIAO substrate. As a conformance-class policy adapter, it observes sanctions-screening events against the OFAC Specially Designated Nationals (SDN) list and the consolidated sanctions lists — Treasury is the federal authority of record for sanctions screening — and emits canonical claims with the disclosure-audit envelope.
+
+OFAC list distribution is public, but the entitlement model still applies for audit-grade screening disclosures within compliance and disbursement contexts (e.g., Treasury Do Not Pay). The audit record is the canonical evidence that the screening was performed at the documented decision point, against the canonical list version.
+
+Three primary functions:
+
+1. **SDN-list screening observation.** Watches sanctions-screening events as they are issued at decision points (vendor onboarding, payment release, contract award), emitting canonical claims with the screened entity, match result, and the SDN-list version that was used.
+2. **Consolidated sanctions list ingestion.** Maintains the canonical mapping between consuming-engagement decision points and the OFAC consolidated sanctions lists (SDN, BIS, ITAR debarment, etc.) so a screening event always identifies which list version produced the result.
+3. **Screening-audit emission.** Every screening event emits an audit record citing the decision point, entitlement, list version, match-result (clean / probable-match / confirmed-match), and the consuming engagement's compliance citation.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
+
+## Scope
+
+Target surfaces / subsystems: `sdn-list`, `consolidated-sanctions-list`, `sanctions-screening`
+
+**Reads:** OFAC SDN list, consolidated sanctions lists (SDN, FSE, NS-PLC, BIS, ITAR debarment), plus the live screening events at consuming decision points. Public-data lists; entitlement still recorded in `canon/reciprocal-consumption-registry.yaml` for audit-grade disclosures.
+
+**Emits:** `ofac-screening-response.json` (per-screening canonical claim with screened entity, match result, list version), `ofac-screening-audit.json` (per-screening audit record with decision-point reference, entitlement, compliance-citation, list version), plus `EvidenceObject` records that feed the IA-2 / AU-2 / CA-9 control evidence stream.
+
+**Does NOT:** modify the OFAC sanctions lists (Treasury is the authority of record), make sanctions-screening decisions (decisions are downstream consumer responsibility — the adapter is observation only), or process payment-release decisions.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `AU-2`, `AU-12`, `CA-9`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Supporting | Sanctions-screening claims supplement entity identification at compliance decision points. |
+| **AU-2** Event Logging | Primary | Every screening event is logged with the canonical disclosure-audit envelope, decision-point reference, list version. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **CA-9** Internal System Connections | Supporting | Sanctions-screening is the canonical attribute supplied at compliance / disbursement integration points across the substrate. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+OFAC is the federal authority of record for sanctions screening. Public list distribution; entitlement model still applies for audit-grade screening disclosures within compliance and disbursement contexts (e.g., Treasury Do Not Pay). Activation requires a per-adapter ADR modeled on ADR-035.
+
+Member of the federal attribute-service family — pairs with [`gsa-sam-attribute-service`](../gsa-sam-attribute-service/gsa-sam-attribute-service.html) (the SAM.gov exclusion-list overlap; OFAC SDN and SAM exclusion are distinct but co-consulted at federal-contracting decision points).
+
+ZTMM pillars: identity, data.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://uiao.io/schemas/orgpath/dynamic-groups.schema.json",
   "title": "UIAO Dynamic Group Library",
-  "description": "Machine-readable enumeration of Entra ID dynamic groups whose membership is derived from OrgPath values in extensionAttribute1. Bound to MOD_B (src/uiao/modernization/orgtree/MOD_B_Dynamic_Group_Library.md) by ADR-036. Every group appearing in the tenant with the OrgTree- prefix must resolve to `groups[].name`; phantom names are flagged by the drift engine.",
+  "description": "Machine-readable enumeration of Entra ID dynamic groups whose membership is derived from OrgPath values in extensionAttribute1. Bound to UIAO_152 (src/uiao/canon/UIAO_152_Dynamic_Group_Library.md) by ADR-036. Every group appearing in the tenant with the OrgTree- prefix must resolve to `groups[].name`; phantom names are flagged by the drift engine.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,7 +17,7 @@
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
     },
-    "document_id": { "const": "MOD_B" },
+    "document_id": { "const": "UIAO_152" },
     "parent_canon": { "type": "string" },
     "updated": { "type": "string", "format": "date" },
     "naming": {
@@ -58,8 +58,8 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "OrgTree-<scope>-<purpose>. Scope is either an OrgPath-derived upper-case segment chain (e.g. IT-SEC-SOC) or a cross-functional descriptor (e.g. SecurityCompliance, AllRegionalAP, Standard, AllUsers). Purpose is one of the canonical suffixes.",
-          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins)$"
+          "description": "OrgTree-<scope>-<purpose>. Scope is either an OrgPath-derived upper-case segment chain (e.g. IT-SEC-SOC) or a cross-functional descriptor (e.g. SecurityCompliance, AllRegionalAP, Standard, AllUsers). Purpose is one of the canonical suffixes. Devices and UNPOSITIONED suffixes were added by ADR-073 to support OrgPath-driven NAC policy targeting.",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins|Devices|UNPOSITIONED)$"
         },
         "category": {
           "enum": [
@@ -69,13 +69,16 @@
             "level-4-team",
             "cross-functional",
             "conditional-access",
-            "licensing"
+            "licensing",
+            "device-network-admission",
+            "device-quarantine"
           ]
         },
         "rule": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^\\(user\\.extensionAttribute1 "
+          "description": "Entra dynamic-group membership rule. User-targeting groups select on user.extensionAttribute1; device-targeting groups (introduced by ADR-073 for NAC) select on device.extensionAttribute1.",
+          "pattern": "^\\((user|device)\\.extensionAttribute1 "
         },
         "orgpath_refs": {
           "type": "array",
@@ -83,7 +86,7 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+            "pattern": "^ORG(-[A-Z0-9]{2,6}){0,8}$"
           }
         },
         "description": {

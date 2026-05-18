@@ -9,7 +9,7 @@
 - **Name:** `WhalerMike/uiao`
 - **Purpose:** Unified Identity-Addressing-Overlay Architecture — a FedRAMP-Moderate governance substrate with drift-detected canon, schema-enforced adapters, and OSCAL-native evidence pipelines.
 - **Status:** pre-1.0; `main` is the primary development branch.
-- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Amazon Connect Contact Center is the sole Commercial exception.
+- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Two named Commercial exceptions: Amazon Connect Contact Center, and SailPoint Non-Employee Risk Management (FedRAMP Moderate on AWS GovCloud, per ADR-059). Each exception is encoded as a discrete enum value in the `gcc-boundary` schema; new exceptions are added in lockstep with their authorizing ADR.
 
 ## Module topology
 
@@ -21,10 +21,15 @@ Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao
 | [`tests/`](tests/) | Test suite | ~1000+ tests: unit, integration, adapter conformance, substrate drift. |
 | [`docs/`](docs/) | Derived documentation | Articles, guides, narratives, Quarto site. Every published doc traces provenance to canon under `src/uiao/canon/`. |
 | [`scripts/`](scripts/) | Maintenance scripts | Validators, canon-sync, doc generators, one-shot tooling. |
+| [`tools/`](tools/) | PowerShell generators | `Write-Phase2TSA.ps1`, `Write-Phase2Diagrams.ps1`, `Write-CanonFiles*.ps1` — author-time generators that read source models (`.psd1`/`.txt`) and write derived markdown into `phase2/` and other targets. Not invoked at runtime; not on the CI path. |
+| [`diagrams/`](diagrams/) | Diagram-pipeline subsystem | Self-contained Mermaid SSOT system covering all 9 UIAO document categories. Own README, governance ([`diagrams/governance/DIAGRAM-GOVERNANCE.md`](https://github.com/WhalerMike/uiao/blob/main/diagrams/governance/DIAGRAM-GOVERNANCE.md), UIAO_DG_001 v2.0), metadata schema, registry of 17 active diagrams, render/validate/inject Python scripts, and CI workflow definition. Independent of phase numbering — uses `DIAG_NNN` namespace. |
+| [`phase2/`](phase2/) | Phase 2 architecture artifacts | Generated output of `tools/Write-Phase2TSA.ps1` from the source model at `models/phase2/UIAO_Phase2_TSA.psd1`. Feeds the customer-facing **Phase 2 — Governance OS** chapter ([`docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)). Uses the `UIAO_P2_NNN` namespace (not the canonical `UIAO_NNN` allocation). Most domain/lifecycle/transformation files are placeholder scaffolds pending design sessions; `_legacy/` holds the prior generator output. Index at [`phase2/UIAO_Phase2_Index.md`](https://github.com/WhalerMike/uiao/blob/main/phase2/UIAO_Phase2_Index.md). |
+| [`models/`](models/) | **Phase 2 source models — NOT canon authority.** | Holds `models/phase2/UIAO_Phase2_TSA.psd1`, the PowerShell-data-file source model that `tools/Write-Phase2TSA.ps1` consumes to generate `phase2/`. Renamed from `canon/` (which collided with `src/uiao/canon/`) so the role is explicit: generator-input source models, not canonical governance. Canon authority lives **only** at `src/uiao/canon/`. |
 | [`inbox/`](inbox/) | Scratch surface | Agent-authored drafts. Nothing here is canon. |
+| [`deploy/`](deploy/) | Deployment artifacts | `deploy/windows-server/` holds the IIS deployment surface (`run.py`, `web.config`, `requirements-windows.txt`) for the FastAPI service in `src/uiao/api/`. |
 | [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, mypy (non-blocking), ruff, quarto, link-check, release. |
 
-Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](src/uiao/cli/app.py).
+Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/cli/app.py).
 
 ## Operating principles (substrate-wide)
 
@@ -32,7 +37,7 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 2. **Canon-anchored evidence** — every artifact the substrate produces cites the canon document ID and version it derives from.
 3. **Dual-axis adapter taxonomy** — every adapter declares `class` (modernization | conformance) × `mission-class` (identity | telemetry | policy | enforcement | integration) per UIAO_003.
 4. **Schema-first governance** — five JSON Schemas under `src/uiao/schemas/` validate every registry, manifest, and frontmatter edit in CI.
-5. **Drift is explicit** — five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in [`docs/docs/16_DriftDetectionStandard.qmd`](docs/docs/16_DriftDetectionStandard.qmd).
+5. **Drift is explicit** — five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in [`docs/docs/16_DriftDetectionStandard.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/docs/16_DriftDetectionStandard.qmd).
 6. **Version isolation** — no references to any previous version in active canon context; ADRs are append-only with supersession markers.
 
 ## Key artifacts
@@ -71,6 +76,20 @@ Authoritative record of what is CLI-reachable, what is library-only, and what is
 | **Enforcement Runtime** | `uiao.enforcement` | ❌ None | **Library-only** | UIAO_111; policies are Python callables — see `docs/docs/cli-reference.md §4.1` |
 | **FastAPI REST API** | `uiao.api` | ❌ None (server) | **`[api]` extra** | `pip install "uiao[api]"`; see `docs/docs/cli-reference.md §5` |
 
+## Public surface additions (v0.6.0)
+
+New CLI commands and library modules introduced by the HRIT Single-ATO Productization mission theme (ADR-058 / UIAO_143). These rows supplement the v0.5.0 inventory above.
+
+| Feature | Module | CLI surface | Tier | Notes |
+|---|---|---|---|---|
+| Reciprocity operations | `uiao.cli.reciprocity` | `uiao reciprocity onboard-agency`, `list-records`, `verify` | CLI | UIAO_140 / ADR-054 |
+| HRIT Single-ATO Reciprocity emitter | `uiao.oscal.reciprocity_record` | (via `uiao reciprocity onboard-agency`) | CLI | UIAO_140 §6, HMAC-SHA256 signing |
+| Per-agency reciprocity bundle | `uiao.oscal.reciprocity_bundle` | (library, used by CLI) | Library | UIAO_140 §7, self-verifying |
+| ATO cadence SLA validator | `uiao.monitoring.ato_cadence` | `uiao conmon ato-cadence-check` | CLI | UIAO_140 §4, 30/45-day SSP + 30-day reauth |
+| Configuration-latitude drift | `uiao.governance.config_latitude` | (governance library) | Library | UIAO_140 §5, DRIFT-SCHEMA emission |
+| Evidence Graph v1.2 (ATO nodes) | `uiao.evidence.graph` | (via `uiao evidence graph`) | Library | UIAO_113 v1.2, ATO-decision + reciprocity-record nodes |
+| KSI-RECIP family | `uiao.rules.ksi` (KSI-RECIP-001..008) | (via `uiao ksi evaluate`) | Data | 8 KSIs covering reciprocity-program health |
+
 ### Rules for moving a feature between tiers
 
 - **Library-only → CLI**: write a Typer command, add happy-path + failure-mode tests, update this table and `docs/docs/cli-reference.md`.
@@ -85,7 +104,7 @@ uiao substrate walk --json       # machine-readable
 uiao substrate drift             # exit-code-only summary (CI-friendly)
 ```
 
-Source: [`src/uiao/substrate/walker.py`](src/uiao/substrate/walker.py).
+Source: [`src/uiao/substrate/walker.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/substrate/walker.py).
 
 Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs resolve) findings.
 
@@ -101,7 +120,7 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | ✅ |
 | `ruff.yml` | Python PRs | ✅ |
 | `mypy.yml` | Python PRs | ✅ |
-| `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
+| `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | ✅ |
 | `release.yml` | Tag `v*.*.*` | — |
 
 > **Gate restoration history:** `ruff.yml` was returned to blocking after the 230-finding baseline was cleared (135 via `--fix`, ~76 via `ruff format` splitting one-line dataclasses, 13 manual fixes). The full pytest suite was restored to blocking once the `fastapi`/`httpx`/`uvicorn` runtime dependencies of `uiao.api` were declared as an `[api]` optional extra. `mypy.yml` was returned to blocking after a 4-batch burn-down (130 → 0) combining per-module suppressions for third-party-stub-less surfaces (python-docx, python-pptx, matplotlib, jinja2, etc.), duck-typed pattern ignores (adapter-class reflection, importlib.metadata), and real type fixes (entra_token None-narrowing, drift-class Literal typing, ProvenanceRecord `content_hash` kwarg).
@@ -119,13 +138,18 @@ Common `<verb>`s: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Use 
 - **Canon edits** → `src/uiao/canon/`, plus a UIAO_NNN entry in `document-registry.yaml` if the document is new. Doctrine changes require an ADR under `src/uiao/canon/adr/`.
 - **New CLI commands** ship with happy-path + failure-mode tests in the same PR.
 - **Adapters** go under `src/uiao/adapters/` and register in `src/uiao/canon/adapter-registry.yaml` (conformance) or `modernization-registry.yaml` (modernization). Every adapter declares `class` × `mission-class` per UIAO_003.
+- **Microsoft Graph adapters** resolve their endpoint via `uiao.adapters._graph_clouds.resolve_graph_base()` rather than hardcoding hostnames. Accepted config keys: `cloud` (`commercial` / `gcc-high` / `dod`, default `commercial` — also serves GCC-Moderate per ADR-033), `graph_api_version` (default per-adapter — `beta` for IntuneAdapter; `v1.0` for EntraAdapter, M365Adapter, EntraDynamicGroupsAdapter, EntraAdminUnitsAdapter, InBoundaryTelemetry), and an explicit URL override key (`graph_endpoint` for most adapters; `api_base_url` for the two Entra group/AU adapters that pre-dated the convention). Unknown clouds fail closed at construction.
 - **Canon reads at runtime** use `importlib.resources` against `uiao.canon` / `uiao.rules` / `uiao.schemas`, never hardcoded filesystem paths.
+- **Python lint/format gates are independent and both blocking.** `ruff.yml` runs `ruff check` *and* `ruff format --check` as separate gates; passing one doesn't satisfy the other. Before pushing any Python change run `ruff check --fix <paths>` *and* `ruff format <paths>`. Recurring gotchas worth pre-empting:
+    - **Don't import what you don't use** (`F401`). Common temptations: `dataclasses.field` when only `@dataclass` is needed; `datetime.datetime` / `datetime.timezone` when the adapter inherits `self._now()` from `DatabaseAdapterBase` or has an equivalent local helper.
+    - **Don't quote forward-reference annotations** (`UP037`) in files that already declare `from __future__ import annotations` — every annotation is deferred (string at runtime) already, so explicit `"DriftReport"` quoting is redundant. Import the referenced type at module level so mypy resolves it, then write the annotation unquoted. The `# noqa: F821 — forward reference` comment is *also* redundant in that case and should not be added.
+    - **Same rule for circular-import workarounds.** If a module-level import would cycle, prefer restructuring or `TYPE_CHECKING`-guarded imports over inline `import` inside the method — but if the inline import is unavoidable, leave the annotation quoted *and* keep the inline import; don't mix the two patterns.
 
 ## History
 
-The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved ([ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md)). The `uiao-gos` federal/commercial firewall was retired in that pass; its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters.
+The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved ([ADR-028](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md)). The `uiao-gos` federal/commercial firewall was retired in that pass; its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters.
 
-On 2026-04-20 the hybrid `core/` + `impl/` + partial `src/` tree was flattened into a single `src/uiao/` package with `pip install -e .` packaging and full runtime deps declared ([ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md)). Everything that used to import from `uiao.impl.*` now imports from `uiao.*`; canon ships inside the package via `importlib.resources`.
+On 2026-04-20 the hybrid `core/` + `impl/` + partial `src/` tree was flattened into a single `src/uiao/` package with `pip install -e .` packaging and full runtime deps declared ([ADR-032](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-032-single-package-consolidation.md)). Everything that used to import from `uiao.impl.*` now imports from `uiao.*`; canon ships inside the package via `importlib.resources`.
 
 ## Writing patterns
 

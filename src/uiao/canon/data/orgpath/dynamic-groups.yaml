@@ -2,36 +2,40 @@
 #
 # UIAO Dynamic Group Library — machine-readable SSOT
 # ==================================================
-# Canonical source: src/uiao/modernization/orgtree/MOD_B_Dynamic_Group_Library.md
+# Canonical source: src/uiao/canon/UIAO_152_Dynamic_Group_Library.md
 # Binding ADR:      src/uiao/canon/adr/adr-036-dynamic-group-provisioning.md
-# Depends on:       canon/data/orgpath/codebook.yaml (MOD_A / ADR-035)
+# Depends on:       canon/data/orgpath/codebook.yaml (UIAO_151 / ADR-035)
 #
 # Every entry under `groups:` becomes a Graph API `POST /groups` body (with
 # MembershipRule) executed by the `entra-dynamic-groups` modernization
 # adapter. A group appearing in the Entra tenant with the `OrgTree-`
-# prefix but NOT in this file is Phantom Drift (MOD_B §Drift).
+# prefix but NOT in this file is Phantom Drift (UIAO_152 §Drift).
 #
 # Boundary: GCC-Moderate. Groups live in Microsoft Entra ID only.
 
-schema_version: "1.0.0"
-document_id: MOD_B
+schema_version: "1.1.0"
+document_id: UIAO_152
 parent_canon: UIAO_007
-updated: "2026-04-20"
+updated: "2026-05-16"
 
 naming:
   prefix: "OrgTree-"
   # Scope is either an OrgPath-derived upper-case segment chain (e.g.
   # IT-SEC-SOC) or a cross-functional descriptor (e.g. SecurityCompliance,
   # AllRegionalAP, Standard, AllUsers). Purpose is a canonical suffix.
-  regex: "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins)$"
-  purpose_suffixes: [Users, Licensed, CA, Admins]
+  # Devices + UNPOSITIONED suffixes added by ADR-073 (NAC third transport)
+  # to support OrgPath-driven NAC policy targeting against device objects.
+  regex: "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins|Devices|UNPOSITIONED)$"
+  purpose_suffixes: [Users, Licensed, CA, Admins, Devices, UNPOSITIONED]
 
 # Graph API MembershipRule processing parameters.
 membership:
   processing_state: "On"
   rule_processing_state: "On"
   rule_template:
-    root_regex: "^\\(user\\.extensionAttribute1 "
+    # User-targeting groups select on user.extensionAttribute1; device-
+    # targeting groups select on device.extensionAttribute1 (ADR-073).
+    root_regex: "^\\((user|device)\\.extensionAttribute1 "
     allowed_operators: [-startsWith, -eq, -or, -and, -notMatch]
 
 groups:
@@ -222,3 +226,47 @@ groups:
     rule: '(user.extensionAttribute1 -startsWith "ORG") -and (user.extensionAttribute1 -notMatch "ORG-EXEC.*|ORG-IT.*")'
     orgpath_refs: [ORG]
     description: E3 (all except EXEC and IT)
+
+  # ------------------------------------------------------------------
+  # Device-targeting groups for NAC policy targeting (ADR-073)
+  # ------------------------------------------------------------------
+  # These groups select on the device-plane OrgPath written by UIAO_153 /
+  # ADR-038 — `onPremisesExtensionAttributes.extensionAttribute1` on the
+  # Entra device object. The NacPolicyTargetingSubAdapter resolves
+  # nac_assignments[] target_group entries to these groups; the AAA
+  # server (Cisco ISE / ClearPass / Entra RADIUS Proxy) consults
+  # membership via Graph at RADIUS Access-Accept time.
+  - name: OrgTree-FIN-Devices
+    category: device-network-admission
+    rule: '(device.extensionAttribute1 -startsWith "ORG-FIN")'
+    orgpath_refs: [ORG-FIN]
+    description: Finance device fleet for NAC VLAN/dACL targeting (ADR-073)
+  - name: OrgTree-IT-Devices
+    category: device-network-admission
+    rule: '(device.extensionAttribute1 -startsWith "ORG-IT")'
+    orgpath_refs: [ORG-IT]
+    description: IT division device fleet for NAC VLAN/dACL targeting (ADR-073)
+  - name: OrgTree-OPS-Devices
+    category: device-network-admission
+    rule: '(device.extensionAttribute1 -startsWith "ORG-OPS")'
+    orgpath_refs: [ORG-OPS]
+    description: Operations device fleet for NAC VLAN/dACL targeting (ADR-073)
+  - name: OrgTree-EXEC-Devices
+    category: device-network-admission
+    rule: '(device.extensionAttribute1 -startsWith "ORG-EXEC")'
+    orgpath_refs: [ORG-EXEC]
+    description: Executive device fleet for NAC VLAN/dACL targeting (ADR-073)
+  - name: OrgTree-IT-SEC-SOC-Devices
+    category: device-network-admission
+    rule: '(device.extensionAttribute1 -startsWith "ORG-IT-SEC-SOC")'
+    orgpath_refs: [ORG-IT-SEC-SOC]
+    description: SOC analyst privileged-workstation fleet for NAC restricted-segment targeting (ADR-073)
+
+  # TODO(ADR-073 Phase B follow-up): OrgTree-ORG-BRANCH-UNPOSITIONED
+  # quarantine group is deferred to a separate PR. The sentinel value
+  # /UNPOSITIONED is outside the UIAO_151 codebook regex
+  # (^ORG(-[A-Z0-9]{2,6}){0,8}$) — adding the quarantine group requires
+  # either extending the codebook segment-length cap or introducing a
+  # sentinel-namespace mechanism. The Intune-First doctrine §5.6 and the
+  # ADR-073 narrative already reference this group; the data binding
+  # follows once the sentinel design lands.

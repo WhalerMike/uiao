@@ -1,0 +1,100 @@
+---
+title: Microsoft Defender for Endpoint (Reserved Slot) — Adapter Technical Specification
+doc-type: ats
+adapter-id: defender-for-endpoint
+adapter-class: conformance
+mission-class: telemetry
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Microsoft Defender for Endpoint (Reserved Slot) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `conformance` · **Mission:** `telemetry` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Microsoft Defender for Endpoint Adapter is the **device-risk telemetry edge** in the UIAO substrate. As a conformance-class telemetry adapter, it consumes the read-only feeds Defender for Endpoint exposes — device exposure score, software inventory, vulnerability inventory, attack-path analysis, and per-device risk signals — and routes them through the canonical evidence chain so OrgPath-keyed device cohorts carry an authoritative risk number.
+
+This adapter is the **device-side risk source** that the modernization stack depends on:
+
+- It pairs naturally with [`intune`](../intune/intune.html) (device-compliance state) — Intune answers "is the device compliant with policy?" while Defender answers "what is the device's actual risk posture?"
+- It feeds the device-cohort sequencing in UIAO_136 Spec 1 — the migration runbook needs per-device risk scores to decide which cohorts move first.
+- It complements the [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html) adapter — OrgPath places devices in the organizational hierarchy; Defender layers risk on top of that placement.
+
+Three primary functions:
+
+1. **Exposure + vulnerability inventory.** Pulls device exposure scores and software / vulnerability inventory via the Microsoft Defender for Endpoint API, normalizing CVE references, severity, and remediation state into canonical claim shape.
+2. **Attack-path analysis ingestion.** Captures attack-path analysis output — the curated graphs Defender produces showing how an attacker could traverse from a low-value device to a high-value asset — and emits them as evidence so risk decisions reference the actual attack model rather than a generic CVSS score.
+3. **Device risk signal emission.** Per-device risk signals (active alerts, suppressed alerts, device value tags, exposure level) flow into the OrgPath-keyed device-plane risk view. Downstream consumers — Conditional Access, Intune compliance, OrgPath device sequencing — consume the same canonical risk record.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR (modeled on ADR-035) per the three-stage lifecycle (canon → docs scaffold → impl code).
+
+## Scope
+
+Target surfaces / subsystems: `device-exposure-score`, `software-inventory`, `vulnerability-inventory`, `attack-path-analysis`, `device-risk-signals`
+
+**Reads:** Microsoft Defender for Endpoint API endpoints for machines (`/api/machines`), software inventory (`/api/machines/SoftwareInventoryByMachine`), vulnerabilities (`/api/vulnerabilities/machinesVulnerabilities`), exposure score (`/api/exposureScore`), and attack-path analysis where licensing permits. Read-only client-credential OAuth flow with the documented least-privilege scopes.
+
+**Emits:** `mde-exposure-findings.json` (per-device exposure score plus contributing factors), `mde-vulnerability-inventory.json` (per-device vulnerability list with CVE, severity, remediation), plus `EvidenceObject` records that feed OrgPath device-plane risk signals and the device-cohort sequencing.
+
+**Does NOT:** modify Defender configuration (alert suppression rules, machine value tags, exclusions), execute live response actions, isolate devices, run antivirus scans, or write to the device. This is the *observation* surface; remediation lives in the device's management surface (Intune for compliance, [`azure-policy-arc`](../azure-policy-arc/azure-policy-arc.html) for Arc-enrolled servers).
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `RA-5`, `RA-5(5)`, `CA-7`, `SI-2`, `SI-4`, `CM-8`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **RA-5** Vulnerability Monitoring and Scanning | Primary | Per-device vulnerability inventory plus exposure score is the canonical vulnerability-monitoring evidence source for managed endpoints. |
+| **RA-5(5)** Privileged Access Authorization | Supporting | Attack-path analysis surfaces privileged-access exposure paths (e.g. low-value device that holds a credential to a high-value asset). |
+| **CA-7** Continuous Monitoring | Primary | Scheduled telemetry collection provides continuous endpoint risk evidence with the freshness-window semantics defined in canon. |
+| **SI-2** Flaw Remediation | Supporting | Vulnerability inventory drives the patch / update remediation queue; remediation is performed by sibling adapters. |
+| **SI-4** System Monitoring | Primary | Device risk signals + active alert inventory provide the canonical endpoint-monitoring evidence. |
+| **CM-8** Information System Component Inventory | Supporting | Per-device software inventory complements the device-inventory view from [`intune`](../intune/intune.html) and [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html). |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `interval` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Reserved slot per ADR-049. Read-only telemetry feed for device exposure score, software inventory, vulnerability state, and attack-path analysis from Microsoft Defender for Endpoint. Activation requires a per-adapter ADR (modeled on ADR-035) per the three-stage lifecycle (canon → docs scaffold → impl code). Feeds OrgPath device-plane risk signals and the device-cohort sequencing in UIAO_136 Spec 1.
+
+ZTMM pillars: devices, applications-and-workloads.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+- UIAO_136 — Priority-1 transformation project plans (Spec 1, device-cohort sequencing)
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

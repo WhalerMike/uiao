@@ -3,16 +3,26 @@
 Exposes the Compliance Query Language (CQL) engine (UIAO_108) at the CLI
 so operators can interrogate compliance data without writing Python.
 
+Note on control IDs
+-------------------
+SCuBA → IR bundles use KSI IDs as control identifiers (e.g. ``KSI-IA-01``,
+``KSI-IA-02``), not NIST-style control IDs (e.g. ``AC-2``).  Use KSI IDs in
+your queries unless you have a bundle produced by a NIST-mapped adapter.
+
 Usage
 -----
     uiao cql query "SHOW CONTROLS WHERE status = 'FAIL'" --bundle bundle.json
-    uiao cql query "SHOW EVIDENCE FOR CONTROL 'AC-2'" --bundle bundle.json --format json
+    uiao cql query "SHOW EVIDENCE FOR CONTROL 'KSI-IA-02'" --bundle bundle.json --format json
     uiao cql query "SHOW DRIFT WHERE drift_class = 'DRIFT-SEMANTIC'" --bundle bundle.json
+
+    # Note: SHOW DRIFT requires a bundle that contains drift states.
+    # Bundles produced by ``uiao ir-evidence-bundle`` include drift states
+    # when the underlying SCuBA run detected drift.
 
 CQL syntax
 ----------
     SHOW CONTROLS [WHERE field = 'value' [AND ...]] [SINCE 'ISO-date'] [ORDER BY field [ASC|DESC]]
-    SHOW EVIDENCE [FOR CONTROL 'control-id'] [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
+    SHOW EVIDENCE [FOR CONTROL 'ksi-id'] [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
     SHOW DRIFT [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
     SHOW POAM [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
 """
@@ -232,7 +242,13 @@ def query_cmd(
         ...,
         "--bundle",
         "-b",
-        help=("Path to an evidence bundle JSON file produced by ``uiao ir-evidence-bundle --out bundle.json``."),
+        help=(
+            "Path to an evidence bundle JSON file produced by "
+            "``uiao ir-evidence-bundle --out bundle.json``. "
+            "SHOW DRIFT queries require a bundle that contains drift states "
+            "(drift_states is non-empty); bundles from SCuBA runs without "
+            "detected drift will return 0 DRIFT rows."
+        ),
     ),
     output: Optional[str] = typer.Option(  # noqa: B008
         None,
@@ -269,7 +285,7 @@ def query_cmd(
     --------
         uiao cql query "SHOW CONTROLS WHERE status = 'FAIL'" --bundle bundle.json
 
-        uiao cql query "SHOW EVIDENCE FOR CONTROL 'AC-2'" --bundle bundle.json --format json
+        uiao cql query "SHOW EVIDENCE FOR CONTROL 'KSI-IA-02'" --bundle bundle.json --format json
 
         uiao cql query "SHOW DRIFT WHERE drift_class = 'DRIFT-SEMANTIC'" --bundle bundle.json
 

@@ -1,0 +1,101 @@
+---
+title: GSA Login.gov Federated Citizen-Identity Service — Adapter Technical Specification
+doc-type: ats
+adapter-id: login-gov-federation-service
+adapter-class: modernization
+mission-class: integration
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/modernization-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# GSA Login.gov Federated Citizen-Identity Service — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Login.gov Federation Service Adapter is the **federally-operated citizen-IdP integration edge** of the UIAO substrate. As a modernization-class integration adapter, it manages Login.gov-side application registration (change-making) and consumes the SAML 2.0 / OIDC assertions Login.gov issues to citizen-facing federal portals — turning IAL-2 / AAL-2 / FAL-2 federated identity into canonical claims that the substrate's evidence and access-decision consumers can read.
+
+Login.gov (GSA Technology Transformation Services) is the federally-operated IdP for citizen-facing federal portals. It is the public-sector counterpart of the commercial [`id-me-federation-service`](../id-me-federation-service/id-me-federation-service.html) adapter; agencies often deploy both so users can choose their preferred identity provider.
+
+Three primary functions:
+
+1. **Partner Dashboard application registration.** Provisions and updates Login.gov-side application registrations for consuming agency systems — the public-key trust anchor, the redirect URIs, the requested assertion attributes, and the IAL / AAL level the application requires.
+2. **Assertion consumption.** Validates incoming SAML 2.0 assertions and OIDC tokens against the Login.gov trust anchor declared in ADR-051, normalizing the asserted attributes into canonical claim shape.
+3. **Disclosure-audit emission.** Every assertion consumption emits a disclosure-audit record citing the Login.gov assertion id, the consuming agency, and the entitlement under which the disclosure was authorized.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
+
+## Scope
+
+Target surfaces / subsystems: `app-registration`, `saml-assertion-issuance`, `oidc-issuance`, `ial-2-proofing`, `aal-2-authentication`
+
+**Reads:** Login.gov Partner Dashboard API for application registration state, plus the live SAML 2.0 assertion / OIDC token stream issued to the consuming application. Trust anchor per ADR-051.
+
+**Emits:** `logingov-app-registration-manifest.json` (per-application registration state and change history), `logingov-disclosure-audit.json` (one record per assertion consumed, with assertion id, IAL / AAL level, consuming agency, entitlement reference), plus `EvidenceObject` records that feed the IA-2 / IA-8 / AU-2 control evidence stream.
+
+**Does NOT:** issue assertions (only Login.gov does that), modify Login.gov-side identity proofing (IAL-2 is GSA-operated), access citizen PII outside the explicitly asserted attributes, or store assertion bearer tokens beyond the documented validation window.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-2(1)`, `IA-2(2)`, `IA-4`, `IA-8`, `AU-2`, `AU-12`, `SC-8`, `SC-13`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Primary | Federated authentication via Login.gov is the canonical IAL-2 / AAL-2 path for citizen-facing federal portals. |
+| **IA-2(1)** MFA — Privileged Accounts | Supporting | AAL-2 enforcement delivered by Login.gov upstream; the adapter records that the level was achieved per assertion. |
+| **IA-2(2)** MFA — Non-Privileged Accounts | Primary | AAL-2 for non-privileged citizen access at the federation boundary. |
+| **IA-4** Identifier Management | Primary | Login.gov UUID is the stable subject identifier asserted across consuming applications. |
+| **IA-8** Identification and Authentication (Non-Organizational Users) | Primary | Login.gov is purpose-built for non-organizational (citizen) authentication at federal portals. |
+| **AU-2** Event Logging | Primary | Every assertion-consumption event is logged with the canonical disclosure-audit envelope. |
+| **AU-12** Audit Record Generation | Supporting | Disclosure-audit records carry the canonical provenance envelope per ADR-006. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | All assertion exchange is TLS-protected per the federation trust anchor. |
+| **SC-13** Cryptographic Protection | Supporting | Assertion signature validation uses the published GSA Login.gov signing keys. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Login.gov (GSA Technology Transformation Services) is the federally-operated FAL-2 / IAL-2 / AAL-2 IdP for citizen-facing federal portals. Issues SAML 2.0 assertions (per ADR-051 trust-anchor type) and OIDC tokens. Adapter operates against the Login.gov Partner Dashboard for application registration and consumes assertions at runtime. Activation requires a per-adapter ADR modeled on ADR-035.
+
+Pairs with [`id-me-federation-service`](../id-me-federation-service/id-me-federation-service.html) as the commercial-IdP sibling. Pairs with [`piv-usaccess`](../piv-usaccess/piv-usaccess.html) for federal-personnel authentication (PIV at IAL-3 / AAL-3); Login.gov is the citizen-facing IAL-2 / AAL-2 surface.
+
+ZTMM pillar: identity.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+- ADR-051 — SAML federation trust anchor
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

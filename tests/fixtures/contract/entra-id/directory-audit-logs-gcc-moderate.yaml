@@ -1,0 +1,145 @@
+# Tier-2 contract fixture: entra-id directory audit-log retrieval in GCC-Moderate.
+#
+# Codifies the canonical Microsoft Graph response shape for GET
+# /auditLogs/directoryAudits. NIST control mapping:
+# AU-2 (Audit Events), AU-3 (Audit Record Content), AU-12 (Audit Generation).
+#
+# Audit logs are the substrate's primary evidence stream for AC-2 / IA-2 /
+# IA-5 control satisfaction. The fixture below shows three canonical event
+# types: a user-creation, a CA-policy-modification (highest-criticality), and
+# a privileged role assignment. Adapter MUST handle the polymorphic
+# targetResources array and the polymorphic initiatedBy structure, both of
+# which vary by event type.
+
+adapter: "entra-id"
+operation: "list_directory_audit_logs"
+cloud_variant:
+  - gcc-moderate
+  # GCC-Moderate uses graph.microsoft.com (same host as commercial) for the
+  # auditLogs endpoint. GCC-High/DoD route via graph.microsoft.us /
+  # dod-graph.microsoft.us — those are out of UIAO scope per ADR-028.
+  # NOTE: directoryAudits has a 30-day retention floor in Entra ID P1 and a
+  # 90-day floor in Entra ID P2. Adapters MUST NOT assume retention beyond 30
+  # days for the GCC-Moderate baseline tier.
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/auditLogs/directoryAudits?$top=50&$orderby=activityDateTime%20desc"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#auditLogs/directoryAudits"
+    "@odata.nextLink": "https://graph.microsoft.com/v1.0/auditLogs/directoryAudits?$top=50&$orderby=activityDateTime%20desc&$skiptoken=<SKIPTOKEN>"
+    value:
+      - id: "<AUDIT_ID_01>"
+          # User-creation event
+        category: "UserManagement"
+        correlationId: "<CORRELATION_ID_01>"
+        result: "success"
+        resultReason: ""
+        activityDisplayName: "Add user"
+        activityDateTime: "2026-05-03T14:22:18Z"
+        loggedByService: "Core Directory"
+        operationType: "Add"
+        initiatedBy:
+          user:
+            id: "<OBJECT_ID_ADMIN_01>"
+            displayName: "Admin Operator"
+            userPrincipalName: "admin1@example.com"
+            ipAddress: "192.0.2.10"
+        targetResources:
+          - id: "<OBJECT_ID_NEW_USER>"
+            displayName: "New User"
+            type: "User"
+            userPrincipalName: "newuser@example.com"
+            modifiedProperties:
+              - displayName: "AccountEnabled"
+                oldValue: ""
+                newValue: "[true]"
+              - displayName: "UserPrincipalName"
+                oldValue: ""
+                newValue: "[\"newuser@example.com\"]"
+        additionalDetails: []
+      - id: "<AUDIT_ID_02>"
+          # CA policy modification — HIGHEST-CRITICALITY event class
+        category: "Policy"
+        correlationId: "<CORRELATION_ID_02>"
+        result: "success"
+        resultReason: ""
+        activityDisplayName: "Update conditional access policy"
+        activityDateTime: "2026-05-03T13:55:42Z"
+        loggedByService: "Conditional Access"
+        operationType: "Update"
+        initiatedBy:
+          user:
+            id: "<OBJECT_ID_ADMIN_02>"
+            displayName: "Privileged Admin"
+            userPrincipalName: "privadmin@example.com"
+            ipAddress: "192.0.2.11"
+        targetResources:
+          - id: "<POLICY_ID_01>"
+            displayName: "Require MFA for all admins"
+            type: "Policy"
+            modifiedProperties:
+              - displayName: "State"
+                oldValue: "\"enabled\""
+                newValue: "\"disabled\""
+        additionalDetails: []
+      - id: "<AUDIT_ID_03>"
+          # Privileged role assignment — application-initiated
+        category: "RoleManagement"
+        correlationId: "<CORRELATION_ID_03>"
+        result: "success"
+        resultReason: ""
+        activityDisplayName: "Add member to role"
+        activityDateTime: "2026-05-03T13:10:07Z"
+        loggedByService: "Core Directory"
+        operationType: "Assign"
+        initiatedBy:
+          app:
+            appId: "<APP_ID_01>"
+            displayName: "Privileged Identity Management"
+            servicePrincipalId: "<SP_ID_01>"
+        targetResources:
+          - id: "<OBJECT_ID_USER_07>"
+            displayName: "User Seven"
+            type: "User"
+            userPrincipalName: "user7@example.com"
+          - id: "62e90394-69f5-4237-9190-012177145e10"
+            displayName: "Global Administrator"
+            type: "Role"
+        additionalDetails:
+          - key: "AssignmentType"
+            value: "Eligible"
+          - key: "ExpirationDate"
+            value: "2026-05-04T13:10:07Z"
+
+expected_behavior:
+  - "Adapter MUST emit one canonical audit-event claim per element in response.body.value (3 in this fixture)."
+  - "Adapter MUST handle BOTH initiatedBy.user AND initiatedBy.app shapes — they are mutually exclusive but both valid."
+  - "Adapter MUST treat result='failure' as a SECURITY-RELEVANT event (especially for category in {UserManagement, Policy, RoleManagement}) and emit a CapabilityIncident claim."
+  - "Adapter MUST extract modifiedProperties for every Update event and surface them as structured before/after pairs — AU-3 requires the WHAT-CHANGED, not just the fact-of-change."
+  - "Adapter MUST NOT assume retention beyond 30 days at the GCC-Moderate baseline — emits CapabilityDegraded if a query reaches the retention floor before exhausting pages."
+  - "Adapter MUST emit DRIFT-AUTHZ (UIAO_110) when a CA policy state transition (enabled ↔ disabled) is observed in the audit stream."
+  - "Adapter MUST follow @odata.nextLink to exhaust the page set unless an explicit $top clamp is set by the operator (defensive against million-event tenants)."
+  - "Adapter MUST preserve correlationId verbatim in every emitted claim — it is the cross-event join key and CANNOT be re-minted."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/directoryaudit-list?view=graph-rest-1.0&tabs=http"
+    quote: "Get the list of audit logs generated by Microsoft Entra ID. … Microsoft Entra ID retains audit logs for 30 days for the free tier and 30 days for Microsoft Entra ID P1 and Microsoft Entra ID P2."
+    accessed: "2026-05-03"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/resources/directoryaudit?view=graph-rest-1.0"
+    quote: "Represents the directory audit items and its collection. Directory audits include audit logs of all the operations such as creating users, deleting users, etc."
+    accessed: "2026-05-03"
+  captured_by: "Schema-derived from Microsoft Learn; events are exemplars, not from any tenant."
+  sanitization: "Bearer token redacted. All object/correlation/audit GUIDs replaced with <*_ID_NN> placeholders. UPNs replaced with user<N>@example.com / admin<N>@example.com per contract README §sanitization rules. IP addresses use RFC 5737 documentation range (192.0.2.0/24). The Global Administrator role GUID (62e90394-69f5-4237-9190-012177145e10) is a well-known public Microsoft value and intentionally not redacted — it is the SAME identifier in every tenant."

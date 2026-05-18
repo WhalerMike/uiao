@@ -14,11 +14,14 @@ related_adrs:
   - ADR-037
   - ADR-038
 canon_refs:
-  - MOD_A_OrgPath_Codebook
-  - MOD_B_Dynamic_Group_Library
-  - MOD_C_Attribute_Mapping_Table
-  - MOD_N_Execution_Substrate_Integration_Layer
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_152_Dynamic_Group_Library
+  - UIAO_153_Attribute_Mapping_Table
+  - UIAO_164_Execution_Substrate_Integration_Layer
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-039-policy-targeting.html
 ---
 
 # ADR-039: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport
@@ -31,9 +34,9 @@ Accepted
 
 Phases 2–4 delivered the OrgTree governance surface:
 
-* **Phase 2** — OrgTree-* dynamic groups (MOD_B)
-* **Phase 3** — Restricted Management AUs + scoped roles (MOD_D)
-* **Phase 4** — device-plane OrgPath on Entra devices + Arc machines (MOD_C)
+* **Phase 2** — OrgTree-* dynamic groups (UIAO_152)
+* **Phase 3** — Restricted Management AUs + scoped roles (UIAO_154)
+* **Phase 4** — device-plane OrgPath on Entra devices + Arc machines (UIAO_153)
 
 That surface is inert until policy consumers point at it. The session
 notes that kicked off this work cite the gap directly:
@@ -80,11 +83,11 @@ Three gaps before this ADR:
 3. Provide a loader at
    `src/uiao/modernization/orgtree/policy_targets.py` that additionally
    enforces **cross-canon integrity**:
-   - every Intune ``target_group`` must resolve to a live MOD_B dynamic
+   - every Intune ``target_group`` must resolve to a live UIAO_152 dynamic
      group (ADR-036) — a policy that targets a non-existent group is
      caught at PR CI, not at apply time;
    - every Arc ``orgpath_selector.prefix`` must be either the root
-     ``ORG`` or an active code in the MOD_A codebook — no Arc
+     ``ORG`` or an active code in the UIAO_151 codebook — no Arc
      assignment may scope to a deprecated or absent OrgPath;
    - ``(profile_ref, target_group, intent)`` tuples are unique;
      ``assignment_name`` values are unique.
@@ -120,17 +123,17 @@ Three gaps before this ADR:
 **Positive**
 
 - Policy targeting becomes a governed, PR-reviewable canon file. A
-  change to who-gets-which-policy flows through the normal MOD_V
+  change to who-gets-which-policy flows through the normal UIAO_172
   contributor workflow, not an admin clicking in a portal.
 - Cross-canon integrity surfaces breakages early. Removing a dynamic
-  group from MOD_B breaks the loader for any policy-target canon that
+  group from UIAO_152 breaks the loader for any policy-target canon that
   still references it; CI catches the broken reference before any
   tenant sees a bad plan.
 - Phantom-policy drift becomes first-class. An OrgTree-named Intune
   assignment or Azure Policy assignment that isn't in canon is an
   unambiguous governance finding — the adapter won't delete it, but
   it also won't pretend everything is fine.
-- Unblocks Phase 6 (drift engine / MOD_M). The drift engine now has a
+- Unblocks Phase 6 (drift engine / UIAO_163). The drift engine now has a
   fourth plane (policy-consumer) to diff.
 
 **Negative / deferred**

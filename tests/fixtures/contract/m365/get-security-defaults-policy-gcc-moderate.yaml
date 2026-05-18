@@ -1,0 +1,56 @@
+# Tier-2 contract fixture: m365 security-defaults policy enumeration in
+# GCC-Moderate.
+#
+# Codifies the Microsoft Graph response shape for
+# GET /policies/identitySecurityDefaultsEnforcementPolicy. This single endpoint
+# answers a SCuBA-baseline question (MS.AAD.1.1) about whether security
+# defaults are enabled, which is mutually exclusive with conditional access
+# in the same tenant. The adapter must distinguish "enabled" from "disabled
+# because conditional access is in use" — both are valid postures.
+#
+# NIST control mapping: AC-2 (Account Management), IA-2 (Identification &
+# Authentication). SCuBA mapping: MS.AAD.1.1.
+
+adapter: "m365"
+operation: "get_security_defaults_policy"
+cloud_variant:
+  - gcc-moderate
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/policies/identitySecurityDefaultsEnforcementPolicy"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#policies/identitySecurityDefaultsEnforcementPolicy/$entity"
+    id: "00000000-0000-0000-0000-000000000005"
+    displayName: "Security Defaults"
+    description: "Security defaults is a set of basic identity security mechanisms recommended by Microsoft."
+    isEnabled: false
+
+expected_behavior:
+  - "Adapter MUST emit a SecurityDefaultsPolicy claim with isEnabled mapped to a canonical security_defaults_enabled boolean."
+  - "When isEnabled=false, adapter MUST NOT assume tenant is unprotected — conditional-access enforcement is the documented alternative path. Cross-check operation: list_conditional_access_policies."
+  - "When isEnabled=true AND list_conditional_access_policies returns >0 policies, adapter MUST emit DRIFT-AUTHZ — Microsoft documents these as mutually exclusive."
+  - "Adapter MUST NOT cache this response longer than 24 hours; tenant administrators can flip security defaults via the portal at any time and the substrate's freshness window is per-claim, not per-collection."
+  - "SCuBA MS.AAD.1.1 evaluator consumes this claim PLUS list_conditional_access_policies output; neither alone is sufficient evidence."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/identitysecuritydefaultsenforcementpolicy-get?view=graph-rest-1.0&tabs=http"
+    quote: "Retrieve the properties of a securityDefaults policy object."
+    accessed: "2026-05-10"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults"
+    quote: "Security defaults can't be enabled at the same time as Conditional Access policies. If you enable Conditional Access policies, you'll need to disable security defaults."
+    accessed: "2026-05-10"
+  captured_by: "Schema-derived from Microsoft Learn; no live tenant captured. UIAO_131 §3.2 tier-2 authoring."
+  sanitization: "Bearer token redacted (was never captured live). Object id is a documented Microsoft well-known GUID for the security-defaults policy and is not sensitive."

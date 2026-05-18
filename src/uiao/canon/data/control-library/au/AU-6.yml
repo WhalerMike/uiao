@@ -1,22 +1,124 @@
-control-id: AU-6
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-6
+# Title      : Audit Record Review, Analysis, and Reporting
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AU-6
 title: Audit Record Review, Analysis, and Reporting
+family: Audit and Accountability
 status: implemented
-implemented-by:
-  - microsoft-sentinel
-narrative: |
-  {{ organization.name }} reviews and analyzes audit records on an ongoing basis.
 
-  **Automated Analysis**
-  Microsoft Sentinel analytics rules continuously scan logs for indicators of compromise, anomalous behavior, and compliance violations.
+implemented_by:
+    - microsoft-sentinel
+    - microsoft-defender-xdr
+    - servicenow-security-incident-response
+    - azure-monitor-workbooks
+    - microsoft-power-automate
 
-  **Reporting and Escalation**
-  High-priority findings are escalated via automated playbooks. Weekly summary reports are generated for the ISSO and security team.
-parameters:
-  review-frequency: "Weekly"
-  alert-severity-threshold: "Medium and High"
 evidence:
-  - type: configuration
-    ref: AU-6-evidence
+    - sentinel-analytics-rule-inventory
+    - sentinel-incident-export
+    - servicenow-sir-ticket-export
+    - defender-xdr-investigation-records
+    - au6-weekly-review-attestation-records
+
+parameters:
+    - id: PARAM-AU-006-001
+      description: >-
+          Frequency at which audit records are reviewed for
+          indicators of compromise, policy violations, and
+          anomalous activity.
+      value: "Continuous automated review via Microsoft Sentinel analytics rules and Defender XDR correlation; analyst-driven review every 4 hours during business hours; daily summary review by the SOC lead; weekly review attestation by the ISSO"
+    - id: PARAM-AU-006-002
+      description: >-
+          Severity threshold above which incidents are escalated
+          to the on-call security responder within minutes of
+          detection.
+      value: "Sentinel severity High and Critical; Defender XDR incidents with severity High; any detection involving a Tier 0 account, break-glass account, or privileged-role activation outside the change-window; any DLP event involving CUI, PII, or FTI sensitivity labels"
+    - id: PARAM-AU-006-003
+      description: >-
+          Reporting cadence and recipient list for audit-record
+          review outcomes.
+      value: "Daily SOC summary to security-operations distribution; weekly review attestation to ISSO; monthly review report to the Authorizing Official as part of FedRAMP ConMon; quarterly review report to the Access Control Working Group and the Governance, Risk, and Compliance Steering Committee"
+
+narrative: |
+  **Continuous Automated Review**
+  Microsoft Sentinel runs a curated analytics-rule pack against
+  every event type captured under **AU-2** (Event Logging),
+  evaluating each event against detection logic tuned to the UIAO
+  threat model. Rules cover identity-plane patterns (impossible-
+  travel, password-spray, post-MFA token theft, privileged-role
+  abuse), resource-plane patterns (anomalous RBAC assignment,
+  unauthorized key-vault access, cross-tenant data movement),
+  endpoint-plane patterns (EDR detections, ASR rule hits, lateral
+  movement), and data-plane patterns (DLP egress, sensitive-label
+  policy violations). Detection latency is measured continuously
+  and reported as part of the SOC performance dashboard.
+
+  **Analyst-Driven Review**
+  Sentinel-generated incidents route to ServiceNow Security
+  Incident Response, where analysts triage at the cadence defined
+  in PARAM AU-006-001. Defender XDR's unified incident view
+  complements Sentinel for endpoint- and email-originated
+  incidents, providing the cross-product correlation surface that
+  reduces analyst dwell time. Analyst review outcomes (confirmed
+  incident, false positive, benign-positive) feed back into the
+  Sentinel analytics-rule tuning process, supporting **IR-5**
+  (Incident Monitoring) and **CA-7** (Continuous Monitoring).
+
+  **Severity-Based Escalation**
+  Incidents at the severity threshold defined in PARAM AU-006-002
+  are escalated immediately via Microsoft Power Automate flows
+  that page the on-call security responder via the agency
+  notification channel. Escalation timelines, acknowledgement
+  receipts, and response actions are recorded against the
+  ServiceNow incident record, providing the auditable response
+  chain consistent with **IR-4** (Incident Handling). Escalations
+  that breach the documented response-time SLA generate a
+  governance ticket reviewed in the next Access Control Working
+  Group meeting.
+
+  **Cross-Source Correlation**
+  Sentinel's correlation engine merges identity, endpoint,
+  resource, and data-plane events into unified incidents that
+  represent the kill-chain progression of a single threat. A
+  password-spray attempt followed by a successful MFA fatigue and
+  subsequent privileged-role activation appears as one correlated
+  incident rather than three disconnected alerts. This correlation
+  is the central value of the centralized log substrate and is the
+  primary justification for the AU-2 / AU-6 architecture.
+
+  **Reporting Cadence**
+  Review outcomes are reported at the cadence defined in PARAM
+  AU-006-003. The daily SOC summary captures incident counts by
+  severity, mean-time-to-detect, mean-time-to-respond, and notable
+  detection patterns. The weekly review attestation by the ISSO
+  is recorded as a signed governance artifact in the UIAO evidence
+  ledger. The monthly review report contributes to the FedRAMP
+  ConMon submission and is reviewed by the Authorizing Official.
+  Quarterly governance reporting integrates AU-6 outcomes into
+  the broader access-review and risk-assessment cycles.
+
+  **Trend Analysis and Rule Tuning**
+  Azure Monitor Workbooks render the SOC's analytics-rule
+  performance dashboard, tracking rule precision (true-positive
+  rate), recall (detection coverage), and dwell time. Rules with
+  precision below the tuning threshold are reviewed and either
+  retuned, deprecated, or supplemented with additional context.
+  Detection-coverage gaps surfaced by the trend analysis feed
+  back into **AU-2** coverage-matrix maintenance, closing the
+  observe-analyze-improve loop.
+
 related_controls:
-  - AU-2
-  - SI-4
+    - AC-2   # Account Management
+    - AC-6   # Least Privilege
+    - AU-2   # Event Logging
+    - AU-3   # Content of Audit Records
+    - AU-9   # Protection of Audit Information
+    - AU-11  # Audit Record Retention
+    - AU-12  # Audit Record Generation
+    - CA-7   # Continuous Monitoring
+    - IR-4   # Incident Handling
+    - IR-5   # Incident Monitoring
+    - PM-14  # Testing, Training, and Monitoring
+    - SI-4   # System Monitoring

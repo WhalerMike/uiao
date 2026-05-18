@@ -1,22 +1,133 @@
-control-id: SI-2
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SI-2
+# Title      : Flaw Remediation
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: SI-2
 title: Flaw Remediation
-narrative: |
-  {{ organization.name }} identifies, reports, and corrects information system flaws in a timely manner.
-
-  **Vulnerability Management**
-  Automated vulnerability scanning is performed weekly on all systems, with critical findings remediated within {{ parameters.critical-remediation-window }}.
-
-  **Patch Management**
-  Security patches are applied through automated processes with testing in a non-production environment prior to deployment.
-implemented-by:
-  - MicrosoftDefenderForCloud
-  - AzureUpdateManagement
+family: System and Information Integrity
 status: implemented
-parameters:
-  critical-remediation-window: "48 hours"
+
+implemented_by:
+    - microsoft-defender-for-cloud
+    - microsoft-defender-vulnerability-management
+    - azure-update-manager
+    - microsoft-intune
+    - servicenow-vulnerability-response
+    - microsoft-sentinel
+
 evidence:
-  - type: audit-log
-    ref: SI-2-logs
+    - defender-vulnerability-management-export
+    - azure-update-manager-deployment-history
+    - intune-update-ring-compliance-report
+    - servicenow-vulnerability-response-records
+    - defender-for-cloud-recommendations-export
+
+parameters:
+    - id: PARAM-SI-002-001
+      description: >-
+          Severity-based remediation Service Level Objective for
+          identified flaws.
+      value: "Critical (CVSS 9.0-10.0 / actively exploited / KEV catalog): 48 hours from disclosure. High (CVSS 7.0-8.9): 7 calendar days. Medium (CVSS 4.0-6.9): 30 calendar days. Low (CVSS 0.1-3.9): 90 calendar days. Authoritative source for severity: Microsoft Defender Vulnerability Management with CISA KEV overlay."
+    - id: PARAM-SI-002-002
+      description: >-
+          Authorized vulnerability-information sources monitored
+          for flaw disclosures.
+      value: "Microsoft Security Response Center advisories; CISA KEV catalog and CISA advisories; NVD CVE feed; vendor security advisories for every adapter in the canon adapter-registry; Microsoft Defender Threat Intelligence; GitHub Dependabot advisories for the configuration-as-code repositories"
+    - id: PARAM-SI-002-003
+      description: >-
+          Frequency of vulnerability scanning across the
+          authorization boundary.
+      value: "Continuous agent-based scanning via Microsoft Defender Vulnerability Management on every endpoint and Defender for Cloud on every Azure resource; weekly authenticated scan via the agency-approved external scanner; per-deployment scan via Trivy / Snyk for container images at the configuration-as-code pre-merge gate"
+    - id: PARAM-SI-002-004
+      description: >-
+          Approved exception process for documented inability to
+          remediate a flaw within the SLO.
+      value: "Exception requests are routed through the Vulnerability Review Board with documented business justification, security-impact analysis, compensating controls, and an expiration date; approved exceptions require Authorizing Official signature for Critical / High; exception inventory is reviewed weekly"
+
+narrative: |
+  **Vulnerability-Identification Coverage**
+  The substrate maintains continuous vulnerability-identification
+  coverage across every component class via Microsoft Defender
+  Vulnerability Management (endpoints, identities, OS-level
+  packages), Microsoft Defender for Cloud (Azure resources,
+  container images, Kubernetes workloads, App Service code),
+  GitHub Dependabot (source-code dependencies), Trivy and Snyk
+  scans at the configuration-as-code pre-merge gate (container
+  images, infrastructure-as-code modules), and the agency-approved
+  authenticated external scanner. This multi-source coverage
+  prevents the single-tool blind-spot pattern that historically
+  produced silent flaw accumulation.
+
+  **Severity Assignment and Prioritization**
+  Identified flaws are scored against PARAM SI-002-001. Severity
+  reflects CVSS base score combined with the CISA Known Exploited
+  Vulnerabilities catalog overlay, Microsoft Defender threat-
+  intelligence indicators of active exploitation, and the asset's
+  exposure profile (internet-facing vs. internal, Tier 0 vs. Tier
+  2, presence of compensating controls). Tier 0 assets carry a
+  severity uplift such that a Medium-rated flaw on a domain
+  controller, key vault, or identity broker is treated as High.
+
+  **Remediation Pathways**
+  Remediation flows through three pathways depending on the flaw
+  class. For OS and platform updates, Azure Update Manager schedules
+  deployment via update rings (canary → pilot → broad) with
+  pre-deployment compatibility validation. For endpoint patches,
+  Microsoft Intune Windows Update for Business policies enforce
+  the same ring structure with automated rollback on health
+  signals. For application and code-level flaws, ServiceNow
+  Vulnerability Response tickets route to the application owner
+  via the CMDB-CI ownership chain with the SLO deadline
+  enforceable as a governance gate.
+
+  **Service-Level Enforcement**
+  Remediation status is computed continuously and reported against
+  the SLO defined in PARAM SI-002-001. Defender for Cloud's
+  recommendation surface aggregates the SLO posture across the
+  Azure estate and contributes to the secure-score metric reviewed
+  by the Authorizing Official. Flaws approaching or breaching SLO
+  generate Microsoft Sentinel alerts and a ServiceNow escalation
+  ticket; persistent breach triggers governance review consistent
+  with **CA-7** (Continuous Monitoring).
+
+  **Vulnerability-Information Surveillance**
+  The substrate monitors the sources defined in PARAM SI-002-002
+  for new flaw disclosures. New disclosures relevant to substrate
+  components are evaluated within 24 hours of publication and, if
+  applicable, opened as Vulnerability Response tickets with the
+  initial severity assignment, the affected asset inventory, and
+  the SLO deadline. The 24-hour evaluation window prevents the
+  "we didn't know" failure mode for publicly-disclosed CVEs.
+
+  **Pre-Deployment Flaw Prevention**
+  The configuration-as-code pre-merge gate scans every container
+  image, every infrastructure-as-code module, and every code-level
+  dependency against the vulnerability database before allowing
+  merge. Builds that introduce a known-vulnerable component fail
+  the gate; this build-time enforcement is the substrate's primary
+  defense against introducing new flaws into the running estate.
+  This complements **CM-3** (Configuration Change Control) and
+  **CM-6** (Configuration Settings).
+
+  **Exception Process**
+  Documented inability to remediate within the SLO follows the
+  exception process defined in PARAM SI-002-004. Exceptions are
+  reviewed weekly with the explicit objective of elimination;
+  Critical and High exceptions require Authorizing Official
+  signature and a compensating-control attestation. The exception
+  inventory is exported to the FedRAMP ConMon submission and is
+  reviewable by the Authorizing Official on the monthly cadence.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - CA-7   # Continuous Monitoring
+    - CM-2   # Baseline Configuration
+    - CM-3   # Configuration Change Control
+    - CM-6   # Configuration Settings
+    - CM-8   # System Component Inventory
+    - IR-4   # Incident Handling
+    - RA-5   # Vulnerability Monitoring and Scanning
+    - SA-11  # Developer Testing and Evaluation
+    - SI-3   # Malicious Code Protection
+    - SI-4   # System Monitoring
+    - SI-5   # Security Alerts, Advisories, and Directives

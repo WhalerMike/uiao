@@ -42,9 +42,12 @@ def adapter() -> EntraPolicyTargetingAdapter:
 class TestCanonIntegrity:
     def test_default_canon_loads(self) -> None:
         c = default_policy_targeting_canon()
-        assert c.document_id == "MOD_N"
+        assert c.document_id == "UIAO_164"
         assert len(c.intune_assignments) == 5
         assert len(c.arc_policy_assignments) == 4
+        # ADR-073 Phase B baseline: 5 NAC entries (FIN, IT, OPS, EXEC, SOC).
+        # Quarantine entry deferred pending UIAO_151 sentinel design.
+        assert len(c.nac_assignments) == 5
 
     def test_every_intune_target_group_resolves_to_mod_b(self) -> None:
         from uiao.modernization.orgtree.dynamic_groups import (
@@ -65,12 +68,38 @@ class TestCanonIntegrity:
             prefix = a.orgpath_selector.prefix
             assert prefix == "ORG" or codebook.is_active(prefix), f"{name} prefix {prefix} not in codebook"
 
+    def test_every_nac_target_group_resolves_to_mod_b(self) -> None:
+        """ADR-073 §D6 Phase B: NAC target_group must resolve to UIAO_152."""
+        from uiao.modernization.orgtree.dynamic_groups import (
+            default_dynamic_group_library,
+        )
+
+        canon = default_policy_targeting_canon()
+        groups = default_dynamic_group_library()
+        for name, a in canon.nac_assignments.items():
+            assert a.target_group in groups.names, f"{name} target {a.target_group} not in UIAO_152"
+
+    def test_every_nac_target_group_ends_in_devices_suffix(self) -> None:
+        """ADR-073 §D1: NAC targets device-plane groups, not user-plane groups."""
+        canon = default_policy_targeting_canon()
+        for name, a in canon.nac_assignments.items():
+            assert a.target_group.endswith("-Devices") or a.target_group.endswith("-UNPOSITIONED"), (
+                f"{name} target {a.target_group} is not a device-targeting group"
+            )
+
+    def test_assignment_name_namespace_is_shared_across_arc_and_nac(self) -> None:
+        """ADR-073 §D1: assignment_name is unique across arc + nac entries."""
+        canon = default_policy_targeting_canon()
+        arc_names = set(canon.arc_policy_assignments.keys())
+        nac_names = set(canon.nac_assignments.keys())
+        assert not (arc_names & nac_names), f"name collision across arc + nac: {arc_names & nac_names}"
+
 
 class TestCanonValidation:
     def _good_yaml(self) -> str:
         return textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_N
+            document_id: UIAO_164
             parent_canon: UIAO_007
             intune_assignments:
               - profile_ref:
@@ -103,7 +132,7 @@ class TestCanonValidation:
         )
         p = tmp_path / "bad.yaml"
         p.write_text(bad)
-        with pytest.raises(PolicyTargetingValidationError, match="MOD_B"):
+        with pytest.raises(PolicyTargetingValidationError, match="UIAO_152"):
             load_policy_targeting_canon(p)
 
     def test_rejects_arc_prefix_not_in_codebook(self, tmp_path: Path) -> None:
@@ -120,7 +149,7 @@ class TestCanonValidation:
         # Build a file with two arc entries sharing the same assignment_name.
         bad = textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_N
+            document_id: UIAO_164
             parent_canon: UIAO_007
             intune_assignments: []
             arc_policy_assignments:
@@ -144,6 +173,125 @@ class TestCanonValidation:
         p = tmp_path / "bad.yaml"
         p.write_text(bad)
         with pytest.raises(PolicyTargetingValidationError, match="Duplicate"):
+            load_policy_targeting_canon(p)
+
+    def _good_nac_yaml(self) -> str:
+        """Baseline with one NAC entry pointing at a real UIAO_152 device group."""
+        return textwrap.dedent("""\
+            schema_version: "1.1.0"
+            document_id: UIAO_164
+            parent_canon: UIAO_007
+            intune_assignments: []
+            arc_policy_assignments: []
+            nac_assignments:
+              - assignment_name: OrgTree-NAC-IT-CorpEndpoint
+                aaa_server: cisco-ise
+                policy_ref:
+                  policy_kind: policy-set
+                  match_by: name
+                  value: NAC-IT-CORPENDPOINT
+                target_group: OrgTree-IT-Devices
+                enforcement:
+                  vlan_id: 152
+                  dacl_name: dACL-IT-Standard
+                  change_of_authorization: true
+                intent: permit
+                purpose: baseline
+        """)
+
+    def test_nac_baseline_valid(self, tmp_path: Path) -> None:
+        """ADR-073 §D6 Phase B: a well-formed NAC entry passes the loader."""
+        p = tmp_path / "ok.yaml"
+        p.write_text(self._good_nac_yaml())
+        canon = load_policy_targeting_canon(p)
+        assert len(canon.nac_assignments) == 1
+
+    def test_rejects_nac_target_group_not_in_mod_b(self, tmp_path: Path) -> None:
+        """ADR-073 §D6 Phase B: NAC target_group must resolve to UIAO_152."""
+        bad = self._good_nac_yaml().replace(
+            "target_group: OrgTree-IT-Devices",
+            "target_group: OrgTree-Ghost-Devices",
+        )
+        p = tmp_path / "bad.yaml"
+        p.write_text(bad)
+        with pytest.raises(PolicyTargetingValidationError, match="UIAO_152"):
+            load_policy_targeting_canon(p)
+
+    def test_rejects_duplicate_nac_triple(self, tmp_path: Path) -> None:
+        """ADR-073 §D1: (policy_ref, target_group, enforcement) is unique."""
+        bad = textwrap.dedent("""\
+            schema_version: "1.1.0"
+            document_id: UIAO_164
+            parent_canon: UIAO_007
+            intune_assignments: []
+            arc_policy_assignments: []
+            nac_assignments:
+              - assignment_name: OrgTree-NAC-IT-CorpEndpoint-A
+                aaa_server: cisco-ise
+                policy_ref:
+                  policy_kind: policy-set
+                  match_by: name
+                  value: NAC-IT-CORPENDPOINT
+                target_group: OrgTree-IT-Devices
+                enforcement:
+                  vlan_id: 152
+                  dacl_name: dACL-IT-Standard
+                  change_of_authorization: true
+                intent: permit
+                purpose: first
+              - assignment_name: OrgTree-NAC-IT-CorpEndpoint-B
+                aaa_server: cisco-ise
+                policy_ref:
+                  policy_kind: policy-set
+                  match_by: name
+                  value: NAC-IT-CORPENDPOINT
+                target_group: OrgTree-IT-Devices
+                enforcement:
+                  vlan_id: 152
+                  dacl_name: dACL-IT-Standard
+                  change_of_authorization: true
+                intent: permit
+                purpose: duplicate triple
+        """)
+        p = tmp_path / "bad.yaml"
+        p.write_text(bad)
+        with pytest.raises(PolicyTargetingValidationError, match="Duplicate nac_assignment"):
+            load_policy_targeting_canon(p)
+
+    def test_rejects_assignment_name_collision_between_arc_and_nac(self, tmp_path: Path) -> None:
+        """ADR-073 §D1: assignment_name is unique across arc + nac namespace."""
+        bad = textwrap.dedent("""\
+            schema_version: "1.1.0"
+            document_id: UIAO_164
+            parent_canon: UIAO_007
+            intune_assignments: []
+            arc_policy_assignments:
+              - assignment_name: OrgTree-NAC-IT-CorpEndpoint
+                policy_definition:
+                  match_by: displayName
+                  value: Azure-Arc-Baseline
+                orgpath_selector:
+                  prefix: ORG-IT
+                  match_mode: startsWith
+                purpose: arc-side
+            nac_assignments:
+              - assignment_name: OrgTree-NAC-IT-CorpEndpoint
+                aaa_server: cisco-ise
+                policy_ref:
+                  policy_kind: policy-set
+                  match_by: name
+                  value: NAC-IT-CORPENDPOINT
+                target_group: OrgTree-IT-Devices
+                enforcement:
+                  vlan_id: 152
+                  dacl_name: dACL-IT-Standard
+                  change_of_authorization: true
+                intent: permit
+                purpose: collides with arc name
+        """)
+        p = tmp_path / "bad.yaml"
+        p.write_text(bad)
+        with pytest.raises(PolicyTargetingValidationError, match="across arc \\+ nac"):
             load_policy_targeting_canon(p)
 
 

@@ -3,6 +3,9 @@ active_directory/survey.py
 --------------------------
 UIAO Modernization Adapter: Active Directory Forest Archaeological Survey
 
+lastLogonTimestamp encoding: Windows FILETIME — 100-nanosecond intervals since
+1601-01-01 UTC (MS-ADTS 2.2.18).  See is_stale_account() for the conversion.
+
 Canon reference: Appendix F (Migration Runbook), Phases 1–2.
 Adapter class:   modernization
 Mission class:   identity
@@ -36,12 +39,26 @@ DRIFT-SEMANTIC   : geographic OU path encodes 2003 topology, not org structure
 
 from __future__ import annotations
 
+import datetime
 import json
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+# ------------------------------------------------------------------
+# userAccountControl bit constants (MS-ADTS 2.2.18)
+# ------------------------------------------------------------------
+UAC_ACCOUNTDISABLE: int = 0x0002
+UAC_LOCKOUT: int = 0x0010
+UAC_PASSWD_NOTREQD: int = 0x0020
+UAC_DONT_EXPIRE_PASSWORD: int = 0x10000
+UAC_SMARTCARD_REQUIRED: int = 0x40000
+UAC_PASSWORD_EXPIRED: int = 0x800000
+
+# Default window for stale-account detection (days)
+_DEFAULT_STALE_DAYS: int = 90
 
 
 # ------------------------------------------------------------------
@@ -122,6 +139,10 @@ class ADSurveyReport:
     site_stale: int = 0
     # Findings
     findings: list[DriftFinding] = field(default_factory=list)
+    # Optional SPN inventory artifact (Federal SSOT / Evidence Bundle).
+    # Populated by extract_spn_inventory(); remains None when no SPN inventory
+    # pass has been run for this report.
+    spn_inventory: Optional[SpnInventory] = None
 
     @property
     def ok(self) -> bool:
@@ -132,11 +153,450 @@ class ADSurveyReport:
         return [f for f in self.findings if f.severity == "P1"]
 
     def as_dict(self) -> dict:
-        d = {k: v for k, v in self.__dict__.items() if k != "findings"}
+        d = {k: v for k, v in self.__dict__.items() if k not in ("findings", "spn_inventory")}
         d["findings"] = [f.__dict__ for f in self.findings]
         d["ok"] = self.ok
         d["blocker_count"] = len(self.blockers)
+        d["spn_inventory"] = self.spn_inventory.to_dict() if self.spn_inventory else None
         return d
+
+
+# ------------------------------------------------------------------
+# Enrichment dataclasses (WS-A1 Phase 1)
+# ------------------------------------------------------------------
+
+
+@dataclass
+class AccountFlags:
+    """Decoded userAccountControl flags for a user or service account."""
+
+    disabled: bool
+    locked_out: bool
+    password_not_required: bool
+    password_never_expires: bool
+    smartcard_required: bool
+    password_expired: bool
+    raw_value: int
+
+
+@dataclass
+class UserEnrichment:
+    """Per-user enrichment produced by enrich_user()."""
+
+    distinguished_name: str
+    sam_account_name: str
+    account_flags: AccountFlags
+    is_stale: bool
+    stale_days: int  # days since last logon; -1 = never logged in
+    manager_chain: list[str]  # ordered list of manager DNs (immediate first)
+    manager_chain_cycle: bool  # True if a cycle was detected before reaching root
+    group_memberships: list[str]  # flat list of all group DNs (recursive)
+    group_memberships_cycle: bool  # True if a cycle was detected during group expansion
+    orphaned_sids: list[str]  # SIDs in memberOf that resolve to nothing
+    candidate_orgpath: Optional[str]  # OU-derived suggestion (not authoritative)
+
+
+# ------------------------------------------------------------------
+# Deliverable 2: userAccountControl decoding
+# ------------------------------------------------------------------
+
+
+def decode_account_flags(uac: int) -> AccountFlags:
+    """
+    Decode a raw userAccountControl integer into named flag fields.
+
+    Uses module-level UAC_* constants so callers never reference magic numbers.
+    """
+    return AccountFlags(
+        disabled=bool(uac & UAC_ACCOUNTDISABLE),
+        locked_out=bool(uac & UAC_LOCKOUT),
+        password_not_required=bool(uac & UAC_PASSWD_NOTREQD),
+        password_never_expires=bool(uac & UAC_DONT_EXPIRE_PASSWORD),
+        smartcard_required=bool(uac & UAC_SMARTCARD_REQUIRED),
+        password_expired=bool(uac & UAC_PASSWORD_EXPIRED),
+        raw_value=uac,
+    )
+
+
+def is_stale_account(last_logon_timestamp: Optional[int], stale_days: int = _DEFAULT_STALE_DAYS) -> tuple[bool, int]:
+    """
+    Determine whether an account is stale based on lastLogonTimestamp.
+
+    lastLogonTimestamp is a Windows FILETIME (100-nanosecond intervals since
+    1601-01-01). Returns (is_stale, days_since_logon).
+
+    A value of 0 or None means the account has never logged in — treated as
+    stale with sentinel days=-1.
+    """
+    if not last_logon_timestamp:
+        return True, -1  # never logged in
+
+    # Convert Windows FILETIME to Unix timestamp.
+    # Windows epoch: 1601-01-01; Unix epoch: 1970-01-01 (difference = 11644473600 s)
+    _EPOCH_DIFF_S: int = 11_644_473_600
+    seconds = last_logon_timestamp // 10_000_000 - _EPOCH_DIFF_S
+    logon_dt = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc) + datetime.timedelta(seconds=seconds)
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    delta_days = (now - logon_dt).days
+    return delta_days > stale_days, delta_days
+
+
+# ------------------------------------------------------------------
+# Deliverable 1: Nested group resolution with cycle detection
+# ------------------------------------------------------------------
+
+
+def resolve_group_members(
+    group_dn: str,
+    all_objects: dict[str, dict],  # DN → raw AD object dict with "members" list
+    visited: Optional[set[str]] = None,
+) -> tuple[list[str], bool]:
+    """
+    Recursively expand group membership for *group_dn*.
+
+    Parameters
+    ----------
+    group_dn    : DN of the group to expand.
+    all_objects : flat index of DN → object dict; each object may have a
+                  ``"members"`` key containing a list of member DNs.
+    visited     : set of DNs already on the current traversal stack (cycle guard).
+
+    Returns
+    -------
+    (members, cycle_detected)
+        members        — deduplicated flat list of all member DNs.
+        cycle_detected — True if a cycle was detected during expansion.
+    """
+    if visited is None:
+        visited = set()
+
+    if group_dn in visited:
+        return [], True  # cycle — stop here
+
+    visited = visited | {group_dn}  # copy; don't mutate caller's set
+
+    obj = all_objects.get(group_dn)
+    if obj is None:
+        return [], False
+
+    direct_members: list[str] = obj.get("members", [])
+    all_members: list[str] = []
+    cycle_detected = False
+
+    for member_dn in direct_members:
+        if member_dn in all_members:
+            continue
+        all_members.append(member_dn)
+        # If the member is itself a group, recurse
+        member_obj = all_objects.get(member_dn)
+        if member_obj and member_obj.get("object_class") == "group":
+            nested, nested_cycle = resolve_group_members(member_dn, all_objects, visited)
+            if nested_cycle:
+                cycle_detected = True
+            for dn in nested:
+                if dn not in all_members:
+                    all_members.append(dn)
+
+    return all_members, cycle_detected
+
+
+# ------------------------------------------------------------------
+# Deliverable 3: Orphaned SID detection
+# ------------------------------------------------------------------
+
+
+def detect_orphaned_sids(
+    member_dns: list[str],
+    all_objects: dict[str, dict],
+) -> list[str]:
+    """
+    Identify member entries that look like unresolvable SIDs.
+
+    An orphaned SID is a group member DN whose CN begins with the SID format
+    "S-1-5-21-..." (foreign security principal) and does not appear as a key
+    in ``all_objects`` — meaning the referenced object no longer exists in the
+    surveyed forest.
+
+    Returns a list of orphaned SID strings.
+    """
+    orphans: list[str] = []
+    for member in member_dns:
+        sid_match = re.search(r"CN=(S-1-5-21-[\d-]+)", member, re.IGNORECASE)
+        if sid_match:
+            sid = sid_match.group(1)
+            if member not in all_objects:
+                orphans.append(sid)
+    return orphans
+
+
+# ------------------------------------------------------------------
+# Deliverable 4: Manager chain resolution
+# ------------------------------------------------------------------
+
+
+def resolve_manager_chain(
+    user_dn: str,
+    all_objects: dict[str, dict],
+    visited: Optional[set[str]] = None,
+) -> tuple[list[str], bool]:
+    """
+    Walk the manager chain from *user_dn* up to the root or a cycle.
+
+    Parameters
+    ----------
+    user_dn     : DN of the user whose manager chain we are resolving.
+    all_objects : flat index of DN → object dict; each object may have a
+                  ``"manager"`` key containing a single manager DN string.
+    visited     : set of DNs already on the current chain (cycle guard).
+
+    Returns
+    -------
+    (chain, cycle_detected)
+        chain          — ordered list of manager DNs (immediate manager first).
+        cycle_detected — True if the chain looped back to a previously seen DN.
+    """
+    if visited is None:
+        visited = set()
+
+    obj = all_objects.get(user_dn)
+    if obj is None:
+        return [], False
+
+    manager_dn: Optional[str] = obj.get("manager")
+    if not manager_dn:
+        return [], False
+
+    if manager_dn in visited:
+        return [manager_dn], True  # cycle
+
+    chain, cycle = resolve_manager_chain(manager_dn, all_objects, visited | {user_dn})
+    return [manager_dn, *chain], cycle
+
+
+# ------------------------------------------------------------------
+# Deliverable 5: OU-derived candidate OrgPath per user
+# (wraps derive_orgpath_from_dn, which is defined later in this module;
+# Python resolves names at call time so forward reference is safe)
+# ------------------------------------------------------------------
+
+
+def derive_candidate_orgpath(dn: str, codebook: set[str]) -> Optional[str]:
+    """
+    Return a candidate OrgPath derived from the OU components of *dn*.
+
+    Strategy (Phase 1.5 fix #1 — delegates to A4 canonical implementation):
+      1. If *codebook* is non-empty, call ``orgpath.derive_orgpath`` (WS-A4)
+         which returns the first codebook hit or None.
+      2. When A4 returns a hit, that is the answer.
+      3. When A4 returns None (no codebook hit) OR the codebook is empty,
+         fall back to the local ``derive_orgpath_from_dn`` which generates
+         a valid-format candidate for the governance review queue even when
+         the code is not yet registered in the codebook.
+
+    Import is deferred to break the orgpath→survey circular dependency
+    (orgpath imports DriftFinding and derive_orgpath_from_dn from survey).
+    """
+    # Late import to avoid circular dependency.
+    from uiao.adapters.modernization.active_directory.orgpath import (  # noqa: PLC0415
+        derive_orgpath as _derive_orgpath_canonical,
+    )
+
+    if codebook:
+        # Try the canonical A4 path first — returns a codebook hit or None.
+        hit = _derive_orgpath_canonical(dn, codebook)
+        if hit is not None:
+            return hit
+
+    # No codebook hit (or empty codebook): generate a governance-queue
+    # candidate using the local algorithm which returns valid-format paths
+    # even when the code isn't yet registered.
+    return derive_orgpath_from_dn(dn, codebook)
+
+
+# ------------------------------------------------------------------
+# Master enrichment entry point
+# ------------------------------------------------------------------
+
+
+def enrich_user(
+    user_dn: str,
+    user_obj: dict,
+    all_objects: dict[str, dict],
+    codebook: set[str],
+    stale_days: int = _DEFAULT_STALE_DAYS,
+) -> UserEnrichment:
+    """
+    Produce a :class:`UserEnrichment` record for a single AD user object.
+
+    Parameters
+    ----------
+    user_dn     : Distinguished name of the user.
+    user_obj    : Raw attribute dict for the user (from LDAP or synthetic survey
+                  fixture). Expected keys (all optional): ``userAccountControl``
+                  (int), ``lastLogonTimestamp`` (int), ``manager`` (str DN),
+                  ``memberOf`` (list[str] of group DNs).
+    all_objects : Flat DN → attribute dict index for the entire surveyed forest
+                  (users, groups, computers). Used for recursive resolution.
+    codebook    : Set of known OrgPath codes for candidate validation.
+    stale_days  : Inactivity window in days (default 90).
+
+    Returns
+    -------
+    UserEnrichment with all 5 deliverable fields populated.
+    """
+    uac = user_obj.get("userAccountControl", 0)
+    flags = decode_account_flags(uac)
+
+    last_logon = user_obj.get("lastLogonTimestamp")
+    stale, stale_delta = is_stale_account(last_logon, stale_days)
+
+    manager_chain, mgr_cycle = resolve_manager_chain(user_dn, all_objects)
+
+    # Expand all group memberships recursively
+    member_of: list[str] = user_obj.get("memberOf", [])
+    all_groups: list[str] = []
+    group_cycle_detected = False
+    for grp_dn in member_of:
+        if grp_dn not in all_groups:
+            all_groups.append(grp_dn)
+        grp_obj = all_objects.get(grp_dn)
+        if grp_obj and grp_obj.get("object_class") == "group":
+            nested, nested_cycle = resolve_group_members(grp_dn, all_objects)
+            if nested_cycle:
+                group_cycle_detected = True
+            for dn in nested:
+                if dn not in all_groups:
+                    all_groups.append(dn)
+
+    # Detect orphaned SIDs across all memberships
+    orphaned = detect_orphaned_sids(all_groups, all_objects)
+
+    candidate = derive_candidate_orgpath(user_dn, codebook)
+
+    return UserEnrichment(
+        distinguished_name=user_dn,
+        sam_account_name=user_obj.get("sAMAccountName", ""),
+        account_flags=flags,
+        is_stale=stale,
+        stale_days=stale_delta,
+        manager_chain=manager_chain,
+        manager_chain_cycle=mgr_cycle,
+        group_memberships=all_groups,
+        group_memberships_cycle=group_cycle_detected,
+        orphaned_sids=orphaned,
+        candidate_orgpath=candidate,
+    )
+
+
+def emit_enrichment_findings(
+    enrichment: UserEnrichment,
+    report: ADSurveyReport,
+    source_forest: str,
+) -> None:
+    """
+    Translate a :class:`UserEnrichment` record into DriftFinding entries and
+    append them to *report*.
+
+    Keeping finding emission separate from enrichment computation allows both
+    to be tested independently.
+    """
+    dn = enrichment.distinguished_name
+
+    # Disabled account
+    if enrichment.account_flags.disabled:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' is disabled (UAC ACCOUNTDISABLE bit set). "
+                "Verify intent before migration — disabled accounts may indicate "
+                "terminated users that should be excluded.",
+                error_code="GOV-MIG-010",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Locked-out account
+    if enrichment.account_flags.locked_out:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P3",
+                path=dn,
+                detail=f"User '{dn}' is locked out (UAC LOCKOUT bit set). "
+                "Account may be under attack or forgotten — review before migration.",
+                error_code="GOV-MIG-010",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Stale account
+    if enrichment.is_stale:
+        days_str = (
+            "never logged in" if enrichment.stale_days == -1 else f"{enrichment.stale_days} days since last logon"
+        )
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' is stale ({days_str}). "
+                "Account exceeds inactivity threshold; confirm active status before migration.",
+                error_code="GOV-MIG-011",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Cyclic manager chain
+    if enrichment.manager_chain_cycle:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-SCHEMA",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' has a cyclic manager chain: {enrichment.manager_chain}. "
+                "Manager attribute loop detected; requires manual correction before OrgPath derivation.",
+                error_code="GOV-MIG-012",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Cyclic group membership
+    if enrichment.group_memberships_cycle:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-SCHEMA",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' belongs to groups with a cyclic membership chain. "
+                "Cycle detected during nested group expansion; full membership cannot be determined. "
+                "Investigate group nesting in AD before migration.",
+                error_code="GOV-MIG-014",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Orphaned SIDs in group memberships
+    for sid in enrichment.orphaned_sids:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' is a member of a group containing orphaned SID '{sid}'. "
+                "The SID does not resolve to any object in the surveyed forest; "
+                "likely a deleted cross-forest trust principal.",
+                error_code="GOV-MIG-013",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
 
 
 # ------------------------------------------------------------------
@@ -360,7 +820,7 @@ def derive_orgpath_from_dn(distinguished_name: str, codebook: set[str]) -> Optio
     # Nothing in codebook — return the deepest valid-format candidate
     # for governance review queue
     candidate = "ORG-" + "-".join(segments)
-    if re.match(r"^ORG(-[A-Z]{2,6}){1,4}$", candidate):
+    if re.match(r"^ORG(-[A-Z]{2,6}){1,8}$", candidate):
         return candidate  # Valid format but not yet in codebook → queue for registration
 
     return None
@@ -444,6 +904,276 @@ def classify_sa_adcs_dependency(spns: list[str]) -> bool:
     ]
     spn_str = " ".join(spns).lower()
     return any(re.search(p, spn_str) for p in adcs_patterns)
+
+
+# ------------------------------------------------------------------
+# SPN Inventory Artifact (Federal SSOT / Evidence Bundle)
+#
+# Schema: src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json
+#   #/definitions/spnInventory and #/definitions/spnRecord
+# Canon refs:
+#   - docs/customer-documents/whitepapers/federal-ssot-alignment.qmd
+#   - docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd
+#   - docs/docs/16_DriftDetectionStandard.qmd §7
+#   - src/uiao/canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md (UIAO_139)
+#
+# The inventory is phase-tagged (pre_migration | post_migration | unspecified)
+# and joined to OrgPath via the SPN-registering principal (preferred) or the
+# hosting computer (fallback). Unattributed records emit a DRIFT-IDENTITY
+# finding into the parent ADSurveyReport.
+# ------------------------------------------------------------------
+
+# Valid spn_inventory.phase values
+SPN_PHASE_PRE_MIGRATION: str = "pre_migration"
+SPN_PHASE_POST_MIGRATION: str = "post_migration"
+SPN_PHASE_UNSPECIFIED: str = "unspecified"
+_VALID_SPN_PHASES: tuple[str, ...] = (
+    SPN_PHASE_PRE_MIGRATION,
+    SPN_PHASE_POST_MIGRATION,
+    SPN_PHASE_UNSPECIFIED,
+)
+
+# Discovery method enum (matches schema)
+SPN_METHOD_LDAP: str = "AD-SPN-LDAP"
+SPN_METHOD_POWERSHELL: str = "AD-SPN-POWERSHELL"
+SPN_METHOD_DSQUERY: str = "AD-SPN-DSQUERY"
+
+# Default service-class filter — MSSQLSvc is the headline migration-failure
+# surface per the Spec3-D1.1 / federal SSOT alignment.
+DEFAULT_SPN_SERVICE_CLASS_FILTER: tuple[str, ...] = ("MSSQLSvc",)
+
+# AD objectClass values the spnRecord schema enumerates. Anything else maps to "other".
+_SPN_KNOWN_OBJECT_CLASSES: frozenset[str] = frozenset(
+    {
+        "user",
+        "computer",
+        "msDS-GroupManagedServiceAccount",
+        "msDS-ManagedServiceAccount",
+    }
+)
+
+
+@dataclass
+class SPNRecord:
+    """One row of the spn_inventory artifact. Matches schema #/definitions/spnRecord."""
+
+    spn: str
+    service_class: str
+    principal_name: str
+    object_class: str  # user | computer | msDS-GroupManagedServiceAccount | msDS-ManagedServiceAccount | other
+    host_or_fqdn: str = ""
+    port_or_instance: Optional[str] = None
+    sam_account_name: Optional[str] = None
+    distinguished_name: Optional[str] = None
+    when_created: Optional[str] = None
+    when_changed: Optional[str] = None
+    principal_orgpath: Optional[str] = None
+    hosting_computer_orgpath: Optional[str] = None
+    drift_finding_ref: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "spn": self.spn,
+            "service_class": self.service_class,
+            "host_or_fqdn": self.host_or_fqdn,
+            "port_or_instance": self.port_or_instance,
+            "principal_name": self.principal_name,
+            "sam_account_name": self.sam_account_name,
+            "object_class": self.object_class,
+            "distinguished_name": self.distinguished_name,
+            "when_created": self.when_created,
+            "when_changed": self.when_changed,
+            "principal_orgpath": self.principal_orgpath,
+            "hosting_computer_orgpath": self.hosting_computer_orgpath,
+            "drift_finding_ref": self.drift_finding_ref,
+        }
+
+
+@dataclass
+class SpnInventory:
+    """SPN inventory bundle artifact. Matches schema #/definitions/spnInventory."""
+
+    phase: str  # pre_migration | post_migration | unspecified
+    discovery_timestamp: str  # ISO-8601 UTC
+    discovery_method: str = SPN_METHOD_LDAP
+    discovery_scope: str = ""
+    service_class_filter: list[str] = field(default_factory=list)
+    records: list[SPNRecord] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "phase": self.phase,
+            "discovery_timestamp": self.discovery_timestamp,
+            "discovery_method": self.discovery_method,
+            "discovery_scope": self.discovery_scope,
+            "service_class_filter": list(self.service_class_filter),
+            "records": [r.to_dict() for r in self.records],
+        }
+
+
+def _normalize_object_class(raw: str) -> str:
+    """Map any AD objectClass value to the schema enum (everything unknown -> 'other')."""
+    return raw if raw in _SPN_KNOWN_OBJECT_CLASSES else "other"
+
+
+def _parse_spn(spn: str) -> tuple[str, str, Optional[str], str]:
+    """
+    Parse 'ServiceClass/host[:port_or_instance][/extras...]' into (service_class, host, port_or_instance, full_spn).
+
+    Returns (service_class, host_or_fqdn, port_or_instance_or_None, normalized_spn). The full SPN is returned
+    unchanged; the caller stores it verbatim.
+    """
+    if "/" not in spn:
+        return ("", "", None, spn)
+    service_class, _, remainder = spn.partition("/")
+    # SPNs sometimes carry a trailing realm (host/extra), but the colon split happens first.
+    host_part = remainder.split("/", 1)[0]
+    if ":" in host_part:
+        host, _, suffix = host_part.partition(":")
+        return (service_class, host, suffix or None, spn)
+    return (service_class, host_part, None, spn)
+
+
+def _resolve_principal_orgpath(
+    principal_name: str,
+    sam_account_name: Optional[str],
+    distinguished_name: Optional[str],
+    principal_orgpath_index: Optional[dict[str, str]],
+) -> Optional[str]:
+    """
+    Look up the OrgPath of the SPN-registering principal via the caller-supplied index.
+
+    Index keys may be any of: DN, sAMAccountName, principal common name. First hit wins.
+    Returns None when no resolution is found (or no index supplied).
+    """
+    if not principal_orgpath_index:
+        return None
+    for key in (distinguished_name, sam_account_name, principal_name):
+        if key and key in principal_orgpath_index:
+            return principal_orgpath_index[key]
+    return None
+
+
+def _resolve_hosting_computer_orgpath(
+    host_or_fqdn: str,
+    computer_orgpath_index: Optional[dict[str, str]],
+) -> Optional[str]:
+    """
+    Look up the OrgPath of the hosting computer derived from host_or_fqdn.
+
+    Matches against full FQDN first, then short hostname (everything before the first '.').
+    Returns None when no match (or no index supplied).
+    """
+    if not computer_orgpath_index or not host_or_fqdn:
+        return None
+    if host_or_fqdn in computer_orgpath_index:
+        return computer_orgpath_index[host_or_fqdn]
+    short = host_or_fqdn.split(".", 1)[0]
+    if short and short in computer_orgpath_index:
+        return computer_orgpath_index[short]
+    return None
+
+
+def extract_spn_inventory(
+    *,
+    principals: list[dict],
+    phase: str,
+    discovery_timestamp: str,
+    discovery_method: str = SPN_METHOD_LDAP,
+    discovery_scope: str = "",
+    service_class_filter: Optional[list[str]] = None,
+    principal_orgpath_index: Optional[dict[str, str]] = None,
+    computer_orgpath_index: Optional[dict[str, str]] = None,
+) -> tuple[SpnInventory, list[DriftFinding]]:
+    """
+    Build an SpnInventory artifact from a list of principal records.
+
+    Each principal dict must carry at minimum:
+      - 'principal_name': str
+      - 'object_class': str (raw AD objectClass; mapped to schema enum)
+      - 'spns': list[str]
+    Optional fields: sam_account_name, distinguished_name, when_created, when_changed.
+
+    Filtering: only SPNs whose service-class prefix is in service_class_filter are kept
+    (default: MSSQLSvc only). Per the schema, one record is emitted per SPN string —
+    a principal with N matching SPNs yields N records.
+
+    Attribution: each record's principal_orgpath is looked up from principal_orgpath_index;
+    hosting_computer_orgpath from computer_orgpath_index. When neither resolves, a
+    DRIFT-IDENTITY P2 finding is emitted and the record's drift_finding_ref carries the
+    finding's error_code.
+
+    Returns the SpnInventory and the list of DriftFinding objects to merge into the
+    parent ADSurveyReport.findings list.
+    """
+    if phase not in _VALID_SPN_PHASES:
+        raise ValueError(f"phase must be one of {_VALID_SPN_PHASES}; got {phase!r}")
+    classes = list(service_class_filter) if service_class_filter else list(DEFAULT_SPN_SERVICE_CLASS_FILTER)
+    inventory = SpnInventory(
+        phase=phase,
+        discovery_timestamp=discovery_timestamp,
+        discovery_method=discovery_method,
+        discovery_scope=discovery_scope,
+        service_class_filter=classes,
+    )
+    findings: list[DriftFinding] = []
+    unattributed_idx = 0
+    for principal in principals:
+        spns = principal.get("spns") or []
+        if not spns:
+            continue
+        raw_object_class = principal.get("object_class", "") or ""
+        object_class = _normalize_object_class(raw_object_class)
+        principal_name = principal.get("principal_name", "") or ""
+        sam = principal.get("sam_account_name")
+        dn = principal.get("distinguished_name")
+        when_created = principal.get("when_created")
+        when_changed = principal.get("when_changed")
+        for spn in spns:
+            service_class, host, port_or_instance, full_spn = _parse_spn(spn)
+            if service_class not in classes:
+                continue
+            principal_orgpath = _resolve_principal_orgpath(principal_name, sam, dn, principal_orgpath_index)
+            hosting_orgpath = _resolve_hosting_computer_orgpath(host, computer_orgpath_index)
+            drift_ref: Optional[str] = None
+            if principal_orgpath is None and hosting_orgpath is None:
+                unattributed_idx += 1
+                error_code = f"GOV-SPN-{unattributed_idx:03d}"
+                drift_ref = error_code
+                findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-IDENTITY",
+                        severity="P2",
+                        path=dn or principal_name or full_spn,
+                        detail=(
+                            f"SPN '{full_spn}' is registered to principal '{principal_name}' "
+                            "but neither the principal nor the hosting computer resolves to a "
+                            "verified OrgPath. SPN cannot be attributed to an organizational "
+                            "position; re-registration after migration must be done with "
+                            "explicit owner reassignment."
+                        ),
+                        error_code=error_code,
+                        object_type="SPN",
+                    )
+                )
+            inventory.records.append(
+                SPNRecord(
+                    spn=full_spn,
+                    service_class=service_class,
+                    host_or_fqdn=host,
+                    port_or_instance=port_or_instance,
+                    principal_name=principal_name,
+                    sam_account_name=sam,
+                    object_class=object_class,
+                    distinguished_name=dn,
+                    when_created=when_created,
+                    when_changed=when_changed,
+                    principal_orgpath=principal_orgpath,
+                    hosting_computer_orgpath=hosting_orgpath,
+                    drift_finding_ref=drift_ref,
+                )
+            )
+    return inventory, findings
 
 
 # ------------------------------------------------------------------

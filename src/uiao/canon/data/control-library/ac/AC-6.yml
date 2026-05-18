@@ -1,25 +1,112 @@
-control-id: AC-6
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-6
+# Title      : Least Privilege
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AC-6
 title: Least Privilege
-narrative: |
-  {{ organization.name }} enforces the principle of least privilege across all systems and applications.
-
-  **Role-Based Access**
-  Users are assigned the minimum permissions necessary to perform their job functions through role-based access control and just-in-time privileged access.
-
-  **Privileged Access Management**
-  Elevated permissions are granted only for the duration of the approved task and are automatically revoked upon completion or timeout.
-
-  **Periodic Review**
-  All privileged accounts and permissions are reviewed every {{ parameters.privilege-review-frequency }} to ensure continued necessity.
-implemented-by:
-  - PrivilegedAccessManagement
-  - IdentityProvider
+family: Access Control
 status: implemented
-parameters:
-  privilege-review-frequency: "90 days"
+
+implemented_by:
+    - entra-id
+    - entra-pim
+    - azure-rbac
+    - cyberark-pam
+    - microsoft-defender-for-cloud-apps
+
 evidence:
-  - type: audit-log
-    ref: AC-6-logs
+    - entra-pim-eligibility-export
+    - entra-pim-activation-audit-log
+    - azure-rbac-assignment-report
+    - cyberark-vaulted-account-inventory
+    - defender-for-cloud-permissions-recommendations
+
+parameters:
+    - id: PARAM-AC-006-001
+      description: >-
+          Frequency of recurring access review for privileged
+          accounts and elevated role assignments.
+      value: "Quarterly via Entra ID Access Reviews for all PIM-eligible role assignments; monthly recertification for break-glass and Tier 0 accounts"
+    - id: PARAM-AC-006-002
+      description: >-
+          Maximum activation duration for any privileged role
+          obtained through just-in-time elevation.
+      value: "8 hours for standard privileged roles; 4 hours for Global Administrator and equivalent Tier 0 roles; activation requires MFA and approval per role-scope policy"
+    - id: PARAM-AC-006-003
+      description: >-
+          Privileged role categories subject to PIM-mediated
+          just-in-time activation.
+      value: "Global Administrator, Privileged Role Administrator, Security Administrator, Conditional Access Administrator, Application Administrator, Cloud Application Administrator, Exchange Administrator, SharePoint Administrator, Owner and User Access Administrator at the management-group and subscription scope"
+
+narrative: |
+  **No-Standing-Privilege Architecture**
+  The UIAO substrate operates a no-standing-privilege model for
+  every role category defined in PARAM AC-006-003. Privileged role
+  membership in Entra ID is assigned as *eligible* through Entra
+  Privileged Identity Management; no human identity carries a
+  standing *active* assignment to any role in scope. Activation
+  requires multi-factor authentication, an approval from a separate
+  approver per **AC-5** (Separation of Duties), a documented
+  business justification, and a maximum activation window defined
+  in PARAM AC-006-002. Activation events are written to the Entra
+  ID audit log, streamed to Microsoft Sentinel, and exported to the
+  UIAO evidence ledger.
+
+  **Resource-Scope Minimization**
+  Azure RBAC assignments are made at the smallest scope that
+  satisfies the operational need. Owner and User Access
+  Administrator roles are never assigned at the management-group or
+  subscription scope for human identities; they are scoped to
+  individual resource groups under explicit project ownership.
+  Service principals and managed identities receive role
+  assignments narrowed to the specific resource they back, with
+  custom roles where built-in roles grant excessive privilege. Role
+  assignments are reviewed nightly by the UIAO governance pipeline
+  against an allow-list manifest, and any out-of-band assignment
+  produces a Microsoft Sentinel alert correlated with **AU-6**
+  (Audit Record Review).
+
+  **Privileged Credential Vaulting**
+  CyberArk Privileged Access Security holds every privileged
+  credential that cannot be eliminated by PIM, including break-glass
+  Global Administrator accounts, infrastructure service accounts
+  that predate workload-identity federation, and vendor-appliance
+  local accounts. Credentials rotate on a fixed cadence and on
+  every check-out, eliminating credential reuse risk. Check-out
+  requires MFA, approval, and produces a recorded session that is
+  reviewable by audit. Vaulted credential usage telemetry is
+  correlated with **AC-2** (Account Management) and **AU-12**
+  (Audit Record Generation).
+
+  **Permissions Discovery and Recommendation**
+  Microsoft Defender for Cloud Apps and the Permissions Management
+  module continuously discover the permissions actually used by
+  each identity against the permissions granted, surfacing
+  over-permissioned identities for remediation. Recommendations are
+  reviewed by the Access Control Working Group at the cadence in
+  PARAM AC-006-001 and rolled into Conditional Access and role-
+  assignment updates. This continuous-improvement loop satisfies
+  the intent of **AC-6** beyond the point-in-time access review.
+
+  **Audit and Review**
+  All privileged-role eligibility, every activation event, every
+  vaulted credential check-out, and every Conditional Access
+  decision involving privileged scopes is captured in immutable
+  audit logs. Quarterly reviews per PARAM AC-006-001 produce a
+  signed reviewer attestation linked to each role-assignment
+  decision. Reviews that result in revocation feed back into the
+  Entra ID Lifecycle Workflow to disable or remove the affected
+  assignment, with the change recorded against the role-assignment
+  history.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AC-5   # Separation of Duties
+    - AU-6   # Audit Record Review
+    - AU-9   # Protection of Audit Information
+    - AU-12  # Audit Record Generation
+    - IA-2   # Identification and Authentication
+    - IA-5   # Authenticator Management
+    - SC-7   # Boundary Protection

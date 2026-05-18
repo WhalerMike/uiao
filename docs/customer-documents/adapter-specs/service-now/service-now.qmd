@@ -7,12 +7,11 @@ mission-class: integration
 status: active
 phase: phase-1
 gcc-boundary: gcc-moderate
-canon-source: canon/modernization-registry.yaml
+canon-source: src/uiao/canon/modernization-registry.yaml
 derived-from: uiao/canon (sync_canon.py)
 generated: '2026-04-15'
 aspirational: true
 ---
-
 
 # ServiceNow (Ticketing / ITSM) — Adapter Technical Specification
 
@@ -26,27 +25,31 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The ServiceNow Adapter is an **integration-class** modernization adapter that creates alignments between ServiceNow ITSM records and the UIAO canonical claim schema. It is intentionally lightweight ("DNS-style") — it resolves how to reach the data and maps it to canonical form, but does NOT perform heavy OSCAL conversion (that happens downstream in `generators/`).
+The ServiceNow Adapter is the **ITSM correlation edge** of the UIAO substrate. As a modernization-class integration adapter, it creates alignments between ServiceNow ITSM records — incidents, change requests, problem records — and the UIAO canonical claim schema, so incident, change-control, and problem-management evidence flows into the OSCAL pipeline alongside the substrate's other adapter outputs.
 
-Key capabilities: incident ticket normalization with UIAO control mapping (`uiao_control_id` custom field), change request tracking, problem record alignment, and vendor-overlay reference generation. Uses the `ServiceNowCollector` (real Table API collector with requests) for data retrieval.
+The adapter is intentionally lightweight — "DNS-style" in the canonical metaphor. It resolves how to reach ITSM data and maps it to canonical form, but does **not** perform heavy OSCAL conversion in-adapter. That conversion lives downstream in `generators/`; the adapter's job is to produce well-formed canonical claims that the generator can consume.
 
-**Implementation:** `uiao/src/uiao/adapters/servicenow_adapter.py` + `collectors/servicenow_collector.py` (117 lines, real API). 18 behavioral tests against realistic fixtures.
+The custom field `uiao_control_id` on each ServiceNow record carries the NIST 800-53 control mapping; if the field is absent or empty, the adapter defaults the mapping to AC-2 per the canonical fallback so unmapped records still flow into the evidence stream rather than being dropped.
+
+Three primary functions:
+
+1. **Incident ticket normalization.** Pulls incident records via the Table API, normalizing incident number, opened-at / closed-at timestamps, assignment group, severity, state, and the canonical `uiao_control_id` mapping into claim shape. The resulting per-incident claims feed IR-4 / IR-5 control evidence.
+2. **Change request tracking.** Captures change-request records with planned / actual implementation windows, risk classification, approval state, and the canonical control mapping. Change-request claims feed CM-3 configuration-change-control evidence.
+3. **Problem record alignment.** Pulls problem records (root-cause investigation tickets) and correlates them to the underlying incidents so the evidence chain can trace IR-5 monitoring outcomes back to root causes.
+
+**Implementation:** `src/uiao/adapters/servicenow_adapter.py` + `src/uiao/collectors/servicenow_collector.py` (real Table API client, ~117 lines). 18 behavioral tests against realistic fixtures.
 
 ## Scope
 
 Target surfaces / subsystems: `incident-tickets`, `change-requests`, `problem-records`
 
-**Reads:** ServiceNow Table API (`/api/now/table/{table}`) for incidents, changes, problems. Custom field `uiao_control_id` maps records to NIST 800-53 controls (defaults to AC-2 if unmapped).
-**Emits:** `ClaimSet` with one `ClaimObject` per ITSM record, `EvidenceObject` with KSI provenance.
-**Does NOT:** create or modify ServiceNow records (read-only for evidence collection), access attachments or knowledge base articles, store ServiceNow credentials.
+**Reads:** ServiceNow Table API endpoints — `/api/now/table/incident`, `/api/now/table/change_request`, `/api/now/table/problem` — using the documented OAuth client-credential flow. The custom field `uiao_control_id` is read where present; AC-2 is the canonical fallback.
+
+**Emits:** `ClaimSet` with one `ClaimObject` per ITSM record (record number, type, opened / closed timestamps, assignment, control mapping, severity, state), `EvidenceObject` with KSI provenance for the per-record claims, plus the `ticket-manifest.json` artifact for the run.
+
+**Does NOT:** create or modify ServiceNow records (read-only for evidence collection — change-making would belong to a separate adapter), access attachments or knowledge-base articles, store ServiceNow credentials anywhere, or process person identity (assignee identifiers are preserved as opaque IDs per the object-identity-only canon invariant).
 
 ## Controls
 
@@ -54,10 +57,10 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `IR-4`, `IR-5`, `IR-6`, `CM
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **IR-4** Incident Handling | Primary | Incident ticket normalization produces evidence of incident response activity with provenance hashes. |
-| **IR-5** Incident Monitoring | Supporting | Ongoing ticket collection provides continuous monitoring evidence of incident volume and resolution. |
-| **IR-6** Incident Reporting | Supporting | Normalized incident claims feed downstream OSCAL artifact generation for reporting. |
-| **CM-3** Configuration Change Control | Primary | Change request tracking documents all approved configuration changes with control mapping. |
+| **IR-4** Incident Handling | Primary | Incident ticket normalization produces canonical evidence of incident-response activity with provenance hashes and per-incident control mapping. |
+| **IR-5** Incident Monitoring | Supporting | Ongoing ticket collection provides continuous-monitoring evidence of incident volume, resolution time, and severity distribution. |
+| **IR-6** Incident Reporting | Supporting | Normalized incident claims feed the downstream OSCAL artifact generation for incident-reporting deliverables. |
+| **CM-3** Configuration Change Control | Primary | Change-request tracking documents every approved configuration change with planned / actual windows, risk classification, and approval state. |
 
 ## Operational profile
 
@@ -79,7 +82,9 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `IR-4`, `IR-5`, `IR-6`, `CM
 
 ## Notes from canon
 
-_(none)_
+Modernization adapter — performs change-making actions (create / update incident, change-request, and problem records) in an external system of record. Classified per resolved ODA-15 (UIAO_003 §4.7).
+
+ZTMM pillar: applications-and-workloads.
 
 ## References
 

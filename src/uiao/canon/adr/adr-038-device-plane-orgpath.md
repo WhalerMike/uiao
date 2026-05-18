@@ -14,9 +14,12 @@ related_adrs:
   - ADR-036
   - ADR-037
 canon_refs:
-  - MOD_A_OrgPath_Codebook
-  - MOD_C_Attribute_Mapping_Table
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_153_Attribute_Mapping_Table
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-038-device-plane-orgpath.html
 ---
 
 # ADR-038: Device-Plane OrgPath Provisioning — Graph + ARM Dual-Transport Adapter
@@ -55,12 +58,12 @@ Three concrete gaps this ADR closes:
 
 1. **Two transports, one decision tree.** Entra devices live behind
    Microsoft Graph; Arc servers live behind Azure Resource Manager.
-   They are governed by the same OrgPath codebook (MOD_A) but speak
+   They are governed by the same OrgPath codebook (UIAO_151) but speak
    different APIs with different authentication. An adapter that only
    does one of the two leaves half of the fleet ungoverned.
 2. **Phantom drift on devices.** Without a machine-readable plane
    registry, a device with `extensionAttribute1 = "ORG-GHOST"` looks the
-   same to the drift engine as a device with no OrgPath at all. MOD_A
+   same to the drift engine as a device with no OrgPath at all. UIAO_151
    drift categories (Format / Value / Phantom) need a device-plane
    analogue.
 3. **Where write mechanics live.** The existing disposition classifier
@@ -93,7 +96,7 @@ Three concrete gaps this ADR closes:
      A new disposition added to `disposition.py` will fail the loader
      until the registry is updated — catches governance gaps at CI.
    - **ARM tag regex alignment** — the ARM plane's OrgPath value regex
-     must equal the MOD_A codebook regex (`^ORG(-[A-Z0-9]{2,6}){0,4}$`).
+     must equal the UIAO_151 codebook regex (`^ORG(-[A-Z0-9]{2,6}){0,4}$`).
      Prevents silent drift between the two canon files.
 4. Introduce modernization adapter
    `uiao.adapters.entra_device_orgpath.EntraDeviceOrgPathAdapter` with
@@ -106,7 +109,7 @@ Three concrete gaps this ADR closes:
    - `device-ext-create`, `device-ext-update` — Graph, auto-applied.
    - `arc-tag-create`, `arc-tag-update` — ARM, auto-applied.
    - `device-phantom-orgpath`, `arc-phantom-orgpath` — **never**
-     auto-applied (MOD_C §Phantom rule; governance review).
+     auto-applied (UIAO_153 §Phantom rule; governance review).
    - `skip-no-plane` — the device's disposition is DC/EOL/unresolvable;
      recorded for auditability but no write attempted.
 6. **Write path is deliberately minimal.** The adapter ships
@@ -150,7 +153,7 @@ Three concrete gaps this ADR closes:
   executor once the preferred credential story stabilises.
 - **Tag-key collisions on ARM.** The adapter writes `tags.OrgPath`; a
   tenant already using the `OrgPath` key for a non-UIAO purpose would
-  experience silent overwrites. MOD_C §ARM tag conventions claim the
+  experience silent overwrites. UIAO_153 §ARM tag conventions claim the
   key, but production rollouts should scan for the key before switching
   `dry_run=False`.
 - **Scope read-side.** `plan()` consumes pre-fetched device + Arc
@@ -173,7 +176,7 @@ Three concrete gaps this ADR closes:
 
 - ADR-034 — Three-plane device model (Identity / Management / Workload).
   This ADR is the user-plane-equivalent for devices.
-- ADR-035 — MOD_A OrgPath codebook. Device OrgPaths validate against
+- ADR-035 — UIAO_151 OrgPath codebook. Device OrgPaths validate against
   the same codebook and regex.
-- ADR-037 — MOD_D delegation matrix. When device AUs arrive (Phase 6+),
+- ADR-037 — UIAO_154 delegation matrix. When device AUs arrive (Phase 6+),
   their scoping will follow the same pattern.

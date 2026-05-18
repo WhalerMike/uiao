@@ -7,12 +7,11 @@ mission-class: integration
 status: active
 phase: phase-1
 gcc-boundary: gcc-moderate
-canon-source: canon/modernization-registry.yaml
+canon-source: src/uiao/canon/modernization-registry.yaml
 derived-from: uiao/canon (sync_canon.py)
 generated: '2026-04-15'
 aspirational: true
 ---
-
 
 # Palo Alto Networks (Firewall / NGFW) — Adapter Technical Specification
 
@@ -26,55 +25,30 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The Palo Alto Networks Adapter is an **integration-class** modernization adapter that consumes PAN-OS firewall configuration via the XML API to produce object-keyed canonical claims for security policies, NAT rules, and threat-prevention profiles.
+The Palo Alto Networks Adapter is the **network-enforcement-point actuator** in the UIAO substrate. As a modernization-class integration adapter, it consumes PAN-OS firewall configuration via the XML API to produce canonical claims for security policies, NAT rules, and threat-prevention profiles — and, gated on change-approval, applies configuration changes back to the firewall.
 
-This adapter operates at the **network enforcement point** — the boundary where UIAO's governance perimeter meets the physical/virtual network. It is the highest-security-criticality adapter in the registry because firewall rule changes directly impact the organization's attack surface.
+This adapter operates at the highest-security-criticality edge of the UIAO governance perimeter. Firewall rule changes directly impact the organization's attack surface, so the adapter's write path is bounded by mTLS to the management interface, by the documented change-approval workflow, and by the substrate's standard `dry_run=False` gate.
 
-Key capabilities:
+Four primary functions:
 
-1. **Security rule extraction.** Parses PAN-OS security rule XML to enumerate all allow/deny rules with source/destination zones, applications, services, and actions. Each rule becomes a `ClaimObject` with provenance hash.
+1. **Security rule extraction.** Parses PAN-OS security rule XML to enumerate every allow / deny rule with source / destination zones, applications, services, and actions. Each rule becomes a `ClaimObject` with deterministic provenance hash so the same firewall state always produces the same claim set.
+2. **NAT rule extraction.** Parses NAT configuration including destination translation (address + port mapping) for inbound service exposure — the canonical record of which external-facing services are reachable through the firewall.
+3. **Configuration change reporting.** Produces `DriftReport` entries for proposed rule changes with field-level diff, enabling change-approval review before any commit lands on the firewall.
+4. **Evidence bundling.** Generates `EvidenceObject` bundles suitable for OSCAL SAR generation, proving the current firewall state to authorizing officials and 3PAOs.
 
-2. **NAT rule extraction.** Parses NAT configuration including destination translation (address + port mapping) for inbound service exposure.
-
-3. **Configuration change reporting.** Produces `DriftReport` entries for proposed rule changes, enabling change-approval workflows before committing to the firewall.
-
-4. **Evidence bundling.** Generates `EvidenceObject` bundles suitable for OSCAL SAR generation, proving the current firewall state to authorizing officials.
-
-**Runner class:** `on-prem-self-hosted`. This adapter requires network access to the PAN-OS management interface, which is typically not reachable from GitHub-hosted runners. Phase 1 development uses fixture data; Phase 2+ deployment uses Azure Government self-hosted runners (ODA-13).
-
-**Implementation:** `uiao/src/uiao/adapters/paloalto_adapter.py` + `paloalto_parser.py` (real PAN-OS XML parsing). End-to-end OSCAL SAR generation proven via 6 integration tests.
+**Implementation:** `src/uiao/adapters/paloalto_adapter.py` + `paloalto_parser.py` (real PAN-OS XML parsing). End-to-end OSCAL SAR generation proven via 6 integration tests. Runs on `on-prem-self-hosted` because the PAN-OS management interface is typically not reachable from GitHub-hosted runners; Phase 1 uses fixture data, Phase 2+ uses Azure Government self-hosted runners (ODA-13).
 
 ## Scope
 
 Target surfaces / subsystems: `security-policies`, `nat-rules`, `threat-prevention-profiles`
 
-**What the adapter reads:**
+**Reads:** PAN-OS security rule XML (via `GET /api/?type=config&action=show&xpath=...`), NAT rule XML (same API, different xpath), and threat-prevention profile configuration. mTLS to the management interface is required by default; API-key authentication via the documented least-privilege role.
 
-- PAN-OS security rule XML (via `GET /api/?type=config&action=show&xpath=...`)
-- PAN-OS NAT rule XML (same API, different xpath)
-- Configuration change proposals (via `push_config_change()`)
+**Emits:** `ClaimSet` with one `ClaimObject` per firewall rule (rule name, action, zones, applications, services, logging), `DriftReport` for proposed configuration changes with field-level detail, `EvidenceObject` with full provenance chain (connection metadata, drift records, normalized rules), plus the `firewall-config-manifest.json` and `rule-change-audit.json` artifacts. OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge.
 
-**What the adapter emits:**
-
-- `ClaimSet` with one `ClaimObject` per firewall rule (rule name, action, zones, applications)
-- `DriftReport` for proposed configuration changes with field-level detail
-- `EvidenceObject` with full provenance chain (connection, drift, normalized rules)
-- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
-
-**What the adapter does NOT touch:**
-
-- Does not commit configuration changes to the firewall (change-making is gated on approval workflow + Phase 2 runners)
-- Does not access the firewall data plane or traffic logs
-- Does not modify candidate configuration without explicit `push_config_change()` invocation
-- mTLS is enabled by default for all management interface connections
+**Does NOT:** commit configuration changes to the firewall without explicit `push_config_change()` invocation gated on change-approval (the candidate-vs-running configuration boundary is preserved), access the firewall data plane or traffic logs, modify candidate configuration outside the documented surface, or rotate or modify management-interface credentials.
 
 ## Controls
 
@@ -82,9 +56,9 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `SC-7`, `CM-7`, `AC-4`
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **SC-7** Boundary Protection | Primary | Security rule extraction provides a complete, auditable inventory of all boundary-enforcement rules. Every allow/deny decision is captured with source/destination zones, applications, and logging status. |
+| **SC-7** Boundary Protection | Primary | Security rule extraction provides a complete, auditable inventory of all boundary-enforcement rules. Every allow / deny decision is captured with source / destination zones, applications, and logging status. |
 | **CM-7** Least Functionality | Primary | Rule enumeration enables auditors to verify that only approved services and applications are permitted through the firewall. The deny-all-default rule is explicitly tracked. |
-| **AC-4** Information Flow Enforcement | Supporting | NAT rule extraction and security policy zone mappings document the approved information flow paths between network segments. |
+| **AC-4** Information Flow Enforcement | Supporting | NAT rule extraction and security policy zone mappings document the approved information-flow paths between network segments. |
 
 ## Operational profile
 
@@ -106,7 +80,9 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `SC-7`, `CM-7`, `AC-4`
 
 ## Notes from canon
 
-_(none)_
+Modernization adapter — performs change-making actions against network enforcement points (security policies, NAT rules, threat-prevention profiles). Classified per resolved ODA-15 (UIAO_003 §4.7). Highest-security-criticality adapter in the registry because firewall rule changes directly impact the organization's attack surface.
+
+ZTMM pillars: networks, applications-and-workloads.
 
 ## References
 

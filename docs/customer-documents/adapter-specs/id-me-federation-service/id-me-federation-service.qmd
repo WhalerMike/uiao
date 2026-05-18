@@ -1,0 +1,101 @@
+---
+title: ID.me Federated Citizen-Identity Service — Adapter Technical Specification
+doc-type: ats
+adapter-id: id-me-federation-service
+adapter-class: modernization
+mission-class: integration
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/modernization-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# ID.me Federated Citizen-Identity Service — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The ID.me Federation Service Adapter is the **commercial federal-authorized citizen-IdP integration edge** of the UIAO substrate. As a modernization-class integration adapter, it manages ID.me-side application registration (change-making) and consumes the SAML 2.0 / OIDC assertions ID.me issues to citizen-facing federal portals, with optional IAL-3 step-up for high-stakes flows.
+
+ID.me is the commercial sibling of [`login-gov-federation-service`](../login-gov-federation-service/login-gov-federation-service.html). It is federal-authorized but procured per agency; commercial-license considerations apply unlike the public-domain Login.gov. Multiple federal customer-facing portals (VA, IRS, SSA among others) deploy ID.me.
+
+Three primary functions:
+
+1. **Application registration.** Provisions and updates ID.me-side application registrations for consuming agency systems — public-key trust anchor, redirect URIs, requested attributes, IAL / AAL level.
+2. **Assertion consumption.** Validates incoming SAML 2.0 assertions and OIDC tokens against the ID.me trust anchor declared in ADR-051, normalizing asserted attributes into canonical claim shape.
+3. **IAL-3 step-up support.** For high-stakes flows requiring IAL-3 identity proofing, the adapter records the step-up event, the proofing method, and the resulting assertion with the elevated IAL level.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
+
+## Scope
+
+Target surfaces / subsystems: `saml-assertion-issuance`, `oidc-issuance`, `ial-2-proofing`, `ial-3-step-up`, `aal-2-authentication`
+
+**Reads:** ID.me partner-portal application registration state, plus the live SAML 2.0 assertion / OIDC token stream. Trust anchor per ADR-051.
+
+**Emits:** `idme-app-registration-manifest.json`, `idme-disclosure-audit.json` (one record per assertion with assertion id, IAL / AAL level, step-up indicator, consuming agency, entitlement reference), plus `EvidenceObject` records that feed the IA-2 / IA-8 / AU-2 control evidence stream.
+
+**Does NOT:** issue assertions (only ID.me does), modify ID.me-side identity proofing, access citizen PII outside the explicitly asserted attributes, or store assertion bearer tokens beyond the validation window.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-2(1)`, `IA-2(2)`, `IA-4`, `IA-8`, `AU-2`, `AU-12`, `SC-8`, `SC-13`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Primary | Federated authentication via ID.me at IAL-2 / AAL-2 with optional IAL-3 step-up. |
+| **IA-2(1)** MFA — Privileged Accounts | Supporting | AAL-2 enforcement delivered by ID.me upstream; per-assertion record. |
+| **IA-2(2)** MFA — Non-Privileged Accounts | Primary | AAL-2 for non-privileged citizen access at the federation boundary. |
+| **IA-4** Identifier Management | Primary | ID.me UUID is the stable subject identifier asserted across consuming applications. |
+| **IA-8** Identification and Authentication (Non-Organizational Users) | Primary | ID.me is a federal-authorized non-organizational-user IdP. |
+| **AU-2** Event Logging | Primary | Every assertion-consumption and step-up event is logged. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | All assertion exchange is TLS-protected per the federation trust anchor. |
+| **SC-13** Cryptographic Protection | Supporting | Assertion signature validation uses ID.me's published signing keys. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+ID.me is a commercial federal-authorized IdP serving multiple federal customer-facing portals (VA, IRS, SSA, etc.). Issues SAML 2.0 assertions (per ADR-051) and OIDC tokens at IAL-2 / AAL-2 with IAL-3 step-up available. Procurement and federal authorization are agency-specific; commercial-license considerations apply unlike the public-domain Login.gov. Activation requires a per-adapter ADR modeled on ADR-035.
+
+Treated as a complement to [`login-gov-federation-service`](../login-gov-federation-service/login-gov-federation-service.html). Pairs with [`piv-usaccess`](../piv-usaccess/piv-usaccess.html) for federal-personnel PIV authentication.
+
+ZTMM pillar: identity.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+- ADR-051 — SAML federation trust anchor
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

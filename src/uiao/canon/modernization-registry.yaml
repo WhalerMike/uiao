@@ -25,7 +25,7 @@
 
 schema-version: "1.0.0"
 registry-class: modernization
-updated: "2026-04-16"
+updated: "2026-05-05"
 
 adapters:
 
@@ -66,7 +66,13 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - devices
+      - applications-and-workloads
     references:
       - UIAO-CANON-002
       - UIAO-CANON-003
@@ -107,10 +113,21 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - applications-and-workloads
+      - data
     references:
       - UIAO-CANON-002
       - UIAO-CANON-003
+    implementation:
+      python_module: src/uiao/adapters/m365_adapter.py
+      supporting_modules:
+        - src/uiao/adapters/m365_parser.py
+      tests: tests/test_m365_adapter.py
 
   - id: service-now
     name: ServiceNow (Ticketing / ITSM)
@@ -146,9 +163,16 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - applications-and-workloads
     references:
       - UIAO-CANON-003
+    implementation:
+      python_module: src/uiao/adapters/servicenow_adapter.py
+      tests: tests/test_servicenow_adapter.py
 
   - id: palo-alto
     name: Palo Alto Networks (Firewall / NGFW)
@@ -184,9 +208,19 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - networks
+      - applications-and-workloads
     references:
       - UIAO-CANON-003
+    implementation:
+      python_module: src/uiao/adapters/paloalto_adapter.py
+      supporting_modules:
+        - src/uiao/adapters/paloalto_parser.py
+      tests: tests/test_paloalto_adapter.py
 
   - id: scuba
     name: CISA SCuBA M365 Secure Baseline (Target)
@@ -227,13 +261,22 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root G2, OU=www.digicert.com, O=DigiCert Inc, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - applications-and-workloads
+      - data
     references:
       - UIAO-CANON-002
       - https://github.com/cisagov/ScubaGoggles
     notes: >-
       Pair with conformance adapter `scubagear` (canon/adapter-registry.yaml)
       which assesses the applied baseline without mutating it.
+    implementation:
+      python_module: src/uiao/adapters/scuba
+      tests: tests/test_scuba_transform_plane.py
 
   - id: terraform
     name: Terraform / OpenTofu Evidence Adapter
@@ -279,7 +322,12 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=ISRG Root X1, O=Internet Security Research Group, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - applications-and-workloads
+      - networks
     references:
       - UIAO-CANON-003
       - https://www.terraform.io
@@ -294,6 +342,11 @@ adapters:
       `consume_terraform_plan`, `detect_terraform_drift`,
       `generate_terraform_evidence`) are currently stubs; real parsing
       ships as a follow-up when `python-hcl2` dependency is added.
+    implementation:
+      python_module: src/uiao/adapters/terraform_adapter.py
+      supporting_modules:
+        - src/uiao/adapters/terraform_parser.py
+      tests: tests/test_terraform_adapter.py
 
   - id: cyberark
     name: CyberArk Credential Rotation Adapter
@@ -335,13 +388,21 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - applications-and-workloads
     references:
       - UIAO-CANON-003
     notes: >-
       Tier 4 adapter. Requires on-prem-self-hosted runner with network
       access to CyberArk vault API. Cited in ODA-15 resolution as a
       future integration-class adapter example.
+    implementation:
+      python_module: src/uiao/adapters/cyberark_adapter.py
+      tests: tests/test_cyberark_oscal_emitter.py
 
   - id: infoblox
     name: Infoblox NIOS DNS / IPAM Adapter
@@ -385,7 +446,11 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - networks
     references:
       - UIAO-CANON-003
     notes: >-
@@ -395,6 +460,18 @@ adapters:
       with network access to the Infoblox WAPI. Reference implementation
       migrated from uiao-gos (2026-04-17) to
       impl/src/uiao/impl/directory_migration/adapters/ipam/infoblox/.
+      Tier-1 conformance status: EXCLUDED per UIAO_131 §5.1 (no public
+      developer sandbox; vendor evaluation channel is closed-eval-only).
+      Compensating evidence per UIAO_131 §5.1.1: vendor-attested test
+      report from Infoblox OR agency-operated sandbox capture, plus
+      exhaustive tier-2 fixture matrix covering every WAPI operation the
+      adapter exposes. The §5.1.1 compensating-evidence artifact lands at
+      docs/findings/compensating-evidence/infoblox/ when filed.
+    implementation:
+      python_module: src/uiao/adapters/infoblox_adapter.py
+      supporting_modules:
+        - src/uiao/adapters/infoblox_parser.py
+      tests: tests/test_infoblox_adapter.py
 
   - id: bluecat-address-manager
     name: BlueCat Address Manager
@@ -436,7 +513,11 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - networks
     references:
       - UIAO-CANON-003
     notes: >-
@@ -446,6 +527,19 @@ adapters:
       access to the BlueCat API. Reference implementation migrated from
       uiao-gos (2026-04-17) to
       impl/src/uiao/impl/directory_migration/adapters/ipam/bluecat/.
+      Tier-1 conformance status: EXCLUDED per UIAO_131 §5.1 (BlueCat
+      requires sales contact for any access; no public developer sandbox).
+      Compensating evidence per UIAO_131 §5.1.1: vendor-attested test
+      report from BlueCat OR agency-operated sandbox capture, plus
+      exhaustive tier-2 fixture matrix covering every BlueCat API operation
+      the adapter exposes. The §5.1.1 compensating-evidence artifact lands
+      at docs/findings/compensating-evidence/bluecat-address-manager/ when
+      filed.
+    implementation:
+      python_module: src/uiao/adapters/bluecat_adapter.py
+      supporting_modules:
+        - src/uiao/adapters/bluecat_parser.py
+      tests: tests/test_bluecat_adapter.py
 
   - id: mainframe
     name: Mainframe (z/OS Connect / MQ) Adapter
@@ -496,7 +590,7 @@ adapters:
     mission-class-notes: >-
       Modernization adapter — performs change-making actions against
       on-premises Active Directory (extensionAttribute1–4 write-back during
-      OrgPath assignment, Phase F.3 of MOD_F). The surveying side (Phase
+      OrgPath assignment, Phase F.3 of UIAO_156). The surveying side (Phase
       F.1) is read-only; the pair is grouped under a single adapter id per
       UIAO_003 §4.7 `integration` classification. OrgPath values propagate
       to Entra ID via Entra Connect sync (no direct Graph API writes from
@@ -536,28 +630,36 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - devices
     references:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_A (OrgPath Codebook) through ADR-035; the executable
+      Binds to UIAO_151 (OrgPath Codebook) through ADR-035; the executable
       canon lives at canon/data/orgpath/codebook.yaml and is validated by
       schemas/orgpath/codebook.schema.json on load. Implementation:
       src/uiao/adapters/modernization/active-directory/{survey,orgpath}.py.
       Writes are gated on an explicit dry_run=False flag.
+    implementation:
+      python_module: src/uiao/adapters/modernization/active_directory
+      tests: tests/test_active_directory_survey_enrichment.py
 
   - id: entra-dynamic-groups
-    name: Entra ID Dynamic Group Provisioning (OrgTree MOD_B)
+    name: Entra ID Dynamic Group Provisioning (OrgTree UIAO_152)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
       Modernization adapter — provisions OrgTree-* dynamic security groups
-      in Microsoft Entra ID from the canonical MOD_B library (Graph API
+      in Microsoft Entra ID from the canonical UIAO_152 library (Graph API
       POST /groups + PATCH /groups). Classified per UIAO_003 §4.7
-      `integration`. Phantom groups are NEVER auto-applied: per MOD_B §Drift
+      `integration`. Phantom groups are NEVER auto-applied: per UIAO_152 §Drift
       they surface as governance findings and route through the Workflow 3
-      review in MOD_E.
+      review in UIAO_155.
     status: active
     phase: phase-1
     vendor: Microsoft
@@ -586,30 +688,37 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
     references:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_B (Dynamic Group Library) through ADR-036; executable
+      Binds to UIAO_152 (Dynamic Group Library) through ADR-036; executable
       canon at canon/data/orgpath/dynamic-groups.yaml, JSON Schema at
       schemas/orgpath/dynamic-groups.schema.json. Implementation:
       src/uiao/adapters/entra_dynamic_groups.py. plan() and
       apply(dry_run=True) are offline-safe; apply(dry_run=False) issues
       POST /groups and PATCH /groups/{id} against Microsoft Graph.
+    implementation:
+      python_module: src/uiao/adapters/entra_dynamic_groups.py
+      tests: tests/test_entra_dynamic_groups.py
 
   - id: entra-admin-units
-    name: Entra ID Administrative Units + Scoped Role Provisioning (OrgTree MOD_D)
+    name: Entra ID Administrative Units + Scoped Role Provisioning (OrgTree UIAO_154)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
       Modernization adapter — provisions Restricted Management
       Administrative Units and scoped built-in role assignments in
-      Microsoft Entra ID from the canonical MOD_D delegation matrix.
+      Microsoft Entra ID from the canonical UIAO_154 delegation matrix.
       Classified per UIAO_003 §4.7 `integration`. Never auto-applies
       governance-review operations: phantom AUs, tenant-wide (unscoped)
       role assignments, and phantom role assignments surface as
-      skipped-manual per MOD_D §Drift Detection + Governance Rule 4.
+      skipped-manual per UIAO_154 §Drift Detection + Governance Rule 4.
     status: active
     phase: phase-1
     vendor: Microsoft
@@ -640,22 +749,29 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
     references:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_D (Delegation Matrix) through ADR-037; executable
+      Binds to UIAO_154 (Delegation Matrix) through ADR-037; executable
       canon at canon/data/orgpath/admin-units.yaml, JSON Schema at
-      schemas/orgpath/admin-units.schema.json. Depends on MOD_A
-      (codebook, ADR-035) and MOD_B (dynamic groups, ADR-036) — loader
+      schemas/orgpath/admin-units.schema.json. Depends on UIAO_151
+      (codebook, ADR-035) and UIAO_152 (dynamic groups, ADR-036) — loader
       enforces cross-canon integrity at PR CI. Implementation:
       src/uiao/adapters/entra_admin_units.py. Admin groups
       (OrgTree-*-Admins) are referenced but NOT provisioned — those are
-      MOD_E Workflow 5 assigned groups.
+      UIAO_155 Workflow 5 assigned groups.
+    implementation:
+      python_module: src/uiao/adapters/entra_admin_units.py
+      tests: tests/test_entra_admin_units.py
 
   - id: entra-device-orgpath
-    name: Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree MOD_C)
+    name: Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree UIAO_153)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
@@ -664,9 +780,9 @@ adapters:
       onPremisesExtensionAttributes.extensionAttribute1 via Microsoft
       Graph for clients, and the `OrgPath` ARM tag on
       Microsoft.HybridCompute/machines for Arc-enrolled servers. Phantom
-      OrgPath values (format-invalid or outside the MOD_A codebook) are
+      OrgPath values (format-invalid or outside the UIAO_151 codebook) are
       NEVER auto-remediated — they surface as skipped-manual per
-      MOD_C §Phantom. Classified per UIAO_003 §4.7 `integration`.
+      UIAO_153 §Phantom. Classified per UIAO_003 §4.7 `integration`.
     status: active
     phase: phase-1
     vendor: Microsoft
@@ -697,22 +813,30 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - devices
     references:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_C (Attribute Mapping Table) through ADR-038;
+      Binds to UIAO_153 (Attribute Mapping Table) through ADR-038;
       executable canon at canon/data/orgpath/device-planes.yaml, JSON
       Schema at schemas/orgpath/device-planes.schema.json. Depends on
-      MOD_A (codebook, ADR-035) — ARM-tag regex is cross-checked against
+      UIAO_151 (codebook, ADR-035) — ARM-tag regex is cross-checked against
       the codebook regex at load. Implementation:
       src/uiao/adapters/entra_device_orgpath.py. apply(dry_run=False)
       requires subclass override of _execute because the two transports
       (Graph vs ARM) need distinct credentials.
+    implementation:
+      python_module: src/uiao/adapters/entra_device_orgpath.py
+      tests: tests/test_entra_device_orgpath.py
 
   - id: entra-policy-targeting
-    name: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (MOD_N)
+    name: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (UIAO_164)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
@@ -756,30 +880,38 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - applications-and-workloads
     references:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_N through ADR-039; executable canon at
+      Binds to UIAO_164 through ADR-039; executable canon at
       canon/data/orgpath/policy-targets.yaml, JSON Schema at
-      schemas/orgpath/policy-targets.schema.json. Depends on MOD_A
-      (codebook, ADR-035), MOD_B (dynamic groups, ADR-036), MOD_C
+      schemas/orgpath/policy-targets.schema.json. Depends on UIAO_151
+      (codebook, ADR-035), UIAO_152 (dynamic groups, ADR-036), UIAO_153
       (device planes, ADR-038) — every Intune target_group must resolve
-      to a MOD_B group; every Arc prefix must resolve to an active
-      MOD_A code. Implementation:
+      to a UIAO_152 group; every Arc prefix must resolve to an active
+      UIAO_151 code. Implementation:
       src/uiao/adapters/entra_policy_targeting.py. Azure Policy
       definitions MUST accept the canonical parameters `orgPathPrefix`
       and `matchMode` — policy authors follow this contract or surface
       as drift.
+    implementation:
+      python_module: src/uiao/adapters/entra_policy_targeting.py
+      tests: tests/test_entra_policy_targeting.py
 
   - id: orgtree-drift-engine
-    name: OrgTree Drift Detection Engine — MOD_M Six-Phase Orchestrator
+    name: OrgTree Drift Detection Engine — UIAO_163 Six-Phase Orchestrator
     class: modernization
     mission-class: integration
     mission-class-notes: >-
       Modernization adapter — orchestrator over the four OrgTree phase
-      adapters (MOD_B/D/C/N). Implements MOD_M's Snapshot → Compare →
+      adapters (UIAO_152/D/C/N). Implements UIAO_163's Snapshot → Compare →
       Classify → Alert → Remediate → Verify loop. Does not talk to
       Microsoft Graph or ARM directly; delegates planning to each phase
       adapter. Classified as `integration` per UIAO_003 §4.7 because
@@ -817,12 +949,16 @@ adapters:
     gcc-boundary: gcc-moderate
     ssot-mutation: never
     certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
     object-identity-only: true
+    ztmm-pillars:
+      - identity
     references:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_M through ADR-040; executable config at
+      Binds to UIAO_163 through ADR-040; executable config at
       canon/data/orgpath/drift-engine-config.yaml, JSON Schema at
       schemas/orgpath/drift-engine-config.schema.json. Composes the
       four Phase 2–5 adapters (entra-dynamic-groups,
@@ -831,3 +967,499 @@ adapters:
       src/uiao/governance/drift_engine.py. dry_run=True is the default
       everywhere; governance-review ops (auto_remediate=false) are
       never dispatched regardless of flag.
+    implementation:
+      python_module: src/uiao/governance/drift_engine.py
+      tests: tests/test_orgtree_drift_engine.py
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-049 (2026-04-30)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: defender-for-cloud-apps-actions
+    name: Microsoft Defender for Cloud Apps — Actions (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization side of the Defender for Cloud Apps surface —
+      change-making actions: OAuth app governance (revoke / restrict
+      consent), session-control policy writes, Conditional Access App
+      Control bindings. Pairs with the `defender-for-cloud-apps`
+      conformance entry (read-only discovery / risk scoring side).
+      Classified per UIAO_003 §4.7 `integration` (resolved ODA-15).
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - oauth-app-governance
+      - session-control-policies
+      - conditional-access-app-control
+    outputs:
+      - mcas-policy-manifest.json
+      - mcas-action-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-3
+      - AC-6
+      - AC-17
+      - AU-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Activation requires a per-adapter ADR
+      modeled on ADR-035. The split across both registries
+      (defender-for-cloud-apps in conformance, this entry in
+      modernization) is the precedent set by ADR-049 §Decision 1 for
+      Microsoft surfaces that have both a read-only and a
+      change-making axis.
+
+  - id: azure-policy-arc
+    name: Azure Policy for Arc — Compliance and Remediation (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — assigns Azure Policy initiatives to Arc
+      machines, evaluates compliance, and dispatches remediation
+      tasks. Complements `entra-policy-targeting` (UIAO_164), which
+      binds Intune profiles + Azure Policy assignments to the OrgTree
+      but explicitly leaves policy *bodies* and *remediation* out of
+      scope. This entry covers the body / remediation side. Classified
+      per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - arc-policy-assignments
+      - arc-policy-remediation-tasks
+      - arc-compliance-state
+    outputs:
+      - arc-policy-manifest.json
+      - arc-remediation-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-6
+      - CM-8
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Activation requires a per-adapter ADR.
+      Pairs with `defender-for-servers` (conformance / telemetry)
+      which provides the compliance-state observation that this
+      adapter remediates.
+
+  - id: entra-id-governance
+    name: Microsoft Entra ID Governance (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — provisions and updates governance-plane
+      Entra constructs: Access Reviews, Entitlement Management
+      packages, Lifecycle Workflows, PIM role assignments,
+      Separation-of-Duties policies. Sibling of `entra-id` (which
+      handles user / group / SP / CA), `entra-dynamic-groups` (UIAO_152),
+      `entra-admin-units` (UIAO_154), `entra-device-orgpath` (UIAO_153), and
+      `entra-policy-targeting` (UIAO_164). Classified per UIAO_003 §4.7
+      `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - access-reviews
+      - entitlement-management-packages
+      - lifecycle-workflows
+      - pim-role-assignments
+      - separation-of-duties-policies
+    outputs:
+      - governance-config-manifest.json
+      - governance-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-2
+      - AC-2(3)
+      - AC-5
+      - AC-6
+      - AC-6(2)
+      - AU-2
+      - IA-4
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Consumes the HR-driven provisioning
+      output described by UIAO_136 Spec 2 (D3.1 forthcoming). Required
+      Entra ID P2 licensing (per UIAO_136 Cross-Cutting X3).
+      Activation requires a per-adapter ADR.
+
+  - id: entra-workload-identity
+    name: Microsoft Entra Workload Identity (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — provisions workload identities, workload
+      identity federation trusts, app credential rotation, and
+      managed-identity assignments. The change-making surface that
+      retires legacy AD service accounts (UIAO_136 Spec 3 / ADR-004).
+      Classified per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - workload-identity-federation
+      - app-credentials
+      - managed-identity-assignments
+      - credential-hygiene
+    outputs:
+      - workload-identity-manifest.json
+      - credential-rotation-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-5
+      - IA-5(1)
+      - IA-5(2)
+      - IA-9
+      - AC-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+      - ADR-004
+    notes: >-
+      Reserved slot per ADR-049. Anchored in ADR-004
+      (workload-identity-federation-default). Spec 3 of UIAO_136
+      enumerates the AD service account → workload identity
+      transformation deliverables (D2.1–D2.8). Activation requires a
+      per-adapter ADR.
+
+  - id: intune
+    name: Microsoft Intune — Configuration and Compliance Authoring (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — authors and updates Intune device
+      configuration profiles, compliance policies, security baselines,
+      Autopilot deployment profiles, and app deployment policies.
+      Complements `entra-policy-targeting` (UIAO_164), which binds
+      existing Intune profiles to OrgTree dynamic groups but leaves
+      policy bodies out of scope. This entry covers the body authoring
+      side. Pairs with the conformance-side `intune` reserved slot in
+      adapter-registry.yaml. Classified per UIAO_003 §4.7
+      `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - device-configuration-profiles
+      - compliance-policies
+      - security-baselines
+      - autopilot-deployment-profiles
+      - app-deployment-policies
+    outputs:
+      - intune-config-manifest.json
+      - intune-deploy-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-6
+      - CM-7
+      - CM-8
+      - AC-3
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049 — modernization-side allocation. The
+      conformance-side `intune` entry (adapter-registry.yaml) covers
+      read-only state observation; this entry covers change-making
+      authoring. Existing in-flight Python implementation lives at
+      src/uiao/adapters/intune_adapter.py (pre-dates this allocation;
+      activation will reconcile that code to the per-adapter ADR
+      contract).
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-053 (2026-05-04)
+  # Federal HRIT IAM gap closure — OPM-hosted Azure APIM gateway
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: opm-azure-apim
+    name: OPM Azure API Management Gateway Adapter (Federal HRIT)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Federal-HRIT-mandated centralized API gateway. Enforces OAuth 2.0
+      token validation, rate limiting, IP filtering, mTLS termination,
+      and payload transformation for all persistent OPM-side integrations
+      to the Core HCM platform. Per Appendix B of Solicitation
+      24322626R0007 Amd 4. Adapter operates the gateway via Azure
+      Resource Manager and consumes its observability surface for
+      canonical evidence. Classified per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - oauth2-token-validation
+      - api-rate-limiting
+      - mtls-termination
+      - payload-transformation
+      - developer-portal
+      - cross-agency-api-routing
+    outputs:
+      - apim-policy-manifest.json
+      - apim-traffic-audit.json
+      - apim-developer-portal-inventory.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-4
+      - AC-17
+      - AU-2
+      - AU-12
+      - IA-2
+      - IA-8
+      - SC-7
+      - SC-8
+      - SC-13
+      - SC-23
+      - CA-9
+    automation-domain:
+      - configuration-management
+      - event-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - applications-and-workloads
+      - networks
+    references:
+      - UIAO-CANON-003
+      - ADR-053
+    notes: >-
+      Closes the HRIT IAM gap for the centralized OPM-hosted API gateway
+      mandated by Solicitation 24322626R0007 Amd 4 Appendix B pp. 82, 84.
+      Gateway is operated by OPM; the contractor configures APIs through
+      it but does not own the gateway. The "Core-HCM API boundary" is
+      enforced at this surface — the contractor's responsibility ends at
+      APIM ingress. Adapter activation requires an OPM-issued service
+      principal scoped to the federal-HRIT APIM instance. Tier-1
+      conformance: pending — likely requires Microsoft-attested test
+      fixtures plus per-tenant sandbox capture. Activation requires a
+      per-adapter ADR modeled on ADR-035.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-055 (2026-05-05)
+  # KYC / Customer Identity canon block — federated identity issuers
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: login-gov-federation-service
+    name: GSA Login.gov Federated Citizen-Identity Service
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Federated identity issuer for citizen-facing federal portals.
+      Login.gov is the GSA-operated FAL-2-capable IdP that issues
+      SAML 2.0 / OIDC assertions to consuming agencies. The adapter
+      provisions Login.gov-side application registrations on behalf
+      of consuming agencies (change-making) and consumes identity
+      assertions at runtime. Classified per UIAO_003 §4.7
+      `integration` and ADR-055.
+    status: reserved
+    phase: phase-planning
+    vendor: GSA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - app-registration
+      - saml-assertion-issuance
+      - oidc-issuance
+      - ial-2-proofing
+      - aal-2-authentication
+    outputs:
+      - logingov-app-registration-manifest.json
+      - logingov-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-2(1)
+      - IA-2(2)
+      - IA-4
+      - IA-8
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - configuration-management
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-051  # SAML trust anchor
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://login.gov/
+      - https://developers.login.gov/
+    notes: >-
+      Login.gov (GSA Technology Transformation Services) is the
+      federally-operated FAL-2 / IAL-2 / AAL-2 IdP for citizen-
+      facing federal portals. Issues SAML 2.0 assertions (per
+      ADR-051 trust-anchor type) and OIDC tokens. Adapter operates
+      against the Login.gov Partner Dashboard for application
+      registration and consumes assertions at runtime. Activation
+      requires a per-adapter ADR modeled on ADR-035.
+
+  - id: id-me-federation-service
+    name: ID.me Federated Citizen-Identity Service
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Federated identity issuer (commercial; federal-authorized) for
+      citizen-facing federal portals. ID.me issues SAML 2.0 / OIDC
+      assertions at IAL-2 / AAL-2 with optional IAL-3 step-up for
+      high-stakes flows. Treated as a complement to Login.gov
+      (`login-gov-federation-service`) — agencies may use either or
+      both depending on their citizen-population mix and historical
+      integration. Classified per UIAO_003 §4.7 `integration` and
+      ADR-055.
+    status: reserved
+    phase: phase-planning
+    vendor: ID.me
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - saml-assertion-issuance
+      - oidc-issuance
+      - ial-2-proofing
+      - ial-3-step-up
+      - aal-2-authentication
+    outputs:
+      - idme-app-registration-manifest.json
+      - idme-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-2(1)
+      - IA-2(2)
+      - IA-4
+      - IA-8
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - configuration-management
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-051  # SAML trust anchor
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+    notes: >-
+      ID.me is a commercial federal-authorized IdP serving multiple
+      federal customer-facing portals (VA, IRS, SSA, etc.). Issues
+      SAML 2.0 assertions (per ADR-051) and OIDC tokens at IAL-2 /
+      AAL-2 with IAL-3 step-up available. Procurement and federal
+      authorization are agency-specific; commercial-license
+      considerations apply unlike the public-domain Login.gov.
+      Activation requires a per-adapter ADR modeled on ADR-035.

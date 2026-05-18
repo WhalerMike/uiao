@@ -1,0 +1,150 @@
+---
+title: "Drift Engine"
+subtitle: "How UIAO detects and remediates canonical drift"
+doc-type: architecture-explainer
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+canon-source: "docs/docs/16_DriftDetectionStandard.qmd"
+derived-from: "uiao canon"
+---
+
+# Drift Engine
+
+![Continuous monitoring pipeline](../../images/canonical/UIAO-FIG-003-continuous-monitoring-pipeline.png){fig-alt="UIAO continuous monitoring pipeline showing how declared canonical state is checked against observed runtime reality at scale." width="100%"}
+
+UIAO treats **drift as a first-class operational signal**, not as an
+exception. The Drift Engine is the substrate-wide subsystem that classifies,
+prioritizes, and remediates the gap between *declared* canonical state and
+*observed* runtime reality.
+
+The companion executive brief is
+[Drift Engine Overview](../executive-briefs/drift-engine-overview.qmd). This
+page is the architectural depth: how the engine is structured, what it
+catches today, and what is reserved for runtime maturity.
+
+![Drift taxonomy state diagram](images/drift-engine-image-01-drift-taxonomy-state-diagram.png){#fig-drift-engine-image-01 fig-alt="Central horizontal bar labeled \"Canonical Truth\" in dark navy. Five vertical channels rise above the bar, each one a labeled drift class (DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE, DRIFT-AUTHZ, DRIFT-IDENTITY). Each channel terminates in a small severity badge (P1 red, P2 amber, P3 yellow, P4 gray) showing typical severity for that class. Below the canonical truth bar, two detection-surface lanes — left lane \"CI Substrate Walker\" highlighting SCHEMA + PROVENANCE columns, right lane \"Runtime Conformance Runner\" highlighting SEMANTIC + AUTHZ + IDENTITY columns. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) accents on white background, with red (#C74040) reserved for P1 only. No photographs, purely diagrammatic." width="85%"}
+
+## Five-class taxonomy
+
+UIAO defines exactly five drift classes, declared in
+[`16_DriftDetectionStandard.qmd` §2](../../docs/16_DriftDetectionStandard.qmd):
+
+| Class | Meaning | Detection surface |
+|---|---|---|
+| `DRIFT-SCHEMA` | Claim structure no longer matches canonical schema | CI substrate walker |
+| `DRIFT-SEMANTIC` | Structure valid, meaning stale or inconsistent | Runtime conformance runner |
+| `DRIFT-PROVENANCE` | Provenance envelope incomplete, invalid, or chain broken | CI substrate walker + runtime |
+| `DRIFT-AUTHZ` | Claim transmitted outside authorized consent envelope | Runtime conformance runner |
+| `DRIFT-IDENTITY` | Issuer cannot be resolved to a verified identity-plane object | Runtime conformance runner |
+
+Five is the right number because each class corresponds to a distinct failure
+mode that requires a distinct remediation contract. Collapsing them (e.g.
+calling everything "configuration drift") loses the ability to assign
+severity and SLA deterministically.
+
+## Severity model
+
+Every drift finding carries a severity, also canonically defined:
+
+| Severity | When | Auto-remediate? | SLA |
+|---|---|---|---|
+| `P1` (critical) | Active-use claim with provenance or identity drift | No — halt + alert | Immediate |
+| `P2` (high) | Live schema or semantic drift | Yes, if deterministic | 1 hour |
+| `P3` (medium) | Drift in dormant or historical claim | Yes | 24 hours |
+| `P4` (low) | Style or metadata drift, no semantic impact | Yes | 72 hours |
+
+Severity is computed deterministically from the drift class plus the liveness
+of the affected claim — it is not a judgment call.
+
+![Remediation contract flow diagram](images/drift-engine-image-02-remediation-contract-flow-diagra.png){#fig-drift-engine-image-02 fig-alt="Left side shows a \"Drift Detected\" event entering an evaluator that classifies it as one of P1–P4. Three branches emerge: P1 → Halt + Alert (immediate, red), P2 → Auto-remediate if deterministic (1 hour SLA, amber), P3/P4 → Queue for auto-remediation (24 / 72 hour SLA, teal). Each branch outputs a \"Remediation Contract\" record with timestamp, action, evidence hash, and escalation path field. The records flow into a single output bin labeled \"Evidence Chain (canonical claim)\". Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background, with red (#C74040) reserved for P1. No photographs, purely diagrammatic." width="85%"}
+
+## Detection surfaces
+
+### CI substrate walker (shipped today)
+
+`uiao substrate walk` and `uiao substrate drift`
+([source](../../../src/uiao/substrate/walker.py)) emit two drift classes
+on every PR via `substrate-drift.yml`:
+
+- **`DRIFT-SCHEMA`** — verifies module paths declared in
+  `substrate-manifest.yaml` (UIAO_200) actually exist in the tree.
+- **`DRIFT-PROVENANCE`** — verifies that every registry document referenced
+  from a manifest, ADR, or registry resolves to a real canon artifact.
+
+`uiao substrate drift` is the CI-friendly entry point: exit code 0 = clean,
+non-zero = drift detected. The full structured report is available via
+`uiao substrate walk --json`.
+
+### Runtime conformance runner (target / partial)
+
+The runtime detection surface — semantic, authorization, identity — is
+defined in canon and partially implemented. Adapters that pass the runtime
+conformance runner emit a remediation contract for every drift event:
+
+```yaml
+remediation_contract:
+  drift_class: "DRIFT-*"
+  severity: "P1|P2|P3|P4"
+  detection_timestamp: ISO8601
+  detected_by: "{adapter_id | workflow_id}"
+  auto_remediated: true | false
+  remediation_action: "halt | fix | flag | log"
+  remediation_timestamp: ISO8601
+  remediation_evidence: "{commit_sha | audit_record_id}"
+  escalation_path: "Canon Steward | Architecture Lead | CISO"
+```
+
+Source: [`16_DriftDetectionStandard.qmd` §4](../../docs/16_DriftDetectionStandard.qmd).
+
+The **Drift Fabric** view ties the detection surfaces above into a single
+pipeline — canonical state read, delta comparison, classification, and the
+HIGH/CRITICAL escalation arrow into the Governance Plane:
+
+![A 16:9 technical architecture schematic in the UIAO federal-whitepaper style — dark navy (#0D1B2E) and teal (#1E8C8C), with a severity accent in amber (#D4A017) reserved for HIGH/CRITICAL escalation, on a white...](images/drift-engine-image-03-a-169-technical-architecture-sch.png){#fig-drift-engine-image-03 fig-alt="Layout: a left-to-right pipeline of five labeled rectangular nodes connected by directional arrows. From left to right: 1. Truth Fabric State Reader — entry node with an inbound arrow from an off-canvas Truth Fabric labeled \"canonical state records\". 2. Drift Comparator — pictogram of two overlapping documents with a delta (Δ) symbol between them; computes deltas between observed and canonical state. 3. Drift Classifier — central node, slightly larger than its neighbours; assigns drift type (DT-01 through DT-05) and severity (LOW / MODERATE / HIGH / CRITICAL). A small severity color legend sits beneath the node showing four chips: teal for LOW/MODERATE, amber for HIGH/CRITICAL. 4. Evidence Fabric Writer — emits immutable Drift Records via an outbound arrow on the right edge labeled \"Drift Records →\" pointing off-canvas toward an unseen Evidence Fabric (sibling diagram). 5. Reconciliation Trigger — branches off the Drift Classifier upward with an amber-highlighted arrow that escalates HIGH/CRITICAL drift to a \"Governance Plane\" component drawn in the upper-right corner of the canvas. The HIGH/CRITICAL escalation path is visually distinct — amber arrow and amber border on the Reconciliation Trigger node — versus the teal horizontal pipeline arrows. Clean engineering blueprint style, no photographs, no people, no vendor logos. Publication-grade, suitable for inclusion in OSCAL-adjacent deliverables." width="85%"}
+
+## Maturity matrix
+
+| Drift class | CI surface | Runtime surface |
+|---|---|---|
+| `DRIFT-SCHEMA` | **SHIPPED** | **SHIPPED** |
+| `DRIFT-PROVENANCE` | **SHIPPED** | **SHIPPED** |
+| `DRIFT-SEMANTIC` | n/a | **TARGET** (partial) |
+| `DRIFT-AUTHZ` | n/a | **DESIGN-ONLY** |
+| `DRIFT-IDENTITY` | n/a | **DESIGN-ONLY** |
+
+For an authoritative shipped-vs-target snapshot, see
+[Substrate Status](../../docs/substrate-status.qmd).
+
+## Why this is different from a config-drift tool
+
+Three properties distinguish the UIAO Drift Engine from generic
+configuration-drift tooling:
+
+1. **Canon-anchored, not snapshot-anchored.** Drift is measured against a
+   numbered canon document with a version, not against an arbitrary
+   "last-known-good" snapshot. Reproducibility is built in: the same canon
+   version always yields the same expected state.
+2. **Five-class taxonomy with deterministic severity.** Operators do not
+   triage drift findings; severity is a pure function of class plus
+   liveness. This collapses the "is this serious?" debate into "did the
+   classifier run correctly?"
+3. **Remediation contracts are first-class evidence.** Every remediation —
+   auto or human — emits an evidence record that flows back through the
+   [Evidence Chain](evidence-chain.qmd) into OSCAL artifacts. There is no
+   parallel "drift log" disconnected from the SSP.
+
+## What this means for an ATO package
+
+A drift finding in a UIAO-anchored system carries:
+
+- A canonical class (`DRIFT-*`) traceable to UIAO_200 / canon-numbered
+  drift standard.
+- A severity computed deterministically.
+- A remediation contract with timestamps, action, and signed evidence.
+- An escalation path that lands at a named role, not a generic distribution
+  list.
+
+3PAOs assessing such a system can verify the drift posture by running
+`uiao substrate walk` themselves rather than trusting a snapshot — the engine
+is designed for independent re-execution.

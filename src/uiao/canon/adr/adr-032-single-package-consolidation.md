@@ -5,6 +5,9 @@ status: ACCEPTED
 date: "2026-04-20"
 deciders: ["WhalerMike"]
 extends: ["ADR-028", "ADR-031"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-032-single-package-consolidation.html
 ---
 
 # ADR-032: Single-Package Consolidation — flatten `src/uiao/`

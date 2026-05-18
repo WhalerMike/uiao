@@ -3,8 +3,8 @@ title: "Platform"
 subtitle: "Infrastructure build, operations, and runbooks for the UIAO governance substrate"
 doc-type: section-landing
 audience: "Platform engineers · sysadmins · integrators"
-canon-source: "inbox/Posted/UIAO Platform Server Build Guide — Windows Server 2025 with Gitea and IIS.docx"
-derived-from: "Posted canonical runbook (UIAO_SBG_001 v1.0)"
+canon-source: "src/uiao/canon/adr/adr-041-uiao-git-infrastructure.md + src/uiao/canon/release-manifests/platform-server-v1.2.yaml"
+derived-from: "ADR-041 (accepted 2026-05-12) + UIAO_SBG_001 build guide"
 aspirational: true
 ---
 
@@ -14,31 +14,36 @@ Operational runbooks for building, hardening, and governing the **on-premises
 UIAO substrate**. These documents describe how to stand up the concrete
 infrastructure the canon governs — Gitea behind IIS on Windows Server 2025,
 Intune compliance, Azure Arc enrollment, and OrgTree integration — so the
-policies in [Modernization Specs](../modernization-specs/index.qmd) have a
+policies in [Modernization Specs](../modernization-specs/index.html) have a
 real substrate to attach to.
 
 ::: {.callout-note title="Scope"}
 Platform pages are **infrastructure runbooks**, not identity architecture.
 Identity governance (OrgPath, dynamic groups, AUs, joiner/mover/leaver)
-lives in the [Modernization canon](../../modernization/orgtree.qmd) and
-its appendices MOD_A..MOD_Z. Platform pages *cite* those canonical sources
+lives in the [Modernization canon](../../modernization/orgtree.html) and
+its appendices UIAO_151–UIAO_176. Platform pages *cite* those canonical sources
 and show only the server-scoped instantiation.
 :::
 
 ## Pages in this section
 
-| Slug | Purpose | Posted source |
-|---|---|---|
-| `platform-server-build` | Windows Server 2025 + IIS + Gitea + Intune + Azure Arc + OrgTree — 14-phase build guide | `UIAO Platform Server Build Guide — Windows Server 2025 with Gitea and IIS.docx` (UIAO_SBG_001) |
+Status badges follow the [Whitepapers status conventions](../whitepapers/index.qmd).
+
+| Slug | Purpose | Status | Canonical source |
+|---|---|---|---|
+| [`platform-server-build`](./platform-server-build.qmd) | Windows Server 2025 + IIS + Gitea + Intune + Azure Arc + OrgTree — 14-phase build guide (Option B, ADR-041 canon) | Aspirational — operationally authoritative; field-rehearsal pending | `UIAO_SBG_001` (this page) + ADR-041 |
+| [`git-server-implementation`](./git-server-implementation.qmd) | Option A (IIS + `git-http-backend.exe` CGI) — lab/POC reference and the source of the canonical Git-hook bodies | Superseded for production — do not deploy without a new ADR | ADR-041 §Alternatives |
 
 ## Canonical invariants
 
 Every platform page respects:
 
-- **Boundary:** `gcc-moderate` (M365 SaaS). IaaS components sit in commercial
-  FedRAMP per ADR-001.
-- **Architecture decision:** Gitea behind IIS reverse proxy (ADR-001). The
-  rejected Option A (IIS + git-http-backend alone) is non-canonical; any
-  Posted document describing it is superseded.
+- **Boundary:** `gcc-moderate` (M365 SaaS). IaaS components (Azure Arc, Log
+  Analytics, Azure Blob backup) sit in commercial FedRAMP per the ADR-041
+  commercial-FedRAMP exception.
+- **Architecture decision:** Gitea behind IIS reverse proxy on a single
+  Windows Server 2025 host (ADR-041, Option B — `status: accepted`
+  2026-05-12). Option A (IIS + `git-http-backend.exe` alone) is retained
+  for lab/POC use only and is non-canonical for production.
 - **OrgTree integration:** every platform server carries an OrgPath, lives
-  inside an Administrative Unit, and reports drift state to MOD_M.
+  inside an Administrative Unit, and reports drift state to UIAO_163.

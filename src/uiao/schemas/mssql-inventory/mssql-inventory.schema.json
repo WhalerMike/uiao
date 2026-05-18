@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/mssql-inventory/mssql-inventory.schema.json",
+  "title": "MS SQL Estate Inventory — Tier-A1 Output Schema",
+  "description": "Normalized output of MSSQLInventoryAdapter (read-only AD + Azure Resource Graph). One claim per discovered SQL instance. Tier-A1 scope: no inside-the-instance content. Companion to the rationalization process spec at inbox/Modernization/sql-modernization-research/2026-05-17-orgpath-mssql-estate-rationalization-process.md.",
+  "type": "object",
+  "required": ["adapter_id", "evaluated_at", "claims"],
+  "additionalProperties": false,
+  "properties": {
+    "adapter_id": {
+      "type": "string",
+      "const": "mssql-inventory"
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the discovery run."
+    },
+    "tenant_id": {
+      "type": ["string", "null"],
+      "description": "Entra tenant ID for the Azure-side discovery; null if AD-only run."
+    },
+    "cloud": {
+      "type": "string",
+      "enum": ["commercial", "gcc-high", "dod"],
+      "description": "Azure cloud boundary the ARG query targeted; aligns with _graph_clouds.resolve_graph_base."
+    },
+    "claims": {
+      "type": "array",
+      "description": "Discovered SQL instances, one claim per instance.",
+      "items": { "$ref": "#/definitions/MSSQLInstanceClaim" }
+    },
+    "drift_summary": {
+      "$ref": "#/definitions/DriftSummary"
+    }
+  },
+  "definitions": {
+    "MSSQLInstanceClaim": {
+      "type": "object",
+      "required": [
+        "identifier",
+        "source",
+        "orgpath",
+        "orgpath_attribution_source",
+        "discovered_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Canonical identifier — 'host\\instance' for AD-discovered, ARM resource id for cloud-discovered."
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "ad-spn",
+            "arg-azure-sql",
+            "arg-managed-instance",
+            "arg-arc-sql",
+            "arg-sql-on-vm"
+          ]
+        },
+        "host": { "type": ["string", "null"] },
+        "port": { "type": ["integer", "null"], "minimum": 1, "maximum": 65535 },
+        "instance_name": { "type": ["string", "null"] },
+        "owning_principal": { "type": ["string", "null"] },
+        "orgpath": {
+          "type": "string",
+          "description": "Cascaded OrgPath per UIAO_153 / ADR-063. ORG-BRANCH-UNPOSITIONED indicates no attribution path resolved.",
+          "pattern": "^(ORG-BRANCH-UNPOSITIONED|ORG(-[A-Z0-9]{2,6}){0,8})$"
+        },
+        "orgpath_attribution_source": {
+          "type": "string",
+          "enum": [
+            "principal-extension",
+            "host-extension",
+            "arm-tag",
+            "unpositioned"
+          ]
+        },
+        "azure_resource_id": { "type": ["string", "null"] },
+        "azure_resource_type": { "type": ["string", "null"] },
+        "azure_subscription_id": { "type": ["string", "null"] },
+        "azure_location": { "type": ["string", "null"] },
+        "discovered_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "DriftSummary": {
+      "type": "object",
+      "description": "Aggregate drift findings emitted by detect_drift(). Matches DriftReport's details payload.",
+      "required": ["evaluated_claims", "findings_count", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "adapter_id": { "type": "string" },
+        "evaluated_claims": { "type": "integer", "minimum": 0 },
+        "findings_count": { "type": "integer", "minimum": 0 },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["claim_id", "drift_class", "severity", "reason"],
+            "additionalProperties": true,
+            "properties": {
+              "claim_id": { "type": "string" },
+              "drift_class": {
+                "type": "string",
+                "enum": [
+                  "DRIFT-IDENTITY",
+                  "DRIFT-PROVENANCE",
+                  "DRIFT-SCHEMA",
+                  "DRIFT-SEMANTIC",
+                  "DRIFT-AUTHZ"
+                ]
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["P1", "P2", "P3", "P4"]
+              },
+              "reason": { "type": "string" },
+              "orgpath": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

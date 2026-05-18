@@ -1,21 +1,21 @@
 # Repo-root Git attributes.
 #
-# LFS routing for binary image assets produced by the Gemini pipeline
-# (docs/generate_images.py). PNGs under the customer-documents tree and
-# the canonical shared-image directory can accumulate hundreds of MB
-# over many releases — LFS keeps git history light and clones fast.
+# Binary image assets produced by the Gemini pipeline (scripts/generate_images.py)
+# live as plain git blobs. LFS was retired here in favor of a flat git store —
+# repo size grew ~100 MB but CI no longer burns LFS bandwidth on every render.
+# If asset growth becomes unmanageable, the next step is external object
+# storage (S3/R2) rather than re-introducing LFS.
 #
-# Per-file LFS filter: content stored in LFS, pointers stored in git.
 # Binary media: never diff, never merge.
 # Text normalization: line endings enforced to LF.
 
-# ─── LFS-tracked binary media ────────────────────────────────────────
-docs/customer-documents/**/images/*.png          filter=lfs diff=lfs merge=lfs -text
-docs/customer-documents/**/images/*.webp         filter=lfs diff=lfs merge=lfs -text
-docs/customer-documents/**/images/*.jpg          filter=lfs diff=lfs merge=lfs -text
-docs/customer-documents/**/images/*.jpeg         filter=lfs diff=lfs merge=lfs -text
-docs/images/canonical/*.png                      filter=lfs diff=lfs merge=lfs -text
-docs/images/canonical/*.webp                     filter=lfs diff=lfs merge=lfs -text
+# ─── Binary media (plain git blobs) ──────────────────────────────────
+docs/customer-documents/**/images/*.png          binary
+docs/customer-documents/**/images/*.webp         binary
+docs/customer-documents/**/images/*.jpg          binary
+docs/customer-documents/**/images/*.jpeg         binary
+docs/images/canonical/*.png                      binary
+docs/images/canonical/*.webp                     binary
 
 # Sidecar JSON (prompt hash + generation metadata) stays in git as text
 # so diffs over time show provenance changes.
@@ -33,3 +33,4 @@ docs/images/canonical/*.png.json                 text eol=lf
 *.ps1  text eol=lf
 *.toml text eol=lf
 *.sh   text eol=lf
+*.ps1 text eol=lf

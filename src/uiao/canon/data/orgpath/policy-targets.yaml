@@ -2,30 +2,34 @@
 #
 # UIAO OrgTree Policy Targeting Canon
 # ===================================
-# Canonical source: src/uiao/modernization/orgtree/MOD_N_Execution_Substrate_Integration_Layer.md
-# Binding ADR:      src/uiao/canon/adr/adr-039-policy-targeting.md
-# Depends on:       canon/data/orgpath/codebook.yaml         (MOD_A / ADR-035)
-#                   canon/data/orgpath/dynamic-groups.yaml   (MOD_B / ADR-036)
-#                   canon/data/orgpath/device-planes.yaml    (MOD_C / ADR-038)
+# Canonical source: src/uiao/canon/UIAO_164_Execution_Substrate_Integration_Layer.md
+# Binding ADRs:     src/uiao/canon/adr/adr-039-policy-targeting.md (Intune + Azure Policy)
+#                   src/uiao/canon/adr/adr-073-policy-targeting-nac-third-transport.md (NAC)
+# Depends on:       canon/data/orgpath/codebook.yaml         (UIAO_151 / ADR-035)
+#                   canon/data/orgpath/dynamic-groups.yaml   (UIAO_152 / ADR-036)
+#                   canon/data/orgpath/device-planes.yaml    (UIAO_153 / ADR-038)
 #
-# This file declares how existing Intune configuration policies and
-# Azure Policy definitions are **targeted** at the OrgTree. Policy
-# **bodies** are not authored here — that is the job of the GPO-to-Intune
-# migration and the Azure Landing Zone playbooks. Phase 5 ships the
-# binding layer: which policy points at which OrgTree-* group (Intune)
-# or which OrgPath ARM tag pattern (Arc).
+# This file declares how existing Intune configuration policies, Azure
+# Policy definitions, and NAC policies are **targeted** at the OrgTree.
+# Policy **bodies** are not authored here — that is the job of the
+# GPO-to-Intune migration, the Azure Landing Zone playbooks, and the
+# AAA-vendor authoring surface (ISE policy sets, ClearPass services,
+# Entra RADIUS Proxy connection policies). This file ships the binding
+# layer: which policy points at which OrgTree-* group (Intune + NAC) or
+# which OrgPath ARM tag pattern (Arc).
 #
-# Boundary: GCC-Moderate on both transports (Microsoft Graph for Intune;
-# Azure Resource Manager for Arc).
+# Boundary: GCC-Moderate on all three transports (Microsoft Graph for
+# Intune; Azure Resource Manager for Arc; Cisco ISE / Aruba ClearPass /
+# Entra RADIUS Proxy management APIs for NAC).
 
-schema_version: "1.0.0"
-document_id: MOD_N
+schema_version: "1.1.0"
+document_id: UIAO_164
 parent_canon: UIAO_007
-updated: "2026-04-20"
+updated: "2026-05-16"
 
 # ---------------------------------------------------------------------------
 # Intune — device configuration profiles + compliance policies assigned to
-# OrgTree-* dynamic groups (MOD_B). Each entry is one (profile, group)
+# OrgTree-* dynamic groups (UIAO_152). Each entry is one (profile, group)
 # assignment. `intent: include` adds the group to the profile's
 # `assignments[]`; `intent: exclude` adds an exclusion target.
 #
@@ -120,3 +124,104 @@ arc_policy_assignments:
       prefix: ORG
       match_mode: startsWith
     purpose: Enroll every governed Arc machine into Microsoft Defender
+
+# ---------------------------------------------------------------------------
+# NAC — AAA-server policy bindings (ADR-073, third transport).
+# Each entry binds an AAA-vendor policy (ISE policy set / ClearPass
+# service / Entra RADIUS Proxy connection policy / NPS — hybrid only)
+# to an OrgTree-*-Devices dynamic group, with a network-edge
+# enforcement payload (VLAN / dACL / SGT / posture-profile) returned
+# on RADIUS Access-Accept.
+#
+# Phase B (this canon edit): schema validates well-formedness and
+# target_group resolution against UIAO_152. Cross-canon checks against
+# IPAM (vlan_id existence) and AAA-server inventory (dacl_name /
+# posture_profile existence) are Phase C — see ADR-073 §D6.
+#
+# VLAN allocations below are illustrative placeholders pending IPAM
+# canon integration; the real VLAN-ID-to-OrgPath mapping is owned by
+# DM_010 (BlueCat / InfoBlox).
+# ---------------------------------------------------------------------------
+nac_assignments:
+  - assignment_name: OrgTree-NAC-FIN-CorpEndpoint
+    aaa_server: cisco-ise
+    policy_ref:
+      policy_kind: policy-set
+      match_by: name
+      value: NAC-FIN-CORPENDPOINT
+    target_group: OrgTree-FIN-Devices
+    enforcement:
+      vlan_id: 142
+      dacl_name: dACL-FIN-Standard
+      posture_profile: Posture-CorpEndpoint-Standard
+      change_of_authorization: true
+    intent: permit
+    purpose: Finance device fleet — corporate-endpoint VLAN, standard dACL, posture-evaluated on CoA
+
+  - assignment_name: OrgTree-NAC-IT-CorpEndpoint
+    aaa_server: cisco-ise
+    policy_ref:
+      policy_kind: policy-set
+      match_by: name
+      value: NAC-IT-CORPENDPOINT
+    target_group: OrgTree-IT-Devices
+    enforcement:
+      vlan_id: 152
+      dacl_name: dACL-IT-Standard
+      posture_profile: Posture-CorpEndpoint-Standard
+      change_of_authorization: true
+    intent: permit
+    purpose: IT division device fleet — corporate-endpoint VLAN, standard dACL, posture-evaluated on CoA
+
+  - assignment_name: OrgTree-NAC-OPS-CorpEndpoint
+    aaa_server: cisco-ise
+    policy_ref:
+      policy_kind: policy-set
+      match_by: name
+      value: NAC-OPS-CORPENDPOINT
+    target_group: OrgTree-OPS-Devices
+    enforcement:
+      vlan_id: 162
+      dacl_name: dACL-OPS-Standard
+      posture_profile: Posture-CorpEndpoint-Standard
+      change_of_authorization: true
+    intent: permit
+    purpose: Operations device fleet — corporate-endpoint VLAN, standard dACL, posture-evaluated on CoA
+
+  - assignment_name: OrgTree-NAC-EXEC-CorpEndpoint
+    aaa_server: cisco-ise
+    policy_ref:
+      policy_kind: policy-set
+      match_by: name
+      value: NAC-EXEC-ENHANCED
+    target_group: OrgTree-EXEC-Devices
+    enforcement:
+      vlan_id: 172
+      dacl_name: dACL-EXEC-Enhanced
+      posture_profile: Posture-Executive-Enhanced
+      change_of_authorization: true
+    intent: permit
+    purpose: Executive device fleet — enhanced-segment VLAN, executive dACL, enhanced posture profile
+
+  - assignment_name: OrgTree-NAC-SOC-PrivilegedWorkstation
+    aaa_server: cisco-ise
+    policy_ref:
+      policy_kind: policy-set
+      match_by: name
+      value: NAC-SOC-PRIVILEGED
+    target_group: OrgTree-IT-SEC-SOC-Devices
+    enforcement:
+      vlan_id: 158
+      dacl_name: dACL-SOC-Restricted
+      sgt_tag: 16
+      posture_profile: Posture-PrivilegedWorkstation-Strict
+      change_of_authorization: true
+    intent: permit
+    purpose: SOC analyst privileged-workstation fleet — restricted segment, SGT for east-west segmentation, strict posture profile
+
+  # TODO(ADR-073 Phase B follow-up): OrgTree-NAC-UNPOSITIONED-Quarantine
+  # entry is deferred — depends on the OrgTree-ORG-BRANCH-UNPOSITIONED
+  # group in dynamic-groups.yaml, which itself depends on a UIAO_151
+  # codebook-sentinel design (see TODO in dynamic-groups.yaml). The
+  # network-edge enforcement of Intune-First Pillar 1 (doctrine.md §5.6)
+  # is intended but not yet wired.

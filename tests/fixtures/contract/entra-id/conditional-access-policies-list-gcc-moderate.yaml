@@ -1,0 +1,114 @@
+# Tier-2 contract fixture: entra-id Conditional Access policy enumeration
+# in GCC-Moderate.
+#
+# Codifies the canonical Microsoft Graph response shape for GET
+# /identity/conditionalAccess/policies. NIST control mapping:
+# AC-2(1), IA-2, IA-2(1) (privileged-user authentication & MFA),
+# AC-7 (unsuccessful-logon enforcement via session controls).
+#
+# Conditional Access is a high-value compliance signal because each policy
+# row encodes a SHALL/SHALL-NOT statement: who can authenticate, from where,
+# under what conditions, with which controls. The adapter's reading of this
+# endpoint feeds directly into the SCuBA baseline assertions and KSI scoring.
+
+adapter: "entra-id"
+operation: "list_conditional_access_policies"
+cloud_variant:
+  - gcc-moderate
+  # CA policy enumeration is supported in GCC, GCC-High, and DoD (license
+  # tiers vary). UIAO scope = GCC-Moderate. The endpoint host is the same
+  # as commercial for GCC-Moderate (graph.microsoft.com).
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#identity/conditionalAccess/policies"
+    value:
+      - id: "<POLICY_ID_01>"
+        displayName: "Require MFA for all admins"
+        state: "enabled"
+        createdDateTime: "2024-08-14T10:22:18Z"
+        modifiedDateTime: "2025-02-03T09:14:55Z"
+        conditions:
+          users:
+            includeRoles:
+              - "62e90394-69f5-4237-9190-012177145e10"   # Global Administrator
+              - "e8611ab8-c189-46e8-94e1-60213ab1f814"   # Privileged Role Administrator
+            excludeUsers:
+              - "<OBJECT_ID_BREAKGLASS_01>"
+              - "<OBJECT_ID_BREAKGLASS_02>"
+          applications:
+            includeApplications: ["All"]
+          clientAppTypes: ["all"]
+          locations:
+            includeLocations: ["All"]
+        grantControls:
+          operator: "OR"
+          builtInControls: ["mfa"]
+        sessionControls: null
+      - id: "<POLICY_ID_02>"
+        displayName: "Block legacy authentication"
+        state: "enabled"
+        createdDateTime: "2024-08-14T10:25:00Z"
+        modifiedDateTime: "2024-08-14T10:25:00Z"
+        conditions:
+          users:
+            includeUsers: ["All"]
+          applications:
+            includeApplications: ["All"]
+          clientAppTypes:
+            - "exchangeActiveSync"
+            - "other"
+        grantControls:
+          operator: "OR"
+          builtInControls: ["block"]
+        sessionControls: null
+      - id: "<POLICY_ID_03>"
+        displayName: "Require compliant device for SharePoint"
+        state: "enabledForReportingButNotEnforced"
+        createdDateTime: "2025-04-01T13:00:00Z"
+        modifiedDateTime: "2025-04-21T16:42:11Z"
+        conditions:
+          users:
+            includeUsers: ["All"]
+            excludeGroups: ["<GROUP_ID_GUEST_EXEMPT>"]
+          applications:
+            includeApplications:
+              - "00000003-0000-0ff1-ce00-000000000000"   # Office 365 SharePoint Online
+          clientAppTypes: ["browser", "mobileAppsAndDesktopClients"]
+        grantControls:
+          operator: "AND"
+          builtInControls: ["compliantDevice"]
+        sessionControls: null
+
+expected_behavior:
+  - "Adapter MUST emit one canonical CA-policy claim object per element in response.body.value (3 in this fixture)."
+  - "Adapter MUST preserve policy.state verbatim — 'enabled', 'disabled', and 'enabledForReportingButNotEnforced' are SEMANTICALLY DISTINCT and MUST NOT be normalized to a boolean."
+  - "Report-only policies (state = 'enabledForReportingButNotEnforced') MUST emit a CapabilityPartial claim, not be silently treated as 'enabled' for compliance scoring."
+  - "Adapter MUST surface excludeUsers / excludeGroups / excludeRoles fields — break-glass accounts are themselves a control statement and feed AU-12 evidence."
+  - "builtInControls MUST be passed through verbatim (mfa, block, compliantDevice, domainJoinedDevice, approvedApplication, etc.) — UIAO does not enumerate the canonical list; it relies on Microsoft's."
+  - "Adapter MUST emit DRIFT-AUTHZ (UIAO_110) when policy.state transitions from 'enabled' → 'disabled' between runs."
+  - "Adapter MUST emit DRIFT-SCHEMA when an unknown control name appears in builtInControls — Microsoft adds new ones over time."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-list-policies?view=graph-rest-1.0&tabs=http"
+    quote: "Get a list of the conditionalAccessPolicy objects and their properties."
+    accessed: "2026-05-03"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    quote: "Represents an Azure Active Directory conditional access policy. Conditional access policies are custom rules that define an access scenario."
+    accessed: "2026-05-03"
+  captured_by: "Schema-derived from Microsoft Learn; values are exemplars, not from any tenant."
+  sanitization: "Bearer token redacted. Policy GUIDs replaced with <POLICY_ID_NN>; user/group GUIDs with <OBJECT_ID_NN> / <GROUP_ID_*>. Built-in role GUIDs (Global Administrator, Privileged Role Administrator) are well-known public Microsoft values and intentionally not redacted — they are the SAME identifier in every tenant."

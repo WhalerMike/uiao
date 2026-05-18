@@ -1,0 +1,98 @@
+---
+title: Vulnerability Detection and Response BIR (Pathway-1 Reserved Slot) — Adapter
+  Technical Specification
+doc-type: ats
+adapter-id: vdr-bir
+adapter-class: conformance
+mission-class: telemetry
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Vulnerability Detection and Response BIR (Pathway-1 Reserved Slot) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `conformance` · **Mission:** `telemetry` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Vulnerability Detection and Response (VDR) BIR Adapter is the **Pathway-1 modernized vulnerability-management placeholder** in the UIAO substrate. As a conformance-class telemetry adapter, it reserves the canonical slot for the FedRAMP Vulnerability Detection and Response Balance Improvement Release — the modernized successor to today's pathway-2 vulnerability-scanning cadence covered by the [`vuln-scan`](../vuln-scan/vuln-scan.html), [`stig-compliance`](../stig-compliance/stig-compliance.html), and [`patch-state`](../patch-state/patch-state.html) adapters.
+
+The adapter is intentionally **stub-only today**. Its activation depends on FedRAMP publishing the VDR BIR; until then, the registry entry exists so consuming engagements can declare their planned pathway transition deterministically, and so the migration-readiness check can compute lead time against the mandatory adoption date in **Notice 0009** (2027-06-01). The VDR mandatory date is later than the [`ccm-bir`](../ccm-bir/ccm-bir.html) date, so CCM is the leading deadline; VDR follows.
+
+Three primary functions, all reserved for activation:
+
+1. **Automated VDR evidence emission (reserved).** When the BIR ships, the adapter will consume the substrate's vulnerability evidence stream from the pathway-2 quartet and emit the VDR-compliant continuous-monitoring artifact directly, replacing the periodic-snapshot model with the BIR's defined-cadence model.
+2. **Pathway-2 → Pathway-1 transition gate.** Until the BIR ships, instantiation raises `VdrAdapterNotYetAvailable`; consuming engagements stay on the pathway-2 vulnerability-scanning quartet. The transition is tracked in canon so a 3PAO can see the planned pathway-1 commitment in advance.
+3. **Migration-readiness contribution.** The adapter's reserved-slot metadata feeds the migration-readiness check that runs `readiness-lead-days = 90` ahead of the Notice 0009 mandatory date. Engagements without a pathway-1 plan land as drift findings against their canon-declared roadmap.
+
+**Implementation:** Reserved slot per ADR-043 / UIAO_132 §5. Stub module at `src/uiao/adapters/vdr_adapter.py` — instantiation raises `VdrAdapterNotYetAvailable` until the BIR ships. Activation requires the FedRAMP VDR BIR publication plus a per-adapter ADR.
+
+## Scope
+
+Target surfaces / subsystems: reserved (defined when the VDR BIR ships)
+
+**Reads:** Reserved. The expected read surface is the FedRAMP-published VDR BIR API specification plus the substrate's existing vulnerability evidence stream (vuln-scan / stig-compliance / patch-state outputs).
+
+**Emits:** `findings.json` and `metadata.json` (shapes reserved for the BIR publication), plus `EvidenceObject` records that will feed the RA-5 / CA-7 / SI-2 control evidence stream under the modernized pathway.
+
+**Does NOT:** operate today (instantiation raises `VdrAdapterNotYetAvailable`), replace the pathway-2 vulnerability-scanning adapters until the BIR ships and the consuming engagement transitions, or modify the FedRAMP authorization-package shape outside what the BIR specifies.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `RA-5`, `CA-7`, `SI-2`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **RA-5** Vulnerability Monitoring and Scanning | Primary (reserved) | Once the BIR ships, this adapter is the canonical pathway-1 (modernized) vulnerability-monitoring evidence path. |
+| **CA-7** Continuous Monitoring | Primary (reserved) | The VDR BIR introduces a defined-cadence continuous-monitoring model for vulnerabilities; this adapter is the canonical pathway-1 surface for that cadence. |
+| **SI-2** Flaw Remediation | Supporting (reserved) | Remediation-state correlation between scan findings and patch state flows through this adapter under the modernized pathway. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `github-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `interval` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Pathway-1 (modernized) slot reserved for the Vulnerability Detection and Response Balance Improvement Release once FedRAMP publishes it. Complements the pathway-2 [`vuln-scan`](../vuln-scan/vuln-scan.html) slot; both share the CA-7 / RA-5 / SI-2 control surface. Stub module: `src/uiao/adapters/vdr_adapter.py` — instantiation raises `VdrAdapterNotYetAvailable` until the BIR ships.
+
+Mandatory adoption date (Notice 0009 / **2027-06-01**) follows the [`ccm-bir`](../ccm-bir/ccm-bir.html) deadline; the migration-readiness check (`readiness-lead-days = 90`) tracks both.
+
+Advisory mapping (per ADR-043 D4 / UIAO_132 §5): satisfies requirement RV5-CA07-VLN on the modernized FedRAMP authorization pathway-1, with the pathway-transition trigger being the publication of the VDR Balance Improvement Release.
+
+## References
+
+- UIAO-CANON-003
+- ADR-043 — FedRAMP RFC-0026 pathway alignment
+- UIAO_132 — Continuous Monitoring Pack
+- https://www.fedramp.gov/20x/notice-0009/
+- https://github.com/FedRAMP/community/discussions/130
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

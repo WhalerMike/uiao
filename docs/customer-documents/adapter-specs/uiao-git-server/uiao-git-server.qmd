@@ -1,0 +1,94 @@
+---
+title: UIAO Self-Hosted Git Server (Windows Server 2025 + IIS) — Health & Evidence
+  — Adapter Technical Specification
+doc-type: ats
+adapter-id: uiao-git-server
+adapter-class: conformance
+mission-class: telemetry
+status: active
+phase: phase-1
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/adapter-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-12'
+---
+
+# UIAO Self-Hosted Git Server (Windows Server 2025 + IIS) — Health & Evidence — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `active` · **Class:** `conformance` · **Mission:** `telemetry` · **Phase:** `phase-1`
+
+**Canon source:** `canon/adapter-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The UIAO Self-Hosted Git Server Adapter is the **substrate-internal infrastructure observer** for the UIAO self-hosted Git service (Windows Server 2025 + IIS). As a conformance-class telemetry adapter, it observes service health, TLS posture, repository inventory, and IIS access audit for the Git infrastructure that hosts the substrate's canon and the customer's governance repositories.
+
+This adapter is one of the few that observes UIAO's own substrate rather than a third-party system. The Git server is foundational — it hosts the canon, the adapter registries, the runbooks, and the OSCAL artifacts — so its operational evidence has to flow into the same continuous-monitoring pack as every other adapter's output. Without this adapter, the substrate's own Git infrastructure is the one component without canonical observability.
+
+Four primary functions:
+
+1. **Service-health observation.** Watches IIS application-pool state, `git http-backend` availability, and Windows service status for the Git endpoints. Emits canonical health claims per polling interval with explicit up / down / degraded classification.
+2. **TLS-posture observation.** Inventories the TLS certificates on the Git endpoints — expiry date, chain validity, key algorithm, SAN coverage — emitting canonical claims that drive near-expiry alerts and chain-validation failures.
+3. **Repository inventory.** Enumerates the hosted repositories with metadata (size, last-push timestamp, branch count, quota state). The inventory feeds CM-8 component-inventory evidence for the substrate's own hosting plane.
+4. **IIS access-audit summary.** Reads the IIS request logs, normalizing into per-period summary claims (request volume, response-code distribution, top-N principal access patterns) for the AU-2 / AU-6 evidence stream.
+
+**Implementation:** Reserved-then-active per ADR-041 (moved from draft to accepted when the implementation guides landed under `docs/docs/ops/git-server/`). Runs on `on-prem-self-hosted` because the adapter requires LAN-side access to the IIS management surface.
+
+## Scope
+
+Target surfaces / subsystems: `git-service-health`, `git-tls-posture`, `git-repository-inventory`, `git-access-audit`
+
+**Reads:** IIS Web Administration API for application-pool and site state, Windows Service Control Manager for service status, the TLS certificate store on the Git endpoints, the Git repository directory listing, and the IIS request logs (`%SystemDrive%\inetpub\logs\LogFiles\`). Read-only Windows administrative authentication per the documented least-privilege role.
+
+**Emits:** `git-server-health.json` (per-poll service-health record), `git-tls-inventory.json` (per-poll TLS certificate inventory with expiry timestamps), `git-repo-inventory.json` (per-poll repository inventory with size and last-push), plus `EvidenceObject` records that feed the CA-7 / CM-8 / AU-2 / AU-6 / SI-4 control evidence stream.
+
+**Does NOT:** modernize, provision, or modify the Git service (provisioning is handled via IaC — Terraform / DSC — outside the adapter fabric), modify IIS configuration, manage TLS certificate issuance, write to repositories, or modify Windows service configuration.
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `CA-7`, `CM-8`, `AU-2`, `AU-6`, `SI-4`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CA-7** Continuous Monitoring | Primary | Per-poll service-health and TLS-posture observation produces continuous evidence of the Git infrastructure's operational state. |
+| **CM-8** Information System Component Inventory | Primary | Repository inventory plus TLS-certificate inventory is the canonical inventory for the substrate's own Git hosting plane. |
+| **AU-2** Event Logging | Supporting | IIS access-audit summaries verify that the documented audit categories are being captured by the Git endpoints. |
+| **AU-6** Audit Record Review, Analysis, and Reporting | Supporting | Per-period access-audit summaries support the audit-review process for the Git surface. |
+| **SI-4** System Monitoring | Primary | Health, TLS, and access-pattern observation collectively are the system-monitoring evidence for the Git infrastructure. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `on-prem-self-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `interval` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Conformance adapter for the UIAO self-hosted Git service (Windows Server 2025 + IIS). Promoted to active when ADR-041 moved from draft to accepted and the implementation guides landed under `docs/docs/ops/git-server/`. Observes service health (IIS app-pool state, `git http-backend` availability), TLS posture (certificate expiry, chain validity), repository inventory (count + quota), and access audit (IIS request log summary). Pair document: ADR-041. **Does NOT** modernize the Git service itself; provisioning is handled via IaC (Terraform / DSC) outside the adapter fabric.
+
+## References
+
+- UIAO-CANON-003
+- ADR-041 — UIAO Git infrastructure
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

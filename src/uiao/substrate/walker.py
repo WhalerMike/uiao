@@ -54,6 +54,12 @@ class DriftFinding:
     severity: str
     path: str
     detail: str
+    # Machine-readable label for sub-flavors within a `drift_class`. The walker
+    # emits multiple kinds of DRIFT-PROVENANCE (dangling code refs, missing
+    # canon docs, retired-slug citations); `subkind` lets callers and the CLI
+    # filter on the specific check via equality instead of substring-on-detail.
+    # `None` for findings that don't need to be distinguished.
+    subkind: Optional[str] = None
 
 
 @dataclass
@@ -100,6 +106,7 @@ class SubstrateReport:
                     "severity": f.severity,
                     "path": f.path,
                     "detail": f.detail,
+                    "subkind": f.subkind,
                 }
                 for f in self.findings
             ],
@@ -213,9 +220,312 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
 
     _scan_canon_code_refs(root, report)
     _scan_docs_code_refs(root, report)
+    _scan_retired_slugs(root, report, manifest.get("retired_slugs") or [])
     _scan_consent_envelope(root, report)
+    _scan_issuer_chain(root, report)
+    _scan_ztmm_pillars(root, report)
+    _scan_tenants(root, report)
+    _scan_feature_flags(root, report)
 
     return report
+
+
+_VALID_TENANT_CLASSES: frozenset[str] = frozenset({"internal", "canary", "standard", "regulated"})
+
+
+def _scan_tenants(root: Path, report: SubstrateReport) -> None:
+    """UIAO_112 / §3.4 multi-tenant declaration scan + UIAO_119 hygiene.
+
+    Every active tenant in ``src/uiao/canon/tenants.yaml`` MUST declare
+    a non-empty ``credential_scope:`` list (UIAO_112). Without it the
+    substrate cannot bind the tenant to a credential backend at
+    runtime.
+
+    Every tenant declaration that carries a ``tenant_class:`` field
+    MUST use one of the four canonical values (UIAO_119): ``internal``,
+    ``canary``, ``standard``, ``regulated``. An unknown value is a P3
+    schema-hygiene finding — the runtime falls back to ``standard`` but
+    the canon is wrong.
+
+    The file is **optional** — single-tenant deployments don't need a
+    tenants.yaml; the runtime synthesizes a default tenant. So absence
+    of the file is not a finding; only declared tenants with missing
+    credential_scope (or invalid tenant_class) are flagged.
+
+    Severity policy:
+        - active tenant, no ``credential_scope:`` → P2 (registry hygiene;
+          tenant cannot be bound to credentials)
+        - active tenant, ``credential_scope: []`` → P2 (same)
+        - any tenant, unknown ``tenant_class:`` → P3 (UIAO_119 hygiene)
+        - inactive tenants → still scanned for tenant_class hygiene
+    """
+    path = root / "src" / "uiao" / "canon" / "tenants.yaml"
+    if not path.is_file():
+        return
+    try:
+        doc = _load_yaml(path)
+    except yaml.YAMLError:
+        return
+    if not doc:
+        return
+    rel = str(path.relative_to(root))
+    tenants = doc.get("tenants") if isinstance(doc, dict) else None
+    if not isinstance(tenants, list):
+        return
+    for entry in tenants:
+        if not isinstance(entry, dict):
+            continue
+        tid = str(entry.get("id", "")).strip()
+        if not tid:
+            continue
+        # UIAO_119 tenant_class hygiene runs regardless of status —
+        # an inactive tenant with a bad class is still a canon bug.
+        if "tenant_class" in entry:
+            raw_class = str(entry.get("tenant_class", "")).strip().lower()
+            if raw_class not in _VALID_TENANT_CLASSES:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{tid}",
+                        detail=(
+                            f"tenant '{tid}' carries unknown tenant_class "
+                            f"'{raw_class}'; expected one of "
+                            "internal / canary / standard / regulated (UIAO_119)"
+                        ),
+                    )
+                )
+        status = str(entry.get("status", "active")).strip().lower()
+        if status != "active":
+            continue
+        scope = entry.get("credential_scope") or []
+        if not isinstance(scope, list) or len(scope) == 0:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P2",
+                    path=f"{rel}#{tid}",
+                    detail=(
+                        f"active tenant '{tid}' has empty credential_scope; "
+                        "tenant cannot be bound to a credential backend"
+                    ),
+                )
+            )
+
+
+_VALID_FEATURE_FLAG_DIMENSIONS: frozenset[str] = frozenset({"dev", "stage", "prod"})
+
+
+def _scan_feature_flags(root: Path, report: SubstrateReport) -> None:
+    """UIAO_119 v2 / §4.4 feature-flag declaration scan.
+
+    Each flag in ``src/uiao/canon/feature-flags.yaml`` MUST declare:
+
+    - a non-empty ``spec_ref:`` linking to the canon spec or roadmap
+      section that defines it (P3 — flags without an owner rot);
+    - an ``expires_at:`` ISO-8601 date (P3 — undocumented expirations
+      mean dead flags accumulate);
+    - environments drawn from ``dev / stage / prod`` only (P3 —
+      typos in env names silently disable the flag).
+
+    The file is **optional** — a substrate with no flags evaluates
+    every flag check to ``False`` (deny by default). Absence is not a
+    finding; only declared flags with broken metadata are flagged.
+    """
+    path = root / "src" / "uiao" / "canon" / "feature-flags.yaml"
+    if not path.is_file():
+        return
+    try:
+        doc = _load_yaml(path)
+    except yaml.YAMLError:
+        return
+    if not doc:
+        return
+    rel = str(path.relative_to(root))
+    flags = doc.get("flags") if isinstance(doc, dict) else None
+    if not isinstance(flags, list):
+        return
+    for entry in flags:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name", "")).strip()
+        if not name:
+            continue
+        spec_ref = str(entry.get("spec_ref", "")).strip()
+        if not spec_ref:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P3",
+                    path=f"{rel}#{name}",
+                    detail=(
+                        f"feature flag '{name}' missing spec_ref; flags without a "
+                        "documented owner rot (UIAO_119 v2 hygiene)"
+                    ),
+                )
+            )
+        expires_at = str(entry.get("expires_at", "")).strip()
+        if expires_at:
+            try:
+                from datetime import date as _date
+
+                _date.fromisoformat(expires_at)
+            except ValueError:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{name}",
+                        detail=(
+                            f"feature flag '{name}' has malformed expires_at "
+                            f"'{expires_at}'; expected ISO-8601 date (YYYY-MM-DD)"
+                        ),
+                    )
+                )
+        else:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P3",
+                    path=f"{rel}#{name}",
+                    detail=(
+                        f"feature flag '{name}' missing expires_at; undocumented expirations cause flag accumulation"
+                    ),
+                )
+            )
+        envs = entry.get("environments") or []
+        if isinstance(envs, list):
+            for env in envs:
+                env_str = str(env).strip().lower()
+                if env_str and env_str not in _VALID_FEATURE_FLAG_DIMENSIONS:
+                    report.findings.append(
+                        DriftFinding(
+                            drift_class="DRIFT-SCHEMA",
+                            severity="P3",
+                            path=f"{rel}#{name}",
+                            detail=(
+                                f"feature flag '{name}' lists unknown environment "
+                                f"'{env_str}'; expected one of dev / stage / prod"
+                            ),
+                        )
+                    )
+
+
+def _scan_ztmm_pillars(root: Path, report: SubstrateReport) -> None:
+    """UIAO_120 / §3.6 ZTMM pillar declaration scan.
+
+    Every active adapter SHOULD declare ``ztmm-pillars:`` so the
+    ZTMMScoreCalculator can attribute the adapter's evidence to the
+    right CISA ZTMM v2.0 pillar(s). Missing declarations don't break
+    anything at runtime — the calculator simply scores any undeclared
+    pillar at TRADITIONAL maturity — but the substrate-status dashboard
+    understates coverage.
+
+    Tagged ``DRIFT-SCHEMA`` because the gap is structural canon
+    metadata: the registry entry is missing a declared field, not an
+    identity-trust-chain failure.
+
+    Severity policy:
+        - active adapter, no ``ztmm-pillars:`` key → P3 (advisory)
+        - active adapter, ``ztmm-pillars: []`` → skipped (informational
+          adapter; explicit empty list is a valid declaration)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status != "active":
+                continue
+            if "ztmm-pillars" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' has no ztmm-pillars: "
+                            "declaration; ZTMM pillar attribution unavailable"
+                        ),
+                    )
+                )
+
+
+def _scan_issuer_chain(root: Path, report: SubstrateReport) -> None:
+    """UIAO_110 DRIFT-IDENTITY registry-hygiene scan.
+
+    Every active adapter that declares ``certificate-anchored: true``
+    MUST also declare a ``trust-anchor:`` (subject DN, fingerprint, or
+    both). Without an anchor, the runtime issuer-chain validator has
+    nothing to compare against, so the substrate's certificate-anchoring
+    contract is unenforceable for that adapter.
+
+    Severity policy:
+        - active adapter, ``certificate-anchored: true``, no
+          ``trust-anchor:`` key → P1 (substrate trust contract; runtime
+          issuer-chain cannot be enforced)
+        - active adapter, ``certificate-anchored: false`` → skipped
+          (declared not anchored)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status != "active":
+                continue
+            cert_anchored = entry.get("certificate-anchored")
+            if cert_anchored is not True:
+                continue
+            if "trust-anchor" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-IDENTITY",
+                        severity="P1",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' declares "
+                            "certificate-anchored: true but has no trust-anchor: "
+                            "declaration; issuer-chain validation cannot be enforced"
+                        ),
+                    )
+                )
 
 
 def _scan_consent_envelope(root: Path, report: SubstrateReport) -> None:
@@ -379,3 +689,95 @@ def _scan_docs_code_refs(root: Path, report: SubstrateReport) -> None:
         source_label="docs document",
         report=report,
     )
+
+
+def _scan_retired_slugs(
+    root: Path,
+    report: SubstrateReport,
+    retired_slugs: list[dict],
+) -> None:
+    """Emit a P2 advisory for any literal occurrence of a retired slug
+    inside the canon or docs trees.
+
+    The walker reads the manifest's `retired_slugs:` block (a list of
+    `{slug, replacement, rationale?}`) and scans `src/uiao/canon/` and
+    `docs/` for any text that contains the slug as a word. Each
+    `(file, slug)` pair produces one finding naming the replacement
+    so the operator can fix the reference in-place.
+
+    Three guards keep the scan honest:
+
+      1. The slug-bearing files inside the canon tree (e.g. each
+         renamed UIAO_15x doc carries a `prior_id: "MOD_X"` frontmatter
+         line as a permanent historical record) are intentionally
+         excluded — `prior_id:` is the right place for a retired slug
+         to live, not drift.
+      2. The ADR that retired the slug is excluded — it's the
+         historical artifact about the rename, by construction it
+         must reference the old slug.
+      3. The substrate manifest itself is excluded — its
+         `retired_slugs:` block contains every retired slug by design.
+    """
+    if not retired_slugs:
+        return
+    canon_dir = root / CANON_ROOT
+    docs_dir = root / DOCS_ROOT
+
+    # Build a single regex per slug (word-boundary literal match).
+    slug_patterns: list[tuple[re.Pattern[str], str, str]] = []
+    for entry in retired_slugs:
+        slug = entry.get("slug")
+        replacement = entry.get("replacement")
+        if not slug or not replacement:
+            continue
+        rationale = entry.get("rationale", "")
+        slug_patterns.append((re.compile(rf"\b{re.escape(slug)}\b"), replacement, rationale))
+    if not slug_patterns:
+        return
+
+    files: list[Path] = []
+    for d, patterns in ((canon_dir, ("*.md",)), (docs_dir, ("*.md", "*.qmd"))):
+        if not d.is_dir():
+            continue
+        for glob in patterns:
+            files.extend(d.rglob(glob))
+
+    seen: set[tuple[str, str]] = set()
+    for md_file in sorted(set(files)):
+        try:
+            text = md_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        # Mask out frontmatter `prior_id:` values — those are the
+        # permanent historical record and must not be flagged.
+        masked = re.sub(r'^\s*prior_id:\s*"[^"]*"\s*$', "", text, flags=re.MULTILINE)
+        # Also mask the substrate-manifest's own retired_slugs block by
+        # path: the only place we'd encounter is canon/substrate-manifest.yaml
+        # (.yaml is not in the scan globs above, so this is defensive).
+        file_rel = md_file.relative_to(root).as_posix()
+        if file_rel.endswith("substrate-manifest.yaml"):
+            continue
+        # ADR-060 references retired slugs by construction; it's the
+        # rename's source-of-truth artifact. Skip it.
+        if "adr-060-mod-namespace-flatten-into-uiao-canon.md" in file_rel:
+            continue
+
+        for pat, replacement, rationale in slug_patterns:
+            for match in pat.finditer(masked):
+                slug_text = match.group(0)
+                key = (file_rel, slug_text)
+                if key in seen:
+                    continue
+                seen.add(key)
+                detail = f"{file_rel} cites retired slug {slug_text}; use {replacement} instead"
+                if rationale:
+                    detail += f" (per {rationale})"
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P2",
+                        path=file_rel,
+                        detail=detail,
+                        subkind="retired-slug",
+                    )
+                )

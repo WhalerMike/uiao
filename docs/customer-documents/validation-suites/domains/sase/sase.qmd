@@ -1,0 +1,105 @@
+---
+title: "SASE Modernization Validation Suite"
+subtitle: "Conformance tests and validation criteria for the sase domain"
+doc-type: domain-validation-suite
+audience: [Customer, Assessor, Adapter Owner]
+classification: Controlled
+boundary: GCC-Moderate
+domain: sase
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+canon-reference:
+  - "docs/customer-documents/modernization-specs/sase/sase.qmd"
+  - "docs/customer-documents/architecture-series/six-plane-architecture.qmd"
+derived-from: "uiao canon"
+---
+
+# SASE Modernization Validation Suite
+
+## Scope
+
+Conformance tests and validation criteria for the SASE domain. Pairs
+with the
+[SASE Modernization Spec](../../../modernization-specs/sase/sase.qmd).
+The suite gates whether a SASE deployment meets substrate conformance
+— primary focus is identity-derived access, certificate-anchored
+overlay, and decision-record emission.
+
+![SASE validation suite diagram](images/sase-image-01-sase-validation-suite-diagram.png){#fig-sase-image-01 fig-alt="Center shows a SASE PDP/PEP node. Inputs from the left: Identity Claim (from identity plane), Resource Scope, Certificate Thumbprint, Policy Refs. Output to the right: SASE decision record (permit / deny / escalate) with full provenance envelope. Above the PDP, a small \"Conformance gates\" badge bar lists the four test categories. Below, a footer band reads \"SASE = identity-driven, certificate-anchored, decision-recorded\". Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="85%"}
+
+## Test categories
+
+### 1. Identity-derived access conformance
+
+- Every SASE access decision consumes an identity claim as input.
+- Decisions on resources without identity context emit a
+  `DRIFT-IDENTITY` finding rather than a default-permit.
+- SASE PDPs do not maintain a parallel identity store.
+
+### 2. Certificate-anchored overlay
+
+- Overlay certificates are issued bound to identity-plane objects.
+- Decision records carry `certificate_thumbprint` matching the
+  identity context.
+- Certificate retirement triggers `DRIFT-IDENTITY` for any active
+  decisions still bound to the retired cert.
+
+### 3. Decision-record schema
+
+For each SASE decision:
+
+- `pdp_id`, `decision`, `identity_context`, `resource_scope`,
+  `network_overlay`, `certificate_thumbprint`, `policy_refs`,
+  `evaluation_timestamp` are all present.
+- `decision` is one of `permit | deny | escalate`.
+- Full provenance envelope wraps the decision record.
+
+### 4. Drift detection coverage
+
+- `DRIFT-IDENTITY` — identity claim cannot resolve.
+- `DRIFT-AUTHZ` — decision recorded outside consent envelope.
+- `DRIFT-PROVENANCE` — overlay certificate fails to bind to
+  identity-plane object.
+- `DRIFT-SCHEMA` — vendor policy schema diverges from canonical
+  shape.
+
+## Evidence expectations
+
+- Per-decision claim records with full provenance.
+- Certificate-to-identity binding evidence.
+- OSCAL artifacts mapping SASE decisions onto NIST 800-53 AC, SC, IA
+  controls.
+- Boundary-disposition evidence where SASE vendor features are
+  unavailable in GCC-Moderate.
+
+## Conformance gates
+
+| Gate | Required | Tier |
+|---|---|---|
+| **T1 — identity-derived access** | Decisions consume identity claims | Required |
+| **T2 — certificate-anchored overlay** | Cert-to-identity binding present | Required |
+| **T3 — decision schema** | Full decision-record schema validates | Required |
+| **T4 — drift coverage** | All four SASE-relevant drift classes detected | Target |
+
+## Drift procedures
+
+`DRIFT-IDENTITY` (P1) and `DRIFT-AUTHZ` (P1/P2) dominate SASE drift
+operations. Both halt the affected access flow and alert. Other
+classes auto-remediate when deterministic; otherwise escalate.
+
+## Honest limits
+
+- SASE vendor maturity in GCC-Moderate varies; T1–T3 conformance
+  requires either an in-boundary vendor or a compensating-mechanism
+  declaration.
+- Certificate-anchored overlay requires agency PKI capable of issuing
+  identity-bound certificates; programs without that PKI cannot
+  fully realize T2.
+- Some SASE vendor PDPs do not emit decision records natively; the
+  adapter may have to synthesize records from logs, with explicit
+  `source_classification: synthesized`.
+
+## Related documents
+
+- [Modernization Spec — SASE](../../../modernization-specs/sase/sase.qmd)
+- [Architecture Series — Six-Plane Architecture](../../../architecture-series/six-plane-architecture.qmd)
+- [Modernization Registry (canon)](../../../../../src/uiao/canon/modernization-registry.yaml)

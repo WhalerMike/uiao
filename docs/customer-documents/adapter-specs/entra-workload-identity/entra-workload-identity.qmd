@@ -1,0 +1,100 @@
+---
+title: Microsoft Entra Workload Identity (Reserved Slot) — Adapter Technical Specification
+doc-type: ats
+adapter-id: entra-workload-identity
+adapter-class: modernization
+mission-class: integration
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/modernization-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# Microsoft Entra Workload Identity (Reserved Slot) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The Microsoft Entra Workload Identity Adapter is the **service-account retirement actuator** of the UIAO substrate. As a modernization-class integration adapter, it provisions workload identities, federation trusts, app credential rotation, and managed-identity assignments — the change-making surface that retires legacy AD service accounts in favor of certificate-anchored, federation-anchored workload identities per ADR-004.
+
+The driving problem: agencies migrating from on-premises AD inherit a long tail of service accounts with passwords stored in scripts, scheduled tasks, and forgotten configuration files. ADR-004 (`workload-identity-federation-default`) declares that the substrate's default position is **workload-identity federation** — short-lived, federated tokens issued from CI / Kubernetes / Azure resource identities — rather than long-lived secrets. This adapter is the operational edge that makes that default real.
+
+Three primary functions:
+
+1. **Workload identity provisioning.** Creates Entra application registrations and service principals whose credentials are federated trusts (GitHub Actions, Azure managed identity, Kubernetes service-account tokens, etc.) rather than client secrets. The federation trust binds the workload identity to a specific external issuer + subject claim, eliminating the need to store any credential.
+2. **Managed-identity assignment.** Attaches Azure managed identities (system-assigned and user-assigned) to compute resources per the canonical assignment plan, replacing service-account credentials embedded in app config.
+3. **Credential rotation + hygiene.** For workloads that cannot yet federate, rotates client secrets and certificates on the canonical schedule and tracks credential age, near-expiry signals, and over-permissioned credentials. Rotation events emit audit records into the canonical evidence stream.
+
+UIAO_136 Spec 3 enumerates the AD service-account → workload-identity transformation deliverables (D2.1–D2.8); this adapter is the actuator for that deliverables track.
+
+**Implementation:** Reserved slot. Activation requires a per-adapter ADR. Anchored in ADR-004 (workload-identity-federation-default).
+
+## Scope
+
+Target surfaces / subsystems: `workload-identity-federation`, `app-credentials`, `managed-identity-assignments`, `credential-hygiene`
+
+**Reads:** UIAO_136 Spec 3 deliverables (executable canon under `canon/data/`), the live Entra workload-identity state via Microsoft Graph (`/applications`, `/applications/{id}/federatedIdentityCredentials`, `/servicePrincipals`), and the Azure managed-identity state via Azure Resource Manager. Cross-references the legacy AD service-account inventory captured by the [`active-directory`](../active-directory/active-directory.html) adapter to identify migration candidates.
+
+**Emits:** `workload-identity-manifest.json` (planned workload-identity provisions and federation trusts with per-row provenance), `credential-rotation-audit.json` (post-rotation audit trail with age, scope, and rotation reason), and skipped-manual findings for credentials that cannot be safely auto-rotated (e.g. owned by an unresponsive workload).
+
+**Does NOT:** modify Entra ID identity outside the documented workload-identity surface (user accounts, group membership, conditional access — those belong to [`entra-id`](../entra-id/entra-id.html)), rotate credentials whose age and scope are unknown (these surface as findings until cataloged), or auto-delete legacy service accounts (deletion is gated on the migration runbook's explicit cutover step).
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `IA-5`, `IA-5(1)`, `IA-5(2)`, `IA-9`, `AC-2`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-5** Authenticator Management | Primary | Provisions and rotates workload authenticators (federation trusts, managed identities, client secrets, certificates) per the canon-defined lifecycle. |
+| **IA-5(1)** Password-Based Authentication | Primary | Federation trusts and managed identities replace password-based service-account authentication entirely; client-secret rotation is the fallback path. |
+| **IA-5(2)** PKI-Based Authentication | Supporting | Certificate-based workload credentials are issued and rotated through the documented PKI integration; certificate thumbprints are tracked in the manifest. |
+| **IA-9** Service Identification and Authentication | Primary | Every workload identity is registered with a stable identifier and federated authentication contract — no anonymous service principals. |
+| **AC-2** Account Management | Supporting | Workload identity inventory feeds the broader account-management view alongside [`entra-id`](../entra-id/entra-id.html) user / group inventory. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `TBD` |
+| Runtime pin | `TBD` |
+| Runner class | `TBD` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Reserved slot per ADR-049. Anchored in ADR-004 (`workload-identity-federation-default`). Spec 3 of UIAO_136 enumerates the AD service-account → workload-identity transformation deliverables (D2.1–D2.8). Activation requires a per-adapter ADR.
+
+Pairs upstream with the [`active-directory`](../active-directory/active-directory.html) adapter (which surveys the legacy service-account population that this adapter retires) and downstream with [`entra-id-governance`](../entra-id-governance/entra-id-governance.html) (which governs the Access Review and Entitlement Management policies that workload identities are subject to).
+
+ZTMM pillar: identity.
+
+## References
+
+- UIAO-CANON-003
+- ADR-004 — Workload identity federation default
+- ADR-049 — Reserved-slot allocation framework
+- UIAO_136 — Priority-1 transformation project plans (Spec 3)
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

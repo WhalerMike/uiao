@@ -1,0 +1,55 @@
+ksi_id: KSI-ORGTREE-007
+title: Disabled Accounts Carry No Privileged Group Membership
+category: iam
+description: >
+  No disabled Active Directory user account may retain membership in any
+  privileged security group.  Privileged groups include, at minimum: Domain
+  Admins, Enterprise Admins, Schema Admins, Backup Operators, Account
+  Operators, Server Operators, and any OU-scoped administrative groups
+  identified in the OrgTree privilege inventory.  Disabled accounts that
+  retain privileged memberships represent dormant privilege escalation
+  pathways if the account is re-enabled.
+security_objective: >
+  Ensure that disabling an account fully revokes its privileged access,
+  eliminating dormant escalation paths and satisfying access-lifecycle
+  requirements for separated or suspended personnel.
+related_controls:
+  - AC-2
+  - AC-2(3)
+  - AC-6
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - graph_api
+pass_criteria:
+  description: >
+    Zero disabled user accounts are members of any privileged group.
+    All privileged group memberships belong exclusively to enabled,
+    active user or computer accounts.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT u.sam_account_name, g.group_name
+    FROM ad_users u
+    JOIN group_memberships gm ON u.sid = gm.member_sid
+    JOIN privileged_groups g ON gm.group_dn = g.group_dn
+    WHERE u.enabled = FALSE
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.disabled_account_privilege_check
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - disabled-accounts
+  - privileged-groups
+  - account-lifecycle
+  - least-privilege

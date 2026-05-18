@@ -40,7 +40,7 @@ dependencies = [
   "numpy>=1.24",
   "lxml>=5.0",
   "compliance-trestle>=4.0",
-  "compliance-trestle-fedramp",
+  "compliance-trestle-fedramp>=0.2",
   "python-hcl2>=4.0",
 ]
 
@@ -53,6 +53,14 @@ dev = [
   "pre-commit>=3.7",
   "types-PyYAML",
   "types-requests",
+  # Type stubs added in mypy burn-down Phase 1 (issue #279):
+  "types-openpyxl",     # stubs for openpyxl — used by uiao.generators.{briefing,charts,docs}
+  # NOTE: types-python-docx does NOT exist on PyPI as of 2026-05-01
+  # despite issue #279's claim. python-docx-using modules (briefing,
+  # rich_docx) keep their per-file overrides for now.
+  # NOTE: compliance_trestle.* was removed from [[tool.mypy.overrides]]
+  # (issue #279): the module is no longer imported anywhere mypy sees,
+  # so the per-module entry was flagged as unused by warn_unused_configs.
 ]
 # Runtime deps for the uiao.api FastAPI service (entrypoint at
 # deploy/windows-server/run.py) and the gcc-boundary-probe adapter,
@@ -121,6 +129,11 @@ norecursedirs = [".*", "build", "dist", "node_modules", "*.egg-info", "venv", ".
 [tool.ruff]
 target-version = "py310"
 line-length = 120
+# inbox/ is the scratch surface (per AGENTS.md): agent-authored drafts,
+# nothing here is canon, so it isn't held to production code-quality
+# standards. The same exclude was attempted in commit 7f0072bc but lost
+# during squash-merge of PR #277 — restoring it here.
+exclude = ["inbox"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -148,11 +161,11 @@ exclude = [
 ]
 
 [[tool.mypy.overrides]]
-module = ["compliance_trestle.*", "trestle.*"]
+module = ["trestle.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["matplotlib.*", "numpy.*", "docxtpl.*", "pptx.*", "openpyxl.*"]
+module = ["matplotlib.*", "numpy.*", "docxtpl.*", "pptx.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -171,34 +184,16 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "uiao.generators.briefing",
-    "uiao.generators.charts",
     "uiao.generators.pptx",
     "uiao.generators.rich_docx",
 ]
 disable_error_code = ["attr-defined", "arg-type", "assignment", "index", "operator", "call-arg", "union-attr", "valid-type"]
 
-# Legacy surfaces with dense stub-gap / duck-typed patterns (importlib.metadata
-# PackageMetadata, jinja2 Undefined subclassing, dynamic adapter-class
-# reflection, etc.) where every attribute touch raises noise mypy can't
-# resolve without stubs. Runtime is covered by the pytest suite; the mypy
-# gate accepts these as the post-burndown baseline and enforces zero-new-
-# errors for everything else. `disallow_untyped_defs` / `warn_return_any`
-# are also relaxed here because the untyped callsites in these files are
-# systemic (reflection over adapter classes, Any returns from stub-less
-# upstream calls), not correctable without stubs.
-[[tool.mypy.overrides]]
-module = [
-    "uiao.adapters.conformance_check",
-    "uiao.adapters.entra_policy_targeting",
-    "uiao.cli.adapter_oscal",
-    "uiao.evidence.graph",
-    "uiao.generators.docs",
-    "uiao.generators.gemini_visuals",
-    "uiao.generators.sbom",
-]
-disable_error_code = ["attr-defined", "arg-type", "assignment", "index", "operator", "call-arg", "union-attr", "valid-type", "var-annotated", "override", "str-format", "no-redef", "return-value"]
-disallow_untyped_defs = false
-warn_return_any = false
+# Legacy-surfaces override block (issue #279 phase 3): historically held
+# 7 modules with dense stub-gap / duck-typed patterns. Burned down to 0
+# across PRs #481, #494, #507, #509, #510, and the conformance_check
+# graduation that retired the last entry. The block is intentionally
+# omitted now — the global config alone applies to every src/uiao file.
 
 # Docx/pptx/matplotlib-heavy generators: add disallow_untyped_defs /
 # warn_return_any relaxation alongside the existing shape-error
@@ -207,9 +202,23 @@ warn_return_any = false
 [[tool.mypy.overrides]]
 module = [
     "uiao.generators.briefing",
-    "uiao.generators.charts",
     "uiao.generators.pptx",
     "uiao.generators.rich_docx",
 ]
 disallow_untyped_defs = false
 warn_return_any = false
+
+# OSCAL evidence emitters (OrgTree + KYC) construct compliance-trestle
+# pydantic-v1 models via keyword arguments. Trestle ships no usable mypy
+# stubs; pydantic v1 accepts both the Python snake_case attr name and the
+# hyphenated OSCAL alias at construction time (runtime-verified), but mypy
+# raises call-arg / arg-type on every constructor call. Suppress those two
+# codes; all other checks (untyped defs, return-any, attr-defined) remain
+# active.
+#
+# Belt-and-suspenders: kept alongside the inline `# type: ignore` markers
+# at each trestle constructor call. Inline ignores narrow the scope so this
+# module-wide override can be removed when trestle ships proper stubs.
+[[tool.mypy.overrides]]
+module = ["uiao.oscal.orgtree_evidence", "uiao.oscal.kyc_evidence"]
+disable_error_code = ["call-arg", "arg-type"]

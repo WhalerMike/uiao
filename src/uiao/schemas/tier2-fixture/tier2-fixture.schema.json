@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/tier2-fixture/tier2-fixture.schema.json",
+  "title": "UIAO Tier-2 Contract Fixture Schema",
+  "description": "JSON Schema for tier-2 contract fixtures stored under tests/fixtures/contract/<adapter>/. Each fixture encodes one expected vendor request/response pair plus the adapter behavior contract. The cross-cutting filesystem invariant (adapter field must match the parent directory name) is enforced by tests/contract/test_fixture_schema.py since it cannot be expressed in JSON Schema. Per UIAO_131 §3.2 and tests/fixtures/contract/README.md.",
+  "type": "object",
+  "required": [
+    "adapter",
+    "operation",
+    "request",
+    "response",
+    "expected_behavior",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "adapter": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Kebab-case adapter identifier. Must match the parent directory name (filesystem invariant enforced by the Python test runner)."
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Operation name in snake_case; identifies the adapter method this fixture exercises."
+    },
+    "cloud_variant": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "commercial",
+          "gcc-moderate",
+          "gcc-high",
+          "dod",
+          "germany",
+          "china",
+          "govcloud-east",
+          "govcloud-west",
+          "onprem"
+        ]
+      },
+      "description": "Cloud variants the fixture applies to. Optional; absence means variant-agnostic. Catches typos like 'gcc' instead of 'gcc-moderate'."
+    },
+    "request": {
+      "type": "object",
+      "required": ["method", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "headers": {
+          "type": ["object", "null"],
+          "description": "Request headers. Bearer tokens / API keys redacted to <TOKEN> / <API_KEY> per the contract README's sanitization rules."
+        },
+        "body": {
+          "description": "Request body; null for GETs. Sanitized per the contract README §sanitization rules."
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599,
+          "description": "HTTP status code returned by the vendor for this request."
+        },
+        "headers": {
+          "type": ["object", "null"]
+        },
+        "body": {
+          "description": "Response body. Sanitized per the contract README §sanitization rules."
+        }
+      }
+    },
+    "expected_behavior": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "List of SHALL-statements the adapter must satisfy when handling this request/response pair. Each item is testable and concrete (not aspirational)."
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "microsoft-learn",
+                "vendor-docs",
+                "live-capture",
+                "agency-sanitized"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^finding-"
+            }
+          ],
+          "description": "One of the documented source classes OR a 'finding-<id>' identifier (e.g. 'finding-001'). Source class drives sanitization expectations — see contract README §Source classes."
+        },
+        "primary_citation": { "$ref": "#/$defs/citation" },
+        "supporting_citation": { "$ref": "#/$defs/citation" },
+        "captured_by": {
+          "type": "string",
+          "description": "Human name OR adapter-test-run-id. Identifies who or what produced this fixture so the audit chain is intact."
+        },
+        "sanitization": {
+          "type": "string",
+          "description": "Free-text declaration of what was redacted, replaced, or omitted before commit. Authoritative for the human reviewer."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Top-level provenance URL when the fixture cites a single public source (alternative to primary_citation.url for simple cases)."
+        },
+        "accessed": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date the URL was accessed. Required when 'url' is set; the contract README treats undated citations as drift-prone."
+        }
+      }
+    },
+    "finding_reference": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^FINDING-",
+          "description": "Stable identifier of the governance finding this fixture codifies (e.g. 'FINDING-001')."
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle state, e.g. 'Awaiting-External-Remediation', 'Closed-Vendor-Resolved'."
+        },
+        "path": {
+          "type": "string",
+          "description": "Repo-relative path to the canonical finding document."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "quote": {
+          "type": "string",
+          "description": "Verbatim quote from the cited source supporting the fixture's contract."
+        },
+        "accessed": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}

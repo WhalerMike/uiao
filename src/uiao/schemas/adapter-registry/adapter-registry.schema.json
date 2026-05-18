@@ -174,8 +174,12 @@
         },
         "gcc-boundary": {
           "type": "string",
-          "description": "Sanctioned governance boundary. UIAO canon: GCC-Moderate only. Amazon Connect Contact Center in Commercial Cloud is the sole named exception.",
-          "enum": ["gcc-moderate", "commercial-exception-amazon-connect"]
+          "description": "Sanctioned governance boundary. UIAO canon: GCC-Moderate only. Each Commercial exception is a named-product carve-out approved by its own ADR; new exceptions are added to this enum in lockstep with the authorizing ADR, never as a generic cloud descriptor.",
+          "enum": [
+            "gcc-moderate",
+            "commercial-exception-amazon-connect",
+            "commercial-exception-sailpoint-nerm"
+          ]
         },
         "ssot-mutation": {
           "type": "string",
@@ -185,6 +189,46 @@
         "certificate-anchored": {
           "type": "boolean",
           "description": "Canon invariant: every adapter transaction carries certificate-anchored provenance. Must be true."
+        },
+        "trust-anchor": {
+          "description": "UIAO_110 DRIFT-IDENTITY runtime issuer-chain anchor. Required when certificate-anchored=true; consumed by uiao.governance.issuer_resolution.IssuerResolver. Either subject DN or SHA-256 fingerprint is required; both may be present (fingerprint preferred under cross-signing). A bare string is interpreted as the subject DN.",
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "description": "Trust-anchor subject DN, e.g. \"CN=Microsoft RSA Root Certificate Authority 2017\"."
+                },
+                "fingerprint_sha256": {
+                  "type": "string",
+                  "description": "Anchor's SHA-256 fingerprint, lowercase hex, no separators (64 chars).",
+                  "pattern": "^[0-9a-fA-F]{64}$"
+                }
+              },
+              "anyOf": [
+                { "required": ["subject"] },
+                { "required": ["fingerprint_sha256"] }
+              ]
+            }
+          ]
+        },
+        "ztmm-pillars": {
+          "type": "array",
+          "description": "UIAO_120 / §3.6 ZTMM Integration. Lists the CISA Zero Trust Maturity Model v2.0 pillar(s) this adapter's evidence outputs inform. Consumed by uiao.governance.ztmm.ZTMMScoreCalculator. Empty list permitted (read-only / informational adapters).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "devices",
+              "networks",
+              "applications-and-workloads",
+              "data"
+            ]
+          },
+          "uniqueItems": true
         },
         "object-identity-only": {
           "type": "boolean",
@@ -198,6 +242,30 @@
         "notes": {
           "type": "string",
           "description": "Free-text notes. Not machine-consumed."
+        },
+        "implementation": {
+          "type": "object",
+          "description": "Structured binding from a registry entry to its in-repo Python implementation and tests. Optional today (additive); expected on entries with status=active or status=proposed once population catches up. Replaces the prior practice of citing implementation paths in free-text `notes`, which is not machine-enforceable and drifts silently. Validators MAY treat absence as a warning when status is in {active, proposed}; presence with a non-existent `python_module` path MUST be a hard error.",
+          "additionalProperties": false,
+          "properties": {
+            "python_module": {
+              "type": "string",
+              "description": "Primary Python file or package path implementing this adapter, relative to repo root. Examples: 'src/uiao/adapters/scubagear_adapter.py' (single-file), 'src/uiao/adapters/fedramp_cr26_catalog' (package), 'src/uiao/governance/drift_engine.py' (cross-tree implementation for adapters whose logic lives outside src/uiao/adapters/, e.g. orgtree-drift-engine).",
+              "pattern": "^src/uiao/.+$"
+            },
+            "supporting_modules": {
+              "type": "array",
+              "description": "Additional Python files this adapter legitimately composes with (config loaders, helper modules, parsers). Use only when the adapter's logic spans multiple files by design; do not list import dependencies.",
+              "items": { "type": "string", "pattern": "^src/uiao/.+$" },
+              "uniqueItems": true
+            },
+            "tests": {
+              "type": "string",
+              "description": "Primary pytest file exercising this adapter, relative to repo root. Example: 'tests/test_uiao_git_server_adapter.py'.",
+              "pattern": "^tests/.+\\.py$"
+            }
+          },
+          "required": ["python_module"]
         }
       },
       "additionalProperties": false,

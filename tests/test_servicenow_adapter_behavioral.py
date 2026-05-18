@@ -21,10 +21,13 @@ from uiao.adapters.database_base import (
 
 @pytest.fixture
 def adapter() -> ServiceNowAdapter:
+    # No token -> ServiceNowCollector.fetch_relevant_records() returns the
+    # empty-scaffold response and skips the live HTTPS call, keeping these
+    # behavioral tests offline-safe.
     return ServiceNowAdapter(
         {
             "instance": "contoso-gov",
-            "token": "test-token-placeholder",
+            "token": "",
         }
     )
 

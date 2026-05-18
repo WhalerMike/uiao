@@ -1,0 +1,130 @@
+---
+title: "Identity Modernization Validation Suite"
+subtitle: "Conformance tests and validation criteria for the identity domain"
+doc-type: domain-validation-suite
+audience: [Customer, Assessor, Adapter Owner]
+classification: Controlled
+boundary: GCC-Moderate
+domain: identity
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+canon-reference:
+  - "docs/customer-documents/modernization-specs/identity/identity.qmd"
+  - "src/uiao/canon/adr/adr-008-zero-trust-identity.md"
+derived-from: "uiao canon"
+---
+
+# Identity Modernization Validation Suite
+
+## Scope
+
+Conformance tests and validation criteria for the identity domain
+under the UIAO substrate. Pairs with the
+[Identity Modernization Spec](../../../modernization-specs/identity/identity.qmd).
+The suite defines what an identity modernization program must satisfy
+to demonstrate substrate conformance, distinct from any single-adapter
+test. Adapter-level tests live under
+[Adapter Validation Suites](../../adapters/index.html); this suite is
+the cross-adapter conformance gate.
+
+![Identity validation suite diagram](images/identity-image-01-identity-validation-suite-diagra.png){#fig-identity-image-01 fig-alt="Center shows a \"Conformance Gate\" rectangle. Inputs flow in from the left as four test categories: Schema Conformance, Provenance Chain Integrity, Drift Detection Coverage, Boundary Enforcement. Each test category lists 3-5 specific checks underneath. Outputs flow out the right as a Pass/Fail signal plus the canonical claim emission \"domain-conformance-evidence\". Below the gate, a footer band shows the four canon invariants that must hold. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="85%"}
+
+## Test categories
+
+### 1. Schema conformance
+
+Every identity adapter must:
+
+- Declare `mission-class: identity` and `object-identity-only: true`.
+- Emit claims that validate against the identity claim schema.
+- Carry the canonical attribute set (`assignment_scope`,
+  `organizational_role`, `classification_clearance`) where
+  applicable.
+- Pass `schema-validation.yml` and `metadata-validator.yml` on every
+  PR.
+
+### 2. Provenance chain integrity
+
+For each emitted identity claim:
+
+- `issuer_identity` resolves to a verified identity-plane object.
+- `source_classification` is one of `authoritative` / `derived` /
+  `synthesized`.
+- `transformation_chain` is non-empty and append-only.
+- `lineage_hash` is present and matches recomputation.
+- `signature` is present when the adapter is `certificate-anchored`.
+
+### 3. Drift detection coverage
+
+The domain must demonstrate detection for:
+
+- `DRIFT-IDENTITY` (issuer cannot resolve) — runtime adapter or CI.
+- `DRIFT-SCHEMA` (attribute structure mismatch) — CI substrate walker.
+- `DRIFT-PROVENANCE` (chain breakage at AD ↔ Entra cutover) — CI +
+  runtime.
+- `DRIFT-AUTHZ` (claim outside consent envelope) — runtime adapter.
+
+P1 findings (active-use claims with provenance/identity drift) must
+halt and alert immediately.
+
+### 4. Boundary enforcement
+
+- All identity adapters declare `gcc-boundary: gcc-moderate` (or a
+  named exception per ADR-059).
+- Microsoft Graph adapters resolve their endpoint via
+  `_graph_clouds.resolve_graph_base()` rather than hardcoding.
+- Unknown clouds fail closed at construction.
+
+## Evidence expectations
+
+A conformant identity domain produces, per cycle:
+
+- **Per-claim provenance records** — full envelope on every emission.
+- **Drift findings** — emitted into the canonical evidence chain.
+- **AODIM attribute snapshots** — canonical attribute set for every
+  identity in scope, derivable to the policy engine.
+- **OSCAL identity-related artifacts** — SSP IA/AC narratives, KSI
+  identity-pillar dashboard entries, Component Definitions for
+  identity adapters.
+
+## Conformance gates
+
+Three gates define the conformance level:
+
+| Gate | What it requires | Tier |
+|---|---|---|
+| **T1 — schema** | Adapters validate against canon schemas | Required |
+| **T2 — provenance** | Provenance envelope complete on every claim | Required |
+| **T3 — drift coverage** | Domain-level drift detection across all four classes | Target |
+
+T1 and T2 are minimum bars; T3 is the maturity bar that distinguishes
+target-state conformance from baseline.
+
+## Drift procedures
+
+When a drift finding fires:
+
+1. Severity computed deterministically per
+   [`16_DriftDetectionStandard.qmd`](../../../../docs/16_DriftDetectionStandard.qmd).
+2. Auto-remediation runs for deterministic fixes.
+3. Escalation path lands at `Canon Steward | Architecture Lead | CISO`
+   per the standard.
+4. Remediation contract emitted into the evidence chain.
+
+## Honest limits
+
+- T3 (drift coverage) is partial today across the adapter fleet.
+  Programs running with T1 + T2 are at substrate-baseline conformance
+  but not yet at target-state.
+- The AODIM attribute set is opinionated; programs that deviate from
+  it cannot demonstrate full T3 conformance even if their substrate
+  technically detects drift.
+- Cross-adapter correlation (e.g. confirming the same identity
+  resolves identically across PIV, Entra, and HR adapters) is a
+  domain-level test that requires multiple adapters running
+  concurrently.
+
+## Related documents
+
+- [Modernization Spec — Identity](../../../modernization-specs/identity/identity.qmd)
+- [ADR-008: Zero Trust Identity](../../../../../src/uiao/canon/adr/adr-008-zero-trust-identity.md)
+- [Validation Suites Index](../../../index.qmd)

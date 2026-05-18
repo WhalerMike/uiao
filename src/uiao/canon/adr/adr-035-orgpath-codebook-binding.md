@@ -12,9 +12,12 @@ related_adrs:
   - ADR-033
   - ADR-034
 canon_refs:
-  - MOD_A_OrgPath_Codebook
-  - MOD_H_OrgPath_JSON_Schema
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_158_OrgPath_JSON_Schema
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-035-orgpath-codebook-binding.html
 ---
 
 # ADR-035: OrgPath Codebook — Executable Canon Binding
@@ -25,13 +28,13 @@ Accepted
 
 ## Context
 
-MOD_A (`src/uiao/modernization/orgtree/MOD_A_OrgPath_Codebook.md`) enumerates
+UIAO_151 (`src/uiao/canon/UIAO_151_OrgPath_Codebook.md`) enumerates
 the canonical OrgPath codes that drive the entire OrgTree stack — dynamic
-groups (MOD_B), administrative units (MOD_D), migration runbook (MOD_F), and
-drift detection (MOD_M). MOD_H declares a JSON Schema for the codebook. In
+groups (UIAO_152), administrative units (UIAO_154), migration runbook (UIAO_156), and
+drift detection (UIAO_163). UIAO_158 declares a JSON Schema for the codebook. In
 practice the only machine-readable artefact was a *regex* in
 `adapters/modernization/active-directory/orgpath.py` and a duplicate copy in
-`governance/drift.py`. The codes themselves lived only inside the MOD_A
+`governance/drift.py`. The codes themselves lived only inside the UIAO_151
 markdown table.
 
 Consequences observed:
@@ -39,11 +42,11 @@ Consequences observed:
 1. `governance.drift.classify_identity_drift` could flag **Format Drift** but
    not **Value Drift** against the real enumeration — the `orgpath_codebook`
    parameter was `Optional` and tests had to stub a hardcoded `set`.
-2. There was no runtime check that the hierarchy in MOD_A was internally
+2. There was no runtime check that the hierarchy in UIAO_151 was internally
    consistent — a code whose parent no longer existed would silently validate.
 3. Phantom Drift (a user still carrying a deprecated code) had no
    machine-readable "deprecated list" to compare against.
-4. MOD_A was marked CANONICAL in its front-matter but had no binding ADR,
+4. UIAO_151 was marked CANONICAL in its front-matter but had no binding ADR,
    violating AGENTS.md §Canon-first governance.
 
 ## Decision
@@ -52,7 +55,7 @@ Consequences observed:
    `src/uiao/canon/data/orgpath/codebook.yaml`, packaged with
    `uiao.canon` so `importlib.resources` can read it at runtime.
 2. Ship a JSON Schema at `src/uiao/schemas/orgpath/codebook.schema.json`
-   implementing the MOD_H contract; every load validates against it.
+   implementing the UIAO_158 contract; every load validates against it.
 3. Provide a loader at `src/uiao/modernization/orgtree/codebook.py` that
    additionally enforces referential integrity not expressible in JSON Schema:
    every non-root `parent` must be an active code, deprecated `replaced_by`
@@ -68,16 +71,16 @@ Consequences observed:
    write-back half mutates AD (`extensionAttribute1..4`), and per UIAO_003
    §4.7 the pair is classified as `integration`.
 
-MOD_A narrative remains the SSOT for human readers; the YAML is the SSOT
+UIAO_151 narrative remains the SSOT for human readers; the YAML is the SSOT
 for the runtime. Changes to either require a governed PR that updates both
-in the same commit — CI (Phase 6, MOD_V) enforces a hash cross-check in a
+in the same commit — CI (Phase 6, UIAO_172) enforces a hash cross-check in a
 future ADR once the drift engine is promoted from scaffold to service.
 
 ## Consequences
 
 **Positive**
 
-- Drift engine can now emit four of the five MOD_A drift categories from
+- Drift engine can now emit four of the five UIAO_151 drift categories from
   data alone: Format Drift (regex), Value Drift (codebook membership),
   Phantom Drift (deprecated list), Hierarchy Drift (loader integrity check
   fires at codebook load, before any runtime inspection).
@@ -91,8 +94,8 @@ future ADR once the drift engine is promoted from scaffold to service.
 **Negative / deferred**
 
 - Orphan Drift (codebook entry with zero matching users) is *not* handled
-  here — it requires tenant-state snapshots, which lands with MOD_M Phase 6.
-- The narrative MOD_A markdown and the YAML can still drift apart until the
+  here — it requires tenant-state snapshots, which lands with UIAO_163 Phase 6.
+- The narrative UIAO_151 markdown and the YAML can still drift apart until the
   cross-check CI job is added. Manual reconciliation is the interim control.
 - Device-side OrgPath (ARM tag plane, ADR-034) continues to live outside
   this codebook binding; the YAML serves both planes but the drift engine

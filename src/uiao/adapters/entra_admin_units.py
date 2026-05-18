@@ -1,6 +1,6 @@
 """Entra ID Administrative Unit + scoped-role provisioning adapter.
 
-Phase 3 (MOD_D / ADR-037). Reconciles the tenant against the canonical
+Phase 3 (UIAO_154 / ADR-037). Reconciles the tenant against the canonical
 delegation matrix (AUs, built-in roles, role assignments) loaded from
 ``uiao.modernization.orgtree.admin_units``.
 
@@ -17,12 +17,12 @@ Verbs
     - ``POST /roleManagement/directory/roleAssignments``
 * :meth:`EntraAdminUnitsAdapter.reconcile` — plan + apply → artefact.
 
-Critical policy (MOD_D §Drift Detection Rules)
+Critical policy (UIAO_154 §Drift Detection Rules)
 ----------------------------------------------
 * ``role-delete-unscoped`` is **never** auto-applied. A tenant-wide
   (directoryScopeId=/) role assignment is a potential privilege
   escalation — the adapter reports it as ``skipped-manual`` and routes
-  to governance review (MOD_E Workflow 5). This matches the MOD_D rule
+  to governance review (UIAO_155 Workflow 5). This matches the UIAO_154 rule
   "Auto-Remediate: No — investigate (potential privilege escalation)".
 * ``au-delete-phantom`` and ``role-delete-phantom`` are also never
   auto-applied; phantoms are governance findings.
@@ -36,6 +36,11 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
+from ._graph_clouds import DEFAULT_CLOUD, graph_token_scope, resolve_graph_base
+
+# EntraAdminUnitsAdapter targets Graph v1.0 (GA-stable AU + role-management APIs).
+DEFAULT_GRAPH_API_VERSION = "v1.0"
 
 from uiao.modernization.orgtree import (
     AdministrativeUnit,
@@ -137,7 +142,15 @@ class DelegationReport:
 
 
 class EntraAdminUnitsAdapter:
-    """Modernization adapter: provision AUs + scoped role assignments."""
+    """Modernization adapter: provision AUs + scoped role assignments.
+
+    Config keys: ``tenant_id``, ``client_id``, ``client_secret`` (for
+    Graph auth in ``_graph_client()``), plus the cross-adapter cloud
+    convention — ``cloud`` (``commercial`` / ``gcc-high`` / ``dod``,
+    default ``commercial``), ``graph_api_version`` (default ``v1.0``),
+    and ``api_base_url`` (explicit URL override; pre-dates the cloud
+    convention but still honoured). See AGENTS.md.
+    """
 
     ADAPTER_ID = "entra-admin-units"
 
@@ -148,6 +161,18 @@ class EntraAdminUnitsAdapter:
     ) -> None:
         self._config = config or {}
         self._matrix = matrix or default_delegation_matrix()
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("api_base_url"),
+            adapter_name="EntraAdminUnitsAdapter",
+        )
+        self._graph_scope: str = graph_token_scope(
+            self._cloud,
+            adapter_name="EntraAdminUnitsAdapter",
+        )
 
     # ------------------------------------------------------------------
     # Planning
@@ -214,7 +239,7 @@ class EntraAdminUnitsAdapter:
                 )
             if not bool(tenant_au.get("isMemberManagementRestricted")):
                 reasons.append(
-                    "isMemberManagementRestricted=False — MOD_D mandates "
+                    "isMemberManagementRestricted=False — UIAO_154 mandates "
                     "Restricted Management for every AU in the matrix"
                 )
             if reasons:
@@ -236,7 +261,7 @@ class EntraAdminUnitsAdapter:
                         op=OP_AU_DELETE_PHANTOM,
                         target=name,
                         reason=(
-                            "Phantom AU — AU-ORG prefix but not in MOD_D matrix. "
+                            "Phantom AU — AU-ORG prefix but not in UIAO_154 matrix. "
                             "Governance review required; NOT auto-applied."
                         ),
                         tenant_state=tenant_au,
@@ -311,7 +336,7 @@ class EntraAdminUnitsAdapter:
                         target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
                         reason=(
                             "Tenant-wide role assignment (directoryScopeId=/) — "
-                            "MOD_D §Governance Rule 4 prohibits unscoped role "
+                            "UIAO_154 §Governance Rule 4 prohibits unscoped role "
                             "assignments. Investigate; NOT auto-applied."
                         ),
                         tenant_state=tenant_ra,
@@ -323,7 +348,7 @@ class EntraAdminUnitsAdapter:
                         op=OP_ROLE_DELETE_PHANTOM,
                         target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
                         reason=(
-                            "Phantom role assignment — not in MOD_D matrix. "
+                            "Phantom role assignment — not in UIAO_154 matrix. "
                             "Potential privilege escalation; NOT auto-applied."
                         ),
                         tenant_state=tenant_ra,
@@ -351,7 +376,7 @@ class EntraAdminUnitsAdapter:
                         op=op.op,
                         target=op.target,
                         status="skipped-manual",
-                        detail=("MOD_D §Drift: governance review required; never auto-applied."),
+                        detail=("UIAO_154 §Drift: governance review required; never auto-applied."),
                     )
                 )
                 continue
@@ -412,7 +437,7 @@ class EntraAdminUnitsAdapter:
                 "Graph client not configured — provide tenant_id, client_id, "
                 "client_secret in adapter config, or override _graph_client()."
             )
-        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
+        base_url = self._graph_endpoint
         if op.op == OP_AU_CREATE:
             if op.canonical_au is None:
                 raise ValueError("au-create requires canonical_au")
@@ -474,6 +499,7 @@ class EntraAdminUnitsAdapter:
             client_id=client_id,
             client_secret=client_secret,
         )
+        scope = self._graph_scope
 
         class _Auth(httpx.Auth):
             def __init__(self, cred):  # type: ignore[no-untyped-def]
@@ -482,7 +508,7 @@ class EntraAdminUnitsAdapter:
 
             def auth_flow(self, request):  # type: ignore[no-untyped-def]
                 if self.token is None:
-                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
+                    tok = self.cred.get_token(scope)
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request

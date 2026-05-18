@@ -1,0 +1,1706 @@
+---
+title: "UIAO Intune Policy Templates"
+subtitle: "Device compliance, configuration profiles, and settings catalog"
+doc-type: policy-library
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Intune Policy Templates.docx"
+repo-path: docs/customer-documents/modernization/target-surface/intune-policy-templates.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO Intune Policy Templates
+
+Device Compliance, Configuration Profiles & Settings Catalog --- GPO Decomposition & Modernization Library
+
+**Classification:** Controlled \| **Boundary:** GCC-Moderate
+
+**Version:** 1.0 \| **Date:** April 21, 2026
+
+**Author:** Michael \| **Program:** Unified Identity Architecture & Operations (UIAO)
+
+**Audience:** Identity Engineers, Endpoint Administrators, Security Architects, IT Governance
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Document Purpose**                                                                                                                                                                                                                                                                                                                                                                                  |
+|                                                                                                                                                                                                                                                                                                                                                                                                       |
+| This document provides a complete, production-ready library of Microsoft Intune policy templates designed to replace Active Directory Group Policy Objects (GPOs) in organizations modernizing to cloud-native endpoint management. Every policy includes full settings tables, GPO equivalence mappings, OrgPath-based targeting guidance, and deployment methodology aligned to the UIAO framework. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Table of Contents
+
+1.  Executive Summary
+
+2.  Policy Architecture
+
+3.  Compliance Policies (CP-001 through CP-005)
+
+4.  Configuration Profiles --- Settings Catalog (SC-001 through SC-010)
+
+5.  Endpoint Security Policies (ES-001 through ES-006)
+
+6.  App Protection Policies (AP-001 through AP-002)
+
+7.  GPO-to-Intune Migration Matrix
+
+8.  Dynamic Group Templates
+
+9.  Deployment Methodology
+
+10. Monitoring and Drift Detection
+
+11. Appendix A: Settings Catalog Reference
+
+12. Appendix B: JSON Export Templates
+
+13. Appendix C: Co-Management Decision Matrix
+
+14. Appendix D: Compliance Mapping
+
+1\. Executive Summary
+
+1.1 Purpose
+
+This document establishes a complete policy template library for transitioning GPO-managed Windows devices to Microsoft Intune within a GCC-Moderate boundary. It serves as the authoritative reference for endpoint policy configurations, providing standardized, repeatable templates that map legacy Group Policy settings to their Intune equivalents across Compliance Policies, Configuration Profiles (Settings Catalog), Endpoint Security baselines, and App Protection Policies.
+
+1.2 Scope
+
+- **Windows 10 (22H2) and Windows 11 (23H2+)** --- corporate-owned and BYOD workstations
+
+- **Windows Server 2025** --- Azure Arc-managed servers enrolled in Intune (where applicable)
+
+- **Tiered device model:** Tier 0 (Privileged), Tier 1 (Server), Tier 2 (Standard Workstation), Kiosk
+
+- **Management boundary:** Microsoft Intune in GCC-Moderate (manage-gcc.microsoft.us)
+
+1.3 Related UIAO Deliverables
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Deliverable**                          **Relationship**
+  ---------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------
+  UIAO AD Assessment --- GPO Inventory     Source inventory of all existing GPOs; input for migration matrix (Section 7)
+
+  UIAO Identity Modernization Roadmap      Timeline and phasing for moving from on-premises AD to Entra ID + Intune
+
+  UIAO Conditional Access Policy Library   Compliance policies (this document) are consumed by Conditional Access as grant controls (\"Require device to be marked as compliant\")
+
+  UIAO OrgPath Taxonomy                    extensionAttribute1--6 schema used for dynamic group targeting of all policies herein
+
+  UIAO Drift Detection Module              Monitors for policy drift and configuration regression post-deployment
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1.4 OrgPath Alignment
+
+All policies in this document are targeted via dynamic Azure AD (Entra ID) groups built from the OrgPath extension attribute schema. This eliminates OU-based GPO targeting and replaces it with attribute-based, cloud-native group membership:
+
+  --------------------------------------------------------------------------------------
+  **Extension Attribute**   **Purpose**             **Example Values**
+  ------------------------- ----------------------- ------------------------------------
+  extensionAttribute1       Region                  East, West, Central, EMEA
+
+  extensionAttribute2       Site / Location         HeraldHarbor, Annapolis, Baltimore
+
+  extensionAttribute3       Department / Function   Governance, Engineering, Finance
+
+  extensionAttribute4       Security Tier           Tier0, Tier1, Tier2
+
+  extensionAttribute5       Environment             Production, Staging, Dev
+
+  extensionAttribute6       Device Role             Kiosk, SharedDevice, Dedicated
+  --------------------------------------------------------------------------------------
+
+2\. Policy Architecture
+
+2.1 Intune Policy Types
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Policy Type**                            **Purpose**                                                                   **ID Prefix**   **Blade in Intune**
+  ------------------------------------------ ----------------------------------------------------------------------------- --------------- ------------------------------------
+  Compliance Policy                          Defines minimum security posture; feeds Conditional Access grant controls     CP-xxx          Devices \> Compliance policies
+
+  Configuration Profile (Settings Catalog)   Deploys device settings; replaces ADMX-backed GPOs and preferences            SC-xxx          Devices \> Configuration profiles
+
+  Endpoint Security Policy                   Security-focused policies for AV, firewall, disk encryption, EDR, ASR         ES-xxx          Endpoint security \> \[category\]
+
+  App Protection Policy                      Data protection within managed apps (MAM); supports BYOD without enrollment   AP-xxx          Apps \> App protection policies
+
+  App Configuration Policy                   Application-specific key/value settings pushed to managed apps                AC-xxx          Apps \> App configuration policies
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.2 Policy Assignment Strategy
+
+All policies are assigned to dynamic Entra ID groups based on OrgPath extension attributes. This replaces OU-linked GPO scoping with attribute-driven, cloud-native targeting:
+
+- **Include groups:** Dynamic device groups matching the policy\'s intended tier, environment, and role.
+
+- **Exclude groups:** Break-glass exclusion groups for emergency override; staging groups during phased rollout.
+
+- **Filters:** Intune assignment filters provide an additional layer of targeting (e.g., *device.extensionAttribute4 -eq \"Tier0\"*) applied at the assignment level, not the group level.
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Assignment Precedence**                                                                                                                                                                                          |
+|                                                                                                                                                                                                                    |
+| **Compliance policies:** Most restrictive wins. If a device is in scope of multiple compliance policies, the most restrictive setting value is enforced.\                                                          |
+| **Configuration profiles:** Last write wins. If two profiles configure the same setting, the most recently processed profile\'s value takes effect. Intune reports a conflict in the device configuration status.\ |
+| **Endpoint Security:** Endpoint Security policies take precedence over Configuration Profiles for the same setting.                                                                                                |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2.3 Scope Tags
+
+Scope tags partition the Intune console for multi-region or multi-tenant delegated administration. Each policy in this library is tagged with:
+
+  --------------------------------------------------------------------------------------------------------------------
+  **Scope Tag**      **Description**                               **Assigned To**
+  ------------------ --------------------------------------------- ---------------------------------------------------
+  UIAO-Global        Baseline policies applicable to all devices   All CP-001, SC-001, SC-002, ES-001 through ES-004
+
+  UIAO-Tier0         Privileged workstation policies               CP-002, SC-009 (restricted RDP), ES-005, ES-006
+
+  UIAO-Region-East   Region-specific policy variants               Region-scoped configuration profiles
+
+  UIAO-Kiosk         Kiosk and shared device policies              CP-005, SC-010
+  --------------------------------------------------------------------------------------------------------------------
+
+2.4 Filters for Device Targeting
+
+Intune filters allow granular targeting at the assignment level. Filters are evaluated after group membership and can include or exclude devices from a policy assignment:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Example: Include only Tier 0 devices (device.extensionAttribute4 -eq \"Tier0\") // Example: Exclude Dev environment devices (device.extensionAttribute5 -ne \"Dev\") // Example: Target Kiosk devices in East region (device.extensionAttribute6 -eq \"Kiosk\") -and (device.extensionAttribute1 -eq \"East\")
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.5 Co-Management Considerations
+
+For organizations running Microsoft Endpoint Configuration Manager (SCCM/MECM) alongside Intune, co-management enables a phased workload transition. The co-management workload slider determines which authority (SCCM or Intune) controls each policy area:
+
+  -------------------------------------------------------------------------------------------------------
+  **Workload**           **Phase 1 (GPO+SCCM)**   **Phase 2 (Co-Managed)**   **Phase 3 (Intune-Only)**
+  ---------------------- ------------------------ -------------------------- ----------------------------
+  Compliance Policies    SCCM                     Pilot Intune               Intune
+
+  Device Configuration   GPO / SCCM               Pilot Intune               Intune (Settings Catalog)
+
+  Endpoint Protection    SCCM                     Pilot Intune               Intune (Endpoint Security)
+
+  Windows Update         WSUS / SCCM              Pilot Intune               Intune (WUfB)
+
+  Resource Access        GPO / SCCM               Pilot Intune               Intune + Entra ID
+
+  Client Apps            SCCM                     Pilot Intune               Intune + Winget
+
+  Office Click-to-Run    SCCM                     Intune                     Intune
+  -------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Important: Co-Management Conflict**                                                                                                                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                                                                                                                                       |
+| When co-management is enabled, a device cannot receive the same setting from both SCCM and Intune. The workload slider must be set to the correct authority *before* deploying Intune policies for that workload. Deploying Intune policies while the workload slider remains on SCCM will result in the Intune policy being ignored. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+3\. Compliance Policies
+
+Compliance policies define the minimum security posture a device must meet before being granted access to corporate resources via Conditional Access. Non-compliant devices are restricted based on the configured non-compliance actions.
+
+3.1 CP-001: Windows Workstation Baseline Compliance
+
+**Policy ID: CP-001 \| Platform: Windows 10/11 \| Target: All corporate workstations**
+
+**OrgPath Targeting:** Dynamic group --- All devices where extensionAttribute4 -in \[\"Tier0\", \"Tier1\", \"Tier2\"\]
+
+**GPO Equivalent:** Aggregate of multiple GPO settings across Security Settings, BitLocker, Defender, and system health policies.
+
+Settings
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Category**         **Setting**                        **Value**                                             **GPO Equivalent**
+  -------------------- ---------------------------------- ----------------------------------------------------- ------------------------------------------------------------------------------------------------------------------
+  Device Health        Require BitLocker                  Required                                              Computer Config \> Admin Templates \> Windows Components \> BitLocker
+
+  Device Health        Require Secure Boot                Required                                              N/A (UEFI firmware setting)
+
+  Device Health        Require Code Integrity             Required                                              Computer Config \> Admin Templates \> System \> Device Guard
+
+  Device Properties    Minimum OS Version                 10.0.19045 (Win 10 22H2) / 10.0.22631 (Win 11 23H2)   N/A (managed via WSUS/WUfB)
+
+  System Security      Firewall                           Required                                              Computer Config \> Windows Settings \> Security Settings \> Windows Firewall
+
+  System Security      TPM                                Required                                              N/A (hardware requirement)
+
+  Microsoft Defender   Antivirus                          Required                                              Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus
+
+  Microsoft Defender   Antispyware                        Required                                              Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus
+
+  Microsoft Defender   Real-time protection               Required                                              Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> Real-time Protection
+
+  Microsoft Defender   Security intelligence up to date   Required                                              Signature updates via WSUS/SCCM
+
+  Password             Require password                   Required                                              Computer Config \> Windows Settings \> Security Settings \> Account Policies \> Password Policy
+
+  Password             Minimum password length            14 characters                                         Computer Config \> Windows Settings \> Security Settings \> Account Policies \> Password Policy
+
+  Password             Password complexity                Required                                              Computer Config \> Windows Settings \> Security Settings \> Account Policies \> Password Policy
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Non-Compliance Actions
+
+  ----------------------------------------------------------------------------------------------------------------------------------------
+  **Action**                  **Schedule**                    **Description**
+  --------------------------- ------------------------------- ----------------------------------------------------------------------------
+  Mark device non-compliant   After 24 hours (grace period)   Device is flagged; Conditional Access blocks access to protected resources
+
+  Send email to end user      After 24 hours                  Notification with remediation steps and help desk contact
+
+  Send push notification      After 48 hours                  Company Portal push notification to remind user
+
+  Retire device               After 30 days                   Remove corporate data; device is unenrolled from Intune
+  ----------------------------------------------------------------------------------------------------------------------------------------
+
+3.2 CP-002: Tier 0 --- Privileged Workstation Compliance (Strict)
+
+**Policy ID: CP-002 \| Platform: Windows 10/11 \| Target: Privileged Access Workstations**
+
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -eq \"Tier0\"
+
+**Description:** Enforces the strictest compliance posture for Tier 0 privileged workstations. All CP-001 requirements apply, plus additional hardening. Grace period is zero --- immediate non-compliance.
+
+Additional Settings (beyond CP-001)
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Category**         **Setting**                       **Value**                       **GPO Equivalent**
+  -------------------- --------------------------------- ------------------------------- -----------------------------------------------------------------------------------------------------------------------
+  Device Health        Credential Guard                  Required                        Computer Config \> Admin Templates \> System \> Device Guard \> Turn On Virtualization Based Security
+
+  Device Health        Device health attestation         Required                        N/A (cloud-based health attestation via DHA service)
+
+  Microsoft Defender   Real-time protection              Required                        Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> Real-time Protection
+
+  Microsoft Defender   Network Inspection System (NIS)   Enabled                         Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> Network Inspection System
+
+  Microsoft Defender   Cloud-delivered protection        Enabled                         Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> MAPS
+
+  Device Properties    Minimum OS Version                10.0.22631 (Win 11 23H2 only)   N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Non-Compliance Actions
+
+  --------------------------------------------------------------
+  **Action**                             **Schedule**
+  -------------------------------------- -----------------------
+  Mark device non-compliant              Immediately (0 hours)
+
+  Send email to user and security team   Immediately
+
+  Send push notification                 Immediately
+
+  Retire device                          After 7 days
+  --------------------------------------------------------------
+
+3.3 CP-003: Tier 2 --- Standard Workstation Compliance
+
+**Policy ID: CP-003 \| Platform: Windows 10/11 \| Target: Standard end-user workstations**
+
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -eq \"Tier2\"
+
+Settings
+
+  ---------------------------------------------------------------------------------------------------------------
+  **Category**         **Setting**               **Value**                  **Notes**
+  -------------------- ------------------------- -------------------------- -------------------------------------
+  Device Properties    Minimum OS Version        10.0.19044 (Win 10 21H2)   Lower threshold for legacy hardware
+
+  Device Health        BitLocker                 Preferred (Not Required)   Not enforced for BYOD scenarios
+
+  Microsoft Defender   Antivirus                 Required                   ---
+
+  Password             Minimum password length   12 characters              Reduced from 14 for usability
+
+  Password             Password complexity       Required                   ---
+
+  System Security      Firewall                  Required                   ---
+
+  System Security      TPM                       Required                   ---
+  ---------------------------------------------------------------------------------------------------------------
+
+Non-Compliance Actions
+
+  -----------------------------------------------------------
+  **Action**                  **Schedule**
+  --------------------------- -------------------------------
+  Mark device non-compliant   After 72 hours (grace period)
+
+  Send email to end user      After 72 hours
+
+  Retire device               After 30 days
+  -----------------------------------------------------------
+
+3.4 CP-004: Server Compliance (Windows Server 2025)
+
+**Policy ID: CP-004 \| Platform: Windows Server 2025 \| Target: Azure Arc-managed servers**
+
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -eq \"Tier1\"
+
+**Prerequisite:** Servers must be enrolled in Intune via Azure Arc for server management.
+
+Settings
+
+  -------------------------------------------------------------------------------
+  **Category**         **Setting**             **Value**
+  -------------------- ----------------------- ----------------------------------
+  Device Properties    OS version validation   Windows Server 2025 (10.0.26100)
+
+  Microsoft Defender   Defender for Servers    Enabled (Plan 2)
+
+  System Security      Firewall                Required
+
+  System Security      Secure Boot             Required
+  -------------------------------------------------------------------------------
+
+Non-Compliance Actions
+
+  --------------------------------------------------------------------------------
+  **Action**                        **Schedule**
+  --------------------------------- ----------------------------------------------
+  Mark device non-compliant         After 24 hours
+
+  Send email to server admin team   After 24 hours
+
+  Retire device                     Not configured (server retirement is manual)
+  --------------------------------------------------------------------------------
+
+3.5 CP-005: Kiosk Device Compliance
+
+**Policy ID: CP-005 \| Platform: Windows 10/11 \| Target: Kiosk and shared devices**
+
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute6 -eq \"Kiosk\"
+
+Settings
+
+  --------------------------------------------------------------------------------------
+  **Category**         **Setting**            **Value**
+  -------------------- ---------------------- ------------------------------------------
+  Device Properties    Minimum OS Version     Current supported version (auto-updated)
+
+  Device Mode          Shared device mode     Enabled
+
+  Microsoft Defender   Antivirus              Required
+
+  Microsoft Defender   Real-time protection   Required
+
+  System Security      Firewall               Required
+  --------------------------------------------------------------------------------------
+
+Non-Compliance Actions
+
+  ----------------------------------------------------------------------------------------------------
+  **Action**                  **Schedule**     **Notes**
+  --------------------------- ---------------- -------------------------------------------------------
+  Mark device non-compliant   After 48 hours   Grace period for maintenance windows
+
+  Block access                After 48 hours   No retire action --- kiosk devices are managed assets
+  ----------------------------------------------------------------------------------------------------
+
+3.6 Compliance Policy Summary Matrix
+
+  ---------------------------------------------------------------------------------------------------------------------------------
+  **Setting**        **CP-001 (Baseline)**   **CP-002 (Tier 0)**   **CP-003 (Tier 2)**   **CP-004 (Server)**   **CP-005 (Kiosk)**
+  ------------------ ----------------------- --------------------- --------------------- --------------------- --------------------
+  Min OS             22H2                    Win 11 23H2           21H2                  Server 2025           Current
+
+  BitLocker          Required                Required              Preferred             ---                   ---
+
+  Credential Guard   ---                     Required              ---                   ---                   ---
+
+  Password Length    14                      14                    12                    14                    N/A
+
+  Grace Period       24 hrs                  0 hrs                 72 hrs                24 hrs                48 hrs
+
+  Retire Action      30 days                 7 days                30 days               No                    No
+  ---------------------------------------------------------------------------------------------------------------------------------
+
+4\. Configuration Profiles --- Settings Catalog
+
+Settings Catalog profiles replace ADMX-backed Group Policy settings with cloud-native configuration. Each profile below maps specific GPO paths to their Settings Catalog equivalents.
+
+4.1 SC-001: Windows Security Baseline
+
+**Policy ID: SC-001 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**OrgPath Targeting:** Dynamic group --- All devices where extensionAttribute4 -in \[\"Tier0\", \"Tier1\", \"Tier2\"\]
+
+Account Lockout Settings
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **GPO Path**                                                                                             **GPO Setting**                       **Settings Catalog Category**   **Settings Catalog Setting**          **Value**
+  -------------------------------------------------------------------------------------------------------- ------------------------------------- ------------------------------- ------------------------------------- ---------------------
+  Computer Config \> Windows Settings \> Security Settings \> Account Policies \> Account Lockout Policy   Account lockout threshold             Account Lockout Policy          Account Lockout Threshold             10 invalid attempts
+
+  Computer Config \> Windows Settings \> Security Settings \> Account Policies \> Account Lockout Policy   Account lockout duration              Account Lockout Policy          Account Lockout Duration              15 minutes
+
+  Computer Config \> Windows Settings \> Security Settings \> Account Policies \> Account Lockout Policy   Reset account lockout counter after   Account Lockout Policy          Reset Account Lockout Counter After   15 minutes
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Audit Policy Settings
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **GPO Path**                                                                                         **GPO Setting**       **Settings Catalog Category**   **Setting Name**                                       **Value**
+  ---------------------------------------------------------------------------------------------------- --------------------- ------------------------------- ------------------------------------------------------ ---------------------
+  Computer Config \> Windows Settings \> Security Settings \> Advanced Audit Policy \> Logon/Logoff    Audit Logon           Audit                           Account Logon Logon (Device)                           Success and Failure
+
+  Computer Config \> Windows Settings \> Security Settings \> Advanced Audit Policy \> Object Access   Audit Object Access   Audit                           Object Access Audit File System (Device)               Success and Failure
+
+  Computer Config \> Windows Settings \> Security Settings \> Advanced Audit Policy \> Policy Change   Audit Policy Change   Audit                           Policy Change Audit Policy Change (Device)             Success and Failure
+
+  Computer Config \> Windows Settings \> Security Settings \> Advanced Audit Policy \> Privilege Use   Audit Privilege Use   Audit                           Privilege Use Audit Sensitive Privilege Use (Device)   Success and Failure
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+User Rights Assignment
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **GPO Path**                                                                                           **GPO Setting**                               **Settings Catalog Category**   **Setting Name**                      **Value**
+  ------------------------------------------------------------------------------------------------------ --------------------------------------------- ------------------------------- ------------------------------------- ------------------------
+  Computer Config \> Windows Settings \> Security Settings \> Local Policies \> User Rights Assignment   Deny log on locally                           User Rights                     Deny Local Log On                     Guests
+
+  Computer Config \> Windows Settings \> Security Settings \> Local Policies \> User Rights Assignment   Deny log on through Remote Desktop Services   User Rights                     Deny Remote Desktop Services Log On   Guests, Local accounts
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Security Options
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **GPO Path**                                                                                     **GPO Setting**                                                   **Settings Catalog Category**     **Setting Name**                                                 **Value**
+  ------------------------------------------------------------------------------------------------ ----------------------------------------------------------------- --------------------------------- ---------------------------------------------------------------- -------------------------------------------------------------------------------------
+  Computer Config \> Windows Settings \> Security Settings \> Local Policies \> Security Options   Interactive logon: Do not display last user name                  Local Policies Security Options   Interactive Logon Do Not Display Last Signed In                  Enabled
+
+  Computer Config \> Windows Settings \> Security Settings \> Local Policies \> Security Options   Interactive logon: Message text for users attempting to log on    Local Policies Security Options   Interactive Logon Message Text For Users Attempting To Log On    \"This system is for authorized use only. All activity is monitored and recorded.\"
+
+  Computer Config \> Windows Settings \> Security Settings \> Local Policies \> Security Options   Interactive logon: Message title for users attempting to log on   Local Policies Security Options   Interactive Logon Message Title For Users Attempting To Log On   \"NOTICE\"
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Windows Firewall (Baseline)
+
+  ----------------------------------------------------------------------------
+  **Profile**   **State**   **Inbound**   **Outbound**   **Logging**
+  ------------- ----------- ------------- -------------- ---------------------
+  Domain        Enabled     Block         Allow          Log dropped packets
+
+  Private       Enabled     Block         Allow          Log dropped packets
+
+  Public        Enabled     Block         Allow          Log all
+  ----------------------------------------------------------------------------
+
+4.2 SC-002: Microsoft Defender Antivirus Configuration
+
+**Policy ID: SC-002 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**OrgPath Targeting:** All managed devices
+
+Core Protection Settings
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**                          **Setting Name**                   **Value**                        **GPO Path (ADMX)**
+  ------------------------------------------------------ ---------------------------------- -------------------------------- --------------------------------------------------------------------------------------------------------------------------
+  Microsoft Defender Antivirus \> Real-time Protection   Turn on real-time protection       Enabled                          Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> Real-time Protection
+
+  Microsoft Defender Antivirus \> MAPS                   Cloud-delivered protection level   High                             Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> MAPS
+
+  Microsoft Defender Antivirus \> MAPS                   Extended cloud check timeout       50 seconds                       Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> MAPS
+
+  Microsoft Defender Antivirus \> MAPS                   Submit samples consent             Send all samples automatically   Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus \> MAPS
+
+  Microsoft Defender Antivirus                           PUA protection                     PUA Protection On (Enabled)      Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus
+
+  Microsoft Defender Antivirus                           Network protection                 Enabled (block mode)             Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Exploit Guard \> Network Protection
+
+  Microsoft Defender Antivirus                           Controlled folder access           Audit mode → Enabled (phased)    Computer Config \> Admin Templates \> Windows Components \> Microsoft Defender Exploit Guard \> Controlled Folder Access
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Scan Schedule
+
+  ----------------------------------------------------------
+  **Setting**       **Value**
+  ----------------- ----------------------------------------
+  Full scan day     Sunday
+
+  Full scan time    02:00 AM
+
+  Quick scan time   12:00 PM (daily)
+
+  Scan type         Quick scan (daily), Full scan (weekly)
+  ----------------------------------------------------------
+
+Attack Surface Reduction Rules
+
+  ------------------------------------------------------------------------------------------------------------------------------------------
+  **Rule GUID**                          **Rule Name**                                                               **Recommended State**
+  -------------------------------------- --------------------------------------------------------------------------- -----------------------
+  BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550   Block executable content from email client and webmail                      Block
+
+  D4F940AB-401B-4EFC-AADC-AD5F3C50688A   Block all Office applications from creating child processes                 Block
+
+  D3E037E1-3EB8-44C8-A917-57927947596D   Block JavaScript or VBScript from launching downloaded executable content   Block
+
+  5BEB7EFE-FD9A-4556-801D-275E5FFC04CC   Block execution of potentially obfuscated scripts                           Block
+
+  92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B   Block Win32 API calls from Office macros                                    Block
+
+  9E6C4E1F-7D60-472F-BA1A-A39EF669E4B2   Block credential stealing from Windows LSASS                                Block
+
+  D1E49AAC-8F56-4280-B9BA-993A6D77406C   Block process creations originating from PSExec and WMI commands            Block
+
+  B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4   Block untrusted and unsigned processes that run from USB                    Block
+
+  3B576869-A4EC-4529-8536-B80A7769E899   Block Office applications from creating executable content                  Block
+
+  75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84   Block Office applications from injecting code into other processes          Block
+
+  7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C   Block Adobe Reader from creating child processes                            Block
+
+  C1DB55AB-C21A-4637-BB3F-A12568109D35   Use advanced protection against ransomware                                  Block
+  ------------------------------------------------------------------------------------------------------------------------------------------
+
+4.3 SC-003: Microsoft Edge Browser Configuration
+
+**Policy ID: SC-003 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**Description:** Replaces GPO-deployed Internet Explorer and legacy Edge settings with modern Edge (Chromium) configuration.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**        **Setting Name**                                  **Value**                                 **GPO Equivalent (ADMX)**
+  ------------------------------------ ------------------------------------------------- ----------------------------------------- ---------------------------------------------------------------------------------------------
+  Microsoft Edge                       Homepage URL                                      https://portal.office.com                 Computer Config \> Admin Templates \> Microsoft Edge \> Startup, home page and new tab page
+
+  Microsoft Edge                       Restore on startup action                         Open a list of URLs                       Computer Config \> Admin Templates \> Microsoft Edge \> Startup, home page and new tab page
+
+  Microsoft Edge \> SmartScreen        SmartScreen enabled                               Enabled                                   Computer Config \> Admin Templates \> Microsoft Edge \> SmartScreen settings
+
+  Microsoft Edge \> SmartScreen        Prevent bypassing SmartScreen prompts for sites   Enabled                                   Computer Config \> Admin Templates \> Microsoft Edge \> SmartScreen settings
+
+  Microsoft Edge \> Password Manager   Enable saving passwords                           Disabled                                  Computer Config \> Admin Templates \> Microsoft Edge \> Password manager and protection
+
+  Microsoft Edge \> Extensions         Extension install blocklist                       \* (block all except allow-listed)        Computer Config \> Admin Templates \> Microsoft Edge \> Extensions
+
+  Microsoft Edge \> Extensions         Extension install allowlist                       \[Organization-approved extension IDs\]   Computer Config \> Admin Templates \> Microsoft Edge \> Extensions
+
+  Microsoft Edge \> Proxy              Proxy settings                                    System proxy / PAC file URL               Computer Config \> Admin Templates \> Microsoft Edge \> Proxy server
+
+  Microsoft Edge                       Download restrictions                             Block dangerous downloads                 Computer Config \> Admin Templates \> Microsoft Edge
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.4 SC-004: OneDrive for Business Configuration
+
+**Policy ID: SC-004 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**Description:** Replaces GPO-based Folder Redirection and logon script drive mappings with OneDrive Known Folder Move (KFM) and Files On-Demand.
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**   **Setting Name**                                  **Value**                      **GPO Equivalent**
+  ------------------------------- ------------------------------------------------- ------------------------------ ---------------------------------------------------------------------------------------------------------
+  OneDrive                        Silently move Windows known folders to OneDrive   Enabled                        Computer Config \> Admin Templates \> OneDrive \> Silently move Windows known folders to OneDrive
+
+  OneDrive                        Known folders: Desktop                            Redirect                       User Config \> Windows Settings \> Folder Redirection \> Desktop
+
+  OneDrive                        Known folders: Documents                          Redirect                       User Config \> Windows Settings \> Folder Redirection \> Documents
+
+  OneDrive                        Known folders: Pictures                           Redirect                       User Config \> Windows Settings \> Folder Redirection \> Pictures
+
+  OneDrive                        Use OneDrive Files On-Demand                      Enabled                        N/A (new capability)
+
+  OneDrive                        Set maximum download bandwidth                    80% of available bandwidth     N/A
+
+  OneDrive                        Set maximum upload bandwidth                      70% of available bandwidth     N/A
+
+  OneDrive                        Tenant ID                                         \[Organization Tenant GUID\]   Computer Config \> Admin Templates \> OneDrive
+
+  OneDrive                        Block syncing personal OneDrive accounts          Enabled                        Computer Config \> Admin Templates \> OneDrive \> Prevent users from syncing personal OneDrive accounts
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Migration Note**                                                                                                                                                                                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                                                                                                                                                                                                   |
+| When transitioning from GPO Folder Redirection, OneDrive KFM will move the contents of the redirected folders (Desktop, Documents, Pictures) from the network share to the user\'s OneDrive. Ensure adequate OneDrive storage is provisioned before enabling KFM silently. Legacy drive mapping logon scripts (net use) should be replaced with SharePoint site libraries and OneDrive shortcuts. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4.5 SC-005: Windows Update for Business
+
+**Policy ID: SC-005 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**Description:** Replaces WSUS GPO-based update management with Windows Update for Business (WUfB) policies via Settings Catalog.
+
+**GPO Equivalent:** Computer Configuration \> Administrative Templates \> Windows Components \> Windows Update
+
+  ------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**   **Setting Name**                        **Value**
+  ------------------------------- --------------------------------------- ------------------------------------
+  Windows Update for Business     Feature update deferral period (days)   30 days
+
+  Windows Update for Business     Quality update deferral period (days)   7 days
+
+  Windows Update for Business     Enable driver updates                   Enabled
+
+  Delivery Optimization           Download mode                           LAN (1) --- peers on same NAT only
+
+  Windows Update for Business     Active hours start                      7:00 AM
+
+  Windows Update for Business     Active hours end                        7:00 PM
+
+  Windows Update for Business     Auto-restart grace period (hours)       48 hours (2 days)
+
+  Windows Update for Business     Quality update deadline (days)          7 days
+
+  Windows Update for Business     Feature update deadline (days)          14 days
+
+  Windows Update for Business     Deadline grace period (days)            2 days
+  ------------------------------------------------------------------------------------------------------------
+
+4.6 SC-006: BitLocker Configuration
+
+**Policy ID: SC-006 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**GPO Equivalent:** Computer Configuration \> Administrative Templates \> Windows Components \> BitLocker Drive Encryption
+
+  ---------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**        **Setting Name**                      **Value**
+  ------------------------------------ ------------------------------------- ------------------------------
+  BitLocker \> OS Drive                Require device encryption             Required
+
+  BitLocker \> OS Drive                Encryption method                     XTS-AES 256-bit
+
+  BitLocker \> OS Drive                Authentication method                 TPM + PIN
+
+  BitLocker \> OS Drive                Minimum PIN length                    6 digits
+
+  BitLocker \> Fixed Data Drives       Encryption method                     XTS-AES 256-bit
+
+  BitLocker \> Fixed Data Drives       Auto-encrypt fixed drives             Enabled
+
+  BitLocker \> Removable Data Drives   Require encryption for write access   Enabled
+
+  BitLocker \> Recovery                Recovery key escrow                   Azure AD (Entra ID)
+
+  BitLocker \> Recovery                Recovery password rotation            Enabled --- rotate after use
+  ---------------------------------------------------------------------------------------------------------
+
+4.7 SC-007: Windows Firewall Configuration
+
+**Policy ID: SC-007 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**GPO Equivalent:** Computer Configuration \> Windows Settings \> Security Settings \> Windows Defender Firewall with Advanced Security
+
+Profile Settings
+
+  ------------------------------------------------------------------------------------------------------------------------------------------
+  **Profile**   **Firewall State**   **Inbound Default**   **Outbound Default**   **Log Dropped Packets**   **Log Successful Connections**
+  ------------- -------------------- --------------------- ---------------------- ------------------------- --------------------------------
+  Domain        Enabled              Block                 Allow                  Yes                       Yes
+
+  Private       Enabled              Block                 Allow                  Yes                       No
+
+  Public        Enabled              Block                 Block                  Yes                       Yes
+  ------------------------------------------------------------------------------------------------------------------------------------------
+
+Inbound Rules for Management
+
+  ---------------------------------------------------------------------------------------------------
+  **Rule Name**       **Protocol**   **Port**   **Source**                 **Action**   **Profile**
+  ------------------- -------------- ---------- -------------------------- ------------ -------------
+  WinRM (HTTP)        TCP            5985       Tier 0 management subnet   Allow        Domain
+
+  WinRM (HTTPS)       TCP            5986       Tier 0 management subnet   Allow        Domain
+
+  RDP                 TCP            3389       Tier 0 PAW subnet only     Allow        Domain
+
+  ICMP Echo Request   ICMPv4         ---        Management subnet          Allow        Domain
+  ---------------------------------------------------------------------------------------------------
+
+4.8 SC-008: Local Admin Password Solution (Windows LAPS)
+
+**Policy ID: SC-008 \| Platform: Windows 10/11, Windows Server 2025 \| Target: All managed devices**
+
+  ----------------------------------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**   **Setting Name**                          **Value**
+  ------------------------------- ----------------------------------------- --------------------------------------------------------------
+  Windows LAPS                    Backup directory                          Azure AD (Entra ID)
+
+  Windows LAPS                    Password complexity                       Large letters + small letters + numbers + special characters
+
+  Windows LAPS                    Password length                           24 characters
+
+  Windows LAPS                    Password age (days)                       30 days
+
+  Windows LAPS                    Post-authentication actions               Reset password and logoff the managed account
+
+  Windows LAPS                    Post-authentication reset delay (hours)   24 hours
+
+  Windows LAPS                    Administrator account name                (default --- built-in Administrator)
+  ----------------------------------------------------------------------------------------------------------------------------------------
+
+4.9 SC-009: Remote Desktop Configuration
+
+**Policy ID: SC-009 \| Platform: Windows 10/11 \| Target: Tier 0 and Tier 1 devices only**
+
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -in \[\"Tier0\", \"Tier1\"\]
+
+**GPO Equivalent:** Computer Configuration \> Administrative Templates \> Windows Components \> Remote Desktop Services
+
+  ----------------------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**                    **Setting Name**                         **Value**
+  ------------------------------------------------ ---------------------------------------- ----------------------------------
+  Remote Desktop Services \> Connections           Allow users to connect remotely          Enabled (Tier 0 and Tier 1 only)
+
+  Remote Desktop Services \> Security              Require Network Level Authentication     Enabled
+
+  Remote Desktop Services \> Session Time Limits   Set time limit for idle sessions         15 minutes
+
+  Remote Desktop Services \> Session Time Limits   Set time limit for active sessions       4 hours
+
+  Remote Desktop Services \> Session Time Limits   End session when time limit is reached   Disconnect
+
+  Remote Desktop Services \> Security              Set minimum encryption level             High
+
+  Remote Desktop Services                          Restrict Remote Desktop Services users   UIAO-RDP-Users security group
+  ----------------------------------------------------------------------------------------------------------------------------
+
+4.10 SC-010: User Experience Configuration
+
+**Policy ID: SC-010 \| Platform: Windows 10/11 \| Target: All corporate devices**
+
+**Description:** Replaces GPO-based Start Menu layout, desktop wallpaper, and lock screen policies with Settings Catalog equivalents.
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Settings Catalog Category**   **Setting Name**          **Value**                                                        **GPO Equivalent**
+  ------------------------------- ------------------------- ---------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------
+  Start                           Start layout (JSON/XML)   Custom layout pinning LOB apps, Office, Edge                     Computer Config \> Admin Templates \> Start Menu and Taskbar \> Start Layout
+
+  Personalization                 Desktop wallpaper         Organization branded wallpaper (deployed via Intune Win32 app)   User Config \> Admin Templates \> Desktop \> Desktop Wallpaper
+
+  Personalization                 Lock screen image         Organization branded lock screen                                 Computer Config \> Admin Templates \> Control Panel \> Personalization \> Force a specific default lock screen image
+
+  Start                           Taskbar pinned apps       Edge, Outlook, Teams, File Explorer                              Computer Config \> Admin Templates \> Start Menu and Taskbar
+
+  Experience                      Windows Spotlight         Disabled (corporate lock screen only)                            User Config \> Admin Templates \> Windows Components \> Cloud Content
+
+  Experience                      Consumer features         Disabled                                                         Computer Config \> Admin Templates \> Windows Components \> Cloud Content \> Turn off Microsoft consumer experiences
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5\. Endpoint Security Policies
+
+Endpoint Security policies are managed from the dedicated Endpoint Security blade in the Intune admin center. They provide security-focused management separated from general device configuration.
+
+5.1 ES-001: Antivirus Policy
+
+**Policy ID: ES-001 \| Blade: Endpoint Security \> Antivirus \| Target: All devices**
+
+  ------------------------------------------------------------------------------------------------------------
+  **Setting**                  **Value**                      **Notes**
+  ---------------------------- ------------------------------ ------------------------------------------------
+  Real-time protection         Enabled                        Supplements SC-002 via Endpoint Security blade
+
+  Cloud-delivered protection   Enabled                        ---
+
+  Tamper protection            Enabled                        Prevents users/malware from disabling Defender
+
+  Exclusions --- Process       \[LOB app executables\]        Organization-specific; maintain exclusion list
+
+  Exclusions --- Path          \[LOB app data directories\]   Minimize exclusions to reduce attack surface
+
+  Exclusions --- Extension     \[As required by LOB apps\]    Document justification for each exclusion
+  ------------------------------------------------------------------------------------------------------------
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Warning: Exclusion Hygiene**                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                      |
+| Every antivirus exclusion increases attack surface. Document the business justification for each exclusion, review quarterly, and remove exclusions for decommissioned applications. Never exclude common file types (.exe, .dll, .ps1, .bat, .cmd). |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+5.2 ES-002: Disk Encryption Policy
+
+**Policy ID: ES-002 \| Blade: Endpoint Security \> Disk encryption \| Target: All corporate devices**
+
+  ----------------------------------------------------------------------------------------------------------------------------
+  **Setting**                    **Value**                         **Notes**
+  ------------------------------ --------------------------------- -----------------------------------------------------------
+  Require BitLocker encryption   Enabled                           Enforced via Endpoint Security blade (supplements SC-006)
+
+  Recovery key escrow            Azure AD (Entra ID)               Keys stored in device properties in Entra ID portal
+
+  Recovery key rotation          Enabled --- rotate on every use   New recovery key generated after each use
+
+  Encryption reporting           Intune encryption report          Monitor via Devices \> Monitor \> Encryption report
+
+  Silent encryption              Enabled                           Encrypt without user interaction on Autopilot/OOBE
+  ----------------------------------------------------------------------------------------------------------------------------
+
+5.3 ES-003: Firewall Policy
+
+**Policy ID: ES-003 \| Blade: Endpoint Security \> Firewall \| Target: All devices**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------
+  **Setting**                            **Value**                                           **Notes**
+  -------------------------------------- --------------------------------------------------- ----------------------------------------------------------
+  Domain profile --- Firewall enabled    Yes                                                 Supplements SC-007
+
+  Private profile --- Firewall enabled   Yes                                                 ---
+
+  Public profile --- Firewall enabled    Yes                                                 ---
+
+  LOB Application Rules                  Allow inbound/outbound for approved LOB apps        Define per-application rules for enterprise applications
+
+  Management port rules                  WinRM 5985/5986, RDP 3389 from management subnets   Restricted to Tier 0 source IPs
+  -----------------------------------------------------------------------------------------------------------------------------------------------------
+
+5.4 ES-004: Endpoint Detection and Response
+
+**Policy ID: ES-004 \| Blade: Endpoint Security \> Endpoint detection and response \| Target: All devices**
+
+  ---------------------------------------------------------------------------------------------
+  **Setting**                                  **Value**
+  -------------------------------------------- ------------------------------------------------
+  Microsoft Defender for Endpoint onboarding   Onboarding package (auto via Intune connector)
+
+  Sample collection                            All file types
+
+  Telemetry reporting frequency                Expedite (real-time)
+
+  Automated investigation                      Full --- automatically remediate
+
+  Live response                                Enabled (Tier 0 analysts only)
+
+  Enable web content filtering                 Enabled
+  ---------------------------------------------------------------------------------------------
+
+5.5 ES-005: Attack Surface Reduction
+
+**Policy ID: ES-005 \| Blade: Endpoint Security \> Attack surface reduction \| Target: All devices**
+
+**Deployment Strategy:** Deploy all rules in **Audit mode** first for 30 days, then transition to **Block mode** after validating no business-critical impact.
+
+  -----------------------------------------------------------------------------------------------------------------------
+  **Rule Name**                                                               **Phase 1 (Audit)**   **Phase 2 (Block)**
+  --------------------------------------------------------------------------- --------------------- ---------------------
+  Block executable content from email client and webmail                      Audit                 Block
+
+  Block all Office applications from creating child processes                 Audit                 Block
+
+  Block JavaScript or VBScript from launching downloaded executable content   Audit                 Block
+
+  Block execution of potentially obfuscated scripts                           Audit                 Block
+
+  Block Win32 API calls from Office macros                                    Audit                 Block
+
+  Block credential stealing from Windows LSASS                                Audit                 Block
+
+  Block process creations originating from PSExec and WMI commands            Audit                 Block
+
+  Block untrusted and unsigned processes that run from USB                    Audit                 Block
+
+  Block Office applications from creating executable content                  Audit                 Block
+
+  Block Office applications from injecting code into other processes          Audit                 Block
+
+  Block Adobe Reader from creating child processes                            Audit                 Block
+
+  Use advanced protection against ransomware                                  Audit                 Block
+  -----------------------------------------------------------------------------------------------------------------------
+
+5.6 ES-006: Account Protection
+
+**Policy ID: ES-006 \| Blade: Endpoint Security \> Account protection \| Target: Varies by tier**
+
+  --------------------------------------------------------------------------------------------------------------------------------
+  **Setting**                            **Value**                **Target**
+  -------------------------------------- ------------------------ ----------------------------------------------------------------
+  Credential Guard                       Enabled with UEFI lock   Tier 0 devices only (device.extensionAttribute4 -eq \"Tier0\")
+
+  Credential Guard                       Enabled without lock     Tier 1 and Tier 2 devices
+
+  Windows Hello for Business             Required                 All devices
+
+  Windows Hello --- Minimum PIN length   6 digits                 All devices
+
+  Windows Hello --- Biometrics           Enabled                  All devices
+
+  Windows LAPS                           Configured per SC-008    All devices
+  --------------------------------------------------------------------------------------------------------------------------------
+
+6\. App Protection Policies
+
+6.1 AP-001: Managed Apps --- Corporate Data Protection
+
+**Policy ID: AP-001 \| Type: App Protection Policy (MAM with enrollment) \| Target: Microsoft 365 apps**
+
+Target Applications
+
+- Microsoft Outlook
+
+- Microsoft Teams
+
+- Microsoft OneDrive
+
+- Microsoft SharePoint
+
+- Microsoft Word, Excel, PowerPoint
+
+- Microsoft Edge (managed browser)
+
+Data Protection Settings
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Category**         **Setting**                                      **Value**
+  -------------------- ------------------------------------------------ --------------------------------------------
+  Data Transfer        Send org data to other apps                      Policy-managed apps only
+
+  Data Transfer        Receive data from other apps                     Policy-managed apps only
+
+  Data Transfer        Save copies of org data                          Block --- no saving to personal storage
+
+  Data Transfer        Allow user to save copies to selected services   OneDrive for Business, SharePoint only
+
+  Cut / Copy / Paste   Restrict cut, copy, paste between apps           Policy-managed apps with paste in from any
+
+  Screen Capture       Screen capture                                   Block
+
+  Encryption           Encrypt org data                                 Required
+
+  Device               Minimum OS version                               Windows 10 22H2
+  ------------------------------------------------------------------------------------------------------------------
+
+6.2 AP-002: MAM Without Enrollment (BYOD)
+
+**Policy ID: AP-002 \| Type: App Protection Policy (MAM without enrollment) \| Target: BYOD devices**
+
+**Description:** Provides the same data protection as AP-001 for personal devices that are not enrolled in Intune device management. No device compliance is required; protection is enforced at the app level.
+
+Settings (additions/modifications from AP-001)
+
+  --------------------------------------------------------------------------------------------------
+  **Category**         **Setting**                           **Value**
+  -------------------- ------------------------------------- ---------------------------------------
+  Access               PIN required for access               Required --- 6 digits
+
+  Access               Fingerprint instead of PIN            Allowed
+
+  Access               Face recognition                      Allowed
+
+  Conditional Launch   Offline grace period                  90 days --- wipe corporate data after
+
+  Conditional Launch   Jailbroken/rooted devices             Block access
+
+  Conditional Launch   Max PIN attempts                      5 --- wipe corporate data after
+
+  Conditional Launch   Minimum app version                   Latest -1 version
+
+  Data Transfer        All AP-001 data protection settings   Same as AP-001
+  --------------------------------------------------------------------------------------------------
+
+7\. GPO-to-Intune Migration Matrix
+
+The following table maps the top 50 most commonly deployed GPO settings in enterprise environments to their Intune equivalents, including the UIAO policy ID where the setting is configured.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **GPO Path**                                                                                                **GPO Setting Name**                                       **Intune Policy Type**                 **Intune Setting Name**                             **UIAO ID**       **Notes**
+  -------- ----------------------------------------------------------------------------------------------------------- ---------------------------------------------------------- -------------------------------------- --------------------------------------------------- ----------------- --------------------------------------
+  1        Computer \> Windows Settings \> Security Settings \> Account Policies                                       Minimum password length                                    Compliance                             Minimum password length                             CP-001            ---
+
+  2        Computer \> Windows Settings \> Security Settings \> Account Policies                                       Password must meet complexity                              Compliance                             Require password complexity                         CP-001            ---
+
+  3        Computer \> Windows Settings \> Security Settings \> Account Policies                                       Account lockout threshold                                  Settings Catalog                       Account Lockout Threshold                           SC-001            ---
+
+  4        Computer \> Windows Settings \> Security Settings \> Account Policies                                       Account lockout duration                                   Settings Catalog                       Account Lockout Duration                            SC-001            ---
+
+  5        Computer \> Admin Templates \> Windows Components \> BitLocker                                              Choose drive encryption method                             Settings Catalog / Endpoint Security   Encryption Method                                   SC-006 / ES-002   ---
+
+  6        Computer \> Admin Templates \> Windows Components \> BitLocker \> OS Drives                                 Require additional authentication at startup               Settings Catalog                       OS Drive Authentication (TPM+PIN)                   SC-006            ---
+
+  7        Computer \> Admin Templates \> Windows Components \> Defender                                               Turn on real-time protection                               Compliance / Settings Catalog          Real-time protection                                CP-001 / SC-002   ---
+
+  8        Computer \> Admin Templates \> Windows Components \> Defender \> MAPS                                       Cloud-delivered protection level                           Settings Catalog                       Cloud protection level                              SC-002            ---
+
+  9        Computer \> Admin Templates \> Windows Components \> Defender \> Exploit Guard                              ASR Rules                                                  Endpoint Security                      Attack Surface Reduction rules                      ES-005            12 rules with GUIDs
+
+  10       Computer \> Windows Settings \> Security Settings \> Windows Firewall                                       Domain Profile --- Firewall state                          Settings Catalog / Endpoint Security   Enable Firewall (Domain)                            SC-007 / ES-003   ---
+
+  11       Computer \> Windows Settings \> Security Settings \> Windows Firewall                                       Public Profile --- Firewall state                          Settings Catalog / Endpoint Security   Enable Firewall (Public)                            SC-007 / ES-003   ---
+
+  12       Computer \> Admin Templates \> Windows Components \> Windows Update                                         Configure Automatic Updates                                Settings Catalog (WUfB)                Automatic Update Behavior                           SC-005            Replaces WSUS targeting
+
+  13       Computer \> Admin Templates \> Windows Components \> Windows Update                                         Defer feature updates                                      Settings Catalog (WUfB)                Feature update deferral (days)                      SC-005            ---
+
+  14       Computer \> Admin Templates \> Windows Components \> Windows Update                                         Defer quality updates                                      Settings Catalog (WUfB)                Quality update deferral (days)                      SC-005            ---
+
+  15       Computer \> Admin Templates \> Windows Components \> Windows Update                                         Specify intranet WSUS server                               N/A                                    N/A --- WUfB uses Windows Update directly           SC-005            WSUS no longer needed
+
+  16       User \> Windows Settings \> Folder Redirection \> Desktop                                                   Redirect Desktop                                           Settings Catalog                       OneDrive KFM --- Desktop                            SC-004            Replaced by OneDrive KFM
+
+  17       User \> Windows Settings \> Folder Redirection \> Documents                                                 Redirect Documents                                         Settings Catalog                       OneDrive KFM --- Documents                          SC-004            Replaced by OneDrive KFM
+
+  18       Computer \> Admin Templates \> Microsoft Edge                                                               Configure homepage                                         Settings Catalog                       Homepage URL                                        SC-003            ---
+
+  19       Computer \> Admin Templates \> Microsoft Edge \> SmartScreen                                                Configure Microsoft Defender SmartScreen                   Settings Catalog                       SmartScreen Enabled                                 SC-003            ---
+
+  20       Computer \> Admin Templates \> Microsoft Edge \> Extensions                                                 Control which extensions cannot be installed               Settings Catalog                       Extension install blocklist                         SC-003            ---
+
+  21       Computer \> Admin Templates \> OneDrive                                                                     Silently move known folders                                Settings Catalog                       Silently redirect known folders to OneDrive         SC-004            ---
+
+  22       Computer \> Admin Templates \> OneDrive                                                                     Prevent personal OneDrive sync                             Settings Catalog                       Block personal OneDrive accounts                    SC-004            ---
+
+  23       Computer \> Admin Templates \> System \> Device Guard                                                       Turn on Virtualization Based Security                      Compliance / Endpoint Security         Credential Guard                                    CP-002 / ES-006   Tier 0 only
+
+  24       Computer \> Admin Templates \> Remote Desktop Services                                                      Allow users to connect remotely                            Settings Catalog                       Allow remote connections                            SC-009            ---
+
+  25       Computer \> Admin Templates \> Remote Desktop Services                                                      Require Network Level Authentication                       Settings Catalog                       Require NLA                                         SC-009            ---
+
+  26       Computer \> Admin Templates \> Remote Desktop Services                                                      Set time limit for idle sessions                           Settings Catalog                       Idle session time limit                             SC-009            ---
+
+  27       Computer \> Windows Settings \> Security Settings \> Local Policies                                         Do not display last user name                              Settings Catalog                       Interactive Logon Do Not Display Last Signed In     SC-001            ---
+
+  28       Computer \> Windows Settings \> Security Settings \> Local Policies                                         Interactive logon: Message text                            Settings Catalog                       Interactive Logon Message Text                      SC-001            Legal banner
+
+  29       Computer \> Windows Settings \> Security Settings \> Advanced Audit                                         Audit Logon events                                         Settings Catalog                       Account Logon Logon (Device)                        SC-001            ---
+
+  30       Computer \> Windows Settings \> Security Settings \> Advanced Audit                                         Audit Policy Change                                        Settings Catalog                       Policy Change Audit Policy Change                   SC-001            ---
+
+  31       Computer \> Windows Settings \> Security Settings \> User Rights                                            Deny log on locally                                        Settings Catalog                       Deny Local Log On                                   SC-001            ---
+
+  32       Computer \> Windows Settings \> Security Settings \> User Rights                                            Deny log on through RDS                                    Settings Catalog                       Deny Remote Desktop Services Log On                 SC-001            ---
+
+  33       User \> Admin Templates \> Desktop                                                                          Desktop Wallpaper                                          Settings Catalog                       Desktop wallpaper                                   SC-010            ---
+
+  34       Computer \> Admin Templates \> Control Panel \> Personalization                                             Force specific lock screen image                           Settings Catalog                       Lock screen image                                   SC-010            ---
+
+  35       Computer \> Admin Templates \> Start Menu and Taskbar                                                       Start Layout                                               Settings Catalog                       Start layout (JSON)                                 SC-010            ---
+
+  36       Computer \> Admin Templates \> Windows Components \> Cloud Content                                          Turn off Microsoft consumer experiences                    Settings Catalog                       Disable consumer features                           SC-010            ---
+
+  37       Computer \> Admin Templates \> Windows Components \> Defender \> NIS                                        Turn on Network Inspection System                          Compliance / Settings Catalog          Network Inspection System                           CP-002 / SC-002   ---
+
+  38       Computer \> Admin Templates \> Network \> DNS Client                                                        DNS suffix search list                                     Settings Catalog                       DNS Suffix Search List                              ---               Custom OMA-URI if needed
+
+  39       Computer \> Admin Templates \> System \> Logon                                                              Always wait for network at startup                         Settings Catalog                       Always Wait For Network At Computer Startup         ---               May not be needed in cloud-native
+
+  40       Computer \> Admin Templates \> System \> Group Policy                                                       Configure Group Policy slow link detection                 N/A                                    Not applicable --- Intune is always \"connected\"   ---               Deprecated in Intune model
+
+  41       Computer \> Admin Templates \> Windows Components \> Internet Explorer                                      All IE settings                                            N/A                                    Replaced by SC-003 (Edge) --- IE is deprecated      SC-003            IE mode in Edge if needed
+
+  42       Computer \> Admin Templates \> Printers                                                                     Point and Print restrictions                               Settings Catalog                       Point and Print Restrictions                        ---               PrintNightmare mitigation
+
+  43       Computer \> Admin Templates \> System \> Power Management                                                   Sleep/hibernate settings                                   Settings Catalog                       Power settings (various)                            ---               Device-type dependent
+
+  44       Computer \> Windows Settings \> Scripts                                                                     Startup/shutdown scripts                                   Intune Remediations / Win32 App        Proactive remediations or PowerShell scripts        ---               Scripts run via Intune Scripts blade
+
+  45       User \> Windows Settings \> Scripts                                                                         Logon/logoff scripts (drive mappings)                      Settings Catalog / Intune Scripts      OneDrive KFM + SharePoint shortcuts                 SC-004            Drive maps replaced by KFM
+
+  46       Computer \> Admin Templates \> Windows Components \> Delivery Optimization                                  Download mode                                              Settings Catalog                       DO Download Mode                                    SC-005            ---
+
+  47       Computer \> Admin Templates \> Windows Components \> Data Collection                                        Allow Telemetry                                            Settings Catalog                       Allow Telemetry                                     ---               Required for WUfB reporting
+
+  48       Computer \> Admin Templates \> Windows Components \> Windows Defender Exploit Guard \> Network Protection   Prevent users and apps from accessing dangerous websites   Settings Catalog                       Network Protection --- Enable                       SC-002            ---
+
+  49       Computer \> Admin Templates \> Windows Components \> Microsoft Defender Antivirus                           Configure PUA protection                                   Settings Catalog                       PUA Protection                                      SC-002            ---
+
+  50       Computer \> Admin Templates \> LAPS                                                                         LAPS password settings                                     Settings Catalog                       Windows LAPS settings                               SC-008            Azure AD backup replaces AD DS
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8\. Dynamic Group Templates
+
+The following PowerShell and Microsoft Graph examples create the dynamic device groups used for policy targeting throughout this document. All groups use the OrgPath extension attribute schema.
+
+8.1 Tier-Based Groups
+
+Tier 0 Devices --- Privileged Access Workstations
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# PowerShell (Microsoft Graph SDK) New-MgGroup -DisplayName \"UIAO-Devices-Tier0\" \` -Description \"Tier 0 Privileged Access Workstations\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier0\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute4 -eq \"Tier0\")\' \` -MembershipRuleProcessingState \"On\"
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Tier 1 Servers
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  New-MgGroup -DisplayName \"UIAO-Devices-Tier1\" \` -Description \"Tier 1 Servers (Azure Arc enrolled)\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier1\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute4 -eq \"Tier1\")\' \` -MembershipRuleProcessingState \"On\"
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Tier 2 Standard Workstations
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  New-MgGroup -DisplayName \"UIAO-Devices-Tier2\" \` -Description \"Tier 2 Standard End-User Workstations\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier2\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute4 -eq \"Tier2\")\' \` -MembershipRuleProcessingState \"On\"
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.2 Environment Groups
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Production Devices New-MgGroup -DisplayName \"UIAO-Devices-Production\" \` -Description \"Production environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-prod\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute5 -eq \"Production\")\' \` -MembershipRuleProcessingState \"On\" \# Staging Devices New-MgGroup -DisplayName \"UIAO-Devices-Staging\" \` -Description \"Staging environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-staging\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute5 -eq \"Staging\")\' \` -MembershipRuleProcessingState \"On\" \# Dev Devices New-MgGroup -DisplayName \"UIAO-Devices-Dev\" \` -Description \"Development environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-dev\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute5 -eq \"Dev\")\' \` -MembershipRuleProcessingState \"On\"
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.3 Role-Based Groups
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Kiosk Devices New-MgGroup -DisplayName \"UIAO-Devices-Kiosk\" \` -Description \"Kiosk and shared devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-kiosk\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute6 -eq \"Kiosk\")\' \` -MembershipRuleProcessingState \"On\"
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.4 Region, Site, and Department Groups
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Region --- East New-MgGroup -DisplayName \"UIAO-Devices-Region-East\" \` -Description \"Devices in East region\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-east\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute1 -eq \"East\")\' \` -MembershipRuleProcessingState \"On\" \# Site --- Herald Harbor New-MgGroup -DisplayName \"UIAO-Devices-Site-HeraldHarbor\" \` -Description \"Devices at Herald Harbor site\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-heraldharbor\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute2 -eq \"HeraldHarbor\")\' \` -MembershipRuleProcessingState \"On\" \# Department --- Governance New-MgGroup -DisplayName \"UIAO-Devices-Dept-Governance\" \` -Description \"Devices assigned to Governance department\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-governance\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute3 -eq \"Governance\")\' \` -MembershipRuleProcessingState \"On\"
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.5 Graph API --- REST Example
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  POST https://graph.microsoft.us/v1.0/groups Content-Type: application/json { \"displayName\": \"UIAO-Devices-Tier0\", \"description\": \"Tier 0 Privileged Access Workstations\", \"mailEnabled\": false, \"mailNickname\": \"uiao-devices-tier0\", \"securityEnabled\": true, \"groupTypes\": \[\"DynamicMembership\"\], \"membershipRule\": \"(device.extensionAttribute4 -eq \\\"Tier0\\\")\", \"membershipRuleProcessingState\": \"On\" }
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **GCC-Moderate Note**                                                                                                                                                                                               |
+|                                                                                                                                                                                                                     |
+| For GCC-Moderate environments, use the government Graph API endpoint **graph.microsoft.us** (not graph.microsoft.com). Entra ID portal is accessed at **entra.microsoft.us** and Intune at **intune.microsoft.us**. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+9\. Deployment Methodology
+
+The GPO-to-Intune migration follows a seven-phase methodology designed to minimize disruption, maintain security posture throughout the transition, and provide rollback capability at every stage.
+
+Phase 1: GPO Analysis
+
+**Duration:** 2--3 weeks \| **Risk:** Low (read-only)
+
+- Execute **Export-UIAOGPOInventory** to catalog all existing GPOs, their link locations, security filtering, WMI filters, and individual settings.
+
+- Identify GPO conflicts (multiple GPOs setting the same value at different OU levels).
+
+- Categorize each GPO setting as: Direct Intune equivalent, Partial equivalent (requires adaptation), No equivalent (requires custom OMA-URI or alternative approach), or Deprecated (no longer needed in cloud-native model).
+
+- Document baseline: current effective policy per device tier for comparison testing.
+
+**Rollback:** N/A --- this phase is read-only analysis.
+
+Phase 2: Intune Group Policy Analytics
+
+**Duration:** 1--2 weeks \| **Risk:** Low
+
+- Export GPO XML from GPMC (Get-GPOReport -ReportType Xml).
+
+- Import GPO XML into Intune \> Devices \> Group Policy analytics.
+
+- Review the readiness report: percentage of settings with MDM equivalents.
+
+- Identify gaps requiring custom OMA-URI policies or Intune Remediations (PowerShell scripts).
+
+- Prioritize migration order based on readiness score and security impact.
+
+**Rollback:** Delete imported GPO reports from Intune analytics.
+
+Phase 3: Policy Creation
+
+**Duration:** 3--4 weeks \| **Risk:** Low (policies created but not assigned)
+
+- Build all Intune policies from this template library (CP-001 through AP-002).
+
+- Create policies in **report-only** or **audit mode** where applicable (ASR rules, Controlled Folder Access).
+
+- Apply scope tags for administrative delegation.
+
+- Create dynamic groups per Section 8 but do not assign policies yet.
+
+- Peer review all policy settings against this document.
+
+**Rollback:** Delete unassigned policies from Intune.
+
+Phase 4: Co-Management Enablement
+
+**Duration:** 2--3 weeks \| **Risk:** Medium
+
+- Enable co-management in SCCM/MECM for pilot collection.
+
+- Set all workload sliders to **Pilot Intune** initially.
+
+- Enroll pilot devices in co-management; verify hybrid Azure AD join or Entra join status.
+
+- Confirm Intune enrollment and communication (check last sync time).
+
+- Validate that existing SCCM policies continue to apply for workloads still on SCCM slider.
+
+**Rollback:** Move workload sliders back to Configuration Manager. Remove devices from co-management pilot collection.
+
+Phase 5: Pilot Deployment
+
+**Duration:** 4--6 weeks \| **Risk:** Medium
+
+- Target 5% of devices (representative sample across tiers, regions, departments).
+
+- Assign compliance policies (CP-001/CP-003) to pilot groups with extended grace periods (e.g., 7 days instead of 24 hours).
+
+- Assign configuration profiles (SC-001 through SC-010) to pilot groups.
+
+- Run GPO and Intune in parallel --- GPO via OU link, Intune via dynamic group.
+
+- Monitor for conflicts: compare GPO RSOP (gpresult /h) against Intune device configuration status.
+
+- Validate application behavior, user experience, and security posture against Phase 1 baseline.
+
+- Collect user feedback; document issues and exceptions.
+
+**Rollback:** Remove policy assignments from pilot groups. GPO continues to apply unchanged.
+
+Phase 6: Expand and Transition
+
+**Duration:** 8--12 weeks (phased by workload) \| **Risk:** Medium-High
+
+- **Wave 1 (Weeks 1--3):** Move compliance workload slider to Intune for all devices. Assign CP-001 through CP-005 to production groups.
+
+- **Wave 2 (Weeks 4--6):** Move device configuration workload. Assign SC-001 through SC-010. Unlink corresponding GPOs.
+
+- **Wave 3 (Weeks 7--9):** Move endpoint protection workload. Assign ES-001 through ES-006.
+
+- **Wave 4 (Weeks 10--12):** Move Windows Update workload. Decommission WSUS for migrated devices. Assign WUfB rings.
+
+- For each wave: validate, monitor 72 hours, then proceed to next wave.
+
+**Rollback:** Move workload slider back to Configuration Manager for the affected workload. Re-link GPOs.
+
+Phase 7: GPO Sunset
+
+**Duration:** 2--4 weeks \| **Risk:** Low (if Phases 5--6 validated)
+
+- Unlink GPOs from OUs for settings now managed by Intune.
+
+- Block inheritance on migrated OUs to prevent stale GPO application.
+
+- Disable (do not delete) GPO objects --- retain for 90 days as rollback safety net.
+
+- After 90 days with no issues: archive GPO objects and delete from Active Directory.
+
+- Update UIAO documentation to reflect Intune as authoritative source.
+
+**Rollback:** Re-enable and re-link GPOs. Move co-management workload sliders back.
+
+Deployment Timeline Summary
+
+  ---------------------------------------------------------------------------
+  **Phase**                  **Duration**   **Cumulative**   **Risk Level**
+  -------------------------- -------------- ---------------- ----------------
+  Phase 1: GPO Analysis      2--3 weeks     Week 3           Low
+
+  Phase 2: GP Analytics      1--2 weeks     Week 5           Low
+
+  Phase 3: Policy Creation   3--4 weeks     Week 9           Low
+
+  Phase 4: Co-Management     2--3 weeks     Week 12          Medium
+
+  Phase 5: Pilot (5%)        4--6 weeks     Week 18          Medium
+
+  Phase 6: Expand            8--12 weeks    Week 30          Medium-High
+
+  Phase 7: GPO Sunset        2--4 weeks     Week 34          Low
+  ---------------------------------------------------------------------------
+
+10\. Monitoring and Drift Detection
+
+10.1 Intune Compliance Dashboard
+
+The Intune compliance dashboard (Devices \> Monitor \> Device compliance) provides real-time visibility into device compliance status across all policies. Key metrics to monitor:
+
+- **Compliant:** Device meets all assigned compliance policy requirements.
+
+- **Not compliant:** Device fails one or more compliance checks. Drill down to identify which settings fail.
+
+- **In grace period:** Device is non-compliant but within the configured grace period.
+
+- **Not evaluated:** Device has not yet been evaluated (newly enrolled or not synced).
+
+10.2 Device Configuration Status Monitoring
+
+- Navigate to each configuration profile \> Device status to view per-device deployment results.
+
+- **Succeeded:** Profile applied successfully.
+
+- **Error:** Profile failed to apply --- investigate event logs and CSP errors.
+
+- **Conflict:** Two or more profiles configure the same setting with different values. Resolve by consolidating profiles or adjusting assignments.
+
+- **Pending:** Profile assignment received but not yet applied (device has not synced).
+
+10.3 Policy Conflict Identification
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Conflict Type**                      **Detection Method**                                                                  **Resolution**
+  -------------------------------------- ------------------------------------------------------------------------------------- --------------------------------------------------------------------------------
+  Compliance vs. Compliance              Review device compliance details --- identifies which policy flagged non-compliance   Most restrictive wins; verify intended behavior
+
+  Config Profile vs. Config Profile      Device configuration status shows \"Conflict\" state                                  Consolidate duplicate settings into single profile; adjust group assignments
+
+  Endpoint Security vs. Config Profile   Endpoint Security policy takes precedence; Config Profile may show error              Remove duplicate setting from Config Profile; manage in Endpoint Security only
+
+  GPO vs. Intune (co-management)         gpresult /h on device vs. Intune device config status                                 Verify co-management workload slider; ensure only one authority per workload
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+10.4 UIAO Drift Detection Integration
+
+The UIAO Drift Detection module monitors for configuration regression by comparing current device state against the policy baseline defined in this document. Integration points:
+
+- **Scheduled export:** Daily export of Intune compliance and configuration status via Graph API.
+
+- **Baseline comparison:** Compare current settings against approved UIAO template values.
+
+- **Drift alerting:** Flag devices where settings deviate from the expected policy (e.g., BitLocker disabled, Defender tamper protection turned off).
+
+- **Remediation workflow:** Trigger Intune device sync or remediation script on drift-detected devices.
+
+10.5 KQL Queries for Log Analytics
+
+The following KQL queries can be used in Log Analytics workspaces connected to Intune diagnostic logs:
+
+Compliance Trend --- Last 30 Days
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  IntuneDeviceComplianceOrg \| where TimeGenerated \> ago(30d) \| summarize Compliant = countif(ComplianceState == \"Compliant\"), NonCompliant = countif(ComplianceState == \"NonCompliant\"), InGracePeriod = countif(ComplianceState == \"InGracePeriod\") by bin(TimeGenerated, 1d) \| order by TimeGenerated asc
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Failed Configuration Profile Deployments
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  IntuneDevices \| join kind=inner ( IntuneOperationalLogs \| where OperationName == \"DeviceConfiguration\" \| where Result == \"Fail\" ) on DeviceId \| project TimeGenerated, DeviceName, UserPrincipalName, ProfileName=OperationName, ErrorCode, Result \| order by TimeGenerated desc \| take 100
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Policy Conflict Detection
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  IntuneOperationalLogs \| where OperationName has \"Conflict\" \| summarize ConflictCount=count() by DeviceId, ProfileName=tostring(Properties) \| where ConflictCount \> 0 \| order by ConflictCount desc
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+10.6 Alerting Configuration
+
+  -----------------------------------------------------------------------------------------------------------------------------------
+  **Alert**                             **Threshold**                       **Action**
+  ------------------------------------- ----------------------------------- ---------------------------------------------------------
+  Non-compliant device count            \> 10% of total managed devices     Email to endpoint management team + ServiceNow incident
+
+  Tier 0 non-compliance                 Any device (count \> 0)             Immediate email to security team + PagerDuty alert
+
+  Policy deployment failure             \> 5 devices failing same profile   Email to endpoint management team
+
+  Defender tamper protection disabled   Any device                          Security incident --- immediate investigation
+
+  BitLocker not encrypted               Device non-compliant \> 48 hours    Help desk ticket auto-created for end user
+  -----------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A: Settings Catalog Reference
+
+This appendix lists the complete ADMX-backed setting names and CSP (Configuration Service Provider) URIs for all Settings Catalog policies defined in this document.
+
+A.1 SC-001: Security Baseline --- CSP References
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Setting**                     **ADMX Setting Name**                                   **CSP URI**
+  ------------------------------- ------------------------------------------------------- -----------------------------------------------------------------------------------------------------------------------
+  Account Lockout Threshold       AccountLockoutThreshold                                 ./Device/Vendor/MSFT/Policy/Config/DeviceLock/MaxDevicePasswordFailedAttempts
+
+  Account Lockout Duration        AccountLockoutDuration                                  ./Device/Vendor/MSFT/Policy/Config/DeviceLock/AccountLockoutDuration
+
+  Audit Logon Events              AuditLogonEvents                                        ./Device/Vendor/MSFT/Policy/Config/Audit/AccountLogon_AuditLogon
+
+  Do Not Display Last User Name   InteractiveLogon_DoNotDisplayLastSignedIn               ./Device/Vendor/MSFT/Policy/Config/LocalPoliciesSecurityOptions/InteractiveLogon_DoNotDisplayLastSignedIn
+
+  Logon Message Text              InteractiveLogon_MessageTextForUsersAttemptingToLogOn   ./Device/Vendor/MSFT/Policy/Config/LocalPoliciesSecurityOptions/InteractiveLogon_MessageTextForUsersAttemptingToLogOn
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.2 SC-002: Defender Antivirus --- CSP References
+
+  -----------------------------------------------------------------------------------------------------
+  **Setting**                **CSP URI**
+  -------------------------- --------------------------------------------------------------------------
+  Real-time Protection       ./Device/Vendor/MSFT/Policy/Config/Defender/AllowRealtimeMonitoring
+
+  Cloud Protection Level     ./Device/Vendor/MSFT/Policy/Config/Defender/CloudBlockLevel
+
+  Cloud Extended Timeout     ./Device/Vendor/MSFT/Policy/Config/Defender/CloudExtendedTimeout
+
+  Submit Samples Consent     ./Device/Vendor/MSFT/Policy/Config/Defender/SubmitSamplesConsent
+
+  PUA Protection             ./Device/Vendor/MSFT/Policy/Config/Defender/PUAProtection
+
+  Network Protection         ./Device/Vendor/MSFT/Policy/Config/Defender/EnableNetworkProtection
+
+  Controlled Folder Access   ./Device/Vendor/MSFT/Policy/Config/Defender/EnableControlledFolderAccess
+
+  ASR Rules                  ./Device/Vendor/MSFT/Policy/Config/Defender/AttackSurfaceReductionRules
+  -----------------------------------------------------------------------------------------------------
+
+A.3 SC-005: Windows Update for Business --- CSP References
+
+  --------------------------------------------------------------------------------------------------------
+  **Setting**                  **CSP URI**
+  ---------------------------- ---------------------------------------------------------------------------
+  Feature Update Deferral      ./Device/Vendor/MSFT/Policy/Config/Update/DeferFeatureUpdatesPeriodInDays
+
+  Quality Update Deferral      ./Device/Vendor/MSFT/Policy/Config/Update/DeferQualityUpdatesPeriodInDays
+
+  Active Hours Start           ./Device/Vendor/MSFT/Policy/Config/Update/ActiveHoursStart
+
+  Active Hours End             ./Device/Vendor/MSFT/Policy/Config/Update/ActiveHoursEnd
+
+  Delivery Optimization Mode   ./Device/Vendor/MSFT/Policy/Config/DeliveryOptimization/DODownloadMode
+  --------------------------------------------------------------------------------------------------------
+
+A.4 SC-006: BitLocker --- CSP References
+
+  -----------------------------------------------------------------------------------------
+  **Setting**                  **CSP URI**
+  ---------------------------- ------------------------------------------------------------
+  Require Encryption           ./Device/Vendor/MSFT/BitLocker/RequireDeviceEncryption
+
+  OS Drive Encryption Method   ./Device/Vendor/MSFT/BitLocker/EncryptionMethodByDriveType
+
+  Recovery Key Escrow          ./Device/Vendor/MSFT/BitLocker/SystemDrivesRecoveryOptions
+  -----------------------------------------------------------------------------------------
+
+A.5 SC-008: Windows LAPS --- CSP References
+
+  --------------------------------------------------------------------------------------------
+  **Setting**                   **CSP URI**
+  ----------------------------- --------------------------------------------------------------
+  Backup Directory              ./Device/Vendor/MSFT/LAPS/Policies/BackupDirectory
+
+  Password Complexity           ./Device/Vendor/MSFT/LAPS/Policies/PasswordComplexity
+
+  Password Length               ./Device/Vendor/MSFT/LAPS/Policies/PasswordLength
+
+  Password Age (Days)           ./Device/Vendor/MSFT/LAPS/Policies/PasswordAgeDays
+
+  Post-Authentication Actions   ./Device/Vendor/MSFT/LAPS/Policies/PostAuthenticationActions
+  --------------------------------------------------------------------------------------------
+
+A.6 Custom OMA-URI Template
+
+For settings not available in the Settings Catalog, deploy via custom OMA-URI profile:
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Name: \[Descriptive setting name\] Description: \[Purpose and GPO equivalent\] OMA-URI: ./Device/Vendor/MSFT/Policy/Config/\[Area\]/\[SettingName\] Data type: \[Integer \| String \| Boolean \| Base64\] Value: \[Setting value\]
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix B: JSON Export Templates
+
+The following JSON payloads can be used with the Microsoft Graph API to programmatically create Intune policies. Use the GCC-Moderate endpoint: **https://graph.microsoft.us**.
+
+B.1 Compliance Policy --- CP-001 (Graph API JSON)
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  POST https://graph.microsoft.us/v1.0/deviceManagement/deviceCompliancePolicies Content-Type: application/json { \"@odata.type\": \"#microsoft.graph.windows10CompliancePolicy\", \"displayName\": \"UIAO-CP-001-Workstation-Baseline\", \"description\": \"Windows Workstation Baseline Compliance - UIAO\", \"passwordRequired\": true, \"passwordMinimumLength\": 14, \"passwordRequiredType\": \"alphanumeric\", \"passwordMinutesOfInactivityBeforeLock\": 15, \"osMinimumVersion\": \"10.0.19045\", \"secureBootEnabled\": true, \"codeIntegrityEnabled\": true, \"bitLockerEnabled\": true, \"tpmRequired\": true, \"activeFirewallRequired\": true, \"defenderEnabled\": true, \"antivirusRequired\": true, \"antiSpywareRequired\": true, \"signatureOutOfDate\": true, \"rtpEnabled\": true, \"scheduledActionsForRule\": \[ { \"ruleName\": \"PasswordRequired\", \"scheduledActionConfigurations\": \[ { \"actionType\": \"block\", \"gracePeriodHours\": 24, \"notificationTemplateId\": \"\", \"notificationMessageCCList\": \[\] }, { \"actionType\": \"notification\", \"gracePeriodHours\": 24 }, { \"actionType\": \"retire\", \"gracePeriodHours\": 720 } \] } \] }
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+B.2 Settings Catalog Profile --- SC-002 Defender (Graph API JSON)
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  POST https://graph.microsoft.us/v1.0/deviceManagement/configurationPolicies Content-Type: application/json { \"name\": \"UIAO-SC-002-Defender-Antivirus\", \"description\": \"Microsoft Defender Antivirus Configuration - UIAO\", \"platforms\": \"windows10\", \"technologies\": \"mdm\", \"settings\": \[ { \"settingInstance\": { \"@odata.type\": \"#microsoft.graph.deviceManagementConfigurationChoiceSettingInstance\", \"settingDefinitionId\": \"device_vendor_msft_policy_config_defender_allowrealtimemonitoring\", \"choiceSettingValue\": { \"value\": \"device_vendor_msft_policy_config_defender_allowrealtimemonitoring_1\" } } }, { \"settingInstance\": { \"@odata.type\": \"#microsoft.graph.deviceManagementConfigurationChoiceSettingInstance\", \"settingDefinitionId\": \"device_vendor_msft_policy_config_defender_cloudblocklevel\", \"choiceSettingValue\": { \"value\": \"device_vendor_msft_policy_config_defender_cloudblocklevel_2\" } } }, { \"settingInstance\": { \"@odata.type\": \"#microsoft.graph.deviceManagementConfigurationSimpleSettingInstance\", \"settingDefinitionId\": \"device_vendor_msft_policy_config_defender_cloudextendedtimeout\", \"simpleSettingValue\": { \"@odata.type\": \"#microsoft.graph.deviceManagementConfigurationIntegerSettingValue\", \"value\": 50 } } }, { \"settingInstance\": { \"@odata.type\": \"#microsoft.graph.deviceManagementConfigurationChoiceSettingInstance\", \"settingDefinitionId\": \"device_vendor_msft_policy_config_defender_submitsamplesconsent\", \"choiceSettingValue\": { \"value\": \"device_vendor_msft_policy_config_defender_submitsamplesconsent_1\" } } }, { \"settingInstance\": { \"@odata.type\": \"#microsoft.graph.deviceManagementConfigurationChoiceSettingInstance\", \"settingDefinitionId\": \"device_vendor_msft_policy_config_defender_puaprotection\", \"choiceSettingValue\": { \"value\": \"device_vendor_msft_policy_config_defender_puaprotection_1\" } } } \] }
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+B.3 Endpoint Security --- ES-005 ASR Rules (Graph API JSON)
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  POST https://graph.microsoft.us/v1.0/deviceManagement/intents Content-Type: application/json { \"displayName\": \"UIAO-ES-005-ASR-Rules\", \"description\": \"Attack Surface Reduction Rules - Audit Mode - UIAO\", \"templateId\": \"\[ASR template GUID from Intune\]\", \"settings\": \[ { \"definitionId\": \"deviceConfiguration\--windows10EndpointProtectionConfiguration_defenderAttackSurfaceReductionExcludedPaths\", \"valueJson\": \"\[\]\" }, { \"definitionId\": \"deviceConfiguration\--windows10EndpointProtectionConfiguration_defenderGuardedFoldersAllowedAppPaths\", \"valueJson\": \"\[\]\" } \] }
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+B.4 PowerShell --- Create Policies via Graph SDK
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Connect to Graph (GCC-Moderate) Connect-MgGraph -Scopes \"DeviceManagementConfiguration.ReadWrite.All\" \` -Environment USGov \# Create Compliance Policy \$complianceBody = \@{ \"@odata.type\" = \"#microsoft.graph.windows10CompliancePolicy\" displayName = \"UIAO-CP-001-Workstation-Baseline\" description = \"Windows Workstation Baseline Compliance\" passwordRequired = \$true passwordMinimumLength = 14 secureBootEnabled = \$true bitLockerEnabled = \$true tpmRequired = \$true activeFirewallRequired = \$true defenderEnabled = \$true } New-MgDeviceManagementDeviceCompliancePolicy -BodyParameter \$complianceBody \# Create Configuration Profile \$configBody = \@{ \"@odata.type\" = \"#microsoft.graph.windows10GeneralConfiguration\" displayName = \"UIAO-SC-001-Security-Baseline\" description = \"Windows Security Baseline Configuration\" } New-MgDeviceManagementDeviceConfiguration -BodyParameter \$configBody
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix C: Co-Management Decision Matrix
+
+Use this matrix to determine which management authority (GPO, SCCM, or Intune) should control each workload based on device type, management model, and connectivity requirements.
+
+C.1 Workload-by-Workload Comparison
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Workload**                          **GPO (On-Premises)**                                  **SCCM / MECM**                                       **Intune**                                                    **Recommendation**
+  ------------------------------------- ------------------------------------------------------ ----------------------------------------------------- ------------------------------------------------------------- -----------------------------------------------------------
+  Compliance Policies                   No native equivalent; relies on scripts and SCCM DCM   Compliance Settings (DCM baselines)                   Device Compliance Policies + Conditional Access integration   Intune --- native CA integration
+
+  Device Configuration                  ADMX-backed GPO settings; mature, comprehensive        Configuration Items + Baselines                       Settings Catalog (ADMX-backed) + OMA-URI                      Intune --- Settings Catalog parity achieved; cloud-native
+
+  Endpoint Protection                   Limited (Defender GPO)                                 Endpoint Protection role + SCEP                       Endpoint Security blade (AV, FW, ASR, EDR, disk encryption)   Intune --- unified security blade
+
+  Windows Update                        WSUS GPO targeting                                     Software Update Point (SUP) + WSUS                    Windows Update for Business (WUfB) + Update Rings             Intune --- WUfB eliminates WSUS infrastructure
+
+  Resource Access (Wi-Fi, VPN, certs)   GPO + NPS + ADCS templates                             Resource access profiles + NDES                       Configuration profiles + SCEP/PKCS connector                  Intune --- requires NDES/SCEP connector for certs
+
+  Client Apps                           GPO software installation (limited)                    Application Management (MSI, script, task sequence)   Win32 app, MSI, MSIX, Microsoft Store, Winget                 Phased --- complex apps may remain in SCCM initially
+
+  Office Click-to-Run                   Not applicable                                         Office 365 client deployment                          Microsoft 365 Apps assignment                                 Intune --- first workload to move
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+C.2 Decision Criteria
+
+  --------------------------------------------------------------------------------------------------------------------------------------
+  **Criteria**             **Favor SCCM**                                              **Favor Intune**
+  ------------------------ ----------------------------------------------------------- -------------------------------------------------
+  Device Type              Servers, legacy Windows, on-premises kiosks                 Windows 10/11 workstations, remote/BYOD devices
+
+  Management Model         On-premises, domain-joined, managed network                 Cloud-native, Entra-joined, hybrid join
+
+  Connectivity             Always on corporate network or VPN                          Internet-connected (any network)
+
+  User Type                On-site workers, manufacturing, lab environments            Remote workers, hybrid workers, executives
+
+  Application Complexity   Complex task sequences, multi-step installs, dependencies   Standard apps, Win32 wrapped apps, Winget
+  --------------------------------------------------------------------------------------------------------------------------------------
+
+C.3 Timeline Recommendations
+
+  --------------------------------------------------------------------------------------------
+  **Workload**           **Month 1--3**   **Month 4--6**   **Month 7--9**   **Month 10--12**
+  ---------------------- ---------------- ---------------- ---------------- ------------------
+  Office Click-to-Run    Move to Intune   Complete         ---              ---
+
+  Compliance Policies    Build + Pilot    Move to Intune   Complete         ---
+
+  Device Configuration   Build            Pilot            Move to Intune   Complete
+
+  Endpoint Protection    Build            Pilot            Move to Intune   Complete
+
+  Windows Update         ---              Build + Pilot    Move to Intune   Decom WSUS
+
+  Resource Access        ---              Build            Pilot            Move to Intune
+
+  Client Apps            ---              ---              Pilot            Phased move
+  --------------------------------------------------------------------------------------------
+
+Appendix D: Compliance Mapping
+
+D.1 NIST 800-53 Control Mapping
+
+The following table maps UIAO Intune policies to relevant NIST 800-53 Rev. 5 security controls:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------
+  **NIST Control**   **Control Name**                    **UIAO Policy**          **Implementation**
+  ------------------ ----------------------------------- ------------------------ -----------------------------------------------------------------------
+  AC-2               Account Management                  SC-008, ES-006           LAPS for local admin; Windows Hello for Business for user accounts
+
+  AC-7               Unsuccessful Logon Attempts         SC-001                   Account lockout threshold (10 attempts), duration (15 min)
+
+  AC-8               System Use Notification             SC-001                   Interactive logon message text and title
+
+  AC-11              Device Lock                         CP-001                   Password required; inactivity timeout
+
+  AU-2               Event Logging                       SC-001                   Audit policy: logon, object access, policy change, privilege use
+
+  AU-3               Content of Audit Records            SC-001, ES-004           Audit policy settings + EDR telemetry
+
+  CM-6               Configuration Settings              SC-001 through SC-010    All Settings Catalog profiles enforce approved configurations
+
+  CM-7               Least Functionality                 ES-005, SC-003           ASR rules block unnecessary functionality; Edge extension blocklist
+
+  IA-2               Identification and Authentication   ES-006                   Windows Hello for Business (MFA at device level)
+
+  IA-5               Authenticator Management            CP-001, SC-008           Password length/complexity; LAPS password rotation
+
+  SC-7               Boundary Protection                 SC-007, ES-003           Windows Firewall profiles with per-network rules
+
+  SC-13              Cryptographic Protection            SC-006, ES-002           BitLocker XTS-AES 256; recovery key escrow to Entra ID
+
+  SC-28              Protection of Information at Rest   SC-006, ES-002, AP-001   BitLocker disk encryption; App Protection encryption requirement
+
+  SI-2               Flaw Remediation                    SC-005                   WUfB quality update deferral (7 days) + compliance deadline (7 days)
+
+  SI-3               Malicious Code Protection           SC-002, ES-001           Defender AV real-time protection, cloud protection, tamper protection
+
+  SI-4               System Monitoring                   ES-004                   Microsoft Defender for Endpoint EDR; automated investigation
+
+  SI-16              Memory Protection                   CP-002, ES-006           Credential Guard with UEFI lock; Code Integrity required
+  -------------------------------------------------------------------------------------------------------------------------------------------------------
+
+D.2 CIS Benchmark Mapping (Windows 10/11)
+
+  ----------------------------------------------------------------------------------------------------------------------
+  **CIS Benchmark Section**   **CIS Recommendation**                        **UIAO Policy**   **Status**
+  --------------------------- --------------------------------------------- ----------------- --------------------------
+  1.1.1                       Enforce password history (24 passwords)       SC-001            Configured
+
+  1.1.4                       Minimum password length (14 characters)       CP-001            Configured
+
+  1.2.1                       Account lockout duration (15 minutes)         SC-001            Configured
+
+  1.2.2                       Account lockout threshold (10 attempts)       SC-001            Configured
+
+  2.3.1.2                     Do not display last signed-in user            SC-001            Configured
+
+  2.3.7.1                     Interactive logon: Message text               SC-001            Configured
+
+  9.1.1                       Domain Firewall: State --- On                 SC-007 / ES-003   Configured
+
+  9.2.1                       Private Firewall: State --- On                SC-007 / ES-003   Configured
+
+  9.3.1                       Public Firewall: State --- On                 SC-007 / ES-003   Configured
+
+  18.9.47                     Configure BitLocker encryption                SC-006 / ES-002   Configured (XTS-AES 256)
+
+  18.9.47.5                   Choose drive encryption method --- OS drive   SC-006            Configured (XTS-AES 256)
+
+  18.10.43                    Configure Defender real-time protection       SC-002 / ES-001   Configured
+
+  18.10.43                    Cloud-delivered protection level              SC-002            Configured (High)
+
+  18.10.43                    Configure Attack Surface Reduction rules      ES-005            Configured (12 rules)
+  ----------------------------------------------------------------------------------------------------------------------
+
+D.3 GCC-Moderate Boundary Considerations
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Consideration**         **Requirement**                                                   **UIAO Implementation**
+  ------------------------- ----------------------------------------------------------------- --------------------------------------------------------------------------------------------
+  Intune Service Endpoint   Use GCC-High/Moderate Intune instance (manage-gcc.microsoft.us)   All policies deployed to GCC-Moderate Intune tenant
+
+  Graph API Endpoint        Use graph.microsoft.us (not graph.microsoft.com)                  All Graph API calls in Appendix B use government endpoint
+
+  Data Residency            Intune data must reside in US sovereign cloud                     GCC-Moderate tenant ensures US data residency
+
+  Defender for Endpoint     MDE must be in GCC-Moderate instance                              ES-004 onboarding targets GCC-Moderate MDE instance
+
+  Conditional Access        Entra ID Conditional Access in government cloud                   Compliance policies (CP-xxx) feed CA grant controls in Entra ID gov
+
+  Azure AD (Entra ID)       Use portal.azure.us / entra.microsoft.us                          Dynamic groups and device management in government portal
+
+  Recovery Key Storage      BitLocker recovery keys in sovereign cloud Entra ID               SC-006 / ES-002 escrow keys to Entra ID (government instance)
+
+  LAPS Backup               LAPS passwords stored in government Entra ID                      SC-008 backs up to Azure AD (government tenant)
+
+  Telemetry                 Diagnostic data within FedRAMP boundary                           Telemetry level configured for compliance; data stays in GCC boundary
+
+  Feature Availability      Some Intune features may have delayed availability in GCC         Validate each feature against Microsoft GCC feature parity documentation before deployment
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Important: GCC Feature Parity**                                                                                                                                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                                                                                                                                                   |
+| Not all Intune features are available simultaneously in commercial and GCC-Moderate environments. Before deploying any policy from this library, verify feature availability in the GCC-Moderate service description. Key areas to validate: Settings Catalog coverage, Endpoint Security templates, Windows Autopatch, and Intune Suite add-ons. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**UIAO Intune Policy Templates** \| Version 1.0 \| April 21, 2026\
+Classification: Controlled \| Boundary: GCC-Moderate\
+Unified Identity Architecture & Operations (UIAO) Program\
+For questions or updates, contact the UIAO Endpoint Management team.

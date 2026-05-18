@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_131
 title: "UIAO Adapter Test Strategy — Three-Tier Model for a Boundary-Outside Substrate"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
-updated_at: "2026-04-17"
+updated_at: "2026-04-26"
 boundary: "GCC-Moderate"
 ---
 
@@ -167,6 +167,9 @@ reference deployment. Examples from the current registry:
 
 - `bluecat-address-manager` — BlueCat requires sales contact for
   any access; no public developer sandbox.
+- `infoblox` — closed-eval-only vendor channel; no public
+  developer sandbox even though the product itself is
+  FedRAMP-authorized.
 - `mainframe` (reserved) — z/OS Connect test fixtures require
   real mainframe infrastructure.
 
@@ -182,6 +185,116 @@ explicit registry annotation:
 The exclusion is itself a governance finding
 (`docs/findings/adapter-no-reachable-test-target.md`) — it
 documents a capability gap, not an error.
+
+### 5.1.1 Compensating evidence for tier-1 exclusions
+
+When an adapter is permanently excluded from tier-1 per §5.1 (no
+developer / evaluation access, no public eval channel), the
+conformance gate cannot rely on live CI evidence. The substrate's
+default would be to refuse to advance the adapter past `draft`.
+That default is too strict — it permanently strands legitimate
+adapters (BlueCat, Infoblox, mainframe, future closed-source
+vendor systems) that are otherwise sound.
+
+This subsection defines the **compensating-evidence model**: what
+an agency or vendor can provide *instead of* live tier-1 CI
+results that, combined with stronger tier-2 fixture coverage, is
+sufficient to advance the adapter to `beta` status under the §4
+gate model.
+
+#### Accepted compensating-evidence sources
+
+1. **Vendor-attested test reports.** A signed, dated, scoped test
+   report from the vendor naming the adapter version, the API
+   surface tested, the operations covered, and the result.
+   Required attributes:
+   - Authoring entity is the vendor of the target system (not
+     the UIAO substrate, not the agency).
+   - Detached signature using a published vendor signing key
+     whose trust-anchor matches the registry entry's
+     `trust-anchor.subject`.
+   - Issued within the past 365 days (older reports become
+     "potential staleness" per §5.3 and require renewal or
+     re-attestation).
+   - Scope statement enumerates the specific operations
+     validated. A report claiming "all operations tested" without
+     enumeration is not accepted.
+
+2. **Agency-operated sandbox evidence.** Output from a
+   non-production instance of the target system operated by a
+   partner agency, sanitized per the rules in
+   `tests/fixtures/contract/README.md`. Distinct from tier-3: a
+   sandbox run is one-shot evidence, not a recurring quarterly
+   cadence. Required attributes:
+   - Captured against a declared non-production tenant or
+     instance.
+   - Sanitized before transmission to the UIAO substrate (no raw
+     agency data).
+   - Provenance block names the agency, the sandbox identifier,
+     and the operator's role.
+   - Cannot be the same agency that funds the substrate; the
+     compensating-evidence channel must be independent of the
+     substrate's primary maintainer to preserve audit
+     independence.
+
+3. **Exhaustive tier-2 fixture coverage.** When the adapter is
+   excluded from tier-1, the tier-2 fixture suite must cover
+   **every operation** the adapter exposes — not just the
+   operations that have caused findings or that interact with
+   FedRAMP-INR-style boundary constraints. The fixture coverage
+   gate raises from "exemplar fixtures present" to "exhaustive
+   operation matrix." This makes tier-2 the substantive gate for
+   tier-1-excluded adapters.
+
+#### Conformance gate adjustment for tier-1 exclusions
+
+For an adapter with §5.1 tier-1 exclusion, replace the §4 gate
+row `beta: tier 1 + tier 2 green` with:
+
+```
+beta (tier-1-excluded):
+  exhaustive tier-2 fixture matrix green
+  AND at least one accepted compensating-evidence artifact
+      (vendor-attested OR agency-sandbox) under 365 days old
+  AND substrate walker reports zero DRIFT-PROVENANCE findings
+      on the adapter
+```
+
+The advancement to `active` still requires tier-3 evidence per the
+unmodified §4 row. Tier-1-excluded adapters that lack tier-3
+evidence remain at `beta` indefinitely; this is correct, not a
+deficiency.
+
+#### Provenance requirements for compensating evidence
+
+Every compensating-evidence artifact lands in
+`docs/findings/compensating-evidence/<adapter-id>/<artifact-id>.yaml`
+with a frontmatter block carrying:
+
+- `document_id`
+- `adapter_id`
+- `source_class` (one of: `vendor-attested`, `agency-sandbox`,
+  `tier-2-exhaustive`)
+- `signed_by`
+- `signed_at`
+- `scope` (operation enumeration)
+- `expires_at`
+
+The substrate walker scans this directory and surfaces expiring
+artifacts as `compensating-evidence-stale` findings 30 days
+before `expires_at`.
+
+#### Adapters covered by this subsection
+
+| Adapter | Tier-1 status | Acceptable compensating evidence |
+|---|---|---|
+| `bluecat-address-manager` | excluded — no developer / eval access | vendor-attested test report from BlueCat OR agency-sandbox evidence; exhaustive tier-2 fixture matrix mandatory |
+| `infoblox` | excluded — no public developer sandbox; closed-eval-only vendor channel | vendor-attested test report from Infoblox OR agency-sandbox evidence; exhaustive tier-2 fixture matrix mandatory |
+| `mainframe` (reserved) | excluded — z/OS infrastructure required | agency-sandbox evidence only; vendor attestation channel TBD |
+
+Each adapter's registry entry under
+`core/canon/modernization-registry.yaml` cites this subsection in
+its `notes` field.
 
 ### 5.2 Tier-1 target unavailability
 
@@ -249,6 +362,8 @@ This strategy does **not**:
 - UIAO_126 — Test Plans Program (catalog parent)
 - `docs/findings/` — governance findings covering boundary-imposed
   test-target gaps
+- `docs/findings/compensating-evidence/` — per-§5.1.1
+  compensating-evidence artifacts
 - `core/canon/modernization-registry.yaml` — per-adapter test-tier
   annotations land here
 - `core/canon/adapter-registry.yaml` — same for conformance

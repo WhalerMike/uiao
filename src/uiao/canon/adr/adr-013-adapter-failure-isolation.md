@@ -4,6 +4,9 @@ adr: "ADR-013"
 status: ACCEPTED
 date: "2026-02-03"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-013-adapter-failure-isolation.html
 ---
 
 # ADR-013: Adapter Failure Isolation

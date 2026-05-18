@@ -1,0 +1,87 @@
+---
+title: "UIAO SSOT Roster Schema"
+subtitle: "Schema Reference · ssot-roster.schema.json"
+date: 2026-05-18
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/ssot-roster/ssot-roster.schema.json`](../../../src/uiao/schemas/ssot-roster/ssot-roster.schema.json)
+- **Dialect:** `http://json-schema.org/draft-07/schema#`
+- **`$id`:** `https://uiao.gov/schemas/ssot-roster/ssot-roster.schema.json`
+:::
+
+## Description
+
+JSON Schema for **SSOT (single-source-of-truth) roster** documents. Each roster declares, for one data domain, which instance is authoritative and which instances are canonically demoted in favor of it. The substrate's drift engine (the proposed `SSOTContentionEvaluator`) reads these rosters to evaluate `DRIFT-SSOT-CONTENTION` findings per [ADR-074](../../adr/adr-074-drift-ssot-contention.qmd).
+
+Companion to the **MS SQL Estate Rationalization Process spec** (§3 SSOT Designation, §7.2 `DRIFT-SSOT-CONTENTION` detection mechanism). The spec catalyzed the schema; the schema applies to any data domain that the rationalization process framework covers (HR, Finance, Procurement, Logistics, FOIA, etc.).
+
+One roster per (domain, domain_scope) pair. Rosters are canon-anchored YAML files under `src/uiao/canon/data/<adapter-family>/ssot-roster.yaml`.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema-version` | string (semver) | ✓ | Roster document schema version. |
+| `domain` | string (pattern: `^[A-Za-z][A-Za-z0-9_-]*$`) | ✓ | Canonical data-domain identifier from the seed catalog or agency extension. |
+| `domain_scope` | string |   | Optional sub-domain qualifier when one domain splits across mission boundaries. |
+| `ratification_date` | string (date) | ✓ | ISO 8601 date the governance board ratified this roster. |
+| `governance_review_pr` | string |   | PR reference for audit traceability (required for FedRAMP audit chain). |
+| `authoritative_instance` | `$ref: AuthoritativeInstance` | ✓ | The single SSOT instance. |
+| `demoted_instances` | array&lt;`$ref: DemotedInstance`&gt; | ✓ | Instances canonically demoted in favor of the SSOT. |
+| `remediation_window_days` | integer (1–365, default 30) |   | Default window before contention findings escalate P2 → P1. |
+| `remediation_events` | array&lt;`$ref: RemediationEvent`&gt; |   | Append-only audit log of closed findings. |
+| `notes` | string |   | Free-text notes. |
+
+## `AuthoritativeInstance` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `identifier` | string | ✓ | Stable identifier. Format matches the discovering adapter's id convention (e.g., `ad-spn::host:port`, ARM resource id, `workday::tenant-id`). |
+| `boundary_classification` | enum | ✓ | Governance boundary (drives boundary-fit eligibility per rationalization spec §4.2): `gcc-moderate`, `gcc-high`, `dod-il4`, `dod-il5`, or named commercial-exception values. |
+| `selection_rationale` | string | ✓ | Governance-board rationale referencing the spec §3 weighted-criteria scoring outcome. |
+| `discovery_source` | string |   | Conformance adapter id surfacing this instance. |
+
+## `DemotedInstance` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `identifier` | string | ✓ | Stable identifier (same format conventions as authoritative). |
+| `demotion_date` | string (date) | ✓ | ISO 8601 date marked demoted. |
+| `cutover_window` | object |   | `planned_start` + `planned_end` (date-time). Findings during this window emit at P3 rather than P2. |
+| `cache_eligible_columns` | array&lt;`table.column`&gt; |   | Allowlist of write-permitted columns (downstream caches). Pattern: `schema.table.column` or `table.column`. Writes outside this list trigger `DRIFT-SSOT-CONTENTION`. |
+| `retirement_date` | date \| null |   | Scheduled decommission date; null until scheduled. |
+| `status` | enum | ✓ | `demoted`, `cutover-in-progress`, `cutover-complete`, `retired`. |
+| `remediation_window_days` | integer |   | Per-instance override of the roster-level value. |
+| `discovery_source` | string |   | Conformance adapter id. |
+
+## `RemediationEvent` Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `finding_id` | string | ✓ | The `DriftFinding` identifier the remediation closes. |
+| `decision` | enum | ✓ | `re-ratify`, `re-direct`, or `retire` (per ADR-074 §5 and spec §7.3). |
+| `decision_date` | string (date) | ✓ | ISO 8601 date the governance steward recorded the decision. |
+| `decision_pr` | string | ✓ when `decision == "re-ratify"` | PR reference that landed the decision. Required when the roster mutates. |
+| `notes` | string |   | Free-text. |
+
+## Relationship to other canon
+
+| Canon | Relationship |
+|---|---|
+| [ADR-074](../../adr/adr-074-drift-ssot-contention.qmd) | Defines `DRIFT-SSOT-CONTENTION` — the drift class this roster's rules govern. |
+| MS SQL Estate Rationalization Process (spec) | Catalyzing use case. Spec §3 defines the SSOT designation process; spec §7.2 defines the detection mechanism the roster supports. |
+| `drift-engine-config.schema.json` | Carries the `drift_class` enum that includes `DRIFT-SSOT-CONTENTION`. The roster is the *baseline* the engine evaluates against. |
+| `adapter-registry.yaml` | The `discovery_source` field on each instance pins to a registered adapter id. |
+
+## Schema location and validation
+
+- Source: [`src/uiao/schemas/ssot-roster/ssot-roster.schema.json`](../../../src/uiao/schemas/ssot-roster/ssot-roster.schema.json)
+- Validated by the substrate's `Validate canon documents against schemas` CI job for any roster under `src/uiao/canon/data/**/ssot-roster.yaml`.
+
+The first production roster is **not** part of this PR — it lands per the rationalization spec §9.6-9.8 sequencing, after the seed reference-data + domain-catalog canon data files arrive.

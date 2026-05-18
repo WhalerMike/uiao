@@ -7,7 +7,7 @@ mission-class: telemetry
 status: reserved
 phase: phase-planning
 gcc-boundary: gcc-moderate
-canon-source: canon/adapter-registry.yaml
+canon-source: src/uiao/canon/adapter-registry.yaml
 derived-from: uiao/canon (sync_canon.py)
 generated: '2026-04-16'
 aspirational: true
@@ -25,27 +25,39 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the PKI / Certificate Authority Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The PKI / Certificate Authority Adapter is the **certificate-state observer** of the UIAO substrate. As a conformance-class telemetry adapter, it observes certificate state via OCSP, CRL, and PKI APIs across the certificate domains the substrate depends on — PIV authentication certificates, TLS certificates for the customer's API surface, and the OCSP / CRL distribution endpoints that make revocation enforceable.
+
+This adapter is **critical to the certificate-anchored provenance model** declared as a canon invariant on every substrate adapter. The provenance envelope on every canonical claim includes an mTLS certificate thumbprint; that thumbprint is meaningful only if the certificate's authority, chain, and revocation state are independently verifiable. This adapter provides the verification path.
+
+Three primary functions:
+
+1. **Certificate inventory.** Enumerates the certificates the substrate consumes — PIV authentication certificates (when paired with [`piv-usaccess`](../piv-usaccess/piv-usaccess.html)) and TLS certificates for the customer's API surface — with issuer, subject, serial number, expiry date, key algorithm, SAN coverage, and policy OIDs.
+2. **OCSP-response observation.** Polls OCSP responders for each tracked certificate, recording the per-response revocation state with the OCSP-responder signature and the canonical timestamp. The OCSP response itself becomes part of the evidence envelope so a 3PAO can re-verify revocation independently.
+3. **CRL distribution and expiry tracking.** Fetches CRLs from documented distribution points, records the CRL number and validity window, and emits expiry-tracking findings when certificates approach end-of-life. Near-expiry findings feed the drift engine's HIGH-severity path.
+
+**Implementation:** Reserved slot per ADR-049 / FIMF Tier 5. Activation requires a per-adapter ADR.
 
 ## Scope
 
 Target surfaces / subsystems: `piv-certificates`, `tls-certificates`, `ocsp-responses`, `crl-distribution`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** OCSP responder endpoints, CRL distribution-point endpoints, certificate stores (Windows / Linux / KMS-backed), and PKI management APIs where applicable for issuance metadata. Read-only access; the adapter never operates a CA or issues certificates.
+
+**Emits:** `certificate-inventory.json` (canonical per-certificate inventory with issuer, subject, expiry, SAN), `expiry-report.json` (near-expiry findings sorted by remaining lifetime with severity escalation), plus `EvidenceObject` records that include the OCSP responses and CRL fetches verbatim for independent 3PAO re-verification.
+
+**Does NOT:** issue, revoke, or renew certificates (CA operations are out of scope), modify certificate stores, configure OCSP or CRL distribution endpoints, generate or store private-key material, or manage HSM configuration.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-5`, `SC-12`, `SC-13`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-5** Authenticator Management | Primary | Certificate expiry and revocation observation is the canonical authenticator-management evidence for PKI-based authenticators. |
+| **SC-12** Cryptographic Key Establishment and Management | Supporting | Per-certificate public-key metadata is recorded; private-key material remains in HSMs or smartcards. |
+| **SC-13** Cryptographic Protection | Primary | The adapter's OCSP / CRL fetches use FIPS-validated cryptographic libraries; the recorded responses are themselves the canonical evidence of revocation enforceability. |
 
 ## Operational profile
 
@@ -67,11 +79,15 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-FIMF Tier 5 conformance adapter. Observes certificate state via OCSP, CRL, and PKI APIs. Critical for the certificate- anchored provenance model.
+FIMF Tier 5 conformance adapter. Observes certificate state via OCSP, CRL, and PKI APIs. **Critical for the certificate-anchored provenance model** — every other adapter's provenance envelope cites an mTLS certificate thumbprint that is verifiable only through this adapter's observation surface.
+
+Pairs with [`piv-usaccess`](../piv-usaccess/piv-usaccess.html) for the PIV-credential half of the federal-personnel authentication chain (PIV → SAML federation per ADR-051).
 
 ## References
 
 - UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+- ADR-051 — SAML federation trust anchor
 
 ---
 

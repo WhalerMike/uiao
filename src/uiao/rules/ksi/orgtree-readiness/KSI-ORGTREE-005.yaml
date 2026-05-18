@@ -1,0 +1,53 @@
+ksi_id: KSI-ORGTREE-005
+title: Server OS Version Meets Azure Arc Minimum Requirement
+category: configuration-management
+description: >
+  Every server object in the OrgTree that is projected for Azure Arc
+  onboarding must carry an operating system version that meets or exceeds
+  the Azure Arc Connected Machine Agent minimum supported OS.  Servers on
+  sub-minimum OS versions cannot install the Arc agent and are therefore
+  excluded from Azure Policy, Defender for Servers, and update management
+  enforcement.
+security_objective: >
+  Ensure all on-premises and hybrid servers operate on an Arc-supported OS
+  version so that the Arc agent can be installed and Azure Policy enforcement,
+  vulnerability scanning, and update management can be applied uniformly
+  across the hybrid estate.
+related_controls:
+  - CM-2
+  - CM-6
+validation_type: automated
+evidence_sources:
+  - azure_policy
+  - custom
+pass_criteria:
+  description: >
+    100% of Arc-targeted server objects carry an OS version at or above
+    the declared Arc agent minimum for that OS family (Windows Server,
+    RHEL, Ubuntu, SLES).
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT server_dn, os_family, os_version, arc_minimum_version
+    FROM orgtree_server_inventory
+    WHERE arc_targeted = TRUE
+      AND os_version < arc_minimum_version
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.arc_os_minimum
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - azure-arc
+  - os-version
+  - server-inventory
+  - hybrid-cloud

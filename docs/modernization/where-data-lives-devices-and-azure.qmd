@@ -1,0 +1,165 @@
+---
+title: "Where OrgTree & OrgPath Data Lives — Devices and Azure Resources"
+subtitle: "Two Storage Slots, One Codebook, Disposition-Driven Routing"
+date: 2026-05-11
+---
+
+::: {.callout-note}
+## Companion to the user-side explainer
+
+This page picks up from [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd),
+which covered the user case (HR → `user.extensionAttribute1` ←
+codebook). Computers and Azure resources decompose across more planes
+than users do, so the storage story extends slightly — but the
+codebook and authority layers are unchanged. Read the user-side page
+first.
+:::
+
+[IMAGE-REF: UIAO-FIG-014]
+
+## Why this needs its own page
+
+A user has exactly one OrgPath storage slot: `user.extensionAttribute1`.
+A computer doesn't. Per [ADR-034](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-034-three-plane-device-model.md),
+a computer object decomposes across three planes:
+
+| Plane | Object type | OrgPath storage | Targeting |
+|-------|-------------|-----------------|-----------|
+| **Identity** (clients) | Entra Device | `extensionAttribute1` | Dynamic Entra group |
+| **Management** (clients) | Intune enrollment | *Inherited* from Entra device | Intune scope tag |
+| **Management** (servers) | Azure Arc machine | ARM tag `OrgPath` | Azure Policy assignment |
+| **Workload** | Service Principal / Managed Identity | `servicePrincipal.extensionAttribute1` (per ADR-063) | App role / API permission |
+
+The two storage slots that actually carry an OrgPath string are
+`extensionAttribute1` (Entra) and the ARM tag `OrgPath` (Azure
+Resource Manager). The other two rows *inherit* from those — Intune
+reads from the Entra device, workload-identity governance derives
+from the app registration's tagging or role assignment.
+
+## The two device storage slots
+
+These two writes are governed by
+[`src/uiao/canon/data/orgpath/device-planes.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/device-planes.yaml),
+the executable canon for which plane gets written for which
+disposition. The dispatch happens inside the
+`entra-device-orgpath` adapter — Graph/ARM endpoint strings live in
+canon, not in code (ADR-038).
+
+### Slot 1: `extensionAttribute1` on the Entra device
+
+| Field | Value |
+|-------|-------|
+| Transport | Microsoft Graph |
+| Target | `directoryObject/device` |
+| Method | `PATCH /devices/{object_id}` |
+| Body | `onPremisesExtensionAttributes.extensionAttribute1: "<OrgPath>"` |
+| Used when disposition is | `ENTRA-DEVICE` |
+
+This is the client side — workstations, laptops, Entra-joined or
+hybrid-joined endpoints. The same surface Entra Connect syncs into
+for user `extensionAttribute1` (ADR-035 Phase 1).
+
+### Slot 2: ARM tag `OrgPath` on the Azure Arc machine
+
+| Field | Value |
+|-------|-------|
+| Transport | Azure Resource Manager |
+| Target | `Microsoft.HybridCompute/machines` |
+| Method | `PATCH {arm_resource_id}?api-version=2023-03-15-preview` |
+| Body | `tags.OrgPath: "<OrgPath>"` |
+| Used when disposition is | `ARC-SERVER`, `STAY-AD-DEPENDENCY`, `MANAGED-IDENTITY-CANDIDATE` |
+
+This is the server side — anything Arc-enrolled, including
+Arc-visible AD-dependency boxes and workload-identity-candidate
+servers during the migration window.
+
+### Skipped slots
+
+| Disposition | Why no write |
+|-------------|--------------|
+| `STAY-AD-DC` | Domain controllers don't migrate; OrgPath is not written |
+| `DECOMMISSION` | End-of-life; no write attempted |
+
+## The agreement rule
+
+Both slots validate against the *exact same* canon:
+
+- **Same regex:** `^ORG(-[A-Z0-9]{2,6}){0,8}$`
+- **Same codebook:** [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml)
+- **Same authority:** the codebook entry's parent of record. For
+  workstations this is the assigned user's HR record; for servers it's
+  the workload registration in the disposition matrix.
+- **Same drift semantics:** Schema, Value, Hierarchy, Orphan, and
+  Phantom — see [Drift Detection Walk-through](drift-walkthrough.qmd).
+  Devices do not get their own drift categories.
+
+A device that is *both* Entra-joined and Arc-enrolled (rare but
+possible, e.g., dev VMs) is canonically required to carry the same
+OrgPath in both slots — the two slots validate against the same
+codebook and the canon treats string equality between them as a
+required invariant.
+
+::: {.callout-warning title="Runtime enforcement of cross-plane equality is deferred"}
+As of UIAO_163 v1, the drift engine reads the Graph plane
+(`extensionAttribute1`) but does *not* perform a cross-plane equality
+check against the ARM `OrgPath` tag. Today's enforcement is
+**adapter-side** in `EntraDeviceOrgPathAdapter`
+([`src/uiao/adapters/entra_device_orgpath.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/entra_device_orgpath.py))
+which dispatches the write to the correct transport for the
+disposition. A future ADR (companion to the `DRIFT-SCHEMA::slot-occupied`
+sub-class deferred in ADR-063) will introduce the cross-plane equality
+check; until then, dual-plane disagreement is detected on the next
+codebook-driven re-write rather than as a runtime drift event.
+:::
+
+## What is *not* in this story
+
+- **Intune scope tags** derive from the Entra device's
+  `extensionAttribute1`. The scope-tag value is a function of the
+  OrgPath, not an independent storage location. See
+  [Customer narrative ch. 5 — OrgPath and Intune](../customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd)
+  for the device-lifecycle treatment.
+- **Azure Policy `OrgPath` enforcement on non-Arc resources** uses
+  the ARM tag the same way, but the tag is written by template
+  defaults or `Modify` policies, not by the `entra-device-orgpath`
+  adapter. See
+  [Customer narrative ch. 9 — OrgPath and Azure Policy / Guest
+  Config](../customer-documents/orgpath-narrative/09-orgpath-and-azure-policy-guest-config.qmd)
+  and
+  [ch. 12 — OrgPath in Infrastructure Services](../customer-documents/orgpath-narrative/12-orgpath-in-infrastructure-services.qmd)
+  for the Azure resource tagging pattern (private DNS zones, key
+  vaults, storage accounts, etc.).
+- **Service Principal / Managed Identity OrgPath** is canonically
+  in-scope (ADR-063) but currently consumed only by app-registration
+  reviews; the runtime drift engine reads the user and device planes
+  only.
+
+## Quick reference
+
+| Question | Answer |
+|----------|--------|
+| Where is a workstation's OrgPath? | `device.extensionAttribute1` in Entra |
+| Where is an Arc server's OrgPath? | ARM tag `OrgPath` on the `Microsoft.HybridCompute/machines` resource |
+| Where is an Azure VM's OrgPath? | ARM tag `OrgPath` on the resource; *plus* `device.extensionAttribute1` if the VM is also Entra-joined |
+| Where is a domain controller's OrgPath? | Not written. `STAY-AD-DC` is a defined skip disposition in [`device-planes.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/device-planes.yaml) — the canon's rule for DCs is explicitly "no write". |
+| Where is a Managed Identity's OrgPath? | `servicePrincipal.extensionAttribute1` (per ADR-063); declared in-scope but not consumed by drift v1 |
+| What enforces the binding? | `entra-device-orgpath` adapter + `device-planes.yaml` + drift engine (UIAO_163) |
+| Who decides which slot? | `ComputerDisposition.orgpath_plane`, computed from the disposition matrix |
+
+## Related
+
+- [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) — the
+  user-side story this page extends
+- [Drift Detection Walk-through](drift-walkthrough.qmd) — the
+  shared drift semantics
+- [OrgPath Codebook (UIAO_151)](codebook.qmd) — the canonical
+  enumeration both slots validate against
+- [ADR-034 Three-Plane Device Model](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-034-three-plane-device-model.md) —
+  the architectural decomposition
+- [ADR-038 Device-Plane OrgPath](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-038-device-plane-orgpath.md) —
+  the dual-transport adapter
+- [ADR-063 extensionAttribute1 Storage Slot Binding](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md) —
+  the slot ratification covering users, devices, SPs, and ARM tags
+- [Customer narrative ch. 5 — OrgPath and Intune](../customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd)
+- [Customer narrative ch. 9 — OrgPath and Azure Policy / Guest Config](../customer-documents/orgpath-narrative/09-orgpath-and-azure-policy-guest-config.qmd)
+- [Customer narrative ch. 12 — OrgPath in Infrastructure Services](../customer-documents/orgpath-narrative/12-orgpath-in-infrastructure-services.qmd)

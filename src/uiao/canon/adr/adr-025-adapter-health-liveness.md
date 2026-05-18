@@ -4,6 +4,9 @@ adr: "ADR-025"
 status: ACCEPTED
 date: "2026-03-05"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-025-adapter-health-liveness.html
 ---
 
 # ADR-025: Adapter Health and Liveness

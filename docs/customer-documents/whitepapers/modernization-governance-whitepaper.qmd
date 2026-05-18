@@ -1,0 +1,242 @@
+---
+title: "Modernization Governance — Whitepaper"
+subtitle: "Governing the AD to Entra ID migration at federal scale"
+doc-type: whitepaper
+audience: [Executive, Customer, Architect]
+classification: Public
+boundary: GCC-Moderate
+status: Active
+canon-source: "docs/docs/06_ProgramVision.qmd"
+canon-reference:
+  - "docs/docs/08_ModernizationTimeline.qmd"
+  - "docs/customer-documents/executive-briefs/modernization-overview.qmd"
+  - "docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd"
+derived-from: "uiao canon"
+---
+
+# Modernization Governance
+
+## Governing the AD to Entra ID migration at federal scale
+
+### Executive summary
+
+The Active Directory → Entra ID migration is the most architecturally
+consequential modernization most federal agencies will execute this
+decade. It moves identity from a perimeter-administered, OU-hierarchical
+directory into a cloud-native, attribute-driven identity plane — and in
+doing so changes what "authoritative" means for downstream addressing,
+network, telemetry, and compliance planes.
+
+Most agency programs treat the migration as a tools project: deploy
+Entra Connect, run hybrid sync, extend MFA, retire on-premises domain
+controllers. UIAO's position is that this framing is structurally
+incomplete: migration is an **architectural inversion** of the identity
+plane, and an agency that runs it as a tools project will inherit the
+old directory's hierarchical assumptions in the new tenant — and lose
+most of the cloud-native value.
+
+This whitepaper explains what changes structurally, why governance must
+lead the migration rather than follow it, and how UIAO's substrate
+provides the canonical fabric that makes the migration a one-way
+modernization rather than a reversible re-platforming.
+
+The companion executive brief is
+[Modernization Overview](../executive-briefs/modernization-overview.qmd).
+The migration's specific failure-mode-and-fix is documented in
+[AD to Entra ID Migration Problem](ad-to-entraid-migration-problem.qmd)
+and the
+[AODIM Executive Whitepaper](aodim-executive-whitepaper.qmd).
+
+![AD-to-Entra inversion diagram](images/modernization-governance-whitepa-image-01-ad-to-entra-inversion-diagram.png){#fig-modernization-governance-whitepaper-image-01 fig-alt="Two side-by-side panels with an arrow between them. Left panel labeled \"Active Directory — hierarchical placement model\" shows a tree of OUs with users positioned at leaves; thick lines indicate access flowing from placement. Right panel labeled \"Entra ID — attribute-driven model\" shows a flat layer of users carrying attribute tags, feeding into a Policy Engine box that emits per-action access decisions. The central arrow is labeled \"Architectural inversion — same identities, different governance\". A small footer note reads \"Migration is the moment to make the inversion explicit.\" Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="85%"}
+
+### 1. The architectural inversion
+
+On-premises Active Directory operates a *hierarchical placement* model:
+identities are positioned within OUs, and access flows from that
+placement. Entra ID operates an *attribute-driven* model: identities
+carry attributes, and access is computed from those attributes by policy.
+
+The two models are not interchangeable. Five concrete consequences for
+governance:
+
+1. **Movers stop being a manual workflow.** When attributes change, access
+   recomputes. There is no "move the user OU and re-permission the
+   shared drive" step — there are attributes and policies that
+   evaluate them.
+2. **Authoritative identity context becomes the primary engineering
+   artifact.** Wrong attributes produce wrong access; right attributes
+   produce right access. The directory's quality becomes the program's
+   quality.
+3. **Group membership shifts from administered to computed.** Dynamic
+   groups, administrative units, and conditional access rules all
+   consume attributes. Manual group administration is friction, not
+   governance.
+4. **The boundary between identity and policy moves.** In AD, ACLs and
+   group memberships hold most policy. In Entra ID, conditional access,
+   PIM, and entitlement management hold policy — and identity is
+   purely attribute-bearing.
+5. **Drift surface changes.** Identity drift in AD looks like stale
+   group membership. Identity drift in Entra ID looks like stale or
+   inconsistent attributes feeding policy decisions. Both matter; the
+   detection mechanism is different.
+
+Agencies that approach the migration as "lift the existing directory
+into the cloud" inherit the OU-driven model in Entra ID and lose
+attribute-driven value. UIAO's modernization-governance posture is that
+the migration is the moment to make the inversion explicit and govern
+it deliberately.
+
+### 2. Why governance must lead, not follow
+
+A common federal pattern is to run the technical migration first, then
+"layer governance on top" once the new tenant is live. This pattern
+fails for three structural reasons:
+
+**Failure 1 — once attributes are wrong, every downstream decision is
+wrong.** Attribute-driven identity makes the directory's content
+load-bearing. Migrating without canonical attribute definitions produces
+a tenant that *works* but does not *govern*; tightening governance
+later means re-classifying every identity.
+
+**Failure 2 — the addressing and telemetry planes drift first.**
+Identity-derived addressing and identity-correlated telemetry begin
+emitting against the new tenant the moment it is live. If the identity
+plane's truth is not canonical at cutover, downstream evidence inherits
+the inconsistency.
+
+**Failure 3 — compliance evidence becomes uncorrelatable.** SSPs
+authored against the old directory cannot be regenerated against the
+new tenant if the canonical claim definitions changed. Every ATO touch
+becomes a re-engineering exercise.
+
+The UIAO approach is to **canonize the identity plane before cutover** —
+declare the attribute model, the group computation rules, and the
+provenance envelope in `src/uiao/canon/` — so the migration is a
+substrate change rather than a tooling change.
+
+![AODIM attribute flow diagram](images/modernization-governance-whitepa-image-02-aodim-attribute-flow-diagram.png){#fig-modernization-governance-whitepaper-image-02 fig-alt="Horizontal sequence: HR System (authoritative source) → Identity Attributes (canonical attribute set: scope, role, classification) → Computed Groups (dynamic group rules) → Access Policies (conditional access, PIM, entitlement management) → Resource Authorization. Each stage is labeled with a small governance checkpoint (e.g. \"schema validation\", \"drift detection\", \"evidence emission\"). A side panel highlights three authoritative attributes: assignment scope, organizational role, classification clearance. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="85%"}
+
+### 3. AODIM — the attribute-oriented directory and identity model
+
+The architectural pattern UIAO uses to govern the inversion is
+**AODIM** (Attribute-Oriented Directory & Identity Model). Documented
+in the
+[AODIM Architecture](../architecture-series/aodim-architecture.qmd) and
+[AODIM Executive Whitepaper](aodim-executive-whitepaper.qmd), AODIM's
+core principle is:
+
+> Identity attributes define organizational structure; access is
+> computed, not assigned.
+
+Operationally, AODIM declares:
+
+- **Authoritative attributes** — the small set of identity attributes
+  the substrate treats as canonical (e.g. assignment scope,
+  organizational role, classification clearance). Every downstream
+  policy consumes these.
+- **Computed groups** — group membership is a function of attributes,
+  not a manually administered list.
+- **Policy-as-data** — conditional access, PIM, and entitlement
+  policies evaluate attributes; their *intent* lives in canon and their
+  *evaluation* in the runtime layer.
+
+AODIM is not a Microsoft-specific pattern. It is the substrate's
+architectural posture for any cloud identity platform; Entra ID is the
+practical case because it is what most federal agencies are migrating
+to.
+
+### 4. The substrate's role in migration
+
+The
+[Governance OS](uiao-governance-os-whitepaper.qmd) provides four
+structural mechanisms that make AODIM-anchored migration tractable:
+
+| Mechanism | Migration role |
+|---|---|
+| **Canon SSOT** | The attribute model lives in canon, not in the directory. Migrating the tenant does not migrate the model. |
+| **Modernization adapters** | `modernization-registry.yaml` (10 entries) declares change-making adapters — including `bluecat-address-manager` and `infoblox` from the retired `uiao-gos`, now first-class modernization adapters. Each maps a piece of pre-migration infrastructure to its post-migration target. |
+| **Provenance envelope** | Identity claims emitted during and after migration carry `source_classification` (authoritative / derived / synthesized), making the migration's evidence reproducibly classifiable. |
+| **Drift engine** | Schema and provenance drift surface attribute or group-rule mismatches in CI; runtime drift detection covers identity and authorization drift in TARGET maturity. |
+
+Because canon is the source of truth, the migration's evidence does not
+have to be assembled from the directory's state — it can be regenerated
+from canon plus telemetry, deterministically, before *and* after cutover.
+
+![Five-phase canonical modernization timeline](images/modernization-governance-whitepa-image-03-five-phase-canonical-modernizati.png){#fig-modernization-governance-whitepaper-image-03 fig-alt="Horizontal Gantt-style bars for: Phase 1 Canon-First (longest teal bar, leftmost), Phase 2 Modernization-Adapter (overlapping with Phase 1 tail, teal), Phase 3 Compensating-Enforcement (smaller teal bar mid-timeline), Phase 4 Cutover (single thin amber decision-point bar), Phase 5 Drift-Driven Cleanup (long teal bar extending right past cutover). Below each phase, a brief deliverable label (canon authored, adapters registered, in-boundary telemetry, identity-plane source switched, drift findings remediated). A vertical line at Phase 4 labeled \"AO checkpoint\" indicates the technical cutover. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) primary, with amber for the single Phase 4 cutover bar. No photographs, purely diagrammatic." width="85%"}
+
+### 5. Phased modernization (canonical timeline)
+
+The substrate's
+[Modernization Timeline](../../docs/08_ModernizationTimeline.qmd) is the
+canonical sequence. Summarized:
+
+1. **Canon-first phase.** Author the attribute model, group computation
+   rules, and provenance envelope in `src/uiao/canon/`. The substrate
+   walker passes against the new canon before any runtime change.
+2. **Modernization-adapter phase.** Stand up the modernization adapters
+   for identity (Entra ID), addressing (BlueCat / Infoblox), and the
+   telemetry surface required to correlate them. Adapters emit
+   canonical claims with full provenance from day one.
+3. **Compensating-enforcement phase.** Where platform features are
+   unavailable (especially in GCC-Moderate per the
+   [Boundary Impact Model](../architecture-series/boundary-impact-model.qmd)),
+   stand up compensating enforcement adapters whose evidence flows
+   through the same chain.
+4. **Cutover.** The directory transition is itself a substrate event:
+   the identity plane's authoritative source switches from on-prem AD
+   to Entra ID, with canon already in place to interpret post-cutover
+   claims.
+5. **Drift-driven cleanup.** Post-cutover, the drift engine surfaces
+   inherited inconsistencies (stale attributes, dangling group rules,
+   broken provenance chains). Each is a tracked finding with a
+   remediation contract, not a discovery exercise.
+
+Steps 1–3 are governance-led. Step 4 is the technical event most
+programs treat as the migration. Step 5 is what determines whether the
+migration delivers cloud-native value.
+
+### 6. What this means for an ATO package
+
+An AODIM-anchored migration produces an ATO package the AO can review
+*continuously* through the migration rather than at the end:
+
+- Canon citations for every attribute and policy intent.
+- Modernization adapter findings emitted into OSCAL throughout the
+  migration, not just post-cutover.
+- Drift findings (and remediations) per migration phase, scoped to
+  plane and layer.
+- Boundary-aware evidence: GCC-Moderate feature gaps are first-class
+  findings rather than implicit constraints.
+
+The AO does not have to wait for cutover to evaluate the program's
+identity posture. Each phase emits evidence the AO can consume, and the
+phase's drift findings are themselves a measure of program quality.
+
+### 7. Honest limits
+
+- The migration is a multi-quarter program for a typical federal
+  agency. UIAO compresses the *governance* timeline by canonizing the
+  model up front; it does not compress the technical migration.
+- Several runtime drift classes (identity, authorization, semantic) are
+  TARGET / DESIGN-ONLY today. Agencies in mid-migration will run with
+  schema and provenance drift coverage in CI plus partial runtime
+  coverage; full Optimal-grade runtime drift is engineering work
+  ahead.
+- AODIM is opinionated. Agencies that elect to keep an OU-driven model
+  in Entra ID can still use UIAO, but they will not realize most of
+  the substrate's value — the substrate's leverage is in
+  attribute-driven access.
+
+### 8. Conclusion
+
+The AD → Entra ID migration is one of the rare programs where doing it
+right and doing it well are the same thing. Doing it well requires a
+substrate that canonizes the identity model independently of the
+directory product, governs the migration as a substrate change, and
+emits reproducible evidence at every phase. UIAO's Governance OS is
+that substrate.
+
+Agencies that adopt this posture do not just migrate. They modernize
+the identity plane in a way that survives the next directory transition
+— because the canon is the source of truth, and the directory product
+is a consumer.

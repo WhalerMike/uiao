@@ -110,6 +110,47 @@ class POAMEntryNode:
 
 
 @dataclass
+class ATODecisionNode:
+    """Node Type 12 — ato-decision (UIAO_113 v1.2 / ADR-058 / UIAO_140 §6).
+
+    The singular root of authority under the Single-ATO Reciprocity Model.
+    Continuous-monitoring evidence attaches to this node, not to individual
+    reciprocity records.
+    """
+
+    id: str
+    controlling_ato_id: str = ""
+    authorizing_official: str = ""
+    decision_date: str = ""
+    expires_at: str = ""
+    ssp_ref: str = ""
+    provenance: Dict[str, Any] = field(default_factory=dict)
+    extra: Dict[str, Any] = field(default_factory=dict)
+    node_type: str = "ato-decision"
+
+
+@dataclass
+class ReciprocityRecordNode:
+    """Node Type 13 — reciprocity-record (UIAO_113 v1.2 / ADR-058 / UIAO_140 §6).
+
+    Scopes one consuming agency's entitlement under a controlling ATO.
+    The canonical key is ``{controlling_ato_id}/{consuming_agency_code}``.
+    """
+
+    id: str
+    record_id: str = ""
+    controlling_ato_id: str = ""
+    consuming_agency_code: str = ""
+    effective_at: str = ""
+    expires_at: str = ""
+    legal_basis: str = ""
+    record_hash: str = ""
+    signature_ref: str = ""
+    extra: Dict[str, Any] = field(default_factory=dict)
+    node_type: str = "reciprocity-record"
+
+
+@dataclass
 class Edge:
     from_id: str
     to_id: str
@@ -118,65 +159,85 @@ class Edge:
 
 
 class EvidenceGraph:
-    def __init__(self):
+    def __init__(self) -> None:
         self._nodes: Dict[str, Any] = {}
         self._edges: List[Edge] = []
         self._out: Dict[str, List[Edge]] = {}
         self._in: Dict[str, List[Edge]] = {}
 
-    def _add(self, node):
+    def _add(self, node: Any) -> None:
         self._nodes[node.id] = node
         self._out.setdefault(node.id, [])
         self._in.setdefault(node.id, [])
 
-    def add_control(self, node):
+    def add_control(self, node: ControlNode) -> None:
         self._add(node)
 
-    def add_ir_object(self, node):
+    def add_ir_object(self, node: IRObjectNode) -> None:
         self._add(node)
 
-    def add_evidence(self, node):
+    def add_evidence(self, node: EvidenceNode) -> None:
         self._add(node)
 
-    def add_provenance(self, node):
+    def add_provenance(self, node: ProvenanceNode) -> None:
         self._add(node)
 
-    def add_finding(self, node):
+    def add_finding(self, node: FindingNode) -> None:
         self._add(node)
 
-    def add_poam_entry(self, node):
+    def add_poam_entry(self, node: POAMEntryNode) -> None:
         self._add(node)
 
-    def _link(self, from_id, to_id, edge_type, **props):
+    def add_ato_decision(self, node: ATODecisionNode) -> None:
+        """Add an ATO Decision node (UIAO_113 v1.2 — node type 12)."""
+        self._add(node)
+
+    def add_reciprocity_record(self, node: ReciprocityRecordNode) -> None:
+        """Add a Reciprocity Record node (UIAO_113 v1.2 — node type 13)."""
+        self._add(node)
+
+    def _link(self, from_id: str, to_id: str, edge_type: str, **props: Any) -> None:
         edge = Edge(from_id=from_id, to_id=to_id, edge_type=edge_type, properties=props)
         self._edges.append(edge)
         self._out.setdefault(from_id, []).append(edge)
         self._in.setdefault(to_id, []).append(edge)
 
-    def link_implements(self, c, i, **p):
+    def link_implements(self, c: str, i: str, **p: Any) -> None:
         self._link(c, i, "implements", **p)
 
-    def link_validated_by(self, i, e, **p):
+    def link_validated_by(self, i: str, e: str, **p: Any) -> None:
         self._link(i, e, "validated-by", **p)
 
-    def link_provenance_of(self, e, pv, **p):
+    def link_provenance_of(self, e: str, pv: str, **p: Any) -> None:
         self._link(e, pv, "provenance-of", **p)
 
-    def link_violated_by(self, c, f, **p):
+    def link_violated_by(self, c: str, f: str, **p: Any) -> None:
         self._link(c, f, "violated-by", **p)
 
-    def link_remediated_by(self, f, po, **p):
+    def link_remediated_by(self, f: str, po: str, **p: Any) -> None:
         self._link(f, po, "remediated-by", **p)
 
-    def get(self, node_id):
+    def link_authorizes_reciprocity(self, ato_id: str, record_id: str, **p: Any) -> None:
+        """ATO Decision → Reciprocity Record (UIAO_113 v1.2 edge: authorizes-reciprocity)."""
+        self._link(ato_id, record_id, "authorizes-reciprocity", **p)
+
+    def link_scopes_to_agency(self, record_id: str, agency_id: str, **p: Any) -> None:
+        """Reciprocity Record → Consuming Agency (UIAO_113 v1.2 edge: scopes-to-agency)."""
+        self._link(record_id, agency_id, "scopes-to-agency", **p)
+
+    def link_derives_from_ssp(self, record_id: str, ssp_id: str, **p: Any) -> None:
+        """Reciprocity Record → SSP (UIAO_113 v1.2 edge: derives-from-ssp)."""
+        self._link(record_id, ssp_id, "derives-from-ssp", **p)
+
+    def get(self, node_id: str) -> Optional[Any]:
         return self._nodes.get(node_id)
 
-    def nodes_of_type(self, t):
+    def nodes_of_type(self, t: str) -> List[Any]:
         return [n for n in self._nodes.values() if n.node_type == t]
 
-    def evidence_for_control(self, control_id):
-        ev = []
-        seen = set()
+    def evidence_for_control(self, control_id: str) -> List[EvidenceNode]:
+        ev: List[EvidenceNode] = []
+        seen: set[str] = set()
         for e1 in self._out.get(control_id, []):
             if e1.edge_type == "implements":
                 for e2 in self._out.get(e1.to_id, []):
@@ -191,17 +252,17 @@ class EvidenceGraph:
                 seen.add(n.id)
         return ev
 
-    def findings_for_control(self, control_id):
+    def findings_for_control(self, control_id: str) -> List[FindingNode]:
         return [
             self._nodes[e.to_id]
             for e in self._out.get(control_id, [])
             if e.edge_type == "violated-by" and isinstance(self._nodes.get(e.to_id), FindingNode)
         ]
 
-    def trace_control(self, control_id):
+    def trace_control(self, control_id: str) -> Dict[str, Any]:
         ctrl = self._nodes.get(control_id)
-        iro = []
-        ft = []
+        iro: List[Dict[str, Any]] = []
+        ft: List[Dict[str, Any]] = []
         for e1 in self._out.get(control_id, []):
             if e1.edge_type == "implements":
                 ir = self._nodes.get(e1.to_id)
@@ -230,8 +291,8 @@ class EvidenceGraph:
                     ft.append({**f.__dict__, "poam_entries": poams})
         return {"control_id": control_id, "control": ctrl.__dict__ if ctrl else None, "ir_objects": iro, "findings": ft}
 
-    def open_findings_with_poam(self):
-        res = []
+    def open_findings_with_poam(self) -> List[Dict[str, Any]]:
+        res: List[Dict[str, Any]] = []
         for n in self._nodes.values():
             if isinstance(n, FindingNode) and n.status == "Open":
                 poams = [
@@ -242,7 +303,7 @@ class EvidenceGraph:
                 res.append({**n.__dict__, "poam_entries": poams})
         return res
 
-    def stats(self):
+    def stats(self) -> Dict[str, Any]:
         tc: Dict[str, int] = {}
         ec: Dict[str, int] = {}
         for n in self._nodes.values():
@@ -447,7 +508,7 @@ class EvidenceGraph:
     # DRIFT-SEMANTIC ingestion (UIAO_016 ↔ UIAO_113 bridge)
     # ------------------------------------------------------------------
 
-    def ingest_drift_semantic(self, findings) -> int:
+    def ingest_drift_semantic(self, findings: Iterable[Any]) -> int:
         """Fold DRIFT-SEMANTIC findings from the freshness evaluator into the graph.
 
         Accepts any iterable of objects exposing the
@@ -696,7 +757,7 @@ class EvidenceGraph:
         return out
 
     @classmethod
-    def from_evidence_bundle(cls, bundle):
+    def from_evidence_bundle(cls, bundle: Any) -> EvidenceGraph:
         g = cls()
         for ev in getattr(bundle, "evidence", []):
             cid = getattr(ev, "control_id", "") or ""

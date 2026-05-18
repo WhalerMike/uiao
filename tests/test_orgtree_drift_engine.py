@@ -22,7 +22,7 @@ from uiao.modernization.orgtree.drift_engine_config import (
 class TestConfigLoader:
     def test_default_config_loads(self) -> None:
         cfg = default_drift_engine_config()
-        assert cfg.document_id == "MOD_M"
+        assert cfg.document_id == "UIAO_163"
         assert {p.name for p in cfg.phases} == {
             "mod-b-dynamic-groups",
             "mod-d-admin-units",
@@ -39,6 +39,7 @@ class TestConfigLoader:
             "DRIFT-AUTHZ",
             "DRIFT-IDENTITY",
             "DRIFT-BOUNDARY",
+            "DRIFT-SSOT-CONTENTION",
         }
         for phase in cfg.phases:
             for entry in phase.op_map.values():
@@ -99,9 +100,9 @@ class TestScanEmptyTenant:
         report = engine.scan(snap, dry_run=True)
         assert report.dry_run is True
         assert report.halted is False
-        # Empty tenant → 32 MOD_B creates + 29 MOD_D (14 AU + 15 role)
-        # + 9 MOD_N (5 intune-profile-missing + 4 arc-def-missing).
-        # No MOD_C findings because targets=[] means nothing to write.
+        # Empty tenant → 32 UIAO_152 creates + 29 UIAO_154 (14 AU + 15 role)
+        # + 9 UIAO_164 (5 intune-profile-missing + 4 arc-def-missing).
+        # No UIAO_153 findings because targets=[] means nothing to write.
         assert len(report.findings) > 0
         # Every finding carries a non-empty target string
         for f in report.findings:

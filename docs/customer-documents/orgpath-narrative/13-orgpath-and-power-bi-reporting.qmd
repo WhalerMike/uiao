@@ -1,0 +1,1446 @@
+---
+title: "OrgPath and Power BI Executive Reporting"
+subtitle: "Governance Posture Dashboards by Organizational Division"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+series-order: 13
+status: Published
+canon-source: "src/uiao/canon/UIAO_174_Governance_Telemetry_Model.md"
+source-document: "OrgPath and Power BI Executive Reporting — Governance Posture Dashboards by Organizational Division.md"
+rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
+---
+
+## Chapter 1 — The Reporting Gap: Governance Intelligence Without an Audience
+
+Twelve parts of this series have been devoted to construction. The labor has been architectural and methodical: establishing a registry that knows the organizational hierarchy, creating an attribute that carries organizational position on every managed object, and propagating that attribute across every surface that the Microsoft cloud estate exposes to governance control. The result is a substrate. It is thorough, and it is real. Every identity in Entra ID carries an OrgPath extension attribute encoding its position in the hierarchy. Every managed device in Intune is governed by a compliance policy derived from that position. Every privileged role assignment in PIM is bounded by eligibility rules that respect the organizational segment to which the assignee belongs. Every Arc-enrolled server is tagged with OrgPath and evaluated against a Guest Configuration baseline keyed to that tag. Every Sentinel detection rule that fires enriches its alert with OrgPath context, and every alert is correlated to the organizational segment from which it originated. Purview DLP policies scope to OrgPath labels. Certificate profiles from Cloud PKI are assigned by OrgPath group membership. The drift detection engine runs continuously, comparing current state to the OrgPath-derived policy intent, committing every discovered variance to an auditable repository. The governance pipeline is running. The governance data is flowing.
+
+The problem is that none of this data has a meaningful audience at the level where governance decisions are made. The Azure Policy compliance blade shows policy compliance states, but it is an engineering surface. It requires navigation, it requires knowledge of which policy initiative corresponds to which governance concern, and it provides no native mechanism for slicing compliance results by the organizational hierarchy that was so carefully constructed. The Sentinel workspace exposes KQL query surfaces and workbooks, but workbooks are analyst tools — they require the user to understand the data model, to write or modify KQL, and to interpret raw query results. Intune's compliance report pages provide device-level compliance data, but they do not aggregate by organizational division, and they do not correlate device compliance with the other dimensions of governance posture that the organization has instrumented. The Defender for Cloud secure score dashboard is a capable security assessment tool, but it does not understand organizational divisions as the governance framework defines them, and it cannot be sliced by OrgPath hierarchy.
+
+This is the reporting gap. The organization has invested significantly in building a coherent, OrgPath-aware governance substrate. The substrate produces continuous, authoritative, multi-dimensional governance intelligence. But that intelligence is distributed across six or more engineering surfaces, expressed in formats designed for analysts and engineers, and entirely inaccessible to the people whose role is to steer organizational governance posture — the divisional governance lead, the CISO of a business unit, the governance board that must answer to audit, and the department head who needs to understand in forty seconds whether their division is within tolerance on every governance dimension the organization has defined.
+
+Power BI is the correct aggregation layer for this problem. It is not the only possible aggregation layer, but it is the most appropriate one for an organization whose governance substrate already lives in the Microsoft cloud ecosystem. Its semantic model — what the product previously called a dataset and now labels more precisely as a semantic model — abstracts the complexity of multi-source data retrieval behind a single, queryable model that Power BI report pages consume uniformly. Its Data Analysis Expressions measure library translates raw fact data — counts of non-compliant devices, counts of drift events, counts of PIM activations — into the governance KPIs that a division head or a governance board member can read without understanding the underlying data sources. Its visual canvas produces the per-division governance posture dashboard and the executive Red-Amber-Green summary that governance leadership needs to understand organizational risk posture quickly and accurately. Its REST API-driven refresh pipeline keeps the semantic model current, ensuring that the dashboard reflects the most recent export from the governance data pipeline rather than a snapshot from a previous cycle.
+
+OrgPath is the slicer that makes all of this work. Every measure in the semantic model is designed to respond to OrgPath filter context. Every visual on every report page filters by OrgPath division, branch, or node, using the OrgTree dimension table as the shared organizational spine that links every fact table to a consistent, authoritative representation of the hierarchy. The result is that a Finance division head opens the governance portal embedded in the organization's SharePoint intranet, selects the Finance node in the OrgPath hierarchy slicer, and sees the Finance division's current compliance percentage, its drift event count for the trailing seven days, its PIM activation rate, its open Defender assessment findings, its DLP incident count, its Guest Configuration compliance rate, its certificate risk profile, and its guest account count — all scoped to the Finance organizational segment, all current within the most recent refresh cycle, all in a single view that requires no engineering knowledge to interpret.
+
+This document covers the complete implementation of that reporting layer. Chapter Two describes the data source architecture and the export pipeline that moves governance data from the six source surfaces into staging files that the Power BI semantic model can consume. Chapter Three defines the Power BI semantic model structure, including the Power Query M definitions for each data table and the relationship model that makes OrgPath the universal slicer. Chapter Four presents the full DAX measure library for governance KPIs, including the Red-Amber-Green status measures that drive the executive scorecard. Chapter Five describes the report page designs for the per-division posture dashboard, the executive summary, and the trend analysis page. Chapter Six covers the automated refresh pipeline using the Power BI REST API. Chapter Seven addresses stakeholder distribution through Microsoft Teams and SharePoint embedding. Chapter Eight closes the series.
+
+## Chapter 2 — Data Source Architecture and Export Pipeline
+
+![Left-to-right end-to-end reporting pipeline diagram](images/13-orgpath-and-power-bi-reportin-diagram-01-left-to-right-end-to-end-reporti.png){#fig-13-orgpath-and-power-bi-reporting-diagram-01 fig-alt="Far-left labeled cluster \"Six governance source surfaces\" stacks six boxes: OrgTree registry JSON (authoritative dimension); Intune Graph API (device compliance); Microsoft Sentinel (drift / PIM / alerts / DLP); Defender for Cloud + Resource Graph; Azure Policy Guest Config (compliance state); Entra ID Graph (B2B guest accounts). All six sources converge into a single middle box \"Export orchestrator (PowerShell, daily, cert auth)\". From there a linear chain progresses rightward: Staging directory (timestamped + -latest JSON files) → Power BI Gateway → Semantic Model (7 tables, OrgTree dimension as spine) → DAX measure library (KPIs + RAG status). The DAX library fans into a right-side labeled cluster \"Report pages\" with three boxes: Per-division Governance Posture, Executive Summary (RAG), Trend Analysis. Engineering blueprint style, neutral slate, federal navy (#1F3A5F) for orchestrator and model, teal (#1A9E8F) for the six sources, amber (#D4A017) for the three report pages, monospace file/API names, 16:9 landscape." width="85%"}
+
+The semantic model consumes data from six distinct sources, each representing a governance surface that the preceding parts of this series instrumented with OrgPath awareness. These sources do not share a common query interface, a common data format, or a common authentication model, which is precisely why an export pipeline layer exists between them and the Power BI semantic model. The pipeline normalizes heterogeneous source data into a consistent set of JSON files that the semantic model's Power Query M definitions can load and shape uniformly.
+
+The six sources are, in the order they appear in the export orchestrator: the OrgTree registry itself, which provides the authoritative organizational dimension table that all other tables join against; the Microsoft Intune managed device compliance API, accessed via the Microsoft Graph deviceManagement/managedDevices endpoint; Microsoft Sentinel, queried via the Azure Monitor Log Analytics query API using KQL queries that target the custom drift log table, the Entra audit log, the Security Alert table, and the Purview DLP activity table; Microsoft Defender for Cloud, accessed via Azure Resource Graph for the resource inventory and the Azure Security Assessment API for per-resource assessment results; Azure Policy Guest Configuration, accessed via Azure Resource Graph against the GuestConfigurationResources resource type; and the Entra ID B2B guest account list, retrieved via the Microsoft Graph Users API filtered to guest-type accounts. Each source requires specific Microsoft Graph or Azure RBAC permissions, all of which are granted to a single app registration that the export orchestrator authenticates as using a certificate-based credential — client secrets are not acceptable for a production governance pipeline.
+
+The export pipeline architecture is deliberately simple. Simplicity in a governance pipeline is a governance property, not a design compromise: a pipeline that fails silently, that has complex retry dependencies, or that requires manual intervention when an upstream API is temporarily unavailable degrades the reliability of the governance dashboard that depends on it. The pipeline is a single PowerShell orchestrator script that runs on a schedule — daily at 06:00 UTC by default, though the schedule is configurable — and writes each data source's output to a JSON file in a local or UNC-accessible staging directory. The Power BI Gateway, installed on a server that has access to that staging directory, reads the files at the next semantic model refresh. In environments with a Microsoft Fabric capacity or Power BI Premium, the pipeline can alternatively write to a Lakehouse delta table or a Dataflow Gen2 output, but the staged file approach via a gateway is the correct and broadly applicable pattern for environments operating at Power BI Pro license tier.
+
+Each export file is named with the surface identifier and a UTC datestamp, so that historical exports are retained in the staging directory for audit purposes and a separate archival process can move older files to long-term storage. The semantic model's Power Query M definitions reference the latest version of each file using a symlink or a file naming convention that the pipeline updates after each successful export run. The design principle is that the Power BI Gateway always reads a file that was successfully produced by a completed pipeline run — partial or failed exports never replace the current latest file.
+
+::: {.callout-note title="Environment Parameter Convention"}
+All code blocks in this document mark environment-specific values with the comment # ENV-PARAM. Every value carrying this marker must be substituted with the correct value for your organization's environment before the script is placed in production. No ENV-PARAM value should be committed to a source repository without substitution. Store sensitive values — client secrets, certificate thumbprints — in Azure Key Vault and retrieve them at runtime using the Az.KeyVault module.
+:::
+
+The following script constitutes the complete export orchestrator. It is designed to be placed under source control alongside the OrgPath propagation pipeline scripts established in prior parts of this series and invoked by the same scheduled task infrastructure — a Windows Task Scheduler task or an Azure Automation runbook, per the deployment model in your environment.
+
+```powershell
+#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.DeviceManagement, Microsoft.Graph.Users
+#Requires -Modules Az.Accounts, Az.OperationalInsights, Az.Security, Az.ResourceGraph
+<#
+.SYNOPSIS
+    Exports governance data from all OrgPath surfaces for Power BI semantic model consumption.
+.DESCRIPTION
+    Runs on a schedule (e.g., daily at 06:00 UTC) and writes JSON exports to a staging
+    directory read by the Power BI Gateway data source configuration.
+    Each export file is named with the surface and a UTC datestamp for versioning.
+    On successful completion of each export, the pipeline updates a "-latest" symlink
+    so that Power BI Gateway always reads a fully completed export.
+.PARAMETER StagingPath
+    Local or UNC path where export files are written for Power BI Gateway pickup.
+.PARAMETER TenantId
+    Entra ID tenant ID.
+.PARAMETER ClientId
+    App registration client ID with appropriate permissions across all surfaces.
+.PARAMETER CertificateThumbprint
+    Certificate thumbprint for app-only authentication (recommended over client secret).
+    The certificate must be present in the LocalMachine\My store on the export host.
+.PARAMETER SentinelWorkspaceId
+    Log Analytics workspace ID for the Microsoft Sentinel workspace.
+.PARAMETER SentinelResourceGroup
+    Resource group of the Sentinel workspace.
+.PARAMETER SubscriptionId
+    Azure subscription ID containing Sentinel, Defender for Cloud, etc.
+.PARAMETER OrgTreeRegistryPath
+    Path to the authoritative OrgTree JSON registry file. This is the same registry
+    file that the OrgPath propagation pipeline reads. Do not use a copy — reference
+    the single authoritative file so the Power BI dimension table always reflects
+    the current registry state.
+.NOTES
+    ENV-PARAM markers indicate environment-specific values that must be substituted.
+    Required module permissions for the app registration:
+      Microsoft Graph delegated/app permissions:
+        DeviceManagementManagedDevices.Read.All
+        SecurityEvents.Read.All
+        AuditLog.Read.All
+        Directory.Read.All
+      Azure RBAC role assignments (on the subscription or workspace):
+        Log Analytics Reader (on the Sentinel workspace)
+        Security Reader (on the subscription)
+        Reader (on the subscription, for Resource Graph queries)
+    The service principal must not have write permissions on any governed surface.
+    This is a read-only export process.
+#>
+param(
+    [string]$StagingPath           = "C:\GovernanceExports\PowerBI",        # ENV-PARAM
+    [string]$TenantId              = "YOUR-TENANT-ID",                       # ENV-PARAM
+    [string]$ClientId              = "YOUR-APP-CLIENT-ID",                   # ENV-PARAM
+    [string]$CertificateThumbprint = "YOUR-CERT-THUMBPRINT",                 # ENV-PARAM
+    [string]$SentinelWorkspaceId   = "YOUR-SENTINEL-WORKSPACE-ID",           # ENV-PARAM
+    [string]$SentinelResourceGroup = "rg-sentinel",                          # ENV-PARAM
+    [string]$SubscriptionId        = "YOUR-SUBSCRIPTION-ID",                 # ENV-PARAM
+    [string]$OrgTreeRegistryPath   = "C:\governance\orgtree\registry.json"   # ENV-PARAM
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+New-Item -ItemType Directory -Path $StagingPath -Force | Out-Null
+$ts = Get-Date -Format "yyyyMMdd-HHmmss" -AsUTC
+
+function Set-LatestLink {
+    param([string]$TargetFile, [string]$LinkName)
+    $link = Join-Path $StagingPath $LinkName
+    if (Test-Path $link) { Remove-Item $link -Force }
+    Copy-Item $TargetFile $link -Force
+}
+
+Write-Host "=== OrgPath Governance Export Pipeline — $ts ==="
+Write-Host "Staging path: $StagingPath"
+
+# ---- Authenticate: Microsoft Graph (app-only, certificate) ----
+Write-Host "Authenticating to Microsoft Graph..."
+Connect-MgGraph `
+    -TenantId            $TenantId `
+    -ClientId            $ClientId `
+    -CertificateThumbprint $CertificateThumbprint `
+    -NoWelcome
+
+# ---- Authenticate: Azure (service principal, certificate) ----
+Write-Host "Authenticating to Azure..."
+Connect-AzAccount `
+    -TenantId            $TenantId `
+    -ApplicationId       $ClientId `
+    -CertificateThumbprint $CertificateThumbprint `
+    -ServicePrincipal
+
+Set-AzContext -Subscription $SubscriptionId | Out-Null
+
+# ============================================================
+# Export 1: OrgTree Registry (organizational dimension table)
+# ============================================================
+Write-Host "[1/6] Exporting OrgTree registry..."
+$orgTreeOut = Join-Path $StagingPath "orgtree-registry-$ts.json"
+Copy-Item $OrgTreeRegistryPath $orgTreeOut -Force
+Set-LatestLink $orgTreeOut "orgtree-registry-latest.json"
+Write-Host "  Done. Registry copied from authoritative source."
+
+# ============================================================
+# Export 2: Intune Device Compliance by OrgPath
+# ============================================================
+Write-Host "[2/6] Exporting Intune device compliance..."
+
+# ENV-PARAM: Replace extension_YOURAPPID_OrgPath with your actual
+# extension attribute name as registered in your Entra ID tenant.
+# Format: extension_{AppId without hyphens}_OrgPath
+$orgPathAttr = "extension_YOURAPPID_OrgPath"   # ENV-PARAM
+
+$devices = Get-MgDeviceManagementManagedDevice -All `
+    -Property "id,deviceName,complianceState,lastSyncDateTime,userPrincipalName,managedDeviceOwnerType" |
+    Where-Object { $_.ManagedDeviceOwnerType -eq "company" }
+
+$complianceExport = foreach ($device in $devices) {
+    $orgPathValue = "/UNKNOWN"
+    if ($device.UserPrincipalName) {
+        try {
+            $user = Get-MgUser -UserId $device.UserPrincipalName `
+                -Property "id,userPrincipalName,$orgPathAttr" `
+                -ErrorAction SilentlyContinue
+            if ($user -and $user.AdditionalProperties.ContainsKey($orgPathAttr)) {
+                $orgPathValue = $user.AdditionalProperties[$orgPathAttr]
+            }
+        } catch { $orgPathValue = "/UNKNOWN" }
+    }
+    [PSCustomObject]@{
+        DeviceId        = $device.Id
+        DeviceName      = $device.DeviceName
+        ComplianceState = $device.ComplianceState
+        LastSync        = $device.LastSyncDateTime
+        UserUPN         = $device.UserPrincipalName
+        OrgPath         = $orgPathValue
+        IsCompliant     = if ($device.ComplianceState -eq "compliant") { 1 } else { 0 }
+    }
+}
+
+$complianceOut = Join-Path $StagingPath "intune-compliance-$ts.json"
+$complianceExport | ConvertTo-Json -Depth 3 | Out-File $complianceOut -Encoding utf8
+Set-LatestLink $complianceOut "intune-compliance-latest.json"
+Write-Host "  Exported $($complianceExport.Count) device compliance records."
+
+# ============================================================
+# Export 3: Sentinel KQL — Drift, PIM, Alerts, and DLP Summaries
+# ============================================================
+Write-Host "[3/6] Exporting Sentinel governance summaries..."
+
+# Each query is designed to run against a 30-day window for trend data.
+# The OrgPath_s column in OrgPathDriftLog_CL is written by the drift detection
+# engine documented in Part Five of this series. The OrgPath enrichment in
+# SecurityAlert and AuditLogs is applied by the Sentinel Analytics Rules
+# documented in Part Six of this series.
+
+$sentinelQueries = [ordered]@{
+    "sentinel-drift"  = @"
+OrgPathDriftLog_CL
+| where TimeGenerated > ago(30d)
+| summarize DriftCount = count()
+    by OrgPath = OrgPath_s,
+       Category = DriftCategory_s,
+       Date = bin(TimeGenerated, 1d)
+| project Date, OrgPath, Category, DriftCount
+| order by Date desc
+"@
+    "sentinel-pim"    = @"
+AuditLogs
+| where TimeGenerated > ago(30d)
+| where OperationName has_any ("Activate eligible assignment", "PIM activation")
+| extend OrgPath = tostring(AdditionalDetails[0].value)
+| where isnotempty(OrgPath) and OrgPath startswith "/"
+| summarize PIMActivations = count()
+    by OrgPath,
+       Date = bin(TimeGenerated, 1d)
+| project Date, OrgPath, PIMActivations
+| order by Date desc
+"@
+    "sentinel-alerts" = @"
+SecurityAlert
+| where TimeGenerated > ago(30d)
+| extend OrgPath = tostring(ExtendedProperties["OrgPath"])
+| where isnotempty(OrgPath) and OrgPath startswith "/"
+| summarize AlertCount      = count(),
+             HighSeverity    = countif(AlertSeverity == "High"),
+             MediumSeverity  = countif(AlertSeverity == "Medium")
+    by OrgPath,
+       Date = bin(TimeGenerated, 1d)
+| project Date, OrgPath, AlertCount, HighSeverity, MediumSeverity
+| order by Date desc
+"@
+    "sentinel-dlp"    = @"
+PurviewDLPActivity
+| where TimeGenerated > ago(30d)
+| extend OrgPath = tostring(AdditionalFields.OrgPath)
+| where isnotempty(OrgPath) and OrgPath startswith "/"
+| summarize DLPIncidents = count(),
+             HighSeverityDLP = countif(Severity == "High")
+    by OrgPath,
+       Date = bin(TimeGenerated, 1d)
+| project Date, OrgPath, DLPIncidents, HighSeverityDLP
+| order by Date desc
+"@
+}
+
+foreach ($qName in $sentinelQueries.Keys) {
+    Write-Host "  Running query: $qName"
+    try {
+        $result = Invoke-AzOperationalInsightsQuery `
+            -WorkspaceId $SentinelWorkspaceId `
+            -Query       $sentinelQueries[$qName] `
+            -Timespan    (New-TimeSpan -Days 30) `
+            -ErrorAction Stop
+
+        if ($result -and $result.Results) {
+            $outFile = Join-Path $StagingPath "$qName-$ts.json"
+            $result.Results | ConvertTo-Json -Depth 3 | Out-File $outFile -Encoding utf8
+            Set-LatestLink $outFile "$qName-latest.json"
+            Write-Host "    $($result.Results.Count) rows exported."
+        } else {
+            Write-Warning "    $qName returned no results. Latest file not updated."
+        }
+    } catch {
+        Write-Warning "    $qName query failed: $($_.Exception.Message). Latest file not updated."
+    }
+}
+
+# ============================================================
+# Export 4: Defender for Cloud — Assessment Health by OrgPath
+# ============================================================
+Write-Host "[4/6] Exporting Defender for Cloud assessment data..."
+
+# Resource Graph query targets Arc-enrolled machines tagged with OrgPath.
+# Arc tag population is documented in Part Eight of this series.
+$arcResources = Search-AzGraph -Query @"
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| extend OrgPath  = tostring(tags['OrgPath'])
+| extend OrgTier  = tostring(tags['OrgTier'])
+| where isnotempty(OrgPath)
+| project id, name, OrgPath, OrgTier, location, resourceGroup, subscriptionId
+"@ -ErrorAction Stop
+
+Write-Host "  Retrieved $($arcResources.Count) Arc-enrolled machines."
+
+# Retrieve all security assessments across the subscription.
+# For large environments with many subscriptions, iterate $SubscriptionId array.
+$allAssessments = Get-AzSecurityAssessment -ErrorAction SilentlyContinue
+
+$defenderExport = foreach ($resource in $arcResources) {
+    $matched = $allAssessments | Where-Object {
+        $_.ResourceDetails.Id -and
+        $_.ResourceDetails.Id.ToLower() -eq $resource.id.ToLower()
+    }
+    [PSCustomObject]@{
+        ResourceId       = $resource.id
+        ResourceName     = $resource.name
+        OrgPath          = $resource.OrgPath
+        OrgTier          = $resource.OrgTier
+        Location         = $resource.location
+        AssessmentCount  = $matched.Count
+        UnhealthyCount   = ($matched | Where-Object { $_.Status.Code -eq "Unhealthy" }).Count
+        HealthyCount     = ($matched | Where-Object { $_.Status.Code -eq "Healthy" }).Count
+        NotApplicable    = ($matched | Where-Object { $_.Status.Code -eq "NotApplicable" }).Count
+    }
+}
+
+$defenderOut = Join-Path $StagingPath "defender-posture-$ts.json"
+$defenderExport | ConvertTo-Json -Depth 3 | Out-File $defenderOut -Encoding utf8
+Set-LatestLink $defenderOut "defender-posture-latest.json"
+Write-Host "  Exported $($defenderExport.Count) Arc resource assessment records."
+
+# ============================================================
+# Export 5: Azure Policy Guest Configuration Compliance by OrgPath
+# ============================================================
+Write-Host "[5/6] Exporting Guest Configuration compliance..."
+
+# GuestConfigurationResources in Resource Graph exposes the compliance
+# state of each Guest Configuration assignment on each Arc machine.
+# The OrgPath is retrieved from the parent machine's tags.
+$gcData = Search-AzGraph -Query @"
+GuestConfigurationResources
+| extend machineId = tostring(split(id, '/providers/Microsoft.GuestConfiguration/')[0])
+| join kind=leftouter (
+    Resources
+    | where type =~ 'microsoft.hybridcompute/machines'
+    | project machineId = id, OrgPath = tostring(tags['OrgPath']), machineName = name
+  ) on machineId
+| extend ComplianceState = tostring(properties.complianceStatus)
+| extend PolicyName      = tostring(properties.guestConfiguration.name)
+| extend PolicyVersion   = tostring(properties.guestConfiguration.version)
+| where isnotempty(OrgPath)
+| project id, machineName, OrgPath, PolicyName, PolicyVersion, ComplianceState
+"@ -ErrorAction SilentlyContinue
+
+if ($gcData) {
+    $gcOut = Join-Path $StagingPath "guestconfig-compliance-$ts.json"
+    $gcData | ConvertTo-Json -Depth 3 | Out-File $gcOut -Encoding utf8
+    Set-LatestLink $gcOut "guestconfig-compliance-latest.json"
+    Write-Host "  Exported $($gcData.Count) Guest Configuration compliance records."
+} else {
+    Write-Warning "  Guest Configuration query returned no results. Latest file not updated."
+}
+
+# ============================================================
+# Export 6: B2B Guest Accounts with OrgPath Stub
+# ============================================================
+Write-Host "[6/6] Exporting B2B guest account list..."
+
+# ENV-PARAM: Replace YOURAPPID with your app registration client ID (no hyphens).
+# The OrgPath attribute on guests is set by the Lifecycle Workflows integration
+# documented in Part Four of this series. Guests that have not been processed
+# through the joiner workflow will carry the /EXTERNAL/UNREGISTERED sentinel value.
+$guestOrgPathAttr = "extension_YOURAPPID_OrgPath"  # ENV-PARAM
+
+$guests = Get-MgUser `
+    -Filter "userType eq 'Guest'" `
+    -All `
+    -Property "id,userPrincipalName,displayName,createdDateTime,accountEnabled,$guestOrgPathAttr"
+
+$guestExport = foreach ($guest in $guests) {
+    $guestOrgPath = "/EXTERNAL/UNREGISTERED"
+    if ($guest.AdditionalProperties.ContainsKey($guestOrgPathAttr)) {
+        $val = $guest.AdditionalProperties[$guestOrgPathAttr]
+        if ($val -and $val.ToString().StartsWith("/")) { $guestOrgPath = $val.ToString() }
+    }
+    [PSCustomObject]@{
+        UserId         = $guest.Id
+        UPN            = $guest.UserPrincipalName
+        DisplayName    = $guest.DisplayName
+        OrgPath        = $guestOrgPath
+        Created        = $guest.CreatedDateTime
+        AccountEnabled = $guest.AccountEnabled
+    }
+}
+
+$guestOut = Join-Path $StagingPath "guests-$ts.json"
+$guestExport | ConvertTo-Json -Depth 3 | Out-File $guestOut -Encoding utf8
+Set-LatestLink $guestOut "guests-latest.json"
+Write-Host "  Exported $($guestExport.Count) guest account records."
+
+Write-Host ""
+Write-Host "=== Export pipeline completed at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC ==="
+Write-Host "All latest files written to: $StagingPath"
+Write-Host "Power BI Gateway will consume updated files at next scheduled refresh."
+```
+
+Once the export pipeline has run successfully, the staging directory contains six latest JSON files — one per governance surface — and the OrgTree registry copy. The Power BI Gateway's data source configuration points to this staging directory. The gateway does not require any inbound network ports to the export host; it initiates outbound connections to the Power BI service and reads local file system paths. This means the export host can sit on a management network segment without external exposure, which is the correct placement for a host that holds governance data exports.
+
+## Chapter 3 — The Power BI Semantic Model
+
+The semantic model is the architectural center of the reporting layer. It is the component that translates the six heterogeneous JSON exports produced by the pipeline into a single, coherent, queryable model that Power BI report pages consume uniformly. The model has seven tables: six fact tables, one per governance surface, and one shared dimension table — the OrgTree dimension — derived from the authoritative OrgTree registry JSON. All six fact tables join to the OrgTree dimension on the OrgPath column. OrgPath is therefore the universal slicer: selecting any OrgPath value or range of values in the hierarchy slicer on any report page automatically filters every fact table to the rows whose OrgPath value falls within the selected organizational segment.
+
+The Power Query M definitions presented in this chapter are written to be pasted directly into the Power BI Desktop Advanced Editor for each table. The file paths in each definition reference the -latest.json symlink files that the export pipeline maintains, not the timestamped archive files. This ensures that the semantic model always loads the most recently completed export for each surface. In environments using a Fabric Lakehouse, replace the File.Contents source with the appropriate Lakehouse.Contents or Table.FromRows call against the Lakehouse delta table.
+
+### OrgTree Dimension Table
+
+The OrgTree dimension table is the organizational spine of the entire semantic model. It must be derived from the same authoritative registry file that the OrgPath propagation pipeline uses as its source of truth — not a separately maintained copy that might drift from the operational registry. The M query reads the registry JSON, expands the node records, filters to active nodes only, and adds a computed DisplayName column that combines the node label and OrgPath value for use in report slicers. The Tier column is typed as an integer to support slicer ordering and hierarchy visual configuration in Power BI Desktop.
+
+```
+let
+    // ENV-PARAM: Update the file path to match your staging directory.
+    // In Fabric environments, replace File.Contents with Lakehouse.Contents
+    // pointing to the orgtree-registry-latest table.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\orgtree-registry-latest.json")
+    ),
+
+    // The OrgTree registry JSON is an array of node objects.
+    // Each node has: NodeId, Path, Tier, Label, ParentNodeId, Active, EffectiveDate
+    ConvertToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    ExpandNode = Table.ExpandRecordColumn(
+        ConvertToTable, "Column1",
+        {"NodeId", "Path", "Tier", "Label", "ParentNodeId", "Active", "EffectiveDate"},
+        {"NodeId", "OrgPath", "Tier", "Label", "ParentNodeId", "Active", "EffectiveDate"}
+    ),
+
+    // Parse Tier as integer for slicer ordering and hierarchy depth visuals.
+    // Parse Active as logical and EffectiveDate as date for time-bounded filtering.
+    TypedColumns = Table.TransformColumnTypes(ExpandNode, {
+        {"Tier",          Int64.Type},
+        {"Active",        type logical},
+        {"EffectiveDate", type date}
+    }),
+
+    // The semantic model dimension table contains only active nodes.
+    // Retired nodes are excluded so that decommissioned OrgPath values
+    // do not appear in slicers. Historical fact data referencing retired
+    // OrgPath values will show as unmatched (blank) in the dimension join,
+    // which correctly signals that the organizational position no longer exists.
+    ActiveNodes = Table.SelectRows(TypedColumns, each [Active] = true),
+
+    // DisplayName is used in report slicers and the executive scorecard cards.
+    // Format: "Finance (/COMM/FIN/)" for readable identification.
+    AddDisplayName = Table.AddColumn(
+        ActiveNodes,
+        "DisplayName",
+        each [Label] & " (" & [OrgPath] & ")",
+        type text
+    ),
+
+    // TierLabel provides a readable depth indicator for hierarchy slicers.
+    AddTierLabel = Table.AddColumn(
+        AddDisplayName,
+        "TierLabel",
+        each "Tier " & Text.From([Tier]),
+        type text
+    )
+in
+    AddTierLabel
+```
+
+### Intune Compliance Table
+
+The Intune compliance table represents the most granular fact table in the model — one row per managed device. The IsCompliant column added by the export pipeline (a numeric 1 or 0) enables straightforward DAX SUM aggregation without requiring CALCULATE with a filter expression in every measure that counts compliant devices. The OrgPath null-replacement step ensures that devices whose primary user has no OrgPath attribute — typically newly provisioned devices that have not yet been processed by the Lifecycle Workflows joiner task — appear in the model with the sentinel value /UNKNOWN rather than as null-key rows that would be excluded from OrgTree dimension joins.
+
+```
+let
+    // ENV-PARAM: Update file path to staging directory or Lakehouse location.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\intune-compliance-latest.json")
+    ),
+
+    ToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    Expand = Table.ExpandRecordColumn(
+        ToTable, "Column1",
+        {"DeviceId", "DeviceName", "ComplianceState", "LastSync",
+         "UserUPN", "OrgPath", "IsCompliant"},
+        {"DeviceId", "DeviceName", "ComplianceState", "LastSync",
+         "UserUPN", "OrgPath", "IsCompliant"}
+    ),
+
+    // Type the columns. LastSync is exported as ISO 8601 datetimezone string.
+    TypedColumns = Table.TransformColumnTypes(Expand, {
+        {"LastSync",    type datetimezone},
+        {"IsCompliant", Int64.Type}
+    }),
+
+    // Replace null OrgPath values with the /UNKNOWN sentinel.
+    // This preserves these rows in the fact table while making clear
+    // in visuals that the device's organizational position is not yet resolved.
+    CleanOrgPath = Table.ReplaceValue(
+        TypedColumns,
+        null,
+        "/UNKNOWN",
+        Replacer.ReplaceValue,
+        {"OrgPath"}
+    ),
+
+    // Add a LastSyncDate column (date only) for day-level filtering
+    // without time component, consistent with Sentinel date columns.
+    AddSyncDate = Table.AddColumn(
+        CleanOrgPath,
+        "LastSyncDate",
+        each Date.From([LastSync]),
+        type date
+    )
+in
+    AddSyncDate
+```
+
+### Sentinel Drift Summary Table
+
+The Sentinel drift table carries one row per OrgPath per drift category per day, as produced by the KQL aggregation in the export pipeline. The Category column identifies the type of drift detected — for example, PIM eligibility scope drift, compliance policy assignment drift, or extension attribute value drift — and is used in the drift category breakdown clustered bar chart on the per-division posture dashboard page.
+
+```
+let
+    // ENV-PARAM: Update file path.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\sentinel-drift-latest.json")
+    ),
+
+    ToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    Expand = Table.ExpandRecordColumn(
+        ToTable, "Column1",
+        {"Date", "OrgPath", "Category", "DriftCount"},
+        {"Date", "OrgPath", "Category", "DriftCount"}
+    ),
+
+    TypedColumns = Table.TransformColumnTypes(Expand, {
+        {"Date",       type date},
+        {"DriftCount", Int64.Type}
+    }),
+
+    // Replace null OrgPath with /UNKNOWN, consistent with all fact tables.
+    CleanOrgPath = Table.ReplaceValue(
+        TypedColumns, null, "/UNKNOWN",
+        Replacer.ReplaceValue, {"OrgPath"}
+    )
+in
+    CleanOrgPath
+```
+
+### Sentinel PIM Activations Table
+
+The PIM activations table carries one row per OrgPath per day. PIM activation volume relative to organizational segment size is a governance signal: an unusually high activation rate in a particular division may indicate credential compromise, inappropriate role assignment breadth, or a process failure in which users with standing access are activating PIM roles unnecessarily. The trend measure in Chapter Four quantifies this signal as a week-over-week percentage change.
+
+```
+let
+    // ENV-PARAM: Update file path.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\sentinel-pim-latest.json")
+    ),
+
+    ToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    Expand = Table.ExpandRecordColumn(
+        ToTable, "Column1",
+        {"Date", "OrgPath", "PIMActivations"},
+        {"Date", "OrgPath", "PIMActivations"}
+    ),
+
+    TypedColumns = Table.TransformColumnTypes(Expand, {
+        {"Date",           type date},
+        {"PIMActivations", Int64.Type}
+    }),
+
+    CleanOrgPath = Table.ReplaceValue(
+        TypedColumns, null, "/UNKNOWN",
+        Replacer.ReplaceValue, {"OrgPath"}
+    )
+in
+    CleanOrgPath
+```
+
+### Defender Posture Table
+
+The Defender posture table carries one row per Arc-enrolled resource. The AssessmentCount, UnhealthyCount, HealthyCount, and NotApplicable columns enable the Defender Health Rate percentage measure without requiring the DAX measure to perform a row-level calculation across individual assessment records. The OrgTier column, drawn from the resource tag, supports tier-level aggregation in the executive scorecard: an organization may choose to display Defender posture at division tier (Tier 1) for the executive view and at branch tier (Tier 2) for the operational view.
+
+```
+let
+    // ENV-PARAM: Update file path.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\defender-posture-latest.json")
+    ),
+
+    ToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    Expand = Table.ExpandRecordColumn(
+        ToTable, "Column1",
+        {"ResourceId", "ResourceName", "OrgPath", "OrgTier",
+         "AssessmentCount", "UnhealthyCount", "HealthyCount", "NotApplicable"},
+        {"ResourceId", "ResourceName", "OrgPath", "OrgTier",
+         "AssessmentCount", "UnhealthyCount", "HealthyCount", "NotApplicable"}
+    ),
+
+    TypedColumns = Table.TransformColumnTypes(Expand, {
+        {"OrgTier",         Int64.Type},
+        {"AssessmentCount", Int64.Type},
+        {"UnhealthyCount",  Int64.Type},
+        {"HealthyCount",    Int64.Type},
+        {"NotApplicable",   Int64.Type}
+    }),
+
+    CleanOrgPath = Table.ReplaceValue(
+        TypedColumns, null, "/UNKNOWN",
+        Replacer.ReplaceValue, {"OrgPath"}
+    )
+in
+    CleanOrgPath
+```
+
+### Guest Configuration Compliance Table
+
+```
+let
+    // ENV-PARAM: Update file path.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\guestconfig-compliance-latest.json")
+    ),
+
+    ToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    Expand = Table.ExpandRecordColumn(
+        ToTable, "Column1",
+        {"id", "machineName", "OrgPath", "PolicyName",
+         "PolicyVersion", "ComplianceState"},
+        {"ResourceId", "MachineName", "OrgPath", "PolicyName",
+         "PolicyVersion", "ComplianceState"}
+    ),
+
+    // Add a numeric IsCompliant column for SUM-based DAX aggregation.
+    AddIsCompliant = Table.AddColumn(
+        Expand,
+        "GCIsCompliant",
+        each if [ComplianceState] = "Compliant" then 1 else 0,
+        Int64.Type
+    ),
+
+    CleanOrgPath = Table.ReplaceValue(
+        AddIsCompliant, null, "/UNKNOWN",
+        Replacer.ReplaceValue, {"OrgPath"}
+    )
+in
+    CleanOrgPath
+```
+
+### B2B Guest Accounts Table
+
+```
+let
+    // ENV-PARAM: Update file path.
+    Source = Json.Document(
+        File.Contents("\\governance-server\PowerBIExports\guests-latest.json")
+    ),
+
+    ToTable = Table.FromList(
+        Source,
+        Splitter.SplitByNothing(),
+        null, null,
+        ExtraValues.Error
+    ),
+
+    Expand = Table.ExpandRecordColumn(
+        ToTable, "Column1",
+        {"UserId", "UPN", "DisplayName", "OrgPath", "Created", "AccountEnabled"},
+        {"UserId", "UPN", "DisplayName", "OrgPath", "Created", "AccountEnabled"}
+    ),
+
+    TypedColumns = Table.TransformColumnTypes(Expand, {
+        {"Created",        type date},
+        {"AccountEnabled", type logical}
+    }),
+
+    // The /EXTERNAL/UNREGISTERED sentinel is already set by the export pipeline
+    // for guests without OrgPath. This step handles any residual nulls.
+    CleanOrgPath = Table.ReplaceValue(
+        TypedColumns, null, "/EXTERNAL/UNREGISTERED",
+        Replacer.ReplaceValue, {"OrgPath"}
+    )
+in
+    CleanOrgPath
+```
+
+### Semantic Model Relationship Configuration
+
+The relationship model connects the OrgTree dimension table to each of the six fact tables via the OrgPath column. In Power BI Desktop's Model view, each relationship is configured as follows: the OrgTree table's OrgPath column is the one-side key; the fact table's OrgPath column is the many-side key. The cardinality is one-to-many (OrgTree to fact). The cross-filter direction is single, flowing from the dimension to the fact tables. This configuration is deliberate: bidirectional cross-filtering between dimension and fact tables introduces ambiguous filter propagation paths in models with multiple fact tables sharing a single dimension, and it produces incorrect measure results when a measure on one fact table is used as a filter for another fact table that shares the same dimension.
+
+All six relationships are active. The use of inactive relationships with USERELATIONSHIP in DAX is not required in this model because no two fact tables need to relate to the OrgTree dimension via different keys. Every fact table uses the same OrgPath column as its foreign key, so all six relationships are active and all six respond identically to OrgPath slicer context on any report page.
+
+The OrgTree dimension also contains a ParentNodeId column, which Power BI Desktop uses to define the parent-child hierarchy for the hierarchy slicer visual. In the Model view, configure a hierarchy on the OrgTree table using the Tier and Label columns in ascending tier order to enable the expand-and-collapse behavior in the report's OrgPath hierarchy slicer. This is the mechanism by which selecting the Finance branch node in the slicer automatically includes all Finance child nodes in the filter context applied to every fact table.
+
+## Chapter 4 — The DAX Measure Library
+
+DAX measures are the translation layer between raw fact data and the governance KPIs that report pages display. All measures in this model are housed in a dedicated measures table — a calculated table with no rows, created in Power BI Desktop using the expression \_Measures = {BLANK()} and used purely as an organizational container for measures. Housing all measures in a single container table rather than distributing them across the fact tables from which they derive makes the model easier to navigate, simplifies documentation, and prevents the accumulation of measures in the fact tables themselves, which interferes with the automatic aggregation behavior that Power BI applies to numeric columns in fact tables.
+
+Every measure in this library is designed to respond correctly to OrgPath slicer context without any special handling inside the measure definition. This is a direct consequence of the relationship model described in Chapter Three: because all fact tables join to the OrgTree dimension via an active one-to-many relationship on OrgPath, any filter applied to the OrgTree dimension table — including the selection of a node in the OrgPath hierarchy slicer — automatically propagates to all six fact tables in a single filter context evaluation. The measures do not need to explicitly reference OrgPath in their CALCULATE filter arguments; they simply aggregate their fact table columns, and the filter context supplied by the slicer does the rest.
+
+The RAG status measures at the end of the library translate continuous KPI values into the Red, Amber, and Green categorical status values that the executive scorecard page displays. The thresholds embedded in these measures are governance-defined and must be reviewed and adjusted to match the specific governance SLAs and risk tolerance of the organization. They are not universal standards — they are defaults that represent a reasonable starting point for a well-governed enterprise environment, intended to be refined through the governance board's initial dashboard review sessions.
+
+```
+-- ============================================================
+-- Measures Table: _Measures
+-- Create in Power BI Desktop: New Table, expression = {BLANK()}
+-- Add all measures below to this table via Home > New Measure.
+-- ============================================================
+
+
+-- ============================================================
+-- SECTION 1: Intune Device Compliance Measures
+-- Source table: IntuneCompliance
+-- ============================================================
+
+-- Total count of corporate-owned managed devices in filter context.
+[Total Devices] =
+COUNTROWS(IntuneCompliance)
+
+-- Count of devices whose compliance state is "compliant".
+-- IsCompliant = 1 is set by the export pipeline for compliant devices.
+[Compliant Devices] =
+CALCULATE(
+    COUNTROWS(IntuneCompliance),
+    IntuneCompliance[IsCompliant] = 1
+)
+
+-- Compliance Rate as a percentage. DIVIDE handles zero-denominator safely.
+[Compliance Rate %] =
+DIVIDE(
+    [Compliant Devices],
+    [Total Devices],
+    0
+) * 100
+
+[Non-Compliant Devices] =
+[Total Devices] - [Compliant Devices]
+
+-- Devices that have not synced in the trailing 7 days.
+-- Stale sync is a governance risk independent of compliance state.
+[Stale Sync Devices (7d)] =
+CALCULATE(
+    COUNTROWS(IntuneCompliance),
+    IntuneCompliance[LastSyncDate] < TODAY() - 7
+)
+
+
+-- ============================================================
+-- SECTION 2: Drift Detection Measures
+-- Source table: SentinelDrift
+-- ============================================================
+
+[Total Drift Events (30d)] =
+CALCULATE(
+    SUM(SentinelDrift[DriftCount]),
+    SentinelDrift[Date] >= TODAY() - 30
+)
+
+[Drift Events (7d)] =
+CALCULATE(
+    SUM(SentinelDrift[DriftCount]),
+    SentinelDrift[Date] >= TODAY() - 7
+)
+
+[Drift Events (24h)] =
+CALCULATE(
+    SUM(SentinelDrift[DriftCount]),
+    SentinelDrift[Date] = TODAY() - 1
+)
+
+-- Week-over-week drift change. Positive values indicate increasing drift.
+-- BLANK() is returned if the prior week had no drift (no trend to compute).
+[Drift WoW Change %] =
+VAR ThisWeek = [Drift Events (7d)]
+VAR LastWeek =
+    CALCULATE(
+        SUM(SentinelDrift[DriftCount]),
+        SentinelDrift[Date] >= TODAY() - 14,
+        SentinelDrift[Date] <  TODAY() - 7
+    )
+RETURN
+    IF(
+        LastWeek = 0, BLANK(),
+        DIVIDE(ThisWeek - LastWeek, LastWeek) * 100
+    )
+
+
+-- ============================================================
+-- SECTION 3: PIM Activation Measures
+-- Source table: SentinelPIM
+-- ============================================================
+
+[PIM Activations (24h)] =
+CALCULATE(
+    SUM(SentinelPIM[PIMActivations]),
+    SentinelPIM[Date] = TODAY() - 1
+)
+
+[PIM Activations (7d)] =
+CALCULATE(
+    SUM(SentinelPIM[PIMActivations]),
+    SentinelPIM[Date] >= TODAY() - 7
+)
+
+[PIM Activations (30d)] =
+CALCULATE(
+    SUM(SentinelPIM[PIMActivations]),
+    SentinelPIM[Date] >= TODAY() - 30
+)
+
+-- Week-over-week PIM activation trend.
+-- A significant positive trend warrants investigation of role assignment breadth.
+[PIM Activation Trend WoW %] =
+VAR Last7  =
+    CALCULATE(
+        SUM(SentinelPIM[PIMActivations]),
+        SentinelPIM[Date] >= TODAY() - 7
+    )
+VAR Prev7  =
+    CALCULATE(
+        SUM(SentinelPIM[PIMActivations]),
+        SentinelPIM[Date] >= TODAY() - 14,
+        SentinelPIM[Date] <  TODAY() - 7
+    )
+RETURN
+    IF(Prev7 = 0, BLANK(), DIVIDE(Last7 - Prev7, Prev7) * 100)
+
+
+-- ============================================================
+-- SECTION 4: Defender for Cloud Assessment Measures
+-- Source table: DefenderPosture
+-- ============================================================
+
+[Arc Resources Assessed] =
+COUNTROWS(DefenderPosture)
+
+[Total Assessments] =
+SUM(DefenderPosture[AssessmentCount])
+
+[Unhealthy Assessments] =
+SUM(DefenderPosture[UnhealthyCount])
+
+[Healthy Assessments] =
+SUM(DefenderPosture[HealthyCount])
+
+-- Defender Health Rate: percentage of applicable assessments that are healthy.
+-- NotApplicable assessments are excluded from the denominator because they do
+-- not represent a remediation opportunity and would deflate the health rate.
+[Defender Health Rate %] =
+DIVIDE(
+    [Healthy Assessments],
+    [Healthy Assessments] + [Unhealthy Assessments],
+    1
+) * 100
+
+
+-- ============================================================
+-- SECTION 5: DLP Incident Measures
+-- Source table: SentinelDLP (produced from sentinel-dlp export)
+-- ============================================================
+
+[DLP Incidents (7d)] =
+CALCULATE(
+    SUM(SentinelDLP[DLPIncidents]),
+    SentinelDLP[Date] >= TODAY() - 7
+)
+
+[DLP Incidents (30d)] =
+CALCULATE(
+    SUM(SentinelDLP[DLPIncidents]),
+    SentinelDLP[Date] >= TODAY() - 30
+)
+
+[High Severity DLP (7d)] =
+CALCULATE(
+    SUM(SentinelDLP[HighSeverityDLP]),
+    SentinelDLP[Date] >= TODAY() - 7
+)
+
+
+-- ============================================================
+-- SECTION 6: Guest Configuration Compliance Measures
+-- Source table: GuestConfigCompliance
+-- ============================================================
+
+[GC Total Assessments] =
+COUNTROWS(GuestConfigCompliance)
+
+[GC Compliant Assignments] =
+SUM(GuestConfigCompliance[GCIsCompliant])
+
+[GC Compliance Rate %] =
+DIVIDE(
+    [GC Compliant Assignments],
+    [GC Total Assessments],
+    1
+) * 100
+
+
+-- ============================================================
+-- SECTION 7: Guest Account Measures
+-- Source table: GuestAccounts
+-- ============================================================
+
+[Total Guest Accounts] =
+COUNTROWS(GuestAccounts)
+
+[Unregistered Guests] =
+CALCULATE(
+    COUNTROWS(GuestAccounts),
+    GuestAccounts[OrgPath] = "/EXTERNAL/UNREGISTERED"
+)
+
+[Registered Guests] =
+[Total Guest Accounts] - [Unregistered Guests]
+
+[Guests Added (30d)] =
+CALCULATE(
+    COUNTROWS(GuestAccounts),
+    GuestAccounts[Created] >= TODAY() - 30
+)
+
+[Disabled Guest Accounts] =
+CALCULATE(
+    COUNTROWS(GuestAccounts),
+    GuestAccounts[AccountEnabled] = FALSE()
+)
+
+
+-- ============================================================
+-- SECTION 8: Executive RAG Status Measures
+-- Thresholds are governance-defined. Review with governance board
+-- at initial dashboard rollout and revise to match organizational SLAs.
+-- ============================================================
+
+-- Compliance RAG:
+--   Green  = Compliance Rate >= 95%
+--   Amber  = Compliance Rate >= 80% and < 95%
+--   Red    = Compliance Rate < 80%
+[Compliance RAG] =
+VAR Rate = [Compliance Rate %]
+RETURN
+    IF(Rate >= 95, "Green",
+    IF(Rate >= 80, "Amber",
+    "Red"))
+
+-- Drift RAG:
+--   Green  = 7-day drift events <= 5
+--   Amber  = 7-day drift events <= 20
+--   Red    = 7-day drift events > 20
+[Drift RAG] =
+VAR DriftRecent = [Drift Events (7d)]
+RETURN
+    IF(DriftRecent <= 5,  "Green",
+    IF(DriftRecent <= 20, "Amber",
+    "Red"))
+
+-- Defender RAG:
+--   Green  = Health Rate >= 90%
+--   Amber  = Health Rate >= 75%
+--   Red    = Health Rate < 75%
+[Defender RAG] =
+VAR HealthRate = [Defender Health Rate %]
+RETURN
+    IF(HealthRate >= 90, "Green",
+    IF(HealthRate >= 75, "Amber",
+    "Red"))
+
+-- Guest RAG:
+--   Green  = 0 unregistered guests
+--   Amber  = 1-5 unregistered guests
+--   Red    = more than 5 unregistered guests
+[Guest RAG] =
+VAR Unreg = [Unregistered Guests]
+RETURN
+    IF(Unreg = 0,  "Green",
+    IF(Unreg <= 5, "Amber",
+    "Red"))
+
+-- DLP RAG:
+--   Green  = 0 high-severity DLP incidents in trailing 7 days
+--   Amber  = 1-3 high-severity DLP incidents
+--   Red    = more than 3 high-severity DLP incidents
+[DLP RAG] =
+VAR HighDLP = [High Severity DLP (7d)]
+RETURN
+    IF(HighDLP = 0,  "Green",
+    IF(HighDLP <= 3, "Amber",
+    "Red"))
+
+-- GC RAG:
+--   Green  = GC Compliance Rate >= 95%
+--   Amber  = GC Compliance Rate >= 80%
+--   Red    = GC Compliance Rate < 80%
+[GC RAG] =
+VAR GCRate = [GC Compliance Rate %]
+RETURN
+    IF(GCRate >= 95, "Green",
+    IF(GCRate >= 80, "Amber",
+    "Red"))
+
+-- Overall Governance RAG:
+--   Red    if any dimension RAG is Red
+--   Amber  if any dimension RAG is Amber (and none are Red)
+--   Green  if all dimension RAGs are Green
+-- Uses a table constructor to aggregate all dimension RAG values.
+-- Expand the table constructor to add new governance dimensions as the
+-- substrate is extended to additional surfaces.
+[Overall Governance RAG] =
+VAR RagValues =
+    {
+        [Compliance RAG],
+        [Drift RAG],
+        [Defender RAG],
+        [Guest RAG],
+        [DLP RAG],
+        [GC RAG]
+    }
+VAR RedCount =
+    COUNTROWS(FILTER(RagValues, [Value] = "Red"))
+VAR AmberCount =
+    COUNTROWS(FILTER(RagValues, [Value] = "Amber"))
+RETURN
+    IF(RedCount   > 0, "Red",
+    IF(AmberCount > 0, "Amber",
+    "Green"))
+
+
+-- ============================================================
+-- SECTION 9: Trend Measures for Trend Analysis Report Page
+-- ============================================================
+
+-- 30-day rolling average compliance rate, computed at each date point.
+-- Used as the trend line overlay on the Compliance Rate time-series chart.
+[Compliance Rate 30d Rolling Avg] =
+AVERAGEX(
+    DATESINPERIOD(
+        SentinelDrift[Date],
+        LASTDATE(SentinelDrift[Date]),
+        -30,
+        DAY
+    ),
+    [Compliance Rate %]
+)
+
+-- 30-day rolling average drift count for the trend line overlay.
+[Drift 30d Rolling Avg] =
+AVERAGEX(
+    DATESINPERIOD(
+        SentinelDrift[Date],
+        LASTDATE(SentinelDrift[Date]),
+        -30,
+        DAY
+    ),
+    SUM(SentinelDrift[DriftCount])
+)
+
+-- 30-day rolling average PIM activations for the trend line overlay.
+[PIM Activations 30d Rolling Avg] =
+AVERAGEX(
+    DATESINPERIOD(
+        SentinelPIM[Date],
+        LASTDATE(SentinelPIM[Date]),
+        -30,
+        DAY
+    ),
+    SUM(SentinelPIM[PIMActivations])
+)
+```
+
+With the measure library defined, the semantic model is complete. Every report page in the workbook reads from this single model, ensuring that all visuals reflect the same data, the same OrgPath filter context, and the same governance KPI definitions. Changes to KPI thresholds — for example, raising the Compliance RAG Green threshold from ninety-five to ninety-seven percent — are made once in the measure library and take effect across every report page and every embedded view of the report simultaneously.
+
+## Chapter 5 — Report Page Design
+
+The Power BI workbook contains three report pages, each designed for a distinct audience and review context. The pages share a single semantic model but differ in layout, visual density, and interactivity level. The design philosophy across all three pages is deliberate constraint: governance dashboards that present too much information simultaneously fail their audience just as thoroughly as dashboards that present too little. Each page is designed to answer one primary question at a glance, with supporting detail available to those who need to drill further.
+
+### Per-Division Governance Posture Dashboard
+
+The Per-Division Governance Posture Dashboard is the primary operational view of the reporting layer. It is the page that a divisional governance lead, a security operations manager, or an identity architect opens when they need to understand the current governance posture of their organizational segment. The page is designed for an audience that has governance context — they know what compliance rate means, they know what a drift event is, and they can interpret a PIM activation count — but who should not need to navigate multiple engineering surfaces to assemble that picture themselves.
+
+The page layout is structured in three horizontal zones. The left rail, occupying approximately twenty percent of the canvas width, contains a single full-height hierarchy slicer bound to the OrgTree dimension table. The slicer is configured to display nodes in a tree structure using the ParentNodeId column to define parent-child relationships, enabling expand-and-collapse navigation of the organizational hierarchy. The slicer's default selection is the root node, which causes all measures to return organization-wide values. When a user selects a division node such as Finance or Operations, all six fact tables are filtered to OrgPath values that match that node or fall beneath it in the hierarchy, and every visual on the canvas updates accordingly. The slicer header is labeled "Organizational Division" and the display field is the DisplayName column from the OrgTree dimension, which presents values in the human-readable "Finance (/COMM/FIN/)" format.
+
+The top zone of the main canvas contains six KPI card visuals arranged in a single row. From left to right, the cards display: Compliance Rate, showing the percentage value from the Compliance Rate % measure with the background color driven by a conditional formatting rule bound to the Compliance RAG measure — green for Green, amber for Amber, red for Red; Drift Events (7d), showing the Drift Events (7d) measure count with RAG conditional formatting from the Drift RAG measure; PIM Activations (24h), showing the PIM Activations (24h) measure count with no RAG coloring, since PIM activation volume is context-dependent and a fixed RAG threshold would be misleading without division-relative normalization; Defender Health Rate, showing the Defender Health Rate % measure with RAG conditional formatting from the Defender RAG measure; DLP Incidents (7d), showing the DLP Incidents (7d) measure count with RAG conditional formatting from the DLP RAG measure; and Guest Accounts, showing the Total Guest Accounts measure count with a sub-label displaying the Unregistered Guests count in parentheses, and RAG conditional formatting from the Guest RAG measure applied to the sub-label color rather than the card background, since total guest count is not itself a RAG signal.
+
+The middle zone of the canvas contains two chart visuals side by side. The left chart is a line chart displaying the thirty-day compliance rate trend for the selected OrgPath segment, using dates on the X axis and the Compliance Rate % measure on the Y axis, with the Compliance Rate 30d Rolling Avg measure overlaid as a secondary line. This chart allows the divisional governance lead to see whether a current compliance rate below the Green threshold represents a stable, established condition or a recent decline that requires urgent attention. The right chart is a clustered bar chart displaying drift event counts by category over the trailing thirty days, using the Category column from the SentinelDrift table on the Y axis and the Total Drift Events (30d) measure on the X axis. This chart identifies which drift categories are driving the total drift count for the selected division — whether the drift is concentrated in PIM eligibility scope drift, compliance policy assignment drift, or extension attribute value drift — giving the governance lead a starting point for remediation prioritization.
+
+The bottom zone of the canvas contains a table visual displaying non-compliant device detail for the selected OrgPath segment. The table is filtered by a visual-level filter to show only rows where ComplianceState is not equal to "compliant." The columns displayed are DeviceName, OrgPath, ComplianceState, and LastSyncDate. This table bridges the gap between the aggregate KPI view and the device-level action that remediation requires: a governance lead who sees a compliance rate below threshold can scroll the non-compliant device table, identify the specific devices driving the deficit, and hand off a specific remediation list to the device engineering team. The table is paginated and supports export to Excel for offline remediation tracking.
+
+### Executive Summary Page
+
+The Executive Summary page is designed for a brief read at a governance board meeting or an executive briefing. Its audience does not interact with the slicer — the page is designed to present the complete organizational governance posture in a single screen without requiring the reader to make any selections. The page does not have a hierarchy slicer. All visuals on this page are unfiltered, displaying organization-wide values, or are filtered by a page-level filter to a specific top-level OrgTree node.
+
+The primary visual on the Executive Summary page is a matrix visual configured as a governance posture heatmap. The matrix rows are the top-level OrgTree division nodes — the Tier 1 branches such as Commercial, Operations, Infrastructure, and any additional top-level divisions the organization has defined. The matrix columns are the six governance dimensions: Device Compliance, Drift, Defender Health, DLP, Guest Configuration, and Guest Accounts. Each cell in the matrix displays the RAG status string for that dimension and division combination, with conditional formatting applied to color the cell background green, amber, or red accordingly. The Overall Governance RAG measure drives a summary column on the right side of the matrix, providing the board with the single-dimension aggregate posture for each division in the rightmost column. The matrix visual's grand total row is suppressed — an organization-wide RAG aggregate would be misleading because it would average across divisions of very different sizes and risk profiles.
+
+Above the heatmap matrix, a row of large KPI cards displays the organization-wide values for each governance dimension, giving context for interpreting the per-division heatmap. These cards use the same measure definitions as the per-division dashboard but are unfiltered, returning values across all OrgPath nodes in the OrgTree dimension. The page title includes a "Data as of" annotation using a card visual bound to a measure that returns the maximum LastSyncDate from the IntuneCompliance table, which serves as a proxy for the most recent refresh timestamp visible to the reader.
+
+### Trend Analysis Page
+
+The Trend Analysis page presents ninety-day time-series views of the three governance dimensions that are most meaningfully tracked over time: compliance rate, drift event count, and PIM activation volume. This page is used in monthly governance leadership meetings where the question being answered is not "what is our current posture?" but "is our governance posture improving, stable, or degrading over time, and does any division show a trend that requires structural attention?" The page retains the full-height OrgPath hierarchy slicer from the per-division dashboard, allowing a governance leader to isolate a specific division's trend lines for the monthly review discussion.
+
+Each of the three trend charts is a line chart with dual series: the daily measure value as a thin line, and the thirty-day rolling average — computed by the corresponding rolling average measure from Section 9 of the DAX library — as a heavier overlay line. The rolling average smooths day-to-day noise in the daily figures, which can be significant for small-population divisions where a single non-compliant device represents a large percentage movement in the compliance rate, and makes the underlying directional trend visible. Each chart's Y axis is fixed rather than auto-scaled, so that the visual impression of a trend line's slope is comparable across divisions of different sizes. Compliance Rate is fixed at 0–100%; Drift Events are fixed at a maximum configurable by the governance team; PIM Activations are fixed relative to the division's population, requiring a per-division normalization that governance teams can configure after initial deployment.
+
+## Chapter 6 — Automated Refresh Pipeline
+
+The governance value of the dashboard is directly proportional to its currency. A compliance rate displayed on a governance dashboard that reflects last Tuesday's data cannot drive a Friday governance decision. The semantic model must be refreshed immediately after the export pipeline completes, so that the dashboard reflects the most recent state of every governance surface. The refresh pipeline uses the Power BI REST API to trigger and monitor a full semantic model refresh, and is invoked as the final step of the export orchestrator — after all six export files have been successfully written and their latest-file symlinks updated.
+
+The Power BI REST API requires OAuth 2.0 authentication using a service principal. The service principal — which may be the same app registration used for the governance data exports, or a separate registration dedicated to Power BI operations — must be granted access to the Power BI workspace via the workspace's Access settings in the Power BI Service, with the Contributor or Admin role. In addition, the Power BI tenant administrator must enable service principal access in the Power BI Admin portal under Tenant Settings, Developer Settings, "Allow service principals to use Power BI APIs." Without this tenant-level setting, service principal authentication to the Power BI REST API returns a 403 error regardless of workspace membership.
+
+The enhanced refresh API endpoint used in the following script supports table-level and partition-level refresh targets, parallel table refresh, and retry logic. For the governance semantic model, a full refresh of all tables is appropriate because the export pipeline replaces all data in each file on every run — there is no incremental export, and therefore no incremental refresh. If the export pipeline is extended in the future to produce incremental exports (for example, appending only the current day's drift events rather than replacing the full thirty-day window), the refresh script can be updated to target specific tables or partitions using the objects array parameter.
+
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Triggers and monitors a Power BI semantic model refresh via the Power BI REST API.
+.DESCRIPTION
+    Invoked as the final step of the governance export pipeline after all export files
+    have been successfully written. Authenticates as a service principal, triggers an
+    enhanced full refresh of the OrgPath governance semantic model, and polls for
+    completion. On failure, writes the Power BI service exception detail to the error
+    stream so that the calling pipeline can capture it for alerting.
+.PARAMETER TenantId
+    Entra ID tenant ID.
+.PARAMETER ClientId
+    App registration client ID. The service principal must be a member of the
+    Power BI workspace with Contributor or Admin role, and the tenant must have
+    "Allow service principals to use Power BI APIs" enabled.
+.PARAMETER ClientSecret
+    Client secret for the service principal.
+    PRODUCTION GUIDANCE: Do not store this value in the script or in a scheduled
+    task parameter. Retrieve it at runtime from Azure Key Vault using:
+        $ClientSecret = (Get-AzKeyVaultSecret -VaultName "YOUR-KV" `  # ENV-PARAM
+                            -Name "pbi-refresh-secret" -AsPlainText)
+.PARAMETER WorkspaceId
+    Power BI workspace (group) GUID containing the semantic model.
+    Retrieved from the Power BI Service workspace URL.
+.PARAMETER DatasetId
+    Power BI semantic model (dataset) GUID.
+    Retrieved from the Power BI Service dataset settings URL or via:
+        GET https://api.powerbi.com/v1.0/myorg/groups/{workspaceId}/datasets
+.PARAMETER MaxPollSeconds
+    Maximum seconds to wait for refresh completion before giving up.
+    Default: 900 (15 minutes). Increase for large semantic models.
+.NOTES
+    ENV-PARAM markers indicate values that must be substituted per environment.
+#>
+param(
+    [string]$TenantId        = "YOUR-TENANT-ID",        # ENV-PARAM
+    [string]$ClientId        = "YOUR-APP-CLIENT-ID",     # ENV-PARAM
+    [string]$ClientSecret    = "YOUR-CLIENT-SECRET",     # ENV-PARAM: use Key Vault in production
+    [string]$WorkspaceId     = "YOUR-WORKSPACE-GUID",    # ENV-PARAM
+    [string]$DatasetId       = "YOUR-DATASET-GUID",      # ENV-PARAM
+    [int]   $MaxPollSeconds  = 900
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== Power BI Refresh Trigger — $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC ==="
+
+# ---- Step 1: Acquire OAuth2 bearer token for the Power BI REST API ----
+Write-Host "Acquiring OAuth2 token for Power BI REST API..."
+$tokenUri  = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+$tokenBody = @{
+    grant_type    = "client_credentials"
+    client_id     = $ClientId
+    client_secret = $ClientSecret
+    scope         = "https://analysis.windows.net/powerbi/api/.default"
+}
+
+$tokenResponse = Invoke-RestMethod -Method POST -Uri $tokenUri -Body $tokenBody
+$accessToken   = $tokenResponse.access_token
+
+$headers = @{
+    Authorization  = "Bearer $accessToken"
+    "Content-Type" = "application/json"
+}
+
+Write-Host "Token acquired. Expiry: $([DateTimeOffset]::FromUnixTimeSeconds($tokenResponse.expires_in + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()))"
+
+# ---- Step 2: Trigger enhanced refresh ----
+# The enhanced refresh API (POST .../refreshes) is the v2 refresh endpoint.
+# It supports transactional commit mode (all tables succeed or all roll back),
+# configurable parallelism, and automatic retry.
+$refreshBody = @{
+    type           = "full"       # Full refresh: replace all data in all tables
+    commitMode     = "transactional" # Roll back all tables if any table fails
+    maxParallelism = 4             # Number of tables refreshed in parallel
+    retryCount     = 2             # Automatic retries on transient failure
+    objects        = @()           # Empty array = refresh all tables and partitions
+} | ConvertTo-Json -Depth 5
+
+$refreshUri = "https://api.powerbi.com/v1.0/myorg/groups/$WorkspaceId/datasets/$DatasetId/refreshes"
+
+Write-Host "Triggering full semantic model refresh..."
+$triggerResponse = Invoke-RestMethod `
+    -Method  POST `
+    -Uri     $refreshUri `
+    -Headers $headers `
+    -Body    $refreshBody
+
+Write-Host "Refresh triggered successfully."
+if ($triggerResponse.PSObject.Properties['requestId']) {
+    Write-Host "  Request ID: $($triggerResponse.requestId)"
+}
+
+# ---- Step 3: Poll for refresh completion ----
+# The Power BI API returns status "Unknown" while a refresh is in progress.
+# Poll every 30 seconds until status changes to Completed or Failed.
+Write-Host "Polling for refresh completion (max $MaxPollSeconds seconds)..."
+$elapsed    = 0
+$pollResult = $null
+
+do {
+    Start-Sleep -Seconds 30
+    $elapsed += 30
+
+    $statusResponse = Invoke-RestMethod `
+        -Method  GET `
+        -Uri     $refreshUri `
+        -Headers $headers
+
+    # The refreshes endpoint returns a list of refresh history entries.
+    # The most recent is first. We monitor only the entry we just triggered.
+    $pollResult = $statusResponse.value |
+        Sort-Object -Property startTime -Descending |
+        Select-Object -First 1
+
+    Write-Host "  [$elapsed`s] Status: $($pollResult.status) | Started: $($pollResult.startTime)"
+
+} while ($pollResult.status -eq "Unknown" -and $elapsed -lt $MaxPollSeconds)
+
+# ---- Step 4: Report final status ----
+switch ($pollResult.status) {
+    "Completed" {
+        Write-Host "Refresh completed successfully."
+        Write-Host "  End time: $($pollResult.endTime)"
+        $duration = [datetime]$pollResult.endTime - [datetime]$pollResult.startTime
+        Write-Host "  Duration: $([math]::Round($duration.TotalSeconds)) seconds"
+    }
+    "Failed" {
+        $errDetail = $pollResult.serviceExceptionJson | ConvertFrom-Json
+        Write-Error "Refresh FAILED. Code: $($errDetail.errorCode). Detail: $($errDetail.parameters)"
+        exit 1
+    }
+    default {
+        Write-Warning "Refresh did not complete within $MaxPollSeconds seconds."
+        Write-Warning "Last observed status: $($pollResult.status)"
+        Write-Warning "Check the Power BI Service refresh history for dataset ID: $DatasetId"
+        exit 2
+    }
+}
+```
+
+The refresh script is invoked at the end of the export orchestrator script by appending a call block that passes the relevant parameters. In environments where the export orchestrator and the refresh trigger run under different service contexts — for example, where the export host runs under a managed identity and the Power BI refresh requires a separate service principal credential — the refresh script can be invoked as a separate scheduled task that triggers after the export task completes via Task Scheduler dependency configuration, or as a separate Azure Automation runbook that is called by the export runbook using an inline job submission.
+
+Power BI Premium and Fabric capacity environments support XMLA endpoint access, which enables the export pipeline to write data directly to the semantic model's tables using Tabular Model Scripting Language commands, bypassing the file-based gateway entirely and eliminating the refresh API call as a separate step. This architecture reduces end-to-end latency between export completion and dashboard currency to near zero. The XMLA endpoint approach requires the semantic model to be deployed to a Premium or Fabric workspace, and requires the service principal to be granted the Analysis Services Administrator role on the XMLA endpoint. For organizations that have made this investment, the XMLA pattern is strongly preferred over the file-and-gateway pattern for a governance dashboard where currency is a primary requirement.
+
+## Chapter 7 — Stakeholder Distribution via Teams and SharePoint
+
+A governance dashboard that lives only in the Power BI Service, navigable only by users who know it exists and who have Power BI Pro licenses, has a stakeholder reach problem. The organizational governance leads, divisional CISOs, and executive board members who are the intended audience of this reporting layer are not, in general, Power BI users. They do not have bookmarked URLs in the Power BI Service. They will not navigate to the governance dashboard unless it is surfaced where they already work — in Microsoft Teams, in the SharePoint intranet, or in a governance portal that their organization has established as the canonical location for governance information.
+
+The distribution architecture for this reporting layer has two channels that serve two distinct audiences. The first channel is Microsoft Teams, serving operational governance teams — identity architects, security engineers, and divisional governance leads who interact with governance data regularly and who benefit from the full interactive capability of the Power BI dashboard, including hierarchy slicer navigation and visual drill-through. The second channel is SharePoint, serving executive stakeholders and governance board members who need a read-only, always-current governance posture view without navigating the Power BI interface.
+
+### Teams Integration
+
+The Power BI Teams app provides native embedding of Power BI reports as pinned tabs within Teams channels. The governance Teams channel — which may already exist as the communication hub for the identity engineering and governance team — receives the Per-Division Governance Posture Dashboard as a pinned tab using the Add a Tab function in the channel, selecting Power BI, and choosing the governance workspace and report. The pinned tab renders the full Power BI report canvas within the Teams window, including the OrgPath hierarchy slicer and all interactive visuals. Users who have been granted the Viewer role on the governance workspace in the Power BI Service can interact with the report within Teams without leaving the Teams application.
+
+For divisional governance leads who need access scoped to their own division, the Power BI Teams integration can be supplemented with row-level security on the semantic model. Row-level security is defined in Power BI Desktop using DAX filter expressions on the OrgTree dimension table. A role named after each division node filters the OrgTree table to rows where the OrgPath column starts with the division's OrgPath prefix, which then propagates through the active relationships to all six fact tables. Divisional leads assigned to their corresponding role see only their division's data regardless of what slicer selection they make — they cannot navigate the slicer to other divisions. Row-level security role assignments are managed in the Power BI Service workspace through the Dataset Security settings, which map Entra ID user or group identities to model roles. The OrgPath groups established in prior parts of this series — the Entra ID security groups whose membership corresponds to each OrgPath node — can be assigned directly to their corresponding row-level security roles, making role membership management a consequence of existing OrgPath group governance rather than a separate manual process.
+
+### SharePoint Executive Portal Embedding
+
+The Executive Summary report page is embedded in a SharePoint Online governance portal page using the Power BI web part. The Power BI web part is available in the SharePoint page editing experience under the Media and Content section. When configured, it connects to the Power BI Service, allows the page editor to select a report and a specific page within that report, and renders the report in an embedded iframe within the SharePoint page. For users with Power BI Pro or Fabric licenses, the embedded report is fully interactive. For users without Power BI licenses — a common condition for executive board members who are not regular Microsoft 365 productivity users — embedding requires either a Fabric capacity with a Fabric or Power BI Embedded license, or the use of the embed token API to generate a temporary read-only access token for each session.
+
+The following script generates an embed token for the Executive Summary report page, scoped to read-only access, for use in a license-free viewer embedding configuration. The embed token has a one-hour validity period, so the script must be called on a scheduled basis by an Azure Function or an Azure Automation runbook, with the resulting token stored in an Azure Key Vault secret or a SharePoint list property that the SharePoint embedding configuration reads at page load time.
+
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Generates a Power BI embed token for read-only SharePoint portal embedding.
+.DESCRIPTION
+    Creates a read-only embed token scoped to the Executive Summary page of the
+    OrgPath Governance dashboard. Token is valid for 1 hour. Intended to be called
+    by an Azure Function or Azure Automation runbook on a recurring schedule
+    (e.g., every 50 minutes) to ensure a valid token is always available for the
+    SharePoint web part configuration.
+
+    The token is written to a target (Azure Key Vault secret or SharePoint list
+    property) that the SharePoint embedding mechanism reads at page load.
+.PARAMETER TenantId
+    Entra ID tenant ID.                                              # ENV-PARAM
+.PARAMETER ClientId
+    App registration client ID.                                      # ENV-PARAM
+.PARAMETER ClientSecret
+    Client secret. Retrieve from Key Vault in production.           # ENV-PARAM
+.PARAMETER WorkspaceId
+    Power BI workspace GUID.                                         # ENV-PARAM
+.PARAMETER ReportId
+    Power BI report GUID for the OrgPath Governance report.         # ENV-PARAM
+.PARAMETER PageName
+    The internal page name of the Executive Summary page.
+    Retrieve via: GET .../groups/{workspaceId}/reports/{reportId}/pages  # ENV-PARAM
+.NOTES
+    Requires Fabric capacity (F SKU) or Power BI Embedded (A SKU) for
+    license-free viewer embedding. Power BI Pro license does not support
+    embed-for-your-customers scenarios.
+    ENV-PARAM markers indicate values that must be substituted per environment.
+#>
+param(
+    [string]$TenantId    = "YOUR-TENANT-ID",          # ENV-PARAM
+    [string]$ClientId    = "YOUR-APP-CLIENT-ID",       # ENV-PARAM
+    [string]$ClientSecret = "YOUR-CLIENT-SECRET",      # ENV-PARAM
+    [string]$WorkspaceId  = "YOUR-WORKSPACE-GUID",     # ENV-PARAM
+    [string]$ReportId     = "YOUR-REPORT-GUID",        # ENV-PARAM
+    [string]$PageName     = "ExecutiveSummary"          # ENV-PARAM: internal page name
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# ---- Acquire OAuth2 token ----
+$tokenBody = @{
+    grant_type    = "client_credentials"
+    client_id     = $ClientId
+    client_secret = $ClientSecret
+    scope         = "https://analysis.windows.net/powerbi/api/.default"
+}
+$token = (Invoke-RestMethod `
+    -Method POST `
+    -Uri    "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" `
+    -Body   $tokenBody).access_token
+
+$headers = @{
+    Authorization  = "Bearer $token"
+    "Content-Type" = "application/json"
+}
+
+# ---- Generate embed token ----
+# The allowSaveAs flag is explicitly false to prevent viewers from saving
+# modified copies of the executive report, which would create uncontrolled
+# report versions outside the governance workspace.
+$embedBody = @{
+    reports = @(
+        @{
+            id          = $ReportId
+            pageName    = $PageName   # Locks the embed to the Executive Summary page
+            allowEdit   = $false
+        }
+    )
+    accessLevel  = "View"
+    allowSaveAs  = $false
+    identities   = @()               # Empty = no row-level security applied on this token;
+                                     # the executive page is unfiltered by design.
+} | ConvertTo-Json -Depth 5
+
+$embedTokenUri = "https://api.powerbi.com/v1.0/myorg/groups/$WorkspaceId/reports/$ReportId/GenerateToken"
+
+$embedResponse = Invoke-RestMethod `
+    -Method  POST `
+    -Uri     $embedTokenUri `
+    -Headers $headers `
+    -Body    $embedBody
+
+$embedToken   = $embedResponse.token
+$tokenExpiry  = $embedResponse.expiration
+
+Write-Host "Embed token generated. Expiry: $tokenExpiry"
+Write-Host "Token (first 40 chars): $($embedToken.Substring(0, [Math]::Min(40, $embedToken.Length)))..."
+
+# ---- Write token to target store ----
+# Option A: Azure Key Vault (recommended)
+# Uncomment and configure if using Key Vault as the token store.
+# Connect-AzAccount -TenantId $TenantId -ApplicationId $ClientId `
+#                   -CertificateThumbprint "YOUR-CERT-THUMBPRINT" `  # ENV-PARAM
+#                   -ServicePrincipal
+# $secureToken = ConvertTo-SecureString $embedToken -AsPlainText -Force
+# Set-AzKeyVaultSecret -VaultName "YOUR-KV-NAME" `             # ENV-PARAM
+#                      -Name     "pbi-exec-embed-token" `
+#                      -SecretValue $secureToken | Out-Null
+# Write-Host "Token written to Azure Key Vault."
+
+# Option B: Output to stdout for consuming process (Azure Automation, Function)
+Write-Output $embedToken
+```
+
+The SharePoint governance portal page is configured with the Power BI web part set to the governance workspace and report, with the page locked to the Executive Summary page via the web part settings. The SharePoint page itself is permissioned to the governance board distribution group in Entra ID, ensuring that only board members and designated governance stakeholders can access the page. A SharePoint page announcement block above the web part displays the "Data as of" date derived from the most recent refresh timestamp, giving executive readers a clear indication of the data currency without requiring them to interpret Power BI refresh metadata.
+
+### Governance Review Cadence
+
+The distribution architecture maps directly to a three-cadence governance review model that the organization should establish alongside the technical deployment. The daily cadence is served by the Teams tab: divisional governance leads review their OrgPath segment's Per-Division Governance Posture Dashboard each morning, using the hierarchy slicer to scope to their division, and escalate any Red RAG indicators to the appropriate engineering team for same-day attention. The weekly cadence is served by the SharePoint executive portal: the weekly governance board briefing references the Executive Summary heatmap page, and each division's Overall Governance RAG status is reported as a standing agenda item with narrative commentary from the divisional lead for any Amber or Red dimensions. The monthly cadence is served by the Trend Analysis page in the Power BI Service, where governance leadership reviews ninety-day trend lines for each division and makes structural governance decisions — adjusting policy thresholds, initiating remediation programs, or revising OrgTree structure — based on directional evidence rather than point-in-time snapshots.
+
+## Chapter 8 — Series Close: The Governance Substrate, Complete
+
+It is worth pausing, at the conclusion of this final document, to account for what has actually been built across thirteen parts of this series. The accounting is not a summary in the ordinary sense — a summary would compress the work into bullet points, which would strip it of the thing that makes it meaningful. The meaning is in the sequence: each part of this series depended on the parts that preceded it, and the substrate it constructed was not complete until every surface had been addressed. What follows is a brief reckoning with the full arc of that construction, and a reflection on what it represents.
+
+Part One established the problem with the precision it deserved. A modern Microsoft cloud estate is not a single system. It is a federation of capable but organizationally blind tools — Entra ID knows about users and groups, Intune knows about devices and compliance policies, Sentinel knows about alerts and incidents, Purview knows about data classification and policy matches — and each of these tools carries its own implicit model of what organizational structure means. Entra ID infers organizational position from group membership and manager chain. Intune derives policy scope from dynamic group queries that approximate organizational segments. Sentinel enriches alerts with the user and device attributes it can retrieve, but has no authoritative source of organizational context to draw from. The consequence of this fragmentation is that governance is performed by tools that each understand the organization differently, and the resulting policy landscape is inconsistent, difficult to audit, and impossible to report on in aggregate. An auditor who asks "show me the governance posture of the Finance division" receives, at best, a collection of screenshots from six different engineering consoles. At worst, the organization cannot answer the question at all, because "Finance division" means something different to each tool.
+
+Part Two named the requirement that follows from this problem. If the tools cannot agree on what organizational structure means, then something external to the tools must define it authoritatively and make that definition available to every tool that needs it. That something must be versioned, so that changes to organizational structure are traceable. It must be machine-readable, so that policy derivation can be automated. It must be auditable, so that the governance record reflects not just the current state of the hierarchy but every state it has been in. And it must be capable of being projected as an attribute onto every managed object — user, device, server, application, network resource — so that each object carries its own organizational context wherever it goes, rather than relying on the consuming tool to infer that context from membership in a group or position in a directory tree.
+
+Part Three made the proposal concrete: OrgTree as the registry, OrgPath as the attribute. OrgTree is a JSON document representing the organizational hierarchy as a directed tree of nodes, each node carrying a unique path string, a tier designation, a label, and an effective date range. OrgPath is that path string, stamped as an extension attribute on every governed object. Together they constitute a pattern, not a product — a way of encoding organizational position that is independent of any specific vendor API, any specific compliance framework, or any specific organizational taxonomy. The pattern is deliberately minimal: it makes no assumptions about how deep the hierarchy is, what the tier labels mean, or how many nodes exist. It provides structure without imposing interpretation, which is what makes it applicable across every surface the Microsoft cloud ecosystem exposes.
+
+Parts Four through Twelve are the proof of applicability. Part Four implemented OrgPath propagation in Entra ID and the Lifecycle Workflows joiner task that stamps OrgPath at hire time. Part Five integrated OrgPath with Privileged Identity Management, making PIM eligibility a function of organizational position rather than a manually maintained assignment list. Part Six built the Sentinel detection and enrichment layer that attaches OrgPath to every alert, making organizational context a native property of the security operations workflow. Part Seven extended OrgPath into the Azure resource plane via Azure RBAC scope derivation and the Arc tag propagation pipeline. Part Eight brought OrgPath to Microsoft Intune, deriving compliance policy assignments and device configuration profiles from the attribute on each device's primary user. Part Nine addressed the Defender suite — Defender for Endpoint, Defender for Identity, Defender for Cloud Apps — enriching each product's investigation and alert surface with OrgPath context. Part Ten implemented DNS scoping and certificate profile assignment through Cloud PKI, making network identity and cryptographic identity both organizational-position-aware. Part Eleven integrated OrgPath with Microsoft Purview, scoping DLP policies, sensitivity label publishing, and retention policies to organizational segments. Part Twelve governed the boundaries of the OrgPath model: B2B guest accounts, managed identities, service principals, and workload identities — the objects that do not fit the standard user-device model but that must be governed within the organizational framework nonetheless.
+
+The transformation that this substrate represents is not primarily technical. It is organizational. Before OrgPath, governance in a complex Microsoft cloud estate was performed by specialists who each understood one surface deeply, coordinated imperfectly at the boundaries between surfaces, and produced governance reports by assembling data manually from incompatible sources. The governance board received a picture of the organization's security and compliance posture that was always slightly stale, always slightly inconsistent, and never fully trustworthy as a basis for confident risk decisions. The specialists doing the work knew this. The board knew this. The auditors knew this. The substrate does not eliminate that problem by decree — it eliminates it by construction. When organizational position is a first-class attribute on every governed object, when every policy surface derives its scope from that attribute, when drift from the intended state is detected continuously and committed to an auditable record, and when the resulting intelligence is surfaced in a governance dashboard that any stakeholder can read in forty seconds, the problem of disconnected governance tools is not worked around — it is resolved at the architectural level.
+
+The architectural principle that this series establishes is worth naming precisely, because it will outlast any specific version of any specific tool. The principle is that organizational position is the most durable and most broadly applicable dimension of identity governance. It is more durable than group membership, which changes constantly and is managed inconsistently across surfaces. It is more broadly applicable than role assignment, which is surface-specific and cannot serve as a cross-surface correlator. It is more meaningful than geographic location, which is a useful governance dimension but not the organizing principle around which policy responsibility, audit scope, and risk accountability are structured in most organizations. Encoding organizational position as a first-class attribute on every governed object, and deriving policy from that attribute consistently and automatically, enables a category of deterministic, auditable, organizationally-aware governance that is structurally impossible when organizational position is implicit, inferred separately by each tool, and never written down in a form that all tools can read.
+
+The work that follows this series — for organizations that have implemented the substrate described across these thirteen parts — is operational maturity. The registry will need to be maintained as the organization evolves: divisions merge, business units are restructured, new OrgPath nodes are created and old ones retired. The drift detection thresholds will need to be tuned as the operational team learns which drift categories are genuinely anomalous and which reflect normal organizational churn. The Power BI governance review cadence will need to be embedded in the governance calendar so that the investment in the reporting layer is actually exercised, rather than being a technical capability that exists but is not used. New Microsoft cloud surfaces will be introduced over time, and each will need to be evaluated against the OrgPath pattern to determine whether it can be made organizational-position-aware — and the pattern documented in this series provides a clear template for making that determination and executing that integration. The substrate makes all of this ongoing work tractable. What was previously a manual, inconsistent, audit-period scramble is now a continuous, measurable, organizationally-aware governance operation with a clear source of truth, an automated enforcement pipeline, and an audience for its intelligence.
+
+That is a meaningful change. It does not happen by accident, and it does not happen in one sprint. It happens by doing the architectural work carefully, surface by surface, in a sequence that builds on itself — which is what this series set out to document, and what, across thirteen parts and one supplement, it has done.
+
+::: {.callout-note title="Series Progression — Final"}
+This document is <strong>Part Thirteen of Thirteen</strong> in the OrgTree and OrgPath Governance Architecture series. It is the final and capstone document of the series. No additional parts are planned.
+
+The complete series is available as a document set from <strong>Part One</strong> through <strong>Part Thirteen</strong>, with <strong>Supplement 8S</strong> covering third-party DDI (DNS, DHCP, IPAM) integration for environments that use non-Microsoft DDI platforms alongside Cloud PKI and OrgPath-scoped DNS policy.
+
+Each document in the series is a standalone implementation guide and may be referenced independently. The series is designed to be implemented in part-order, as each part's implementation depends on the infrastructure established by its predecessors. Organizations that have completed Parts One through Twelve and implemented the reporting layer described in this document have a complete, operational OrgPath governance substrate.
+:::

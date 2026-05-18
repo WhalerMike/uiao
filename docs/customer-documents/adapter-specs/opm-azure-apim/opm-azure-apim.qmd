@@ -1,0 +1,106 @@
+---
+title: OPM Azure API Management Gateway Adapter (Federal HRIT) — Adapter Technical
+  Specification
+doc-type: ats
+adapter-id: opm-azure-apim
+adapter-class: modernization
+mission-class: integration
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/modernization-registry.yaml
+derived-from: uiao/canon (sync_canon.py)
+generated: '2026-05-07'
+---
+
+# OPM Azure API Management Gateway Adapter (Federal HRIT) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+## Overview
+
+The OPM Azure API Management Gateway Adapter is the **federal-HRIT centralized-gateway integration edge** of the UIAO substrate. As a modernization-class integration adapter, it operates the OPM-hosted Azure API Management gateway via Azure Resource Manager and consumes its observability surface for canonical evidence — closing the HRIT IAM gap mandated by **Solicitation 24322626R0007 Amd 4 Appendix B pp. 82, 84**.
+
+The OPM APIM instance is a **federally-operated gateway**: OPM owns and operates the gateway, the contractor configures APIs through it. The contractor's responsibility ends at APIM ingress; everything downstream of the gateway (the Core HCM platform) is OPM's. This split is the "Core-HCM API boundary" referenced throughout the federal HRIT modernization narrative.
+
+Five primary functions:
+
+1. **OAuth 2.0 token validation enforcement.** Provisions and updates APIM policy that enforces OAuth 2.0 token validation against the OPM-tenant authorization server for every API call entering the gateway.
+2. **API rate limiting + IP filtering.** Authors rate-limit policy and IP-filter policy per API surface, consuming the canonical limit and filter declarations from the substrate's policy library.
+3. **mTLS termination.** Provisions the gateway's mTLS termination configuration — accepting client certificates per the documented trust anchor and forwarding identity context downstream as canonical headers.
+4. **Payload transformation.** Manages payload-transformation policies (XML-to-JSON conversion, schema enforcement, header normalization) per the canonical contract for each consuming-agency API.
+5. **Developer-portal + cross-agency API routing.** Provisions developer-portal inventory (which APIs are visible to which agencies) and the cross-agency routing policy that directs traffic to the appropriate Core HCM endpoint.
+
+**Implementation:** Reserved slot per ADR-049 / ADR-053. Activation requires an OPM-issued service principal scoped to the federal-HRIT APIM instance plus a per-adapter ADR modeled on ADR-035.
+
+## Scope
+
+Target surfaces / subsystems: `oauth2-token-validation`, `api-rate-limiting`, `mtls-termination`, `payload-transformation`, `developer-portal`, `cross-agency-api-routing`
+
+**Reads:** Canonical API-policy declarations, the live APIM configuration via Azure Resource Manager (`Microsoft.ApiManagement/service`), plus the gateway's observability surface (request logs, policy-evaluation traces, certificate-validation outcomes). OPM-issued service principal scoped to the federal-HRIT APIM instance.
+
+**Emits:** `apim-policy-manifest.json` (planned policy changes with per-row provenance back to the substrate's policy library), `apim-traffic-audit.json` (per-period traffic audit summary), `apim-developer-portal-inventory.json` (per-agency API visibility inventory), plus `EvidenceObject` records that feed the AC-4 / AC-17 / AU-2 / AU-12 / IA-2 / IA-8 / SC-7 / SC-8 / SC-13 / SC-23 / CA-9 control evidence stream.
+
+**Does NOT:** modify the underlying Core HCM platform (the contractor's responsibility ends at APIM ingress), modify the OPM authorization server, modify the federal-trust mTLS root, or provision new APIM instances (provisioning is OPM's operational responsibility — this adapter operates APIs *through* the gateway, not the gateway itself).
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `AC-4`, `AC-17`, `AU-2`, `AU-12`, `IA-2`, `IA-8`, `SC-7`, `SC-8`, `SC-13`, `SC-23`, `CA-9`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AC-4** Information Flow Enforcement | Primary | APIM policy enforces information flow at the federally-mandated gateway boundary. |
+| **AC-17** Remote Access | Primary | Cross-agency API routing is the canonical remote-access surface for federal-HRIT consumers. |
+| **AU-2** Event Logging | Primary | Every API call traversing the gateway is logged with the canonical request envelope. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **IA-2** Identification and Authentication | Primary | OAuth 2.0 token validation at gateway ingress is the canonical authentication path for federal-HRIT API consumers. |
+| **IA-8** Identification and Authentication (Non-Organizational Users) | Supporting | Cross-agency consumers authenticate at the gateway boundary. |
+| **SC-7** Boundary Protection | Primary | APIM is the federally-mandated boundary enforcement point for federal-HRIT traffic. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | mTLS termination at the gateway is the canonical evidence of TLS-protected transit. |
+| **SC-13** Cryptographic Protection | Supporting | Validation uses FIPS-validated cryptographic libraries. |
+| **SC-23** Session Authenticity | Supporting | mTLS-anchored session identity flows through the gateway as canonical headers. |
+| **CA-9** Internal System Connections | Primary | The gateway is the canonical interconnection point between consuming-agency systems and the Core HCM platform. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `github-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Closes the HRIT IAM gap for the centralized OPM-hosted API gateway mandated by Solicitation 24322626R0007 Amd 4 Appendix B pp. 82, 84. Gateway is operated by OPM; the contractor configures APIs through it but does not own the gateway. The **"Core-HCM API boundary"** is enforced at this surface — the contractor's responsibility ends at APIM ingress.
+
+Adapter activation requires an OPM-issued service principal scoped to the federal-HRIT APIM instance. Tier-1 conformance: pending — likely requires Microsoft-attested test fixtures plus per-tenant sandbox capture. Activation requires a per-adapter ADR modeled on ADR-035.
+
+ZTMM pillars: applications-and-workloads, networks.
+
+## References
+
+- UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
+- ADR-053 — OPM Azure APIM gateway adapter binding
+
+---
+
+*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

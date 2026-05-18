@@ -9,9 +9,8 @@ and optional control IDs.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 try:
     import typer
@@ -22,7 +21,7 @@ except ImportError:
     HAS_TYPER = False
 
 
-def _create_app():
+def _create_app() -> Any:
     """Create the adapter-oscal typer app (deferred to avoid import errors)."""
     if not HAS_TYPER:
         return None
@@ -31,7 +30,9 @@ def _create_app():
         name="adapter-oscal",
         help="Generate OSCAL artifacts (SAR/POA&M/SSP) from adapter data.",
     )
-    console = Console()
+    # `Console(stderr=True)` directs diagnostic output to stderr so the JSON
+    # OSCAL document printed by `_write_output` stays the only thing on stdout.
+    console = Console(stderr=True)
 
     @app.command()
     def sar(
@@ -52,9 +53,7 @@ def _create_app():
         sar_doc = build_sar(bundle=bundle, system_name=system_name)
 
         _write_output(sar_doc, output, console)
-        console.print(
-            f"[green]SAR generated: {len(bundle.evidence)} observations, controls: {ctrl_ids}[/green]", file=sys.stderr
-        )
+        console.print(f"[green]SAR generated: {len(bundle.evidence)} observations, controls: {ctrl_ids}[/green]")
 
     @app.command()
     def poam(
@@ -72,7 +71,7 @@ def _create_app():
         poam_doc = build_adapter_poam(adapter, drift, ctrl_ids)
         _write_output(poam_doc, output, console)
         items = len(poam_doc.get("poam-items", []))
-        console.print(f"[green]POA&M generated: {items} item(s)[/green]", file=sys.stderr)
+        console.print(f"[green]POA&M generated: {items} item(s)[/green]")
 
     @app.command()
     def ssp(
@@ -95,55 +94,51 @@ def _create_app():
             .get("control-implementation", {})
             .get("implemented-requirements", [])
         )
-        console.print(f"[green]SSP generated: {reqs} implemented requirement(s)[/green]", file=sys.stderr)
+        console.print(f"[green]SSP generated: {reqs} implemented requirement(s)[/green]")
 
     return app
 
 
-def _load_adapter_claims(adapter_id: str, state_file: Path):
+def _load_adapter_claims(adapter_id: str, state_file: Path) -> Any:
     """Load adapter and extract claims from a state/config file."""
-    from uiao.adapters.m365_adapter import M365Adapter
-    from uiao.adapters.paloalto_adapter import PaloAltoAdapter
-    from uiao.adapters.terraform_adapter import TerraformAdapter
-
     if adapter_id == "terraform":
-        a = TerraformAdapter({})
-        return a.extract_terraform_state(str(state_file))
+        from uiao.adapters.terraform_adapter import TerraformAdapter
+
+        return TerraformAdapter({}).extract_terraform_state(str(state_file))
     elif adapter_id == "m365":
-        config = json.loads(state_file.read_text())
-        a = M365Adapter({"_tenant_config": config})
+        from uiao.adapters.m365_adapter import M365Adapter
         from uiao.adapters.m365_parser import parse_tenant_config
 
-        return a.normalize(parse_tenant_config(config))
+        config = json.loads(state_file.read_text())
+        return M365Adapter({"_tenant_config": config}).normalize(parse_tenant_config(config))
     elif adapter_id == "palo-alto":
-        xml = state_file.read_text()
-        a = PaloAltoAdapter({"_security_rules_xml": xml})
-        return a.get_running_config()
+        from uiao.adapters.paloalto_adapter import PaloAltoAdapter
+
+        return PaloAltoAdapter({"_security_rules_xml": state_file.read_text()}).get_running_config()
     else:
         raise NotImplementedError(
             f"Generic adapter loading for '{adapter_id}' not yet implemented. Use terraform, m365, or palo-alto."
         )
 
 
-def _load_adapter_drift(adapter_id: str, plan_file: Path):
+def _load_adapter_drift(adapter_id: str, plan_file: Path) -> Any:
     """Load drift data from a plan/drift file."""
     from uiao.adapters.terraform_adapter import TerraformAdapter
 
     plan = json.loads(plan_file.read_text())
     if adapter_id == "terraform":
-        a = TerraformAdapter({})
-        return a.consume_terraform_plan(plan)
+        return TerraformAdapter({}).consume_terraform_plan(plan)
     else:
         raise NotImplementedError(f"Drift loading for '{adapter_id}' not yet implemented.")
 
 
-def _write_output(doc: dict, output: Optional[Path], console) -> None:
+def _write_output(doc: dict, output: Optional[Path], console: Any) -> None:
     """Write JSON output to file or stdout."""
     json_str = json.dumps(doc, indent=2)
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json_str)
-        console.print(f"[dim]Written to {output}[/dim]", file=sys.stderr)
+        console.print(f"[dim]Written to {output}[/dim]")
     else:
         print(json_str)
 

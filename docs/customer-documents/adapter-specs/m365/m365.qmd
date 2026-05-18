@@ -7,12 +7,11 @@ mission-class: integration
 status: active
 phase: phase-1
 gcc-boundary: gcc-moderate
-canon-source: canon/modernization-registry.yaml
+canon-source: src/uiao/canon/modernization-registry.yaml
 derived-from: uiao/canon (sync_canon.py)
 generated: '2026-04-15'
 aspirational: true
 ---
-
 
 # Microsoft 365 Tenant (Graph API) — Adapter Technical Specification
 
@@ -26,55 +25,34 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The Microsoft 365 Tenant Adapter is an **integration-class** modernization adapter that consumes Microsoft 365 tenant configuration via the Microsoft Graph API to produce object-keyed canonical claims across five core workloads.
+The Microsoft 365 Tenant Adapter is the **change-making interface** to the M365 SaaS boundary in the UIAO substrate. As a modernization-class integration adapter, it consumes and writes Microsoft 365 tenant configuration via the Microsoft Graph API across five core workloads — Exchange Online, SharePoint Online, Teams, Defender for Office 365, and Purview.
 
-This adapter is the primary interface between UIAO and the M365 SaaS boundary — the GCC-Moderate tenant that hosts the organization's Exchange Online, SharePoint, Teams, Defender for Office 365, and Purview services. It pairs naturally with:
+This adapter is the connective tissue that ties [`entra-id`](../entra-id/entra-id.html) identity to the productivity and security configuration the agency operates on top of it. It pairs with three peer surfaces:
 
-- The **Entra ID adapter** (identity fabric for the same tenant)
-- The **ScubaGear conformance adapter** (read-only assessment of the same M365 surfaces)
-- The **Intune adapter** (endpoint compliance telemetry for managed devices)
+- **[`scubagear`](../scubagear/scubagear.html)** — the read-only conformance assessor that scores the configuration this adapter authors against the CISA SCuBA baseline.
+- **[`scuba`](../scuba/scuba.html)** — the modernization sibling that applies the SCuBA baseline (m365 owns broader tenant configuration; scuba is the SCuBA-specific change-maker).
+- **[`intune`](../intune/intune.html)** — the conformance counterpart on the device side; m365 manages tenant policy, intune observes device compliance against it.
+- **[`purview-audit`](../purview-audit/purview-audit.html)** — the read-only telemetry counterpart for the Purview surface that m365 authors. The audit-tier and DLP-state findings purview-audit emits track the configuration m365 sets.
 
-Key capabilities:
+Three primary functions:
 
 1. **Tenant configuration retrieval.** Queries Graph API to capture current configuration state per workload — mailbox settings, transport rules, site collections, team configurations, security policies, and sensitivity labels.
-
-2. **Baseline comparison.** Compares current tenant configuration against a declared security baseline (e.g., CISA SCuBA) and produces a `DriftReport` with compliant/non-compliant/missing breakdowns.
-
+2. **Baseline comparison.** Compares current tenant configuration against a declared security baseline (e.g., CISA SCuBA) and produces a `DriftReport` with compliant / non-compliant / missing breakdowns per workload.
 3. **Evidence generation.** Bundles connection provenance, normalized claims, and drift analysis into `EvidenceObject` artifacts suitable for OSCAL SAR generation.
 
-**Implementation:** `src/uiao/adapters/m365_adapter.py` + `m365_parser.py` (real Graph API response parsing with entity normalization, security policy parsing, multi-workload tenant config parsing, and baseline comparison). End-to-end OSCAL SAR generation proven via 5 integration tests.
+**Implementation:** `src/uiao/adapters/m365_adapter.py` + `src/uiao/adapters/m365_parser.py`. Real Graph API response parsing with entity normalization, security policy parsing, multi-workload tenant config parsing, and baseline comparison. End-to-end OSCAL SAR generation proven via 5 integration tests.
 
 ## Scope
 
 Target surfaces / subsystems: `exchange-online`, `sharepoint-online`, `teams`, `defender-o365`, `purview`
 
-**What the adapter reads:**
+**Reads:** Microsoft Graph API entity responses (`/organization`, `/users`, `/groups`), conditional access policies (`/identity/conditionalAccessPolicies`), and multi-workload tenant configuration — mailbox settings, transport rules, site collections, team configs, safe-attachment policies, sensitivity labels. Auth via client-credential OAuth flow.
 
-- Microsoft Graph API entity responses (`/organization`, `/users`, `/groups`, etc.)
-- Conditional access policies (`/identity/conditionalAccessPolicies`)
-- Multi-workload tenant configuration (mailbox settings, transport rules, site collections, team configs, safe attachment policies, sensitivity labels)
+**Emits:** `ClaimSet` with one `ClaimObject` per Graph entity tagged by workload, `DriftReport` from baseline comparison (compliant / non-compliant / missing per setting), `EvidenceObject` with per-workload or cross-workload provenance chain, plus the `tenant-config-manifest.json` and `change-audit.json` artifacts that anchor change-control review. OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge.
 
-**What the adapter emits:**
-
-- `ClaimSet` with one `ClaimObject` per Graph entity, tagged by workload
-- `DriftReport` from baseline comparison (compliant/non-compliant/missing per setting)
-- `EvidenceObject` with per-workload or cross-workload provenance chain
-- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
-
-**What the adapter does NOT touch:**
-
-- Does not modify tenant configuration (baseline application is gated on Graph API write permissions + change-approval workflow)
-- Does not access user mailbox content or file content (metadata only)
-- Does not store user credentials; uses client-credential OAuth flow
-- Does not bypass GCC-Moderate tenant boundary constraints
+**Does NOT:** access user mailbox content or file content (metadata only), store user credentials (client-credential OAuth flow), bypass GCC-Moderate tenant boundary constraints, or apply baseline-level changes outside the change-approval workflow (apply paths are gated on Graph API write permissions plus explicit approval).
 
 ## Controls
 
@@ -82,8 +60,8 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-3`, `CM-8`
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **CM-2** Baseline Configuration | Primary | Tenant config retrieval + baseline comparison captures the current configuration baseline across all 5 workloads and identifies deviations from the declared security baseline. |
-| **CM-3** Configuration Change Control | Supporting | Baseline comparison produces a diff report that documents which settings changed, enabling change-control review before applying remediation. |
+| **CM-2** Baseline Configuration | Primary | Tenant config retrieval plus baseline comparison captures the current configuration baseline across all 5 workloads and identifies deviations from the declared security baseline. |
+| **CM-3** Configuration Change Control | Supporting | Baseline comparison produces a diff report documenting which settings changed, enabling change-control review before applying remediation. |
 | **CM-8** Information System Component Inventory | Primary | Multi-workload tenant config retrieval produces a complete inventory of all M365 components (mailboxes, sites, teams, policies, labels) with Graph entity metadata. |
 
 ## Operational profile
@@ -106,12 +84,17 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-3`, `CM-8`
 
 ## Notes from canon
 
-_(none)_
+Modernization adapter — performs change-making actions against M365 tenant configuration (Exchange Online, SharePoint, Teams, Defender, Purview). Classified per resolved ODA-15 (UIAO_003 §4.7).
+
+This adapter bundles the change-making surface for Purview *configuration*. The [`purview-audit`](../purview-audit/purview-audit.html) reserved-slot adapter is its read-only telemetry counterpart and continuously observes the audit retention tier, DLP policy state, sensitivity-label coverage, litigation-hold state, and Insider Risk policy state that this adapter sets.
+
+ZTMM pillars: identity, applications-and-workloads, data.
 
 ## References
 
 - UIAO-CANON-002
 - UIAO-CANON-003
+- UIAO_009 — Microsoft Coverage and Gap Doctrine
 
 ---
 

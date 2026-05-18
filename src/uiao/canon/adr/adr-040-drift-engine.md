@@ -17,13 +17,16 @@ related_adrs:
   - ADR-038
   - ADR-039
 canon_refs:
-  - MOD_A_OrgPath_Codebook
-  - MOD_B_Dynamic_Group_Library
-  - MOD_C_Attribute_Mapping_Table
-  - MOD_D_Delegation_Matrix_AUs_Roles
-  - MOD_M_Drift_Detection_Engine_Specification
-  - MOD_N_Execution_Substrate_Integration_Layer
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_152_Dynamic_Group_Library
+  - UIAO_153_Attribute_Mapping_Table
+  - UIAO_154_Delegation_Matrix_AUs_Roles
+  - UIAO_163_Drift_Detection_Engine_Specification
+  - UIAO_164_Execution_Substrate_Integration_Layer
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-040-drift-engine.html
 ---
 
 # ADR-040: OrgTree Drift Detection Engine — Six-Phase Orchestrator
@@ -37,13 +40,13 @@ Accepted
 Phases 2–5 delivered four change-making adapters, each with its own
 ``plan / apply / reconcile`` shape:
 
-* **Phase 2** — `entra-dynamic-groups` (MOD_B)
-* **Phase 3** — `entra-admin-units` (MOD_D)
-* **Phase 4** — `entra-device-orgpath` (MOD_C)
-* **Phase 5** — `entra-policy-targeting` (MOD_N)
+* **Phase 2** — `entra-dynamic-groups` (UIAO_152)
+* **Phase 3** — `entra-admin-units` (UIAO_154)
+* **Phase 4** — `entra-device-orgpath` (UIAO_153)
+* **Phase 5** — `entra-policy-targeting` (UIAO_164)
 
 Each adapter diffs one slice of the OrgTree against its canonical
-source. MOD_M has described the **continuous observer** that ties them
+source. UIAO_163 has described the **continuous observer** that ties them
 together since the original scaffold, in six phases: Snapshot, Compare,
 Classify, Alert, Remediate, Verify. Before this ADR, nothing tied those
 four adapters into a unified drift signal — operators had to run them
@@ -100,7 +103,7 @@ Three concrete consequences of that gap:
      until a human resolves it.
 5. **Partial scans are supported.** A snapshot missing a phase entry
    skips that phase entirely. Teams can scope a scan to one phase
-   (e.g., post-MOD_B PR) without stubbing tenant state for the others.
+   (e.g., post-UIAO_152 PR) without stubbing tenant state for the others.
 6. **Unmapped op types raise ``DriftEngineError``.** An adapter that
    emits a new op type (because a new canon rule was added to the
    adapter but not to the engine config) fails loud instead of
@@ -113,12 +116,12 @@ Three concrete consequences of that gap:
 
 - Single operator artefact: one ``DriftScanReport`` across all four
   planes, one set of findings, one remediation artefact, one halt
-  decision. The MOD_M "Alert" phase is literally ``report.findings``.
+  decision. The UIAO_163 "Alert" phase is literally ``report.findings``.
 - The ADR-012 taxonomy finally has a producer. Every finding carries
   a drift_class field that downstream tooling (dashboards, SIEM, POAMs)
   can aggregate on.
 - Halt-on-critical makes stop-the-line governance concrete. An
-  unscoped role assignment (MOD_D §Governance Rule 4) halts every
+  unscoped role assignment (UIAO_154 §Governance Rule 4) halts every
   other remediation — operators can't accidentally auto-fix green
   drift while a red escalation waits for review.
 - The engine is fully offline-testable. Snapshots are plain dicts of
@@ -130,7 +133,7 @@ Three concrete consequences of that gap:
 
 **Negative / deferred**
 
-- **Verify is out of scope for v1.** MOD_M's sixth phase
+- **Verify is out of scope for v1.** UIAO_163's sixth phase
   (re-snapshot + re-scan to confirm remediation took effect) is not
   implemented — doing so would require the engine to talk to Graph/ARM
   to re-read state, which is the read-side work Phase 4.5 / 5.5 still
@@ -139,7 +142,7 @@ Three concrete consequences of that gap:
 - **Snapshot fetching is the caller's problem.** The engine consumes
   pre-fetched state; a future follow-up adds Graph + ARM readers so
   ``scan()`` can snapshot on its own given credentials.
-- **No alert routing.** MOD_M mentions Teams/email. The engine emits
+- **No alert routing.** UIAO_163 mentions Teams/email. The engine emits
   findings as structured data; wiring them into M365 notification
   channels is a consumer layer, not part of the engine.
 - **No scheduling.** The engine runs one scan per call. Scheduling
@@ -154,8 +157,8 @@ Three concrete consequences of that gap:
   the four phase adapters the single source of truth for their
   respective invariants.
 - **Embed halt_on_critical logic in each adapter.** Rejected. The
-  halt condition is a cross-phase concern (phantom AU in MOD_D should
-  halt MOD_B remediation too). Only the orchestrator has the view
+  halt condition is a cross-phase concern (phantom AU in UIAO_154 should
+  halt UIAO_152 remediation too). Only the orchestrator has the view
   needed to enforce it.
 - **Classify drift as generic schema diffs.** Rejected. ADR-012 is
   explicit that drift types are semantic (AUTHZ vs IDENTITY vs
@@ -171,4 +174,4 @@ Three concrete consequences of that gap:
   phase but declared in the taxonomy for forward-compat.
 - ADRs 035–039 — the five pre-requisites. This engine composes their
   adapters.
-- MOD_M — the canonical specification this ADR implements.
+- UIAO_163 — the canonical specification this ADR implements.

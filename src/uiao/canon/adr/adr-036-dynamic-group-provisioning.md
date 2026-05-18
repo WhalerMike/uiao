@@ -12,9 +12,12 @@ related_adrs:
   - ADR-034
   - ADR-035
 canon_refs:
-  - MOD_A_OrgPath_Codebook
-  - MOD_B_Dynamic_Group_Library
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_152_Dynamic_Group_Library
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-036-dynamic-group-provisioning.html
 ---
 
 # ADR-036: Dynamic Group Library — Executable Canon + Entra Provisioning Adapter
@@ -25,11 +28,11 @@ Accepted
 
 ## Context
 
-MOD_B (`src/uiao/modernization/orgtree/MOD_B_Dynamic_Group_Library.md`)
+UIAO_152 (`src/uiao/canon/UIAO_152_Dynamic_Group_Library.md`)
 enumerates 32 canonical OrgTree-* dynamic groups — the operational bridge
-between the OrgPath codebook (MOD_A, bound by ADR-035) and every downstream
-governance surface: Conditional Access targeting, AU membership (MOD_D),
-licensing, and drift detection (MOD_M).
+between the OrgPath codebook (UIAO_151, bound by ADR-035) and every downstream
+governance surface: Conditional Access targeting, AU membership (UIAO_154),
+licensing, and drift detection (UIAO_163).
 
 Before this ADR the library existed only as prose + PowerShell snippets.
 There was no machine-readable form, no adapter to provision the groups
@@ -38,16 +41,16 @@ canonical group from a phantom. Three concrete gaps:
 
 1. Every phrase of the form *"Conditional Access targets `OrgTree-EXEC-CA`"*
    across the canon pointed at a group that only existed on paper.
-2. A rule in MOD_B could drift from the rule the library text suggested
+2. A rule in UIAO_152 could drift from the rule the library text suggested
    with no structural check — the `orgpath_refs` list and the opaque
    membership-rule string were unconnected.
-3. The five MOD_B drift categories (Rule / Phantom / Missing / Name /
+3. The five UIAO_152 drift categories (Rule / Phantom / Missing / Name /
    Membership) had no implementation; `governance.drift` only handled
-   identity-plane drift (MOD_A via ADR-035).
+   identity-plane drift (UIAO_151 via ADR-035).
 
 ## Decision
 
-1. Publish MOD_B as executable canon at
+1. Publish UIAO_152 as executable canon at
    `src/uiao/canon/data/orgpath/dynamic-groups.yaml`, shipped with
    `uiao.canon` so `importlib.resources` reads it at runtime.
 2. Ship a JSON Schema at
@@ -67,10 +70,10 @@ canonical group from a phantom. Three concrete gaps:
    - `apply(plan, dry_run=True)` — dry-run by default; on `dry_run=False`
      issues `POST /groups` and `PATCH /groups/{id}` per operation.
    - `reconcile(...)` — plan + apply in one call.
-5. **`delete-phantom` is never auto-applied.** MOD_B §Drift prescribes
+5. **`delete-phantom` is never auto-applied.** UIAO_152 §Drift prescribes
    manual governance review for phantom groups; the adapter produces a
    planned op with `status=skipped-manual` and lets the governance
-   workflow (MOD_E) decide. Only `create` and `update` are auto-remediated.
+   workflow (UIAO_155) decide. Only `create` and `update` are auto-remediated.
 6. Register the adapter in `canon/modernization-registry.yaml` (class:
    modernization, mission-class: integration) as a peer of the existing
    `entra-id` entry — the two share a tenant, not a code path.
@@ -80,26 +83,26 @@ canonical group from a phantom. Three concrete gaps:
 **Positive**
 
 - The drift engine can now classify all four automatically-remediable
-  MOD_B drift types (Rule, Missing, Name, Membership) against a concrete
+  UIAO_152 drift types (Rule, Missing, Name, Membership) against a concrete
   enumeration. Phantom groups become governance findings with zero
   ambiguity.
 - The `orgpath_refs` ↔ `rule` cross-check at load time means canon changes
-  to MOD_A automatically surface as integrity errors in MOD_B if a group
+  to UIAO_151 automatically surface as integrity errors in UIAO_152 if a group
   references a code that was removed or deprecated — upgrade failures
   happen during PR CI, not during a tenant reconcile.
 - The adapter is offline-testable: `plan()` and `apply(dry_run=True)` do
   not touch the network, and `current_tenant_state` is a plain list of
   Graph-shaped dicts. Contract fixture lives at
   `tests/fixtures/contract/entra-id/dynamic-groups/tenant-state.json`.
-- Opens the door to Phase 3 (Administrative Units, MOD_D) which will
+- Opens the door to Phase 3 (Administrative Units, UIAO_154) which will
   reuse the same `plan / apply / reconcile` shape against a different
   Graph endpoint.
 
 **Negative / deferred**
 
-- **Membership Drift** (MOD_B §Drift type 5) is not addressed here — it
+- **Membership Drift** (UIAO_152 §Drift type 5) is not addressed here — it
   requires comparing a computed user population against expected counts,
-  which the drift engine (MOD_M, Phase 6) will own. This adapter scopes
+  which the drift engine (UIAO_163, Phase 6) will own. This adapter scopes
   itself to group *definitions*, not their computed populations.
 - The adapter does not yet consume output from the EntraCollector's
   user-attribute read (ADR-035, Phase 1). A Phase 3 bridge will feed
@@ -112,10 +115,10 @@ canonical group from a phantom. Three concrete gaps:
 ## Alternatives considered
 
 - **Bicep / Terraform authoring instead of a Python adapter.** Rejected
-  because MOD_B's drift categories (especially Phantom and Name Drift)
+  because UIAO_152's drift categories (especially Phantom and Name Drift)
   require *diffing* against a canonical list, which IaC tools do not
   natively express. A Python adapter also composes cleanly with the
-  drift engine (MOD_M) already in-tree.
+  drift engine (UIAO_163) already in-tree.
 - **Store rules as structured AST rather than a rule string.** Rejected
   for this phase — the Graph API consumes a string, and the verbatim
   cross-check in the loader catches rule/ref skew without a second
@@ -124,7 +127,7 @@ canonical group from a phantom. Three concrete gaps:
 
 ## Related work
 
-- ADR-035 — OrgPath codebook binding (MOD_A). This ADR depends on it;
+- ADR-035 — OrgPath codebook binding (UIAO_151). This ADR depends on it;
   the integrity check reuses the ADR-035 codebook loader.
-- ADR-034 — Three-plane device model. MOD_B currently targets user
+- ADR-034 — Three-plane device model. UIAO_152 currently targets user
   objects only; device-plane OrgTree groups are reserved for Phase 4.

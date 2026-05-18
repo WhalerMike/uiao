@@ -1,0 +1,168 @@
+; =============================================================================
+; UIAO Gitea Configuration — app.ini
+; Platform: Windows Server 2025 behind IIS Reverse Proxy
+; Classification: Controlled | Boundary: GCC-Moderate
+; Repository: https://github.com/WhalerMike/uiao
+; =============================================================================
+
+; --- Application ---
+APP_NAME = UIAO Governance OS
+RUN_MODE = prod
+RUN_USER = DOMAIN\svc-gitea
+
+[server]
+; Gitea listens on localhost only — IIS reverse proxy handles external HTTPS
+PROTOCOL            = http
+HTTP_ADDR           = 127.0.0.1
+HTTP_PORT           = 3000
+DOMAIN              = git.uiao.local
+ROOT_URL            = https://git.uiao.local/
+LOCAL_ROOT_URL       = http://localhost:3000/
+DISABLE_SSH         = false
+SSH_DOMAIN          = git.uiao.local
+SSH_PORT            = 22
+SSH_LISTEN_PORT     = 22
+LFS_START_SERVER    = true
+LFS_JWT_SECRET      = ; GENERATE: gitea generate secret JWT_SECRET
+OFFLINE_MODE        = false
+; Large push support (512 MB)
+LFS_MAX_FILE_SIZE   = 536870912
+
+[database]
+; SQLite for lab/small deployment — PostgreSQL for production
+DB_TYPE  = sqlite3
+PATH     = D:/Gitea/data/gitea.db
+LOG_SQL  = false
+; --- Production PostgreSQL ---
+; DB_TYPE  = postgres
+; HOST     = localhost:5432
+; NAME     = gitea
+; USER     = gitea
+; PASSWD   = USE_MANAGED_PASSWORD
+; SSL_MODE = require
+
+[repository]
+ROOT                = D:/GitRepos
+DEFAULT_BRANCH      = main
+DEFAULT_PRIVATE     = private
+; Force canonical UIAO commit conventions
+FORCE_PRIVATE       = false
+MAX_CREATION_LIMIT  = -1
+PREFERRED_LICENSES  = Apache-2.0
+
+[repository.upload]
+; Support large governance artifacts
+MAX_FILE_SIZE  = 52428800
+MAX_FILES      = 10
+
+[indexer]
+ISSUE_INDEXER_TYPE = bleve
+ISSUE_INDEXER_PATH = D:/Gitea/data/indexers/issues.bleve
+REPO_INDEXER_ENABLED = true
+REPO_INDEXER_PATH    = D:/Gitea/data/indexers/repos.bleve
+REPO_INDEXER_INCLUDE  =
+REPO_INDEXER_EXCLUDE  = resources/bin/**
+
+[security]
+INSTALL_LOCK                  = true
+SECRET_KEY                    = ; GENERATE: gitea generate secret SECRET_KEY
+INTERNAL_TOKEN                = ; GENERATE: gitea generate secret INTERNAL_TOKEN
+MIN_PASSWORD_LENGTH           = 14
+PASSWORD_COMPLEXITY           = lower,upper,digit,spec
+PASSWORD_CHECK_PWN            = true
+IMPORT_LOCAL_PATHS            = false
+DISABLE_GIT_HOOKS             = false
+; Disable user self-registration — all users via AD/Entra
+DISABLE_REGISTRATION          = true
+
+[service]
+DISABLE_REGISTRATION              = true
+REQUIRE_SIGNIN_VIEW               = true
+ENABLE_NOTIFY_MAIL                = false
+DEFAULT_ALLOW_CREATE_ORGANIZATION = false
+DEFAULT_ORG_VISIBILITY            = private
+DEFAULT_ORG_MEMBER_VISIBLE        = true
+SHOW_REGISTRATION_BUTTON          = false
+AUTO_WATCH_NEW_REPOS              = true
+AUTO_WATCH_ON_CHANGES             = true
+
+[session]
+PROVIDER        = file
+PROVIDER_CONFIG = D:/Gitea/data/sessions
+COOKIE_SECURE   = true
+COOKIE_NAME     = uiao_gitea_session
+GC_INTERVAL_TIME = 86400
+SESSION_LIFE_TIME = 28800
+
+[log]
+ROOT_PATH = D:/Gitea/log
+MODE      = file
+LEVEL     = info
+; Governance audit log — captures all operations
+[log.file]
+LOG_ROTATE   = true
+MAX_DAYS     = 90
+DAILY_ROTATE = true
+
+[mailer]
+ENABLED = false
+; Configure when SMTP is available:
+; ENABLED     = true
+; SMTP_ADDR   = smtp.office365.com
+; SMTP_PORT   = 587
+; IS_TLS_ENABLED = true
+; FROM        = gitea@uiao.local
+; USER        = gitea@uiao.local
+; PASSWD      = USE_MANAGED_PASSWORD
+
+[cache]
+ADAPTER  = memory
+INTERVAL = 60
+HOST     =
+
+[picture]
+AVATAR_UPLOAD_PATH      = D:/Gitea/data/avatars
+REPOSITORY_AVATAR_UPLOAD_PATH = D:/Gitea/data/repo-avatars
+DISABLE_GRAVATAR        = true
+ENABLE_FEDERATED_AVATAR = false
+
+[attachment]
+ENABLED    = true
+PATH       = D:/Gitea/data/attachments
+MAX_SIZE   = 50
+MAX_FILES  = 5
+
+[time]
+DEFAULT_UI_LOCATION = America/New_York
+
+[webhook]
+ALLOWED_HOST_LIST = *
+DELIVER_TIMEOUT   = 30
+SKIP_TLS_VERIFY   = false
+
+[api]
+ENABLE_SWAGGER     = true
+MAX_RESPONSE_ITEMS = 50
+DEFAULT_PAGING_NUM = 30
+
+[oauth2]
+ENABLE     = true
+JWT_SECRET = ; GENERATE: gitea generate secret JWT_SECRET
+
+[openid]
+ENABLE_OPENID_SIGNIN = false
+ENABLE_OPENID_SIGNUP = true
+WHITELISTED_URIS     = login.microsoftonline.com
+
+[metrics]
+ENABLED = false
+; Enable for Prometheus monitoring:
+; ENABLED = true
+; TOKEN   = USE_SECURE_TOKEN
+
+[markup.restructuredtext]
+ENABLED = false
+
+[other]
+SHOW_FOOTER_BRANDING = false
+SHOW_FOOTER_VERSION  = false

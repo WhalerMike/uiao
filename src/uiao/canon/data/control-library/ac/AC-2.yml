@@ -1,27 +1,131 @@
-control-id: AC-2
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-2
+# Title      : Account Management
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AC-2
 title: Account Management
+family: Access Control
+status: implemented
+
+implemented_by:
+    - entra-id
+    - workday-hr
+    - servicenow-itsm
+    - cyberark-pam
+
+evidence:
+    - entra-id-account-inventory-export
+    - workday-hr-feed-audit-log
+    - servicenow-account-request-records
+    - entra-id-access-review-completion-log
+    - cyberark-vaulted-account-inventory
+
+parameters:
+    - id: PARAM-AC-002-001
+      description: >-
+          Authorized account types managed by the system, including
+          individual user, group, system, service, and privileged
+          account categories.
+      value: "Federal-personnel user, contractor user, federated guest user, application service principal, managed identity, break-glass administrator, CyberArk-vaulted privileged account"
+    - id: PARAM-AC-002-002
+      description: >-
+          Maximum time window from validated HR onboarding event to
+          account provisioning in the Identity Provider.
+      value: "24 hours from Workday onboarding event to Entra ID account active state via SCIM 2.0"
+    - id: PARAM-AC-002-003
+      description: >-
+          Maximum time window from validated HR separation event to
+          account disable across all integrated systems.
+      value: "1 hour from Workday separation event to Entra ID account disabled state via SCIM 2.0; immediate revocation of all CyberArk-vaulted privileged credentials"
+    - id: PARAM-AC-002-004
+      description: >-
+          Frequency of automated review and disablement of dormant
+          accounts.
+      value: "Continuous evaluation; accounts with no successful interactive or non-interactive sign-in within 30 days are flagged and disabled via Entra ID Lifecycle Workflows"
+    - id: PARAM-AC-002-005
+      description: >-
+          Frequency at which account-management activities are
+          reviewed by the system owner and authorizing official.
+      value: "Quarterly via Entra ID Access Reviews; out-of-cycle on incident, audit finding, or role-scope change"
+
 narrative: |
-  {{ organization.name }} manages system accounts through a centralized and automated process using the Identity Provider.
+  **Authorized Account Types and Ownership**
+  The UIAO substrate maintains the canonical inventory of every
+  account type defined in PARAM AC-002-001 within Microsoft Entra ID
+  as the single Identity Provider of record. Every account is
+  assigned an owner, a sponsor, and a documented business
+  justification at creation time; service principals and managed
+  identities additionally carry the workload identifier of the
+  application they back. The authoritative inventory is exported
+  nightly to the UIAO evidence ledger and reconciled against
+  Workday HR feeds and ServiceNow CMDB to detect orphan accounts.
+  This supports **AC-6** (Least Privilege) and **CM-8** (System
+  Component Inventory).
 
-  **Account Provisioning**
-  New accounts are automatically created within {{ parameters.account-creation-window }} of receiving a validated HR feed via SCIM.
+  **Provisioning Workflow**
+  New accounts are provisioned through an automated, ticketed
+  workflow that originates with a validated source-of-truth event:
+  for federal personnel, the Workday onboarding event; for
+  contractors, a ServiceNow Access Request approved by the sponsor;
+  for service principals, a Terraform module reviewed and merged
+  through the UIAO infrastructure-as-code pipeline. The provisioning
+  workflow completes within the time defined in PARAM AC-002-002.
+  No account is created outside the workflow; manual creation in
+  Entra ID requires break-glass authorization and produces a
+  Microsoft Sentinel alert correlated to **AU-6** (Audit Record
+  Review).
 
-  **Account Deprovisioning**
-  Terminated accounts are disabled within {{ parameters.termination-window }} of the HR separation event.
+  **Modification, Suspension, and Deprovisioning**
+  Account modifications (role changes, group memberships, access
+  package assignments) are routed through Entra ID Access Packages
+  with approval workflows that enforce separation of duties per
+  **AC-5**. Suspension is automatic on policy violation events
+  surfaced by Microsoft Defender for Identity or Microsoft Sentinel
+  detections. Termination is driven by the Workday separation feed
+  with the window defined in PARAM AC-002-003. CyberArk PAM
+  immediately rotates and re-vaults every privileged credential
+  associated with the terminating user, preventing post-separation
+  reuse of any known secret. All lifecycle events are recorded as
+  immutable audit records in Entra ID sign-in logs and exported to
+  the UIAO evidence ledger.
+
+  **Dormant Account Disablement**
+  Entra ID Identity Governance evaluates sign-in activity
+  continuously and automatically disables accounts that meet the
+  dormancy threshold defined in PARAM AC-002-004. Disable events
+  generate a ServiceNow ticket assigned to the account owner with
+  the disable reason, the last observed sign-in timestamp, and the
+  re-enablement procedure if access is still required. This satisfies
+  AC-2(3) (Disable Accounts) at the base-control level.
 
   **Periodic Review**
-  All accounts undergo automated monthly reviews to identify and disable dormant accounts exceeding {{ parameters.inactivity-timeout }} of inactivity.
-implemented-by:
-  - IdentityProvider
-  - HRSystem
-status: implemented
-parameters:
-  account-creation-window: "24 hours"
-  termination-window: "1 hour"
-  inactivity-timeout: "30 days"
-evidence:
-  - type: audit-log
-    ref: AC-2-logs
+  Access Reviews execute at the cadence defined in PARAM AC-002-005
+  through Entra ID Access Reviews. Reviewers are the account owner,
+  the data owner of the resources the account holds access to, and
+  the system owner. Accounts that fail to receive an affirmative
+  review within the campaign window are auto-disabled. Review
+  outcomes and the auto-disable list are exported to the OSCAL SSP
+  via the UIAO governance pipeline, supporting **CA-7** (Continuous
+  Monitoring) and **AU-6** (Audit Record Review).
+
+  **Audit and Telemetry**
+  Every account-management event is captured in Entra ID audit logs
+  and streamed to Microsoft Sentinel for correlation against
+  detection rules tuned for privilege escalation, dormant-account
+  reactivation, and out-of-policy account creation. Telemetry is
+  retained per the FedRAMP Moderate retention requirement and
+  exported to the UIAO evidence ledger for tamper-evident archival
+  consistent with **AU-9** (Protection of Audit Information).
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-3   # Access Enforcement
+    - AC-5   # Separation of Duties
+    - AC-6   # Least Privilege
+    - AU-6   # Audit Record Review
+    - AU-9   # Protection of Audit Information
+    - AU-12  # Audit Record Generation
+    - CA-7   # Continuous Monitoring
+    - CM-8   # System Component Inventory
+    - IA-2   # Identification and Authentication
+    - PS-4   # Personnel Termination

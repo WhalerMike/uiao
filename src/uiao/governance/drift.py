@@ -35,7 +35,7 @@ from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
 #   - a flat ``set[str]`` of active OrgPath codes (legacy contract), or
 #   - a ``uiao.modernization.orgtree.codebook.Codebook`` instance, which
 #     additionally lets the classifier emit Phantom Drift against deprecated
-#     codes (MOD_A §Drift). Duck-typed to avoid a circular import.
+#     codes (UIAO_151 §Drift). Duck-typed to avoid a circular import.
 OrgPathCodebook = Union[Set[str], "Any"]
 
 # ---------------------------------------------------------------------------
@@ -50,6 +50,7 @@ DriftClassLiteral = Literal[
     "DRIFT-AUTHZ",
     "DRIFT-IDENTITY",
     "DRIFT-BOUNDARY",
+    "DRIFT-SSOT-CONTENTION",
 ]
 DRIFT_SCHEMA: DriftClassLiteral = "DRIFT-SCHEMA"
 DRIFT_SEMANTIC: DriftClassLiteral = "DRIFT-SEMANTIC"
@@ -57,6 +58,7 @@ DRIFT_PROVENANCE: DriftClassLiteral = "DRIFT-PROVENANCE"
 DRIFT_AUTHZ: DriftClassLiteral = "DRIFT-AUTHZ"
 DRIFT_IDENTITY: DriftClassLiteral = "DRIFT-IDENTITY"
 DRIFT_BOUNDARY: DriftClassLiteral = "DRIFT-BOUNDARY"
+DRIFT_SSOT_CONTENTION: DriftClassLiteral = "DRIFT-SSOT-CONTENTION"
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +274,7 @@ def classify_authz_drift(
 
 import re as _re
 
-_ORGPATH_REGEX = _re.compile(r"^ORG(-[A-Z]{2,6}){0,4}$")
+_ORGPATH_REGEX = _re.compile(r"^ORG(-[A-Z]{2,6}){0,8}$")
 
 # Identity fields whose absence or change constitutes identity drift
 _IDENTITY_REQUIRED_FIELDS = frozenset(
@@ -380,7 +382,7 @@ def classify_identity_drift(
     if orgpath_value is None:
         reasons.append("OrgPath missing from identity object")
     elif not _ORGPATH_REGEX.match(str(orgpath_value)):
-        reasons.append(f"OrgPath '{orgpath_value}' fails format validation ^ORG(-[A-Z]{{2,6}}){{0,4}}$")
+        reasons.append(f"OrgPath '{orgpath_value}' fails format validation ^ORG(-[A-Z]{{2,6}}){{0,8}}$")
     elif deprecated_codes is not None and str(orgpath_value) in deprecated_codes:
         reasons.append(f"OrgPath '{orgpath_value}' is deprecated in the codebook (Phantom Drift)")
     elif active_codes is not None and str(orgpath_value) not in active_codes:
