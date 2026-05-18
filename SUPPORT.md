@@ -43,6 +43,6 @@ Before filing, consider:
 - [`CONTRIBUTING.md`](https://github.com/WhalerMike/uiao/blob/main/CONTRIBUTING.md) — setup, workflow, adapter activation
 - [`CLAUDE.md`](https://github.com/WhalerMike/uiao/blob/main/CLAUDE.md) — substrate-level agent entry point
 - [`CHANGELOG.md`](https://github.com/WhalerMike/uiao/blob/main/CHANGELOG.md) — "what changed recently"
-- [`docs/docs/glossary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/docs/glossary.qmd) — canonical vocabulary
+- [`docs/docs/canon/glossary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/docs/canon/glossary.qmd) — canonical vocabulary
 - `uiao substrate walk` — validates your clone is intact
 - `make help` (or `make` with no args) — lists common developer tasks
