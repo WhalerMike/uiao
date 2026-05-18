@@ -92,10 +92,7 @@ def generate_one(client, model: str, prompt: str, output_path: Path) -> bool:
     try:
         from google.genai import types  # type: ignore
     except ImportError:
-        print(
-            "  Error: google-genai is required. Install with:\n"
-            "    pip install google-genai Pillow"
-        )
+        print("  Error: google-genai is required. Install with:\n    pip install google-genai Pillow")
         return False
 
     try:
@@ -163,17 +160,12 @@ def main() -> int:
     if not args.dry_run:
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            print(
-                "Error: GEMINI_API_KEY is not set. Export it or use --dry-run."
-            )
+            print("Error: GEMINI_API_KEY is not set. Export it or use --dry-run.")
             return 1
         try:
             from google import genai  # type: ignore
         except ImportError:
-            print(
-                "Error: google-genai is required. Install with:\n"
-                "  pip install google-genai Pillow"
-            )
+            print("Error: google-genai is required. Install with:\n  pip install google-genai Pillow")
             return 1
         client = genai.Client(api_key=api_key)
     else:
