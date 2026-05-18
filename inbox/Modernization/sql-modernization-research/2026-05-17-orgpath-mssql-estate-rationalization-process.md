@@ -944,3 +944,861 @@ Per cluster:
 These feed directly into Phase 5 (the merge playbook), which
 sequences the work.
 
+## 6. Phase 5 — Merge Playbook
+
+The operational phase. For each consolidation cluster ratified in
+Phase 3 and target-selected in Phase 4, execute a controlled merge
+that preserves continuity, audit chain, and rollback capability.
+
+The playbook is **per-cluster**, not per-instance — clusters often
+contain three to six demoted instances that all need to migrate to
+the SSOT (or replace it, if the SSOT was newly provisioned). Each
+cluster's playbook instance is its own work item, owned by a named
+migration owner, gated by named governance checkpoints.
+
+### 6.1 The seven-step canonical sequence
+
+| Step | Action | Validation gate | Rollback path |
+|---|---|---|---|
+| **1. Provision or confirm target** | Stand up the target instance per Phase 4 product selection (Oracle Autonomous DB, Azure SQL DB, etc.) or confirm the SSOT instance has capacity headroom for the consolidated workload | Target instance accessible via Entra auth; storage allocated; backup/DR configured | Target tear-down if not previously existing; no source impact |
+| **2. Seed via mirror / replication** | Use the most-fitting replication mechanism for the source/target pair: native SQL Server replication for SQL-to-SQL, Fabric mirroring for SQL-to-Fabric, Oracle GoldenGate for Oracle targets, pglogical for PostgreSQL targets, or SSMA-driven bulk load for cross-vendor moves. Seed runs in parallel for multiple sources into the single target | Row counts match source ± delta; replication lag ≤ configured threshold | Stop replication; remove target data; source untouched |
+| **3. Linked-server abstraction over old endpoints** | At each source instance, replace direct table access with linked-server views that point at the target. The source endpoint stays operationally available; queries hitting the source transparently route to the target | Application traffic via source still returns identical results; latency overhead ≤ acceptable threshold (typically +20ms for federated joins) | Drop linked-server views; original tables remain in place |
+| **4. Cut over read traffic** | Update application connection strings (or DNS aliases) to point read consumers directly at the target. Source linked-server views remain as legacy fallback for slow-to-migrate apps | Read-side query volume on target rises; source read volume falls; error rate flat | Revert connection strings; reads return to source linked-server abstraction |
+| **5. Cut over write traffic** | The high-risk step. Stop writes on the source; apply final replication delta; flip writes to target. Re-enable application-side writes. Source becomes read-only | Final replication delta = 0; write success rate on target ≥ source baseline; no data divergence at the row level (sampled) | Re-enable writes on source; re-establish reverse replication; rollback window is bounded to the write-cutover transaction |
+| **6. Validate against drift cycle** | Run the substrate's drift engine against the consolidated state. Phase 1 re-discovery confirms target's `mssql_estate` graph; SSOT roster verifies the target instance owns the domain; new DRIFT-SSOT-CONTENTION findings investigate any divergence | Zero DRIFT-SSOT-CONTENTION findings against the cluster; downstream consumer count on target = pre-cutover total | Re-establish source writability; investigate divergence root cause; re-attempt cutover after fix |
+| **7. Decommission source instances** | After cutover window (default 30 days) with zero anomalies, retire the source instances per DM_090's SPN re-registration + service-account migration mechanics. Storage archived to cold-tier; AD SPNs cleaned up; ARM resources deleted (for cloud sources) | Source instances unreachable; SPN inventory shows source SPNs cleared; ARM Resource Graph shows source resources deleted | Restore from archive if needed within the FedRAMP-mandated retention window |
+
+The default cutover window between step 5 and step 7 is 30 days.
+Longer windows are permitted for higher-blast-radius workloads (HR,
+Finance) and recorded explicitly in the SSOT roster's migration plan.
+
+### 6.2 DM_090 re-use
+
+DM_090 (the SQL Server Workload Adapter Interface) already specifies
+the per-instance migration mechanics — SPN re-registration, service-
+account migration, Kerberos delegation preservation, certificate-
+based authentication coordination with the PKI adapter, side-by-side
+operation during migration window. Phase 5 of this process does *not*
+re-invent that. Step 7 (decommission) calls into DM_090's existing
+contract; steps 1-6 are the cross-instance orchestration DM_090
+deliberately leaves out.
+
+The mapping:
+
+| Phase 5 step | DM_090 hook |
+|---|---|
+| Step 1 (provision) | DM_090 §"Discovery Phase Requirements" — same SPN inventory check on the target |
+| Step 2 (seed) | DM_090 §"Required Capabilities" — side-by-side operation during migration window |
+| Step 3 (linked-server abstraction) | DM_090 §"Migration Sequence" — extends with the abstraction layer |
+| Step 4-5 (cutover) | DM_090 §"Migration Sequence" steps 5-6 (validate, re-run SPN inventory) |
+| Step 6 (drift validation) | DM_090 §"Drift Surface" — re-uses the four SPN-drift conditions |
+| Step 7 (decommission) | DM_090 §"Migration Sequence" step 8 (decommission only after drift-cycle) |
+
+### 6.3 Application-side coordination
+
+Cutover only works if application teams are read into the schedule.
+The playbook specifies three coordination patterns:
+
+**Connection-string-managed apps (preferred).** Applications that
+resolve their DB endpoint via a config file, environment variable,
+or service discovery (Consul, Kubernetes Service, Azure App
+Configuration). Cutover is a configuration push; no code change.
+Step 4-5 are operational events.
+
+**DNS-aliased endpoints.** Applications that connect via a DNS CNAME
+that resolves to the SQL instance. Cutover is a DNS update; TTL
+governs the cutover window. Faster than configuration push but
+requires DNS authority over the alias.
+
+**Hard-coded endpoints (legacy).** Applications with the SQL instance
+identifier baked into the code. Cutover requires a code change and
+redeployment. These applications are flagged during Phase 1
+(per dependent-consumer inventory) and either: (a) refactored to one
+of the patterns above before Phase 5 begins, or (b) carried forward
+via the linked-server abstraction indefinitely if refactor is out
+of scope.
+
+A cluster's playbook records the coordination pattern per consumer
+application. If any consumer is in the third category and refactor
+isn't budgeted, the linked-server abstraction step (3) becomes
+permanent for that consumer — not a defect, but a documented
+trade-off.
+
+### 6.4 Cluster execution patterns
+
+Three common cluster shapes have established sub-playbooks:
+
+**Pattern A — Many sources, one target (consolidation):** The most
+common shape. Three to six demoted instances merge into one SSOT.
+The seed step (2) runs in parallel — each source replicates into a
+distinct schema or database on the target, preserving table-name
+collisions; the final merge happens with explicit conflict resolution
+rules captured in the SSOT roster.
+
+**Pattern B — One source, one target (platform migration):** An
+SSOT instance migrates from one platform (e.g., on-prem SQL Server)
+to another (e.g., Azure SQL DB). No consolidation; just a platform
+change. Steps 1-7 run sequentially; no parallel seed.
+
+**Pattern C — One source, multiple targets (split):** An over-loaded
+SSOT splits into domain-specific targets. The source had been
+serving HR + Finance + Procurement; the split moves each domain to
+its own target. Step 2 runs in parallel into multiple targets;
+step 4-5 cut over per consumer-application, not per source.
+
+The default playbook is Pattern A; Patterns B and C are documented
+variants. Operator chooses at the start of each cluster's execution.
+
+### 6.5 Time-budget benchmarks
+
+Operationally, the playbook's bottleneck is step 5 (write cutover)
+because it requires a planned outage window for write-sensitive
+applications. Benchmark windows for federal-typical workloads:
+
+| Cluster shape | Source data volume | Default cutover window |
+|---|---|---|
+| Pattern A, 3 small sources (≤ 50 GB each) | ≤ 150 GB total | 4 hours |
+| Pattern A, 6 medium sources (≤ 500 GB each) | ≤ 3 TB total | 12 hours |
+| Pattern B, one large source (≤ 10 TB) | 10 TB | 24-48 hours (off-hours / weekend) |
+| Pattern C, one source → 3 targets | depends on per-target volume | 8-16 hours per target cutover |
+
+These are planning benchmarks; actual windows depend on replication
+lag, consumer-application tolerance for read-only mode, and the
+agency's operational change-management cadence. The playbook captures
+the actual chosen window per cluster.
+
+### 6.6 What the playbook produces (per cluster)
+
+Outputs of a completed cluster execution:
+
+- **Pre-cutover snapshot** — Phase 1 graph of the cluster + Phase 2
+  overlap report + Phase 3 SSOT designation + Phase 4 target
+  selection. Archived as immutable evidence.
+- **Cutover-window operations log** — every operational action from
+  step 1 to step 7, timestamped, attributed.
+- **Post-cutover snapshot** — Phase 1 re-discovery showing the
+  consolidated state.
+- **Drift report** — substrate walker output against the post-cutover
+  state.
+- **Application-side validation report** — per-consumer confirmation
+  that queries return identical results before and after cutover.
+- **Decommission certificate** — record of the source instance
+  retirement, SPN cleanup, ARM resource deletion (per DM_090's drift
+  surface §7.1).
+
+These per-cluster outputs roll up into the modernization program's
+quarterly report on estate consolidation progress.
+
+## 7. Drift Surface
+
+The substrate's drift engine evaluates the rationalization process'
+outputs against canon. Five drift conditions are specific to this
+process; together they form the "rationalization drift surface" that
+sits alongside the existing five-class drift taxonomy (UIAO-SSOT
+§"Drift baseline").
+
+### 7.1 Drift class summary
+
+| Class | Trigger | Severity | Detection mechanism |
+|---|---|---|---|
+| `DRIFT-SSOT-CONTENTION` | A canonically-designated SSOT for a domain disagrees with the live estate (writes from non-SSOT instance, consumers reading from caches when SSOT is reachable, OrgPath drift on SSOT) | P2 (P1 if remediation window exceeded) | SQL Server Audit + connection-string scan + OrgPath read-back |
+| `DRIFT-RATIONALIZATION-SCHEMA-OVERLAP` | Two or more instances appear in canon with identical `schema_fingerprint` but are not in any ratified consolidation cluster | P3 | Phase 2 fingerprint diff |
+| `DRIFT-RATIONALIZATION-REFERENCE-DUPLICATION` | Two or more instances hold identical reference-data tables not declared as the canon-blessed reference set | P3 | Phase 2 reference-data hash |
+| `DRIFT-RATIONALIZATION-STEWARDSHIP-CONTENTION` | Two OrgPath segments claim authority over the same data domain | P2 | Phase 3 domain-catalog cross-reference |
+| `DRIFT-RATIONALIZATION-RIGHT-SIZING` | Instance's resource utilization deviates from canon-declared capacity envelope (over-provisioned ≥ 60% idle, or under-provisioned ≥ 80% saturation sustained) | P3 | Phase 1 capacity metrics + historical |
+
+### 7.2 The load-bearing finding — `DRIFT-SSOT-CONTENTION`
+
+This class is the operational backbone of the rationalization
+process. After SSOT designation in Phase 3, every write to the
+demoted instances is a contention candidate. The detection
+mechanism:
+
+```
+For each row in canon SSOT roster:
+  domain = roster.domain
+  authoritative_instance = roster.authoritative_instance.identifier
+  demoted_instances = [d.identifier for d in roster.demoted_instances]
+
+  For each write event observed in the SQL Server Audit log:
+    if write.target_instance in demoted_instances:
+      if write.target_table is in cache-eligible-column-set:
+        # write to a cache; permitted
+        emit-event: cache-write-ok
+      else:
+        # write to a non-cache column on a demoted instance
+        emit-finding: DRIFT-SSOT-CONTENTION
+          severity: P2
+          remediation: see roster.demoted_instances.cutover_window
+```
+
+A cache-eligible column is one explicitly declared in the SSOT
+roster as replicable from the SSOT to the demoted instance. Writes
+to these are expected (cache replication); writes elsewhere are
+contention.
+
+### 7.3 Remediation paths for `DRIFT-SSOT-CONTENTION`
+
+Three operator decisions, each captured in the roster:
+
+**Re-ratify.** The demoted instance has organically become the new
+authority — operational reality has shifted and canon needs to catch
+up. Steward updates the roster to swap authoritative and demoted;
+new PR; governance review; merge.
+
+**Re-direct.** The demoted instance is incorrectly authoritative.
+Writes need to route to the canonical SSOT. Either (a) update
+application connection strings, or (b) extend the linked-server
+abstraction's write path to route through.
+
+**Retire.** The contention exists only because retirement is overdue.
+Execute Phase 5's decommission step on the demoted instance.
+
+Each remediation generates a `remediation_event` row that closes
+the drift finding. The finding remains in the audit trail
+indefinitely.
+
+### 7.4 Drift surface vs. existing taxonomy
+
+The rationalization drift surface is **additive** to the existing
+five-class drift taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`,
+`DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`). The classes
+fit alongside, not within:
+
+| Existing class | Rationalization-process equivalent | Relationship |
+|---|---|---|
+| `DRIFT-SCHEMA` | `DRIFT-RATIONALIZATION-SCHEMA-OVERLAP` | The rationalization class is a *narrower* form — schema overlap *between* instances, not within |
+| `DRIFT-SEMANTIC` | `DRIFT-RATIONALIZATION-REFERENCE-DUPLICATION` | Reference-data duplication is the most common semantic-overlap pattern |
+| `DRIFT-PROVENANCE` | (none direct; SSOT roster provenance flows in the existing class) | Roster-PR provenance is `DRIFT-PROVENANCE` if the PR doesn't reference its evidence |
+| `DRIFT-AUTHZ` | (none direct; stewardship contention overlaps) | Authorization changes on the SSOT instance are `DRIFT-AUTHZ` regardless of rationalization |
+| `DRIFT-IDENTITY` | (none direct; Phase 1's unattributed-instance finding is `DRIFT-IDENTITY`) | Unchanged |
+| (none) | `DRIFT-SSOT-CONTENTION` | New class, no existing analog |
+| (none) | `DRIFT-RATIONALIZATION-STEWARDSHIP-CONTENTION` | New class, no existing analog |
+| (none) | `DRIFT-RATIONALIZATION-RIGHT-SIZING` | New class, no existing analog |
+
+The three classes with no existing analog are the contribution of
+this process; the others fit alongside the five canonical classes.
+
+### 7.5 Adapter emission
+
+The Tier-A1 adapter (`MSSQLInventoryAdapter`) emits the topology-
+level drift findings — unattributed instances (`DRIFT-IDENTITY`)
+and malformed OrgPath tags (`DRIFT-PROVENANCE`). It does *not*
+emit the rationalization-specific classes; those require:
+
+- Phase 2 outputs (`DRIFT-RATIONALIZATION-SCHEMA-OVERLAP`,
+  `DRIFT-RATIONALIZATION-REFERENCE-DUPLICATION`)
+- Phase 3 roster + live estate cross-reference
+  (`DRIFT-SSOT-CONTENTION`, `DRIFT-RATIONALIZATION-STEWARDSHIP-CONTENTION`)
+- Phase 1 + historical capacity metrics
+  (`DRIFT-RATIONALIZATION-RIGHT-SIZING`)
+
+These higher-level findings are emitted by a sibling Phase-2-aware
+analytics module (proposed: `uiao.rationalization.engine`) that
+consumes the adapter's output plus the historical baselines.
+Implementation follows acceptance of this spec.
+
+## 8. Operator Workflows
+
+Concrete commands and decision points for operators running the
+rationalization process. The workflows below assume the proposed CLI
+sub-app `uiao mssql rationalize` (see §9.4); pre-CLI equivalents
+using direct Python module invocation are listed where applicable.
+
+### 8.1 Workflow A — Initial estate inventory (run weekly)
+
+The baseline discovery cadence. Phase 1 only.
+
+```bash
+# Tier-A1 (read-only AD + ARG only)
+uiao mssql rationalize discover \
+  --output mssql-estate-graph.json \
+  --tenant-id $TENANT_ID \
+  --cloud commercial
+
+# Pre-CLI equivalent
+python -m uiao.adapters.mssql_inventory_adapter \
+  --config '{"tenant_id":"$TENANT_ID","cloud":"commercial"}' \
+  > mssql-estate-graph.json
+```
+
+Output: per-instance inventory with OrgPath attribution.
+
+Operator review points:
+- Unattributed instances (`DRIFT-IDENTITY` findings) — these block
+  Phase 2; remediation precedes any further analysis.
+- Sudden instance count delta vs. previous week — > 5% delta is a
+  signal that either: (a) a major migration completed, or (b) shadow
+  instances were just discovered, or (c) discovery scope changed.
+  Each is investigable.
+
+### 8.2 Workflow B — Overlap analysis (run monthly, post-Tier-A2 access)
+
+Once Tier-A2 access is authorized (per-instance read-only SQL login
+granted), the overlap analysis runs across the full estate.
+
+```bash
+uiao mssql rationalize overlap \
+  --input mssql-estate-graph.json \
+  --include-content-inventory \
+  --domain HR Finance Procurement \
+  --output overlap-report.yaml
+```
+
+Operator review points:
+- Strict findings (`IDENTICAL-SCHEMA`, `IDENTICAL-REFERENCE-DATA`,
+  `SHADOW-CATALOG`) — confidence 1.0, auto-flag for consolidation
+  review with no further triage needed.
+- Semantic findings (high confidence ≥ 0.85) — operator confirms
+  the inferred entity-level match; common false-positive: two
+  tables with similar columns that serve genuinely different roles
+  (e.g., `employee_address` and `vendor_address` for an agency
+  whose schema-evolution borrowed columns).
+- Density outliers and service-account-sprawl signals — even
+  without content inventory, operationally meaningful.
+
+### 8.3 Workflow C — SSOT ratification (per-domain, ad-hoc)
+
+The governance step. Each data domain gets a separate ratification PR.
+
+```bash
+# Generate the draft SSOT roster
+uiao mssql rationalize designate-ssot \
+  --input overlap-report.yaml \
+  --domain HR \
+  --output inbox/mssql-rationalization/proposed-ssot-roster-hr.yaml
+
+# Steward reviews; adjusts; copies to canon location
+cp inbox/mssql-rationalization/proposed-ssot-roster-hr.yaml \
+   src/uiao/canon/data/mssql-rationalization/ssot-roster.yaml
+
+# Open canon-change PR
+git checkout -b "canon-change/ssot-roster-hr-domain"
+git add src/uiao/canon/data/mssql-rationalization/ssot-roster.yaml
+git commit -m "canon(mssql-rationalization): ratify HR-domain SSOT roster"
+```
+
+Operator decision points before PR:
+- Override the auto-nominee when procurement signals warrant — e.g.,
+  the nominee's host is on the retirement track in 2027.
+- Record the cutover window for each demoted instance.
+- Attach the supporting overlap report as PR evidence.
+
+Governance-board review points:
+- Population size vs. capacity headroom — does the nominee have
+  room for the consolidated load?
+- Boundary fit — is the nominee in the right boundary for the
+  domain's data classification?
+- Consumer impact — how many applications need cutover support?
+
+### 8.4 Workflow D — Target selection (per cluster)
+
+After SSOT ratification, each demoted-instance set in a cluster
+needs a target if consolidation is to a *new* instance (rather than
+to the existing SSOT).
+
+```bash
+uiao mssql rationalize select-target \
+  --cluster cluster-id-fin-gl-001 \
+  --ssot-roster src/uiao/canon/data/mssql-rationalization/ssot-roster.yaml \
+  --output target-selection-matrix-fin-gl-001.yaml
+```
+
+Operator decision: review the scored candidates. Pick one (record
+rationale). Open the target-selection PR.
+
+The substrate does not pick the product — see §5 and the
+product-neutrality doctrine. The scoring matrix recommends; the
+tenant decides.
+
+### 8.5 Workflow E — Cluster merge execution (per cluster)
+
+The seven-step playbook from §6. Each step has a CLI verb or a
+runbook checkpoint.
+
+```bash
+# Step 1: provision target (if not the existing SSOT)
+uiao mssql rationalize provision-target \
+  --cluster cluster-id-fin-gl-001 \
+  --target-selection target-selection-matrix-fin-gl-001.yaml
+
+# Step 2: seed replication
+uiao mssql rationalize seed \
+  --cluster cluster-id-fin-gl-001 \
+  --source-instances FIN-EAST-01,FIN-CENTRAL-01 \
+  --target FIN-WEST-01
+
+# Step 3: linked-server abstraction
+uiao mssql rationalize abstract-endpoints \
+  --cluster cluster-id-fin-gl-001
+
+# Step 4: read cutover (per consumer)
+uiao mssql rationalize cutover-reads \
+  --cluster cluster-id-fin-gl-001 \
+  --consumer-app FinReporter
+
+# Step 5: write cutover (planned outage window)
+uiao mssql rationalize cutover-writes \
+  --cluster cluster-id-fin-gl-001 \
+  --planned-window "2026-08-15T22:00Z/2026-08-16T06:00Z"
+
+# Step 6: drift validation
+uiao mssql rationalize validate \
+  --cluster cluster-id-fin-gl-001
+
+# Step 7: decommission (after cutover window)
+uiao mssql rationalize decommission \
+  --cluster cluster-id-fin-gl-001 \
+  --confirm "verified-zero-drift-30-days"
+```
+
+Each verb emits an operations-log entry that lands in the cluster's
+playbook archive. The decommission verb is gated on a confirm token
+that the operator must paste explicitly — protection against
+accidental destruction of operational state.
+
+### 8.6 Workflow F — Drift review (run continuously)
+
+The substrate walker fires drift findings whenever the operating
+state diverges from the SSOT roster.
+
+```bash
+# Substrate walker (existing canon command)
+uiao substrate walk --include rationalization
+```
+
+Operator review of `DRIFT-SSOT-CONTENTION` findings:
+- Re-ratify, re-direct, or retire (per §7.3).
+- Record the decision in the SSOT roster's `remediation_event` list.
+- Close the finding by referencing the remediation event id.
+
+### 8.7 Workflow G — Re-discovery and progress tracking
+
+After consolidation, re-run Workflow A. The estate graph should
+show the retired instances absent, the consolidated SSOT with the
+new aggregate row count, and the cluster's row in the SSOT roster
+moved to a closed state.
+
+```bash
+uiao mssql rationalize progress \
+  --since 2026-Q1 \
+  --output rationalization-progress-2026-q2.md
+```
+
+Output: instance-count delta, consolidation-cluster completion
+rate, data-volume reduction, and remaining backlog. Suitable as
+quarterly modernization-program report input.
+
+## 9. Proposed Canonical Actions
+
+The work this spec defines, sized as the canon-change PRs that
+would land it. Each item is one PR with one ADR or one canon-document
+amendment.
+
+### 9.1 New UIAO_NNN — MS SQL Estate Rationalization Process
+
+**Status:** Proposed.
+**Allocation:** Next available `UIAO_NNN` slot in
+`document-registry.yaml` (subject to governance review for slot
+choice).
+**Title:** "MS SQL Estate Rationalization Process — OrgPath/OrgTree-
+Driven Discovery, Overlap Detection, SSOT Designation, and
+Consolidation Playbook"
+
+The promoted, canon-anchored version of this draft. Frontmatter
+updated to `classification: CANONICAL`, derived-at + derived-by
+provenance attached, and cross-references to all sibling canon docs
+verified.
+
+The customer-facing operator narrative lives at
+`docs/customer-documents/orgpath-narrative/07b-orgpath-driven-mssql-rationalization.qmd`
+as the user-facing wrapper; the canon doc is the authoritative
+source.
+
+### 9.2 New ADR — `DRIFT-SSOT-CONTENTION` Drift Class
+
+**Status:** Proposed.
+**Allocation:** Next available ADR number.
+**Title:** "Drift Class: DRIFT-SSOT-CONTENTION for Data-Plane
+Stewardship Authority"
+
+Ratifies the new drift class introduced in §7. The ADR codifies:
+
+1. The class definition (operational scope, severity bands,
+   detection mechanism).
+2. The placement in the substrate's drift taxonomy (additive to the
+   five canonical classes per UIAO-SSOT).
+3. The relationship to the strategy paper's proposed
+   `DRIFT-PERSISTENCE::stacked-sor` (peers, not parent-child).
+4. The remediation paths and audit-trail requirements.
+
+The ADR also adds matching rows to
+`docs/docs/16_DriftDetectionStandard.qmd` and updates the
+substrate walker's drift-class registry.
+
+### 9.3 DM_090 Amendment — Inside-the-Instance Inventory Extension
+
+**Status:** Proposed amendment to existing canon.
+**Target:** `src/uiao/modernization/directory-migration/adapters/sql-server/sql-server-adapter-interface.md`
+
+DM_090 currently specifies SPN-level + service-account-level
+discovery. Phase 2's overlap analysis requires database-level +
+table-level discovery (the SQL system catalog queries detailed in
+§2.2 of this spec). The amendment:
+
+1. Adds a "Tier-A2 Discovery" section specifying the inside-the-
+   instance system-catalog queries (sys.databases, sys.schemas,
+   sys.tables, INFORMATION_SCHEMA.COLUMNS, sys.foreign_keys).
+2. Defines the read-only SQL login requirement (`VIEW SERVER STATE`
+   + `VIEW ANY DEFINITION`) and the governance contract for granting
+   it.
+3. Documents the dependency on the rationalization process (this
+   spec) for how the deeper inventory is consumed.
+4. References this spec's Phase 2 overlap-detection algorithms as
+   the canonical use-case.
+
+### 9.4 New CLI Sub-app — `uiao mssql rationalize`
+
+**Status:** Proposed.
+**Target:** New module `src/uiao/cli/mssql_rationalize.py` registered
+as a sub-app on the existing `uiao` Typer tree per Repository
+Invariant I6 (CLI commands under sub-apps).
+
+Commands surfaced (per §8 workflows):
+
+| Verb | Purpose | Tier required |
+|---|---|---|
+| `discover` | Run Phase 1 estate enumeration | A1 |
+| `overlap` | Run Phase 2 overlap analysis | A2 |
+| `designate-ssot` | Generate draft SSOT roster for a domain | A2 |
+| `select-target` | Generate scored target-selection matrix for a cluster | A1 |
+| `provision-target` | Provision a new target (or confirm SSOT capacity) | Write to target |
+| `seed` | Initiate replication seed | Write to target |
+| `abstract-endpoints` | Install linked-server abstraction at sources | Write to sources |
+| `cutover-reads` | Update consumer connection strings | App-team coordinated |
+| `cutover-writes` | Execute the write-cutover (planned outage) | Write to both |
+| `validate` | Run drift validation against the cluster post-cutover | A1 |
+| `decommission` | Retire sources after cutover window | Write to AD + ARM |
+| `progress` | Generate quarterly progress report | A1 |
+
+Each verb has happy-path + failure-mode tests per the CLI invariant
+in AGENTS.md (UIAO_135 §"Repository Invariants" I6 — new CLI commands
+ship with both test classes in the same PR).
+
+### 9.5 Adapter Registry Entry — After Governance Review
+
+**Status:** Pending governance review (does not land in any other
+proposed PR).
+**Target:** `src/uiao/canon/adapter-registry.yaml`
+
+Add a new conformance-adapter entry registering `MSSQLInventoryAdapter`
+(the Tier-A1 adapter shipped in this branch's `feat(adapters/mssql-
+inventory)` commit). The entry follows the existing schema with
+fields: `id`, `name`, `class: conformance`, `mission-class: telemetry`,
+`status: active` (or `phase-2`), `vendor: Microsoft`, `scope`,
+`outputs`, `triggers`, `evidence-class: interval`, `controls`.
+
+Registry has strict slot counts (only 4 conformance slots, 3 reserved
+for Phase 2+ per registry header comment). The governance review
+decides whether to:
+
+1. Allocate an existing reserved slot to MS SQL Inventory.
+2. Expand the registry by one slot via an ADR.
+3. Defer registration until a sibling Tier-A2 adapter is also ready
+   (so both ship together).
+
+### 9.6 New Canon Data — Reference-Data Overlap Library
+
+**Status:** Proposed.
+**Target:** `src/uiao/canon/data/mssql-rationalization/reference-data-patterns.yaml`
+
+Seeds the canon-blessed reference-data pattern library used by
+Phase 2's `IDENTICAL-REFERENCE-DATA` detector. Initial entries: US
+state codes, country codes (ISO 3166), federal occupation series
+codes (OPM), federal pay-plan codes, currency codes (ISO 4217),
+employment-status enumerations, DoD service-component codes, GS-
+grade enumerations. See Appendix A.
+
+Extension via PR + governance review like any other canon data.
+
+### 9.7 New Canon Data — Abbreviation Dictionary
+
+**Status:** Proposed.
+**Target:** `src/uiao/canon/data/mssql-rationalization/abbreviation-dictionary.yaml`
+
+Seeds the domain-dictionary used by Phase 2's name-similarity
+heuristic. Common federal-IT abbreviations (`emp` → `employee`,
+`acct` → `account`, `dept` → `department`, etc.).
+
+### 9.8 New Canon Data — Data Domain Catalog
+
+**Status:** Proposed.
+**Target:** `src/uiao/canon/data/mssql-rationalization/domain-catalog.yaml`
+
+Seeds the data-domain catalog used by Phase 3 SSOT designation. See
+Appendix B. Agencies extend with their own domains; the seed
+covers federal-typical domains.
+
+### 9.9 OrgPath Narrative Chapter 07b
+
+**Status:** Proposed (depends on §9.1).
+**Target:** `docs/customer-documents/orgpath-narrative/07b-orgpath-driven-mssql-rationalization.qmd`
+
+Customer-facing narrative wrapping the canon spec. Sibling to 07a
+"UIAO Beneath the Azure SSOT Stack" (which already develops the
+discovery + OrgPath enrichment story). 07b extends with overlap
+detection, SSOT designation, and consolidation playbook narratives.
+
+### 9.10 UIAO Modernization Program — Phase 1 Section Addition
+
+**Status:** Proposed (depends on §9.1).
+**Target:** `docs/customer-documents/modernization/uiao-modernization-program/02-phase1-modernization-mechanics.qmd`
+
+Add a section to the existing Phase 1 chapter declaring MS SQL
+estate rationalization as a Phase 1 deliverable; cross-links to
+the canon spec, the narrative chapter, and the adapter implementation.
+
+## 10. Risks, Opens, and Sequencing
+
+### 10.1 Risks and compensating canon
+
+| Risk | Compensating canon / mechanism | Residual exposure |
+|---|---|---|
+| **Shadow instances not in AD/SPN inventory** (SQL-Auth-only, non-domain-joined Linux SQL Server, Azure SQL DB outside the discovered subscription scope) | Phase 1 cross-correlates AD SPN inventory with Azure Resource Graph, network-scan-emitted endpoint inventory (Defender for Servers, ThousandEyes), and Purview asset catalog. Discrepancies are `DRIFT-IDENTITY` findings. | Pure SQL-Auth instances on non-discoverable networks remain a blind spot; documented as Tier-0 risk in the program |
+| **Tier-A2 access negotiation delay** (per-instance SQL read-only login takes longer to authorize than the engagement window) | Tier-A1 deliverables (topology + sprawl + zombie reports) are useful standalone; consolidation-opportunity quantification doesn't require Tier-A2. The negotiation for Tier-A2 starts in parallel with Tier-A1 execution. | Phase 2-5 deliverables are gated on Tier-A2; pure-AD engagements deliver only Phase 1 |
+| **Data-classification cutover risk** (a write to the wrong target leaks data across classification boundaries) | Boundary fit is a hard eligibility gate in Phase 3 SSOT designation (§4.2); the SSOT roster records boundary classification; cutover steps validate boundary alignment before write redirect. | An incorrect boundary annotation on an instance is undetectable until a classification audit; ScubaGear-equivalent for SQL workloads is a separate canon need |
+| **OPM HCM trajectory disrupts HR-domain SSOT** (the OPM HCM single-vendor consolidation displaces every agency's HR SSOT designation) | UIAO_135 §2.1 records the OPM HCM trajectory; SSOT roster's HR entry can declare a `pending_supersession` flag pointing to the OPM HCM rollout schedule. | If OPM HCM is delayed (or the awarded vendor changes), agency consolidation decisions remain in flight; ratifying SSOT in the meantime preserves audit chain |
+| **Reciprocity intersection** (a per-agency reciprocity bundle per ADR-054 / UIAO_140 needs cross-agency data joins that this process consolidates within an agency) | Per-agency SSOT rosters compose to a federation-of-rosters view; the reciprocity bundle's evidence chain cites the relevant agency's SSOT roster. Cross-agency joins are read-only via Fabric mirror; never write across agency boundaries. | Cross-agency join performance and authority disputes are open governance questions; ADR-054 §"open" lists them |
+| **Vendor lock-in via the consolidation target** (an agency that consolidates everything onto Oracle becomes Oracle-bound) | Product-neutral scoring in Phase 4 (§5); contract-anchored eligibility; tenant decides; canon records the rationale per cluster. | Consolidation does reduce vendor optionality vs. status quo; the savings is the trade-off |
+| **Decommission of an instance with hidden dependencies** (a forgotten consumer-app breaks when its SQL source disappears) | 30-day cutover window between write-cutover and decommission; linked-server abstraction layer remains operationally active during the window; consumer-application inventory completeness is a Phase 1 prerequisite | Hidden dependencies surface during the window as failed read attempts; rollback path returns to source within minutes |
+| **Phase 2 overlap false-positives** (semantic heuristics flag tables that look similar but serve genuinely different roles) | Operator triage required for medium-confidence findings (0.60-0.85); only high-confidence and strict findings auto-flag for consolidation review | False positives waste operator review time; the alternative (stricter thresholds) yields false negatives that miss real consolidation opportunities |
+| **Stale OrgPath cascade fails attribution** (the principal's `extensionAttribute1` was set years ago and no longer reflects the instance's true owner) | The cascade walks four levels (principal → host → ARM tag → unpositioned); the unpositioned default fires `DRIFT-IDENTITY` for operator review | False attribution to a stale OrgPath is possible; the rationalization process should periodically re-attribute against the live HR-driven OrgPath state |
+
+### 10.2 Open questions for governance review
+
+These are the architectural calls the spec deliberately leaves to
+governance review, not the agent or the operator.
+
+1. **Domain catalog scope.** Appendix B seeds 10 federal-typical
+   data domains. Agencies may have additional domains (e.g.,
+   Citizen-Services-by-Program-Area, Classified-Operations,
+   Component-Specific-Mission-Data). Who curates the catalog
+   per-agency, and how often is it re-ratified?
+
+2. **Tier-A2 access governance.** The per-instance SQL read-only
+   login requirement (`VIEW SERVER STATE` + `VIEW ANY DEFINITION`)
+   is a separate authorization gate from AD read-only. Who in the
+   agency owns granting that authorization, and what's the SLA?
+   Is there a standard service-account class (e.g.,
+   `uiao-svc-sqlreadonly`) the substrate provisions via the existing
+   workload-identity-federation contract (ADR-004)?
+
+3. **Cross-domain SSOT.** Some data domains overlap (HR + Procurement
+   both reference Vendors as Suppliers; HR + Finance both track
+   Cost-Center membership). When a cross-domain join is the SSOT
+   for a *third* domain (or a meta-domain), how is that designated?
+   The current per-domain SSOT model doesn't address this.
+
+4. **Stewardship contention resolution authority.** When two OrgPath
+   segments claim authority over the same data domain (e.g., HQ-HR
+   and Regional-HR both want to own employee records), who arbitrates?
+   The default is the governance steward, but the steward may not have
+   visibility into the operational reality.
+
+5. **Right-sizing thresholds.** §7.1's `DRIFT-RATIONALIZATION-RIGHT-SIZING`
+   defaults (≥ 60% idle = over-provisioned; ≥ 80% saturation sustained
+   = under-provisioned) are heuristic. Should agencies tune per
+   workload tier, or accept the defaults?
+
+6. **Reference-data pattern library extension policy.** Appendix A
+   lists eight initial reference-data patterns. Agencies will need to
+   extend (e.g., Treasury wants ABA routing-number patterns;
+   USDA wants commodity codes). Is the extension policy: any
+   agency PR, with governance-board approval? Or a per-agency
+   private extension that doesn't land in the canon-blessed library?
+
+7. **Decommissioning audit retention.** FedRAMP requires evidence
+   retention; how long after an instance is decommissioned must its
+   `mssql_estate` graph rows persist as historical record? Default
+   3 years per the existing canon convention; warrants ratification.
+
+8. **Tier-A2 adapter architecture.** Should the Tier-A2 adapter
+   (per-instance SQL connection) be a separate adapter from this
+   spec's Tier-A1, or an extended mode of `MSSQLInventoryAdapter`?
+   The "separate" answer is cleaner (different access tier, different
+   credential model); the "extended" answer is simpler (one adapter,
+   config-driven scope).
+
+9. **Linked-server abstraction's permanent-residency policy.** §6.3
+   notes that hard-coded-endpoint applications may rely on the
+   linked-server abstraction indefinitely if refactor is not
+   budgeted. Is that operationally acceptable, or does the
+   modernization program require a hard sunset date for the
+   abstraction layer?
+
+10. **Multi-tenant deployment.** ADR-058 (HRIT productization)
+    contemplates multi-tenant UIAO deployments. Does the SSOT roster
+    federate across tenants, or stay tenant-private? The strategy
+    paper §10.2 question 1 lists this as an open question for the
+    substrate operating store; the same question applies here.
+
+### 10.3 Sequencing — which canon edits land in which order
+
+| Order | Item | Blocking? | Rationale |
+|---|---|---|---|
+| 1 | Acceptance of this draft (governance review + open-question resolution) | Yes — gates all subsequent items | The proposed actions in §9 inherit doctrine from this draft |
+| 2 | ADR for `DRIFT-SSOT-CONTENTION` class (§9.2) | Yes — gates §9.1 and §9.3 | Drift class is doctrinal; spec promotion needs the class defined |
+| 3 | UIAO_NNN spec promotion (§9.1) | Companion to §9.2 | Lands with the ADR |
+| 4 | Reference-data overlap library + abbreviation dictionary + domain catalog (§9.6-9.8) | Companion to §9.1 | Canon data the spec references |
+| 5 | DM_090 amendment for Tier-A2 inventory (§9.3) | Follows §9.1 | Spec defines the Tier-A2 contract; DM_090 ratifies the implementation hooks |
+| 6 | Tier-A1 adapter registry entry (§9.5) | Follows §9.1 | Registry registration is a separate governance decision |
+| 7 | Tier-A2 adapter implementation | Follows §9.3 | Per-instance SQL read; new code |
+| 8 | `uiao mssql rationalize` CLI sub-app (§9.4) | Follows §6 and §7 (operator workflows depend on it) | Surfaces the workflows in §8 |
+| 9 | OrgPath narrative chapter 07b (§9.9) | Follows §9.1 | Customer-facing wrapper of the canon spec |
+| 10 | UIAO Modernization Program section addition (§9.10) | Follows §9.1 | Cross-link from program docs |
+| 11 | Phase 1 estate enumeration first run (operational) | Follows §6 (CLI ready) | First production discovery |
+| 12 | Phase 3 SSOT ratification per-domain (operational) | Follows §11 (discovery output exists) | Per-domain governance work |
+| 13 | Phase 5 cluster merge executions (operational) | Follows §12 (rosters ratified) | Per-cluster work, parallel across clusters |
+
+The sequence follows the same pattern as ADR-073's NAC rollout:
+contract first, data population second, enforcement third. The
+substrate has done this once; the rationalization process gets the
+same shape for free.
+
+## Appendix A — Reference-Data Overlap Pattern Library (seed)
+
+Canon-seeded reference-data patterns for Phase 2's
+`IDENTICAL-REFERENCE-DATA` detector. Each pattern declares the
+expected row count window, a schema fingerprint, and a content
+fingerprint that should be uniform across instances. Agencies extend
+this list via PR + governance review.
+
+### A.1 Initial seed entries
+
+| Pattern id | Description | Expected row count | Schema fingerprint (representative columns) | Source authority |
+|---|---|---|---|---|
+| `us-state-codes` | US states + DC + territories | 50-60 | (code, name, type, [region]) | USPS / ISO 3166-2:US |
+| `country-codes-iso3166` | ISO 3166-1 alpha-2 / alpha-3 country codes | 240-260 | (alpha2, alpha3, numeric, name) | ISO 3166 |
+| `currency-codes-iso4217` | ISO 4217 currency codes | 170-180 | (code, name, numeric, minor_unit) | ISO 4217 |
+| `opm-occupation-series` | OPM occupation series codes | 450-520 | (series_code, title, group_code, [job_family]) | OPM |
+| `opm-pay-plan-codes` | OPM pay-plan codes (GS, FW, etc.) | 70-90 | (code, title, type) | OPM |
+| `gs-grade-codes` | General Schedule grades | 15-20 | (grade, [step_count]) | OPM |
+| `dod-service-component-codes` | DoD military service components | 10-15 | (code, name, branch) | DoD |
+| `employment-status-enums` | Employment status enumerations | 8-15 | (code, name, is_active) | Agency HR canon |
+| `pii-classification-levels` | PII / Privacy Act classification levels | 5-10 | (level, name, retention_years) | NIST 800-122 / Privacy Act |
+| `fedramp-impact-levels` | FedRAMP impact levels (Low/Mod/High) | 3 | (level, name, [boundary_alias]) | FedRAMP PMO |
+| `nist-control-families` | NIST 800-53 control families | 20-22 | (family_code, family_name, control_count) | NIST 800-53r5 |
+
+### A.2 Extension contract
+
+Agencies adding new patterns supply:
+
+1. **Pattern id** — kebab-case, unique within the library.
+2. **Description** — one-sentence operational description.
+3. **Expected row count window** — `min ≤ row_count ≤ max`.
+4. **Schema fingerprint** — the column set the pattern requires
+   (minimum); additional columns are permitted but don't
+   participate in the fingerprint match.
+5. **Reference content** — either a SHA-256 hash of a canonical
+   serialization OR a pointer to an authoritative external source
+   (URL + version).
+6. **Source authority** — the agency or external body that owns
+   the canonical content.
+
+The library is canon-anchored. A pattern's reference content can be
+versioned (e.g., ISO 3166 has periodic updates); the library tracks
+the canonical version and emits drift when the live estate diverges.
+
+## Appendix B — Seed Data Domain Catalog
+
+Initial catalog of federal-typical data domains for Phase 3 SSOT
+designation. Agencies extend with mission-specific domains; the seed
+covers the cross-agency common set.
+
+### B.1 Seed domain entries
+
+| Domain | Canonical OrgPath segment | Typical anchor tables | Authoritative-source signal |
+|---|---|---|---|
+| **HR** | `ORG-<AGENCY>-HR` | Employees, Positions, Organizational-Units, Manager-Chain, Time-Attendance, Leave-Balance | HR-system-of-record (Workday / Oracle HCM / inherited PeopleSoft) |
+| **Finance** | `ORG-<AGENCY>-FIN` | General-Ledger, Accounts-Payable, Accounts-Receivable, Budget, Obligations, Disbursements | Financial-system-of-record (Oracle Federal Financials / Momentum / Agency-specific) |
+| **Procurement** | `ORG-<AGENCY>-PROC` | Vendors, Contracts, Requisitions, Purchase-Orders, Receipts, Invoices | Procurement-system-of-record (PRISM / SAP Ariba / Agency-specific) |
+| **Logistics** | `ORG-<AGENCY>-LOG` | Assets, Inventory, Facilities, Transportation, Equipment-Maintenance | Asset-management-system-of-record (DPAS / Maximo / Agency-specific) |
+| **FOIA** | `ORG-<AGENCY>-FOIA` | Requests, Responses, Exemptions, Appeals, Litigation-Cases | FOIA-tracking-system-of-record (FOIAxpress / Agency-specific) |
+| **Records-Management** | `ORG-<AGENCY>-RM` | Record-Series, Dispositions, Holds, Transfers-to-NARA | RM-system-of-record (Records-Manager / Agency-specific) |
+| **Security** | `ORG-<AGENCY>-SEC` | Incidents, Classifications, Clearances, PII-Disclosures, Audit-Findings | SOC-system-of-record (ServiceNow Security / Sentinel / Agency SOC) |
+| **Citizen-Services** | `ORG-<AGENCY>-CITZ` | Applicants, Applications, Eligibility-Determinations, Benefits-Issued | Program-specific-systems-of-record (BSA / SSA / VA program registries) |
+| **Compliance** | `ORG-<AGENCY>-COMP` | Audits, Findings, Remediations, POA&M-Items, Control-Assessments | GRC-system-of-record (RSA Archer / ServiceNow GRC / Xacta) |
+| **IT-Operations** | `ORG-<AGENCY>-IT` | CMDB, Applications, Infrastructure, Change-Records, Service-Tickets | ITSM-system-of-record (ServiceNow / BMC Remedy) |
+
+### B.2 Domain-catalog extension contract
+
+Agencies adding new domains supply:
+
+1. **Domain name** — short identifier, unique within the agency.
+2. **Canonical OrgPath segment** — the segment of the OrgTree this
+   domain hangs from.
+3. **Typical anchor tables** — the tables that, if present in an
+   instance, identify the instance as participating in this domain.
+4. **Authoritative-source signal** — operational signal that
+   identifies the agency's incumbent system-of-record (vendor name,
+   product line, agency-specific designation).
+5. **Cross-domain dependencies** — domains this one references
+   (e.g., Procurement references Finance for invoice payments).
+
+The catalog is canon-anchored per agency; the seed list above is
+the cross-agency baseline that agencies inherit or replace.
+
+### B.3 Cross-domain dependency graph (seed)
+
+Mission-typical dependencies between the seed domains:
+
+```
+HR ──┐
+     ├──► Finance (employee payroll → GL)
+     └──► Citizen-Services (case officer assignment)
+
+Finance ──► Procurement (obligation tracking)
+            ──► Logistics (asset capitalization)
+
+Procurement ──► Logistics (asset acquisition)
+
+Records-Management ──► (all other domains; record-series
+                       designations cross-cut)
+
+Security ──► (all other domains; classification cross-cuts)
+
+Compliance ──► (all other domains; control evidence cross-cuts)
+
+IT-Operations ──► (all other domains; CMDB cross-cuts)
+```
+
+When a candidate consolidation cluster spans multiple domains (e.g.,
+a SQL instance that holds both HR and Finance tables), the
+cross-domain dependency graph governs which domain "owns" the
+SSOT designation. Default: the domain whose tables represent the
+larger row count owns; explicit override via SSOT-roster ratification.
+
+## Appendix C — Citation Index
+
+Files this spec directly references; reviewer-convenience.
+
+- §1 — `Spec3-D1.1`, `Spec3-D1.8`, `survey.py::extract_spn_inventory`,
+  `UIAO_151`, `gcc-boundary-gap-registry.yaml`
+- §2 — DM_090, `mssql_inventory_adapter.py`,
+  UIAO_153 / ADR-063 (storage slot)
+- §3 — Reference-data library (§A), abbreviation dictionary,
+  domain catalog (§B)
+- §4 — CHARTER-003 (SSOT vs SoA), UIAO_001 (SSOT principle),
+  UIAO_135 §2.1 (OPM HCM)
+- §5 — Strategy paper companion (`2026-05-17-sql-modernization-strategy-expansion.md`),
+  ADR-068 (auth modernization)
+- §6 — DM_090 migration sequence, ADR-073 (drift detection)
+- §7 — UIAO-SSOT drift baseline,
+  `docs/docs/16_DriftDetectionStandard.qmd`, strategy paper
+  §9.7 (`DRIFT-PERSISTENCE`)
+- §8 — Repository Invariant I6 (CLI sub-apps), AGENTS.md
+- §9 — Document registry (`document-registry.yaml`),
+  ADR index (`adr-index.md`)
+- §10 — ADR-054 / UIAO_140 (reciprocity), ADR-058 (multi-tenancy),
+  ADR-004 (workload identity federation), AppendixB seed,
+  strategy paper §10.2 (multi-tenant question)
