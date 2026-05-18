@@ -1,0 +1,64 @@
+name: Customer Docs Status Drift
+
+# Regenerates docs/data/customer-documents-status.md and fails the PR if
+# the committed file diverges from the freshly-generated output. This
+# guarantees the Current state include block in docs/customer-documents/
+# ROADMAP.qmd cannot fall behind the tree (the 2026-04 / 2026-05 drift
+# that motivated this gate left every "Stub" label in the ROADMAP
+# referring to documents that had already been authored to 100+ lines).
+#
+# To resolve a failing run, run locally and commit the updated file:
+#     python scripts/generate_customer_docs_status.py \
+#         --output docs/data/customer-documents-status.md
+
+on:
+  pull_request:
+    paths:
+      - 'docs/customer-documents/**/*.qmd'
+      - 'docs/data/customer-documents-status.md'
+      - 'scripts/generate_customer_docs_status.py'
+      - '.github/workflows/customer-docs-status.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/customer-documents/**/*.qmd'
+      - 'docs/data/customer-documents-status.md'
+      - 'scripts/generate_customer_docs_status.py'
+
+jobs:
+  customer-docs-status:
+    name: Regenerate customer-docs status and check for drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install generator dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Regenerate status file
+        run: |
+          python scripts/generate_customer_docs_status.py \
+              --output docs/data/customer-documents-status.md
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code docs/data/customer-documents-status.md; then
+            echo "::error::docs/data/customer-documents-status.md is stale."
+            echo "Regenerate locally and commit:"
+            echo "  python scripts/generate_customer_docs_status.py \\"
+            echo "      --output docs/data/customer-documents-status.md"
+            exit 1
+          fi
+
+      - name: Upload regenerated artifact on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-documents-status-regenerated
+          path: docs/data/customer-documents-status.md
