@@ -1138,7 +1138,7 @@ Confirm three things and I'll start:
 2.     The sync mechanism — three layers, defense in depth
 
 1. Confirm - Expand the plan to 0a–0b + 1–7 (i.e., build the cross-repo sync mechanism as the foundation, then use it to generate everything else)
-2. Confirm WhalerMike/uiao-core and WhalerMike/uiao-docs are both owned by you and you have admin rights to add workflows and secrets to both (required for repository_dispatch).  I also own WhalerMike/uiao-gos https://github.com/WhalerMike/uiao-gos
+2. Confirm WhalerMike/uiao-core and WhalerMike/uiao-docs are both owned by you and you have admin rights to add workflows and secrets to both (required for repository_dispatch).  I also own WhalerMike/uiao-gos https://github.com/whalermike-archive/uiao-gos
 3. I want you to Document all of this and add it to the README.md or some other file that your recommend instead.
 
 ---
