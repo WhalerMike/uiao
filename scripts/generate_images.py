@@ -589,6 +589,31 @@ def _is_companion_opted_out(text: str | None) -> bool:
     return target is not None and target.lower() in _COMPANION_OPT_OUT_VALUES
 
 
+# Matches PNG filenames produced by this generator. Every output follows
+# `<doc-stem>-(image|diagram|figure)-NN-<slug>.png`, so the prefix is a
+# reliable hint about which sibling .qmd owns the prompts.
+_IMAGE_FILENAME_RE = re.compile(
+    r"`(?P<stem>[a-z0-9][a-z0-9-]*?)-(?:image|diagram|figure)-\d+-[a-z0-9-]+\.png`",
+    re.IGNORECASE,
+)
+
+
+def _extract_companion_stem_from_filenames(text: str | None) -> str | None:
+    """Extract the most common doc-stem prefix from PNG filenames referenced
+    in an IMAGE-PROMPTS.md body. Returns None when no filenames match the
+    `<stem>-(image|diagram|figure)-NN-<slug>.png` convention.
+    """
+    if not text:
+        return None
+    stems = [m.group("stem").lower() for m in _IMAGE_FILENAME_RE.finditer(text)]
+    if not stems:
+        return None
+    counts: dict[str, int] = {}
+    for s in stems:
+        counts[s] = counts.get(s, 0) + 1
+    return max(counts.items(), key=lambda kv: (kv[1], -stems.index(kv[0])))[0]
+
+
 def _find_companion_document(image_prompts_path: Path, text: str | None = None) -> Path | None:
     """Given a path to an IMAGE-PROMPTS.md file, return the sibling
     document it annotates. Resolution order:
@@ -596,8 +621,12 @@ def _find_companion_document(image_prompts_path: Path, text: str | None = None) 
         0. `<!-- companion: <filename> -->` directive in the file body
         1. <folder>/<folder-name>.qmd
         2. <folder>/<folder-name>.md
-        3. Exactly one other .qmd in the same folder
-        4. Exactly one other .md in the same folder (excluding this file
+        3. <folder>/<stem>.qmd or <folder>/<stem>.md where <stem> is the
+           most common doc-prefix extracted from PNG filenames in the
+           IMAGE-PROMPTS body (handles folders where IMAGE-PROMPTS.md
+           shares a directory with multiple unrelated .qmd files)
+        4. Exactly one other .qmd in the same folder
+        5. Exactly one other .md in the same folder (excluding this file
            and any README)
 
     `text` may be passed to avoid a re-read; when omitted the file is read
@@ -641,6 +670,18 @@ def _find_companion_document(image_prompts_path: Path, text: str | None = None) 
         candidate = folder / f"{folder_name}{ext}"
         if candidate.is_file():
             return candidate
+
+    # Step 3: filename-prefix match. Extract the doc-stem from PNG filenames
+    # referenced in this IMAGE-PROMPTS.md body, then look for a sibling
+    # .qmd/.md with that stem. Handles folders where multiple .qmd files
+    # share a directory (e.g., docs/.../platform-tooling/IMAGE-PROMPTS.md
+    # describing diagrams for uiao-cli-reference.qmd).
+    stem = _extract_companion_stem_from_filenames(text)
+    if stem:
+        for ext in (".qmd", ".md"):
+            candidate = folder / f"{stem}{ext}"
+            if candidate.is_file():
+                return candidate
 
     # Fallback: a single other .qmd/.md sibling.
     ignore_names = {image_prompts_path.name.lower(), "readme.md", "index.md", "index.qmd"}
@@ -840,6 +881,27 @@ def doc_local_output_path(document: Path, placeholder_id: str, slug: str) -> Pat
     return images_dir / f"{doc_slug}-{placeholder_id.lower()}-{slug}.png"
 
 
+def _extract_explicit_slug_from_body(body: str, document: Path, placeholder_id: str) -> str | None:
+    """If `body` starts with a backticked filename matching
+    `<doc_stem>-<placeholder_id_lower>-<slug>.<ext>`, return the `<slug>`
+    portion. IMAGE-PROMPTS.md heading-style sources declare their canonical
+    filenames this way (e.g. ``## IMAGE-01 — `uiao-cli-reference-image-01-cli-subapp-topology.png` ``).
+    Without this extraction the slug derivation re-slugifies the entire
+    filename, producing doubled-prefix output that doesn't match the .qmd's
+    image references.
+    """
+    doc_slug = _slugify(document.stem, maxlen=32)
+    prefix = f"{doc_slug}-{placeholder_id.lower()}-"
+    m = re.match(
+        r"^\s*`" + re.escape(prefix) + r"(?P<slug>[a-z0-9][a-z0-9-]*)\.(?:png|webp|jpg|jpeg)`",
+        body,
+        re.IGNORECASE,
+    )
+    if m:
+        return m.group("slug")
+    return None
+
+
 # ──────────────────────────────────────────────────────────────
 # Image generator. Wraps the Gemini client call. Centralized so
 # error handling, retry, and rate limiting have one home.
@@ -954,7 +1016,11 @@ def process_doc_local_placeholders(
             report.auto_placeholders_skipped += 1
             continue
 
-        slug = _slugify(p.body.split(".")[0], maxlen=32) or "image"
+        slug = (
+            _extract_explicit_slug_from_body(p.body, p.document, p.placeholder_id)
+            or _slugify(p.body.split(".")[0], maxlen=32)
+            or "image"
+        )
         output_path = doc_local_output_path(p.document, p.placeholder_id, slug)
         sidecar_path = output_path.with_suffix(output_path.suffix + ".json")
 

@@ -198,35 +198,61 @@ on-premises directory had supplied.
 
 ### Brief Description of the Drawings
 
-- **Figure 1** is a block diagram of the UIAO system, depicting an
-  on-premises directory and dependent infrastructure on the left, a
-  cloud identity platform on the right, and the UIAO components
-  (adapter contract, registry, claim pipeline, raw zone, validator,
-  orchestrator) positioned between them.
-- **Figure 2** is a class diagram of the adapter contract, showing
-  `DatabaseAdapterBase` and the seven dataclasses
-  (`ConnectionProvenance`, `SchemaMappingObject`, `QueryProvenance`,
-  `ClaimObject`, `ClaimSet`, `DriftReport`, `EvidenceObject`).
-- **Figure 3** is a sequence diagram of the canonical claim pipeline,
-  from `connect()` through `discover_schema()`, `execute_query()`,
-  `normalize()`, `detect_drift()`, and `collect_evidence()`.
-- **Figure 4** is a schematic of the dual-axis registry, showing the
-  operational axis (modernization vs. conformance) crossed with the
-  doctrinal axis (identity / telemetry / policy / enforcement /
-  integration).
-- **Figure 5** is a state diagram of an adapter's lifecycle
-  (`reserved → proposed → active → deprecated → retired`).
-- **Figure 6** is a flowchart of the five-stage migration pipeline
-  (Discover → Normalize → Map → Migrate → Validate), with the
-  governance gates between stages.
-- **Figure 7** is a block diagram of the Raw Zone storage layout,
-  showing the per-adapter / per-run directory structure and the
-  `RawZoneViolation` enforcement point.
-- **Figure 8** is a flowchart of the validation engine, showing
-  evaluation of freshness windows, computation of drift indicators,
-  and emission of `ValidationResult`.
-- **Figure 9** is a table of the eleven on-premises directory
-  dependency categories and their corresponding adapter assignments.
+**Figure 1** is a block diagram of the UIAO system, depicting an
+on-premises directory and dependent infrastructure on the left, a
+cloud identity platform on the right, and the UIAO components
+(adapter contract, registry, claim pipeline, raw zone, validator,
+orchestrator) positioned between them.
+
+![FIG. 1 — System Overview](patent-figures/figure-01.png)
+
+**Figure 2** is a class diagram of the adapter contract, showing
+`DatabaseAdapterBase` and the seven dataclasses
+(`ConnectionProvenance`, `SchemaMappingObject`, `QueryProvenance`,
+`ClaimObject`, `ClaimSet`, `DriftReport`, `EvidenceObject`).
+
+![FIG. 2 — Adapter Contract Class Diagram](patent-figures/figure-02.png)
+
+**Figure 3** is a sequence diagram of the canonical claim pipeline,
+from `connect()` through `discover_schema()`, `execute_query()`,
+`normalize()`, `detect_drift()`, and `collect_evidence()`.
+
+![FIG. 3 — Canonical Claim Pipeline Sequence](patent-figures/figure-03.png)
+
+**Figure 4** is a schematic of the dual-axis registry, showing the
+operational axis (modernization vs. conformance) crossed with the
+doctrinal axis (identity / telemetry / policy / enforcement /
+integration).
+
+![FIG. 4 — Dual-Axis Adapter Registry](patent-figures/figure-04.png)
+
+**Figure 5** is a state diagram of an adapter's lifecycle
+(`reserved → proposed → active → deprecated → retired`).
+
+![FIG. 5 — Adapter Lifecycle State Diagram](patent-figures/figure-05.png)
+
+**Figure 6** is a flowchart of the five-stage migration pipeline
+(Discover → Normalize → Map → Migrate → Validate), with the
+governance gates between stages.
+
+![FIG. 6 — Five-Stage Migration Pipeline](patent-figures/figure-06.png)
+
+**Figure 7** is a block diagram of the Raw Zone storage layout,
+showing the per-adapter / per-run directory structure and the
+`RawZoneViolation` enforcement point.
+
+![FIG. 7 — Immutable Raw Zone Storage Layout](patent-figures/figure-07.png)
+
+**Figure 8** is a flowchart of the validation engine, showing
+evaluation of freshness windows, computation of drift indicators,
+and emission of `ValidationResult`.
+
+![FIG. 8 — Validation Engine Flowchart](patent-figures/figure-08.png)
+
+**Figure 9** is a table of the eleven on-premises directory
+dependency categories and their corresponding adapter assignments.
+
+![FIG. 9 — Eleven AD Dependency Categories and Adapter Mapping](patent-figures/figure-09.png)
 
 ### Detailed Description of the Invention
 
