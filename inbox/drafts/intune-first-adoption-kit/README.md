@@ -32,19 +32,40 @@ bookmarked, and pasted into tickets — not read end-to-end.
 
 ---
 
+## With and without UIAO
+
+Most documents in this kit exist as a matched pair: a primary (without-UIAO)
+document that stands alone for any reader and remains the canonical
+operational reference, plus a companion UIAO-assisted document that
+describes what the organization's internal governance framework adds.
+Readers without UIAO context can rely entirely on the primary documents;
+readers with UIAO context can consult the UIAO-assisted companions to see
+how the same operational concerns are augmented under governance.
+
+The customer-narrative folder uses a slightly different convention: a single
+master without-UIAO narrative covers all four phases of the journey, and
+four per-phase UIAO-assisted companions describe what UIAO adds in each
+phase. The two conventions reflect the different audiences — coworker
+artifacts are scan-and-find references where matched pairs work cleanly,
+while the customer narrative is read end-to-end as a phased journey.
+
 ## Status
 
 | Document | Audience | Status |
 |---|---|---|
 | [`01-customer-narrative/baseline-without-uiao.md`](01-customer-narrative/baseline-without-uiao.md) | Executive, customer | Draft, ready for review |
-| `01-customer-narrative/uiao-assisted-legacy.md` | Executive, customer | Planned |
-| `01-customer-narrative/uiao-assisted-early-transition.md` | Executive, customer | Planned |
-| `01-customer-narrative/uiao-assisted-later-transition.md` | Executive, customer | Planned |
-| `01-customer-narrative/uiao-assisted-full-transition.md` | Executive, customer | Planned |
+| [`01-customer-narrative/uiao-assisted-legacy.md`](01-customer-narrative/uiao-assisted-legacy.md) | Executive, customer | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-early-transition.md`](01-customer-narrative/uiao-assisted-early-transition.md) | Executive, customer | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-later-transition.md`](01-customer-narrative/uiao-assisted-later-transition.md) | Executive, customer | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-full-transition.md`](01-customer-narrative/uiao-assisted-full-transition.md) | Executive, customer | Draft, ready for review |
 | [`02-coworker-artifacts/procurement-one-pager.md`](02-coworker-artifacts/procurement-one-pager.md) | Procurement, asset management | Draft, ready for review |
-| `02-coworker-artifacts/gpo-to-intune-matrix.md` | Desktop engineering, security policy | Planned |
+| [`02-coworker-artifacts/procurement-one-pager-uiao-assisted.md`](02-coworker-artifacts/procurement-one-pager-uiao-assisted.md) | Procurement, asset management | Draft, ready for review |
+| [`02-coworker-artifacts/gpo-to-intune-matrix.md`](02-coworker-artifacts/gpo-to-intune-matrix.md) | Desktop engineering, security policy | Draft, ready for review |
+| [`02-coworker-artifacts/gpo-to-intune-matrix-uiao-assisted.md`](02-coworker-artifacts/gpo-to-intune-matrix-uiao-assisted.md) | Desktop engineering, security policy | Draft, ready for review |
 | [`02-coworker-artifacts/enrollment-diagnostic-cookbook.md`](02-coworker-artifacts/enrollment-diagnostic-cookbook.md) | Helpdesk, field techs | Draft, ready for review |
-| `02-coworker-artifacts/conditional-access-rollout-playbook.md` | Identity, security, change advisory | Planned |
+| [`02-coworker-artifacts/enrollment-diagnostic-cookbook-uiao-assisted.md`](02-coworker-artifacts/enrollment-diagnostic-cookbook-uiao-assisted.md) | Helpdesk, field techs | Draft, ready for review |
+| [`02-coworker-artifacts/conditional-access-rollout-playbook.md`](02-coworker-artifacts/conditional-access-rollout-playbook.md) | Identity, security, change advisory | Draft, ready for review |
+| [`02-coworker-artifacts/conditional-access-rollout-playbook-uiao-assisted.md`](02-coworker-artifacts/conditional-access-rollout-playbook-uiao-assisted.md) | Identity, security, change advisory | Draft, ready for review |
 
 ---
 
