@@ -1,0 +1,65 @@
+name: Document Index Drift
+
+# Regenerates docs/data/document-index-tables.md and fails the PR if
+# the committed file diverges from the freshly-generated output. This
+# guarantees the tables included by docs/customer-documents/
+# document-index.qmd cannot fall behind the tree (the 2026-05 drift
+# that motivated this gate left 20+ rows labelled "Stub" for documents
+# that had been authored to 100+ lines, and listed 16 of 49 actual
+# adapter-spec files).
+#
+# To resolve a failing run, run locally and commit the updated file:
+#     python scripts/generate_document_index.py \
+#         --output docs/data/document-index-tables.md
+
+on:
+  pull_request:
+    paths:
+      - 'docs/customer-documents/**/*.qmd'
+      - 'docs/data/document-index-tables.md'
+      - 'scripts/generate_document_index.py'
+      - '.github/workflows/document-index-status.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/customer-documents/**/*.qmd'
+      - 'docs/data/document-index-tables.md'
+      - 'scripts/generate_document_index.py'
+
+jobs:
+  document-index-status:
+    name: Regenerate document-index tables and check for drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install generator dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Regenerate tables
+        run: |
+          python scripts/generate_document_index.py \
+              --output docs/data/document-index-tables.md
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code docs/data/document-index-tables.md; then
+            echo "::error::docs/data/document-index-tables.md is stale."
+            echo "Regenerate locally and commit:"
+            echo "  python scripts/generate_document_index.py \\"
+            echo "      --output docs/data/document-index-tables.md"
+            exit 1
+          fi
+
+      - name: Upload regenerated artifact on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: document-index-tables-regenerated
+          path: docs/data/document-index-tables.md
