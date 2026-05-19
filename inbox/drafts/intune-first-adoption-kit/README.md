@@ -30,6 +30,18 @@ equivalent, how to diagnose an enrollment failure, how to roll out Conditional
 Access without locking users out. The documents are intended to be scanned,
 bookmarked, and pasted into tickets — not read end-to-end.
 
+**New IT staff, deployment technicians, or anyone learning hands-on
+provisioning** — read [`03-step-by-step/`](03-step-by-step/). Each document is
+a procedural walkthrough of exactly what happens when a laptop is taken out
+of the box, provisioned, and handed off to a user as a fully managed corporate
+device. The walkthroughs answer concrete questions: Is PXE boot used? Is a
+scanner used? What software is required on the device at each phase? How
+does that software get onto the device? Each phase is paired with a
+without-UIAO version (the operational baseline) and a UIAO-assisted version
+(showing the canonical-specification-driven equivalent). Suitable as training
+material for a new technician after a single shadow session with an
+experienced colleague.
+
 ---
 
 ## With and without UIAO
@@ -70,6 +82,14 @@ while the customer narrative is read end-to-end as a phased journey.
 | [`02-coworker-artifacts/enrollment-diagnostic-cookbook-uiao-assisted.md`](02-coworker-artifacts/enrollment-diagnostic-cookbook-uiao-assisted.md) | Helpdesk, field techs | Draft, ready for review |
 | [`02-coworker-artifacts/conditional-access-rollout-playbook.md`](02-coworker-artifacts/conditional-access-rollout-playbook.md) | Identity, security, change advisory | Draft, ready for review |
 | [`02-coworker-artifacts/conditional-access-rollout-playbook-uiao-assisted.md`](02-coworker-artifacts/conditional-access-rollout-playbook-uiao-assisted.md) | Identity, security, change advisory | Draft, ready for review |
+| [`03-step-by-step/without-uiao-legacy.md`](03-step-by-step/without-uiao-legacy.md) | New IT staff, deployment technicians (Phase I procedure) | Draft, ready for review |
+| [`03-step-by-step/uiao-assisted-legacy.md`](03-step-by-step/uiao-assisted-legacy.md) | New IT staff, deployment technicians (Phase I UIAO touchpoints) | Draft, ready for review |
+| [`03-step-by-step/without-uiao-early-transition.md`](03-step-by-step/without-uiao-early-transition.md) | New IT staff, deployment technicians (Phase II procedure) | Draft, ready for review |
+| [`03-step-by-step/uiao-assisted-early-transition.md`](03-step-by-step/uiao-assisted-early-transition.md) | New IT staff, deployment technicians (Phase II UIAO touchpoints) | Draft, ready for review |
+| [`03-step-by-step/without-uiao-later-transition.md`](03-step-by-step/without-uiao-later-transition.md) | New IT staff, deployment technicians (Phase III procedure) | Draft, ready for review |
+| [`03-step-by-step/uiao-assisted-later-transition.md`](03-step-by-step/uiao-assisted-later-transition.md) | New IT staff, deployment technicians (Phase III UIAO touchpoints) | Draft, ready for review |
+| [`03-step-by-step/without-uiao-full-transition.md`](03-step-by-step/without-uiao-full-transition.md) | New IT staff, deployment technicians (Phase IV procedure) | Draft, ready for review |
+| [`03-step-by-step/uiao-assisted-full-transition.md`](03-step-by-step/uiao-assisted-full-transition.md) | New IT staff, deployment technicians (Phase IV canonical five-phase process) | Draft, ready for review |
 
 ---
 
