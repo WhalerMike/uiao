@@ -131,6 +131,39 @@ jobs:
           find _site/customer-documents -name '*.docx' | wc -l \
             | xargs -I{} echo "Merged {} DOCX files into site"
 
+      # Per-section .docx bundles: concatenate every page-level .docx in
+      # each top-level customer-documents section into one downloadable
+      # `<section>-bundle.docx` alongside the per-page renders. The
+      # bundler runs from the assemble job because that's where the
+      # rendered .docx files are available; doing it earlier would race
+      # the render_docx matrix.
+      - name: Checkout (bundler script only)
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: scripts/bundle_section_docx.py
+          sparse-checkout-cone-mode: false
+          path: _repo
+
+      - name: Set up Python for bundler
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install bundler dependencies
+        run: pip install --quiet python-docx docxcompose
+
+      - name: Build per-section .docx bundles
+        # Non-fatal: a section with no rendered .docx (e.g., only stubs)
+        # reports a WARN and the build continues. The script returns 0
+        # in --all mode regardless.
+        run: |
+          python _repo/scripts/bundle_section_docx.py \
+              --site-root _site/customer-documents \
+              --all
+          find _site/customer-documents -maxdepth 2 -name '*-bundle.docx' \
+            | wc -l \
+            | xargs -I{} echo "Built {} section bundle(s)"
+
       - name: Upload Pages artifact
         # Deploy on push to main (normal) OR workflow_dispatch on main
         # (manual redeploy lever — needed e.g. when a CI-only fix lands

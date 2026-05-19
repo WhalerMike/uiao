@@ -57,7 +57,7 @@
 | [`docs/customer-documents/adapter-specs/entra-workload-identity/entra-workload-identity.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/entra-workload-identity/entra-workload-identity.qmd) | 100 | Authored | ✅ | — | — |
 | [`docs/customer-documents/adapter-specs/gsa-sam-attribute-service/gsa-sam-attribute-service.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/gsa-sam-attribute-service/gsa-sam-attribute-service.qmd) | 96 | Brief | ✅ | — | — |
 | [`docs/customer-documents/adapter-specs/id-me-federation-service/id-me-federation-service.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/id-me-federation-service/id-me-federation-service.qmd) | 101 | Authored | ✅ | — | — |
-| [`docs/customer-documents/adapter-specs/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/index.qmd) | 44 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/adapter-specs/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/index.qmd) | 49 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/adapter-specs/infoblox/infoblox.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/infoblox/infoblox.qmd) | 96 | Brief | ✅ | — | — |
 | [`docs/customer-documents/adapter-specs/intune/intune.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/intune/intune.qmd) | 96 | Brief | ✅ | — | aspirational |
 | [`docs/customer-documents/adapter-specs/irs-tin-attribute-service/irs-tin-attribute-service.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/adapter-specs/irs-tin-attribute-service/irs-tin-attribute-service.qmd) | 97 | Brief | ✅ | — | — |
@@ -95,7 +95,7 @@
 | [`docs/customer-documents/architecture-series/boundary-impact-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/boundary-impact-model.qmd) | 157 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/architecture-series/drift-engine.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/drift-engine.qmd) | 150 | Authored | ✅ | 4/4 | — |
 | [`docs/customer-documents/architecture-series/evidence-chain.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/evidence-chain.qmd) | 165 | Authored | ✅ | 5/5 | — |
-| [`docs/customer-documents/architecture-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/index.qmd) | 29 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/architecture-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/index.qmd) | 34 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/architecture-series/six-plane-architecture.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/six-plane-architecture.qmd) | 130 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/architecture-series/three-layer-rule-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/three-layer-rule-model.qmd) | 147 | Authored | ✅ | 3/3 | — |
 
@@ -106,7 +106,7 @@
 | [`docs/customer-documents/case-studies/cloud-boundary-case-study.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/cloud-boundary-case-study.qmd) | 141 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/case-studies/federal-modernization-case-study.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/federal-modernization-case-study.qmd) | 167 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/case-studies/identity-modernization-case-study.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/identity-modernization-case-study.qmd) | 146 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/case-studies/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/index.qmd) | 38 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/case-studies/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/index.qmd) | 43 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/case-studies/reference-deployment-fedciv-ad-to-entra.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/reference-deployment-fedciv-ad-to-entra.qmd) | 331 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd) | 311 | Substantial | ✅ | 1/1 | — |
 
@@ -129,7 +129,7 @@
 | [`docs/customer-documents/compliance/governance-canon/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/governance-canon/index.qmd) | 30 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/compliance/governance-canon/master-document-spec.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/governance-canon/master-document-spec.qmd) | 342 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/compliance/incident-response/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/incident-response/index.qmd) | 30 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/compliance/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/index.qmd) | 48 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/compliance/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/index.qmd) | 53 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/compliance/policy-libraries/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/policy-libraries/index.qmd) | 26 | Navigation hub | ✅ | — | aspirational |
 
 ### `executive-briefs/`
@@ -139,7 +139,7 @@
 | [`docs/customer-documents/executive-briefs/drift-engine-overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/drift-engine-overview.qmd) | 54 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/executive-briefs/evidence-fabric-overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/evidence-fabric-overview.qmd) | 66 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/executive-briefs/governance-os-overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/governance-os-overview.qmd) | 87 | Brief | ✅ | 2/2 | — |
-| [`docs/customer-documents/executive-briefs/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/index.qmd) | 30 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/executive-briefs/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/index.qmd) | 35 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/executive-briefs/modernization-overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/modernization-overview.qmd) | 115 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/executive-briefs/uiao-executive-brief.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/uiao-executive-brief.qmd) | 125 | Authored | ✅ | 8/8 | — |
 | [`docs/customer-documents/executive-briefs/zero-trust-overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-briefs/zero-trust-overview.qmd) | 43 | Brief | ✅ | — | — |
@@ -158,7 +158,7 @@
 | [`docs/customer-documents/executive-governance-series/ch08-governance-at-scale/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch08-governance-at-scale/index.qmd) | 175 | Navigation hub | ✅ | 1/1 | — |
 | [`docs/customer-documents/executive-governance-series/ch09-governance-operating-system/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch09-governance-operating-system/index.qmd) | 171 | Navigation hub | ✅ | 1/1 | — |
 | [`docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd) | 2865 | Substantial | ✅ | — | — |
-| [`docs/customer-documents/executive-governance-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/index.qmd) | 43 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/executive-governance-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/index.qmd) | 48 | Navigation hub | ✅ | — | aspirational |
 
 ### `modernization/`
 
@@ -184,7 +184,7 @@
 | [`docs/customer-documents/modernization/identity-orgtree/ad-to-entraid-tree.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/identity-orgtree/ad-to-entraid-tree.qmd) | 8563 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd) | 1802 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/modernization/identity-orgtree/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/identity-orgtree/index.qmd) | 41 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/modernization/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/index.qmd) | 56 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/modernization/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/index.qmd) | 61 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/modernization/network-transformation/dns-modernization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/network-transformation/dns-modernization.qmd) | 1129 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/modernization/network-transformation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/network-transformation/index.qmd) | 26 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/modernization/network-transformation/radius-802-1x-modernization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/network-transformation/radius-802-1x-modernization.qmd) | 84 | Brief | ✅ | — | aspirational |
@@ -214,7 +214,7 @@
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/modernization-specs/cloud/cloud.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/cloud/cloud.qmd) | 129 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/modernization-specs/identity/identity.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/identity/identity.qmd) | 127 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/modernization-specs/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/index.qmd) | 28 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/modernization-specs/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/index.qmd) | 33 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/modernization-specs/sase/sase.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/sase/sase.qmd) | 114 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/modernization-specs/sdwan/sdwan.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/sdwan/sdwan.qmd) | 123 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/modernization-specs/telemetry/telemetry.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization-specs/telemetry/telemetry.qmd) | 132 | Authored | ✅ | 1/1 | — |
@@ -240,14 +240,14 @@
 | [`docs/customer-documents/orgpath-narrative/13-orgpath-and-power-bi-reporting.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/13-orgpath-and-power-bi-reporting.qmd) | 1446 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/14-orgpath-with-third-party-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/14-orgpath-with-third-party-ddi.qmd) | 1173 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/15-uiao-governance-os-complete-narrative.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/15-uiao-governance-os-complete-narrative.qmd) | 288 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 86 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 91 | Navigation hub | ✅ | — | — |
 
 ### `platform/`
 
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/platform/git-server-implementation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/git-server-implementation.qmd) | 616 | Substantial | ✅ | — | — |
-| [`docs/customer-documents/platform/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/index.qmd) | 49 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/platform/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/index.qmd) | 54 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/platform/platform-server-build.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/platform-server-build.qmd) | 1097 | Substantial | ✅ | — | aspirational |
 
 ### `substrate/`
@@ -259,7 +259,7 @@
 | [`docs/customer-documents/substrate/execution-patterns/cli-operations-guide.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/execution-patterns/cli-operations-guide.qmd) | 1403 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/substrate/execution-patterns/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/execution-patterns/index.qmd) | 23 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/substrate/execution-patterns/operations-runbook.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/execution-patterns/operations-runbook.qmd) | 705 | Substantial | ✅ | — | — |
-| [`docs/customer-documents/substrate/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/index.qmd) | 38 | Navigation hub | ✅ | — | aspirational |
+| [`docs/customer-documents/substrate/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/index.qmd) | 43 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/substrate/platform-tooling/azure-arc-policy-library.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/azure-arc-policy-library.qmd) | 1098 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/substrate/platform-tooling/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/index.qmd) | 27 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) | 1740 | Substantial | ✅ | — | — |
@@ -325,7 +325,7 @@
 | [`docs/customer-documents/validation-suites/domains/sdwan/sdwan.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/validation-suites/domains/sdwan/sdwan.qmd) | 109 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/validation-suites/domains/telemetry/telemetry.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/validation-suites/domains/telemetry/telemetry.qmd) | 120 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/validation-suites/domains/zero-trust/zero-trust.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/validation-suites/domains/zero-trust/zero-trust.qmd) | 113 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/validation-suites/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/validation-suites/index.qmd) | 53 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/validation-suites/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/validation-suites/index.qmd) | 58 | Navigation hub | ✅ | — | — |
 
 ### `whitepapers/`
 
@@ -336,7 +336,7 @@
 | [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-hrit-productization.qmd) | 329 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/federal-ssot-alignment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ssot-alignment.qmd) | 342 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 760 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 50 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 55 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd) | 242 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd) | 337 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd) | 263 | Substantial | ✅ | 3/3 | — |
