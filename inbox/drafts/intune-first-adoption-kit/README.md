@@ -53,11 +53,15 @@ while the customer narrative is read end-to-end as a phased journey.
 
 | Document | Audience | Status |
 |---|---|---|
-| [`01-customer-narrative/baseline-without-uiao.md`](01-customer-narrative/baseline-without-uiao.md) | Executive, customer | Draft, ready for review |
-| [`01-customer-narrative/uiao-assisted-legacy.md`](01-customer-narrative/uiao-assisted-legacy.md) | Executive, customer | Draft, ready for review |
-| [`01-customer-narrative/uiao-assisted-early-transition.md`](01-customer-narrative/uiao-assisted-early-transition.md) | Executive, customer | Draft, ready for review |
-| [`01-customer-narrative/uiao-assisted-later-transition.md`](01-customer-narrative/uiao-assisted-later-transition.md) | Executive, customer | Draft, ready for review |
-| [`01-customer-narrative/uiao-assisted-full-transition.md`](01-customer-narrative/uiao-assisted-full-transition.md) | Executive, customer | Draft, ready for review |
+| [`01-customer-narrative/baseline-without-uiao.md`](01-customer-narrative/baseline-without-uiao.md) | Executive, customer (4-phase overview, all phases in one document) | Draft, ready for review |
+| [`01-customer-narrative/without-uiao-legacy.md`](01-customer-narrative/without-uiao-legacy.md) | Executive, customer (Phase I detailed) | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-legacy.md`](01-customer-narrative/uiao-assisted-legacy.md) | Executive, customer (Phase I UIAO-assisted) | Draft, ready for review |
+| [`01-customer-narrative/without-uiao-early-transition.md`](01-customer-narrative/without-uiao-early-transition.md) | Executive, customer (Phase II detailed) | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-early-transition.md`](01-customer-narrative/uiao-assisted-early-transition.md) | Executive, customer (Phase II UIAO-assisted) | Draft, ready for review |
+| [`01-customer-narrative/without-uiao-later-transition.md`](01-customer-narrative/without-uiao-later-transition.md) | Executive, customer (Phase III detailed) | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-later-transition.md`](01-customer-narrative/uiao-assisted-later-transition.md) | Executive, customer (Phase III UIAO-assisted) | Draft, ready for review |
+| [`01-customer-narrative/without-uiao-full-transition.md`](01-customer-narrative/without-uiao-full-transition.md) | Executive, customer (Phase IV detailed) | Draft, ready for review |
+| [`01-customer-narrative/uiao-assisted-full-transition.md`](01-customer-narrative/uiao-assisted-full-transition.md) | Executive, customer (Phase IV UIAO-assisted) | Draft, ready for review |
 | [`02-coworker-artifacts/procurement-one-pager.md`](02-coworker-artifacts/procurement-one-pager.md) | Procurement, asset management | Draft, ready for review |
 | [`02-coworker-artifacts/procurement-one-pager-uiao-assisted.md`](02-coworker-artifacts/procurement-one-pager-uiao-assisted.md) | Procurement, asset management | Draft, ready for review |
 | [`02-coworker-artifacts/gpo-to-intune-matrix.md`](02-coworker-artifacts/gpo-to-intune-matrix.md) | Desktop engineering, security policy | Draft, ready for review |
