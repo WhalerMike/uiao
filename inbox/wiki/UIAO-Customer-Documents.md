@@ -21,7 +21,7 @@
   — 49 per-adapter operational specs, NIST control mappings.
   Derived from `src/uiao/canon/adapter-registry.yaml` +
   `modernization-registry.yaml`.
-- **[Adapter Validation Suites](https://whalermike.github.io/uiao/customer-documents/validation-suites/adapters/index.html)**
+- **[Adapter Validation Suites](https://whalermike.github.io/uiao/customer-documents/validation-suites/index.html)**
   — 49 per-adapter validation tests and evidence expectations.
   Same canon source as above.
 
@@ -43,7 +43,7 @@
 - **[Modernization Technical Specifications](https://whalermike.github.io/uiao/customer-documents/modernization-specs/index.html)**
   — Cross-adapter domain specs (cloud, identity, SASE, SD-WAN, telemetry,
   zero-trust). 6 domain stubs + 1 template.
-- **[Modernization Validation Suites](https://whalermike.github.io/uiao/customer-documents/validation-suites/domains/index.html)**
+- **[Modernization Validation Suites](https://whalermike.github.io/uiao/customer-documents/validation-suites/index.html)**
   — Cross-adapter domain validation approach. 6 domain stubs + 1
   template.
 - **[Whitepapers](https://whalermike.github.io/uiao/customer-documents/whitepapers/index.html)**
