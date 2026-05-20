@@ -36,10 +36,9 @@ published_at: docs/modernization/intune-first.qmd
 > any other Surface form factor under this annex — it is an Entra-
 > joined Windows endpoint per ADR-001. Surface Hub running the
 > Surface Hub OS variant is NOT covered by this annex; it is
-> migration-only per the draft reconciliation ADR at
-> `inbox/drafts/adr-075-surface-hub-reconciliation.md`. Net-new
-> procurement of Surface Hub 3 MUST specify the MTR on Windows
-> configuration; net-new procurement of Surface Hub 2S is
+> migration-only per [ADR-075](../../../canon/adr/adr-075-surface-hub-reconciliation.md).
+> Net-new procurement of Surface Hub 3 MUST specify the MTR on
+> Windows configuration; net-new procurement of Surface Hub 2S is
 > forbidden; existing Surface Hub OS installed base requires an
 > exception grant pending migration.
 
@@ -277,9 +276,12 @@ In addition to the patterns forbidden in
   Intune-driven `Autopilot Reset` (preserves enrollment) or
   `Wipe with device retention removed` (re-enrolls via Autopilot
   on next boot).
-- **Surface Hub net-new procurement.** Forbidden pending the
-  Surface Hub ↔ ADR-001 reconciliation ADR. Exception grant
-  required for any Surface Hub order.
+- **Surface Hub net-new procurement of non-conforming variants.**
+  Per [ADR-075](../../../canon/adr/adr-075-surface-hub-reconciliation.md),
+  Surface Hub 2S net-new procurement is forbidden; Surface Hub 3
+  net-new procurement is permitted only when the order specifies
+  the MTR on Windows configuration. Any deviation requires an
+  exception grant.
 - **DFCI bypass via UEFI password.** UEFI password on a managed
   Surface is owned by the tenant DFCI policy, not the user. Any
   workflow that involves setting a local UEFI password to bypass
@@ -318,16 +320,20 @@ reseller account before standardizing on a reseller.
 
 ### Surface Hub / Microsoft Teams Rooms on Surface Hub-class hardware
 
-**Forbidden for net-new procurement under this annex.** See §"Anti-
-patterns" above and the Surface Hub reconciliation ADR at
-`inbox/drafts/adr-075-surface-hub-reconciliation.md` (DRAFT —
-recommends migration-only with exception-grant requirement).
+**Non-conforming variants forbidden for net-new procurement under
+this annex.** Surface Hub 3 ordered as MTR on Windows is governed
+identically to any other Entra-joined Windows endpoint per ADR-001
+and this annex. Surface Hub 2S net-new procurement is forbidden,
+and Surface Hub OS variants of any generation are migration-only.
+See §"Anti-patterns" above and
+[ADR-075](../../../canon/adr/adr-075-surface-hub-reconciliation.md).
 
 ---
 
 ## References
 
 - [ADR-071 — Intune-First Asset Onboarding](../../../canon/adr/adr-071-intune-first-asset-onboarding.md)
+- [ADR-075 — Surface Hub Reconciliation](../../../canon/adr/adr-075-surface-hub-reconciliation.md)
 - [ADR-001 — HAADJ deprecated, Entra-Join-only](../../../../docs/adr/adr-001-haadj-deprecated-entra-join-only.qmd)
 - [Parent annex — Windows Autopilot Device Preparation](windows-autopilot.md)
 - [Microsoft Learn — Surface Management Portal](https://learn.microsoft.com/en-us/surface/surface-management-portal)
