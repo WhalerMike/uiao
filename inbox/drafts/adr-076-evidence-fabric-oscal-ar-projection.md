@@ -124,4 +124,4 @@ The projection has been implicit in the substrate since ADR-043 was accepted. Th
 - [ADR-077](./adr-077-detached-signatures-evidence-bundles-and-ar.md) — companion: detached signatures over bundles and AR
 - NIST OSCAL 1.1.2 specification — https://pages.nist.gov/OSCAL/
 - RFC 8785 — JSON Canonicalization Scheme (JCS)
-- FedRAMP automation — https://github.com/GSA/fedramp-automation
+- FedRAMP PMO GitHub — https://github.com/fedramp (successor to retired `GSA/fedramp-automation`)
