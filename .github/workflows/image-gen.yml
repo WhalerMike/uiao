@@ -110,8 +110,13 @@ jobs:
     runs-on: ubuntu-latest
     # Writeable by default so commit-back can push. Manual dispatch is
     # gated by repo permissions; non-maintainers can't trigger this.
+    # actions: write is required for the post-commit-back step that
+    # dispatches quarto.yml — GITHUB_TOKEN-authored pushes do not trigger
+    # downstream workflows by GitHub Actions design, so the dispatch is
+    # explicit.
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -185,6 +190,7 @@ jobs:
         # Only runs when the operator opted in AND we actually generated
         # something. Commits PNG + .png.json + .image-manifest.json +
         # any used_by updates in image-registry.yaml.
+        id: commit_back
         if: ${{ ! inputs.dry_run && inputs.commit_back }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -218,6 +224,7 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "No changes to commit. Pipeline produced no new or modified image artifacts."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -229,6 +236,21 @@ jobs:
 
           # Push via LFS so binaries land in LFS storage.
           git push origin "HEAD:${{ github.ref }}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch Quarto render+deploy
+        # GitHub Actions deliberately does NOT trigger downstream workflows
+        # from commits authored by GITHUB_TOKEN — a loop-prevention safeguard.
+        # That means the commit-back step's push to main, which mutates
+        # docs/**, never wakes quarto.yml on its own, so the site keeps
+        # serving the pre-image-gen render. This step closes the loop with an
+        # explicit workflow_dispatch. Only fires on main pushes that actually
+        # produced a commit; quarto.yml's deploy job is gated on
+        # workflow_dispatch from main and will redeploy Pages.
+        if: ${{ ! inputs.dry_run && inputs.commit_back && steps.commit_back.outputs.pushed == 'true' && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run quarto.yml --ref main
 
       - name: Summary
         if: ${{ ! inputs.dry_run }}
