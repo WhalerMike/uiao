@@ -97,6 +97,7 @@ def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
 def _bundle_one(site_root: Path, section: str) -> tuple[bool, str]:
     """Bundle one section. Returns ``(ok, message)``."""
     from docx import Document
+    from docx.enum.text import WD_BREAK
     from docxcompose.composer import Composer
 
     section_dir = site_root / section
@@ -111,10 +112,18 @@ def _bundle_one(site_root: Path, section: str) -> tuple[bool, str]:
         return False, f"{section}: no page .docx files found under {section_dir}"
 
     # First page becomes the master — its styles, headers, and footers
-    # carry through to the bundle. Subsequent pages append in order.
+    # carry through to the bundle. Subsequent pages append in order, each
+    # preceded by a page break so individual chapters don't flow into one
+    # another (the default docxcompose behavior is back-to-back concat
+    # with no separator).
     master = Document(str(pages[0]))
     composer = Composer(master)
     for page in pages[1:]:
+        # Insert an empty paragraph with a page break at the end of the
+        # current master body, then append the next doc's content. The
+        # break sits between docs, not inside either one, so neither
+        # source doc is mutated and styles/headers stay intact.
+        master.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
         composer.append(Document(str(page)))
     composer.save(str(bundle_path))
 
