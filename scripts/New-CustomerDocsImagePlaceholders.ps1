@@ -191,7 +191,14 @@ foreach ($row in $gapRows) {
     }
     $block = ($placeholders -join "`n`n")
 
-    # Find insertion point: after first H1, else after frontmatter close.
+    # Find insertion point. Walk lines tracking fenced-code state and look
+    # for the first real Markdown H1 (^# ...). If none is found, fall back
+    # to right after the YAML frontmatter. Lines inside ``` fenced code
+    # blocks are NEVER candidates — they often contain things like
+    # PowerShell or Python `# comment` lines that look like an H1 to a
+    # naive regex but aren't (hit on orgpath-narrative/05-orgpath-and-
+    # intune.qmd, which has no real H1 plus PowerShell `# --- Build the
+    # extension attribute name ---` comments).
     $lines = $text -split "`r?`n"
     $fmEnd = -1
     if ($lines.Count -gt 0 -and $lines[0] -eq '---') {
@@ -199,13 +206,23 @@ foreach ($row in $gapRows) {
             if ($lines[$i] -eq '---') { $fmEnd = $i; break }
         }
     }
-    $insertAt = -1
     $start = if ($fmEnd -ge 0) { $fmEnd + 1 } else { 0 }
+
+    $h1Line  = -1
+    $inFence = $false
     for ($i = $start; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match '^#\s+\S') { $insertAt = $i + 1; break }
+        $line = $lines[$i]
+        if ($line -match '^\s*```') { $inFence = -not $inFence; continue }
+        if ($inFence) { continue }
+        if ($line -match '^#\s+\S') { $h1Line = $i; break }
     }
-    if ($insertAt -lt 0) {
-        $insertAt = if ($fmEnd -ge 0) { $fmEnd + 1 } else { 0 }
+
+    $insertAt = if ($h1Line -ge 0) {
+        $h1Line + 1
+    } elseif ($fmEnd -ge 0) {
+        $fmEnd + 1
+    } else {
+        0
     }
 
     $head = ($lines | Select-Object -First $insertAt) -join "`n"
