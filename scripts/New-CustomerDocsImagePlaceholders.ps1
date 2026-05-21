@@ -149,11 +149,16 @@ foreach ($row in $gapRows) {
         ($allNums | Measure-Object -Maximum).Maximum + 1
     } else { 1 }
 
-    # Determine gap from LIVE doc state (placeholders + figure blocks) rather
-    # than the CSV's Current column, which is a Pass-2 snapshot. This makes
-    # the script idempotent on re-run: a doc that's already been seeded to
-    # target won't get new placeholders.
-    $currentInDoc = $allNums.Count
+    # Determine gap from LIVE doc state. Count BOTH:
+    #   1. [IMAGE-NN: ...] placeholders (already-seeded but ungenerated)
+    #   2. ![caption](*.png) image references (rendered figures, with or
+    #      without #fig-... IDs)
+    # The earlier $allNums only counts numbered refs and misses bare
+    # markdown image links — which led to over-seeding docs whose existing
+    # figures don't use the fig-<doc>-image-NN convention.
+    $placeholderCount = @([regex]::Matches($text, '\[IMAGE-(\d+):')).Count
+    $imageRefCount    = @([regex]::Matches($text, '!\[[^\]]*\]\([^)]+\.png\)')).Count
+    $currentInDoc     = $placeholderCount + $imageRefCount
     $gap = [int]$row.Recommended - $currentInDoc
     if ($gap -le 0) {
         Write-Verbose "Skipping $qmdRel : already at target ($currentInDoc/$($row.Recommended))"
