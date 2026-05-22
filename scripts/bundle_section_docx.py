@@ -193,6 +193,14 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--section", help="Bundle a single section by name.")
     group.add_argument("--all", action="store_true", help="Bundle every default section.")
+    parser.add_argument(
+        "--canon-modernization",
+        action="store_true",
+        help="Also bundle the canon-side modernization section located at "
+        "<site-root>/../modernization. Use in addition to --all or --section to "
+        "include the top-level /modernization/ pages alongside the customer-documents "
+        "bundles. Produces <site-root>/../modernization/modernization-bundle.docx.",
+    )
     args = parser.parse_args(argv)
 
     site_root = args.site_root.resolve()
@@ -212,6 +220,23 @@ def main(argv: list[str] | None = None) -> int:
             # used — a section may legitimately have no rendered .docx
             # (e.g., only stubs). Treat as non-fatal but report.
             failures += 1
+
+    # Optional: also bundle the canon-side modernization section. Customer-
+    # documents bundling walks _site/customer-documents/<section>; the canon-
+    # modernization pages live one level up at _site/modernization. Same
+    # section name ("modernization") but a different site-root.
+    if args.canon_modernization:
+        canon_root = site_root.parent
+        canon_section_dir = canon_root / "modernization"
+        if not canon_section_dir.is_dir():
+            print(f"WARN  canon-modernization: directory not found at {canon_section_dir}")
+            failures += 1
+        else:
+            ok, msg = _bundle_one(canon_root, "modernization")
+            prefix = "OK   " if ok else "WARN "
+            print(f"{prefix} canon-modernization/{msg}")
+            if not ok:
+                failures += 1
 
     if args.section and failures:
         # Single-section mode: caller asked for a specific bundle, so
