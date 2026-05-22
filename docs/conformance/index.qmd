@@ -1,0 +1,152 @@
+---
+title: "UIAO Conformance"
+subtitle: "Five tiers, five capabilities, one honest declaration"
+date: 2026-05-22
+---
+
+::: {.callout-note}
+## Status
+
+This page introduces a tier conformance model proposed in
+[ADR-076](../adr/adr-076-tier-conformance-model.qmd). The ADR is
+currently **PROPOSED** — feedback welcome before ratification.
+:::
+
+Federal IT does not adopt software at one level. NIST CSF defines
+four Tiers; CMMC defines three Levels; FedRAMP defines Low / Moderate /
+High. Agencies are used to declaring **which level** of a capability
+they have adopted, and recognizing that lower-level adopters consume a
+strict subset of higher-level capabilities.
+
+UIAO works the same way. An agency does not "adopt UIAO" — an agency
+declares a tier per capability, picks the level of investment that
+matches its program, and upgrades when ready. Lower-tier adoption
+never breaks because of higher-tier work; higher-tier adoption never
+forces lower-tier adopters to keep up.
+
+## The Five Tiers
+
+| Tier | Name | What it does | Where it runs | Examples |
+|---:|---|---|---|---|
+| **1** | Passive Observation | Reads agency systems. Reports. Never mutates. | Anywhere with read credentials. | Discovery scanners; drift detectors; validators; query CLI (`uiao query orgpath user@agency.gov`); OSCAL evidence emit. |
+| **2** | Transformative Authoring | Reads agency systems; emits files (translations, plans, generated docs). Never mutates live systems. | CI, operator workstation. | Schema and document generators; AD-OU-to-OrgPath translators; GPO-to-Intune translators; migration plan generators. |
+| **3** | Active Substrate | Mutates agency tenant state under controlled service account, with audit. | Agency-hosted service account. | Dynamic group writers; OrgPath value stampers; Conditional Access policy publishers; in-bounds drift remediators. |
+| **4** | Active Services | UIAO-supplied services agencies deploy and run. These services own their own state. | Agency-deployed server (the Platform Server). | Platform Server (Windows Server 2025 + Gitea + IIS + OrgTree); KYC broker; operator web console; orchestrator daemon; evidence-fabric signing service. |
+| **5** | Embedded Libraries | Code shipped to consumers — adapters, agency applications, third-party tooling. | Inside customer code. | PowerShell module; adapter SDK; policy-as-code DSL; validation libraries on PyPI / NuGet. |
+
+A higher tier always includes the lower tiers as a strict subset.
+An agency at Tier 4 for Identity is also implicitly conformant at
+Tiers 1, 2, and 3 for Identity.
+
+## The Five Capabilities
+
+A capability is a coherent UIAO surface against which conformance is
+declared independently. The initial set is fixed at five:
+
+| Capability | Scope |
+|---|---|
+| **Identity** | OrgTree, OrgPath, dynamic groups, delegation, identity-related drift. |
+| **Compliance** | SCuBA, FedRAMP, CISA, OSCAL evidence, control mapping, continuous monitoring. |
+| **KYC** | Citizen↔agency and inter-agency identity verification, SSN-equivalent SSOT brokering. |
+| **Substrate** | Operational tooling, PowerShell module, CLI, Quarto pipeline, generators. |
+| **Platform** | Platform Server, deployed UIAO services, release artifacts, HA topology. |
+
+Capabilities are added or revised only through ADRs. Five is the
+floor; growth is bounded by ADR discipline.
+
+## How to declare conformance
+
+A conformance declaration is structured per capability, plus an
+optional headline tier for procurement use:
+
+```yaml
+agency: Example Federal Agency
+declared: 2026-05-22
+conformance:
+  Identity: 3      # Active Substrate — UIAO writes Entra
+  Compliance: 2    # Transformative — UIAO generates OSCAL evidence locally
+  KYC: 0           # Not declared
+  Substrate: 2    # Transformative — agency runs UIAO CLI in CI
+  Platform: 0     # Not declared — no Platform Server deployed
+headline_tier: 3
+headline_basis: Identity
+```
+
+Tier `0` means **not declared / not adopted**. It is not a level of
+conformance; it is the absence of one.
+
+A headline tier MUST cite the capability that justifies it. "Headline
+Tier 4" without a per-capability breakdown is not a valid
+declaration. Procurement decks may use the headline; auditors get
+the full matrix.
+
+## The backward-compatibility promise
+
+Upgrading from Tier N to Tier N+1 in any capability MUST NOT require:
+
+- re-stamping existing OrgPath values
+- re-running migrations on already-migrated objects
+- rewriting dynamic group rules authored at the lower tier
+- modifying schemas of artifacts generated at the lower tier
+
+Tier N+1 schemas, frontmatter fields, and artifact contracts are a
+**strict superset** of Tier N. A change that breaks this rule
+requires a new major Platform Server version and explicit migration
+tooling shipped with it.
+
+This is the discipline that makes incremental adoption possible.
+Without it, "start at Tier 1" is a trap.
+
+## GitHub vs the Platform Server
+
+UIAO has two surfaces with distinct authority:
+
+| Surface | Role | What it tells you |
+|---|---|---|
+| **GitHub repository** (this site) | Source. Pre-release. Architecture and tooling under active development. | What UIAO **is becoming**. Canon documents legitimately carry "Aspirational" labels — the repository is by definition pre-release. |
+| **Platform Server** | Released, signed, revision-controlled artifact agencies deploy. | What UIAO **IS, at version X.Y.Z**. Customer guides describing v1.0 behavior describe deployed Platform Server behavior. |
+
+A canon doc marked "Aspirational" and a customer guide marked
+"v1.0 shipped" on the same subject are not contradictions — they are
+correct claims about different lifecycle stages of the same code.
+
+The release engineering layer that produces signed Platform Server
+artifacts from the repository (tagged releases, SLSA provenance,
+release channel, release notes with schema-compatibility
+declarations, rollback path) is itself Tier 4 work and is in
+development.
+
+## Why this model
+
+Five concrete conflicts in the published site motivated this model:
+
+1. Canon labels things "Aspirational" while customer guides ship
+   them as "v1.0." Resolved by the source / release distinction.
+2. Different documents claim different counts of governance
+   principles (7 / 3 / 1). Resolved by mapping principles to tiers —
+   some universal, some applying only at higher tiers.
+3. "Intune-First" means net-new procurement discipline in canon and
+   GPO replacement in customer docs. Resolved by tier: Tier 1
+   procurement discipline; Tier 3 active SLA validator; Tier 4
+   Platform Server enforcement.
+4. Directory Migration phase counts differ (5 / 10 / 6). Resolved
+   as level-of-detail: canon's 5-phase view is the Tier-2
+   plan-generator output; the longer customer phase lists are
+   Tier-3 runbooks refining specific phases.
+5. OrgPath attribute semantics differ (composite path vs single
+   facet per slot). Resolved by tier: composite-path is a Tier 1
+   expression of intent; single-facet-per-attribute is the Tier 3
+   storage contract.
+
+See [ADR-076](../adr/adr-076-tier-conformance-model.qmd) for the
+full rationale, consequences, risks, and review triggers.
+
+## Coming soon
+
+- Tier annotation backfill on existing canon and customer docs
+  (frontmatter field + visible banner per page)
+- A conformance schema validator that enforces the strict-subset
+  rule at CI time
+- A scaffolded `conformance.yaml` template agencies can fill in
+- Mapping from the Platform Server release engineering layer to
+  Tier 4 product surfaces
