@@ -10,9 +10,7 @@ created_at: "2026-02-26"
 updated_at: "2026-05-15"
 tier: foundational
 supersedable: true
-superseded_by:
-  - "CHARTER-001 (UIAO-V1, Mar 9 2026 — current authoritative charter)"
-  - "CHARTER-002 + CHARTER-003 (V4U Core Canon Introduction + V4U Master Reference, Mar 7 2026)"
+superseded_by: "CHARTER-001 (UIAO-V1, Mar 9 2026 — current authoritative charter); CHARTER-002 + CHARTER-003 (V4U Core Canon Introduction + V4U Master Reference, Mar 7 2026)"
 load_order: 0
 charter_chain:
   - "V3 (Feb 26 2026): this document — original UIAO TwoPager executive summary"
