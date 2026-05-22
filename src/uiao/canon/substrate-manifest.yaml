@@ -29,6 +29,88 @@ metadata:
     derived_at: "2026-04-23"
     derived_by: "ADR-044 follow-through on ADR-032 single-package consolidation"
 
+# Universal substrate principles — apply at all ADR-076 conformance tiers.
+# Per ADR-079 (Governance Principle Reconciliation), these 3 are the canonical
+# universal set. The customer Governance OS Executive Brief cites this section
+# as the principle authority. Code is SSOT per the code-is-SSOT discipline:
+# until this section landed, the exec brief's claim that the 3 principles were
+# "declared in substrate-manifest.yaml" was aspirational — the principles
+# existed only in narrative. ADR-079 Phase 1 closes that gap.
+principles:
+  - id: ssot
+    name: "Single Source of Truth"
+    description: >-
+      Canonical governance artifacts under src/uiao/canon/ define structure,
+      policy intent, and registry authority exactly once. Downstream systems
+      consume those artifacts via importlib.resources rather than duplicating
+      policy logic.
+    source_authority: "ADR-079"
+
+  - id: canon-anchored-evidence
+    name: "Canon-Anchored Evidence"
+    description: >-
+      Every artifact the substrate produces — SSP, POA&M, KSI dashboards,
+      component definitions — cites the canon document ID and version it
+      derives from. Reviewers trace findings back to requirements
+      deterministically.
+    source_authority: "ADR-079"
+
+  - id: drift-is-explicit
+    name: "Drift Is Explicit"
+    description: >-
+      Five-class taxonomy (DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE,
+      DRIFT-AUTHZ, DRIFT-IDENTITY) surfaces structural and provenance
+      mismatch as first-class findings, not exception reports.
+    source_authority: "ADR-079"
+
+# Tier-specific principles — apply only at named ADR-076 conformance tiers.
+# Promoted from the canon /modernization/ narrative per ADR-079. The other 4
+# canon-narrative principles (Deterministic State, Schema Fixity, Provenance
+# Traceability, Drift Resistance) collapse into the universal 3 above per
+# ADR-079's mapping; only these 3 remain genuinely tier-specific.
+tier_specific_principles:
+  - id: two-brain-execution
+    name: "Two-Brain Execution"
+    tier: 3
+    tier_inclusive: true
+    description: >-
+      Copilot governs (canonical review, policy enforcement, validation);
+      Execution Substrate executes (PowerShell, Graph API, tenant
+      provisioning); governance logic and execution logic never co-mingle.
+    rationale: >-
+      At Tiers 1–2 there is no active runtime to split between governance and
+      execution. The principle becomes operational only when UIAO writes
+      agency state (Tier 3+ Active Substrate).
+    source_authority: "ADR-079"
+
+  - id: boundary-enforcement
+    name: "Boundary Enforcement"
+    tier: 4
+    tier_inclusive: true
+    description: >-
+      No governance artifact may extend beyond the M365 GCC-Moderate SaaS
+      boundary. Out-of-scope references are non-canonical and rejected at
+      validation.
+    rationale: >-
+      At Tiers 1–3, boundary is a documented scope; at Tier 4 it becomes an
+      enforced runtime contract on agency-deployed UIAO services (Platform
+      Server).
+    source_authority: "ADR-079"
+
+  - id: tenant-agnosticism
+    name: "Tenant Agnosticism"
+    tier: 5
+    tier_inclusive: true
+    description: >-
+      All artifacts are portable across any M365 GCC-Moderate tenant. No
+      tenant-specific identifiers, UPNs, or GUIDs. All environment values are
+      injected at deployment time.
+    rationale: >-
+      At Tiers 1–4, UIAO runs agency-side and may carry tenant-local context.
+      At Tier 5, code shipped to third parties (PyPI, NuGet, adapter SDK)
+      MUST be portable.
+    source_authority: "ADR-079"
+
 workspace:
   root_env: UIAO_WORKSPACE_ROOT
   fallbacks:
