@@ -54,6 +54,10 @@ from pathlib import Path
 VALID_LIFECYCLE = {"aspirational", "adopted", "superseded", "deprecated"}
 VALID_TIERS = {1, 2, 3, 4, 5}
 
+# Paths to skip when walking recursively. Mirror the convention used by
+# scripts/scan_lifecycle_consistency.py.
+EXCLUDE_PARTS = {"_site", "_freeze", ".quarto", "_extensions", "node_modules", ".venv", "__pycache__"}
+
 # Canonical hand-authored Aspirational callout. Conservative match: exact
 # title, callout-warning class, body until the closing `:::`. Files with
 # divergent wording need human attention and are NOT auto-replaced.
@@ -114,11 +118,15 @@ def replace_aspirational_block(text: str) -> tuple[str, bool]:
     return new_text, n > 0
 
 
-def expand_paths(paths: list[Path]) -> list[Path]:
+def expand_paths(paths: list[Path], recursive: bool = False) -> list[Path]:
     out: list[Path] = []
     for p in paths:
         if p.is_dir():
-            out.extend(sorted(p.glob("*.qmd")))
+            files = p.rglob("*.qmd") if recursive else p.glob("*.qmd")
+            for f in sorted(files):
+                if any(part in EXCLUDE_PARTS for part in f.parts):
+                    continue
+                out.append(f)
         elif p.is_file() and p.suffix == ".qmd":
             out.append(p)
         elif not p.exists():
@@ -134,7 +142,12 @@ def main(argv: list[str] | None = None) -> int:
         "paths",
         nargs="+",
         type=Path,
-        help="Files or directories to process. Directories scanned non-recursively for *.qmd.",
+        help="Files or directories to process. Directories scanned non-recursively by default; use --recursive for *.qmd everywhere under the directory.",
+    )
+    parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Walk directories recursively (rglob). Skips build outputs (_site, _freeze, .quarto, _extensions, node_modules, .venv, __pycache__).",
     )
     parser.add_argument(
         "--lifecycle",
@@ -177,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
         if not re.match(r"^\d{4}-\d{2}-\d{2}$", args.review):
             parser.error(f"--review must be ISO 8601 YYYY-MM-DD; got '{args.review}'")
 
-    files = expand_paths(args.paths)
+    files = expand_paths(args.paths, recursive=args.recursive)
     if not files:
         print("no .qmd files to process", file=sys.stderr)
         return 1
