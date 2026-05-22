@@ -33,7 +33,7 @@
     "status": {
       "type": "string",
       "enum": ["Current", "Draft", "Deprecated", "Needs Replacing", "Needs Creating"],
-      "description": "Lifecycle state. Not to be confused with classification, which captures authority, not lifecycle."
+      "description": "Doc-workflow lifecycle state (Dimension 1). Not to be confused with classification (authority tier) or `lifecycle` (Dimension 2 page adoption state per ADR-082)."
     },
     "classification": {
       "type": "string",
@@ -86,6 +86,30 @@
       "type": "string",
       "enum": ["narrative", "include", "reference"],
       "description": "How the document should appear on the published site. Only meaningful when publish_to_site == true. See ADR-068. 'narrative' = hand-authored .qmd summary; 'include' = .qmd wrapper that {{< include >}}s the canon body verbatim; 'reference' = generated developer-reference rendering (e.g., schema property table)."
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["aspirational", "adopted", "superseded", "deprecated"],
+      "description": "Per ADR-082, page-lifecycle adoption state (Dimension 2; distinct from `status` which is Dimension 1 doc-workflow state). aspirational = canon-declared, not adopted at any tier. adopted = operationally adopted at one or more ADR-076 tiers (cite via tiers_adopted). superseded = replaced by successor (cite via superseded_by). deprecated = retiring (cite via deprecated_replacement). Banner rendered from this field by the {{< lifecycle-banner >}} Quarto shortcode (ADR-082 Phase 2)."
+    },
+    "tiers_adopted": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "integer", "minimum": 1, "maximum": 5 },
+      "description": "Per ADR-082, list of ADR-076 conformance tier numbers at which the page's content is operationally adopted. Required when lifecycle == 'adopted'. Enforced by scripts/scan_lifecycle_consistency.py."
+    },
+    "lifecycle_review": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Per ADR-082, ISO 8601 date by which the lifecycle declaration must be re-validated. Past dates emit non-blocking advisories from scripts/scan_lifecycle_consistency.py."
+    },
+    "superseded_by": {
+      "type": "string",
+      "description": "Per ADR-082, repo-relative path to the successor page. Required when lifecycle == 'superseded'. Resolved by scripts/scan_lifecycle_consistency.py."
+    },
+    "deprecated_replacement": {
+      "type": "string",
+      "description": "Per ADR-082, optional repo-relative path to a replacement page when lifecycle == 'deprecated'."
     }
   },
   "additionalProperties": true,
@@ -99,11 +123,15 @@
     }
   ],
   "x-validator-rules": {
-    "description": "Rules enforced by tools/metadata_validator.py that are not purely JSON-Schema-expressible. Update this block if you modify the validator.",
+    "description": "Rules enforced by tools/metadata_validator.py and scripts/scan_lifecycle_consistency.py that are not purely JSON-Schema-expressible. Update this block if you modify the validators.",
     "updated_at_monotonic": "updated_at string comparison >= created_at string comparison; BLOCKING otherwise.",
     "provenance_source_resolution": "When classification == 'DERIVED', provenance.source must resolve to a path that exists under base_path or base_path.parent.",
     "body_boundary_violations": "Body text matching /GCC[\\s-]?High|DoD|IL[456]|Azure\\s+(IaaS|PaaS)|azure\\.com/i is BLOCKING unless boundary-exception == true.",
     "body_mermaid": "Body containing a ```mermaid fenced block raises a WARNING (PlantUML is the preferred diagram format).",
-    "walker_skip": "Files named INDEX.md and README.md are skipped by the directory walker and therefore exempt from metadata rules."
+    "walker_skip": "Files named INDEX.md and README.md are skipped by the directory walker and therefore exempt from metadata rules.",
+    "lifecycle_adopted_requires_tiers": "When lifecycle == 'adopted', tiers_adopted must be non-empty. Enforced by scripts/scan_lifecycle_consistency.py (ADR-082 Phase 1).",
+    "lifecycle_superseded_requires_link": "When lifecycle == 'superseded', superseded_by must be non-null and must resolve to an existing file. Enforced by scripts/scan_lifecycle_consistency.py (ADR-082 Phase 1).",
+    "lifecycle_tiers_range": "Each tiers_adopted value must be in [1, 2, 3, 4, 5] per ADR-076. Enforced by scripts/scan_lifecycle_consistency.py.",
+    "lifecycle_review_past_advisory": "When lifecycle_review is in the past, scripts/scan_lifecycle_consistency.py emits a non-blocking advisory (not a failure)."
   }
 }
