@@ -2,10 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://whalermike.github.io/uiao/schemas/substrate-manifest/substrate-manifest.schema.json",
   "title": "UIAO Substrate Manifest Schema",
-  "description": "Schema for the top-level substrate manifest that declares the modules, roles, and drift-scan scope of the UIAO monorepo.",
+  "description": "Schema for the top-level substrate manifest that declares the modules, roles, principles, and drift-scan scope of the UIAO monorepo.",
   "type": "object",
   "required": [
     "metadata",
+    "principles",
+    "tier_specific_principles",
     "workspace",
     "github",
     "modules",
@@ -17,6 +19,19 @@
     "metadata": {
       "description": "Canonical frontmatter per src/uiao/schemas/metadata-schema.json.",
       "type": "object"
+    },
+    "principles": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "description": "Universal substrate principles that apply at all ADR-076 conformance tiers. Per ADR-079 the canonical set is SSOT, Canon-anchored evidence, and Drift is explicit. The customer Governance OS Executive Brief cites this section as the principle authority. Code-is-SSOT per ADR-079.",
+      "items": { "$ref": "#/$defs/principle" }
+    },
+    "tier_specific_principles": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Principles that apply only at named ADR-076 conformance tiers. Per ADR-079 the canonical set is Two-Brain Execution (Tier 3+), Boundary Enforcement (Tier 4+), and Tenant Agnosticism (Tier 5). Promoted from the canon /modernization/ narrative; the other 4 canon-narrative principles (Deterministic State, Schema Fixity, Provenance Traceability, Drift Resistance) collapse into the universal 3 per ADR-079's mapping.",
+      "items": { "$ref": "#/$defs/tierSpecificPrinciple" }
     },
     "workspace": {
       "type": "object",
@@ -201,6 +216,71 @@
     }
   },
   "$defs": {
+    "principle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Stable kebab-case identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name (Title Case)."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Operative declaration of what the principle requires."
+        },
+        "source_authority": {
+          "type": "string",
+          "description": "Optional ADR or canon doc citation establishing the principle."
+        }
+      }
+    },
+    "tierSpecificPrinciple": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "tier"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Stable kebab-case identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name (Title Case)."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Operative declaration of what the principle requires."
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "ADR-076 conformance tier at which this principle becomes operational."
+        },
+        "tier_inclusive": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true (default), the principle applies at the named tier AND all higher tiers. If false, applies only at exactly that tier."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why the principle applies at this specific tier and not at lower tiers."
+        },
+        "source_authority": {
+          "type": "string",
+          "description": "Optional ADR or canon doc citation establishing the principle."
+        }
+      }
+    },
     "module": {
       "type": "object",
       "required": [
@@ -229,7 +309,7 @@
             "staging",
             "deploy"
           ],
-          "description": "Module role. Post-ADR-032 the canonical set is: authority (defines canon), consumer (derives from canon), package (single installable distribution carrying both canon and code), tooling (workspace scripts), staging (draft surface \u2014 not canon), deploy (deployment artifacts)."
+          "description": "Module role. Post-ADR-032 the canonical set is: authority (defines canon), consumer (derives from canon), package (single installable distribution carrying both canon and code), tooling (workspace scripts), staging (draft surface — not canon), deploy (deployment artifacts)."
         },
         "canon_consumer": {
           "type": "boolean",
