@@ -51,13 +51,16 @@ Not just users. Every object AD was holding together:
 - Kerberos SPNs and application registrations
 - Cross-domain and cross-forest trust relationships
 
-## The Five Phases
+## The Six Phases
+
+Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.md), the canonical Directory Migration model is six phases. The full phase table with governance gates is in [`docs/modernization/directory-migration.qmd`](../../../../docs/modernization/directory-migration.qmd).
 
 1. **Discover** — complete governance inventory of what AD actually encodes
 2. **Normalize** — rationalize decades of organic growth into a clean authority model
 3. **Map** — translate X.500/LDAP governance into Entra ID equivalents
 4. **Migrate** — execute with continuous validation
 5. **Validate** — prove governance continuity with evidence
+6. **Decommission** — formally retire legacy infrastructure after validation passes a stability window
 
 ## Discovery and Inventory Artifacts
 
@@ -118,6 +121,26 @@ directory-migration/
     ├── dfs/dfs-adapter-interface.md
     └── sql-server/sql-server-adapter-interface.md
 ```
+
+## Adding a New Adapter Migration Guide
+
+Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.md) Phase 5, every new adapter migration guide — code-side under [`adapters/`](./adapters/) and customer-side under [`docs/customer-documents/modernization/`](../../../../docs/customer-documents/modernization/) — MUST include the contracts listed below. Reviewers SHALL block PRs that introduce a new adapter guide without them.
+
+### Required for code-side adapter interface (`adapters/<id>/<id>-adapter-interface.md`)
+
+1. Frontmatter declaring `document_id` matching the `DM_NNN` reserved in [`migration-adapter-registry.yaml`](./migration-adapter-registry.yaml) and validated against [`src/uiao/schemas/migration-adapter-registry/migration-adapter-registry.schema.json`](../../schemas/migration-adapter-registry/migration-adapter-registry.schema.json) (ADR-081 Phase 2).
+2. Entry added or updated in [`migration-adapter-registry.yaml`](./migration-adapter-registry.yaml). When `migration_phase` is declared, it MUST be one of `Discover`, `Normalize`, `Map`, `Migrate`, `Validate`, `Decommission`, or the documented opt-out `N/A — net-new capability` for adapters that add capability without retiring legacy infrastructure.
+3. The eight standard sections from the canon page's "Eight Adapter Interfaces" template (Discovery, Risk Assessment, Target Architecture, Migration Path, Validation, Rollback, plus the adapter-specific sections each interface adds).
+
+### Required for customer-side adapter guide (`docs/customer-documents/modernization/.../<adapter>-modernization.qmd`)
+
+1. A **Canon Phase Mapping (ADR-081)** section at the top of the guide, between the title/classification block and the Table of Contents. The mapping table MUST list every customer phase the guide defines (Phase 0, Phase 1, ... or Phase 1, Phase 2, ... — whichever numbering the adapter uses) and the canon phase(s) each refines. For working examples, see [DNS](../../../../docs/customer-documents/modernization/network-transformation/dns-modernization.qmd) (11→6 mapping) and [PKI](../../../../docs/customer-documents/modernization/pki-modernization.qmd) (6→6 mapping).
+2. A short preamble paragraph explaining the mapping is a navigational anchor — the customer-side operational detail (week ranges, gates, rollback windows, runbook material) is preserved unchanged.
+3. A closing paragraph noting any semantic asymmetry between the customer phasing and the canon scaffold (e.g., several customer phases mapping to canon Migrate, or one customer phase combining canon Normalize + Map).
+
+### Why the mapping table is required
+
+Without it, readers of an adapter-specific guide cannot trace its operational phases back to the canon scaffold, and reviewers cannot tell whether a customer phase belongs in canon Discover, Migrate, Validate, or Decommission. ADR-081 made the canon's six phases the universal scaffold; this requirement is what keeps that scaffold load-bearing for every future adapter.
 
 ## Related
 
