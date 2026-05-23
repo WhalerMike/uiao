@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/migration-adapter-registry/migration-adapter-registry.schema.json",
+  "title": "UIAO Directory Migration Adapter Registry Schema",
+  "description": "JSON Schema for src/uiao/modernization/directory-migration/migration-adapter-registry.yaml. This registry catalogs the eight AD-dependent infrastructure adapters (DM_010 through DM_090) that govern the Active Directory infrastructure bridge per docs/modernization/directory-migration.qmd. Distinct from src/uiao/schemas/adapter-registry/adapter-registry.schema.json which validates the modernization/conformance adapter registry (UIAO_003 doctrinal segmentation). The Phase 2 introduction of this schema (ADR-081) declares the migration_phase enum as the canonical six-phase model (Discover, Normalize, Map, Migrate, Validate, Decommission) plus the documented opt-out 'N/A — net-new capability' for adapters that add capability without retiring legacy infrastructure. Today the schema is declarative (no runtime validator wired); future ADR work will gate the YAML against this schema in CI.",
+  "type": "object",
+  "required": ["registry_type", "version", "adapters"],
+  "properties": {
+    "registry_type": {
+      "type": "string",
+      "const": "directory-migration",
+      "description": "Pins this registry document to the directory-migration registry class. Other registry classes (modernization, conformance) are governed by separate schemas."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Semantic major.minor version of this registry document."
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2})?",
+      "description": "ISO 8601 date or datetime when this registry was first authored."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable owner accountable for the registry's content."
+    },
+    "adapters": {
+      "type": "array",
+      "description": "Ordered list of directory-migration adapter entries.",
+      "items": { "$ref": "#/$defs/adapter" }
+    },
+    "core_canon_touchpoints": {
+      "type": "array",
+      "description": "Cross-references from migration adapters to UIAO_xxx core canon documents. Used for traceability between the AD-migration adapter layer and the substrate canon.",
+      "items": { "$ref": "#/$defs/canonTouchpoint" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "adapter": {
+      "type": "object",
+      "required": ["adapter_id", "document_id", "title", "path", "priority", "core_concepts"],
+      "properties": {
+        "adapter_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+          "description": "Kebab-case stable identifier. Never renamed once assigned."
+        },
+        "document_id": {
+          "type": "string",
+          "pattern": "^DM_\\d{3}$",
+          "description": "DM_NNN canonical document identifier for the adapter interface specification."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "description": "Repo-relative path to the adapter interface document, relative to src/uiao/modernization/directory-migration/."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM"],
+          "description": "Risk-tier priority per the canon page's CRITICAL / HIGH / MEDIUM bands."
+        },
+        "risk_class": {
+          "type": "string",
+          "description": "Short human-readable description of the failure mode if this adapter's migration is not handled correctly."
+        },
+        "core_concepts": {
+          "type": "array",
+          "description": "Core-concept anchors this adapter is grounded in. Format: '#N Concept Name' matching the eight universal core concepts.",
+          "items": {
+            "type": "string",
+            "pattern": "^#[1-8] .+$"
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "implementations": {
+          "type": "array",
+          "description": "Vendor-specific implementations registered under this adapter interface.",
+          "items": { "$ref": "#/$defs/implementation" }
+        },
+        "migration_phase": {
+          "description": "Per ADR-081, the canonical six-phase Directory Migration model that every adapter follows: Discover → Normalize → Map → Migrate → Validate → Decommission. Each adapter declares its CURRENT phase (the phase it is presently executing or has most recently completed). The opt-out value 'N/A — net-new capability' is reserved for adapters that add capability without retiring any legacy infrastructure (i.e., Phase 6 Decommission is not applicable to their migration program). Field is optional today; expected to become required when ADR-081 Phase 5 (adapter-template / contributor guidance) lands and the registry is fully backfilled.",
+          "type": "string",
+          "enum": [
+            "Discover",
+            "Normalize",
+            "Map",
+            "Migrate",
+            "Validate",
+            "Decommission",
+            "N/A — net-new capability"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "implementation": {
+      "type": "object",
+      "required": ["id", "vendor"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "description": "Kebab-case implementation identifier scoped within the parent adapter."
+        },
+        "vendor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Originating vendor or 'Any' for vendor-neutral implementations."
+        },
+        "fedramp_authorized": {
+          "type": "boolean",
+          "description": "True when the implementation carries a current FedRAMP authorization at a boundary that satisfies the registry's GCC-Moderate scope."
+        },
+        "federal_preferred": {
+          "type": "boolean",
+          "description": "True when the implementation is the recommended choice for federal-tenant deployments under this adapter interface."
+        }
+      },
+      "additionalProperties": true
+    },
+    "canonTouchpoint": {
+      "type": "object",
+      "required": ["dm_adapter", "core_doc", "relationship"],
+      "properties": {
+        "dm_adapter": {
+          "type": "string",
+          "description": "adapter_id of the directory-migration adapter participating in the touchpoint."
+        },
+        "core_doc": {
+          "type": "string",
+          "pattern": "^UIAO_\\d{3}$",
+          "description": "UIAO_NNN identifier of the core canon document the adapter touches."
+        },
+        "relationship": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free-text description of how the adapter relates to the core canon document."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
