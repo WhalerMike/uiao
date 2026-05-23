@@ -115,7 +115,7 @@ Defaults match the implicit convention today (no manual backfill required for al
 
 ### Relationship to `_quarto.yml` footer
 
-The site-wide footer statement is rewritten to reference the lifecycle mechanism rather than describe a per-page convention. Footer becomes: "Page status is declared per page in frontmatter and rendered by the `{{< lifecycle-banner >}}` shortcode. See [ADR-082](/adr/adr-082-status-label-lifecycle-policy.html) for the policy."
+The site-wide footer statement is rewritten to reference the lifecycle mechanism rather than describe a per-page convention. Footer becomes: "Page status is declared per page in frontmatter and rendered by the `{{< lifecycle-banner >}}` shortcode. See ADR-082 for the policy."
 
 ## Rationale
 
