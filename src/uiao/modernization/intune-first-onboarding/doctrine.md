@@ -19,6 +19,15 @@ published_at: docs/modernization/intune-first.qmd
 > must satisfy all five before it enters production. Exceptions are
 > documented carve-outs, never improvisations.
 
+> **Scope (per ADR-080).** This doctrine governs **net-new** devices — assets
+> that have never existed on the network. Existing-fleet GPO replacement is
+> a separate program ([GPO Sunset Program](../../../docs/customer-documents/modernization/target-surface/intune-policy-templates.qmd))
+> with its own 7-phase plan; the policy-authoring philosophy that program
+> follows is the [Policy Transformation Pattern](../../../docs/customer-documents/modernization/client-server-to-hybrid-cloud/05-policy-transformation.qmd)
+> ("regenerate, not copy"). The name "Intune-First" by itself, in canon
+> material, refers to this doctrine; do not use it for either of the other
+> two programs.
+
 ---
 
 ## Pillar 1 — No ungoverned device, ever
