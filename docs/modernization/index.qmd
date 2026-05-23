@@ -76,24 +76,42 @@ responsibility, explicit dependency relationships, and canonical artifacts.
 
 ![A clean 16:9 layered-stack diagram showing the four-layer OrgTree governance stack](images/index-image-03-a-clean-169-layered-stack-diagra.png){#fig-index-image-03 fig-alt="Four horizontal translucent layers stacked like glass shelves, bottom-to-top: (1) \"Identity Layer\" — widest, navy — small icons for OrgPath code, dynamic group, attribute. (2) \"Structure Layer\" — teal — small icons for an Administrative Unit boundary, a runbook page, a JSON schema. (3) \"Policy Layer\" — steel gray — small icons for a validation cmdlet, a decision tree, an SLA gauge. (4) \"Governance Layer\" — narrowest, top, dark navy with a soft glow — small icons for a drift signal, an escalation alert, a provenance seal. A vertical arrow runs through all four layers labeled \"Every artifact cites its layer.\" White background. No people. No baked text other than the four layer names and the vertical arrow label. Style: clean isometric/flat hybrid, modern government whitepaper feel. Palette: navy #0D1B2E, teal #1E8C8C, steel gray #5A5A5A, accent amber #D4A017, white." width="85%"}
 
-## Seven Governance Principles
+## Governance Principles — 3 Universal + 3 Tier-Specific
 
-Every decision, artifact, and action within the Modernization Canon is governed by
-seven non-negotiable principles:
+Per [ADR-079](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-079-governance-principle-reconciliation.md), UIAO ships **6 governance principles in two scopes**, declared canonically in [`src/uiao/canon/substrate-manifest.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/substrate-manifest.yaml) (UIAO_200). The substrate manifest is the code SSOT for principles; the descriptions below mirror it verbatim.
 
-1. **Deterministic State** — Every identity object has exactly one canonical state at any point in time. If two systems disagree, the Governance OS canonical state is authoritative.
+### 3 Universal Substrate Principles
 
-2. **Schema Fixity** — Schema is fixed; values are flexible. The structure of the OrgPath codebook, JSON schemas, and dynamic group rules is immutable once canonized. Only values within defined enumerations may change through governed workflows.
+These apply at all 5 conformance tiers per [ADR-076](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-076-tier-conformance-model.md). Every UIAO deployment honors all three.
 
-3. **Provenance Traceability** — Every change to every governance artifact is attributable to a source: a human operator, an automation engine, or the governance engine itself. Unsigned, unattributed changes are drift by definition.
+1. **Single Source of Truth (SSOT).** Canonical governance artifacts under `src/uiao/canon/` define structure, policy intent, and registry authority exactly once. Downstream systems consume those artifacts via `importlib.resources` rather than duplicating policy logic.
 
-4. **Drift Resistance** — The system detects, classifies, and remediates drift automatically. Drift categories: Schema, Value, Hierarchy, Orphan, or Phantom.
+2. **Canon-Anchored Evidence.** Every artifact the substrate produces — SSP, POA&M, KSI dashboards, component definitions — cites the canon document ID and version it derives from. Reviewers trace findings back to requirements deterministically.
 
-5. **Boundary Enforcement** — No governance artifact may extend beyond the M365 GCC-Moderate SaaS boundary. Out-of-scope references are non-canonical and rejected at validation.
+3. **Drift Is Explicit.** Five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) surfaces structural and provenance mismatch as first-class findings, not exception reports.
 
-6. **Two-Brain Execution** — Copilot governs (canonical review, policy enforcement, validation). Execution Substrate executes (PowerShell, Graph API, tenant provisioning). Governance logic and execution logic never co-mingle.
+### 3 Tier-Specific Principles
 
-7. **Tenant Agnosticism** — All artifacts are portable across any M365 GCC-Moderate tenant. No tenant-specific identifiers, UPNs, or GUIDs. All environment values are injected at deployment time.
+These become operational only at the named ADR-076 tier (inclusive — apply at that tier and above):
+
+| Principle | Applies at tier | Rationale for tier scope |
+|---|---|---|
+| **Two-Brain Execution** — Copilot governs (canonical review, policy enforcement, validation); Execution Substrate executes (PowerShell, Graph API, tenant provisioning); governance logic and execution logic never co-mingle | **Tier 3+** (Active Substrate) | At Tiers 1–2 there is no active runtime to split between governance and execution. The principle becomes operational only when UIAO writes agency state. |
+| **Boundary Enforcement** — No governance artifact may extend beyond the M365 GCC-Moderate SaaS boundary. Out-of-scope references are non-canonical and rejected at validation | **Tier 4+** (Active Services / Platform Server) | At Tiers 1–3, boundary is a documented scope; at Tier 4 it becomes an enforced runtime contract on agency-deployed UIAO services. |
+| **Tenant Agnosticism** — All artifacts are portable across any M365 GCC-Moderate tenant. No tenant-specific identifiers, UPNs, or GUIDs. All environment values are injected at deployment time | **Tier 5** (Embedded Libraries) | At Tiers 1–4, UIAO runs agency-side and may carry tenant-local context. At Tier 5, code shipped to third parties (PyPI, NuGet, adapter SDK) MUST be portable. |
+
+### Historical names ("Seven Non-Negotiable Principles")
+
+Earlier framings of this canon listed seven principles. Per ADR-079, four of those names were partial expressions of the universal three and have been collapsed into them:
+
+| Retired narrative name | Collapses into universal principle |
+|---|---|
+| Deterministic State | SSOT (single canonical state per object) |
+| Schema Fixity | SSOT (canon defines structure once) |
+| Provenance Traceability | Canon-Anchored Evidence (same property, different label) |
+| Drift Resistance | Drift Is Explicit (same property; the 5-class taxonomy is the canonical drift surface) |
+
+The other three names (Boundary Enforcement, Two-Brain Execution, Tenant Agnosticism) remain canonical, now scoped to the tiers where they bind. The "seven principles" phrasing should not be cited in new material; refer to the 3 + 3 split above or to the substrate manifest directly. "Assessment Before Action" (sometimes quoted from the OrgPath Narrative) is treated as an operational discipline — a corollary of Drift Is Explicit and Canon-Anchored Evidence — not a first-class substrate principle.
 
 ## Who This Is For
 
