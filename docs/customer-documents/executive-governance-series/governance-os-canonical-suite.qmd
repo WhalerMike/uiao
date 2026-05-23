@@ -104,21 +104,40 @@ The governance perimeter is defined by the M365 GCC-Moderate SaaS boundary. Ever
 
 # Section 3: Governance Principles
 
-Seven principles govern every decision, artifact, and action within the Governance OS. These principles are non-negotiable and apply universally across all appendices.
+Per [ADR-079](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-079-governance-principle-reconciliation.md), the Governance OS declares **3 universal substrate principles + 3 tier-specific principles**, canonically declared in [`src/uiao/canon/substrate-manifest.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/substrate-manifest.yaml) (UIAO_200). The substrate manifest is the code SSOT.
 
-**Principle 1: Deterministic State.** Every identity object has exactly one canonical state at any point in time. There is no ambiguity about what an object\'s OrgPath is, which groups it belongs to, which policies apply to it, or who administers it. If two systems disagree about an object\'s state, the Governance OS canonical state is authoritative.
+## 3.1 Universal Substrate Principles
 
-**Principle 2: Schema Fixity.** Schema is fixed; values are flexible. The structure of the OrgPath codebook, the shape of JSON schemas, the format of dynamic group rules, and the layout of governance artifacts are immutable once canonized. Only the values within defined enumerations---specific OrgPath codes, specific group names, specific role assignments---may change, and only through governed workflows defined in Appendix E.
+These apply at all 5 [ADR-076](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-076-tier-conformance-model.md) conformance tiers. Every Governance OS deployment honors all three.
 
-**Principle 3: Provenance Traceability.** Every change to every governance artifact and every identity object is attributable to a source: a human operator identified by role, an automation engine identified by service principal, or the governance engine itself. Unsigned, unattributed changes are drift by definition.
+**Principle 1: Single Source of Truth (SSOT).** Canonical governance artifacts under `src/uiao/canon/` define structure, policy intent, and registry authority exactly once. Downstream systems consume those artifacts via `importlib.resources` rather than duplicating policy logic. Schema is fixed; values are flexible — the structure of the OrgPath codebook, JSON schemas, and dynamic group rules is immutable once canonized, and only values within defined enumerations change through governed workflows defined in Appendix E.
 
-**Principle 4: Drift Resistance.** The system detects, classifies, and remediates drift automatically. Drift is any deviation between the canonical state defined in the Governance OS and the actual state observed in the tenant. The drift detection engine (Appendix M) runs continuously, classifies drift by category and severity, and triggers remediation workflows (Appendix E) or escalation playbooks (Appendix Q) as appropriate.
+**Principle 2: Canon-Anchored Evidence.** Every artifact the substrate produces — SSP, POA&M, KSI dashboards, component definitions — cites the canon document ID and version it derives from. Every change to every governance artifact is attributable to a source: a human operator identified by role, an automation engine identified by service principal, or the governance engine itself. Unsigned, unattributed changes are drift by definition.
 
-**Principle 5: Boundary Enforcement.** No governance artifact, automation script, API call, or execution path may extend beyond the M365 GCC-Moderate SaaS boundary. Any artifact that references an out-of-scope service is non-canonical and must be rejected at the validation gate (Appendix V).
+**Principle 3: Drift Is Explicit.** Five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) surfaces structural and provenance mismatch as first-class findings, not exception reports. The drift detection engine (Appendix M) runs continuously, classifies drift by category and severity, and triggers remediation workflows (Appendix E) or escalation playbooks (Appendix Q) as appropriate.
 
-**Principle 6: Two-Brain Execution.** Copilot governs: it performs canonical review, policy enforcement, validation, and governance artifact generation. Chrome-Claude executes: it runs PowerShell scripts, makes Graph API calls, provisions tenant configurations, and performs automation scripting. Copilot produces deterministic instruction sets; Chrome-Claude executes them without interpretation. This separation ensures that governance logic and execution logic never co-mingle.
+## 3.2 Tier-Specific Principles
 
-**Principle 7: Tenant Agnosticism.** All artifacts are portable across any M365 GCC-Moderate tenant. No artifact contains tenant-specific identifiers, user principal names, tenant GUIDs, or environment-specific configuration values. All tenant-specific values are injected at deployment time through parameterized variables.
+These become operational only at the named [ADR-076](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-076-tier-conformance-model.md) tier (inclusive — apply at that tier and above):
+
+| Principle | Applies at tier | Rationale for tier scope |
+|---|---|---|
+| **Two-Brain Execution** — Copilot governs (canonical review, policy enforcement, validation); Execution Substrate executes (PowerShell, Graph API, tenant provisioning); governance logic and execution logic never co-mingle | **Tier 3+** (Active Substrate) | At Tiers 1–2 there is no active runtime to split between governance and execution. The principle becomes operational only when UIAO writes agency state. |
+| **Boundary Enforcement** — No governance artifact, automation script, API call, or execution path may extend beyond the M365 GCC-Moderate SaaS boundary. Any artifact referencing an out-of-scope service is non-canonical and rejected at the validation gate (Appendix V) | **Tier 4+** (Active Services / Platform Server) | At Tiers 1–3, boundary is a documented scope; at Tier 4 it becomes an enforced runtime contract on agency-deployed UIAO services. |
+| **Tenant Agnosticism** — All artifacts are portable across any M365 GCC-Moderate tenant. No tenant-specific identifiers, UPNs, or GUIDs. All environment values are injected at deployment time | **Tier 5** (Embedded Libraries) | At Tiers 1–4, UIAO runs agency-side and may carry tenant-local context. At Tier 5, code shipped to third parties (PyPI, NuGet, adapter SDK) MUST be portable. |
+
+## 3.3 Historical names ("Seven Non-Negotiable Principles")
+
+Earlier framings of this canon listed seven principles. Per ADR-079, four of those names were partial expressions of the universal three and have been collapsed:
+
+| Retired narrative name | Collapses into universal principle |
+|---|---|
+| Deterministic State | SSOT (single canonical state per object) |
+| Schema Fixity | SSOT (canon defines structure once) |
+| Provenance Traceability | Canon-Anchored Evidence (same property, different label) |
+| Drift Resistance | Drift Is Explicit (same property; the 5-class taxonomy is the canonical drift surface) |
+
+The other three names (Boundary Enforcement, Two-Brain Execution, Tenant Agnosticism) remain canonical, now scoped to the tiers where they bind. The "seven principles" phrasing should not be cited in new material; refer to the 3 + 3 split above or to the substrate manifest directly.
 
 # Section 4: Document Corpus Map
 
@@ -260,7 +279,7 @@ The Governance OS boundary is the M365 GCC-Moderate SaaS service perimeter. This
 
 The Governance OS employs a two-brain architecture that separates governance reasoning from execution. This separation is fundamental: it ensures that policy interpretation cannot be influenced by execution-time conditions, and that execution cannot deviate from governed instructions.
 
-**Copilot (Governance Brain):** Responsible for canonical review of all governance artifacts; enforcement of all seven governance principles; validation of schemas, boundary rules, and hierarchical integrity; generation of deterministic instruction sets for execution; provenance recording; and drift classification.
+**Copilot (Governance Brain):** Responsible for canonical review of all governance artifacts; enforcement of the substrate governance principles per Section 3 (the 3 universal + the tier-specific principles applicable at the declared [ADR-076](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-076-tier-conformance-model.md) tier); validation of schemas, boundary rules, and hierarchical integrity; generation of deterministic instruction sets for execution; provenance recording; and drift classification.
 
 **Chrome-Claude (Execution Brain):** Responsible for executing PowerShell scripts against target tenants; making Microsoft Graph API calls; provisioning tenant configurations (groups, AUs, role assignments); generating validation reports from live tenant data; and returning structured execution results to Copilot for validation.
 

@@ -144,6 +144,14 @@ conformance:
   Platform: 0      # Not declared — no Platform Server deployed
 headline_tier: 3
 headline_basis: Identity
+# Per ADR-079 Phase 5: list the tier-specific principles binding at the
+# headline tier (or the highest per-capability tier). The 3 universal
+# principles (SSOT, Canon-Anchored Evidence, Drift Is Explicit) bind at
+# every tier and are not enumerated here.
+tier_specific_principles_applied:
+  - two-brain-execution    # binds at Tier 3+; applies because headline_tier >= 3
+  # boundary-enforcement   # would apply at Tier 4+; headline_tier 3 does NOT bind
+  # tenant-agnosticism     # would apply at Tier 5;  headline_tier 3 does NOT bind
 ```
 
 Tier `0` denotes "not declared / not adopted." It is not a
@@ -152,6 +160,16 @@ conformance level; it is the absence of one.
 The headline tier MUST cite the capability that justifies it.
 "Headline Tier 4" without a per-capability breakdown is not a valid
 declaration.
+
+The `tier_specific_principles_applied` list is derived deterministically
+from `headline_tier` per [`src/uiao/canon/substrate-manifest.yaml`](../substrate-manifest.yaml)
+`tier_specific_principles:` (`tier` + `tier_inclusive` fields). The
+[ADR-079](adr-079-governance-principle-reconciliation.md) doctrine
+formalized this scoping: an agency at Tier 1 or 2 does not bind any
+tier-specific principle; Tier 3 binds Two-Brain Execution; Tier 4 binds
+Two-Brain Execution + Boundary Enforcement; Tier 5 binds all three.
+Including the field in the declaration makes the per-tier principle
+scope explicit instead of leaving it as reader inference.
 
 ### Strict Subset Rule (Backward Compatibility)
 
