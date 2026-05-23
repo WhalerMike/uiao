@@ -236,7 +236,14 @@ investment and is the subject of a follow-up ADR.
 - Agencies can declare incremental adoption honestly.
 - "Intune-First" disambiguates by tier: Tier 1 = procurement
   discipline, Tier 3 = SLA validator, Tier 4 = Platform Server
-  enforcement.
+  enforcement. **(Superseded by [ADR-080](adr-080-intune-first-scope-disambiguation.md).** The tier-scoping above
+  collapsed three genuinely different programs — Intune-First Asset
+  Onboarding (net-new), GPO Sunset Program (existing fleet), and the
+  Policy Transformation Pattern (philosophy) — into one tier ladder.
+  Per ADR-080 each program has its own independent tier expression:
+  Intune-First Asset Onboarding is Tier 1+; GPO Sunset Program is
+  Tier 3+; Policy Transformation Pattern applies as guidance at all
+  tiers.)
 - "OrgPath attribute semantics" disambiguates by tier: composite-path
   is a Tier 1 expression of intent; single-facet-per-attribute is the
   Tier 3 storage contract.
