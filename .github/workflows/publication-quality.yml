@@ -1,0 +1,62 @@
+name: Publication Quality Scanner
+
+# Detects content-quality defects on the published .qmd surface:
+#
+#   Gate A — Reserved-with-stub
+#     Frontmatter status: reserved AND body still carries
+#     "Scaffold — awaiting authored content" or literal "TODO — Author".
+#     These pages ship verbatim placeholders to customer readers.
+#
+#   Gate B — LLM-drafting prose
+#     Body contains phrases that almost only occur in raw LLM drafting
+#     output ("Let me reflect it back", "You're identifying",
+#     "Before I draft", etc.) — indicates scratchpad content that
+#     escaped into a published page.
+#
+# Currently runs in ADVISORY mode (no --strict): uploads the report as
+# an artifact on every run, never fails the PR. This mirrors the
+# pre-2026-05-15 phase of the Publication Gap Scanner (see
+# .github/workflows/publication-gap.yml). Promotion to --strict happens
+# once the existing backlog is drained — same pattern that ADR-072
+# followed for the gap scanner.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**/*.qmd'
+      - 'scripts/scan_publication_quality.py'
+      - '.github/workflows/publication-quality.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**/*.qmd'
+      - 'scripts/scan_publication_quality.py'
+      - '.github/workflows/publication-quality.yml'
+
+jobs:
+  publication-quality:
+    name: Scan published .qmd surface for stub or drafting-prose defects
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install scanner dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Run scanner (advisory mode)
+        run: python scripts/scan_publication_quality.py
+
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: publication-quality-report
+          path: |
+            tools/publication-quality/report.md
+            tools/publication-quality/report.json
