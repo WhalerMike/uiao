@@ -6,6 +6,12 @@ UIAO Modernization Adapter: Active Directory
 Registers this adapter with the UIAO substrate and exposes the
 CLI surface: `uiao ad survey` and `uiao ad assign`.
 
+Per ADR-078, the Model A composite-string orgpath helper module
+(``orgpath.py`` — OrgPathAssignmentReport / build_ou_mapping /
+resolve_user_assignments / write_orgpath_to_ad / etc.) was retired
+in the same PR. The Model C facet-aware OrgPath assignment workflow
+will return with the Phase 5 consumer rebuild.
+
 Adapter registration
 --------------------
   adapter_id:    active-directory-survey-v1
@@ -14,28 +20,12 @@ Adapter registration
   canon_ref:     Appendix F (Migration Runbook), Appendix C (Attribute Mapping)
 """
 
-from .orgpath import (
-    OrgPathAssignmentReport,
-    UserOrgPathAssignment,
-    build_ou_mapping,
-    export_assignment_report,
-    export_ou_mapping,
-    resolve_user_assignments,
-    write_orgpath_to_ad,
-)
 from .survey import ADSurveyReport, DriftFinding, run_discovery
 
 __all__ = [
     "ADSurveyReport",
     "DriftFinding",
-    "OrgPathAssignmentReport",
-    "UserOrgPathAssignment",
     "run_discovery",
-    "build_ou_mapping",
-    "resolve_user_assignments",
-    "write_orgpath_to_ad",
-    "export_ou_mapping",
-    "export_assignment_report",
 ]
 
 # Adapter manifest — consumed by modernization-registry.yaml validation

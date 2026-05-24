@@ -69,85 +69,12 @@ class TestNormalizeRealData:
         assert len(result.claims) == 0
 
 
-class TestOrgPathClaimExtraction:
-    """OrgPath alignment (UIAO_151 / ADR-035). The adapter surfaces the raw
-    extensionAttribute1 value + format signal; the drift engine owns
-    codebook + phantom-drift classification."""
-
-    def _claim_for(self, claims, record_id):
-        return next(c for c in claims if c.claim_id == f"entra:{record_id}")
-
-    def test_valid_orgpath_surfaced_on_admin(self, adapter: EntraAdapter, users_groups: list) -> None:
-        result = adapter.normalize(users_groups)
-        admin = self._claim_for(result.claims, "usr-001-admin")
-        assert admin.fields["orgpath"] == "ORG-IT-SEC-SOC-T1"
-        assert admin.fields["orgpath_format_valid"] is True
-        assert "extensionAttribute1" in admin.fields["orgpath_source"]
-
-    def test_user_without_orgpath_omits_field(self, adapter: EntraAdapter, users_groups: list) -> None:
-        result = adapter.normalize(users_groups)
-        svc = self._claim_for(result.claims, "usr-002-svc")
-        assert "orgpath" not in svc.fields
-
-    def test_malformed_orgpath_flagged_not_valid(self, adapter: EntraAdapter, users_groups: list) -> None:
-        result = adapter.normalize(users_groups)
-        broken = self._claim_for(result.claims, "usr-004-broken")
-        assert broken.fields["orgpath"] == "org-fin-ap"
-        assert broken.fields["orgpath_format_valid"] is False
-
-    def test_ghost_code_is_valid_format_but_flagged_by_drift_engine(
-        self, adapter: EntraAdapter, users_groups: list
-    ) -> None:
-        # Adapter only enforces format; codebook membership is the drift
-        # engine's responsibility. The ghost code passes format validation.
-        result = adapter.normalize(users_groups)
-        ghost = self._claim_for(result.claims, "usr-005-ghost")
-        assert ghost.fields["orgpath"] == "ORG-GHOST"
-        assert ghost.fields["orgpath_format_valid"] is True
-
-    def test_drift_engine_classifies_fixture_value_drift(self, adapter: EntraAdapter, users_groups: list) -> None:
-        from uiao.governance.drift import classify_identity_drift, DRIFT_IDENTITY
-        from uiao.ir.models.core import ProvenanceRecord
-        from uiao.modernization.orgtree import load_codebook
-
-        codebook = load_codebook()
-        prov = ProvenanceRecord(source="test", timestamp="2026-04-20T00:00:00Z", version="0.1.0")
-        result = adapter.normalize(users_groups)
-        ghost = self._claim_for(result.claims, "usr-005-ghost")
-
-        drift = classify_identity_drift(
-            resource_id=ghost.entity,
-            policy_ref="orgpath-codebook",
-            expected_state={"orgpath": "ORG-IT"},
-            actual_state={"orgpath": ghost.fields["orgpath"]},
-            provenance=prov,
-            orgpath_codebook=codebook,
-        )
-        assert drift is not None
-        assert drift.drift_class == DRIFT_IDENTITY
-        assert any("not in canonical codebook" in r for r in drift.delta["identity_reasons"])
-
-    def test_drift_engine_classifies_fixture_format_drift(self, adapter: EntraAdapter, users_groups: list) -> None:
-        from uiao.governance.drift import classify_identity_drift, DRIFT_IDENTITY
-        from uiao.ir.models.core import ProvenanceRecord
-        from uiao.modernization.orgtree import load_codebook
-
-        codebook = load_codebook()
-        prov = ProvenanceRecord(source="test", timestamp="2026-04-20T00:00:00Z", version="0.1.0")
-        result = adapter.normalize(users_groups)
-        broken = self._claim_for(result.claims, "usr-004-broken")
-
-        drift = classify_identity_drift(
-            resource_id=broken.entity,
-            policy_ref="orgpath-codebook",
-            expected_state={"orgpath": "ORG-FIN-AP"},
-            actual_state={"orgpath": broken.fields["orgpath"]},
-            provenance=prov,
-            orgpath_codebook=codebook,
-        )
-        assert drift is not None
-        assert drift.drift_class == DRIFT_IDENTITY
-        assert any("format validation" in r for r in drift.delta["identity_reasons"])
+# TestOrgPathClaimExtraction class removed per ADR-078: the tests
+# asserted on Model A composite-string OrgPath values
+# (extensionAttribute1 = "ORG-IT-SEC-SOC-T1" etc.) and on the
+# classify_identity_drift codebook-lookup paths that were retired in
+# this PR. Model C per-facet adapter assertions will land in the
+# Phase 5 consumer rebuild.
 
 
 class TestConnectionBehavior:

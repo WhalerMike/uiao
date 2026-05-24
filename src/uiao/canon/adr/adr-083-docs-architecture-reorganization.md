@@ -43,7 +43,7 @@ A 2026-05-23 follow-up review surfaced the **meta-pattern** behind all five: eve
 
 ### Industry comparison
 
-The dominant industry framework for technical documentation organization is the **Divio Documentation System** (https://documentation.divio.com), adopted by Django, GitLab, MDN, Anthropic, HashiCorp, Stripe, and many others. It defines four quadrants by reader intent:
+The dominant industry framework for technical documentation organization is the **Divio Documentation System** (https://docs.divio.com/documentation-system/), adopted by Django, GitLab, MDN, Anthropic, HashiCorp, Stripe, and many others. It defines four quadrants by reader intent:
 
 | Quadrant | Purpose | Reader | UIAO instances today |
 |---|---|---|---|
@@ -196,7 +196,7 @@ Estimated total: **1 week** for a focused execution; **2 weeks** if interleaved 
 |---|---|---|
 | Recurring cross-surface duplication symptom | ADRs [076](adr-076-tier-conformance-model.md), [078](adr-078-orgpath-attribute-schema-15-facet.md), [079](adr-079-governance-principle-reconciliation.md), [080](adr-080-intune-first-scope-disambiguation.md), [081](adr-081-directory-migration-phase-canonical-model.md) | 2026-05-23 |
 | Specific cross-surface conflict noted but not yet ADR'd (OrgTree canon vs OrgPath Narrative companion) | `docs/modernization/orgtree.qmd` (27-doc canon index) + `docs/customer-documents/orgpath-narrative/index.qmd` (15-chapter narrative paraphrase) | 2026-05-23 |
-| Divio Documentation System | https://documentation.divio.com | 2026-05-23 |
+| Divio Documentation System | https://docs.divio.com/documentation-system/ | 2026-05-23 |
 | ADR-076 lifecycle/authority separation by frontmatter (not URL) | [`adr-076-tier-conformance-model.md`](adr-076-tier-conformance-model.md) | 2026-05-23 |
 | ADR-072 publication policy by frontmatter (`publish_to_site`, `publication_style`) | [`adr-072-canon-publication-policy.md`](adr-072-canon-publication-policy.md) | 2026-05-23 |
 | ADR-082 lifecycle banner renders from frontmatter, not URL | [`adr-082-status-label-lifecycle-policy.md`](adr-082-status-label-lifecycle-policy.md) | 2026-05-23 |

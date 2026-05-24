@@ -21,6 +21,20 @@ provenance_flatten:
 
 # Appendix A — OrgPath Codebook
 
+> **2026-05-24 Model C reset (per ADR-078).** The Model A composite-
+> hyphen path described in this narrative is superseded. The executable
+> canon at [`src/uiao/canon/data/orgpath/codebook.yaml`](data/orgpath/codebook.yaml)
+> is now Model C (15-facet multi-attribute, `schema_version: 2.0.0`)
+> validated by [`src/uiao/schemas/orgpath/codebook.schema.json`](../../schemas/orgpath/codebook.schema.json).
+> The Python loader at [`src/uiao/modernization/orgtree/codebook.py`](../modernization/orgtree/codebook.py)
+> exposes the Model C `Codebook` / `Facet` / `FacetValue` API.
+>
+> The Model A narrative below is preserved as historical reference for
+> the design decisions ADR-078 supersedes. **Do not use it as
+> implementation guidance.** The Model C narrative rewrite is scheduled
+> for a follow-up PR alongside the Phase 5 consumer rebuild; until
+> then, refer to ADR-078 for the canonical Model C specification.
+
 ## Purpose
 
 This appendix defines the complete enumeration of OrgPath codes used to encode organizational hierarchy in Entra ID extension attributes. Every valid OrgPath in the system must exist in this codebook. An OrgPath that does not appear here is, by definition, invalid and will be flagged as drift.
