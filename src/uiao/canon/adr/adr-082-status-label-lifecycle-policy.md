@@ -1,7 +1,7 @@
 ---
 adr_id: adr-082
 title: "Status Label Lifecycle Policy — Page Lifecycle + Tier-Scoped Adoption"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-05-22
 deciders: Michael Stratton
 updated: 2026-05-22
@@ -21,7 +21,7 @@ published_at: docs/adr/adr-082-status-label-lifecycle-policy.html
 
 ## Status
 
-**PROPOSED** — 2026-05-22.
+**ACCEPTED** — 2026-05-24 (originally decided 2026-05-22).
 
 ## Context
 

@@ -1,7 +1,7 @@
 ---
 adr_id: adr-078
 title: "OrgPath Attribute Schema — 15-Facet Multi-Attribute Model Supersedes Composite Path"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-05-22
 deciders: Michael Stratton
 updated: 2026-05-22
@@ -21,7 +21,7 @@ published_at: docs/adr/adr-078-orgpath-attribute-schema-15-facet.html
 
 ## Status
 
-**PROPOSED** — 2026-05-22.
+**ACCEPTED** — 2026-05-24 (originally decided 2026-05-22).
 
 > **2026-05-24 implementation note.** Phase 1 (Model C SSOT) shipped
 > with **no legacy preservation**. The grandfathering language below

@@ -1,7 +1,7 @@
 ---
 adr_id: adr-083
 title: "Documentation Architecture Reorganization — Single URL Umbrella + Divio-Aligned Sections"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-05-23
 deciders: Michael Stratton
 updated: 2026-05-23
@@ -21,7 +21,7 @@ published_at: docs/adr/adr-083-docs-architecture-reorganization.html
 
 ## Status
 
-**PROPOSED** — 2026-05-23.
+**ACCEPTED** — 2026-05-24 (originally decided 2026-05-23).
 
 ## Context
 
