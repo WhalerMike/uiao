@@ -16,6 +16,8 @@ provenance_flatten:
 
 # Appendix M — Drift Detection Engine Specification
 
+> **Model C — per-facet drift over 15 attribute slots (per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)).** The drift engine validates each principal's 10 named facet values independently against the codebook (per-facet enumeration membership for enumerated facets; `value_pattern` regex for typed facets). The five drift categories — **Format**, **Value**, **Slot** (new for Model C codebook integrity), **Orphan**, **Phantom** — are documented Model C-natively in the customer-facing [Drift Walk-through](../../docs/customer-documents/reference-architecture/drift-walkthrough.qmd). The runtime drift engine implementation (`src/uiao/governance/drift_engine.py`) was retired by ADR-078 Phase 1+5 and will be rebuilt per-facet in Phase 5 follow-up; a full Model C rewrite of this appendix is scheduled as ADR-078 Phase 6 follow-up.
+
 Purpose
 
 This appendix defines the complete specification for the automated drift detection engine, including its architecture, drift categories, detection rules, snapshot schema, comparison algorithm, and alert routing.

@@ -16,6 +16,8 @@ provenance_flatten:
 
 # Appendix H — OrgPath JSON Schema
 
+> **Model C — 15-facet multi-attribute (per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)).** The OrgPathEntry / OrgPathCodebook JSON Schemas embedded below are the Model A composite-hyphen shape (`code` regex `^ORG(-[A-Z]{2,6}){0,8}$`, hierarchy levels 0–8). The canonical Model C schema is [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json) (`$schema` draft 2020-12, `schema_version: 2.0.0`) — per-facet declarations with `enumerated` / `typed` / `reserved` kinds and a slot-uniqueness invariant enforced by the Python loader. The embedded schemas below are preserved as the prior shape for historical reference; a full Model C rewrite of this appendix is scheduled as ADR-078 Phase 6 follow-up.
+
 Purpose
 
 This appendix defines the canonical JSON Schema 2020-12 documents for all OrgTree data objects. These schemas are the machine-readable contract for data validation across the Governance OS.
