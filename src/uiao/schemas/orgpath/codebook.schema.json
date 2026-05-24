@@ -1,21 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://uiao.io/schemas/orgpath/codebook.schema.json",
-  "title": "UIAO OrgPath Codebook",
-  "description": "Machine-readable enumeration of canonical OrgPath codes. Bound to UIAO_151 (src/uiao/canon/UIAO_151_OrgPath_Codebook.md) by ADR-035. Every OrgPath value appearing in Entra extensionAttribute1 must resolve to `codes[].code` or it is classified as Value Drift (DRIFT-SEMANTIC).",
+  "title": "UIAO OrgPath Codebook — Model C (15-Facet Multi-Attribute)",
+  "description": "Machine-readable per-facet enumeration of canonical OrgPath values. Per ADR-078, each of the 15 onPremisesExtensionAttribute slots carries one semantic facet (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType; slots 11-15 reserved for tenant-specific extension). Every value appearing in a slot must resolve to an entry in that facet's enumeration (for enumerated facets) or match its value_pattern (for typed facets) or it is classified as DRIFT-SEMANTIC. Supersedes the v1 composite-hyphen schema per ADR-078; UIAO has no production adopters at ratification time, so the prior Model A schema is not preserved as a legacy file.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "document_id",
     "parent_canon",
-    "format",
-    "codes"
+    "model",
+    "facets"
   ],
   "properties": {
     "schema_version": {
       "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      "pattern": "^2\\.[0-9]+\\.[0-9]+$",
+      "description": "Major version pinned to 2 — Model C. Future Model C minor/patch updates increment the second/third digit."
     },
     "document_id": {
       "const": "UIAO_151"
@@ -23,79 +24,121 @@
     "parent_canon": {
       "type": "string"
     },
+    "model": {
+      "const": "C",
+      "description": "Identifies this codebook as Model C (15-facet multi-attribute) per ADR-078. Model A (composite-hyphen) is superseded and not represented in this schema version."
+    },
+    "adoption_tier_min": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Minimum ADR-076 conformance tier at which this codebook is operationally adopted. Per ADR-078, Model C is Tier 3+ doctrine."
+    },
     "updated": {
       "type": "string",
       "format": "date"
     },
-    "format": {
+    "facets": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["regex", "max_depth", "segment_pattern", "root", "separator"],
-      "properties": {
-        "regex": { "const": "^ORG(-[A-Z0-9]{2,6}){0,8}$" },
-        "max_depth": { "const": 8 },
-        "segment_pattern": { "const": "^[A-Z0-9]{2,6}$" },
-        "root": { "const": "ORG" },
-        "separator": { "const": "-" }
-      }
-    },
-    "codes": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/code" }
+      "description": "Per-facet declarations keyed by facet name (snake_case). Each facet binds to exactly one onPremisesExtensionAttribute slot. The 10 canonical facets (region, department, division, role, cost_center, classification, hire_date, term_date, clearance_level, account_type) map to attributes 1-10 per ADR-078. Slots 11-15 are reserved and declared as kind: reserved unless a governed PR has promoted them to tenant-specific facets.",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/facet" }
     },
     "deprecated": {
-      "type": "array",
-      "default": [],
-      "items": { "$ref": "#/$defs/deprecatedCode" }
+      "type": "object",
+      "description": "Per-facet deprecated values. Keys are facet names; values are arrays of deprecated entries with replaced_by pointing at an active value in the same facet's enumeration.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/deprecatedValue" }
+      },
+      "default": {}
     }
   },
   "$defs": {
-    "code": {
+    "facet": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "level", "description", "parent"],
+      "required": ["attribute", "description", "kind"],
       "properties": {
-        "code": {
+        "attribute": {
           "type": "string",
-          "pattern": "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-        },
-        "level": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 8
+          "pattern": "^extensionAttribute([1-9]|1[0-5])$",
+          "description": "onPremisesExtensionAttribute slot (extensionAttribute1 through extensionAttribute15) this facet binds to. Slot uniqueness is enforced at integrity-check time by the loader, not in JSON Schema."
         },
         "description": {
           "type": "string",
           "minLength": 1
         },
-        "parent": {
-          "oneOf": [
-            { "type": "null" },
-            { "type": "string", "pattern": "^ORG(-[A-Z0-9]{2,6}){0,8}$" }
-          ]
+        "kind": {
+          "enum": ["enumerated", "typed", "reserved"],
+          "description": "enumerated = closed list of valid values; typed = open set constrained by value_type and optional value_pattern (e.g., ISO dates); reserved = no semantics declared (slots 11-15 by default)."
+        },
+        "enumeration": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/facetValue" },
+          "description": "Required when kind == enumerated. List of valid values."
+        },
+        "value_type": {
+          "enum": ["string", "date"],
+          "description": "Required when kind == typed. Coarse type hint for downstream consumers."
+        },
+        "value_pattern": {
+          "type": "string",
+          "description": "Optional regex constraint when kind == typed. The drift engine rejects values not matching this pattern."
+        },
+        "allow_empty": {
+          "type": "boolean",
+          "default": false,
+          "description": "When kind == typed, whether an empty string is a valid value (e.g., TermDate for active employees)."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "enumerated" } }, "required": ["kind"] },
+          "then": { "required": ["enumeration"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "typed" } }, "required": ["kind"] },
+          "then": { "required": ["value_type"] }
+        }
+      ]
+    },
+    "facetValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "description"],
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
-    "deprecatedCode": {
+    "deprecatedValue": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "replaced_by"],
+      "required": ["value", "replaced_by"],
       "properties": {
-        "code": {
+        "value": {
           "type": "string",
-          "pattern": "^ORG(-[A-Z0-9]{2,6}){0,8}$"
+          "minLength": 1
         },
         "replaced_by": {
           "type": "string",
-          "pattern": "^ORG(-[A-Z0-9]{2,6}){0,8}$"
+          "minLength": 1
         },
         "deprecated_at": {
           "type": "string",
           "format": "date"
         },
-        "reason": { "type": "string" }
+        "reason": {
+          "type": "string"
+        }
       }
     }
   }

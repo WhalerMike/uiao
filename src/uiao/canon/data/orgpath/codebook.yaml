@@ -1,74 +1,243 @@
 # yaml-language-server: $schema=../../../schemas/orgpath/codebook.schema.json
 #
-# UIAO OrgPath Codebook — machine-readable SSOT
-# =============================================
+# UIAO OrgPath Codebook — Model C (15-facet multi-attribute)
+# ==========================================================
 # Canonical source: src/uiao/canon/UIAO_151_OrgPath_Codebook.md
-# Binding ADR:      src/uiao/canon/adr/adr-035-orgpath-codebook-binding.md
+# Binding ADR:      src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md
+# Schema:           src/uiao/schemas/orgpath/codebook.schema.json (v2.0.0)
+# Supersedes:       Model A composite-hyphen path (single attribute). See
+#                   ADR-078 §Decision for the rationale. Per ADR-078's
+#                   no-grandfathering update (2026-05-23), the prior
+#                   Model A codebook is not preserved as a legacy file —
+#                   UIAO has no production adopters at ratification time.
 #
-# This file is the enumeration the drift engine, the OrgPath assignment
-# adapter (adapters/modernization/active-directory/orgpath.py), and the
-# Entra adapter consume at runtime. UIAO_151 is the narrative canon; this
-# YAML is the executable canon. When they disagree, the ADR process
-# governs reconciliation — never edit this file without a governed PR.
+# This file is the executable canon the drift engine, OrgPath assignment
+# adapter, and Entra device adapter consume at runtime. UIAO_151 is the
+# narrative canon; this YAML is the SSOT. When they disagree, ADR
+# process governs reconciliation — never edit this file without a
+# governed PR.
 #
-# Boundary: GCC-Moderate. OrgPath values live in Entra
-# extensionAttribute1 (users) and extensionAttribute1 / ARM tag (devices).
+# Boundary: GCC-Moderate. Each facet value lives in a single
+# `onPremisesExtensionAttribute` slot (1-15) on the Entra ID directory
+# object. Dynamic group rules, Administrative Unit memberships, and
+# Conditional Access policies compose facet values via boolean
+# operators rather than text-parsing a composite string.
 
-schema_version: "1.0.0"
+schema_version: "2.0.0"
 document_id: UIAO_151
 parent_canon: UIAO_007
-updated: "2026-04-26"
+model: "C"
+adoption_tier_min: 3
+updated: "2026-05-23"
 
-format:
-  regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-  max_depth: 8
-  segment_pattern: "^[A-Z0-9]{2,6}$"
-  root: ORG
-  separator: "-"
+# Each facet is a semantic field bound to exactly one
+# onPremisesExtensionAttribute slot. The 10 named facets below are
+# canonical and MUST NOT have their slot assignments changed without a
+# superseding ADR. Slots 11-15 are reserved for tenant-specific
+# extensions; tenants declare facet semantics for those via a governed
+# PR before populating values.
+#
+# Facet kinds:
+#   - enumerated: a closed list of valid values, each with a
+#     description. The drift engine rejects any value not in the
+#     enumeration as DRIFT-SEMANTIC (value drift).
+#   - typed: an open set of values constrained only by a `value_type`
+#     (date, string) and optional `value_pattern` regex. Lifecycle date
+#     facets (HireDate, TermDate) use this kind because dates cannot be
+#     enumerated.
+#   - reserved: no semantic declared yet. Tenants opting in must add
+#     a per-tenant facet declaration via a governed PR.
 
-# Every OrgPath appearing in extensionAttribute1 must resolve to a code
-# in `codes[].code`, otherwise it is classified as Value Drift (UIAO_151 §Drift).
-codes:
-  # Level 0 — Enterprise Root
-  - code: ORG
-    level: 0
-    description: Enterprise Root
-    parent: null
+facets:
 
-  # Level 1 — Divisions
-  - { code: ORG-EXEC,  level: 1, description: Executive / Leadership,  parent: ORG }
-  - { code: ORG-FIN,   level: 1, description: Finance,                 parent: ORG }
-  - { code: ORG-HR,    level: 1, description: Human Resources,         parent: ORG }
-  - { code: ORG-IT,    level: 1, description: Information Technology,  parent: ORG }
-  - { code: ORG-OPS,   level: 1, description: Operations,              parent: ORG }
-  - { code: ORG-LEG,   level: 1, description: Legal / Compliance,      parent: ORG }
-  - { code: ORG-SALES, level: 1, description: Sales & Marketing,       parent: ORG }
+  region:
+    attribute: extensionAttribute1
+    description: >-
+      Geographic or cloud region where the principal is administratively
+      anchored. Determines region-scoped Conditional Access targeting and
+      regional dynamic group membership.
+    kind: enumerated
+    enumeration:
+      - { value: NCR,      description: National Capital Region }
+      - { value: EASTUS,   description: Eastern United States }
+      - { value: WESTUS,   description: Western United States }
+      - { value: CENTRAL,  description: Central United States }
+      - { value: EMEA,     description: Europe / Middle East / Africa }
+      - { value: APAC,     description: Asia-Pacific }
+      - { value: LATAM,    description: Latin America }
 
-  # Level 2 — Departments
-  - { code: ORG-FIN-AP,  level: 2, description: Accounts Payable,        parent: ORG-FIN }
-  - { code: ORG-FIN-AR,  level: 2, description: Accounts Receivable,     parent: ORG-FIN }
-  - { code: ORG-FIN-BUD, level: 2, description: Budget & Forecasting,    parent: ORG-FIN }
-  - { code: ORG-IT-SEC,  level: 2, description: Security,                parent: ORG-IT }
-  - { code: ORG-IT-INF,  level: 2, description: Infrastructure,          parent: ORG-IT }
-  - { code: ORG-IT-DEV,  level: 2, description: Development / Engineering, parent: ORG-IT }
-  - { code: ORG-HR-REC,  level: 2, description: Recruitment,             parent: ORG-HR }
-  - { code: ORG-HR-BEN,  level: 2, description: Benefits,                parent: ORG-HR }
-  - { code: ORG-OPS-LOG, level: 2, description: Logistics,               parent: ORG-OPS }
-  - { code: ORG-LEG-COM, level: 2, description: Compliance,              parent: ORG-LEG }
+  department:
+    attribute: extensionAttribute2
+    description: >-
+      Top-level organizational department. Drives department-scoped
+      Administrative Unit delegation and persona Conditional Access
+      policies.
+    kind: enumerated
+    enumeration:
+      - { value: IT,           description: Information Technology }
+      - { value: HR,           description: Human Resources }
+      - { value: Finance,      description: Finance }
+      - { value: Legal,        description: Legal / Compliance }
+      - { value: Engineering,  description: Engineering }
+      - { value: Operations,   description: Operations }
+      - { value: Sales,        description: Sales / Marketing }
+      - { value: Executive,    description: Executive / Leadership }
 
-  # Level 3 — Units
-  - { code: ORG-IT-SEC-SOC,    level: 3, description: Security Operations Center, parent: ORG-IT-SEC }
-  - { code: ORG-IT-SEC-IAM,    level: 3, description: Identity & Access Management, parent: ORG-IT-SEC }
-  - { code: ORG-IT-INF-NET,    level: 3, description: Networking,            parent: ORG-IT-INF }
-  - { code: ORG-FIN-AP-EAST,   level: 3, description: Accounts Payable East, parent: ORG-FIN-AP }
-  - { code: ORG-FIN-AP-WEST,   level: 3, description: Accounts Payable West, parent: ORG-FIN-AP }
+  division:
+    attribute: extensionAttribute3
+    description: >-
+      Sub-department division. Refines the Department facet for finer-
+      grained dynamic groups and AU scoping (e.g., IT/CyberOps vs
+      IT/InfraOps).
+    kind: enumerated
+    enumeration:
+      - { value: CyberOps,  description: Cybersecurity Operations }
+      - { value: InfraOps,  description: Infrastructure Operations }
+      - { value: AppDev,    description: Application Development }
+      - { value: GRC,       description: "Governance, Risk, and Compliance" }
+      - { value: Service,   description: Service Desk / Support }
+      - { value: Data,      description: Data / Analytics }
+      - { value: Cloud,     description: Cloud Engineering }
+      - { value: Identity,  description: Identity and Access }
 
-  # Level 4 — Teams
-  - { code: ORG-IT-SEC-SOC-T1, level: 4, description: SOC Tier 1 Analysts,  parent: ORG-IT-SEC-SOC }
-  - { code: ORG-IT-SEC-SOC-T2, level: 4, description: SOC Tier 2 Engineers, parent: ORG-IT-SEC-SOC }
-  - { code: ORG-IT-DEV-APP1,   level: 4, description: Application Team 1,   parent: ORG-IT-DEV }
+  role:
+    attribute: extensionAttribute4
+    description: >-
+      Principal's functional role. Used by Conditional Access policies
+      that target role tiers (e.g., privileged action requires Director
+      role plus Privileged AccountType).
+    kind: enumerated
+    enumeration:
+      - { value: Analyst,    description: Analyst / Individual Contributor }
+      - { value: Engineer,   description: Engineer }
+      - { value: Architect,  description: Architect }
+      - { value: Manager,    description: Manager }
+      - { value: Director,   description: Director }
+      - { value: VP,         description: Vice President }
+      - { value: CISO,       description: Chief Information Security Officer }
+      - { value: CIO,        description: Chief Information Officer }
+      - { value: CTO,        description: Chief Technology Officer }
 
-# Codes that used to be canonical but are no longer accepted. A user who
-# still carries a deprecated code generates Phantom Drift (UIAO_151 §Drift).
-# `replaced_by` is the governed successor the drift engine proposes.
-deprecated: []
+  cost_center:
+    attribute: extensionAttribute5
+    description: >-
+      Cost center code used for chargeback reporting and license
+      assignment governance. Tenant-specific prefix; the codebook ships
+      starter codes and tenants extend via governed PRs.
+    kind: enumerated
+    enumeration:
+      - { value: CC-4100, description: IT — Infrastructure }
+      - { value: CC-4200, description: IT — Security }
+      - { value: CC-4300, description: IT — Application Development }
+      - { value: CC-5100, description: HR — Talent Acquisition }
+      - { value: CC-5200, description: HR — Benefits }
+      - { value: CC-6100, description: Finance — Accounts Payable }
+      - { value: CC-6200, description: Finance — Accounts Receivable }
+      - { value: CC-7100, description: Legal — Compliance }
+      - { value: CC-8100, description: Operations — Facilities }
+      - { value: CC-8300, description: Operations — Logistics }
+      - { value: CC-9100, description: Executive }
+
+  classification:
+    attribute: extensionAttribute6
+    description: >-
+      Workforce classification. Drives persona-based Conditional Access
+      policies, license-tier eligibility, and lifecycle-workflow choice
+      (Employee joiner vs Contractor joiner).
+    kind: enumerated
+    enumeration:
+      - { value: Employee,    description: Full-time employee }
+      - { value: PartTime,    description: Part-time employee }
+      - { value: Contractor,  description: Contractor / vendor }
+      - { value: Intern,      description: Intern }
+      - { value: Executive,   description: Executive }
+      - { value: Volunteer,   description: Volunteer }
+
+  hire_date:
+    attribute: extensionAttribute7
+    description: >-
+      ISO 8601 date the principal entered the organization. Drives
+      joiner-lifecycle automation (group memberships, license grants,
+      training assignments scheduled relative to HireDate).
+    kind: typed
+    value_type: date
+    value_pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+
+  term_date:
+    attribute: extensionAttribute8
+    description: >-
+      ISO 8601 date the principal will exit (or did exit) the
+      organization. Empty string for active employees. Drives leaver-
+      lifecycle automation (access revocation, mailbox conversion,
+      device wipe scheduled relative to TermDate).
+    kind: typed
+    value_type: date
+    value_pattern: "^(\\d{4}-\\d{2}-\\d{2})?$"
+    allow_empty: true
+
+  clearance_level:
+    attribute: extensionAttribute9
+    description: >-
+      Personnel security clearance level. Gates application access for
+      cleared-only workloads via Conditional Access composition
+      (clearance + role + region).
+    kind: enumerated
+    enumeration:
+      - { value: None,         description: No clearance required / not applicable }
+      - { value: PublicTrust,  description: Public Trust }
+      - { value: Secret,       description: Secret }
+      - { value: TopSecret,    description: Top Secret }
+      - { value: TS_SCI,       description: Top Secret / Sensitive Compartmented Information }
+
+  account_type:
+    attribute: extensionAttribute10
+    description: >-
+      Account category. Distinguishes standard user accounts from
+      privileged-access workstations, service principals, and shared
+      mailboxes for PIM-eligibility and dynamic group composition.
+    kind: enumerated
+    enumeration:
+      - { value: Standard,       description: Standard user account }
+      - { value: Privileged,     description: Privileged account (PIM-eligible) }
+      - { value: Service,        description: Service account / non-human }
+      - { value: SharedMailbox,  description: Shared mailbox identity }
+      - { value: Guest,          description: External guest (B2B) }
+      - { value: Vendor,         description: Vendor / external party }
+
+  reserved_11:
+    attribute: extensionAttribute11
+    description: >-
+      Reserved for tenant-specific extension. Declare facet semantics
+      (rename this entry, set kind + enumeration / typed) via a
+      governed PR before populating values in the tenant.
+    kind: reserved
+
+  reserved_12:
+    attribute: extensionAttribute12
+    description: >-
+      Reserved for tenant-specific extension. See reserved_11.
+    kind: reserved
+
+  reserved_13:
+    attribute: extensionAttribute13
+    description: >-
+      Reserved for tenant-specific extension. See reserved_11.
+    kind: reserved
+
+  reserved_14:
+    attribute: extensionAttribute14
+    description: >-
+      Reserved for tenant-specific extension. See reserved_11.
+    kind: reserved
+
+  reserved_15:
+    attribute: extensionAttribute15
+    description: >-
+      Reserved for tenant-specific extension. See reserved_11.
+    kind: reserved
+
+# Deprecated values, per-facet. A principal carrying a deprecated value
+# generates DRIFT-SEMANTIC findings; `replaced_by` is the governed
+# successor the drift engine proposes during remediation. Schema permits
+# the section to be absent or empty.
+deprecated: {}

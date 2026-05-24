@@ -1,156 +1,224 @@
-"""Tests for the OrgPath codebook loader (ADR-035, UIAO_151)."""
+"""Tests for the OrgPath codebook loader — Model C (ADR-078, UIAO_151)."""
 
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 
 import pytest
 
-from uiao.governance.drift import DRIFT_IDENTITY, classify_identity_drift
-from uiao.ir.models.core import ProvenanceRecord
 from uiao.modernization.orgtree import (
     Codebook,
     CodebookValidationError,
+    Facet,
     load_codebook,
 )
 
 
-PROV = ProvenanceRecord(source="test", timestamp="2026-04-20T00:00:00Z", version="0.1.0")
+# ---------------------------------------------------------------------------
+# Default codebook
+# ---------------------------------------------------------------------------
 
 
 def test_default_codebook_loads_and_validates() -> None:
     codebook = load_codebook()
     assert isinstance(codebook, Codebook)
     assert codebook.document_id == "UIAO_151"
-    assert codebook.regex == "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-    assert codebook.is_active("ORG-IT-SEC-SOC-T1")
-    assert codebook.parent_of("ORG-IT-SEC-SOC-T1") == "ORG-IT-SEC-SOC"
-    # Root has no parent
-    assert codebook.parent_of("ORG") is None
+    assert codebook.model == "C"
+    assert codebook.schema_version.startswith("2.")
+    assert codebook.adoption_tier_min == 3
 
 
-def test_codes_set_is_populated_and_regex_matches_every_entry() -> None:
+def test_default_codebook_has_ten_named_facets_plus_five_reserved() -> None:
     codebook = load_codebook()
-    assert "ORG" in codebook.codes
-    for code in codebook.codes:
-        assert codebook.has_format(code), f"{code} fails regex"
+    named = [f for f in codebook.facets.values() if f.kind != "reserved"]
+    reserved = [f for f in codebook.facets.values() if f.kind == "reserved"]
+    assert len(named) == 10
+    assert len(reserved) == 5
 
 
-def test_rejects_missing_parent(tmp_path: Path) -> None:
+def test_canonical_facet_slot_assignments() -> None:
+    """Per ADR-078 §Canonical attribute assignments."""
+    codebook = load_codebook()
+    expected = {
+        "region": "extensionAttribute1",
+        "department": "extensionAttribute2",
+        "division": "extensionAttribute3",
+        "role": "extensionAttribute4",
+        "cost_center": "extensionAttribute5",
+        "classification": "extensionAttribute6",
+        "hire_date": "extensionAttribute7",
+        "term_date": "extensionAttribute8",
+        "clearance_level": "extensionAttribute9",
+        "account_type": "extensionAttribute10",
+    }
+    for name, slot in expected.items():
+        facet = codebook.facet(name)
+        assert facet.attribute == slot, f"facet {name} should bind {slot}"
+
+
+def test_facet_lookup_by_attribute() -> None:
+    codebook = load_codebook()
+    region = codebook.facet_by_attribute("extensionAttribute1")
+    assert region is not None
+    assert region.name == "region"
+
+
+def test_facet_lookup_by_attribute_returns_none_when_unknown() -> None:
+    codebook = load_codebook()
+    assert codebook.facet_by_attribute("extensionAttribute99") is None
+
+
+# ---------------------------------------------------------------------------
+# Per-facet API
+# ---------------------------------------------------------------------------
+
+
+def test_enumerated_facet_is_active_for_known_value() -> None:
+    codebook = load_codebook()
+    region = codebook.facet("region")
+    assert region.is_active("NCR")
+    assert region.is_active("WESTUS")
+
+
+def test_enumerated_facet_is_inactive_for_unknown_value() -> None:
+    codebook = load_codebook()
+    region = codebook.facet("region")
+    assert not region.is_active("ATLANTIS")
+
+
+def test_typed_facet_validates_value_pattern() -> None:
+    codebook = load_codebook()
+    hire_date = codebook.facet("hire_date")
+    assert hire_date.kind == "typed"
+    assert hire_date.is_active("2024-01-15")
+    assert not hire_date.is_active("not-a-date")
+
+
+def test_typed_facet_allow_empty_for_term_date() -> None:
+    """TermDate is empty for active employees per ADR-078."""
+    codebook = load_codebook()
+    term_date = codebook.facet("term_date")
+    assert term_date.allow_empty is True
+    assert term_date.is_active("")
+    assert term_date.is_active("2030-12-31")
+    assert not term_date.is_active("not-a-date")
+
+
+def test_reserved_facet_rejects_all_values() -> None:
+    codebook = load_codebook()
+    reserved = codebook.facet("reserved_11")
+    assert reserved.kind == "reserved"
+    assert not reserved.is_active("anything")
+    assert not reserved.is_active("")
+
+
+def test_facet_unknown_raises_keyerror() -> None:
+    codebook = load_codebook()
+    with pytest.raises(KeyError, match="not declared"):
+        codebook.facet("not_a_facet")
+
+
+# ---------------------------------------------------------------------------
+# Integrity validation
+# ---------------------------------------------------------------------------
+
+
+_MIN_HEADER = """\
+schema_version: "2.0.0"
+document_id: UIAO_151
+parent_canon: UIAO_007
+model: "C"
+adoption_tier_min: 3
+facets:
+  region:
+    attribute: extensionAttribute1
+    description: Geographic region
+    kind: enumerated
+    enumeration:
+      - { value: NCR, description: National Capital Region }
+"""
+
+
+def test_rejects_slot_collision(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
+    # second_facet (extra facet) sits at 2-space indent — sibling of `region` inside `facets:`
     bad.write_text(
-        textwrap.dedent("""\
-        schema_version: "1.0.0"
-        document_id: UIAO_151
-        parent_canon: UIAO_007
-        format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-          max_depth: 8
-          segment_pattern: "^[A-Z0-9]{2,6}$"
-          root: ORG
-          separator: "-"
-        codes:
-          - { code: ORG,       level: 0, description: Root,    parent: null }
-          - { code: ORG-GHOST, level: 1, description: Orphan,  parent: ORG-NOPE }
-    """)
+        _MIN_HEADER
+        + "  second_facet:\n"
+        + "    attribute: extensionAttribute1\n"
+        + "    description: Collision\n"
+        + "    kind: enumerated\n"
+        + "    enumeration:\n"
+        + "      - { value: X, description: collision value }\n"
+        + "deprecated: {}\n"
     )
-    with pytest.raises(CodebookValidationError, match="unknown parent"):
+    with pytest.raises(CodebookValidationError, match="both bind"):
         load_codebook(bad)
 
 
-def test_rejects_non_root_null_parent(tmp_path: Path) -> None:
+def test_rejects_deprecated_replacement_not_in_enumeration(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
-    bad.write_text(
-        textwrap.dedent("""\
-        schema_version: "1.0.0"
-        document_id: UIAO_151
-        parent_canon: UIAO_007
-        format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-          max_depth: 8
-          segment_pattern: "^[A-Z0-9]{2,6}$"
-          root: ORG
-          separator: "-"
-        codes:
-          - { code: ORG,     level: 0, description: Root,   parent: null }
-          - { code: ORG-IT,  level: 1, description: "IT",   parent: null }
-    """)
-    )
-    with pytest.raises(CodebookValidationError, match="null parent"):
+    bad.write_text(_MIN_HEADER + "deprecated:\n" + "  region:\n" + "    - { value: OLDREGION, replaced_by: NOPE }\n")
+    with pytest.raises(CodebookValidationError, match="not an active enumeration value"):
         load_codebook(bad)
 
 
-def test_rejects_deprecated_pointing_to_unknown(tmp_path: Path) -> None:
+def test_rejects_deprecated_for_non_enumerated_facet(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
     bad.write_text(
-        textwrap.dedent("""\
-        schema_version: "1.0.0"
-        document_id: UIAO_151
-        parent_canon: UIAO_007
-        format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-          max_depth: 8
-          segment_pattern: "^[A-Z0-9]{2,6}$"
-          root: ORG
-          separator: "-"
-        codes:
-          - { code: ORG,    level: 0, description: Root,   parent: null }
-          - { code: ORG-IT, level: 1, description: "IT",   parent: ORG }
-        deprecated:
-          - { code: ORG-MKT, replaced_by: ORG-NOPE }
-    """)
+        _MIN_HEADER
+        + "  hire_date:\n"
+        + "    attribute: extensionAttribute7\n"
+        + "    description: Hire date\n"
+        + "    kind: typed\n"
+        + "    value_type: date\n"
+        + "deprecated:\n"
+        + "  hire_date:\n"
+        + '    - { value: "2020-01-01", replaced_by: "2024-01-01" }\n'
     )
-    with pytest.raises(CodebookValidationError, match="replaced_by"):
+    with pytest.raises(CodebookValidationError, match="non-enumerated"):
         load_codebook(bad)
 
 
-def test_phantom_drift_fires_on_deprecated_code(tmp_path: Path) -> None:
+def test_deprecated_value_round_trip_in_enumerated_facet(tmp_path: Path) -> None:
     good = tmp_path / "good.yaml"
     good.write_text(
-        textwrap.dedent("""\
-        schema_version: "1.0.0"
-        document_id: UIAO_151
-        parent_canon: UIAO_007
-        format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
-          max_depth: 8
-          segment_pattern: "^[A-Z0-9]{2,6}$"
-          root: ORG
-          separator: "-"
-        codes:
-          - { code: ORG,       level: 0, description: Root,  parent: null }
-          - { code: ORG-SALES, level: 1, description: Sales, parent: ORG }
-        deprecated:
-          - { code: ORG-MKT, replaced_by: ORG-SALES, reason: "Rename" }
-    """)
+        _MIN_HEADER
+        + "  department:\n"
+        + "    attribute: extensionAttribute2\n"
+        + "    description: Department\n"
+        + "    kind: enumerated\n"
+        + "    enumeration:\n"
+        + "      - { value: IT, description: Information Technology }\n"
+        + "      - { value: Engineering, description: Engineering }\n"
+        + "deprecated:\n"
+        + "  department:\n"
+        + '    - { value: ITSecurity, replaced_by: IT, reason: "Consolidated" }\n'
     )
     codebook = load_codebook(good)
-    assert codebook.is_deprecated("ORG-MKT")
-    assert codebook.replacement_for("ORG-MKT") == "ORG-SALES"
-
-    drift = classify_identity_drift(
-        resource_id="user:1",
-        policy_ref="orgpath-codebook",
-        expected_state={"orgpath": "ORG-SALES"},
-        actual_state={"orgpath": "ORG-MKT"},
-        provenance=PROV,
-        orgpath_codebook=codebook,
-    )
-    assert drift is not None
-    assert drift.drift_class == DRIFT_IDENTITY
-    assert any("Phantom Drift" in r for r in drift.delta["identity_reasons"])
+    dept = codebook.facet("department")
+    assert dept.is_deprecated("ITSecurity")
+    assert dept.replacement_for("ITSecurity") == "IT"
+    assert dept.is_valid_value("ITSecurity")  # deprecated values still recognized
+    assert dept.is_valid_value("IT")  # active value
+    assert not dept.is_valid_value("NOPE")
 
 
-def test_legacy_set_argument_still_accepted() -> None:
-    drift = classify_identity_drift(
-        resource_id="user:1",
-        policy_ref="orgpath-codebook",
-        expected_state={"orgpath": "ORG-IT"},
-        actual_state={"orgpath": "ORG-GHOST"},
-        provenance=PROV,
-        orgpath_codebook={"ORG", "ORG-IT"},
-    )
-    assert drift is not None
-    assert drift.drift_class == DRIFT_IDENTITY
-    assert any("not in canonical codebook" in r for r in drift.delta["identity_reasons"])
+# ---------------------------------------------------------------------------
+# Sanity: typed facets are well-formed
+# ---------------------------------------------------------------------------
+
+
+def test_typed_facets_declare_value_type() -> None:
+    codebook = load_codebook()
+    for facet in codebook.facets.values():
+        if facet.kind == "typed":
+            assert facet.value_type is not None, f"{facet.name} missing value_type"
+
+
+def test_facet_dataclass_is_frozen() -> None:
+    codebook = load_codebook()
+    region = codebook.facet("region")
+    assert isinstance(region, Facet)
+    with pytest.raises((AttributeError, Exception)):
+        region.name = "renamed"  # type: ignore[misc]
