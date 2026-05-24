@@ -27,7 +27,7 @@ The two axes are independent. A finding may be "unauthorized" (risk) and
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional, Set, Union
+from typing import Any, Dict, List, Literal, Set, Union
 
 from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
 
@@ -106,8 +106,8 @@ def build_drift_state(
     expected_state: Dict[str, Any],
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
-    drift_id: Optional[str] = None,
-    drift_class: Optional[DriftClassLiteral] = None,
+    drift_id: str | None = None,
+    drift_class: DriftClassLiteral | None = None,
 ) -> DriftState:
     """
     Deterministically compute a DriftState from expected vs actual state.
@@ -190,8 +190,8 @@ def classify_authz_drift(
     expected_state: Dict[str, Any],
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
-    drift_id: Optional[str] = None,
-) -> Optional[DriftState]:
+    drift_id: str | None = None,
+) -> DriftState | None:
     """
     Classify authorization drift (DRIFT-AUTHZ).
 
@@ -272,9 +272,10 @@ def classify_authz_drift(
 #   - Entra device without OrgPath extensionAttribute1
 # ---------------------------------------------------------------------------
 
-import re as _re
-
-_ORGPATH_REGEX = _re.compile(r"^ORG(-[A-Z]{2,6}){0,8}$")
+# _ORGPATH_REGEX (Model A composite-string format) removed per ADR-078;
+# Model C OrgPath has no single composite regex (one regex per typed
+# facet). The Phase 5 consumer rebuild will reintroduce per-facet
+# validation here.
 
 # Identity fields whose absence or change constitutes identity drift
 _IDENTITY_REQUIRED_FIELDS = frozenset(
@@ -314,27 +315,10 @@ _LIFECYCLE_ACCOUNT_RULES = {
 }
 
 
-def _resolve_codebook(
-    codebook: Optional[OrgPathCodebook],
-) -> tuple[Optional[set], Optional[set]]:
-    """Return ``(active_codes, deprecated_codes)`` for a codebook argument.
-
-    Accepts either a bare ``set[str]`` of active codes (legacy contract used
-    by ``test_drift_classifiers``) or any object exposing ``.codes`` and
-    ``.deprecated_codes`` — e.g. a
-    :class:`uiao.modernization.orgtree.codebook.Codebook`. Duck-typed to
-    avoid a circular import.
-    """
-    if codebook is None:
-        return None, None
-    if isinstance(codebook, set):
-        return codebook, None
-    active = getattr(codebook, "codes", None)
-    deprecated = getattr(codebook, "deprecated_codes", None)
-    if active is None:
-        # Fall back to iterating — supports any Iterable[str].
-        return set(codebook), None
-    return set(active), set(deprecated) if deprecated else None
+# _resolve_codebook removed per ADR-078: it extracted Model A composite-
+# string sets (.codes, .deprecated_codes) from the deleted Codebook
+# class. Model C's per-facet Codebook does not expose those attributes;
+# the Phase 5 rebuild will introduce a facet-aware drift classifier.
 
 
 def classify_identity_drift(
@@ -344,9 +328,9 @@ def classify_identity_drift(
     expected_state: Dict[str, Any],
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
-    drift_id: Optional[str] = None,
-    orgpath_codebook: Optional[OrgPathCodebook] = None,
-) -> Optional[DriftState]:
+    drift_id: str | None = None,
+    orgpath_codebook: OrgPathCodebook | None = None,
+) -> DriftState | None:
     """
     Classify identity drift (DRIFT-IDENTITY).
 
@@ -359,13 +343,15 @@ def classify_identity_drift(
       3. Lifecycle state is inconsistent with accountEnabled, OR
       4. Required identity fields are absent from actual_state
 
-    ``orgpath_codebook`` accepts either a ``set[str]`` of active codes
-    (legacy contract — only Value Drift is emitted) or a
-    :class:`uiao.modernization.orgtree.codebook.Codebook`, in which case
-    the classifier additionally recognises Phantom Drift (value landed in
-    the deprecated list). If omitted, only format validation is applied.
+    The ``orgpath_codebook`` parameter is retained for caller signature
+    compatibility but is now a no-op: per ADR-078, OrgPath was reset to
+    Model C (15-facet multi-attribute) and the Model A composite-string
+    codebook lookups previously performed here are no longer applicable.
+    Per-facet DRIFT-IDENTITY classification will be reintroduced when
+    the Model C consumer modules are rebuilt in a follow-up Phase 5 PR;
+    until then this classifier only emits sentinel-field-change findings.
     """
-    active_codes, deprecated_codes = _resolve_codebook(orgpath_codebook)
+    _ = orgpath_codebook  # accepted but unused — see ADR-078 note above
     delta = _dict_delta(expected_state, actual_state)
     all_changed = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
 
@@ -375,18 +361,9 @@ def classify_identity_drift(
     if all_changed & _IDENTITY_SENTINEL_FIELDS:
         reasons.append(f"sentinel fields changed: {sorted(all_changed & _IDENTITY_SENTINEL_FIELDS)}")
 
-    # Check 2: OrgPath validation
-    orgpath_value = (
-        actual_state.get("orgpath") or actual_state.get("org_path") or actual_state.get("extension_attribute_1")
-    )
-    if orgpath_value is None:
-        reasons.append("OrgPath missing from identity object")
-    elif not _ORGPATH_REGEX.match(str(orgpath_value)):
-        reasons.append(f"OrgPath '{orgpath_value}' fails format validation ^ORG(-[A-Z]{{2,6}}){{0,8}}$")
-    elif deprecated_codes is not None and str(orgpath_value) in deprecated_codes:
-        reasons.append(f"OrgPath '{orgpath_value}' is deprecated in the codebook (Phantom Drift)")
-    elif active_codes is not None and str(orgpath_value) not in active_codes:
-        reasons.append(f"OrgPath '{orgpath_value}' not in canonical codebook")
+    # OrgPath-codebook validation (composite-string lookup; deprecated /
+    # not-in-codebook detection) removed per ADR-078. Model C per-facet
+    # DRIFT-IDENTITY will land in the Phase 5 consumer rebuild.
 
     # Check 3: lifecycle consistency
     lifecycle = actual_state.get("lifecycle_state") or actual_state.get("extensionAttribute3")
@@ -514,8 +491,8 @@ def classify_drift(
     expected_state: Dict[str, Any],
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
-    drift_id: Optional[str] = None,
-    orgpath_codebook: Optional[OrgPathCodebook] = None,
+    drift_id: str | None = None,
+    orgpath_codebook: OrgPathCodebook | None = None,
 ) -> DriftState:
     """
     Run all drift classifiers in priority order and return the first match.

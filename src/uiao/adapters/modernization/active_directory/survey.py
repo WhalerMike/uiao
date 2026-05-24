@@ -45,7 +45,6 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 # ------------------------------------------------------------------
 # userAccountControl bit constants (MS-ADTS 2.2.18)
@@ -142,7 +141,7 @@ class ADSurveyReport:
     # Optional SPN inventory artifact (Federal SSOT / Evidence Bundle).
     # Populated by extract_spn_inventory(); remains None when no SPN inventory
     # pass has been run for this report.
-    spn_inventory: Optional[SpnInventory] = None
+    spn_inventory: SpnInventory | None = None
 
     @property
     def ok(self) -> bool:
@@ -193,7 +192,7 @@ class UserEnrichment:
     group_memberships: list[str]  # flat list of all group DNs (recursive)
     group_memberships_cycle: bool  # True if a cycle was detected during group expansion
     orphaned_sids: list[str]  # SIDs in memberOf that resolve to nothing
-    candidate_orgpath: Optional[str]  # OU-derived suggestion (not authoritative)
+    candidate_orgpath: str | None  # OU-derived suggestion (not authoritative)
 
 
 # ------------------------------------------------------------------
@@ -218,7 +217,7 @@ def decode_account_flags(uac: int) -> AccountFlags:
     )
 
 
-def is_stale_account(last_logon_timestamp: Optional[int], stale_days: int = _DEFAULT_STALE_DAYS) -> tuple[bool, int]:
+def is_stale_account(last_logon_timestamp: int | None, stale_days: int = _DEFAULT_STALE_DAYS) -> tuple[bool, int]:
     """
     Determine whether an account is stale based on lastLogonTimestamp.
 
@@ -249,7 +248,7 @@ def is_stale_account(last_logon_timestamp: Optional[int], stale_days: int = _DEF
 def resolve_group_members(
     group_dn: str,
     all_objects: dict[str, dict],  # DN → raw AD object dict with "members" list
-    visited: Optional[set[str]] = None,
+    visited: set[str] | None = None,
 ) -> tuple[list[str], bool]:
     """
     Recursively expand group membership for *group_dn*.
@@ -337,7 +336,7 @@ def detect_orphaned_sids(
 def resolve_manager_chain(
     user_dn: str,
     all_objects: dict[str, dict],
-    visited: Optional[set[str]] = None,
+    visited: set[str] | None = None,
 ) -> tuple[list[str], bool]:
     """
     Walk the manager chain from *user_dn* up to the root or a cycle.
@@ -362,7 +361,7 @@ def resolve_manager_chain(
     if obj is None:
         return [], False
 
-    manager_dn: Optional[str] = obj.get("manager")
+    manager_dn: str | None = obj.get("manager")
     if not manager_dn:
         return [], False
 
@@ -380,7 +379,7 @@ def resolve_manager_chain(
 # ------------------------------------------------------------------
 
 
-def derive_candidate_orgpath(dn: str, codebook: set[str]) -> Optional[str]:
+def derive_candidate_orgpath(dn: str, codebook: set[str]) -> str | None:
     """
     Return a candidate OrgPath derived from the OU components of *dn*.
 
@@ -396,20 +395,12 @@ def derive_candidate_orgpath(dn: str, codebook: set[str]) -> Optional[str]:
     Import is deferred to break the orgpath→survey circular dependency
     (orgpath imports DriftFinding and derive_orgpath_from_dn from survey).
     """
-    # Late import to avoid circular dependency.
-    from uiao.adapters.modernization.active_directory.orgpath import (  # noqa: PLC0415
-        derive_orgpath as _derive_orgpath_canonical,
-    )
-
-    if codebook:
-        # Try the canonical A4 path first — returns a codebook hit or None.
-        hit = _derive_orgpath_canonical(dn, codebook)
-        if hit is not None:
-            return hit
-
-    # No codebook hit (or empty codebook): generate a governance-queue
-    # candidate using the local algorithm which returns valid-format paths
-    # even when the code isn't yet registered.
+    # Note: the prior "try canonical A4 path first" step has been
+    # removed per ADR-078 (the orgpath.py adapter that exposed
+    # derive_orgpath as the canonical Model A implementation was
+    # deleted). The local algorithm below still generates a valid-format
+    # candidate from the DN's OU components; Model C canonical
+    # derivation will be introduced in a follow-up Phase 5 PR.
     return derive_orgpath_from_dn(dn, codebook)
 
 
@@ -768,7 +759,7 @@ _NAME_TO_CODE: dict[str, str] = {
 _ORGPATH_SEGMENT_RE = re.compile(r"^[A-Z]{2,6}$")
 
 
-def _normalize_segment(raw: str) -> Optional[str]:
+def _normalize_segment(raw: str) -> str | None:
     """
     Convert a raw OU name segment to an OrgPath segment code.
     Returns None if the segment cannot be normalized (geographic, technical, etc.).
@@ -782,7 +773,7 @@ def _normalize_segment(raw: str) -> Optional[str]:
     return None
 
 
-def derive_orgpath_from_dn(distinguished_name: str, codebook: set[str]) -> Optional[str]:
+def derive_orgpath_from_dn(distinguished_name: str, codebook: set[str]) -> str | None:
     """
     Attempt to derive a canonical OrgPath from an AD distinguished name.
 
@@ -962,14 +953,14 @@ class SPNRecord:
     principal_name: str
     object_class: str  # user | computer | msDS-GroupManagedServiceAccount | msDS-ManagedServiceAccount | other
     host_or_fqdn: str = ""
-    port_or_instance: Optional[str] = None
-    sam_account_name: Optional[str] = None
-    distinguished_name: Optional[str] = None
-    when_created: Optional[str] = None
-    when_changed: Optional[str] = None
-    principal_orgpath: Optional[str] = None
-    hosting_computer_orgpath: Optional[str] = None
-    drift_finding_ref: Optional[str] = None
+    port_or_instance: str | None = None
+    sam_account_name: str | None = None
+    distinguished_name: str | None = None
+    when_created: str | None = None
+    when_changed: str | None = None
+    principal_orgpath: str | None = None
+    hosting_computer_orgpath: str | None = None
+    drift_finding_ref: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -1016,7 +1007,7 @@ def _normalize_object_class(raw: str) -> str:
     return raw if raw in _SPN_KNOWN_OBJECT_CLASSES else "other"
 
 
-def _parse_spn(spn: str) -> tuple[str, str, Optional[str], str]:
+def _parse_spn(spn: str) -> tuple[str, str, str | None, str]:
     """
     Parse 'ServiceClass/host[:port_or_instance][/extras...]' into (service_class, host, port_or_instance, full_spn).
 
@@ -1036,10 +1027,10 @@ def _parse_spn(spn: str) -> tuple[str, str, Optional[str], str]:
 
 def _resolve_principal_orgpath(
     principal_name: str,
-    sam_account_name: Optional[str],
-    distinguished_name: Optional[str],
-    principal_orgpath_index: Optional[dict[str, str]],
-) -> Optional[str]:
+    sam_account_name: str | None,
+    distinguished_name: str | None,
+    principal_orgpath_index: dict[str, str] | None,
+) -> str | None:
     """
     Look up the OrgPath of the SPN-registering principal via the caller-supplied index.
 
@@ -1056,8 +1047,8 @@ def _resolve_principal_orgpath(
 
 def _resolve_hosting_computer_orgpath(
     host_or_fqdn: str,
-    computer_orgpath_index: Optional[dict[str, str]],
-) -> Optional[str]:
+    computer_orgpath_index: dict[str, str] | None,
+) -> str | None:
     """
     Look up the OrgPath of the hosting computer derived from host_or_fqdn.
 
@@ -1081,9 +1072,9 @@ def extract_spn_inventory(
     discovery_timestamp: str,
     discovery_method: str = SPN_METHOD_LDAP,
     discovery_scope: str = "",
-    service_class_filter: Optional[list[str]] = None,
-    principal_orgpath_index: Optional[dict[str, str]] = None,
-    computer_orgpath_index: Optional[dict[str, str]] = None,
+    service_class_filter: list[str] | None = None,
+    principal_orgpath_index: dict[str, str] | None = None,
+    computer_orgpath_index: dict[str, str] | None = None,
 ) -> tuple[SpnInventory, list[DriftFinding]]:
     """
     Build an SpnInventory artifact from a list of principal records.
@@ -1135,7 +1126,7 @@ def extract_spn_inventory(
                 continue
             principal_orgpath = _resolve_principal_orgpath(principal_name, sam, dn, principal_orgpath_index)
             hosting_orgpath = _resolve_hosting_computer_orgpath(host, computer_orgpath_index)
-            drift_ref: Optional[str] = None
+            drift_ref: str | None = None
             if principal_orgpath is None and hosting_orgpath is None:
                 unattributed_idx += 1
                 error_code = f"GOV-SPN-{unattributed_idx:03d}"
@@ -1186,8 +1177,8 @@ def run_discovery(
     base_dn: str,
     username: str,
     password: str,
-    hr_export_path: Optional[Path] = None,
-    codebook_path: Optional[Path] = None,
+    hr_export_path: Path | None = None,
+    codebook_path: Path | None = None,
     dry_run: bool = True,
 ) -> ADSurveyReport:
     """
@@ -1306,7 +1297,7 @@ def _emit_user_finding(
     user_dn: str,
     employee_id: str,
     ou_intent: str,
-    derived_orgpath: Optional[str],
+    derived_orgpath: str | None,
     in_hr: bool,
     source_forest: str,
 ) -> None:

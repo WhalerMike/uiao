@@ -606,20 +606,15 @@ def ir_orgtree_readiness_bundle(
     intune_plan: dict = {}
     arc_plan: dict = {}
 
-    try:
-        from uiao.adapters.modernization.active_directory.orgpath import (  # type: ignore[attr-defined]
-            build_orgpath_plan,
-        )
-
-        orgpath_plan = build_orgpath_plan(survey_data)  # type: ignore[no-untyped-call]
-    except (ImportError, AttributeError):
-        # orgpath plan helper not yet available — stub
-        orgpath_plan = {
-            "total_users": len(users),
-            "resolved_count": 0,
-            "unresolved_count": len(users),
-            "coverage_pct": 0.0,
-        }
+    # OrgPath plan helper retired per ADR-078 — the Model A adapter that
+    # exposed build_orgpath_plan was deleted. Model C plan generation
+    # will land in a follow-up Phase 5 PR; until then, emit the stub.
+    orgpath_plan = {
+        "total_users": len(users),
+        "resolved_count": 0,
+        "unresolved_count": len(users),
+        "coverage_pct": 0.0,
+    }
 
     try:
         from uiao.adapters.modernization.active_directory.intune_readiness import (  # type: ignore[attr-defined]

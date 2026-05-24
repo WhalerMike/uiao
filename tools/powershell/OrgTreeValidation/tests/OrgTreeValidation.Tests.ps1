@@ -122,43 +122,18 @@ Describe 'Compare-OrgTreeSnapshots' {
 }
 
 
-Describe 'Canonical regex parity with Python source-of-truth' {
-    BeforeAll {
-        $codebookPy = Join-Path $script:RepoRoot 'src/uiao/modernization/orgtree/codebook.py'
-        Test-Path $codebookPy | Should -BeTrue
+Describe 'Canonical regex parity with Python source-of-truth' -Skip {
+    # Skipped per ADR-078 (2026-05-24): the Model A single-string
+    # CANONICAL_REGEX in src/uiao/modernization/orgtree/codebook.py was
+    # retired with the Model C reset. Model C has no single OrgPath
+    # regex — each typed facet (hire_date, term_date) carries its own
+    # value_pattern; the enumerated facets validate by membership. The
+    # PowerShell module's Test-OrgPathFormat helper is itself Model A
+    # legacy and will be retired (or rebuilt for per-facet validation)
+    # in a follow-up Phase 5 PR.
 
-        # Extract the literal from `CANONICAL_REGEX = re.compile(r"...")`
-        $line = (Select-String -Path $codebookPy -Pattern 'CANONICAL_REGEX\s*=\s*re\.compile\(r"' | Select-Object -First 1).Line
-        $line | Should -Not -BeNullOrEmpty
-        $patternMatch = [regex]::Match($line, 'r"(?<pat>[^"]+)"')
-        $patternMatch.Success | Should -BeTrue
-
-        $script:PythonLiteral = $patternMatch.Groups['pat'].Value
-    }
-
-    It 'matches Python on an all-uppercase canonical sample' {
-        $sample = 'ORG-FIN-AP-USR-EAST'
-        # -cmatch is case-sensitive, mirroring Python's re.compile() default.
-        $pythonOk = $sample -cmatch $script:PythonLiteral
-        $pwshOk   = Test-OrgPathFormat -OrgPath $sample
-        $pwshOk | Should -Be $pythonOk
-        $pwshOk | Should -BeTrue
-    }
-
-    It 'matches Python on a mixed-case sample (must reject — guards against case-sensitivity drift)' {
-        $sample = 'ORG-fin'
-        $pythonOk = $sample -cmatch $script:PythonLiteral
-        $pwshOk   = Test-OrgPathFormat -OrgPath $sample
-        $pwshOk | Should -Be $pythonOk
-        $pwshOk | Should -BeFalse
-    }
-
-    It 'matches Python on the bare root' {
-        $sample = 'ORG'
-        $pythonOk = $sample -cmatch $script:PythonLiteral
-        $pwshOk   = Test-OrgPathFormat -OrgPath $sample
-        $pwshOk | Should -Be $pythonOk
-        $pwshOk | Should -BeTrue
+    It 'placeholder kept so Pester reports a skipped describe block' {
+        $true | Should -BeTrue
     }
 }
 
@@ -348,4 +323,3 @@ Describe 'Export-OrgTreeSnapshot' {
         $script:connectCount | Should -Be 1
     }
 }
-

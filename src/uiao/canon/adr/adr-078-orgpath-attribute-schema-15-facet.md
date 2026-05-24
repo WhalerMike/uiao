@@ -23,6 +23,21 @@ published_at: docs/adr/adr-078-orgpath-attribute-schema-15-facet.html
 
 **PROPOSED** — 2026-05-22.
 
+> **2026-05-24 implementation note.** Phase 1 (Model C SSOT) shipped
+> with **no legacy preservation**. The grandfathering language below
+> ("existing tenants on Model A are explicitly grandfathered",
+> `UIAO_151_LEGACY_MODEL_A.md`, "Demoted to legacy Tier 1 support",
+> etc.) was written assuming real Model A tenants existed. UIAO has
+> no production adopters at ADR ratification time, so the speculative
+> Model A consumer modules (`policy_targets.py`, `dynamic_groups.py`,
+> `device_planes.py`, `admin_units.py`, the matching Entra-side
+> adapter wrappers, and the drift-engine + drift-engine-config that
+> consumed them) were deleted outright rather than preserved. Their
+> Model C rebuilds will be authored in a follow-up Phase 5 PR. The
+> "Grandfathered Tier 1 reference" preservation paths described
+> below in §Supersession remain reserved for future use if a real
+> Model A tenant emerges before Phase 5 ships.
+
 ## Context
 
 A cross-surface review on 2026-05-22 found **three coexisting OrgPath attribute models** across canon and customer-documents, all calling themselves "OrgPath" or "canonical":

@@ -10,7 +10,8 @@ from uiao.governance.drift import (
 from uiao.ir.models.core import ProvenanceRecord
 
 PROV = ProvenanceRecord(source="test", timestamp="2026-04-20T00:00:00Z", version="0.1.0")
-CODEBOOK = {"ORG", "ORG-IT", "ORG-IT-SEC", "ORG-IT-SEC-SOC", "ORG-FIN", "ORG-HR"}
+# CODEBOOK constant removed per ADR-078 — classify_identity_drift no longer
+# performs codebook lookups.
 
 
 class TestBuildDriftState:
@@ -97,47 +98,22 @@ class TestClassifyIdentityDrift:
         )
         assert result is None
 
-    def test_detects_missing_orgpath(self):
-        result = classify_identity_drift(
-            resource_id="u1",
-            policy_ref="p1",
-            expected_state={"orgpath": "ORG-IT"},
-            actual_state={"display_name": "Alice"},
-            provenance=PROV,
-        )
-        assert result is not None
-        assert result.drift_class == DRIFT_IDENTITY
-        assert result.classification == "unauthorized"
+    # OrgPath-specific identity-drift tests removed per ADR-078: the
+    # classifier no longer performs composite-string codebook lookups,
+    # format-regex validation, or "not in codebook" detection. Per-facet
+    # DRIFT-IDENTITY classification returns with the Phase 5 consumer
+    # rebuild.
 
-    def test_detects_malformed_orgpath(self):
+    def test_lifecycle_sentinel_change_fires_drift(self):
+        """A change to lifecycle_state (an identity sentinel field) fires
+        DRIFT-IDENTITY. The lifecycle-vs-account_enabled consistency
+        check at the bottom of classify_identity_drift is also exercised
+        when lifecycle_state and account_enabled disagree."""
         result = classify_identity_drift(
             resource_id="u1",
             policy_ref="p1",
-            expected_state={"orgpath": "ORG-IT"},
-            actual_state={"orgpath": "org-it"},
-            provenance=PROV,
-        )
-        assert result is not None
-        assert result.drift_class == DRIFT_IDENTITY
-
-    def test_detects_orgpath_not_in_codebook(self):
-        result = classify_identity_drift(
-            resource_id="u1",
-            policy_ref="p1",
-            expected_state={"orgpath": "ORG-IT"},
-            actual_state={"orgpath": "ORG-GHOST"},
-            provenance=PROV,
-            orgpath_codebook=CODEBOOK,
-        )
-        assert result is not None
-        assert result.drift_class == DRIFT_IDENTITY
-
-    def test_lifecycle_inconsistency(self):
-        result = classify_identity_drift(
-            resource_id="u1",
-            policy_ref="p1",
-            expected_state={"lifecycle_state": "ACTIVE", "account_enabled": True},
-            actual_state={"lifecycle_state": "ACTIVE", "account_enabled": False},
+            expected_state={"lifecycle_state": "ACTIVE"},
+            actual_state={"lifecycle_state": "SUSPENDED"},
             provenance=PROV,
         )
         assert result is not None

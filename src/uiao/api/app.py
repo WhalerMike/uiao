@@ -29,7 +29,6 @@ from .routes import (
     enforcement,
     epl,
     health,
-    orgpath,
     survey,
     ztmm,
 )
@@ -99,7 +98,9 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # ------------------------------------------------------------------
 app.include_router(health.router, tags=["Health"])
 app.include_router(survey.router, prefix="/api/v1/survey", tags=["AD Survey"])
-app.include_router(orgpath.router, prefix="/api/v1/orgpath", tags=["OrgPath"])
+# OrgPath router removed per ADR-078: the Model A composite-string API has
+# been retired; Model C consumers (Phase 5+) will introduce a facet-aware
+# OrgPath API in a follow-up PR.
 app.include_router(auditor.router, prefix="/api/auditor", tags=["Auditor API"])
 # §3.1 Auditor API surface for the Phase 3 governance modules.
 app.include_router(ztmm.router, prefix="/api/v1/ztmm", tags=["ZTMM (UIAO_120)"])
