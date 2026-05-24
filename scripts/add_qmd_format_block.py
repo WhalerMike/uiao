@@ -21,9 +21,9 @@ Use this to backfill canon-side .qmd pages that inherit the project default
 section bundler. Reusable for future format-related backfills.
 
 Usage:
-    python scripts/add_qmd_format_block.py docs/modernization/
-    python scripts/add_qmd_format_block.py docs/modernization/index.qmd
-    python scripts/add_qmd_format_block.py docs/modernization/ --dry-run
+    python scripts/add_qmd_format_block.py docs/customer-documents/reference-architecture/
+    python scripts/add_qmd_format_block.py docs/customer-documents/reference-architecture/index.qmd
+    python scripts/add_qmd_format_block.py docs/customer-documents/reference-architecture/ --dry-run
 """
 
 from __future__ import annotations

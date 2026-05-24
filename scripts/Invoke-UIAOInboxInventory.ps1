@@ -38,11 +38,11 @@ if (-not $InboxPath) {
 # ---------------------------------------------------------------
 $CanonicalPaths = @{
     # AD adapter (Session 1 output)
-    "survey.py"                      = "impl/src/uiao/impl/adapters/modernization/active-directory/"
-    "orgpath.py"                     = "impl/src/uiao/impl/adapters/modernization/active-directory/"
-    "__init__.py"                    = "impl/src/uiao/impl/adapters/modernization/active-directory/"
+    "survey.py"                      = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/active-directory/"
+    "orgpath.py"                     = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/active-directory/"
+    "__init__.py"                    = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/active-directory/"
     "Invoke-ADSurvey.ps1"            = "scripts/ad-survey/"
-    "adapter-manifest.json"          = "impl/src/uiao/impl/adapters/modernization/active-directory/"
+    "adapter-manifest.json"          = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/active-directory/"
 
     # API layer (Session 2 output)
     "app.py"                         = "impl/src/uiao/impl/api/"
@@ -56,8 +56,8 @@ $CanonicalPaths = @{
     "deploy-scripts.ps1"             = "scripts/deploy/"
 
     # GCC boundary probe (Session 3 output)
-    "probe.py"                       = "impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/"
-    "telemetry.py"                   = "impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/"
+    "probe.py"                       = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/gcc-boundary-probe/"
+    "telemetry.py"                   = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/gcc-boundary-probe/"
 
     # Canon artifacts
     "adr-029-ad-survey-adapter.md"                = "src/uiao/canon/adr/"
@@ -80,7 +80,7 @@ $CanonicalPaths = @{
     "device-disposition-by-type.mermaid"          = "diagrams/"
 
     # Python classifier
-    "disposition.py"                              = "impl/src/uiao/impl/adapters/modernization/active-directory/"
+    "disposition.py"                              = "impl/src/uiao/impl/adapters/customer-documents/reference-architecture/active-directory/"
 }
 
 # ---------------------------------------------------------------

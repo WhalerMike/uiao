@@ -101,7 +101,7 @@ hovering above the middle column.
 
 ## Renders into
 
-- `docs/modernization/where-data-lives-devices-and-azure.qmd` — the
+- `docs/customer-documents/reference-architecture/where-data-lives-devices-and-azure.qmd` — the
   explainer this figure illustrates.
 - `src/uiao/canon/adr/adr-038-device-plane-orgpath.md` — the binding
   ADR reference image.

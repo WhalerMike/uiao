@@ -99,7 +99,7 @@ Promote-ShellPage `
     -Title "Modernization Governance — Whitepaper" `
     -Subtitle "Governing the AD to Entra ID migration at federal scale" `
     -CalloutTitle "Whitepaper in preparation" `
-    -CalloutBody "This whitepaper is being drafted from the [Modernization Program documentation](../modernization/index.qmd). For current coverage, see the [Modernization Overview](../executive-briefs/modernization-overview.qmd) and the [AD to Entra ID migration guide](../modernization/identity-orgtree/index.qmd)."
+    -CalloutBody "This whitepaper is being drafted from the [Modernization Program documentation](../customer-documents/reference-architecture/index.qmd). For current coverage, see the [Modernization Overview](../executive-briefs/modernization-overview.qmd) and the [AD to Entra ID migration guide](../customer-documents/reference-architecture/identity-orgtree/index.qmd)."
 
 Promote-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\whitepapers\zero-trust-governance-whitepaper.md") `
@@ -167,7 +167,7 @@ Promote-ShellPage `
     -Title "Federal Modernization — Case Study" `
     -Subtitle "AD to Entra ID migration governance at a federal civilian agency" `
     -CalloutTitle "Case study in preparation" `
-    -CalloutBody "This case study is being developed. For current program documentation, see the [Modernization Program](../modernization/uiao-modernization-program/index.qmd) and the [AD to Entra ID migration guide](../modernization/identity-orgtree/index.qmd)." `
+    -CalloutBody "This case study is being developed. For current program documentation, see the [Modernization Program](../customer-documents/reference-architecture/uiao-modernization-program/index.qmd) and the [AD to Entra ID migration guide](../customer-documents/reference-architecture/identity-orgtree/index.qmd)." `
     -CalloutType "tip"
 
 Promote-ShellPage `
@@ -183,7 +183,7 @@ Promote-ShellPage `
     -Title "Identity Modernization — Case Study" `
     -Subtitle "Identity plane governance during a large-scale directory migration" `
     -CalloutTitle "Case study in preparation" `
-    -CalloutBody "This case study is being developed. For current coverage, see the [Identity Modernization documentation](../modernization/identity-orgtree/index.qmd) and the [OrgPath Codebook](../modernization/identity-orgtree/ad-to-entraid-tree.qmd)." `
+    -CalloutBody "This case study is being developed. For current coverage, see the [Identity Modernization documentation](../customer-documents/reference-architecture/identity-orgtree/index.qmd) and the [OrgPath Codebook](../customer-documents/reference-architecture/identity-orgtree/ad-to-entraid-tree.qmd)." `
     -CalloutType "tip"
 
 # ---------------------------------------------------------------------------

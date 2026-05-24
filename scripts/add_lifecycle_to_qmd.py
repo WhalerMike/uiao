@@ -31,8 +31,8 @@ with `tiers_adopted: [1]`. Pass `--lifecycle adopted --tiers 1`
 explicitly to apply the customer-doc default.
 
 Usage:
-  # ADR-082 Phase 4 — canon /modernization/ backfill (aspirational)
-  python scripts/add_lifecycle_to_qmd.py docs/modernization/ \\
+  # ADR-082 Phase 4 — canon /customer-documents/reference-architecture/ backfill (aspirational)
+  python scripts/add_lifecycle_to_qmd.py docs/customer-documents/reference-architecture/ \\
       --lifecycle aspirational --review 2026-11-22
 
   # ADR-082 Phase 5 — customer-doc backfill (adopted at Tier 1)
@@ -40,7 +40,7 @@ Usage:
       --lifecycle adopted --tiers 1 --review 2026-11-22
 
   # Single file or dry run
-  python scripts/add_lifecycle_to_qmd.py docs/modernization/index.qmd \\
+  python scripts/add_lifecycle_to_qmd.py docs/customer-documents/reference-architecture/index.qmd \\
       --lifecycle aspirational --dry-run
 """
 

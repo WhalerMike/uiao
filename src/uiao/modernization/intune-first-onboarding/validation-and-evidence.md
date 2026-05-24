@@ -10,7 +10,7 @@ boundary: GCC-Moderate
 canon_anchor: ADR-071
 publish_to_site: true
 publication_style: narrative
-published_at: docs/modernization/intune-first.qmd
+published_at: docs/customer-documents/reference-architecture/intune-first.qmd
 ---
 
 # Validation Checklist, Drift Classes, and Evidence Emission
@@ -370,7 +370,7 @@ even if its Phase 4 trigger was lost.
 This document specifies the validation contract; the implementation
 lands in:
 
-- `src/uiao/adapters/modernization/intune_native/` (proposed location
+- `src/uiao/adapters/customer-documents/reference-architecture/intune_native/` (proposed location
   for the pipeline implementation when the doctrine is promoted)
 - `src/uiao/schemas/intune-first-onboarding/` (proposed location for
   the JSON schemas defining the procurement record, evidence
