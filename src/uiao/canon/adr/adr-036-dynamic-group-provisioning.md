@@ -26,6 +26,15 @@ published_at: docs/adr/adr-036-dynamic-group-provisioning.html
 
 Accepted
 
+> **Implementation Status (per ADR-078, 2026-05-24).** The Python
+> module(s), YAML data file(s), and JSON schema(s) cited below were
+> retired by [ADR-078 Phase 1+5](adr-078-orgpath-attribute-schema-15-facet.md)
+> as part of the OrgPath Model A → Model C reset. The doctrine in this
+> ADR remains valid; the implementation rebuild (per-facet, Model C
+> native) will land in ADR-078 Phase 5 follow-up PRs. Until then,
+> `uiao substrate walk` will report `DRIFT-PROVENANCE` P2 (non-blocking)
+> findings for every code path this ADR cites.
+
 ## Context
 
 UIAO_152 (`src/uiao/canon/UIAO_152_Dynamic_Group_Library.md`)

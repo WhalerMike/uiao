@@ -35,6 +35,15 @@ published_at: docs/adr/adr-040-drift-engine.html
 
 Accepted
 
+> **Implementation Status (per ADR-078, 2026-05-24).** The Python
+> module(s), YAML data file(s), and JSON schema(s) cited below were
+> retired by [ADR-078 Phase 1+5](adr-078-orgpath-attribute-schema-15-facet.md)
+> as part of the OrgPath Model A → Model C reset. The doctrine in this
+> ADR remains valid; the implementation rebuild (per-facet, Model C
+> native) will land in ADR-078 Phase 5 follow-up PRs. Until then,
+> `uiao substrate walk` will report `DRIFT-PROVENANCE` P2 (non-blocking)
+> findings for every code path this ADR cites.
+
 ## Context
 
 Phases 2–5 delivered four change-making adapters, each with its own
