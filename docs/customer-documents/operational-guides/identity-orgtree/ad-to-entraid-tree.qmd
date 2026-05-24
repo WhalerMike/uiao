@@ -23,6 +23,8 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+> **Model C — 15-facet multi-attribute (per [ADR-078](../../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** This guide was originally authored against Model B (composite-slash path, `extensionAttribute1: CORP/US/EAST/BALTIMORE/IT`). Model B is superseded; the canonical OrgPath schema is now 15 facets across `extensionAttribute1`–`15`. Section 2 below has been rewritten for Model C; the manager-spine / governance / delegation / lifecycle material in sections 3+ remains operationally correct (those patterns are independent of the attribute model) but the inline `CORP/...` examples will be replaced with facet-tuple equivalents in a follow-up ADR-078 Phase 4 PR. For the Model C-native treatment of the codebook, dynamic groups, AUs, and drift detection, see [Reference Architecture → OrgPath Codebook](../../reference-architecture/codebook.qmd), [Dynamic Groups](../../reference-architecture/dynamic-groups.qmd), [Delegation Matrix](../../reference-architecture/delegation.qmd), and [Drift Walk-through](../../reference-architecture/drift-walkthrough.qmd).
+
 ![AD X](images/index-image-01-orgpathorgtree-stack-overview-co.png){#fig-ad-to-entraid-tree-image-01 fig-alt="AD X.500 OU tree vs Entra flat directory side-by-side. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
 
 ![OrgPath attribute encoding scheme](images/ad-to-entraid-tree-image-02-orgpath-attribute-encoding-schem.png){#fig-ad-to-entraid-tree-image-02 fig-alt="OrgPath attribute encoding scheme. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
@@ -78,41 +80,69 @@ In Entra ID, your "org tree" lives in:
 
 - AD OU = **"users whose attributes match rule X"** → represented as a **dynamic group**.
 
-**2. Representing hierarchy: how to mimic a tree**
+**2. Representing hierarchy: how to mimic a tree (Model C — 15 facets, per ADR-078)**
 
-You can mimic an org tree by **encoding hierarchy into attributes** and then **layering groups**.
+You mimic an org tree by **encoding hierarchy across 15 facet attributes** and then **layering groups built from boolean composition of facet predicates**. Each facet is a single semantic field (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType) carried in its own `onPremisesExtensionAttribute` slot.
 
-**2.1. Encode the org path**
+**2.1. Encode the org position across facets**
 
-Pick a canonical attribute (or extension attribute) to hold the org path, e.g.:
+HR provisioning populates 10 named slots on each principal (with 5 reserved for tenant-specific extension). The user from the original AD `OU=IT,OU=Baltimore,OU=East,OU=US,DC=...` would carry:
 
-- OrgPath = \"CORP/US/EAST/BALTIMORE/IT\"
+- `extensionAttribute1` (Region) = `EASTUS`
+- `extensionAttribute2` (Department) = `IT`
+- `extensionAttribute5` (CostCenter) = (tenant-specific, e.g., `CC-4100`)
+- `extensionAttribute6` (Classification) = `Employee`
+- `extensionAttribute10` (AccountType) = `Standard`
+- (plus Division, Role, ClearanceLevel, HireDate, TermDate populated as appropriate)
 
-- Or an X.500‑style string:
+The full canonical slot/facet table is in the [OrgPath Codebook](../../reference-architecture/codebook.qmd). The 10 facets are independent — each validates against its own enumeration (or typed pattern for HireDate/TermDate). Slot uniqueness is loader-enforced: each `extensionAttribute*` slot is claimed by exactly one facet.
 
-  - OrgDnCode = \"OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com\"
+**2.2. Query the tree via boolean composition**
 
-This gives you:
+Dynamic group rules combine facet predicates with standard `and` / `or` / `-in` operators:
 
-- **Exact node:**
+- **Single-facet (broad):**
 
-  - user.extensionAttribute1 -eq \"CORP/US/EAST/BALTIMORE/IT\"
+  - `(user.onPremisesExtensionAttributes.extensionAttribute1 -eq "EASTUS")` — all Eastern US users
 
-- **Branch / subtree:**
+- **Two-facet (department within region):**
 
-  - user.extensionAttribute1 -startsWith \"CORP/US/EAST\"
+  - `(extensionAttribute1 -eq "EASTUS") and (extensionAttribute2 -eq "IT")` — Eastern US IT
 
-Now you can define:
+- **Three-facet (precise team):**
 
-- **Dynamic group: "US-East-All"**
+  - `(extensionAttribute1 -eq "EASTUS") and (extensionAttribute2 -eq "IT") and (extensionAttribute3 -eq "InfraOps")` — Eastern US IT/Infrastructure (the Model B `CORP/US/EAST/BALTIMORE/IT` equivalent, decomposed)
 
-  - Rule: user.extensionAttribute1 -startsWith \"CORP/US/EAST\"
+**2.3. Define groups directly from facet tuples**
 
-- **Dynamic group: "Baltimore-IT"**
+- **Dynamic group: `OrgTree-Region-EASTUS-Users`**
 
-  - Rule: user.extensionAttribute1 -eq \"CORP/US/EAST/BALTIMORE/IT\"
+  - Rule: `(extensionAttribute1 -eq "EASTUS")` — was Model B's "US-East-All"
 
-That's your **tree**, just expressed as **string hierarchy + group rules**.
+- **Dynamic group: `OrgTree-EASTUS-IT-Users`**
+
+  - Rule: `(extensionAttribute1 -eq "EASTUS") and (extensionAttribute2 -eq "IT")` — was Model B's "US-East-IT"
+
+- **Dynamic group: `OrgTree-EASTUS-IT-InfraOps-Users`**
+
+  - Rule: `(extensionAttribute1 -eq "EASTUS") and (extensionAttribute2 -eq "IT") and (extensionAttribute3 -eq "InfraOps")` — was Model B's "Baltimore-IT" (Baltimore is a location *value* in Model B's composite string; Model C reserves location precision for either CostCenter or a tenant-declared reserved slot)
+
+The Model B `-startsWith "CORP/US/EAST"` and `-eq "CORP/US/EAST/BALTIMORE/IT"` patterns become explicit per-clause boolean compositions in Model C — no text-parsing of a composite string, no fragile `-startsWith` regex semantics, and **each clause validates independently** against its facet's enumeration. A drift finding on the Region facet (e.g., `EASTUSS` typo) is independent of the Department facet's validation.
+
+That's your **tree**, just expressed as **per-facet attribute encoding + boolean composition of facet predicates**. The hierarchy is encoded in the *combination of attributes*, not in the *position within a single string*.
+
+::: {.callout-note}
+## Why Model C and not Model B?
+
+The Model B composite-slash path (`CORP/US/EAST/BALTIMORE/IT`) was an early-design attempt to preserve the X.500 OU hierarchy feel inside a flat directory. Per [ADR-078](../../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd), it was superseded by Model C because:
+
+1. **Boolean composition is fundamental to federal access policy.** Federal CA policies routinely combine clearance, role, region, and account type. Model C expresses this trivially: `(attr9 -in ["Secret","TopSecret"]) and (attr1 -eq "NCR") and (attr10 -eq "Privileged")`. Model B requires regex hacks on the composite string that don't compose well and are nearly impossible to audit.
+2. **Lifecycle workflows need HireDate/TermDate as separate attributes** — not embedded in a composite path.
+3. **Persona-based Conditional Access** needs Classification as a queryable facet, not inferred from string segments.
+4. **Slot uniqueness invariant** is loader-enforced in Model C; in Model B, two scripts could clobber `extensionAttribute1` with conflicting composite strings without anyone noticing.
+
+The 10 named facets are canonical (slot assignments fixed by ADR-078). The 5 reserved slots accommodate tenant-specific extension via governed PR.
+:::
 
 **3. Manager-based org tree for HR workflows**
 
