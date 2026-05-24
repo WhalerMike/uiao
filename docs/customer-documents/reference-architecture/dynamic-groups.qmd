@@ -1,7 +1,7 @@
 ---
 title: "Dynamic Group Library"
-subtitle: "OrgPath-Driven Group Membership for Entra ID"
-date: 2026-04-19
+subtitle: "Model C — facet-composed group membership for Entra ID"
+date: 2026-05-24
 format:
   html:
     toc: true
@@ -15,99 +15,118 @@ aliases:
 ---
 
 {{< lifecycle-banner >}}
+
+> **Model C — boolean composition over 15 facets (per [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** Membership rules compose facet predicates (`attr2 -eq "IT" and attr3 -eq "CyberOps"`) instead of text-parsing a single composite path. See [OrgPath Codebook](codebook.qmd) for the facet/slot model.
+
 ## Why Dynamic Groups Matter
 
-In Active Directory, group membership was a manual operation. An administrator added
-a user to a security group, and that membership persisted until someone remembered to
-remove it. Transfer to a new department? Hope someone updated the groups. Leave the
-organization? Hope the offboarding checklist included every group. The result: group
-sprawl, stale memberships, and access control that drifted from organizational reality
-within weeks of any personnel change.
+In Active Directory, group membership was a manual operation. An administrator added a user to a security group, and that membership persisted until someone remembered to remove it. Transfer to a new department? Hope someone updated the groups. Leave the organization? Hope the offboarding checklist included every group. The result: group sprawl, stale memberships, and access control that drifted from organizational reality within weeks of any personnel change.
 
-Entra ID dynamic groups solve this — membership is computed from user attributes, not
-manually assigned. When a user's OrgPath changes (because HR updated their department),
-every dynamic group membership recalculates automatically. No tickets, no manual steps,
-no drift.
+Entra ID dynamic groups solve this — membership is computed from user attributes, not manually assigned. When a facet value changes (because HR updated the department), every dynamic group membership recalculates automatically. No tickets, no manual steps, no drift.
 
-But dynamic groups without a governance library are just a different kind of sprawl.
-Instead of manually-managed groups drifting, you get hundreds of dynamic groups with
-inconsistent naming, overlapping membership rules, and no canonical source of truth.
+But dynamic groups without a governance library are just a different kind of sprawl. Instead of manually-managed groups drifting, you get hundreds of dynamic groups with inconsistent naming, overlapping membership rules, and no canonical source of truth.
 
 The Dynamic Group Library (UIAO_152) is that source of truth.
 
-## Three Query Patterns
+## Three Composition Patterns
 
-Every dynamic group in the library uses one of three membership rule patterns against
-`user.extensionAttribute1` (the OrgPath attribute defined in UIAO_151):
+Under Model C, every dynamic group rule in the library uses one of three patterns built from per-facet predicates:
 
 | Pattern | Operator | Use Case | Example |
-|---------|----------|----------|---------|
-| **Branch** | `-startsWith` | All users at and below a hierarchy level | `(user.extensionAttribute1 -startsWith "ORG-FIN")` |
-| **Node** | `-eq` | Users at exactly one hierarchy level | `(user.extensionAttribute1 -eq "ORG-IT-SEC-SOC-T1")` |
-| **Compound** | `-or` / `-and` | Cross-divisional or exclusion groups | `(...-startsWith "ORG-IT-SEC") -or (...-startsWith "ORG-LEG-COM")` |
+|---|---|---|---|
+| **Single-facet** | `-eq` / `-in` | All users carrying a value (or a value set) in one facet | `(attr2 -eq "IT")` |
+| **Multi-facet AND** | `... and ...` | Users matching every clause across multiple facets | `(attr2 -eq "IT") and (attr3 -eq "CyberOps")` |
+| **Multi-facet OR / set** | `... or ...` / `-in [...]` | Cross-cutting groupings (multiple departments, role tiers, clearance bands) | `(attr2 -in ["IT","Engineering"])` |
 
-**Branch** queries are the workhorse — they capture entire organizational subtrees and
-automatically include any new teams or units added below that level.
+The OR / set form replaces Model A's regex hack and Branch/Node distinction. Branch groups (`-startsWith` across composite-hyphen paths) are not needed in Model C because each facet is already a discrete attribute — you query the facet directly rather than parsing its position inside a string.
 
-**Node** queries target leaf teams for granular access control.
+## Canonical Group Inventory (per-facet examples)
 
-**Compound** queries handle cross-cutting concerns that do not map to a single OrgPath branch.
+### Region groups (`extensionAttribute1`)
 
-## Canonical Group Inventory
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-Region-NCR-Users` | `(attr1 -eq "NCR")` | All National Capital Region users |
+| `OrgTree-Region-EMEA-Users` | `(attr1 -eq "EMEA")` | All Europe / Middle East / Africa users |
+| `OrgTree-Region-US-Users` | `(attr1 -in ["NCR","EASTUS","WESTUS","CENTRAL"])` | All US-region users (composite) |
 
-### Division Groups (Level 1 — Branch)
+### Department groups (`extensionAttribute2`)
 
-| Group | Rule | Scope |
-|-------|------|-------|
-| `OrgTree-FIN-Users` | `-startsWith "ORG-FIN"` | All Finance |
-| `OrgTree-HR-Users` | `-startsWith "ORG-HR"` | All Human Resources |
-| `OrgTree-IT-Users` | `-startsWith "ORG-IT"` | All IT |
-| `OrgTree-OPS-Users` | `-startsWith "ORG-OPS"` | All Operations |
-| `OrgTree-LEG-Users` | `-startsWith "ORG-LEG"` | All Legal/Compliance |
-| `OrgTree-EXEC-Users` | `-startsWith "ORG-EXEC"` | All Executive |
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-Department-IT-Users` | `(attr2 -eq "IT")` | All IT department users |
+| `OrgTree-Department-HR-Users` | `(attr2 -eq "HR")` | All HR users |
+| `OrgTree-Department-Finance-Users` | `(attr2 -eq "Finance")` | All Finance users |
+| `OrgTree-Department-Executive-Users` | `(attr2 -eq "Executive")` | All Executive users |
 
-### Department Groups (Level 2 — Branch)
+### Division groups (`extensionAttribute3` within Department)
 
-| Group | Rule | Scope |
-|-------|------|-------|
-| `OrgTree-FIN-AP-Users` | `-startsWith "ORG-FIN-AP"` | Accounts Payable |
-| `OrgTree-FIN-AR-Users` | `-startsWith "ORG-FIN-AR"` | Accounts Receivable |
-| `OrgTree-FIN-BUD-Users` | `-startsWith "ORG-FIN-BUD"` | Budget |
-| `OrgTree-IT-SEC-Users` | `-startsWith "ORG-IT-SEC"` | Security |
-| `OrgTree-IT-INF-Users` | `-startsWith "ORG-IT-INF"` | Infrastructure |
-| `OrgTree-IT-DEV-Users` | `-startsWith "ORG-IT-DEV"` | Development |
-| `OrgTree-HR-REC-Users` | `-startsWith "ORG-HR-REC"` | Recruitment |
-| `OrgTree-HR-BEN-Users` | `-startsWith "ORG-HR-BEN"` | Benefits |
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-IT-CyberOps-Users` | `(attr2 -eq "IT") and (attr3 -eq "CyberOps")` | IT/CyberOps division |
+| `OrgTree-IT-InfraOps-Users` | `(attr2 -eq "IT") and (attr3 -eq "InfraOps")` | IT/Infrastructure division |
+| `OrgTree-IT-AppDev-Users` | `(attr2 -eq "IT") and (attr3 -eq "AppDev")` | IT/Application Development |
 
-### Specialized Groups
+### Role-tier groups (`extensionAttribute4`)
+
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-Role-Managers-Users` | `(attr4 -in ["Manager","Director","VP"])` | All people-management roles |
+| `OrgTree-Role-Engineers-Users` | `(attr4 -in ["Engineer","Architect"])` | All engineering ICs |
+| `OrgTree-Role-CISO-Users` | `(attr4 -eq "CISO")` | CISO singletons |
+
+### Clearance-gated groups (`extensionAttribute9`)
+
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-Cleared-Secret-Plus-Users` | `(attr9 -in ["Secret","TopSecret","TS_SCI"])` | All cleared personnel |
+| `OrgTree-Cleared-TopSecret-Plus-Users` | `(attr9 -in ["TopSecret","TS_SCI"])` | TS / TS-SCI only |
+
+### Account-type groups (`extensionAttribute10`)
+
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-AccountType-Privileged-Users` | `(attr10 -eq "Privileged")` | Privileged accounts (PIM-eligible) |
+| `OrgTree-AccountType-Service-Users` | `(attr10 -eq "Service")` | Service accounts |
+| `OrgTree-AccountType-Guest-Users` | `(attr10 -eq "Guest")` | B2B guests |
+
+### Specialized cross-facet groups
 
 | Group | Rule | Purpose |
-|-------|------|---------|
-| `OrgTree-EXEC-CA` | `-startsWith "ORG-EXEC"` | Executive Conditional Access |
-| `OrgTree-IT-SEC-CA` | `-startsWith "ORG-IT-SEC"` | Security team privileged access CA |
-| `OrgTree-EXEC-Licensed` | `-startsWith "ORG-EXEC"` | E5 + Copilot licensing |
-| `OrgTree-IT-Licensed` | `-startsWith "ORG-IT"` | E5 licensing |
-| `OrgTree-SecurityCompliance-Users` | `-startsWith "ORG-IT-SEC" -or -startsWith "ORG-LEG-COM"` | Cross-functional |
+|---|---|---|
+| `OrgTree-Executive-CA` | `(attr6 -eq "Executive")` | Executive Conditional Access tier |
+| `OrgTree-IT-Security-CA` | `(attr2 -eq "IT") and (attr3 -eq "CyberOps") and (attr10 -eq "Privileged")` | CyberOps privileged-access CA |
+| `OrgTree-Executive-Licensed` | `(attr6 -eq "Executive")` | E5 + Copilot licensing |
+| `OrgTree-IT-Licensed` | `(attr2 -eq "IT")` | E5 licensing for the IT department |
+| `OrgTree-SecurityCompliance-Users` | `(attr2 -eq "IT" and attr3 -eq "CyberOps") or (attr2 -eq "Legal" and attr3 -eq "GRC")` | Cross-functional security/compliance |
+
+### Lifecycle-driven groups (`extensionAttribute7` / `extensionAttribute8`)
+
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-Active-Employees` | `(attr8 -eq "")` | Empty TermDate ⇒ active |
+| `OrgTree-Joiners-Last-30d` | `(attr7 -ge "<today-30d>")` | Recent hires (templated date) |
+| `OrgTree-Leavers-Next-30d` | `(attr8 -gt "<today>") and (attr8 -lt "<today+30d>")` | Pre-departure offboarding queue |
 
 ## Five Drift Categories for Groups
 
 | Category | What It Means | Severity | Auto-Fix |
-|----------|-------------|----------|----------|
+|---|---|---|---|
 | **Rule Drift** | Tenant rule differs from canonical rule | HIGH | Yes |
 | **Phantom Group** | `OrgTree-` group exists in tenant but not in library | MEDIUM | No |
 | **Missing Group** | Library entry has no corresponding tenant group | HIGH | Yes |
 | **Name Drift** | Correct rule, wrong name | LOW | Yes |
-| **Membership Drift** | Unexpected member count — root cause is OrgPath values (UIAO_151) | MEDIUM | Fix at source |
+| **Membership Drift** | Unexpected member count — root cause is facet values in the codebook (UIAO_151) | MEDIUM | Fix at source |
 
 ## Governance Rules
 
 1. **No manual members** — dynamic groups in this library are dynamic-only
 2. **One rule per group** — no multi-rule groups; split into separate groups
-3. **Deterministic naming** — name derives from OrgPath scope + purpose
-4. **Governed changes only** — additions/modifications follow UIAO_155 Workflow 3
+3. **Deterministic naming** — name derives from facet(s) + value(s) + purpose suffix (e.g., `OrgTree-IT-CyberOps-CA`)
+4. **Single-facet preferred** — multi-facet compositions only when the cross-facet selection is operationally distinct
+5. **Governed changes only** — additions/modifications follow UIAO_155 Workflow 3
 
 ::: {.callout-tip}
 ## Source
-Full canonical definitions with PowerShell validation scripts:
-`src/uiao/canon/UIAO_152_Dynamic_Group_Library.md`
+Canonical narrative: [`UIAO_152_Dynamic_Group_Library.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_152_Dynamic_Group_Library.md). Facet definitions: [OrgPath Codebook](codebook.qmd). Per-facet drift classifier: [Drift Detection Walk-through](drift-walkthrough.qmd).
 :::
