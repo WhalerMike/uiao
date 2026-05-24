@@ -1,7 +1,7 @@
 ---
 adr_id: adr-079
 title: "Governance Principle Reconciliation — 3 Universal + 3 Tier-Specific"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-05-22
 deciders: Michael Stratton
 updated: 2026-05-22
@@ -21,7 +21,7 @@ published_at: docs/adr/adr-079-governance-principle-reconciliation.html
 
 ## Status
 
-**PROPOSED** — 2026-05-22.
+**ACCEPTED** — 2026-05-24 (originally decided 2026-05-22).
 
 ## Context
 
