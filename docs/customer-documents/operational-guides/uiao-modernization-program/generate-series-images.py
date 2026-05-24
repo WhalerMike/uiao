@@ -13,7 +13,7 @@ Usage:
 
     # macOS / Linux / bash:
     export GEMINI_API_KEY="<your-key>"
-    cd docs/customer-documents/modernization/uiao-modernization-program
+    cd docs/customer-documents/operational-guides/uiao-modernization-program
     python generate-series-images.py
 
 Options:

@@ -3,7 +3,7 @@
 This directory holds the architecture-artifact layer for the
 **Phase 2 — Governance OS Deployment** chapter of the customer-facing
 modernization program (see
-[`docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd`](../docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)).
+[`docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd`](../docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd)).
 
 ## Generation pipeline
 

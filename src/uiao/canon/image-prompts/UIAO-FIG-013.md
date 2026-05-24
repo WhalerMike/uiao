@@ -98,7 +98,7 @@ the right side connected to the fourth stage.
 
 ## Renders into
 
-- `docs/modernization/drift-walkthrough.qmd` — the explainer this
+- `docs/customer-documents/reference-architecture/drift-walkthrough.qmd` — the explainer this
   figure illustrates.
 - `src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md` —
   canonical engine spec reference image.

@@ -180,5 +180,5 @@ tracked for subsequent ADRs and PRs:
 
 5. **Implementation pipeline.** The validation pipeline contract is
    specified in [`validation-and-evidence.md`](validation-and-evidence.md);
-   the implementing adapter under `src/uiao/adapters/modernization/intune_first/`
+   the implementing adapter under `src/uiao/adapters/customer-documents/reference-architecture/intune_first/`
    is a follow-up engineering item.

@@ -7,8 +7,8 @@ review_date: 2026-05-07
 scope:
   - src/uiao/canon/data/control-library/{ac,ia,sa,sc,pe}/
   - src/uiao/modernization/directory-migration/
-  - docs/modernization/
-  - docs/customer-documents/modernization/
+  - docs/customer-documents/reference-architecture/
+  - docs/customer-documents/operational-guides/
   - docs/narrative/
   - docs/planning/customer-documents-taxonomy.md
   - docs/docs/system-architecture.qmd
@@ -62,9 +62,9 @@ enforces 802.1X authentication" — but Catalyst is the *authenticator*, not the
 This is inconsistent with the modernization view, which lists the AAA tier
 explicitly:
 
-- `docs/modernization/adapters.qmd:134` — "Registered implementations: NPS
+- `docs/customer-documents/reference-architecture/adapters.qmd:134` — "Registered implementations: NPS
   (migration source), Cisco ISE, Aruba ClearPass, Entra RADIUS Proxy"
-- `docs/customer-documents/modernization/client-server-to-hybrid-cloud/01-platform-foundation.qmd:175`
+- `docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/01-platform-foundation.qmd:175`
   — "Cisco ISE / NPS | Read-write | DM_030 | RADIUS policy, 802.1X,
   device-posture"
 
@@ -176,7 +176,7 @@ the existing network/SD-WAN adapter.
 ### 2.1 Inconsistent casing: `802.1X` vs `802.1x`
 
 30 hits use the IEEE-canonical `802.1X` (capital X). 9 hits in
-`docs/customer-documents/modernization/pki-modernization.qmd` use lowercase
+`docs/customer-documents/operational-guides/pki-modernization.qmd` use lowercase
 `802.1x`:
 
 ```
@@ -223,13 +223,13 @@ narratives ("Intune deploys 802.1X supplicant configuration profiles
 
 - `docs/planning/customer-documents-taxonomy.md:143` declares
   "G.6 RADIUS/802.1X modernization."
-- `docs/customer-documents/modernization/network-transformation/index.qmd:26`
+- `docs/customer-documents/operational-guides/network-transformation/index.qmd:26`
   references "G.6 RADIUS / 802.1X modernization — see DM_030 (§D.5)" —
   a text reference, not a link.
 - The other G.x leaves (G.1, G.5) link to concrete docs
   (`modernization-specs/sdwan/sdwan.md`,
   `adapter-specs/palo-alto/palo-alto.qmd`).
-- No `docs/customer-documents/modernization/network-transformation/g6-*.qmd`
+- No `docs/customer-documents/operational-guides/network-transformation/g6-*.qmd`
   or equivalent exists.
 
 The customer-facing taxonomy advertises G.6 as a deliverable, but no
@@ -322,13 +322,13 @@ should be planned as a single PR rather than incremental fixes.
 - `src/uiao/modernization/directory-migration/README.md`
 - `src/uiao/modernization/directory-migration/adapters/radius/radius-adapter-interface.md`
 - `src/uiao/modernization/directory-migration/migration-adapter-registry.yaml`
-- `docs/modernization/adapters.qmd`
-- `docs/modernization/directory-migration.qmd`
-- `docs/customer-documents/modernization/network-transformation/index.qmd`
-- `docs/customer-documents/modernization/access-plane/conditional-access-library.qmd`
-- `docs/customer-documents/modernization/pki-modernization.qmd`
-- `docs/customer-documents/modernization/client-server-to-hybrid-cloud/{00-introduction,01-platform-foundation,07-compute-objects}.qmd`
-- `docs/customer-documents/modernization/uiao-modernization-program/07-client-server-to-hybrid-cloud-ref.qmd`
+- `docs/customer-documents/reference-architecture/adapters.qmd`
+- `docs/customer-documents/reference-architecture/directory-migration.qmd`
+- `docs/customer-documents/operational-guides/network-transformation/index.qmd`
+- `docs/customer-documents/operational-guides/access-plane/conditional-access-library.qmd`
+- `docs/customer-documents/operational-guides/pki-modernization.qmd`
+- `docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/{00-introduction,01-platform-foundation,07-compute-objects}.qmd`
+- `docs/customer-documents/operational-guides/uiao-modernization-program/07-client-server-to-hybrid-cloud-ref.qmd`
 - `docs/narrative/governance-os-directory-migration.md`
 - `docs/planning/customer-documents-taxonomy.md`
 - `docs/docs/system-architecture.qmd`

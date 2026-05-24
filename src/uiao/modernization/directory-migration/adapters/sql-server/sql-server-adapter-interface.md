@@ -37,7 +37,7 @@ and the data-plane bridge into the Azure SSOT stack (OneLake mirroring
 ## Discovery Phase Requirements (Phase 1 — before any migration)
 
 - Forest-wide SPN enumeration for `MSSQLSvc/*` prefixes (see
-  [`src/uiao/adapters/modernization/active_directory/survey.py`](../../../../adapters/modernization/active_directory/survey.py)
+  [`src/uiao/adapters/customer-documents/reference-architecture/active_directory/survey.py`](../../../../adapters/customer-documents/reference-architecture/active_directory/survey.py)
   `extract_spn_inventory()`; emits the `spn_inventory` artifact defined
   in
   [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../../../schemas/orgtree-readiness/orgtree-readiness.schema.json)
@@ -114,7 +114,7 @@ auto-remediate when deterministic.
 - [`pki/pki-adapter-interface.md`](../pki/pki-adapter-interface.md) — Certificate-based authentication coordination
 - [`sync-engine/sync-adapter-interface.md`](../sync-engine/sync-adapter-interface.md) — Service-account lifecycle pipeline
 - [`../../ad-dependency-inventory.md`](../../ad-dependency-inventory.md) — 11-object dependency inventory (SPNs row)
-- [`../../../../adapters/modernization/active_directory/survey.py`](../../../../adapters/modernization/active_directory/survey.py) — `extract_spn_inventory()` implementation
+- [`../../../../adapters/customer-documents/reference-architecture/active_directory/survey.py`](../../../../adapters/customer-documents/reference-architecture/active_directory/survey.py) — `extract_spn_inventory()` implementation
 - [`../../../../canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md`](../../../../canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md) — Service-account scan canonical contract
 - [`../../../../../../docs/docs/16_DriftDetectionStandard.qmd`](../../../../../../docs/docs/16_DriftDetectionStandard.qmd) — Drift taxonomy and §7.1 SPN drift detection
 - [`../../../../../../docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd`](../../../../../../docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd) — Azure SSOT stack bridge (Purview data-map + Fabric Domain assignment + OneLake mirroring)
