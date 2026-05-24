@@ -43,12 +43,8 @@ Each adapter has a paired specification and validation suite. The spec describes
 | Microsoft Defender for Endpoint (Reserved Slot) — Adapter Technical Specification | [Spec](adapter-specs/defender-for-endpoint/defender-for-endpoint.html) | [Suite](validation-suites/adapters/defender-for-endpoint/defender-for-endpoint.html) |
 | Microsoft Defender for Servers (Reserved Slot) — Adapter Technical Specification | [Spec](adapter-specs/defender-for-servers/defender-for-servers.html) | [Suite](validation-suites/adapters/defender-for-servers/defender-for-servers.html) |
 | DHS E-Verify Employment Authorization Attribute Service — Adapter Technical Specification | [Spec](adapter-specs/dhs-everify-attribute-service/dhs-everify-attribute-service.html) | [Suite](validation-suites/adapters/dhs-everify-attribute-service/dhs-everify-attribute-service.html) |
-| Entra ID Administrative Units + Scoped Role Provisioning (OrgTree UIAO_154) — Adapter Technical Specification | [Spec](adapter-specs/entra-admin-units/entra-admin-units.html) | [Suite](validation-suites/adapters/entra-admin-units/entra-admin-units.html) |
-| Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree UIAO_153) — Adapter Technical Specification | [Spec](adapter-specs/entra-device-orgpath/entra-device-orgpath.html) | [Suite](validation-suites/adapters/entra-device-orgpath/entra-device-orgpath.html) |
-| Entra ID Dynamic Group Provisioning (OrgTree UIAO_152) — Adapter Technical Specification | [Spec](adapter-specs/entra-dynamic-groups/entra-dynamic-groups.html) | [Suite](validation-suites/adapters/entra-dynamic-groups/entra-dynamic-groups.html) |
 | Microsoft Entra ID — Adapter Technical Specification | [Spec](adapter-specs/entra-id/entra-id.html) | [Suite](validation-suites/adapters/entra-id/entra-id.html) |
 | Microsoft Entra ID Governance (Reserved Slot) — Adapter Technical Specification | [Spec](adapter-specs/entra-id-governance/entra-id-governance.html) | [Suite](validation-suites/adapters/entra-id-governance/entra-id-governance.html) |
-| OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (UIAO_164) — Adapter Technical Specification | [Spec](adapter-specs/entra-policy-targeting/entra-policy-targeting.html) | [Suite](validation-suites/adapters/entra-policy-targeting/entra-policy-targeting.html) |
 | Microsoft Entra Workload Identity (Reserved Slot) — Adapter Technical Specification | [Spec](adapter-specs/entra-workload-identity/entra-workload-identity.html) | [Suite](validation-suites/adapters/entra-workload-identity/entra-workload-identity.html) |
 | GSA SAM.gov Business Identity Attribute Service — Adapter Technical Specification | [Spec](adapter-specs/gsa-sam-attribute-service/gsa-sam-attribute-service.html) | [Suite](validation-suites/adapters/gsa-sam-attribute-service/gsa-sam-attribute-service.html) |
 | ID.me Federated Citizen-Identity Service — Adapter Technical Specification | [Spec](adapter-specs/id-me-federation-service/id-me-federation-service.html) | [Suite](validation-suites/adapters/id-me-federation-service/id-me-federation-service.html) |
@@ -59,7 +55,6 @@ Each adapter has a paired specification and validation suite. The spec describes
 | Microsoft 365 Tenant (Graph API) — Adapter Technical Specification | [Spec](adapter-specs/m365/m365.html) | [Suite](validation-suites/adapters/m365/m365.html) |
 | Mainframe (z/OS Connect / MQ) Adapter — Adapter Technical Specification | [Spec](adapter-specs/mainframe/mainframe.html) | [Suite](validation-suites/adapters/mainframe/mainframe.html) |
 | OPM Azure API Management Gateway Adapter (Federal HRIT) — Adapter Technical Specification | [Spec](adapter-specs/opm-azure-apim/opm-azure-apim.html) | [Suite](validation-suites/adapters/opm-azure-apim/opm-azure-apim.html) |
-| OrgTree Drift Detection Engine — UIAO_163 Six-Phase Orchestrator — Adapter Technical Specification | [Spec](adapter-specs/orgtree-drift-engine/orgtree-drift-engine.html) | [Suite](validation-suites/adapters/orgtree-drift-engine/orgtree-drift-engine.html) |
 | Palo Alto Networks (Firewall / NGFW) — Adapter Technical Specification | [Spec](adapter-specs/palo-alto/palo-alto.html) | [Suite](validation-suites/adapters/palo-alto/palo-alto.html) |
 | Patch State Observer (Reserved Slot) — Adapter Technical Specification | [Spec](adapter-specs/patch-state/patch-state.html) | [Suite](validation-suites/adapters/patch-state/patch-state.html) |
 | PIV / USAccess Federal Personnel Credential Adapter — Adapter Technical Specification | [Spec](adapter-specs/piv-usaccess/piv-usaccess.html) | [Suite](validation-suites/adapters/piv-usaccess/piv-usaccess.html) |
@@ -144,18 +139,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 
 ### Modernization
 
-| Sub-Category | Description | Status |
-|--------------|-------------|--------|
-| [Access Plane](modernization/access-plane/index.html) | MFA, Zero Trust, SASE, Certificate-Based Auth, Privileged Access | Active |
-| [Client Server To Hybrid Cloud](modernization/client-server-to-hybrid-cloud/index.html) | AD, GPO, DNS, DHCP, Kerberos, and PKI → Entra ID, Intune, Azure Arc, IPAM, SASE, and Zero Trust | Active |
-| [Directory Migration](modernization/directory-migration/index.html) | Eight adapter interfaces for every infrastructure service AD was holding together | Stub |
-| [Identity Orgtree](modernization/identity-orgtree/index.html) | OrgPath, dynamic groups, Administrative Units, delegation, migration runbook | Active |
-| [Network Transformation](modernization/network-transformation/index.html) | SD-WAN, IPAM, DNS, DHCP, firewall, 802.1X — in the Hybrid-Cloud model | Active |
-| [Platform Substrate](modernization/platform-substrate/index.html) | The host that runs UIAO — WS2025 + IIS + Gitea + Kerberos + PKI | Stub |
-| [Program Management](modernization/program-management/index.html) | Master Project Plan, roadmap, ADRs, ServiceNow, SAM, training | Active |
-| [Target Surface](modernization/target-surface/index.html) | Entra ID, Intune, Azure Arc, M365 — where transformed data lands | Active |
-| [Transformation Engine](modernization/transformation-engine/index.html) | PowerShell + Python + API scripts that analyse, plan, and deliver | Stub |
-| [Uiao Modernization Program](modernization/uiao-modernization-program/index.html) | Eight-chapter consolidated narrative for the UIAO Modernization Program (Phases 0–5 + Program Overview + Reference). | Active |
+_No sub-categories._
 
 ### Compliance
 
