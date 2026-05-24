@@ -53,7 +53,7 @@ Not just users. Every object AD was holding together:
 
 ## The Six Phases
 
-Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.md), the canonical Directory Migration model is six phases. The full phase table with governance gates is in [`docs/modernization/directory-migration.qmd`](../../../../docs/modernization/directory-migration.qmd).
+Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.md), the canonical Directory Migration model is six phases. The full phase table with governance gates is in [`docs/customer-documents/reference-architecture/directory-migration.qmd`](../../../../docs/customer-documents/reference-architecture/directory-migration.qmd).
 
 1. **Discover** — complete governance inventory of what AD actually encodes
 2. **Normalize** — rationalize decades of organic growth into a clean authority model
@@ -71,7 +71,7 @@ FedRAMP Evidence Bundle.
 
 | Discovery surface | Implementation | Output artifact |
 |---|---|---|
-| Forest archaeological survey (OUs, users, computers, GPOs, sites) | [`src/uiao/adapters/modernization/active_directory/survey.py`](../../adapters/modernization/active_directory/survey.py) — `run_discovery()` entry point | `ADSurveyReport` → orgtree-readiness bundle |
+| Forest archaeological survey (OUs, users, computers, GPOs, sites) | [`src/uiao/adapters/customer-documents/reference-architecture/active_directory/survey.py`](../../adapters/customer-documents/reference-architecture/active_directory/survey.py) — `run_discovery()` entry point | `ADSurveyReport` → orgtree-readiness bundle |
 | Service account scan (SPN inventory, delegation, AdminCount, naming patterns, risk classification) | Spec3-D1.1 — [`UIAO_139`](../../canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md); implemented inline in `survey.py` (`ServiceAccountRisk`, `classify_sa_adcs_dependency`) | `service-accounts.json` + risk-scored `ServiceAccountRisk` records |
 | **SPN inventory** (`MSSQLSvc/*` and related service-class SPNs, phase-tagged) | `survey.py::extract_spn_inventory()` (added in PR #395) | `spn_inventory` field on the orgtree-readiness bundle — see schema [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../schemas/orgtree-readiness/orgtree-readiness.schema.json) `#/definitions/spnInventory` |
 | OrgPath / Intune / Azure Arc readiness plans | OrgTree plane modules under [`src/uiao/modernization/orgtree/`](../orgtree/) | `orgpath_plan`, `intune_plan`, `arc_plan` sections of the orgtree-readiness bundle |
@@ -124,7 +124,7 @@ directory-migration/
 
 ## Adding a New Adapter Migration Guide
 
-Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.md) Phase 5, every new adapter migration guide — code-side under [`adapters/`](./adapters/) and customer-side under [`docs/customer-documents/modernization/`](../../../../docs/customer-documents/modernization/) — MUST include the contracts listed below. Reviewers SHALL block PRs that introduce a new adapter guide without them.
+Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.md) Phase 5, every new adapter migration guide — code-side under [`adapters/`](./adapters/) and customer-side under [`docs/customer-documents/operational-guides/`](../../../../docs/customer-documents/operational-guides/) — MUST include the contracts listed below. Reviewers SHALL block PRs that introduce a new adapter guide without them.
 
 ### Required for code-side adapter interface (`adapters/<id>/<id>-adapter-interface.md`)
 
@@ -132,9 +132,9 @@ Per [ADR-081](../../canon/adr/adr-081-directory-migration-phase-canonical-model.
 2. Entry added or updated in [`migration-adapter-registry.yaml`](./migration-adapter-registry.yaml). When `migration_phase` is declared, it MUST be one of `Discover`, `Normalize`, `Map`, `Migrate`, `Validate`, `Decommission`, or the documented opt-out `N/A — net-new capability` for adapters that add capability without retiring legacy infrastructure.
 3. The eight standard sections from the canon page's "Eight Adapter Interfaces" template (Discovery, Risk Assessment, Target Architecture, Migration Path, Validation, Rollback, plus the adapter-specific sections each interface adds).
 
-### Required for customer-side adapter guide (`docs/customer-documents/modernization/.../<adapter>-modernization.qmd`)
+### Required for customer-side adapter guide (`docs/customer-documents/operational-guides/.../<adapter>-modernization.qmd`)
 
-1. A **Canon Phase Mapping (ADR-081)** section at the top of the guide, between the title/classification block and the Table of Contents. The mapping table MUST list every customer phase the guide defines (Phase 0, Phase 1, ... or Phase 1, Phase 2, ... — whichever numbering the adapter uses) and the canon phase(s) each refines. For working examples, see [DNS](../../../../docs/customer-documents/modernization/network-transformation/dns-modernization.qmd) (11→6 mapping) and [PKI](../../../../docs/customer-documents/modernization/pki-modernization.qmd) (6→6 mapping).
+1. A **Canon Phase Mapping (ADR-081)** section at the top of the guide, between the title/classification block and the Table of Contents. The mapping table MUST list every customer phase the guide defines (Phase 0, Phase 1, ... or Phase 1, Phase 2, ... — whichever numbering the adapter uses) and the canon phase(s) each refines. For working examples, see [DNS](../../../../docs/customer-documents/operational-guides/network-transformation/dns-modernization.qmd) (11→6 mapping) and [PKI](../../../../docs/customer-documents/operational-guides/pki-modernization.qmd) (6→6 mapping).
 2. A short preamble paragraph explaining the mapping is a navigational anchor — the customer-side operational detail (week ranges, gates, rollback windows, runbook material) is preserved unchanged.
 3. A closing paragraph noting any semantic asymmetry between the customer phasing and the canon scaffold (e.g., several customer phases mapping to canon Migrate, or one customer phase combining canon Normalize + Map).
 

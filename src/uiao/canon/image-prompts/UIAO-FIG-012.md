@@ -91,7 +91,7 @@ far left margin of each band.
 
 ## Renders into
 
-- `docs/modernization/where-data-lives.qmd` — the explanatory doc this
+- `docs/customer-documents/reference-architecture/where-data-lives.qmd` — the explanatory doc this
   figure illustrates.
 - `src/uiao/canon/UIAO_151_OrgPath_Codebook.md` — canonical "storage"
   section reference image.

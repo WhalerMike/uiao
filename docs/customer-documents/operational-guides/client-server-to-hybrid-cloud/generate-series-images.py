@@ -13,7 +13,7 @@ Usage:
 
     # macOS / Linux / bash:
     export GEMINI_API_KEY="<your-key>"
-    cd docs/customer-documents/modernization/client-server-to-hybrid-cloud
+    cd docs/customer-documents/operational-guides/client-server-to-hybrid-cloud
     python generate-series-images.py
 
 Options:

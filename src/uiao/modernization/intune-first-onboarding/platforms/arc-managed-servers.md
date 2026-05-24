@@ -11,7 +11,7 @@ canon_anchor: ADR-071
 platform: server
 publish_to_site: true
 publication_style: narrative
-published_at: docs/modernization/intune-first.qmd
+published_at: docs/customer-documents/reference-architecture/intune-first.qmd
 ---
 
 # Platform Annex — Arc-Managed Servers

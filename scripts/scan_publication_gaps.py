@@ -158,7 +158,7 @@ def expected_qmd_paths_for(path: pathlib.Path) -> list[str]:
     """Heuristic mapping from canon source path to candidate .qmd paths.
 
     The mapping is plural because multiple naming conventions co-exist
-    on the site today (e.g., docs/modernization/directory-migration.qmd
+    on the site today (e.g., docs/customer-documents/reference-architecture/directory-migration.qmd
     for src/uiao/modernization/directory-migration/README.md). Returning
     multiple candidates lets the matcher accept any of them.
     """
@@ -180,7 +180,7 @@ def expected_qmd_paths_for(path: pathlib.Path) -> list[str]:
         # matcher's link-based fallback below).
 
     elif rel.startswith("src/uiao/modernization/"):
-        # Modernization-module docs: parallel path under docs/modernization/
+        # Modernization-module docs: parallel path under docs/customer-documents/reference-architecture/
         # Strip src/uiao/ prefix, append .qmd.
         # Special case: README.md collapses to the parent directory name.
         sub = pathlib.Path(rel).relative_to("src/uiao")
@@ -234,12 +234,12 @@ def index_sidebar_content(sidebar_qmds: set[str]) -> dict[str, str]:
 
     Quarto resolves paths relative to docs/_quarto.yml's directory
     (i.e., docs/). So a YAML value of "modernization/orgtree.qmd"
-    is at docs/modernization/orgtree.qmd, and a YAML value of
+    is at docs/customer-documents/reference-architecture/orgtree.qmd, and a YAML value of
     "docs/quickstart.qmd" is at docs/docs/quickstart.qmd.
 
     The collect_sidebar_qmds() pre-pass ensures every entry already
     starts with "docs/". This function then tries:
-      1. The path as-is (e.g., docs/modernization/orgtree.qmd)
+      1. The path as-is (e.g., docs/customer-documents/reference-architecture/orgtree.qmd)
       2. With an additional docs/ prefix (e.g., docs/docs/quickstart.qmd)
 
     Used by the link-back detector to find canon references inside
@@ -247,8 +247,8 @@ def index_sidebar_content(sidebar_qmds: set[str]) -> dict[str, str]:
     """
     index: dict[str, str] = {}
     for rel in sorted(sidebar_qmds):
-        # Try the path as-is first (e.g., docs/modernization/orgtree.qmd
-        # is at REPO_ROOT/docs/modernization/orgtree.qmd).
+        # Try the path as-is first (e.g., docs/customer-documents/reference-architecture/orgtree.qmd
+        # is at REPO_ROOT/docs/customer-documents/reference-architecture/orgtree.qmd).
         candidates = [REPO_ROOT / rel]
         # If that misses, the YAML value was something like
         # "docs/quickstart.qmd" meaning relative to the docs/ project

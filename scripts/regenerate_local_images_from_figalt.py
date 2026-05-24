@@ -21,9 +21,9 @@ Complements:
 Requires GEMINI_API_KEY in environment. Never commit a key.
 
 Usage:
-    python scripts/regenerate_local_images_from_figalt.py docs/modernization/index.qmd
-    python scripts/regenerate_local_images_from_figalt.py docs/modernization/
-    python scripts/regenerate_local_images_from_figalt.py docs/modernization/ --dry-run
+    python scripts/regenerate_local_images_from_figalt.py docs/customer-documents/reference-architecture/index.qmd
+    python scripts/regenerate_local_images_from_figalt.py docs/customer-documents/reference-architecture/
+    python scripts/regenerate_local_images_from_figalt.py docs/customer-documents/reference-architecture/ --dry-run
 """
 
 from __future__ import annotations

@@ -198,8 +198,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Also bundle the canon-side modernization section located at "
         "<site-root>/../modernization. Use in addition to --all or --section to "
-        "include the top-level /modernization/ pages alongside the customer-documents "
-        "bundles. Produces <site-root>/../modernization/modernization-bundle.docx.",
+        "include the top-level /customer-documents/reference-architecture/ pages alongside the customer-documents "
+        "bundles. Produces <site-root>/../customer-documents/reference-architecture/modernization-bundle.docx.",
     )
     args = parser.parse_args(argv)
 
