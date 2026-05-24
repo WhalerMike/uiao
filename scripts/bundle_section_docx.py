@@ -73,9 +73,10 @@ DEFAULT_SECTIONS = [
     "compliance",
     "executive-briefs",
     "executive-governance-series",
-    "modernization",
     "modernization-specs",
+    "operational-guides",
     "orgpath-narrative",
+    "reference-architecture",
     "platform",
     "substrate",
     "validation-suites",
@@ -196,10 +197,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--canon-modernization",
         action="store_true",
-        help="Also bundle the canon-side modernization section located at "
-        "<site-root>/../modernization. Use in addition to --all or --section to "
-        "include the top-level /customer-documents/reference-architecture/ pages alongside the customer-documents "
-        "bundles. Produces <site-root>/../customer-documents/reference-architecture/modernization-bundle.docx.",
+        help="DEPRECATED no-op (kept for caller-flag compatibility). Per ADR-083, "
+        "canon modernization pages moved into customer-documents at "
+        "reference-architecture/, so they are now bundled by --all as a regular "
+        "section. The flag will be removed in a follow-up PR once the Quarto "
+        "workflow drops it from its invocation.",
     )
     args = parser.parse_args(argv)
 
@@ -221,22 +223,15 @@ def main(argv: list[str] | None = None) -> int:
             # (e.g., only stubs). Treat as non-fatal but report.
             failures += 1
 
-    # Optional: also bundle the canon-side modernization section. Customer-
-    # documents bundling walks _site/customer-documents/<section>; the canon-
-    # modernization pages live one level up at _site/modernization. Same
-    # section name ("modernization") but a different site-root.
+    # --canon-modernization is a deprecated no-op per ADR-083 (canon
+    # modernization pages now live at customer-documents/reference-architecture/
+    # and are bundled by --all as a regular section). Log if the flag was passed
+    # so the workflow author notices.
     if args.canon_modernization:
-        canon_root = site_root.parent
-        canon_section_dir = canon_root / "modernization"
-        if not canon_section_dir.is_dir():
-            print(f"WARN  canon-modernization: directory not found at {canon_section_dir}")
-            failures += 1
-        else:
-            ok, msg = _bundle_one(canon_root, "modernization")
-            prefix = "OK   " if ok else "WARN "
-            print(f"{prefix} canon-modernization/{msg}")
-            if not ok:
-                failures += 1
+        print(
+            "INFO  --canon-modernization is a no-op per ADR-083; "
+            "reference-architecture is bundled by --all as a regular section."
+        )
 
     if args.section and failures:
         # Single-section mode: caller asked for a specific bundle, so
