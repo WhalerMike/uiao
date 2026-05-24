@@ -1,7 +1,7 @@
 ---
 title: "Delegation Matrix"
-subtitle: "Administrative Units and Role-Based Access Control"
-date: 2026-04-19
+subtitle: "Model C — Administrative Units scoped by facet tuples"
+date: 2026-05-24
 format:
   html:
     toc: true
@@ -15,84 +15,93 @@ aliases:
 ---
 
 {{< lifecycle-banner >}}
+
+> **Model C — Administrative Units scoped by facet tuples (per [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** AU membership rules compose facet predicates from the 15-slot model rather than `-startsWith` on a composite-hyphen path. See [OrgPath Codebook](codebook.qmd) for the facet/slot definitions.
+
 ## The Delegation Problem
 
-In Active Directory, delegation was implicit. Place a user in an OU, grant an admin
-group permissions on that OU, and delegation was done. The OU tree *was* the delegation
-model — every branch of the hierarchy defined a scope of management authority.
+In Active Directory, delegation was implicit. Place a user in an OU, grant an admin group permissions on that OU, and delegation was done. The OU tree *was* the delegation model — every branch of the hierarchy defined a scope of management authority.
 
-Entra ID has no OUs. It has a flat directory where every user is at the same level. Without
-a replacement for OU-based delegation, organizations face two bad choices:
+Entra ID has no OUs. It has a flat directory where every user is at the same level. Without a replacement for OU-based delegation, organizations face two bad choices:
 
-1. **Over-delegate**: Give administrators tenant-wide permissions (Global Admin, User Admin)
-   because there is no scope boundary. This violates least-privilege and creates audit findings.
+1. **Over-delegate**: Give administrators tenant-wide permissions (Global Admin, User Admin) because there is no scope boundary. This violates least-privilege and creates audit findings.
+2. **Under-delegate**: Lock down all administration to a tiny team, creating bottlenecks where every password reset, group change, and user update requires a central IT ticket.
 
-2. **Under-delegate**: Lock down all administration to a tiny team, creating bottlenecks
-   where every password reset, group change, and user update requires a central IT ticket.
-
-Administrative Units (AUs) solve this — they create virtual scope boundaries within the
-flat directory. But AUs without a governance framework are just empty containers. The
-Delegation Matrix (UIAO_154) provides the framework.
+Administrative Units (AUs) solve this — they create virtual scope boundaries within the flat directory. Under Model C, the boundary is defined by **facet tuples** (one or more `(attr, value)` predicates AND'd together), not by position in a composite path. The Delegation Matrix (UIAO_154) names the canonical AUs, their facet scopes, and the role assignments they carry.
 
 ## Three-Tier Model
 
 | Tier | Scope | Who | What They Can Do |
-|------|-------|-----|-----------------|
-| **Tier 1** | Enterprise | Security team, Compliance, Executives | Read-only visibility across all governed users |
-| **Tier 2** | Division | Division administrators | Full user lifecycle management within their division |
-| **Tier 3** | Department | Department helpdesk | Password resets and basic user support within their department |
+|---|---|---|---|
+| **Tier 1** | Enterprise | Security team, Compliance, Executives | Read-only visibility across all governed principals |
+| **Tier 2** | Department / Division | Department administrators | Full user lifecycle management within their facet scope |
+| **Tier 3** | Sub-team (Department + Division + Role tier) | Helpdesk / per-team admins | Password resets and basic user support within their narrow facet scope |
 
-Each tier maps to an Administrative Unit whose membership rule mirrors the
-OrgPath hierarchy from UIAO_151:
+Each tier maps to an Administrative Unit whose membership rule cites one or more facet values from the codebook:
 
-- Tier 1: `AU-ORG-Enterprise` — `-startsWith "ORG"`
-- Tier 2: `AU-ORG-FIN` — `-startsWith "ORG-FIN"`
-- Tier 3: `AU-ORG-FIN-AP` — `-startsWith "ORG-FIN-AP"`
+- **Tier 1:** `AU-Enterprise` — every principal with at least one declared facet
+- **Tier 2:** `AU-Department-IT` — `(attr2 -eq "IT")`
+- **Tier 3:** `AU-IT-CyberOps` — `(attr2 -eq "IT") and (attr3 -eq "CyberOps")`
 
 ## Administrative Unit Registry
 
-### Enterprise AU
+### Enterprise AU (Tier 1)
 
 | AU | Rule | Restricted |
-|----|------|-----------|
-| `AU-ORG-Enterprise` | `(user.extensionAttribute1 -startsWith "ORG")` | Yes |
+|---|---|---|
+| `AU-Enterprise` | `(user.onPremisesExtensionAttributes.extensionAttribute2 -ne "")` | Yes |
 
-### Division AUs
+The Tier-1 enterprise AU uses the Department facet's non-empty check as the canonical "is this principal governed by OrgTree?" predicate — populated Department implies the principal has been HR-provisioned through the OrgPath pipeline.
 
-| AU | Rule | Division | Restricted |
-|----|------|----------|-----------|
-| `AU-ORG-FIN` | `-startsWith "ORG-FIN"` | Finance | Yes |
-| `AU-ORG-HR` | `-startsWith "ORG-HR"` | Human Resources | Yes |
-| `AU-ORG-IT` | `-startsWith "ORG-IT"` | IT | Yes |
-| `AU-ORG-OPS` | `-startsWith "ORG-OPS"` | Operations | Yes |
-| `AU-ORG-LEG` | `-startsWith "ORG-LEG"` | Legal | Yes |
-| `AU-ORG-EXEC` | `-startsWith "ORG-EXEC"` | Executive | Yes |
-
-### Department AUs (Created on Demand)
+### Department AUs (Tier 2)
 
 | AU | Rule | Department | Restricted |
-|----|------|-----------|-----------|
-| `AU-ORG-IT-SEC` | `-startsWith "ORG-IT-SEC"` | IT Security | Yes |
-| `AU-ORG-IT-INF` | `-startsWith "ORG-IT-INF"` | Infrastructure | Yes |
-| `AU-ORG-IT-DEV` | `-startsWith "ORG-IT-DEV"` | Development | Yes |
-| `AU-ORG-FIN-AP` | `-startsWith "ORG-FIN-AP"` | Accounts Payable | Yes |
-| `AU-ORG-FIN-BUD` | `-startsWith "ORG-FIN-BUD"` | Budget | Yes |
+|---|---|---|---|
+| `AU-Department-IT` | `attr2 -eq "IT"` | IT | Yes |
+| `AU-Department-HR` | `attr2 -eq "HR"` | HR | Yes |
+| `AU-Department-Finance` | `attr2 -eq "Finance"` | Finance | Yes |
+| `AU-Department-Legal` | `attr2 -eq "Legal"` | Legal | Yes |
+| `AU-Department-Engineering` | `attr2 -eq "Engineering"` | Engineering | Yes |
+| `AU-Department-Operations` | `attr2 -eq "Operations"` | Operations | Yes |
+| `AU-Department-Sales` | `attr2 -eq "Sales"` | Sales | Yes |
+| `AU-Department-Executive` | `attr2 -eq "Executive"` | Executive | Yes |
+
+### Division AUs (Tier 3 — created on demand within a Department)
+
+| AU | Rule | Scope | Restricted |
+|---|---|---|---|
+| `AU-IT-CyberOps` | `(attr2 -eq "IT") and (attr3 -eq "CyberOps")` | IT/CyberOps | Yes |
+| `AU-IT-InfraOps` | `(attr2 -eq "IT") and (attr3 -eq "InfraOps")` | IT/Infrastructure | Yes |
+| `AU-IT-AppDev` | `(attr2 -eq "IT") and (attr3 -eq "AppDev")` | IT/AppDev | Yes |
+| `AU-Legal-GRC` | `(attr2 -eq "Legal") and (attr3 -eq "GRC")` | Legal/GRC | Yes |
+
+### Cross-cutting AUs (facet compositions)
+
+| AU | Rule | Scope | Restricted |
+|---|---|---|---|
+| `AU-Region-NCR-Privileged` | `(attr1 -eq "NCR") and (attr10 -eq "Privileged")` | NCR privileged-access accounts | Yes |
+| `AU-Cleared-TopSecret-Plus` | `attr9 -in ["TopSecret","TS_SCI"]` | Top-secret cleared personnel | Yes |
+| `AU-Contractor-Active` | `(attr6 -eq "Contractor") and (attr8 -eq "")` | Active contractors (empty TermDate) | Yes |
 
 ## Role Assignment Matrix
 
 | Role | Assigned To | Scoped To | Tier |
-|------|-----------|----------|------|
-| Global Reader | `OrgTree-IT-SEC-Users` | `AU-ORG-Enterprise` | 1 |
-| Security Reader | `OrgTree-LEG-COM-Users` | `AU-ORG-Enterprise` | 1 |
-| Reports Reader | `OrgTree-EXEC-Users` | `AU-ORG-Enterprise` | 1 |
-| User Administrator | `OrgTree-FIN-Admins` | `AU-ORG-FIN` | 2 |
-| Groups Administrator | `OrgTree-FIN-Admins` | `AU-ORG-FIN` | 2 |
-| User Administrator | `OrgTree-HR-Admins` | `AU-ORG-HR` | 2 |
-| User Administrator | `OrgTree-IT-Admins` | `AU-ORG-IT` | 2 |
-| Helpdesk Administrator | `OrgTree-IT-SEC-Admins` | `AU-ORG-IT-SEC` | 3 |
-| Helpdesk Administrator | `OrgTree-FIN-AP-Admins` | `AU-ORG-FIN-AP` | 3 |
-| Password Administrator | `OrgTree-HR-REC-Admins` | `AU-ORG-HR-REC` | 3 |
-| Authentication Admin | `OrgTree-IT-SEC-IAM-Users` | `AU-ORG-Enterprise` | 1 |
+|---|---|---|---|
+| Global Reader | `OrgTree-IT-CyberOps-Users` | `AU-Enterprise` | 1 |
+| Security Reader | `OrgTree-Legal-GRC-Users` | `AU-Enterprise` | 1 |
+| Reports Reader | `OrgTree-Department-Executive-Users` | `AU-Enterprise` | 1 |
+| User Administrator | `OrgTree-Finance-Admins` | `AU-Department-Finance` | 2 |
+| Groups Administrator | `OrgTree-Finance-Admins` | `AU-Department-Finance` | 2 |
+| User Administrator | `OrgTree-HR-Admins` | `AU-Department-HR` | 2 |
+| User Administrator | `OrgTree-IT-Admins` | `AU-Department-IT` | 2 |
+| Helpdesk Administrator | `OrgTree-IT-CyberOps-Admins` | `AU-IT-CyberOps` | 3 |
+| Password Administrator | `OrgTree-IT-CyberOps-Admins` | `AU-IT-CyberOps` | 3 |
+| Authentication Administrator | `OrgTree-IT-InfraOps-Admins` | `AU-IT-InfraOps` | 3 |
+| Conditional Access Administrator | `OrgTree-IT-CyberOps-Admins` | `AU-Cleared-TopSecret-Plus` | (cross-cutting) |
+
+Notes:
+- The `*-Admins` dynamic groups derive from the corresponding `*-Users` groups via a separate membership rule (typically an enriched HR attribute or a manually curated list per UIAO_154).
+- Cross-cutting AUs (like `AU-Cleared-TopSecret-Plus`) get role assignments only when the operational need crosses Department/Division boundaries (e.g., a CISO-led security-clearance review).
 
 ## Restricted Management
 
@@ -102,22 +111,24 @@ Restricted Management means:
 
 - Global Administrators **cannot** manage AU members without explicit AU-scoped role assignment
 - Only users with roles scoped to the specific AU can manage objects within it
-- This **prevents privilege escalation** — even a Global Admin cannot bypass division-level delegation
+- This **prevents privilege escalation** — even a Global Admin cannot bypass facet-scoped delegation
 
 An unrestricted AU is classified as **CRITICAL drift** and triggers immediate remediation.
 
 ## Drift Detection
 
 | Drift Type | Severity | Auto-Fix |
-|-----------|----------|----------|
-| AU Membership Drift — rule mismatch | HIGH | Yes |
+|---|---|---|
+| AU Membership Drift — rule mismatch (per-facet clause) | HIGH | Yes |
 | Role Assignment Drift — unauthorized assignment | CRITICAL | No — investigate |
 | Unrestricted AU — missing Restricted flag | CRITICAL | Yes |
 | Orphaned AU — no role assignments | LOW | No — flag |
 | Missing AU — canonical entry with no tenant AU | HIGH | Yes |
+| Stale facet citation — rule references a facet value not in the codebook enumeration | HIGH | No — fix codebook or rule |
+
+The per-facet drift model (see [Drift Detection Walk-through](drift-walkthrough.qmd)) classifies AU rule drift per clause: if `(attr2 -eq "IT") and (attr3 -eq "OldDivision")` references a now-deprecated `OldDivision` value, the second clause surfaces independently as a phantom-facet finding while the first clause continues to validate cleanly.
 
 ::: {.callout-tip}
 ## Source
-Full canonical definitions with decision tree and PowerShell validation:
-`src/uiao/canon/UIAO_154_Delegation_Matrix_AUs_Roles.md`
+Canonical narrative: [`UIAO_154_Delegation_Matrix.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_154_Delegation_Matrix.md). Facet definitions: [OrgPath Codebook](codebook.qmd). Per-facet drift classifier: [Drift Detection Walk-through](drift-walkthrough.qmd).
 :::
