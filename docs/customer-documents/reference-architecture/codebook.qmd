@@ -1,7 +1,7 @@
 ---
 title: "OrgPath Codebook"
-subtitle: "The Master Encoding Scheme for Identity Hierarchy in Entra ID"
-date: 2026-04-19
+subtitle: "Model C — 15-facet multi-attribute identity surface"
+date: 2026-05-24
 format:
   html:
     toc: true
@@ -15,151 +15,171 @@ aliases:
 ---
 
 {{< lifecycle-banner >}}
+
+> **Model C — 15-facet multi-attribute (per [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** The Model A composite-hyphen path (`extensionAttribute1: ORG-FIN-AP-EAST`) is retired. The executable canon is [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml) (`schema_version: 2.0.0`); the canon narrative is [UIAO_151](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md) v4.0.
+
 ## Why This Is the Most Important Document in the Suite
 
 Every other artifact in the OrgTree suite depends on the OrgPath Codebook:
 
-- **Dynamic groups** (UIAO_152) key their membership rules off OrgPath values
-- **Administrative Units** (UIAO_154) scope delegation boundaries to OrgPath segments
-- **Drift detection** (UIAO_163) validates every user's `extensionAttribute1` against this codebook
-- **Conditional Access** policies target groups built from OrgPath membership
-- **License assignment** maps OrgPath segments to M365 SKUs
+- **Dynamic groups** ([UIAO_152](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_152_Dynamic_Group_Library.md)) compose membership rules from facet predicates (`attr2 -eq "IT" and attr3 -eq "CyberOps"`)
+- **Administrative Units** ([UIAO_154](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_154_Delegation_Matrix.md)) scope delegation boundaries via facet tuples
+- **Drift detection** ([UIAO_163](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md)) validates every slot's value against its facet's enumeration independently
+- **Conditional Access** policies target groups built from facet compositions
+- **License assignment** maps `CostCenter` facet values to M365 SKUs
+- **Lifecycle automation** triggers off `HireDate` / `TermDate` typed facets
 
 If the codebook is wrong, everything downstream is wrong. If the codebook is not governed, nothing downstream is governed.
 
 ## The Format
 
-**Canonical:** `ORG-[DIV]-[DEPT]-[UNIT]-[TEAM]`
+Model C decomposes OrgPath into **15 facets**, each carried by one `onPremisesExtensionAttribute` slot:
 
-- Fixed root prefix (`ORG`) enables regex validation and subtree matching
-- Uppercase alphanumeric segments, 2-6 characters, hyphen-separated
-- Maximum 8 segments after root (Level 8 = Squad), per [ADR-062](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-062-orgpath-depth-extension.md) — the original cap of 4 proved too shallow for federal-agency and military-command hierarchies
-- Regex: `^ORG(-[A-Z0-9]{2,6}){0,8}$`
-- Stored in: `extensionAttribute1` — the single source of truth
-- HR system is authoritative — IT never manually edits OrgPath
+- **Slots 1–10** are canonical named facets (assignments fixed by ADR-078; rebinding requires a superseding ADR)
+- **Slots 11–15** are reserved for tenant-specific extension (declare facet semantics via governed PR before populating)
 
-See [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) for the full
-three-layer storage model (Codebook in Git → Entra `extensionAttribute1` →
-HR authority).
+Dynamic group rules, AU memberships, and CA targeting compose facets via standard boolean operators rather than text-parsing a single composite string. Per-facet validation means a drift finding on one slot (e.g., unknown `Region`) is independent of validation on every other slot.
 
-## Level Structure
+See [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) for the storage model (Codebook in Git → Entra `extensionAttribute1`–`15` slots → HR authority).
 
-| Level | Segments | Example | Description | Dynamic Group Pattern |
-|-------|----------|---------|-------------|----------------------|
-| 0 | 1 | `ORG` | Enterprise Root | All users |
-| 1 | 2 | `ORG-FIN` | Division | `-eq` or `-startsWith` |
-| 2 | 3 | `ORG-FIN-AP` | Department | `-startsWith` |
-| 3 | 4 | `ORG-FIN-AP-EAST` | Unit / Region | `-startsWith` |
-| 4 | 5 | `ORG-FIN-AP-EAST-T1` | Team | `-eq` |
+## Canonical Attribute Assignments
 
-## Sample Codebook
+| Slot | Facet | Kind | Sample values |
+|---|---|---|---|
+| `extensionAttribute1` | **Region** | enumerated | `NCR`, `WESTUS`, `EASTUS`, `EMEA`, `APAC`, `LATAM` |
+| `extensionAttribute2` | **Department** | enumerated | `IT`, `HR`, `Finance`, `Legal`, `Engineering`, `Sales` |
+| `extensionAttribute3` | **Division** | enumerated | `CyberOps`, `InfraOps`, `AppDev`, `GRC`, `Cloud` |
+| `extensionAttribute4` | **Role** | enumerated | `Analyst`, `Engineer`, `Manager`, `Director`, `CISO` |
+| `extensionAttribute5` | **CostCenter** | enumerated | `CC-4100`, `CC-5200`, `CC-8300` |
+| `extensionAttribute6` | **Classification** | enumerated | `Employee`, `Contractor`, `Intern`, `Executive` |
+| `extensionAttribute7` | **HireDate** | typed (ISO date) | `2024-01-15` |
+| `extensionAttribute8` | **TermDate** | typed (ISO date, allow_empty) | `2030-12-31` or `""` for active |
+| `extensionAttribute9` | **ClearanceLevel** | enumerated | `None`, `PublicTrust`, `Secret`, `TopSecret`, `TS_SCI` |
+| `extensionAttribute10` | **AccountType** | enumerated | `Standard`, `Privileged`, `Service`, `SharedMailbox`, `Guest`, `Vendor` |
+| `extensionAttribute11`–`15` | **Reserved** | reserved | Tenant-declared facets (governed PR required) |
 
-### Divisions (Level 1)
+## Facet Kinds
 
-| OrgPath | Description |
-|---------|-------------|
-| `ORG-EXEC` | Executive / Leadership |
-| `ORG-FIN` | Finance |
-| `ORG-HR` | Human Resources |
-| `ORG-IT` | Information Technology |
-| `ORG-OPS` | Operations |
-| `ORG-LEG` | Legal / Compliance |
-| `ORG-SALES` | Sales & Marketing |
+| Kind | Validation | Used for |
+|---|---|---|
+| **enumerated** | Value must be in the facet's closed `enumeration` list | 8 of 10 named facets |
+| **typed** | Value must match `value_type` + optional `value_pattern` regex; `allow_empty: true` permits empty string | `HireDate`, `TermDate` (dates aren't enumerable) |
+| **reserved** | No value accepted until promoted via governed PR | Slots 11–15 by default |
 
-### Departments (Level 2)
+## Slot Uniqueness Invariant
 
-| OrgPath | Description | Parent |
-|---------|-------------|--------|
-| `ORG-FIN-AP` | Accounts Payable | ORG-FIN |
-| `ORG-FIN-AR` | Accounts Receivable | ORG-FIN |
-| `ORG-FIN-BUD` | Budget & Forecasting | ORG-FIN |
-| `ORG-IT-SEC` | Security | ORG-IT |
-| `ORG-IT-INF` | Infrastructure | ORG-IT |
-| `ORG-IT-DEV` | Development / Engineering | ORG-IT |
-| `ORG-HR-REC` | Recruitment | ORG-HR |
-| `ORG-HR-BEN` | Benefits | ORG-HR |
-| `ORG-OPS-LOG` | Logistics | ORG-OPS |
-| `ORG-LEG-COM` | Compliance | ORG-LEG |
+Each `extensionAttribute` slot is claimed by exactly one facet. The Python loader's `_validate_integrity` step rejects any codebook that declares two facets binding the same slot:
 
-### Units (Level 3)
+```
+Facets 'region' and 'second_facet' both bind to 'extensionAttribute1'.
+Each extensionAttribute slot must be claimed by at most one facet.
+```
 
-| OrgPath | Description | Parent |
-|---------|-------------|--------|
-| `ORG-IT-SEC-SOC` | Security Operations Center | ORG-IT-SEC |
-| `ORG-IT-SEC-IAM` | Identity & Access Management | ORG-IT-SEC |
-| `ORG-IT-INF-NET` | Networking | ORG-IT-INF |
-| `ORG-FIN-AP-EAST` | Accounts Payable East | ORG-FIN-AP |
-| `ORG-FIN-AP-WEST` | Accounts Payable West | ORG-FIN-AP |
+JSON Schema cannot express cross-property uniqueness, so this is loader-enforced after schema validation. Violating the invariant is a **Slot Drift** finding (P1 critical).
 
-### Teams (Level 4)
+## Per-Facet Enumerations (Starter Set)
 
-| OrgPath | Description | Parent |
-|---------|-------------|--------|
-| `ORG-IT-SEC-SOC-T1` | SOC Tier 1 Analysts | ORG-IT-SEC-SOC |
-| `ORG-IT-SEC-SOC-T2` | SOC Tier 2 Engineers | ORG-IT-SEC-SOC |
-| `ORG-IT-DEV-APP1` | Application Team 1 | ORG-IT-DEV |
+The shipped codebook ships starter values aligned to federal-IT defaults. Tenants extend each enumeration via governed PRs. The full enumeration lives in [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml); excerpts shown here.
 
-## Dynamic Group Rules
+### Region (`extensionAttribute1`)
 
-### Branch Groups (Subtree)
+| Value | Description |
+|---|---|
+| `NCR` | National Capital Region |
+| `EASTUS` | Eastern United States |
+| `WESTUS` | Western United States |
+| `CENTRAL` | Central United States |
+| `EMEA` | Europe / Middle East / Africa |
+| `APAC` | Asia-Pacific |
+| `LATAM` | Latin America |
 
-Use `-startsWith` to capture all users in a branch and everything below it:
+### Department (`extensionAttribute2`)
 
-| Group | Entra ID Rule |
-|-------|--------------|
-| `SG-FIN-All` | `(user.extensionAttribute1 -startsWith "ORG-FIN")` |
-| `SG-IT-SEC-All` | `(user.extensionAttribute1 -startsWith "ORG-IT-SEC")` |
-| `SG-FIN-AP-All` | `(user.extensionAttribute1 -startsWith "ORG-FIN-AP")` |
+| Value | Description |
+|---|---|
+| `IT` | Information Technology |
+| `HR` | Human Resources |
+| `Finance` | Finance |
+| `Legal` | Legal / Compliance |
+| `Engineering` | Engineering |
+| `Operations` | Operations |
+| `Sales` | Sales / Marketing |
+| `Executive` | Executive / Leadership |
 
-### Node Groups (Exact)
+### ClearanceLevel (`extensionAttribute9`)
 
-Use `-eq` for leaf-node precision:
+| Value | Description |
+|---|---|
+| `None` | No clearance required / not applicable |
+| `PublicTrust` | Public Trust |
+| `Secret` | Secret |
+| `TopSecret` | Top Secret |
+| `TS_SCI` | Top Secret / Sensitive Compartmented Information |
 
-| Group | Entra ID Rule |
-|-------|--------------|
-| `SG-IT-SEC-SOC-T1` | `(user.extensionAttribute1 -eq "ORG-IT-SEC-SOC-T1")` |
-| `SG-EXEC` | `(user.extensionAttribute1 -eq "ORG-EXEC")` |
+*(Division, Role, CostCenter, Classification, AccountType enumerations follow the same shape; HireDate / TermDate are typed facets with `value_pattern: "^\d{4}-\d{2}-\d{2}$"`.)*
 
-### Compound Rules
+## Dynamic Group Rules — Boolean Composition
 
-| Group | Entra ID Rule | Use Case |
-|-------|--------------|----------|
-| `SG-IT-Privileged` | `... -startsWith "ORG-IT-SEC") -or (... -startsWith "ORG-IT-INF")` | Elevated access scope |
+Model C's central operational advantage: dynamic group rules compose facets via boolean operators. The Entra dynamic membership language supports this natively.
+
+### Single-facet groups
+
+| Group | Rule | Captures |
+|---|---|---|
+| `OrgTree-Department-IT` | `(user.onPremisesExtensionAttributes.extensionAttribute2 -eq "IT")` | All IT users across every region/division/role |
+| `OrgTree-Region-NCR` | `(extensionAttribute1 -eq "NCR")` | All National Capital Region users |
+| `OrgTree-Classification-Executive` | `(extensionAttribute6 -eq "Executive")` | All Executive-classified principals |
+
+### Multi-facet compositions
+
+| Group | Rule | Use case |
+|---|---|---|
+| `OrgTree-IT-CyberOps` | `(attr2 -eq "IT") and (attr3 -eq "CyberOps")` | IT/CyberOps division |
+| `OrgTree-Privileged-Cleared` | `(attr10 -eq "Privileged") and (attr9 -in ["Secret","TopSecret","TS_SCI"])` | Privileged accounts with clearance |
+| `OrgTree-NCR-IT-Managers` | `(attr1 -eq "NCR") and (attr2 -eq "IT") and (attr4 -in ["Manager","Director"])` | NCR IT leadership for meetings / announcements |
+
+### Lifecycle-driven groups
+
+| Group | Rule | Use case |
+|---|---|---|
+| `OrgTree-Active-Employees` | `(attr8 -eq "")` | Empty TermDate ⇒ active employee |
+| `OrgTree-Contractors-In-IT` | `(attr2 -eq "IT") and (attr6 -eq "Contractor")` | Department-scoped contractor view |
+
+Each clause cites a single attribute and validates independently — refactoring a facet enumeration does not require re-parsing rule strings.
 
 ## Administrative Unit Mapping
 
 | AU | Membership Rule | Scoped Role | Delegate |
-|----|-----------------|-------------|----------|
-| `AU-IT` | `extensionAttribute1 -startsWith "ORG-IT"` | User Administrator | IT Division Lead |
-| `AU-IT-SEC` | `extensionAttribute1 -startsWith "ORG-IT-SEC"` | User Administrator | CISO |
-| `AU-FIN` | `extensionAttribute1 -startsWith "ORG-FIN"` | User Administrator | CFO |
-| `AU-HR` | `extensionAttribute1 -startsWith "ORG-HR"` | User Administrator | CHRO |
+|---|---|---|---|
+| `AU-Department-IT` | `attr2 -eq "IT"` | User Administrator | IT Division Lead |
+| `AU-IT-CyberOps` | `(attr2 -eq "IT") and (attr3 -eq "CyberOps")` | Helpdesk Administrator | CyberOps Manager |
+| `AU-NCR-Privileged` | `(attr1 -eq "NCR") and (attr10 -eq "Privileged")` | Authentication Administrator | NCR PAM Steward |
+| `AU-Cleared-TopSecret-Plus` | `attr9 -in ["TopSecret","TS_SCI"]` | Conditional Access Administrator | Personnel Security Office |
 
-## Five Drift Categories
+Per [UIAO_154](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_154_Delegation_Matrix.md), every AU in scope is Restricted Management — Global Administrators cannot manage AU members without explicit AU-scoped role assignment.
 
-The canonical category names and severities — Schema, Value, Hierarchy, Orphan,
-Phantom — are defined in [UIAO_163](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md)
-and explained with worked examples in the
-[Drift Detection Walk-through](drift-walkthrough.qmd).
+## Five Drift Categories (per-facet)
 
 | Category | What Broke | Severity | Auto-Fix? |
-|----------|-----------|----------|-----------|
-| **Schema** | OrgPath fails regex or references a code not in the codebook | P1 | No |
-| **Value** | Codebook-valid OrgPath disagrees with the HR authoritative source | P2 | Sometimes (writes HR value back when trusted) |
-| **Hierarchy** | OrgPath references a parent segment no longer in the codebook | P1 | No |
-| **Orphan** | Codebook entry has zero matching principals | P3 | Flag only |
-| **Phantom** | User carries a deprecated OrgPath code | P3 | Reassign (when `replaced_by` is set) |
+|---|---|---|---|
+| **Value** | `attr[N]` value not in facet enumeration (enumerated) or doesn't match typed pattern | P2 | No — flag for investigation |
+| **Format** | `attr[N]` value violates `value_pattern` regex (typed) | P1 | No — manual correction |
+| **Slot** | A facet's `attribute:` was remapped to a different slot without ADR | P1 | No — codebook integrity issue |
+| **Orphan** | A facet enumeration value has zero matching principals | P3 | Flag only |
+| **Phantom** | A principal carries a deprecated value | P3 | Reassign (when `replaced_by` is set) |
+
+Per-facet classification: a principal with valid Region but unknown Department gets one `DRIFT-SEMANTIC` finding for the Department slot only — the Region facet passes independently. See [Drift Detection Walk-through](drift-walkthrough.qmd) for worked Model C examples and per-facet payload shapes.
 
 ## Implementation Sequence
 
-1. **Export** your current AD OU structure
-2. **Normalize** into `ORG-` codes — get HR sign-off
-3. **Populate** `extensionAttribute1` via HR provisioning or Entra Connect
-4. **Create** dynamic groups — start with Level 1-2 branches
-5. **Create** Administrative Units — mirror group structure
-6. **Validate** with PowerShell (see UIAO_151 source for validation script)
-7. **Enable** drift detection (UIAO_163) for continuous monitoring
+1. **Finalize** each of the 10 named facet enumerations against your tenant's actual organizational structure
+2. **Plan reserved-slot use** — if you need facets beyond the 10 named, draft a governed PR declaring semantics for one or more of slots 11–15 (per ADR-078, verify the slot's current value is null tenant-wide before promoting)
+3. **Populate** all 10 slots via HR-driven inbound provisioning (HR system → Entra Connect → 10-slot population); IT never manually edits these
+4. **Author** dynamic groups starting with single-facet groups, growing to multi-facet compositions as CA targeting matures
+5. **Create** Administrative Units mirroring the dynamic group pattern; mark each Restricted Management
+6. **Validate** with `uiao orgtree validate codebook` (Python loader) and the per-facet PowerShell flow (see UIAO_151 for the validation script)
+7. **Enable** drift detection (UIAO_163; rebuilt per-facet in ADR-078 Phase 5+) for continuous per-slot monitoring
 
 ## Source
 
-Canonical source: [`src/uiao/canon/UIAO_151_OrgPath_Codebook.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md). The `provenance_flatten:` frontmatter block records the prior slug per [ADR-060](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-060-mod-namespace-flatten-into-uiao-canon.md).
+Canonical narrative: [`UIAO_151_OrgPath_Codebook.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md) v4.0. Executable YAML: [`data/orgpath/codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml) `schema_version: 2.0.0`. JSON Schema: [`schemas/orgpath/codebook.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/codebook.schema.json). Python loader: [`uiao.modernization.orgtree.codebook`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/orgtree/codebook.py).
