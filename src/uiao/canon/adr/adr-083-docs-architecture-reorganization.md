@@ -43,7 +43,7 @@ A 2026-05-23 follow-up review surfaced the **meta-pattern** behind all five: eve
 
 ### Industry comparison
 
-The dominant industry framework for technical documentation organization is the **Divio Documentation System** (https://documentation.divio.com), adopted by Django, GitLab, MDN, Anthropic, HashiCorp, Stripe, and many others. It defines four quadrants by reader intent:
+The dominant industry framework for technical documentation organization is the **Divio Documentation System** (https://docs.divio.com/documentation-system/), adopted by Django, GitLab, MDN, Anthropic, HashiCorp, Stripe, and many others. It defines four quadrants by reader intent:
 
 | Quadrant | Purpose | Reader | UIAO instances today |
 |---|---|---|---|

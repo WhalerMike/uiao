@@ -45,7 +45,11 @@ def test_api_app_has_expected_route_prefixes() -> None:
 
     registered_paths = [route.path for route in app.routes if hasattr(route, "path")]
 
-    expected_prefixes = ("/api/v1/survey", "/api/v1/orgpath", "/api/auditor")
+    # /api/v1/orgpath retired per ADR-078: the Model A orgpath route module
+    # (api/routes/orgpath.py) was deleted with the speculative consumer
+    # surface; the Model C facet-aware route will be reintroduced in a
+    # follow-up Phase 5 PR.
+    expected_prefixes = ("/api/v1/survey", "/api/auditor")
     for prefix in expected_prefixes:
         assert any(path.startswith(prefix) for path in registered_paths), (
             f"no route registered under {prefix!r}; routes={registered_paths}"
