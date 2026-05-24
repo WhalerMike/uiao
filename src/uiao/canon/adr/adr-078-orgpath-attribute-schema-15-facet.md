@@ -136,6 +136,12 @@ For new (Tier 3+) tenants, the canon ships only Model C tooling. Adapters, drift
 - **Migration tooling for existing Model A tenants is not in scope of this ADR.** Future migration ADR must define the value-mapping (how does `ORG-FIN-AP-EAST` decompose into Region/Department/Division/Unit?). Until that ships, Model A tenants are frozen on Model A — adoption of Model C-only Tier 3+ features requires a fresh migration project they cannot self-serve.
 - **Reserved attributes 11-15** may collide with existing tenant uses (some tenants already use these for HR-flow custom fields, mailbox routing, etc.). Mitigation: codebook declaration MUST validate that the tenant's prior use is null before assigning facet semantics; the migration runbook MUST audit current attribute use as a precondition.
 
+### Known `substrate-drift` findings (expected until Phase 5 lands)
+
+After the atomic Phase 1+5 deletion (PR [#650](https://github.com/WhalerMike/uiao/pull/650)) and the registry cleanup ([#652](https://github.com/WhalerMike/uiao/pull/652)), `uiao substrate walk` reports **~84 `DRIFT-PROVENANCE` P2 (non-blocking) findings** because canon documents (notably [ADR-036](adr-036-dynamic-group-provisioning.md), [ADR-037](adr-037-admin-unit-provisioning.md), [ADR-038](adr-038-device-plane-orgpath.md), [ADR-039](adr-039-policy-targeting.md), [ADR-040](adr-040-drift-engine.md), [ADR-060](adr-060-mod-namespace-flatten-into-uiao-canon.md), [ADR-062](adr-062-orgpath-depth-extension.md), [ADR-074](adr-074-drift-ssot-contention.md), UIAO_009 / UIAO_010 / UIAO_011, and several customer-doc / docs/ pages) cite Python module + YAML + JSON-schema paths that this ADR deleted. The doctrine in those documents is unaffected; the citations point at implementations to be rebuilt in Phase 5.
+
+This gap is **expected and accepted** as design intent until the Phase 5 consumer rebuilds restore the cited paths. Each rebuild PR closes the corresponding subset of the warnings. The ADRs whose implementation citations are specifically affected ([036](adr-036-dynamic-group-provisioning.md), [037](adr-037-admin-unit-provisioning.md), [038](adr-038-device-plane-orgpath.md), [039](adr-039-policy-targeting.md), [040](adr-040-drift-engine.md), [074](adr-074-drift-ssot-contention.md)) carry an "Implementation Status (per ADR-078)" callout at the top of their body documenting the situation.
+
 ## Implementation phases
 
 This ADR is doctrine. The implementation is sequenced across follow-up PRs:
