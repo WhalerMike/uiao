@@ -1,14 +1,28 @@
-# `scripts/uiao-env-pack/` — PowerShell Environment Replication Pack
+# `scripts/uiao-env-pack/` — UIAO PowerShell Pack
 
-Deterministic export / replicate / drift-check of the PowerShell
-substrate on a UIAO operator workstation. Three CSV ledgers describe
-the substrate completely:
+Offline-installable, downloadable bundle of the PowerShell 7 runtime
+plus a curated set of modules and third-party tools, built to drop
+onto a UIAO operator workstation with no internet / no PSGallery
+access required at install time.
 
-| Ledger | Source command | Captures |
+The pack is built locally from a manifest, uploaded to GitHub
+Releases as a single zip, and installed offline by the bundled
+`Install-UIAOPack.ps1`.
+
+## Pack contents
+
+Defined in [`manifest.json`](./manifest.json):
+
+| Section | What it carries | Install action |
 |---|---|---|
-| `packages.csv` | `Get-Package` | PackageManagement packages (NuGet, Chocolatey, etc.) |
-| `modules.csv` | `Get-InstalledModule` | PowerShell modules from PSGallery / private repos |
-| `devmodules.csv` | `Get-InstalledDevModule` | Local / Git path modules registered via PoShDevModules |
+| `runtime.powershell` | PowerShell 7 MSI from PowerShell/PowerShell releases | `msiexec /i ... /quiet` |
+| `modules[]` | PSGallery modules fetched via `Save-Module` | Copy into `$PSModulePath` target |
+| `dev_modules[]` | Local-path or Git-source modules | Re-bind via `Install-DevModule` (PoShDevModules) or file copy |
+| `tools[]` | Third-party installers (git, gh, etc.) | Silent MSI / EXE install per `silent_args` |
+
+Every downloaded artifact has its SHA256 recorded in the resolved
+manifest inside the zip. The offline installer verifies hashes
+before executing.
 
 ## Constraints honored
 
@@ -18,142 +32,146 @@ These scripts follow UIAO substrate authoring rules:
 - no line-continuation characters
 - no heredocs
 - line-by-line, deterministic, machine-trackable
-- rows sorted before export so CSVs diff cleanly across runs
-
-## Edition note
-
-PowerShell 7 (Core) and Windows PowerShell 5.1 (Desktop) have
-separate module paths and separate `Get-Package` provider
-populations. Export from whichever edition is your daily driver:
-
-| Edition | Module path | Typical `Get-Package` |
-|---|---|---|
-| pwsh 7 (`pwsh.exe`) | `~\Documents\PowerShell\Modules` | small — PowerShellGet / NuGet only |
-| Windows PowerShell 5.1 (`powershell.exe`) | `~\Documents\WindowsPowerShell\Modules` | huge — adds msu / msi / Programs (1000+ rows on a typical workstation) |
-
-The default provider allowlist (`PowerShellGet`, `NuGet`,
-`Chocolatey`) drops the 5.1 system firehose so both editions
-produce comparable ledgers. Use `-IncludeSystemProviders` if you
-need the firehose for audit/governance (it is **not** replicable).
+- offline installer has zero PowerShell module dependencies (uses built-in `ConvertFrom-Json`)
 
 ## Scripts
 
-| Script | Purpose |
-|---|---|
-| `Export-UIAOEnvironment.ps1` | Capture current host state to `packages.csv`, `modules.csv`, `devmodules.csv` |
-| `Import-UIAOEnvironment.ps1` | Replay ledgers on a new host: bootstrap NuGet + PowerShellGet, install packages/modules, re-bind dev modules, emit drift report |
-| `Compare-UIAOEnvironment.ps1` | Standalone drift detection — capture current state to `*.current.csv` and diff against source ledgers into `*.drift.csv`, without re-installing |
+| Script | Role | Where it runs |
+|---|---|---|
+| [`Build-UIAOPack.ps1`](./Build-UIAOPack.ps1) | Read manifest, download pwsh MSI + `Save-Module` everything + download tool installers, compute SHA256s, write resolved manifest, zip the stage tree | Developer workstation (online) |
+| [`Install-UIAOPack.ps1`](./Install-UIAOPack.ps1) | Read bundled manifest, verify hashes, install pwsh silently, copy modules into `$PSModulePath`, install tools silently | Target operator workstation (offline) |
+| [`Export-UIAOEnvironment.ps1`](./Export-UIAOEnvironment.ps1) | Capture current host's PowerShell substrate to CSV ledgers | Verification helper |
+| [`Import-UIAOEnvironment.ps1`](./Import-UIAOEnvironment.ps1) | Replay CSV ledgers via online `Install-Module` | Verification helper |
+| [`Compare-UIAOEnvironment.ps1`](./Compare-UIAOEnvironment.ps1) | Diff current host state against ledger CSVs | Verification helper |
 
-`Import-UIAOEnvironment.ps1` runs the drift report inline after
-replication. Use `-SkipDriftReport` plus a separate
-`Compare-UIAOEnvironment.ps1` invocation when you want to control
-the two stages independently.
+The `Export` / `Import` / `Compare` trio is the original inventory
+pipeline — kept around because it's the cleanest way to audit "what
+actually got installed on this host" after running the pack.
 
-## Canonical workflow
+## Build → Release → Install flow
 
-### 1. Export from the source workstation
+### 1. Edit `manifest.json`
+
+Bump `pack.version` (patch by default — third digit), pin module
+versions, update runtime / tool URLs as upstream releases new
+versions.
+
+### 2. Build the pack locally
 
 ```powershell
-mkdir C:\uiao-env-ledger
-Set-Location C:\uiao-env-ledger
-& C:\Users\whale\git\uiao\scripts\uiao-env-pack\Export-UIAOEnvironment.ps1 -OutputDirectory .
+& C:\Users\whale\git\uiao\scripts\uiao-env-pack\Build-UIAOPack.ps1
 ```
 
 Produces:
 
 ```
-packages.csv
-modules.csv
-devmodules.csv
+scripts/uiao-env-pack/build/
+    uiao-pwsh-pack-<version>/      (staged tree)
+    uiao-pwsh-pack-<version>.zip   (release artifact)
 ```
 
-### 2. Replicate on the target workstation
+`build/` and `*.zip` are gitignored — never committed.
 
-Copy the three CSVs to the target, then:
+### 3. Upload to GitHub Releases
 
 ```powershell
-Set-Location C:\uiao-env-ledger
-& C:\Users\whale\git\uiao\scripts\uiao-env-pack\Import-UIAOEnvironment.ps1 -InputDirectory .
+gh release create v<version> .\build\uiao-pwsh-pack-<version>.zip --title "UIAO PowerShell Pack v<version>" --notes "See README.md inside the zip"
 ```
 
-Steps run in order: 01 ingest ledgers → 02 bootstrap NuGet +
-PowerShellGet → 03 install packages → 04 install modules → 05
-re-bind dev modules → 06 capture current state → 07 emit drift CSVs.
+Operators download the zip from the release page.
 
-### 3. Drift check on demand
+### 4. Install on a target operator workstation
 
-To check drift at any later time, without re-installing:
+```powershell
+Expand-Archive .\uiao-pwsh-pack-<version>.zip -DestinationPath C:\uiao-pack
+& C:\uiao-pack\uiao-pwsh-pack-<version>\Install-UIAOPack.ps1
+```
+
+Runs Step 01–05: pwsh runtime, modules, dev modules, tools, verify.
+Use `-ModuleScope Machine` to install modules system-wide instead
+of the default user scope. Use `-SkipRuntime` / `-SkipTools` to
+narrow the install.
+
+## Manifest schema
+
+```json
+{
+  "schema_version": 1,
+  "pack": { "name": "...", "version": "X.Y.Z", "description": "..." },
+  "runtime": {
+    "powershell": {
+      "version": "...", "url": "...", "filename": "...",
+      "sha256": null,
+      "silent_args": ["/quiet", "/norestart", "..."]
+    }
+  },
+  "modules": [
+    { "name": "...", "version": "latest|X.Y.Z", "source": "psgallery" }
+  ],
+  "dev_modules": [
+    { "name": "...", "source": "git", "url": "https://..." },
+    { "name": "...", "source": "path", "path": "C:\\..." }
+  ],
+  "tools": [
+    {
+      "name": "...", "version": "...", "url": "...", "filename": "...",
+      "sha256": null,
+      "silent_args": ["..."]
+    }
+  ]
+}
+```
+
+`sha256` fields are `null` in the source manifest; `Build-UIAOPack.ps1`
+fills them in the resolved manifest written into the zip.
+
+## Verification helpers (inventory pipeline)
+
+For auditing a target host after install, or capturing a known-good
+substrate to seed a new manifest:
+
+### Capture this host's state
+
+```powershell
+& C:\Users\whale\git\uiao\scripts\uiao-env-pack\Export-UIAOEnvironment.ps1 -OutputDirectory C:\uiao-env-ledger
+```
+
+Produces `packages.csv`, `modules.csv`, `devmodules.csv`.
+
+### Compare against a reference ledger
 
 ```powershell
 & C:\Users\whale\git\uiao\scripts\uiao-env-pack\Compare-UIAOEnvironment.ps1 -InputDirectory C:\uiao-env-ledger
 ```
 
-## Ledgers produced
+Emits `*.current.csv` and `*.drift.csv`. Clean install = zero drift rows.
 
-| File | Written by | Meaning |
-|---|---|---|
-| `packages.csv` | Export | Source state — PackageManagement packages |
-| `modules.csv` | Export | Source state — gallery modules |
-| `devmodules.csv` | Export | Source state — PoShDevModules dev modules |
-| `packages.current.csv` | Import / Compare | Observed state on target host |
-| `modules.current.csv` | Import / Compare | Observed state on target host |
-| `devmodules.current.csv` | Import / Compare | Observed state on target host |
-| `packages.drift.csv` | Import / Compare | `Compare-Object` delta on `Name, Version, ProviderName` |
-| `modules.drift.csv` | Import / Compare | `Compare-Object` delta on `Name, Version` |
-| `devmodules.drift.csv` | Import / Compare | `Compare-Object` delta on `Name, Path` |
+### Online replay (alternative to offline pack)
 
-## Reading the drift ledgers
+```powershell
+& C:\Users\whale\git\uiao\scripts\uiao-env-pack\Import-UIAOEnvironment.ps1 -InputDirectory C:\uiao-env-ledger
+```
 
-The drift CSVs come from `Compare-Object`. The `SideIndicator`
-column tells you which side an entry is on:
+Uses `Install-Module` against PSGallery. Requires internet. The
+offline pack is the preferred path for restricted environments.
 
-| SideIndicator | Meaning |
-|---|---|
-| `<=` | Present in source ledger, missing on target — replication gap |
-| `=>` | Present on target, missing from source ledger — target carries extras |
+## Edition note
 
-A clean replication shows **zero rows** in all three `*.drift.csv` files.
+PowerShell 7 (Core) and Windows PowerShell 5.1 (Desktop) have
+separate module paths. The pack installs pwsh 7 and targets pwsh 7
+module paths (`Documents\PowerShell\Modules`). After installing the
+pack, switch your terminal default to `pwsh.exe` so the modules
+are visible.
+
+Verification helper export honors the edition allowlist
+(`-ReplicableProviders`, default `PowerShellGet, NuGet, Chocolatey`)
+so a 5.1 export does not pull the 1000+ msu/msi/Programs firehose.
+Use `-IncludeSystemProviders` only for audit, not for replication.
 
 ## Failure semantics
 
-`Import-UIAOEnvironment.ps1` runs with
-`$ErrorActionPreference = "Continue"` inside the install loops so a
-single failed package or module does not abort the run. Each row
-logs `OK`, `FAIL`, or `SKIP` with context:
-
-| Status | Meaning |
-|---|---|
-| `OK` | `Install-Package` / `Install-Module` / `Install-DevModule` succeeded |
-| `FAIL` | Replicable-provider row but install threw — exception message logged |
-| `SKIP` | Row whose `ProviderName` is outside the `-ReplicableProviders` allowlist (msu, msi, Programs from a firehose export) |
-
-The drift ledger captures whatever was actually installed, so the
-post-run CSV is the ground truth even when individual installs
-failed.
-
-`Export-UIAOEnvironment.ps1` and `Compare-UIAOEnvironment.ps1` use
-`Stop` semantics — they should run cleanly or be investigated.
-
-## Provider filtering
-
-All three scripts share the same default replicable-provider
-allowlist:
-
-```
-PowerShellGet
-NuGet
-Chocolatey
-```
-
-Override via `-ReplicableProviders` (string array). Bypass entirely
-via `-IncludeSystemProviders` (capture every provider — useful for
-audit, not for replication).
-
-## Bootstrapping a host with no PoShDevModules
-
-If `devmodules.csv` has entries but the target host lacks
-PoShDevModules, `Import-UIAOEnvironment.ps1` step 05 will install
-it from PSGallery before processing the dev-module rows. If the
-PSGallery bootstrap itself fails, the dev-module rows are reported
-as `FAIL` and the drift ledger shows them as `<=` (missing on
-target). Re-run after fixing connectivity / PSGallery trust.
+`Install-UIAOPack.ps1` runs with `Continue` semantics by default —
+per-item failures log `FAIL` and the install proceeds. Use
+`-StrictInstall` to abort on the first failure. `Build-UIAOPack.ps1`
+runs with `Stop` semantics — any download or `Save-Module` failure
+aborts the build so a half-built pack is never produced.
