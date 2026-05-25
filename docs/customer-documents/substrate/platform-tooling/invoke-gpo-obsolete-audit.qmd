@@ -1,0 +1,238 @@
+---
+title: "Invoke-GpoObsoleteAudit"
+subtitle: "Audit every GPO in a domain and flag obsolete or misconfigured objects as Evidence-Ledger-ready JSON"
+doc-type: operational-guide
+audience: [Customer, Operator, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "May 2026"
+status: Active
+repo-path: docs/customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd
+created-at: 2026-05-25
+updated-at: 2026-05-25
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+`Invoke-GpoObsoleteAudit.ps1` walks every Group Policy Object in an
+Active Directory domain and evaluates each one against six obsolescence
+rules. Output is a JSON array shaped for direct ingestion into a UIAO
+Evidence Ledger or Drift Engine — every GPO appears in the result set,
+including clean ones with an empty `Rules` array, so consumers never
+have to reconcile "missing" GPOs against an external inventory.
+
+## Download
+
+| Artifact | Version | SHA256 |
+|---|---|---|
+| [`Invoke-GpoObsoleteAudit.ps1`](scripts/Invoke-GpoObsoleteAudit.ps1) | 1.0 | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` |
+
+Verify integrity after download:
+
+```powershell
+Get-FileHash .\Invoke-GpoObsoleteAudit.ps1 -Algorithm SHA256
+```
+
+## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| PowerShell 5.1 or 7.x | Script declares `#Requires -Modules GroupPolicy, ActiveDirectory` |
+| RSAT: Group Policy Management | Provides the `GroupPolicy` module |
+| RSAT: Active Directory module for Windows PowerShell | Provides the `ActiveDirectory` module |
+| Domain user with read access to all GPOs | Default `Authenticated Users` permission is sufficient for `Get-GPO` and `Get-GPOReport` in most environments |
+| Read access to `CN=WMIPolicy,CN=System,<DomainDN>` | Required for the `OBSOLETE_ORPHAN_WMI_FILTER` rule (also granted by default) |
+
+The script writes a temporary XML report per GPO into `$env:TEMP` and
+removes it in a `finally` block — even when a parse failure triggers
+`continue`, the temp file is cleaned up.
+
+## Rules evaluated
+
+| Rule ID | When it fires |
+|---|---|
+| `OBSOLETE_UNLINKED` | GPO has no `LinksTo` entries — no OU, no domain root, no site. |
+| `OBSOLETE_LINKED_TO_DELETED_OU` | GPO is linked to an OU that no longer exists in AD. Domain-root and site links are accepted without validation. |
+| `OBSOLETE_NO_ENABLED_SETTINGS` | Neither the computer nor the user configuration section contains any extension settings. |
+| `OBSOLETE_STALE` | GPO's `ModificationTime` is older than `-StaleDays` (default 365). |
+| `OBSOLETE_DISABLED` | A section is administratively disabled **and** that same section contains no settings. A GPO with `ComputerSettingsDisabled` but live user settings is a valid deployment pattern and is not flagged. |
+| `OBSOLETE_ORPHAN_WMI_FILTER` | The GPO references a WMI filter whose AD object (`CN={<Guid>},CN=SOM,CN=WMIPolicy,CN=System,<DomainDN>`) no longer exists. |
+| `EVIDENCE_ERROR` | The XML report for that GPO could not be generated or parsed. The error message is captured on the rule entry so the failure is auditable. |
+
+## Parameters
+
+| Parameter | Type | Default | Purpose |
+|---|---|---|---|
+| `-StaleDays` | `int` (1–3650) | `365` | Threshold for `OBSOLETE_STALE`. |
+| `-OutputPath` | `string` | `''` | Optional file path. When set, JSON is written to disk with `Encoding UTF8` and a summary is printed to the host. When omitted, JSON is written to stdout — suitable for piping. |
+
+The script also honours the standard `-Verbose` common parameter and
+will log domain-context load steps, OU count, and the GPO count being
+processed.
+
+## Usage
+
+### Run with defaults and stream JSON to stdout
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1
+```
+
+Stdout JSON works for piping into another tool — for example
+`ConvertFrom-Json` for in-session triage, or `| Out-File` for capture
+with a custom encoding:
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 | ConvertFrom-Json |
+    Where-Object { $_.Rules.Count -gt 0 } |
+    Select-Object GpoName, @{n='RuleCount';e={$_.Rules.Count}}
+```
+
+### Write to disk with a 180-day stale threshold
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 -StaleDays 180 -OutputPath C:\Audit\gpo-audit.json
+```
+
+The console output reports the totals:
+
+```text
+Audit complete. Results written to: C:\Audit\gpo-audit.json
+GPOs evaluated     : 412
+GPOs with findings : 87
+Clean GPOs         : 325
+```
+
+### Verbose mode for long-running runs
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 -Verbose
+```
+
+Useful in large directories where the initial OU and GPO load can take
+tens of seconds.
+
+## Output schema
+
+The result is a JSON array. Each element has a stable, ordered shape:
+
+```json
+[
+  {
+    "GpoName": "Workstation Baseline",
+    "GpoId": "12345678-1234-1234-1234-123456789abc",
+    "Rules": []
+  },
+  {
+    "GpoName": "Legacy Logon Banner",
+    "GpoId": "87654321-4321-4321-4321-cba987654321",
+    "Rules": [
+      {
+        "RuleId": "OBSOLETE_UNLINKED",
+        "Description": "GPO has no links to any OU, domain, or site."
+      },
+      {
+        "RuleId": "OBSOLETE_STALE",
+        "Description": "GPO has not been modified in 1287 days (threshold: 365).",
+        "AgeDays": 1287
+      }
+    ]
+  }
+]
+```
+
+Clean GPOs are emitted with an empty `Rules` array. This is intentional
+— it lets a UIAO Evidence Ledger or Drift Engine reconcile coverage
+directly from the result set without joining against an external GPO
+inventory.
+
+Per-rule fields beyond `RuleId` and `Description`:
+
+| Rule | Extra fields |
+|---|---|
+| `OBSOLETE_LINKED_TO_DELETED_OU` | `Target` — the canonical OU path from the GPOReport XML |
+| `OBSOLETE_STALE` | `AgeDays` — integer days since last modification |
+| `OBSOLETE_DISABLED` | `Status` — the `GpoStatus` enum value |
+| `OBSOLETE_ORPHAN_WMI_FILTER` | `WmiFilter` (display name), `FilterDN` (the AD path that was checked) |
+| `EVIDENCE_ERROR` | `Error` — the exception message captured during report generation or parse |
+
+## Integration patterns
+
+### UIAO Evidence Ledger ingestion
+
+The JSON array is the evidence payload. Wrap it with a provenance
+envelope (run timestamp, executing principal, domain) before posting to
+the ledger:
+
+```powershell
+$findings = .\Invoke-GpoObsoleteAudit.ps1 | ConvertFrom-Json
+$envelope = [ordered]@{
+    SchemaVersion = '1.0'
+    GeneratedAt   = (Get-Date).ToString('o')
+    Domain        = (Get-ADDomain).DNSRoot
+    Tool          = 'Invoke-GpoObsoleteAudit.ps1'
+    Findings      = $findings
+}
+$envelope | ConvertTo-Json -Depth 10 |
+    Set-Content -Path "evidence-gpo-audit-$(Get-Date -Format yyyyMMdd).json" -Encoding UTF8
+```
+
+### Scheduled execution
+
+Run weekly via Task Scheduler under a managed service account with the
+permissions listed in [Prerequisites](#prerequisites). Direct
+`-OutputPath` at a path the Evidence Ledger pickup job watches.
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute 'pwsh.exe' `
+    -Argument '-NoProfile -File C:\UIAO\Invoke-GpoObsoleteAudit.ps1 -OutputPath C:\UIAO\Evidence\gpo-audit.json'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 2am
+Register-ScheduledTask -TaskName 'UIAO-GpoObsoleteAudit' `
+    -Action $action -Trigger $trigger -User 'CONTOSO\svc-uiao-audit' -RunLevel Highest
+```
+
+### Triage workflow
+
+For interactive triage, group by rule across the run:
+
+```powershell
+$findings = .\Invoke-GpoObsoleteAudit.ps1 | ConvertFrom-Json
+$findings.Rules |
+    Group-Object RuleId |
+    Sort-Object Count -Descending |
+    Format-Table Name, Count
+```
+
+## Tuning notes
+
+- **`-StaleDays`** — `365` is a conservative starting point. Lower it
+  (`180` or `90`) once the long-tail backlog is cleared so freshly
+  abandoned GPOs surface within a quarter.
+- **Domain-root links** — accepted without validation. If domain-root
+  GPOs are forbidden by local policy, post-process the JSON to flag
+  any `LinksTo` with `SOMType=Domain`.
+- **Site links** — same treatment as domain-root. Site GPOs are valid
+  but rare; consider a downstream check that confirms the site exists
+  in `Sites and Services`.
+- **WMI filter performance** — the script issues one `Get-ADObject`
+  per GPO that references a filter. In a directory with thousands of
+  GPOs, prefer pre-loading all WMI filters once (`Get-ADObject -Filter
+  "objectClass -eq 'msWMI-Som'"`) and checking the local set. The
+  current implementation favours readability over micro-optimisation;
+  for substrate-scale runs this is the first place to tune.
+
+## Provenance
+
+| Field | Value |
+|---|---|
+| Script version | 1.0 |
+| Script SHA256 | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` |
+| Target | Windows Server with RSAT (GroupPolicy + ActiveDirectory modules) |
+| Output | JSON array; stdout by default, file via `-OutputPath` |
+| Related canon | See [UIAO PowerShell Module Reference](powershell-module-reference.qmd) for the broader assessment-output schema this tool aligns with |
