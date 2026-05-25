@@ -7,9 +7,9 @@
 ## Repository identity
 
 - **Name:** `WhalerMike/uiao`
-- **Purpose:** Unified Identity-Addressing-Overlay Architecture — a FedRAMP-Moderate governance substrate with drift-detected canon, schema-enforced adapters, and OSCAL-native evidence pipelines.
+- **Purpose:** Unified Identity-Addressing-Overlay Architecture — a **universal-enterprise governance substrate** with drift-detected canon, schema-enforced adapters, and provenance-anchored evidence pipelines. The core engine is vertical-agnostic; federal compliance (FedRAMP Moderate Rev 5, OSCAL, KSI, BOD 25-01, CISA SCuBA) ships as the most mature vertical adapter pack on top of that substrate. See [ADR-085](src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md) for the positioning doctrine — any artifact that describes the **core** as federal-scoped is a positioning bug.
 - **Status:** pre-1.0; `main` is the primary development branch.
-- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Two named Commercial exceptions: Amazon Connect Contact Center, and SailPoint Non-Employee Risk Management (FedRAMP Moderate on AWS GovCloud, per ADR-059). Each exception is encoded as a discrete enum value in the `gcc-boundary` schema; new exceptions are added in lockstep with their authorizing ADR.
+- **Cloud boundary (current deployment):** GCC-Moderate (Microsoft 365 SaaS only). This is the boundary the federal vertical is deployed against today; it is not a property of the core engine. Two named Commercial exceptions: Amazon Connect Contact Center, and SailPoint Non-Employee Risk Management (FedRAMP Moderate on AWS GovCloud, per ADR-059). Each exception is encoded as a discrete enum value in the `gcc-boundary` schema; new exceptions are added in lockstep with their authorizing ADR. Non-federal vertical adapter packs (commercial-regulated, state/local, generic enterprise) will introduce their own boundary enums under separate ADRs as they ship.
 
 ## Module topology
 

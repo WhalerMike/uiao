@@ -7,8 +7,13 @@
 [![Adapters](https://img.shields.io/badge/modernization%20adapters-9%20active%20%7C%201%20reserved-success.svg)](src/uiao/canon/modernization-registry.yaml)
 [![CI](https://img.shields.io/badge/CI-7%20workflows-informational.svg)](.github/workflows/)
 
-Governance OS for FedRAMP-Moderate identity, telemetry, policy, and enforcement
-modernization. Identity-first. Canon-anchored. Drift-detected.
+Universal-enterprise Governance OS for identity, telemetry, policy, and
+enforcement modernization. Identity-first. Canon-anchored. Drift-detected.
+The core engine is vertical-agnostic; federal compliance (FedRAMP Moderate
+Rev 5, OSCAL, KSI, BOD 25-01, CISA SCuBA) ships as the most mature vertical
+adapter pack on top of the universal substrate. See
+[ADR-085](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md)
+for the positioning doctrine.
 
 > **Canonical substrate manifest:** [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200).
 > **Document registry:** [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml).
@@ -17,7 +22,17 @@ modernization. Identity-first. Canon-anchored. Drift-detected.
 
 ## What UIAO is
 
-UIAO is a governance substrate, not a product. It defines:
+UIAO is a **universal-enterprise governance substrate**. The engine itself is
+vertical-agnostic — the same substrate governs federal-compliance
+environments, commercial-regulated environments (PCI-DSS, HIPAA, SOC 2),
+state/local government (StateRAMP), and generic enterprise IT governance
+(ISO 27001, NIST CSF). Vertical capability ships as adapter packs on top of
+the universal core; the **federal vertical** (FedRAMP Moderate Rev 5, OSCAL,
+KSI, BOD 25-01, CISA SCuBA) is the most mature pack and drives the bulk of
+the current adapter and CI coverage, but it is one vertical, not the
+product. See [ADR-085](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md).
+
+The substrate defines:
 
 - **SSOT** — a single source of truth per claim, certificate-anchored,
   certified via provenance chains that cannot be backfilled.
