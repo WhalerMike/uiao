@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_158
-title: "Appendix H — OrgPath JSON Schema"
-version: "2.0"
+title: "Appendix H — OrgPath Codebook JSON Schema (Model C)"
+version: "3.0"
 status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-04-26"
+updated_at: "2026-05-24"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_H"
@@ -14,52 +14,166 @@ provenance_flatten:
   flattened_by: "ADR-060"
 ---
 
-# Appendix H — OrgPath JSON Schema
+# Appendix H — OrgPath Codebook JSON Schema (Model C)
 
-> **Model C — 15-facet multi-attribute (per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)).** The OrgPathEntry / OrgPathCodebook JSON Schemas embedded below are the Model A composite-hyphen shape (`code` regex `^ORG(-[A-Z]{2,6}){0,8}$`, hierarchy levels 0–8). The canonical Model C schema is [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json) (`$schema` draft 2020-12, `schema_version: 2.0.0`) — per-facet declarations with `enumerated` / `typed` / `reserved` kinds and a slot-uniqueness invariant enforced by the Python loader. The embedded schemas below are preserved as the prior shape for historical reference; a full Model C rewrite of this appendix is scheduled as ADR-078 Phase 6 follow-up.
+> **Model C — 15-facet multi-attribute (per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)).** The canonical OrgPath JSON Schema validates the **per-facet Codebook document** declaring each of the 10 named facets with its slot binding, kind (enumerated / typed / reserved), and per-facet enumeration or typed pattern. The executable schema is [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json) (JSON Schema draft 2020-12; `schema_version: 2.0.0`). The Python loader at [`uiao.modernization.orgtree.codebook`](../modernization/orgtree/codebook.py) additionally enforces the **slot-uniqueness invariant** after JSON Schema validation passes — cross-property uniqueness is not expressible in JSON Schema, so the loader is the enforcement point. This appendix is the v3.0 Model C rewrite; the prior Model A composite-hyphen schemas (`OrgPathEntry`, `OrgPathCodebook`, `DynamicGroupDefinition`, `AttributeMapping`) were retired by ADR-078 Phase 1 and are no longer authoritative.
 
-Purpose
+## Purpose
 
-This appendix defines the canonical JSON Schema 2020-12 documents for all OrgTree data objects. These schemas are the machine-readable contract for data validation across the Governance OS.
+Define the canonical JSON Schema 2020-12 document for the **per-facet OrgPath Codebook**. This is the machine-readable contract for data validation across the Governance OS Model C surface.
 
-Scope
+## Scope
 
-Covers JSON Schema definitions for OrgPathEntry, OrgPathCodebook, DynamicGroupDefinition, and AttributeMapping objects. All schemas are tenant-agnostic and validate structure only (not tenant-specific values).
+Covers the JSON Schema definition for the Codebook document (collection of Facet declarations). Per-value validation against a specific facet's enumeration or typed pattern is a runtime concern executed by the Python loader against the loaded codebook — not a schema concern (JSON Schema cannot validate values against an enumeration defined elsewhere in the same document).
 
-Canonical Structure
+Other Model C-relevant schemas:
 
-Each schema follows JSON Schema 2020-12 specification with $schema, $id, title, description, type, properties, required, and additionalProperties: false.
+- **Dynamic Group rules** under Model C are Entra dynamic membership rule strings composed of facet predicates — the rule string is validated by Entra's parser at group creation, not by a UIAO schema. UIAO governance validates the *library entry* shape (group name + canonical rule + facet attribution); see UIAO_152 v3.0 for the rebuilt library.
+- **Administrative Unit memberships** under Model C compose facet predicates exactly like dynamic groups; see UIAO_154 v3.0.
+- **HR-to-Entra attribute mapping** under Model C is per-facet inbound provisioning: 10 source HR fields → 10 `extensionAttribute*` slots. The mapping is declared per facet in the codebook itself (each facet's `source` and `transform` keys, when present), not in a separate AttributeMapping document.
 
-Technical Scaffolding
+## Canonical Structure
 
-OrgPathEntry Schema
+The schema follows JSON Schema 2020-12 specification: `$schema`, `$id`, `title`, `description`, `type: object`, `properties`, `required`, and `additionalProperties: false`.
 
-{   "$schema": "https://json-schema.org/draft/2020-12/schema",   "$id": "https://uiao.gov/schemas/orgpath-entry.schema.json",   "title": "OrgPathEntry",   "description": "Schema for a single OrgPath code entry in the canonical codebook.",   "type": "object",   "properties": {     "code": {       "type": "string",       "pattern": "^ORG(-[A-Z]{2,6}){0,8}$",       "description": "The OrgPath code string."     },     "level": {       "type": "integer",       "minimum": 0,       "maximum": 8,       "description": "Hierarchy level: 0=Root, 1=Division, 2=Department, 3=Unit, 4=Team, 5=Sub-Team, 6=Cell, 7=Crew, 8=Squad."     },     "description": {       "type": "string",       "minLength": 1,       "maxLength": 256,       "description": "Human-readable description of this OrgPath node."     },     "parentPath": {       "type": ["string", "null"],       "pattern": "^ORG(-[A-Z]{2,6}){0,7}$",       "description": "The OrgPath code of the parent node. Null for root."     },     "allowedChildrenPattern": {       "type": "string",       "description": "Regex pattern for valid child OrgPath codes."     },     "maxDepth": {       "type": "integer",       "minimum": 0,       "maximum": 8,       "description": "Maximum additional depth allowed below this node."     },     "status": {       "type": "string",       "enum": ["active", "deprecated", "pending"],       "description": "Current lifecycle status of this OrgPath code."     },     "createdDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this code was created."     },     "modifiedDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this code was last modified."     },     "owner": {       "type": "string",       "minLength": 1,       "description": "Role or group responsible for this OrgPath node."     }   },   "required": ["code", "level", "description", "parentPath", "allowedChildrenPattern",                "maxDepth", "status", "createdDate", "modifiedDate", "owner"],   "additionalProperties": false }
+## Codebook Schema
 
-OrgPathCodebook Schema
+The canonical schema validates a Codebook document with **per-facet declarations**. The complete schema lives at [`src/uiao/schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json); the structural summary:
 
-{   "$schema": "https://json-schema.org/draft/2020-12/schema",   "$id": "https://uiao.gov/schemas/orgpath-codebook.schema.json",   "title": "OrgPathCodebook",   "description": "Schema for the complete OrgPath codebook containing all valid OrgPath entries.",   "type": "object",   "properties": {     "schemaVersion": {       "type": "string",       "const": "2020-12",       "description": "JSON Schema version used for this codebook."     },     "codebookVersion": {       "type": "string",       "pattern": "^\\d+\\.\\d+\\.\\d+$",       "description": "Semantic version of the codebook content."     },     "generatedDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this codebook was generated."     },     "entries": {       "type": "array",       "items": { "$ref": "orgpath-entry.schema.json" },       "minItems": 1,       "description": "Array of OrgPath entries. Codes must be unique."     }   },   "required": ["schemaVersion", "codebookVersion", "generatedDate", "entries"],   "additionalProperties": false }
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/orgpath-codebook.schema.json",
+  "title": "OrgPath Codebook (Model C)",
+  "description": "Per-facet codebook declaring the 10 named facets + 5 reserved slots that compose Model C OrgPath. Slot uniqueness is loader-enforced after schema validation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.0.0",
+      "description": "Codebook schema version — bound to Model C per ADR-078."
+    },
+    "codebook_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the codebook content."
+    },
+    "generated_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 datetime when this codebook was generated."
+    },
+    "facets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Facet" },
+      "minItems": 10,
+      "description": "Array of Facet declarations. Each of the 10 named slots (extensionAttribute1..10) must be claimed by exactly one facet; reserved slots (extensionAttribute11..15) may appear with kind: reserved."
+    }
+  },
+  "required": ["schema_version", "codebook_version", "generated_date", "facets"],
+  "additionalProperties": false,
+  "$defs": {
+    "Facet": {
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/$defs/EnumeratedFacet" },
+        { "$ref": "#/$defs/TypedFacet" },
+        { "$ref": "#/$defs/ReservedFacet" }
+      ]
+    },
+    "EnumeratedFacet": {
+      "type": "object",
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "attribute":   { "type": "string", "pattern": "^extensionAttribute(1[0-5]|[1-9])$" },
+        "kind":        { "const": "enumerated" },
+        "description": { "type": "string" },
+        "enumeration": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EnumerationValue" },
+          "minItems": 1
+        },
+        "status": { "enum": ["active", "deprecated", "pending"] },
+        "owner":  { "type": "string", "minLength": 1 }
+      },
+      "required": ["name", "attribute", "kind", "enumeration", "status", "owner"],
+      "additionalProperties": false
+    },
+    "TypedFacet": {
+      "type": "object",
+      "properties": {
+        "name":          { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "attribute":     { "type": "string", "pattern": "^extensionAttribute(1[0-5]|[1-9])$" },
+        "kind":          { "const": "typed" },
+        "description":   { "type": "string" },
+        "value_type":    { "enum": ["string", "integer", "date"] },
+        "value_pattern": { "type": "string" },
+        "allow_empty":   { "type": "boolean", "default": false },
+        "status":        { "enum": ["active", "deprecated", "pending"] },
+        "owner":         { "type": "string", "minLength": 1 }
+      },
+      "required": ["name", "attribute", "kind", "value_type", "status", "owner"],
+      "additionalProperties": false
+    },
+    "ReservedFacet": {
+      "type": "object",
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "attribute":   { "type": "string", "pattern": "^extensionAttribute(1[0-5]|[1-9])$" },
+        "kind":        { "const": "reserved" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "attribute", "kind"],
+      "additionalProperties": false
+    },
+    "EnumerationValue": {
+      "type": "object",
+      "properties": {
+        "value":       { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "status":      { "enum": ["active", "deprecated"], "default": "active" },
+        "replaced_by": { "type": "string" }
+      },
+      "required": ["value"],
+      "additionalProperties": false
+    }
+  }
+}
+```
 
-DynamicGroupDefinition Schema
+## Per-Facet Validation Semantics
 
-{   "$schema": "https://json-schema.org/draft/2020-12/schema",   "$id": "https://uiao.gov/schemas/dynamic-group.schema.json",   "title": "DynamicGroupDefinition",   "description": "Schema for a dynamic group definition in the OrgTree group library.",   "type": "object",   "properties": {     "groupName": {       "type": "string",       "pattern": "^OrgTree-[A-Za-z0-9-]+$",       "description": "Display name following OrgTree naming convention."     },     "groupType": {       "type": "string",       "enum": ["Security", "M365"],       "description": "Group type: Security or Microsoft 365."     },     "membershipRule": {       "type": "string",       "minLength": 1,       "description": "Entra ID dynamic membership rule syntax."     },     "orgPathScope": {       "type": "string",       "description": "The OrgPath prefix this group covers."     },     "purpose": {       "type": "string",       "minLength": 1,       "description": "Business purpose for this group."     }   },   "required": ["groupName", "groupType", "membershipRule", "orgPathScope", "purpose"],   "additionalProperties": false }
+JSON Schema validates the *Codebook document shape*. Runtime per-value validation against the loaded codebook is performed by the Python loader and the (Phase 5-scheduled) per-facet drift engine:
 
-AttributeMapping Schema
+| Facet kind | Per-value validation |
+|---|---|
+| **enumerated** | Value must appear in the facet's `enumeration` list with `status: active`. Values with `status: deprecated` trigger Phantom Drift (P3); when `replaced_by` is set, the engine reassigns the principal to the successor. |
+| **typed** | Value must satisfy `value_type` and (if present) match `value_pattern`. Empty string is rejected unless `allow_empty: true`. |
+| **reserved** | Value must be null/empty. Any non-empty value on a reserved facet is rejected until the slot is promoted to enumerated or typed via governed PR. |
 
-{   "$schema": "https://json-schema.org/draft/2020-12/schema",   "$id": "https://uiao.gov/schemas/attribute-mapping.schema.json",   "title": "AttributeMapping",   "description": "Schema for a legacy-to-Entra attribute mapping entry.",   "type": "object",   "properties": {     "legacyAttribute": {       "type": "string",       "description": "Active Directory attribute name."     },     "entraAttribute": {       "type": "string",       "description": "Entra ID / Microsoft Graph attribute name."     },     "dataType": {       "type": "string",       "enum": ["String", "Integer", "Boolean", "Reference", "Array", "DateTime"],       "description": "Data type of the attribute value."     },     "maxLength": {       "type": ["integer", "null"],       "minimum": 1,       "description": "Maximum character length. Null for non-string types."     },     "required": {       "type": "boolean",       "description": "Whether this attribute is required for every user."     },     "validationRule": {       "type": "string",       "description": "Validation rule description or regex."     },     "orgTreeUsage": {       "type": "string",       "description": "How this attribute is used in the OrgTree model."     }   },   "required": ["legacyAttribute", "entraAttribute", "dataType", "required",                "validationRule", "orgTreeUsage"],   "additionalProperties": false }
+## Slot-Uniqueness Invariant (Loader-Enforced)
 
-Boundary Rules
+JSON Schema cannot express cross-property uniqueness (no construct equivalent to `UNIQUE (attribute)` across array items). The Python loader's `_validate_integrity` step runs after schema validation passes and rejects any codebook where two facets bind the same slot:
 
-All schema $id URIs are namespace identifiers only; they do not imply an external hosting dependency.
+```
+Facets 'region' and 'second_facet' both bind to 'extensionAttribute1'.
+Each extensionAttribute slot must be claimed by at most one facet.
+```
 
-Schemas validate data structures used within M365 GCC-Moderate operations exclusively.
+A violation surfaces as **Slot Drift** (P1) in the drift engine — see UIAO_163 v2.0.
 
-Drift Considerations
+## Boundary Rules
 
-Schema Drift: If a data object in the repository does not validate against its schema, that constitutes schema drift. Severity: Critical.
+All schema `$id` URIs are namespace identifiers only; they do not imply an external hosting dependency. Schemas validate codebook documents used within M365 GCC-Moderate operations exclusively.
 
-Schema changes must follow Workflow 4 (Attribute Schema Change Request) in Appendix E.
+## Drift Considerations
 
-Governance Alignment
+**Schema Drift.** If the loaded codebook document does not validate against `codebook.schema.json`, that is schema drift. Severity: Critical (P1).
 
-These schemas are the machine-readable expression of Principle 2 (Schema Fixity). The additionalProperties: false constraint on every schema ensures that no ungovern attributes can be introduced without a schema change, which requires a governed workflow.
+**Slot Drift.** If schema validation passes but the loader's slot-uniqueness check fails, that is Slot Drift. Severity: Critical (P1). Distinct from value-level drift categories (Value, Format, Orphan, Phantom).
+
+**Schema-change governance.** Schema changes follow Workflow 4 (Attribute Schema Change Request) in Appendix E. Changing a facet's slot binding requires a superseding ADR (slot bindings are not per-tenant overrides).
+
+## Governance Alignment
+
+This schema is the machine-readable expression of Principle 2 (Schema Fixity) under Model C. The `additionalProperties: false` constraint on every schema object ensures no ungoverned attributes can be introduced into the codebook without a schema change, which requires a governed workflow. Per-facet decomposition expresses Principle 5 (Composability): each facet validates and governs independently.
