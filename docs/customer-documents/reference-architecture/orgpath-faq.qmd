@@ -1,7 +1,7 @@
 ---
 title: "OrgPath FAQ"
-subtitle: "Plain-Language Answers to the Questions Operators Actually Ask"
-date: 2026-05-11
+subtitle: "Model C — Plain-Language Answers to the Questions Operators Actually Ask"
+date: 2026-05-24
 format:
   html:
     toc: true
@@ -16,7 +16,7 @@ aliases:
 
 {{< lifecycle-banner >}}
 
-> **Model C — 15-facet multi-attribute (per [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** The Model A composite-hyphen `extensionAttribute1: ORG-FIN-AP-EAST` examples below describe the prior model. The canonical OrgPath schema is now 15 facets across `extensionAttribute1`–`15`. See [codebook](codebook.qmd), [dynamic groups](dynamic-groups.qmd), and [drift walk-through](drift-walkthrough.qmd) for the Model C-native treatment. A full Model C FAQ rewrite is scheduled as ADR-078 Phase 3 follow-up; until then, treat the answers below as the *concepts* (storage layers, drift detection, governance authority) translated to the per-facet model.
+> **Model C — 15-facet multi-attribute (per [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** OrgPath is now 10 named facet values across `extensionAttribute1`–`extensionAttribute10` per Entra principal (plus 5 reserved slots for tenant-declared facets). The Model A composite-hyphen path (`extensionAttribute1: ORG-FIN-AP-EAST`) is retired. See [codebook](codebook.qmd) for the slot-to-facet map, [dynamic groups](dynamic-groups.qmd) for the boolean-composition pattern, and the [drift walk-through](drift-walkthrough.qmd) for per-facet drift examples.
 
 ::: {.callout-note}
 ## Why this page exists
@@ -40,59 +40,69 @@ In three places at once, each playing a different role:
 
 | Layer | Where | What it holds |
 |-------|-------|---------------|
-| **Vocabulary** | `src/uiao/canon/data/orgpath/codebook.yaml` (Git) | The valid OrgPath codes and their hierarchy |
-| **Assignment** | `extensionAttribute1` on each Entra principal | The actual OrgPath value carried by each user/device |
-| **Authority** | The HR system (Workday / SAP HR / HRIS) | The source of truth that drives the assignment |
+| **Vocabulary** | `src/uiao/canon/data/orgpath/codebook.yaml` (Git) | The 10 named facets and (per facet) an enumeration or typed pattern |
+| **Assignment** | `extensionAttribute1`–`extensionAttribute10` on each Entra principal | The 10 actual facet values carried by every user/device |
+| **Authority** | The HR system (Workday / SAP HR / HRIS) | The source of truth that drives the per-facet assignments |
 
 See [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) for the
-full mental model.
+full Model C mental model.
 
 ### Is OrgPath stored in a "registry"?
 
 No — there is no separate registry database. The codebook is a YAML
-file in Git; the per-user values live on the Entra directory object
-itself. The top-level `registry/` directory in this repo holds
+file in Git; the 10 per-user facet values live on the Entra directory
+object itself. The top-level `registry/` directory in this repo holds
 *Governance OS adapter manifests* (pipeline sequencing, boundary
 definitions). It is **not** the OrgPath store.
 
 ### Is it stored in Entra ID extension attributes? Are those attributes pre-defined?
 
-Yes, in `extensionAttribute1`. The slot itself is **pre-defined by
-Microsoft** — `extensionAttribute1..15` exist on every Entra tenant
-out of the box. UIAO doesn't create the attribute; it *claims* `extensionAttribute1`
-as the canonical OrgPath slot.
+Yes, across `extensionAttribute1`–`extensionAttribute10`. The 15 slots
+themselves are **pre-defined by Microsoft** — `extensionAttribute1..15`
+exist on every Entra tenant out of the box. UIAO doesn't create the
+attributes; under ADR-078 it *claims* 10 of the 15 slots and binds
+each to a named facet (Region, Department, Division, Role,
+CostCenter, Classification, HireDate, TermDate, ClearanceLevel,
+AccountType). Slots 11–15 are reserved for tenant-declared facets
+introduced via governed PR.
 
-The *values* in that slot are populated during migration and
-maintained by HR provisioning. See
+The *values* in the 10 slots are populated during migration and
+maintained by HR-driven inbound provisioning. See
 [ADR-063](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md)
-for the rationale (and why not `extensionAttribute2..15`, directory
-extension schemas, or `employeeOrgData`).
+for the slot-binding rationale and [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)
+for the per-facet decomposition.
 
-### Are OrgPath codes pre-defined or built during AD assessment?
+### Are the facet values pre-defined or built during AD assessment?
 
-The *valid set of codes* (the codebook) is built during assessment —
-it's deliverable UIAO_151. The *Microsoft attribute slot* that
-carries them is pre-existing in every tenant. So: structure is
-pre-defined, vocabulary is assessment-defined, values are
-migration-time + ongoing HR provisioning.
+The *list of facets* (Region, Department, …) is pre-defined by
+ADR-078. The *valid values inside each facet* (the per-facet
+enumeration — which Departments exist, which Regions, which
+ClearanceLevels, etc.) is built during assessment and shipped as
+`codebook.yaml`. The *Microsoft attribute slots* that carry them are
+pre-existing in every tenant. So: slots are pre-defined, facet
+structure is canonical, per-facet enumerations are
+assessment-defined, runtime values are migration-time + ongoing HR
+provisioning.
 
-### Who decides what OrgPath value a given user has?
+### Who decides what facet values a given user has?
 
 The HR system. The canon's operating rule is: *"HR system is the
-authoritative source — IT never manually edits OrgPath values."* Any
-IT-originated write is itself a drift event under the provenance
-rules in
+authoritative source — IT never manually edits any of the 10 OrgPath
+facet values."* Any IT-originated write to `extensionAttribute1`–`10`
+is itself a drift event under the provenance rules in
 [UIAO_163](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md).
 
 ### What if HR is wrong?
 
 The drift engine still detects the disagreement between HR and Entra
-and flags it as **Value Drift** (P2 High). When `auto_remediate=true`
-the engine writes HR's value back to `extensionAttribute1`. When HR is
-suspected of being stale, the finding is escalated for human review
-rather than auto-applied — see the
+and flags it as **Value Drift** (P2) on whichever specific facet
+disagrees — Department, Region, ClearanceLevel, etc. When the HR
+source is trusted as authoritative, Value Drift on principals can be
+remediated by writing the HR value back to the specific slot. When HR
+is suspected of being stale, the finding is escalated for human
+review rather than auto-applied — see the
 [Drift Detection Walk-through](drift-walkthrough.qmd) for the full
-finding payload and severity ladder.
+per-facet finding payload and severity ladder.
 
 ### What about contractors / non-HR-managed users?
 
@@ -101,107 +111,158 @@ they need an alternate source of authority documented in the
 governance steward log. The most common pattern is a separate
 contractor-management system that writes to a dedicated HR-equivalent
 feed; the codebook itself doesn't care about the source, only that
-*some* authoritative system owns the value.
+*some* authoritative system owns the 10 facet values per principal.
+The `Classification` facet (`extensionAttribute6`) explicitly carries
+`Contractor` / `Intern` / `Vendor` / etc. to make the distinction
+queryable.
 
 ## The codebook
 
-### Where do new OrgPath codes come from?
+### Where do new facet *values* come from?
 
-A pull request adds a new entry to
-`src/uiao/canon/data/orgpath/codebook.yaml`. The PR follows the
+A pull request adds a new entry to the relevant facet's `enumeration`
+in `src/uiao/canon/data/orgpath/codebook.yaml`. The PR follows the
 canonical Contributor Workflow
 ([UIAO_172](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_172_Canonical_Contributor_Workflow.md))
-— CI validates the regex, hierarchy, and JSON Schema; reviewers
-approve; the codebook is signed and merged.
+— CI validates the JSON Schema, the Python loader's slot-uniqueness
+invariant runs, reviewers approve; the codebook is signed and merged.
 
-### How deep can an OrgPath go?
+### Where do new *facets* come from?
 
-Up to 8 segments after the root, per
-[ADR-062](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-062-orgpath-depth-extension.md).
-The regex is `^ORG(-[A-Z0-9]{2,6}){0,8}$`. The original cap of 4
-proved too shallow for federal-agency and military-command
-hierarchies (Department → Sub-agency → Bureau → Office → Division →
-Branch → Section → Team).
+If you need a facet not in the 10 named slots, declare it against one
+of the 5 reserved slots (`extensionAttribute11`–`15`) via a governed
+PR. Per ADR-078, verify the slot's current value is null tenant-wide
+before promoting. Adding an entirely new facet beyond the reserved
+slots requires a superseding ADR.
 
-### Are deprecated codes ever cleaned up automatically?
+### Can I rebind a facet to a different slot?
 
-No. A code marked `status: deprecated` with a `replaced_by` successor
-triggers **Phantom Drift** (P3) for any user still carrying it; the
-engine auto-reassigns those users to the successor. The deprecated
-*codebook entry itself* is retained for audit history — never deleted
-automatically — and is removed only via a governed PR.
+No, not as a per-tenant override. The slot-to-facet mapping is
+canonical (`Region` → `extensionAttribute1`, `Department` →
+`extensionAttribute2`, etc.). Changing the binding across the canon
+requires a superseding ADR. If a tenant's `extensionAttribute1` is
+already in use for a non-OrgPath purpose, follow the
+[ADR-063 §3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md)
+rebind procedure to vacate the slot — never override the canonical
+mapping.
 
-### What about codes with zero matching users?
+### What does "slot uniqueness invariant" mean?
+
+Each `extensionAttribute*` slot can be claimed by **exactly one**
+facet. The Python loader rejects any codebook that declares two
+facets binding the same slot — that's a **Slot Drift** (P1) finding.
+JSON Schema can't express cross-property uniqueness, so the loader's
+`_validate_integrity` step is the enforcement point.
+
+### Are deprecated facet *values* ever cleaned up automatically?
+
+No. A facet enumeration value marked `status: deprecated` with a
+`replaced_by` successor triggers **Phantom Drift** (P3) for any
+principal still carrying it; the engine auto-reassigns those
+principals to the successor (when `auto_remediate=true` for that
+facet). The deprecated enumeration entry itself is retained for audit
+history — never deleted automatically — and is removed only via a
+governed PR.
+
+### What about facet values with zero matching principals?
 
 Those are **Orphan Drift** (P3) — flagged for governance review but
-never auto-deleted. The codebook entry might be temporarily empty
+never auto-deleted. The enumeration entry might be temporarily empty
 during a reorganization, or might represent a structural placeholder
 the org wants to retain. The operator decides.
+
+### What about typed facets like HireDate and TermDate?
+
+Two of the 10 named facets are typed rather than enumerated, because
+dates aren't enumerable. `HireDate` (`extensionAttribute7`) and
+`TermDate` (`extensionAttribute8`) validate against
+`value_pattern: "^\\d{4}-\\d{2}-\\d{2}$"` (ISO 8601). `TermDate`
+additionally allows the empty string (`allow_empty: true`) — empty
+TermDate means "still active." A value that fails the pattern is
+**Format Drift** (P1).
 
 ## Devices, Azure resources, and service principals
 
 ### Is OrgPath stored on devices the same way as users?
 
-Mostly. Entra-joined client devices use `device.extensionAttribute1`,
-exactly like users. Azure Arc servers (and Azure resources tagged for
-governance) use an **ARM tag named `OrgPath`** instead, because that's
-the addressable surface for `Microsoft.HybridCompute/machines`.
-See [Where Data Lives — Devices and Azure](where-data-lives-devices-and-azure.qmd).
+Yes — the same 10-facet pattern, on the same `extensionAttribute*`
+surface. Entra-joined client devices carry the 10 facet values in
+`device.onPremisesExtensionAttributes.extensionAttribute1`–`10`,
+exactly like users. Azure Arc servers (and other ARM-managed
+resources tagged for governance) use the **equivalent 10 ARM tags**
+on the resource instead, because that's the addressable surface for
+`Microsoft.HybridCompute/machines`. See
+[Where Data Lives — Devices and Azure](where-data-lives-devices-and-azure.qmd).
 
 ### What if a device is both Entra-joined and Arc-enrolled?
 
-It carries the OrgPath in *both* slots and the canon treats string
-equality between them as a required invariant. **Runtime
-cross-plane enforcement is deferred** — today, equality is achieved
-via adapter-side write dispatch
-(`EntraDeviceOrgPathAdapter` — retired by [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd) Phase 1; per-facet rebuild scheduled in Phase 5),
-not by a drift-engine equality check. A future ADR will introduce
-that runtime check.
+It carries the same 10 facet values in *both* surfaces and the canon
+treats per-facet equality between them as a required invariant.
+**Runtime cross-surface enforcement is deferred** — today, equality
+is achieved at write time by the per-facet device-plane writer
+(scheduled rebuild in ADR-078 Phase 5; the prior single-string
+`EntraDeviceOrgPathAdapter` was retired in Phase 1), not by a runtime
+drift-engine equality check. A future ADR will introduce that runtime
+check.
 
 ### Are service principals / managed identities in scope?
 
 Per [ADR-063](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md),
-yes — the canonical slot is `servicePrincipal.extensionAttribute1`.
-However, the drift engine v1 reads only the user and device planes;
-SP consumption is deferred.
+yes — the canonical surface is `servicePrincipal.extensionAttribute1`–`10`
+under the same 10-facet model. However, the drift engine v1 reads
+only the user and device surfaces; SP consumption is deferred.
 
 ### Why not just use an Intune scope tag for devices?
 
-Intune scope tags *derive* from `extensionAttribute1` — they aren't
-an independent storage location. Putting the OrgPath in a scope tag
-directly would create two sources of truth and break the agreement
-rule with the Entra device's `extensionAttribute1`. See
-[Customer narrative ch. 5 — OrgPath and Intune](../customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd)
-for the lifecycle.
+Intune scope tags *derive* from the device's 10 facet values — they
+aren't an independent storage location. Putting OrgPath data directly
+into a scope tag would create two sources of truth and break the
+per-facet agreement rule with the Entra device's
+`extensionAttribute*` surface. See
+[Customer narrative ch. 5 — OrgPath and Intune](../orgpath-narrative/05-orgpath-and-intune.qmd)
+for the device-lifecycle treatment.
 
 ## Drift detection
 
-### What's the difference between the five drift categories?
+### What are the five drift categories?
 
-| Category | What broke | Severity |
-|----------|-----------|----------|
-| **Schema** | Value violates regex or type | P1 |
-| **Value** | Schema OK, but disagrees with HR | P2 |
-| **Hierarchy** | References a parent that no longer exists | P1 |
-| **Orphan** | Codebook entry with zero users | P3 |
-| **Phantom** | User carrying a deprecated code | P3 |
+Per Model C, all five operate per-facet (a finding names the specific
+slot and facet that disagrees):
 
-The [Drift Walk-through](drift-walkthrough.qmd) has concrete OrgPath
-examples and sample `DriftFinding` JSON for each.
+| Category | What broke | Severity | Auto-fix? |
+|----------|-----------|----------|-----------|
+| **Format** | A typed facet's value fails its `value_pattern` regex | P1 | No |
+| **Value** | An enumerated facet's value is not in the facet's `enumeration` | P2 | Sometimes (HR write-back when authoritative) |
+| **Slot** | A facet's `attribute:` was remapped without ADR (or two facets bind the same slot) | P1 | No — codebook integrity issue |
+| **Orphan** | A facet enumeration value has zero matching principals | P3 | Flag only |
+| **Phantom** | A principal carries a deprecated enumeration value | P3 | Reassign (when `replaced_by` is set) |
+
+The [Drift Walk-through](drift-walkthrough.qmd) has concrete per-facet
+examples and sample `DriftFinding` JSON for each category.
+
+### What does per-facet drift detection mean in practice?
+
+A principal whose `Region` is valid but whose `Department` is unknown
+produces **one** finding — for the `Department` slot only. The
+`Region` slot passes independently. Composite-string parsing is gone;
+each of the 10 slots validates as its own facet, so refactoring one
+facet's enumeration never invalidates the others.
 
 ### How often does the drift engine run?
 
 The cadence is defined by the deployment, not the canon — typical
-production cadences are nightly for full population scans and
-on-demand via CLI for targeted re-checks after remediation. The
+production cadences are nightly for full per-facet population scans
+and on-demand via CLI for targeted re-checks after remediation. The
 engine itself is stateless between runs; every scan is a fresh
-snapshot.
+per-facet snapshot.
 
 ### Can I dry-run the drift engine?
 
-Yes — `DriftScanReport` carries a `dry_run` boolean. With `dry_run=true`
-the engine emits findings but applies no remediation; this is the
-default for new tenants and for CI gates.
+Yes — `DriftScanReport` carries a `dry_run` boolean. With
+`dry_run=true` the engine emits findings but applies no remediation;
+this is the default for new tenants and for CI gates. (The per-facet
+runtime engine is scheduled for rebuild in ADR-078 Phase 5; the
+behavioral contract above is preserved from UIAO_163 v1.)
 
 ## Tenant-specific concerns
 
@@ -210,18 +271,32 @@ default for new tenants and for CI gates.
 Don't write over it. Follow the rebind procedure in
 [ADR-063 §3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md):
 snapshot the prior values to the Evidence Fabric, relocate the
-inherited use to `extensionAttribute2` or `extensionAttribute3` via
-the upstream provisioning system, verify cutover, *then* enable
-OrgPath writes. Tenants where the slot cannot be vacated are blocked
-from the modernization pipeline by design — that decision sits with
-the governance steward, not the deploying operator.
+inherited use to a slot UIAO does not claim (e.g.,
+`extensionAttribute11`–`15` are reserved for tenant-declared facets,
+but you must not co-occupy with a UIAO-planned facet), verify
+cutover, *then* enable per-facet OrgPath writes. Tenants where the
+slot cannot be vacated are blocked from the modernization pipeline by
+design — that decision sits with the governance steward, not the
+deploying operator.
 
-### Can I just pick a different slot in my tenant?
+### Can I just pick different slots in my tenant?
 
-No. The slot is not a per-tenant configuration knob. Attempting to
-retarget in code (e.g., editing `orgpath_plane` in a
-`ComputerDisposition`) is a canon violation and fails CI under
-[UIAO_172](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_172_Canonical_Contributor_Workflow.md).
+No. The 10 slot-to-facet bindings are not per-tenant configuration
+knobs. Attempting to retarget in code (e.g., editing the facet's
+`attribute:` field in `codebook.yaml`) is a canon violation and fails
+CI under
+[UIAO_172](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_172_Canonical_Contributor_Workflow.md)
+— the Python loader will catch the slot-uniqueness violation and the
+schema check will reject inconsistent bindings.
+
+### Can I add my own facet?
+
+Yes — but only against one of the 5 reserved slots
+(`extensionAttribute11`–`15`), declared via a governed PR that
+specifies the facet name, kind (enumerated or typed), and either an
+enumeration or a typed validation pattern. Verify the slot's current
+value is null tenant-wide before promoting (per ADR-078 reserved-slot
+discipline).
 
 ## Diagrams and rendering
 
@@ -269,3 +344,5 @@ most-reused canonical image for a subject surfaces first. Prefer
 - **Codebook editor:** [OrgPath Codebook (UIAO_151)](codebook.qmd)
 - **Image pipeline operator:** [Image Pipeline & Registry Guide](../academy/image-pipeline-guide.qmd)
 - **Canon spec reader:** [`src/uiao/canon/UIAO_150…UIAO_176`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/canon)
+- **ADR reader:** [ADR-078 — 15-facet schema](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd) ·
+  [ADR-063 — slot binding](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md)
