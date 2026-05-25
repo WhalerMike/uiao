@@ -23,7 +23,7 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
-> **Model C — 15-facet multi-attribute (per [ADR-078](../../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** This guide was originally authored against Model B (composite-slash path, `extensionAttribute1: CORP/US/EAST/BALTIMORE/IT`). Model B is superseded; the canonical OrgPath schema is now 15 facets across `extensionAttribute1`–`15`. Section 2 below has been rewritten for Model C; the manager-spine / governance / delegation / lifecycle material in sections 3+ remains operationally correct (those patterns are independent of the attribute model) but the inline `CORP/...` examples will be replaced with facet-tuple equivalents in a follow-up ADR-078 Phase 4 PR. For the Model C-native treatment of the codebook, dynamic groups, AUs, and drift detection, see [Reference Architecture → OrgPath Codebook](../../reference-architecture/codebook.qmd), [Dynamic Groups](../../reference-architecture/dynamic-groups.qmd), [Delegation Matrix](../../reference-architecture/delegation.qmd), and [Drift Walk-through](../../reference-architecture/drift-walkthrough.qmd).
+> **Model C — 15-facet multi-attribute (per [ADR-078](../../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)).** This guide was originally authored against Model B (composite-slash path, `extensionAttribute1: CORP/US/EAST/BALTIMORE/IT`). Model B is superseded; the canonical OrgPath schema is now 15 facets across `extensionAttribute1`–`15`. Section 2 has been rewritten Model C-native, and the rule/group/AU code examples throughout sections 3+ have been swept to use the per-facet boolean composition form (see the **Model C Translation Key** callout immediately after Section 2). The manager-spine / governance / delegation / lifecycle prose in sections 3+ remains structurally correct — those workflow patterns are attribute-model-independent — and the Appendix sections (A, B, D, G, H, I, J) carry per-appendix Model C reset callouts pointing to the canonical Model C artifacts. For the Model C-native treatment of the codebook, dynamic groups, AUs, and drift detection, see [Reference Architecture → OrgPath Codebook](../../reference-architecture/codebook.qmd), [Dynamic Groups](../../reference-architecture/dynamic-groups.qmd), [Delegation Matrix](../../reference-architecture/delegation.qmd), and [Drift Walk-through](../../reference-architecture/drift-walkthrough.qmd).
 
 ![AD X](images/index-image-01-orgpathorgtree-stack-overview-co.png){#fig-ad-to-entraid-tree-image-01 fig-alt="AD X.500 OU tree vs Entra flat directory side-by-side. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
 
@@ -144,6 +144,29 @@ The Model B composite-slash path (`CORP/US/EAST/BALTIMORE/IT`) was an early-desi
 The 10 named facets are canonical (slot assignments fixed by ADR-078). The 5 reserved slots accommodate tenant-specific extension via governed PR.
 :::
 
+::: {.callout-important title="Model C Translation Key — used throughout sections 3+ and Appendices A–J"}
+The "Baltimore-IT" example used throughout this guide originated as the Model B path `CORP/US/EAST/BALTIMORE/IT` (`<Enterprise>/<Region>/<Division>/<Location>/<Department>`). Under Model C the same operator intent decomposes across 3 of the 10 named facets:
+
+| Model B path segment | Model C facet | Slot | Example value |
+|---|---|---|---|
+| `<Enterprise>` (`CORP`) | *Not a Model C facet* — tenant identity is the tenant boundary, not a directory attribute | — | — |
+| `<Region>` × `<Division>` (`US/EAST`) | **Region** | `extensionAttribute1` | `EASTUS` |
+| `<Location>` (`BALTIMORE`) | **CostCenter** (or a tenant-declared reserved-slot Location facet) | `extensionAttribute5` (or `11`–`15`) | `CC-BAL` (or `BALTIMORE` if tenant declares Location) |
+| `<Department>` (`IT`) | **Department** | `extensionAttribute2` | `IT` |
+| *(implied: which IT discipline)* | **Division** | `extensionAttribute3` | `InfraOps` |
+
+The canonical Model C rules for the running "Baltimore-IT" example are therefore:
+
+| Model B form | Model C form |
+|---|---|
+| `OrgPath -eq "CORP/US/EAST/BALTIMORE/IT"` | `(extensionAttribute1 -eq "EASTUS") and (extensionAttribute2 -eq "IT") and (extensionAttribute3 -eq "InfraOps")` |
+| `OrgPath -startsWith "CORP/US/EAST/BALTIMORE"` | `(extensionAttribute1 -eq "EASTUS") and (extensionAttribute5 -eq "CC-BAL")` |
+| `OrgPath -startsWith "CORP/US/EAST"` | `(extensionAttribute1 -eq "EASTUS")` |
+| `OrgPath -contains "/IT"` | `(extensionAttribute2 -eq "IT")` |
+
+All `CORP/...` rule strings in code blocks below have been mechanically rewritten using these translations. The surrounding prose retains the original Model B labels ("US-East", "Baltimore-IT", etc.) as readable group names — those are display-name conventions, not identifiers parsed by the runtime.
+:::
+
 **3. Manager-based org tree for HR workflows**
 
 For HR‑style management (approvals, access reviews, joiner/mover/leaver):
@@ -182,7 +205,7 @@ In AD, you delegate on OUs. In Entra ID, you combine:
 
     - Static, or
 
-    - **Dynamic** using the same org attributes (e.g., OrgPath -startsWith \"CORP/US/EAST\").
+    - **Dynamic** using the same org attributes (e.g., (extensionAttribute1 -eq \"EASTUS\")).
 
 - **Entra ID roles + AU scope**:
 
@@ -222,15 +245,13 @@ If you're coming from a rich X.500 tree:
 
     - Example: OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com
 
-2.  **Map to canonical org code**:
+2.  **Decompose into the 10 named facets** (Model C):
 
-    - Normalize into something stable and human‑readable:
+    - Region=`EASTUS`, Department=`IT`, Division=`InfraOps`, CostCenter=`CC-BAL`, Classification=`Employee`, AccountType=`Standard`, plus ClearanceLevel/HireDate/TermDate/Role per HR record. (Under Model B this would have been the single composite path `CORP/US/EAST/BALTIMORE/IT`.)
 
-      - CORP/US/EAST/BALTIMORE/IT
+3.  **Write that into the 10 canonical attribute slots**:
 
-3.  **Write that into a synced attribute**:
-
-    - Use extensionAttributeX or a custom cloud attribute.
+    - HR-driven inbound provisioning populates `extensionAttribute1`–`10` per ADR-078; never edited manually.
 
 4.  **Define dynamic groups**:
 
@@ -360,15 +381,9 @@ These can be used to build **dynamic groups**, but Entra does *not* create them 
 
 To mimic an org tree, you must explicitly create:
 
-**✔️ OrgPath or OrgCode attribute**
+**✔️ 10 OrgPath facet attributes (Model C)**
 
-A canonical string representing the org hierarchy, e.g.:
-
-CORP/US/EAST/BALTIMORE/IT
-
-or
-
-OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com
+Under Model C the org hierarchy is encoded across 10 named `extensionAttribute*` slots — not a single composite string. For the running Baltimore-IT example: `Region=EASTUS`, `Department=IT`, `Division=InfraOps`, `CostCenter=CC-BAL`, plus the remaining facets (Role, Classification, ClearanceLevel, HireDate, TermDate, AccountType) populated per HR record. The legacy single-composite forms (`CORP/US/EAST/BALTIMORE/IT`, or the X.500-style `OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com`) are not used for runtime targeting — they only appear in migration extraction.
 
 This is **not created automatically**.
 
@@ -376,9 +391,9 @@ This is **not created automatically**.
 
 You must define rules like:
 
-- OrgPath -eq \"CORP/US/EAST/BALTIMORE/IT\"
+- (extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
-- OrgPath -startsWith \"CORP/US/EAST\"
+- (extensionAttribute1 -eq \"EASTUS\")
 
 These groups become your **virtual OUs**.
 
@@ -452,41 +467,46 @@ Perfect --- since you said **"Yes to all,"** I'll move forward and deliver the *
 
 Everything below is structured so you can lift it directly into your modernization canon.
 
-**🧱 1. Canonical OrgPath Schema (Authoritative)**
+**🧱 1. Canonical OrgPath Schema (Authoritative) — Model C**
 
-To mimic an X.500 tree, you need a **single, deterministic, stable attribute** that encodes the org hierarchy.
+To mimic an X.500 tree, you decompose the org position across **10 named facet attributes** rather than into a single composite string. Each facet is independently validated against the canonical [OrgPath Codebook](../../reference-architecture/codebook.qmd).
 
-**Recommended canonical format**
+**Canonical Model C attribute assignments (per ADR-078)**
 
-\<Enterprise\>/\<Region\>/\<Division\>/\<Location\>/\<Department\>
+| Slot | Facet | Kind |
+|---|---|---|
+| `extensionAttribute1` | Region | enumerated |
+| `extensionAttribute2` | Department | enumerated |
+| `extensionAttribute3` | Division | enumerated |
+| `extensionAttribute4` | Role | enumerated |
+| `extensionAttribute5` | CostCenter | enumerated |
+| `extensionAttribute6` | Classification | enumerated |
+| `extensionAttribute7` | HireDate | typed (ISO 8601) |
+| `extensionAttribute8` | TermDate | typed (ISO 8601, allow_empty) |
+| `extensionAttribute9` | ClearanceLevel | enumerated |
+| `extensionAttribute10` | AccountType | enumerated |
+| `extensionAttribute11`–`15` | Reserved | tenant-declared via governed PR |
 
-**Example**
+**Example — running "Baltimore-IT" user**
 
-CORP/US/EAST/BALTIMORE/IT
+- Region=`EASTUS`, Department=`IT`, Division=`InfraOps`, CostCenter=`CC-BAL`, Role=`Engineer`, Classification=`Employee`, ClearanceLevel=`Secret`, HireDate=`2022-08-15`, TermDate=`""` (active), AccountType=`Standard`
 
 **Why this works**
 
-- Human‑readable
-
-- Machine‑sortable
-
-- Supports -eq (node) and -startsWith (branch)
-
-- Mirrors X.500 without the baggage of DN syntax
-
-- Stable even if department names change (you can use codes instead)
+- **Per-facet validation** — a typo in Region (`EASTUSS`) flags one facet, not the whole composite string
+- **Boolean composition** — Conditional Access rules combine facet predicates natively, no `-startsWith` regex hacks
+- **Lifecycle as first-class facets** — HireDate / TermDate as typed attributes, not embedded in a path
+- **Slot uniqueness invariant** — loader-enforced so two scripts can't clobber different facets with the same slot
+- **Stable across reorg** — renaming a Department in the codebook re-flows dynamic groups via per-facet enumeration update
 
 **Attribute to use**
 
-- **extensionAttribute1** (synced from AD)
+- **`extensionAttribute1`–`10`** (the 10 canonical facet slots; HR-driven inbound provisioning populates all 10)
+- **`extensionAttribute11`–`15`** are reserved for tenant-declared facets via governed PR
 
-- Or a **custom Entra attribute** if HR is the source of truth
+**Legacy: Model B composite-slash (superseded)**
 
-**Optional: X.500‑style variant**
-
-OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com
-
-Use this only if you want 1:1 fidelity with AD.
+Earlier drafts of this guide used `CORP/US/EAST/BALTIMORE/IT` (a `<Enterprise>/<Region>/<Division>/<Location>/<Department>` composite string in a single attribute) or the X.500-style `OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com`. Both are superseded by Model C and should not appear in new tenant designs.
 
 **🧩 2. Dynamic Group Rule Set (Virtual OUs)**
 
@@ -496,13 +516,13 @@ Once OrgPath exists, you create **dynamic groups** that behave like OUs.
 
 Baltimore IT:
 
-(user.extensionAttribute1 -eq \"CORP/US/EAST/BALTIMORE/IT\")
+(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
 **Branch-level group**
 
 All US-East:
 
-(user.extensionAttribute1 -startsWith \"CORP/US/EAST\")
+(extensionAttribute1 -eq \"EASTUS\")
 
 **Division-level group**
 
@@ -678,15 +698,15 @@ Administrative Units (AUs) replace OU-based delegation.
 
 - AU: US-East
 
-  - Membership rule: OrgPath -startsWith \"CORP/US/EAST\"
+  - Membership rule: (extensionAttribute1 -eq \"EASTUS\")
 
 - AU: Baltimore
 
-  - Membership rule: OrgPath -startsWith \"CORP/US/EAST/BALTIMORE\"
+  - Membership rule: (extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute5 -eq \"CC-BAL\")
 
 - AU: Baltimore-IT
 
-  - Membership rule: OrgPath -eq \"CORP/US/EAST/BALTIMORE/IT\"
+  - Membership rule: (extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
 **Scoped Roles**
 
@@ -789,33 +809,32 @@ No placeholders. No drift. No ambiguity.
 
 **🎯 Purpose**
 
-Provide a **single, stable, machine‑trackable hierarchy** that replaces AD's X.500 OU tree.
+Provide a **deterministic, machine-trackable per-facet encoding** that replaces AD's X.500 OU tree.
 
-**📘 Canonical Format**
+**📘 Canonical Format (Model C)**
 
-\<Enterprise\>/\<Region\>/\<Division\>/\<Location\>/\<Department\>
+10 named facet attributes (slots fixed by ADR-078):
 
-**Example**
+- `extensionAttribute1` Region · `extensionAttribute2` Department · `extensionAttribute3` Division · `extensionAttribute4` Role · `extensionAttribute5` CostCenter · `extensionAttribute6` Classification · `extensionAttribute7` HireDate · `extensionAttribute8` TermDate · `extensionAttribute9` ClearanceLevel · `extensionAttribute10` AccountType
+- `extensionAttribute11`–`15` reserved for tenant-declared facets
 
-CORP/US/EAST/BALTIMORE/IT
+**Example — Baltimore-IT user**
+
+Region=`EASTUS`, Department=`IT`, Division=`InfraOps`, CostCenter=`CC-BAL`, Classification=`Employee`, AccountType=`Standard`
 
 **📌 Rules**
 
-- **Immutable codes**, not human‑friendly names
+- **Per-facet enumerations are immutable codes**, not free-text — each enumerated facet has a closed set in the codebook
+- **HR‑owned**, not IT‑owned — HR-driven inbound provisioning populates all 10 slots
+- **10 attribute slots** (`extensionAttribute1`–`10` canonical per ADR-078)
+- **Per-facet validation** — each slot validated against its facet's enumeration (or typed pattern for HireDate/TermDate) independently
+- **Slot uniqueness invariant** — loader-enforced; two facets cannot bind the same slot
+- **Never manually edited** — IT writes are themselves drift events
+- **Slots 11–15 reserved** for tenant-declared facets via governed PR
 
-- **HR‑owned**, not IT‑owned
+**📐 Legacy (superseded) — Model B composite-slash**
 
-- **One attribute only** (extensionAttribute1 recommended)
-
-- **Never derived** from department/jobTitle
-
-- **Never manually edited**
-
-**📐 Optional X.500‑style variant**
-
-OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com
-
-Use only if you need 1:1 OU fidelity.
+The earlier composite forms (`CORP/US/EAST/BALTIMORE/IT` or X.500-style `OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com`) are not used in Model C. They appear in this guide only to show the translation pattern.
 
 **2. Dynamic Group Library (Virtual OU Tree)**
 
@@ -825,13 +844,13 @@ Dynamic groups become your **virtual OUs**.
 
 Baltimore IT:
 
-(user.extensionAttribute1 -eq \"CORP/US/EAST/BALTIMORE/IT\")
+(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
 **2.2 Branch-Level Groups**
 
 All US-East:
 
-(user.extensionAttribute1 -startsWith \"CORP/US/EAST\")
+(extensionAttribute1 -eq \"EASTUS\")
 
 **2.3 Division-Level Groups**
 
@@ -1013,15 +1032,15 @@ HR → Entra Provisioning → Entra ID → Dynamic Groups → Apps
 
 - AU: US-East
 
-  - Rule: OrgPath -startsWith \"CORP/US/EAST\"
+  - Rule: (extensionAttribute1 -eq \"EASTUS\")
 
 - AU: Baltimore
 
-  - Rule: OrgPath -startsWith \"CORP/US/EAST/BALTIMORE\"
+  - Rule: (extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute5 -eq \"CC-BAL\")
 
 - AU: Baltimore-IT
 
-  - Rule: OrgPath -eq \"CORP/US/EAST/BALTIMORE/IT\"
+  - Rule: (extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
 **5.2 Scoped Roles**
 
@@ -1365,85 +1384,87 @@ Each component is defined in its own appendix.
 
 **APPENDIX A --- OrgPath Codebook**
 
-***Canonical Hierarchy Encoding***
+***Canonical Hierarchy Encoding — Model C***
+
+::: {.callout-important title="Model C reset — Appendix A is now superseded by the per-facet codebook"}
+The canonical OrgPath codebook is no longer a single composite path with `<Enterprise>/<Region>/<Division>/<Location>/<Department>` segments. Per ADR-078, the codebook is 10 named **facets**, each with its own per-facet enumeration or typed pattern, declared in [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml) (`schema_version: 2.0.0`) and narrated in [UIAO_151](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md) v4.0. The Model B content below is preserved as historical reference for tenants migrating from the prior shape.
+:::
 
 ------------------------------------------------------------------------
 
 **A.1 Purpose**
 
-Define the canonical OrgPath schema used to represent organizational hierarchy in Entra ID.
+Define the canonical OrgPath schema used to represent organizational hierarchy in Entra ID. **Under Model C this is 10 facet attributes, not a single composite string.**
 
 ------------------------------------------------------------------------
 
 **A.2 Canonical Format**
 
-\<Enterprise\>/\<Region\>/\<Division\>/\<Location\>/\<Department\>
+**Model C (current — per ADR-078):** 10 named `extensionAttribute*` slots — Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType. See [OrgPath Codebook](../../reference-architecture/codebook.qmd) for the slot-by-slot table.
 
-**Example**
-
-CORP/US/EAST/BALTIMORE/IT
+**Model B (superseded — for migration reference):** `<Enterprise>/<Region>/<Division>/<Location>/<Department>` (e.g., `CORP/US/EAST/BALTIMORE/IT`) — a single composite string in `extensionAttribute1`. Retained here as a translation reference only.
 
 ------------------------------------------------------------------------
 
 **A.3 Rules**
 
-- Codes are immutable
-
-- HR‑owned
-
-- Stored in extensionAttribute1
-
-- Never derived from department/jobTitle
-
-- Never manually edited
+- **Per-facet enumerations are immutable codes** — each enumerated facet has a closed set in the codebook
+- **HR‑owned**, not IT‑owned — all 10 slots populated by HR-driven inbound provisioning
+- **10 attribute slots** (`extensionAttribute1`–`10`) — canonical per ADR-078; slots 11–15 reserved for tenant-declared facets
+- **Per-facet validation** — independent enumeration / pattern check per slot
+- **Slot uniqueness invariant** — loader-enforced
+- Never derived from `department`/`jobTitle` (those are display names; the facet enumeration is the authoritative value)
+- Never manually edited — IT writes are themselves drift events
 
 ------------------------------------------------------------------------
 
-**A.4 Codebook Structure**
+**A.4 Codebook Structure (Model C per-facet)**
 
-**Enterprise Codes**
+The codebook declares each of the 10 named facets independently, with its slot binding, kind (enumerated / typed / reserved), and enumeration or typed pattern. Starter enumerations (extend via governed PR per UIAO_172):
 
-- CORP
+**Region (`extensionAttribute1`, enumerated)**
 
-- GOV
+- NCR · EASTUS · WESTUS · CENTRAL · EMEA · APAC · LATAM
 
-- EDU
+**Department (`extensionAttribute2`, enumerated)**
 
-**Region Codes**
+- IT · HR · Finance · Legal · Engineering · Operations · Sales · Executive
 
-- US
+**Division (`extensionAttribute3`, enumerated)**
 
-- EU
+- CyberOps · InfraOps · AppDev · GRC · Cloud (within IT) · GeneralLedger · AP · AR (within Finance) · etc. — tenant-scoped
 
-- APAC
+**Role (`extensionAttribute4`, enumerated)**
 
-**Division Codes**
+- Analyst · Engineer · Architect · Manager · Director · VP · CISO · CIO · CTO
 
-- EAST
+**CostCenter (`extensionAttribute5`, enumerated)**
 
-- WEST
+- Tenant-specific cost-center codes (e.g., `CC-BAL` for Baltimore, `CC-4100`, `CC-5200`)
 
-- CENTRAL
+**Classification (`extensionAttribute6`, enumerated)**
 
-**Location Codes**
+- Employee · Contractor · Intern · Executive · Vendor
 
-- BALTIMORE
+**HireDate (`extensionAttribute7`, typed)**
 
-- CROWNSVILLE
+- Pattern: `^\d{4}-\d{2}-\d{2}$` (ISO 8601 date)
 
-- ANNAPOLIS
+**TermDate (`extensionAttribute8`, typed, allow_empty)**
 
-**Department Codes**
+- Pattern: `^\d{4}-\d{2}-\d{2}$` or empty string ("" = active)
 
-- IT
+**ClearanceLevel (`extensionAttribute9`, enumerated)**
 
-- HR
+- None · PublicTrust · Secret · TopSecret · TS_SCI
 
-- FIN
+**AccountType (`extensionAttribute10`, enumerated)**
 
-- OPS
+- Standard · Privileged · Service · SharedMailbox · Guest · Vendor
 
-- LEGAL
+**Slots 11–15 (reserved)**
+
+- Available for tenant-declared facets (e.g., a `Location` facet if location precision beyond CostCenter is needed). Declare via governed PR per ADR-078 reserved-slot discipline; verify slot is tenant-wide null before populating.
 
 ------------------------------------------------------------------------
 
@@ -1463,7 +1484,7 @@ Define the full dynamic group hierarchy that replaces AD OUs.
 
 Baltimore IT:
 
-(user.extensionAttribute1 -eq \"CORP/US/EAST/BALTIMORE/IT\")
+(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
 ------------------------------------------------------------------------
 
@@ -1471,7 +1492,7 @@ Baltimore IT:
 
 US-East:
 
-(user.extensionAttribute1 -startsWith \"CORP/US/EAST\")
+(extensionAttribute1 -eq \"EASTUS\")
 
 ------------------------------------------------------------------------
 
@@ -1531,19 +1552,19 @@ Global IT:
 
 Rule:
 
-OrgPath -startsWith \"CORP/US/EAST\"
+(extensionAttribute1 -eq \"EASTUS\")
 
 **AU: Baltimore**
 
 Rule:
 
-OrgPath -startsWith \"CORP/US/EAST/BALTIMORE\"
+(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute5 -eq \"CC-BAL\")
 
 **AU: Baltimore-IT**
 
 Rule:
 
-OrgPath -eq \"CORP/US/EAST/BALTIMORE/IT\"
+(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")
 
 ------------------------------------------------------------------------
 
@@ -1808,17 +1829,17 @@ Equivalent to:
 
 ------------------------------------------------------------------------
 
-**G.2 Virtual OU Tree (Dynamic Groups)**
+**G.2 Virtual OU Tree (Dynamic Groups) — Model C**
 
-Global-IT (DG: contains \"/IT\")
+Global-IT (DG: `(extensionAttribute2 -eq \"IT\")`)
 
-└── US-East-IT (DG: startsWith \"CORP/US/EAST\" AND contains \"/IT\")
+└── US-East-IT (DG: `(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\")`)
 
-└── Baltimore-IT (DG: eq \"CORP/US/EAST/BALTIMORE/IT\")
+└── Baltimore-IT (DG: `(extensionAttribute1 -eq \"EASTUS\") and (extensionAttribute2 -eq \"IT\") and (extensionAttribute3 -eq \"InfraOps\")`)
 
-├── Baltimore-IT-FullTime (DG: + employmentType == FTE)
+├── Baltimore-IT-FullTime (DG: + `(extensionAttribute6 -eq \"Employee\")`)
 
-└── Baltimore-IT-Contractors (DG: + employmentType == CTR)
+└── Baltimore-IT-Contractors (DG: + `(extensionAttribute6 -eq \"Contractor\")`)
 
 ------------------------------------------------------------------------
 
@@ -1876,141 +1897,144 @@ Auto-Removal on Denial
 
 ------------------------------------------------------------------------
 
-**📘 APPENDIX H --- OrgPath JSON Schema (Canonical)**
+**📘 APPENDIX H --- OrgPath JSON Schema (Canonical) — Model C**
 
-***Complete, Validatable, Cloud‑Native Schema***
+***Per-Facet Codebook Schema (JSON Schema 2020-12)***
+
+::: {.callout-important title="Model C reset — Appendix H is superseded by the per-facet codebook schema"}
+The canonical OrgPath JSON Schema is no longer a single-string pattern matching 5 slash-separated segments. Per ADR-078 the canonical schema validates a per-facet **Codebook** document declaring each of the 10 named facets with its slot binding, kind (enumerated / typed / reserved), and per-facet enumeration or typed pattern. The executable schema is [`schemas/orgpath/codebook.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/codebook.schema.json) (`$schema` draft 2020-12; `schema_version: 2.0.0`); the Python loader at [`uiao.modernization.orgtree.codebook`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/orgtree/codebook.py) additionally enforces the slot-uniqueness invariant (cross-property uniqueness is not expressible in JSON Schema). The Model B single-string schema below is preserved as historical reference.
+:::
 
 ------------------------------------------------------------------------
 
 **H.1 Purpose**
 
-Define a strict JSON schema for validating OrgPath values before ingestion.
+Validate the **per-facet codebook document** that declares the 10 named facets. (Per-value validation is a runtime concern executed against the loaded codebook, not a schema concern.)
 
 ------------------------------------------------------------------------
 
-**H.2 Schema**
+**H.2 Schema (Model C — per-facet codebook)**
 
+The canonical Model C schema (excerpt — see [`codebook.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/codebook.schema.json) for the full document):
+
+- **`schema_version`**: const `"2.0.0"`
+- **`facets`**: array of Facet objects, each with:
+  - `name` (string, stable identifier)
+  - `attribute` (string, the `extensionAttribute*` slot — unique across facets)
+  - `kind` (enum: `enumerated` / `typed` / `reserved`)
+  - `enumeration` (enumerated only — list of values with `value`, `description`, optional `status`, `replaced_by`)
+  - `value_type` / `value_pattern` / `allow_empty` (typed only)
+  - `status` (enum: `active` / `deprecated` / `pending`)
+  - `owner` (string)
+
+**H.2-Legacy Schema (Model B — superseded single-string)**
+
+```json
 {
-
-\"\$schema\": \"https://json-schema.org/draft/2020-12/schema\",
-
-\"title\": \"OrgPath Schema\",
-
-\"type\": \"string\",
-
-\"pattern\": \"\^\[A-Z0-9\]+\\\\/\[A-Z0-9\]+\\\\/\[A-Z0-9\]+\\\\/\[A-Z0-9\]+\\\\/\[A-Z0-9\]+\$\",
-
-\"examples\": \[
-
-\"CORP/US/EAST/BALTIMORE/IT\"
-
-\],
-
-\"description\": \"Canonical OrgPath format: \<Enterprise\>/\<Region\>/\<Division\>/\<Location\>/\<Department\>\"
-
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OrgPath Schema (Model B - SUPERSEDED)",
+  "type": "string",
+  "pattern": "^[A-Z0-9]+\\/[A-Z0-9]+\\/[A-Z0-9]+\\/[A-Z0-9]+\\/[A-Z0-9]+$",
+  "examples": ["CORP/US/EAST/BALTIMORE/IT"],
+  "description": "Model B canonical format: <Enterprise>/<Region>/<Division>/<Location>/<Department>. Retired by ADR-078."
 }
+```
 
 ------------------------------------------------------------------------
 
-**H.3 Validation Rules**
+**H.3 Validation Rules — Model C**
 
-- Must contain **exactly 5 segments**
-
-- Segments must be **uppercase alphanumeric**
-
-- Separator must be **forward slash**
-
-- No spaces, no lowercase, no special characters
-
-------------------------------------------------------------------------
-
-**📘 APPENDIX I --- PowerShell Validation Module**
-
-***OrgPath Enforcement + Dynamic Group Safety Checks***
+- The codebook document validates against the JSON Schema (structural)
+- The Python loader's `_validate_integrity` step enforces the **slot-uniqueness invariant** (each `extensionAttribute*` slot claimed by at most one facet)
+- Per-facet runtime validation:
+  - **Enumerated facets** — value must be in the facet's `enumeration` list (Value Drift if not)
+  - **Typed facets** — value must match `value_type` + optional `value_pattern` (Format Drift if not; empty string allowed if `allow_empty: true`)
+  - **Reserved facets** — no value accepted until promoted via governed PR
+- Slot-rebinding requires a superseding ADR (Slot Drift on unsanctioned rebinding)
 
 ------------------------------------------------------------------------
 
-**I.1 Purpose**
+**📘 APPENDIX I --- PowerShell Validation Module — Model C**
 
-Provide a deterministic PowerShell module for:
+***Per-Facet OrgPath Enforcement + Dynamic Group Safety Checks***
 
-- Validating OrgPath
-
-- Detecting drift
-
-- Enforcing canonical structure
-
-- Logging violations
+::: {.callout-important title="Model C reset — Appendix I is superseded by per-facet validation"}
+The canonical validation surface is no longer a single composite-path regex. Per ADR-078, validation happens **per-facet**: each of the 10 named `extensionAttribute*` slots is checked against its facet's enumeration (or typed pattern for HireDate/TermDate) independently. The Model C PowerShell helper signature is `Test-OrgPathFacets -UserPrincipalName <UPN>` (returns a per-facet result array). The Python loader at [`uiao.modernization.orgtree.codebook`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/orgtree/codebook.py) is the canonical validator; the PowerShell helper is scheduled for rebuild in ADR-078 Phase 5 (a stub is included in the canon Implementation Sequence in UIAO_151 v4.0). The Model B single-string module below is preserved as historical reference; do not deploy it against Model C tenants.
+:::
 
 ------------------------------------------------------------------------
 
-**I.2 Module: OrgPathTools.psm1**
+**I.1 Purpose (Model C)**
 
-function Test-OrgPath {
+Provide a deterministic PowerShell wrapper for:
 
-param(
+- Reading all 10 facet values from each Entra principal
+- Validating each value against its facet's enumeration / typed pattern (loaded from the per-facet codebook)
+- Emitting per-facet `DriftFinding` records (Format / Value / Slot / Orphan / Phantom)
+- Logging per-facet violations to the Evidence Fabric
 
-\[Parameter(Mandatory)\]
+------------------------------------------------------------------------
 
-\[string\]\$OrgPath
+**I.2 Module: OrgPathTools.psm1 — Model C sketch**
 
-)
+```powershell
+function Test-OrgPathFacets {
+    param(
+        [Parameter(Mandatory)] [string] $UserPrincipalName
+    )
 
-\$pattern = \'\^\[A-Z0-9\]+\\/\[A-Z0-9\]+\\/\[A-Z0-9\]+\\/\[A-Z0-9\]+\\/\[A-Z0-9\]+\$\'
+    # Read all 10 facet slots from the user object
+    $props = 'extensionAttribute1','extensionAttribute2','extensionAttribute3',
+             'extensionAttribute4','extensionAttribute5','extensionAttribute6',
+             'extensionAttribute7','extensionAttribute8','extensionAttribute9',
+             'extensionAttribute10'
+    $user = Get-MgUser -UserId $UserPrincipalName -Property $props
 
-if (\$OrgPath -match \$pattern) {
+    # Load the canonical codebook (per-facet declarations)
+    $codebook = Get-Codebook  # wraps the Python loader or reads codebook.yaml directly
 
-return \@{
-
-IsValid = \$true
-
-Reason = \"Valid OrgPath\"
-
+    $results = @()
+    foreach ($facet in $codebook.facets) {
+        $value = $user.($facet.attribute)
+        $results += Test-OrgPathFacet -Facet $facet -Value $value
+    }
+    return $results
 }
 
+function Test-OrgPathFacet {
+    param($Facet, $Value)
+
+    switch ($Facet.kind) {
+        'enumerated' {
+            $valid = $Facet.enumeration.value -contains $Value
+            $reason = if ($valid) { 'Valid' } else { "$Value not in $($Facet.name) enumeration" }
+        }
+        'typed' {
+            if ([string]::IsNullOrEmpty($Value) -and $Facet.allow_empty) {
+                $valid = $true; $reason = 'Empty (allowed)'
+            } else {
+                $valid = $Value -match $Facet.value_pattern
+                $reason = if ($valid) { 'Valid' } else { "$Value fails $($Facet.name) value_pattern" }
+            }
+        }
+        'reserved' {
+            $valid = [string]::IsNullOrEmpty($Value)
+            $reason = if ($valid) { 'Reserved slot, null (correct)' } else { "Reserved slot has value '$Value'" }
+        }
+    }
+    return @{
+        Facet    = $Facet.name
+        Slot     = $Facet.attribute
+        Value    = $Value
+        IsValid  = $valid
+        Reason   = $reason
+    }
 }
+```
 
-else {
+**I.2-Legacy Module: OrgPathTools.psm1 — Model B (SUPERSEDED)**
 
-return \@{
-
-IsValid = \$false
-
-Reason = \"OrgPath does not match canonical pattern\"
-
-}
-
-}
-
-}
-
-function Test-OrgPathAttribute {
-
-param(
-
-\[Parameter(Mandatory)\]
-
-\[string\]\$UserPrincipalName
-
-)
-
-\$user = Get-MgUser -UserId \$UserPrincipalName -Property extensionAttribute1
-
-if (-not \$user.extensionAttribute1) {
-
-return \@{
-
-IsValid = \$false
-
-Reason = \"OrgPath missing\"
-
-}
-
-}
-
-return Test-OrgPath -OrgPath \$user.extensionAttribute1
-
-}
+The original Model B module validated a single composite path with the regex `^[A-Z0-9]+\/[A-Z0-9]+\/[A-Z0-9]+\/[A-Z0-9]+\/[A-Z0-9]+$` against `extensionAttribute1` only. It is retired by ADR-078 — do not deploy.
 
 ------------------------------------------------------------------------
 
@@ -2080,16 +2104,16 @@ Ensure governance workflows operate correctly across:
 
 ------------------------------------------------------------------------
 
-**2. Dynamic Group Membership**
+**2. Dynamic Group Membership (Model C facet-driven)**
 
   --------------------------------------------------------------------------------
-  **Scenario**                                    **Expected**
-  ----------------------------------------------- --------------------------------
-  User with OrgPath "CORP/US/EAST/BALTIMORE/IT"   Member of Baltimore-IT
+  **Scenario**                                                              **Expected**
+  ------------------------------------------------------------------------- --------------------------------
+  User with Region=`EASTUS`, Department=`IT`, Division=`InfraOps`           Member of Baltimore-IT
 
-  User moves to "CORP/US/WEST/SEATTLE/IT"         Auto‑removed from Baltimore-IT
+  User's Region facet changes to `WESTUS` (transfer to Seattle)             Auto‑removed from Baltimore-IT
 
-  User changes department                         Group membership updates
+  User's Department facet changes (transfer out of IT)                      Group membership updates per affected facet
   --------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
