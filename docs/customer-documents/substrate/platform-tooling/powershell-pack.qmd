@@ -1,0 +1,144 @@
+---
+title: "UIAO PowerShell Pack"
+subtitle: "Offline installer bundle for operator workstations — pwsh 7 runtime + curated modules + tooling"
+doc-type: operational-guide
+audience: [Customer, Operator, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "May 2026"
+status: Active
+repo-path: docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd
+created-at: 2026-05-24
+updated-at: 2026-05-24
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+The UIAO PowerShell Pack is a single downloadable zip that brings an
+operator workstation from bare Windows to fully tooled for UIAO work
+without requiring internet access at install time. One file contains
+the PowerShell 7 runtime, a curated set of PowerShell modules, the
+git and GitHub CLI clients, and an offline installer that runs them
+silently and verifies SHA256 integrity before executing anything.
+
+## Pack contents
+
+| Component | Version | Uncompressed | Purpose |
+|---|---|---:|---|
+| PowerShell | 7.5.5 | 108 MB | Cross-platform runtime (Core edition) |
+| PSScriptAnalyzer | 1.25.0 | 285 MB | Static analysis for PowerShell scripts |
+| Selenium | 3.0.1 | 60 MB | Browser automation used by assessment scripts |
+| Microsoft.Graph.Authentication | 2.37.0 | 39 MB | Graph API authentication for Entra operations |
+| Az.Accounts | 5.4.0 | 29 MB | Azure authentication for Arc / Intune operations |
+| Pester | 5.7.1 | 1.1 MB | PowerShell test framework |
+| powershell-yaml | 0.4.12 | 1.3 MB | YAML parsing for canon files |
+| Git for Windows | 2.47.0 | 66 MB | Source control client |
+| GitHub CLI | 2.62.0 | 13 MB | GitHub API and release tooling |
+| **Pack zip** | **0.1.0** | **245 MB compressed** | (~603 MB after install) |
+
+Every downloaded artifact has its SHA256 recorded in the bundled
+`manifest.json`. The offline installer verifies hashes before
+running any installer or copying any module — a tampered or
+truncated download is refused.
+
+## Download
+
+### Latest release
+
+The authoritative release page:
+<https://github.com/WhalerMike/uiao/releases/latest>
+
+### Direct download (current version)
+
+Via GitHub CLI:
+
+```powershell
+gh release download v0.1.0 --repo WhalerMike/uiao --pattern "uiao-pwsh-pack-*.zip"
+```
+
+Or via plain `Invoke-WebRequest`:
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/WhalerMike/uiao/releases/download/v0.1.0/uiao-pwsh-pack-0.1.0.zip" -OutFile uiao-pwsh-pack-0.1.0.zip
+```
+
+### Integrity verification
+
+```powershell
+Get-FileHash uiao-pwsh-pack-0.1.0.zip -Algorithm SHA256
+```
+
+| Pack version | Zip SHA256 |
+|---|---|
+| 0.1.0 | `67AA7E62EE248755FFC072DD81F5C812AB7375DC13F72C1ED3501E62E58CD82F` |
+
+## Install
+
+```powershell
+Expand-Archive uiao-pwsh-pack-0.1.0.zip -DestinationPath C:\uiao-pack
+& C:\uiao-pack\uiao-pwsh-pack-0.1.0\Install-UIAOPack.ps1
+```
+
+The installer runs four numbered steps and logs `OK` / `FAIL` / `SKIP` for each item:
+
+1. **PowerShell 7 runtime** — silent MSI install to `C:\Program Files\PowerShell\7\`
+2. **Modules** — copy into the per-user module path `$env:USERPROFILE\Documents\PowerShell\Modules\`
+3. **Tools** — silent install of git and GitHub CLI
+4. **Verify** — confirm modules and tools are reachable
+
+### Switches
+
+| Switch | Effect |
+|---|---|
+| `-ModuleScope Machine` | Install modules system-wide under `$env:ProgramFiles\PowerShell\Modules\` instead of per-user. Requires elevation. |
+| `-SkipRuntime` | Skip Step 01 when PowerShell 7 is already installed |
+| `-SkipTools` | Skip Step 03 when git / gh are managed through a different channel |
+| `-StrictInstall` | Abort on first failure instead of logging and continuing |
+
+## Edition note
+
+The pack installs PowerShell 7 (Core) and targets pwsh 7 module
+paths (`Documents\PowerShell\Modules`). If your default terminal
+still launches Windows PowerShell 5.1 (`powershell.exe`), the
+bundled modules will not be visible — 5.1 has a separate module
+path under `Documents\WindowsPowerShell\Modules`.
+
+After installing the pack, switch your terminal default:
+
+- **Windows Terminal** — Settings → Startup → Default profile → **PowerShell** (the 7.x profile with the black icon, not the blue **Windows PowerShell** profile)
+- **VS Code** — set `"terminal.integrated.defaultProfile.windows": "PowerShell"` in user settings
+
+Verify with `$PSVersionTable.PSVersion` in a fresh terminal — should report `7.5.x`, not `5.1.x`.
+
+## Source
+
+Build tooling, the manifest, and the offline installer source all
+live in the UIAO repository under
+[`scripts/uiao-env-pack/`](https://github.com/WhalerMike/uiao/tree/main/scripts/uiao-env-pack).
+A developer with PowerShell 7 and a network connection can
+reproduce the pack from source:
+
+```powershell
+git clone https://github.com/WhalerMike/uiao.git
+& .\uiao\scripts\uiao-env-pack\Build-UIAOPack.ps1
+```
+
+Produces `scripts\uiao-env-pack\build\uiao-pwsh-pack-<version>.zip`.
+Bytes are bit-identical given the same manifest and the same upstream artifact versions.
+
+## Provenance
+
+| Pack version | Release tag | Build date | Zip SHA256 |
+|---|---|---|---|
+| 0.1.0 | v0.1.0 | 2026-05-24 | `67AA7E62EE248755FFC072DD81F5C812AB7375DC13F72C1ED3501E62E58CD82F` |
+
+The SHA256 above is regenerated on every rebuild and updated here
+each release. The bundled `manifest.json` inside the zip records
+SHA256s for every component artifact (pwsh MSI, git installer, gh
+MSI) so any single bit-flip is detected before execution.
