@@ -12,7 +12,7 @@ enforcement modernization. Identity-first. Canon-anchored. Drift-detected.
 The core engine is vertical-agnostic; federal compliance (FedRAMP Moderate
 Rev 5, OSCAL, KSI, BOD 25-01, CISA SCuBA) ships as the most mature vertical
 adapter pack on top of the universal substrate. See
-[ADR-085](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md)
+[ADR-085](src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md)
 for the positioning doctrine.
 
 > **Canonical substrate manifest:** [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200).
@@ -30,7 +30,7 @@ state/local government (StateRAMP), and generic enterprise IT governance
 the universal core; the **federal vertical** (FedRAMP Moderate Rev 5, OSCAL,
 KSI, BOD 25-01, CISA SCuBA) is the most mature pack and drives the bulk of
 the current adapter and CI coverage, but it is one vertical, not the
-product. See [ADR-085](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md).
+product. See [ADR-085](src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md).
 
 The substrate defines:
 
