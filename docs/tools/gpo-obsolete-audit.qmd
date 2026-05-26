@@ -1,0 +1,400 @@
+---
+title: "GPO Obsolete Audit"
+subtitle: "Identify and remediate stale, broken, and misconfigured Group Policy Objects"
+description: |
+  Invoke-GpoObsoleteAudit.ps1 scans every GPO in a domain and produces a
+  structured JSON evidence bundle — ready for manual review, pipeline
+  ingestion, or direct import into the UIAO Drift Engine.
+author: "UIAO Project"
+date: last-modified
+categories: [tools, active-directory, governance, drift-detection]
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "On this page"
+    code-copy: true
+    code-overflow: scroll
+---
+
+## Overview
+
+`Invoke-GpoObsoleteAudit.ps1` is a production-grade PowerShell cmdlet that
+audits every Group Policy Object in an Active Directory domain and emits a
+structured JSON evidence bundle. It is the designated **GPO input stage** for
+the UIAO Drift Engine and can be consumed directly by an Evidence Ledger writer
+or a Modernization Scoring pipeline.
+
+The script requires no third-party modules — only the `GroupPolicy` and
+`ActiveDirectory` RSAT modules that ship with Windows Server and Windows 10/11
+Pro. It runs under standard domain user credentials with read-only access to
+Group Policy and Active Directory.
+
+::: {.callout-note}
+This tool is **read-only**. It generates reports and evidence output. It makes
+no changes to GPOs, OUs, or any other AD object.
+:::
+
+---
+
+## Download
+
+::: {.callout-tip icon=false}
+### {{< fa download >}} Script
+
+[`Invoke-GpoObsoleteAudit.ps1`](downloads/Invoke-GpoObsoleteAudit.ps1){.btn .btn-primary download}
+
+SHA-256 checksum: run `Get-FileHash .\Invoke-GpoObsoleteAudit.ps1` after download to verify integrity.
+:::
+
+---
+
+## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| PowerShell 5.1 or 7+ | Tested on both. Windows PowerShell 5.1 is sufficient. |
+| RSAT: Group Policy Management | `Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0` |
+| RSAT: Active Directory DS | `Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0` |
+| Domain read access | Standard authenticated domain user. No elevated privileges required. |
+| Execution policy | `RemoteSigned` or `Unrestricted` in scope. See below. |
+
+### Set execution policy (if needed)
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+### Install RSAT modules (Windows 10/11 client)
+
+```powershell
+Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
+Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+```
+
+---
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `-StaleDays` | `[int]` | `365` | Days since last modification before a GPO is flagged as stale. Accepted range: 1–3650. |
+| `-OutputPath` | `[string]` | *(stdout)* | File path for JSON output. Omit to write to the pipeline or terminal. |
+| `-Verbose` | switch | off | Emits progress messages: domain context load, OU count, GPO count. |
+
+---
+
+## Usage examples
+
+### Quickstart — output to terminal
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1
+```
+
+Writes a JSON array to stdout. Useful for piping into `ConvertFrom-Json` or
+redirecting to a file manually.
+
+---
+
+### Write to a JSON file
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 -OutputPath C:\Audit\gpo-audit.json
+```
+
+Writes UTF-8 encoded JSON and prints a three-line summary to the host:
+
+```
+Audit complete. Results written to: C:\Audit\gpo-audit.json
+GPOs evaluated  : 147
+GPOs with findings  : 63
+Clean GPOs      : 84
+```
+
+---
+
+### Custom staleness threshold
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 -StaleDays 180 -OutputPath C:\Audit\gpo-audit-180d.json
+```
+
+---
+
+### Verbose progress output
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 -Verbose -OutputPath C:\Audit\gpo-audit.json
+```
+
+---
+
+### Filter results in-shell — show only GPOs with findings
+
+```powershell
+$audit = .\Invoke-GpoObsoleteAudit.ps1 | ConvertFrom-Json
+$audit | Where-Object { $_.Rules.Count -gt 0 } |
+    Select-Object GpoName, @{ N='RuleCount'; E={ $_.Rules.Count } } |
+    Sort-Object RuleCount -Descending |
+    Format-Table -AutoSize
+```
+
+---
+
+### Export a flat CSV of all rule hits
+
+```powershell
+$audit = .\Invoke-GpoObsoleteAudit.ps1 | ConvertFrom-Json
+
+$audit | ForEach-Object {
+    $gpo = $_
+    $gpo.Rules | ForEach-Object {
+        [pscustomobject]@{
+            GpoName     = $gpo.GpoName
+            GpoId       = $gpo.GpoId
+            RuleId      = $_.RuleId
+            Description = $_.Description
+        }
+    }
+} | Export-Csv -Path C:\Audit\gpo-findings.csv -NoTypeInformation
+```
+
+---
+
+## Output format
+
+The script emits a JSON array. Each element represents one GPO.
+
+```json
+[
+  {
+    "GpoName": "Default Domain Policy",
+    "GpoId":   "31b2f340-016d-11d2-945f-00c04fb984f9",
+    "Rules":   []
+  },
+  {
+    "GpoName": "Legacy Screensaver Policy",
+    "GpoId":   "a1b2c3d4-0000-0000-0000-000000000001",
+    "Rules": [
+      {
+        "RuleId":      "OBSOLETE_STALE",
+        "Description": "GPO has not been modified in 892 days (threshold: 365).",
+        "AgeDays":     892
+      },
+      {
+        "RuleId":      "OBSOLETE_UNLINKED",
+        "Description": "GPO has no links to any OU, domain, or site."
+      }
+    ]
+  }
+]
+```
+
+GPOs with no findings appear in output with an empty `Rules` array. The full
+population is always present, making the output suitable for direct ingestion
+without a separate "clean GPO" query.
+
+---
+
+## Rule reference
+
+### `OBSOLETE_UNLINKED`
+
+The GPO is not linked to any OU, domain root, or site. An unlinked GPO is
+never applied and has no effect on any object in the directory.
+
+**Remediation:** Delete the GPO, or link it to the appropriate target if the
+absence of a link was accidental.
+
+---
+
+### `OBSOLETE_LINKED_TO_DELETED_OU`
+
+The GPO is linked to an OU that no longer exists in the directory. The link
+target is reported as `Target` in the rule output.
+
+This condition arises when an OU is deleted without first removing GPO links,
+which is a common oversight during OU restructuring projects.
+
+**Remediation:** Remove the orphaned link using the Group Policy Management
+Console (GPMC) or `Remove-GPLink`.
+
+**Additional field:** `Target` — canonical path of the missing OU
+(e.g. `contoso.com/Decommissioned/OldSites`).
+
+---
+
+### `OBSOLETE_NO_ENABLED_SETTINGS`
+
+Neither the Computer Configuration nor the User Configuration section contains
+any policy settings. The GPO exists in AD but delivers no policy.
+
+This commonly results from a GPO that was created as a placeholder and never
+configured, or from a GPO whose settings were removed without deleting the
+object itself.
+
+**Remediation:** Delete the GPO, or configure the intended settings.
+
+---
+
+### `OBSOLETE_STALE`
+
+The GPO has not been modified since the configured staleness threshold
+(`-StaleDays`, default 365). The actual age in days is reported as `AgeDays`.
+
+Staleness alone is not proof of obsolescence — some GPOs are intentionally
+stable. Use this signal in combination with other rules (e.g. unlinked + stale,
+or no settings + stale) to prioritise remediation.
+
+**Remediation:** Review the GPO. If still required, update its documentation.
+If obsolete, delete it.
+
+**Additional field:** `AgeDays` — integer days since last modification.
+
+---
+
+### `OBSOLETE_DISABLED`
+
+A configuration section (Computer, User, or both) is disabled **and** that
+same section contains no policy settings. A disabled section with active
+settings is a valid intentional pattern and is not flagged.
+
+**Remediation:** If the disabled section is intentional and permanent, delete
+the GPO and create a replacement scoped only to the active section. If the
+disable was accidental, re-enable the section.
+
+**Additional field:** `Status` — one of `AllSettingsDisabled`,
+`ComputerSettingsDisabled`, `UserSettingsDisabled`.
+
+---
+
+### `OBSOLETE_ORPHAN_WMI_FILTER`
+
+The GPO references a WMI filter by GUID, but no matching WMI filter object
+exists in Active Directory. WMI filters are stored as AD objects under
+`CN=SOM,CN=WMIPolicy,CN=System,<DomainDN>`.
+
+When the referenced filter is missing, the GPO will not apply to any computer
+regardless of link or scope — Windows treats a missing WMI filter as a failed
+evaluation.
+
+**Remediation:** Either recreate the WMI filter with the matching GUID, assign
+a different existing filter, or remove the filter reference from the GPO.
+
+**Additional fields:** `WmiFilter` — display name of the missing filter.
+`FilterDN` — the expected Distinguished Name in AD.
+
+---
+
+### `EVIDENCE_ERROR`
+
+The script could not generate or parse the GPO's XML report. This is an
+instrumentation failure, not an obsolescence signal. The `Error` field contains
+the exception message.
+
+Common causes: insufficient SYSVOL access, a corrupted GPO template in SYSVOL,
+or a GPO that exists in AD but whose SYSVOL folder has been manually deleted.
+
+**Remediation:** Investigate the error. If the SYSVOL template is missing,
+the GPO may need to be force-deleted and recreated.
+
+**Additional field:** `Error` — exception message from `Get-GPOReport`.
+
+---
+
+## Integration with UIAO
+
+The JSON output from this script maps directly to UIAO core architecture
+components.
+
+### Drift Engine input
+
+Each rule hit is a **drift event**. The `RuleId` field is the drift signal
+type. Feed the output to the Drift Engine as follows:
+
+```powershell
+$evidence = .\Invoke-GpoObsoleteAudit.ps1 | ConvertFrom-Json
+
+$driftEvents = $evidence | ForEach-Object {
+    $gpo = $_
+    $gpo.Rules | ForEach-Object {
+        [pscustomobject]@{
+            ObjectId    = $gpo.GpoId
+            ObjectName  = $gpo.GpoName
+            ObjectType  = 'GroupPolicyObject'
+            DriftSignal = $_.RuleId
+            Detail      = $_
+            DetectedAt  = (Get-Date -Format 'o')
+        }
+    }
+}
+```
+
+### Evidence Ledger
+
+The full JSON array (including GPOs with no findings) is an OSCAL-aligned
+evidence bundle. Each GPO is a `component` observation with `findings`
+populated from the `Rules` array. GPOs with an empty `Rules` array satisfy
+their corresponding control objectives with no findings.
+
+### COR baseline population
+
+`GpoId` is a stable, system-assigned GUID — suitable as the `CorId` for a
+Group Policy Object record in the Canonical Object Record schema. Use
+`OBSOLETE_*` rule hits to set `DriftStatus: DRIFTED` and `EVIDENCE_ERROR` hits
+to set `DriftStatus: UNKNOWN`.
+
+---
+
+## Scheduling and automation
+
+### Run as a scheduled task (daily audit)
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute 'pwsh.exe' `
+               -Argument '-NonInteractive -File C:\Scripts\Invoke-GpoObsoleteAudit.ps1 -OutputPath C:\Audit\gpo-audit.json -StaleDays 365'
+
+$trigger = New-ScheduledTaskTrigger -Daily -At '02:00'
+
+$principal = New-ScheduledTaskPrincipal -UserId 'CONTOSO\svc-uiao-audit' `
+                 -LogonType ServiceAccount -RunLevel Limited
+
+Register-ScheduledTask -TaskName 'UIAO GPO Obsolete Audit' `
+    -Action $action -Trigger $trigger -Principal $principal
+```
+
+The service account requires only domain read permissions. No local admin or
+Group Policy write rights are needed.
+
+---
+
+## Frequently asked questions
+
+**Does the script modify any GPOs or AD objects?**
+No. Every operation is read-only. No changes are made to any GPO, link, OU, or
+WMI filter.
+
+**How long does it take?**
+Approximately 1–3 seconds per GPO depending on SYSVOL latency. A domain with
+200 GPOs typically completes in 4–10 minutes.
+
+**Can I run this against a remote domain?**
+Yes, if your workstation is domain-joined or you pass credentials via
+`Enter-PSSession` / `Invoke-Command` on a DC or member server in the target
+domain.
+
+**What permissions does the service account need?**
+Read access to Group Policy objects (default for authenticated users) and read
+access to Active Directory OUs and WMI filter objects (also default). No
+additional delegation is required in standard environments.
+
+**Why do some GPOs show `OBSOLETE_STALE` even though they look current in GPMC?**
+The `ModificationTime` property reflects the last time a GPO's settings were
+written, not the last time it was viewed or linked. A GPO linked to a new OU
+but never re-saved retains its original modification timestamp.
+
+**The script reports `EVIDENCE_ERROR` for a few GPOs. What does that mean?**
+The GPO exists in Active Directory but its corresponding SYSVOL template folder
+is missing or inaccessible. This is a pre-existing condition in the environment,
+not a script issue. Investigate those GPOs directly in GPMC.
