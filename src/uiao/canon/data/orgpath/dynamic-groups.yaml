@@ -1,0 +1,115 @@
+# OrgTree Dynamic Group Library — Model C (ADR-036 / ADR-084)
+#
+# Starter library of canonical Entra dynamic groups, each composed from
+# per-facet predicates. Validated against
+# src/uiao/schemas/orgpath/dynamic-groups.schema.json at load time;
+# rule strings are rendered against the active per-facet Codebook
+# (UIAO_151 v4.0) by DynamicGroupLibrary.from_yaml().
+#
+# Extend via governed PR per UIAO_172.
+schema_version: "1.0.0"
+library_version: "1.0.0"
+generated_date: "2026-05-26T00:00:00Z"
+
+groups:
+  # ---- Region groups (extensionAttribute1) ----
+  - name: OrgTree-Region-NCR-Users
+    category: Region
+    description: All National Capital Region users
+    composition:
+      predicates:
+        - { facet: region, op: -eq, value: NCR }
+
+  - name: OrgTree-Region-EASTUS-Users
+    category: Region
+    description: All Eastern US users
+    composition:
+      predicates:
+        - { facet: region, op: -eq, value: EASTUS }
+
+  - name: OrgTree-Region-WESTUS-Users
+    category: Region
+    description: All Western US users
+    composition:
+      predicates:
+        - { facet: region, op: -eq, value: WESTUS }
+
+  # ---- Department groups (extensionAttribute2) ----
+  - name: OrgTree-Department-IT-Users
+    category: Department
+    description: All IT department users
+    composition:
+      predicates:
+        - { facet: department, op: -eq, value: IT }
+
+  - name: OrgTree-Department-HR-Users
+    category: Department
+    description: All HR department users
+    composition:
+      predicates:
+        - { facet: department, op: -eq, value: HR }
+
+  - name: OrgTree-Department-Finance-Users
+    category: Department
+    description: All Finance department users
+    composition:
+      predicates:
+        - { facet: department, op: -eq, value: Finance }
+
+  # ---- Division groups (extensionAttribute3, scoped by Department) ----
+  - name: OrgTree-IT-CyberOps-Users
+    category: Division
+    description: IT/CyberOps division members
+    composition:
+      predicates:
+        - { facet: department, op: -eq, value: IT }
+        - { facet: division, op: -eq, value: CyberOps }
+
+  - name: OrgTree-IT-InfraOps-Users
+    category: Division
+    description: IT/Infrastructure division members
+    composition:
+      predicates:
+        - { facet: department, op: -eq, value: IT }
+        - { facet: division, op: -eq, value: InfraOps }
+
+  # ---- Clearance groups (extensionAttribute9) ----
+  - name: OrgTree-Cleared-Secret-Plus-Users
+    category: Clearance
+    description: All cleared personnel at Secret or higher
+    composition:
+      predicates:
+        - { facet: clearance_level, op: -in, value: [Secret, TopSecret, TS_SCI] }
+
+  - name: OrgTree-Cleared-TopSecret-Plus-Users
+    category: Clearance
+    description: Top Secret and TS-SCI personnel only
+    composition:
+      predicates:
+        - { facet: clearance_level, op: -in, value: [TopSecret, TS_SCI] }
+
+  # ---- Account-type groups (extensionAttribute10) ----
+  - name: OrgTree-AccountType-Privileged-Users
+    category: AccountType
+    description: Privileged accounts (PIM-eligible)
+    composition:
+      predicates:
+        - { facet: account_type, op: -eq, value: Privileged }
+
+  - name: OrgTree-AccountType-Service-Users
+    category: AccountType
+    description: Service accounts
+    composition:
+      predicates:
+        - { facet: account_type, op: -eq, value: Service }
+
+  # ---- Cross-cutting groups (multi-facet AND) ----
+  - name: OrgTree-NCR-IT-CyberOps-Privileged-CA
+    category: CA
+    description: NCR/IT/CyberOps privileged accounts for Conditional Access
+    composition:
+      predicates:
+        - { facet: region, op: -eq, value: NCR }
+        - { facet: department, op: -eq, value: IT }
+        - { facet: division, op: -eq, value: CyberOps }
+        - { facet: account_type, op: -eq, value: Privileged }

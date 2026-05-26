@@ -14,11 +14,18 @@ composite-string AU planner.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Mapping
+from pathlib import Path
+from typing import Any, Iterable, Mapping
 
+from ._yaml_loaders import (
+    read_schema_resource,
+    read_yaml_path,
+    read_yaml_resource,
+    validate_against_schema,
+)
 from .codebook import Codebook
 from .rule_renderer import render_rule
-from .types import CompositionSpec, FacetOperation
+from .types import CompositionSpec, FacetOperation, FacetPredicate
 
 
 @dataclass(frozen=True)
@@ -173,3 +180,44 @@ class AdminUnitPlanner:
                 )
 
         return ops
+
+
+# ---------------------------------------------------------------------------
+# YAML loader (ADR-084 §C1)
+# ---------------------------------------------------------------------------
+
+_YAML_PACKAGE = "uiao.canon.data.orgpath"
+_YAML_RESOURCE = "admin-units.yaml"
+_SCHEMA_PACKAGE = "uiao.schemas.orgpath"
+_SCHEMA_RESOURCE = "admin-units.schema.json"
+
+
+def _composition_from_doc(doc: dict[str, Any]) -> CompositionSpec:
+    predicates = tuple(FacetPredicate(facet=p["facet"], op=p["op"], value=p["value"]) for p in doc["predicates"])
+    return CompositionSpec(predicates=predicates, combinator=doc.get("combinator", "and"))
+
+
+def load_admin_unit_registry(
+    codebook: Codebook,
+    *,
+    yaml_path: Path | str | None = None,
+) -> AdminUnitRegistry:
+    """Load the canonical AU registry YAML and render against ``codebook``."""
+    document = read_yaml_resource(_YAML_PACKAGE, _YAML_RESOURCE) if yaml_path is None else read_yaml_path(yaml_path)
+    schema = read_schema_resource(_SCHEMA_PACKAGE, _SCHEMA_RESOURCE)
+    validate_against_schema(document, schema, "admin-units")
+
+    specs: list[tuple[str, CompositionSpec, str, tuple[tuple[str, str], ...]]] = []
+    for u in document["units"]:
+        scoped_roles_tuple: tuple[tuple[str, str], ...] = tuple(
+            (r["role"], r["delegate"]) for r in u.get("scoped_roles", [])
+        )
+        specs.append(
+            (
+                u["name"],
+                _composition_from_doc(u["composition"]),
+                u["description"],
+                scoped_roles_tuple,
+            )
+        )
+    return AdminUnitRegistry.from_specs(codebook, specs)
