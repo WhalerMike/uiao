@@ -96,8 +96,9 @@ Three concrete gaps this ADR closes:
    enum of plane names and the enum of dispositions so no loose values
    can be introduced without a canon change.
 3. Provide a loader at
-   `src/uiao/modernization/orgtree/device_planes.py` that additionally
-   enforces:
+   `src/uiao/modernization/orgtree/device_orgpath.py` (renamed from
+   `device_planes.py` by ADR-078 Phase 5 PR A; the per-facet writer +
+   disposition-routing loader live here) that additionally enforces:
    - **Disposition uniqueness** — no disposition is claimed by two
      planes (a device lands on exactly one).
    - **Disposition coverage** — every known disposition is either

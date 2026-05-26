@@ -66,7 +66,7 @@ Out of scope:
 | Dynamic-group canon (target groups) | [`canon/data/orgpath/dynamic-groups.yaml`](data/orgpath/dynamic-groups.yaml) — `OrgTree-*` library |
 | JSON Schema | [`schemas/orgpath/policy-targets.schema.json`](../schemas/orgpath/policy-targets.schema.json) |
 | Decision records | [ADR-036: Dynamic Group Provisioning](adr/adr-036-dynamic-group-provisioning.md) (group binding) + [ADR-039: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport](adr/adr-039-policy-targeting.md) (assignment binding) |
-| Loader / cross-canon validator | `src/uiao/modernization/orgtree/policy_targets.py` |
+| Loader / cross-canon validator | `src/uiao/modernization/orgtree/policy_targeting.py` (renamed from `policy_targets.py` by ADR-078 Phase 5 PR A) |
 | Reference adapter | `uiao.adapters.entra_policy_targeting.EntraPolicyTargetingAdapter` |
 | OrgPath codebook (rule vocabulary) | [UIAO_151_OrgPath_Codebook](UIAO_151_OrgPath_Codebook.md) |
 | Three-plane device model (reachability) | [UIAO_007](UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md) + [ADR-034](adr/adr-034-three-plane-device-model.md) |

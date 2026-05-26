@@ -90,7 +90,8 @@ Three gaps before this ADR:
    ``intent`` enum, the Intune ``kind`` enum, the ``match_mode`` enum,
    and the OrgPath regex for selector prefixes.
 3. Provide a loader at
-   `src/uiao/modernization/orgtree/policy_targets.py` that additionally
+   `src/uiao/modernization/orgtree/policy_targeting.py` (renamed from
+   `policy_targets.py` by ADR-078 Phase 5 PR A) that additionally
    enforces **cross-canon integrity**:
    - every Intune ``target_group`` must resolve to a live UIAO_152 dynamic
      group (ADR-036) — a policy that targets a non-existent group is
