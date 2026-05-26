@@ -1,0 +1,108 @@
+name: Build UIAO PowerShell Pack
+
+# Manually-dispatched build of the offline pwsh pack. Runs
+# scripts/uiao-env-pack/Build-UIAOPack.ps1, which downloads the
+# PowerShell 7 MSI, the curated PSGallery modules, and the git / gh
+# Windows installers listed in manifest.json, records SHA256 for each
+# fetched artifact in a resolved manifest, and Compress-Archives the
+# whole tree into uiao-pwsh-pack-<version>.zip. The zip + resolved
+# manifest are attached to the chosen GitHub release tag.
+#
+# Build runs on ubuntu-latest with pwsh — the script only fetches and
+# packages Windows installer payloads, it never executes them.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing GitHub release tag to attach the pack to (e.g. v0.7.0). The release must already exist.'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and upload pwsh pack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve pack version from manifest
+        id: ver
+        shell: pwsh
+        run: |
+          $manifest = Get-Content scripts/uiao-env-pack/manifest.json -Raw | ConvertFrom-Json
+          $v = $manifest.pack.version
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Pack version (from manifest): $v"
+          Write-Host "Target release tag           : ${{ inputs.tag }}"
+
+      - name: Verify target release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          status=$(curl -sS -o /tmp/release.json -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
+          if [ "$status" != "200" ]; then
+            echo "::error::Release tag '$TAG' not found (HTTP $status). Create the release first, then re-run this workflow."
+            cat /tmp/release.json
+            exit 1
+          fi
+          echo "Release '$TAG' exists."
+
+      - name: Build pack
+        shell: pwsh
+        run: |
+          ./scripts/uiao-env-pack/Build-UIAOPack.ps1
+
+      - name: Inspect build output
+        id: zip
+        shell: pwsh
+        run: |
+          $version = '${{ steps.ver.outputs.version }}'
+          $zipPath = "scripts/uiao-env-pack/build/uiao-pwsh-pack-$version.zip"
+          $manifestPath = "scripts/uiao-env-pack/build/uiao-pwsh-pack-$version/manifest.json"
+          if (-not (Test-Path $zipPath)) { throw "Built zip not found: $zipPath" }
+          if (-not (Test-Path $manifestPath)) { throw "Resolved manifest not found: $manifestPath" }
+          $sha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+          $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 2)
+          "zip_path=$zipPath"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "manifest_path=$manifestPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "sha256=$sha"                 | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "size_mb=$sizeMB"             | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Zip:    $zipPath"
+          Write-Host "Size:   $sizeMB MB"
+          Write-Host "SHA256: $sha"
+
+      - name: Upload pack to GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: |
+            ${{ steps.zip.outputs.zip_path }}
+            ${{ steps.zip.outputs.manifest_path }}
+          fail_on_unmatched_files: true
+          # Do not flip latest / draft / prerelease flags — leave the
+          # existing release's state alone, just add assets to it.
+          make_latest: false
+
+      - name: Summary
+        run: |
+          {
+            echo "## UIAO PowerShell Pack uploaded"
+            echo
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Release tag  | ${{ inputs.tag }} |"
+            echo "| Pack version | ${{ steps.ver.outputs.version }} |"
+            echo "| Zip size     | ${{ steps.zip.outputs.size_mb }} MB |"
+            echo "| Zip SHA256   | \`${{ steps.zip.outputs.sha256 }}\` |"
+            echo
+            echo "Next: update \`docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd\` — flip \`status: Draft\` back to \`Active\`, swap the placeholder Download / Provenance text for the real \`gh release download\` command and SHA256 above."
+          } >> "$GITHUB_STEP_SUMMARY"
