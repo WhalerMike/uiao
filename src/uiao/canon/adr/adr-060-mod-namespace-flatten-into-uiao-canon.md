@@ -225,14 +225,18 @@ walker becomes the gate that proves the pass was complete.
 - `src/uiao/canon/modernization-registry.yaml` — `canon_refs` strings
   in five adapter blocks.
 
-**OrgPath data YAML (6):**
+**OrgPath data YAML (5):**
 
 - `src/uiao/canon/data/orgpath/admin-units.yaml`
 - `src/uiao/canon/data/orgpath/codebook.yaml`
 - `src/uiao/canon/data/orgpath/device-planes.yaml`
-- `src/uiao/canon/data/orgpath/drift-engine-config.yaml`
 - `src/uiao/canon/data/orgpath/dynamic-groups.yaml`
 - `src/uiao/canon/data/orgpath/policy-targets.yaml`
+
+(Per ADR-084 §C5, the drift-engine config under Model C is a Python
+dataclass — no `drift-engine-config.yaml` ships. Only the JSON Schema
+below is shipped for runtime validation of operator-supplied config
+payloads.)
 
 **Schemas (6):**
 

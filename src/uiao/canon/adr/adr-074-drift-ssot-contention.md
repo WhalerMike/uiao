@@ -275,8 +275,8 @@ work plan.
 
 | Item | Target | Status |
 |---|---|---|
-| `DriftFinding` schema accepts new `drift_class` enum value | `src/uiao/schemas/drift-engine-config/drift-engine-config.schema.json` (or equivalent) | Pending PR |
-| `SSOTContentionEvaluator` implementation | `src/uiao/governance/drift/ssot_contention_evaluator.py` | Pending PR |
+| `DriftFinding` schema accepts new `drift_class` enum value | `src/uiao/schemas/orgpath/drift-engine-config.schema.json` (final path; shipped by ADR-084 Phase 5 follow-up — PR #681) | Schema landed; enum extension still Pending PR |
+| `SSOTContentionEvaluator` implementation | `src/uiao/governance/ssot_contention.py` (final path; the originally-proposed `drift/ssot_contention_evaluator.py` was consolidated into the existing module at `governance/ssot_contention.py`) | Pending PR |
 | `ssot-roster.yaml` schema | `src/uiao/schemas/ssot-roster/ssot-roster.schema.json` | Pending PR (sized in rationalization spec §9.6-9.8) |
 | First production roster (MS SQL, HR domain) | `src/uiao/canon/data/mssql-rationalization/ssot-roster.yaml` | Pending PR (per rationalization spec §9) |
 | Drift Detection Standard updated | `docs/docs/16_DriftDetectionStandard.qmd` | Updated in this PR |
