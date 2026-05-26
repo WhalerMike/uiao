@@ -7,10 +7,10 @@ classification: Controlled
 boundary: GCC-Moderate
 author: Michael Stratton
 date: "May 2026"
-status: Draft
+status: Active
 repo-path: docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd
 created-at: 2026-05-24
-updated-at: 2026-05-24
+updated-at: 2026-05-26
 format:
   html:
     toc: true
@@ -19,16 +19,6 @@ lifecycle: adopted
 tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
-
-:::{.callout-warning}
-**Not yet shipped.** The Pack design is approved and the build tooling
-lives in [`scripts/uiao-env-pack/`](https://github.com/WhalerMike/uiao/tree/main/scripts/uiao-env-pack),
-but no release has attached a `uiao-pwsh-pack-*.zip` artifact. This
-page describes the intended contents, install flow, and provenance
-shape. Download links and SHA256 values become authoritative the
-first time the artifact is published — until then, treat this as a
-forward-looking specification.
-:::
 
 The UIAO PowerShell Pack is a single downloadable zip that brings an
 operator workstation from bare Windows to fully tooled for UIAO work
@@ -59,25 +49,38 @@ truncated download is refused.
 
 ## Download
 
-The Pack is not yet attached to a GitHub release. The authoritative
+Pack `0.1.0` ships under release tag `v0.7.0`. The authoritative
 release page is
-<https://github.com/WhalerMike/uiao/releases/latest>; once a
-`uiao-pwsh-pack-<version>.zip` asset is published there, this section
-will document the exact `gh release download` command, the
-`Invoke-WebRequest` URL, and the Zip SHA256 for integrity
-verification.
+<https://github.com/WhalerMike/uiao/releases/tag/v0.7.0>; the
+download URLs and integrity hash below are pinned to that release.
 
-Until then, build the pack from source (see [Source](#source) below) —
-the produced zip is bit-identical given the same manifest and the
-same upstream artifact versions.
+### Via GitHub CLI
+
+```powershell
+gh release download v0.7.0 --repo WhalerMike/uiao --pattern "uiao-pwsh-pack-*.zip"
+```
+
+### Via Invoke-WebRequest
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/WhalerMike/uiao/releases/download/v0.7.0/uiao-pwsh-pack-0.1.0.zip" -OutFile uiao-pwsh-pack-0.1.0.zip
+```
+
+### Integrity verification
+
+```powershell
+Get-FileHash uiao-pwsh-pack-0.1.0.zip -Algorithm SHA256
+```
+
+| Pack version | Zip SHA256 |
+|---|---|
+| 0.1.0 | `5534BAB7423AE55D6EC85F64A3468322CA8DDC2B567EB370124B5C832B9973F2` |
 
 ## Install
 
-Once a release artifact exists, install proceeds as:
-
 ```powershell
-Expand-Archive uiao-pwsh-pack-<version>.zip -DestinationPath C:\uiao-pack
-& C:\uiao-pack\uiao-pwsh-pack-<version>\Install-UIAOPack.ps1
+Expand-Archive uiao-pwsh-pack-0.1.0.zip -DestinationPath C:\uiao-pack
+& C:\uiao-pack\uiao-pwsh-pack-0.1.0\Install-UIAOPack.ps1
 ```
 
 The installer runs four numbered steps and logs `OK` / `FAIL` / `SKIP` for each item:
@@ -131,9 +134,9 @@ Bytes are bit-identical given the same manifest and the same upstream artifact v
 
 | Pack version | Release tag | Build date | Zip SHA256 |
 |---|---|---|---|
-| (planned) | (pending first release) | — | (recorded at publish time) |
+| 0.1.0 | v0.7.0 | 2026-05-26 | `5534BAB7423AE55D6EC85F64A3468322CA8DDC2B567EB370124B5C832B9973F2` |
 
-The SHA256 will be regenerated on every rebuild and updated here
+The SHA256 is regenerated on every rebuild and updated here
 each release. The bundled `manifest.json` inside the zip records
 SHA256s for every component artifact (pwsh MSI, git installer, gh
 MSI) so any single bit-flip is detected before execution.
