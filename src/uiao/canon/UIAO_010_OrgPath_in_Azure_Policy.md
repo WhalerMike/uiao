@@ -56,7 +56,7 @@ Out of scope:
 | Canonical data | [`canon/data/orgpath/policy-targets.yaml`](data/orgpath/policy-targets.yaml) — `arc_policy_assignments[]` |
 | JSON Schema | [`schemas/orgpath/policy-targets.schema.json`](../schemas/orgpath/policy-targets.schema.json) |
 | Decision record | [ADR-039: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport](adr/adr-039-policy-targeting.md) |
-| Loader / cross-canon validator | `src/uiao/modernization/orgtree/policy_targets.py` |
+| Loader / cross-canon validator | `src/uiao/modernization/orgtree/policy_targeting.py` (renamed from `policy_targets.py` by ADR-078 Phase 5 PR A) |
 | Reference adapter | `uiao.adapters.entra_policy_targeting.EntraPolicyTargetingAdapter` |
 | OrgPath codebook (selector vocabulary) | [UIAO_151_OrgPath_Codebook](UIAO_151_OrgPath_Codebook.md) |
 | Device-plane OrgPath writes (Arc tag origin) | [UIAO_153_Attribute_Mapping_Table](UIAO_153_Attribute_Mapping_Table.md) + [ADR-038](adr/adr-038-device-plane-orgpath.md) |

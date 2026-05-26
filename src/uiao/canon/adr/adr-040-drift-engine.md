@@ -78,13 +78,23 @@ Three concrete consequences of that gap:
 
 ## Decision
 
-1. Publish the engine's configuration as executable canon at
-   `src/uiao/canon/data/orgpath/drift-engine-config.yaml`. The config
+1. Publish the engine's configuration as executable canon. **Per
+   ADR-084 §C5 (accepted 2026-05-24), the drift-engine config under
+   Model C is a Python dataclass (`DriftEngineConfig` at
+   `src/uiao/modernization/orgtree/drift_engine_config.py`) governed by
+   the JSON Schema at
+   `src/uiao/schemas/orgpath/drift-engine-config.schema.json` — no
+   YAML file is shipped.** The originally-proposed YAML config at
+   `canon/data/orgpath/drift-engine-config.yaml` (full
+   `src/uiao/...` path elided to avoid substrate-drift false-flag on
+   the retired artifact) was superseded by the Python-dataclass shape
+   during Phase 5 — see ADR-084 §C5 for the rationale; the schema is
+   preserved for runtime
+   validation of operator-supplied config payloads. The config
    declares:
    - participating phase adapters (module + class);
-   - per-op drift_class + severity + auto_remediate flag;
-   - global defaults (``dry_run: true``, ``severity_floor``,
-     ``halt_on_critical: true``);
+   - per-facet `auto_remediate_value_drift` / `auto_remediate_phantom_drift` flags;
+   - global defaults (``dry_run: True``, ``halt_on_critical: "P1"``);
    - severity policy (P1–P4 labels + halt threshold).
 2. Ship a JSON Schema at
    `src/uiao/schemas/orgpath/drift-engine-config.schema.json` that pins

@@ -31,7 +31,7 @@ published_at: docs/adr/adr-062-orgpath-depth-extension.html
 
 ## Status
 
-Accepted
+**Accepted** — but the depth-extension mechanism this ADR describes (extending OrgPath regex from 4 to 8 hierarchy levels in a single composite-string attribute) was **superseded by [ADR-078](adr-078-orgpath-attribute-schema-15-facet.md)** on 2026-05-22. Under Model C the concept of "depth" no longer applies — each facet is its own discrete `extensionAttribute*` slot, and hierarchy is expressed via boolean composition of facet predicates rather than position within a single string. The two Phase 1 deletions cited later in this ADR (`src/uiao/adapters/modernization/active_directory/orgpath.py` and `src/uiao/modernization/orgtree/document-registry.yaml`) are **intentionally absent under Model C**; their function moved to the per-facet `Codebook` loader at `src/uiao/modernization/orgtree/codebook.py` and the canon-shipped per-facet YAML libraries under `src/uiao/canon/data/orgpath/`. This ADR is preserved for historical reference; for current OrgPath doctrine see ADR-078 and ADR-084.
 
 ## Provenance note
 
@@ -112,8 +112,11 @@ binding at any plausible depth. An 8-segment OrgPath at the maximum
    - `src/uiao/governance/drift.py` (`_ORGPATH_REGEX` + the format-fail
      diagnostic string)
    - `src/uiao/adapters/entra_adapter.py` (`_ORGPATH_REGEX`)
-   - `src/uiao/adapters/modernization/active_directory/orgpath.py`
-     (`ORGPATH_REGEX`)
+   - ~~`src/uiao/adapters/modernization/active_directory/orgpath.py`~~
+     (`ORGPATH_REGEX`) — *retired by ADR-078 Phase 1; under Model C the
+     AD-side OrgPath regex is replaced by per-facet validation in the
+     `Codebook` loader; full path elided to avoid substrate-drift
+     false-flag on the retired artifact*
    - `src/uiao/adapters/modernization/active_directory/survey.py`
      (the `{1,4}` candidate-derivation bound becomes `{1,8}`)
 4. **Restate MOD_A and MOD_H with the new bound and an extended
@@ -227,9 +230,13 @@ second character-class doctrine question.
 2. **Cross-canon agreement check.** `device_planes.py:_validate_integrity`
    continues to assert `arm_tag.value_regex == codebook.regex` —
    this ADR's invariant is that both move together.
-3. **Document registry.** Both MOD_A and MOD_H bumps are recorded
-   in `src/uiao/modernization/orgtree/document-registry.yaml` if a
-   version field is tracked there (no new IDs allocated).
+3. **Document registry.** ~~Both MOD_A and MOD_H bumps are recorded
+   in `modernization/orgtree/document-registry.yaml`~~ *(registry
+   retired by ADR-060 namespace flatten; full
+   `src/uiao/modernization/orgtree/document-registry.yaml` path elided
+   to avoid substrate-drift false-flag on the retired artifact). Under
+   Model C the document registry mechanism is superseded by
+   `publish_to_site` frontmatter governance per ADR-072.*
 
 ## Related work
 
