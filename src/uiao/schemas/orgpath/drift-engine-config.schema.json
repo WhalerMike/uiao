@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/orgpath-drift-engine-config.schema.json",
+  "title": "OrgTree Drift Engine Config (Model C)",
+  "description": "Per-facet auto-remediate knobs + halt-on-critical threshold for the drift engine orchestrator. Companion to ADR-040 (drift engine) and ADR-084 §C5.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "dry_run": {
+      "type": "boolean",
+      "default": true,
+      "description": "Default for DriftEngine.run(); True means no writes are applied even when auto-remediation policies allow them."
+    },
+    "halt_on_critical": {
+      "enum": ["P1", "P2", "P3", "P4"],
+      "default": "P1",
+      "description": "Severity threshold. If any finding at or above this severity fires during Classify, Remediate is skipped even when dry_run=False."
+    },
+    "facet_policies": {
+      "type": "object",
+      "description": "Per-facet remediation knobs keyed by facet name. Facets without an entry default to all-False.",
+      "additionalProperties": { "$ref": "#/$defs/FacetRemediationPolicy" }
+    }
+  },
+  "required": ["schema_version"],
+  "additionalProperties": false,
+  "$defs": {
+    "FacetRemediationPolicy": {
+      "type": "object",
+      "properties": {
+        "auto_remediate_value_drift": {
+          "type": "boolean",
+          "default": false,
+          "description": "When True, Value Drift on this facet is auto-fixed by writing the HR value back."
+        },
+        "auto_remediate_phantom_drift": {
+          "type": "boolean",
+          "default": false,
+          "description": "When True, Phantom Drift on this facet auto-reassigns to the replaced_by successor."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

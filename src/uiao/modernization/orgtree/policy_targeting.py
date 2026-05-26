@@ -15,11 +15,18 @@ composite-string policy-targeting helper.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Mapping
+from pathlib import Path
+from typing import Any, Iterable, Mapping
 
+from ._yaml_loaders import (
+    read_schema_resource,
+    read_yaml_path,
+    read_yaml_resource,
+    validate_against_schema,
+)
 from .codebook import Codebook
 from .rule_renderer import render_rule
-from .types import CompositionSpec, FacetOperation
+from .types import CompositionSpec, FacetOperation, FacetPredicate
 
 
 @dataclass(frozen=True)
@@ -172,3 +179,42 @@ class PolicyTargetPlanner:
     def _derive_assignment_id(name: str) -> str:
         """Derive a stable assignment id from the operator-facing name."""
         return f"assignment::{name}"
+
+
+# ---------------------------------------------------------------------------
+# YAML loader (ADR-084 §C1)
+# ---------------------------------------------------------------------------
+
+_YAML_PACKAGE = "uiao.canon.data.orgpath"
+_YAML_RESOURCE = "policy-targets.yaml"
+_SCHEMA_PACKAGE = "uiao.schemas.orgpath"
+_SCHEMA_RESOURCE = "policy-targets.schema.json"
+
+
+def _composition_from_doc(doc: dict[str, Any]) -> CompositionSpec:
+    predicates = tuple(FacetPredicate(facet=p["facet"], op=p["op"], value=p["value"]) for p in doc["predicates"])
+    return CompositionSpec(predicates=predicates, combinator=doc.get("combinator", "and"))
+
+
+def load_policy_target_library(
+    codebook: Codebook,
+    *,
+    yaml_path: Path | str | None = None,
+) -> PolicyTargetLibrary:
+    """Load the canonical policy-targeting library YAML and render against ``codebook``."""
+    document = read_yaml_resource(_YAML_PACKAGE, _YAML_RESOURCE) if yaml_path is None else read_yaml_path(yaml_path)
+    schema = read_schema_resource(_SCHEMA_PACKAGE, _SCHEMA_RESOURCE)
+    validate_against_schema(document, schema, "policy-targets")
+
+    specs: list[tuple[str, str, str, CompositionSpec, str]] = []
+    for t in document["targets"]:
+        specs.append(
+            (
+                t["assignment_name"],
+                t["policy_definition_id"],
+                t["transport"],
+                _composition_from_doc(t["composition"]),
+                t["description"],
+            )
+        )
+    return PolicyTargetLibrary.from_specs(codebook, specs)

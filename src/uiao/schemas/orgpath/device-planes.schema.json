@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/orgpath-device-planes.schema.json",
+  "title": "OrgTree Device Plane Dispositions (Model C)",
+  "description": "Per-disposition routing for the device-plane writer: maps ComputerDisposition values to {entra, arm, skip} planes. Companion to ADR-038 (device-plane OrgPath) and ADR-084. Under Model C each device write is per-facet (10 attributes) rather than a single composite string.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "registry_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "generated_date": { "type": "string", "format": "date-time" },
+    "dispositions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Disposition" }
+    }
+  },
+  "required": ["schema_version", "registry_version", "dispositions"],
+  "additionalProperties": false,
+  "$defs": {
+    "Disposition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9-]+$",
+          "description": "Disposition identifier (e.g., ENTRA-DEVICE, ARC-SERVER, STAY-AD-DC)."
+        },
+        "plane": {
+          "enum": ["entra", "arm", "skip"],
+          "description": "Routing target: entra=Graph PATCH on extensionAttribute*, arm=ARM PATCH on tags.*, skip=no write."
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "transport": {
+          "type": "string",
+          "description": "Optional: 'Microsoft Graph' or 'Azure Resource Manager'. Informational."
+        },
+        "target_resource_type": {
+          "type": "string",
+          "description": "Optional: Graph endpoint or ARM resource type (e.g., directoryObject/device, Microsoft.HybridCompute/machines)."
+        }
+      },
+      "required": ["name", "plane", "description"],
+      "additionalProperties": false
+    }
+  }
+}
