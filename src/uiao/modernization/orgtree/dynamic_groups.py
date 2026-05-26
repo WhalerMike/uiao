@@ -18,11 +18,18 @@ Model A composite-string consumer.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Mapping
+from pathlib import Path
+from typing import Any, Iterable, Mapping
 
+from ._yaml_loaders import (
+    read_schema_resource,
+    read_yaml_path,
+    read_yaml_resource,
+    validate_against_schema,
+)
 from .codebook import Codebook
 from .rule_renderer import render_rule
-from .types import CompositionSpec, FacetOperation
+from .types import CompositionSpec, FacetOperation, FacetPredicate
 
 
 @dataclass(frozen=True)
@@ -214,3 +221,58 @@ class DynamicGroupPlanner:
                 )
 
         return ops
+
+
+# ---------------------------------------------------------------------------
+# YAML loader (ADR-084 §C1 — optional convenience over from_specs)
+# ---------------------------------------------------------------------------
+
+_YAML_PACKAGE = "uiao.canon.data.orgpath"
+_YAML_RESOURCE = "dynamic-groups.yaml"
+_SCHEMA_PACKAGE = "uiao.schemas.orgpath"
+_SCHEMA_RESOURCE = "dynamic-groups.schema.json"
+
+
+def _composition_from_doc(doc: dict[str, Any]) -> CompositionSpec:
+    predicates = tuple(FacetPredicate(facet=p["facet"], op=p["op"], value=p["value"]) for p in doc["predicates"])
+    combinator = doc.get("combinator", "and")
+    return CompositionSpec(predicates=predicates, combinator=combinator)
+
+
+def load_dynamic_group_library(
+    codebook: Codebook,
+    *,
+    yaml_path: Path | str | None = None,
+) -> DynamicGroupLibrary:
+    """Load the canonical dynamic group library YAML and render against ``codebook``.
+
+    Validates the YAML against the dynamic-groups JSON Schema first,
+    then builds a :py:class:`DynamicGroupLibrary` via :py:meth:`from_specs`
+    (which catches Value Drift before any group reaches Entra).
+
+    Parameters
+    ----------
+    codebook
+        Active per-facet Codebook (ADR-084 §C1).
+    yaml_path
+        Optional override pointing at an alternate YAML file (typically
+        used in tests). When omitted, the canonical library shipped
+        inside the ``uiao.canon.data.orgpath`` package is loaded via
+        ``importlib.resources``.
+    """
+    document = read_yaml_resource(_YAML_PACKAGE, _YAML_RESOURCE) if yaml_path is None else read_yaml_path(yaml_path)
+    schema = read_schema_resource(_SCHEMA_PACKAGE, _SCHEMA_RESOURCE)
+    validate_against_schema(document, schema, "dynamic-groups")
+
+    # Per-group type override (single library-wide value, defaults to Security)
+    specs: list[tuple[str, str, CompositionSpec, str]] = []
+    for g in document["groups"]:
+        specs.append(
+            (
+                g["name"],
+                g["category"],
+                _composition_from_doc(g["composition"]),
+                g["description"],
+            )
+        )
+    return DynamicGroupLibrary.from_specs(codebook, specs)

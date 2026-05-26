@@ -1,0 +1,43 @@
+# OrgTree Device-Plane Disposition Routing — Model C (ADR-038 / ADR-084)
+#
+# Per-disposition routing for the device-plane writer. Under Model C
+# each device write is per-facet (10 attributes per device per plane)
+# rather than a single composite string. Plane is selected from the
+# device's ComputerDisposition; the writer batches all 10 per-facet
+# operations into a single transport call.
+schema_version: "1.0.0"
+registry_version: "1.0.0"
+generated_date: "2026-05-26T00:00:00Z"
+
+dispositions:
+  - name: ENTRA-DEVICE
+    plane: entra
+    description: Entra-joined client device (workstation, laptop, hybrid-joined endpoint)
+    transport: Microsoft Graph
+    target_resource_type: directoryObject/device
+
+  - name: ARC-SERVER
+    plane: arm
+    description: Azure Arc-enrolled server
+    transport: Azure Resource Manager
+    target_resource_type: Microsoft.HybridCompute/machines
+
+  - name: STAY-AD-DEPENDENCY
+    plane: arm
+    description: AD-dependency box that is Arc-visible during migration window
+    transport: Azure Resource Manager
+    target_resource_type: Microsoft.HybridCompute/machines
+
+  - name: MANAGED-IDENTITY-CANDIDATE
+    plane: arm
+    description: Workload-identity-candidate server during the migration window
+    transport: Azure Resource Manager
+    target_resource_type: Microsoft.HybridCompute/machines
+
+  - name: STAY-AD-DC
+    plane: skip
+    description: Domain controllers do not migrate; OrgPath is not written
+
+  - name: DECOMMISSION
+    plane: skip
+    description: End-of-life device; no write attempted

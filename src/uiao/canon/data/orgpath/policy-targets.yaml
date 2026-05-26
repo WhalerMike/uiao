@@ -1,0 +1,62 @@
+# OrgTree Policy Targeting Library — Model C (ADR-039 / ADR-084)
+#
+# Starter library of canonical policy assignments across CA / Azure
+# Policy / Intune / Defender, each composed from per-facet predicates.
+schema_version: "1.0.0"
+library_version: "1.0.0"
+generated_date: "2026-05-26T00:00:00Z"
+
+targets:
+  # ---- Conditional Access ----
+  - assignment_name: CA-Privileged-Cleared-MFA
+    policy_definition_id: ca-policy-mfa-strong
+    transport: ca
+    description: Stronger MFA on privileged cleared accounts
+    composition:
+      predicates:
+        - { facet: account_type, op: -eq, value: Privileged }
+        - { facet: clearance_level, op: -in, value: [Secret, TopSecret, TS_SCI] }
+
+  - assignment_name: CA-Executive-AlwaysMFA
+    policy_definition_id: ca-policy-always-mfa
+    transport: ca
+    description: Always-on MFA for Executive classification
+    composition:
+      predicates:
+        - { facet: classification, op: -eq, value: Executive }
+
+  - assignment_name: CA-Contractor-RestrictedAccess
+    policy_definition_id: ca-policy-contractor-scope
+    transport: ca
+    description: Restricted-access scope for contractors
+    composition:
+      predicates:
+        - { facet: classification, op: -eq, value: Contractor }
+
+  # ---- Azure Policy ----
+  - assignment_name: AzPolicy-Executive-Resource-Tags
+    policy_definition_id: az-policy-exec-tag-enforce
+    transport: azure_policy
+    description: Enforce executive-tier resource tags on resources owned by Executives
+    composition:
+      predicates:
+        - { facet: classification, op: -eq, value: Executive }
+
+  # ---- Intune ----
+  - assignment_name: Intune-IT-CyberOps-Hardened-Profile
+    policy_definition_id: intune-config-cyberops-hardened
+    transport: intune
+    description: Hardened device configuration profile for IT/CyberOps endpoints
+    composition:
+      predicates:
+        - { facet: department, op: -eq, value: IT }
+        - { facet: division, op: -eq, value: CyberOps }
+
+  # ---- Defender ----
+  - assignment_name: Defender-Privileged-HighSensitivity
+    policy_definition_id: defender-policy-privileged-watch
+    transport: defender
+    description: Defender high-sensitivity policies on privileged accounts
+    composition:
+      predicates:
+        - { facet: account_type, op: -eq, value: Privileged }

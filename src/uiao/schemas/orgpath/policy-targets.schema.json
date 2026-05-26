@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/orgpath-policy-targets.schema.json",
+  "title": "OrgTree Policy Targeting Library (Model C)",
+  "description": "Per-facet policy targeting library declaring CA / Azure Policy / Intune / Defender assignment scopes composed from facet predicates. Companion to ADR-039 (policy targeting) and ADR-084.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "library_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "generated_date": { "type": "string", "format": "date-time" },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/PolicyTarget" }
+    }
+  },
+  "required": ["schema_version", "library_version", "targets"],
+  "additionalProperties": false,
+  "$defs": {
+    "PolicyTarget": {
+      "type": "object",
+      "properties": {
+        "assignment_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_definition_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transport": {
+          "enum": ["ca", "azure_policy", "intune", "defender"]
+        },
+        "composition": { "$ref": "#/$defs/CompositionSpec" },
+        "description": { "type": "string", "minLength": 1 }
+      },
+      "required": ["assignment_name", "policy_definition_id", "transport", "composition", "description"],
+      "additionalProperties": false
+    },
+    "CompositionSpec": {
+      "type": "object",
+      "properties": {
+        "combinator": { "enum": ["and", "or"], "default": "and" },
+        "predicates": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/FacetPredicate" }
+        }
+      },
+      "required": ["predicates"],
+      "additionalProperties": false
+    },
+    "FacetPredicate": {
+      "type": "object",
+      "properties": {
+        "facet": { "type": "string" },
+        "op": {
+          "enum": ["-eq", "-ne", "-ge", "-le", "-gt", "-lt", "-startsWith", "-contains", "-match", "-in", "-notIn"]
+        },
+        "value": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        }
+      },
+      "required": ["facet", "op", "value"],
+      "additionalProperties": false
+    }
+  }
+}

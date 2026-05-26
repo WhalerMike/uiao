@@ -24,8 +24,15 @@ dispatches them through the correct transport.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Mapping
 
+from ._yaml_loaders import (
+    read_schema_resource,
+    read_yaml_path,
+    read_yaml_resource,
+    validate_against_schema,
+)
 from .codebook import Codebook
 from .types import FacetOperation
 
@@ -158,3 +165,32 @@ __all__ = [
     "DeviceOrgPathPlan",
     "DeviceOrgPathPlanner",
 ]
+
+
+# ---------------------------------------------------------------------------
+# YAML loader for disposition routing (ADR-084 §C1)
+# ---------------------------------------------------------------------------
+
+_YAML_PACKAGE = "uiao.canon.data.orgpath"
+_YAML_RESOURCE = "device-planes.yaml"
+_SCHEMA_PACKAGE = "uiao.schemas.orgpath"
+_SCHEMA_RESOURCE = "device-planes.schema.json"
+
+
+def load_disposition_routing(
+    *,
+    yaml_path: Path | str | None = None,
+) -> dict[str, str]:
+    """Load the disposition→plane routing from the canonical YAML.
+
+    Returns a mapping like ``{"ENTRA-DEVICE": "entra", "ARC-SERVER": "arm", "STAY-AD-DC": "skip", ...}``
+    suitable for overriding the module's hardcoded routing in deployments
+    that need to declare additional dispositions. The hardcoded routing
+    in :py:class:`DeviceOrgPathPlanner` matches this YAML 1:1 for the
+    canonical disposition set; the YAML is the audit-friendly source of
+    truth.
+    """
+    document = read_yaml_resource(_YAML_PACKAGE, _YAML_RESOURCE) if yaml_path is None else read_yaml_path(yaml_path)
+    schema = read_schema_resource(_SCHEMA_PACKAGE, _SCHEMA_RESOURCE)
+    validate_against_schema(document, schema, "device-planes")
+    return {d["name"]: d["plane"] for d in document["dispositions"]}
