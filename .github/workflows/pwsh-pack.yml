@@ -45,16 +45,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag }}
         run: |
-          status=$(curl -sS -o /tmp/release.json -w "%{http_code}" \
+          # GitHub's GET /releases/tags/{tag} endpoint excludes draft
+          # releases (a draft's tag is not a real git ref until publish),
+          # so we list /releases and filter ourselves. This lets the
+          # workflow attach assets to a draft release — the common case
+          # of "stage the artifacts, then publish".
+          found=$(curl -sS \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
-          if [ "$status" != "200" ]; then
-            echo "::error::Release tag '$TAG' not found (HTTP $status). Create the release first, then re-run this workflow."
-            cat /tmp/release.json
+            "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" \
+            | jq -r --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | length')
+          if [ "$found" -lt 1 ]; then
+            echo "::error::Release tag '$TAG' not found among published or draft releases. Create the release first, then re-run this workflow."
             exit 1
           fi
-          echo "Release '$TAG' exists."
+          echo "Release '$TAG' exists (published or draft)."
 
       - name: Build pack
         shell: pwsh
