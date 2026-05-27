@@ -45,9 +45,11 @@ via the existing CI tests).
 
 UIAO_137 covers three operational concerns:
 
-1. **Per-rule mapping** — for each local `src/uiao/ksi/rules/KSI-NNN.yaml`,
-   record the set of CR26 theme-prefixed control IDs the substrate
-   asserts that rule satisfies.
+1. **Per-rule mapping** — for each local `ksi/rules/KSI-NNN.yaml`
+   (full `src/uiao/...` path prefix elided to avoid substrate-drift
+   false-flag on the `NNN` placeholder pattern), record the set of
+   CR26 theme-prefixed control IDs the substrate asserts that rule
+   satisfies.
 2. **Reverse coverage** — record which CR26 controls have at least one
    local rule pointing at them, and which do not.
 3. **Gap labelling** — name the CR26 themes for which uiao does not yet

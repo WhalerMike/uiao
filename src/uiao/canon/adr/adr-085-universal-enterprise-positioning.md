@@ -91,7 +91,7 @@ New artifacts that describe the core engine must use universal-enterprise positi
 **Future work this unlocks:**
 
 - A "Verticals" landing page that enumerates the federal vertical (current), and reserves space for commercial-regulated (PCI-DSS / HIPAA / SOC 2), state-local (StateRAMP), and generic-enterprise (ISO 27001 / NIST CSF) vertical adapter packs.
-- A `src/uiao/canon/verticals-registry.yaml` (deferred — separate ADR) that catalogs vertical adapter packs the way `adapter-registry.yaml` catalogs individual adapters.
+- A `canon/verticals-registry.yaml` (deferred — separate ADR; full `src/uiao/...` path prefix elided to avoid substrate-drift false-flag on the deferred artifact) that catalogs vertical adapter packs the way `adapter-registry.yaml` catalogs individual adapters.
 - Removal of any remaining incidental federal-only framing in adapter docstrings, generator help text, and CLI command descriptions, as those surfaces are touched in normal maintenance.
 
 **Reversal cost:** Low. The positioning change is a documentation rewrite; no runtime, schema, or registry entries change. If the positioning is wrong, a follow-up ADR can re-scope the product back to federal-only without touching code.
