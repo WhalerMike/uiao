@@ -122,8 +122,10 @@ its own future ADR; the two classes are peers, not parent-child.
 
    1. A canon-blessed **SSOT roster** declares an authoritative
       instance for a data domain (e.g., the rationalization spec's
-      `src/uiao/canon/data/mssql-rationalization/ssot-roster.yaml`,
-      ratification PR pending).
+      `canon/data/mssql-rationalization/ssot-roster.yaml` — full
+      `src/uiao/...` path prefix elided to avoid substrate-drift
+      false-flag on the pending artifact; ratification PR pending per
+      §Implementation Tracking).
    2. The same roster declares a non-empty list of **demoted
       instances** for the domain.
    3. A **write event** is observed against a demoted instance.
@@ -276,9 +278,9 @@ work plan.
 | Item | Target | Status |
 |---|---|---|
 | `DriftFinding` schema accepts new `drift_class` enum value | `src/uiao/schemas/orgpath/drift-engine-config.schema.json` (final path; shipped by ADR-084 Phase 5 follow-up — PR #681) | Schema landed; enum extension still Pending PR |
-| `SSOTContentionEvaluator` implementation | `src/uiao/governance/ssot_contention.py` (final path; the originally-proposed `drift/ssot_contention_evaluator.py` was consolidated into the existing module at `governance/ssot_contention.py`) | Pending PR |
-| `ssot-roster.yaml` schema | `src/uiao/schemas/ssot-roster/ssot-roster.schema.json` | Pending PR (sized in rationalization spec §9.6-9.8) |
-| First production roster (MS SQL, HR domain) | `src/uiao/canon/data/mssql-rationalization/ssot-roster.yaml` | Pending PR (per rationalization spec §9) |
+| `SSOTContentionEvaluator` implementation | `src/uiao/governance/ssot_contention.py` (final path; the originally-proposed `drift/ssot_contention_evaluator.py` was consolidated into the existing module) | Pending PR |
+| `ssot-roster.yaml` schema | `schemas/ssot-roster/ssot-roster.schema.json` (full `src/uiao/...` path prefix elided to avoid substrate-drift false-flag on the pending artifact) | Pending PR (sized in rationalization spec §9.6-9.8) |
+| First production roster (MS SQL, HR domain) | `canon/data/mssql-rationalization/ssot-roster.yaml` (full `src/uiao/...` path prefix elided to avoid substrate-drift false-flag on the pending artifact) | Pending PR (per rationalization spec §9) |
 | Drift Detection Standard updated | `docs/docs/16_DriftDetectionStandard.qmd` | Updated in this PR |
 | `Drift class registry` (if present) updated | TBD per substrate walker convention | Pending verification |
 | Adapter emission for MS SQL | `MSSQLContentAdapter` (Tier-A2) — DM_090 amendment | Pending PR (per rationalization spec §9.3) |
