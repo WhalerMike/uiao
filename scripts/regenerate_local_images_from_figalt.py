@@ -123,9 +123,15 @@ def _write_sidecar(out_path: Path, prompt: str, qmd: Path) -> Path | None:
 
 
 # Match: ![alt](path){...attrs...}
-# Captures the path (relative to the .qmd) and the attr block.
-# Permissive — image markdown can be very long and span lots of characters.
-IMG_RE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)\{(?P<attrs>[^}]*)\}")
+# Captures the path (relative to the .qmd) and the attr block. Anchor the
+# closing `}` on width="..." so fig-alt prompts containing literal `{` / `}`
+# (e.g. `ORG-NODE-{id}`, JSON-shaped audit records) don't cause the attrs
+# capture to terminate early. Mirrors the audit script's matcher
+# (Invoke-OrgPathImageAudit.ps1 :: Get-FigAltByIdFromQmd).
+IMG_RE = re.compile(
+    r'!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)\{(?P<attrs>.*?width="[^"]+"\s*)\}',
+    re.DOTALL,
+)
 
 # Match fig-alt="..." inside an attr block, allowing escaped quotes.
 FIG_ALT_RE = re.compile(r'fig-alt="(?P<figalt>(?:[^"\\]|\\.)*)"')
