@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+DSC-based machine state enforcement across organizational tiers — Tier 0 substrate, Tier 1 production, and Tier 2 standard baselines authored as PowerShell DSC, compiled to Guest Configuration packages, deployed through Azure Policy, and targeted at Arc-connected machines by OrgTier tag. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ::: {.callout-note title="Authoritative canon"}
 The substrate-internal canonical specification for OrgPath-driven Azure
 Policy targeting is [UIAO_010 — OrgPath in Azure Policy](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_010_OrgPath_in_Azure_Policy.md),
@@ -44,6 +48,8 @@ OrgPath changes this. Every Arc-enrolled server in this architecture carries an 
 The dynamic property of this architecture — the one that distinguishes it from a static baseline assignment model — is its response to OrgTree tier changes. When an organizational node is reclassified, perhaps because a server population that was once used for non-critical workloads has grown to host sensitive data or privileged access infrastructure, the OrgPath propagation pipeline updates the OrgTier tag on all resources in that node's branch. That tag change immediately shifts which Guest Configuration policy assignment's condition matches the affected machines. A remediation task triggered by the pipeline applies the new, stricter baseline without manual intervention, without a change ticket that depends on someone remembering to update a policy assignment, and without a window of uncontrolled configuration drift between the business decision and the enforcement action.
 
 This document is structured as follows. Chapter Two establishes the three-tier DSC baseline model — the configuration categories that differ across Tier0, Tier1, and Tier2, and the reasoning behind each differentiation. Chapter Three covers the authoring of Guest Configuration packages in PowerShell DSC, including complete production-ready DSC configurations for all three tiers and the packaging and publishing workflow. Chapter Four covers the Azure Policy definition structure and the PowerShell automation that deploys definitions and assignments at management group scope. Chapter Five covers compliance reporting by OrgPath segment using Resource Graph KQL and Sentinel integration. Chapter Six covers the pipeline extension that responds to OrgTree tier change events with immediate Guest Configuration remediation. Chapter Seven covers the decommission and cleanup procedure for Arc machines whose OrgTree nodes have been archived. Chapter Eight situates Part Twelve within the series and describes the capstone reporting layer that Part Thirteen will construct.
+
+---
 
 ## Chapter 2 — The Three-Tier DSC Baseline Model
 
@@ -76,6 +82,8 @@ Tier1 servers host production application workloads, line-of-business databases,
 ### Tier2: Standard Organizational Baseline
 
 Tier2 servers are the broadest population: departmental file servers, non-critical infrastructure hosts, standard organizational workstations in managed segments. The Tier2 baseline enforces the organizational security minimum. Windows Defender with real-time protection is enforced and must be running. BitLocker with TPM protector is enforced. SMBv1 is disabled. Standard logon and account management audit subcategories are configured. LAPS is configured with a 72-hour maximum password age, which is appropriate for the lower sensitivity of Tier2 systems and reduces operational overhead for large Tier2 populations. The OrgPath integrity check runs every 72 hours. Controls that are either operationally impractical for Tier2 populations at scale (NetBIOS over TCP/IP disabled across all adapters can break legacy application dependencies that are more common in Tier2 segments) or whose enforcement value does not justify the operational cost at Tier2 are omitted.
+
+---
 
 ## Chapter 3 — Authoring Guest Configuration Packages
 
@@ -522,6 +530,8 @@ Write-Host "All Guest Configuration packages published."
 The SHA256 content hash logged by the publishing script must be injected into each Azure Policy definition before assignment. The policy deployment script in Chapter Four reads the hash from the governance log. Any manual edit to a published package without re-running the publishing script will produce a hash mismatch and the Guest Configuration extension will refuse to apply the package, generating a NonCompliant state on all affected machines until the correct hash is updated in the policy definition parameters.
 :::
 
+---
+
 ## Chapter 4 — Policy Definition and Assignment Automation
 
 ### The Two-Resource Guest Configuration Policy Model
@@ -738,6 +748,8 @@ Write-Host "OrgPath Guest Configuration policy deployment complete."
 When a policy assignment uses a system-assigned managed identity with the deployIfNotExists effect, Azure Policy automatically grants the identity the roles specified in roleDefinitionIds at the assignment scope. The role GUID 088ab73d-1256-47ae-bea9-9de8e7131f31 is the Guest Configuration Resource Contributor role, which grants the managed identity permission to create Guest Configuration assignment resources on Arc machines. This role grant occurs at deployment time and does not require a separate role assignment step.
 :::
 
+---
+
 ## Chapter 5 — Compliance Reporting by OrgPath Segment
 
 ### Resource Graph as the Compliance Query Plane
@@ -810,6 +822,8 @@ AzureActivity
 ```
 
 The Sentinel rule produces incidents that are automatically enriched with the OrgPath context of the affected machine through the incident enrichment workflow established in Part Four. This means that when a Tier0 machine reports a non-compliant Guest Configuration state, the resulting Sentinel incident carries the machine's full organizational position, the name of the OrgTree node it belongs to, the tier classification, and links to the associated Tier0 policy assignment. The on-call engineer receives an incident that already answers the first three triage questions — what machine, where in the organization, what policy — without any manual lookup.
+
+---
 
 ## Chapter 6 — Pipeline Integration for Tier Change Events
 
@@ -929,6 +943,8 @@ Write-Host "Tier change remediation complete."
 
 One operational consideration that the tier change pipeline must address is the old tier's Guest Configuration assignment. When a machine transitions from Tier2 to Tier1, the Tier2 policy definition's condition no longer matches the machine, so Azure Policy will not maintain the Tier2 Guest Configuration assignment going forward. However, the existing Tier2 Guest Configuration assignment resource that was previously deployed to the machine may still be present as a static ARM resource. It will not actively enforce anything, because the Guest Configuration extension only applies assignments that are referenced by an active policy assignment whose condition matches the machine, but it will appear as an orphaned resource in the machine's resource list. The remediation pipeline script can be extended to explicitly delete old-tier Guest Configuration assignment resources using the Remove-AzResource approach shown in Chapter Seven's decommission script, scoped specifically to the old tier's assignment name. Whether to include this cleanup step depends on operational preference; the governance audit trail is not impaired by the presence of an orphaned assignment resource, but clean resource states reduce confusion during incident investigation.
 
+---
+
 ## Chapter 7 — Decommission and Cleanup
 
 ### The Orphaned Assignment Problem
@@ -1012,6 +1028,8 @@ Write-Host "Decommission complete for $MachineName."
 
 After the Arc machine resource is deleted, the Azure Policy compliance engine requires time to process the deletion and remove the resource from active compliance scope. In large environments where compliance dashboards are queried frequently, it is good practice to trigger a policy compliance scan at the subscription level after a batch decommission to accelerate the processing of deleted resources. The Start-AzPolicyComplianceScan cmdlet initiates this scan. It is an asynchronous operation; the pipeline can either wait for completion using the -AsJob parameter and polling, or schedule the dashboard refresh query to run with a 30-minute delay after the decommission batch completes. Either approach ensures that the compliance dashboard presented to governance stakeholders reflects the decommissioned machines' removal rather than showing stale NonCompliant states for resources that no longer exist.
 
+---
+
 ## Chapter 8 — Series Progression
 
 With Part Twelve complete, the OrgPath governance substrate has reached the operating system layer. The governance perimeter is no longer bounded by what the Azure control plane can observe from the outside of a machine. It extends inside the guest operating system through Guest Configuration packages that enforce tier-appropriate DSC baselines on every Arc-enrolled server, report their compliance state through the same Azure Policy and Resource Graph infrastructure used throughout the series, alert through the same Sentinel workspace that processes identity and network governance signals, and respond automatically to OrgTree tier changes through the same pipeline event model that governs identity lifecycle, RBAC assignments, and certificate issuance. The machine state governance gap described in Chapter One is closed.
@@ -1022,4 +1040,12 @@ One document remains in this series. Part Thirteen constructs the capstone repor
 
 ::: {.callout-note title="📄 Series Navigation"}
 <strong>Previous:</strong> Part Eleven — OrgPath and Service Principal Governance (Lifecycle, Credential Rotation, and Ownership Enforcement). <strong>Next:</strong> Part Thirteen — OrgPath Governance Posture Reporting (Unified Power BI Semantic Model Across All Governance Domains). Parts One through Twelve are archived in the governance repository alongside their associated pipeline scripts, DSC configurations, ARM templates, and KQL queries.
+:::
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 8 — OrgPath and Application Identity](08-orgpath-and-application-identity.qmd) · [Index](index.qmd) · [Next: Chapter 10 — OrgPath and Cross-Tenant Collaboration →](10-orgpath-and-cross-tenant-collaboration.qmd)
 :::

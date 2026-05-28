@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+Closing the loop between substrate and operations — PIM eligibility groups synchronized to OrgPath, Entra ID Lifecycle Workflows that realign mover access automatically, Sentinel KQL for activation and drift monitoring, and tag-based Azure RBAC that extends OrgPath onto the resource plane. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 1 — From Substrate to Operations — Why PIM, RBAC, and Monitoring Complete the Model
 
 ### The Governance Gap That Remains After Part Four
@@ -52,6 +56,8 @@ Chapter Six synthesizes the complete five-part model and describes what the orga
 ::: {.callout-note title="Prerequisites"}
 This document assumes the successful completion of Parts One through Four: the OrgTree registry is populated, OrgPath values are stamped and propagating across user, device, and server objects, dynamic groups are provisioned and evaluated, and the drift detection pipeline is running. Scripts in this document reference the OrgTree registry JSON file, the OrgPath schema extension attribute name, and the governance repository checkout pattern established in Part Four. These references are annotated inline with substitution instructions wherever environment-specific values are required.
 :::
+
+---
 
 ## Chapter 2 — Keeping Privileged Access Aligned with Organizational Structure
 
@@ -322,6 +328,8 @@ The archived node flagging behavior — warning rather than deleting — is a de
 ::: {.callout-note title="Pipeline Integration Note"}
 This script is invoked as the third step in the OrgTree change propagation pipeline, after the dynamic group provisioning step and before the drift detection baseline update step. The pipeline sequence is: (1) validate registry commit, (2) propagate OrgPath writes to affected users and devices, (3) provision or update dynamic groups, (4) run Set-PIMEligibleGroupsFromOrgPath.ps1, (5) update drift detection baseline, (6) commit pipeline audit record to governance repository. If step 4 fails, the pipeline halts and creates an alert. It does not proceed to step 5, because an incomplete PIM synchronization should not be recorded as a successful baseline update.
 :::
+
+---
 
 ## Chapter 3 — When an Identity Moves — Automating Structural Access Realignment
 
@@ -641,6 +649,8 @@ The access review created in the handler script above is a one-time review, not 
 The mover workflow is triggered by an OrgPath attribute change event. That attribute change is written by the governance propagation pipeline when the OrgTree registry changes. The OrgTree registry changes when the registry is updated — which, in a well-integrated environment, is driven by the HR system of record via the HR-to-Entra provisioning connector. The mover workflow's reliability is therefore directly dependent on the reliability of the HR-to-OrgTree integration. If the HR system records a position change but the OrgTree registry is not updated within the integration window, the mover workflow will not fire. Validate the HR integration pipeline end-to-end before relying on the mover workflow for compliance-critical access realignment.
 :::
 
+---
+
 ## Chapter 4 — Operational Visibility — Monitoring PIM Through the Lens of Organizational Structure
 
 ### Why OrgPath Changes the Value of PIM Monitoring
@@ -648,6 +658,8 @@ The mover workflow is triggered by an OrgPath attribute change event. That attri
 Without organizational context, PIM activation logs are a stream of events annotated by identity, role, and time. Microsoft Sentinel can surface anomalies against those three dimensions: a user who activates more frequently than their baseline, a role that sees elevated activation volumes, a time window that deviates from the expected pattern. These are valuable signals. But they are structurally incomplete, because they have no awareness of the organizational context in which the activation occurred. A Tier0 infrastructure role activation by a user in the operations engineering segment is a routine administrative event. The same role activation by a user in the finance reporting segment is an anomaly that warrants immediate investigation. Without OrgPath, Sentinel cannot distinguish between these two events. They are both activations of the same role, at the same time of day, with similarly worded justification strings. The detection logic has nothing to work with except the identity and the role.
 
 OrgPath makes the organizational context of every activation queryable. When a user's OrgPath is available in the Sentinel log model, every PIM activation event carries an implicit tag identifying the organizational segment from which the activation originated. Alert thresholds can be tuned per segment. Anomaly detection can be baselining against the activation pattern of a specific organizational unit rather than the tenant as a whole. Dashboards can present privileged access activity organized by hierarchy, so that a governance manager can see at a glance that the Finance division had twelve activations in the past 24 hours, all by users whose OrgPath confirms membership in that division, and that one of those activations was for a role that no Finance division user has a documented need for.
+
+![PIM activation flow with OrgPath as a first-class audit dimension](images/11-orgpath-in-security-operation-diagram-02-pim-activation-orgpath-audit.png){#fig-11-orgpath-in-security-operations-diagram-02 fig-alt="Top-down five-stage flow diagram showing a PIM eligible-assignment activation with OrgPath as a first-class audit dimension. Stage 1 \"Request\" (top): user alice@corp.com (OrgPath: /Engineering/Platform) requests PIM activation for role Application Administrator. Downward arrow labeled \"submit request\" to Stage 2 \"Approval routing\": workflow scoped by OrgPath — approvers are managers in same or parent OrgPath (/Engineering or /Engineering/Platform). Downward arrow labeled \"approver decision\" to Stage 3 \"Activation\": role activated, JIT-bound; activation event written to audit log. Downward arrow labeled \"emit event\" to Stage 4 \"Audit record payload\": shown as a monospace JSON-style record with fields { user, role, OrgPath, requested_at, approved_by, approver_OrgPath, justification }. Downward arrow labeled \"stream to workspace\" to Stage 5 \"Sentinel ingestion\": audit event flows into Sentinel; OrgPath becomes a queryable dimension. Below stage 5, an inset monospace KQL snippet: | summarize count() by OrgPath, role. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for stage boxes, teal (#1A9E8F) for OrgPath-scoped routing in stage 2, amber (#D4A017) for the audit record overlay in stage 4, monospace formatting for KQL and JSON, no human figures, 16:9 landscape." width="85%"}
 
 ### Data Availability Prerequisites
 
@@ -925,6 +937,8 @@ Query Three is the governance team's drift posture metric. The daily incident it
 ::: {.callout-note title="Alert Tuning Guidance"}
 The sensitive segment list in Query Two and the drift threshold in Query Three both require tuning during the initial deployment period. For the first 30 days after the Sentinel queries are deployed, collect baseline data on activation frequencies per organizational segment and on the typical drift count at each weekly governance review. Use those baselines to set the sensitive segment alert threshold and the drift incident threshold at levels that produce actionable incidents without overwhelming the queues. Revisit thresholds quarterly as organizational structure and activation patterns evolve.
 :::
+
+---
 
 ## Chapter 5 — Extending Structural Governance to the Resource Plane
 
@@ -1258,6 +1272,8 @@ The two scope models can coexist within a single deployment. A single invocation
 Run the script once per role definition per scope. A typical initial deployment for a single organizational segment might include three invocations: Reader at the subscription scope, Contributor at the node's dedicated resource group, and Virtual Machine Contributor at the resource group containing Arc-enrolled servers for that segment. The pipeline configuration file should enumerate all role/scope combinations and drive the script invocations in sequence. Adding a new role to the governance model requires adding a new entry to the pipeline configuration file and committing the change — the next pipeline run will create the new groups and assignments for all active nodes automatically.
 :::
 
+---
+
 ## Chapter 6 — The Closed Loop — What the Full Integration Delivers
 
 ### What the Complete Model Enables
@@ -1308,3 +1324,11 @@ The following table summarizes every implementation artifact introduced in this 
 *OrgTree / OrgPath Governance Series — Part Five of Five.*\
 Parts One through Four: The Governance Gap in the Microsoft Identity Stack \| The Governance Substrate Requirements \| OrgTree and OrgPath Design \| Implementation Guide for Building the Substrate.\
 Document prepared May 8, 2026. For internal engineering use. All environment-specific values (tenant IDs, application IDs, scope paths, role names) must be substituted before executing any script or deploying any policy definition in a production environment.
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 10 — OrgPath and Cross-Tenant Collaboration](10-orgpath-and-cross-tenant-collaboration.qmd) · [Index](index.qmd) · [Next: Chapter 12 — OrgPath in Infrastructure Services →](12-orgpath-in-infrastructure-services.qmd)
+:::

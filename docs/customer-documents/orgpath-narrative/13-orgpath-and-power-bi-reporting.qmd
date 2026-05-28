@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+Surfacing governance posture to executives — a Power BI semantic model with OrgTree as the dimensional spine, a DAX measure library covering compliance, drift, PIM, and DLP KPIs, per-division dashboards, an executive RAG-status summary, and Teams / SharePoint distribution. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 1 — The Reporting Gap: Governance Intelligence Without an Audience
 
 Twelve parts of this series have been devoted to construction. The labor has been architectural and methodical: establishing a registry that knows the organizational hierarchy, creating an attribute that carries organizational position on every managed object, and propagating that attribute across every surface that the Microsoft cloud estate exposes to governance control. The result is a substrate. It is thorough, and it is real. Every identity in Entra ID carries an OrgPath extension attribute encoding its position in the hierarchy. Every managed device in Intune is governed by a compliance policy derived from that position. Every privileged role assignment in PIM is bounded by eligibility rules that respect the organizational segment to which the assignee belongs. Every Arc-enrolled server is tagged with OrgPath and evaluated against a Guest Configuration baseline keyed to that tag. Every Sentinel detection rule that fires enriches its alert with OrgPath context, and every alert is correlated to the organizational segment from which it originated. Purview DLP policies scope to OrgPath labels. Certificate profiles from Cloud PKI are assigned by OrgPath group membership. The drift detection engine runs continuously, comparing current state to the OrgPath-derived policy intent, committing every discovered variance to an auditable repository. The governance pipeline is running. The governance data is flowing.
@@ -30,6 +34,8 @@ Power BI is the correct aggregation layer for this problem. It is not the only p
 OrgPath is the slicer that makes all of this work. Every measure in the semantic model is designed to respond to OrgPath filter context. Every visual on every report page filters by OrgPath division, branch, or node, using the OrgTree dimension table as the shared organizational spine that links every fact table to a consistent, authoritative representation of the hierarchy. The result is that a Finance division head opens the governance portal embedded in the organization's SharePoint intranet, selects the Finance node in the OrgPath hierarchy slicer, and sees the Finance division's current compliance percentage, its drift event count for the trailing seven days, its PIM activation rate, its open Defender assessment findings, its DLP incident count, its Guest Configuration compliance rate, its certificate risk profile, and its guest account count — all scoped to the Finance organizational segment, all current within the most recent refresh cycle, all in a single view that requires no engineering knowledge to interpret.
 
 This document covers the complete implementation of that reporting layer. Chapter Two describes the data source architecture and the export pipeline that moves governance data from the six source surfaces into staging files that the Power BI semantic model can consume. Chapter Three defines the Power BI semantic model structure, including the Power Query M definitions for each data table and the relationship model that makes OrgPath the universal slicer. Chapter Four presents the full DAX measure library for governance KPIs, including the Red-Amber-Green status measures that drive the executive scorecard. Chapter Five describes the report page designs for the per-division posture dashboard, the executive summary, and the trend analysis page. Chapter Six covers the automated refresh pipeline using the Power BI REST API. Chapter Seven addresses stakeholder distribution through Microsoft Teams and SharePoint embedding. Chapter Eight closes the series.
+
+---
 
 ## Chapter 2 — Data Source Architecture and Export Pipeline
 
@@ -397,7 +403,11 @@ Write-Host "Power BI Gateway will consume updated files at next scheduled refres
 
 Once the export pipeline has run successfully, the staging directory contains six latest JSON files — one per governance surface — and the OrgTree registry copy. The Power BI Gateway's data source configuration points to this staging directory. The gateway does not require any inbound network ports to the export host; it initiates outbound connections to the Power BI service and reads local file system paths. This means the export host can sit on a management network segment without external exposure, which is the correct placement for a host that holds governance data exports.
 
+---
+
 ## Chapter 3 — The Power BI Semantic Model
+
+![Power BI semantic model with OrgPath as the primary slicer](images/13-orgpath-and-power-bi-reportin-diagram-02-powerbi-orgpath-slicer-model.png){#fig-13-orgpath-and-power-bi-reporting-diagram-02 fig-alt="Left-to-right reporting pipeline with OrgPath as the join key, three labeled columns. Left column \"Sources\" stacks four data source boxes vertically: Entra audit logs; Intune compliance state; Defender incidents; Azure Policy compliance. Each source emits records that include an OrgPath field; arrows from each source point rightward into the center column. Center column \"Semantic model\" contains a single large box labeled \"Power BI semantic model\" containing a star-schema sketch — central fact tables surrounded by dimension tables, with the OrgPath dimension highlighted as the primary slicer (a small star icon next to it). Joins are shown as labeled lines from each of the four left-column sources to the center fact tables. Right column \"Reports\" stacks three report page mockups vertically: Compliance overview; Incident heatmap; Policy drift trend. Each report page shows the same OrgPath slicer at the top with sample drill paths displayed in monospace: / → /Engineering → /Engineering/Platform. Arrows from the semantic model fan rightward to all three report pages. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the four sources, teal (#1A9E8F) for the semantic model, amber (#D4A017) for the OrgPath slicer overlays on each report page, monospace OrgPath drill values, no human figures, 16:9 landscape." width="85%"}
 
 The semantic model is the architectural center of the reporting layer. It is the component that translates the six heterogeneous JSON exports produced by the pipeline into a single, coherent, queryable model that Power BI report pages consume uniformly. The model has seven tables: six fact tables, one per governance surface, and one shared dimension table — the OrgTree dimension — derived from the authoritative OrgTree registry JSON. All six fact tables join to the OrgTree dimension on the OrgPath column. OrgPath is therefore the universal slicer: selecting any OrgPath value or range of values in the hierarchy slicer on any report page automatically filters every fact table to the rows whose OrgPath value falls within the selected organizational segment.
 
@@ -722,6 +732,8 @@ The relationship model connects the OrgTree dimension table to each of the six f
 All six relationships are active. The use of inactive relationships with USERELATIONSHIP in DAX is not required in this model because no two fact tables need to relate to the OrgTree dimension via different keys. Every fact table uses the same OrgPath column as its foreign key, so all six relationships are active and all six respond identically to OrgPath slicer context on any report page.
 
 The OrgTree dimension also contains a ParentNodeId column, which Power BI Desktop uses to define the parent-child hierarchy for the hierarchy slicer visual. In the Model view, configure a hierarchy on the OrgTree table using the Tier and Label columns in ascending tier order to enable the expand-and-collapse behavior in the report's OrgPath hierarchy slicer. This is the mechanism by which selecting the Finance branch node in the slicer automatically includes all Finance child nodes in the filter context applied to every fact table.
+
+---
 
 ## Chapter 4 — The DAX Measure Library
 
@@ -1101,6 +1113,8 @@ AVERAGEX(
 
 With the measure library defined, the semantic model is complete. Every report page in the workbook reads from this single model, ensuring that all visuals reflect the same data, the same OrgPath filter context, and the same governance KPI definitions. Changes to KPI thresholds — for example, raising the Compliance RAG Green threshold from ninety-five to ninety-seven percent — are made once in the measure library and take effect across every report page and every embedded view of the report simultaneously.
 
+---
+
 ## Chapter 5 — Report Page Design
 
 The Power BI workbook contains three report pages, each designed for a distinct audience and review context. The pages share a single semantic model but differ in layout, visual density, and interactivity level. The design philosophy across all three pages is deliberate constraint: governance dashboards that present too much information simultaneously fail their audience just as thoroughly as dashboards that present too little. Each page is designed to answer one primary question at a glance, with supporting detail available to those who need to drill further.
@@ -1130,6 +1144,8 @@ Above the heatmap matrix, a row of large KPI cards displays the organization-wid
 The Trend Analysis page presents ninety-day time-series views of the three governance dimensions that are most meaningfully tracked over time: compliance rate, drift event count, and PIM activation volume. This page is used in monthly governance leadership meetings where the question being answered is not "what is our current posture?" but "is our governance posture improving, stable, or degrading over time, and does any division show a trend that requires structural attention?" The page retains the full-height OrgPath hierarchy slicer from the per-division dashboard, allowing a governance leader to isolate a specific division's trend lines for the monthly review discussion.
 
 Each of the three trend charts is a line chart with dual series: the daily measure value as a thin line, and the thirty-day rolling average — computed by the corresponding rolling average measure from Section 9 of the DAX library — as a heavier overlay line. The rolling average smooths day-to-day noise in the daily figures, which can be significant for small-population divisions where a single non-compliant device represents a large percentage movement in the compliance rate, and makes the underlying directional trend visible. Each chart's Y axis is fixed rather than auto-scaled, so that the visual impression of a trend line's slope is comparable across divisions of different sizes. Compliance Rate is fixed at 0–100%; Drift Events are fixed at a maximum configurable by the governance team; PIM Activations are fixed relative to the division's population, requiring a per-division normalization that governance teams can configure after initial deployment.
+
+---
 
 ## Chapter 6 — Automated Refresh Pipeline
 
@@ -1287,6 +1303,8 @@ The refresh script is invoked at the end of the export orchestrator script by ap
 
 Power BI Premium and Fabric capacity environments support XMLA endpoint access, which enables the export pipeline to write data directly to the semantic model's tables using Tabular Model Scripting Language commands, bypassing the file-based gateway entirely and eliminating the refresh API call as a separate step. This architecture reduces end-to-end latency between export completion and dashboard currency to near zero. The XMLA endpoint approach requires the semantic model to be deployed to a Premium or Fabric workspace, and requires the service principal to be granted the Analysis Services Administrator role on the XMLA endpoint. For organizations that have made this investment, the XMLA pattern is strongly preferred over the file-and-gateway pattern for a governance dashboard where currency is a primary requirement.
 
+---
+
 ## Chapter 7 — Stakeholder Distribution via Teams and SharePoint
 
 A governance dashboard that lives only in the Power BI Service, navigable only by users who know it exists and who have Power BI Pro licenses, has a stakeholder reach problem. The organizational governance leads, divisional CISOs, and executive board members who are the intended audience of this reporting layer are not, in general, Power BI users. They do not have bookmarked URLs in the Power BI Service. They will not navigate to the governance dashboard unless it is surfaced where they already work — in Microsoft Teams, in the SharePoint intranet, or in a governance portal that their organization has established as the canonical location for governance information.
@@ -1421,6 +1439,8 @@ The SharePoint governance portal page is configured with the Power BI web part s
 
 The distribution architecture maps directly to a three-cadence governance review model that the organization should establish alongside the technical deployment. The daily cadence is served by the Teams tab: divisional governance leads review their OrgPath segment's Per-Division Governance Posture Dashboard each morning, using the hierarchy slicer to scope to their division, and escalate any Red RAG indicators to the appropriate engineering team for same-day attention. The weekly cadence is served by the SharePoint executive portal: the weekly governance board briefing references the Executive Summary heatmap page, and each division's Overall Governance RAG status is reported as a standing agenda item with narrative commentary from the divisional lead for any Amber or Red dimensions. The monthly cadence is served by the Trend Analysis page in the Power BI Service, where governance leadership reviews ninety-day trend lines for each division and makes structural governance decisions — adjusting policy thresholds, initiating remediation programs, or revising OrgTree structure — based on directional evidence rather than point-in-time snapshots.
 
+---
+
 ## Chapter 8 — Series Close: The Governance Substrate, Complete
 
 It is worth pausing, at the conclusion of this final document, to account for what has actually been built across thirteen parts of this series. The accounting is not a summary in the ordinary sense — a summary would compress the work into bullet points, which would strip it of the thing that makes it meaningful. The meaning is in the sequence: each part of this series depended on the parts that preceded it, and the substrate it constructed was not complete until every surface had been addressed. What follows is a brief reckoning with the full arc of that construction, and a reflection on what it represents.
@@ -1447,4 +1467,12 @@ This document is <strong>Part Thirteen of Thirteen</strong> in the OrgTree and O
 The complete series is available as a document set from <strong>Part One</strong> through <strong>Part Thirteen</strong>, with <strong>Supplement 8S</strong> covering third-party DDI (DNS, DHCP, IPAM) integration for environments that use non-Microsoft DDI platforms alongside Cloud PKI and OrgPath-scoped DNS policy.
 
 Each document in the series is a standalone implementation guide and may be referenced independently. The series is designed to be implemented in part-order, as each part's implementation depends on the infrastructure established by its predecessors. Organizations that have completed Parts One through Twelve and implemented the reporting layer described in this document have a complete, operational OrgPath governance substrate.
+:::
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 12 — OrgPath in Infrastructure Services](12-orgpath-in-infrastructure-services.qmd) · [Index](index.qmd) · [Next: Chapter 14 — OrgPath with Third-Party DDI →](14-orgpath-with-third-party-ddi.qmd)
 :::
