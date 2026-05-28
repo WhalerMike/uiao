@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+DNS and certificate governance under OrgPath — AD-integrated DNS migrated to Azure DNS Private Zones with OrgPath tagging, Cloud PKI certificate profiles mapped to organizational position with KB5014754 strong-mapping compliance, infrastructure drift detection, and a quantified decommissioning-readiness score. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 2 — — From AD-Integrated DNS to Azure DNS: A Governed Migration
 
 ### The Hybrid DNS Architecture
@@ -29,6 +33,8 @@ lifecycle_review: 2026-11-22
 
 ### Policy Enforcement: Denying Untagged Private DNS Zones
 
+---
+
 ## Chapter 3 — — Certificate Governance: Mapping Template Coverage to Organizational Position
 
 ### The AD CS Architecture Being Replaced
@@ -39,6 +45,8 @@ lifecycle_review: 2026-11-22
 
 ### Strong Mapping and KB5014754 Compliance
 
+---
+
 ## Chapter 4 — — Keeping DNS and PKI Coverage Aligned with the Governance Model
 
 ### Infrastructure Drift Categories
@@ -46,6 +54,8 @@ lifecycle_review: 2026-11-22
 ### DNS Zone Tag Drift Detection (KQL)
 
 ### Certificate-OrgPath Misalignment Detection (KQL)
+
+---
 
 ## Chapter 5 — — When Is It Safe to Decommission? A Quantified Answer
 
@@ -55,6 +65,8 @@ lifecycle_review: 2026-11-22
 
 ### Operational Use of the Score
 
+---
+
 ## Chapter 6 — — Day-to-Day Governance of the DNS and PKI Surfaces
 
 ### Weekly DNS Governance Review
@@ -62,6 +74,8 @@ lifecycle_review: 2026-11-22
 ### Quarterly Certificate Profile Review
 
 ### OrgTree Change Request Process for DNS and PKI
+
+---
 
 ## Chapter 7 — — What Has Been Built: The Governance Substrate in Full
 
@@ -74,6 +88,8 @@ lifecycle_review: 2026-11-22
 ### Automation and Coherence: The Two Properties That Make It Sustainable
 
 ### Closing Statement
+
+---
 
 ## Chapter 1 — THE FINAL SURFACES
 
@@ -106,6 +122,8 @@ The first addition is DNS governance. Azure DNS Private Zones and Azure DNS Priv
 The second addition is PKI governance. OrgTree node metadata is extended with a CertificateProfiles array that identifies which Intune certificate profiles apply to devices and users in each organizational node. A governance pipeline script reads this metadata and assigns SCEP, PKCS, and Trusted Root profiles to the corresponding OrgPath branch groups. Drift detection monitors for certificate-OrgPath misalignment — devices whose enrolled certificate profile does not correspond to their current organizational position — and for SCEP profiles that lack the strong mapping configuration required by KB5014754. Both additions use Azure-native tooling exclusively: Azure DNS Private Zones, Azure DNS Private Resolver, Azure Policy for tag enforcement, Windows Server DHCP and the Windows Server IPAM role for on-premises address management during the transition, and Microsoft Cloud PKI with Intune certificate deployment.
 
 ![Top-down migration diagram with two labeled bands and a governance overlay](images/12-orgpath-in-infrastructure-ser-diagram-01-top-down-migration-diagram-with.png){#fig-12-orgpath-in-infrastructure-services-diagram-01 fig-alt="Top band labeled \"On-prem (must be decommissioned cleanly)\" contains three boxes: AD-integrated DNS (SRV records in directory partition); AD Certificate Services (templates in Configuration NC); Windows Server IPAM role (transition inventory baseline). Bottom band labeled \"Azure-native (target state)\" contains four boxes: Azure DNS Private Zones (tagged OrgPath / OrgNodeId / OrgTier / MigrationPhase); Azure DNS Private Resolver (hybrid forwarding ruleset); Microsoft Cloud PKI (SCEP, PKCS, Trusted Root profiles); Intune certificate deployment (strong-mapping per KB5014754). Migration arrows: AD-integrated DNS → Azure DNS Private Zones (labeled \"zone-by-zone migration\"); IPAM → Azure DNS Private Zones dashed (labeled \"baseline inventory\"); ADCS → Cloud PKI (labeled \"template to profile mapping\"); Cloud PKI → Intune cert deployment; Azure DNS → Private Resolver. A separate top-right governance box \"OrgTree Registry (DnsBoundary, CertificateProfiles, MigrationPhase)\" feeds Azure DNS Private Zones and Cloud PKI. A bottom-right policy box \"Azure Policy + drift detection (tag compliance + cert-OrgPath alignment)\" is fed by Azure DNS and Cloud PKI, and itself feeds a final terminus \"Decommissioning Readiness Score (five-dimension quantified gate)\". Engineering blueprint style, fading slate fill on the top \"on-prem\" band to indicate decommissioning, federal navy (#1F3A5F) for Azure-native, amber (#D4A017) for the governance and gate boxes, 16:9 landscape." width="85%"}
+
+---
 
 ## Chapter 2 — DNS GOVERNANCE
 
@@ -585,6 +603,8 @@ The Azure Policy definition below is assigned at the subscription or management 
 
 The policy uses the Indexed mode, which evaluates only resources that support tags and location — all Private DNS Zone resources qualify. The anyOf condition in the policy rule means the zone is denied if any one of the four tags is absent, not only if all four are absent. This prevents partial tagging, which would pass a simpler existence check for a single tag while leaving the zone ungoverned on the remaining three dimensions.
 
+---
+
 ## Chapter 3 — CERTIFICATE SERVICES
 
 ### Certificate Governance — Mapping Template Coverage to Organizational Position
@@ -990,9 +1010,13 @@ Write-Host "  Report written: $OutputPath\scep-strongmapping-compliance.json"
 Disconnect-MgGraph
 ```
 
+---
+
 ## Chapter 4 — CROSS-SURFACE DRIFT DETECTION FOR INFRASTRUCTURE SERVICES
 
 ### Keeping DNS and PKI Coverage Aligned with the Governance Model
+
+![OrgPath across DNS records, certificate SANs, and Arc resource tags](images/12-orgpath-in-infrastructure-ser-diagram-02-orgpath-multi-surface-carriers.png){#fig-12-orgpath-in-infrastructure-services-diagram-02 fig-alt="Single-server topology showing OrgPath presence across three infrastructure surfaces. Center: a single server icon labeled srv01.eng.corp.com. Three arms radiate outward to three carrier boxes. Right arm to \"Azure DNS\" box: shows standard A and AAAA records alongside a TXT record OrgPath=/Engineering/Platform/Build-Servers. Bottom arm to \"Microsoft Cloud PKI\" certificate box: shows a sample certificate with Subject Alternative Name: dNSName=srv01.eng.corp.com, otherName:1.3.6.1.4.1.99999.1=OrgPath:/Engineering/Platform/Build-Servers. Left arm to \"Azure Arc resource\" box: shows resource tags OrgPath=/Engineering/Platform/Build-Servers and Environment=Production. All three carrier boxes have dashed arrows pointing back upward to a single shared box at the top labeled \"OrgTree registry (authoritative source)\". A note bar at the bottom reads \"Same OrgPath value across all three surfaces — one truth, three carriers.\" Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the registry, teal (#1A9E8F) for each of the three infrastructure surface boxes, amber (#D4A017) for the OrgPath value text in each carrier, monospace for record and tag syntax, no human figures, 16:9 landscape." width="85%"}
 
 ### The New Infrastructure Drift Categories
 
@@ -1140,6 +1164,8 @@ DeviceOrgPaths
 ::: {.callout-note title="Remediation Pathway for Certificate-OrgPath Drift"}
 When a device appears in the certificate-OrgPath drift query, the remediation sequence is straightforward. First, confirm that the device's OrgPath value in Entra ID is correct and reflects an intentional move, not an erroneous attribute update. Second, verify that the correct SCEP profile for the device's new OrgPath node is assigned to the corresponding branch group. Third, trigger an Intune synchronization on the device (through the Intune admin center or via the Sync-MgDeviceManagementManagedDevice cmdlet). The device will evaluate its profile assignments on the next check-in and begin the SCEP enrollment process for the new profile. The old certificate remains valid until it expires — it is not revoked automatically. If the old certificate grants access to resources scoped to the device's former organizational segment, those resources should be reviewed to confirm that continued access by the migrated device is appropriate.
 :::
+
+---
 
 ## Chapter 5 — THE DECOMMISSIONING READINESS SCORE
 
@@ -1468,6 +1494,8 @@ The operational response to the score follows a tiered framework. A score below 
 
 The formal decommissioning approval workflow requires sign-off from three parties: the infrastructure lead, who confirms that the score reflects current environment state and that no out-of-band changes have been made that are not captured in the registries; the security team, who confirms that the decommissioning does not introduce any gap in monitoring, authentication, or certificate validation coverage; and the application owners of any services that previously carried dependency map entries against the target component, who confirm that their workloads are operating correctly against the migrated infrastructure. Sign-offs are recorded as commits to the governance repository, creating an auditable record of the approval decision. The target component is decommissioned only after all three sign-offs are committed.
 
+---
+
 ## Chapter 6 — OPERATIONAL PROCEDURES
 
 ### Day-to-Day Governance of the DNS and PKI Surfaces
@@ -1497,6 +1525,8 @@ The OrgTree change request process, established in Part Three, is extended to co
 For node additions, the DNS team reviews the DnsBoundary field to determine whether the new zone will require any Forwarding Ruleset entries during the transition period. If the node represents an organizational boundary that corresponds to an existing on-premises DNS zone, the DNS team adds the corresponding forwarding rule to the Resolver Forwarding Ruleset as part of the change implementation, ensuring that Azure-hosted workloads can resolve names in the new zone's namespace immediately. The PKI team reviews the CertificateProfiles array to verify that the named profiles exist in Intune or that they are scheduled for creation before the change is approved. A change request that references a profile that does not yet exist in Intune is either deferred until the profile is created or approved conditionally with a tracking dependency on the profile creation work item.
 
 For node removals — when a department is dissolved, merged into another unit, or reorganized out of the OrgTree — the DNS and PKI handling is deliberately conservative. The corresponding Azure DNS Private Zone is not deleted at the time of node removal. Instead, its MigrationPhase tag is updated to Decommissioning, and the zone is held for a minimum of ninety days. During this period, the DNS team monitors the query log for the zone to determine whether any workloads are still resolving names against it. If queries continue after thirty days, the dependent workloads are identified and their owners are notified of the impending zone deletion. The ninety-day hold period gives application teams time to update their configurations before the zone is removed. Certificate profiles assigned to the archived node's branch group are reviewed at the time of node removal: any device that is a member of the archived branch group is migrated to its new node's branch group through the standard OrgPath update and group synchronization pipeline, and the new branch group's certificate profiles are evaluated to determine whether the migrating devices require certificates beyond those already provided by their new node's profile set.
+
+---
 
 ## Chapter 7 — SERIES SYNTHESIS (FINAL)
 
@@ -1617,3 +1647,11 @@ The following table provides a consolidated reference to all scripts, KQL querie
 | **Eight** | **DNS Governance, Cloud PKI, and the Complete Governance Model** | **Extended OrgPath to DNS and PKI infrastructure; delivered the Decommissioning Readiness Score framework; synthesized the complete model across all eight surfaces** |
 
 ### — End of Part Eight — End of Series —
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 11 — OrgPath in Security Operations](11-orgpath-in-security-operations.qmd) · [Index](index.qmd) · [Next: Chapter 13 — OrgPath and Power BI Reporting →](13-orgpath-and-power-bi-reporting.qmd)
+:::
