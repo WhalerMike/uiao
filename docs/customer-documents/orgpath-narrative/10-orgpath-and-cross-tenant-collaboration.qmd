@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+Governing B2B guests through the OrgPath stub model — partner registry, invitation-time stub stamping, three-tier Conditional Access by partner trust, device trust via Cross-Tenant Access Settings, quarterly access reviews, and Sentinel monitoring of the external subtree. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 1 — The Guest Identity Problem
 
 ### The Governance Blind Spot
@@ -29,6 +33,8 @@ This invisibility has two failure modes, and understanding both is prerequisite 
 
 Neither failure mode is acceptable for a production governance architecture. The first creates policy violations and potential compliance findings when internal controls are applied to external identities with different contractual and regulatory contexts. The second creates a monitoring and access control gap at precisely the boundary where external threat actors operate. B2B guests represent the most frequently exploited vector in cross-organizational compromise scenarios, and they are the population with the thinnest behavioral baseline in the tenant's identity protection signals.
 
+![B2B guest lifecycle with OrgPath governance](images/10-orgpath-and-cross-tenant-coll-diagram-02-b2b-guest-orgpath-lifecycle.png){#fig-10-orgpath-and-cross-tenant-collaboration-diagram-02 fig-alt="Left-to-right lifecycle timeline of a B2B guest with OrgPath governance, six stages connected by horizontal arrows. Stage 1 \"Invitation\" (envelope icon above): sponsoring business unit's admin sends invitation, label \"External partner accepts invitation\". Stage 2 \"Guest object created\" (person icon): Entra B2B guest user record, label \"Guest object created in tenant\". Stage 3 \"OrgPath assigned\" (tag icon): per guest-of-{sponsoring-business-unit} pattern, label \"/Guests/PartnerCorp/Sponsored-by-Engineering\". Stage 4 \"Policy inheritance\" (lock icon): Conditional Access + Intune profiles + access packages flow from the guest OrgPath, label \"Policies inherited from OrgPath\". Stage 5 \"Periodic access review\" (magnifier icon): reviewer selection scoped by the sponsoring OrgPath subtree, label \"Quarterly review by sponsoring OrgPath\". Stage 6 \"Automated offboarding\" (door icon): triggered when sponsoring OrgPath status changes or invitation expires, label \"Offboarded on OrgPath status change\". A horizontal bar spans the bottom of the diagram labeled \"OrgTree registry — sponsoring OrgPaths as governance source\" with dashed vertical lines connecting to stages 3, 4, 5, and 6. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for lifecycle stage boxes, teal (#1A9E8F) for guest-OrgPath operations, amber (#D4A017) for the governance source bar, monospace OrgPath strings, no human figures, 16:9 landscape." width="85%"}
+
 ### The Guest OrgPath Stub
 
 The solution introduced in this document is the Guest OrgPath Stub. Rather than forcing guest identities into the internal OrgTree — which would be architecturally incorrect, since guests are not members of the organizational hierarchy — the stub model defines a reserved, well-known path segment outside the organizational tree but within the same attribute namespace. Every guest object receives an OrgPath value in the form /EXTERNAL/B2B/{PartnerDomain}, where PartnerDomain is the registered internet domain of the partner organization from which the guest originates. A guest from contoso-partner.com receives the stub /EXTERNAL/B2B/contoso-partner.com. A guest from an unrecognized or unregistered domain receives the stub /EXTERNAL/B2B/UNREGISTERED.
@@ -40,6 +46,8 @@ The stub encodes four distinct pieces of information in a single string. The fir
 ### Document Scope
 
 This document covers seven chapters. Chapter Two defines the Guest OrgPath Stub model in full, including the partner registry schema, the invitation-time automation function that stamps the stub on newly created guest objects, and the dynamic group library that consumes the stub for policy targeting. Chapter Three defines the three-tier Conditional Access architecture enabled by OrgPath stub differentiation, with complete policy definitions for unregistered, standard, and high-trust guest populations. Chapter Four addresses device governance for guest users, explaining why Intune enrollment is unavailable to guests and how Cross-Tenant Access Settings and Mobile Application Management policies fill that gap, driven by the partner registry's risk tier classification. Chapter Five covers the guest lifecycle through Access Reviews, describing the sponsor linkage mechanism and the automated quarterly review configuration that ensures guest accounts are actively re-validated by internal stakeholders who own each partner relationship. Chapter Six presents the Sentinel monitoring architecture for the external OrgPath subtree, including a governance WatchList and three production-ready KQL queries. Chapter Seven addresses the pipeline handling of partner-level change events — reclassification, domain reassignment, and partner offboarding — and closes with a synthesis of how the stub model completes the governance substrate across all identity classes in the tenant.
+
+---
 
 ## Chapter 2 — The Guest OrgPath Stub Model
 
@@ -163,6 +171,8 @@ The dynamic group library for the /EXTERNAL subtree follows the identical struct
 The all-external branch group, named ORG-BRANCH-EXTERNAL-B2B, uses the membership rule user.extension\_{AppIdWithoutHyphens}\_OrgPath -startsWith "/EXTERNAL/B2B", where {AppIdWithoutHyphens} is the application ID of the directory extension registration with all hyphens removed, as required by Entra ID dynamic membership rule syntax. This group is used as the include scope for any policy that should apply uniformly to all guests regardless of partner, such as MAM App Protection Policies in Chapter Four. Each per-partner node group is named following the convention ORG-EXTERNAL-B2B-{PartnerDomainNormalized}, where the partner domain is normalized to uppercase with dots and hyphens replaced by hyphens for readability — for example, ORG-EXTERNAL-B2B-CONTOSO-PARTNER for the partner domain contoso-partner.com. The membership rule for this group is an equality match: user.extension\_{AppIdWithoutHyphens}\_OrgPath -eq "/EXTERNAL/B2B/contoso-partner.com". The unregistered group, named ORG-EXTERNAL-B2B-UNREGISTERED, uses the equality rule user.extension\_{AppIdWithoutHyphens}\_OrgPath -eq "/EXTERNAL/B2B/UNREGISTERED". This group is the highest-priority targeting scope in the Conditional Access tier structure, because unregistered guests represent the highest-risk population and must receive the most restrictive controls regardless of any other group membership.
 
 Dynamic group membership evaluation for OrgPath extension attributes is subject to the same propagation latency applicable to all Entra ID dynamic groups: membership is typically computed within minutes of the attribute write, but policy enforcement at the Conditional Access layer does not wait for group membership to settle before evaluating the session. For this reason, the invitation-time function stamps the OrgPath attribute before the guest's first sign-in attempt whenever possible. The Event Grid trigger path, which fires on the invitation audit event before the guest receives the invitation email, provides a sufficient window for group membership to propagate before the guest activates the invitation link. The Logic App custom task path, which fires synchronously during the invitation workflow, provides the same guarantee for invitation flows initiated through Lifecycle Workflow custom extensions.
+
+---
 
 ## Chapter 3 — Conditional Access for Guests by OrgPath Stub
 
@@ -289,6 +299,8 @@ Write-Host "All external CA policies created in Report-Only mode."
 Each tier policy must include the emergency access (break-glass) accounts in its exclude list, consistent with the exclusion pattern applied to all CA policies in the series. Confirm that the ORG-EXTERNAL-B2B-UNREGISTERED, standard-tier, and high-trust-tier groups are mutually exclusive by construction — a guest can only hold one OrgPath value, so membership in these groups is already exclusive. No additional exclusion logic between policies is required.
 :::
 
+---
+
 ## Chapter 4 — Device Governance and Cross-Tenant Access Settings
 
 ### Why Device Enrollment Is Unavailable to Guests
@@ -382,6 +394,8 @@ Write-Host "Cross-Tenant Access Settings synchronization complete."
 Because guest users cannot enroll in the host tenant's Intune, the mobile device management (MDM) enrollment-based App Protection Policy assignment model used for internal users is unavailable for the guest population. However, App Protection Policies configured for Mobile Application Management without enrollment (MAM-WE) can target any Entra ID identity in the directory, including guests, because they are enforced at the application layer by the Intune SDK built into managed applications rather than at the device layer by the MDM agent. The host organization's Intune instance can therefore publish MAM-WE App Protection Policies targeting the ORG-BRANCH-EXTERNAL-B2B dynamic group, and those policies will be delivered to managed applications — Microsoft Teams, Microsoft 365 apps, SharePoint — running on the guest's unmanaged device the next time the guest authenticates to that application.
 
 The MAM-WE policy targeting guests should enforce the following data protection controls at minimum: block clipboard operations from policy-managed applications to unmanaged applications on the device, require a PIN or biometric for application launch, disable backup of managed application data to personal cloud storage services, restrict screen capture within managed applications, and block the "Save As" function to locations not controlled by the host organization's managed storage policies. These controls do not require device enrollment, do not require the device to appear in Intune's device list, and do not conflict with the guest's home organization's MDM policy on the same device. They operate as an additional application-layer containment boundary for data accessed through the collaboration platform, ensuring that even if the guest's device is compromised or unmanaged, data accessed through managed applications cannot be trivially exfiltrated to unmanaged storage or applications on the same device.
+
+---
 
 ## Chapter 5 — Guest Lifecycle: Access Reviews and Expiration
 
@@ -504,6 +518,8 @@ Write-Host "Guest access review configuration complete."
 Entra ID Governance licensing is required for the Access Review features used in this configuration, specifically for the autoApplyDecisionsEnabled setting, the disableAndDeleteUserApplyAction apply action, and the recommendations engine. Confirm that the Entra ID Governance license is applied at the tenant level before deploying this script. Guest users themselves do not consume Entra ID Governance seats for Access Review purposes — only the host tenant's configuration requires the license.
 :::
 
+---
+
 ## Chapter 6 — Sentinel Monitoring for the External OrgPath Subtree
 
 ### Why the External Subtree Is a High-Priority Monitoring Surface
@@ -594,6 +610,8 @@ OfficeActivity
 ```
 
 Query One produces output that is appropriate for an operations team reviewing external collaboration activity at the start of each shift. The OrgPathResolved column captures guests whose WatchList entry is missing — typically due to a WatchList synchronization lag — under the /EXTERNAL/B2B/UNKNOWN sentinel value, distinguishing them from guests with a properly assigned /EXTERNAL/B2B/UNREGISTERED stub. A non-zero count in the UNKNOWN category is itself a monitoring signal indicating that WatchList maintenance has fallen behind directory state and requires attention. Query Two is an alert-generating rule. Its threshold of any risky sign-in from an unregistered guest reflects the policy stance of Chapter Three: unregistered guests have no behavioral history, no Cross-Tenant Access trust, and no verified identity security posture, and any Identity Protection risk signal from that population is therefore an event that warrants immediate investigation rather than queuing for a next-business-day review. Query Three uses a cohort baseline rather than a personal baseline because individual guest behavioral history is thin. The cohort — all guests sharing the same OrgPath stub — provides a more statistically meaningful reference frame: if three hundred guests from a given partner typically download forty files per day collectively, a single guest downloading four hundred files in one day is an outlier against the cohort norm even if that individual has no personal baseline for comparison. The three-times multiplier is a starting point; organizations with large guest populations and established cohort histories should tune the threshold based on observed alert rates during a validation period.
+
+---
 
 ## Chapter 7 — Pipeline Integration and Guest Mover Handling
 
@@ -720,3 +738,11 @@ Part Thirteen is the capstone aggregation layer. The governance architecture acr
 ### Author: Michael • Generated: 08 May 2026, 12:11 EDT • Location: Herald Harbor, MD
 
 All code samples are production-ready with placeholder values marked by inline comments. Substitute all values before deployment. All Conditional Access policies are created in Report-Only mode and must be reviewed before enforcement enablement.
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 9 — OrgPath and Azure Policy Guest Configuration](09-orgpath-and-azure-policy-guest-config.qmd) · [Index](index.qmd) · [Next: Chapter 11 — OrgPath in Security Operations →](11-orgpath-in-security-operations.qmd)
+:::
