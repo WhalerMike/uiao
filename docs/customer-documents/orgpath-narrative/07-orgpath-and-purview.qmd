@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+OrgPath as the scoping mechanism for Microsoft Purview — sensitivity labels, data loss prevention, retention schedules, and eDiscovery custodian sets — through Purview Adaptive Policy Scopes that evaluate against the OrgPath extension attribute on every user. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 1 — The Data Governance Gap: Why Purview Needs Organizational Structure
 
 ### The Scoping Problem in Microsoft Purview
@@ -40,6 +44,10 @@ The Adaptive Scope mechanism restores to Purview the same structural inheritance
 ### What This Document Establishes
 
 This document develops the full Purview integration across four capability areas, then describes the pipeline extensions and operational model required to keep that integration current. Chapter Two addresses sensitivity labels and label policies: how the two-layer label architecture works, how Adaptive Scopes deliver segment-specific labels to organizational segments without manual group maintenance, and the complete PowerShell implementation using the Security and Compliance PowerShell module. Chapter Three addresses Data Loss Prevention: why uniform DLP policies fail at enterprise scale, how the three-layer DLP architecture — baseline, restrictive overlay, and permissive carve-out — maps onto the OrgPath hierarchy, and the complete DLP policy and rule creation script for a representative high-sensitivity segment. Chapter Four addresses retention: why differentiated retention schedules are the most operationally significant Purview integration for compliance-obligated organizations, how the OrgTree node metadata carries retention policy definitions, and the complete script that creates retention policies and rules for every node in the registry that carries a retention requirement. Chapter Five addresses eDiscovery: how OrgPath transforms custodian identification from a manual enumeration process into a deterministic directory query, and the complete script that creates a Purview eDiscovery Premium case, populates the custodian list from an OrgPath scope query, and applies a legal hold to custodian content sources. Chapter Six describes the governance pipeline extensions that wire Purview into the same propagation model established for other integrations. Chapter Seven addresses the operational cadence and the compliance evidence the integrated model produces for audit purposes.
+
+![OrgPath-scoped sensitivity labels and DLP rule fan-out](images/07-orgpath-and-purview-diagram-02-orgpath-scoped-purview-fanout.png){#fig-07-orgpath-and-purview-diagram-02 fig-alt="Hub-and-spoke fan-out diagram. Center-left: a single hub labeled \"Purview policy registry\" (federal navy #1F3A5F) containing four sensitivity labels stacked vertically: Public (green), Internal (yellow), Confidential (orange), Restricted (red). Center-right: four OrgPath branch leaves arrayed vertically (teal #1A9E8F): /Finance, /HR, /Engineering, /Legal — each with a small sample policy bundle icon. Arrows from the hub to each branch leaf labeled (amber #D4A017) with the OrgPath scoping segment, e.g. \"scoped to OrgPath startsWith /Finance/\". Below each branch leaf: a small footer line showing an example tailored DLP rule pair — for /Finance: \"block egress of Restricted to non-corp domains; allow Confidential within Finance subtree\"; for /HR: \"block external send of personnel records; allow Confidential within HR subtree\"; for /Engineering: \"watermark Restricted source artifacts; allow Confidential within Engineering subtree\"; for /Legal: \"hold egress for review; allow Privileged within Legal subtree\". Engineering blueprint style, neutral slate background, no human figures, 16:9 landscape." width="85%"}
+
+---
 
 ## Chapter 2 — Sensitivity Labels and Label Policies by Organizational Segment: Differentiating Protection by Organizational Position
 
@@ -272,6 +280,8 @@ Deploy the organization-wide base label policy — publishing Public, Internal, 
 ### OrgTree Node Metadata Requirements for Label Policy Management
 
 The label policy synchronization script depends on two metadata properties being present on OrgTree nodes that require segment-specific label policies. The first is the boolean flag LabelPolicyBoundary, set to true on nodes where a segment-specific label policy should be created. Not every node in the OrgTree needs to be a label policy boundary — the branch inheritance model means that a single policy at the division level covers the entire division, so only the highest-level node that requires a segment-specific policy needs the flag. Subsidiary nodes inherit the division policy through the OrgPath filter; they do not need their own policies unless they require a different label set from their parent division. The second property is the array SegmentLabels, listing the names of labels to be published by the segment-specific policy, exactly as those label names appear in the Purview label catalog. These properties are added to node metadata through the standard OrgTree change request process, reviewed and approved by the governance team, before they are committed to the registry and trigger the pipeline.
+
+---
 
 ## Chapter 3 — Data Loss Prevention — Differentiated Rules by Organizational Position
 
@@ -523,6 +533,8 @@ TestWithNotifications
 mode and operated in simulation for a minimum of two weeks before enforcement is enabled. The Activity Explorer in the Purview compliance portal provides a simulation-period view showing every rule match that would have resulted in a blocking action. This view must be reviewed by the compliance team and the affected organizational segment's leadership before enforcement is enabled. Segments with legitimate high-volume workflows that match the rule conditions must receive exceptions — entered as permissive carve-out policies — before enforcement, not after. Enabling enforcement without simulation review is the most common cause of DLP-related productivity disruptions and should be treated as a change management failure, not a compliance success.
 :::
 
+---
+
 ## Chapter 4 — Retention — Enforcing Differentiated Schedules Through Organizational Structure
 
 ### Why Retention Is the Most Consequential Purview Integration
@@ -771,6 +783,8 @@ Write-Host "[$(Get-Date -f 'HH:mm:ss')] Disconnected."
 ### Retention Label Deployment Within the OrgPath Model
 
 The retention policies created by the script above are auto-apply retention policies: they apply the retention schedule automatically to all content in the covered locations without requiring users to manually apply a label. This is appropriate for most organizational segment retention requirements, where the obligation is uniform across all content generated by users in the segment. Retention labels — user-applied or auto-applied labels that classify individual items rather than entire mailboxes or sites — serve a complementary purpose within the OrgPath model. They are used for content categories that require a different retention schedule from the segment default: a specific contract type within the Legal segment that requires a longer retention period than the segment baseline, or a specific report type within Finance that triggers an event-based retention clock rather than a creation-date clock. The governance model treats retention policies as the segment-level default and retention labels as the item-level override, and the OrgPath attribute does not govern label application — it governs only the default policy that applies to unlabeled content in the user's content repositories.
+
+---
 
 ## Chapter 5 — eDiscovery — Using Organizational Position to Scope Investigations
 
@@ -1093,6 +1107,8 @@ SharePoint collaboration site holds — covering project workspaces, team sites,
 The OrgPath-based custodian identification method is a starting point for custodian scoping, not the final custodian list. Legal counsel must review and approve the custodian list before the hold policy is applied in any matter where the hold may be subject to challenge. The governance repository's record of the OrgPath query — including the OrgPath scope, the timestamp of the query, the directory state at that timestamp, and the resulting custodian list — provides the chain of custody documentation for the hold methodology. Preserve this record as a case artifact. The script output log should be committed to the case management system as the formal custodian identification artifact.
 :::
 
+---
+
 ## Chapter 6 — Wiring Purview into the Propagation Pipeline
 
 ### The Three Purview Pipeline Trigger Points
@@ -1202,6 +1218,8 @@ OfficeActivity
 
 The drift detection job validates Adaptive Scope configurations by querying the Security and Compliance PowerShell endpoint for all Adaptive Scopes in the tenant, extracting their filter expressions, and comparing each expression against the OrgTree registry. The validation logic parses the filter expression string to extract the OrgPath value it targets and checks whether that value matches a current, active node in the OrgTree registry. Scopes whose filter expressions reference OrgPath values that no longer appear in the registry — because a node was renamed, moved, or decommissioned — are flagged as orphaned and reported to the governance team for remediation. The remediation is either to update the scope's filter expression to match the node's new path or, if the node was decommissioned, to deactivate the associated policies and scopes through the decommission workflow established in Part Three.
 
+---
+
 ## Chapter 7 — Operational Considerations and Compliance Reporting: Running the Purview Governance Model
 
 ### The Operational Cadence
@@ -1239,4 +1257,12 @@ The OrgPath attribute — defined in Part Three, populated in Part Four, and ext
 
 ::: {.callout-note title="Part Ten Preview: Governance Reporting and Compliance Evidence"}
 Part Ten will cover the unified governance reporting layer that aggregates state data from all nine integrated services — OrgTree registry, Entra ID directory, PIM eligibility assignments, Lifecycle Workflows, Sentinel, Azure RBAC, Intune, Defender, DNS, Cloud PKI, and Purview — into a consolidated compliance evidence package. It will include the KQL workbooks, Power BI report models, and automated evidence generation scripts that produce the attestation artifacts required for internal audit, external audit, and regulatory examination. The OrgPath coverage report introduced in Chapter Seven of this document is the Purview component of that unified reporting package.
+:::
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 06 — OrgPath and the Defender Suite](06-orgpath-and-defender-suite.qmd) · [Index](index.qmd) · [Next: Chapter 07a — UIAO Beneath the Azure SSOT Stack →](07a-uiao-beneath-the-azure-ssot-stack.qmd)
 :::

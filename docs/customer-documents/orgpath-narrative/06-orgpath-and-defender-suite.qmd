@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+OrgPath as the organizational join key across Defender for Endpoint, Identity, Cloud Apps, Cloud, and Servers — and the cross-product correlation layer in Defender XDR and Microsoft Sentinel that turns siloed product telemetry into segment-aware security operations and OrgPath-aware response playbooks. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping
 
 ### MDE device group model and OrgPath alignment
@@ -24,6 +28,8 @@ lifecycle_review: 2026-11-22
 ### Dynamic group-backed MDE device group synchronization
 
 ### RBAC scoping patterns for organizational SOC roles
+
+---
 
 ## Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
 
@@ -33,11 +39,15 @@ lifecycle_review: 2026-11-22
 
 ### Surge detection across OrgPath segments
 
+---
+
 ## Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection
 
 ### Conditional Access App Control integration with OrgPath groups
 
 ### Per-segment anomaly detection thresholds
+
+---
 
 ## Chapter 5 — Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting
 
@@ -45,11 +55,15 @@ lifecycle_review: 2026-11-22
 
 ### Resource Graph queries for organizational security posture
 
+---
+
 ## Chapter 6 — The Unified Defender XDR View: Cross-Product Security Posture by OrgPath
 
 ### Unified KQL dashboard query
 
 ### Sentinel workbook design for organizational SOC operations
+
+---
 
 ## Chapter 7 — Automated Response Playbooks: OrgPath-Aware Incident Containment
 
@@ -57,11 +71,15 @@ lifecycle_review: 2026-11-22
 
 ### Tier-differentiated containment automation
 
+---
+
 ## Chapter 8 — The Complete Defender Integration Architecture
 
 ### End-to-end data flow from OrgTree to SOC analyst screen
 
 ### Operational properties delivered by the complete architecture
+
+---
 
 ## Chapter 1 — Security Signals Without Organizational Structure
 
@@ -90,6 +108,10 @@ An alert on a device whose OrgPath is /Root/Finance/Accounting arrives in the an
 An alert on a device whose OrgPath is /Root/Engineering/SecurityTesting during a pentest window can be automatically correlated against the pentest authorization record stored in the governance repository, suppressed from the active queue, and tagged as an authorized assessment event — all without analyst intervention — because the OrgPath value in the alert data matches the scope of the authorization record. This is not possible with device name patterns or IP address ranges, both of which are fragile and require constant maintenance. It is possible with OrgPath because OrgPath is derived from the authoritative organizational hierarchy and updated automatically when devices move between organizational units.
 
 The five chapters that follow describe exactly how this organizational context is introduced into each layer of the Defender suite. Chapter Two covers Defender for Endpoint device groups and the RBAC scoping model that gives organizational SOC roles bounded visibility into their assigned segments. Chapter Three covers Defender for Identity investigation enrichment — how OrgPath surfaces in the MDI entity profile and how Sentinel analytics rules fire differentiated alerts based on the organizational position of the affected identity. Chapter Four covers Defender for Cloud Apps session controls and anomaly detection, explaining how per-segment behavioral baselines are established through Conditional Access policy differentiation backed by OrgPath dynamic user groups. Chapter Five covers Defender for Cloud and Defender for Servers, showing how Azure Policy initiative targeting and Resource Graph queries use the OrgPath resource tag on Arc-enrolled servers to produce an infrastructure security posture view organized by organizational hierarchy. Chapter Six presents the unified cross-product KQL query that joins all Defender signal streams into a single organizational security posture dashboard. Chapter Seven presents the Logic App playbook architecture that reads OrgPath at incident creation time and drives contextually appropriate automated response based on the governance-controlled response matrix.
+
+![Cross-Defender-product correlation via OrgPath](images/06-orgpath-and-defender-suite-diagram-02-cross-defender-orgpath-correlati.png){#fig-06-orgpath-and-defender-suite-diagram-02 fig-alt="Cross-product correlation diagram. Top row of four boxes labeled with distinct cool tones — \"Defender for Endpoint\" (device signals, teal), \"Defender for Identity\" (identity signals, purple), \"Defender for Cloud Apps\" (SaaS signals, slate-blue), \"Defender for Cloud\" (cloud workload signals, indigo). Each top-row box emits an alert/event stream downward via a labeled arrow into a single rectangular middle layer \"Microsoft Sentinel correlation layer\" (federal navy #1F3A5F) spanning all four arrows, with text inside the rectangle reading \"Join key: OrgPath\". Below the Sentinel layer, a single box \"Organizationally-grouped incident view\" (amber #D4A017) shows an example incident card with the fields `OrgPath: /Finance/Washington`, `Cross-product signals: [device, identity, app]`, `Risk: High`. Engineering blueprint style, neutral slate background, no human figures, 16:9 landscape." width="85%"}
+
+---
 
 ## Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping
 
@@ -343,6 +365,8 @@ This arrangement produces several operational properties that are worth naming e
 MDE always maintains a built-in Ungrouped Devices group that captures devices not matched by any custom device group. In an OrgPath-governed environment, ungrouped devices represent assets whose OrgPath has not yet been assigned by the ETL pipeline — newly enrolled devices awaiting their first pipeline run, or devices that failed OrgPath assignment due to a registry gap. The Ungrouped Devices group should be monitored by a dedicated catch-all SOC role, and alerts from ungrouped devices should trigger an automatic OrgPath assignment ticket in the ITSM system. The goal is a zero-ungrouped-device steady state.
 :::
 
+---
+
 ## Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
 
 *Making MDI Alerts Organizationally Legible*
@@ -503,6 +527,8 @@ SecurityAlert
 ::: {.callout-note title="ⓘ Tuning the Surge Threshold"}
 The AlertThreshold value requires per-environment calibration. Run the surge query without the threshold filter for thirty days of historical data. Calculate the 95th-percentile hourly alert count per OrgPath segment. Set the threshold at twice that value for each segment. If the analytics rule supports parameterized thresholds per segment, create a lookup table in Sentinel that maps OrgPath prefixes to per-segment thresholds. A global threshold will either over-alert on high-activity segments like Infrastructure or under-alert on low-baseline segments like Executive where even five alerts in an hour is a significant anomaly.
 :::
+
+---
 
 ## Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection by Organizational Segment
 
@@ -713,6 +739,8 @@ CloudAppEvents
     UniqueApps
 | order by AnomalyEvents desc, SensitiveAccess desc
 ```
+
+---
 
 ## Chapter 5 — Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting
 
@@ -1006,6 +1034,8 @@ Write-Host "  Segments with Critical findings: $($output.CriticalSegments)"
 Write-Host "  Segments with High findings: $($output.HighSegments)"
 ```
 
+---
+
 ## Chapter 6 — The Unified Defender XDR View: Cross-Product Security Posture by OrgPath
 
 *One Pane of Organizational Security Truth*
@@ -1161,6 +1191,8 @@ The unified query above serves as the primary grid tile in a Sentinel workbook c
 - **Row 3 — Segment Detail (conditionally rendered on OrgPath selection):** Four sub-tiles showing the alert time series for MDE, MDI alert type breakdown, MDCA anomaly detail table, and the Defender for Cloud infrastructure finding count from the posture snapshot. This row is hidden until an analyst selects a specific OrgPath segment from the grid above.
 
 - **Row 4 — Unpositioned Assets:** A dedicated tile showing devices and users with no OrgPath assignment, their alert counts, and their last seen dates. This tile represents governance debt: every asset in this view should receive an OrgPath assignment through the pipeline before the next reporting cycle.
+
+---
 
 ## Chapter 7 — Automated Response Playbooks: OrgPath-Aware Incident Containment
 
@@ -1523,6 +1555,8 @@ The Logic App's system-assigned managed identity requires the following permissi
 • <strong>Azure DevOps or GitHub:</strong> Reader access to the governance repository — required for the response matrix retrieval action
 :::
 
+---
+
 ## Chapter 8 — The Complete Defender Integration Architecture
 
 *From OrgTree to Organizational Security Operations*
@@ -1581,3 +1615,11 @@ Part Eight of this series covers governance health monitoring: the dashboards, a
 | Azure Resource Graph | Search-AzGraph / resourcegraph.azure.com | Reader on subscription(s) | Chapter Five posture query |
 | Azure Policy — DINE Remediation | ARM deployIfNotExists managed identity | Security Admin on subscription | Chapter Five Defender for Servers policy |
 | Sentinel Incident Comment | Logic App azuresentinel connector | Microsoft Sentinel Responder | Chapter Seven Logic App playbook |
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 05 — OrgPath and Microsoft Intune](05-orgpath-and-intune.qmd) · [Index](index.qmd) · [Next: Chapter 07 — OrgPath and Microsoft Purview →](07-orgpath-and-purview.qmd)
+:::

@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+How OrgPath drives Microsoft Intune — node and branch dynamic groups for configuration profile and compliance targeting, Autopilot enrollment OrgPath assignment, scope-tag administration boundaries, and organizational compliance reporting that surfaces device posture by branch. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ![Autopilot-OrgPath-stamping enrollment sequence (user-derivation + hardware-hash...](images/05-orgpath-and-intune-image-02-autopilot-orgpath-stamping-enrol.png){#fig-05-orgpath-and-intune-image-02 fig-alt="Autopilot-OrgPath-stamping enrollment sequence (user-derivation + hardware-hash strategies). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
 
 
@@ -40,6 +44,8 @@ operator/spec reference.
 
 ### 2.4 New-OrgPathDeviceGroupLibrary.ps1
 
+---
+
 ## Chapter 3 — Assigning Every Intune Policy Surface to the Right Group
 
 ### 3.1 The Targeting Principle
@@ -52,6 +58,8 @@ operator/spec reference.
 
 ### 3.5 Update Ring Targeting
 
+---
+
 ## Chapter 4 — Getting OrgPath Right at Zero Touch: Enrollment Integration
 
 ### 4.1 The Autopilot OrgPath Challenge
@@ -59,6 +67,8 @@ operator/spec reference.
 ### 4.2 Strategy One: User-Derivation During Enrollment
 
 ### 4.3 Strategy Two: Hardware Hash Mapping for Shared Devices
+
+---
 
 ## Chapter 5 — Organizational-Position-Aware Device Posture Enforcement
 
@@ -68,11 +78,15 @@ operator/spec reference.
 
 ### 5.3 Programmatic Compliance Policy Creation
 
+---
+
 ## Chapter 6 — Extending the ETL Pipeline: Intune-Specific Post-Stamp Operations
 
 ### 6.1 What Changes When Intune Is in Scope
 
 ### 6.2 The Post-Stamp Pipeline Extension Script
+
+---
 
 ## Chapter 7 — Aligning Intune Administration Boundaries with OrgPath
 
@@ -81,6 +95,8 @@ operator/spec reference.
 ### 7.2 Scope Tag Naming and Creation
 
 ### 7.3 Scope Tag Assignment Script
+
+---
 
 ## Chapter 8 — Monitoring Device Compliance Through the Organizational Lens
 
@@ -94,6 +110,8 @@ operator/spec reference.
 
 ### 8.5 Operationalizing the Queries
 
+---
+
 ## Chapter 9 — Implementation Order and Production Readiness
 
 ### 9.1 Rollout Sequence
@@ -101,6 +119,8 @@ operator/spec reference.
 ### 9.2 Drift Detection Extensions
 
 ### 9.3 Series Closure
+
+---
 
 ## Chapter 1 — The Missing Inheritance Layer in Intune Device Management
 
@@ -137,6 +157,8 @@ This document builds the Intune integration layer of the OrgPath governance mode
 Chapter Two creates the dynamic device group library — the node and branch group pattern that expresses every node in the OrgTree as a pair of Entra ID dynamic security groups with membership rules that evaluate the OrgPath attribute. These groups are the universal targeting mechanism for every Intune policy surface. Chapter Three covers Intune policy targeting: how each policy surface in Intune — configuration profiles, compliance policies, endpoint security policies, application deployments, and update rings — maps to the group library, and what the correct targeting decision is for each. Chapter Four covers Autopilot enrollment integration: the specific challenge of stamping OrgPath on a device during Autopilot provisioning, before the device has completed enrollment, so that it enters the governance model correctly positioned from its first policy evaluation cycle. Chapter Five covers the Compliance and Conditional Access bridge: the pattern through which OrgPath-derived compliance policies become the device posture signal in organizationally contextual Conditional Access rules, so that the compliance standard a device is evaluated against reflects its organizational position. Chapter Six covers the pipeline extension: the additional operations the Part Four ETL pipeline must execute after stamping OrgPath, specifically requesting a device policy sync and updating the Intune device category to match the OrgTree node type. Chapter Seven covers scope tag administration delegation: the mapping of OrgPath segments to Intune scope tags for administrative boundary enforcement, so that divisional and departmental IT administrators can manage exactly their segment's devices and policies. Chapter Eight covers KQL dashboards: the Sentinel and Log Analytics queries that surface OrgPath-aware device compliance visibility, enabling the governance team to answer organizational questions about device posture that the native Intune compliance dashboard cannot answer. Chapter Nine covers the rollout sequence and operational notes for production deployment.
 
 ![Left-to-right flow diagram showing OrgPath fanning into Intune policy targeting](images/05-orgpath-and-intune-diagram-01-left-to-right-flow-diagram-showi.png){#fig-05-orgpath-and-intune-diagram-01 fig-alt="On the far left, three sequential boxes: OrgTree Registry (Git, versioned) → ETL Pipeline (derives + stamps) → Device OrgPath attribute (Entra extension schema). The Device OrgPath attribute fans rightward into a labeled group containing two dynamic group rows: ORG-NODE-{id} (OrgPath -eq prefix) and ORG-BRANCH-{id} (OrgPath -startsWith prefix). The Branch group fans rightward into a second labeled cluster \"Intune policy surfaces (all group-targeted)\" containing five boxes arranged vertically: Configuration profiles, Compliance policies, Endpoint Security (AV, FW, ASR, EDR), Update rings, App assignments. A dashed arrow from the Node group to Configuration profiles labeled \"node-only exceptions\". A separate downstream box \"Conditional Access (compliance signal)\" receives a single arrow from Compliance policies, indicating the bridge from device compliance into CA evaluation. Engineering blueprint style, monospace group names, federal navy (#1F3A5F) for substrate stages and teal (#1A9E8F) for Intune surfaces, 16:9 landscape." width="85%"}
+
+---
 
 ## Chapter 2 — The Dynamic Device Group Library
 
@@ -377,6 +399,8 @@ The bulk retrieval of existing groups using the startsWith filter is a deliberat
 
 The Sync-DeviceGroup function's rule comparison check — comparing the stored rule against the computed rule before issuing an update — is the mechanism that makes the script safe to run repeatedly. Without this check, every pipeline execution would issue an unnecessary update call for every group, which would trigger Entra ID's dynamic membership engine to re-evaluate membership for every group on every run, creating unnecessary processing load and audit log noise. With the check, the engine is triggered only when a rule genuinely changes, which occurs only when the OrgTree registry changes in a way that affects a node's path.
 
+---
+
 ## Chapter 3 — Intune Policy Targeting with OrgPath Groups
 
 ### Assigning Every Intune Policy Surface to the Right Group
@@ -492,6 +516,8 @@ Windows Update for Business update rings are the most naturally suited Intune po
 The Targeted ring is assigned to a specific technology unit's node group: the devices operated by engineers, developers, and systems administrators who have the expertise and tolerance for compatibility issues to serve as the earliest validators of a new Windows build. Because it is a node group assignment, only devices in that specific unit receive updates immediately. The Pilot ring is assigned to a specific department-level branch group selected for its organizational diversity and its members' technical literacy: it covers a meaningful cross-section of device configurations and applications without exposing the entire division to a potentially incompatible update. The Broad ring is assigned to the root-level branch group, which covers every managed device in the organization. Devices in the Broad ring receive updates only after the Targeted and Pilot rings have completed their validation waves without triggering a rollback or a pause. The ring assignments can optionally include a deadline-and-grace-period configuration that ensures devices in the Broad ring do not defer updates indefinitely if users repeatedly dismiss update prompts.
 
 The branch group targeting of the Broad ring has a particularly valuable operational property: new organizational units added to the OrgTree automatically receive the Broad ring's update cadence without any update ring assignment change. A device enrolled in a newly created department is in the root branch group from the moment its OrgPath is stamped, and therefore immediately in scope for the Broad ring update policy. The alternative — manually adding each new organizational unit's devices to the Broad ring's assignment — creates the risk that new devices are orphaned from update governance until the assignment is made, which in practice can mean weeks of unmanaged Windows Update behavior.
+
+---
 
 ## Chapter 4 — Autopilot Enrollment and OrgPath Stamping
 
@@ -677,6 +703,8 @@ A device's serial number is available during Autopilot provisioning via the Get-
 
 The quarantine node is a dedicated OrgTree node created specifically for devices that cannot be automatically positioned. Its OrgPath, /UNPOSITIONED, does not resolve to any productive organizational unit. The ORG-BRANCH-UNPOSITIONED group is assigned only a minimal configuration profile that does nothing harmful and a compliance policy that marks every member device as non-compliant immediately on evaluation. A Conditional Access policy blocks all resource access from non-compliant devices, which means any device that completes Autopilot without a valid OrgPath is automatically blocked from accessing organizational resources until the governance team reviews the device, assigns the correct OrgPath through the ETL pipeline, and the device re-evaluates its compliance state. The quarantine mechanism is not a punishment — it is the safety valve that ensures the governance model's integrity is never silently violated by a device that fell through the positioning logic.
 
+---
+
 ## Chapter 5 — The Compliance and Conditional Access Bridge
 
 ### Organizational-Position-Aware Device Posture Enforcement
@@ -837,6 +865,8 @@ Disconnect-MgGraph
 ```
 
 After the script runs, the policy ID is stored in the governance repository so that the pipeline can reference it for subsequent update and assignment operations without performing a display-name lookup on every run. Display-name lookups are fragile because policy display names can be edited through the portal, while the policy ID is immutable once assigned. The governance repository stores one policy ID file per managed compliance policy, and the pipeline fails with an explicit error if a required ID file is absent — which would indicate that either the policy has not yet been created or the ID file was accidentally deleted, both of which require a human decision before the pipeline can proceed.
+
+---
 
 ## Chapter 6 — Governance Pipeline Extension for Intune
 
@@ -1030,6 +1060,8 @@ Disconnect-MgGraph
 
 The audit log produced by this script serves two purposes. First, it creates a time-stamped record of every OrgPath change on Intune-enrolled devices, which is required for compliance reporting in environments where device governance decisions must be auditable. Second, it provides the raw data for the compliance-state-before-and-after analysis that the governance team runs quarterly to measure whether OrgPath reassignments are being handled correctly — whether devices that moved from a lenient segment to a stricter segment are showing the expected compliance state change within a reasonable time after the OrgPath stamp.
 
+---
+
 ## Chapter 7 — Scope Tags and Administrative Delegation
 
 ### Aligning Intune Administration Boundaries with OrgPath
@@ -1163,6 +1195,8 @@ Disconnect-MgGraph
 ```
 
 After scope tags are created and assigned to devices, the Intune role assignment configuration must be updated to associate each scope tag with the appropriate delegated administrator role and the appropriate user or group representing the divisional IT administrators. This step is performed once after the scope tags are created and is updated whenever the governance team adds a new scope-tag-bearing node to the OrgTree or changes the membership of a delegated administrator group. The role assignment configuration is documented in the governance repository's RBAC manifest and is managed using the same Graph API patterns established in the Part Five Azure RBAC integration.
+
+---
 
 ## Chapter 8 — KQL Dashboards for Intune and OrgPath Visibility
 
@@ -1321,6 +1355,8 @@ Query Three is rendered as a time series line chart in the same governance workb
 
 The OrgTree Watchlist referenced in Query Two is a critical operational dependency. The governance pipeline includes a step that exports the active node paths from the OrgTree registry to a CSV file and uploads it to Microsoft Sentinel as a Watchlist update using the Sentinel Watchlist API after every OrgTree change. If this Watchlist update step fails — due to an API error, a permissions issue, or a pipeline configuration problem — Query Two will produce false positives for every device in the organization, because no OrgPath value will match any row in the Watchlist. The pipeline monitors for Watchlist update success and raises a pipeline alert if the step fails, so the governance team can remediate before the nightly Query Two analytics rule runs and generates a spurious incident wave.
 
+---
+
 ## Chapter 9 — Rollout Sequence and Operational Notes
 
 ### Implementation Order and Production Readiness
@@ -1395,3 +1431,13 @@ The governance gap that Part One established, the requirements that Part Two spe
 | 10 | Commit audit and drift logs to governance repository | Git commit in pipeline CI/CD | Yes — halt on commit failure |
 
 Governance Architecture Series — Part Six of Eight \| OrgPath and Microsoft Intune — Structural Device Governance at Enterprise Scale \| Document date: 08 May 2026 \| Classification: Internal — Engineering Restricted \| This document is version-controlled in the governance repository. Do not distribute externally.
+
+![OrgPath-aware Intune targeting topology](images/05-orgpath-and-intune-diagram-03-orgpath-aware-intune-targeting.png){#fig-05-orgpath-and-intune-diagram-03 fig-alt="Four-tier left-to-right topology diagram of OrgPath-aware Intune targeting. Tier 1 (far left): a single box \"OrgPath attribute on device object (Entra extension schema)\". Tier 2 (center-left), a labeled cluster \"Dynamic group library\" containing four stacked box rows: ORG-NODE-{id} (exact match), ORG-BRANCH-{id} (prefix match), DEVICE-PLATFORM-{type}, COMPLIANCE-STATE-{state}. Each group connects rightward to Tier 3, a labeled cluster \"Intune assignment filters\" containing three stacked boxes: OS-version filter, device-make-model filter, ownership-type filter — each shown as a refinement overlay on incoming group membership. Tier 3 connects rightward to Tier 4, a labeled cluster \"Intune policy surfaces\" containing five stacked boxes: Configuration profiles, Compliance policies, Endpoint Security baselines, Update rings, App assignments. The four tiers are arranged horizontally with clear visual grouping and tier labels above each cluster. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the substrate/Entra tier, teal (#1A9E8F) for Intune policy surfaces, amber (#D4A017) for the assignment-filter overlays, monospace group names, no human figures, 16:9 landscape." width="85%"}
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 04 — Implementing OrgTree and OrgPath](04-implementing-orgtree-and-orgpath.qmd) · [Index](index.qmd) · [Next: Chapter 06 — OrgPath and the Defender Suite →](06-orgpath-and-defender-suite.qmd)
+:::
