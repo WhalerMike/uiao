@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+Governing app registrations, service principals, and managed identities by OrgPath ownership — admin-consent routing, semi-annual access reviews scoped by organizational segment, orphan detection, credential drift, and Sentinel watchlist monitoring for the application-identity class. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 1 — The Application Identity Governance Gap
 
 ### The Ungoverned Identity Class
@@ -52,6 +56,10 @@ The second integration point is the resource OrgPath. For managed identities ass
 ### Document Roadmap
 
 Chapter Two defines the ownership model in full and establishes the pipeline that extends the OrgPath schema to application objects, inventories all app registrations against ownership status, and stamps the OrgPath owner attribute on each registration through a triage-driven assignment workflow. Chapter Three addresses consent policy governance — how the OrgPath stamped on application objects enables a more precise consent policy model than the tenant-wide binary setting and how the admin consent workflow is configured to route consent requests to OrgPath-designated approver groups. Chapter Four covers Access Reviews for application permissions: scoped by owning OrgPath node, configured with a default-deny outcome, and organized to ensure that the most dangerous permission grants receive periodic attestation from the teams accountable for them. Chapter Five describes the orphan and drift detection pipeline that identifies app registrations whose OrgPath references a deactivated OrgTree node, registrations with no OrgPath at all, and registrations whose credential health signals abandonment. Chapter Six addresses managed identity governance specifically, including the Azure Policy that enforces OrgPath tags on user-assigned managed identities and the way the drift detection scope extends to cover managed identities. Chapter Seven presents the Sentinel monitoring layer: KQL queries that surface application authentication anomalies with organizational context, populated by a WatchList that maps the OrgPath inventory to Sentinel at query time.
+
+![Service principal lifecycle with OrgPath stamping at each stage](images/08-orgpath-and-application-ident-diagram-02-sp-lifecycle-orgpath-stamping.png){#fig-08-orgpath-and-application-identity-diagram-02 fig-alt="Left-to-right timeline diagram showing the lifecycle of a service principal with OrgPath stamping at each stage. Six lifecycle stages laid out in horizontal sequence (federal navy #1F3A5F boxes), each with a small icon above and a one-line OrgPath operation label below in monospace (teal #1A9E8F): Stage 1 — App registration (developer creates registration; OrgPath operation: `stamps` from owning team's OrgPath); Stage 2 — Consent grant (admin consents; OrgPath operation: `captures` in consent audit record); Stage 3 — Service principal creation (per-tenant SP instantiated; OrgPath operation: `copies` from app registration); Stage 4 — Permission assignment (Graph/Azure permissions assigned; OrgPath operation: `scopes` eligible permissions); Stage 5 — Access reviews (periodic; OrgPath operation: `selects` reviewers by OrgPath subtree authority); Stage 6 — Decommission (OrgPath operation: `queries` dependent services in dependency map; SP retired). Beneath the six stages spans a single horizontal bar (amber #D4A017) labeled \"OrgTree registry as authoritative source\", with a single upward arrow into the timeline indicating every stage references the registry. Engineering blueprint style, neutral slate background, no human figures, 16:9 landscape." width="85%"}
+
+---
 
 ## Chapter 2 — Ownership Model and OrgPath Stamping
 
@@ -316,6 +324,8 @@ Disconnect-MgGraph
 After each stamping run, the pipeline should regenerate the Sentinel WatchList described in Chapter Seven. The WatchList is the bridge between the Graph-side OrgPath attribute and the Sentinel KQL environment; stale WatchList data means that newly stamped applications will continue to appear as UNOWNED in monitoring queries until the refresh completes. Schedule the WatchList refresh as a downstream step in the stamping pipeline or as a nightly automated task.
 :::
 
+---
+
 ## Chapter 3 — App Consent Policy Governance by OrgPath
 
 ### The Entra ID Consent Model
@@ -418,6 +428,8 @@ Disconnect-MgGraph
 ::: {.callout-note title="Architecture Note: Permission Grant Policies"}
 For tenants with Entra ID Governance licensing, the permission grant policy framework — accessible via POST /policies/permissionGrantPolicies — provides a more granular mechanism for pre-approving specific permission sets for specific organizational segments. The OrgPath model integrates naturally with this framework: the policy condition set references the OrgPath of the application's owner, and the permitted permission set is scoped to the delegated permissions appropriate for that organizational segment. This is the recommended approach for engineering and platform teams that require broad self-service consent latitude within a defined permission envelope.
 :::
+
+---
 
 ## Chapter 4 — Access Reviews for Application Permissions
 
@@ -543,6 +555,8 @@ Disconnect-MgGraph
 ::: {.callout-note title="Important: Reviewer Preparation"}
 The effectiveness of application permission reviews depends almost entirely on reviewer preparation. Unlike user access reviews where reviewers can rely on context they already have (they know whether the user is still on the team), application permission reviews require reviewers to understand what each service principal does and whether each permission grant is necessary for its operation. The governance team should maintain a supplemental application catalog — a plain-language description of each governed application, its purpose, and its expected API permission profile — and make it available to reviewers at review launch. Applications whose permission grants have not changed since the last review cycle should be surfaced with a recommendation of Approve; applications with new permission grants since the last review should be surfaced with a recommendation of Deny, requiring the reviewer to affirmatively confirm that the new grant is appropriate.
 :::
+
+---
 
 ## Chapter 5 — Orphan Detection and Credential Drift
 
@@ -676,6 +690,8 @@ The drift report output drives a two-track remediation workflow. Critical findin
 
 High findings — applications with either an invalid OrgPath condition or expired credentials, but not both — are routed to the governance team for ownership triage. The triage process follows the same workflow as Phase Zero: the governance team reviews the finding, identifies the correct owning OrgPath from organizational context (the application's display name, its creator's department, its API permission profile, and any Azure resource tags on associated resources all provide attribution signals), and either stamps the correct OrgPath or, if no valid owner can be identified, promotes the finding to the Critical track for immediate disable and decommissioning inquiry.
 
+---
+
 ## Chapter 6 — Managed Identity Governance
 
 ### System-Assigned vs. User-Assigned Governance Posture
@@ -731,6 +747,8 @@ The drift detection scope in the pipeline established in Chapter Five should be 
 ::: {.callout-note title="Operational Note: RBAC Role Assignment Audit for Managed Identities"}
 The drift detection pipeline for managed identities should be extended to emit the role assignments held by each managed identity alongside its OrgPath validity status. A managed identity with a valid OrgPath and appropriate role assignments requires no action. A managed identity with a valid OrgPath and role assignments at a subscription scope broader than expected — for example, a Contributor role at the subscription level for a managed identity that should have storage-scoped access only — should be surfaced as a permission drift finding. The Get-AzRoleAssignment -ObjectId &lt;ManagedIdentityObjectId&gt; call produces this information and can be added to the drift report output with minimal pipeline modification.
 :::
+
+---
 
 ## Chapter 7 — Sentinel Monitoring for Application Identity Anomalies
 
@@ -835,3 +853,11 @@ The three queries above establish the organizational and operational context lay
 With the application identity governance layer in place, every identity type in the Entra ID tenant now carries OrgPath context — users, devices, servers, guests, and applications, managed identities included. The governance substrate governs not just who the identity is and where it sits in the organizational hierarchy, but who is accountable for it, when its permissions were last reviewed, whether its credentials are current, and whether its organizational anchor remains valid. The drift detection pipelines that span user OrgPath, device OrgPath, server OrgPath, guest OrgPath, and now application OrgPath run in coordinated sequence, produce a unified governance dashboard, and surface findings to the organizational teams that have the context and authority to remediate them. Sentinel ties the monitoring layer together: every security event in the tenant — whether it originates from a user, a device, or an application — can now be contextualized with the OrgPath of the identity involved, enabling the security operations team to triage with organizational precision rather than working from raw identity attributes.
 
 Part Twelve addresses the final machine-state gap in the series: using OrgPath tags on Arc-enrolled servers to drive DSC-based configuration enforcement through Azure Policy Guest Configuration packages. Where Part Five established the tagging model and the policy compliance reporting layer, Part Twelve closes the enforcement loop — using the OrgPath of each enrolled server to select the correct DSC configuration package for its organizational segment, apply it through the Guest Configuration extension, and report compliance state back to the governance dashboard in organizational terms. The OrgTree defines the desired state of the organization; DSC Guest Configuration enforces the desired state of the machines the organization operates.
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 07a — UIAO Beneath the Azure SSOT Stack](07a-uiao-beneath-the-azure-ssot-stack.qmd) · [Index](index.qmd) · [Next: Chapter 09 — OrgPath and Azure Policy Guest Configuration →](09-orgpath-and-azure-policy-guest-config.qmd)
+:::
