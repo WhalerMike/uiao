@@ -17,6 +17,10 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+::: {.callout-note}
+A practical implementation guide for the governance substrate — infrastructure prerequisites, AD-discovery toolset (native plus BloodHound, Tenable, Semperis), schema extensions, initial OrgTree construction from assessment output, and the dynamic-group library that turns OrgPath into hierarchical policy targeting. Companion to the [Old AD vs New EntraID foundational reference](../learning/old-ad-vs-new-entra-reference.qmd).
+:::
+
 ## Chapter 1 — Laying the Foundation — What Must Be in Place Before Implementation Begins
 
 This document describes how to build OrgTree and OrgPath. The proposal in Part Three described both constructs as architectural ideas — OrgTree as a versioned, authoritative registry of organizational structure, and OrgPath as a validated attribute stamped on every identity and resource object in the environment to express that object's position in the registry. Those descriptions were necessarily abstract. Architecture describes what a system is and why it should exist. An implementation guide describes how to make it real, in sequence, with specific tools, specific commands, and specific decisions that carry consequences. That is the purpose of this document.
@@ -34,6 +38,8 @@ The third precondition is infrastructural: the platform infrastructure described
 ::: {.callout-note title="Three Preconditions Checklist"}
 Before advancing beyond this chapter: (1) confirm that all team members have read Parts One through Three; (2) confirm that an authoritative organizational chart or structure document has been obtained and a working session with its owner has been scheduled; and (3) confirm that the infrastructure provisioning plan from Chapter 2 has been drafted and approved. All three must be satisfied before implementation work begins.
 :::
+
+---
 
 ## Chapter 2 — Infrastructure Requirements for the Governance Pipeline
 
@@ -62,6 +68,8 @@ The automation server's network access requirements are specific and must be val
 ::: {.callout-note title="Connectivity Validation Is Not Optional"}
 Connectivity failures discovered during pipeline execution are dramatically more disruptive than connectivity failures discovered during the provisioning validation phase. A pipeline that silently fails to reach a domain controller will produce assessment output that appears complete but is missing objects from unreachable sites. Validate every connection requirement explicitly before proceeding.
 :::
+
+---
 
 ## Chapter 3 — The Software Layer — What Must Be Installed and Configured
 
@@ -96,6 +104,8 @@ With the application registered, each extension property is created by posting t
 ### Scheduling and Automation Platform
 
 Pipeline jobs are scheduled using Windows Task Scheduler on the automation server. The Task Scheduler library should contain a dedicated folder named GovernancePipeline with separate tasks for the daily drift detection run (scheduled at a consistent off-peak time, such as 02:00 local time), the weekly full assessment refresh run (scheduled for a weekend morning), the event-triggered OrgPath propagation job (triggered by a webhook delivery from the Git repository when the OrgTree file is committed to main), and the monthly dependency map reconciliation. Windows Task Scheduler supports both time-based triggers and custom event triggers, but it does not natively handle inbound webhook calls. The event-triggered propagation job requires a small listener component — a minimal HTTP endpoint running on the automation server that receives the webhook POST from the Git service and invokes the PowerShell propagation script. This listener can be implemented as a Windows service using the HttpListener class in a compiled .NET application, or as a simple NSSM-wrapped PowerShell HTTP server for less demanding deployments. Organizations with an existing automation platform — Jenkins, Azure Automation, GitHub Actions, or Gitea Actions — may prefer to run pipeline jobs there instead. The pipeline scripts are platform-agnostic PowerShell that accept parameters; the scheduling mechanism is an operational choice. What is not optional is the event-driven trigger for OrgTree changes: when the OrgTree registry is updated and committed to main, the OrgPath propagation must begin within minutes. A fixed polling schedule that checks for changes every hour introduces unacceptable lag when a large organizational restructuring event is committed and thousands of users need their OrgPath values updated simultaneously.
+
+---
 
 ## Chapter 4 — Capturing Current State — What Microsoft Provides for AD Discovery
 
@@ -137,6 +147,8 @@ Azure Migrate serves two assessment functions. The Azure Migrate appliance — a
 
 For environments using Entra Connect sync — the hybrid identity synchronization service that replicates on-premises Active Directory objects into Entra ID — the Entra Connect Health service provides monitoring of the synchronization agent's health and, critically for the assessment, detailed visibility into the attribute flow between the on-premises directory and the cloud directory. The Connect Health portal displays the synchronization rules in effect, the objects in scope for synchronization, and the attribute-level flow details for each synchronized object type. Most relevantly for the OrgPath implementation, it surfaces synchronization errors: objects in the on-premises directory that are failing to synchronize because of attribute conflicts, duplicate attribute values, format violations, or scoping rules that exclude the object. These errors represent objects that will not receive OrgPath values through the synchronization pipeline even after the attribute is populated on the on-premises AD object — they are exceptions that must be handled separately. Reviewing the Connect Health error dashboard before beginning OrgPath implementation identifies the scale of this exception population and allows the engineering team to remediate the underlying synchronization problems before the OrgPath ETL pipeline runs, rather than discovering them as silent failures after the fact.
 
+---
+
 ## Chapter 5 — Beyond the Native Toolset — Specialized Assessment Instruments
 
 ### Why the Native Toolset Is Insufficient on Its Own
@@ -167,6 +179,8 @@ LDAPDomainDump
 
 LDAPDomainDump is an open-source Python tool available from the GitHub repository at github.com/dirkjanm/ldapdomaindump that performs a bulk LDAP dump of an Active Directory domain and outputs the results as JSON files organized by object type: separate files for users, groups, computers, GPOs, OUs, and trusts. It is particularly useful for large domains — environments with tens of thousands of objects — where running interactive PowerShell queries against a domain controller carries real performance concerns, because LDAPDomainDump performs a single bulk LDAP query for each object type using the python-ldap library and writes all results to disk for offline analysis, rather than maintaining a persistent session against the domain controller for the duration of the collection. It runs on any platform with Python 3 installed and connects to any LDAP-accessible domain controller using credentials provided on the command line: python ldapdomaindump.py -u DOMAIN\\username -p password ldap://{dcIPAddress}. The JSON output format is directly consumable by the OrgTree construction pipeline without transformation. For very large environments — domains with more than fifty thousand objects — LDAPDomainDump's bulk collection approach produces consistent results more reliably than iterating through PowerShell pipelines that may timeout or be interrupted by session limits on busy domain controllers.
 
+---
+
 ## Chapter 6 — Running the Assessment — Sequence, Privilege, and Output Structure
 
 ### A Phased Approach to Privilege
@@ -191,6 +205,8 @@ Assessment output should be organized in a directory structure that reflects the
 Assessment output should be committed to the governance repository as each phase and each tool completes, not accumulated and committed in bulk at the end of the assessment. Intermediate commits allow the team to review progress, identify gaps in coverage while the assessment is still running, and preserve partial output if the assessment must be interrupted and resumed. Each commit message should be descriptive: "Phase Zero: PingCastle health check, corp.contoso.com, 2026-05-08" rather than "assessment data."
 :::
 
+---
+
 ## Chapter 7 — Constructing the Initial OrgTree — From Assessment Data to Authoritative Registry
 
 ### The Intellectual Work That Precedes the Technical Work
@@ -213,6 +229,8 @@ The OrgTree is stored as a YAML document whose top-level structure is a mapping 
 
 The initial OrgTree population proceeds in four steps. In the first step, the OU hierarchy from the assessment — the complete set of OU DistinguishedName strings from the Get-ADOrganizationalUnit output — is loaded into a spreadsheet alongside each OU's object counts and GPO link count from the ADRecon output. The engineering team and organizational stakeholders review this spreadsheet in working sessions and classify each OU as a governance boundary candidate or an administrative container, adding notes for ambiguous cases. In the second step, the governance boundary candidates are mapped to the OrgTree schema. Each candidate receives an id — determined collaboratively, with attention to uniqueness, brevity, and recognizability — a type, and a parentId that reflects the candidate's position in the organizational hierarchy. This mapping should be done in the spreadsheet before the YAML is written, to allow stakeholders to validate the structure before it is committed. In the third step, the initial YAML file is constructed from the mapped nodes, reviewed by the governance team lead, and committed to the governance repository as the version 1.0 OrgTree, with a commit message that records the date and the participants in the construction process. In the fourth step, the pipeline's validation script reads the committed OrgTree and performs four checks: it confirms that every parentId references a node that exists in the registry, that there are no cycles in the parent chain (a node that is its own ancestor), that every id is unique within the registry, and that every id matches the required character format. It then computes the path field for every node and writes a validated, path-enriched artifact to the pipeline output directory for human review. Any validation failures are reported as pipeline errors and must be resolved before the ETL phase begins.
 
+---
+
 ## Chapter 8 — The OrgPath Attribute — Registration, Format, and Validation
 
 ### Schema Extension Registration
@@ -232,6 +250,8 @@ Every OrgPath value written to the directory is validated against the regular ex
 ### The OrgNodeId, OrgDepth, and OrgLastValidated Attributes
 
 The three supplementary extension attributes are written alongside OrgPath in every ETL operation. The OrgNodeId value is the id of the leaf node in the OrgPath — the last segment of the path string, extractable by splitting on the forward-slash delimiter and taking the last element. It is stored as a separate attribute to support efficient Graph API filter queries against a specific node without requiring a string suffix match, which is not supported by the Graph API's \$filter syntax. A query to retrieve all users at exactly the MKTDIG node uses the filter extension\_{appId}\_OrgNodeId eq 'MKTDIG', which is a supported equality filter and executes efficiently at directory scale. The OrgDepth value is the count of segments in the OrgPath — for /COMM/MKT/MKTDIG, the depth is three. It is stored to support depth-bounded queries: retrieving all users at depth two or shallower retrieves only division and department-level placements, which is useful for organizational reporting that needs a coarse-grained view of the population distribution. The OrgLastValidated value is the ISO 8601 timestamp of the most recent drift detection run that successfully validated this object's OrgPath value against the current OrgTree. Objects whose OrgLastValidated value is more than forty-eight hours old at drift detection time are flagged as potentially stale, even if their OrgPath value itself appears valid, because it is possible that the OrgTree was updated in a way that retroactively invalidated the path without the pipeline successfully re-validating the object.
+
+---
 
 ## Chapter 9 — The ETL Pipeline — Deriving and Stamping OrgPath Values at Scale
 
@@ -257,6 +277,8 @@ In the Audit stage, the pipeline produces a summary JSON report named etl-report
 
 The Microsoft Graph API enforces throttling at the tenant level, with limits that vary by endpoint and by the number of concurrent callers. When the pipeline receives a 429 response from a batch request, it reads the Retry-After header value from the response — which specifies the number of seconds the client must wait before retrying — and pauses execution for that duration using Start-Sleep -Seconds \$retryAfterValue. After the pause, it retries the failed batch. The pipeline implements a maximum of five retry attempts per batch before marking all objects in the batch as failed and proceeding. The retry logic is implemented as a function Invoke-GraphBatchWithRetry that accepts a batch request array and returns a result array with per-request success or failure status. This function is called by the Load stage for every batch. The pipeline is also designed to be re-run safely from any point of failure: because the Extract stage reads the current extension attribute values on all objects and the Transform stage skips objects that already carry a current, valid value, a pipeline run that fails at the Load stage due to an unrecoverable error can be restarted from scratch without re-processing the objects that were successfully written in the partial run.
 
+---
+
 ## Chapter 10 — From OrgPath to Policy Targeting — The Dynamic Group Library
 
 ### What the Dynamic Group Library Accomplishes
@@ -274,6 +296,8 @@ The dynamic group library is created by the pipeline script New-OrgGroupLibrary.
 ### Group Library Maintenance Lifecycle
 
 The group library is a living construct that changes as the OrgTree changes. When a new node is added to the OrgTree and the change is merged to main, the post-receive webhook fires the propagation pipeline. The propagation pipeline reads the new OrgTree, identifies nodes that do not have corresponding entries in the group registry, creates the node and branch groups for those new nodes using the same POST sequence described above, and updates the group registry with the new group IDs. When a node is renamed in the OrgTree — its name field changes but its id field does not — the propagation pipeline updates the displayName of both associated groups using a PATCH to /v1.0/groups/{groupObjectId} with a JSON body containing only the updated displayName. The membershipRule does not change, because it is based on the node's id and path, neither of which changes when the display name changes. When a node is deprecated in the OrgTree, the propagation pipeline updates the description field of both groups to include a deprecation notice including the effective date, but does not delete the groups — active policy assignments may reference them during the transition period, and deleting them would immediately remove those policy targets. When a node is archived, the propagation pipeline first queries the Graph API to confirm that neither group is referenced in any current Conditional Access policy, Intune assignment, or Entitlement Management access package — using the /v1.0/groups/{groupId}/transitiveMemberOf endpoint and the policy assignment endpoints — and only proceeds with deletion after confirming no active references exist.
+
+---
 
 ## Chapter 11 — Keeping the Model True — Implementing Continuous Drift Detection
 
@@ -293,6 +317,8 @@ The drift detection output organizes its findings into four categories, each wit
 
 The drift report is a JSON file named drift-report-{YYYYMMDD-HHMM}.json written to the -OutputPath directory and then committed to the governance repository under drift-reports/{YYYY}/{MM}/. The report's JSON structure contains a header object with the run start timestamp, the run end timestamp, the SHA-256 hash of the OrgTree YAML file used for the comparison (which binds the report to a specific version of the organizational model), and summary counts for each severity level. Below the header is an array of finding objects, each containing the Entra object ID, the user principal name or device name, the object type (User or Device), the current OrgPath value (or null if the attribute is absent), the OrgNodeId value, the finding category, the severity, and a recommendedAction string that describes the corrective action: for InvalidPath findings, the recommendation is to investigate provisioning records and apply the correct OrgPath using the manual remediation script; for Unpositioned findings, the recommendation is to determine the object's organizational assignment from HR or provisioning records and run the assignment pipeline; for StalePosition findings, the recommendation is to identify the new node assignment resulting from the deprecation event and update the OrgPath. Critical and High findings trigger an email notification through the Graph API to the governance team's distribution list within five minutes of the script completing, using a PATCH to /v1.0/users/{serviceAccountId}/sendMail with a structured HTML email body summarizing the Critical and High finding counts and linking to the drift report in the repository.
 
+---
+
 ## Chapter 12 — OrgPath as a Resource Tag — Extending the Model to Arc-Managed Servers
 
 ### The Arc-Specific Implementation
@@ -309,6 +335,8 @@ The Arc tag population pipeline is a component of the daily drift detection and 
 
 For servers that are simultaneously domain-joined on-premises, registered in Entra ID as hybrid-joined devices, and enrolled in Azure Arc, the OrgPath value exists on all three management surfaces: the Active Directory computer object (in a custom attribute populated by the on-premises pipeline), the Entra ID device object (in the directory schema extension attribute), and the Arc resource tag. The drift detection run's three-surface reconciliation check queries all three sources for each qualifying server and confirms that all three carry the same OrgPath value. Any divergence between the three values generates a High severity finding in the drift report. Divergence is most commonly caused by a race condition during an OrgPath update — one surface is updated by the ETL pipeline before the others, and the drift detection run executes during the window between the first write and the last — but it can also indicate a more serious problem: a server that was manually re-enrolled in Entra ID (losing its extension attribute values), an Arc resource that was deleted and re-created (losing its tags), or a domain computer object that was moved to a different OU and had its on-premises custom attribute reset. The three-surface check is what makes these edge cases visible, and its High severity classification ensures they receive attention at the next morning's review.
 
+---
+
 ## Chapter 13 — Building and Maintaining the Infrastructure Dependency Map
 
 ### Initializing the Dependency Map from Assessment Data
@@ -322,6 +350,8 @@ Each record in the dependency map YAML files contains six mandatory fields. The 
 ### Ongoing Dependency Map Maintenance
 
 The dependency map is maintained through two concurrent mechanisms that together keep it accurate as the environment evolves. The first is the planned maintenance workflow. When the engineering team resolves a dependency — migrating an application from NTLM to modern authentication, replacing a service account credential with a managed identity, decommissioning a server whose consumers have been migrated to a new endpoint — the resolving engineer updates the dependency record in the YAML file, sets the status to Resolved, populates the resolution fields, and commits the change to the governance repository with a commit message that references the associated change management ticket. The change is reviewed in the next governance team meeting to confirm the resolution is complete and that no residual consumer traffic has been observed in the network monitoring data. The second mechanism is the discovery workflow. The drift detection pipeline includes a dependency discovery component that runs weekly. It calls the Azure Migrate API to retrieve the most recent network flow data collected by the Migrate appliance, compares the observed server communication patterns against the current dependency map records, and identifies flows that are not represented in any existing record. Each newly discovered flow generates a draft dependency record with status Active and a discoveredBy field noting that the record was pipeline-created, and commits it to the governance repository as an open finding for the engineering team to classify, annotate, and assign for remediation. This continuous discovery approach ensures that the dependency map stays comprehensive even as new integrations are created outside of the formal change management process.
+
+---
 
 ## Chapter 14 — Running the Governance Pipeline — Operational Procedures and Ongoing Maintenance
 
@@ -345,6 +375,8 @@ The governance pipeline infrastructure requires periodic maintenance to remain o
 One of the most valuable properties of the governance pipeline is that it produces a complete, version-controlled governance record as a natural byproduct of its normal operation — not as a separate reporting effort. Every OrgTree change, every ETL run, every drift report, every propagation event, and every manual remediation is committed to the repository with authorship, timestamp, and context. This record is the organization's governance audit trail. It can answer questions that would otherwise require reconstructing history from scattered logs: when was the Marketing department split into two units? Which objects were Unpositioned for more than a week after the last major provisioning event? When did the OrgPath value for a specific user change, and why? The record exists without any special effort to create it, because the pipeline creates it as it operates. Protecting and retaining this record is an operational responsibility with governance consequences.
 :::
 
+---
+
 ## Chapter 15 — What Has Been Built — A Summary of the Governance Substrate in Operation
 
 Consider what the organization now possesses that it did not possess before this implementation. The starting point was an Active Directory environment whose structural model — the OU hierarchy that organized everything the directory governed — existed only inside the directory itself, was never formally versioned, was never change-controlled in a way that preserved the reasons for each structural decision, and could not be projected beyond the boundary of AD-aware tools. That model had served well for everything it was designed to serve. But the tools the organization now relies on for endpoint management, identity governance, conditional access, and hybrid server management do not read the OU hierarchy. They have no equivalent construct. They cannot natively answer the question of where an identity belongs in the organization's structure, because that structure was never expressed in a form they could consume.
@@ -365,4 +397,14 @@ What the organization has built is the layer that the Microsoft identity and gov
 
 ::: {.callout-note title="Series Summary"}
 Part One established why the Microsoft identity stack's native constructs do not provide a sufficient organizational governance model for enterprises in transition. Part Two defined the requirements that a purpose-built governance substrate must meet. Part Three proposed OrgTree and OrgPath as the architectural response to those requirements. Part Four — this document — built the system from the proposal forward: assessment, construction, and operations, in sequence, with specific tools, specific commands, and the operational model that keeps the system accurate over time. The governance substrate is now operational.
+:::
+
+![OrgTree governance state machine](images/04-implementing-orgtree-and-orgp-diagram-03-orgtree-governance-state-machine.png){#fig-04-implementing-orgtree-and-orgpath-diagram-03 fig-alt="A horizontal state-machine diagram tracing a single OrgTree change as it advances left to right through five labeled states. State 1 \"OrgTree registry commit\" shows a Git push icon over a YAML file. State 2 \"CI schema validation\" shows a check-mark gate with YAML schema and structural-check sublabels; a curved arrow loops backward to State 1 labeled \"rejects\". State 3 \"Path encoding pipeline\" shows registry nodes resolving into OrgPath strings (monospace example /OPS/INFRA/SVCTIER1). State 4 \"Entra extension attribute provisioning\" shows OrgPath strings being written to user, device, and service principal objects in Entra ID. State 5 \"Drift detection cycle\" shows a continuous-comparison icon between the registry baseline and the live environment, with a long feedback arrow looping back to State 1 labeled \"surfaces findings to\". Solid forward arrows connect each successive state. Aesthetic: engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the substrate stages (1, 2, 3), teal (#1A9E8F) for the Entra surface stage (4), amber (#D4A017) for the governance and feedback arrows (rejects loop and drift feedback loop), monospace state labels, no human figures, 16:9 landscape." width="85%"}
+
+---
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 03 — A Proposed Governance Substrate](03-proposed-governance-substrate.qmd) · [Index](index.qmd) · [Next: Chapter 05 — OrgPath and Microsoft Intune →](05-orgpath-and-intune.qmd)
 :::
