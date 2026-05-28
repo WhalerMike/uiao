@@ -11,12 +11,23 @@ before commit). This script finds those references, checks whether the
 referenced PNG exists on disk, and if not — generates it via Gemini
 using the `fig-alt` attribute as the prompt.
 
+For every regenerated PNG this script also writes the sibling
+`<image>.png.json` sidecar (placeholder_id, slug, sha256, prompt_sha256,
+generated_at, etc.) so the result matches what `generate_images.py`
+would have produced and the orgpath manifest audit stays clean. The
+placeholder_id and slug are derived from the PNG filename's
+`<...>-(diagram|image|figure)-NN-<slug>.png` shape; if the filename
+doesn't conform, the sidecar write is skipped with a warning.
+
 Complements:
 - `generate_images.py` — handles `[IMAGE-NN: prompt]` placeholders (the
   pre-substitution form). Cannot help once the substitution has already
   happened with no surviving PNG.
 - `generate_canon_images.py` — handles canon-side `UIAO-FIG-NNN` figures
   from `src/uiao/canon/image-prompts/`. Different concern entirely.
+- `rebuild_orgpath_image_manifest.py` — rebuilds the section's
+  `image-prompts.manifest.yaml` from chapter scans. Run after this
+  script to refresh the manifest with the new entry.
 
 Requires GEMINI_API_KEY in environment. Never commit a key.
 
@@ -29,12 +40,87 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 MODEL = "gemini-2.5-flash-image"
+
+# Decompose <slug>-<diagram|image|figure>-NN-<rest>.png to recover the
+# original placeholder kind+number (e.g. "DIAGRAM-02") and the prompt slug.
+_FILE_DECOMP_RE = re.compile(
+    r"(?P<kind>diagram|image|figure)-(?P<num>\d{2,3})-(?P<slug>[a-z0-9-]+)\.png$",
+    re.IGNORECASE,
+)
+
+
+def _find_repo_root(start: Path) -> Path | None:
+    """Walk up from `start` looking for .git/. Returns None if not found."""
+    p = start.resolve()
+    for parent in [p, *p.parents]:
+        if (parent / ".git").is_dir():
+            return parent
+    return None
+
+
+def _sha256_text_lf(text: str) -> str:
+    """SHA-256 of UTF-8 text, LF-normalized first. Matches the contract used
+    by `generate_images.py` and the orgpath audit script's prompt comparison."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _now_iso_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _write_sidecar(out_path: Path, prompt: str, qmd: Path) -> Path | None:
+    """Write the <png>.png.json sidecar next to the PNG. Returns the sidecar
+    path on success, None if the filename can't be decomposed.
+
+    Schema mirrors what `generate_images.py` writes and what
+    `Invoke-OrgPathImageAudit.ps1` reads. Fields:
+        aspect, canonical_id, document, generated_at, generator,
+        placeholder_id, prompt_sha256, sha256, slug, used_by, version
+    """
+    m = _FILE_DECOMP_RE.search(out_path.name)
+    if not m:
+        print(f"  warn: cannot derive placeholder_id/slug from {out_path.name}; skipping sidecar")
+        return None
+    placeholder_id = f"{m.group('kind').upper()}-{m.group('num')}"
+    slug = m.group("slug")
+
+    # Match existing sidecars: Windows-style separators in the document field
+    repo_root = _find_repo_root(qmd)
+    document = str(qmd.resolve().relative_to(repo_root)).replace("/", "\\") if repo_root is not None else qmd.name
+
+    payload = {
+        "aspect": "16:9",
+        "canonical_id": None,
+        "document": document,
+        "generated_at": _now_iso_utc(),
+        "generator": MODEL,
+        "placeholder_id": placeholder_id,
+        "prompt_sha256": _sha256_text_lf(prompt),
+        "sha256": _sha256_file(out_path),
+        "slug": slug,
+        "used_by": [],
+        "version": "1.0",
+    }
+    sidecar_path = out_path.with_suffix(".png.json")
+    with open(sidecar_path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(payload, f, indent=2, sort_keys=True)
+        f.write("\n")
+    return sidecar_path
+
 
 # Match: ![alt](path){...attrs...}
 # Captures the path (relative to the .qmd) and the attr block.
@@ -153,6 +239,9 @@ def main(argv: list[str] | None = None) -> int:
                 image.save(str(out_path))
                 size = out_path.stat().st_size
                 print(f"  saved {size:,} bytes")
+                sidecar = _write_sidecar(out_path, prompt, qmd)
+                if sidecar is not None:
+                    print(f"  wrote sidecar {sidecar.name}")
                 successes += 1
                 wrote = True
                 break
