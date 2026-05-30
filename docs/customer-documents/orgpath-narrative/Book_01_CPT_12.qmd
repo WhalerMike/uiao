@@ -1,0 +1,27 @@
+---
+title: "Azure Policy — Enforcement Without Cross-Platform Coherence"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: 01
+series-order: 12
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 12 — Azure Policy — Enforcement Without Cross-Platform Coherence
+
+## Architecture and Native Capabilities
+
+Azure Policy is the governance enforcement engine for the Azure Resource Manager ecosystem. Policy definitions express rules in JSON that evaluate the properties of Azure resources against specified conditions and apply effects when those conditions are met or violated. The built-in policy library covers thousands of configurations drawn from security benchmarks — the Microsoft Cloud Security Benchmark, CIS Controls, NIST SP 800-53, FedRAMP, and others — regulatory compliance frameworks, and operational standards. Policy effects range in their aggressiveness: Audit records non-compliant resources in the compliance dashboard without blocking them; Deny prevents resource creation or modification that would violate the policy; Append adds specified fields to the resource payload during creation; Modify changes resource properties during creation or update; DeployIfNotExists deploys a related resource or configuration if it does not exist on the target resource; and AuditIfNotExists audits the absence of a related resource or configuration. Policies are grouped into initiatives — collections of related policies — that can be assigned together as a unit, simplifying the management of complex compliance frameworks.
+
+Policy assignment scope follows the Azure Resource Manager hierarchy: management groups, subscriptions, resource groups, and individual resources. An initiative assigned at the management group level applies to all subscriptions and resource groups within that management group, and remediation tasks can automatically bring non-compliant resources into compliance by triggering the deployIfNotExists effect against identified gaps. The compliance dashboard presents aggregate compliance percentages for each assigned policy and initiative, allowing organizations to track their posture against the assigned policy set and drill down to specific non-compliant resources. The Guest Configuration integration extends this enforcement surface to the operating system layer of Arc-enrolled servers, as described in the preceding chapter.
+
+## Limitations of Azure Policy's Scope and Integration
+
+Azure Policy operates exclusively on Azure Resource Manager resources. Its scope hierarchy is the Azure administrative taxonomy, not the organizational governance taxonomy. When a policy is assigned at the management group level, it applies to all Azure subscriptions and resource groups within that management group — a scope defined by the Azure billing and administrative hierarchy, which may or may not correspond to the organization's actual governance boundaries. The management group tree must be constructed and maintained independently of any other organizational model, and its structure reflects the Azure resource organization decisions made during Azure adoption, which are frequently driven by billing requirements and Azure RBAC delegation needs rather than by the organizational governance structure of the agency.
+
+Compliance reporting in Azure Policy is scoped to the Azure resource hierarchy. The compliance dashboard reports on the compliance state of Azure resources and Arc-enrolled servers within the assigned scope. It cannot aggregate compliance reporting across a combined surface that includes Entra ID objects, Intune-managed devices, AD-joined machines, and Azure resources in a single view. An organization that wants a unified compliance posture across all four of those surfaces must construct that view through custom queries in Microsoft Sentinel, Azure Monitor, or the Defender portal — each of which requires custom data collection and custom query development to produce a result that is structurally coherent. The Guest Configuration capability for Arc-enrolled servers enforces operating system settings expressed as DSC configurations, but those DSC configurations must be authored independently of the on-premises GPO library. There is no native tool that converts GPO settings to Guest Configuration DSC resources. Each policy area must be re-expressed in the DSC language by engineers who understand both the GPO setting and its DSC equivalent. There is no native integration between Azure Policy compliance state and Conditional Access grant decisions, Intune device compliance status, or Entra ID Governance access review results.
