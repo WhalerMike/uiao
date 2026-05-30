@@ -14,9 +14,16 @@ lifecycle_review: 2026-11-22
 
 # Chapter 2 — Infrastructure Requirements for the Governance Pipeline
 
+::: {.callout-note}
+## In this chapter
+Before any schema registration or attribute write, the platform itself must exist and be validated. This chapter specifies the three infrastructure roles the governance pipeline depends on — the governance repository server, the automation execution environment, and the assessment workstation — their sizing and operating-system requirements, and the exact network connectivity that must be tested up front.
+:::
+
 ## Architectural Shape of the Platform
 
 The OrgTree and OrgPath system requires three categories of infrastructure: a governance repository server that hosts the version-controlled OrgTree registry and all pipeline outputs; an automation execution environment that runs the ETL processes, drift detection workflows, and event-triggered pipeline jobs; and the assessment workstation environment from which the Active Directory assessment tools are executed interactively before the pipeline is fully automated. In small to medium deployments, the repository server and automation execution environment can be provisioned on the same physical or virtual machine. In larger deployments, or those with strict separation of duties requirements that prohibit colocating a version-controlled data store with an execution environment that writes to it, the two roles are separated onto dedicated machines. The assessment workstation is always separate from both, because it must be domain-joined and must operate under the assessment service account — conditions that would be inappropriate on the repository or automation server.
+
+![The three infrastructure roles of the governance pipeline and the network paths between them](images/book04cpt02-diagram-01-the-three-infrastructure-roles-o.png){#fig-book-04-cpt-02-diagram-01 fig-alt="Three labeled server boxes arranged left to right: \"Governance Repository Server\" (Git/Gitea store, 4 vCPU / 16 GB / 200 GB SSD on two volumes, not domain-joined), \"Automation Execution Environment\" (Windows Server 2022/2025, domain-joined, runs the PowerShell ETL and drift jobs, 4 vCPU / 8 GB), and \"Assessment Workstation\" (Windows 11, domain-joined, RSAT and interactive AD tools). Directed arrows show the automation server pushing and pulling to the repository server over HTTPS 443; the automation server reaching domain controllers over LDAP 389, LDAPS 636, and Kerberos 88; and outbound HTTPS 443 from the automation server to a cloud band containing graph.microsoft.com, management.azure.com, and login.microsoftonline.com. The assessment workstation connects to the domain controllers only. Each connection arrow carries a monospace port label. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the three role boxes, teal (#1A9E8F) for cloud endpoints, amber (#D4A017) for the domain-join markers, monospace labels for ports and hostnames, no human figures, 16:9 landscape." width="85%"}
 
 ## Governance Repository Server
 
@@ -31,6 +38,14 @@ The automation execution environment must run Windows Server 2022 or Windows Ser
 ## Assessment Workstation
 
 The assessment workstation is the machine from which Active Directory assessment commands are executed interactively, before the pipeline is fully automated and before the engineering team trusts the automated output enough to rely on it without manual verification. It must be Windows 10 version 21H2 or later, or Windows 11, and must be domain-joined. Windows PowerShell 5.1 is present on all supported Windows versions by default and requires no installation. PowerShell 7.x should be installed alongside it — the installer from the PowerShell GitHub releases page deploys to C:\Program Files\PowerShell\7\\ without displacing the Windows PowerShell installation at C:\Windows\System32\WindowsPowerShell\v1.0\\ and both are available in parallel. The Remote Server Administration Tools package must be installed to provide the Active Directory module, the Group Policy Management module, the DNS Server module, and the Certificate Authority module. On Windows 11, RSAT features are installed through Settings, Optional Features, or through DISM at an administrative command prompt.
+
+The three roles and their baseline requirements are summarized below.
+
+| Role | Operating system | Domain-joined | Minimum sizing | Primary function |
+|------|------------------|:-------------:|----------------|------------------|
+| Governance repository server | Windows Server 2022/2025, or Ubuntu 22.04 LTS / RHEL 9 | No | 4 vCPU · 16 GB RAM · 200 GB SSD (system + data volumes) | Hosts the version-controlled OrgTree registry and all pipeline outputs (Git/Gitea over HTTPS) |
+| Automation execution environment | Windows Server 2022/2025 | Yes | 4 vCPU · 8 GB RAM · 100 GB | Runs the ETL, drift-detection, and event-triggered pipeline jobs; Windows is required by the AD PowerShell module |
+| Assessment workstation | Windows 10 21H2+ or Windows 11 | Yes | Workstation-class | Runs the AD assessment tools interactively under the assessment service account before automation is trusted |
 
 ## Network Connectivity Requirements
 
