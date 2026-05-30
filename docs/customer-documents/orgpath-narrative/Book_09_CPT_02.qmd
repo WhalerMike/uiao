@@ -1,0 +1,45 @@
+---
+title: "The Three-Tier DSC Baseline Model"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "09"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 2 — The Three-Tier DSC Baseline Model
+
+## Tier Classification and Its Machine-State Consequences
+
+The tier classification model used throughout this series was established in Part Three and has been the organizing principle for every governance domain addressed since. Its application to machine-state enforcement follows the same logic it follows elsewhere: tier is not merely an administrative label but a structural expression of what a server's compromise would cost the organization. The severity of that cost is what determines how much enforcement the machine must tolerate and how much operational friction is acceptable to achieve it. Tier0 machines bear the highest cost upon compromise. Tier2 machines bear the lowest. The DSC baselines in this chapter are calibrated accordingly.
+
+What is important to state explicitly at this point is that the three baselines described here are not three points on a single sliding scale of restriction. They are three distinct configuration profiles, each targeting a specific threat model appropriate to the server population it governs. Tier0 servers are targeted by adversaries who understand that compromising the governance substrate is the highest-leverage attack against an organization's security architecture. Tier2 servers face a broader but less sophisticated threat surface. The controls in each baseline are selected for the threat model of that tier, not simply dialed up or down from a shared template.
+
+![Three-tier comparison matrix arranged as three labeled vertical columns of increasing color saturation top-down (most restrictive at top)](images/09-orgpath-and-azure-policy-gues-diagram-01-three-tier-comparison-matrix-arr.png){#fig-09-orgpath-and-azure-policy-guest-config-diagram-01 fig-alt="Column \"Tier0 — Substrate (DCs, KMS, PKI, Entra Connect)\" lists nine control rows: BitLocker (TPM + PIN); WDAC (enforcement mode); RDP off, WinRM only; Credential Guard on; Audit (maximum verbosity); LAPS (8 hour rotation); SMBv1 / LLMNR / NetBIOS off; PS Constrained Language Mode; OrgPath integrity check (6h). Column \"Tier1 — Production workloads\" lists six rows: BitLocker (TPM only); RDP restricted to admin group; Audit (elevated — logon, account mgmt); LAPS (24 hour rotation); SMBv1 / LLMNR off; OrgPath integrity check (24h). Column \"Tier2 — Standard organizational\" lists six rows: BitLocker (TPM only); Defender real-time on; Audit (standard subcategories); LAPS (72 hour rotation); SMBv1 off; OrgPath integrity check (72h). The matrix is a static comparison — no arrows between columns; each cell stands alone. Engineering blueprint style, deeper federal-navy (#1F3A5F) fill for Tier0, mid teal (#1A9E8F) for Tier1, light slate for Tier2, monospace control values, 16:9 landscape." width="85%"}
+
+## Tier0: Infrastructure Hardening Baseline
+
+Tier0 servers host the systems that underpin the identity and governance substrate: domain controllers, key management services, Entra Connect synchronization servers, PKI certificate authorities, and any other infrastructure whose unavailability or compromise would directly impair the governance architecture's ability to function. The DSC baseline for Tier0 machines is built around the principle that these servers should have the smallest possible attack surface, communicate through the narrowest possible set of authenticated channels, and leave a comprehensive audit trail of every significant system event.
+
+BitLocker drive encryption is enforced on all fixed volumes with both a TPM protector and a PIN protector. The TPM-only configuration that is sufficient for Tier1 is not acceptable at Tier0 because a stolen or physically accessed machine with a TPM-only configuration can be booted without challenge. The PIN requirement means that volume decryption requires human knowledge that is not stored on the device, which materially raises the cost of physical attacks against Tier0 hardware.
+
+Windows Defender Application Control is configured in enforcement mode, not audit mode. Audit mode is appropriate during rollout for workload discovery, but production Tier0 machines must execute only explicitly authorized code. The WDAC policy itself is managed through a separate configuration channel and referenced by the DSC configuration; the DSC enforces that the policy is set to enforcement mode and that the enforcement registry key is present and correct.
+
+The local Administrator account is disabled and renamed. Remote Desktop Services are disabled entirely. Tier0 management occurs through Windows Remote Management, restricted at the WinRM listener level to specific management subnet CIDRs that are environment parameters in the DSC configuration. Credential Guard is enabled through the Device Guard configuration, protecting credential material in kernel memory from extraction by LSASS-targeting attack tools. LAPS is configured with a maximum password age of eight hours, reflecting the operational reality that Tier0 systems require tightly rotated local credentials and that any eight-hour window during which a credential might be valid is already longer than the response time expected for a Tier0 incident.
+
+Audit policy is configured for maximum verbosity across all categories. This is not a performance-neutral decision — maximum audit verbosity on a domain controller generates substantial event volume — but on Tier0 machines the forensic completeness of the audit trail outweighs the storage and processing cost. The Sentinel integration established in Part Four ingests these events and applies the OrgPath-aware analytic rules that provide contextual alerting based on organizational position.
+
+SMBv1 is disabled. LLMNR is disabled. NetBIOS over TCP/IP is disabled on all network adapters. These three controls together remove the most commonly exploited name resolution and file sharing attack vectors at the network layer. IIS, Telnet, TFTP, Simple TCP/IP Services, RIP Listener, and SNMP Windows features are all removed if present. PowerShell Constrained Language Mode is enforced through the \_\_PSLockdownPolicy registry key, which prevents the execution of arbitrary PowerShell script classes and COM objects that are the foundation of many post-exploitation frameworks. Finally, a scheduled task running under SYSTEM validates the OrgPath tag integrity every six hours by querying the Arc IMDS endpoint and writing to the Windows Event Log if the tag is absent, malformed, or inconsistent with the server's known organizational position.
+
+## Tier1: Production Baseline
+
+Tier1 servers host production application workloads, line-of-business databases, and broadly used services that are operationally critical but not themselves part of the governance substrate. The Tier1 baseline enforces controls that protect against the most common attack vectors against production infrastructure while preserving the operational access patterns that production support workflows require. BitLocker with TPM-only protector is enforced — adequate for servers in physically secured data center environments where drive theft is unlikely and boot-time PIN entry would create availability risks for unattended systems. The local Administrator account is disabled. SMBv1 and LLMNR are disabled. Audit policy is elevated for logon and logoff and account management subcategories, which provides sufficient coverage for identity-based attacks against production systems without the full verbosity cost of the Tier0 configuration. LAPS is configured with a 24-hour maximum password age. Remote Desktop is enabled but restricted through a local group policy preference to members of the designated administrative group. The OrgPath integrity check runs every 24 hours.
+
+## Tier2: Standard Organizational Baseline
+
+Tier2 servers are the broadest population: departmental file servers, non-critical infrastructure hosts, standard organizational workstations in managed segments. The Tier2 baseline enforces the organizational security minimum. Windows Defender with real-time protection is enforced and must be running. BitLocker with TPM protector is enforced. SMBv1 is disabled. Standard logon and account management audit subcategories are configured. LAPS is configured with a 72-hour maximum password age, which is appropriate for the lower sensitivity of Tier2 systems and reduces operational overhead for large Tier2 populations. The OrgPath integrity check runs every 72 hours. Controls that are either operationally impractical for Tier2 populations at scale (NetBIOS over TCP/IP disabled across all adapters can break legacy application dependencies that are more common in Tier2 segments) or whose enforcement value does not justify the operational cost at Tier2 are omitted.

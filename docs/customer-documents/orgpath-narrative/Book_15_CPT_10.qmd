@@ -1,0 +1,23 @@
+---
+title: "DNS Modernization: From Forest-Integrated to Hybrid Resolution"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "15"
+series-order: 10
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 10 — DNS Modernization: From Forest-Integrated to Hybrid Resolution
+
+DNS is the most underestimated dependency in any Active Directory modernization program, and the UIAO DNS modernization guide exists precisely because underestimating it is catastrophically common. Active Directory-integrated DNS is not a convenience feature and it is not a simple zone host. It is the mechanism by which domain controllers find each other across sites, by which Kerberos ticket issuance works, by which Group Policy is applied, by which client machines locate every directory service from login through session to logout. Removing AD-integrated DNS without a complete and tested replacement is the fastest available path to making an entire organization unable to authenticate.
+
+The UIAO DNS modernization framework is built around one governing principle: no DNS zone is migrated until every record in that zone has been inventoried, categorized, and assigned a migration target in the UIAO DNS assessment registry. Forward lookup zones migrate to Azure DNS Private Zones for internal name resolution within Azure virtual networks, and to Azure DNS Public Zones for externally visible names that must remain resolvable from the public internet. Reverse lookup zones are maintained throughout the transition with PTR record delegation to the new infrastructure, ensuring that reverse resolution — required by many application-level health checks and audit logging systems — does not break during the forward resolution migration. Conditional forwarders — the Active Directory mechanism for resolving names in trusted forests and partner domains — are replaced by Azure DNS Forwarding Rulesets configured on the Azure DNS Private Resolver, which provides the same forwarding behavior in a cloud-native, manageable form.
+
+The SRV record governance section of the DNS modernization guide addresses the most technically sensitive aspect of the entire migration: the Active Directory service locator records. These records — \_ldap.\_tcp.dc.\_msdcs, \_kerberos.\_tcp, \_kpasswd.\_tcp, and their site-specific variants — are what allows every domain-joined machine on the network to find a domain controller. They must remain continuously resolvable throughout the migration period, they must be replicated to the new DNS infrastructure before any AD-integrated DNS zone is touched for decommissioning, and their correctness must be validated against the domain controller inventory after every DNS change. The UIAO framework treats these records as a special governance class: they are tracked in the SRV governance registry maintained in the assessment output, validated on every DNS assessment run, and compared against the current domain controller inventory to detect any mismatch between registered locator records and actual domain controller availability.
+
+The Azure DNS Private Resolver is the architectural centerpiece of the hybrid DNS target state. It provides bidirectional resolution between on-premises networks and Azure virtual networks through inbound and outbound endpoints, allowing on-premises clients to resolve Azure Private DNS zones and allowing Azure-hosted workloads to resolve on-premises DNS names without deploying and managing traditional DNS forwarder virtual machines. The resolver deployment is documented with Bicep infrastructure-as-code templates and PowerShell deployment scripts, both committed to the UIAO governance repository, both idempotent, and both subject to the same governance review process as every other artifact in the corpus.

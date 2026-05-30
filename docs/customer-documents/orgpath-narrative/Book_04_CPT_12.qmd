@@ -1,0 +1,29 @@
+---
+title: "OrgPath as a Resource Tag — Extending the Model to Arc-Managed Servers"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "04"
+series-order: 12
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 12 — OrgPath as a Resource Tag — Extending the Model to Arc-Managed Servers
+
+## The Arc-Specific Implementation
+
+For servers managed through the Azure hybrid management plane — servers enrolled in Azure Arc and represented as Microsoft.HybridCompute/machines resources in Azure Resource Manager — the OrgPath value is expressed as a resource tag rather than as a directory schema extension attribute. This is not a design compromise; it is the correct choice for the Azure management plane. Azure resource tags are the native mechanism for attaching governance metadata to Azure resources. They are queryable across the entire resource graph using Azure Resource Graph queries, they are enforced and audited through Azure Policy, and they are exposed in every Azure cost management, compliance, and reporting surface. Storing OrgPath as a tag on Arc machine resources integrates the governance substrate with the Azure management plane in the same way that storing it as an extension attribute on directory objects integrates it with the identity management plane.
+
+Three tags are applied to every Arc machine resource. The OrgPath tag carries the same forward-slash-delimited node id string used in the directory extension attribute — for example, /OPS/INFRA/SVCTIER1. The OrgNodeId tag carries the leaf node id — SVCTIER1 in the example — for efficient tag-based filtering in Azure Resource Graph queries. The OrgTier tag carries the server's management tier classification: Tier0 for servers that are part of the identity infrastructure itself (domain controllers, PKI servers, ADFS servers), Tier1 for servers hosting line-of-business applications and services, and Tier2 for servers supporting end-user workloads and departmental functions. The OrgTier classification is determined during the assessment phase and recorded in the server's provisioning record in the governance repository, not derived from the OrgTree. It is a separate governance dimension that sits alongside OrgPath rather than being derived from it. Tags are applied to Arc machine resources using the Update-AzConnectedMachine cmdlet from the Az.ConnectedMachine module with the -Tag parameter, or through a PATCH request to the Azure Resource Manager API at https://management.azure.com/subscriptions/{subId}/resourceGroups/{rgName}/providers/Microsoft.HybridCompute/machines/{machineName}?api-version=2023-10-03-preview with a JSON body containing the updated tags object.
+
+## The Tag Population Pipeline
+
+The Arc tag population pipeline is a component of the daily drift detection and remediation run, implemented in Invoke-ArcTagPipeline.ps1. It reads the governance repository to determine the authoritative OrgPath assignment for each Arc-enrolled server. The assignment record for each server is created during the Arc onboarding process and committed to the governance repository as a YAML record at registry/servers/{serverName}.yaml, containing the server's Arc resource ID, its OrgPath node id assignment, its OrgTier classification, and the date and approver of the assignment. The pipeline reads these records, builds a mapping from Arc resource ID to the expected tag set, calls the Azure Resource Graph API using Get-AzResourceGraphQuery or directly through the POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01 endpoint to retrieve the current tags on all Arc machine resources in scope, compares the current tags against the expected tags from the assignment records, and applies corrections where they diverge. All tag write operations use the Azure REST API PATCH endpoint rather than a full tag replacement operation, to avoid overwriting non-governance tags that other teams may have applied to the same resources.
+
+## Three-Surface Reconciliation
+
+For servers that are simultaneously domain-joined on-premises, registered in Entra ID as hybrid-joined devices, and enrolled in Azure Arc, the OrgPath value exists on all three management surfaces: the Active Directory computer object (in a custom attribute populated by the on-premises pipeline), the Entra ID device object (in the directory schema extension attribute), and the Arc resource tag. The drift detection run's three-surface reconciliation check queries all three sources for each qualifying server and confirms that all three carry the same OrgPath value. Any divergence between the three values generates a High severity finding in the drift report. Divergence is most commonly caused by a race condition during an OrgPath update — one surface is updated by the ETL pipeline before the others, and the drift detection run executes during the window between the first write and the last — but it can also indicate a more serious problem: a server that was manually re-enrolled in Entra ID (losing its extension attribute values), an Arc resource that was deleted and re-created (losing its tags), or a domain computer object that was moved to a different OU and had its on-premises custom attribute reset. The three-surface check is what makes these edge cases visible, and its High severity classification ensures they receive attention at the next morning's review.

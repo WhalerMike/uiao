@@ -1,0 +1,263 @@
+---
+title: "Data Loss Prevention — Differentiated Rules by Organizational Position"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07"
+series-order: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 3 — Data Loss Prevention — Differentiated Rules by Organizational Position
+
+## Why Uniform DLP Fails at Enterprise Scale
+
+A Data Loss Prevention policy that applies uniformly to the entire organization reflects a single, undifferentiated assessment of risk and workflow — an assessment that is almost always wrong for some significant portion of the user population. Consider the range of DLP rules that an organization might reasonably want to enforce. A rule that blocks sharing of files containing credit card numbers through any external channel is appropriate for every user in the organization without exception; no legitimate internal workflow requires credit card numbers to be sent to external parties without encryption. A rule that requires encryption before any document classified Confidential is shared externally is appropriate for most users. A rule that generates an alert when more than twenty files are downloaded from SharePoint in a single session is appropriate for most users — but would generate constant false positives for the data analytics team that processes hundreds of records daily as part of their normal analytical workflow. And a rule that triggers a manager approval workflow before any external email containing financial figures is sent is entirely appropriate for Finance — but would impose an untenable friction cost on the Sales team that quotes pricing figures to external customers as a core part of their daily activity.
+
+Uniform DLP policy does not fail because the policy engine lacks sophistication. It fails because a single policy must simultaneously avoid being so strict that it breaks legitimate workflows for some segments and so permissive that it fails to protect sensitive data for other segments. The inevitable compromise is a policy calibrated for the average user — which means it under-protects high-sensitivity segments and over-restricts segments with legitimate high-volume or high-sensitivity-type workflows. The solution is a layered DLP architecture in which policies are differentiated by organizational position, with the OrgPath attribute and Adaptive Scopes providing the structural targeting that makes differentiation operationally sustainable.
+
+## The Three-Layer DLP Architecture
+
+The OrgPath-aware DLP model organizes policies into three conceptual layers, each serving a distinct governance purpose. The first layer is the baseline layer: a set of DLP rules that apply to all users regardless of organizational position, enforcing the non-negotiable data protection requirements that the organization has determined are universal. These rules typically include blocking of known sensitive information types — credit card numbers, Social Security numbers, passport numbers — in external communications without encryption; alerting on bulk data operations that might indicate exfiltration; and enforcing encryption requirements for the highest label tiers. The baseline layer is scoped tenant-wide and requires no OrgPath targeting. Its rules are deliberately conservative: they must not generate unacceptable false-positive rates for any segment, which means their thresholds are set for universally applicable conditions rather than segment-specific risk levels.
+
+The second layer is the restrictive overlay layer: a set of DLP policies, each scoped through an Adaptive Scope targeting a high-sensitivity OrgPath branch, that add tighter thresholds, stricter actions, and additional sensitive information type coverage beyond the baseline. Finance receives rules that restrict financial data types at lower confidence thresholds and require manager approval workflows for certain categories of external sharing. Legal receives rules that restrict privileged content from any external channel that has not been explicitly approved for matter-related communications. The Executive segment receives rules that restrict board materials and M&A content from any sharing action that does not require double confirmation. The Security team receives rules that restrict security configuration exports and threat intelligence data from any non-approved destination. These overlay rules are additive — they apply in addition to the baseline rules, not instead of them — and they are targeted precisely because the segment's elevated risk profile justifies the tighter controls that would create unacceptable friction for the broader population.
+
+The third layer is the permissive carve-out layer: a set of DLP policies, again OrgPath-scoped through Adaptive Scopes, that grant explicit exceptions overriding specific baseline rules for segments whose legitimate workflows would otherwise trigger false positives at an unacceptable rate. The data analytics segment receives an exception to the bulk download alert threshold, with the threshold raised to reflect their normal processing volume. The sales engineering segment receives an exception to the pricing-figure approval workflow. The procurement team receives an exception to certain financial data external-sharing restrictions, because their role requires sending financial terms to vendors. These carve-outs are deliberately visible in the governance model — they are documented in OrgTree node metadata, reviewed through the change request process, and audited as exceptions rather than embedded in the baseline policy as silent suppressions.
+
+## Finance DLP Policy: Adaptive Scope and Rule Creation
+
+The following script creates a complete DLP policy for the Finance organizational segment, including the Adaptive Scope targeting the Finance OrgPath branch, the DLP compliance policy covering all Microsoft 365 workloads, and a representative DLP rule targeting financial regulatory sensitive information types. The policy is created in simulation mode — TestWithNotifications — which applies policy tips to matching content without blocking, allowing the compliance team to validate the rule's behavior against real production traffic before switching to enforcement mode. The recommended evaluation period is two weeks of simulation observation, followed by a compliance team review of the simulation report before enabling enforcement.
+
+## PowerShell — Finance DLP Policy with Adaptive Scope (Security & Compliance PowerShell)
+
+```powershell
+#Requires -Modules ExchangeOnlineManagement
+
+<#
+.SYNOPSIS
+    Creates an OrgPath-scoped DLP policy and rule for the Finance segment.
+
+.DESCRIPTION
+    Creates a Microsoft Purview DLP policy applying only to users in the Finance
+    OrgPath branch, using an Adaptive Policy Scope. Policy covers Exchange email,
+    SharePoint, OneDrive for Business, Teams messages, and Endpoint DLP.
+
+    Rule configuration:
+      - Detects U.S. Bank Account Numbers, Credit Card Numbers, ABA Routing Numbers
+      - Applies when content is sent to recipients outside the organization
+      - Action: Block + Policy Tip notification to user
+      - Alert: Generated to SiteAdmin on each match (aggregation window: 60 minutes)
+      - Incident report: Generated with full detection detail
+
+    Policy is created in TestWithNotifications (simulation) mode.
+    After validation, switch to Enabled mode:
+      Set-DlpCompliancePolicy -Identity $policyName -Mode "Enable"
+
+.PARAMETER AdminUPN
+    UPN of Compliance Administrator account for interactive auth.
+    For unattended use, replace with certificate-based Connect-IPPSSession.
+
+.PARAMETER FinanceBranchOrgPath
+    OrgPath value of the Finance division root node.
+    Example: "/Root/Finance"
+    All users at or below this path are covered by the Adaptive Scope.
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.NOTES
+    Sensitive information types named in this script are built-in Purview SITs.
+    To list available SITs: Get-DlpSensitiveInformationType | Select-Object Name, Id
+    Confidence levels: 75 = Medium, 85 = High, 95 = Very High.
+    Minimum count of 1 means any single instance triggers the rule.
+    Adjust MinCount, MaxCount, and MinConfidence for your risk tolerance.
+#>
+param(
+    [Parameter(Mandatory)][string]$AdminUPN,
+    [Parameter(Mandatory)][string]$FinanceBranchOrgPath,  # e.g. "/Root/Finance"
+    [Parameter(Mandatory)][string]$OrgPathAttrName         # e.g. "extension_{AppIdWithoutHyphens}_OrgPath"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+$scopeName  = "AdaptiveScope-DLP-Finance"
+$policyName = "DLP-OrgPath-Finance"
+$ruleName   = "DLP-Finance-FinancialRegulatory-ExternalBlock"
+
+# ---------------------------------------------------------------------------
+# STEP 1: CREATE ADAPTIVE SCOPE FOR FINANCE DLP
+# Same branch-inclusive filter pattern used throughout the OrgPath model.
+# ---------------------------------------------------------------------------
+$filterExpression = "$OrgPathAttrName -like '$FinanceBranchOrgPath/*' " +
+                    "-or $OrgPathAttrName -eq '$FinanceBranchOrgPath'"
+
+$existingScope = Get-AdaptiveScope -Identity $scopeName -ErrorAction SilentlyContinue
+if (-not $existingScope) {
+    New-AdaptiveScope `
+        -Name             $scopeName `
+        -LocationType     "User" `
+        -FilterExpression $filterExpression `
+        -Comment          "DLP adaptive scope — Finance branch: $FinanceBranchOrgPath"
+
+    Write-Host "[OK] Adaptive scope created: $scopeName"
+    Write-Host "     Filter: $filterExpression"
+} else {
+    Set-AdaptiveScope -Identity $scopeName -FilterExpression $filterExpression
+    Write-Host "[UPDATED] Adaptive scope: $scopeName"
+}
+
+# ---------------------------------------------------------------------------
+# STEP 2: CREATE THE DLP COMPLIANCE POLICY
+#
+# Workload locations: "All" with an Adaptive Scope means the scope filter
+# is applied to all items in that workload belonging to scoped users.
+# ExchangeLocation "All" = all Exchange mailboxes for users in scope.
+# SharePointLocation "All" = all SharePoint sites belonging to users in scope.
+# OneDriveLocation "All" = all OneDrive accounts for users in scope.
+# TeamsLocation "All" = all Teams chat/channel messages for users in scope.
+# EndpointDlpLocation "All" = all enrolled endpoints for users in scope.
+#
+# Mode options:
+#   "TestWithNotifications" = simulation; policy tips shown, no blocking.
+#   "TestWithoutNotifications" = silent simulation; no user-visible tips.
+#   "Enable" = full enforcement; blocking and notifications active.
+#
+# Start with TestWithNotifications for 2+ weeks before enabling enforcement.
+# ---------------------------------------------------------------------------
+$existingPolicy = Get-DlpCompliancePolicy -Identity $policyName -ErrorAction SilentlyContinue
+
+if (-not $existingPolicy) {
+    New-DlpCompliancePolicy `
+        -Name                   $policyName `
+        -Comment                "Finance DLP — OrgPath-scoped, adaptive, financial regulatory data" `
+        -Mode                   "TestWithNotifications" `
+        -AddAdaptivePolicyScope $scopeName `
+        -ExchangeLocation       "All" `
+        -SharePointLocation     "All" `
+        -OneDriveLocation       "All" `
+        -TeamsLocation          "All" `
+        -EndpointDlpLocation    "All"
+
+    Write-Host "[OK] DLP policy created: $policyName (mode: TestWithNotifications)"
+} else {
+    Write-Host "[EXISTS] DLP policy already exists: $policyName — skipping creation."
+}
+
+# ---------------------------------------------------------------------------
+# STEP 3: CREATE THE DLP RULE
+#
+# ContentContainsSensitiveInformation: hashtable array, one entry per SIT.
+#   Name: exact SIT name as it appears in Purview.
+#   MinCount: minimum occurrences required to trigger. 1 = any occurrence.
+#   MaxCount: $null = no upper limit.
+#   MinConfidence: match confidence threshold. 75=Medium, 85=High, 95=VeryHigh.
+#
+# SentToScope "NotInOrganization": rule applies when content is sent externally.
+# BlockAccess $true: blocks the action (sharing, sending) that triggered match.
+# BlockAccessScope "PerAnonymousLink": for SharePoint, blocks anonymous link use.
+#
+# NotifyPolicyTipCustomText: the text shown in the Outlook / browser policy tip.
+#   Customize to reference your organization's actual policy document or contact.
+#
+# GenerateAlert "SiteAdmin": sends alert to the compliance officer / site admin.
+#   AggregationType "SimpleAggregation": aggregate within the TimeWindow.
+#   Threshold 1, TimeWindow 60: alert after 1 match per 60-minute window.
+#
+# IncidentReportContent: data fields included in the incident report email.
+# ---------------------------------------------------------------------------
+$existingRule = Get-DlpComplianceRule -Identity $ruleName -ErrorAction SilentlyContinue
+
+if (-not $existingRule) {
+    New-DlpComplianceRule `
+        -Name    $ruleName `
+        -Policy  $policyName `
+        -ContentContainsSensitiveInformation @(
+            @{
+                # U.S. Bank Account Number — built-in Purview SIT
+                Name          = "U.S. Bank Account Number"
+                MinCount      = 1
+                MaxCount      = $null
+                MinConfidence = 75
+            },
+            @{
+                # Credit Card Number — built-in Purview SIT (international coverage)
+                Name          = "Credit Card Number"
+                MinCount      = 1
+                MaxCount      = $null
+                MinConfidence = 85
+            },
+            @{
+                # ABA Routing Number — built-in Purview SIT
+                Name          = "ABA Routing Number"
+                MinCount      = 1
+                MaxCount      = $null
+                MinConfidence = 75
+            }
+        ) `
+        -SentToScope                  "NotInOrganization" `
+        -BlockAccess                  $true `
+        -BlockAccessScope             "PerAnonymousLink" `
+        -NotifyUser                   "LastModifiedBy" `
+        -NotifyPolicyTipCustomText    ("This document or message contains financial account " +
+                                       "information subject to your organization's data handling " +
+                                       "policy. External sharing requires approval from your " +
+                                       "Compliance Officer before proceeding.") `
+        -GenerateAlert                "SiteAdmin" `
+        -AlertProperties              @{
+            AggregationType = "SimpleAggregation"
+            Threshold       = 1
+            TimeWindow      = 60     # Minutes — alerts aggregate over this window
+        } `
+        -GenerateIncidentReport       "SiteAdmin" `
+        -IncidentReportContent        @(
+            "Title",
+            "Severity",
+            "MachineId",
+            "SensitiveInformation",
+            "DocumentLastModifiedBy",
+            "DocumentLastModifiedDate",
+            "Detections",
+            "DetectionDetails",
+            "Service"
+        )
+
+    Write-Host "[OK] DLP rule created: $ruleName"
+    Write-Host "     SITs: U.S. Bank Account Number, Credit Card Number, ABA Routing Number"
+    Write-Host "     Scope: External recipients only (NotInOrganization)"
+    Write-Host "     Action: Block + Policy Tip + Alert + Incident Report"
+} else {
+    Write-Host "[EXISTS] DLP rule already exists: $ruleName — no changes made."
+}
+
+Write-Host ""
+Write-Host "Finance DLP policy configuration complete."
+Write-Host "Review simulation results in the Purview compliance portal:"
+Write-Host "  Compliance portal > Data loss prevention > Policies > $policyName > Activity explorer"
+Write-Host "After validation period, enable enforcement with:"
+Write-Host "  Set-DlpCompliancePolicy -Identity '$policyName' -Mode 'Enable'"
+
+Disconnect-ExchangeOnline -Confirm:$false
+```
+
+## Policy Tip Customization by Organizational Segment
+
+The policy tip — the yellow notification bar that appears in Outlook, the browser, or the Office application when a DLP rule matches — is one of the most direct user-facing touchpoints of the data governance model. Its purpose is not merely to notify the user that a match has occurred; it is to provide actionable guidance specific enough that the user understands what they should do rather than simply dismissing the notification. Generic policy tips — "This content may be sensitive. Contact your administrator." — are routinely dismissed by users who have seen them many times and cannot connect the generic language to a specific action they can take.
+
+When DLP policies are OrgPath-scoped through Adaptive Scopes, each segment's policy tip text can be written specifically for that segment's context. Finance users see a message that names the relevant financial data handling policy, provides the contact information for the Finance compliance liaison, and describes the approval workflow they should initiate if they believe the share is legitimate. Legal users see a message that references the privilege protection protocol, identifies the Legal Operations team as the contact, and explains that the sharing restriction exists to protect attorney-client privilege. Executive users see a message that references the board materials handling protocol. The specificity of these messages measurably increases compliance behavior because users can connect the notification to a concrete policy they have been trained on, rather than dismissing it as a generic system warning that does not apply to them.
+
+::: {.callout-note title="Simulation Mode Discipline"}
+Every new DLP policy in the OrgPath governance model must be created in
+
+TestWithNotifications
+
+mode and operated in simulation for a minimum of two weeks before enforcement is enabled. The Activity Explorer in the Purview compliance portal provides a simulation-period view showing every rule match that would have resulted in a blocking action. This view must be reviewed by the compliance team and the affected organizational segment's leadership before enforcement is enabled. Segments with legitimate high-volume workflows that match the rule conditions must receive exceptions — entered as permissive carve-out policies — before enforcement, not after. Enabling enforcement without simulation review is the most common cause of DLP-related productivity disruptions and should be treated as a change management failure, not a compliance success.
+:::

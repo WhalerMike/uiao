@@ -1,0 +1,41 @@
+---
+title: "A Governance Model That Requires Manual Operation Is Not a Governance Model"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "02"
+series-order: 10
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 10 — A Governance Model That Requires Manual Operation Is Not a Governance Model
+
+*The Automation Requirement.*
+
+## The Theoretical Sufficiency of Manual Processes
+
+A pointed and important observation is available at this stage of the analysis: every requirement established in the preceding chapters can, in principle, be satisfied manually. A sufficiently large, diligent, and expert team of administrators, operating in a sufficiently small and stable organization, over a sufficiently short period of time, could manually populate position attributes on every identity, manually maintain a hierarchy registry spreadsheet, manually update policy assignments when organizational changes occur, manually run periodic audits to detect drift, and manually maintain a dependency map in a shared document. None of these operations requires automation in order to be technically possible. They are all operations that a person can perform, given enough time and organizational knowledge.
+
+The problem with manual processes is not that they cannot be made to work. The problem is that they cannot be made to scale, and they cannot be made to stay true. The qualification embedded in the preceding paragraph — "sufficiently large, diligent, and expert" team; "sufficiently small and stable" organization; "sufficiently short" period of time — is not rhetorical hedging. It is a precise statement of the conditions under which manual governance can function. When any of those conditions is no longer satisfied, manual governance fails. And in every organization that is growing, changing, and operating a complex technology environment, all three conditions are eventually violated, usually simultaneously, and usually before the governance team has acknowledged that the model has stopped working.
+
+## The Scaling Problem
+
+Governance requirements do not diminish as organizations grow. They intensify. The number of identities grows. The rate of organizational change grows — more restructurings, more team movements, more personnel turnover. The number of policy surfaces grows as new cloud capabilities are adopted. The number of infrastructure dependencies grows as more workloads are migrated and more applications are onboarded. The number of servers subject to the organizational position model grows as Arc onboarding progresses. A governance model that requires a fixed amount of manual effort to maintain a fixed governance state will require proportionally more manual effort to maintain the same governance state as the environment expands. At some point in that growth curve, the manual effort required exceeds the capacity available, and the governance model falls behind — not because of any failure of intent, but because the throughput of the manual process has become the binding constraint.
+
+There is a subtler problem than throughput. Manual governance processes depend on organizational knowledge — specifically, on the knowledge held by the people performing the processes. When an administrator manually updates policy assignments in response to an organizational restructuring, that administrator must know which policies exist, which groups they are assigned to, which groups correspond to which organizational units, and which identities have moved to which new positions. This knowledge is not stored anywhere that is accessible to the governance model. It exists in the administrator's memory and judgment. When that administrator leaves the organization, or moves to a different role, or is unavailable during a critical restructuring event, the governance process does not gracefully degrade — it simply stops, because the knowledge required to perform it is no longer present in the team performing it.
+
+## Automation as an Architectural Commitment
+
+The requirement for automation is therefore not a preference for efficiency — it is a requirement for governance durability. A governance model that can only function with specific people performing specific manual operations is not a governance model that can be relied upon over the full operational life of the organization's cloud environment. It is a governance model that will work well initially, when the team is engaged and knowledgeable, and will degrade progressively as the team changes, the organization grows, and the gap between the pace of environmental change and the throughput of the manual process widens.
+
+Every operation that the governance substrate performs — attribute derivation from registry changes, propagation of organizational restructuring events to affected identity objects, maintenance of the dynamic group library when registry nodes are added or removed, drift detection against the registry baseline, dependency map updates as new assets are enrolled, compliance reporting against policy coverage requirements — must be automatable. Not optional-to-automate. Must be automatable, meaning the substrate must expose the interfaces and the event triggers that allow governance operations to be executed automatically in response to events, without administrator initiation for each operation.
+
+The event model is the key design requirement within the automation requirement. A registry change is an event. A new identity enrollment is an event. An organizational restructuring notification from the HR system is an event. A new server onboarded to Arc management is an event. Each of these events should trigger a defined set of governance operations: attribute updates, group membership recomputations, dependency map registrations, drift detection passes against the affected objects. The governance pipeline must be capable of consuming these events and responding to them within a timeframe that keeps the governance state current — which means hours or minutes, not days or weeks. The pipeline must also operate on a scheduled cadence for operations that are not event-driven: periodic full drift detection passes, periodic dependency map validation, periodic compliance reporting. These scheduled operations must run without human initiation, and their outputs must be committed to the version-controlled governance record without human review required for each run.
+
+::: {.callout-note title="Architectural Requirement — Chapter 10"}
+Every operation that the governance substrate performs must be automatable and must be capable of being triggered by events rather than by administrator action. Attribute derivation, policy group maintenance, drift detection, dependency map updates, and compliance reporting must all operate as automated, event-driven or scheduled pipeline stages that produce versioned, machine-readable outputs without requiring human initiation for each execution. A governance model that cannot function at the pace of organizational change without proportionally increasing manual effort is not a governance model that survives organizational growth.
+:::

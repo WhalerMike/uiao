@@ -1,0 +1,21 @@
+---
+title: "The Infrastructure in Detail"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "15"
+series-order: 4
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 4 — The Infrastructure in Detail
+
+The platform build is executed in thirteen phases, each PowerShell-first and idempotent. The phases proceed in strict dependency order: Windows Server 2025 base configuration; IIS installation and module configuration; TLS certificate provisioning from the enterprise CA; Gitea installation and service registration; IIS reverse proxy configuration with Application Request Routing; Active Directory LDAP authentication integration; Entra ID OAuth2 and OIDC authentication integration; UIAO repository cloning from the GitHub external mirror; governance hook installation on all repositories; Intune compliance integration for the platform server itself; Azure Arc enrollment under the Commercial Cloud exception boundary; backup and replication configuration; and security hardening including attack surface reduction, Windows Defender configuration, and audit policy enforcement. Each phase produces a verifiable state that the next phase depends on, and no phase is marked complete until its validation test suite passes in its entirety.
+
+Three service accounts govern all platform operations. The Gitea application service account runs the Gitea binary with local administrator rights on the server and full control of the D: drive data partition where all repository data resides. The assessment execution account runs all PowerShell assessment modules with read-only Active Directory permissions and write access only to the assessment output directory — no account used for discovery has write access to any domain object. The backup orchestration account manages the scheduled backup and replication workflows, with write access to the backup destination share and push access to the GitHub external mirror. All three accounts use 20-character managed passwords rotated quarterly through the credential management procedure documented in the operations runbook.
+
+The governance hook architecture is what separates the UIAO platform from a generic Git server. Pre-receive hooks enforce classification boundary compliance, validate YAML frontmatter metadata on every document commit, prohibit marking combinations that would violate the GCC-Moderate boundary designation, and enforce document ID naming conventions against the UIAO-NNN schema. Post-receive hooks trigger webhook delivery to downstream automation targets — the Quarto rendering pipeline, the OrgPath drift detection engine, and the compliance dashboard regeneration workflow. Update hooks enforce branch protection rules, requiring pull request review for any commit destined for the main or canon branches. Together these hooks transform the Git server from a passive storage layer into an active governance enforcer, a boundary condition that prevents non-compliant artifacts from entering the canonical record regardless of how they were produced.

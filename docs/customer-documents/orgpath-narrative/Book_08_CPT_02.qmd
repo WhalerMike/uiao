@@ -1,0 +1,276 @@
+---
+title: "Ownership Model and OrgPath Stamping"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "08"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 2 — Ownership Model and OrgPath Stamping
+
+## Defining the Ownership Model
+
+The application ownership model in this framework is intentionally singular. Every app registration has exactly one owning OrgPath node, and that node is the organizational unit whose team is accountable for the application's security posture in its entirety: API permissions, credential rotation schedule, consent grants, and eventual decommissioning. This singularity is a deliberate design choice. Applications frequently have multiple stakeholders — a product manager who conceived the integration, a developer who built it, a security team that approved it, an operations team that runs it. Distributing ownership across all of them produces a diffusion of accountability that is indistinguishable, in governance terms, from having no owner at all. The model requires that one organizational node be designated as accountable, and that node's OrgPath is what gets stamped on the application object.
+
+In practice, the owning node is typically the team that commissioned the application and operates it in production — the business or engineering unit that has a direct stake in the application's continued availability and whose workflows depend on the API permissions the application holds. A Finance application that integrates with the accounting platform is owned by the Finance division node, not by the central IT node that may have assisted with the Entra ID registration. A customer-facing API gateway owned and operated by the Product Engineering team is stamped with the Product Engineering OrgPath even if the Security team reviews its permissions. This assignment makes the governance consequences of ownership real: the Finance division's Access Review group is the one invited to attest to the Finance application's permissions, and the Finance division's consent approver group is the one that routes consent requests for Finance-owned applications. Ownership is not an organizational honor; it is an accountability assignment with operational consequences.
+
+The ownership attribute is recorded as an extension attribute on the app registration object — the same OrgPath schema extension that Parts Four and Five registered for User and Device object types, extended to also target the Application object type. The extension property name is unchanged: extension\_{AppIdWithoutHyphens}\_OrgPath, where the prefix segment is derived from the App ID of the schema extension owner application registered in Part Four. The value format is unchanged: a slash-delimited path string matching a node in the OrgTree registry. What changes is the object type being written: Application rather than User or Device. That change requires a one-time update to the extension definition's targetObjects array.
+
+## Extending the Schema to Application Objects
+
+The schema extension property registered in Part Four targets User and Device by default. Adding Application to the target objects list requires deleting and recreating the extension property definition, because the Microsoft Graph API does not support patching the targetObjects array of an existing extension property. This is a one-time pipeline step that must be performed before any application objects are stamped, because the deletion step removes the property definition and would require re-stamping all previously stamped objects if run after the fact. In environments where the extension was never applied to User or Device objects prior to this pipeline run, the delete-and-recreate sequence is low-risk. In environments where users and devices are already stamped, the operation should be deferred until a maintenance window where re-stamping can be completed immediately following the extension recreation, or the extension registration should use a separate extension application that targets Application from the outset.
+
+::: {.callout-note title="Warning: Destructive Operation"}
+The extension recreation script below deletes and recreates the extension property. All existing OrgPath values on Application objects will be lost if any have been written. Export existing values before running in a tenant where application stamping has already begun. Run once only during initial setup or migration.
+:::
+
+## Script 2.1 — Extend OrgPath Schema to Application Object Type (PowerShell)
+
+```powershell
+<# data-id="60"
+.SYNOPSIS
+    Extends the OrgPath schema extension to include Application objects.
+.DESCRIPTION
+    The OrgPath schema extension was registered in Part Four for User and Device
+    object types. This script updates the extension definition to also include
+    Application, enabling the OrgPath attribute to be written to app registration objects.
+.PARAMETER OrgPathAppId
+    The Application (client) ID of the app registration that owns the OrgPath
+    schema extension. Same App ID used throughout the series.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All"
+    Run once. After updating the extension definition, the attribute becomes
+    writable on Application objects immediately.
+#>
+param(
+    [string]$OrgPathAppId      = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4",  # Substitute
+    [string]$OrgPathPropName   = "OrgPath"  # The property name registered in Part Four
+)
+
+Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome
+
+# Find the existing extension property definition
+$app        = Get-MgApplication -Filter "appId eq '$OrgPathAppId'"
+$extensions = Get-MgApplicationExtensionProperty -ApplicationId $app.Id
+
+$orgPathExt = $extensions | Where-Object { $_.Name -like "*_$OrgPathPropName" }
+
+if (-not $orgPathExt) {
+    throw "OrgPath extension property not found on app $OrgPathAppId. Run Part Four registration first."
+}
+
+Write-Host "Found extension: $($orgPathExt.Name)"
+Write-Host "Current targetObjects: $($orgPathExt.TargetObjects -join ', ')"
+
+# If Application is already in targetObjects, no action needed
+if ($orgPathExt.TargetObjects -contains "Application") {
+    Write-Host "Application is already a target object type. No change needed."
+    Disconnect-MgGraph
+    return
+}
+
+# Add Application to the target object types
+$updatedTargets = @($orgPathExt.TargetObjects) + @("Application")
+
+# Extension properties cannot be updated via PATCH — must delete and recreate
+# WARNING: Deleting the extension removes all existing values from current objects.
+# Only proceed during initial setup when no application objects have been stamped yet.
+# If application objects already carry OrgPath values, export them first.
+Write-Host "WARNING: This operation recreates the extension property."
+Write-Host "Press Ctrl+C to cancel, or wait 10 seconds to continue..."
+Start-Sleep -Seconds 10
+
+# Delete the old extension
+Remove-MgApplicationExtensionProperty `
+    -ApplicationId          $app.Id `
+    -ExtensionPropertyId    $orgPathExt.Id
+
+# Recreate with Application added to targetObjects
+$newExtension = New-MgApplicationExtensionProperty `
+    -ApplicationId $app.Id `
+    -DataType      "String" `
+    -Name          $OrgPathPropName `
+    -TargetObjects $updatedTargets
+
+Write-Host "Extension recreated: $($newExtension.Name)"
+Write-Host "Target objects: $($newExtension.TargetObjects -join ', ')"
+Disconnect-MgGraph
+```
+
+## Phase Zero: App Registration Inventory
+
+Before any ownership can be assigned, the governance team needs a complete picture of what app registrations exist in the tenant, which of them already carry an OrgPath attribute (which will be none, for a tenant running this for the first time), and what their credential and permission posture looks like. This inventory is the Phase Zero assessment — the starting point from which the triage and assignment workflow proceeds. The inventory script reads every app registration from Entra ID using Get-MgApplication -All, extracts the OrgPath extension attribute value (if present), examines the credential set for expired or soon-to-expire secrets and certificates, and produces a JSON report committed to the governance repository.
+
+The report is structured to support triage. Each application entry carries a computed CredentialRisk field — Critical if expired credentials are present, Warning if credentials expire within thirty days, Elevated if the application has client secrets and no OrgPath (indicating that an unowned application holds credentials that could be stolen and used), and Normal otherwise. The triage team reviews this report and produces an assignment file: a JSON array where each entry pairs an application ObjectId with the OrgPath of the owning node. That assignment file is the input to the ownership stamping script described in the following section.
+
+## Script 2.2 — App Registration Inventory and Ownership Gap Report (PowerShell)
+
+```powershell
+<# data-id="68"
+.SYNOPSIS
+    Inventories all app registrations and reports those lacking OrgPath ownership.
+.DESCRIPTION
+    Reads all app registrations from Entra ID. For each app, checks whether the
+    OrgPath extension attribute is set. Outputs a JSON report of unowned apps
+    committed to the governance repository for triage and ownership assignment.
+    This is the Phase Zero assessment for application identity governance.
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath on Application objects.
+    Format: extension_{AppIdWithoutHyphens}_OrgPath
+.PARAMETER OutputPath
+    Path for the JSON inventory report.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All"
+    Large tenants may have thousands of app registrations.
+    Use -All to retrieve the complete set regardless of count.
+#>
+param(
+    [string]$OrgPathAttrName = "extension_{AppIdWithoutHyphens}_OrgPath",  # Substitute
+    [string]$OutputPath      = "C:\governance\assessment\app-inventory.json"
+)
+
+Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All" -NoWelcome
+
+Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] Retrieving all app registrations..."
+
+$apps = Get-MgApplication `
+    -All `
+    -Property "id,appId,displayName,createdDateTime,signInAudience,owners,
+               passwordCredentials,keyCredentials,$OrgPathAttrName"
+
+Write-Host "  Total app registrations: $($apps.Count)"
+
+$inventory = foreach ($app in $apps) {
+
+    $orgPath    = $app.AdditionalProperties[$OrgPathAttrName]
+    $owners     = $app.Owners | ForEach-Object { $_.Id }
+    $hasSecret  = ($app.PasswordCredentials.Count -gt 0)
+    $hasCert    = ($app.KeyCredentials.Count -gt 0)
+
+    # Flag expired credentials
+    $expiredSecrets = $app.PasswordCredentials | Where-Object {
+        $_.EndDateTime -and ([DateTime]$_.EndDateTime) -lt (Get-Date)
+    }
+    $expiringSoon = $app.PasswordCredentials | Where-Object {
+        $_.EndDateTime -and ([DateTime]$_.EndDateTime) -lt (Get-Date).AddDays(30) `
+        -and ([DateTime]$_.EndDateTime) -gt (Get-Date)
+    }
+
+    [ordered]@{
+        AppId               = $app.AppId
+        ObjectId            = $app.Id
+        DisplayName         = $app.DisplayName
+        CreatedDateTime     = $app.CreatedDateTime
+        SignInAudience      = $app.SignInAudience
+        OrgPathOwner        = if ($orgPath) { $orgPath } else { $null }
+        IsOwned             = ($null -ne $orgPath -and $orgPath -ne "")
+        HasDirectoryOwners  = ($owners.Count -gt 0)
+        OwnerObjectIds      = $owners
+        HasClientSecret     = $hasSecret
+        HasCertCredential   = $hasCert
+        ExpiredSecretCount  = $expiredSecrets.Count
+        ExpiringIn30Days    = $expiringSoon.Count
+        CredentialRisk      = if ($expiredSecrets.Count -gt 0) { "Critical" }
+                              elseif ($expiringSoon.Count -gt 0) { "Warning" }
+                              elseif ($hasSecret -and -not $orgPath) { "Elevated" }
+                              else { "Normal" }
+    }
+}
+
+$report = @{
+    GeneratedAt         = (Get-Date -Format "o")
+    TotalApps           = $inventory.Count
+    UnownedApps         = ($inventory | Where-Object { -not $_.IsOwned }).Count
+    CriticalCredRisk    = ($inventory | Where-Object { $_.CredentialRisk -eq "Critical" }).Count
+    WarningCredRisk     = ($inventory | Where-Object { $_.CredentialRisk -eq "Warning" }).Count
+    Applications        = $inventory
+}
+
+$report | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
+Write-Host "Report written: $OutputPath"
+Write-Host "  Unowned apps    : $($report.UnownedApps) of $($report.TotalApps)"
+Write-Host "  Critical cred   : $($report.CriticalCredRisk)"
+Write-Host "  Warning cred    : $($report.WarningCredRisk)"
+Disconnect-MgGraph
+```
+
+## Ownership Assignment and OrgPath Stamping
+
+With the triage file produced by the governance team's review of the inventory report, the ownership assignment script reads each entry, validates the proposed OrgPath against the active nodes in the OrgTree registry to prevent stale or misspelled paths from being written, and issues a PATCH request to the Graph API to set the extension attribute on the application object. The validation step is critical: without it, the triage process could stamp paths that reference OrgTree nodes scheduled for archival, produce inconsistencies in the drift detection pipeline, and undermine the governance model's integrity from its first write. Only paths that exactly match the Path field of an Active-status node in the OrgTree registry are accepted; all others are logged as invalid and skipped, requiring the triage team to correct them before rerunning.
+
+## Script 2.3 — OrgPath Ownership Stamping from Triage Assignment File (PowerShell)
+
+```powershell
+<# data-id="75"
+.SYNOPSIS
+    Stamps OrgPath ownership on app registrations from a triage assignment file.
+.DESCRIPTION
+    Reads a triage JSON file produced by the governance team after reviewing
+    the app-inventory.json report. Each entry in the triage file specifies
+    an app ObjectId and the OrgPath of the owning organizational node.
+    Validates each OrgPath against the OrgTree registry before writing.
+.PARAMETER TriageFilePath
+    Path to the triage JSON file.
+    Format: [ { "ObjectId": "...", "OrgPathOwner": "/Root/Finance" }, ... ]
+.PARAMETER OrgTreeRegistryPath
+    Path to OrgTree registry JSON for validation.
+.PARAMETER OrgPathAttrName
+    Full extension attribute name for OrgPath on Application objects.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All"
+#>
+param(
+    [string]$TriageFilePath      = "C:\governance\assessment\app-triage.json",
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    [string]$OrgPathAttrName     = "extension_{AppIdWithoutHyphens}_OrgPath"  # Substitute
+)
+
+Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome
+
+$triage   = Get-Content $TriageFilePath   -Raw | ConvertFrom-Json
+$registry = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+
+# Build valid path set from OrgTree for validation
+$validPaths = $registry.nodes | Where-Object { $_.Status -eq "Active" } | ForEach-Object { $_.Path }
+
+$stats = @{ Stamped = 0; Invalid = 0; Skipped = 0; Failed = 0 }
+
+foreach ($entry in $triage) {
+
+    if (-not ($validPaths -contains $entry.OrgPathOwner)) {
+        Write-Warning "  [INVALID] OrgPath '$($entry.OrgPathOwner)' not in registry — skipping $($entry.ObjectId)"
+        $stats.Invalid++
+        continue
+    }
+
+    try {
+        # PATCH the OrgPath extension attribute on the application object
+        Invoke-MgGraphRequest `
+            -Method      PATCH `
+            -Uri         "https://graph.microsoft.com/v1.0/applications/$($entry.ObjectId)" `
+            -Body        (@{ $OrgPathAttrName = $entry.OrgPathOwner } | ConvertTo-Json) `
+            -ContentType "application/json"
+
+        Write-Host "  [OK] $($entry.ObjectId) => $($entry.OrgPathOwner)"
+        $stats.Stamped++
+    } catch {
+        Write-Error "  [FAIL] $($entry.ObjectId): $_"
+        $stats.Failed++
+    }
+}
+
+Write-Host ""
+Write-Host "=== App OrgPath Stamp Complete ==="
+Write-Host "  Stamped : $($stats.Stamped) | Invalid: $($stats.Invalid) | Failed: $($stats.Failed)"
+Disconnect-MgGraph
+```
+
+::: {.callout-note title="Operational Note: Sentinel WatchList Refresh"}
+After each stamping run, the pipeline should regenerate the Sentinel WatchList described in Chapter Seven. The WatchList is the bridge between the Graph-side OrgPath attribute and the Sentinel KQL environment; stale WatchList data means that newly stamped applications will continue to appear as UNOWNED in monitoring queries until the refresh completes. Schedule the WatchList refresh as a downstream step in the stamping pipeline or as a nightly automated task.
+:::

@@ -1,0 +1,169 @@
+---
+title: "Automated Refresh Pipeline"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "13"
+series-order: 6
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 6 — Automated Refresh Pipeline
+
+The governance value of the dashboard is directly proportional to its currency. A compliance rate displayed on a governance dashboard that reflects last Tuesday's data cannot drive a Friday governance decision. The semantic model must be refreshed immediately after the export pipeline completes, so that the dashboard reflects the most recent state of every governance surface. The refresh pipeline uses the Power BI REST API to trigger and monitor a full semantic model refresh, and is invoked as the final step of the export orchestrator — after all six export files have been successfully written and their latest-file symlinks updated.
+
+The Power BI REST API requires OAuth 2.0 authentication using a service principal. The service principal — which may be the same app registration used for the governance data exports, or a separate registration dedicated to Power BI operations — must be granted access to the Power BI workspace via the workspace's Access settings in the Power BI Service, with the Contributor or Admin role. In addition, the Power BI tenant administrator must enable service principal access in the Power BI Admin portal under Tenant Settings, Developer Settings, "Allow service principals to use Power BI APIs." Without this tenant-level setting, service principal authentication to the Power BI REST API returns a 403 error regardless of workspace membership.
+
+The enhanced refresh API endpoint used in the following script supports table-level and partition-level refresh targets, parallel table refresh, and retry logic. For the governance semantic model, a full refresh of all tables is appropriate because the export pipeline replaces all data in each file on every run — there is no incremental export, and therefore no incremental refresh. If the export pipeline is extended in the future to produce incremental exports (for example, appending only the current day's drift events rather than replacing the full thirty-day window), the refresh script can be updated to target specific tables or partitions using the objects array parameter.
+
+```powershell
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Triggers and monitors a Power BI semantic model refresh via the Power BI REST API.
+.DESCRIPTION
+    Invoked as the final step of the governance export pipeline after all export files
+    have been successfully written. Authenticates as a service principal, triggers an
+    enhanced full refresh of the OrgPath governance semantic model, and polls for
+    completion. On failure, writes the Power BI service exception detail to the error
+    stream so that the calling pipeline can capture it for alerting.
+.PARAMETER TenantId
+    Entra ID tenant ID.
+.PARAMETER ClientId
+    App registration client ID. The service principal must be a member of the
+    Power BI workspace with Contributor or Admin role, and the tenant must have
+    "Allow service principals to use Power BI APIs" enabled.
+.PARAMETER ClientSecret
+    Client secret for the service principal.
+    PRODUCTION GUIDANCE: Do not store this value in the script or in a scheduled
+    task parameter. Retrieve it at runtime from Azure Key Vault using:
+        $ClientSecret = (Get-AzKeyVaultSecret -VaultName "YOUR-KV" `  # ENV-PARAM
+                            -Name "pbi-refresh-secret" -AsPlainText)
+.PARAMETER WorkspaceId
+    Power BI workspace (group) GUID containing the semantic model.
+    Retrieved from the Power BI Service workspace URL.
+.PARAMETER DatasetId
+    Power BI semantic model (dataset) GUID.
+    Retrieved from the Power BI Service dataset settings URL or via:
+        GET https://api.powerbi.com/v1.0/myorg/groups/{workspaceId}/datasets
+.PARAMETER MaxPollSeconds
+    Maximum seconds to wait for refresh completion before giving up.
+    Default: 900 (15 minutes). Increase for large semantic models.
+.NOTES
+    ENV-PARAM markers indicate values that must be substituted per environment.
+#>
+param(
+    [string]$TenantId        = "YOUR-TENANT-ID",        # ENV-PARAM
+    [string]$ClientId        = "YOUR-APP-CLIENT-ID",     # ENV-PARAM
+    [string]$ClientSecret    = "YOUR-CLIENT-SECRET",     # ENV-PARAM: use Key Vault in production
+    [string]$WorkspaceId     = "YOUR-WORKSPACE-GUID",    # ENV-PARAM
+    [string]$DatasetId       = "YOUR-DATASET-GUID",      # ENV-PARAM
+    [int]   $MaxPollSeconds  = 900
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== Power BI Refresh Trigger — $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC ==="
+
+# ---- Step 1: Acquire OAuth2 bearer token for the Power BI REST API ----
+Write-Host "Acquiring OAuth2 token for Power BI REST API..."
+$tokenUri  = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+$tokenBody = @{
+    grant_type    = "client_credentials"
+    client_id     = $ClientId
+    client_secret = $ClientSecret
+    scope         = "https://analysis.windows.net/powerbi/api/.default"
+}
+
+$tokenResponse = Invoke-RestMethod -Method POST -Uri $tokenUri -Body $tokenBody
+$accessToken   = $tokenResponse.access_token
+
+$headers = @{
+    Authorization  = "Bearer $accessToken"
+    "Content-Type" = "application/json"
+}
+
+Write-Host "Token acquired. Expiry: $([DateTimeOffset]::FromUnixTimeSeconds($tokenResponse.expires_in + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()))"
+
+# ---- Step 2: Trigger enhanced refresh ----
+# The enhanced refresh API (POST .../refreshes) is the v2 refresh endpoint.
+# It supports transactional commit mode (all tables succeed or all roll back),
+# configurable parallelism, and automatic retry.
+$refreshBody = @{
+    type           = "full"       # Full refresh: replace all data in all tables
+    commitMode     = "transactional" # Roll back all tables if any table fails
+    maxParallelism = 4             # Number of tables refreshed in parallel
+    retryCount     = 2             # Automatic retries on transient failure
+    objects        = @()           # Empty array = refresh all tables and partitions
+} | ConvertTo-Json -Depth 5
+
+$refreshUri = "https://api.powerbi.com/v1.0/myorg/groups/$WorkspaceId/datasets/$DatasetId/refreshes"
+
+Write-Host "Triggering full semantic model refresh..."
+$triggerResponse = Invoke-RestMethod `
+    -Method  POST `
+    -Uri     $refreshUri `
+    -Headers $headers `
+    -Body    $refreshBody
+
+Write-Host "Refresh triggered successfully."
+if ($triggerResponse.PSObject.Properties['requestId']) {
+    Write-Host "  Request ID: $($triggerResponse.requestId)"
+}
+
+# ---- Step 3: Poll for refresh completion ----
+# The Power BI API returns status "Unknown" while a refresh is in progress.
+# Poll every 30 seconds until status changes to Completed or Failed.
+Write-Host "Polling for refresh completion (max $MaxPollSeconds seconds)..."
+$elapsed    = 0
+$pollResult = $null
+
+do {
+    Start-Sleep -Seconds 30
+    $elapsed += 30
+
+    $statusResponse = Invoke-RestMethod `
+        -Method  GET `
+        -Uri     $refreshUri `
+        -Headers $headers
+
+    # The refreshes endpoint returns a list of refresh history entries.
+    # The most recent is first. We monitor only the entry we just triggered.
+    $pollResult = $statusResponse.value |
+        Sort-Object -Property startTime -Descending |
+        Select-Object -First 1
+
+    Write-Host "  [$elapsed`s] Status: $($pollResult.status) | Started: $($pollResult.startTime)"
+
+} while ($pollResult.status -eq "Unknown" -and $elapsed -lt $MaxPollSeconds)
+
+# ---- Step 4: Report final status ----
+switch ($pollResult.status) {
+    "Completed" {
+        Write-Host "Refresh completed successfully."
+        Write-Host "  End time: $($pollResult.endTime)"
+        $duration = [datetime]$pollResult.endTime - [datetime]$pollResult.startTime
+        Write-Host "  Duration: $([math]::Round($duration.TotalSeconds)) seconds"
+    }
+    "Failed" {
+        $errDetail = $pollResult.serviceExceptionJson | ConvertFrom-Json
+        Write-Error "Refresh FAILED. Code: $($errDetail.errorCode). Detail: $($errDetail.parameters)"
+        exit 1
+    }
+    default {
+        Write-Warning "Refresh did not complete within $MaxPollSeconds seconds."
+        Write-Warning "Last observed status: $($pollResult.status)"
+        Write-Warning "Check the Power BI Service refresh history for dataset ID: $DatasetId"
+        exit 2
+    }
+}
+```
+
+The refresh script is invoked at the end of the export orchestrator script by appending a call block that passes the relevant parameters. In environments where the export orchestrator and the refresh trigger run under different service contexts — for example, where the export host runs under a managed identity and the Power BI refresh requires a separate service principal credential — the refresh script can be invoked as a separate scheduled task that triggers after the export task completes via Task Scheduler dependency configuration, or as a separate Azure Automation runbook that is called by the export runbook using an inline job submission.
+
+Power BI Premium and Fabric capacity environments support XMLA endpoint access, which enables the export pipeline to write data directly to the semantic model's tables using Tabular Model Scripting Language commands, bypassing the file-based gateway entirely and eliminating the refresh API call as a separate step. This architecture reduces end-to-end latency between export completion and dashboard currency to near zero. The XMLA endpoint approach requires the semantic model to be deployed to a Premium or Fabric workspace, and requires the service principal to be granted the Analysis Services Administrator role on the XMLA endpoint. For organizations that have made this investment, the XMLA pattern is strongly preferred over the file-and-gateway pattern for a governance dashboard where currency is a primary requirement.

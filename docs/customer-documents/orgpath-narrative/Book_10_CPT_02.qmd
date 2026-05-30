@@ -1,0 +1,136 @@
+---
+title: "The Guest OrgPath Stub Model"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "10"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 2 — The Guest OrgPath Stub Model
+
+## Stub Anatomy and Information Encoding
+
+The Guest OrgPath Stub is not a freeform label. It is a structured, hierarchical path string governed by the same versioning and change-control rules as every internal OrgTree node path. Its four information elements are arranged in a fixed positional schema. The first element, /EXTERNAL, is a reserved root segment that is explicitly absent from all valid internal OrgPath values. Internal OrgPath values begin with /ORG or a tenant-specific root segment defined at OrgTree initialization. This exclusivity ensures that a simple startsWith predicate is sufficient to partition the directory into internal and external populations without ambiguity. The second element, /B2B, identifies the collaboration modality. The series anticipates that future modalities — such as Entra External ID with self-service sign-up flows, or SAML-federated partner identities — will each occupy a distinct second-level segment, so that policy targeting can differentiate collaboration types without requiring changes to the first-level predicate. The third element is the fully qualified domain name of the partner organization, lowercased and normalized, as extracted from the invited user's email address. This element is the primary lookup key against the partner registry. The fourth element exists only as a special case: when the partner domain is not found in the registry, the stub is written as /EXTERNAL/B2B/UNREGISTERED rather than /EXTERNAL/B2B/{unknown-domain}, because unregistered domains must not create unique stub values that proliferate silently in the directory. All unregistered guests converge on a single well-known value, making them trivially queryable and preventing governance drift from domain enumeration.
+
+## The Partner Registry
+
+The partner registry is a JSON file, partner-registry.json, stored in the OrgTree governance repository alongside the organizational node definitions. It is subject to the same pull request and approval process as OrgTree node changes: a proposed addition or modification to a partner entry must pass automated JSON schema validation, must include the approval of the designated governance stakeholder for external partnerships, and must be merged by the pipeline runner account rather than by an individual contributor. This change-control requirement is non-negotiable: the partner registry controls trust tier assignment, and a trust tier controls which Cross-Tenant Access Settings apply, which Conditional Access tier is enforced, and what the Access Review interval is. An unreviewed change to a partner's RiskTier field is equivalent to an unreviewed change to a Conditional Access policy. The registry's schema enforces the following fields on every entry. The Domain field is the fully qualified partner domain, lowercased. The TenantId field is the Entra ID tenant ID of the partner organization, used for Cross-Tenant Access Settings configuration; this value is resolved by querying the partner tenant's OpenID Connect metadata endpoint during the registration process. The OrgPathStub field is the exact string to be written to the guest object's OrgPath extension attribute, following the /EXTERNAL/B2B/{Domain} convention. The RiskTier field accepts two values: Tier1, indicating a high-trust partner that has completed the organization's security attestation process, and Tier2, indicating a standard registered partner. The AccessCategory field is a free-text classification label used for audit reporting and Purview sensitivity label scoping, distinguishing categories such as StrategicVendor, ContractStaff, and TechnologyPartner. The SponsorGroupName field is the display name of the internal security group whose members serve as reviewers in the quarterly Access Review for that partner's guests. The MaxReviewIntervalDays field enforces the outer bound on how long a guest from this partner can remain active without an explicit review decision; the Access Review configuration uses this value to compute recurrence intervals, and the default for all registered partners is ninety days.
+
+## Invitation-Time Automation
+
+The mechanism that stamps the OrgPath stub on a guest object at invitation time is an Azure Function operating under a system-assigned Managed Identity. The function is triggered either by an Event Grid subscription on the Entra ID audit log event for "Invite external user," or by a Logic App custom task connector that fires from the Entra ID Lifecycle Workflows invitation flow. Upon invocation, the function receives the invited user's object ID and email address, extracts the partner domain from the email address, queries the partner registry JSON file from a governance storage account, and performs a Microsoft Graph PATCH operation against the user object to write the resolved OrgPath stub to the OrgPath extension attribute. If the partner domain is not found in the registry, the function assigns /EXTERNAL/B2B/UNREGISTERED and enqueues a notification to the governance team for registration review. Every invocation emits a structured audit record to a governance log sink, recording the timestamp, the guest object ID, the resolved domain, the assigned stub, and whether the domain was registered. This audit record is consumed by the governance pipeline's compliance reporting queries in Chapter Six.
+
+The function requires the User.ReadWrite.All application permission granted to the Managed Identity via a Microsoft Graph application permission assignment. It requires no client secret or certificate, because Managed Identity token acquisition uses the Azure Instance Metadata Service endpoint. The partner registry file must be accessible from the function's network path; the recommended configuration is a storage account in the same resource group as the function app, with the Managed Identity granted the Storage Blob Data Reader role on the container that holds the registry file. The function does not cache the registry between invocations; it fetches the current version on each call, ensuring that partner registration changes take effect immediately for new invitations without requiring a function restart.
+
+```powershell
+#
+# .SYNOPSIS
+#     Azure Function — Guest OrgPath Stamp on B2B Invitation
+# .DESCRIPTION
+#     Triggered by Event Grid event for "Invite external user" in Entra ID audit log,
+#     or via Logic App HTTP trigger. Extracts the partner domain from the invited
+#     user's email, looks up the OrgTree partner registry, and stamps OrgPath on the
+#     guest object via Microsoft Graph.
+#     Authentication: System-assigned Managed Identity with User.ReadWrite.All (application).
+#     Runtime: PowerShell 7.4 on Azure Functions v4.
+# .NOTES
+#     Set environment variables in Function App Configuration:
+#     TENANT_ID              - Your Entra ID tenant ID
+#     ORGPATH_EXTENSION_NAME - e.g. extension_abc123def456_OrgPath (no hyphens in app ID)
+#     PARTNER_REGISTRY_URI   - URL to partner-registry.json in your governance storage account
+#
+using namespace System.Net
+param($Request, $TriggerMetadata)
+
+$tenantId             = $env:TENANT_ID
+$orgPathExtensionName = $env:ORGPATH_EXTENSION_NAME
+$partnerRegistryUri   = $env:PARTNER_REGISTRY_URI
+
+$body       = $Request.Body | ConvertFrom-Json
+$userId     = $body.userId
+$guestEmail = $body.invitedUserEmailAddress   # e.g. alice@contoso-partner.com
+
+if (-not $userId -or -not $guestEmail) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::BadRequest
+        Body       = '{"error":"Missing userId or invitedUserEmailAddress"}'
+    })
+    return
+}
+
+$partnerDomain = ($guestEmail -split "@")[-1].ToLower()
+Write-Host "Guest invitation: userId=$userId domain=$partnerDomain"
+
+# Load partner registry from governance storage
+try {
+    $registry     = Invoke-RestMethod -Uri $partnerRegistryUri -Method Get
+    $partnerEntry = $registry | Where-Object { $_.Domain -eq $partnerDomain }
+} catch {
+    Write-Warning "Partner registry unavailable: $_"
+    $partnerEntry = $null
+}
+
+$orgPathValue = if ($partnerEntry) {
+    Write-Host "Matched partner registry entry for $partnerDomain"
+    $partnerEntry.OrgPathStub
+} else {
+    Write-Warning "Domain '$partnerDomain' not in partner registry — assigning UNREGISTERED"
+    # TODO: Send alert to governance team queue for partner registration review
+    "/EXTERNAL/B2B/UNREGISTERED"
+}
+
+# Obtain Managed Identity token for Microsoft Graph
+$tokenUri    = "http://169.254.169.254/metadata/identity/oauth2/token" +
+               "?api-version=2018-02-01&resource=https%3A%2F%2Fgraph.microsoft.com%2F"
+$tokenResp   = Invoke-RestMethod -Uri $tokenUri -Headers @{ Metadata = "true" }
+$bearerToken = $tokenResp.access_token
+
+$patchPayload = @{ $orgPathExtensionName = $orgPathValue } | ConvertTo-Json
+
+try {
+    Invoke-RestMethod `
+        -Uri     "https://graph.microsoft.com/v1.0/users/$userId" `
+        -Method  PATCH `
+        -Headers @{ Authorization = "Bearer $bearerToken"; "Content-Type" = "application/json" } `
+        -Body    $patchPayload
+    Write-Host "OrgPath stamped: $userId => $orgPathValue"
+} catch {
+    Write-Error "Graph PATCH failed for $userId : $_"
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::InternalServerError
+        Body       = "{`"error`":`"Graph PATCH failed`"}"
+    })
+    return
+}
+
+# Emit structured audit record for the governance pipeline log
+$auditRecord = [ordered]@{
+    Timestamp   = (Get-Date -Format "o")
+    Event       = "GuestOrgPathStamp"
+    UserId      = $userId
+    GuestEmail  = $guestEmail
+    Domain      = $partnerDomain
+    OrgPath     = $orgPathValue
+    Registered  = ($null -ne $partnerEntry)
+} | ConvertTo-Json -Compress
+Write-Host "AUDIT: $auditRecord"
+
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+    StatusCode = [HttpStatusCode]::OK
+    Body       = "{`"orgPath`":`"$orgPathValue`"}"
+})
+```
+
+## Dynamic Group Library for the External Subtree
+
+The dynamic group library for the /EXTERNAL subtree follows the identical structural pattern established in Part Two for internal organizational groups: one branch group covering the entire subtree, and one node group per partner domain. This consistency is intentional. Every policy targeting mechanism in the series — Conditional Access include/exclude groups, Intune assignment filters, Lifecycle Workflow scope conditions, and Access Review scopes — uses Entra ID dynamic security groups as the policy attachment point. By maintaining the same group naming convention and membership rule pattern across internal and external populations, policies can be composed uniformly without requiring separate targeting logic for guests.
+
+The all-external branch group, named ORG-BRANCH-EXTERNAL-B2B, uses the membership rule user.extension\_{AppIdWithoutHyphens}\_OrgPath -startsWith "/EXTERNAL/B2B", where {AppIdWithoutHyphens} is the application ID of the directory extension registration with all hyphens removed, as required by Entra ID dynamic membership rule syntax. This group is used as the include scope for any policy that should apply uniformly to all guests regardless of partner, such as MAM App Protection Policies in Chapter Four. Each per-partner node group is named following the convention ORG-EXTERNAL-B2B-{PartnerDomainNormalized}, where the partner domain is normalized to uppercase with dots and hyphens replaced by hyphens for readability — for example, ORG-EXTERNAL-B2B-CONTOSO-PARTNER for the partner domain contoso-partner.com. The membership rule for this group is an equality match: user.extension\_{AppIdWithoutHyphens}\_OrgPath -eq "/EXTERNAL/B2B/contoso-partner.com". The unregistered group, named ORG-EXTERNAL-B2B-UNREGISTERED, uses the equality rule user.extension\_{AppIdWithoutHyphens}\_OrgPath -eq "/EXTERNAL/B2B/UNREGISTERED". This group is the highest-priority targeting scope in the Conditional Access tier structure, because unregistered guests represent the highest-risk population and must receive the most restrictive controls regardless of any other group membership.
+
+Dynamic group membership evaluation for OrgPath extension attributes is subject to the same propagation latency applicable to all Entra ID dynamic groups: membership is typically computed within minutes of the attribute write, but policy enforcement at the Conditional Access layer does not wait for group membership to settle before evaluating the session. For this reason, the invitation-time function stamps the OrgPath attribute before the guest's first sign-in attempt whenever possible. The Event Grid trigger path, which fires on the invitation audit event before the guest receives the invitation email, provides a sufficient window for group membership to propagate before the guest activates the invitation link. The Logic App custom task path, which fires synchronously during the invitation workflow, provides the same guarantee for invitation flows initiated through Lifecycle Workflow custom extensions.
