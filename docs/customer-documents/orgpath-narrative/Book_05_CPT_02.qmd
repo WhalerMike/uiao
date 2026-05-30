@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 2 — The Dynamic Device Group Library
 
+::: {.callout-note}
+## In this chapter
+For every OrgTree node the governance pipeline creates two dynamic security groups: a node group, which matches devices assigned exactly to that node, and a branch group, which matches the node plus every descendant unit. This chapter defines the two-group pattern, the NodeId-based naming convention, the dynamic membership rule syntax built from the OrgPath schema extension attribute, and the idempotent New-OrgPathDeviceGroupLibrary.ps1 script that maintains the full library on every registry change.
+:::
+
 ## Node Groups and Branch Groups — The Foundation of Structural Intune Targeting
 
 ## 2.1   The Two-Group Pattern
@@ -57,6 +62,15 @@ The branch group membership rule for the same node, which covers the Finance nod
 The trailing slash in the -startsWith clause of the branch group rule is critical and must not be omitted. Without the trailing slash, a branch group for /Root/Finance would incorrectly include devices whose OrgPath begins with /Root/FinanceAdjacent or any other path that starts with the string /Root/Finance but represents a different organizational unit. The trailing slash ensures that the match is structural — it matches only paths that are genuinely subordinate to the Finance node in the hierarchy.
 
 In both rules, {AppIdWithoutHyphens} must be substituted with the Application ID of the Entra ID app registration used to define the OrgPath schema extension, with all hyphens removed. The script in Section 2.4 constructs this substitution programmatically from the \$OrgPathAppId parameter, so the raw GUID with hyphens is the only value that needs to be supplied as input. The script derives the hyphen-free form automatically.
+
+The two group types, their naming, and their membership rules are summarized below, using the Finance division node (OrgPath /Root/Finance) as the worked example.
+
+| Group type | Name pattern | Membership rule (Finance example) | Contains | Primary use |
+|----|----|----|----|----|
+| Node group | ORG-NODE-{NodeId} | device.OrgPath -eq "/Root/Finance" | Devices assigned exactly to this node | Unit-specific policies, no cascade (the exception case) |
+| Branch group | ORG-BRANCH-{NodeId} | device.OrgPath -eq "/Root/Finance" -or device.OrgPath -startsWith "/Root/Finance/" | This node plus every descendant unit at any depth | Division/department policies that cascade downward (the default) |
+
+[DIAGRAM-01: Node groups versus branch groups over an OrgTree subtree. Engineering blueprint diagram on a neutral slate background showing how a node group and a branch group draw their membership from the same OrgTree subtree. On the left, a vertical hierarchy of four federal navy (#1F3A5F) nodes with monospace path labels: /Root/Finance at the top, branching to /Root/Finance/AccountsPayable and /Root/Finance/Payroll, with /Root/Finance/AccountsPayable/Invoicing beneath AccountsPayable. On the right, two stacked teal (#1A9E8F) group boxes. The top box labeled ORG-NODE-FINANCE with rule device.OrgPath -eq /Root/Finance draws a single solid connector to ONLY the /Root/Finance node. The bottom box labeled ORG-BRANCH-FINANCE with rule device.OrgPath -startsWith /Root/Finance/ draws solid connectors to all four nodes and encloses the entire subtree in a dashed teal boundary. An amber (#D4A017) marker notes that the trailing slash is mandatory. Monospace labels for all paths and group names, no human figures, 16:9 landscape.]
 
 ## 2.4   New-OrgPathDeviceGroupLibrary.ps1
 

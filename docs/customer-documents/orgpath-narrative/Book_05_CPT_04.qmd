@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 4 — Autopilot Enrollment and OrgPath Stamping
 
+::: {.callout-note}
+## In this chapter
+A device must carry OrgPath before the Autopilot Enrollment Status Page completes, or it leaves provisioning ungoverned — in no policy group and evaluated by no compliance policy. This chapter presents two stamping strategies — deriving OrgPath from the provisioning user for personally assigned devices, and a hardware-hash mapping table for shared, kiosk, and purpose-built devices — and the /UNPOSITIONED quarantine node that safely contains any device that falls through both.
+:::
+
 ## Getting OrgPath Right at Zero Touch — Enrollment Integration
 
 ## 4.1   The Autopilot OrgPath Challenge
@@ -23,6 +28,8 @@ In the steady-state operation of the governance model, OrgPath is stamped on dev
 During Autopilot provisioning, the device must receive its OrgPath value before any user signs in and before the Enrollment Status Page (ESP) completes its device setup phase. This constraint exists because the dynamic group memberships that determine which configuration profiles, compliance policies, and endpoint security policies apply during enrollment all depend on OrgPath being present on the device object. Entra ID's dynamic group membership engine evaluates device objects against group membership rules continuously, but it can only evaluate the OrgPath attribute if the attribute has already been written to the device object. A device completing the ESP without an OrgPath value is evaluated by every dynamic group rule in the library and fails every rule — which means it is a member of no ORG-NODE-\* or ORG-BRANCH-\* group during the enrollment session, receives no organization-defined configuration profiles, and is evaluated by no compliance policy. It leaves the ESP in an ungoverned state.
 
 The gap between the device object appearing in Entra ID (which happens early in Autopilot provisioning, when the device registers with the service using its hardware hash) and the ETL pipeline's next scheduled run may be hours. If Autopilot provisioning runs overnight or during a bulk deployment event, the ETL pipeline may not run until the following morning, by which point the device has already completed provisioning with incorrect policy coverage. The solution is to stamp OrgPath during the Autopilot provisioning session itself, using a script that runs during the ESP and writes OrgPath to the device object before configuration profile processing begins in earnest.
+
+[DIAGRAM-01: OrgPath stamping during the Autopilot Enrollment Status Page. Engineering blueprint timeline diagram on a neutral slate background showing the Autopilot Enrollment Status Page phases left to right with an OrgPath stamping decision inserted before policy evaluation. Three federal navy (#1F3A5F) phase boxes in sequence: "Device Setup — device registers in Entra, certificate pre-provisioned", "Account Setup — provisioning user authenticated", and "ESP complete". Inside Account Setup, a teal (#1A9E8F) decision diamond "Serial in orgpath-mapping.csv?" branches: YES to a teal box "Stamp mapped OrgPath"; NO to a second diamond "Provisioning user has OrgPath?" which branches YES to "Derive OrgPath from user" and NO to an amber (#D4A017) box "Stamp /UNPOSITIONED and queue for review". All three stamping outcomes converge into a teal box "OrgPath present on device object → dynamic group evaluation → policies apply during ESP". A red (#C0392B) annotation marks the failure path "no stamp → device leaves ESP ungoverned, in no group, evaluated by no compliance policy". Monospace labels for paths, filenames, and cmdlets, no human figures, 16:9 landscape.]
 
 ## 4.2   Strategy One — User-Derivation During Enrollment
 
@@ -195,3 +202,11 @@ The governance repository contains a mapping file at governance/autopilot/orgpat
 A device's serial number is available during Autopilot provisioning via the Get-WmiObject -Class Win32_BIOS call, which returns the SerialNumber property. The provisioning script reads the mapping CSV from a pre-staged location on the device (copied during the Device Setup phase of the ESP from a storage account accessible by the device's Managed Identity or from a UNC path accessible during setup) and looks up the device's serial number. If a match is found, the OrgPath from the mapping table is used. If no match is found, the script falls back to the user-derivation strategy if the device is a personal assignment, or stamps the device as a quarantine-node path if neither source of organizational position is available.
 
 The quarantine node is a dedicated OrgTree node created specifically for devices that cannot be automatically positioned. Its OrgPath, /UNPOSITIONED, does not resolve to any productive organizational unit. The ORG-BRANCH-UNPOSITIONED group is assigned only a minimal configuration profile that does nothing harmful and a compliance policy that marks every member device as non-compliant immediately on evaluation. A Conditional Access policy blocks all resource access from non-compliant devices, which means any device that completes Autopilot without a valid OrgPath is automatically blocked from accessing organizational resources until the governance team reviews the device, assigns the correct OrgPath through the ETL pipeline, and the device re-evaluates its compliance state. The quarantine mechanism is not a punishment — it is the safety valve that ensures the governance model's integrity is never silently violated by a device that fell through the positioning logic.
+
+The two stamping strategies and the quarantine fallback are summarized below.
+
+| Strategy | Source of device OrgPath | Best suited to | Outcome when no value is available |
+|----|----|----|----|
+| User derivation (Strategy One) | The provisioning user's OrgPath attribute | Personally assigned devices | Stamp /UNPOSITIONED and queue for governance review |
+| Hardware-hash mapping (Strategy Two) | orgpath-mapping.csv, keyed on the device serial number | Shared, kiosk, and purpose-built devices | Fall back to user derivation; if neither resolves, stamp /UNPOSITIONED |
+| Quarantine node | /UNPOSITIONED — resolves to no productive unit | Any device the positioning logic could not place | Marked non-compliant on evaluation; Conditional Access blocks all resource access until review |
