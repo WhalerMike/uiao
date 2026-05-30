@@ -1,0 +1,37 @@
+---
+title: "Running the Assessment — Sequence, Privilege, and Output Structure"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "04"
+series-order: 6
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 6 — Running the Assessment — Sequence, Privilege, and Output Structure
+
+## A Phased Approach to Privilege
+
+The assessment methodology is structured as a phased approach that begins with the minimum privilege level and expands as authorization permits and as the output of earlier phases justifies. This structure is not a bureaucratic formality — it is a practical recognition that assessment work in a production directory carries real risk. An assessment script that is misconfigured, run under the wrong account, or directed at the wrong domain controller can generate LDAP query load that degrades authentication performance for the users it serves. Beginning with low-privilege collection minimizes that risk while producing output that informs exactly what elevated access is needed and provides documentation to support the access request. The higher-privilege phases are also the phases that collect the most sensitive data — ACL contents, LAPS passwords, service account credentials in attribute form — and limiting their blast radius to an explicitly authorized service account is a security control as well as an operational one.
+
+## Phase Zero: The Read-Only Assessment
+
+Phase Zero begins immediately and uses only the credentials of a standard domain-joined user account — the engineer's own account, or any account in the Authenticated Users group. The tools executable in this phase include PingCastle, which requires only Authenticated Users access for its core health check analysis; the Get-ADForest, Get-ADDomain, Get-ADOrganizationalUnit, Get-ADDomainController, Get-ADTrust, Get-ADReplicationSite, and Get-ADReplicationSiteLink cmdlets, all of which return their primary data to Authenticated Users without requiring elevated access; and LDAPDomainDump with standard credentials, which performs a bulk LDAP query using the same access level. Phase Zero should be completed before any elevated access is requested, for two reasons. First, its output is the justification for the elevated access: the PingCastle report identifies which privileged account categories require closer examination, the OU structure output identifies which domains and OUs require deeper assessment, and the replication and trust output identifies which domain controllers and remote domains must be reachable from the Phase One service account. Second, it provides a baseline snapshot of the directory's structure at the point in time when the assessment began — a record that is valuable if the directory changes significantly during the assessment period. The Phase Zero output should be committed to the governance repository in a dedicated assessment/phase-zero directory as a timestamped baseline.
+
+## Phase One: The Full Elevated Assessment
+
+Phase One runs under a purpose-created assessment service account that has been delegated read access to all objects in the directory — specifically, the permission to read all attributes on all object classes, including attributes that are restricted from Authenticated Users by default, such as the ms-MCS-AdmPwd attribute (the LAPS-managed local administrator password), the unixUserPassword attribute where it is populated, the nTSecurityDescriptor attribute on sensitive objects, and any confidential attributes marked with the ATTRIBUTE_CACHE_VALID flag in the schema. This account should not be a member of Domain Admins, Schema Admins, or any other privileged group — it should be a purpose-created account with precisely the permissions needed for the assessment delegated through Active Directory's ACL mechanism, applied at the domain root with inheritance. Specifically, the account requires the Allow Read permission on all objects, applied at the domain root with the This Object and All Descendant Objects scope, and the Allow Read All Properties permission on all object types. These delegations are made using dsacls.exe or through the Active Directory Users and Computers Delegation of Control Wizard.
+
+Phase One runs the full Get-ADUser -Filter \* -Properties \*, Get-ADComputer -Filter \* -Properties \*, Get-ADGroup -Filter \* -Properties \*, and Get-ADObject -Filter \* -Properties \* collection sweeps, directing each query to a specific domain controller using the -Server parameter to ensure data consistency across the collection. It runs Get-GPOReport for every GPO in every domain, dcdiag /test:all against every domain controller, and repadmin /replsummary and repadmin /showrepl for the forest. It runs ADRecon with the -DomainController parameter pointing to the same specific DC used for the PowerShell collection. It runs SharpHound for relationship and ACL mapping. The Phase One output should be committed to the governance repository in an assessment/phase-one directory, and the commit message should record the service account used, the domain controllers queried, the timestamp of each collection, and the tool version for every tool invoked. This provenance information is part of the governance record.
+
+## Assessment Output Organization
+
+Assessment output should be organized in a directory structure that reflects the assessment surface. Forest-level data — the output of Get-ADForest, the site topology, the trust inventory — lives in assessment/forest/. Per-domain data — the domain object, domain controller inventory, OU hierarchy — lives in assessment/domains/{domainFQDN}/. GPO data lives in assessment/gpo/{domainFQDN}/, with one file per GPO named by GPO GUID. DNS infrastructure assessment output lives in assessment/dns/{domainFQDN}/. PKI data lives in assessment/pki/. Computer object data lives in assessment/computers/{domainFQDN}/. User data lives in assessment/users/{domainFQDN}/. Group data lives in assessment/groups/{domainFQDN}/. Trust data lives in assessment/trusts/. Every output file is produced in JSON format for pipeline consumption, with a parallel CSV file for human review. Every output file carries a metadata header — implemented as the first object in the JSON array for array-format files, or as a top-level \_metadata key for object-format files — that records the collection timestamp in ISO 8601 format, the tool name and version, the collecting account UPN, and the target domain controller's FQDN. This metadata structure ensures that any future reader of the assessment archive can determine when and how each file was produced.
+
+::: {.callout-note title="Commit Early, Commit Often"}
+Assessment output should be committed to the governance repository as each phase and each tool completes, not accumulated and committed in bulk at the end of the assessment. Intermediate commits allow the team to review progress, identify gaps in coverage while the assessment is still running, and preserve partial output if the assessment must be interrupted and resumed. Each commit message should be descriptive: "Phase Zero: PingCastle health check, corp.contoso.com, 2026-05-08" rather than "assessment data."
+:::

@@ -1,0 +1,265 @@
+---
+title: "Defender for Endpoint: Device Groups and RBAC Scoping"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "06"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping
+
+*Bringing Organizational Structure into the MDE Management Plane*
+
+## The MDE Device Group Model and Its Relationship to OrgPath
+
+Defender for Endpoint organizes devices into device groups for two distinct and equally important purposes. The first is policy assignment: device groups are the targeting mechanism for antivirus configuration profiles, attack surface reduction rule sets, endpoint detection and response settings, and automated investigation and remediation configurations. The second is RBAC scoping: device groups determine which analysts and administrators can see and act on which devices in the Defender portal. Both purposes benefit directly from OrgPath, and the integration between them is what makes the organizational SOC model operational at scale.
+
+In the native MDE model, device groups are created manually in the Defender portal, membership rules are configured as tag-based or domain-based filters, and RBAC roles are assigned device group permissions through a separate configuration screen. This model works adequately for small, flat environments. It breaks down as organizational complexity grows: device groups drift out of alignment with the actual organizational structure, tag values require manual maintenance, and analyst scope assignments become inconsistent as teams reorganize. The OrgPath integration replaces the manual maintenance cycle with a systematic, automatically maintained structure derived from the authoritative organizational hierarchy in OrgTree.
+
+The relationship between Entra ID dynamic groups and MDE device groups is the core mechanism of this integration. MDE device groups, configured under **Settings \> Endpoints \> Device groups** in the Defender portal, support Entra ID group-backed membership. When the Entra ID group specified as the membership source is a dynamic group whose membership rule evaluates the OrgPath device extension attribute, the MDE device group membership updates automatically whenever a device's OrgPath changes. The ETL pipeline that writes OrgPath values to device objects — established in Part Four — is the same pipeline that drives this membership. No additional automation is required in MDE itself. The organizational hierarchy, maintained in OrgTree and propagated by the pipeline, governs MDE policy scope and analyst visibility boundaries without any MDE-specific maintenance process.
+
+## Device Group Hierarchy Design
+
+Not every OrgTree leaf node warrants its own MDE device group. A team of three developers with identical security policy requirements and a shared SOC analyst does not benefit from a dedicated device group; it adds administrative overhead without adding security differentiation. The design principle is that MDE device groups should be created at the level of organizational granularity at which one or more of the following conditions is true:
+
+- Security policy differentiation exists: the group requires different antivirus settings, ASR rules, or EDR configuration from its sibling groups
+
+- Monitoring sensitivity differs: the group requires a different alert severity threshold, automated investigation scope, or threat intelligence overlay
+
+- Analyst ownership differs: a distinct SOC analyst or team is responsible for this group and should have bounded visibility to it
+
+- Incident response procedure differs: the group's containment and escalation path follows a different runbook
+
+For most organizations, these conditions are met at the division level and the department level. The Finance division has policy requirements that differ from Engineering. The Finance Accounting department has monitoring sensitivity requirements that differ from Finance Operations. Individual teams within Accounting — accounts payable, accounts receivable, payroll — are typically covered by the Accounting department group's branch scope rather than requiring their own device groups. This aligns with the OrgPath branch group model from Part Four: the ORG-BRANCH-FINANCE-ACCOUNTING dynamic group includes all devices in Accounting and all devices in any child node of Accounting, which is exactly the scope appropriate for the Accounting MDE device group.
+
+The following table shows the recommended device group structure for a representative organizational hierarchy. The MDEBoundary flag in the OrgTree registry metadata is the mechanism by which nodes are designated for MDE device group creation:
+
+| **OrgPath** | **Node Type** | **MDEBoundary** | **MDE Device Group** | **Remediation Level** |
+|----|----|----|----|----|
+| /Root | Root | No | Ungrouped Devices (built-in) | N/A |
+| /Root/Infrastructure/Tier0 | Tier | Yes | MDE-INFRA-TIER0 | Full |
+| /Root/Infrastructure/Tier1 | Tier | Yes | MDE-INFRA-TIER1 | Partial |
+| /Root/Finance | Division | Yes | MDE-FINANCE | Partial |
+| /Root/Finance/Accounting | Department | Yes | MDE-FINANCE-ACCOUNTING | Partial |
+| /Root/Finance/Treasury | Department | Yes | MDE-FINANCE-TREASURY | Full |
+| /Root/Engineering | Division | Yes | MDE-ENGINEERING | NoRemediation |
+| /Root/Legal | Division | Yes | MDE-LEGAL | Partial |
+| /Root/Executive | Segment | Yes | MDE-EXECUTIVE | Full |
+
+## MDE Device Group Synchronization Script
+
+The following PowerShell script reads the OrgTree registry, identifies nodes flagged as MDE governance boundaries, retrieves their associated Entra ID group GUIDs from node metadata, and creates the corresponding MDE device groups via the Defender for Endpoint REST API. The script is idempotent: it checks for existing groups before creating new ones and skips nodes whose MDE group already exists. Run this script whenever the OrgTree registry is updated to add or modify MDE boundary nodes. Authentication uses certificate-based client credentials, which is the recommended approach for unattended automation against the MDE API.
+
+```powershell
+#Requires -Version 5.1
+<# data-id="167"
+.SYNOPSIS
+    Creates Defender for Endpoint device groups aligned with OrgPath branch groups.
+
+.DESCRIPTION
+    Reads the OrgTree registry for nodes marked as MDE governance boundaries
+    (MDEBoundary: true in node metadata). For each such node, creates an MDE
+    device group backed by the corresponding ORG-BRANCH-{NodeId} Entra ID group.
+
+    MDE Device Group API:
+    https://api.securitycenter.microsoft.com/api/machinegroups
+
+    Authentication:
+    OAuth 2.0 client credentials flow using a certificate-bound app registration.
+    Required API permission: WindowsDefenderATP — Machine.ReadWrite.All
+
+.PARAMETER OrgTreeRegistryPath
+    Local path to the OrgTree registry JSON file produced by the ETL pipeline.
+    Example: "C:\governance\orgtree\registry.json"
+
+.PARAMETER MDETenantId
+    Entra ID tenant ID.
+    Example: "f1e2d3c4-b5a6-f1e2-d3c4-b5a6f1e2d3c4"
+    Substitute your actual tenant GUID from the Entra ID overview blade.
+
+.PARAMETER MDEAppId
+    Client ID of the app registration granted WindowsDefenderATP Machine.ReadWrite.All.
+    Example: "a9b8c7d6-e5f4-a9b8-c7d6-e5f4a9b8c7d6"
+    Substitute the Application (client) ID from the app registration overview blade.
+
+.PARAMETER MDECertThumbprint
+    Thumbprint of the certificate uploaded to the app registration for
+    client credentials authentication. The certificate must be present in
+    Cert:\LocalMachine\My on the machine running this script.
+    Example: "AABBCCDDEEFF001122334455AABBCCDDEEFF0011"
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json",
+    [string]$MDETenantId         = "f1e2d3c4-b5a6-f1e2-d3c4-b5a6f1e2d3c4",  # SUBSTITUTE: Your tenant GUID
+    [string]$MDEAppId            = "a9b8c7d6-e5f4-a9b8-c7d6-e5f4a9b8c7d6",  # SUBSTITUTE: Your app registration client ID
+    [string]$MDECertThumbprint   = "AABBCCDDEEFF001122334455AABBCCDDEEFF0011" # SUBSTITUTE: Your certificate thumbprint
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Starting MDE device group synchronization"
+
+# ---------------------------------------------------------------
+# Step 1: Acquire MDE API Token via Certificate Credential
+# The MDE API uses the legacy Azure AD v1 token endpoint (resource=).
+# ---------------------------------------------------------------
+$cert     = Get-Item "Cert:\LocalMachine\My\$MDECertThumbprint"
+$tokenUrl = "https://login.microsoftonline.com/$MDETenantId/oauth2/token"
+
+# Build the JWT client assertion (RFC 7523)
+$now     = [DateTimeOffset]::UtcNow
+$header  = @{ alg = "RS256"; typ = "JWT";
+              x5t = [Convert]::ToBase64String($cert.GetCertHash()) } | ConvertTo-Json -Compress
+$payload = @{
+    aud = $tokenUrl
+    exp = $now.AddMinutes(10).ToUnixTimeSeconds()
+    iss = $MDEAppId
+    jti = [Guid]::NewGuid().ToString()
+    nbf = $now.ToUnixTimeSeconds()
+    sub = $MDEAppId
+} | ConvertTo-Json -Compress
+
+function ConvertTo-Base64Url([string]$input) {
+    [Convert]::ToBase64String(
+        [Text.Encoding]::UTF8.GetBytes($input)
+    ).TrimEnd('=') -replace '\+', '-' -replace '/', '_'
+}
+
+$headerB64  = ConvertTo-Base64Url $header
+$payloadB64 = ConvertTo-Base64Url $payload
+$toSign     = "$headerB64.$payloadB64"
+
+$rsa        = $cert.GetRSAPrivateKey()
+$sigBytes   = $rsa.SignData(
+    [Text.Encoding]::UTF8.GetBytes($toSign),
+    [Security.Cryptography.HashAlgorithmName]::SHA256,
+    [Security.Cryptography.RSASignaturePadding]::Pkcs1
+)
+$sigB64 = [Convert]::ToBase64String($sigBytes).TrimEnd('=') -replace '\+', '-' -replace '/', '_'
+$clientAssertion = "$toSign.$sigB64"
+
+# Exchange the JWT assertion for an access token
+$tokenResponse = Invoke-RestMethod -Method POST -Uri $tokenUrl -Body @{
+    grant_type            = "client_credentials"
+    client_id             = $MDEAppId
+    client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+    client_assertion      = $clientAssertion
+    resource              = "https://api.securitycenter.microsoft.com"
+}
+
+$token   = $tokenResponse.access_token
+$headers = @{
+    Authorization  = "Bearer $token"
+    "Content-Type" = "application/json"
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] MDE API token acquired"
+
+# ---------------------------------------------------------------
+# Step 2: Load OrgTree Registry and Identify MDE Boundary Nodes
+# The registry is produced by the ETL pipeline (Part Four).
+# Each node with MDEBoundary = true will receive an MDE device group.
+# Each such node must also have EntraGroupId populated by the
+# dynamic group creation step from Part Four.
+# ---------------------------------------------------------------
+$registry      = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$boundaryNodes = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and $_.MDEBoundary -eq $true
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] MDE boundary nodes found: $($boundaryNodes.Count)"
+
+# ---------------------------------------------------------------
+# Step 3: Get Existing MDE Device Groups (to avoid duplicates)
+# ---------------------------------------------------------------
+$existingGroups = Invoke-RestMethod `
+    -Method GET `
+    -Uri "https://api.securitycenter.microsoft.com/api/machinegroups" `
+    -Headers $headers
+
+$existingGroupMap = @{}
+foreach ($g in $existingGroups.value) {
+    $existingGroupMap[$g.name] = $g
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Existing MDE device groups: $($existingGroupMap.Count)"
+
+# ---------------------------------------------------------------
+# Step 4: Create MDE Device Groups for Each Boundary Node
+# ---------------------------------------------------------------
+foreach ($node in $boundaryNodes) {
+    # MDE device group name is derived from the node ID.
+    # NAMING CONVENTION: MDE-{NodeId} — adjust prefix to match your environment naming standard.
+    $mdeName = "MDE-$($node.Id)"
+
+    if ($existingGroupMap.ContainsKey($mdeName)) {
+        Write-Host "  [SKIP]    Group already exists: $mdeName"
+        continue
+    }
+
+    # Determine automated remediation level from the node's governance tier.
+    # Tier0 nodes receive Full automated remediation (IR team has pre-approved).
+    # Tier1 nodes receive Partial (semi-automated, pending analyst approval).
+    # All other nodes receive NoRemediation (manual analyst action required).
+    # SUBSTITUTE: Adjust tier-to-remediation mapping for your security posture requirements.
+    $remediationLevel = switch ($node.Tier) {
+        "Tier0" { "Full"            }
+        "Tier1" { "Partial"         }
+        default  { "NoRemediation"  }
+    }
+
+    # EntraGroupId is stored in the OrgTree node metadata, populated when the
+    # ORG-BRANCH dynamic group was created in Part Four.
+    # If EntraGroupId is missing, the node was not fully provisioned — skip it.
+    if ([string]::IsNullOrEmpty($node.EntraGroupId)) {
+        Write-Warning "  [WARN]    Node $($node.Id) has no EntraGroupId — skipping."
+        continue
+    }
+
+    $body = @{
+        name                       = $mdeName
+        description                = "OrgPath device group: $($node.Name) | Path: $($node.Path)"
+        isUnassignedMachineGroup   = $false   # This is an explicitly scoped group
+        isAzureActiveDirectoryGroup = $true    # Membership driven by Entra ID group
+        # The Entra ID group ID for ORG-BRANCH-{NodeId} — stored in OrgTree node metadata.
+        # Retrieve separately with: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-$($node.Id)'"
+        azureActiveDirectoryGroupId = $node.EntraGroupId
+        remediationLevel           = $remediationLevel
+    } | ConvertTo-Json -Depth 5
+
+    Invoke-RestMethod `
+        -Method POST `
+        -Uri "https://api.securitycenter.microsoft.com/api/machinegroups" `
+        -Headers $headers `
+        -Body $body | Out-Null
+
+    Write-Host "  [CREATED] MDE group: $mdeName | Remediation: $remediationLevel | EntraGroup: $($node.EntraGroupId)"
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] MDE device group synchronization complete."
+```
+
+## MDE RBAC Scoping for Organizational SOC Roles
+
+With MDE device groups created and backed by OrgPath-derived dynamic groups, the RBAC layer can be configured to give each organizational SOC team bounded visibility into their assigned segment. MDE custom roles are created under **Settings \> Endpoints \> Roles** in the Defender portal. Each custom role is defined by a set of permissions and a set of device groups to which those permissions apply.
+
+For example, the Finance SOC Analyst role is configured with permissions to view device information, view alerts, manage alert status, and initiate response actions, scoped exclusively to the MDE-FINANCE and MDE-FINANCE-ACCOUNTING device groups. An analyst assigned to this role can see every alert on every Finance device, can manage those alerts, and can initiate isolations and response actions — but cannot see any device, alert, or action in the Engineering, Legal, or Executive device groups. The role assignment is given to the Entra ID security group that represents the Finance SOC team, which may itself be an OrgPath-derived dynamic group if the security operations staff are represented in OrgTree.
+
+This arrangement produces several operational properties that are worth naming explicitly because they are difficult to achieve through other means:
+
+- **Analyst scope automatically follows organizational changes.** When a device moves from one division to another — because a team is reorganized, a project transfers, or a user changes roles — the OrgPath update propagates to the dynamic group, which updates the MDE device group membership, which changes which analyst roles can see the device. No manual RBAC update is required.
+
+- **Analyst scope does not require device naming conventions.** Devices can be named according to any convention without affecting security scope, because scope is derived from OrgPath, not from device names or tags that require administrative maintenance.
+
+- **Scope boundaries are auditable.** Because RBAC scope follows a dynamic group whose membership rule is versioned in the governance repository, any scope change is traceable to a specific OrgTree registry update with an associated pull request and approval record.
+
+::: {.callout-note title="ⓘ Ungrouped Device Handling"}
+MDE always maintains a built-in Ungrouped Devices group that captures devices not matched by any custom device group. In an OrgPath-governed environment, ungrouped devices represent assets whose OrgPath has not yet been assigned by the ETL pipeline — newly enrolled devices awaiting their first pipeline run, or devices that failed OrgPath assignment due to a registry gap. The Ungrouped Devices group should be monitored by a dedicated catch-all SOC role, and alerts from ungrouped devices should trigger an automatic OrgPath assignment ticket in the ITSM system. The goal is a zero-ungrouped-device steady state.
+:::

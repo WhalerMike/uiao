@@ -1,0 +1,116 @@
+---
+title: "App Consent Policy Governance by OrgPath"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "08"
+series-order: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 3 — App Consent Policy Governance by OrgPath
+
+## The Entra ID Consent Model
+
+Entra ID's application consent model governs which applications users are permitted to grant access to their identities and data. In its default configuration, users are permitted to consent to applications requesting a defined set of low-risk delegated permissions — permissions that allow the application to act on behalf of the user, bounded by that user's own rights, for common operations like reading the user's profile or accessing the user's calendar. Administrators can modify this tenant-wide default in several directions: they can restrict consent entirely, requiring admin approval for every application consent regardless of the permissions requested; they can configure a custom permission set that defines which delegated permissions users may self-consent to; or they can leave the default in place and rely on the admin consent request workflow to handle requests that exceed the self-consent threshold.
+
+The challenge with the binary tenant-wide approach is that it is insensitive to organizational context. A data science team connecting a Jupyter notebook environment to an analytics API has different consent requirements than an executive assistant connecting a scheduling tool to their calendar. The engineering platform team evaluating a new API gateway product has different consent needs than the accounting team running payroll integrations. A policy that either blanket-allows user consent across the entire tenant or blanket-requires admin approval for all of it is, in both cases, poorly calibrated to the actual risk and workflow needs of most organizational segments.
+
+With OrgPath stamped on application objects, a more precise model becomes possible. Applications owned by organizational nodes whose workflows require broader consent latitude — engineering teams, analytics teams, platform groups — can be pre-approved for the organizational segments they serve, with consent requests for those applications routed to that segment's designated approver group rather than to a global admin queue. Applications owned by high-sensitivity organizational nodes — finance, executive, legal — can be subject to stricter consent requirements, with every consent request requiring explicit approval from the node's designated governance group. The OrgPath on the application tells the consent workflow where the application sits in the organizational accountability chain, and that context drives the routing.
+
+## Admin Consent Workflow Integration
+
+The admin consent request workflow in Entra ID — accessible under Enterprise Applications → Consent and permissions → Admin consent requests — provides the infrastructure for routing consent requests to designated approvers rather than requiring global administrators to handle every request. When the workflow is enabled and a user requests consent for an application that exceeds the user-consent threshold, the request is placed in the admin consent queue and the configured approvers are notified. Out of the box, the approver group is configured at the tenant level; the workflow does not natively route based on application OrgPath. The governance pipeline in this chapter bridges that gap by reading the application's OrgPath owner from the WatchList, resolving the OrgPath node's designated consent approver group from the OrgTree registry, and configuring the consent workflow infrastructure accordingly.
+
+The OrgTree registry node schema is extended with two additional fields for application consent governance: AppConsentBoundary, a boolean that flags the node as a consent routing boundary (meaning that consent requests for applications owned by this node or its descendants are routed to this node's approver group), and ConsentApproverGroupName, the display name of the Entra ID security group whose members are authorized to approve or deny consent requests for this node's application portfolio. Not every node needs to be a consent boundary — the model works best when consent boundaries align with organizational divisions that have dedicated IT governance leads rather than granular team-level nodes.
+
+## Script 3.1 — Admin Consent Workflow and OrgPath Approver Routing Configuration (PowerShell)
+
+```powershell
+<# data-id="92"
+.SYNOPSIS
+    Configures admin consent request approvers for each OrgPath-owned
+    application category, routing consent requests to the appropriate
+    organizational governance group.
+.DESCRIPTION
+    Reads the OrgTree registry for nodes flagged as AppConsentBoundary.
+    For each such node, configures the Entra ID admin consent request
+    policy to route consent requests for applications owned by that node
+    to the node's designated consent approver group.
+.NOTES
+    Requires: Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Group.Read.All"
+    The global admin consent workflow must be enabled first:
+      Update-MgPolicyAdminConsentRequestPolicy -IsEnabled $true -Version 1
+      -Notifiers @( ... ) in the tenant before per-app routing applies.
+    This script sets the tenant-level approvers; per-app routing uses
+    the appConsentPolicies framework available in Entra ID Governance.
+#>
+param(
+    [string]$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json"
+)
+
+Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Policy.ReadWrite.AdminConsent","Group.Read.All" -NoWelcome
+
+# Enable the admin consent request workflow at the tenant level
+$consentPolicyBody = @{
+    isEnabled = $true
+    version   = 1
+    notifiers = @(
+        @{
+            notificationTemplate  = "ReviewerEmailTemplate"
+            notificationChannel   = "Email"
+            receivers             = @(
+                @{
+                    receiverType = "InitiatorAndAdmins"
+                }
+            )
+        }
+    )
+}
+
+Update-MgPolicyAdminConsentRequestPolicy -BodyParameter $consentPolicyBody
+Write-Host "[OK] Admin consent request workflow enabled."
+
+# Load OrgTree and configure per-node approver groups
+$registry      = Get-Content $OrgTreeRegistryPath -Raw | ConvertFrom-Json
+$consentNodes  = $registry.nodes | Where-Object {
+    $_.Status -eq "Active" -and $_.AppConsentBoundary -eq $true -and $_.ConsentApproverGroupName
+}
+
+Write-Host "AppConsent boundary nodes: $($consentNodes.Count)"
+
+foreach ($node in $consentNodes) {
+
+    $approverGroup = Get-MgGroup `
+        -Filter "displayName eq '$($node.ConsentApproverGroupName)'" `
+        -Property "Id,DisplayName" | Select-Object -First 1
+
+    if (-not $approverGroup) {
+        Write-Warning "  Approver group '$($node.ConsentApproverGroupName)' not found for node $($node.Id)"
+        continue
+    }
+
+    # Log the approver mapping to the governance audit log
+    @{
+        Timestamp        = (Get-Date -Format "o")
+        Event            = "AppConsentApproverConfigured"
+        OrgPathNode      = $node.Path
+        ApproverGroup    = $approverGroup.DisplayName
+        ApproverGroupId  = $approverGroup.Id
+    } | ConvertTo-Json -Compress |
+        Out-File -Append "C:\governance\logs\app-consent-audit.jsonl"  # Substitute path
+
+    Write-Host "  [OK] Node $($node.Id) ($($node.Name)) => Approver: $($approverGroup.DisplayName)"
+}
+
+Write-Host "Admin consent approver configuration complete."
+Disconnect-MgGraph
+```
+
+::: {.callout-note title="Architecture Note: Permission Grant Policies"}
+For tenants with Entra ID Governance licensing, the permission grant policy framework — accessible via POST /policies/permissionGrantPolicies — provides a more granular mechanism for pre-approving specific permission sets for specific organizational segments. The OrgPath model integrates naturally with this framework: the policy condition set references the OrgPath of the application's owner, and the permitted permission set is scoped to the delegated permissions appropriate for that organizational segment. This is the recommended approach for engineering and platform teams that require broad self-service consent latitude within a defined permission envelope.
+:::

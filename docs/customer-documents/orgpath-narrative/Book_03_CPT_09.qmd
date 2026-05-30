@@ -1,0 +1,33 @@
+---
+title: "Continuous Validation — Keeping the Governance Model True"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "03"
+series-order: 9
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 9 — Continuous Validation — Keeping the Governance Model True
+
+::: {.callout-note title="Requirement Being Addressed — Drift Detection"}
+The companion document required that the governance substrate run drift detection continuously, comparing the live state of every identity's organizational position attribute against the hierarchy registry, surfacing deviations for remediation, and committing the results to a version-controlled governance record after each detection run.
+:::
+
+## How Drift Detection Works in Practice
+
+The accuracy of OrgPath values across the identity population is not self-sustaining. Out-of-band administrative actions can overwrite attribute values. Platform events can reset extended attributes when a device re-enrolls or when a user object is recreated after a deletion and recovery cycle. Structural changes to OrgTree can leave identities assigned to nodes that have since been archived or moved. New identities can be provisioned without having OrgPath values assigned, either because the provisioning workflow did not invoke the pipeline or because the pipeline encountered an error during initial assignment. Any of these events produces a deviation between the governed intent recorded in the OrgTree registry and the actual state of the OrgPath attribute population in the live directory. Drift detection is the process that finds those deviations and reports them for remediation.
+
+On a scheduled basis — at minimum daily, and additionally triggered by any change to the OrgTree registry or by any bulk change to the directory's identity population — the drift detection process executes the following sequence. It reads the current OrgTree registry to obtain the complete set of valid organizational paths. It reads the current OrgPath value of every user, device, and server resource in scope — from the directory extension attribute for users and devices, and from the resource tag for server resources. It reads the governance repository's provisioning records to determine the expected OrgPath value for each identity, based on the most recent pipeline-executed assignment. It then compares each actual OrgPath value against both the registry and the expected value, classifying each deviation into one of four categories.
+
+An identity whose OrgPath value does not correspond to any valid path in the current OrgTree is classified as having an invalid position — the most severe category. This finding indicates either that the attribute was never properly set, that the value was set by an out-of-band action that bypassed the pipeline's validation, or that the OrgTree was changed without the pipeline completing its reconciliation run across all affected identities. An identity with no OrgPath value at all is classified as unpositioned — it has not been placed in the organizational hierarchy and is therefore not covered by any structurally derived policy, which means it is invisible to the dynamic group architecture and exempt from the governance model. An identity whose OrgPath value is valid — it corresponds to a node that exists in the current OrgTree — but whose dynamic group memberships do not match the expected membership for that path is classified as having a membership divergence. The attribute is correct, but the policy coverage has not been applied, which may indicate a delay in dynamic group evaluation or a problem with the group membership rule. An identity whose OrgPath value corresponds to a node that has been archived or flagged for removal from OrgTree is classified as having a stale position — its organizational assignment has not been updated to reflect a structural change in the hierarchy.
+
+## What Happens with Drift Detection Results
+
+Each deviation is recorded as a finding in the drift detection report — a machine-readable structured file that is committed to the governance repository at the conclusion of each detection run. The report is a permanent record: it captures the identity identifier, the current OrgPath value observed in the live environment, the expected OrgPath value derived from the provisioning record and the current OrgTree, the finding category, the severity, and the recommended remediation action. High-severity findings — invalid positions and unpositioned identities — trigger automated alerts to the governance team and, where the pipeline can determine the correct value from the provisioning record, initiate an automated remediation run that reapplies the correct OrgPath value without waiting for human intervention. Medium-severity findings — membership divergences and stale positions — are collected for batch remediation and included in the governance team's regular review cadence. Low-severity findings — formatting inconsistencies, attribute values that are technically valid but use deprecated segment identifiers from an older version of the OrgTree — are logged for review without triggering immediate action.
+
+The value of the drift detection report extends beyond remediation. Each committed report is a point-in-time measurement of the accuracy of the governance model. The series of reports committed over time constitutes a longitudinal record of governance quality — the fraction of the identity population with valid OrgPath values, the rate at which deviations are introduced relative to the rate at which they are remediated, and the categories of deviation that are most persistent. This record is the evidence base for a governance team's continuous improvement program and the documentation that a compliance review requires to demonstrate that the governance model is actively maintained rather than merely designed.
