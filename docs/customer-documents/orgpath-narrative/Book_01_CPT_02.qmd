@@ -14,11 +14,38 @@ lifecycle_review: 2026-11-22
 
 # Chapter 2 — Active Directory Domain Services — The Unified Substrate
 
+::: {.callout-note}
+## In this chapter
+What Active Directory actually was as an architecture — the domain and forest
+boundaries, the OU inheritance model, the Kerberos/DNS service-locator
+coupling, LDAP as a universal query surface, and the FSMO/schema machinery —
+together with the contemporary limitations that justify migrating away from it.
+:::
+
 ## Architecture and Native Capabilities
 
 Active Directory Domain Services is a directory service based on the Lightweight Directory Access Protocol and the X.500 directory information model, introduced by Microsoft with Windows 2000 Server and continuously extended through successive Windows Server releases. Its foundational architectural unit is the domain: a replication boundary, an authentication boundary, and an administrative boundary that simultaneously. A forest is a collection of domains that share a common schema, a common configuration partition, and a transitive trust relationship with one another. Every domain in a forest shares the Global Catalog, which holds a partial replica of every object in every domain and allows forest-wide searches without traversing inter-domain referrals. The forest root domain holds the Schema Master and Domain Naming Master FSMO roles, which govern schema modification and domain creation respectively, establishing a clear hierarchy of control over the directory's fundamental capabilities.
 
 Within a domain, the Organizational Unit is the primary structural element. The OU is a container object derived from the X.500 organizationalUnit class, and it exists for two distinct purposes: to organize objects visually and conceptually, and to serve as the attachment point for governance mechanisms. These two purposes are inseparable in the AD model. Group Policy Objects are linked to OUs. Administrative delegation is expressed by setting Access Control Entries on OU objects. Fine-grained password policies in functional level 2008 and above are applied through Password Settings Objects linked to global security groups, but the OU remains the primary policy inheritance vehicle for the overwhelming majority of enterprise configuration. The inheritance model is hierarchical and deterministic: a GPO linked to a parent OU applies to all objects in all child OUs unless explicitly blocked by the No Override or Block Inheritance flags. This inheritance flows without any additional configuration from the administrator. Placing an object in an OU is the act that determines which policies apply to it.
+
+The Kerberos service-locator binding that ties authentication to DNS follows a
+fixed record form:
+
+```text
+Client needs a domain controller
+        │
+        ▼
+DNS query for SRV record:
+   _kerberos._tcp.dc._msdcs.<domain>
+        │
+        ▼
+DNS (AD-integrated zone) returns DC addresses
+        │
+        ▼
+Client contacts KDC → obtains TGT → requests service tickets
+```
+
+[DIAGRAM-01: Active Directory as a single unified substrate, with one directory feeding every governance facet. A central "Active Directory domain / forest" box with the OU tree inside it, and labeled arrows radiating to five tightly-coupled facets that all draw from the same store: Group Policy (linked to OUs, inherited downward), Kerberos KDC (runs on every domain controller), AD-integrated DNS (SRV service-locator records, replicates with the directory), AD Certificate Services (auto-enrollment driven by Group Policy), and LDAP (uniform query over the whole object graph). A footer band reads "One data model, one inheritance framework, one governance posture". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the directory core, teal (#1A9E8F) for the five facets, monospace labels for identifiers such as _kerberos._tcp.dc._msdcs.<domain>, no human figures, 16:9 landscape.]
 
 ## Authentication, DNS Integration, and the Service Locator Model
 
