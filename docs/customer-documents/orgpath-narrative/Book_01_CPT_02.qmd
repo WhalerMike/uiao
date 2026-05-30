@@ -39,6 +39,25 @@ Within a domain, the **Organizational Unit (OU)** is the primary structural elem
 
 > **Deterministic inheritance:** A GPO linked to a parent OU applies to all objects in all child OUs unless explicitly blocked by the *No Override* or *Block Inheritance* flags. This inheritance flows without any additional configuration. Placing an object in an OU is the act that determines which policies apply to it.
 
+The Kerberos service-locator binding that ties authentication to DNS follows a
+fixed record form:
+
+```text
+Client needs a domain controller
+        │
+        ▼
+DNS query for SRV record:
+   _kerberos._tcp.dc._msdcs.<domain>
+        │
+        ▼
+DNS (AD-integrated zone) returns DC addresses
+        │
+        ▼
+Client contacts KDC → obtains TGT → requests service tickets
+```
+
+[DIAGRAM-01: Active Directory as a single unified substrate, with one directory feeding every governance facet. A central "Active Directory domain / forest" box with the OU tree inside it, and labeled arrows radiating to five tightly-coupled facets that all draw from the same store: Group Policy (linked to OUs, inherited downward), Kerberos KDC (runs on every domain controller), AD-integrated DNS (SRV service-locator records, replicates with the directory), AD Certificate Services (auto-enrollment driven by Group Policy), and LDAP (uniform query over the whole object graph). A footer band reads "One data model, one inheritance framework, one governance posture". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the directory core, teal (#1A9E8F) for the five facets, monospace labels for identifiers such as _kerberos._tcp.dc._msdcs.<domain>, no human figures, 16:9 landscape.]
+
 ## Authentication, DNS Integration, and the Service Locator Model
 
 Authentication in Active Directory is provided primarily by Kerberos version 5, with NTLM available as a fallback for legacy systems. The Kerberos KDC runs on every domain controller. When a client authenticates, it contacts the KDC to obtain a Ticket-Granting Ticket, which it then presents to obtain service tickets for specific resources. The KDC is located not through static configuration but through a dynamic DNS query, following a fixed record form:
