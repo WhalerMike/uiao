@@ -14,6 +14,15 @@ lifecycle_review: 2026-11-22
 
 # Chapter 9 — Continuous Validation — Keeping the Governance Model True
 
+::: {.callout-note}
+## In this chapter
+How drift detection runs in practice — reading the registry and every live
+OrgPath value on a schedule, classifying each deviation into four categories
+(invalid position, unpositioned, membership divergence, stale position), and
+driving severity-based remediation while committing each report as a
+longitudinal measure of governance quality.
+:::
+
 ::: {.callout-note title="Requirement Being Addressed — Drift Detection"}
 The companion document required that the governance substrate run drift detection continuously, comparing the live state of every identity's organizational position attribute against the hierarchy registry, surfacing deviations for remediation, and committing the results to a version-controlled governance record after each detection run.
 :::
@@ -24,10 +33,21 @@ The accuracy of OrgPath values across the identity population is not self-sustai
 
 On a scheduled basis — at minimum daily, and additionally triggered by any change to the OrgTree registry or by any bulk change to the directory's identity population — the drift detection process executes the following sequence. It reads the current OrgTree registry to obtain the complete set of valid organizational paths. It reads the current OrgPath value of every user, device, and server resource in scope — from the directory extension attribute for users and devices, and from the resource tag for server resources. It reads the governance repository's provisioning records to determine the expected OrgPath value for each identity, based on the most recent pipeline-executed assignment. It then compares each actual OrgPath value against both the registry and the expected value, classifying each deviation into one of four categories.
 
+The four drift categories, by severity:
+
+| Category | Meaning | Severity |
+| :--- | :--- | :--- |
+| **Invalid position** | OrgPath value corresponds to no valid path in the current OrgTree (never set properly, set out-of-band bypassing validation, or an incomplete reconciliation run). | High |
+| **Unpositioned** | No OrgPath value at all — the identity is outside the dynamic group architecture and exempt from structurally derived policy. | High |
+| **Membership divergence** | OrgPath is valid, but the identity's dynamic group memberships don't match what the path implies (evaluation delay or a rule problem). | Medium |
+| **Stale position** | OrgPath references a node that has been archived or flagged for removal — assignment not updated for a structural change. | Medium |
+
 An identity whose OrgPath value does not correspond to any valid path in the current OrgTree is classified as having an invalid position — the most severe category. This finding indicates either that the attribute was never properly set, that the value was set by an out-of-band action that bypassed the pipeline's validation, or that the OrgTree was changed without the pipeline completing its reconciliation run across all affected identities. An identity with no OrgPath value at all is classified as unpositioned — it has not been placed in the organizational hierarchy and is therefore not covered by any structurally derived policy, which means it is invisible to the dynamic group architecture and exempt from the governance model. An identity whose OrgPath value is valid — it corresponds to a node that exists in the current OrgTree — but whose dynamic group memberships do not match the expected membership for that path is classified as having a membership divergence. The attribute is correct, but the policy coverage has not been applied, which may indicate a delay in dynamic group evaluation or a problem with the group membership rule. An identity whose OrgPath value corresponds to a node that has been archived or flagged for removal from OrgTree is classified as having a stale position — its organizational assignment has not been updated to reflect a structural change in the hierarchy.
 
 ## What Happens with Drift Detection Results
 
 Each deviation is recorded as a finding in the drift detection report — a machine-readable structured file that is committed to the governance repository at the conclusion of each detection run. The report is a permanent record: it captures the identity identifier, the current OrgPath value observed in the live environment, the expected OrgPath value derived from the provisioning record and the current OrgTree, the finding category, the severity, and the recommended remediation action. High-severity findings — invalid positions and unpositioned identities — trigger automated alerts to the governance team and, where the pipeline can determine the correct value from the provisioning record, initiate an automated remediation run that reapplies the correct OrgPath value without waiting for human intervention. Medium-severity findings — membership divergences and stale positions — are collected for batch remediation and included in the governance team's regular review cadence. Low-severity findings — formatting inconsistencies, attribute values that are technically valid but use deprecated segment identifiers from an older version of the OrgTree — are logged for review without triggering immediate action.
+
+[DIAGRAM-01: The drift detection cycle and severity-based remediation. A scheduled trigger (daily, plus registry-change and bulk-change triggers) starts a run that reads three inputs — the current OrgTree registry (valid paths), every live OrgPath value, and the provisioning records (expected values). A classifier sorts each identity into one of four lanes: invalid position, unpositioned, membership divergence, stale position. High-severity lanes (invalid, unpositioned) branch to automated alert + auto-remediation where the correct value is derivable; medium-severity lanes batch into the review cadence; low-severity findings are logged. The run commits a machine-readable report to the governance repository, and a longitudinal chart shows governance-quality over successive reports (valid fraction, introduction vs remediation rate). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for inputs, teal (#1A9E8F) for the classifier, red (#C0392B) for high-severity lanes, amber (#D4A017) for the committed report and trend chart, monospace labels, no human figures, 16:9 landscape.]
 
 The value of the drift detection report extends beyond remediation. Each committed report is a point-in-time measurement of the accuracy of the governance model. The series of reports committed over time constitutes a longitudinal record of governance quality — the fraction of the identity population with valid OrgPath values, the rate at which deviations are introduced relative to the rate at which they are remediated, and the categories of deviation that are most persistent. This record is the evidence base for a governance team's continuous improvement program and the documentation that a compliance review requires to demonstrate that the governance model is actively maintained rather than merely designed.

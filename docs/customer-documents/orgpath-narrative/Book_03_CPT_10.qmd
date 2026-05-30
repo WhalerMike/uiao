@@ -14,6 +14,15 @@ lifecycle_review: 2026-11-22
 
 # Chapter 10 — The Governance Pipeline — Automation and Audit as Operational Properties
 
+::: {.callout-note}
+## In this chapter
+The event-driven pipeline that ties the model together: the four event classes
+(registry, identity, decommissioning, scheduled) and the bounded operations
+each triggers, and how committing every output to a version-controlled
+repository makes governance history an automatic byproduct of operation rather
+than a separate audit effort.
+:::
+
 ::: {.callout-note title="Requirements Being Addressed — Automation and Version Control"}
 The companion document required, first, that every operation the governance substrate performs be automatable — triggered by events rather than by administrator action — and, second, that every change to the governance state be committed to a version-controlled repository, making governance history a byproduct of normal operations rather than a separately maintained audit trail.
 :::
@@ -21,6 +30,8 @@ The companion document required, first, that every operation the governance subs
 ## The Event Model
 
 The governance pipeline is event-driven. It does not run on a fixed schedule for all operations, and it does not wait for administrator instruction before executing. It responds to four categories of events, each of which triggers a specific, bounded set of pipeline operations whose outputs are committed to the governance repository as a record of the event's consequences.
+
+[DIAGRAM-01: The four event classes of the governance pipeline and their bounded operations, each committing to the repository. Four labeled input lanes feed a central pipeline: Registry events (node add/remove/rename/move/archive) → re-derive affected OrgPaths, rebuild node/branch group rules, targeted drift run; Identity events (provision / reassignment) → derive + stamp OrgPath, re-evaluate group membership, single-identity drift check; Decommissioning events (asset retirement) → dependency-graph query, impact report, compliance gate that BLOCKS retirement while open dependencies remain; Scheduled events (fixed cadence) → full-population drift detection, dependency-graph validation, governance report generation. Every lane's outputs flow into a single "version-controlled governance repository" as linked commits. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for event lanes, teal (#1A9E8F) for pipeline operations, red (#C0392B) for the decommissioning compliance gate, amber (#D4A017) for the committed repository, monospace labels, no human figures, 16:9 landscape.]
 
 Registry events occur when the OrgTree is modified in any way. A node addition, removal, rename, move, or archive operation in the OrgTree registry is a registry event. Registry events trigger three downstream pipeline operations. First, the pipeline identifies every identity whose OrgPath traverses any changed node and recomputes the correct OrgPath value for each of them, applying updates where the structural change requires it. Second, the pipeline reconstructs the membership rules for every dynamic group whose node was affected by the change — updating prefix patterns in branch group rules and exact-match patterns in node group rules to reflect the new node paths. Third, the pipeline executes a targeted drift detection run across all identities whose paths traverse the changed node, confirming that the reconciliation was complete and recording any residual deviations as findings. The outputs of all three operations are committed to the governance repository as a linked record set associated with the OrgTree change event that triggered them.
 
