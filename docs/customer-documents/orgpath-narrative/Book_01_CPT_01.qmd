@@ -14,6 +14,14 @@ lifecycle_review: 2026-11-22
 
 # Chapter 1 — The Governance Gap at the Center of the Microsoft Cloud
 
+::: {.callout-note}
+## In this chapter
+Why the move from Active Directory to the Microsoft cloud is a *decomposition*
+rather than a lift-and-shift, and why the resulting loss of a shared
+organizational substrate is an **architectural** gap — not an operational one
+that documentation, training, or discipline can close.
+:::
+
 ## What Active Directory Was, and Why It Mattered
 
 For more than two decades, Active Directory Domain Services served as the single unifying substrate of enterprise and federal IT infrastructure. Its significance was never merely that it authenticated users or applied policy to machines. Its significance was architectural: Active Directory was the one system in which every object, every identity, every machine, every policy, and every administrative delegation lived together, related to one another through a coherent structural model, and expressed the organization's governance posture as a matter of native function. The Organizational Unit was not merely a container for grouping users. It was a positional statement. It told the directory where a user sat in the institution's hierarchy, and that position carried weight — weight expressed through the automatic inheritance of Group Policy, through the scope of delegated administrative authority, through the application of fine-grained security settings, and through the replication of DNS records tied to the domain's infrastructure. A user in the Finance OU of the Washington Division received, automatically and deterministically, a specific set of policies because of where they sat, not because an administrator had enumerated their name against every policy. That is the feature that is missing from the cloud.
@@ -33,6 +41,17 @@ Entra ID does not know what Intune knows about a device's organizational assignm
 Active Directory could answer a specific set of governance questions as a matter of native function. Where does this identity sit in the organization? The LDAP distinguished name answered that question with precision: it expressed the complete path from the object to the domain root through every OU in the hierarchy, and any system that could issue an LDAP query could retrieve that path without additional configuration. What policies does that organizational position imply? The Group Policy resultant set calculation answered that question deterministically: given the object's position in the OU tree and the GPOs linked at each level of that tree, the effective policy was computable by any tool with read access to the domain. Who has delegated authority over this segment of the organization? The ACL on the OU answered that question: the Access Control Entries on the container object expressed precisely which security principals had which permissions over objects within that container, inheriting downward unless explicitly blocked. What is the blast radius of retiring this dependency? The dependency graph of objects — users, computers, groups, certificates, GPOs, trusts — could be traversed through LDAP to identify every consumer of every resource before any change was made.
 
 None of these questions can be answered by the Microsoft cloud stack without custom engineering. There is no cloud object whose attributes express the complete organizational path of an identity. There is no cloud policy engine that can compute effective policy from the intersection of an identity's organizational position and a hierarchy of policy objects linked to that position. There is no cloud delegation model that expresses authority as a right over a subtree rather than as a right over an explicitly enumerated set of objects. There is no cloud tool that traverses the combined dependency graph of Entra ID objects, Intune policies, Azure resources, DNS records, and certificates before a governance change is made. These are not features that are planned for a future product release. They are structural absences that flow from the architectural decision to build a cloud platform as a collection of specialized services rather than as a unified directory.
+
+**At a glance — four governance questions, two eras:**
+
+| Governance question | Active Directory answered it via | Microsoft cloud stack native answer |
+| :--- | :--- | :--- |
+| Where does this identity sit in the organization? | LDAP distinguished name — the complete path to the domain root | No object expresses the complete organizational path |
+| What policies does that position imply? | Group Policy resultant-set calculation over the OU tree | No engine computes effective policy from structural position |
+| Who has delegated authority over this segment? | Access Control Entries on the OU container, inherited downward | No model expresses authority over a subtree |
+| What is the blast radius of retiring a dependency? | LDAP traversal of the object dependency graph | No tool traverses the combined cross-product graph |
+
+[DIAGRAM-02: Four governance questions, answered natively by Active Directory and unanswered by the Microsoft cloud stack. A row of four question cards reading "Where does this identity sit?", "What policy applies?", "Who has authority here?", and "What breaks if I remove this?", each split into two columns — a left "Active Directory" column marked with a green check and its native mechanism (LDAP distinguished name, Group Policy resultant set, OU ACL inheritance, LDAP dependency traversal), and a right "Microsoft cloud stack" column marked with a red X labeled "no native carrier". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) card headers, teal (#1A9E8F) for the Active Directory column, red (#C0392B) marks for the cloud column, monospace labels for identifiers, no human figures, 16:9 landscape.]
 
 ## Why This Is an Architectural Gap, Not an Operational One
 

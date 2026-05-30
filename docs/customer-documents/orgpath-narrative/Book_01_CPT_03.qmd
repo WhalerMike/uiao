@@ -14,6 +14,14 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — Microsoft Entra ID — The Flat Directory
 
+::: {.callout-note}
+## In this chapter
+Entra ID's object model and protocol surface, its scalar directory-extension
+attributes, and the single architectural fact that shapes everything in this
+series: the directory is **flat** — it has no Organizational Unit, no
+parent-child container, and therefore no structural inheritance.
+:::
+
 ## Architecture and Native Capabilities
 
 Microsoft Entra ID, formerly Azure Active Directory, is Microsoft's cloud-native identity platform. It serves as the identity and access management foundation for Microsoft 365, Azure, and any third-party application that supports modern authentication protocols. Entra ID provides authentication through OAuth 2.0, OpenID Connect, and SAML 2.0, covering both browser-based and API-based access patterns. Its object model includes users, groups, service principals, application registrations, managed identities, and device objects. Users can be cloud-native — created directly in the tenant — or synchronized from on-premises Active Directory. Groups can be of three types: security groups for access control and policy targeting, Microsoft 365 groups for collaboration with associated SharePoint, Teams, and Exchange resources, and distribution groups for email distribution. Application registrations represent applications that use the Entra ID identity platform, while service principals are the per-tenant instance of an application registration, carrying the actual permission grants and role assignments for a specific tenant. Managed identities — system-assigned or user-assigned — provide Azure workloads with an Entra ID identity that can be used to authenticate to other Azure services without requiring stored credentials.
@@ -25,6 +33,24 @@ The Entra ID role-based access control model assigns directory roles — Global 
 Entra ID supports the extension of the user, group, device, and application object schemas through directory extension attributes. These extensions are registered to an application registration and expressed as additional properties on the objects they extend. They allow organizations to store custom attributes — employee classification codes, clearance levels, organizational codes, cost center identifiers — directly on directory objects, where they become queryable through Graph API and usable in dynamic group membership rules. Extension attributes are not schema-global in the AD sense; they are tied to the application registration that defines them and must be declared before they can be populated. The total number of extension attributes is bounded, and the extension model does not support complex types or structured data — extension values are string, integer, boolean, or binary scalars. This model is sufficient for storing simple organizational metadata but is not designed to express organizational hierarchy or structural relationships between objects.
 
 ## What Entra ID Does Not Natively Provide
+
+> **The foundational constraint:** Entra ID has no organizational hierarchy.
+> The directory is flat — every user, group, device, and service principal
+> exists at the same level within the tenant, with no container to inherit
+> from.
+
+```text
+Active Directory (hierarchical)        Entra ID (flat)
+  domain
+  └── OU=Washington                    ┌─────────────────────────────────┐
+      ├── OU=Finance                   │ user user user user group group │
+      │   └── user (inherits policy)   │ device device sp group user ... │
+      └── OU=HR                        │  (all at one level — no OUs,    │
+          └── user (inherits policy)   │   no parent-child, no inherit)  │
+                                       └─────────────────────────────────┘
+```
+
+[DIAGRAM-01: Structural contrast between a hierarchical Active Directory tree and a flat Entra ID tenant. Left side labeled "Active Directory" shows a branching tree — a domain root over OU=Washington, which splits into OU=Finance and OU=HR, each containing user and computer objects, with a downward arrow labeled "policy inherits down the tree". Right side labeled "Microsoft Entra ID" shows a single flat horizontal plane inside one tenant boundary holding an unstructured row of user, group, device, and service-principal icons, with a caption "one level — no containers, no inheritance". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the AD tree, teal (#1A9E8F) for the Entra plane, monospace labels for OU and object names, no human figures, 16:9 landscape.]
 
 The most consequential architectural fact about Entra ID, from the perspective of organizations migrating from Active Directory, is that it has no organizational hierarchy. The directory is flat. All users, all groups, all devices, all service principals exist at the same level within the tenant. There is no container object analogous to the Organizational Unit. There is no parent-child relationship between user objects and any structural container that would cause policies to flow from the container to the objects it holds. This is not a limitation of the current release that is anticipated to be addressed in a future version. It is a foundational architectural choice. Entra ID was designed as a multi-tenant, globally distributed identity service optimized for authentication and application access. It was not designed as a directory information tree in the X.500 tradition. Those are different things, and Entra ID is the former.
 
