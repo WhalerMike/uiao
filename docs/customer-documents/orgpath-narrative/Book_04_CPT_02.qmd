@@ -1,0 +1,41 @@
+---
+title: "Infrastructure Requirements for the Governance Pipeline"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "04"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 2 — Infrastructure Requirements for the Governance Pipeline
+
+## Architectural Shape of the Platform
+
+The OrgTree and OrgPath system requires three categories of infrastructure: a governance repository server that hosts the version-controlled OrgTree registry and all pipeline outputs; an automation execution environment that runs the ETL processes, drift detection workflows, and event-triggered pipeline jobs; and the assessment workstation environment from which the Active Directory assessment tools are executed interactively before the pipeline is fully automated. In small to medium deployments, the repository server and automation execution environment can be provisioned on the same physical or virtual machine. In larger deployments, or those with strict separation of duties requirements that prohibit colocating a version-controlled data store with an execution environment that writes to it, the two roles are separated onto dedicated machines. The assessment workstation is always separate from both, because it must be domain-joined and must operate under the assessment service account — conditions that would be inappropriate on the repository or automation server.
+
+## Governance Repository Server
+
+The repository server requires a minimum of four virtual CPUs, sixteen gigabytes of RAM, and two hundred gigabytes of SSD-backed storage. The storage should be provisioned as two volumes: a system volume for the operating system and installed software, and a data volume for all governance pipeline content. The data volume hosts the Git repository storage directory, the assessment output archive, the drift detection report history, and the pipeline execution log directory. These are distinct from one another in growth pattern — assessment output archives grow in bounded bursts at assessment time, drift detection report history grows incrementally every day, and pipeline logs grow continuously — and separating them from the system volume protects against the data volume filling and impacting system operation.
+
+The operating system for the repository server is Windows Server 2022 or Windows Server 2025, or a supported Linux distribution. Ubuntu 22.04 LTS and Red Hat Enterprise Linux 9 are both appropriate Linux choices; both have long-term support windows that extend beyond any reasonable deployment horizon for this infrastructure. The repository server does not need to be domain-joined. A domain-joined deployment simplifies Kerberos-based authentication integration if the engineering team prefers to use Windows Integrated Authentication for repository access, but an HTTPS-based authentication model using personal access tokens or SSH keys is equally valid and requires no domain membership. The server must be reachable by the automation execution environment and by the workstations of all engineers and administrators who will commit changes to the OrgTree registry or review pipeline outputs.
+
+## Automation Execution Environment
+
+The automation execution environment must run Windows Server 2022 or Windows Server 2025. The requirement for Windows on this machine is not a preference — it is driven by the PowerShell execution model. The Active Directory module, the Microsoft Graph PowerShell SDK, and the Azure PowerShell module all execute correctly on Windows PowerShell 5.1 or PowerShell 7.x on Windows. The Active Directory module in particular has dependency chains on Windows-native COM interfaces and ADSI providers that are not present on Linux; running that module on a Linux host is not supported and produces silent failures in attribute enumeration that are difficult to diagnose. The automation server must be domain-joined to at least one domain in the forest being assessed, because the assessment service account must be able to authenticate via Kerberos to query directory objects. It requires a minimum of four virtual CPUs, eight gigabytes of RAM, and one hundred gigabytes of storage to accommodate the PowerShell module cache, temporary assessment output files during pipeline execution, and the running pipeline execution log.
+
+## Assessment Workstation
+
+The assessment workstation is the machine from which Active Directory assessment commands are executed interactively, before the pipeline is fully automated and before the engineering team trusts the automated output enough to rely on it without manual verification. It must be Windows 10 version 21H2 or later, or Windows 11, and must be domain-joined. Windows PowerShell 5.1 is present on all supported Windows versions by default and requires no installation. PowerShell 7.x should be installed alongside it — the installer from the PowerShell GitHub releases page deploys to C:\Program Files\PowerShell\7\\ without displacing the Windows PowerShell installation at C:\Windows\System32\WindowsPowerShell\v1.0\\ and both are available in parallel. The Remote Server Administration Tools package must be installed to provide the Active Directory module, the Group Policy Management module, the DNS Server module, and the Certificate Authority module. On Windows 11, RSAT features are installed through Settings, Optional Features, or through DISM at an administrative command prompt.
+
+## Network Connectivity Requirements
+
+The automation server's network access requirements are specific and must be validated before pipeline execution begins. Outbound HTTPS on port 443 must reach the Microsoft Graph API endpoint at graph.microsoft.com, the Azure Resource Manager endpoint at management.azure.com, the Entra ID token endpoint at login.microsoftonline.com, and the target Git repository host — whether that is a self-hosted Gitea instance on the repository server or a hosted service. The automation server must have bidirectional LDAP access on port 389 and LDAPS access on port 636 to the domain controllers it will query. Kerberos authentication traffic on port 88, both UDP and TCP, must be allowed between the automation server and the domain controllers. DNS resolution of the domain's SRV record infrastructure — specifically the \_ldap.\_tcp.{domain} and \_kerberos.\_tcp.{domain} records that direct clients to domain controllers — must work correctly from the automation server's network position. If the deployment includes Azure Arc-managed servers, the automation server must also reach the Azure Arc service endpoints documented in the Azure Arc network requirements reference in the Microsoft documentation. Every one of these connectivity requirements should be tested explicitly — using Test-NetConnection for TCP ports, Resolve-DnsName for DNS records, and a lightweight LDAP bind test using the System.DirectoryServices.DirectoryEntry constructor — during the platform provisioning phase, before any assessment or pipeline work begins.
+
+::: {.callout-note title="Connectivity Validation Is Not Optional"}
+Connectivity failures discovered during pipeline execution are dramatically more disruptive than connectivity failures discovered during the provisioning validation phase. A pipeline that silently fails to reach a domain controller will produce assessment output that appears complete but is missing objects from unreachable sites. Validate every connection requirement explicitly before proceeding.
+:::

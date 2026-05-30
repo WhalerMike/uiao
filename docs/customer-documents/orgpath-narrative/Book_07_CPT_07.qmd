@@ -1,0 +1,52 @@
+---
+title: "Operational Considerations and Compliance Reporting: Running the Purview Governance Model"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07"
+series-order: 7
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 7 — Operational Considerations and Compliance Reporting: Running the Purview Governance Model
+
+## The Operational Cadence
+
+The Purview governance model operates across three distinct time horizons, each with a different review and action cadence. The daily horizon is handled entirely by the automated pipeline: drift detection runs on schedule, Adaptive Scope re-evaluation is handled natively by Purview, and any user OrgPath changes propagated during business hours are reflected in Purview policy coverage without manual intervention. The daily operational burden on the compliance team from the Purview integration is limited to reviewing the drift detection report and investigating any flagged anomalies — users whose OrgPath values are malformed, scopes whose filter expressions have drifted from the registry, or policy creation errors from the pipeline run log.
+
+The quarterly horizon encompasses label taxonomy review. The sensitivity label taxonomy should be reviewed on the same quarterly cadence as the OrgTree structural review. The review covers two questions. First, are the labels in each segment policy still the correct set for that segment's current information handling responsibilities? A segment that has added a new category of sensitive work may require a new label; a segment whose responsibilities have changed may have labels that are no longer relevant and create classification confusion. Second, are there new OrgPath segments in the registry — new divisions or departments created in the past quarter — that require segment-specific label policies but have not yet been flagged as label policy boundaries? The quarterly review answers these questions by walking the OrgTree registry against the Purview label policy inventory and flagging gaps for resolution before the next quarter begins.
+
+The annual horizon encompasses retention schedule review, coordinated with Legal and Compliance. Applicable retention requirements change: regulations are updated, litigation hold obligations arise and resolve, internal records management policies are revised. The annual review assesses every node in the OrgTree registry that carries a RetentionPolicy metadata object against the current retention requirement for that segment, as determined by Legal and Compliance. Changes to retention schedules are processed through the OrgTree change request workflow — a formal change request that documents the previous schedule, the new schedule, the regulatory or business rationale for the change, and the legal or compliance approval — and the governance pipeline implements the change by updating the Retention Compliance Rule on the affected node's policy. The annual review output is a retention schedule attestation: a signed document from Legal and Compliance confirming that the retention schedule implemented in Purview for each organizational segment reflects the approved requirement for that segment as of the attestation date.
+
+## Purview Policy Coverage Report
+
+After each pipeline run that affects Purview policies — whether triggered by an OrgTree node change or by the scheduled synchronization job — the pipeline generates a coverage report in JSON format. This report is the primary compliance evidence for the Purview governance model. It lists every active OrgTree node with a Purview policy boundary, the policies associated with that node — Adaptive Scope name, label policy name, retention policy name, DLP policy name — the filter expression governing the scope, and the count of users currently covered by the scope at the time of the report. The covered-user count is obtained by querying Entra ID for users matching the scope's filter expression using the Microsoft Graph API, providing a point-in-time snapshot of the scope's population that can be compared across report periods to detect unexpected changes in coverage.
+
+The coverage report serves four audit functions simultaneously. First, it is the completeness evidence: it demonstrates that every organizational segment with a defined data governance obligation has a corresponding Purview policy in place and that the policy's scope is not empty. A segment with a defined retention obligation and zero covered users is an immediate anomaly requiring investigation. Second, it is the accuracy evidence: by showing the filter expression alongside the covered user count, it provides the auditor with the means to independently verify that the expression correctly identifies the intended population. Third, it is the timeliness evidence: the report timestamp and the pipeline run log establish that the policies are kept current through automated synchronization rather than through periodic manual updates that may lag behind organizational changes. Fourth, it is the change history: successive coverage reports, committed to the governance repository with their timestamps, create a timeline of policy coverage that can answer the question "Was user X covered by the Finance retention policy on date Y?" — a question that may arise in litigation, regulatory examination, or internal investigation.
+
+## Licensing and Role Prerequisites
+
+The Purview capabilities described in this document require specific licensing and role assignments that should be validated before the governance pipeline begins creating policies. Sensitivity labels, label policies, and basic DLP are available at the Microsoft 365 E3 tier. Adaptive Policy Scopes for DLP and retention policies require Microsoft 365 E5 or Microsoft Purview compliance add-on licensing. eDiscovery Premium requires Microsoft 365 E5 or the eDiscovery and Audit add-on. The governance automation account — the service principal or user account under which the pipeline runs Security and Compliance PowerShell commands — must hold the Compliance Administrator role or higher in the Purview compliance portal. eDiscovery case creation and hold application additionally require the eDiscovery Manager or eDiscovery Administrator role. These role assignments should be made through Privileged Identity Management with time-limited activation, consistent with the PIM integration established in Part Five of this series.
+
+| **Capability** | **Minimum License** | **Required Role** | **PowerShell Module** |
+|----|----|----|----|
+| Sensitivity Labels and Label Policies | Microsoft 365 E3 | Compliance Administrator | ExchangeOnlineManagement v3+ |
+| Adaptive Policy Scopes (DLP, Retention) | Microsoft 365 E5 or Purview Compliance Add-On | Compliance Administrator | ExchangeOnlineManagement v3+ |
+| DLP Policies and Rules | Microsoft 365 E3 (basic); E5 for Adaptive Scopes | DLP Compliance Management or Compliance Administrator | ExchangeOnlineManagement v3+ |
+| Retention Compliance Policies and Rules | Microsoft 365 E3 (basic); E5 for Adaptive Scopes | Compliance Administrator | ExchangeOnlineManagement v3+ |
+| eDiscovery Premium Cases and Holds | Microsoft 365 E5 or eDiscovery Add-On | eDiscovery Manager or Administrator | ExchangeOnlineManagement v3+, Microsoft.Graph.Users |
+| User OrgPath Query (Custodian ID) | Any (Graph API access) | User.Read.All (Graph delegated or app permission) | Microsoft.Graph.Users |
+
+## Integration with the Broader Governance Architecture
+
+With the completion of Part Nine, the OrgPath governance substrate connects to Microsoft Purview across all four of Purview's principal data governance capability areas. Sensitivity label policies are scoped to organizational segments, ensuring that users see the label vocabulary relevant to their information handling responsibilities. DLP policies enforce differentiated rules by organizational segment, with the layered architecture accommodating both high-sensitivity overlays and legitimate workflow carve-outs. Retention schedules are enforced at the organizational segment level, driven by the retention metadata in the OrgTree registry and maintained dynamically by Adaptive Scopes without manual group administration. eDiscovery custodian identification is performed by querying the OrgPath attribute rather than through manual enumeration, and the governance pipeline's OrgPath change history provides the audit evidence for custodian list methodology.
+
+The OrgPath attribute — defined in Part Three, populated in Part Four, and extended through Parts Five through Nine into PIM, Lifecycle Workflows, Sentinel, Azure RBAC, Intune, the Defender suite, DNS, Cloud PKI, and now Purview — is the single directory fact from which all governance policy targeting derives. Every policy in every integrated service answers the same question with the same source of truth: who belongs to which organizational segment, as defined by their position in the OrgTree and encoded in the OrgPath attribute on their Entra ID user object. The operational consequence of this architecture is a governance model in which policy coverage follows organizational structure automatically, organizational moves propagate to all integrated services through a single pipeline operation, and compliance evidence is produced as a byproduct of the governance process rather than as a separate manual documentation effort. Part Ten of this series will address the governance reporting layer: the dashboards, compliance evidence packages, and executive reporting artifacts that surface the state of the full governance architecture for leadership, audit, and regulatory audiences.
+
+::: {.callout-note title="Part Ten Preview: Governance Reporting and Compliance Evidence"}
+Part Ten will cover the unified governance reporting layer that aggregates state data from all nine integrated services — OrgTree registry, Entra ID directory, PIM eligibility assignments, Lifecycle Workflows, Sentinel, Azure RBAC, Intune, Defender, DNS, Cloud PKI, and Purview — into a consolidated compliance evidence package. It will include the KQL workbooks, Power BI report models, and automated evidence generation scripts that produce the attestation artifacts required for internal audit, external audit, and regulatory examination. The OrgPath coverage report introduced in Chapter Seven of this document is the Purview component of that unified reporting package.
+:::

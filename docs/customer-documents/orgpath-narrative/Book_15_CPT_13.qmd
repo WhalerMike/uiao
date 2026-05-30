@@ -1,0 +1,21 @@
+---
+title: "Server Modernization: Azure Arc as the Hybrid Management Plane"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "15"
+series-order: 13
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 13 — Server Modernization: Azure Arc as the Hybrid Management Plane
+
+Azure Arc is the architectural bridge between the Active Directory-managed server world and the Entra ID and Intune governance plane. Its role in the UIAO program is to extend the Azure Resource Manager control surface — the same control plane used to manage Azure-native resources — to on-premises servers that will not be immediately migrated to Azure, providing a consistent management, policy enforcement, and compliance reporting experience across the hybrid estate during the transition period. The Azure Arc policy library provides a complete, ready-to-deploy set of Azure Policy definitions purpose-built for the UIAO modernization pipeline, organized across five governance domains: Inventory and Agent Health, Security, Compliance, Monitoring, and Tagging and OrgPath enforcement.
+
+The boundary context for Azure Arc deployment matters precisely and must be understood before any Arc enrollment proceeds. UIAO operates within a GCC-Moderate boundary for all Microsoft 365 SaaS services, including Intune, Entra ID, and Microsoft Defender for Endpoint. Azure Arc runs in Commercial Cloud under an explicit, documented exception to the GCC-Moderate boundary — an architectural decision that acknowledges the operational reality that the Azure Arc control plane for on-premises servers is not yet available in GCC, while the management value of Arc enrollment is too significant to defer until GCC availability. All Azure Policy definitions target the Commercial Cloud Azure control plane. Data classification for all Arc-managed servers remains Controlled. This exception is not a gap in the governance posture — it is a deliberate, documented architectural decision committed to the governance repository and reviewed by the Canon Steward, with a planned reassessment trigger when Azure Arc achieves GCC availability.
+
+The OrgPath tagging policy is the most important policy in the Arc library, because it is the mechanism by which the OrgPath governance model extends from the identity and device plane into the server resource plane. The policy enforces the presence and correct format of four resource tags on every Arc-enabled server object in Azure Resource Manager: OrgPath, encoding the full organizational hierarchy path inherited from the server's OU placement in Active Directory; OrgNodeID, carrying the canonical node identifier from the UIAO OrgTree registry; OrgTier, expressing the management tier assignment — Tier0, Tier1, or Tier2 — that governs which Intune and Arc policy stack applies to this resource; and MigrationPhase, recording the current modernization phase status for the server. These tags are not decorative metadata added for dashboard aesthetics. They are the Arc-side representation of the OrgPath governance model, allowing Azure Policy to enforce organization-specific rules, allowing Azure Monitor workbook queries to filter telemetry by organizational boundary, and allowing the OrgPath dependency graph to include server resources alongside user and device identities in a unified governance view.

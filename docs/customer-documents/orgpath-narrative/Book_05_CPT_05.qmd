@@ -1,0 +1,174 @@
+---
+title: "The Compliance and Conditional Access Bridge"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "05"
+series-order: 5
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 5 — The Compliance and Conditional Access Bridge
+
+## Organizational-Position-Aware Device Posture Enforcement
+
+## 5.1   What the Bridge Achieves
+
+Conditional Access in Entra ID can require device compliance as a grant control: a user cannot complete an authentication to a resource unless the device they are authenticating from is marked compliant by Intune. This is a foundational security control and its presence in a mature identity governance model is not optional. What is not obvious from the compliance grant control alone is the question it leaves unanswered: compliant according to which compliance policy? In an Intune environment without OrgPath, the compliance policy that governs a device is whichever policy happened to be assigned to whichever groups the device happened to be in, as a consequence of however the Intune administrator configured those groups at some point in the past. The compliance standard is not a function of the device's organizational role. It is a function of historical group assignment decisions, and those decisions may not reflect the security requirements of the organizational position the device actually occupies.
+
+The OrgPath compliance bridge changes this. When compliance policies are assigned to OrgPath-derived branch groups, the compliance standard a device is evaluated against is determined entirely by its OrgPath value — which is determined by the OrgTree registry — which is managed by the governance team as a version-controlled, reviewed artifact. A device in the Finance division is evaluated by the Finance segment compliance policy because its OrgPath resolves to a branch group that carries that policy. A device in the Executive segment is evaluated by the Executive compliance policy because its OrgPath resolves to the Executive branch group. When Conditional Access requires compliance as a grant control, it is requiring compliance with the standard appropriate for that device's organizational context. The compliance requirement is organizationally contextual rather than uniformly permissive.
+
+::: {.callout-note title="Important: Multiple Compliance Policies and the AND Logic"}
+When a device is assigned multiple compliance policies, Intune evaluates the device as compliant only if it satisfies every assigned policy. The Finance device covered by both the baseline and the Finance segment policy must pass both. This AND evaluation logic is correct for the governance model and is the intended behavior. However, it means that the Finance segment compliance policy settings must be a strict superset of or at minimum consistent with the baseline policy settings. Specifying a weaker value in the segment policy than in the baseline does not weaken the requirement — the baseline still applies — but it can create confusing compliance state reporting if the reason for non-compliance is the baseline rather than the segment policy the team intended to configure.
+:::
+
+## 5.2   The Combined Policy Pattern
+
+Implementing the compliance bridge follows a precise sequence of steps. The steps are ordered so that each one's output is the input for the next, and no step should be marked complete until its output has been verified.
+
+**Step One** is to define a compliance policy for each organizational segment that requires stricter-than-baseline controls. The Finance segment policy, as an example, requires BitLocker encryption with a minimum cipher strength, Microsoft Defender Antivirus in active mode with real-time protection enabled, signatures that are not out of date, secure boot enabled, TPM 2.0 required, a minimum Windows build of 22621 (Windows 11 22H2), and a twelve-character minimum password with complexity. The specific values are determined by the governance team in consultation with the security team and, for regulated industries, the compliance team. The policy is defined in the governance repository as a JSON document before it is created in Intune, so the intended configuration is version-controlled and reviewable before it is deployed.
+
+**Step Two** is to assign the segment compliance policy to the appropriate OrgPath branch group, using the programmatic assignment approach from Chapter Three. The Finance segment policy is assigned to ORG-BRANCH-FINANCE. The Executive segment policy is assigned to ORG-BRANCH-EXECUTIVE. The assignment is committed to the policy assignment manifest in the governance repository.
+
+**Step Three** is to define a Conditional Access policy that targets users in an OrgPath-derived user group. The Conditional Access policy for Finance resource access uses the Finance user branch group (the user-object branch group corresponding to the Finance OrgTree node, created by the user-side OrgPath pipeline) as its user scope. The grant control requires both MFA and device compliance. Because the device's compliance state reflects the Finance compliance policy, the combination of these two grant controls means that access to Finance resources requires authentication from a Finance-segmented device that has satisfied Finance-appropriate security standards.
+
+**Step Four** is to validate the bridge end-to-end by authenticating to a Finance-protected resource from a device whose OrgPath is within the Finance branch, from a device whose OrgPath is outside the Finance branch, and from an unpositioned device. The expected results are: access granted for the correctly positioned and compliant Finance device, access denied for the out-of-scope device (the Conditional Access policy's user scope does not include non-Finance users, so this test validates user scope rather than device scope), and access denied for the unpositioned device (non-compliant due to the quarantine compliance policy).
+
+## 5.3   Programmatic Compliance Policy Creation for an Organizational Segment
+
+The following script creates the Finance segment compliance policy in Intune via the Graph API. It is stored in the governance repository under governance/intune/compliance/ and is the canonical definition of the Finance compliance standard. When the Finance compliance requirements change — for example, when the minimum Windows build is raised to a newer release — the script is updated in the repository, reviewed, and re-executed to update the policy in Intune. The pipeline uses the policy's ID, stored in the governance repository after first creation, to issue update calls for subsequent changes.
+
+```powershell
+<# data-id="223"
+.SYNOPSIS
+    Creates an Intune device compliance policy for the Finance organizational segment.
+
+.DESCRIPTION
+    This script creates a Windows 10/11 compliance policy targeting the Finance
+    branch group (ORG-BRANCH-FINANCE) with settings appropriate for financial
+    data processing workstations. After creation, the policy ID is written to
+    the governance repository so subsequent pipeline runs can reference it
+    for updates and assignment reconciliation.
+
+    To update an existing policy rather than creating a new one, use:
+      Update-MgDeviceManagementDeviceCompliancePolicy -DeviceCompliancePolicyId $PolicyId
+
+.PARAMETER FinanceBranchGroupId
+    GUID of the ORG-BRANCH-FINANCE group in Entra ID.
+    Retrieve via: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-FINANCE'"
+
+.NOTES
+    Required Graph scope: DeviceManagementConfiguration.ReadWrite.All
+    Store the created policy ID in the governance repository:
+      governance/intune/compliance/finance-policy-id.txt
+    This ID is required for all subsequent assignment and update operations.
+#>
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$FinanceBranchGroupId  # GUID of the ORG-BRANCH-FINANCE Entra ID group
+)
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.ReadWrite.All" -NoWelcome
+
+# --- Compliance Policy Settings ---
+# All values below should be reviewed and confirmed by the security and
+# compliance teams before this script is executed against the production tenant.
+# Substitute osMinimumVersion with the minimum build your organization supports.
+# 10.0.22621.0 = Windows 11 22H2. Raise this as new baselines are adopted.
+$policyBody = @{
+    "@odata.type"                         = "#microsoft.graph.windows10CompliancePolicy"
+    displayName                           = "Compliance — Finance Branch (ORG-BRANCH-FINANCE)"
+    description                           = "OrgPath-derived compliance policy for the Finance division and all subordinate organizational units. Managed by the governance pipeline — do not modify directly in the portal."
+
+    # OS version floor. Update when the minimum supported build changes.
+    osMinimumVersion                      = "10.0.22621.0"  # SUBSTITUTE: Your org's minimum build
+
+    # Encryption requirements
+    bitLockerEnabled                      = $true
+
+    # Secure Boot — required for TPM-attested device health
+    secureBootEnabled                     = $true
+
+    # Code Integrity — verifies that only signed, unmodified code runs
+    codeIntegrityEnabled                  = $true
+
+    # Defender Antivirus requirements
+    defenderEnabled                       = $true
+    defenderVersion                       = ""              # Any current version accepted
+    signatureOutOfDate                    = $false          # Signatures must be current; $false = current required
+    rtpEnabled                            = $true           # Real-time protection must be active
+    antivirusRequired                     = $true
+    antiSpywareRequired                   = $true
+
+    # Firewall
+    firewallRequired                      = $true
+
+    # TPM 2.0 — required for Secure Boot attestation and BitLocker key binding
+    tpmRequired                           = $true
+
+    # Password / PIN requirements
+    passwordRequired                      = $true
+    passwordMinimumLength                 = 12              # SUBSTITUTE: Your org's minimum (12 recommended for Finance)
+    passwordRequiredType                  = "alphanumericWithSymbols"
+    passwordMinutesOfInactivityBeforeLock = 10
+    passwordExpirationDays                = 90
+    passwordPreviousPasswordBlockCount    = 10
+
+    # Non-compliance action: block access immediately, no grace period.
+    # Adjust gracePeriodHours if the organization requires a remediation window.
+    scheduledActionsForRule = @(
+        @{
+            ruleName = "FinanceComplianceRule"
+            scheduledActionConfigurations = @(
+                @{
+                    actionType                = "block"   # Immediately revoke access token on non-compliance
+                    gracePeriodHours          = 0         # SUBSTITUTE: Set to 24 or 48 if a remediation window is required
+                    notificationTemplateId    = ""        # SUBSTITUTE: GUID of your Intune notification template, if configured
+                    notificationMessageCCList = @()
+                }
+            )
+        }
+    )
+}
+
+# --- Create the Policy ---
+$policy = New-MgDeviceManagementDeviceCompliancePolicy -BodyParameter $policyBody
+Write-Host "Policy created:"
+Write-Host "  ID          : $($policy.Id)"
+Write-Host "  DisplayName : $($policy.DisplayName)"
+
+# --- Assign to the Finance Branch Group ---
+# This POST replaces all existing assignments. If this policy should also be
+# assigned to additional groups (e.g., a secondary Finance contractor group),
+# include all group GUIDs in the assignments array here.
+$assignBody = @{
+    assignments = @(
+        @{
+            target = @{
+                "@odata.type" = "#microsoft.graph.groupAssignmentTarget"
+                groupId       = $FinanceBranchGroupId
+            }
+        }
+    )
+}
+
+Invoke-MgGraphRequest `
+    -Method      POST `
+    -Uri         "https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies/$($policy.Id)/assign" `
+    -Body        ($assignBody | ConvertTo-Json -Depth 10) `
+    -ContentType "application/json"
+
+Write-Host "Policy assigned to ORG-BRANCH-FINANCE (Group ID: $FinanceBranchGroupId)."
+Write-Host ""
+Write-Host "IMPORTANT: Store the following policy ID in the governance repository:"
+Write-Host "  governance/intune/compliance/finance-policy-id.txt"
+Write-Host "  Policy ID: $($policy.Id)"
+
+Disconnect-MgGraph
+```
+
+After the script runs, the policy ID is stored in the governance repository so that the pipeline can reference it for subsequent update and assignment operations without performing a display-name lookup on every run. Display-name lookups are fragile because policy display names can be edited through the portal, while the policy ID is immutable once assigned. The governance repository stores one policy ID file per managed compliance policy, and the pipeline fails with an explicit error if a required ID file is absent — which would indicate that either the policy has not yet been created or the ID file was accidentally deleted, both of which require a human decision before the pipeline can proceed.

@@ -1,0 +1,66 @@
+---
+title: "OneLake Mirroring and Fabric Domain Assignment"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07a"
+series-order: 5
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 5 — OneLake Mirroring and Fabric Domain Assignment
+
+## The Domain Hierarchy as the Data-Plane Twin of OrgPath
+
+Fabric Domains are the data-plane construct that lets a tenant impose a
+governance hierarchy over workspaces and the items those workspaces
+contain. A domain is named, has an owner, can carry default sensitivity
+labels, and can be configured with subdomain hierarchies that nest beneath
+it. The convention this chapter recommends is to create one Fabric Domain
+per OrgPath node that carries a `FabricDomainBoundary` flag in the OrgTree
+registry, and to name the domain after the OrgPath segment it represents.
+The flag is metadata in the OrgTree node, set by the governance team
+during the OrgTree change process, and consumed by a reconciliation job
+that reads the registry and emits domain creation operations through the
+Fabric Admin API. The pattern matches the `LabelPolicyBoundary` and
+`SegmentLabels` metadata flags described in Part Seven for Purview Adaptive
+Scopes; the principle is the same: OrgTree nodes carry the metadata that
+declares which Microsoft surfaces require segment-specific governance, and
+the reconciliation jobs read that metadata to drive their respective
+surfaces.
+
+Workspace assignment to a domain is the operation that binds individual
+Fabric workspaces — and the lakehouses, warehouses, and mirrored databases
+they contain — to the domain hierarchy. The reconciliation job that
+maintains domain assignment reads the OrgTree registry for each workspace's
+owning segment (recorded as workspace metadata when the workspace is
+provisioned), looks up the corresponding Fabric Domain by OrgPath, and
+issues an assignment operation through the Admin API. The job runs
+idempotently and emits a `DRIFT-PROVENANCE` finding when a workspace's
+assigned domain does not match the OrgPath its metadata claims.
+
+## Mirroring SQL Estates Into OneLake Under the Domain Hierarchy
+
+OneLake mirroring brings the operational SQL estate into the Fabric data
+plane without copying data and without disrupting the operational systems
+that continue to serve the agency's transactional workloads. The mirroring
+operation is configured against a Fabric workspace, the workspace is
+assigned to a Fabric Domain whose name matches the segment that owns the
+SQL instance, and the mirrored database appears as an item in that
+workspace with the domain's metadata and default sensitivity context
+inherited. Shortcuts perform a similar function for storage-based sources;
+the assignment to a domain is the same operation.
+
+The combination of OneLake mirroring with OrgPath-derived domain assignment
+produces a data-plane substrate where every operational SQL instance is
+represented in OneLake under a workspace assigned to a domain whose name
+encodes the segment's organizational position. Analytical workloads,
+reporting, and AI applications consume the mirrored data from OneLake
+through the same Entra ID identity plane that the operational systems use
+for authentication, and the consumption is governed by the segment's
+domain-level policies. The operational SQL instances continue to run; they
+are not retired by the mirroring operation. They are made governable.

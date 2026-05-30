@@ -1,0 +1,23 @@
+---
+title: "PKI Modernization: From ADCS to Cloud PKI"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "15"
+series-order: 11
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 11 — PKI Modernization: From ADCS to Cloud PKI
+
+Active Directory Certificate Services is the second most underestimated dependency in any Active Directory modernization program, ranking immediately behind DNS in the frequency and severity of migration failures it causes when not addressed with sufficient rigor. Certificates issued by the enterprise CA are embedded in hundreds of trust relationships across the environment: domain controller authentication via Kerberos PKINIT, LDAPS for secure directory queries, device identity certificates for Intune compliance evaluation, user smart card authentication for high-assurance logon scenarios, application TLS for internal web services, code signing for PowerShell scripts and deployment packages, and S/MIME for email encryption. Every one of these use cases must be inventoried, re-platformed on the new PKI infrastructure, and validated before the ADCS infrastructure can be decommissioned. Any one missed dependency will produce an outage at decommissioning time.
+
+The UIAO PKI modernization guide defines a six-phase migration from ADCS to a hybrid architecture using Microsoft Cloud PKI and Intune certificate deployment. The assessment phase uses the UIAOPKIAssessment module to inventory every CA instance including offline root CAs, every issued certificate across all templates, every certificate template with its enrollment permissions and cryptographic settings, and every relying party that trusts the enterprise CA chain. The ESC vulnerability analysis — applied during the assessment phase, not after — identifies the eight classes of certificate template misconfiguration that constitute the most common Active Directory Certificate Services attack surface, ranging from ESC1 through ESC8, and ranks each finding by exploitability and blast radius.
+
+The migration architecture distinguishes between two Cloud PKI deployment models with meaningfully different tradeoffs. The Cloud Root CA model creates a new PKI hierarchy hosted entirely in Microsoft Cloud PKI, establishing a new trust anchor that must be distributed to all devices through Intune Trusted Root certificate profiles before any dependent certificates can be issued. This model is appropriate for organizations that are willing to execute a complete device re-enrollment campaign and can accept the operational complexity of maintaining two parallel CA hierarchies during the transition period. The Bring Your Own CA model imports an existing on-premises issuing CA into Microsoft Cloud PKI, preserving the existing trust anchor and the existing issued certificate inventory while moving all new certificate issuance to the cloud infrastructure. This model is appropriate for organizations with large inventories of long-lived certificates that cannot be replaced on an accelerated timeline, or for organizations where the re-enrollment campaign logistics would be prohibitive.
+
+The strong mapping enforcement introduced in Microsoft Security Advisory KB5014754 — which requires that certificates include Subject Alternative Name extensions that bind the certificate cryptographically to a specific Entra ID user or device object — is mandatory for all new certificate issuance in the UIAO framework. This requirement eliminates a class of certificate substitution attacks that were possible when certificate binding relied solely on subject name matching, and it aligns the certificate trust model with the Entra ID identity model in a way that supports continuous compliance verification through the assessment pipeline.

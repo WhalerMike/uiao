@@ -1,0 +1,174 @@
+---
+title: "Defender for Identity: Investigation Enrichment and Alert Context"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "06"
+series-order: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
+
+*Making MDI Alerts Organizationally Legible*
+
+## What MDI Knows and What It Does Not Know
+
+Defender for Identity is the most identity-focused product in the Defender suite. It deploys sensors on Active Directory domain controllers and reads the Entra ID audit stream to monitor authentication activity, service ticket requests, directory query patterns, and replication traffic. Its detection coverage spans the attack chain that adversaries use once they have an initial foothold in an enterprise environment: reconnaissance through LDAP queries and SPN enumeration, credential access through Kerberoasting and AS-REP roasting, lateral movement through Pass-the-Hash and Pass-the-Ticket, persistence through Golden Ticket and Silver Ticket creation, and privilege escalation through DCSync and AdminSDHolder abuse. Every MDI alert identifies the source account, the target resource or domain controller, the technique with MITRE ATT&CK mapping, the confidence level, and the evidence trail.
+
+What MDI does not natively surface is the organizational position of the affected identities. An analyst investigating a Kerberoasting detection sees the account that requested service tickets and the service accounts that were targeted. To determine the organizational significance of those identities — whether the source is an employee, a contractor, or a service account; which division they belong to; whether the targeted service account is a Tier 0 infrastructure credential or a Tier 2 application service account — the analyst must perform directory lookups outside the MDI investigation screen. This reconstructed context drives the alert severity classification, the escalation decision, and the response priority. Without it, every Kerberoasting detection is treated identically, regardless of whether it targets domain admin credentials or a printer queue service account.
+
+## OrgPath in the MDI Entity Profile
+
+When OrgPath is written to the on-premises Active Directory user object as an extension attribute — which it is when the ETL pipeline uses Entra Connect to synchronize OrgPath values back to on-premises AD, as documented in Part Four — MDI displays the extension attribute value in the entity details panel for every user it investigates. The entity profile panel in the MDI investigation experience in the Defender portal shows synchronized directory attributes, and OrgPath appears there alongside department, title, and manager. An analyst opening the source account's entity profile in a Kerberoasting investigation sees the OrgPath value immediately, without performing any additional lookup.
+
+For service accounts, OrgPath placement in the OrgTree is particularly important. Service accounts should be placed in OrgTree nodes that reflect their infrastructure tier — a Tier 0 service account running on a domain controller should carry the path /Root/Infrastructure/Tier0/ServiceAccounts, not an application team path or an unpositioned state. When an MDI alert targets a service account with a Tier 0 OrgPath, the Sentinel analytics rule described below fires a high-severity, high-urgency alert rather than routing the detection to the standard queue. This differentiation is automatic, data-driven, and requires no analyst judgment at intake.
+
+## Sentinel Analytics Rule: Sensitive OrgPath Segment MDI Alerts
+
+The following KQL analytics rule is deployed to Microsoft Sentinel. It runs on a five-minute frequency, examines all MDI alerts in the lookback window, joins them to the most recent OrgPath value for each source identity, and fires a high-severity Sentinel incident for any MDI detection involving a principal in a designated sensitive OrgPath branch. The sensitive OrgPath list is maintained as a parameter in the rule and updated when the OrgTree governance boundary classification changes.
+
+```kql
+// ---------------------------------------------------------------
+// Sentinel Analytics Rule: MDI Alerts in Sensitive OrgPath Segments
+// Rule Name:   MDI-SensitiveOrgPath-HighSeverity
+// Frequency:   Every 5 minutes
+// Lookback:    5 minutes
+// Severity:    High
+// Trigger:     Any MDI alert involving a principal in a sensitive OrgPath branch
+// Incident:    Create incident = enabled
+// Tables:      SecurityAlert, AuditLogs
+// ---------------------------------------------------------------
+
+// SUBSTITUTE: Update this list to match the sensitive governance boundaries
+// in your OrgTree. These prefixes should align with nodes where compromise
+// would constitute a P1 incident requiring immediate executive notification.
+let SensitiveOrgPaths = dynamic([
+    "/Root/Executive",
+    "/Root/Infrastructure/Tier0",
+    "/Root/Finance/Treasury",
+    "/Root/Legal",
+    "/Root/Security/SOC"
+]);
+
+// Pull MDI alerts from the lookback window.
+// ProviderName for MDI alerts is "Microsoft Defender for Identity".
+let MDIAlerts = SecurityAlert
+| where TimeGenerated >= ago(5m)
+| where ProviderName == "Microsoft Defender for Identity"
+| extend
+    // ExtendedProperties carries alert-specific fields as a JSON bag.
+    // "Account Sid" and "User Name" key names are MDI-specific — do not rename.
+    SourceUserId   = tostring(todynamic(ExtendedProperties)["Account Sid"]),
+    SourceUPN      = tostring(todynamic(ExtendedProperties)["User Name"]),
+    AlertTechnique = tostring(todynamic(ExtendedProperties)["Attack tactic"])
+| project TimeGenerated, SystemAlertId, AlertName, AlertSeverity,
+          SourceUserId, SourceUPN, AlertTechnique, Description;
+
+// Build the most recent OrgPath lookup for each user from the Entra ID audit log.
+// The ETL pipeline writes OrgPath as an "Update user" operation on the extension attribute.
+// 7-day lookback provides stable coverage even if audit ingestion is intermittent.
+let UserOrgPaths = AuditLogs
+| where TimeGenerated >= ago(7d)
+| where OperationName == "Update user"
+| mv-expand Props = AdditionalDetails
+| where tostring(Props.displayName) contains "OrgPath"
+    // SUBSTITUTE: Replace "OrgPath" with the exact displayName of your OrgPath
+    // extension attribute as it appears in the Entra ID audit log.
+    // Typically: "extension_{AppIdWithoutHyphens}_OrgPath"
+| extend
+    UserId  = tostring(TargetResources[0].id),
+    UPN     = tostring(TargetResources[0].userPrincipalName),
+    OrgPath = tostring(Props.newValue)
+| summarize arg_max(TimeGenerated, OrgPath) by UserId, UPN
+| project UserId, UPN, OrgPath;
+
+// Join alerts to OrgPath and filter to sensitive segments.
+MDIAlerts
+| join kind=inner UserOrgPaths on $left.SourceUPN == $right.UPN
+| where OrgPath has_any (SensitiveOrgPaths)
+| extend
+    SensitivePath     = true,
+    EscalationNeeded  = true,
+    // InvestigationTier drives the ITSM queue routing in the Logic App playbook (Chapter 7).
+    InvestigationTier = "P1"
+| project
+    TimeGenerated,
+    SystemAlertId,
+    AlertName,
+    AlertSeverity,
+    SourceUPN,
+    OrgPath,
+    AlertTechnique,
+    Description,
+    SensitivePath,
+    EscalationNeeded,
+    InvestigationTier
+```
+
+## Sentinel Analytics Rule: MDI Alert Surge Detection by OrgPath Segment
+
+The sensitive segment rule handles the case of a single high-value alert. The surge detection rule handles a different and equally dangerous pattern: a sustained volume of identity-based alerts concentrated in a specific organizational segment. This pattern is characteristic of an adversary who has established persistent access in a division and is conducting ongoing reconnaissance or is attempting multiple techniques in sequence. The individual alerts may each be moderate severity, none triggering the sensitive segment rule on their own, but the concentration of activity in one segment over a rolling hour is a significant compound signal.
+
+```kql
+// ---------------------------------------------------------------
+// Sentinel Analytics Rule: MDI Alert Volume Surge by OrgPath Segment
+// Rule Name:   MDI-OrgPath-AlertSurge
+// Frequency:   Every 1 hour
+// Lookback:    1 hour
+// Severity:    Medium (elevated to High by playbook if trend continues)
+// Trigger:     Any OrgPath segment with > AlertThreshold alerts in the window
+// Tables:      SecurityAlert, AuditLogs
+// ---------------------------------------------------------------
+
+// SUBSTITUTE: Set AlertThreshold based on your environment's baseline MDI alert
+// volume per segment per hour during normal operations.
+// Recommended approach: Run the count query in Log Analytics for 30 days and
+// set the threshold at 2x the 95th-percentile hourly count per segment.
+let AlertThreshold = 10;
+
+let UserOrgPaths = AuditLogs
+| where TimeGenerated >= ago(7d)
+| where OperationName == "Update user"
+| mv-expand Props = AdditionalDetails
+| where tostring(Props.displayName) contains "OrgPath"
+    // SUBSTITUTE: Match the exact extension attribute displayName in your audit log
+| extend
+    UPN     = tostring(TargetResources[0].userPrincipalName),
+    OrgPath = tostring(Props.newValue)
+| summarize arg_max(TimeGenerated, OrgPath) by UPN
+| project UPN, OrgPath;
+
+SecurityAlert
+| where TimeGenerated >= ago(1h)
+| where ProviderName == "Microsoft Defender for Identity"
+| extend SourceUPN = tostring(todynamic(ExtendedProperties)["User Name"])
+| join kind=leftouter UserOrgPaths on $left.SourceUPN == $right.UPN
+// Devices or accounts without an OrgPath are binned as UNKNOWN.
+// These should be investigated separately as potential shadow IT or unmanaged accounts.
+| extend OrgPath = iif(isempty(OrgPath), "UNKNOWN", OrgPath)
+| summarize
+    AlertCount    = count(),
+    // make_set captures up to 50 distinct alert types for incident description generation.
+    AlertTypes    = make_set(AlertName, 50),
+    AffectedUsers = dcount(SourceUPN)
+    by OrgPath, bin(TimeGenerated, 1h)
+| where AlertCount > AlertThreshold
+| extend SurgeDetected = true
+| project
+    TimeGenerated,
+    OrgPath,
+    AlertCount,
+    AlertTypes,
+    AffectedUsers,
+    SurgeDetected
+| order by AlertCount desc
+```
+
+::: {.callout-note title="ⓘ Tuning the Surge Threshold"}
+The AlertThreshold value requires per-environment calibration. Run the surge query without the threshold filter for thirty days of historical data. Calculate the 95th-percentile hourly alert count per OrgPath segment. Set the threshold at twice that value for each segment. If the analytics rule supports parameterized thresholds per segment, create a lookup table in Sentinel that maps OrgPath prefixes to per-segment thresholds. A global threshold will either over-alert on high-activity segments like Infrastructure or under-alert on low-baseline segments like Executive where even five alerts in an hour is a significant anomaly.
+:::

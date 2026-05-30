@@ -1,0 +1,96 @@
+---
+title: "Decommission and Cleanup"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "09"
+series-order: 7
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 7 — Decommission and Cleanup
+
+## The Orphaned Assignment Problem
+
+When an OrgTree node is archived and its servers are decommissioned, the standard Azure resource cleanup process — deleting the Arc machine resource — removes the machine from Arc management and from Azure Policy scope. Azure Policy will eventually reflect the deleted resource as no longer in scope, and its compliance state records will age out of the active compliance dataset. However, if the decommission is executed without first removing the Guest Configuration assignment resources from the machine, the compliance state at the moment of deletion may be recorded as NonCompliant for a resource that no longer exists. In environments with strict compliance reporting requirements, this creates noise in the compliance dashboard and can trigger false-positive alerts from the Sentinel rule established in Chapter Five if the deletion event is processed in a sequence that registers the assignment write before the machine deletion is reflected in the Resource Graph join.
+
+The correct decommission sequence is therefore: remove the Guest Configuration assignment resources from the machine first, then remove the Arc machine resource itself. This ensures that the compliance state for the machine is cleanly closed at the assignment level before the machine resource is deleted, which prevents any intermediate window of orphaned compliance state records. The Remove-AzResource cmdlet can delete Guest Configuration assignment resources directly using their full resource ID, which is a predictable compound path from the Arc machine resource ID and the Guest Configuration assignment name. The Remove-AzPolicyAssignment cmdlet is not appropriate here — it removes policy assignments at scope, not individual Guest Configuration assignment resources on specific machines.
+
+## Decommission Script
+
+```powershell
+#
+# .SYNOPSIS
+#     Removes Guest Configuration assignments and Arc enrollment from servers
+#     whose OrgTree node has been archived, completing clean decommission.
+# .PARAMETER MachineName
+#     Name of the Arc-enrolled machine to decommission.
+# .PARAMETER MachineResourceGroup
+#     Resource group of the Arc machine resource.
+# .PARAMETER SubscriptionId
+#     Subscription containing the Arc machine.
+# .NOTES
+#     Requires: Az.HybridCompute, Az.Resources modules
+#     Must be run with sufficient permissions to delete Arc resources.
+#     Always run the OrgPath propagation pipeline BEFORE this script to
+#     confirm the machine's OrgTree node is truly archived.
+#
+param(
+    [string]$MachineName          = "",   # ENV-PARAM: provided by calling pipeline
+    [string]$MachineResourceGroup = "",   # ENV-PARAM: provided by calling pipeline
+    [string]$SubscriptionId       = ""    # ENV-PARAM: provided by calling pipeline
+)
+
+Connect-AzAccount -Identity  # Managed Identity in pipeline
+Set-AzContext -SubscriptionId $SubscriptionId
+
+$arcMachineId = "/subscriptions/$SubscriptionId/resourceGroups/$MachineResourceGroup" +
+                "/providers/Microsoft.HybridCompute/machines/$MachineName"
+
+# Delete Guest Configuration assignments for all tiers (remove whichever exists)
+$gcAssignmentNames = @(
+    "OrgPath-Tier0-Baseline",
+    "OrgPath-Tier1-Baseline",
+    "OrgPath-Tier2-Baseline"
+)
+
+foreach ($gcName in $gcAssignmentNames) {
+
+    $gcResourceId = "$arcMachineId/providers/Microsoft.GuestConfiguration" +
+                    "/guestConfigurationAssignments/$gcName"
+
+    try {
+        $existing = Get-AzResource -ResourceId $gcResourceId -ErrorAction SilentlyContinue
+        if ($existing) {
+            Remove-AzResource -ResourceId $gcResourceId -Force | Out-Null
+            Write-Host "[REMOVED] Guest Configuration assignment: $gcName from $MachineName"
+        }
+    } catch {
+        Write-Warning "  Could not remove $gcName from $MachineName : $_"
+    }
+}
+
+# Unenroll from Azure Arc (removes the machine from Arc management plane)
+Remove-AzResource -ResourceId $arcMachineId -Force | Out-Null
+Write-Host "[REMOVED] Arc enrollment: $MachineName"
+
+# Log decommission event to governance repository
+@{
+    Timestamp     = (Get-Date -Format "o")
+    Event         = "ArcMachineDecommissioned"
+    Machine       = $MachineName
+    ResourceGroup = $MachineResourceGroup
+    SubscriptionId = $SubscriptionId
+} | ConvertTo-Json -Compress |
+    Out-File -Append "C:\governance\logs\decommission-audit.jsonl"   # ENV-PARAM: substitute path
+
+Write-Host "Decommission complete for $MachineName."
+```
+
+## Post-Decommission Compliance State Refresh
+
+After the Arc machine resource is deleted, the Azure Policy compliance engine requires time to process the deletion and remove the resource from active compliance scope. In large environments where compliance dashboards are queried frequently, it is good practice to trigger a policy compliance scan at the subscription level after a batch decommission to accelerate the processing of deleted resources. The Start-AzPolicyComplianceScan cmdlet initiates this scan. It is an asynchronous operation; the pipeline can either wait for completion using the -AsJob parameter and polling, or schedule the dashboard refresh query to run with a 30-minute delay after the decommission batch completes. Either approach ensures that the compliance dashboard presented to governance stakeholders reflects the decommissioned machines' removal rather than showing stale NonCompliant states for resources that no longer exist.

@@ -1,0 +1,21 @@
+---
+title: "The Documentation Pipeline"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "15"
+series-order: 17
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 17 — The Documentation Pipeline
+
+The Quarto integration guide defines the end-to-end pipeline that transforms the UIAO document corpus from a collection of markdown files into a continuously deployed, automatically rendered, governance-tracked documentation site. The UIAO docs directory contains 124 Quarto Markdown files covering every aspect of the modernization program — assessment procedures, architecture decisions, migration guides, compliance mappings, operational runbooks, and policy references. These files are the primary human-readable artifact layer of the UIAO governance corpus, and their currency, accuracy, and accessibility directly affect the program's operational effectiveness. Today these files must be rendered manually by a platform administrator who knows to run the Quarto CLI build command. The Quarto integration establishes an automated pipeline that renders documentation on every commit to the main branch, validates output quality, and deploys to two targets simultaneously without requiring any manual intervention.
+
+The first deployment target is docs.uiao.local — the internal IIS-hosted documentation site accessible within the on-premises network boundary. This site serves the operational staff who use the documentation in their daily work: governance operators referencing runbook procedures, platform administrators checking configuration parameters, and modernization engineers consulting migration guidance during active transition work. The second deployment target is whalermike.github.io/uiao-docs — the external GitHub Pages site that serves as the public-facing documentation surface for the program. The dual publishing model ensures that documentation is always current, always accessible regardless of network location, and always consistent between the internal and external representations of the governance record.
+
+The Gitea post-receive hook extension that drives this pipeline operates on a simple trigger condition: if any .qmd file was modified in a push to the main branch, the hook invokes the Quarto rendering pipeline, captures its stdout and stderr output, commits the rendered HTML output back to the repository in the docs-rendered/ directory, and pushes the rendered output to the GitHub Pages deployment branch. If rendering fails — due to a broken cross-reference, a missing data file, or a syntax error in a Quarto document — the hook writes a structured failure notice to the governance audit log and sends a notification to the platform monitoring dashboard. The rendering failure does not block the commit, because the markdown source is the authoritative artifact and a rendering failure is a quality signal, not a governance violation. The entire pipeline is idempotent: running it against an unchanged corpus produces bit-identical output, making it safe to trigger from multiple concurrent events without coordination overhead.
