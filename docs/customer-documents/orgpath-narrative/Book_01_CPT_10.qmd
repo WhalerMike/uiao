@@ -1,0 +1,27 @@
+---
+title: "Microsoft Intune — Device Management Without Organizational Inheritance"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: 01
+series-order: 10
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 10 — Microsoft Intune — Device Management Without Organizational Inheritance
+
+## Architecture and Native Capabilities
+
+Microsoft Intune is Microsoft's cloud-native unified endpoint management platform, providing Mobile Device Management and Mobile Application Management capabilities for Windows, macOS, iOS, iPadOS, and Android devices. Device enrollment into Intune occurs through multiple channels: Windows Autopilot for zero-touch provisioning of new Windows devices; the Company Portal application for user-initiated enrollment on personal or corporate devices; co-management enrollment for devices already managed by Configuration Manager; and bulk enrollment through provisioning packages or device enrollment programs for iOS and Android. Once enrolled, a device receives its assigned configuration profiles, compliance policies, application assignments, and endpoint security policies from the Intune service, applying them through the management protocol appropriate for the device platform — OMA-DM for Windows, MDM for Apple platforms, Android Management API for Android Enterprise.
+
+Windows configuration is delivered through three profile types. Settings Catalog profiles expose individual Windows configuration settings through a searchable interface that draws from the same Windows CSP registry as the underlying MDM protocol, organized by category. Administrative Template profiles in Intune expose the same ADMX-backed settings that Group Policy Administrative Templates provide, but delivered through the MDM channel rather than through the Group Policy Client service. Custom OMA-URI profiles allow administrators to configure any Windows CSP setting directly by specifying the full CSP path and the value to apply, providing a fallback for settings not yet exposed through the Settings Catalog or Administrative Template interfaces. Endpoint security policies deliver purpose-built profiles for Microsoft Defender Antivirus configuration, Windows Firewall rules, Endpoint Detection and Response onboarding, Attack Surface Reduction rules, and Account Protection settings. Application deployment through Intune supports Win32 applications delivered as .intunewin packages, Line-of-Business applications from MSIX or MSI packages, Microsoft Store applications, and web link shortcuts, with deployment intent settings of Required, Available, or Uninstall applied to user and device groups.
+
+## Limitations of the Intune Policy Model
+
+Intune's policy targeting model is entirely group-based. Every policy — every compliance policy, every configuration profile, every endpoint security policy, every application assignment — is deployed by assigning it to one or more Entra ID user or device groups. There is no inheritance model. A configuration profile assigned to a group representing the Washington Division does not automatically apply to members of groups representing units within the Washington Division. Each assignment relationship between a policy and a population must be created explicitly. If a new organizational unit is established and a new group is created to represent it, no existing policy automatically applies to the members of that new group because no policy has been explicitly assigned to it. The administrator must identify every policy that should apply to the new unit and create an explicit assignment for each one. There is no native mechanism for deriving which policies should apply to a new organizational segment from its position in an organizational hierarchy, because no organizational hierarchy exists in the targeting model.
+
+Scope tags provide a mechanism for limiting which administrators can see and manage specific Intune resources — devices, applications, policies — by tagging resources and restricting administrator visibility to resources carrying their assigned tags. Scope tags address the delegation problem at the administrative visibility level: a regional Intune administrator tagged for the West region cannot see or modify devices and policies tagged for the East region. But scope tags do not create policy inheritance. Tagging a device with a regional scope tag does not cause any policy associated with that region to apply to the device. The scope tag controls administrative access to the resource, not the policy posture of the resource itself. The co-management model with Configuration Manager, used by organizations transitioning from the on-premises management model, introduces a split state in which some policy categories are governed by Intune — device compliance, modern application deployment, Windows Update for Business — while others remain governed by Configuration Manager — application deployment via SCCM, custom script execution, some endpoint security policies — and the workload split must be configured and maintained explicitly for every applicable policy category. There is no native model in Intune for the concept that devices belonging to one organizational segment should receive a superset of the policies applied to devices in a parent organizational segment. Each policy association must be constructed, verified, and maintained as an independent assignment.
