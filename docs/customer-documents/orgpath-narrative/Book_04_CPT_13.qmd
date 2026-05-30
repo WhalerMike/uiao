@@ -14,13 +14,31 @@ lifecycle_review: 2026-11-22
 
 # Chapter 13 — Building and Maintaining the Infrastructure Dependency Map
 
+::: {.callout-note}
+## In this chapter
+Legacy infrastructure cannot be decommissioned safely until its dependencies are known and resolved. This chapter initializes the infrastructure dependency map from assessment data, defines the six-field dependency record schema, and establishes the planned-resolution and continuous-discovery workflows that keep the map accurate as the environment evolves.
+:::
+
 ## Initializing the Dependency Map from Assessment Data
 
 The infrastructure dependency map is initialized from three data sources produced during the assessment phase. The Azure Migrate dependency analysis output provides the network-layer dependency data: which servers communicate with which other servers, on which protocols and ports, at what frequency. This data is retrieved from the Azure Migrate project through the Azure REST API and processed into a set of candidate dependency records, each representing a directional communication relationship between two servers. The BloodHound/SharpHound output provides the identity-layer dependency data: which accounts have administrative relationships over which objects, which service accounts are used by which applications, which Kerberos service principal names map to which server accounts, and which trust relationships enable cross-domain authentication flows. The Active Directory service account inventory — the set of user accounts in the directory that carry populated ServicePrincipalNames attributes or that are members of service-account organizational units — provides the identity-to-service mapping layer: which accounts are used as service identities, and which are used for specific application integrations. These three data sources are processed by a Python or PowerShell initialization script that merges them into a unified set of dependency records organized by dependency type and writes the initial dependency map YAML files to the governance repository.
 
+[DIAGRAM-01: The infrastructure dependency map — initialization, record schema, and resolution lifecycle. Left "Initialization": three assessment sources merge into the map — Azure Migrate (network-flow dependencies), BloodHound/SharpHound (identity and ACL relationships), and the AD service-account inventory (identity-to-service mapping). Center "Dependency record": the six-field schema for one record (id e.g. INFRA-COMM-001, provider OrgPath, consumer OrgPath, dependencyType [Protocol/Application/Infrastructure/Identity], mechanism [Kerberos/LDAP/NTLM/DNS/…], status). Right "Lifecycle": a three-state track Active → InRemediation → Resolved, with the Resolved state adding resolvedDate, resolvedBy, and migrationTarget. A separate dashed arrow labeled "weekly discovery" loops new Azure Migrate flows back into the map as draft Active records. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the record schema, teal (#1A9E8F) for the three sources, amber (#D4A017) for the lifecycle states, monospace field names and ids, no human figures, 16:9 landscape.]
+
 ## The Dependency Record Schema
 
 Each record in the dependency map YAML files contains six mandatory fields. The id field is a unique identifier for the dependency record — a short string that the engineering team generates by concatenating the provider node id, the consumer node id, and a sequence number: for example, INFRA-COMM-001 for the first dependency between the infrastructure and commercial units. The provider field is the OrgPath value of the organizational unit that owns the infrastructure component being depended upon — the server, service, or identity that the consumer relies on. The consumer field is the OrgPath value of the organizational unit that owns the consuming identity, application, or service. The dependencyType field classifies the dependency as Protocol (a specific authentication or communication protocol dependency), Application (an application-to-application integration), Infrastructure (a server-to-server dependency such as a backup relationship or a DNS dependency), or Identity (a service account or credential dependency). The mechanism field specifies the concrete mechanism: valid values include Kerberos, LDAP, NTLM, CertificateEnrollment, DNS, DatabaseConnection, WebServiceCall, NFS, SMB, RPC, or ServiceAccountCredential. The status field tracks the dependency's migration state: Active (the dependency exists and is in use), InRemediation (the dependency has been identified and a remediation project is underway), or Resolved (the dependency has been successfully eliminated). When a record transitions to Resolved status, three additional fields are populated: resolvedDate in ISO 8601 format, resolvedBy identifying the engineer or team who completed the remediation, and migrationTarget describing the mechanism that replaced the dependency — for example, OAuth 2.0 replacing Kerberos, or a managed identity replacing a service account credential.
+
+The six mandatory fields of each dependency record are summarized below.
+
+| Field | Meaning |
+|-------|---------|
+| `id` | Unique record id — provider id + consumer id + sequence number (e.g. `INFRA-COMM-001`) |
+| `provider` | OrgPath of the unit that owns the depended-upon infrastructure component |
+| `consumer` | OrgPath of the unit that owns the consuming identity, application, or service |
+| `dependencyType` | Protocol, Application, Infrastructure, or Identity |
+| `mechanism` | Kerberos, LDAP, NTLM, CertificateEnrollment, DNS, DatabaseConnection, WebServiceCall, NFS, SMB, RPC, or ServiceAccountCredential |
+| `status` | Active, InRemediation, or Resolved (Resolved adds `resolvedDate`, `resolvedBy`, `migrationTarget`) |
 
 ## Ongoing Dependency Map Maintenance
 

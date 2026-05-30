@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 12 — OrgPath as a Resource Tag — Extending the Model to Arc-Managed Servers
 
+::: {.callout-note}
+## In this chapter
+On the Azure management plane, OrgPath is expressed as a resource tag rather than a directory attribute. This chapter covers the Arc-specific implementation — the three tags applied to every Arc machine resource, the tag-population pipeline, and the three-surface reconciliation that keeps the Active Directory, Entra ID, and Arc copies of an OrgPath value in agreement.
+:::
+
 ## The Arc-Specific Implementation
 
 For servers managed through the Azure hybrid management plane — servers enrolled in Azure Arc and represented as Microsoft.HybridCompute/machines resources in Azure Resource Manager — the OrgPath value is expressed as a resource tag rather than as a directory schema extension attribute. This is not a design compromise; it is the correct choice for the Azure management plane. Azure resource tags are the native mechanism for attaching governance metadata to Azure resources. They are queryable across the entire resource graph using Azure Resource Graph queries, they are enforced and audited through Azure Policy, and they are exposed in every Azure cost management, compliance, and reporting surface. Storing OrgPath as a tag on Arc machine resources integrates the governance substrate with the Azure management plane in the same way that storing it as an extension attribute on directory objects integrates it with the identity management plane.
@@ -23,6 +28,8 @@ Three tags are applied to every Arc machine resource. The OrgPath tag carries th
 ## The Tag Population Pipeline
 
 The Arc tag population pipeline is a component of the daily drift detection and remediation run, implemented in Invoke-ArcTagPipeline.ps1. It reads the governance repository to determine the authoritative OrgPath assignment for each Arc-enrolled server. The assignment record for each server is created during the Arc onboarding process and committed to the governance repository as a YAML record at registry/servers/{serverName}.yaml, containing the server's Arc resource ID, its OrgPath node id assignment, its OrgTier classification, and the date and approver of the assignment. The pipeline reads these records, builds a mapping from Arc resource ID to the expected tag set, calls the Azure Resource Graph API using Get-AzResourceGraphQuery or directly through the POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01 endpoint to retrieve the current tags on all Arc machine resources in scope, compares the current tags against the expected tags from the assignment records, and applies corrections where they diverge. All tag write operations use the Azure REST API PATCH endpoint rather than a full tag replacement operation, to avoid overwriting non-governance tags that other teams may have applied to the same resources.
+
+[DIAGRAM-01: OrgPath expressed across three management surfaces and reconciled into agreement. Center: a single hybrid server icon. Three labeled surface boxes around it each carry the same OrgPath value /OPS/INFRA/SVCTIER1 — "Active Directory computer object" (on-prem custom attribute), "Entra ID device object" (directory schema extension attribute), and "Azure Arc resource" (resource tag). The Arc box expands to show its three tags: OrgPath (/OPS/INFRA/SVCTIER1), OrgNodeId (SVCTIER1), and OrgTier (Tier0/Tier1/Tier2 management classification). A central "three-surface reconciliation" check compares all three values; a divergence path is drawn in red and labeled "High-severity finding (race condition, re-enrollment, or recreated resource)". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the three surface boxes, teal (#1A9E8F) for the Arc tags, amber (#D4A017) for the reconciliation check, red (#C0392B) for the divergence path, monospace tag names and path values, no human figures, 16:9 landscape.]
 
 ## Three-Surface Reconciliation
 

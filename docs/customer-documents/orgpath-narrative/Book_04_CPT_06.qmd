@@ -14,9 +14,16 @@ lifecycle_review: 2026-11-22
 
 # Chapter 6 — Running the Assessment — Sequence, Privilege, and Output Structure
 
+::: {.callout-note}
+## In this chapter
+Assessment touches a live production directory, so privilege is granted in stages rather than all at once. This chapter defines the phased approach — a read-only Phase Zero on standard credentials, then an elevated Phase One under a purpose-built service account — and the directory structure and provenance metadata that every output file carries.
+:::
+
 ## A Phased Approach to Privilege
 
 The assessment methodology is structured as a phased approach that begins with the minimum privilege level and expands as authorization permits and as the output of earlier phases justifies. This structure is not a bureaucratic formality — it is a practical recognition that assessment work in a production directory carries real risk. An assessment script that is misconfigured, run under the wrong account, or directed at the wrong domain controller can generate LDAP query load that degrades authentication performance for the users it serves. Beginning with low-privilege collection minimizes that risk while producing output that informs exactly what elevated access is needed and provides documentation to support the access request. The higher-privilege phases are also the phases that collect the most sensitive data — ACL contents, LAPS passwords, service account credentials in attribute form — and limiting their blast radius to an explicitly authorized service account is a security control as well as an operational one.
+
+[DIAGRAM-01: The phased assessment approach, escalating privilege only as earlier output justifies it. Two large sequential panels left to right. Panel "Phase Zero — read-only" (standard Authenticated Users credential) lists PingCastle, the read-only Get-AD* cmdlets (Forest, Domain, OU, DC, Trust, ReplicationSite), and LDAPDomainDump, with its output committed to assessment/phase-zero/ as a timestamped baseline. A forward arrow labeled "output justifies elevated access" connects to Panel "Phase One — full elevated" (purpose-built assessment service account with delegated Read-All-Properties at the domain root, explicitly NOT Domain Admin), which lists the full Get-ADUser/Computer/Group/Object -Properties * sweeps, Get-GPOReport for every GPO, dcdiag /test:all, repadmin, ADRecon, and SharpHound, with output committed to assessment/phase-one/ along with provenance (account, DCs queried, timestamps, tool versions). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for Phase Zero, teal (#1A9E8F) for Phase One, amber (#D4A017) for the service-account privilege boundary, monospace cmdlet and path labels, no human figures, 16:9 landscape.]
 
 ## Phase Zero: The Read-Only Assessment
 
@@ -27,6 +34,13 @@ Phase Zero begins immediately and uses only the credentials of a standard domain
 Phase One runs under a purpose-created assessment service account that has been delegated read access to all objects in the directory — specifically, the permission to read all attributes on all object classes, including attributes that are restricted from Authenticated Users by default, such as the ms-MCS-AdmPwd attribute (the LAPS-managed local administrator password), the unixUserPassword attribute where it is populated, the nTSecurityDescriptor attribute on sensitive objects, and any confidential attributes marked with the ATTRIBUTE_CACHE_VALID flag in the schema. This account should not be a member of Domain Admins, Schema Admins, or any other privileged group — it should be a purpose-created account with precisely the permissions needed for the assessment delegated through Active Directory's ACL mechanism, applied at the domain root with inheritance. Specifically, the account requires the Allow Read permission on all objects, applied at the domain root with the This Object and All Descendant Objects scope, and the Allow Read All Properties permission on all object types. These delegations are made using dsacls.exe or through the Active Directory Users and Computers Delegation of Control Wizard.
 
 Phase One runs the full Get-ADUser -Filter \* -Properties \*, Get-ADComputer -Filter \* -Properties \*, Get-ADGroup -Filter \* -Properties \*, and Get-ADObject -Filter \* -Properties \* collection sweeps, directing each query to a specific domain controller using the -Server parameter to ensure data consistency across the collection. It runs Get-GPOReport for every GPO in every domain, dcdiag /test:all against every domain controller, and repadmin /replsummary and repadmin /showrepl for the forest. It runs ADRecon with the -DomainController parameter pointing to the same specific DC used for the PowerShell collection. It runs SharpHound for relationship and ACL mapping. The Phase One output should be committed to the governance repository in an assessment/phase-one directory, and the commit message should record the service account used, the domain controllers queried, the timestamp of each collection, and the tool version for every tool invoked. This provenance information is part of the governance record.
+
+The two phases differ in credential, toolset, and output destination as summarized below.
+
+| Phase | Credential | Representative tools | Output location |
+|-------|-----------|----------------------|-----------------|
+| Phase Zero — read-only | Standard Authenticated User | PingCastle; read-only `Get-AD*` (Forest, Domain, OU, DC, Trust, ReplicationSite); LDAPDomainDump | `assessment/phase-zero/` (timestamped baseline) |
+| Phase One — full elevated | Purpose-built assessment service account (Read-All-Properties at domain root; not Domain Admin) | Full `Get-ADUser/Computer/Group/Object -Properties *`; `Get-GPOReport` (all GPOs); dcdiag; repadmin; ADRecon; SharpHound | `assessment/phase-one/` (with full provenance) |
 
 ## Assessment Output Organization
 
