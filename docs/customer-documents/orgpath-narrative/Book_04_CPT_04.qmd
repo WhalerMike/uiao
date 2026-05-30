@@ -14,9 +14,16 @@ lifecycle_review: 2026-11-22
 
 # Chapter 4 — Capturing Current State — What Microsoft Provides for AD Discovery
 
+::: {.callout-note}
+## In this chapter
+The initial OrgTree is derived from a rigorous inventory of the existing directory, never invented. This chapter walks the Microsoft-native assessment toolset — the Active Directory and Group Policy modules, DCDiag and RepAdmin, the MAP Toolkit, Group Policy Analytics, Defender for Identity, Azure Migrate, and Entra Connect Health — and what each contributes to that inventory. Chapter 5 adds the specialized instruments that complement it.
+:::
+
 ## The Purpose of the Assessment Phase
 
 The initial OrgTree cannot be constructed from imagination. It must be derived from a rigorous inventory of the current Active Directory environment, combined with the organization's authoritative description of its own structure. The assessment phase uses tooling to extract the raw facts of the AD environment — the forest topology, the domain structure, the OU hierarchy, the GPO library, the DNS configuration, the certificate services infrastructure, the computer object population, the user population, the group structure, the trust relationships, the service account inventory, and the access control model — and produces structured output that the OrgTree construction process consumes. A thorough assessment takes time. That investment is not avoidable and should not be compressed. Every shortcut taken in the assessment phase will surface as a construction error or an operations incident later. This chapter covers the Microsoft native toolset. Chapter 5 covers the third-party and open-source tools that complement it.
+
+![The Microsoft-native assessment toolset and the assessment surface each instrument covers](images/book04cpt04-diagram-01-the-microsoft-native-assessment.png){#fig-book-04-cpt-04-diagram-01 fig-alt="A central vertical spine labeled \"Structured assessment archive (JSON + CSV)\" with eight native tools arranged around it, each connected by an arrow into the archive and tagged with what it contributes: \"Active Directory module\" feeding forest / domain / OU / user / computer / group / trust inventory; \"Group Policy module (Get-GPOReport)\" feeding GPO settings XML; \"DCDiag / RepAdmin\" feeding DC health and replication status; \"MAP Toolkit\" feeding agentless hardware and software inventory; \"Group Policy Analytics (Intune)\" feeding GPO-to-Settings-Catalog mapping; \"Defender for Identity\" feeding identity security-posture findings; \"Azure Migrate\" feeding the server dependency and network-flow graph; \"Entra Connect Health\" feeding sync attribute-flow detail and sync errors. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the archive spine, teal (#1A9E8F) for the eight tool boxes, monospace cmdlet and tool names, no human figures, 16:9 landscape." width="85%"}
 
 ## The PowerShell Active Directory Module
 
@@ -51,3 +58,16 @@ Azure Migrate serves two assessment functions. The Azure Migrate appliance — a
 ## Microsoft Entra Connect Health
 
 For environments using Entra Connect sync — the hybrid identity synchronization service that replicates on-premises Active Directory objects into Entra ID — the Entra Connect Health service provides monitoring of the synchronization agent's health and, critically for the assessment, detailed visibility into the attribute flow between the on-premises directory and the cloud directory. The Connect Health portal displays the synchronization rules in effect, the objects in scope for synchronization, and the attribute-level flow details for each synchronized object type. Most relevantly for the OrgPath implementation, it surfaces synchronization errors: objects in the on-premises directory that are failing to synchronize because of attribute conflicts, duplicate attribute values, format violations, or scoping rules that exclude the object. These errors represent objects that will not receive OrgPath values through the synchronization pipeline even after the attribute is populated on the on-premises AD object — they are exceptions that must be handled separately. Reviewing the Connect Health error dashboard before beginning OrgPath implementation identifies the scale of this exception population and allows the engineering team to remediate the underlying synchronization problems before the OrgPath ETL pipeline runs, rather than discovering them as silent failures after the fact.
+
+The native instruments and their distinct contributions to the assessment archive are summarized below.
+
+| Native tool | Assessment contribution |
+|-------------|-------------------------|
+| Active Directory PowerShell module | Forest, domain, OU, user, computer, group, site, and trust inventory as strongly typed objects |
+| Group Policy module (`Get-GPOReport`) | Complete GPO settings as machine-parseable XML, plus per-OU GPO link order and enforcement |
+| DCDiag / RepAdmin | Per-DC health diagnostics and forest-wide replication success/failure status |
+| MAP Toolkit | Agentless hardware and software inventory and reachability confirmation across domain-joined machines |
+| Group Policy Analytics (Intune) | Maps each GPO setting to its Settings Catalog equivalent and a migration-complexity classification |
+| Defender for Identity | Identity security-posture findings — delegation, AS-REP/Kerberoast, SMB signing, Protected Users coverage |
+| Azure Migrate | Server dependency graph derived from captured network-flow data over a 30–60 day window |
+| Entra Connect Health | Hybrid sync attribute-flow detail and the population of synchronization errors |
