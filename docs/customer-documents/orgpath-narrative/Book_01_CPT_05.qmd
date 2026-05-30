@@ -14,18 +14,61 @@ lifecycle_review: 2026-11-22
 
 # Chapter 5 — Group Policy Objects — The Configuration Inheritance Engine
 
+::: {.callout-note}
+## In this chapter
+How Group Policy delivers Windows configuration through structural OU
+inheritance, the breadth of the configuration surface it covers, and why the
+model is both powerful and — in the contemporary, partly-disconnected
+environment — opaque and difficult to audit.
+:::
+
 ## Architecture and Native Capabilities
 
-Group Policy Objects are the primary mechanism by which Windows system configuration is applied to domain-joined machines and users in an Active Directory environment. A GPO is a paired data structure: a Group Policy Container, stored in the Active Directory domain partition and holding metadata such as the GPO's GUID, version number, and security descriptor; and a Group Policy Template, stored in the SYSVOL share of every domain controller and holding the actual policy settings files, ADMX-based administrative template definitions, scripts, and software installation packages. GPOs are created and managed through the Group Policy Management Console, which presents the combined view of both storage locations. The GPO itself has no effect until it is linked to a site, domain, or Organizational Unit. Linking a GPO to an OU is the act that causes the policy to apply to objects within that OU and, by inheritance, to objects within all child OUs, subject to filtering and precedence rules.
+Group Policy Objects (GPOs) are the primary mechanism by which Windows system configuration is applied to domain-joined machines and users in an Active Directory environment. A GPO is a **paired data structure**:
 
-The inheritance model is the defining characteristic of the GPO system. When the Group Policy Client service applies policy to a machine or user, it retrieves the list of applicable GPOs by walking up the OU hierarchy from the object's container to the domain root, collecting all linked GPOs at each level, and building an ordered list that reflects the inheritance hierarchy. Site-linked GPOs apply first, domain-linked GPOs next, and OU-linked GPOs last, with child OU GPOs taking precedence over parent OU GPOs for settings that conflict. WMI filters condition the application of individual GPOs on the result of a WMI query against the target machine, allowing administrators to scope a GPO to machines that meet specific hardware or software conditions without managing separate OUs for each condition. Security filtering controls which security principals actually receive a given GPO by requiring that they have both Read and Apply Group Policy permissions on the GPO object; removing Apply Group Policy from a group effectively exempts that group's members from the policy regardless of their OU position.
+* **Group Policy Container (GPC)** — stored in the Active Directory domain partition, holding metadata such as the GPO's GUID, version number, and security descriptor.
+* **Group Policy Template (GPT)** — stored in the `SYSVOL` share of every domain controller, holding the actual policy settings files, ADMX-based administrative template definitions, scripts, and software installation packages.
+
+GPOs are created and managed through the Group Policy Management Console (GPMC), which presents the combined view of both storage locations. A GPO has no effect until it is **linked** to a site, domain, or Organizational Unit. Linking a GPO to an OU is the act that causes the policy to apply to objects within that OU and, by inheritance, to objects within all child OUs — subject to filtering and precedence rules.
+
+The inheritance model is the defining characteristic of the system. When the Group Policy Client service applies policy, it walks up the OU hierarchy from the object's container to the domain root, collecting all linked GPOs at each level and building an ordered list that reflects the inheritance hierarchy.
+
+```text
+Evaluation order (later wins on conflict):
+   Site-linked GPOs
+        ▼
+   Domain-linked GPOs
+        ▼
+   OU-linked GPOs (parent OU)
+        ▼
+   OU-linked GPOs (child OU)   ← highest precedence
+```
+
+Two filtering mechanisms refine this default flow:
+
+* **WMI filters** condition a GPO's application on the result of a WMI query against the target machine, scoping a GPO to machines meeting specific hardware or software conditions without managing separate OUs for each condition.
+* **Security filtering** controls which principals actually receive a GPO by requiring both *Read* and *Apply Group Policy* permissions on the GPO object; removing *Apply Group Policy* from a group exempts its members from the policy regardless of their OU position.
+
+[DIAGRAM-01: Group Policy inheritance and precedence resolution down the OU tree. A vertical stack of policy-source bands — Site, Domain, Parent OU, Child OU — with downward arrows showing GPOs accumulating as the Group Policy Client walks from the object's container to the domain root, and a side note "child OU wins on conflicting settings". Two filter gates branch off the flow: a "WMI filter" gate (evaluates a query against the target machine) and a "security filter" gate (requires Read + Apply Group Policy), each able to exclude a machine from a given GPO. The resolved result box at the bottom reads "effective configuration (Resultant Set of Policy)". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for policy-source bands, teal (#1A9E8F) for filter gates, amber (#D4A017) for the resolved RSOP box, monospace labels, no human figures, 16:9 landscape.]
 
 ## Policy Scope and Coverage
 
-The breadth of GPO coverage across the Windows configuration surface is comprehensive. Computer configuration settings apply to the machine at startup regardless of which user is logged on, covering security settings (account policy, local policies, audit policy, user rights assignments, security options), software installation, scripts executed at startup and shutdown, folder redirection for computer-side paths, Windows Firewall rules, certificate distribution through autoenrollment and trusted root configuration, and the full body of Administrative Template settings that expose registry-backed configuration for the operating system and its components. User configuration settings apply when a specific user logs on, covering analogous software, script, folder redirection, and Administrative Template settings scoped to user-side registry paths and user-side Windows features. The Administrative Templates model allows any application vendor or organization to extend the policy schema by depositing ADMX and ADML files in the SYSVOL Central Store, making new settings available to all administrators through the GPMC without requiring any modification to the schema or the AD directory itself.
+The breadth of GPO coverage across the Windows configuration surface is comprehensive, split into two halves:
+
+* **Computer configuration** applies to the machine at startup regardless of which user logs on. It covers security settings (account policy, local policies, audit policy, user-rights assignments, security options), software installation, startup/shutdown scripts, computer-side folder redirection, Windows Firewall rules, certificate distribution through auto-enrollment and trusted-root configuration, and the full body of Administrative Template settings exposing registry-backed OS configuration.
+* **User configuration** applies when a specific user logs on, covering analogous software, script, folder-redirection, and Administrative Template settings scoped to user-side registry paths and Windows features.
+
+The **Administrative Templates** model lets any vendor or organization extend the policy schema by depositing ADMX and ADML files in the SYSVOL Central Store, making new settings available to all administrators through the GPMC without modifying the schema or the AD directory itself.
 
 ## Limitations of Group Policy in the Contemporary Environment
 
-Group Policy is exclusively an on-premises, domain-joined construct. Its application mechanism requires that the machine processing policy be able to communicate with a domain controller at startup and at logon. Non-domain-joined devices receive no Group Policy. Cloud-native workloads that are not domain-connected receive no Group Policy. Managed mobile devices — iOS, Android — receive no Group Policy. A machine that is domain-joined but geographically separated from domain controllers by an unreliable WAN link will process its cached policy at startup but will fail to retrieve updated policy until connectivity is restored. The policy applied to a machine that has been off-network for an extended period may be materially stale, and there is no native mechanism that continuously verifies the currency of applied policy against the currently-linked GPOs.
+Group Policy is **exclusively an on-premises, domain-joined construct.** Its application mechanism requires that the machine be able to communicate with a domain controller at startup and at logon:
 
-The programmatic auditability of Group Policy is severely limited. The effective configuration of a machine is determined by the combined effect of all applicable GPOs, the WMI and security filter conditions that may or may not have evaluated as expected, the precedence resolution among conflicting settings, and the client-side extension processing of each policy area. No single system presents this effective configuration without querying the target machine. The gpresult command produces a report of the GPOs that applied and the settings that resulted, but it must be run on or against the target machine and reflects the state at the time of the last policy refresh cycle. GPOs are not version-controlled by any native mechanism. The Group Policy Management Console allows GPOs to be backed up and restored, but backup is a point-in-time snapshot, not a versioned history. There is no native diff between two versions of a GPO's settings, no change log beyond the modification timestamp on the GPO Container object in AD, and no preview of the combined effect of all applicable GPOs before they are applied to a machine. Group Policy is, in this precise sense, an opaque, distributed, and difficult-to-audit configuration system whose actual enforcement state is known only to the endpoints that have applied it.
+* Non-domain-joined devices receive no Group Policy.
+* Cloud-native workloads that are not domain-connected receive no Group Policy.
+* Managed mobile devices — iOS, Android — receive no Group Policy.
+* A domain-joined machine separated from domain controllers by an unreliable WAN link processes cached policy at startup but cannot retrieve updates until connectivity is restored; policy on a machine off-network for an extended period may be materially stale, and no native mechanism continuously verifies the currency of applied policy against the currently-linked GPOs.
+
+> **The auditability gap:** A machine's effective configuration is the combined effect of all applicable GPOs, the WMI and security-filter conditions that may or may not have evaluated as expected, the precedence resolution among conflicting settings, and the client-side-extension processing of each policy area. No single system presents this without querying the target machine.
+
+The consequences for assurance are concrete. The `gpresult` command reports the GPOs that applied and the resulting settings, but it must be run on or against the target machine and reflects the state at the last refresh cycle. GPOs are not version-controlled by any native mechanism — the GPMC can back up and restore GPOs, but a backup is a point-in-time snapshot, not a versioned history. There is no native diff between two versions of a GPO's settings, no change log beyond the modification timestamp on the GPO Container object, and no preview of the combined effect of all applicable GPOs before they reach a machine. Group Policy is, in this precise sense, an opaque, distributed, and difficult-to-audit configuration system whose actual enforcement state is known only to the endpoints that have applied it.
