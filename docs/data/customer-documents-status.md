@@ -229,22 +229,22 @@
 
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
-| [`docs/customer-documents/orgpath-narrative/01-microsoft-identity-and-governance-stack.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/01-microsoft-identity-and-governance-stack.qmd) | 294 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/02-what-must-exist.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/02-what-must-exist.qmd) | 408 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/orgpath-narrative/03-proposed-governance-substrate.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/03-proposed-governance-substrate.qmd) | 309 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/orgpath-narrative/04-implementing-orgtree-and-orgpath.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/04-implementing-orgtree-and-orgpath.qmd) | 368 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd) | 1397 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/orgpath-narrative/06-orgpath-and-defender-suite.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/06-orgpath-and-defender-suite.qmd) | 1583 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/07-orgpath-and-purview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/07-orgpath-and-purview.qmd) | 1242 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd) | 453 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/08-orgpath-and-application-identity.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/08-orgpath-and-application-identity.qmd) | 837 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/09-orgpath-and-azure-policy-guest-config.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/09-orgpath-and-azure-policy-guest-config.qmd) | 1025 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/orgpath-narrative/10-orgpath-and-cross-tenant-collaboration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/10-orgpath-and-cross-tenant-collaboration.qmd) | 722 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/11-orgpath-in-security-operations.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/11-orgpath-in-security-operations.qmd) | 1310 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/12-orgpath-in-infrastructure-services.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/12-orgpath-in-infrastructure-services.qmd) | 1619 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/13-orgpath-and-power-bi-reporting.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/13-orgpath-and-power-bi-reporting.qmd) | 1450 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/14-orgpath-with-third-party-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/14-orgpath-with-third-party-ddi.qmd) | 1177 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/15-uiao-governance-os-complete-narrative.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/15-uiao-governance-os-complete-narrative.qmd) | 292 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01.qmd) | 294 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_02.qmd) | 408 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_03.qmd) | 309 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_04.qmd) | 368 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_05.qmd) | 1397 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_06.qmd) | 1583 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_07.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_07.qmd) | 1242 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_07a.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_07a.qmd) | 453 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_08.qmd) | 837 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_09.qmd) | 1025 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_10.qmd) | 722 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_11.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_11.qmd) | 1310 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_12.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_12.qmd) | 1619 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_13.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_13.qmd) | 1450 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_14.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_14.qmd) | 1177 | Substantial | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_15.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_15.qmd) | 292 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 94 | Navigation hub | ✅ | — | — |
 
 ### `platform/`
