@@ -16,6 +16,15 @@ lifecycle_review: 2026-11-22
 
 *The Drift Detection Requirement.*
 
+::: {.callout-note}
+## In this chapter
+Governance is a continuous condition, not a configuration event. This chapter
+explains why cloud-native drift is *invisible* without a registry baseline to
+measure against, and specifies a continuous, automated **drift detection**
+capability that classifies deviations and commits them to the versioned
+governance record.
+:::
+
 ## The Temporal Nature of Governance State
 
 A foundational distinction runs through every chapter of this document, but it has not yet been stated explicitly: governance is not a configuration event. It is a continuous condition. An organization that correctly configures its policy assignments on a given day, correctly populates every identity's position attribute, correctly maintains every dynamic group, and correctly documents every infrastructure dependency, and then makes no further governance investments in the weeks and months that follow, will find that the real-world state of its environment has diverged from its intended governance state. Not because anyone made errors. Not because any tools failed. But because the environment is not static, and a governance model that is not continuously maintained cannot remain accurate against a continuously changing reality.
@@ -34,7 +43,18 @@ This invisibility is the qualitative difference between drift in an Active Direc
 
 The drift detection capability that the governance substrate must include is not a manual periodic audit. It is an automated, scheduled process that runs continuously against the live directory state, comparing every identity's organizational position attribute against the current state of the hierarchy registry, and producing a classified inventory of detected deviations. The classification must distinguish between different categories of drift: attributes that contain values not present in the current registry — which may indicate a stale value from a hierarchy restructuring; identities that have no organizational position attribute populated at all — which indicates an enrollment governance failure; position attributes whose path structure is syntactically invalid — which indicates a data quality problem in the attribute derivation process; and group memberships that do not match the group memberships that should be derived from the current position attribute values — which indicates that the dynamic group library has not been kept current with the registry.
 
+The drift categories and their remediation profiles are distinct:
+
+| Drift category | What it indicates | Remediation |
+| :--- | :--- | :--- |
+| **Stale path value** — attribute references a node not in the current registry | A value left behind by a hierarchy restructuring | Attribute update propagating the registry change to affected objects |
+| **Missing attribute** — no position populated at all | An enrollment-governance failure | Enforcement of the governed enrollment workflow |
+| **Syntactically invalid path** | A data-quality defect in attribute derivation | Investigation of the provisioning workflow that generated it |
+| **Group-membership mismatch** — memberships don't match those derivable from current positions | The dynamic group library has fallen behind the registry | Investigation of the dynamic group rules and their registry alignment |
+
 Each category of drift has a different remediation profile. Stale path values require attribute updates that propagate registry changes to the affected identity objects. Missing attributes require enforcement of enrollment governance. Syntactically invalid attributes require investigation of the provisioning workflow that generated them. Group membership inconsistencies require investigation of the dynamic group rules and their alignment with the registry. The drift detection report must surface these distinctions, and it must do so in machine-readable form that can be committed to the version-controlled governance record, so that the history of drift events — when deviations arose, what their nature was, when they were remediated — is preserved as part of the organization's governance audit trail.
+
+[DIAGRAM-01: Continuous drift detection comparing live directory state against the registry baseline. Left is the "Hierarchy Registry (authoritative baseline)"; right is the "live directory" with many identity objects carrying position attributes. A scheduled drift-detection engine in the middle pulls from both and emits a classified report with four lanes — stale path, missing attribute, invalid syntax, group-membership mismatch — each colored by severity. An arrow carries the machine-readable report into a "version-controlled governance record" so the history of deviations is preserved. A caption contrasts "AD: drift visible in the OU tree" with "cloud: drift invisible without this engine". Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the registry, teal (#1A9E8F) for the live directory, amber (#D4A017) for the drift report and committed record, red (#C0392B) accents on the highest-severity lane, monospace labels, no human figures, 16:9 landscape.]
 
 ::: {.callout-note title="Architectural Requirement — Chapter 8"}
 The governance substrate must include a continuous drift detection capability. The authoritative hierarchy registry must serve as the baseline against which the current state of every identity's organizational position attribute is compared on a scheduled basis. Deviations must be detected, classified by type and severity, and surfaced for remediation. Drift detection must be automated, not manual. Its outputs must be machine-readable and committed to a version-controlled governance record, so that the history of drift events is auditable independently of the live directory state at any given moment.
