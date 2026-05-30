@@ -16,6 +16,15 @@ lifecycle_review: 2026-11-22
 
 *The Automation Requirement.*
 
+::: {.callout-note}
+## In this chapter
+Every requirement so far *can* be satisfied manually — and that is precisely
+the trap. This chapter shows why manual governance cannot scale or stay true
+(throughput and knowledge-loss both bind), and establishes automation as an
+architectural commitment: an **event-driven pipeline** that keeps governance
+current at the pace of organizational change.
+:::
+
 ## The Theoretical Sufficiency of Manual Processes
 
 A pointed and important observation is available at this stage of the analysis: every requirement established in the preceding chapters can, in principle, be satisfied manually. A sufficiently large, diligent, and expert team of administrators, operating in a sufficiently small and stable organization, over a sufficiently short period of time, could manually populate position attributes on every identity, manually maintain a hierarchy registry spreadsheet, manually update policy assignments when organizational changes occur, manually run periodic audits to detect drift, and manually maintain a dependency map in a shared document. None of these operations requires automation in order to be technically possible. They are all operations that a person can perform, given enough time and organizational knowledge.
@@ -34,7 +43,19 @@ The requirement for automation is therefore not a preference for efficiency — 
 
 Every operation that the governance substrate performs — attribute derivation from registry changes, propagation of organizational restructuring events to affected identity objects, maintenance of the dynamic group library when registry nodes are added or removed, drift detection against the registry baseline, dependency map updates as new assets are enrolled, compliance reporting against policy coverage requirements — must be automatable. Not optional-to-automate. Must be automatable, meaning the substrate must expose the interfaces and the event triggers that allow governance operations to be executed automatically in response to events, without administrator initiation for each operation.
 
-The event model is the key design requirement within the automation requirement. A registry change is an event. A new identity enrollment is an event. An organizational restructuring notification from the HR system is an event. A new server onboarded to Arc management is an event. Each of these events should trigger a defined set of governance operations: attribute updates, group membership recomputations, dependency map registrations, drift detection passes against the affected objects. The governance pipeline must be capable of consuming these events and responding to them within a timeframe that keeps the governance state current — which means hours or minutes, not days or weeks. The pipeline must also operate on a scheduled cadence for operations that are not event-driven: periodic full drift detection passes, periodic dependency map validation, periodic compliance reporting. These scheduled operations must run without human initiation, and their outputs must be committed to the version-controlled governance record without human review required for each run.
+The event model is the key design requirement within the automation requirement. Each governance event triggers a defined set of operations:
+
+| Event | Governance operations it triggers |
+| :--- | :--- |
+| **Registry change** (node added/renamed/restructured) | Attribute re-derivation for affected identities; dynamic group rule creation/retirement/update |
+| **New identity enrollment** | Position attribute derivation as part of provisioning |
+| **HR organizational-restructuring notification** | Registry update, then downstream attribute and group propagation |
+| **New server onboarded to Arc** | Position tag assignment; dependency map registration |
+| **Scheduled cadence** (no triggering event) | Full drift-detection passes, dependency-map validation, compliance reporting |
+
+The governance pipeline must consume these events and respond within a timeframe that keeps the governance state current — hours or minutes, not days or weeks. It must also operate on a scheduled cadence for operations that are not event-driven: periodic full drift detection passes, periodic dependency map validation, periodic compliance reporting. These scheduled operations must run without human initiation, and their outputs must be committed to the version-controlled governance record without human review required for each run.
+
+![An event-driven governance pipeline replacing manual operation](images/book02cpt10-diagram-01-an-event-driven-governance-pipel.png){#fig-book-02-cpt-10-diagram-01 fig-alt="Left column lists event sources — registry change, identity enrollment, HR restructuring notification, Arc onboarding, scheduled cron. Arrows feed a central \"Governance Pipeline\" with stages: attribute derivation, dynamic-group maintenance, dependency-map update, drift detection, compliance reporting. Each stage emits a versioned commit into a \"version-controlled governance record\" with no human-in-the-loop gate. A side annotation contrasts two trajectories: \"manual: effort rises with scale until it falls behind\" (red rising line crossing a capacity ceiling) versus \"automated: pace tracks change\" (steady teal line). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for event sources, teal (#1A9E8F) for the pipeline, amber (#D4A017) for committed outputs, red (#C0392B) for the failing manual trajectory, monospace labels, no human figures, 16:9 landscape." width="85%"}
 
 ::: {.callout-note title="Architectural Requirement — Chapter 10"}
 Every operation that the governance substrate performs must be automatable and must be capable of being triggered by events rather than by administrator action. Attribute derivation, policy group maintenance, drift detection, dependency map updates, and compliance reporting must all operate as automated, event-driven or scheduled pipeline stages that produce versioned, machine-readable outputs without requiring human initiation for each execution. A governance model that cannot function at the pace of organizational change without proportionally increasing manual effort is not a governance model that survives organizational growth.
