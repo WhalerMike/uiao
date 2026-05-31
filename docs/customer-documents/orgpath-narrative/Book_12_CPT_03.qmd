@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — CERTIFICATE SERVICES
 
+::: {.callout-note}
+## In this chapter
+How OrgPath governs certificate coverage once Active Directory Certificate Services is retired. This chapter maps the AD CS auto-enrollment model onto its cloud-native replacement in Microsoft Cloud PKI and Intune, extends the OrgTree node schema with a CertificateProfiles property so coverage follows organizational position, and walks the idempotent pipeline that assigns Intune certificate profiles to OrgPath branch groups. It closes with the KB5014754 strong-mapping requirement and the verification script that keeps SCEP profiles compliant.
+:::
+
 ## Certificate Governance — Mapping Template Coverage to Organizational Position
 
 ## The AD CS Architecture Being Replaced
@@ -24,11 +29,22 @@ The scope of auto-enrollment is governed entirely by OU placement and group memb
 
 In the cloud-native model, each mechanism is replaced by Intune. Trusted Root certificate profiles distribute the root and issuing CA certificates to all managed devices, replacing the AD-based NTAuth store and the certificate chain publication in the Configuration partition. SCEP profiles replace auto-enrollment GPOs for device certificates, using the Simple Certificate Enrollment Protocol to deliver certificates from Microsoft Cloud PKI to Intune-managed devices. PKCS profiles replace legacy PKCS#12 import-based certificate delivery for user certificates and scenarios where SCEP is not appropriate. Cloud PKI hosted in Microsoft Intune replaces the on-premises CA hierarchy entirely — it provides root and issuing CA functionality as a managed service, without requiring the organization to operate CA servers, manage CRL Distribution Points, or publish OCSP responders. Profile assignment to OrgPath-derived branch groups replaces OU-based auto-enrollment scope. The governing question for each device — which certificate templates apply to it — is no longer answered by OU membership and GPO; it is answered by OrgPath position and group membership in the OrgPath branch group library.
 
+![AD CS auto-enrollment replaced by Cloud PKI profiles driven by OrgPath position](images/book12cpt03-diagram-01-adcs-to-cloud-pki.png){#fig-book-12-cpt-03-diagram-01 fig-alt="Engineering blueprint diagram on a white background contrasting two certificate-delivery models. On the left, a red #C0392B box labeled legacy AD CS shows certificate templates published in the AD Configuration partition, with arrows for LDAP template discovery and OU plus GPO auto-enrollment scope feeding a federal navy #1F3A5F box CA hierarchy that issues device and user certificates; a red banner marks this whole column decommissioned. On the right, a federal navy #1F3A5F box OrgTree registry node carries a CertificateProfiles array in monospace, feeding a teal #1A9E8F box assignment pipeline that maps profiles to a teal box ORG-BRANCH branch group. Arrows lead to teal boxes for a Microsoft Cloud PKI issuing CA and three Intune profile types TrustedRoot, SCEP, and PKCS, which deliver certificates to managed devices and users. An amber #D4A017 callout reads governing question which templates apply is answered by OrgPath position not OU membership. Monospace labels for profile and group names, no human figures, 16:9 landscape." width="85%"}
+
 ## OrgTree Metadata Extension for PKI Governance
 
 The OrgTree registry node schema is extended with a CertificateProfiles property to support PKI governance. This property is an array of profile mapping objects, where each object identifies a certificate profile that must be assigned to the devices or users in that organizational node. The extension is additive — nodes that do not require any node-specific certificate coverage beyond the organization-wide baseline carry an empty array or omit the property entirely. The governance pipeline treats an absent or empty CertificateProfiles array as an indication that the organization-wide Trusted Root profile and any domain-wide SCEP or PKCS baselines are sufficient for devices in that node.
 
-Each entry in the CertificateProfiles array carries four fields. ProfileDisplayName identifies the Intune certificate profile by its exact display name, using the naming convention established during the initial Cloud PKI build — typically CERT-SCEP-{PURPOSE}-{NODEID} for SCEP profiles and ROOT-{ISSUERNAME} for Trusted Root profiles. Type identifies the profile type: TrustedRoot, SCEP, or PKCS. Purpose identifies the target: Device, User, or Both. TemplateReplaces identifies the AD CS template name that this profile replaces, providing the traceability link between the legacy on-premises certificate infrastructure and the cloud-native replacement — this field is used by the Decommissioning Readiness Score to verify that every AD CS template that issued certificates has a corresponding Cloud PKI replacement.
+Each entry in the CertificateProfiles array carries four fields:
+
+| Field | What it holds |
+| :--- | :--- |
+| **ProfileDisplayName** | The Intune certificate profile's exact display name, using the naming convention established during the initial Cloud PKI build — typically CERT-SCEP-{PURPOSE}-{NODEID} for SCEP profiles and ROOT-{ISSUERNAME} for Trusted Root profiles |
+| **Type** | The profile type: TrustedRoot, SCEP, or PKCS |
+| **Purpose** | The target: Device, User, or Both |
+| **TemplateReplaces** | The AD CS template name that this profile replaces, providing the traceability link between the legacy on-premises certificate infrastructure and the cloud-native replacement |
+
+The TemplateReplaces field is used by the Decommissioning Readiness Score to verify that every AD CS template that issued certificates has a corresponding Cloud PKI replacement.
 
 An example node entry in the registry JSON, showing the extended schema:
 
@@ -284,7 +300,11 @@ Microsoft Security Update KB5014754, introduced in May 2022 with enforcement pha
 
 For Intune SCEP profiles targeting device certificate authentication, the strong mapping requirement is satisfied by including the {{onPremisesSecurityIdentifier}} variable in the Subject Alternative Name field of the SCEP profile configuration. This variable, resolved by the Intune SCEP gateway at enrollment time, inserts the device's on-premises SID (obtained from the synchronized Entra ID device object) into the SAN extension of the issued certificate. The KDC can then verify the binding between the certificate and the requesting device account by comparing the SID in the certificate to the SID of the device account in the directory.
 
-The governance pipeline must verify that every SCEP profile in the OrgPath certificate profile registry has this SAN variable configured correctly before the profile is assigned to a branch group. A SCEP profile that lacks the {{onPremisesSecurityIdentifier}} SAN will issue certificates that pass enrollment silently but fail KDC validation at the moment a device attempts certificate-based authentication after the KB5014754 enforcement date. The verification script queries each SCEP profile's configuration through the Graph API and flags non-compliant profiles for remediation.
+The governance pipeline must verify that every SCEP profile in the OrgPath certificate profile registry has this SAN variable configured correctly before the profile is assigned to a branch group.
+
+> A SCEP profile that lacks the {{onPremisesSecurityIdentifier}} SAN will issue certificates that pass enrollment silently but fail KDC validation at the moment a device attempts certificate-based authentication after the KB5014754 enforcement date.
+
+The verification script queries each SCEP profile's configuration through the Graph API and flags non-compliant profiles for remediation.
 
 ```powershell
 #Requires -Version 5.1
