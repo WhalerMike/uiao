@@ -14,17 +14,37 @@ lifecycle_review: 2026-11-22
 
 # Chapter 4 — Policy Definition and Assignment Automation
 
+::: {.callout-note}
+## In this chapter
+Each Guest Configuration package needs two Azure Policy resources to be operationally complete — a definition that carries the targeting logic and a deployment template, and an assignment that puts it into effect at a scope. This chapter shows how both are deployed at the management group scope from Part Three, why the `deployIfNotExists` effect drives enforcement rather than audit-only behavior, and how the `OrgTier` tag keeps targeting simple and deterministic. It then walks the Tier0 policy definition (ARM JSON) and the script that deploys all three tiers and creates their assignments.
+:::
+
 ## The Two-Resource Guest Configuration Policy Model
 
-Azure Policy Guest Configuration requires two Azure Policy resources for each Guest Configuration package to be operationally complete. The first is a policy definition that contains the targeting logic — which resource types, under what conditions, the policy applies to — and the deployment template that creates the Guest Configuration assignment resource on matching machines. The second is a policy assignment that places the policy definition into effect at a specified scope. In this architecture, both resources are deployed at the management group scope established in Part Three, which ensures that every Arc-enrolled server across all subscriptions in the organizational hierarchy is subject to the tier-appropriate Guest Configuration baseline without requiring per-subscription policy management.
+Azure Policy Guest Configuration requires two Azure Policy resources for each Guest Configuration package to be operationally complete:
 
-For enforcement rather than audit-only behavior, the policy definition uses the deployIfNotExists effect. This effect instructs Azure Policy to deploy an ARM template whenever a matching resource does not have the described child resource in the expected state. In the Guest Configuration context, the child resource is a Microsoft.GuestConfiguration/guestConfigurationAssignments resource scoped to the Arc machine. When a machine matches the policy condition — its resource type is Microsoft.HybridCompute/machines, its OrgTier tag matches the tier being enforced, and its OS type is Windows — the policy evaluates whether a compliant Guest Configuration assignment already exists on that machine. If no compliant assignment exists, the deployIfNotExists effect triggers the embedded ARM deployment template, which creates the Guest Configuration assignment resource. The Guest Configuration extension on the Arc agent picks up the new assignment, downloads the package from the blob URL, applies the DSC configuration, and reports compliance back to Azure Policy.
+- **A policy definition** — contains the targeting logic (which resource types, under what conditions, the policy applies to) and the deployment template that creates the Guest Configuration assignment resource on matching machines.
+- **A policy assignment** — places the policy definition into effect at a specified scope.
 
-The OrgTier tag is the critical targeting filter. Using the OrgTier tag rather than attempting to match OrgPath prefix patterns in the policy condition keeps the policy definition simple and deterministic. The OrgTier tag has three possible values in this architecture — 0, 1, or 2 — and each policy definition targets exactly one of them. The OrgPath propagation pipeline established in Part Three writes and maintains the OrgTier tag on all Arc-enrolled resources as a derived attribute of their OrgTree node's tier classification, so the tag is always authoritative and consistent with the organizational structure. The policy definition does not need to understand OrgPath structure; it only needs to match on the OrgTier tag value that the propagation pipeline maintains.
+In this architecture, both resources are deployed at the management group scope established in Part Three, which ensures that every Arc-enrolled server across all subscriptions in the organizational hierarchy is subject to the tier-appropriate Guest Configuration baseline without requiring per-subscription policy management.
+
+![A Guest Configuration package becomes operational through a policy definition and assignment whose deployIfNotExists effect deploys the assignment on machines matching the OrgTier tag](images/book09cpt04-diagram-01-deployifnotexists-enforcement-flow.png){#fig-book-09-cpt-04-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the two-resource Guest Configuration policy model and its enforcement flow. On the left, two stacked federal navy (#1F3A5F) boxes labeled in monospace policy definition orgpath-guestconfig-tier0-enforce and policy assignment at management group scope mg-governance-root. An amber (#D4A017) connector marks the management group scope boundary that fans down to three subscription boxes. In the center, an Arc-enrolled machine box of type Microsoft.HybridCompute/machines with monospace tag fields type equals Microsoft.HybridCompute/machines, OrgTier equals 0, osType equals Windows. A teal (#1A9E8F) diamond labeled deployIfNotExists evaluates an existenceCondition; one teal arrow labeled compliant assignment exists leads to a green-checked Compliant state with no action, and a second teal arrow labeled no compliant assignment triggers an embedded ARM deployment template box that creates a Microsoft.GuestConfiguration/guestConfigurationAssignments resource. On the right, a navy box Guest Configuration extension on Arc agent with monospace steps download package from blob URL, apply DSC configuration, report compliance, and a teal arrow looping the reported compliance back to the deployIfNotExists diamond. A small red (#C0392B) marker flags a drifted machine as non-compliant pending redeployment. Monospace labels for all identifiers, resource types, and paths, no human figures, 16:9 landscape." width="85%"}
+
+For enforcement rather than audit-only behavior, the policy definition uses the `deployIfNotExists` effect. This effect instructs Azure Policy to deploy an ARM template whenever a matching resource does not have the described child resource in the expected state. In the Guest Configuration context, the child resource is a `Microsoft.GuestConfiguration/guestConfigurationAssignments` resource scoped to the Arc machine.
+
+The enforcement sequence proceeds as follows when a machine matches the policy condition — its resource type is `Microsoft.HybridCompute/machines`, its `OrgTier` tag matches the tier being enforced, and its OS type is Windows:
+
+1. The policy evaluates whether a compliant Guest Configuration assignment already exists on that machine.
+2. If no compliant assignment exists, the `deployIfNotExists` effect triggers the embedded ARM deployment template, which creates the Guest Configuration assignment resource.
+3. The Guest Configuration extension on the Arc agent picks up the new assignment, downloads the package from the blob URL, applies the DSC configuration, and reports compliance back to Azure Policy.
+
+> The `OrgTier` tag is the critical targeting filter. Using it rather than attempting to match OrgPath prefix patterns in the policy condition keeps the policy definition simple and deterministic.
+
+The `OrgTier` tag has three possible values in this architecture — `0`, `1`, or `2` — and each policy definition targets exactly one of them. The OrgPath propagation pipeline established in Part Three writes and maintains the `OrgTier` tag on all Arc-enrolled resources as a derived attribute of their OrgTree node's tier classification, so the tag is always authoritative and consistent with the organizational structure. The policy definition does not need to understand OrgPath structure; it only needs to match on the `OrgTier` tag value that the propagation pipeline maintains.
 
 ## Tier0 Policy Definition (ARM JSON)
 
-The policy definition below is for Tier0 enforcement. The equivalent Tier1 and Tier2 definitions follow the identical structure with the OrgTier tag condition value and Guest Configuration assignment name changed accordingly. All three definitions are stored in the governance repository alongside their deployment scripts.
+The policy definition below is for Tier0 enforcement. The equivalent Tier1 and Tier2 definitions follow the identical structure with the `OrgTier` tag condition value and Guest Configuration assignment name changed accordingly. All three definitions are stored in the governance repository alongside their deployment scripts.
 
 ```json
 {
@@ -132,7 +152,7 @@ The policy definition below is for Tier0 enforcement. The equivalent Tier1 and T
 
 ## Policy Deployment Script
 
-The following script deploys policy definitions for all three tiers from ARM JSON files stored in the governance repository and creates policy assignments at the specified management group scope. The deployment principal requires Policy Contributor at management group scope and Guest Configuration Resource Contributor on the Arc machine resources. In an automated pipeline context, a managed identity with these roles pre-assigned should replace the interactive device authentication shown in the development version of this script; the comment marks every such substitution point with the \# ENV-PARAM token.
+The following script deploys policy definitions for all three tiers from ARM JSON files stored in the governance repository and creates policy assignments at the specified management group scope. The deployment principal requires Policy Contributor at management group scope and Guest Configuration Resource Contributor on the Arc machine resources. In an automated pipeline context, a managed identity with these roles pre-assigned should replace the interactive device authentication shown in the development version of this script; the comment marks every such substitution point with the `# ENV-PARAM` token.
 
 ```powershell
 #
