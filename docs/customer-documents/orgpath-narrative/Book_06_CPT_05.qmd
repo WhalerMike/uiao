@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 5 — Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting
 
+::: {.callout-note}
+## In this chapter
+Defender for Cloud operates on the infrastructure plane, where Arc-enrolled servers carry OrgPath as a resource tag. This chapter shows how that tag drives organizational-tier differentiation: an Azure Policy deployIfNotExists definition that enforces Defender for Servers Plan 2 on Tier 0 machines automatically, and an Azure Resource Graph query plus snapshot script that report infrastructure security posture organized by OrgPath segment.
+:::
+
 *Organizational-Context Security Posture for Hybrid Workloads*
 
 ## The Infrastructure Plane and the OrgPath Resource Tag
@@ -21,6 +26,15 @@ lifecycle_review: 2026-11-22
 The preceding chapters of this document operated primarily on the identity and device planes: users and endpoints. Defender for Cloud operates on a different plane — the infrastructure plane: Azure virtual machines, Arc-enrolled on-premises servers, container workloads, managed databases, and storage accounts. These infrastructure assets carry OrgPath as a resource tag, applied by the tagging pipeline described in Part Five of this series. That resource tag is the bridge between the infrastructure governance model and the Defender for Cloud security posture model, and it enables two capabilities that are not achievable through native Defender for Cloud configuration alone: plan-level differentiation by organizational tier, and security posture reporting organized by organizational hierarchy.
 
 The organizational significance of this is substantial. Enterprise infrastructure is rarely uniform in its security requirements. Tier 0 domain controllers, certificate authorities, and privileged access workstations have security hardening requirements that are categorically more stringent than Tier 1 application servers or Tier 2 developer build machines. Defender for Cloud offers two server protection plans — Plan 1, which includes Microsoft Defender for Endpoint integration and basic vulnerability assessment, and Plan 2, which adds file integrity monitoring, just-in-time VM access, adaptive application controls, Docker host hardening assessment, and the full vulnerability assessment engine. Applying Plan 2 universally across all servers is expensive and may not be operationally warranted for low-sensitivity workloads. Applying Plan 1 uniformly leaves Tier 0 infrastructure without the enhanced detection coverage it requires. OrgPath resource tags enable the organization to express this differentiation through Azure Policy without maintaining manual per-resource or per-subscription plan assignments.
+
+The two Defender for Servers plans and their typical OrgPath-tier targeting are summarized below.
+
+| Plan | Capabilities | Typical OrgPath tier |
+|----|----|----|
+| Plan 1 | Microsoft Defender for Endpoint integration; basic vulnerability assessment | Tier 1 application servers, lower-sensitivity workloads |
+| Plan 2 | Everything in Plan 1 plus file integrity monitoring, just-in-time VM access, adaptive application controls, Docker host hardening assessment, and the full vulnerability assessment engine | Tier 0 infrastructure (domain controllers, CAs, PAWs) — enforced automatically by policy |
+
+[DIAGRAM-01: OrgPath resource tag driving Defender for Servers plan enforcement. Engineering blueprint diagram on a neutral slate background showing how the OrgPath resource tag selects the Defender for Servers plan for Arc-enrolled machines. On the left, a federal navy (#1F3A5F) box "Tagging pipeline applies tags['OrgPath'] to Arc-enrolled machines" with monospace tag examples. An arrow leads to a teal (#1A9E8F) decision box "Azure Policy (deployIfNotExists) — does OrgPath tag start with /Root/Infrastructure/Tier0?". The YES branch leads to a teal box "Deploy Defender for Servers Plan 2 (FIM, JIT, adaptive controls, full VA)"; the NO branch leads to a navy box "Plan 1 baseline (MDE integration, basic VA)". Separately, an amber (#D4A017) box "Azure Resource Graph query — join machines to security assessments" aggregates rightward into a navy box "Infrastructure posture snapshot by OrgPath segment, committed to the governance repo". A red (#C0392B) marker flags "Critical/High findings surfaced first". Monospace labels for tag keys, paths, and plan names, no human figures, 16:9 landscape.]
 
 ## Azure Policy Definition: Tier 0 Defender for Servers Plan 2 Enforcement
 

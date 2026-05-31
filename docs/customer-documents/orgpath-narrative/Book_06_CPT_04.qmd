@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection by Organizational Segment
 
+::: {.callout-note}
+## In this chapter
+Defender for Cloud Apps baselines behavior per user, which cannot tell legitimate role-driven activity apart from a genuine anomaly when the role's normal behavior is itself atypical. This chapter shows how OrgPath enables per-segment session policy and anomaly thresholds: Conditional Access App Control policies scoped to OrgPath dynamic user groups route each segment's traffic through the MDCA proxy with calibrated controls, and a Sentinel query maps cloud-app risk by organizational segment.
+:::
+
 *Scoping Cloud Application Security to Organizational Position*
 
 ## Why Organizational Context Is Essential for MDCA
@@ -23,6 +28,8 @@ Defender for Cloud Apps monitors user behavior across cloud applications and pro
 A data analyst who downloads thousands of records from SharePoint and OneDrive daily as part of their normal workflow will trigger MDCA's bulk download detection if MDCA calibrates its threshold against the tenant-wide average download volume. The analyst is not a threat; the policy is miscalibrated for their organizational context. Conversely, a user in the legal department who downloads fifty documents in a session may fall well below the tenant-wide threshold that triggered the analyst's alert, but fifty documents from a legal matter library is a significant and potentially reportable event in that organizational context. Without organizational context, MDCA cannot differentiate these cases systematically. It either sets a global threshold that under-alerts for data-heavy roles or over-alerts for data-light roles — and neither outcome is operationally sustainable.
 
 OrgPath resolves this by enabling per-segment session policy and anomaly detection configuration. MDCA's session controls are applied through Conditional Access App Control policies, which are Conditional Access policies with session control settings that route application traffic through MDCA's proxy for real-time inspection. When Conditional Access policies are scoped to OrgPath-derived dynamic user groups, the session control parameters — download limits, upload restrictions, file classification filters, session duration controls — are set per organizational segment rather than globally. The data analytics team receives a policy calibrated to their download volume norms. The legal department receives a policy calibrated to their much lower normal activity with correspondingly tighter anomaly thresholds.
+
+[DIAGRAM-01: Per-segment MDCA session control scoped by OrgPath. Engineering blueprint diagram on a neutral slate background showing how Conditional Access App Control routes each organizational segment's cloud sessions through the Defender for Cloud Apps proxy with calibrated thresholds. In the center, a teal (#1A9E8F) box "Conditional Access App Control — routes session traffic to the MDCA proxy". Two federal navy (#1F3A5F) user-segment boxes feed in from the left: "ORG-BRANCH-DATA-ANALYTICS users" and "ORG-BRANCH-LEGAL users", each labeled with its dynamic group. From the MDCA proxy, two teal policy boxes branch right: "Data Analytics policy — high download baseline, monitorOnly" and "Legal policy — low baseline, tight anomaly threshold, 4-hour reauth". Each policy emits an amber (#D4A017) signal "per-segment anomaly detections" into a navy box "Sentinel workbook tile — cloud-app risk by OrgPath segment". A small marker notes all policies "start in report-only mode, validate before enforcing". Monospace labels for group and policy names, no human figures, 16:9 landscape.]
 
 ## Conditional Access App Control Policy Creation by OrgPath Segment
 
@@ -221,3 +228,11 @@ CloudAppEvents
     UniqueApps
 | order by AnomalyEvents desc, SensitiveAccess desc
 ```
+
+The three MDCA session control types selectable through the `CloudAppSecurityType` parameter are summarized below.
+
+| Session control type | MDCA behavior on the routed session | When to use |
+|----|----|----|
+| monitorOnly | Inspect and log all session activity; no enforcement | Default for all segments during initial rollout |
+| blockDownloads | Allow the session but block all file downloads | Segments where exfiltration risk outweighs workflow impact |
+| mcasConfigured | Apply the per-app MDCA portal policy for the app | Segments needing fine-grained, app-specific MDCA rules |

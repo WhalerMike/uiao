@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
 
+::: {.callout-note}
+## In this chapter
+Defender for Identity detects the full post-foothold attack chain but does not natively surface the organizational position of the identities involved. This chapter shows how OrgPath, synchronized to the on-premises AD user object, appears in the MDI entity profile, and presents two Sentinel analytics rules that turn organizational position into differentiated alerting: a high-severity rule for any detection touching a sensitive OrgPath segment, and a surge rule for concentrated identity activity within a single segment.
+:::
+
 *Making MDI Alerts Organizationally Legible*
 
 ## What MDI Knows and What It Does Not Know
@@ -21,6 +26,8 @@ lifecycle_review: 2026-11-22
 Defender for Identity is the most identity-focused product in the Defender suite. It deploys sensors on Active Directory domain controllers and reads the Entra ID audit stream to monitor authentication activity, service ticket requests, directory query patterns, and replication traffic. Its detection coverage spans the attack chain that adversaries use once they have an initial foothold in an enterprise environment: reconnaissance through LDAP queries and SPN enumeration, credential access through Kerberoasting and AS-REP roasting, lateral movement through Pass-the-Hash and Pass-the-Ticket, persistence through Golden Ticket and Silver Ticket creation, and privilege escalation through DCSync and AdminSDHolder abuse. Every MDI alert identifies the source account, the target resource or domain controller, the technique with MITRE ATT&CK mapping, the confidence level, and the evidence trail.
 
 What MDI does not natively surface is the organizational position of the affected identities. An analyst investigating a Kerberoasting detection sees the account that requested service tickets and the service accounts that were targeted. To determine the organizational significance of those identities — whether the source is an employee, a contractor, or a service account; which division they belong to; whether the targeted service account is a Tier 0 infrastructure credential or a Tier 2 application service account — the analyst must perform directory lookups outside the MDI investigation screen. This reconstructed context drives the alert severity classification, the escalation decision, and the response priority. Without it, every Kerberoasting detection is treated identically, regardless of whether it targets domain admin credentials or a printer queue service account.
+
+[DIAGRAM-01: Enriching MDI alerts with OrgPath for differentiated Sentinel incidents. Engineering blueprint flow diagram on a neutral slate background. On the left, a federal navy (#1F3A5F) box "Defender for Identity alert — Kerberoasting, DCSync, lateral movement; source identity, technique, MITRE mapping". An arrow leads to a teal (#1A9E8F) join box "Sentinel join: source UPN maps to most-recent OrgPath from the Entra audit log". From the join, two parallel teal rule boxes branch right: "Rule 1 — sensitive-segment match: OrgPath in /Root/Executive, /Root/Infrastructure/Tier0, /Root/Finance/Treasury" and "Rule 2 — surge: more than threshold alerts in one segment per hour". Rule 1 outputs to an amber (#D4A017) box "High-severity P1 incident, immediate escalation"; Rule 2 outputs to an amber box "Medium incident, elevated if the trend continues". A dashed branch from the join leads to a red (#C0392B) box "no OrgPath, binned UNKNOWN — investigate as unmanaged account". Monospace labels for paths and rule names, no human figures, 16:9 landscape.]
 
 ## OrgPath in the MDI Entity Profile
 
@@ -172,3 +179,10 @@ SecurityAlert
 ::: {.callout-note title="ⓘ Tuning the Surge Threshold"}
 The AlertThreshold value requires per-environment calibration. Run the surge query without the threshold filter for thirty days of historical data. Calculate the 95th-percentile hourly alert count per OrgPath segment. Set the threshold at twice that value for each segment. If the analytics rule supports parameterized thresholds per segment, create a lookup table in Sentinel that maps OrgPath prefixes to per-segment thresholds. A global threshold will either over-alert on high-activity segments like Infrastructure or under-alert on low-baseline segments like Executive where even five alerts in an hour is a significant anomaly.
 :::
+
+The two Sentinel analytics rules introduced in this chapter are summarized below.
+
+| Rule | Frequency | Lookback | Trigger | Severity / routing |
+|----|----|----|----|----|
+| MDI-SensitiveOrgPath-HighSeverity | Every 5 minutes | 5 minutes | Any MDI alert on a principal in a sensitive OrgPath branch | High → P1 incident, immediate escalation |
+| MDI-OrgPath-AlertSurge | Every 1 hour | 1 hour | Any OrgPath segment exceeding its per-segment alert threshold | Medium, elevated to High by the playbook if the trend continues |
