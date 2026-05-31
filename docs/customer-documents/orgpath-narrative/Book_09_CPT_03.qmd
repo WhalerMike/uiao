@@ -14,13 +14,34 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — Authoring Guest Configuration Packages
 
+::: {.callout-note}
+## In this chapter
+This chapter authors the three tier baselines as PowerShell DSC configurations and compiles them into Guest Configuration packages. It covers the four DSC modules the authoring environment requires, the Tier0 reference configuration with every environment-specific value flagged for substitution, the production-appropriate Tier1 and minimum-baseline Tier2 variants, and the packaging script that compiles each MOF, hashes the zip, uploads it to Azure Blob Storage, and logs the result to the governance repository.
+:::
+
 ## Module Requirements and Environment Preparation
 
-Guest Configuration packages are authored in PowerShell DSC and compiled using the GuestConfiguration PowerShell module from the PowerShell Gallery. The authoring environment requires four modules to be installed before any configuration can be compiled or packaged. The GuestConfiguration module provides the New-GuestConfigurationPackage cmdlet that wraps the compiled MOF into the zip archive format that the Guest Configuration extension expects. The PSDesiredStateConfiguration module at version 2.x is required because Guest Configuration uses the cross-platform DSC engine, not the Windows-only DSC v1 engine; version 1.x configurations will not compile correctly for Guest Configuration packaging. The PSDscResources module provides the cross-platform resource implementations for common configuration items including user accounts, registry keys, Windows optional features, and scheduled tasks. The ComputerManagementDsc module provides Windows-specific resource implementations including BitLocker volume management, audit policy subcategory configuration, and LAPS settings. The AuditPolicyDsc module provides the AuditPolicySubcategory resource that is used across all three tier configurations to set granular audit policy subcategory settings without relying on auditpol.exe command-line invocation.
+Guest Configuration packages are authored in PowerShell DSC and compiled using the GuestConfiguration PowerShell module from the PowerShell Gallery. The authoring environment requires four modules to be installed before any configuration can be compiled or packaged:
 
-The authoring workstation or pipeline agent must have all four modules installed before any of the DSC configuration scripts in this chapter can be dot-sourced and compiled. Module installation is a one-time environment setup step and is not part of the per-tier compilation workflow. Once the authoring environment is prepared, the workflow for each tier is: dot-source the configuration script, invoke the configuration function to compile the MOF, pass the MOF to New-GuestConfigurationPackage to produce the zip archive, compute the SHA256 hash of the zip, and upload the zip to the Azure Blob Storage container that the policy definitions reference.
+| Module | Version | What it provides |
+| :--- | :--- | :--- |
+| **GuestConfiguration** | — | The `New-GuestConfigurationPackage` cmdlet that wraps the compiled MOF into the zip archive format the Guest Configuration extension expects |
+| **PSDesiredStateConfiguration** | 2.x | The cross-platform DSC engine Guest Configuration uses — *not* the Windows-only DSC v1 engine; version 1.x configurations will not compile correctly for Guest Configuration packaging |
+| **PSDscResources** | — | Cross-platform resource implementations for common configuration items: user accounts, registry keys, Windows optional features, and scheduled tasks |
+| **ComputerManagementDsc** | — | Windows-specific resource implementations: BitLocker volume management, audit policy subcategory configuration, and LAPS settings |
+| **AuditPolicyDsc** | — | The `AuditPolicySubcategory` resource used across all three tier configurations to set granular audit policy subcategory settings without relying on `auditpol.exe` command-line invocation |
 
-![Left-to-right linear pipeline diagram of nine sequential build-and-deploy stages connected by labeled arrows](images/09-orgpath-and-azure-policy-gues-diagram-02-left-to-right-linear-pipeline-di.png){#fig-09-orgpath-and-azure-policy-guest-config-diagram-02 fig-alt="Stage 1 box \"PowerShell DSC config — OrgPath_TierN_Baseline.ps1\" → arrow labeled \"Configuration cmdlet\" → Stage 2 \"Compiled MOF — declarative state document\" → arrow labeled \"New-GuestConfigurationPackage\" → Stage 3 \"Guest Configuration package — .zip archive\" → arrow labeled \"upload\" → Stage 4 \"Azure Blob Storage — stable URL + SHA256 hash\" → arrow labeled \"referenced by\" → Stage 5 \"Azure Policy definition — references URL + hash\" → arrow labeled \"assigned at MG scope\" → Stage 6 \"Policy Assignment — scoped by OrgTier tag\" → arrow labeled \"OrgTier match condition\" → Stage 7 \"Arc Guest Configuration extension — on each Arc-enrolled machine\" → arrow labeled \"applies DSC + reports back\" → Stage 8 \"Compliance state — Compliant / NonCompliant / Pending\" → unlabeled arrow → Stage 9 \"Azure Policy compliance + Resource Graph + Sentinel\". Engineering blueprint style, monospace filenames and cmdlet names on the arrows, neutral slate, federal navy (#1F3A5F) accents, 16:9 landscape." width="85%"}
+> Module installation is a one-time environment setup step — not part of the per-tier compilation workflow.
+
+The authoring workstation or pipeline agent must have all four modules installed before any of the DSC configuration scripts in this chapter can be dot-sourced and compiled. Once the authoring environment is prepared, the workflow for each tier is the same five steps:
+
+1. **Dot-source** the configuration script.
+2. **Invoke** the configuration function to compile the MOF.
+3. **Package** the MOF with `New-GuestConfigurationPackage` to produce the zip archive.
+4. **Hash** the zip with SHA256.
+5. **Upload** the zip to the Azure Blob Storage container that the policy definitions reference.
+
+![Left-to-right linear pipeline diagram of nine sequential build-and-deploy stages connected by labeled arrows](images/09-orgpath-and-azure-policy-gues-diagram-02-left-to-right-linear-pipeline-di.png){#fig-09-orgpath-and-azure-policy-guest-config-diagram-02 fig-alt="Stage 1 box \"PowerShell DSC config — OrgPath_TierN_Baseline.ps1\" → arrow labeled \"Configuration cmdlet\" → Stage 2 \"Compiled MOF — declarative state document\" → arrow labeled \"New-GuestConfigurationPackage\" → Stage 3 \"Guest Configuration package — .zip archive\" → arrow labeled \"upload\" → Stage 4 \"Azure Blob Storage — stable URL + SHA256 hash\" → arrow labeled \"referenced by\" → Stage 5 \"Azure Policy definition — references URL + hash\" → arrow labeled \"assigned at MG scope\" → Stage 6 \"Policy Assignment — scoped by OrgTier tag\" → arrow labeled \"OrgTier match condition\" → Stage 7 \"Arc Guest Configuration extension — on each Arc-enrolled machine\" → arrow labeled \"applies DSC + reports back\" → Stage 8 \"Compliance state — Compliant / NonCompliant / Pending\" → unlabeled arrow → Stage 9 \"Azure Policy compliance + Resource Graph + Sentinel\". Engineering blueprint style, monospace filenames and cmdlet names on the arrows, white background, federal navy (#1F3A5F) accents, 16:9 landscape." width="85%"}
 
 ## Tier0 DSC Configuration
 
@@ -287,7 +308,11 @@ Configuration OrgPath_Tier1_Baseline {
 
 ## Tier2 DSC Configuration
 
-The Tier2 configuration enforces the organizational security minimum. It carries only the controls that the organization's security baseline requires of every managed server regardless of tier, making it the floor below which no Arc-enrolled machine in the environment should fall. The OrgPath integrity check interval at 72 hours reflects the lower sensitivity of Tier2 systems; a missed check window on a Tier2 server is a governance concern but not an incident response trigger in the way that a missed check on a Tier0 server would be.
+The Tier2 configuration enforces the organizational security minimum. It carries only the controls that the organization's security baseline requires of every managed server regardless of tier.
+
+> Tier2 is the floor below which no Arc-enrolled machine in the environment should fall.
+
+The OrgPath integrity check interval at 72 hours reflects the lower sensitivity of Tier2 systems; a missed check window on a Tier2 server is a governance concern but not an incident response trigger in the way that a missed check on a Tier0 server would be.
 
 ```powershell
 #
