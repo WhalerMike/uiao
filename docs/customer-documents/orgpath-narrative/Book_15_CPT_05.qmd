@@ -14,10 +14,62 @@ lifecycle_review: 2026-11-22
 
 # Chapter 5 — Disaster Recovery and Platform Resilience
 
-The UIAO platform's disaster recovery posture reflects the same governance discipline applied to the modernization pipeline itself. Every recovery procedure is documented, deterministic, and executable by any authorized administrator — not just the person who built the system. This is a design requirement, not a documentation courtesy. A governance platform whose recovery depends on the institutional knowledge of a single individual is not a governance platform; it is a single point of failure with documentation theater attached to it.
+::: {.callout-note}
+## In this chapter
+How the UIAO platform's disaster recovery posture applies the same governance
+discipline as the modernization pipeline itself — every procedure documented,
+deterministic, and executable by any authorized administrator. This chapter
+covers the twelve platform components the DR playbook protects, the explicit
+Recovery Point and Recovery Time Objectives validated through quarterly drills,
+and the scheduled-task backup architecture with its versioned storage and
+integrity verification.
+:::
 
-The DR playbook covers twelve platform components in explicit detail: the Gitea application server configuration and binary, the IIS reverse proxy configuration including ARR and URL Rewrite rules, all bare Git repositories and their hook scripts, the Gitea SQLite database, the Active Directory assessment JSON output store, the PKI and TLS certificate chain, the canonical governance artifacts in the canon/ directory, the Quarto-rendered documentation output, the governance hooks across all repositories, the PowerShell assessment and utility modules, the replication infrastructure including scheduled tasks and mirror credentials, and the audit logs that provide the tamper-evident operational record.
+## Recovery as a Design Requirement
 
-Recovery objectives are defined explicitly and validated through quarterly drills. The Recovery Point Objective — the maximum acceptable data loss — is four hours, reflecting the combination of the six-hour GitHub mirror synchronization cycle and the scheduled assessment commit frequency. In practice, the most recent commit in the GitHub mirror will be no more than four hours old at any point in the day. The Recovery Time Objective — the maximum elapsed time to restore full platform functionality — is eight hours for a complete server loss scenario, assuming the secondary server is available and the most recent mirror synchronization has completed. Both objectives are validated through quarterly DR drills that execute the recovery runbooks against the secondary server and verify that the restored environment passes the full platform validation test suite before the drill is marked successful.
+The UIAO platform's disaster recovery posture reflects the same governance discipline applied to the modernization pipeline itself. Every recovery procedure is documented, deterministic, and executable by any authorized administrator — not just the person who built the system. This is a design requirement, not a documentation courtesy.
 
-The backup architecture uses Windows Scheduled Tasks in the \UIAO\\ task folder to orchestrate four scheduled operations: a nightly full backup of the Gitea data directory and SQLite database; a nightly backup of the D:\UIAO\\ assessment and module directories; a nightly push of all governance repositories to the secondary server mirror via authenticated Git remote; and a six-hourly push to the GitHub external mirror. Backups are stored in a versioned directory structure under D:\UIAO\Backups\\ with timestamped subdirectories and a JSON manifest file recording the backup scope, duration, component list, and hash verification results for every backed-up file. Backup integrity verification runs as a separate scheduled task the morning after each nightly backup, and any verification failure generates an immediate alert to the platform monitoring dashboard.
+> A governance platform whose recovery depends on the institutional knowledge of a single individual is not a governance platform; it is a single point of failure with documentation theater attached to it.
+
+![The UIAO disaster recovery posture — twelve protected components, recovery objectives, and the backup architecture](images/book15cpt05-diagram-01-platform-recovery-posture.png){#fig-book-15-cpt-05-diagram-01 fig-alt="Engineering blueprint diagram on a white background depicting the UIAO platform disaster recovery posture. On the left, a federal navy (#1F3A5F) cluster labeled twelve protected components lists monospace items — Gitea app server, IIS reverse proxy with ARR and URL Rewrite, bare Git repositories and hooks, Gitea SQLite database, AD assessment JSON store, PKI and TLS certificate chain, canon governance artifacts, Quarto rendered output, governance hooks, PowerShell modules, replication infrastructure, audit logs. In the center, a teal (#1A9E8F) backup engine box shows four Windows Scheduled Tasks — nightly Gitea backup, nightly D drive UIAO backup, nightly secondary-server mirror push, six-hourly GitHub mirror push — flowing into a navy versioned backup store box labeled D drive UIAO Backups with timestamped subdirectories and a JSON manifest. An amber (#D4A017) panel on the right states the recovery objectives, RPO four hours and RTO eight hours, validated by quarterly drills against the secondary server. A red (#C0392B) flag marks a backup integrity verification failure path that raises an immediate alert to the monitoring dashboard. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
+
+## What the DR Playbook Covers
+
+The DR playbook covers twelve platform components in explicit detail:
+
+- The Gitea application server configuration and binary
+- The IIS reverse proxy configuration, including ARR and URL Rewrite rules
+- All bare Git repositories and their hook scripts
+- The Gitea SQLite database
+- The Active Directory assessment JSON output store
+- The PKI and TLS certificate chain
+- The canonical governance artifacts in the `canon/` directory
+- The Quarto-rendered documentation output
+- The governance hooks across all repositories
+- The PowerShell assessment and utility modules
+- The replication infrastructure, including scheduled tasks and mirror credentials
+- The audit logs that provide the tamper-evident operational record
+
+## Recovery Objectives
+
+Recovery objectives are defined explicitly and validated through quarterly drills.
+
+| Objective | Target | Basis |
+| :--- | :--- | :--- |
+| **Recovery Point Objective (RPO)** | Four hours — maximum acceptable data loss | The combination of the six-hour GitHub mirror synchronization cycle and the scheduled assessment commit frequency. In practice, the most recent commit in the GitHub mirror will be no more than four hours old at any point in the day. |
+| **Recovery Time Objective (RTO)** | Eight hours — maximum elapsed time to restore full functionality | Assumes a complete server loss scenario in which the secondary server is available and the most recent mirror synchronization has completed. |
+
+Both objectives are validated through quarterly DR drills that execute the recovery runbooks against the secondary server and verify that the restored environment passes the full platform validation test suite before the drill is marked successful.
+
+## Backup Architecture
+
+The backup architecture uses Windows Scheduled Tasks in the `\UIAO\` task folder to orchestrate four scheduled operations:
+
+1. A nightly full backup of the Gitea data directory and SQLite database
+2. A nightly backup of the `D:\UIAO\` assessment and module directories
+3. A nightly push of all governance repositories to the secondary server mirror via authenticated Git remote
+4. A six-hourly push to the GitHub external mirror
+
+Backups are stored in a versioned directory structure under `D:\UIAO\Backups\` with timestamped subdirectories and a JSON manifest file recording the backup scope, duration, component list, and hash verification results for every backed-up file.
+
+> Backup integrity verification runs as a separate scheduled task the morning after each nightly backup, and any verification failure generates an immediate alert to the platform monitoring dashboard.
