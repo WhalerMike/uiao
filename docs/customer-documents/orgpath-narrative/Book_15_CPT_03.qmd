@@ -15,13 +15,70 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — Building the Substrate
 
-Before any modernization work can proceed, the UIAO program requires a governance substrate — a platform that can receive assessment data, version it, enforce governance rules on every commit, trigger downstream automation, and provide a single source of truth for every artifact in the modernization pipeline. The UIAO Governance OS is that substrate. It runs on a single Windows Server 2025 instance, combining a self-hosted Gitea repository server with an IIS reverse proxy, PowerShell assessment modules, and a Quarto-rendered documentation pipeline. Its minimalism is intentional: a platform that cannot be operated by any authorized administrator is a platform that will eventually be operated by no one.
+::: {.callout-note}
+## In this chapter
+The UIAO Governance OS is the platform every other part of the modernization
+program depends on. This chapter explains why a single Windows Server 2025
+instance running Gitea behind an IIS reverse proxy was chosen over four
+alternatives — most notably IIS alone — and what each component contributes.
+It then walks the server topology: a primary host, an active-passive secondary
+for resilience, and an off-premises GitHub mirror, all engineered to preserve
+full on-premises operation even when no cloud service is reachable.
+:::
 
-The infrastructure decision was not trivial. The initial question — whether IIS with git-http-backend.exe was sufficient for the full UIAO governance vision — was answered directly in Architecture Decision Record ADR-001: No, not alone. IIS with git-http-backend.exe provides exactly one capability well: Git Smart HTTP transport over HTTPS with Windows Integrated Authentication. That is necessary. But the UIAO governance vision requires programmatic code access via REST API, webhook-driven automation pipelines, API token authentication for assessment scripts, repository management endpoints, and OAuth2 and OIDC integration with Entra ID. None of these capabilities exist in IIS natively. The IIS-only Git deployment guide that preceded ADR-001 remains a valid reference for environments that require only simple authenticated Git transport without the API surface, but it is explicitly superseded by the Gitea-on-IIS architecture for all production UIAO deployments.
+## Why the Program Needs a Substrate
 
-After evaluating five architecture options — ranging from IIS alone to a full Azure DevOps Services deployment — ADR-001 recommends Gitea on Windows Server 2025 behind an IIS reverse proxy. Gitea is a single Go binary that runs natively on Windows as a service, provides a full OpenAPI-documented REST API, supports LDAP and Active Directory as well as OAuth2 and OIDC authentication, includes a native webhook system with configurable retry logic, and requires no external database for small-to-medium deployments. IIS is not replaced in this architecture — it is promoted from CGI application host to reverse proxy, where it handles TLS termination, request filtering, and security hardening through the Application Request Routing and URL Rewrite modules. The two components are complementary: IIS provides the security perimeter and TLS management that a Windows-native deployment requires, and Gitea provides the governance capability surface that IIS cannot deliver.
+Before any modernization work can proceed, the UIAO program requires a governance substrate — a platform that can receive assessment data, version it, enforce governance rules on every commit, trigger downstream automation, and provide a single source of truth for every artifact in the modernization pipeline. The UIAO Governance OS is that substrate. It runs on a single Windows Server 2025 instance, combining a self-hosted Gitea repository server with an IIS reverse proxy, PowerShell assessment modules, and a Quarto-rendered documentation pipeline.
 
-The server topology is deliberately minimal. A single primary server hosts all platform services: the Gitea application server running as a Windows service bound to localhost on port 3000, IIS on port 443 providing HTTPS termination, DNS entries for git.uiao.local and docs.uiao.local, and the assessment pipeline that runs PowerShell modules and commits JSON output to the governance repository. A secondary server provides active-passive replication for disaster resilience, maintaining a synchronized copy of all repositories and the Gitea SQLite database. An external GitHub mirror at github.com/WhalerMike/uiao synchronizes every six hours, providing an off-premises copy of the canonical governance record without depending on any cloud service for primary operations. This architecture maintains full on-premises operational capability even under complete cloud service unavailability.
+> A platform that cannot be operated by any authorized administrator is a platform that will eventually be operated by no one.
+
+That principle is why the substrate's minimalism is intentional rather than incidental. Every component earns its place by being operable, recoverable, and inspectable by a single administrator on a single, well-understood host.
+
+![How the UIAO governance substrate combines IIS, Gitea, and the assessment pipeline on one host](images/book15cpt03-diagram-01-governance-substrate-topology.png){#fig-book-15-cpt-03-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the UIAO Governance OS topology. In the center, a federal navy (#1F3A5F) box labeled Primary Server, Windows Server 2025 contains three stacked monospace component boxes: IIS on port 443, TLS termination and reverse proxy; Gitea service bound to localhost port 3000; and PowerShell assessment pipeline plus Quarto render. A teal (#1A9E8F) arrow labeled Smart HTTPS and REST flows from external clients through the IIS box into the Gitea box. Two monospace DNS labels, git.uiao.local and docs.uiao.local, point at the IIS box. An amber (#D4A017) arrow labeled active-passive replication, repos plus SQLite connects the Primary Server to a second box labeled Secondary Server. A separate amber arrow labeled mirror every 6 hours connects the Primary Server to an off-premises box labeled GitHub mirror, github.com slash WhalerMike slash uiao. A red (#C0392B) dashed boundary line drawn around the two on-premises servers is labeled full operation continues with no cloud reachable. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
+
+## The Infrastructure Decision — ADR-001
+
+The infrastructure decision was not trivial. The initial question — whether IIS with git-http-backend.exe was sufficient for the full UIAO governance vision — was answered directly in Architecture Decision Record ADR-001: no, not alone. IIS with git-http-backend.exe provides exactly one capability well: Git Smart HTTP transport over HTTPS with Windows Integrated Authentication. That is necessary, but it is not sufficient.
+
+The UIAO governance vision requires a set of capabilities that do not exist in IIS natively:
+
+| Required capability | Why the program needs it |
+| :--- | :--- |
+| **Programmatic code access via REST API** | Tooling and scripts must read and write repositories without a browser |
+| **Webhook-driven automation pipelines** | Commits must trigger downstream governance and rendering jobs |
+| **API token authentication for assessment scripts** | Unattended PowerShell modules need non-interactive credentials |
+| **Repository management endpoints** | Repos must be created and configured programmatically |
+| **OAuth2 and OIDC integration with Entra ID** | Identity must federate with the organization's directory |
+
+> The IIS-only Git deployment guide that preceded ADR-001 remains a valid reference for environments that require only simple authenticated Git transport without the API surface — but it is explicitly superseded by the Gitea-on-IIS architecture for all production UIAO deployments.
+
+## The Recommended Architecture — Gitea Behind IIS
+
+After evaluating five architecture options — ranging from IIS alone to a full Azure DevOps Services deployment — ADR-001 recommends Gitea on Windows Server 2025 behind an IIS reverse proxy.
+
+Gitea was selected because it delivers the missing capability surface in a single, Windows-native package:
+
+- It is a single Go binary that runs natively on Windows as a service.
+- It provides a full OpenAPI-documented REST API.
+- It supports LDAP and Active Directory as well as OAuth2 and OIDC authentication.
+- It includes a native webhook system with configurable retry logic.
+- It requires no external database for small-to-medium deployments.
+
+IIS is not replaced in this architecture — it is promoted from CGI application host to reverse proxy, where it handles TLS termination, request filtering, and security hardening through the Application Request Routing and URL Rewrite modules.
+
+> The two components are complementary: IIS provides the security perimeter and TLS management that a Windows-native deployment requires, and Gitea provides the governance capability surface that IIS cannot deliver.
+
+## The Server Topology
+
+The server topology is deliberately minimal. A single primary server hosts all platform services, with a secondary server and an external mirror providing resilience:
+
+- **Primary server.** Hosts all platform services: the Gitea application server running as a Windows service bound to localhost on port 3000; IIS on port 443 providing HTTPS termination; DNS entries for git.uiao.local and docs.uiao.local; and the assessment pipeline that runs PowerShell modules and commits JSON output to the governance repository.
+
+- **Secondary server.** Provides active-passive replication for disaster resilience, maintaining a synchronized copy of all repositories and the Gitea SQLite database.
+
+- **External GitHub mirror.** Synchronizes to github.com/WhalerMike/uiao every six hours, providing an off-premises copy of the canonical governance record without depending on any cloud service for primary operations.
+
+This architecture maintains full on-premises operational capability even under complete cloud service unavailability.
 
 ::: {.callout-note title="Architecture Note — ADR-001"}
 The IIS-only Git deployment guide is retained as a valid reference for constrained environments requiring only authenticated Git transport. It is explicitly superseded by the Gitea-on-IIS architecture for all deployments requiring the full UIAO governance capability surface, including REST API access, webhook automation, and Entra ID OIDC integration.
