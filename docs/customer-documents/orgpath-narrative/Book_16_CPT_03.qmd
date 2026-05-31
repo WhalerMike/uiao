@@ -1,0 +1,84 @@
+---
+title: "One Host, Not a Fleet"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "16"
+series-order: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 3 — One Host, Not a Fleet
+
+::: {.callout-note}
+## In this chapter
+Modern infrastructure instinct says scale out, and here that instinct is
+wrong — not for reasons of capacity, but of truth. This chapter shows why two
+hosts cannot both be authoritative without diverging, why replication exists
+for recovery rather than load-sharing, and why horizontal scale belongs at
+the target surfaces and not at the substrate authority. Scarcity, here, is a
+feature: one host means one audit surface a human can actually reason about.
+:::
+
+## Scale Out Is the Wrong Instinct Here
+
+Modern infrastructure instinct says scale out. If a service matters, make it
+redundant; if it is busy, put it behind a load balancer; if it is critical,
+run it active-active across zones. That instinct is correct almost everywhere
+in a modern estate, and it is wrong here, for a reason that has nothing to do
+with capacity and everything to do with truth.
+
+## Two Hosts Cannot Both Be Authoritative
+
+The instant a second machine is permitted to accept a binding commit, the
+architecture has two histories, and the only question left is when — not
+whether — they diverge. A merge that lands on one but not the other, a hook
+that fires on one and is missed by the other, a clock skew that orders two
+changes differently on two machines: any of these turns a single
+organizational truth into a pair of plausible ones.
+
+> The single source of truth is not only a documentation principle the
+> earlier books invoked; it is a physical claim about how many machines are
+> allowed to say *yes*. The answer is one.
+
+[DIAGRAM-03: Engineering blueprint, white background, 16:9 landscape. Left panel labeled "REJECTED — two authorities" shows two federal-navy server boxes side by side, each accepting a commit arrow, their histories drifting apart into a red fork labeled "divergent truth". Right panel labeled "CANON — one authority + cold standby" shows a single federal-navy server box labeled "AUTHORITY (the one that says yes)" with all commit arrows converging on it, plus a greyed standby box connected by a dashed amber arrow labeled "DR failover only — never active-active". Below, a teal band labeled "scale lives here →" points to a separate cluster of small boxes labeled "TARGET SURFACES — Entra · Intune · Azure Arc (fan out freely)". Federal navy #1F3A5F for authority, teal #1A9E8F for the target-surface band, amber #D4A017 for the DR path, red #C0392B only on the rejected fork, monospace labels, no human figures.]
+
+## Replication Is for Recovery, Not Load
+
+This does not mean the substrate is fragile, and it does not mean it cannot
+recover. Replication exists — but it exists for disaster recovery, not for
+load-sharing. A second copy is a cold standby that becomes authoritative only
+when the first has demonstrably stopped being so, through a deliberate
+failover, never through both serving traffic at once. The distinction is the
+whole point: redundancy that preserves a single answer is safety; redundancy
+that produces two answers is corruption wearing safety's clothes.
+
+## Where the Scale Actually Goes
+
+Where, then, does the scale go? It goes where it belongs — at the target
+surfaces. The substrate authority governs those surfaces; it does not compete
+with them for throughput.
+
+| Layer | Sizing posture | Why |
+| :--- | :--- | :--- |
+| **Substrate authority** | One host, modest | Workload is correctness, not volume |
+| **Target surfaces** (Entra, Intune, Arc) | Fan out, horizontal | Built to serve millions of objects |
+
+A single host, sized modestly, can hold the entire governance corpus of a
+large enterprise and serve every operator who needs to commit to it, because
+the workload is not volume — it is correctness.
+
+## Governed Once
+
+And because there is exactly one of it, it can be governed exactly once. One
+host means one patch cadence, one compliance policy, one enrollment, one
+OrgPath tag, one object for the drift engine to evaluate. The host that holds
+canon is classified the way a domain controller is classified: Tier-0, the
+most trusted plane in the estate, hardened to match. Scarcity, here, is a
+feature — it collapses the audit surface to something a human can actually
+reason about. Having settled that there is one host and why, the next chapter
+describes what is actually running on it.
