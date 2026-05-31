@@ -14,17 +14,61 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — BlueCat — OrgPath via User-Defined Fields and the REST API
 
-BlueCat Address Manager organizes its data model around a hierarchy of Configurations, each of which contains all the IP address space and DNS infrastructure under its governance. Within a Configuration, IP address space is organized into a Block and Network hierarchy — a Block is a large address range, and a Network is a specific subnet within a Block. DNS infrastructure is organized into a View and Zone hierarchy — a View is a logical DNS namespace (used for split-horizon DNS), and Zones exist within Views. This hierarchical structure maps naturally to the OrgTree model: an OrgTree node that governs a specific DNS namespace maps to a Zone in a BlueCat View, and an OrgTree node that governs a specific IP address range maps to a Network within a BlueCat Block.
+::: {.callout-note}
+## In this chapter
+How OrgPath governance values are carried inside BlueCat Address Manager. The chapter maps the BAM data model — Configurations, Blocks and Networks, Views and Zones — onto the OrgTree, defines the four User-Defined Fields that carry OrgPath context, walks the v1 REST API session model and its key endpoints, and presents the idempotent synchronization script that creates or updates BAM zones and tags networks from the OrgTree registry.
+:::
 
-Every object in the BlueCat model supports User-Defined Fields — metadata fields that administrators define in the BAM Administration interface under User-Defined Fields and then attach to specific object types. UDFs are the BlueCat equivalent of Infoblox Extensible Attributes and serve the same purpose in the OrgPath integration: they carry OrgPath governance values on each object so that the same organizational context readable in Entra ID, Intune, and Azure Resource Manager is also readable by querying the BlueCat API. Before running the synchronization script in this chapter, an administrator must pre-define four UDFs in the BAM Administration interface: OrgPath (Text type), OrgNodeId (Text type), OrgTier (Text type), and MigrationPhase (Text type). Unlike Infoblox EAs, BlueCat does not offer an Enum UDF type in all versions; Text is used for all four fields and the governance pipeline enforces value constraints, as with the BloxOne integration described in the previous chapter.
+## The BlueCat Data Model and Its Bridge to OrgTree
+
+BlueCat Address Manager organizes its data model around a hierarchy of Configurations, each of which contains all the IP address space and DNS infrastructure under its governance. Within a Configuration, the model splits along two parallel hierarchies:
+
+| BAM hierarchy | Parent | Child | What it represents |
+| :--- | :--- | :--- | :--- |
+| **IP address space** | Block (a large address range) | Network (a specific subnet within a Block) | The governed IP space |
+| **DNS infrastructure** | View (a logical DNS namespace, used for split-horizon DNS) | Zone (exists within a View) | The governed DNS namespace |
+
+This hierarchical structure maps naturally to the OrgTree model:
+
+> An OrgTree node that governs a specific DNS namespace maps to a **Zone** in a BlueCat View, and an OrgTree node that governs a specific IP address range maps to a **Network** within a BlueCat Block.
+
+![How OrgTree nodes bind to BlueCat zones and networks through User-Defined Fields](images/book14cpt03-diagram-01-udf-rest-api-binding.png){#fig-book-14-cpt-03-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing how OrgPath governance values flow from the OrgTree registry into BlueCat Address Manager through User-Defined Fields and the v1 REST API. On the left, a federal navy 1F3A5F box labeled OrgTree registry, with monospace node paths, feeds an arrow to a navy box labeled Sync-OrgPathToBlueCat script. From the script a teal 1A9E8F arrow labeled BAM v1 REST session, BAMAuthToken header points into a large rounded container labeled BlueCat Address Manager Configuration. Inside that container two parallel branches are drawn. The upper teal branch shows View then Zone, with a monospace tag block reading OrgPath OrgNodeId OrgTier MigrationPhase attached to the Zone. The lower teal branch shows Block then Network, with the same monospace tag block attached to the Network. An amber D4A017 callout box at the bottom reads UDFs pre-defined in BAM Administration, all Text type. A small red C0392B warning marker near the Zone reads updateObject replaces entire properties string, merge required. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
+
+## OrgPath User-Defined Fields in BlueCat
+
+Every object in the BlueCat model supports User-Defined Fields — metadata fields that administrators define in the BAM Administration interface under User-Defined Fields and then attach to specific object types. UDFs are the BlueCat equivalent of Infoblox Extensible Attributes and serve the same purpose in the OrgPath integration:
+
+> They carry OrgPath governance values on each object so that the same organizational context readable in Entra ID, Intune, and Azure Resource Manager is also readable by querying the BlueCat API.
+
+Before running the synchronization script in this chapter, an administrator must pre-define four UDFs in the BAM Administration interface:
+
+| UDF name | Type | What it carries |
+| :--- | :--- | :--- |
+| **OrgPath** | Text | The node's full organizational path |
+| **OrgNodeId** | Text | The stable OrgTree node identifier |
+| **OrgTier** | Text | The governance tier classification |
+| **MigrationPhase** | Text | The node's migration-phase value |
+
+Unlike Infoblox EAs, BlueCat does not offer an Enum UDF type in all versions; Text is used for all four fields and the governance pipeline enforces value constraints, as with the BloxOne integration described in the previous chapter.
 
 ## The BlueCat REST API — Session Model and Key Endpoints
 
-BlueCat Address Manager exposes a REST API at https://{bam-host}/Services/REST/v1/ that supports HTTP Basic authentication through a session model. A login call authenticated with Basic credentials returns a session token string in the form BAMAuthToken: {token-value}; that token is then passed as the Authorization header value in all subsequent calls within the session. The session must be explicitly closed with a logout call when the script completes. Leaving sessions open is not a security risk in itself, since the token expires, but it does consume BAM server-side session resources and should be avoided in automation scripts that run frequently.
+BlueCat Address Manager exposes a REST API at https://{bam-host}/Services/REST/v1/ that supports HTTP Basic authentication through a session model. A login call authenticated with Basic credentials returns a session token string in the form BAMAuthToken: {token-value}; that token is then passed as the Authorization header value in all subsequent calls within the session. The session must be explicitly closed with a logout call when the script completes.
+
+> Leaving sessions open is not a security risk in itself, since the token expires, but it does consume BAM server-side session resources and should be avoided in automation scripts that run frequently.
 
 BlueCat has introduced a v2 REST API at https://{bam-host}/api/v2/ in more recent BAM versions. The v2 API is more RESTful in design — it uses standard HTTP verbs against resource-oriented URLs rather than the action-based URLs of the v1 API — and it will eventually supersede the v1 API. However, because many enterprise BAM deployments are running versions that do not yet fully support the v2 API, and because the v1 API is stable and well-documented across all current BAM versions, the integration script in this chapter uses the v1 API. The conceptual structure — authenticate, retrieve configuration, look up objects, write UDF values — is identical in both API versions.
 
-The key v1 API endpoints for OrgPath integration are as follows. The /login endpoint performs session establishment. The /getEntityByName endpoint retrieves an object by name within a parent entity — this is the primary lookup mechanism for finding Configurations, Views, Zones, and Networks by name. The /getEntities endpoint retrieves all child objects of a given type under a parent entity — used to enumerate Views within a Configuration. The /updateObject endpoint updates the properties and UDF values of an existing object by its internal numeric ID. The /addZone endpoint creates a new DNS zone as a child of a View. The /logout endpoint closes the session.
+The key v1 API endpoints for OrgPath integration are as follows:
+
+| Endpoint | Role in the integration |
+| :--- | :--- |
+| `/login` | Performs session establishment |
+| `/getEntityByName` | Retrieves an object by name within a parent entity — the primary lookup mechanism for finding Configurations, Views, Zones, and Networks by name |
+| `/getEntities` | Retrieves all child objects of a given type under a parent entity — used to enumerate Views within a Configuration |
+| `/updateObject` | Updates the properties and UDF values of an existing object by its internal numeric ID |
+| `/addZone` | Creates a new DNS zone as a child of a View |
+| `/logout` | Closes the session |
 
 ## The BlueCat Synchronization Script
 
