@@ -1,0 +1,79 @@
+---
+title: "The Mirror and the Authority"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "16"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 2 — The Mirror and the Authority
+
+::: {.callout-note}
+## In this chapter
+The obvious objection is that the enterprise already has a Git host, so why
+stand up a Windows server. This chapter separates two roles the boundary will
+not let one system play: the *mirror* where canon is ingested, and the
+*authority* where canon is decided. It shows why GCC-Moderate forces the
+authority of record inside the boundary, and how the relationship inverts so
+the public host flows in while authority never flows out.
+:::
+
+## The Obvious Objection
+
+The objection arrives immediately. The enterprise already has a Git host. It
+is reliable, it is familiar, it is somebody else's operational problem, and
+the canon already lives on it today. Why stand up a Windows server to do what
+a SaaS platform does better and cheaper? The objection is reasonable, and the
+answer is not that the SaaS platform is bad. The answer is that a mirror and
+an authority are different roles, and the boundary does not let the same
+system play both.
+
+## Two Roles, One Boundary
+
+A mirror is where canon is ingested. An authority is where canon is decided.
+The distinction is not cosmetic — it determines which constraints the system
+inherits.
+
+| | **Mirror (public Git)** | **Authority (on-premises)** |
+| :--- | :--- | :--- |
+| Role | Ingest, collaborate, read, propose | Decide what becomes binding canon |
+| Power over governance | None — it reflects | Total — the rest of the substrate obeys it |
+| Boundary requirement | Convenience; may sit outside | Must sit inside GCC-Moderate |
+| Inbound from internet | Permitted | None |
+
+[DIAGRAM-02: Engineering blueprint, white background, 16:9 landscape. Right side, a federal-navy bounded region labeled "GCC-MODERATE BOUNDARY" containing a single server box labeled "AUTHORITY-OF-RECORD" wearing an amber "binding history · hooks enforced · audit log" tag. Left side, outside the boundary, a teal cloud box labeled "PUBLIC GIT (mirror / ingest)". A solid teal arrow flows left-to-right INTO the boundary labeled "pull-mirror, 15-min interval"; a red blocked arrow attempting to flow right-to-left OUT of the boundary is crossed out and labeled "authority does not flow out". A separate dashed red arrow from the internet attempting inbound to the authority is also crossed out, labeled "no public inbound". Federal navy #1F3A5F for the authority and boundary, teal #1A9E8F for the mirror and ingest flow, amber #D4A017 for governance tags, red #C0392B only on the blocked arrows, monospace labels, no human figures.]
+
+## The Boundary Does Not Bend
+
+The cloud boundary for the program is GCC-Moderate, and the discipline of a
+boundary is that it does not bend for convenience. Every commit, every
+webhook, every audit record produced by the authority of record must sit
+under the same authorization plane that governs the rest of the substrate. If
+the directory, the policy engine, and the telemetry pipeline all live inside
+the boundary, then the system that decides what those things *are* cannot
+live outside it.
+
+> Otherwise the most consequential object in the architecture — the one that
+> defines every other object — would be governed by a different authority than
+> the things it governs. That is not a tidy exception; it is a hole straight
+> through the center of the model.
+
+## The Relationship Inverts
+
+So the relationship inverts cleanly. The public host upstream is the source
+of canon *ingest*: a pull-mirror keeps the on-premises instance current with
+the wider world on a short interval, and contributors who live outside the
+boundary still have a place to work. The on-premises instance is the source
+of canon *authority*: it is the one whose history is binding, whose hooks are
+enforced, whose audit log an assessor will eventually read. The mirror flows
+in; authority does not flow out.
+
+Having established *that* the authority must live inside, the next question is
+*how many* of it there should be — and the answer is more pointed than it
+first appears.
