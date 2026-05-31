@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 8 — KQL Dashboards for Intune and OrgPath Visibility
 
+::: {.callout-note}
+## In this chapter
+The native Intune compliance dashboard is device- and policy-centric; it cannot answer organizational questions like which divisions are trending toward non-compliance. This chapter provides three KQL queries that join Intune compliance data with OrgPath in Log Analytics and Microsoft Sentinel — compliance-by-OrgPath, unpositioned and mismatched devices, and a 30-day division drift trend — and explains how each is operationalized as a workbook tile or a scheduled analytics rule.
+:::
+
 ## Monitoring Device Compliance Through the Organizational Lens
 
 ## 8.1   What OrgPath Adds to Intune Compliance Reporting
@@ -25,6 +30,8 @@ OrgPath makes this join possible. Because every managed device carries an OrgPat
 ::: {.callout-note title="Prerequisite: Intune Diagnostic Settings"}
 Before these queries will return results, Intune diagnostic settings must be configured to export device compliance data to the Log Analytics workspace. Navigate to: Intune portal &gt; Tenant Administration &gt; Diagnostic Settings &gt; Add diagnostic setting. Select <strong>DeviceComplianceOrg</strong> as the data category. Select the target Log Analytics workspace. Allow up to 48 hours for the first data to appear after enabling the export.
 :::
+
+![How OrgPath-tagged Intune compliance data reaches governance dashboards](images/book05cpt08-diagram-01-how-orgpath-tagged-intune-compli.png){#fig-book-05-cpt-08-diagram-01 fig-alt="Engineering blueprint data-flow diagram on a neutral slate background showing the path from a managed device to the governance dashboards. Far left, a federal navy (#1F3A5F) box \"Managed device — OrgPath attribute plus compliance state\". An arrow leads to a navy box \"Intune diagnostic export — DeviceComplianceOrg category\". An arrow leads to a teal (#1A9E8F) cylinder \"Log Analytics workspace — IntuneDeviceComplianceOrg table\". From the cylinder, three teal query arrows fan rightward to three labeled output boxes: \"Q1 workbook tile matrix — Division by OrgPath compliance rate\", \"Q2 Sentinel analytics rule — governance incident when count over zero\", and \"Q3 workbook time series — 30-day division drift with SLA reference line\". An amber (#D4A017) side box \"OrgTreeNodes Watchlist — active node paths\" feeds into the Q2 box with the note \"stale watchlist produces false positives\". Monospace labels for table, category, and query names, no human figures, 16:9 landscape." width="85%"}
 
 ## 8.2   Query 1 — Device Compliance by OrgPath
 
@@ -168,3 +175,11 @@ Query Two is saved as a Microsoft Sentinel Analytics Rule with a daily scheduled
 Query Three is rendered as a time series line chart in the same governance workbook as Query One, positioned below the compliance tile matrix. The workbook renders one line per division, with the ComplianceRate on the Y axis and the date on the X axis. A horizontal reference line drawn at the governance threshold value provides an immediate visual indicator of which division lines have crossed into the below-threshold zone and when the crossing occurred. Governance team members reviewing the workbook weekly can identify degradation trends early enough to intervene before Conditional Access blocks begin affecting user productivity.
 
 The OrgTree Watchlist referenced in Query Two is a critical operational dependency. The governance pipeline includes a step that exports the active node paths from the OrgTree registry to a CSV file and uploads it to Microsoft Sentinel as a Watchlist update using the Sentinel Watchlist API after every OrgTree change. If this Watchlist update step fails — due to an API error, a permissions issue, or a pipeline configuration problem — Query Two will produce false positives for every device in the organization, because no OrgPath value will match any row in the Watchlist. The pipeline monitors for Watchlist update success and raises a pipeline alert if the step fails, so the governance team can remediate before the nightly Query Two analytics rule runs and generates a spurious incident wave.
+
+The three queries, their lookback windows, and how each is operationalized are summarized below.
+
+| Query | Purpose | Lookback | Operationalized as | Trigger / threshold |
+|----|----|----|----|----|
+| Q1 — Compliance by OrgPath | Compliance rate per division and OrgPath segment | 24 hours | Workbook tile matrix (Division × OrgPath) | Color bands: green / amber / red against the governance threshold |
+| Q2 — Unpositioned and mismatched | Devices with missing, quarantine, or stale OrgPath | 24 hours | Sentinel scheduled analytics rule → governance queue | Incident when the result count is greater than zero (requires the OrgTreeNodes Watchlist) |
+| Q3 — Compliance drift trend | Per-division compliance rate over time | 30 days | Workbook time-series line chart | Reference line at the SLA (default 95.0%) |

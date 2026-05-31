@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 5 — The Compliance and Conditional Access Bridge
 
+::: {.callout-note}
+## In this chapter
+Conditional Access can require device compliance, but without OrgPath the standard a device is held to reflects historical group assignments rather than its organizational role. This chapter shows how assigning compliance policies to OrgPath branch groups makes the compliance standard organizationally contextual, walks the four-step combined-policy pattern, and ends with the end-to-end validation matrix that proves the bridge before it governs production access.
+:::
+
 ## Organizational-Position-Aware Device Posture Enforcement
 
 ## 5.1   What the Bridge Achieves
@@ -21,6 +26,8 @@ lifecycle_review: 2026-11-22
 Conditional Access in Entra ID can require device compliance as a grant control: a user cannot complete an authentication to a resource unless the device they are authenticating from is marked compliant by Intune. This is a foundational security control and its presence in a mature identity governance model is not optional. What is not obvious from the compliance grant control alone is the question it leaves unanswered: compliant according to which compliance policy? In an Intune environment without OrgPath, the compliance policy that governs a device is whichever policy happened to be assigned to whichever groups the device happened to be in, as a consequence of however the Intune administrator configured those groups at some point in the past. The compliance standard is not a function of the device's organizational role. It is a function of historical group assignment decisions, and those decisions may not reflect the security requirements of the organizational position the device actually occupies.
 
 The OrgPath compliance bridge changes this. When compliance policies are assigned to OrgPath-derived branch groups, the compliance standard a device is evaluated against is determined entirely by its OrgPath value — which is determined by the OrgTree registry — which is managed by the governance team as a version-controlled, reviewed artifact. A device in the Finance division is evaluated by the Finance segment compliance policy because its OrgPath resolves to a branch group that carries that policy. A device in the Executive segment is evaluated by the Executive compliance policy because its OrgPath resolves to the Executive branch group. When Conditional Access requires compliance as a grant control, it is requiring compliance with the standard appropriate for that device's organizational context. The compliance requirement is organizationally contextual rather than uniformly permissive.
+
+![The OrgPath compliance-to-Conditional-Access bridge](images/book05cpt05-diagram-01-the-orgpath-compliance-to-condit.png){#fig-book-05-cpt-05-diagram-01 fig-alt="Engineering blueprint flow diagram on a neutral slate background showing how OrgPath drives a device's compliance standard and feeds it into Conditional Access, left to right. Start: a federal navy (#1F3A5F) box \"Device OrgPath = /Root/Finance\". Arrow to a teal (#1A9E8F) box \"ORG-BRANCH-FINANCE membership\". Arrow to a teal box \"Finance segment compliance policy — BitLocker, TPM 2.0, Secure Boot, minimum build, 12-char PIN\". This feeds a federal navy box \"Intune evaluates device: compliant?\" which also receives a second arrow from a teal box \"Org-wide baseline compliance policy\", with the junction annotated \"AND logic — device must satisfy BOTH\". The compliant result flows as an amber (#D4A017) token labeled \"device compliance signal\" into a navy box \"Conditional Access grant control: require MFA and a compliant device\". Two terminal boxes follow: a teal \"Access granted\" and a red (#C0392B) \"Access denied — non-compliant or unpositioned device\". Monospace labels for paths and group names, no human figures, 16:9 landscape." width="85%"}
 
 ::: {.callout-note title="Important: Multiple Compliance Policies and the AND Logic"}
 When a device is assigned multiple compliance policies, Intune evaluates the device as compliant only if it satisfies every assigned policy. The Finance device covered by both the baseline and the Finance segment policy must pass both. This AND evaluation logic is correct for the governance model and is the intended behavior. However, it means that the Finance segment compliance policy settings must be a strict superset of or at minimum consistent with the baseline policy settings. Specifying a weaker value in the segment policy than in the baseline does not weaken the requirement — the baseline still applies — but it can create confusing compliance state reporting if the reason for non-compliance is the baseline rather than the segment policy the team intended to configure.
@@ -37,6 +44,14 @@ Implementing the compliance bridge follows a precise sequence of steps. The step
 **Step Three** is to define a Conditional Access policy that targets users in an OrgPath-derived user group. The Conditional Access policy for Finance resource access uses the Finance user branch group (the user-object branch group corresponding to the Finance OrgTree node, created by the user-side OrgPath pipeline) as its user scope. The grant control requires both MFA and device compliance. Because the device's compliance state reflects the Finance compliance policy, the combination of these two grant controls means that access to Finance resources requires authentication from a Finance-segmented device that has satisfied Finance-appropriate security standards.
 
 **Step Four** is to validate the bridge end-to-end by authenticating to a Finance-protected resource from a device whose OrgPath is within the Finance branch, from a device whose OrgPath is outside the Finance branch, and from an unpositioned device. The expected results are: access granted for the correctly positioned and compliant Finance device, access denied for the out-of-scope device (the Conditional Access policy's user scope does not include non-Finance users, so this test validates user scope rather than device scope), and access denied for the unpositioned device (non-compliant due to the quarantine compliance policy).
+
+The Step Four validation exercises three device states against a Finance-protected resource, with these expected outcomes.
+
+| Device under test | Compliance state | Expected Conditional Access result | What the test validates |
+|----|----|----|----|
+| OrgPath inside the Finance branch, compliant | Compliant | Access granted | Correct positioning plus a satisfied compliance grant control |
+| OrgPath outside the Finance branch | Not applicable (out of CA user scope) | Access denied | The Conditional Access user-scope boundary |
+| Unpositioned device (/UNPOSITIONED) | Non-compliant (quarantine policy) | Access denied | The safety valve that blocks ungoverned devices |
 
 ## 5.3   Programmatic Compliance Policy Creation for an Organizational Segment
 
