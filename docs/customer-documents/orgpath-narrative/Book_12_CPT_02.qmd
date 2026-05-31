@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 2 — DNS GOVERNANCE
 
+::: {.callout-note}
+## In this chapter
+The source environment runs AD-integrated DNS; the target replaces it with three Azure-native components — Private Zones, Private Resolver, and a Forwarding Ruleset — while Windows Server IPAM and DHCP persist through the transition. This chapter walks the migration zone by zone: how IPAM supplies the on-premises baseline, how Private Zones inherit the four OrgPath governance tags, how the Private Resolver forwards in both directions, and how a decreasing forwarding-rule count signals DNS migration progress. It closes with the Azure Policy that denies any untagged Private DNS Zone, forcing zone creation through the governance pipeline.
+:::
+
 ## From AD-Integrated DNS to Azure DNS — A Governed Migration
 
 ## The DNS Architecture the Governance Model Must Transition From and To
@@ -24,13 +29,26 @@ The target architecture replaces this with three Azure-native components operati
 
 The transition between these two architectures is not instantaneous. It proceeds zone by zone, scope by scope, as each on-premises DNS zone is migrated to an Azure DNS Private Zone and each DHCP scope is either migrated to Azure or retained in an on-premises scope pending workload modernization. The governance pipeline tracks this progression through the MigrationPhase tag on every Private Zone and through the migration status field in the IPAM export committed to the governance repository. The completeness of migration — as measured by the percentage of on-premises zones with a corresponding Azure Private Zone and a MigrationPhase tag of Complete — is one of the five dimensions in the Decommissioning Readiness Score described in Chapter Five.
 
+![The governed DNS transition from AD-integrated zones to Azure-native resolution](images/book12cpt02-diagram-01-governed-dns-transition.png){#fig-book-12-cpt-02-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the governed DNS migration from on-premises to Azure. On the left, a federal navy (#1F3A5F) box AD-integrated DNS on domain controllers, with monospace child labels Netlogon SRV registration, secure dynamic update, and forward and reverse lookup zones, plus a navy box Windows Server IPAM exporting the baseline inventory and a navy box Windows Server DHCP. In the center, a teal (#1A9E8F) Azure DNS Private Resolver in the hub VNet with an inbound endpoint static IP and an outbound endpoint paired to a Forwarding Ruleset, bidirectional arrows bridging on-premises and Azure. On the right, teal boxes Azure DNS Private Zones tagged OrgPath, OrgNodeId, OrgTier, MigrationPhase and Azure IPAM tracking VNet address space. An amber (#D4A017) progress band along the bottom labeled MigrationPhase Assessment to Migration to Complete with a decreasing forwarding-rule count as the migration signal. A red (#C0392B) shield marks an Azure Policy deny on untagged Private DNS Zones. Monospace labels for zones, tags, and endpoints, no human figures, 16:9 landscape." width="85%"}
+
 ## The Windows Server IPAM Role During Transition
 
 Windows Server IPAM is a built-in server role available in Windows Server 2016, 2019, and 2022 that provides a centralized management interface for IP address space, DHCP scope administration, and DNS zone management across the on-premises environment. It is a Microsoft-provided role, installed through the Add Roles and Features Wizard or Server Manager, and it does not require any third-party licensing. The IPAM server role discovers DHCP servers and DNS servers in the domain through AD-based discovery and collects their configuration and utilization data into a local database. The management plane — accessible through the IPAM console in Server Manager or through PowerShell using the IpamServer module — provides address space views, scope utilization metrics, DNS record inventories, and audit trail data.
 
-During the AD transition, Windows Server IPAM performs a specific and bounded function in the governance model: it provides the authoritative on-premises inventory from which the migration baseline is constructed. The IPAM database contains every allocated IP address, every DHCP scope and its utilization, and every DNS zone hosted on the on-premises DNS infrastructure. The governance pipeline exports this inventory to JSON during the assessment phase and commits it to the governance repository, where it serves as the before-state against which migration progress is measured. As zones are migrated to Azure DNS Private Zones and addresses are migrated to Azure Virtual Network address space, the corresponding IPAM entries are updated with a migration status field, and subsequent pipeline runs show the delta.
+> During the AD transition, Windows Server IPAM performs a specific and bounded function in the governance model: it provides the authoritative on-premises inventory from which the migration baseline is constructed.
 
-The PowerShell module installed with the IPAM role exposes the full IPAM database through structured cmdlets. Get-IpamDnsZone returns all DNS zones known to IPAM, including their zone type, record count, and associated update policy. Get-IpamDhcpScope returns all DHCP scopes with their address range, utilization percentages, and the DHCP server that owns each scope. Get-IpamRange returns all IP address ranges defined in the address space registry. Get-IpamAddress returns individual address assignments with client identifiers, host names, and assignment types. The export script below calls each of these in sequence and writes the output as structured JSON committed to the governance repository.
+The IPAM database contains every allocated IP address, every DHCP scope and its utilization, and every DNS zone hosted on the on-premises DNS infrastructure. The governance pipeline exports this inventory to JSON during the assessment phase and commits it to the governance repository, where it serves as the before-state against which migration progress is measured. As zones are migrated to Azure DNS Private Zones and addresses are migrated to Azure Virtual Network address space, the corresponding IPAM entries are updated with a migration status field, and subsequent pipeline runs show the delta.
+
+The PowerShell module installed with the IPAM role exposes the full IPAM database through structured cmdlets:
+
+| Cmdlet | What it returns |
+| :--- | :--- |
+| `Get-IpamDnsZone` | All DNS zones known to IPAM, including their zone type, record count, and associated update policy |
+| `Get-IpamDhcpScope` | All DHCP scopes with their address range, utilization percentages, and the DHCP server that owns each scope |
+| `Get-IpamRange` | All IP address ranges defined in the address space registry |
+| `Get-IpamAddress` | Individual address assignments with client identifiers, host names, and assignment types |
+
+The export script below calls each of these in sequence and writes the output as structured JSON committed to the governance repository.
 
 ```powershell
 #Requires -Version 5.1
@@ -226,7 +244,16 @@ Write-Host "  git push"
 
 Each OrgTree node that represents a geographic site, a network segment, or an application domain boundary receives a corresponding Azure DNS Private Zone when its DnsBoundary property is set to true in the registry. The zone naming convention follows the organizational hierarchy expressed in the node identifier: a node with ID finance under the base domain internal.contoso.com receives a zone named finance.internal.contoso.com. The node ID is taken directly from the OrgTree registry, ensuring that zone names are stable across organizational restructuring — a node whose display name changes does not change its ID, so the DNS zone is unaffected by display-layer renames.
 
-Every Private Zone is tagged with the four standard OrgPath governance tags immediately upon creation. The tagging schema is identical to the schema used for Arc-enabled servers and Azure resources in Part Five: OrgPath carries the full slash-delimited organizational path of the governing node, OrgNodeId carries the node's identifier, OrgTier carries the Tier designation (T0, T1, T2, or T3), and MigrationPhase carries the current migration phase for the zone (Assessment, Migration, or Complete). These tags make every Private Zone a queryable governance object in Azure Resource Graph — a DNS zone can be located by its OrgPath, its tier, or its migration phase using the same ARG queries that locate Arc-enrolled servers and Azure resources.
+Every Private Zone is tagged with the four standard OrgPath governance tags immediately upon creation. The tagging schema is identical to the schema used for Arc-enabled servers and Azure resources in Part Five:
+
+| Tag | What it carries |
+| :--- | :--- |
+| `OrgPath` | The full slash-delimited organizational path of the governing node |
+| `OrgNodeId` | The node's identifier |
+| `OrgTier` | The Tier designation (T0, T1, T2, or T3) |
+| `MigrationPhase` | The current migration phase for the zone (Assessment, Migration, or Complete) |
+
+These tags make every Private Zone a queryable governance object in Azure Resource Graph — a DNS zone can be located by its OrgPath, its tier, or its migration phase using the same ARG queries that locate Arc-enrolled servers and Azure resources.
 
 Each zone is linked to the hub virtual network in the organization's Azure network topology with registration disabled. Registration is disabled because record management is performed explicitly — through the governance pipeline and through the DNS record migration tooling — rather than through automatic registration of Azure resources. Auto-registration is appropriate only for scenarios where Azure VMs should register themselves against the private zone; in the OrgPath governance model, record creation is a governed operation driven by the migration pipeline, not an automatic side effect of resource deployment.
 
@@ -430,7 +457,9 @@ The Azure DNS Private Resolver is deployed in the hub virtual network and serves
 
 The Forwarding Ruleset contains one forwarding rule per on-premises DNS zone that Azure-hosted workloads must resolve during the transition. Each rule maps a DNS zone name suffix to the IP addresses of the on-premises Windows Server DNS servers that are authoritative for that zone. For example, a rule for corp.contoso.com. forwards queries from Azure-hosted workloads to the IP addresses of the on-premises domain controllers hosting the AD-integrated DNS zone for that domain. The Forwarding Ruleset is linked to the hub VNet, making it effective for all DNS queries originating from Azure resources in any VNet peered to or connected through the hub.
 
-The migration signal embedded in the Forwarding Ruleset is operationally significant. As each AD-integrated DNS zone is migrated to an Azure DNS Private Zone, the corresponding forwarding rule in the ruleset is disabled and eventually removed. The complete removal of forwarding rules for a domain is the DNS-side indicator that the zone migration for that domain is complete — Azure-hosted workloads are now resolving names for that domain against the Azure Private Zone, not against the on-premises DNS servers. The governance pipeline tracks the count of active forwarding rules and includes it in the weekly DNS governance review report. A decreasing forwarding rule count is the operational metric for DNS migration progress.
+The migration signal embedded in the Forwarding Ruleset is operationally significant. As each AD-integrated DNS zone is migrated to an Azure DNS Private Zone, the corresponding forwarding rule in the ruleset is disabled and eventually removed. The complete removal of forwarding rules for a domain is the DNS-side indicator that the zone migration for that domain is complete — Azure-hosted workloads are now resolving names for that domain against the Azure Private Zone, not against the on-premises DNS servers. The governance pipeline tracks the count of active forwarding rules and includes it in the weekly DNS governance review report.
+
+> A decreasing forwarding rule count is the operational metric for DNS migration progress.
 
 ::: {.callout-note title="Private Resolver Subnet Requirements"}
 The Azure DNS Private Resolver requires dedicated subnets that cannot contain any other resources. The inbound endpoint subnet requires a minimum of /28 (16 addresses). The outbound endpoint subnet requires a minimum of /28. Both subnets must be delegated to Microsoft.Network/dnsResolvers before the resolver endpoints can be created. Plan these subnets during hub VNet design — they cannot be delegated after other resources have been deployed into them.
