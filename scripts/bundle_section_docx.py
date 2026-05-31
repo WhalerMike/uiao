@@ -55,6 +55,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -85,6 +86,17 @@ DEFAULT_SECTIONS = [
 
 # Filename stems (without .docx) skipped from every bundle.
 SKIP_STEMS = {"index", "ROADMAP", "document-index", "TREE"}
+
+# Sections that are organized as multi-chapter "books" (Book_NN.qmd +
+# Book_NN_CPT_MM.qmd). For these, in addition to the whole-section
+# bundle, emit one Book_NN-bundle.docx per book so a reader can download
+# a single book as one Word file. Keyed by section directory name.
+BOOK_BUNDLE_SECTIONS = {"orgpath-narrative"}
+
+# Leading book identifier in a page filename, e.g. "Book_07a_CPT_03" ->
+# "Book_07a" and "Book_07a" (the landing page) -> "Book_07a". Used to
+# group a section's page .docx into per-book buckets.
+BOOK_ID_RE = re.compile(r"^(Book_\d+[a-z]?)")
 
 # OpenXML namespace for the WordprocessingML schema. Used by the TOC-strip
 # pass to locate Pandoc's auto-emitted Table-of-Contents block. Kept as a
@@ -130,7 +142,9 @@ def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
     """
     out: list[Path] = []
     for docx in sorted(section_dir.rglob("*.docx")):
-        if docx.name == bundle_name:
+        # Skip the section bundle and any per-book bundle so a re-run (or
+        # the per-book pass below) never folds a prior bundle into itself.
+        if docx.name.endswith("-bundle.docx"):
             continue
         if docx.stem in SKIP_STEMS:
             continue
@@ -182,6 +196,73 @@ def _bundle_one(site_root: Path, section: str) -> tuple[bool, str]:
     )
 
 
+def _book_sort_key(book_id: str) -> tuple[int, int]:
+    """Order book ids so e.g. Book_07 precedes Book_07a precedes Book_08."""
+    m = re.match(r"Book_(\d+)([a-z]?)$", book_id)
+    if not m:
+        return (0, 0)
+    return (int(m.group(1)), 1 if m.group(2) else 0)
+
+
+def _bundle_books(site_root: Path, section: str) -> list[tuple[bool, str]]:
+    """Emit one ``Book_NN-bundle.docx`` per book within a chaptered section.
+
+    Groups the section's page .docx by the leading ``Book_NN[a]`` filename
+    token, concatenates each book's pages in filename order (landing page
+    first, then chapters), and writes ``Book_NN-bundle.docx`` beside the
+    book's landing page. Mirrors :func:`_bundle_one`'s TOC-strip and
+    page-break behavior. Returns one ``(ok, message)`` tuple per book.
+    """
+    from docx import Document
+    from docx.enum.text import WD_BREAK
+    from docxcompose.composer import Composer
+
+    section_dir = site_root / section
+    if not section_dir.is_dir():
+        return [(False, f"{section}: directory not found at {section_dir}")]
+
+    # Bucket page docx by book id. Files directly named Book_NN*.docx
+    # qualify; section/per-book bundles and skip-stems are excluded.
+    books: dict[str, list[Path]] = {}
+    for docx in sorted(section_dir.rglob("*.docx")):
+        if docx.name.endswith("-bundle.docx"):
+            continue
+        if docx.stem in SKIP_STEMS:
+            continue
+        m = BOOK_ID_RE.match(docx.stem)
+        if not m:
+            continue
+        books.setdefault(m.group(1), []).append(docx)
+
+    results: list[tuple[bool, str]] = []
+    for book_id in sorted(books, key=_book_sort_key):
+        pages = books[book_id]
+        bundle_path = section_dir / f"{book_id}-bundle.docx"
+
+        master = Document(str(pages[0]))
+        tocs_stripped = _strip_toc_blocks(master)
+        composer = Composer(master)
+        for page in pages[1:]:
+            master.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+            chapter = Document(str(page))
+            tocs_stripped += _strip_toc_blocks(chapter)
+            composer.append(chapter)
+        composer.save(str(bundle_path))
+
+        results.append(
+            (
+                True,
+                f"{section}/{book_id}: bundled {len(pages)} page(s) "
+                f"(stripped {tocs_stripped} per-chapter TOC block(s)) -> "
+                f"{bundle_path.relative_to(site_root.parent)}",
+            )
+        )
+
+    if not results:
+        results.append((False, f"{section}: no Book_NN page .docx found for per-book bundles"))
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
@@ -222,6 +303,13 @@ def main(argv: list[str] | None = None) -> int:
             # used — a section may legitimately have no rendered .docx
             # (e.g., only stubs). Treat as non-fatal but report.
             failures += 1
+
+        # Chaptered sections also get one Book_NN-bundle.docx per book.
+        # Per-book failures are logged but never fatal — a missing book
+        # bundle must not block the site deploy.
+        if section in BOOK_BUNDLE_SECTIONS:
+            for ok_b, msg_b in _bundle_books(site_root, section):
+                print(f"{'OK   ' if ok_b else 'WARN '} {msg_b}")
 
     # --canon-modernization is a deprecated no-op per ADR-083 (canon
     # modernization pages now live at customer-documents/reference-architecture/
