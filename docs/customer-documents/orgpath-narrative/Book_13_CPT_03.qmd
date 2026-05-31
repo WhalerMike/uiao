@@ -14,15 +14,36 @@ lifecycle_review: 2026-11-22
 
 # Chapter 3 — The Power BI Semantic Model
 
-![Power BI semantic model with OrgPath as the primary slicer](images/13-orgpath-and-power-bi-reportin-diagram-02-powerbi-orgpath-slicer-model.png){#fig-13-orgpath-and-power-bi-reporting-diagram-02 fig-alt="Left-to-right reporting pipeline with OrgPath as the join key, three labeled columns. Left column \"Sources\" stacks four data source boxes vertically: Entra audit logs; Intune compliance state; Defender incidents; Azure Policy compliance. Each source emits records that include an OrgPath field; arrows from each source point rightward into the center column. Center column \"Semantic model\" contains a single large box labeled \"Power BI semantic model\" containing a star-schema sketch — central fact tables surrounded by dimension tables, with the OrgPath dimension highlighted as the primary slicer (a small star icon next to it). Joins are shown as labeled lines from each of the four left-column sources to the center fact tables. Right column \"Reports\" stacks three report page mockups vertically: Compliance overview; Incident heatmap; Policy drift trend. Each report page shows the same OrgPath slicer at the top with sample drill paths displayed in monospace: / → /Engineering → /Engineering/Platform. Arrows from the semantic model fan rightward to all three report pages. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for the four sources, teal (#1A9E8F) for the semantic model, amber (#D4A017) for the OrgPath slicer overlays on each report page, monospace OrgPath drill values, no human figures, 16:9 landscape." width="85%"}
+::: {.callout-note}
+## In this chapter
+The semantic model is the architectural center of the reporting layer — the
+component that turns six heterogeneous governance exports into one coherent,
+queryable model. This chapter presents the Power Query M definitions for the
+shared OrgTree dimension and the six fact tables, the `/UNKNOWN` sentinel
+convention that keeps unresolved rows visible, and the relationship
+configuration that makes OrgPath the universal slicer across every report page.
+:::
 
-The semantic model is the architectural center of the reporting layer. It is the component that translates the six heterogeneous JSON exports produced by the pipeline into a single, coherent, queryable model that Power BI report pages consume uniformly. The model has seven tables: six fact tables, one per governance surface, and one shared dimension table — the OrgTree dimension — derived from the authoritative OrgTree registry JSON. All six fact tables join to the OrgTree dimension on the OrgPath column. OrgPath is therefore the universal slicer: selecting any OrgPath value or range of values in the hierarchy slicer on any report page automatically filters every fact table to the rows whose OrgPath value falls within the selected organizational segment.
+![Power BI semantic model with OrgPath as the primary slicer](images/13-orgpath-and-power-bi-reportin-diagram-02-powerbi-orgpath-slicer-model.png){#fig-13-orgpath-and-power-bi-reporting-diagram-02 fig-alt="Left-to-right reporting pipeline with OrgPath as the join key, three labeled columns. Left column \"Sources\" stacks four data source boxes vertically: Entra audit logs; Intune compliance state; Defender incidents; Azure Policy compliance. Each source emits records that include an OrgPath field; arrows from each source point rightward into the center column. Center column \"Semantic model\" contains a single large box labeled \"Power BI semantic model\" containing a star-schema sketch — central fact tables surrounded by dimension tables, with the OrgPath dimension highlighted as the primary slicer (a small star icon next to it). Joins are shown as labeled lines from each of the four left-column sources to the center fact tables. Right column \"Reports\" stacks three report page mockups vertically: Compliance overview; Incident heatmap; Policy drift trend. Each report page shows the same OrgPath slicer at the top with sample drill paths displayed in monospace: / → /Engineering → /Engineering/Platform. Arrows from the semantic model fan rightward to all three report pages. Engineering blueprint style, white background, federal navy (#1F3A5F) for the four sources, teal (#1A9E8F) for the semantic model, amber (#D4A017) for the OrgPath slicer overlays on each report page, monospace OrgPath drill values, no human figures, 16:9 landscape." width="85%"}
 
-The Power Query M definitions presented in this chapter are written to be pasted directly into the Power BI Desktop Advanced Editor for each table. The file paths in each definition reference the -latest.json symlink files that the export pipeline maintains, not the timestamped archive files. This ensures that the semantic model always loads the most recently completed export for each surface. In environments using a Fabric Lakehouse, replace the File.Contents source with the appropriate Lakehouse.Contents or Table.FromRows call against the Lakehouse delta table.
+The semantic model is the architectural center of the reporting layer. It is the component that translates the six heterogeneous JSON exports produced by the pipeline into a single, coherent, queryable model that Power BI report pages consume uniformly. The model has seven tables: six fact tables, one per governance surface, and one shared dimension table — the OrgTree dimension — derived from the authoritative OrgTree registry JSON.
+
+> All six fact tables join to the OrgTree dimension on the OrgPath column. OrgPath is therefore the universal slicer: selecting any OrgPath value or range of values in the hierarchy slicer on any report page automatically filters every fact table to the rows whose OrgPath value falls within the selected organizational segment.
+
+The Power Query M definitions presented in this chapter are written to be pasted directly into the Power BI Desktop Advanced Editor for each table. The file paths in each definition reference the `-latest.json` symlink files that the export pipeline maintains, not the timestamped archive files. This ensures that the semantic model always loads the most recently completed export for each surface. In environments using a Fabric Lakehouse, replace the `File.Contents` source with the appropriate `Lakehouse.Contents` or `Table.FromRows` call against the Lakehouse delta table.
 
 ## OrgTree Dimension Table
 
-The OrgTree dimension table is the organizational spine of the entire semantic model. It must be derived from the same authoritative registry file that the OrgPath propagation pipeline uses as its source of truth — not a separately maintained copy that might drift from the operational registry. The M query reads the registry JSON, expands the node records, filters to active nodes only, and adds a computed DisplayName column that combines the node label and OrgPath value for use in report slicers. The Tier column is typed as an integer to support slicer ordering and hierarchy visual configuration in Power BI Desktop.
+The OrgTree dimension table is the organizational spine of the entire semantic model. It must be derived from the same authoritative registry file that the OrgPath propagation pipeline uses as its source of truth — not a separately maintained copy that might drift from the operational registry.
+
+The M query performs four transformations in sequence:
+
+1. **Read and expand** the registry JSON, projecting each node record into columns.
+2. **Type** the columns — `Tier` as integer to support slicer ordering and hierarchy-depth visuals, `Active` as logical, and `EffectiveDate` as date for time-bounded filtering.
+3. **Filter to active nodes only**, so that decommissioned OrgPath values do not appear in slicers.
+4. **Add computed columns** — a `DisplayName` combining the node label and OrgPath value for use in report slicers and scorecard cards, and a readable `TierLabel`.
+
+> Retired nodes are excluded from the dimension deliberately. Historical fact data referencing a retired OrgPath value shows as unmatched (blank) in the dimension join — which correctly signals that the organizational position no longer exists.
 
 ```
 let
@@ -85,7 +106,9 @@ in
 
 ## Intune Compliance Table
 
-The Intune compliance table represents the most granular fact table in the model — one row per managed device. The IsCompliant column added by the export pipeline (a numeric 1 or 0) enables straightforward DAX SUM aggregation without requiring CALCULATE with a filter expression in every measure that counts compliant devices. The OrgPath null-replacement step ensures that devices whose primary user has no OrgPath attribute — typically newly provisioned devices that have not yet been processed by the Lifecycle Workflows joiner task — appear in the model with the sentinel value /UNKNOWN rather than as null-key rows that would be excluded from OrgTree dimension joins.
+The Intune compliance table represents the most granular fact table in the model — one row per managed device. The `IsCompliant` column added by the export pipeline (a numeric 1 or 0) enables straightforward DAX `SUM` aggregation without requiring `CALCULATE` with a filter expression in every measure that counts compliant devices.
+
+> The OrgPath null-replacement step ensures that devices whose primary user has no OrgPath attribute — typically newly provisioned devices that have not yet been processed by the Lifecycle Workflows joiner task — appear in the model with the sentinel value `/UNKNOWN` rather than as null-key rows that would be excluded from OrgTree dimension joins.
 
 ```
 let
@@ -140,7 +163,7 @@ in
 
 ## Sentinel Drift Summary Table
 
-The Sentinel drift table carries one row per OrgPath per drift category per day, as produced by the KQL aggregation in the export pipeline. The Category column identifies the type of drift detected — for example, PIM eligibility scope drift, compliance policy assignment drift, or extension attribute value drift — and is used in the drift category breakdown clustered bar chart on the per-division posture dashboard page.
+The Sentinel drift table carries one row per OrgPath per drift category per day, as produced by the KQL aggregation in the export pipeline. The `Category` column identifies the type of drift detected — for example, PIM eligibility scope drift, compliance policy assignment drift, or extension attribute value drift — and is used in the drift category breakdown clustered bar chart on the per-division posture dashboard page.
 
 ```
 let
@@ -178,7 +201,11 @@ in
 
 ## Sentinel PIM Activations Table
 
-The PIM activations table carries one row per OrgPath per day. PIM activation volume relative to organizational segment size is a governance signal: an unusually high activation rate in a particular division may indicate credential compromise, inappropriate role assignment breadth, or a process failure in which users with standing access are activating PIM roles unnecessarily. The trend measure in Chapter Four quantifies this signal as a week-over-week percentage change.
+The PIM activations table carries one row per OrgPath per day.
+
+> PIM activation volume relative to organizational segment size is a governance signal: an unusually high activation rate in a particular division may indicate credential compromise, inappropriate role assignment breadth, or a process failure in which users with standing access are activating PIM roles unnecessarily.
+
+The trend measure in Chapter Four quantifies this signal as a week-over-week percentage change.
 
 ```
 let
@@ -215,7 +242,7 @@ in
 
 ## Defender Posture Table
 
-The Defender posture table carries one row per Arc-enrolled resource. The AssessmentCount, UnhealthyCount, HealthyCount, and NotApplicable columns enable the Defender Health Rate percentage measure without requiring the DAX measure to perform a row-level calculation across individual assessment records. The OrgTier column, drawn from the resource tag, supports tier-level aggregation in the executive scorecard: an organization may choose to display Defender posture at division tier (Tier 1) for the executive view and at branch tier (Tier 2) for the operational view.
+The Defender posture table carries one row per Arc-enrolled resource. The `AssessmentCount`, `UnhealthyCount`, `HealthyCount`, and `NotApplicable` columns enable the Defender Health Rate percentage measure without requiring the DAX measure to perform a row-level calculation across individual assessment records. The `OrgTier` column, drawn from the resource tag, supports tier-level aggregation in the executive scorecard: an organization may choose to display Defender posture at division tier (Tier 1) for the executive view and at branch tier (Tier 2) for the operational view.
 
 ```
 let
@@ -257,6 +284,8 @@ in
 
 ## Guest Configuration Compliance Table
 
+The Guest Configuration table carries one row per in-guest policy assignment on each Arc-enrolled machine. An `Int64` `GCIsCompliant` column is derived from the textual `ComplianceState`, mirroring the Intune table's numeric-flag convention so that compliance counts aggregate through DAX `SUM` rather than per-row evaluation.
+
 ```
 let
     // ENV-PARAM: Update file path.
@@ -297,6 +326,8 @@ in
 
 ## B2B Guest Accounts Table
 
+The B2B guest accounts table carries one row per external (guest) identity. Guests without an OrgPath are assigned the `/EXTERNAL/UNREGISTERED` sentinel by the export pipeline; the `CleanOrgPath` step here handles any residual nulls so that no guest row is dropped from the dimension join.
+
 ```
 let
     // ENV-PARAM: Update file path.
@@ -334,8 +365,17 @@ in
 
 ## Semantic Model Relationship Configuration
 
-The relationship model connects the OrgTree dimension table to each of the six fact tables via the OrgPath column. In Power BI Desktop's Model view, each relationship is configured as follows: the OrgTree table's OrgPath column is the one-side key; the fact table's OrgPath column is the many-side key. The cardinality is one-to-many (OrgTree to fact). The cross-filter direction is single, flowing from the dimension to the fact tables. This configuration is deliberate: bidirectional cross-filtering between dimension and fact tables introduces ambiguous filter propagation paths in models with multiple fact tables sharing a single dimension, and it produces incorrect measure results when a measure on one fact table is used as a filter for another fact table that shares the same dimension.
+The relationship model connects the OrgTree dimension table to each of the six fact tables via the OrgPath column. In Power BI Desktop's Model view, each relationship is configured with the same four settings:
 
-All six relationships are active. The use of inactive relationships with USERELATIONSHIP in DAX is not required in this model because no two fact tables need to relate to the OrgTree dimension via different keys. Every fact table uses the same OrgPath column as its foreign key, so all six relationships are active and all six respond identically to OrgPath slicer context on any report page.
+| Setting | Value |
+| :--- | :--- |
+| **One-side key** | OrgTree table's `OrgPath` column |
+| **Many-side key** | Fact table's `OrgPath` column |
+| **Cardinality** | One-to-many (OrgTree → fact) |
+| **Cross-filter direction** | Single (dimension → fact) |
 
-The OrgTree dimension also contains a ParentNodeId column, which Power BI Desktop uses to define the parent-child hierarchy for the hierarchy slicer visual. In the Model view, configure a hierarchy on the OrgTree table using the Tier and Label columns in ascending tier order to enable the expand-and-collapse behavior in the report's OrgPath hierarchy slicer. This is the mechanism by which selecting the Finance branch node in the slicer automatically includes all Finance child nodes in the filter context applied to every fact table.
+> The single cross-filter direction is deliberate. Bidirectional cross-filtering between dimension and fact tables introduces ambiguous filter propagation paths in models with multiple fact tables sharing a single dimension, and it produces incorrect measure results when a measure on one fact table is used as a filter for another fact table that shares the same dimension.
+
+All six relationships are active. The use of inactive relationships with `USERELATIONSHIP` in DAX is not required in this model because no two fact tables need to relate to the OrgTree dimension via different keys. Every fact table uses the same OrgPath column as its foreign key, so all six relationships are active and all six respond identically to OrgPath slicer context on any report page.
+
+The OrgTree dimension also contains a `ParentNodeId` column, which Power BI Desktop uses to define the parent-child hierarchy for the hierarchy slicer visual. In the Model view, configure a hierarchy on the OrgTree table using the `Tier` and `Label` columns in ascending tier order to enable the expand-and-collapse behavior in the report's OrgPath hierarchy slicer. This is the mechanism by which selecting the Finance branch node in the slicer automatically includes all Finance child nodes in the filter context applied to every fact table.
