@@ -14,15 +14,55 @@ lifecycle_review: 2026-11-22
 
 # Chapter 2 — Infoblox — Extensible Attributes as the OrgPath Bridge
 
-Infoblox offers two deployment models that are relevant to this integration, and the choice between them is typically determined by what an organization already has in place rather than by a fresh architectural decision. Infoblox NIOS is the on-premises Grid deployment: a set of physical or virtual appliances — Grid Members and a Grid Master — managed through the NIOS web interface and through the WAPI REST API. NIOS has been the dominant enterprise DDI platform for more than a decade and the majority of large enterprise networks that operate an Infoblox deployment are running NIOS in some form. Infoblox BloxOne DDI is the cloud-native SaaS successor, managed through the Infoblox Cloud Services Portal at csp.infoblox.com and delivered as a managed service. BloxOne can coexist with a NIOS Grid or operate independently; organizations migrating from NIOS to BloxOne may run both simultaneously during the transition.
+::: {.callout-note}
+## In this chapter
+Infoblox exposes organizational context the same way every other governed surface does — as metadata stamped on its objects. This chapter covers the two relevant deployment models (the on-premises NIOS Grid and the cloud-native BloxOne DDI), the four Extensible Attribute definitions that carry OrgPath into the Grid, the idempotent registration and synchronization scripts that stamp them on networks and zones, and the BloxOne tag model that mirrors the same intent under a different authentication scheme and metadata structure.
+:::
 
-Both platforms expose a REST API surface for network, zone, and object management, and the OrgPath integration pattern is identical in concept on both. NIOS WAPI calls are directed to the base URL https://{gridmaster-fqdn}/wapi/v2.12/, where v2.12 corresponds to NIOS 8.x builds; earlier NIOS versions use earlier WAPI versions and the version component in the URL should be adjusted accordingly. BloxOne API calls are directed to https://csp.infoblox.com/api/ddi/v1/ and authenticated with a Bearer token rather than HTTP Basic credentials. Beyond the authentication model and the base URL, the structural intent of the API calls is the same: network objects, DNS zones, and DHCP scope objects carry OrgPath values as metadata — Extensible Attributes in the NIOS model, tags in the BloxOne model — and the governance pipeline reads and writes those metadata values through the respective API endpoints. The downstream effect, from the OrgPath model's perspective, is identical: every object in the DDI system expresses the same organizational context that every object in Entra ID, Intune, and Azure Resource Manager expresses.
+## Two Deployment Models, One Integration Pattern
+
+Infoblox offers two deployment models that are relevant to this integration, and the choice between them is typically determined by what an organization already has in place rather than by a fresh architectural decision.
+
+| Deployment model | What it is | Management surface | Authentication |
+| :--- | :--- | :--- | :--- |
+| **NIOS** | On-premises Grid — physical or virtual appliances (Grid Members and a Grid Master). The dominant enterprise DDI platform for more than a decade; most large enterprise Infoblox deployments run NIOS in some form. | NIOS web interface and the WAPI REST API | HTTP Basic against the Grid Master |
+| **BloxOne DDI** | Cloud-native SaaS successor, delivered as a managed service. Can coexist with a NIOS Grid or operate independently; organizations migrating from NIOS may run both simultaneously during the transition. | Infoblox Cloud Services Portal at `csp.infoblox.com` | Bearer token |
+
+Both platforms expose a REST API surface for network, zone, and object management, and the OrgPath integration pattern is identical in concept on both. NIOS WAPI calls are directed to the base URL `https://{gridmaster-fqdn}/wapi/v2.12/`, where `v2.12` corresponds to NIOS 8.x builds; earlier NIOS versions use earlier WAPI versions and the version component in the URL should be adjusted accordingly. BloxOne API calls are directed to `https://csp.infoblox.com/api/ddi/v1/` and authenticated with a Bearer token rather than HTTP Basic credentials.
+
+![Infoblox Extensible Attributes and BloxOne tags carrying OrgPath as the bridge between the DDI plane and the OrgTree registry](images/book14cpt02-diagram-01-infoblox-orgpath-bridge.png){#fig-book-14-cpt-02-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing how OrgPath bridges the OrgTree registry into the Infoblox DDI plane. On the left a federal navy #1F3A5F box labeled OrgTree registry with monospace node entries Id, Path, Tier, MigrationPhase feeds a navy box labeled governance pipeline. From the pipeline two parallel teal #1A9E8F branches fan to the right. The upper branch labeled NIOS WAPI v2.12 HTTP Basic leads to a teal box labeled NIOS Grid Master, which contains network and zone_auth objects each stamped with a metadata block extensible_attributes nested value pairs for OrgPath, OrgNodeId, OrgTier, MigrationPhase. The lower branch labeled BloxOne CSP Bearer token leads to a teal box labeled BloxOne DDI, which contains subnet and auth_zone objects each stamped with a flat tags map for the same four keys. An amber #D4A017 callout band across the bottom labeled inheritable EAs propagate from network container to child subnets points up at the NIOS container. A small red #C0392B note labeled tag values free-form, validate in pipeline marks the BloxOne branch. All object and field labels in monospace, no human figures, 16:9 landscape." width="85%"}
+
+Beyond the authentication model and the base URL, the structural intent of the API calls is the same: network objects, DNS zones, and DHCP scope objects carry OrgPath values as metadata — Extensible Attributes in the NIOS model, tags in the BloxOne model — and the governance pipeline reads and writes those metadata values through the respective API endpoints.
+
+> The downstream effect, from the OrgPath model's perspective, is identical: every object in the DDI system expresses the same organizational context that every object in Entra ID, Intune, and Azure Resource Manager expresses.
 
 ## Infoblox Extensible Attributes — Structure and Definition
 
-Extensible Attributes are custom metadata fields that Infoblox administrators define globally in the NIOS system and then assign to any object type — networks, zones, hosts, fixed addresses, DHCP scopes, and DNS records. An EA definition has a name, a data type, and optionally a list of allowed values for Enum-type attributes. Once defined, an EA is available across the entire Grid and can be set on any supported object. The inheritance flag on an EA definition controls whether child objects — subnets within a network container, zones within a parent zone — automatically inherit the EA value from their parent unless explicitly overridden. This inheritance behavior is useful for OrgPath integration because it means that setting the OrgPath EA on a top-level network container automatically propagates the value to all subnets within it, without requiring the governance pipeline to enumerate and tag every child object individually.
+Extensible Attributes are custom metadata fields that Infoblox administrators define globally in the NIOS system and then assign to any object type — networks, zones, hosts, fixed addresses, DHCP scopes, and DNS records. An EA definition has a name, a data type, and optionally a list of allowed values for Enum-type attributes. Once defined, an EA is available across the entire Grid and can be set on any supported object.
 
-For OrgPath integration, four EA definitions are required in the NIOS Grid. OrgPath is a String EA carrying the full hierarchy path from the OrgTree root to the governing node, expressed in the standard OrgPath path notation established in earlier parts of this series — for example, /root/operations/infrastructure/network. The inheritable flag is set on this EA so that child objects within a tagged container inherit the path unless a more specific OrgPath value is assigned at a lower level. OrgNodeId is a String EA carrying the leaf node identifier from the OrgTree registry — the short, stable identifier used as the primary key for lookups in the governance pipeline. It is also marked inheritable. OrgTier is an Enum EA with allowed values of Tier0, Tier1, Tier2, and Unclassified, representing the management tier classification applied to the node in the OrgTree registry; the inheritable flag is set here as well so that all objects within a Tier0 network container are treated as Tier0 by default. MigrationPhase is an Enum EA with values of Assessment, Migration, Parallel, and Complete; this attribute is not inheritable because migration phase is a property of individual zones and networks, not a property that should cascade from a container to every child object automatically.
+The **inheritance flag** on an EA definition controls whether child objects — subnets within a network container, zones within a parent zone — automatically inherit the EA value from their parent unless explicitly overridden.
+
+> Inheritance is what makes the integration efficient: setting the OrgPath EA on a top-level network container automatically propagates the value to all subnets within it, without requiring the governance pipeline to enumerate and tag every child object individually.
+
+### The Four Required EA Definitions
+
+For OrgPath integration, four EA definitions are required in the NIOS Grid:
+
+| EA name | Type | Inheritable | Purpose |
+| :--- | :--- | :--- | :--- |
+| **OrgPath** | String | Yes | The full hierarchy path from the OrgTree root to the governing node, in standard OrgPath path notation (e.g. `/root/operations/infrastructure/network`). Child objects in a tagged container inherit the path unless a more specific value is assigned at a lower level. |
+| **OrgNodeId** | String | Yes | The leaf node identifier from the OrgTree registry — the short, stable identifier used as the primary key for lookups in the governance pipeline. |
+| **OrgTier** | Enum | Yes | The management tier classification applied to the node in the OrgTree registry. Allowed values: `Tier0`, `Tier1`, `Tier2`, `Unclassified`. All objects within a `Tier0` network container are treated as `Tier0` by default. |
+| **MigrationPhase** | Enum | No | The migration state of an individual zone or network. Not inheritable, because migration phase is a property of individual objects, not one that should cascade from a container to every child automatically. |
+
+The `MigrationPhase` Enum carries four values, each marking a distinct point in a zone's transition from NIOS-authoritative to Azure DNS:
+
+| Value | Meaning |
+| :--- | :--- |
+| `Assessment` | Tagged; no Azure DNS counterpart yet |
+| `Migration` | Azure DNS zone created; not yet serving live traffic |
+| `Parallel` | Both NIOS and Azure DNS active simultaneously |
+| `Complete` | Fully migrated; NIOS zone retired |
 
 These four EA definitions are created once as a setup step, before any governance pipeline synchronization runs against the Grid. The following PowerShell function performs this registration via the NIOS WAPI REST API. It is idempotent: it checks for the existence of each EA definition before attempting to create it, so it can be run safely against a Grid where some or all of the definitions already exist.
 
@@ -159,7 +199,9 @@ function Register-NiosOrgPathAttributes {
 
 ## The NIOS Synchronization Pipeline Script
 
-With the EA definitions in place, the governance pipeline can begin stamping OrgPath values on network and zone objects in the Grid. The synchronization script below is the NIOS counterpart to the Sync-OrgPathDnsZones.ps1 script described in Part Eight for Azure DNS Private Zones. It reads the OrgTree registry JSON file that is checked out from the governance repository at the start of each pipeline run, iterates over every active node, and for each node that is flagged as a DNS boundary or carries a network CIDR in its metadata, either creates the corresponding NIOS object or updates the Extensible Attributes on an existing object. The script is triggered on OrgTree commits as part of the governance propagation pipeline and runs on the automation server — a Windows Server host that has network access to the Grid Master WAPI endpoint and the necessary credentials stored in the Windows Credential Manager or a secrets vault.
+With the EA definitions in place, the governance pipeline can begin stamping OrgPath values on network and zone objects in the Grid. The synchronization script below is the NIOS counterpart to the `Sync-OrgPathDnsZones.ps1` script described in Part Eight for Azure DNS Private Zones. It reads the OrgTree registry JSON file that is checked out from the governance repository at the start of each pipeline run, iterates over every active node, and for each node that is flagged as a DNS boundary or carries a network CIDR in its metadata, either creates the corresponding NIOS object or updates the Extensible Attributes on an existing object.
+
+> The script is triggered on OrgTree commits as part of the governance propagation pipeline and runs on the automation server — a Windows Server host that has network access to the Grid Master WAPI endpoint and the necessary credentials stored in the Windows Credential Manager or a secrets vault.
 
 ```powershell
 #
@@ -397,9 +439,17 @@ Write-Host "========================================================"
 
 ## Infoblox BloxOne DDI — Bearer Token Authentication and Tag Structure
 
-BloxOne DDI uses a fundamentally different authentication model and a different metadata structure than NIOS, even though the conceptual purpose of the integration is identical. Where NIOS uses HTTP Basic authentication against the Grid Master, BloxOne uses Bearer token authentication: an API key is generated in the Cloud Services Portal under Administration, then API Keys, then Create API Key. That key is presented in the Authorization header of every API call as Token {api-key-value}. The key should never appear in a script file; it should be stored in the Windows Credential Manager, a secrets vault such as Azure Key Vault, or the pipeline runtime's secure variable storage, and retrieved into a PowerShell variable at runtime.
+BloxOne DDI uses a fundamentally different authentication model and a different metadata structure than NIOS, even though the conceptual purpose of the integration is identical. The differences fall into three areas:
 
-Where NIOS carries metadata in the extensible_attributes object with the value nested as { "value": "..." }, BloxOne carries metadata in a flat tags object where each key maps directly to a string value. The BloxOne resource paths also differ from NIOS: subnets are managed at /api/ddi/v1/ipam/subnet, authoritative zones at /api/ddi/v1/dns/auth_zone, and DNS records at /api/ddi/v1/dns/record. The following function demonstrates the BloxOne authentication pattern and the zone creation call with embedded OrgPath tags. It is structured as a function rather than a script so it can be called from the main governance pipeline orchestrator, which handles the OrgTree registry iteration and passes individual node values to platform-specific functions like this one.
+| Aspect | NIOS | BloxOne DDI |
+| :--- | :--- | :--- |
+| **Authentication** | HTTP Basic against the Grid Master | Bearer token — an API key generated in the Cloud Services Portal under **Administration > API Keys > Create API Key**, presented in the `Authorization` header of every call as `Token {api-key-value}` |
+| **Metadata structure** | `extensible_attributes` object with the value nested as `{ "value": "..." }` | A flat `tags` object where each key maps directly to a string value |
+| **Resource paths** | `network`, `zone_auth` under `/wapi/v2.12/` | `/api/ddi/v1/ipam/subnet` (subnets), `/api/ddi/v1/dns/auth_zone` (authoritative zones), `/api/ddi/v1/dns/record` (DNS records) |
+
+> The API key should never appear in a script file. Store it in the Windows Credential Manager, a secrets vault such as Azure Key Vault, or the pipeline runtime's secure variable storage, and retrieve it into a PowerShell variable at runtime.
+
+The following function demonstrates the BloxOne authentication pattern and the zone creation call with embedded OrgPath tags. It is structured as a function rather than a script so it can be called from the main governance pipeline orchestrator, which handles the OrgTree registry iteration and passes individual node values to platform-specific functions like this one.
 
 ```powershell
 #
