@@ -14,11 +14,23 @@ lifecycle_review: 2026-11-22
 
 # Chapter 1 — From Substrate to Operations — Why PIM, RBAC, and Monitoring Complete the Model
 
+::: {.callout-note}
+## In this chapter
+Part Four leaves a complete governance *substrate* — OrgTree, OrgPath, dynamic
+groups, and drift detection — but a substrate is not yet operationally closed.
+This chapter names the four integrations that carry OrgPath into the security
+operations plane (PIM eligibility, the structural-mover workflow, Sentinel
+monitoring, and Azure RBAC at the resource plane), explains the failure mode
+each one prevents, and maps the remaining chapters of this document onto them.
+:::
+
 ## The Governance Gap That Remains After Part Four
 
 At the conclusion of Part Four, the governance substrate is operational. OrgTree holds the authoritative representation of the organizational hierarchy: every division, department, and unit exists as a node in the registry, connected to its parent by a typed relationship and assigned a unique identifier that persists across organizational changes. OrgPath encodes positional identity for every user, device, and server in the environment — a single attribute value that places each asset precisely within the hierarchy and changes only when the underlying organizational reality changes. The dynamic group library derives policy coverage from structural position automatically: a user who moves into a node inherits group membership in that node's policy groups within minutes of the OrgPath write, with no manual group management required. The drift detection pipeline monitors OrgPath values across the environment and flags divergence between directory state and registry state before it accumulates into an audit problem.
 
 This is a complete design and construction achievement. But it is not yet operationally closed. The substrate defines structure and encodes position, but it does not yet drive the security operations that depend on that structure. The gap is specific, not general. It is not that OrgPath fails to reach the security operations plane — it is that no integration has yet been built to carry it there. Four such integrations are required, and each addresses a distinct operational failure mode that the substrate alone cannot prevent.
+
+> The substrate defines structure and encodes position; it does not yet *drive* the security operations that depend on that structure. Closing the gap is a matter of building four integrations, not of redesigning anything Part Four delivered.
 
 ## The Four Missing Connections
 
@@ -30,7 +42,7 @@ The third missing connection is between OrgPath and the Microsoft Sentinel monit
 
 The fourth missing connection is between OrgPath and Azure RBAC at the resource plane. Arc-managed servers and Azure resources are the infrastructure that the identities governed by OrgPath actually operate on. A governance model that covers identity plane access but leaves resource plane access control as a separately managed concern produces a well-governed identity estate sitting on top of an ungoverned resource estate. Tag-based RBAC assignments tied to OrgPath dynamic groups close this gap — they extend the same structural governance to the resource plane and make Azure RBAC assignments as responsive to organizational changes as the directory group memberships that Part Four established.
 
-![Left-to-right hub-and-spoke diagram](images/11-orgpath-in-security-operation-diagram-01-left-to-right-hub-and-spoke-diag.png){#fig-11-orgpath-in-security-operations-diagram-01 fig-alt="A single root box on the far left labeled \"OrgPath substrate — users, devices, servers\" fans rightward into a labeled cluster \"Four operational integrations\" containing four boxes stacked vertically: PIM eligibility groups (ORG-BRANCH-{id} per node); Lifecycle Workflow mover (OrgPath change to realign + review); Sentinel KQL queries (activations + drift by segment); Azure RBAC via tag-based assignments (resource plane). All four integration boxes then converge rightward into a single terminal box \"Versioned governance record — audit + compliance evidence\". Engineering blueprint style, federal navy (#1F3A5F) for substrate, teal (#1A9E8F) for integrations, amber (#D4A017) for the audit record terminus, monospace group names, 16:9 landscape." width="85%"}
+![Left-to-right hub-and-spoke diagram](images/11-orgpath-in-security-operation-diagram-01-left-to-right-hub-and-spoke-diag.png){#fig-11-orgpath-in-security-operations-diagram-01 fig-alt="A single root box on the far left labeled \"OrgPath substrate — users, devices, servers\" fans rightward into a labeled cluster \"Four operational integrations\" containing four boxes stacked vertically: PIM eligibility groups (ORG-BRANCH-{id} per node); Lifecycle Workflow mover (OrgPath change to realign + review); Sentinel KQL queries (activations + drift by segment); Azure RBAC via tag-based assignments (resource plane). All four integration boxes then converge rightward into a single terminal box \"Versioned governance record — audit + compliance evidence\". Engineering blueprint style, white background, federal navy (#1F3A5F) for substrate, teal (#1A9E8F) for integrations, amber (#D4A017) for the audit record terminus, monospace group names, 16:9 landscape." width="85%"}
 
 ## Architecture of This Document
 
