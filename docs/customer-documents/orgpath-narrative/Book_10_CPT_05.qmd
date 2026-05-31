@@ -14,9 +14,26 @@ lifecycle_review: 2026-11-22
 
 # Chapter 5 — Guest Lifecycle: Access Reviews and Expiration
 
+::: {.callout-note}
+## In this chapter
+B2B guest identities pass through three lifecycle stages — invitation, active relationship, and expiration — and a governance failure at each produces a different risk profile. This chapter shows how the OrgPath stub and a companion GuestSponsorPath attribute create a permanent, queryable link between every guest and the internal position that sponsored it, then walks through the quarterly Access Review configuration that uses that link to route review decisions, deny by default, and disable stale accounts on a perpetual cadence.
+:::
+
 ## Three Lifecycle Stages
 
-Every B2B guest identity passes through three lifecycle stages, and governance failures at any stage produce materially different risk profiles. The first stage is invitation. The access that a guest receives at invitation time is the access they will hold until something explicitly removes it. If the invitation process does not record who initiated the collaboration relationship and why, there is no internal stakeholder who can be held accountable for reviewing that access when circumstances change. The second stage is the active relationship. During this stage, the guest is actively collaborating, accessing resources, and generating activity signals in the tenant's logs. The governance question is not whether the guest should have access — that was answered at invitation — but whether the access scope and trust level remain appropriate as time passes, personnel at the partner organization change, and the nature of the collaboration evolves. The third stage is expiration. Partner contracts end, projects conclude, and vendor relationships are replaced. Without an explicit expiration mechanism, guest accounts survive indefinitely after the relationship that created them has ended. Stale guest accounts are a persistent attack surface: they maintain access to resources associated with their original invitation, they may hold group memberships accumulated over the course of the relationship, and they are rarely monitored because their owners have disengaged.
+Every B2B guest identity passes through three lifecycle stages, and governance failures at any stage produce materially different risk profiles.
+
+| Stage | What it is | The governance question |
+| :--- | :--- | :--- |
+| **Invitation** | The access a guest receives at invitation time is the access they will hold until something explicitly removes it. | Was the relationship recorded with an accountable internal stakeholder who can review it when circumstances change? |
+| **Active relationship** | The guest is actively collaborating, accessing resources, and generating activity signals in the tenant's logs. | Not *whether* the guest should have access — that was answered at invitation — but whether the **access scope and trust level remain appropriate** as personnel change and the collaboration evolves. |
+| **Expiration** | Partner contracts end, projects conclude, and vendor relationships are replaced. | Is there an explicit mechanism to end access, or do accounts survive indefinitely after the relationship has ended? |
+
+The invitation stage is unforgiving precisely because it sets a default that persists. If the invitation process does not record who initiated the collaboration relationship and why, there is no internal stakeholder who can be held accountable for reviewing that access when circumstances change.
+
+> Stale guest accounts are a persistent attack surface: they retain access to the resources tied to their original invitation, they may hold group memberships accumulated over the course of the relationship, and they are rarely monitored because their owners have disengaged.
+
+![How OrgPath and GuestSponsorPath bind a guest to its quarterly review cycle](images/book10cpt05-diagram-01-guest-lifecycle-review-cycle.png){#fig-book-10-cpt-05-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the B2B guest governance lifecycle as a closed loop. Across the top, three federal navy (#1F3A5F) stage boxes connected by arrows read left to right: invitation, active relationship, expiration, with monospace stage labels. Below the invitation box, a navy box labeled invitation-time function writes two attributes onto a teal (#1A9E8F) guest-object card: OrgPath stub and GuestSponsorPath. An arrow from GuestSponsorPath points to an amber (#D4A017) box labeled sponsor OrgPath node, showing the queryable link to the internal team that initiated the relationship. From the active-relationship stage, an arrow feeds a teal box labeled quarterly Access Review, fourteen-day window, scoped to the partner dynamic group, with the sponsor group resolved as reviewers. From the Access Review box two outcome arrows branch: a teal arrow labeled approve loops back to active relationship, and a red (#C0392B) arrow labeled default decision deny, no reviewer action leads to a red box labeled account disabled, thirty-day retention. A dashed return arrow runs from the review box back to the sponsor OrgPath node, labeled review routed to sponsor. All component labels in monospace, no human figures, 16:9 landscape." width="85%"}
 
 ## Sponsor Linkage at Invitation Time
 
@@ -26,7 +43,18 @@ The invitation-time automation function documented in Chapter Two writes the Org
 
 For each registered partner domain, the governance pipeline creates one recurring Access Review definition targeting the partner's dynamic group. The review is scoped to the transitive members of the ORG-EXTERNAL-B2B-{PartnerDomain} group, which is to say all guests carrying the corresponding OrgPath stub. Reviewers are the members of the partner's SponsorGroupName security group from the registry, fetched as a Microsoft Graph transitive members query at review time so that sponsor group membership changes are reflected without requiring review definition updates. If the sponsor group cannot be resolved at review creation time — because the named group does not exist in the directory — the script falls back to the partner dynamic group's owners as reviewers, which typically includes the governance administrator account that created the group, and logs a warning for remediation.
 
-The review instance duration is fourteen days, giving sponsors a two-week window to complete their decisions. The defaultDecision is set to Deny, which means that any guest account for which the reviewer takes no action — either because the reviewer is unavailable, has left the organization, or simply fails to respond — is automatically denied at the close of the review window. The autoApplyDecisionsEnabled flag ensures that deny decisions are applied without requiring a manual administrative step. The apply action is disableAndDeleteUserApplyAction, which disables the guest account immediately on deny rather than deleting it, preserving the account object for the thirty-day retention window required for audit trail continuity and for the governance cleanup pipeline to confirm deletion after the retention period expires. Recommendations are enabled, so that the review UI surfaces Entra ID's activity-based recommendation (approve or deny based on whether the guest has signed in during the past thirty days) to assist reviewers in making decisions for large partner populations. The recurrence pattern is absoluteMonthly with an interval of three months and a noEnd range, creating a perpetual quarterly cadence that continues until the partner's registry entry is removed and the review definition is decommissioned by the pipeline.
+The review settings encode a deliberately conservative governance posture, where inaction resolves toward removal rather than retention:
+
+| Setting | Value | Effect |
+| :--- | :--- | :--- |
+| `instanceDurationInDays` | `14` | Gives sponsors a two-week window to complete their decisions. |
+| `defaultDecision` | `Deny` | Any guest account for which the reviewer takes no action — because the reviewer is unavailable, has left the organization, or simply fails to respond — is automatically denied at the close of the window. |
+| `autoApplyDecisionsEnabled` | `true` | Deny decisions are applied without requiring a manual administrative step. |
+| apply action | `disableAndDeleteUserApplyAction` | Disables the guest account immediately on deny rather than deleting it, preserving the object for the thirty-day retention window required for audit-trail continuity and for the cleanup pipeline to confirm deletion afterward. |
+| `recommendationsEnabled` | `true` | Surfaces Entra ID's activity-based recommendation (approve or deny based on whether the guest signed in during the past thirty days) to assist reviewers across large partner populations. |
+| recurrence | `absoluteMonthly`, interval `3`, range `noEnd` | Creates a perpetual quarterly cadence that continues until the partner's registry entry is removed and the review definition is decommissioned by the pipeline. |
+
+> The default decision is **Deny**. A guest whose sponsor never responds does not quietly retain access — at the close of the review window the account is automatically disabled. Silence resolves toward removal, not toward survival.
 
 ```powershell
 #
