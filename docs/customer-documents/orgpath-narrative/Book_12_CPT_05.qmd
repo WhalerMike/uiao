@@ -14,13 +14,22 @@ lifecycle_review: 2026-11-22
 
 # Chapter 5 — THE DECOMMISSIONING READINESS SCORE
 
+::: {.callout-note}
+## In this chapter
+The most dangerous moment in an AD modernization program is the irreversible shutdown of a domain controller — because it reveals unresolved dependencies in production rather than before the decision. This chapter introduces the Decommissioning Readiness Score: a five-dimension, per-component measure of how much known work remains, the PowerShell pipeline that computes it from the governance registries, and the tiered operational response and three-party sign-off workflow it drives.
+:::
+
 ## When Is It Safe to Decommission? A Quantified Answer
 
 ## The Specific Risk This Score Is Designed to Eliminate
 
 The most dangerous moment in any Active Directory modernization program is the moment a domain controller is permanently shut down. The risk is not that the shutdown is difficult to execute — it is not. The risk is that the shutdown reveals, in production and irreversibly, that a workload dependency was not known, not tracked, or not resolved before the decision to decommission was made. A domain controller that goes offline takes with it its DNS SRV records, its Kerberos ticket issuance capacity for the local site, its SYSVOL share for GPO application, its LDAP service for any application using directory-bound authentication, and — if it is the last DC for a site — the site's entire service locator infrastructure. Every one of these failures is invisible before decommissioning and catastrophic after it.
 
-The Decommissioning Readiness Score is designed to make the readiness question answerable before the action, not discoverable after it. It quantifies, per infrastructure component — per domain controller, per DNS zone, per CA — the percentage of known dependent workloads and infrastructure services that have been fully migrated. A score of one hundred percent means that every known dependency has been resolved and the component can be safely decommissioned. Anything less means dependencies remain and decommissioning will cause failures. The score does not eliminate the possibility of unknown dependencies — no automated tool can enumerate what has not been recorded. But it establishes a governance norm in which dependency recording is a required activity and readiness is a measurable property of the environment, not an administrator's judgment.
+![The five-dimension Decommissioning Readiness Score model](images/book12cpt05-diagram-01-readiness-score-five-dimensions.png){#fig-book-12-cpt-05-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the Decommissioning Readiness Score as a weighted average of five dimension scores. On the left, a single federal navy (#1F3A5F) box labeled target component DC01 with monospace text. Five teal (#1A9E8F) dimension boxes stack in a column, each with a monospace label and its data source in smaller monospace text: Identity Migration from Microsoft Graph OrgPath attribute, Dependency Resolution from dependency-map.json, DNS Migration from IPAM export, Certificate Migration from Cloud PKI enrollment, GPO Migration from migration-map.json. Each dimension box shows a horizontal percent fill bar. Arrows from all five feed into a navy averaging node labeled arithmetic mean. From the averaging node, three amber (#D4A017) outcome bands branch to the right, labeled below 80 percent not a candidate, 80 to 99 percent detailed dependency review, and 100 percent decommissioning approval workflow. A small red (#C0392B) warning flag annotation points at a dimension box noting empty baseline scored 100 percent logs a warning. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
+
+The Decommissioning Readiness Score is designed to make the readiness question answerable before the action, not discoverable after it. It quantifies, per infrastructure component — per domain controller, per DNS zone, per CA — the percentage of known dependent workloads and infrastructure services that have been fully migrated. A score of one hundred percent means that every known dependency has been resolved and the component can be safely decommissioned. Anything less means dependencies remain and decommissioning will cause failures.
+
+> The score does not eliminate the possibility of *unknown* dependencies — no automated tool can enumerate what has not been recorded. What it establishes is a governance norm in which dependency recording is a required activity and readiness is a measurable property of the environment, not an administrator's judgment.
 
 ## The Five Scoring Dimensions
 
@@ -335,6 +344,18 @@ Disconnect-MgGraph
 
 The Decommissioning Readiness Score report is committed to the governance repository on each pipeline run. Because the repository is version-controlled, the history of score files for a given domain controller shows the progression of readiness over time — each pipeline execution after a migration activity produces a measurable improvement in one or more dimension scores. The governance team reviews the current score in the weekly infrastructure governance meeting and annotates the repository commit with the outcome of the review.
 
-The operational response to the score follows a tiered framework. A score below eighty percent indicates that the component is in active assessment or early migration and is not a candidate for decommissioning planning in the current quarter. A score between eighty and ninety-nine percent triggers a detailed dependency review: the specific items preventing a perfect score — the unresolved dependency map entries, the forward zones still in migration, the SCEP profiles still non-compliant — are assigned to named engineers with a target resolution date that fits within the current migration phase. A score of one hundred percent initiates the formal decommissioning approval workflow.
+The operational response to the score follows a tiered framework, keyed to three score bands:
 
-The formal decommissioning approval workflow requires sign-off from three parties: the infrastructure lead, who confirms that the score reflects current environment state and that no out-of-band changes have been made that are not captured in the registries; the security team, who confirms that the decommissioning does not introduce any gap in monitoring, authentication, or certificate validation coverage; and the application owners of any services that previously carried dependency map entries against the target component, who confirm that their workloads are operating correctly against the migrated infrastructure. Sign-offs are recorded as commits to the governance repository, creating an auditable record of the approval decision. The target component is decommissioned only after all three sign-offs are committed.
+| **Score band** | **Interpretation** | **Operational response** |
+|----|----|----|
+| **Below 80%** | The component is in active assessment or early migration. | Not a candidate for decommissioning planning in the current quarter. |
+| **80%–99%** | Most dependencies resolved; a measurable remainder blocks a perfect score. | Triggers a detailed dependency review: the specific items preventing a perfect score — unresolved dependency map entries, forward zones still in migration, SCEP profiles still non-compliant — are assigned to named engineers with a target resolution date that fits within the current migration phase. |
+| **100%** | Every known dependency resolved, no warnings. | Initiates the formal decommissioning approval workflow. |
+
+The formal decommissioning approval workflow requires sign-off from three parties:
+
+- the **infrastructure lead**, who confirms that the score reflects current environment state and that no out-of-band changes have been made that are not captured in the registries;
+- the **security team**, who confirms that the decommissioning does not introduce any gap in monitoring, authentication, or certificate validation coverage; and
+- the **application owners** of any services that previously carried dependency map entries against the target component, who confirm that their workloads are operating correctly against the migrated infrastructure.
+
+Sign-offs are recorded as commits to the governance repository, creating an auditable record of the approval decision. The target component is decommissioned only after all three sign-offs are committed.
