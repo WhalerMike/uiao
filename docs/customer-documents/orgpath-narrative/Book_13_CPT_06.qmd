@@ -14,11 +14,48 @@ lifecycle_review: 2026-11-22
 
 # Chapter 6 — Automated Refresh Pipeline
 
-The governance value of the dashboard is directly proportional to its currency. A compliance rate displayed on a governance dashboard that reflects last Tuesday's data cannot drive a Friday governance decision. The semantic model must be refreshed immediately after the export pipeline completes, so that the dashboard reflects the most recent state of every governance surface. The refresh pipeline uses the Power BI REST API to trigger and monitor a full semantic model refresh, and is invoked as the final step of the export orchestrator — after all six export files have been successfully written and their latest-file symlinks updated.
+::: {.callout-note}
+## In this chapter
+A governance dashboard is only as trustworthy as the data behind it, so the
+semantic model must refresh the instant the export pipeline finishes. This
+chapter walks through the service-principal authentication and tenant settings
+the Power BI REST API requires, the enhanced full-refresh trigger-and-poll
+script that runs as the orchestrator's final step, the options for invoking it
+across separate service contexts, and the XMLA-endpoint architecture that
+collapses refresh latency to near zero on Premium and Fabric capacity.
+:::
 
-The Power BI REST API requires OAuth 2.0 authentication using a service principal. The service principal — which may be the same app registration used for the governance data exports, or a separate registration dedicated to Power BI operations — must be granted access to the Power BI workspace via the workspace's Access settings in the Power BI Service, with the Contributor or Admin role. In addition, the Power BI tenant administrator must enable service principal access in the Power BI Admin portal under Tenant Settings, Developer Settings, "Allow service principals to use Power BI APIs." Without this tenant-level setting, service principal authentication to the Power BI REST API returns a 403 error regardless of workspace membership.
+## Why Currency Drives the Refresh Design
 
-The enhanced refresh API endpoint used in the following script supports table-level and partition-level refresh targets, parallel table refresh, and retry logic. For the governance semantic model, a full refresh of all tables is appropriate because the export pipeline replaces all data in each file on every run — there is no incremental export, and therefore no incremental refresh. If the export pipeline is extended in the future to produce incremental exports (for example, appending only the current day's drift events rather than replacing the full thirty-day window), the refresh script can be updated to target specific tables or partitions using the objects array parameter.
+The governance value of the dashboard is directly proportional to its currency. A compliance rate displayed on a governance dashboard that reflects last Tuesday's data cannot drive a Friday governance decision.
+
+> A dashboard's authority is measured in hours, not features: a stale number is not a smaller truth, it is a different one.
+
+The semantic model must be refreshed immediately after the export pipeline completes, so that the dashboard reflects the most recent state of every governance surface. The refresh pipeline uses the Power BI REST API to trigger and monitor a full semantic model refresh, and is invoked as the final step of the export orchestrator — after all six export files have been successfully written and their latest-file symlinks updated.
+
+![How the export orchestrator triggers and monitors a Power BI semantic-model refresh](images/book13cpt06-diagram-01-refresh-trigger-poll-pipeline.png){#fig-book-13-cpt-06-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the automated refresh pipeline as a left-to-right flow. On the left a federal navy (#1F3A5F) box labeled export orchestrator writes six governance export files and updates latest-file symlinks, then hands off to a navy box labeled acquire OAuth2 token, scope analysis.windows.net powerbi api default. An arrow leads to a teal (#1A9E8F) box labeled POST refreshes, type full, commitMode transactional, maxParallelism 4, retryCount 2. From there a teal loop labeled poll every 30s, GET refreshes returns to a decision diamond labeled status. Three branches leave the diamond: a teal branch to Completed, log duration; an amber (#D4A017) branch to timeout after MaxPollSeconds, exit 2; and a red (#C0392B) branch to Failed, write serviceExceptionJson, exit 1. A separate teal box at the bottom labeled XMLA endpoint, write direct via TMSL bypasses the gateway with a dashed arrow straight to a navy semantic model cylinder. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
+
+## Service Principal Authentication and Tenant Settings
+
+The Power BI REST API requires OAuth 2.0 authentication using a service principal. Two prerequisites must both be satisfied, or authentication fails:
+
+| Prerequisite | Where it is configured | Failure mode if missing |
+| :--- | :--- | :--- |
+| **Workspace membership** — the service principal (the same app registration used for the governance data exports, or a separate registration dedicated to Power BI operations) granted the **Contributor or Admin** role | The Power BI workspace's **Access** settings in the Power BI Service | Service principal cannot see or refresh the dataset |
+| **Tenant-level enablement** — "Allow service principals to use Power BI APIs" turned on | Power BI Admin portal → **Tenant Settings → Developer Settings** | API returns a **403 error** regardless of workspace membership |
+
+The enhanced refresh API endpoint used in the following script supports table-level and partition-level refresh targets, parallel table refresh, and retry logic. For the governance semantic model, a full refresh of all tables is appropriate because the export pipeline replaces all data in each file on every run — there is no incremental export, and therefore no incremental refresh.
+
+> If the export pipeline is ever extended to produce incremental exports — appending only the current day's drift events rather than replacing the full thirty-day window — the refresh script can be updated to target specific tables or partitions using the `objects` array parameter.
+
+## The Refresh Trigger-and-Poll Script
+
+The script below authenticates as the service principal, triggers an enhanced full refresh of the OrgPath governance semantic model, polls for completion, and reports the outcome. It proceeds in four steps:
+
+1. **Acquire** an OAuth2 bearer token scoped to the Power BI REST API.
+2. **Trigger** an enhanced full refresh in transactional commit mode.
+3. **Poll** the refresh history every 30 seconds until the status leaves `Unknown`.
+4. **Report** the final status — completion, failure (with the service exception detail written to the error stream for alerting), or timeout.
 
 ```powershell
 #Requires -Version 5.1
@@ -164,6 +201,18 @@ switch ($pollResult.status) {
 }
 ```
 
-The refresh script is invoked at the end of the export orchestrator script by appending a call block that passes the relevant parameters. In environments where the export orchestrator and the refresh trigger run under different service contexts — for example, where the export host runs under a managed identity and the Power BI refresh requires a separate service principal credential — the refresh script can be invoked as a separate scheduled task that triggers after the export task completes via Task Scheduler dependency configuration, or as a separate Azure Automation runbook that is called by the export runbook using an inline job submission.
+## Invoking the Refresh Across Service Contexts
 
-Power BI Premium and Fabric capacity environments support XMLA endpoint access, which enables the export pipeline to write data directly to the semantic model's tables using Tabular Model Scripting Language commands, bypassing the file-based gateway entirely and eliminating the refresh API call as a separate step. This architecture reduces end-to-end latency between export completion and dashboard currency to near zero. The XMLA endpoint approach requires the semantic model to be deployed to a Premium or Fabric workspace, and requires the service principal to be granted the Analysis Services Administrator role on the XMLA endpoint. For organizations that have made this investment, the XMLA pattern is strongly preferred over the file-and-gateway pattern for a governance dashboard where currency is a primary requirement.
+The refresh script is invoked at the end of the export orchestrator script by appending a call block that passes the relevant parameters. In environments where the export orchestrator and the refresh trigger run under different service contexts — for example, where the export host runs under a managed identity and the Power BI refresh requires a separate service principal credential — two decoupled invocation patterns are available:
+
+- **Task Scheduler dependency** — invoke the refresh script as a separate scheduled task that triggers after the export task completes, via Task Scheduler dependency configuration.
+
+- **Azure Automation runbook** — invoke the refresh as a separate runbook that the export runbook calls using an inline job submission.
+
+## XMLA Endpoint: Collapsing Refresh Latency to Near Zero
+
+Power BI Premium and Fabric capacity environments support XMLA endpoint access, which enables the export pipeline to write data directly to the semantic model's tables using Tabular Model Scripting Language commands, bypassing the file-based gateway entirely and eliminating the refresh API call as a separate step. This architecture reduces end-to-end latency between export completion and dashboard currency to near zero.
+
+The XMLA endpoint approach requires the semantic model to be deployed to a Premium or Fabric workspace, and requires the service principal to be granted the Analysis Services Administrator role on the XMLA endpoint.
+
+> For organizations that have made this investment, the XMLA pattern is strongly preferred over the file-and-gateway pattern for a governance dashboard where currency is a primary requirement.

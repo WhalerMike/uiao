@@ -14,11 +14,42 @@ lifecycle_review: 2026-11-22
 
 # Chapter 4 — The DAX Measure Library
 
+::: {.callout-note}
+## In this chapter
+The DAX measure library is the translation layer between raw fact data and the governance KPIs the report pages display. This chapter explains why every measure lives in a single dedicated container table, how each measure responds to OrgPath slicer context with no special handling, and how the executive RAG measures convert continuous KPI values into Red/Amber/Green status. The full library — organized into nine sections from device compliance through rolling-average trend lines — is reproduced verbatim, ready to paste into Power BI Desktop.
+:::
+
+## The Measures Table and Its Filter Behavior
+
 DAX measures are the translation layer between raw fact data and the governance KPIs that report pages display. All measures in this model are housed in a dedicated measures table — a calculated table with no rows, created in Power BI Desktop using the expression \_Measures = {BLANK()} and used purely as an organizational container for measures. Housing all measures in a single container table rather than distributing them across the fact tables from which they derive makes the model easier to navigate, simplifies documentation, and prevents the accumulation of measures in the fact tables themselves, which interferes with the automatic aggregation behavior that Power BI applies to numeric columns in fact tables.
 
-Every measure in this library is designed to respond correctly to OrgPath slicer context without any special handling inside the measure definition. This is a direct consequence of the relationship model described in Chapter Three: because all fact tables join to the OrgTree dimension via an active one-to-many relationship on OrgPath, any filter applied to the OrgTree dimension table — including the selection of a node in the OrgPath hierarchy slicer — automatically propagates to all six fact tables in a single filter context evaluation. The measures do not need to explicitly reference OrgPath in their CALCULATE filter arguments; they simply aggregate their fact table columns, and the filter context supplied by the slicer does the rest.
+![The measure library translates fact data into OrgPath-aware governance KPIs](images/book13cpt04-diagram-01-measure-library-translation-layer.png){#fig-book-13-cpt-04-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing the DAX measure library as a translation layer. On the left, six federal navy boxes labeled in monospace IntuneCompliance, SentinelDrift, SentinelPIM, DefenderPosture, SentinelDLP, GuestConfigCompliance and GuestAccounts feed arrows into a central teal box labeled _Measures table, calculated table with no rows, container only. Above the central box, a teal slicer chip labeled OrgPath hierarchy selection sends a downward arrow labeled filter context propagates through active one-to-many relationships, illustrating that measures aggregate without referencing OrgPath directly. On the right, the measure library emits two amber output groups labeled continuous KPIs, Compliance Rate percent, Drift counts, Health Rate and labeled RAG status mapping, Green Amber Red. A small red callout marks the threshold note governance-defined thresholds, review with board. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
 
-The RAG status measures at the end of the library translate continuous KPI values into the Red, Amber, and Green categorical status values that the executive scorecard page displays. The thresholds embedded in these measures are governance-defined and must be reviewed and adjusted to match the specific governance SLAs and risk tolerance of the organization. They are not universal standards — they are defaults that represent a reasonable starting point for a well-governed enterprise environment, intended to be refined through the governance board's initial dashboard review sessions.
+Every measure in this library is designed to respond correctly to OrgPath slicer context without any special handling inside the measure definition. This is a direct consequence of the relationship model described in Chapter Three: because all fact tables join to the OrgTree dimension via an active one-to-many relationship on OrgPath, any filter applied to the OrgTree dimension table — including the selection of a node in the OrgPath hierarchy slicer — automatically propagates to all six fact tables in a single filter context evaluation.
+
+> The measures do not need to explicitly reference OrgPath in their CALCULATE filter arguments; they simply aggregate their fact table columns, and the filter context supplied by the slicer does the rest.
+
+The RAG status measures at the end of the library translate continuous KPI values into the Red, Amber, and Green categorical status values that the executive scorecard page displays. The thresholds embedded in these measures are governance-defined and must be reviewed and adjusted to match the specific governance SLAs and risk tolerance of the organization.
+
+> The thresholds are not universal standards — they are defaults that represent a reasonable starting point for a well-governed enterprise environment, intended to be refined through the governance board's initial dashboard review sessions.
+
+## The Library at a Glance
+
+The library is organized into nine sections, grouped by source fact table and by purpose. The first seven sections produce the continuous KPI values; Section 8 maps those KPIs onto executive RAG status; Section 9 supplies the rolling-average measures that overlay trend lines on the time-series report page.
+
+| Section | Purpose | Source table |
+| :--- | :--- | :--- |
+| 1 | Intune device compliance | IntuneCompliance |
+| 2 | Drift detection | SentinelDrift |
+| 3 | PIM activation | SentinelPIM |
+| 4 | Defender for Cloud assessment | DefenderPosture |
+| 5 | DLP incidents | SentinelDLP |
+| 6 | Guest Configuration compliance | GuestConfigCompliance |
+| 7 | Guest accounts | GuestAccounts |
+| 8 | Executive RAG status | (derived from Sections 1–7) |
+| 9 | Trend (30-day rolling averages) | SentinelDrift, SentinelPIM |
+
+## The Complete Measure Library
 
 ```
 -- ============================================================
@@ -387,5 +418,7 @@ AVERAGEX(
     SUM(SentinelPIM[PIMActivations])
 )
 ```
+
+## The Completed Semantic Model
 
 With the measure library defined, the semantic model is complete. Every report page in the workbook reads from this single model, ensuring that all visuals reflect the same data, the same OrgPath filter context, and the same governance KPI definitions. Changes to KPI thresholds — for example, raising the Compliance RAG Green threshold from ninety-five to ninety-seven percent — are made once in the measure library and take effect across every report page and every embedded view of the report simultaneously.
