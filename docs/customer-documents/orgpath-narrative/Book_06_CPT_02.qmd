@@ -14,6 +14,11 @@ lifecycle_review: 2026-11-22
 
 # Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping
 
+::: {.callout-note}
+## In this chapter
+Defender for Endpoint device groups serve two purposes — policy assignment and RBAC scoping — and both gain from OrgPath. This chapter shows how Entra ID dynamic groups backed by the OrgPath device attribute drive MDE device-group membership automatically, where in the OrgTree to draw device-group boundaries (the MDEBoundary flag), the idempotent synchronization script, and the RBAC model that bounds each SOC team to exactly its organizational segment.
+:::
+
 *Bringing Organizational Structure into the MDE Management Plane*
 
 ## The MDE Device Group Model and Its Relationship to OrgPath
@@ -23,6 +28,8 @@ Defender for Endpoint organizes devices into device groups for two distinct and 
 In the native MDE model, device groups are created manually in the Defender portal, membership rules are configured as tag-based or domain-based filters, and RBAC roles are assigned device group permissions through a separate configuration screen. This model works adequately for small, flat environments. It breaks down as organizational complexity grows: device groups drift out of alignment with the actual organizational structure, tag values require manual maintenance, and analyst scope assignments become inconsistent as teams reorganize. The OrgPath integration replaces the manual maintenance cycle with a systematic, automatically maintained structure derived from the authoritative organizational hierarchy in OrgTree.
 
 The relationship between Entra ID dynamic groups and MDE device groups is the core mechanism of this integration. MDE device groups, configured under **Settings \> Endpoints \> Device groups** in the Defender portal, support Entra ID group-backed membership. When the Entra ID group specified as the membership source is a dynamic group whose membership rule evaluates the OrgPath device extension attribute, the MDE device group membership updates automatically whenever a device's OrgPath changes. The ETL pipeline that writes OrgPath values to device objects — established in Part Four — is the same pipeline that drives this membership. No additional automation is required in MDE itself. The organizational hierarchy, maintained in OrgTree and propagated by the pipeline, governs MDE policy scope and analyst visibility boundaries without any MDE-specific maintenance process.
+
+![MDE device groups and RBAC scope derived from OrgPath dynamic groups](images/book06cpt02-diagram-01-mde-device-groups-and-rbac-scope.png){#fig-book-06-cpt-02-diagram-01 fig-alt="Engineering blueprint diagram on a white background showing how OrgPath flows into Defender for Endpoint device groups and analyst visibility. On the left, a federal navy (#1F3A5F) box \"OrgTree registry — nodes flagged MDEBoundary\" with monospace node paths feeds an arrow to a navy box \"ETL pipeline stamps OrgPath on device objects\". That feeds a teal (#1A9E8F) box \"Entra ID dynamic group ORG-BRANCH-{NodeId}, rule device.OrgPath -startsWith prefix\". An arrow labeled \"Entra group-backed membership\" leads to a teal box \"MDE device group MDE-{NodeId}\". From the MDE device group two arrows branch right: one to a teal box \"Policy assignment — AV, ASR, EDR, AIR remediation level by tier\" and one to an amber (#D4A017) box \"MDE RBAC role scoped to MDE-FINANCE — Finance SOC analyst sees only Finance devices\". A red (#C0392B) crossed-out connector shows the Finance analyst blocked from the Engineering and Executive device groups. Monospace labels for group and node names, no human figures, 16:9 landscape." width="85%"}
 
 ## Device Group Hierarchy Design
 
