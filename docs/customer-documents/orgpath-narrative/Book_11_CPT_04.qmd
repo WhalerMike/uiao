@@ -14,13 +14,27 @@ lifecycle_review: 2026-11-22
 
 # Chapter 4 — Operational Visibility — Monitoring PIM Through the Lens of Organizational Structure
 
+::: {.callout-note}
+## In this chapter
+PIM activation logs annotated only by identity, role, and time are structurally
+incomplete — Sentinel cannot tell a routine Tier0 activation from the same role
+activated by someone in Finance. This chapter shows how making OrgPath a
+queryable Sentinel dimension changes that, the audit-log and sign-in-log data
+paths that carry OrgPath into the log model, and three production KQL queries —
+a daily organizational dashboard, a sensitive-segment alert rule, and an
+eligibility-versus-position drift detector — that together form a layered
+operational model.
+:::
+
 ## Why OrgPath Changes the Value of PIM Monitoring
 
-Without organizational context, PIM activation logs are a stream of events annotated by identity, role, and time. Microsoft Sentinel can surface anomalies against those three dimensions: a user who activates more frequently than their baseline, a role that sees elevated activation volumes, a time window that deviates from the expected pattern. These are valuable signals. But they are structurally incomplete, because they have no awareness of the organizational context in which the activation occurred. A Tier0 infrastructure role activation by a user in the operations engineering segment is a routine administrative event. The same role activation by a user in the finance reporting segment is an anomaly that warrants immediate investigation. Without OrgPath, Sentinel cannot distinguish between these two events. They are both activations of the same role, at the same time of day, with similarly worded justification strings. The detection logic has nothing to work with except the identity and the role.
+Without organizational context, PIM activation logs are a stream of events annotated by identity, role, and time. Microsoft Sentinel can surface anomalies against those three dimensions: a user who activates more frequently than their baseline, a role that sees elevated activation volumes, a time window that deviates from the expected pattern. These are valuable signals. But they are structurally incomplete, because they have no awareness of the organizational context in which the activation occurred. A Tier0 infrastructure role activation by a user in the operations engineering segment is a routine administrative event. The same role activation by a user in the finance reporting segment is an anomaly that warrants immediate investigation.
+
+> Without OrgPath, Sentinel cannot distinguish between these two events. They are both activations of the same role, at the same time of day, with similarly worded justification strings — the detection logic has nothing to work with except the identity and the role.
 
 OrgPath makes the organizational context of every activation queryable. When a user's OrgPath is available in the Sentinel log model, every PIM activation event carries an implicit tag identifying the organizational segment from which the activation originated. Alert thresholds can be tuned per segment. Anomaly detection can be baselining against the activation pattern of a specific organizational unit rather than the tenant as a whole. Dashboards can present privileged access activity organized by hierarchy, so that a governance manager can see at a glance that the Finance division had twelve activations in the past 24 hours, all by users whose OrgPath confirms membership in that division, and that one of those activations was for a role that no Finance division user has a documented need for.
 
-![PIM activation flow with OrgPath as a first-class audit dimension](images/11-orgpath-in-security-operation-diagram-02-pim-activation-orgpath-audit.png){#fig-11-orgpath-in-security-operations-diagram-02 fig-alt="Top-down five-stage flow diagram showing a PIM eligible-assignment activation with OrgPath as a first-class audit dimension. Stage 1 \"Request\" (top): user alice@corp.com (OrgPath: /Engineering/Platform) requests PIM activation for role Application Administrator. Downward arrow labeled \"submit request\" to Stage 2 \"Approval routing\": workflow scoped by OrgPath — approvers are managers in same or parent OrgPath (/Engineering or /Engineering/Platform). Downward arrow labeled \"approver decision\" to Stage 3 \"Activation\": role activated, JIT-bound; activation event written to audit log. Downward arrow labeled \"emit event\" to Stage 4 \"Audit record payload\": shown as a monospace JSON-style record with fields { user, role, OrgPath, requested_at, approved_by, approver_OrgPath, justification }. Downward arrow labeled \"stream to workspace\" to Stage 5 \"Sentinel ingestion\": audit event flows into Sentinel; OrgPath becomes a queryable dimension. Below stage 5, an inset monospace KQL snippet: | summarize count() by OrgPath, role. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for stage boxes, teal (#1A9E8F) for OrgPath-scoped routing in stage 2, amber (#D4A017) for the audit record overlay in stage 4, monospace formatting for KQL and JSON, no human figures, 16:9 landscape." width="85%"}
+![PIM activation flow with OrgPath as a first-class audit dimension](images/11-orgpath-in-security-operation-diagram-02-pim-activation-orgpath-audit.png){#fig-11-orgpath-in-security-operations-diagram-02 fig-alt="Top-down five-stage flow diagram showing a PIM eligible-assignment activation with OrgPath as a first-class audit dimension. Stage 1 \"Request\" (top): user alice@corp.com (OrgPath: /Engineering/Platform) requests PIM activation for role Application Administrator. Downward arrow labeled \"submit request\" to Stage 2 \"Approval routing\": workflow scoped by OrgPath — approvers are managers in same or parent OrgPath (/Engineering or /Engineering/Platform). Downward arrow labeled \"approver decision\" to Stage 3 \"Activation\": role activated, JIT-bound; activation event written to audit log. Downward arrow labeled \"emit event\" to Stage 4 \"Audit record payload\": shown as a monospace JSON-style record with fields { user, role, OrgPath, requested_at, approved_by, approver_OrgPath, justification }. Downward arrow labeled \"stream to workspace\" to Stage 5 \"Sentinel ingestion\": audit event flows into Sentinel; OrgPath becomes a queryable dimension. Below stage 5, an inset monospace KQL snippet: | summarize count() by OrgPath, role. Engineering blueprint style, white background, federal navy (#1F3A5F) for stage boxes, teal (#1A9E8F) for OrgPath-scoped routing in stage 2, amber (#D4A017) for the audit record overlay in stage 4, monospace formatting for KQL and JSON, no human figures, 16:9 landscape." width="85%"}
 
 ## Data Availability Prerequisites
 
@@ -289,7 +303,15 @@ CurrentOrgPaths
 
 ## Operationalizing the Query Library
 
-The three queries form a layered operational model. Query One is the governance team's daily situational awareness tool: it shows where in the organizational hierarchy privileged access is being activated, at what volume, and by how many unique identities. It is not an alert query — it produces no incidents and routes to no queue. It is a workbook tile that a governance manager reviews each morning to understand the privileged access activity of the past day in organizational terms.
+The three queries form a layered operational model, each serving a distinct consumer, cadence, and routing destination:
+
+| Query | Consumer | Output | Routes to |
+| :--- | :--- | :--- | :--- |
+| **Query One** — Activations by OrgPath | Governance team | Workbook tile (no incidents) | No queue — daily review |
+| **Query Two** — Sensitive-segment activations | Security operations | High-severity incident | Security operations queue |
+| **Query Three** — Eligibility-vs-position drift | Governance team | Governance finding above threshold | Identity governance queue |
+
+Query One is the governance team's daily situational awareness tool: it shows where in the organizational hierarchy privileged access is being activated, at what volume, and by how many unique identities. It is not an alert query — it produces no incidents and routes to no queue. It is a workbook tile that a governance manager reviews each morning to understand the privileged access activity of the past day in organizational terms.
 
 Query Two is the security operations team's real-time signal for elevated-risk activations. It fires within one hour of a PIM activation from a sensitive segment and creates a high-severity incident requiring analyst review. The analyst's response procedure should include verifying that the activating user's OrgPath entitles them to the role activated, checking the justification string for coherence with the user's expected work, and reviewing the source IP address and device compliance state of the activation session. If all of these checks pass, the incident is closed as informational. If any fails, the incident escalates to the identity risk investigation procedure.
 
