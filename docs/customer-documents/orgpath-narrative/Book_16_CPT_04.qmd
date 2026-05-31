@@ -1,42 +1,52 @@
 ---
 title: "The Shape of the Machine"
-subtitle: "IIS at the Edge, Gitea on the Loopback, One Identity for the Push"
-description: "A narrative portrait of the substrate host: Windows Server 2025, IIS terminating TLS at the edge, Gitea bound to loopback, relational state in Postgres, and the same identity that reads the forest authorizing the commit."
 doc-type: orgpath-narrative-chapter
 audience: [Technical, Customer]
 classification: Controlled
 boundary: GCC-Moderate
 family: orgpath-narrative
-series-order: 04
-status: Published
-canon-source: "src/uiao/canon/adr/adr-041-uiao-git-infrastructure.md"
-parent-book: "Book_16.qmd"
+book: "16"
+series-order: 4
 lifecycle: adopted
 tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
-::: {.callout-note appearance="simple"}
-*Book 16 · Chapter 4 — part of the [OrgPath Narrative](index.qmd) series.*
+# Chapter 4 — The Shape of the Machine
+
+::: {.callout-note}
+## In this chapter
+A narrative portrait of the host whose shape encodes its decisions: Windows
+Server 2025 chosen for operator continuity, IIS alone facing the network,
+Gitea reachable only on the loopback, relational state in PostgreSQL, and the
+quietest decision of all — identity, where the same coordinate that reads the
+forest authorizes the push. This is description, not procedure; the procedure
+has its own home, named in the final chapter.
 :::
 
-# The Shape of the Machine
+## A Description, Not a Procedure
 
 It helps to picture the host, because its shape encodes its decisions. This
 is a description, not a procedure — the procedure has its own home, and the
 final chapter points to it. What follows is the architecture as an operator
 would narrate it while walking a colleague through the rack.
 
+## The Foundation: Windows Server 2025
+
 The foundation is Windows Server 2025, chosen not for novelty but for
 continuity. The federal customer base already runs Active Directory, the
 certificate authority, IIS, and Windows Server at scale, with PowerShell as
-its lingua franca and AppLocker and code-integrity tooling already in hand.
-A Windows-native authority inherits all of that operator competence
-directly, where a Linux alternative would impose a new operational stack on
-a substrate the rest of the architecture assumes is Windows-administered.
-The host is domain-joined to the legacy forest and registered in the modern
-tenant at once — straddling both authorities deliberately, because the
-estate it governs straddles them too.
+its lingua franca and AppLocker and code-integrity tooling already in hand. A
+Windows-native authority inherits all of that operator competence directly,
+where a Linux alternative would impose a new operational stack on a substrate
+the rest of the architecture assumes is Windows-administered. The host is
+domain-joined to the legacy forest and registered in the modern tenant at
+once — straddling both authorities deliberately, because the estate it
+governs straddles them too.
+
+[DIAGRAM-04: Engineering blueprint, white background, 16:9 landscape. A single federal-navy host outline labeled "WINDOWS SERVER 2025 — Tier-0". At its left edge facing the network, a teal block labeled "IIS — TLS :443 (only process on the public interface)". An arrow from IIS crosses inward to a federal-navy block labeled "Gitea — 127.0.0.1:3000 (loopback only)". Below Gitea, three storage cylinders: "D:\\GitRepos (bare object stores)", "Git LFS (large artifacts)", and an off-host cylinder labeled "PostgreSQL (relational state, separate host)". An amber identity badge attached to Gitea reads "gMSA svc-uiao-gitea$ (directory-issued, rotated)". Two inbound operator arrows on the far left labeled "AD LDAPS" and "Entra OIDC (group claims)" converge on IIS. A small amber vault icon labeled "secret store" feeds Gitea. Federal navy #1F3A5F for host and Git service, teal #1A9E8F for the edge and identity flows, amber #D4A017 for identity and secrets, monospace labels, no human figures.]
+
+## One Door at the Edge
 
 At the edge sits IIS, and IIS alone faces the network. It terminates TLS on
 the standard secure port, sets the security headers that a hardened web
@@ -45,32 +55,37 @@ reachable only on the loopback interface, runs Gitea — the Git service
 proper, with its web interface, its API, its issues and pull requests and
 hook machinery. Gitea is never bound to the public interface; the only
 process the outside world can reach is the reverse proxy in front of it.
-This is a deliberate narrowing: one door, watched, logging every
-authenticated principal on every request, feeding the same telemetry
-pipeline as everything else in the estate.
 
-Beneath the Git service is its memory. The repositories — the bare object
-stores that actually hold canon — live on a dedicated data volume with
-tightly scoped permissions, while Gitea's relational state lives in a
-PostgreSQL database on a separate host. Secrets are not pasted into config
-files; they are drawn from a managed secret store under the service's own
-identity. Large binary artifacts have a home too, through the Git LFS server
-the service runs natively, so that the corpus can hold weight without
-bloating its history.
+> One door, watched, logging every authenticated principal on every request,
+> feeding the same telemetry pipeline as everything else in the estate.
 
-The most consequential decision is the quietest one: identity. Gitea does
-not run as a person and does not run as an all-powerful local account. It
-runs as a group-managed service account — a machine identity the directory
-itself issues and rotates, with exactly the rights it needs and no more.
-Operators, meanwhile, never authenticate to the host as the host; they
-authenticate as themselves. Internal staff arrive over secure LDAP against
-the forest, mapped to native identities; contributors who live in the modern
-tenant arrive over OpenID Connect, their group claims flowing in with them.
+## Memory: Repositories, State, Secrets
+
+Beneath the Git service is its memory, and where each kind of state lives is a
+deliberate choice:
+
+| State | Where it lives | Why |
+| :--- | :--- | :--- |
+| Canon (bare object stores) | Dedicated data volume, scoped ACLs | The corpus itself, isolated and permissioned |
+| Relational state | PostgreSQL on a separate host | Keeps the Git service stateless of its database |
+| Large binary artifacts | Git LFS server, native | Weight without bloating history |
+| Secrets | Managed secret store under the service identity | Never pasted into config files |
+
+## The Quietest Decision: Identity
+
+The most consequential decision is the quietest one. Gitea does not run as a
+person and does not run as an all-powerful local account. It runs as a
+group-managed service account — a machine identity the directory itself issues
+and rotates, with exactly the rights it needs and no more. Operators,
+meanwhile, never authenticate to the host as the host; they authenticate as
+themselves. Internal staff arrive over secure LDAP against the forest, mapped
+to native identities; contributors who live in the modern tenant arrive over
+OpenID Connect, their group claims flowing in with them.
+
 The effect is the one the whole series has been building toward: the same
 identity that authorizes a read of the forest authorizes a push to canon.
 There is no second identity bridge to maintain, no parallel account store to
 drift out of sync — the coordinate the enterprise already trusts is the
-coordinate that opens the door.
-
-That door, and what it checks before it opens, is where the architecture
-finally pays off. The next chapter stands at it.
+coordinate that opens the door. That door, and what it checks before it
+opens, is where the architecture finally pays off. The next chapter stands at
+it.
