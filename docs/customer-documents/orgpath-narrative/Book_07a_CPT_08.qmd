@@ -43,89 +43,9 @@ The mechanism that keeps role membership aligned with OrgPath is the same idempo
 
 There are two equivalent ways to land the resolved population on the workspace, and the choice is an implementation detail rather than a doctrinal one. The job can call the Fabric Admin REST API directly, adding and removing role assignments on the workspace by principal; or it can maintain a backing Entra security group whose membership it reconciles from OrgPath, and assign that single group to the workspace role once. The group-backed approach has the advantage that the same group can scope adjacent surfaces and that the workspace role grant itself becomes a stable, auditable single line; the direct-API approach has the advantage of keeping the resolved population visible in the workspace's own membership without an intervening object. Either way the source is the registry and the resolution is by OrgPath; the substrate does not care which projection mechanism a given segment chooses, only that the projection is driven from the canonical hierarchy.
 
-A short, illustrative reconciliation makes the shape concrete. The script below resolves the `Viewer` population for a Finance workspace from OrgPath and converges the workspace's `Viewer` role to match, using representative Fabric Admin REST endpoints; the endpoint paths are marked as illustrative and should be confirmed against current Fabric Admin REST documentation before use.
+A short, illustrative reconciliation makes the shape concrete. A reconciliation script resolves the `Viewer` population for a Finance workspace from OrgPath and converges the workspace's `Viewer` role to match, using representative Fabric Admin REST endpoints; the endpoint paths are marked as illustrative and should be confirmed against current Fabric Admin REST documentation before use.
 
-## PowerShell — Reconcile a Workspace Role From OrgPath (Fabric Admin REST, illustrative)
-
-```powershell
-#Requires -Modules Az.Accounts
-
-<#
-.SYNOPSIS
-    Reconciles a single Fabric workspace role to its OrgPath-derived population.
-
-.DESCRIPTION
-    Resolves the read (Viewer) population for a workspace's owning segment from
-    the OrgTree registry by OrgPath, then converges the workspace's Viewer role
-    membership to match — adding principals the registry says belong, removing
-    those it does not, leaving correct grants untouched. The operation is
-    idempotent: a second run against an already-converged workspace makes no
-    changes.
-
-    The same pattern drives Admin, Member, and Contributor by swapping the
-    resolved population and the role name. The same pattern drives item-level
-    grants by targeting an item endpoint instead of the workspace endpoint.
-
-.NOTES
-    Endpoint paths below are ILLUSTRATIVE. Confirm against current Fabric
-    Admin REST API documentation before use. The OrgTree resolver call is a
-    stand-in for whichever registry interface the segment exposes.
-#>
-param(
-    [Parameter(Mandatory)][string]$WorkspaceId,
-    [Parameter(Mandatory)][string]$OwningOrgPath,   # e.g. "/Root/Finance"
-    [Parameter(Mandatory)][string]$FabricRole       # e.g. "Viewer"
-)
-
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
-$token   = (Get-AzAccessToken -ResourceUrl "https://api.fabric.microsoft.com").Token
-$headers = @{ Authorization = "Bearer $token" }
-$base    = "https://api.fabric.microsoft.com/v1"   # illustrative base
-
-# ---------------------------------------------------------------------------
-# STEP 1: RESOLVE THE OrgPath-DERIVED POPULATION FROM THE OrgTree REGISTRY
-# Branch-inclusive: members at or beneath the owning OrgPath.
-# Resolve-OrgTreePopulation is a stand-in for the segment's registry interface.
-# ---------------------------------------------------------------------------
-$desired = Resolve-OrgTreePopulation -OrgPath $OwningOrgPath -Mode "ReadSet"
-$desiredIds = $desired.PrincipalId | Sort-Object -Unique
-
-# ---------------------------------------------------------------------------
-# STEP 2: READ THE WORKSPACE'S CURRENT ROLE ASSIGNMENTS (illustrative endpoint)
-# ---------------------------------------------------------------------------
-$current = Invoke-RestMethod -Headers $headers `
-    -Uri "$base/admin/workspaces/$WorkspaceId/roleAssignments"
-$currentForRole = $current.value | Where-Object { $_.role -eq $FabricRole }
-$currentIds     = $currentForRole.principal.id | Sort-Object -Unique
-
-# ---------------------------------------------------------------------------
-# STEP 3: CONVERGE — ADD MISSING, REMOVE EXTRA, LEAVE MATCHES ALONE
-# This is the idempotent core: no work when already converged.
-# ---------------------------------------------------------------------------
-$toAdd    = $desiredIds | Where-Object { $_ -notin $currentIds }
-$toRemove = $currentIds | Where-Object { $_ -notin $desiredIds }
-
-foreach ($id in $toAdd) {
-    Invoke-RestMethod -Headers $headers -Method Post `
-        -Uri "$base/admin/workspaces/$WorkspaceId/roleAssignments" `
-        -Body (@{ principal = @{ id = $id }; role = $FabricRole } | ConvertTo-Json)
-    Write-Host "[ADD]    $FabricRole <- $id (OrgPath $OwningOrgPath)"
-}
-
-foreach ($id in $toRemove) {
-    # No registry justification for this grant => DRIFT-PROVENANCE before removal.
-    Write-Host "[DRIFT-PROVENANCE] $FabricRole grant $id has no OrgPath anchor"
-    Invoke-RestMethod -Headers $headers -Method Delete `
-        -Uri "$base/admin/workspaces/$WorkspaceId/roleAssignments/$id"
-    Write-Host "[REMOVE] $FabricRole -> $id"
-}
-
-if (-not $toAdd -and -not $toRemove) {
-    Write-Host "[CONVERGED] $FabricRole on $WorkspaceId already matches $OwningOrgPath"
-}
-```
+That reconciliation script is reproduced in full, set in reduced type for reference, in [Appendix A — Reference PowerShell Scripts](Book_07a_CPT_10.qmd#chapter-8-workspace-role-reconciliation).
 
 ## Item-Level Overrides Without Losing the Org Anchor
 
