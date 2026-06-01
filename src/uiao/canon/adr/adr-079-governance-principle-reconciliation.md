@@ -31,7 +31,7 @@ The 2026-05-22 cross-surface review found three sources making **different claim
 |---|---|---|
 | **Customer Governance OS Executive Brief** | **3**: (1) Single Source of Truth, (2) Canon-anchored evidence, (3) Drift is explicit | Cites `src/uiao/canon/substrate-manifest.yaml` (UIAO_200) as authority — **code is the SSOT** |
 | **Canon `/modernization/` index** | **7**: Deterministic State, Schema Fixity, Provenance Traceability, Drift Resistance, Boundary Enforcement, Two-Brain Execution, Tenant Agnosticism | Narrative prose in `docs/modernization/index.qmd` — not bound to any code/manifest |
-| **OrgPath Narrative ch15** | **1**: "Assessment Before Action" | Operational discipline (don't act without observing first), not a substrate-wide principle |
+| **UIAO OrgPath ch15** | **1**: "Assessment Before Action" | Operational discipline (don't act without observing first), not a substrate-wide principle |
 
 [ADR-076](adr-076-tier-conformance-model.md) noted the conflict and mapped the customer/canon overlap informally — "Customer's SSOT ≈ canon's Deterministic State + Schema Fixity; customer's Drift is explicit ≈ canon's Drift Resistance; customer's Canon-anchored evidence ≈ canon's Provenance Traceability" — but did not name a canonical set or formalize the mapping. Three of the canon's 7 (Boundary Enforcement, Two-Brain Execution, Tenant Agnosticism) had **no customer-side counterpart** and were noted as gaps.
 
@@ -75,7 +75,7 @@ The canon narrative's other 4 principles are not separate — they are partial e
 
 These 4 names are retired from canonical use. The canon `/modernization/` narrative should describe the **substrate's** 3 universal principles using the customer-facing names, with the canon labels listed only as historical aliases in a footnote.
 
-### "Assessment Before Action" (OrgPath Narrative ch15)
+### "Assessment Before Action" (UIAO OrgPath ch15)
 
 Treated as an **operational discipline**, not a substrate-wide principle. It is a corollary of "Drift is explicit" (you cannot remediate what you have not observed) and "Canon-anchored evidence" (action must cite its evidence baseline). Not promoted to first-class principle.
 
@@ -89,7 +89,7 @@ Treated as an **operational discipline**, not a substrate-wide principle. It is 
 
 4. **The "Seven Non-Negotiable Principles" framing is a marketing flourish, not architecture.** Calling 7 things "non-negotiable" sounds strong, but 4 of them were already in the substrate-manifest under different names. The actual non-negotiable substrate contract has always been 3.
 
-5. **OrgPath Narrative ch15's "Assessment Before Action" is good operating advice but not a principle.** It tells you what to *do* (observe before acting), not what *is true* about the system. Substrate principles describe properties of the system; operational disciplines describe practices. Don't conflate them.
+5. **UIAO OrgPath ch15's "Assessment Before Action" is good operating advice but not a principle.** It tells you what to *do* (observe before acting), not what *is true* about the system. Substrate principles describe properties of the system; operational disciplines describe practices. Don't conflate them.
 
 ## Consequences
 

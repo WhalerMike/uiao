@@ -22,7 +22,7 @@ directory-migration canon already covers in isolation: SPN registration
 (LDAP-proxy / Kerberos surface), service account lifecycle (sync-engine
 + orgtree workload identity), certificate-based authentication (PKI),
 and the data-plane bridge into the Azure SSOT stack (OneLake mirroring
-+ Purview registration per the OrgPath Narrative chapter 07a).
++ Purview registration per the UIAO OrgPath chapter 07a).
 
 ## Registered Implementations
 
@@ -68,7 +68,7 @@ and the data-plane bridge into the Azure SSOT stack (OneLake mirroring
 - Side-by-side operation during the migration window: legacy SQL
   instances stay operational; OneLake mirroring or shortcuts surface the
   data in the Fabric workspace governed by the matching Fabric Domain
-  (per OrgPath Narrative chapter 07a)
+  (per UIAO OrgPath chapter 07a)
 - Purview data-map registration with `uiao_orgpath` custom metadata so
   the asset's organizational attribution is queryable in the data plane
 - Optional Azure Arc registration as the post-migration verification
@@ -95,7 +95,7 @@ and the data-plane bridge into the Azure SSOT stack (OneLake mirroring
 7. Optionally mirror the instance into OneLake under the Fabric Domain
    matching the owning OrgPath; register the resulting asset in Purview
    with the `uiao_orgpath` custom metadata field for adaptive-policy
-   scoping per [OrgPath Narrative chapter 07a](../../../../../../docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd)
+   scoping per [UIAO OrgPath chapter 07a](../../../../../../docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd)
 8. Decommission only after at least one full drift cycle confirms zero
    `DRIFT-IDENTITY` and zero `DRIFT-AUTHZ` SPN findings against the
    migrated state

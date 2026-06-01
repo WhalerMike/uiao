@@ -7,7 +7,7 @@ deciders: Michael Stratton
 updated: 2026-06-01
 next_review: 2026-12-01
 review_trigger: A workforce-system-of-record vertical other than the federal OPM HRIT instantiation is onboarded; the inherited OU estate is proposed as a remediation target rather than a decommissioning target; ADR-003 (API-driven inbound provisioning) or ADR-035 (codebook binding) is revised
-impact: 'Establishes that the workforce HR system of record is the authoritative upstream source for the assignment of persons to OrgTree nodes, and that the OrgTree change-request workflow is the governance gate over HR-supplied deltas rather than an independent origin of organizational truth. Resolves the unstated source question left open by the OrgPath Narrative (Book_02 Chapter 3, Book_03 Chapter 4) and the canonical OrgTree specification (UIAO_007). Establishes the doctrine that an inherited Active Directory OU estate that has drifted from the true organizational structure is overlaid by HR-sourced OrgPath and decommissioned, not realigned. Federal scope (OPM HRIT) is one vertical instantiation per ADR-085 and Spec2-D6.1; the source slot is swapped for a commercial HCM in other verticals without architectural change.'
+impact: 'Establishes that the workforce HR system of record is the authoritative upstream source for the assignment of persons to OrgTree nodes, and that the OrgTree change-request workflow is the governance gate over HR-supplied deltas rather than an independent origin of organizational truth. Resolves the unstated source question left open by the UIAO OrgPath (Book_02 Chapter 3, Book_03 Chapter 4) and the canonical OrgTree specification (UIAO_007). Establishes the doctrine that an inherited Active Directory OU estate that has drifted from the true organizational structure is overlaid by HR-sourced OrgPath and decommissioned, not realigned. Federal scope (OPM HRIT) is one vertical instantiation per ADR-085 and Spec2-D6.1; the source slot is swapped for a commercial HCM in other verticals without architectural change.'
 supersedes: null
 superseded_by: null
 classification: Controlled
@@ -27,7 +27,7 @@ This ADR is doctrine. It names the upstream source of organizational truth and f
 
 ## Context
 
-The OrgPath substrate is built on a registry-and-attribute closed loop. OrgTree is the versioned, schema-validated registry of organizational structure; OrgPath is the validated attribute, derived from the registry, stamped on every identity and resource object ([UIAO_007](../UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md); Book_03 of the OrgPath Narrative). The narrative establishes two things very precisely and leaves a third unstated:
+The OrgPath substrate is built on a registry-and-attribute closed loop. OrgTree is the versioned, schema-validated registry of organizational structure; OrgPath is the validated attribute, derived from the registry, stamped on every identity and resource object ([UIAO_007](../UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md); Book_03 of the UIAO OrgPath). The narrative establishes two things very precisely and leaves a third unstated:
 
 1. **The registry is the authority over the attribute.** Authority runs from OrgTree outward to the stamped OrgPath value; individual object edits are not authoritative (Book_02 Chapter 3, "The Hierarchy Itself Must Be a Governed Artifact").
 2. **The change-request workflow governs registry mutation.** Renames, merges, moves, and archivals enter through a reviewed, version-controlled change request (Book_03 Chapters 2 and 4).
@@ -81,7 +81,7 @@ Describing the *source* as inherently federal is a positioning bug under ADR-085
 
 ### Positive
 
-- Resolves the unstated source question in the OrgPath Narrative; Book_02 Chapter 3 and Book_03 Chapter 4 can now name HR as the origin without contradicting the registry-as-authority model.
+- Resolves the unstated source question in the UIAO OrgPath; Book_02 Chapter 3 and Book_03 Chapter 4 can now name HR as the origin without contradicting the registry-as-authority model.
 - Gives the mover lifecycle (Spec2-D2.2) a doctrinal foundation: an OrgPath change event is reliable exactly to the degree the HR→OrgTree integration is reliable, which is now an explicit, governed dependency rather than an implicit assumption.
 - Routes organizations away from a costly OU-remediation project and toward the overlay-and-retire path the substrate was designed for.
 - Keeps the federal OPM HRIT work correctly scoped as a vertical adapter pack, consistent with ADR-085.
@@ -113,4 +113,4 @@ Describing the *source* as inherently federal is a positioning bug under ADR-085
 - Spec2-D3.5 — OrgPath Population Pipeline
 - Spec2-D2.2 — Mover Workflow Specification
 - Spec2-D6.1 — Federal HRIT Integration Runbook
-- OrgPath Narrative — Book_02 Chapter 3, Book_03 Chapter 4, Book_04 Chapters 1 and 9A
+- UIAO OrgPath — Book_02 Chapter 3, Book_03 Chapter 4, Book_04 Chapters 1 and 9A
