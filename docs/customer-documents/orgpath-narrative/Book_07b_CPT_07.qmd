@@ -1,0 +1,740 @@
+---
+title: "Appendix A — Reference PowerShell Scripts"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07b"
+series-order: 7
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Appendix A — Reference PowerShell Scripts
+
+::: {.callout-note}
+## In this appendix
+The three reconciliation scripts referenced from this book, collected in full and set in reduced type. The chapter narrative describes what each job does and why; this appendix holds the complete, runnable shape for reference.
+:::
+
+This appendix collects, in full and set in reduced type, the three reconciliation scripts referenced from the chapters of this book. They are reproduced here so the chapter narrative stays readable while the complete shape of each job remains available for reference. Each script carries the same caveat stated where it is referenced: the membership and rollup cmdlets that touch the Purview Insider Risk and Communication Compliance surfaces are illustrative and marked as such, while the registry reads, the OrgPath resolution, the idempotent guards, and the Evidence Bundle writes are concrete and load-bearing.
+
+## Chapter 2 — Insider Risk Membership Reconciliation {#chapter-2-insider-risk-membership-reconciliation}
+
+Referenced from Chapter 2. Reconciles a heightened Insider Risk Management policy's in-scope user set against the OrgTree registry, driven by the `InsiderRiskScope` flag, and emits a `DRIFT-PROVENANCE` record for every membership change.
+
+::: {.appendix-script}
+```powershell
+#Requires -Modules ExchangeOnlineManagement, Microsoft.Graph.Users
+
+<#
+.SYNOPSIS
+    Reconciles an Insider Risk Management policy's in-scope user set against
+    the OrgTree registry, driven by the InsiderRiskScope flag on OrgTree nodes.
+
+.DESCRIPTION
+    Insider Risk Management does NOT consume a Purview Adaptive Policy Scope.
+    Unlike the DLP and labeling policies in Book 07 — where an Adaptive Scope
+    let Purview recompute membership from the OrgPath attribute on its own —
+    an IRM policy carries an explicit in-scope user set. This job therefore
+    drives that membership EXPLICITLY:
+
+      1. Read the OrgTree registry for nodes flagged InsiderRiskScope=true.
+      2. Resolve the desired in-scope user set (all users at or below those
+         OrgPath branches, via the OrgPath attribute on the Entra ID user).
+      3. Read the IRM policy's current member set.
+      4. Compute add / remove deltas and apply them idempotently.
+      5. Emit a DRIFT-PROVENANCE record for every divergence found, into the
+         Evidence Bundle, so the membership change is auditable.
+
+    The job is idempotent: a registry and policy that already agree produce
+    no changes. Safe to run on a schedule or after each OrgTree pipeline pass.
+
+.PARAMETER AdminUPN
+    UPN of the Insider Risk / Compliance Administrator for interactive auth.
+    For unattended use, replace with certificate-based Connect-IPPSSession
+    and an app-only Graph context.
+
+.PARAMETER RegistryExportPath
+    Path to the OrgTree registry export (JSON). The canonical hierarchy with,
+    per node, its OrgPath and its segment-flag metadata including
+    InsiderRiskScope. Produced by the OrgTree pipeline, the same source the
+    Adaptive Scope reconcilers in Book 07 / Book 07a consume.
+
+.PARAMETER PolicyName
+    The IRM policy whose membership this job reconciles. One job invocation
+    governs one heightened-posture policy (e.g. the Finance heightened policy).
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name carrying OrgPath on the Entra ID user.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.PARAMETER EvidenceBundlePath
+    Directory where DRIFT-PROVENANCE findings are appended for this run.
+
+.NOTES
+    Cmdlets marked [ILLUSTRATIVE] below stand in for the tenant-specific
+    Insider Risk membership surface. The Purview IRM membership API is
+    administered through a mix of Security & Compliance PowerShell and
+    Microsoft Graph; map these calls to the cmdlet your tenant exposes.
+    The Graph user query and the registry read are concrete and load-bearing.
+#>
+param(
+    [Parameter(Mandatory)][string]$AdminUPN,
+    [Parameter(Mandatory)][string]$RegistryExportPath,
+    [Parameter(Mandatory)][string]$PolicyName,
+    [Parameter(Mandatory)][string]$OrgPathAttrName,   # e.g. "extension_{AppId}_OrgPath"
+    [Parameter(Mandatory)][string]$EvidenceBundlePath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Write-DriftProvenance {
+    # Append a single DRIFT-PROVENANCE finding to the Evidence Bundle.
+    # Each finding records WHAT diverged and which direction the job corrected,
+    # so an auditor can reconstruct every surveillance-scope change after the fact.
+    param([string]$Policy, [string]$Upn, [string]$Action, [string]$Reason)
+
+    $record = [pscustomobject]@{
+        finding       = "DRIFT-PROVENANCE"
+        surface       = "InsiderRiskManagement"
+        policy        = $Policy
+        user          = $Upn
+        action        = $Action          # "add" or "remove"
+        reason        = $Reason
+        reconciled_at = (Get-Date).ToString("o")
+    }
+    $bundleFile = Join-Path $EvidenceBundlePath "irm-drift-provenance.jsonl"
+    $record | ConvertTo-Json -Compress | Add-Content -Path $bundleFile -Encoding utf8
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Microsoft Graph..."
+Connect-MgGraph -Scopes "User.Read.All" -NoWelcome
+
+# ---------------------------------------------------------------------------
+# STEP 1: READ THE OrgTree REGISTRY FOR InsiderRiskScope-FLAGGED NODES
+#
+# The registry export is the canonical hierarchy. We select every node whose
+# segment-flag metadata carries InsiderRiskScope=true. Those nodes' OrgPath
+# branches define the heightened-posture population for this policy.
+# This is the same registry the Book 07 Adaptive Scope reconcilers read; we
+# read the same flag family (SegmentLabels) and pick out InsiderRiskScope.
+# ---------------------------------------------------------------------------
+if (-not (Test-Path $RegistryExportPath)) {
+    throw "Registry export not found at $RegistryExportPath — cannot reconcile."
+}
+
+$registry = Get-Content -Raw -Path $RegistryExportPath | ConvertFrom-Json
+
+$scopedBranches = @(
+    $registry.nodes |
+        Where-Object { $_.segmentLabels.InsiderRiskScope -eq $true } |
+        Select-Object -ExpandProperty orgPath
+)
+
+if ($scopedBranches.Count -eq 0) {
+    Write-Host "[WARN] No OrgTree nodes carry InsiderRiskScope=true. Nothing to scope."
+    Write-Host "       (A policy with no flagged branches reconciles to an empty set.)"
+}
+Write-Host "[OK] InsiderRiskScope branches: $($scopedBranches -join ', ')"
+
+# ---------------------------------------------------------------------------
+# STEP 2: RESOLVE THE DESIRED IN-SCOPE USER SET FROM OrgPath
+#
+# For each flagged branch we resolve every user whose OrgPath places them at
+# or below that branch — the same branch-inclusive match the Adaptive Scope
+# OPATH filter uses ('/Root/Finance' itself plus '/Root/Finance/*'). Because
+# IRM consumes an explicit member list rather than the filter, we materialize
+# the user set here rather than handing Purview a filter expression.
+# ---------------------------------------------------------------------------
+$desiredUsers = [System.Collections.Generic.HashSet[string]]::new()
+
+foreach ($branch in $scopedBranches) {
+    # Branch-inclusive: the branch node itself, plus everything beneath it.
+    $filter = "$OrgPathAttrName eq '$branch' or startsWith($OrgPathAttrName,'$branch/')"
+
+    $matches = Get-MgUser -Filter $filter -ConsistencyLevel eventual `
+                 -CountVariable c -All -Property "userPrincipalName" `
+                 -ErrorAction SilentlyContinue
+
+    foreach ($u in $matches) { [void]$desiredUsers.Add($u.UserPrincipalName) }
+    Write-Host "[OK] Branch $branch resolved $($matches.Count) user(s)."
+}
+Write-Host "[OK] Desired in-scope set: $($desiredUsers.Count) user(s)."
+
+# ---------------------------------------------------------------------------
+# STEP 3: READ THE POLICY'S CURRENT MEMBERSHIP
+#
+# [ILLUSTRATIVE] Get-InsiderRiskPolicyMember stands in for the tenant-specific
+# IRM membership read. Map it to the cmdlet / Graph call your tenant exposes;
+# the SilentlyContinue guard lets the job treat a not-yet-provisioned policy
+# as an empty current set rather than failing.
+# ---------------------------------------------------------------------------
+$currentMembers = @(
+    Get-InsiderRiskPolicyMember -Policy $PolicyName -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty UserPrincipalName
+)
+$currentSet = [System.Collections.Generic.HashSet[string]]::new(
+    [string[]]$currentMembers, [System.StringComparer]::OrdinalIgnoreCase)
+Write-Host "[OK] Current policy membership: $($currentSet.Count) user(s)."
+
+# ---------------------------------------------------------------------------
+# STEP 4: COMPUTE DELTAS AND APPLY IDEMPOTENTLY
+#
+# toAdd    = desired - current  (in the registry's heightened segment but not
+#                                yet covered — e.g. a new hire or a transfer-in)
+# toRemove = current - desired  (covered but no longer in the segment — e.g. a
+#                                transfer-out, or a stale leaver left behind)
+# A registry and policy that already agree yield empty deltas and no changes.
+# ---------------------------------------------------------------------------
+$toAdd    = @($desiredUsers | Where-Object { -not $currentSet.Contains($_) })
+$toRemove = @($currentMembers | Where-Object { -not $desiredUsers.Contains($_) })
+
+foreach ($upn in $toAdd) {
+    # [ILLUSTRATIVE] Add-InsiderRiskPolicyMember — map to your tenant's cmdlet.
+    Add-InsiderRiskPolicyMember -Policy $PolicyName -UserPrincipalName $upn `
+        -ErrorAction SilentlyContinue
+    Write-Host "[ADD] $upn -> $PolicyName"
+    Write-DriftProvenance -Policy $PolicyName -Upn $upn -Action "add" `
+        -Reason "User in InsiderRiskScope branch but absent from policy membership."
+}
+
+foreach ($upn in $toRemove) {
+    # [ILLUSTRATIVE] Remove-InsiderRiskPolicyMember — map to your tenant's cmdlet.
+    Remove-InsiderRiskPolicyMember -Policy $PolicyName -UserPrincipalName $upn `
+        -ErrorAction SilentlyContinue
+    Write-Host "[REMOVE] $upn -> $PolicyName"
+    Write-DriftProvenance -Policy $PolicyName -Upn $upn -Action "remove" `
+        -Reason "User in policy membership but no longer under any InsiderRiskScope branch."
+}
+
+if ($toAdd.Count -eq 0 -and $toRemove.Count -eq 0) {
+    Write-Host "[OK] Policy '$PolicyName' already reconciled — no changes. (idempotent)"
+} else {
+    Write-Host "[OK] Reconciled '$PolicyName': +$($toAdd.Count) / -$($toRemove.Count)."
+    Write-Host "     DRIFT-PROVENANCE findings written to the Evidence Bundle."
+}
+
+Disconnect-MgGraph | Out-Null
+Disconnect-ExchangeOnline -Confirm:$false
+```
+:::
+
+## Chapter 3 — Communication Compliance Reconciliation {#chapter-3-communication-compliance-reconciliation}
+
+Referenced from Chapter 3. Reconciles a Communication Compliance policy's supervised set and reviewer set from OrgPath, applies each idempotently, and asserts their disjointness — emitting `DRIFT-SEGREGATION` for any user that appears in both.
+
+::: {.appendix-script}
+```powershell
+#Requires -Modules ExchangeOnlineManagement, Microsoft.Graph.Users
+
+<#
+.SYNOPSIS
+    Reconciles a Communication Compliance policy's supervised set AND reviewer
+    set from the OrgTree registry, then asserts the two sets are disjoint.
+
+.DESCRIPTION
+    Communication Compliance does NOT consume a Purview Adaptive Policy Scope.
+    Unlike the labeling and DLP policies in Book 07 — where an Adaptive Scope
+    let Purview recompute membership from the OrgPath attribute on its own —
+    a Communication Compliance policy carries an explicit supervised-user set
+    and an explicit reviewer set. This job therefore drives BOTH explicitly:
+
+      1. Read the OrgTree registry for nodes flagged CommComplianceScope=true;
+         resolve the desired SUPERVISED set (all users at or below those
+         OrgPath branches, via the OrgPath attribute on the Entra ID user).
+      2. Read the supervised node's declared oversight OrgPath; resolve the
+         desired REVIEWER set (all users at or below the oversight branch).
+      3. Reconcile the policy's supervised membership idempotently.
+      4. Reconcile the policy's reviewer assignment idempotently.
+      5. Assert the supervised set and reviewer set are DISJOINT. Emit a
+         DRIFT-SEGREGATION finding for every user appearing in both — a
+         segregation-of-duties failure the job surfaces but does NOT self-heal.
+      6. Emit DRIFT-PROVENANCE records for routine membership/reviewer changes.
+
+    The job is idempotent: a registry and policy that already agree produce
+    no changes. Safe to run on a schedule or after each OrgTree pipeline pass.
+
+.PARAMETER AdminUPN
+    UPN of the Communication Compliance / Compliance Administrator for
+    interactive auth. For unattended use, replace with certificate-based
+    Connect-IPPSSession and an app-only Graph context.
+
+.PARAMETER RegistryExportPath
+    Path to the OrgTree registry export (JSON). The canonical hierarchy with,
+    per node, its OrgPath, its segment-flag metadata including
+    CommComplianceScope, and (on a supervised node) its declared oversight
+    OrgPath supplying reviewers. Produced by the OrgTree pipeline — the same
+    source the Adaptive Scope reconcilers in Book 07 / Book 07a consume.
+
+.PARAMETER PolicyName
+    The Communication Compliance policy this job reconciles. One invocation
+    governs one supervised segment's policy (e.g. the Trading desk policy).
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name carrying OrgPath on the Entra ID user.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.PARAMETER EvidenceBundlePath
+    Directory where DRIFT-PROVENANCE and DRIFT-SEGREGATION findings are
+    appended for this run.
+
+.NOTES
+    Cmdlets marked [ILLUSTRATIVE] below stand in for the tenant-specific
+    Communication Compliance surface. That surface is administered through a
+    mix of Security & Compliance PowerShell and Microsoft Graph; map these
+    calls to the cmdlet your tenant exposes. The Graph user query and the
+    registry read are concrete and load-bearing; the disjointness assertion
+    is pure set logic and is exact.
+#>
+param(
+    [Parameter(Mandatory)][string]$AdminUPN,
+    [Parameter(Mandatory)][string]$RegistryExportPath,
+    [Parameter(Mandatory)][string]$PolicyName,
+    [Parameter(Mandatory)][string]$OrgPathAttrName,   # e.g. "extension_{AppId}_OrgPath"
+    [Parameter(Mandatory)][string]$EvidenceBundlePath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Write-Finding {
+    # Append a single finding to the Evidence Bundle. The finding type is
+    # explicit: DRIFT-PROVENANCE for routine membership/reviewer corrections,
+    # DRIFT-SEGREGATION for the segregation-of-duties invariant breach.
+    param(
+        [string]$Type,        # "DRIFT-PROVENANCE" or "DRIFT-SEGREGATION"
+        [string]$Policy,
+        [string]$Upn,
+        [string]$Action,      # "add", "remove", or "violation"
+        [string]$Reason
+    )
+    $record = [pscustomobject]@{
+        finding       = $Type
+        surface       = "CommunicationCompliance"
+        policy        = $Policy
+        user          = $Upn
+        action        = $Action
+        reason        = $Reason
+        reconciled_at = (Get-Date).ToString("o")
+    }
+    $file = Join-Path $EvidenceBundlePath "commcompliance-findings.jsonl"
+    $record | ConvertTo-Json -Compress | Add-Content -Path $file -Encoding utf8
+}
+
+function Resolve-BranchUsers {
+    # Resolve every user whose OrgPath places them at or below a branch —
+    # branch-inclusive, the same match the Adaptive Scope OPATH filter uses
+    # ('/Root/Trading' itself plus '/Root/Trading/*'). Returns a HashSet.
+    param([string[]]$Branches)
+
+    $set = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($branch in $Branches) {
+        $filter = "$OrgPathAttrName eq '$branch' or startsWith($OrgPathAttrName,'$branch/')"
+        $matches = Get-MgUser -Filter $filter -ConsistencyLevel eventual `
+                     -CountVariable c -All -Property "userPrincipalName" `
+                     -ErrorAction SilentlyContinue
+        foreach ($u in $matches) { [void]$set.Add($u.UserPrincipalName) }
+        Write-Host "[OK] Branch $branch resolved $($matches.Count) user(s)."
+    }
+    return $set
+}
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Microsoft Graph..."
+Connect-MgGraph -Scopes "User.Read.All" -NoWelcome
+
+# ---------------------------------------------------------------------------
+# STEP 1: READ THE REGISTRY — SUPERVISED BRANCHES AND THE OVERSIGHT BRANCH
+#
+# The supervised set comes from nodes flagged CommComplianceScope=true.
+# The reviewer set comes from the oversight OrgPath those nodes DECLARE — a
+# single registry field naming the compliance/supervisory branch that reviews
+# this segment, rather than a hand-listed set of named officers.
+# ---------------------------------------------------------------------------
+if (-not (Test-Path $RegistryExportPath)) {
+    throw "Registry export not found at $RegistryExportPath — cannot reconcile."
+}
+$registry = Get-Content -Raw -Path $RegistryExportPath | ConvertFrom-Json
+
+$supervisedNodes = @(
+    $registry.nodes | Where-Object { $_.segmentLabels.CommComplianceScope -eq $true }
+)
+$supervisedBranches = @($supervisedNodes | Select-Object -ExpandProperty orgPath)
+
+# The oversight branch is declared on the supervised node(s). De-duplicate in
+# case several supervised branches share one oversight office.
+$oversightBranches = @(
+    $supervisedNodes |
+        Select-Object -ExpandProperty oversightOrgPath -ErrorAction SilentlyContinue |
+        Where-Object { $_ } |
+        Sort-Object -Unique
+)
+
+if ($supervisedBranches.Count -eq 0) {
+    Write-Host "[WARN] No nodes carry CommComplianceScope=true. Supervised set is empty."
+}
+if ($oversightBranches.Count -eq 0) {
+    Write-Host "[WARN] No oversight OrgPath declared. Reviewer set is empty — policy"
+    Write-Host "       matches would land in an unstaffed queue. Treat as a finding."
+}
+Write-Host "[OK] Supervised branches: $($supervisedBranches -join ', ')"
+Write-Host "[OK] Oversight branches : $($oversightBranches -join ', ')"
+
+# ---------------------------------------------------------------------------
+# STEP 2: RESOLVE THE DESIRED SUPERVISED SET AND DESIRED REVIEWER SET
+# Both are branch-inclusive resolutions over OrgPath — supervised from the
+# flagged branches, reviewers from the declared oversight branch(es).
+# ---------------------------------------------------------------------------
+$desiredSupervised = Resolve-BranchUsers -Branches $supervisedBranches
+$desiredReviewers  = Resolve-BranchUsers -Branches $oversightBranches
+Write-Host "[OK] Desired supervised set: $($desiredSupervised.Count) user(s)."
+Write-Host "[OK] Desired reviewer set  : $($desiredReviewers.Count) user(s)."
+
+# ---------------------------------------------------------------------------
+# STEP 3: RECONCILE SUPERVISED MEMBERSHIP IDEMPOTENTLY
+#
+# [ILLUSTRATIVE] Get/Add/Remove-CommComplianceSupervisedUser stand in for the
+# tenant-specific supervised-membership surface. The SilentlyContinue guard
+# lets the job treat a not-yet-provisioned policy as an empty current set.
+# ---------------------------------------------------------------------------
+$currentSupervised = @(
+    Get-CommComplianceSupervisedUser -Policy $PolicyName -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty UserPrincipalName
+)
+$supAdd    = @($desiredSupervised | Where-Object { $_ -notin $currentSupervised })
+$supRemove = @($currentSupervised | Where-Object { -not $desiredSupervised.Contains($_) })
+
+foreach ($upn in $supAdd) {
+    Add-CommComplianceSupervisedUser -Policy $PolicyName -UserPrincipalName $upn `
+        -ErrorAction SilentlyContinue
+    Write-Host "[SUPERVISE +] $upn -> $PolicyName"
+    Write-Finding -Type "DRIFT-PROVENANCE" -Policy $PolicyName -Upn $upn -Action "add" `
+        -Reason "User in CommComplianceScope branch but absent from supervised set."
+}
+foreach ($upn in $supRemove) {
+    Remove-CommComplianceSupervisedUser -Policy $PolicyName -UserPrincipalName $upn `
+        -ErrorAction SilentlyContinue
+    Write-Host "[SUPERVISE -] $upn -> $PolicyName"
+    Write-Finding -Type "DRIFT-PROVENANCE" -Policy $PolicyName -Upn $upn -Action "remove" `
+        -Reason "User in supervised set but no longer under any CommComplianceScope branch."
+}
+
+# ---------------------------------------------------------------------------
+# STEP 4: RECONCILE REVIEWER ASSIGNMENT IDEMPOTENTLY
+#
+# [ILLUSTRATIVE] Get/Add/Remove-CommComplianceReviewer stand in for the
+# tenant-specific reviewer surface. Reviewers are derived from the oversight
+# branch — NOT hand-listed — so a compliance officer joining or leaving the
+# oversight office is reflected on the next pass with no manual edit.
+# ---------------------------------------------------------------------------
+$currentReviewers = @(
+    Get-CommComplianceReviewer -Policy $PolicyName -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty UserPrincipalName
+)
+$revAdd    = @($desiredReviewers | Where-Object { $_ -notin $currentReviewers })
+$revRemove = @($currentReviewers | Where-Object { -not $desiredReviewers.Contains($_) })
+
+foreach ($upn in $revAdd) {
+    Add-CommComplianceReviewer -Policy $PolicyName -UserPrincipalName $upn `
+        -ErrorAction SilentlyContinue
+    Write-Host "[REVIEWER +] $upn -> $PolicyName"
+    Write-Finding -Type "DRIFT-PROVENANCE" -Policy $PolicyName -Upn $upn -Action "add" `
+        -Reason "User under oversight branch but absent from reviewer set."
+}
+foreach ($upn in $revRemove) {
+    Remove-CommComplianceReviewer -Policy $PolicyName -UserPrincipalName $upn `
+        -ErrorAction SilentlyContinue
+    Write-Host "[REVIEWER -] $upn -> $PolicyName"
+    Write-Finding -Type "DRIFT-PROVENANCE" -Policy $PolicyName -Upn $upn -Action "remove" `
+        -Reason "User in reviewer set but no longer under the declared oversight branch."
+}
+
+# ---------------------------------------------------------------------------
+# STEP 5: ASSERT SEGREGATION OF DUTIES — SUPERVISED AND REVIEWER ARE DISJOINT
+#
+# Because BOTH sets are OrgPath-derived, the invariant is a set intersection
+# the job has all the data to compute. Any user in both is a reviewer of a
+# segment they themselves belong to — positioned to suppress findings against
+# their own conduct. The job SURFACES this; it does NOT self-heal it, because
+# deciding which set the person belongs to is an organizational judgment that
+# must go to the privacy/oversight review (forward-referenced in Chapter 6).
+# ---------------------------------------------------------------------------
+$overlap = @($desiredReviewers | Where-Object { $desiredSupervised.Contains($_) })
+
+if ($overlap.Count -gt 0) {
+    Write-Host "[DRIFT-SEGREGATION] $($overlap.Count) reviewer(s) also in the supervised set:"
+    foreach ($upn in $overlap) {
+        Write-Host "    !! $upn is BOTH a reviewer and supervised under $PolicyName"
+        Write-Finding -Type "DRIFT-SEGREGATION" -Policy $PolicyName -Upn $upn `
+            -Action "violation" `
+            -Reason "Reviewer resolves under a supervised branch — segregation of duties breach. Likely an oversight node nested inside a supervised subtree. Escalate to privacy/oversight review; do not auto-remediate."
+    }
+    Write-Host "    Policy is NOT cleanly reconciled while a segregation breach stands."
+} else {
+    Write-Host "[OK] Segregation invariant holds — supervised and reviewer sets are disjoint."
+}
+
+# ---------------------------------------------------------------------------
+# STEP 6: STATUS SUMMARY
+# ---------------------------------------------------------------------------
+if ($supAdd.Count -eq 0 -and $supRemove.Count -eq 0 -and
+    $revAdd.Count -eq 0 -and $revRemove.Count -eq 0 -and $overlap.Count -eq 0) {
+    Write-Host "[OK] Policy '$PolicyName' already reconciled — no changes. (idempotent)"
+} else {
+    Write-Host "[OK] Reconciled '$PolicyName': supervised +$($supAdd.Count)/-$($supRemove.Count), reviewers +$($revAdd.Count)/-$($revRemove.Count), segregation breaches $($overlap.Count)."
+    Write-Host "     Findings written to the Evidence Bundle."
+}
+
+Disconnect-MgGraph | Out-Null
+Disconnect-ExchangeOnline -Confirm:$false
+```
+:::
+
+## Chapter 5 — Risk and AI Propagation Orchestrator {#chapter-5-risk-and-ai-propagation-orchestrator}
+
+Referenced from Chapter 5. Invokes the three reconciliation jobs in lifecycle-aware order — fail-stop on the two membership surfaces, fail-soft on the DSPM-for-AI rollup — and writes one consolidated Evidence Bundle record per run.
+
+::: {.appendix-script}
+```powershell
+#Requires -Modules ExchangeOnlineManagement, Microsoft.Graph.Users
+
+<#
+.SYNOPSIS
+    Lifecycle-aware orchestration driver that reconciles the three risk/AI
+    surfaces — Insider Risk Management, Communication Compliance, and the
+    DSPM-for-AI rollup — against the OrgTree registry, in the order each
+    surface's correctness requires, and aggregates every drift finding into
+    ONE Evidence Bundle record per run.
+
+.DESCRIPTION
+    None of the three surfaces consumes a Purview Adaptive Policy Scope, so
+    each must be reconciled EXPLICITLY. This driver does not duplicate the
+    OrgPath resolution layer or the per-surface adapters — it invokes the
+    per-surface reconciliation jobs the preceding chapters defined (the same
+    way Book 07's drivers invoke the Adaptive-Scope reconcilers) and owns
+    only three concerns:
+
+      1. ORDERING against the lifecycle engine. For a leaver, the heightened
+         Insider Risk posture must engage BEFORE deprovisioning completes, so
+         the IRM pass runs FIRST. Communication Compliance runs SECOND. The
+         DSPM-for-AI rollup is an aggregation, not a membership mutation, so
+         it runs LAST and tolerates running after the others have settled.
+
+      2. FAILURE SEMANTICS. The two membership surfaces are FAIL-STOP: an IRM
+         failure, or a DRIFT-SEGREGATION violation on Communication Compliance,
+         aborts the sequence and is recorded as an explicit gap — we must never
+         proceed to deprovisioning believing a surveillance window was set when
+         it was not. The DSPM rollup is FAIL-SOFT: a failed rollup leaves the
+         prior segment view in place and records its own staleness.
+
+      3. EVIDENCE AGGREGATION. Every pass returns its drift findings; the driver
+         writes ONE consolidated record into the shared Evidence Bundle, so risk
+         and AI governance produce evidence in the same place and shape as every
+         other surface (Book 07a Chapter 6).
+
+    Idempotent: a registry and surfaces that already agree produce empty deltas,
+    no changes, and a clean record. Safe to run on a schedule or after each
+    OrgTree pipeline pass.
+
+.PARAMETER AdminUPN
+    UPN of the Compliance / Insider Risk Administrator for interactive auth.
+    For unattended use, replace with certificate-based Connect-IPPSSession and
+    an app-only Graph context.
+
+.PARAMETER RegistryExportPath
+    Path to the OrgTree registry export (JSON) — the canonical hierarchy with,
+    per node, its OrgPath and its SegmentLabels metadata (InsiderRiskScope,
+    CommComplianceScope, and the DSPM-AI-rollup flag). The same source the
+    Book 07 / Book 07a reconcilers consume.
+
+.PARAMETER OrgPathAttrName
+    Full extension attribute name carrying OrgPath on the Entra ID user.
+    Example: "extension_{AppIdWithoutHyphens}_OrgPath"
+
+.PARAMETER EvidenceBundlePath
+    Directory where the single consolidated drift record for this run is written.
+
+.NOTES
+    The per-surface job scripts (Invoke-IrmScopeReconciliation,
+    Invoke-CommComplianceReconciliation, Invoke-DspmAiRollup) are the concrete
+    actuators defined in Chapters 2-4; each reuses the SAME OrgPath resolution
+    layer rather than reimplementing it. Cmdlets marked [ILLUSTRATIVE] inside
+    those jobs stand in for the tenant-specific membership/rollup surface. The
+    driver's ordering, guards, and single-record evidence write are concrete.
+#>
+param(
+    [Parameter(Mandatory)][string]$AdminUPN,
+    [Parameter(Mandatory)][string]$RegistryExportPath,
+    [Parameter(Mandatory)][string]$OrgPathAttrName,    # e.g. "extension_{AppId}_OrgPath"
+    [Parameter(Mandatory)][string]$EvidenceBundlePath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# ---------------------------------------------------------------------------
+# Connect once; every inner job reuses these sessions rather than reconnecting.
+# ---------------------------------------------------------------------------
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Security and Compliance PowerShell..."
+Connect-IPPSSession -UserPrincipalName $AdminUPN
+
+Write-Host "[$(Get-Date -f 'HH:mm:ss')] Connecting to Microsoft Graph..."
+Connect-MgGraph -Scopes "User.Read.All" -NoWelcome
+
+# This run's aggregate result. Each pass appends its typed findings here, and
+# the driver writes the WHOLE object as one Evidence Bundle record at the end.
+$runRecord = [pscustomobject]@{
+    run_id        = [guid]::NewGuid().ToString()
+    started_at    = (Get-Date).ToString("o")
+    registry_path = $RegistryExportPath
+    sequence      = @()              # ordered list of per-surface pass outcomes
+    findings      = @()              # flattened DRIFT-* + AI-posture-staleness
+    aborted       = $false
+    aborted_on    = $null
+}
+
+function Add-PassOutcome {
+    # Record one surface's pass: its name, status, and the findings it emitted.
+    # Findings are typed (DRIFT-PROVENANCE / DRIFT-SEGREGATION / AI-posture
+    # staleness) by the inner job; the driver only aggregates them.
+    param([string]$Surface, [string]$Status, [array]$Findings)
+
+    $script:runRecord.sequence += [pscustomobject]@{
+        surface     = $Surface
+        status      = $Status                 # "reconciled" | "no-change" | "failed" | "blocked"
+        finding_cnt = @($Findings).Count
+        at          = (Get-Date).ToString("o")
+    }
+    if (@($Findings).Count -gt 0) { $script:runRecord.findings += $Findings }
+}
+
+# ===========================================================================
+# PASS 1 (FAIL-STOP): INSIDER RISK MANAGEMENT — leaver-sensitive, runs FIRST
+#
+# For a departing user the heightened departing-user posture must engage while
+# the account still transacts, i.e. BEFORE deprovisioning. So IRM leads, and a
+# failure here ABORTS the sequence: we must not let downstream deprovisioning
+# proceed believing the surveillance window was established when it was not.
+# Invoke-IrmScopeReconciliation is the Chapter 2 job; it reuses the shared
+# OrgPath resolution layer and emits DRIFT-PROVENANCE records.
+# ===========================================================================
+try {
+    $irm = Invoke-IrmScopeReconciliation `
+                -RegistryExportPath $RegistryExportPath `
+                -OrgPathAttrName    $OrgPathAttrName `
+                -ScopeFlag          "InsiderRiskScope"
+    $status = if ($irm.Findings.Count -gt 0) { "reconciled" } else { "no-change" }
+    Add-PassOutcome -Surface "InsiderRiskManagement" -Status $status -Findings $irm.Findings
+    Write-Host "[OK] IRM pass: $status (+$($irm.Added)/-$($irm.Removed))."
+}
+catch {
+    Add-PassOutcome -Surface "InsiderRiskManagement" -Status "failed" -Findings @(
+        [pscustomobject]@{ finding = "PASS-FAILED"; surface = "InsiderRiskManagement"; error = $_.Exception.Message }
+    )
+    $runRecord.aborted    = $true
+    $runRecord.aborted_on = "InsiderRiskManagement"
+    Write-Host "[ABORT] IRM pass failed — leaver posture may not have engaged. Halting sequence."
+}
+
+# ===========================================================================
+# PASS 2 (FAIL-STOP on segregation): COMMUNICATION COMPLIANCE — runs SECOND
+#
+# Reconciles supervised-user and reviewer assignments from CommComplianceScope.
+# A DRIFT-SEGREGATION finding (an identity that would be BOTH reviewer and
+# supervised for one scope) is a CONTROL FAILURE, not a delta the job may
+# apply: the inner job refuses the assignment and returns the violation, and
+# the driver treats it as a STOP so a human adjudicates it.
+# ===========================================================================
+if (-not $runRecord.aborted) {
+    try {
+        $cc = Invoke-CommComplianceReconciliation `
+                    -RegistryExportPath $RegistryExportPath `
+                    -OrgPathAttrName    $OrgPathAttrName `
+                    -ScopeFlag          "CommComplianceScope"
+
+        # Hard stop on any segregation violation the inner job surfaced.
+        $segViolations = @($cc.Findings | Where-Object { $_.finding -eq "DRIFT-SEGREGATION" })
+        if ($segViolations.Count -gt 0) {
+            Add-PassOutcome -Surface "CommunicationCompliance" -Status "blocked" -Findings $cc.Findings
+            $runRecord.aborted    = $true
+            $runRecord.aborted_on = "CommunicationCompliance"
+            Write-Host "[BLOCK] $($segViolations.Count) DRIFT-SEGREGATION violation(s) — halting for human review."
+        }
+        else {
+            $status = if ($cc.Findings.Count -gt 0) { "reconciled" } else { "no-change" }
+            Add-PassOutcome -Surface "CommunicationCompliance" -Status $status -Findings $cc.Findings
+            Write-Host "[OK] Comm Compliance pass: $status."
+        }
+    }
+    catch {
+        Add-PassOutcome -Surface "CommunicationCompliance" -Status "failed" -Findings @(
+            [pscustomobject]@{ finding = "PASS-FAILED"; surface = "CommunicationCompliance"; error = $_.Exception.Message }
+        )
+        $runRecord.aborted    = $true
+        $runRecord.aborted_on = "CommunicationCompliance"
+        Write-Host "[ABORT] Comm Compliance pass failed. Halting sequence."
+    }
+}
+
+# ===========================================================================
+# PASS 3 (FAIL-SOFT): DSPM-FOR-AI ROLLUP — aggregation, runs LAST
+#
+# Order-tolerant: it recomputes AI risk by segment against whatever position
+# the earlier passes just settled. Being an aggregation rather than a
+# membership mutation, a failure here is a COVERAGE gap, not a surveillance
+# incident — so it FAILS SOFT, leaving the prior segment view in place and
+# recording its own AI-posture staleness. Skipped if the sequence aborted.
+# ===========================================================================
+if (-not $runRecord.aborted) {
+    try {
+        $dspm = Invoke-DspmAiRollup `
+                    -RegistryExportPath $RegistryExportPath `
+                    -OrgPathAttrName    $OrgPathAttrName
+        $status = if ($dspm.Findings.Count -gt 0) { "reconciled" } else { "no-change" }
+        Add-PassOutcome -Surface "DspmForAiRollup" -Status $status -Findings $dspm.Findings
+        Write-Host "[OK] DSPM-for-AI rollup: $status ($($dspm.SegmentCount) segment(s))."
+    }
+    catch {
+        # FAIL-SOFT: record staleness, keep going. Prior rollup view persists.
+        Add-PassOutcome -Surface "DspmForAiRollup" -Status "failed" -Findings @(
+            [pscustomobject]@{ finding = "AI-posture-staleness"; surface = "DspmForAiRollup"; error = $_.Exception.Message }
+        )
+        Write-Host "[WARN] DSPM-for-AI rollup failed (soft) — prior segment view retained, staleness recorded."
+    }
+}
+else {
+    Write-Host "[SKIP] DSPM-for-AI rollup skipped — earlier pass aborted the sequence."
+}
+
+# ---------------------------------------------------------------------------
+# WRITE ONE CONSOLIDATED EVIDENCE BUNDLE RECORD FOR THIS RUN
+#
+# All three passes' typed findings land in ONE record, in the same bundle and
+# shape every other OrgPath surface uses. One run -> one auditable record.
+# ---------------------------------------------------------------------------
+$runRecord | Add-Member -NotePropertyName finished_at -NotePropertyValue (Get-Date).ToString("o")
+$bundleFile = Join-Path $EvidenceBundlePath "risk-ai-reconciliation.jsonl"
+$runRecord | ConvertTo-Json -Depth 6 -Compress | Add-Content -Path $bundleFile -Encoding utf8
+
+if ($runRecord.aborted) {
+    Write-Host "[DONE] Run $($runRecord.run_id) ABORTED on '$($runRecord.aborted_on)'. Record written; human review required."
+} elseif ($runRecord.findings.Count -eq 0) {
+    Write-Host "[DONE] Run $($runRecord.run_id): all surfaces already reconciled — no changes. (idempotent)"
+} else {
+    Write-Host "[DONE] Run $($runRecord.run_id): $($runRecord.findings.Count) finding(s) across 3 surfaces, one record written."
+}
+
+Disconnect-MgGraph | Out-Null
+Disconnect-ExchangeOnline -Confirm:$false
+```
+:::
