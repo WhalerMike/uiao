@@ -1,0 +1,160 @@
+---
+title: "Appendix A — Reference PowerShell Scripts"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07a"
+series-order: 10
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Appendix A — Reference PowerShell Scripts
+
+::: {.callout-note}
+## In this appendix
+The two data-plane reconciliation scripts referenced from this book, collected in full and set in reduced type. The chapter narrative describes what each job does and why; this appendix holds the complete, runnable shape for reference.
+:::
+
+This appendix collects, in full and set in reduced type, the two data-plane reconciliation scripts referenced from this book. They are reproduced here so the chapter narrative stays readable while the complete shape of each job remains available for reference. The Fabric Admin REST endpoints they call are illustrative and marked as such; the registry reads, the OrgPath resolution, the idempotent guards, and the Evidence Bundle writes are concrete and load-bearing.
+
+## Chapter 8 — Workspace Role Reconciliation {#chapter-8-workspace-role-reconciliation}
+
+Referenced from Chapter 8. Resolves the `Viewer` population for a workspace from OrgPath and converges the workspace's `Viewer` role to match, via representative Fabric Admin REST endpoints (marked illustrative).
+
+::: {.appendix-script}
+```powershell
+#Requires -Modules Az.Accounts
+
+<#
+.SYNOPSIS
+    Reconciles a single Fabric workspace role to its OrgPath-derived population.
+
+.DESCRIPTION
+    Resolves the read (Viewer) population for a workspace's owning segment from
+    the OrgTree registry by OrgPath, then converges the workspace's Viewer role
+    membership to match — adding principals the registry says belong, removing
+    those it does not, leaving correct grants untouched. The operation is
+    idempotent: a second run against an already-converged workspace makes no
+    changes.
+
+    The same pattern drives Admin, Member, and Contributor by swapping the
+    resolved population and the role name. The same pattern drives item-level
+    grants by targeting an item endpoint instead of the workspace endpoint.
+
+.NOTES
+    Endpoint paths below are ILLUSTRATIVE. Confirm against current Fabric
+    Admin REST API documentation before use. The OrgTree resolver call is a
+    stand-in for whichever registry interface the segment exposes.
+#>
+param(
+    [Parameter(Mandatory)][string]$WorkspaceId,
+    [Parameter(Mandatory)][string]$OwningOrgPath,   # e.g. "/Root/Finance"
+    [Parameter(Mandatory)][string]$FabricRole       # e.g. "Viewer"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$token   = (Get-AzAccessToken -ResourceUrl "https://api.fabric.microsoft.com").Token
+$headers = @{ Authorization = "Bearer $token" }
+$base    = "https://api.fabric.microsoft.com/v1"   # illustrative base
+
+# ---------------------------------------------------------------------------
+# STEP 1: RESOLVE THE OrgPath-DERIVED POPULATION FROM THE OrgTree REGISTRY
+# Branch-inclusive: members at or beneath the owning OrgPath.
+# Resolve-OrgTreePopulation is a stand-in for the segment's registry interface.
+# ---------------------------------------------------------------------------
+$desired = Resolve-OrgTreePopulation -OrgPath $OwningOrgPath -Mode "ReadSet"
+$desiredIds = $desired.PrincipalId | Sort-Object -Unique
+
+# ---------------------------------------------------------------------------
+# STEP 2: READ THE WORKSPACE'S CURRENT ROLE ASSIGNMENTS (illustrative endpoint)
+# ---------------------------------------------------------------------------
+$current = Invoke-RestMethod -Headers $headers `
+    -Uri "$base/admin/workspaces/$WorkspaceId/roleAssignments"
+$currentForRole = $current.value | Where-Object { $_.role -eq $FabricRole }
+$currentIds     = $currentForRole.principal.id | Sort-Object -Unique
+
+# ---------------------------------------------------------------------------
+# STEP 3: CONVERGE — ADD MISSING, REMOVE EXTRA, LEAVE MATCHES ALONE
+# This is the idempotent core: no work when already converged.
+# ---------------------------------------------------------------------------
+$toAdd    = $desiredIds | Where-Object { $_ -notin $currentIds }
+$toRemove = $currentIds | Where-Object { $_ -notin $desiredIds }
+
+foreach ($id in $toAdd) {
+    Invoke-RestMethod -Headers $headers -Method Post `
+        -Uri "$base/admin/workspaces/$WorkspaceId/roleAssignments" `
+        -Body (@{ principal = @{ id = $id }; role = $FabricRole } | ConvertTo-Json)
+    Write-Host "[ADD]    $FabricRole <- $id (OrgPath $OwningOrgPath)"
+}
+
+foreach ($id in $toRemove) {
+    # No registry justification for this grant => DRIFT-PROVENANCE before removal.
+    Write-Host "[DRIFT-PROVENANCE] $FabricRole grant $id has no OrgPath anchor"
+    Invoke-RestMethod -Headers $headers -Method Delete `
+        -Uri "$base/admin/workspaces/$WorkspaceId/roleAssignments/$id"
+    Write-Host "[REMOVE] $FabricRole -> $id"
+}
+
+if (-not $toAdd -and -not $toRemove) {
+    Write-Host "[CONVERGED] $FabricRole on $WorkspaceId already matches $OwningOrgPath"
+}
+```
+:::
+
+## Chapter 9 — Real-Time Item Audit {#chapter-9-real-time-item-audit}
+
+Referenced from Chapter 9. Enumerates the `eventstream`, `eventhouse`, and `KQL database` items in each workspace and emits a `DRIFT-PROVENANCE` finding for any whose domain assignment is missing or mismatched.
+
+::: {.appendix-script}
+```powershell
+# Illustrative only: enumerate real-time items per workspace and confirm each
+# carries the Fabric Domain its workspace claims. Read-only; emits findings,
+# mutates nothing. Endpoint paths are representative, not deployment-exact.
+
+param(
+    [Parameter(Mandatory)] [string] $FabricAdminBaseUri,  # e.g. illustrative admin API root
+    [Parameter(Mandatory)] [hashtable] $Headers           # bearer auth for the Fabric Admin API
+)
+
+# Real-time item types that must be reconciled against the workspace domain.
+$realTimeItemTypes = @('Eventstream', 'Eventhouse', 'KQLDatabase')
+
+# 1. Read the domain each workspace is assigned to (the Chapter 5 assignment).
+$workspaceDomains = @{}
+$domainsResp = Invoke-RestMethod -Method Get -Headers $Headers `
+    -Uri "$FabricAdminBaseUri/admin/domains"                     # illustrative endpoint
+foreach ($domain in $domainsResp.domains) {
+    $wsResp = Invoke-RestMethod -Method Get -Headers $Headers `
+        -Uri "$FabricAdminBaseUri/admin/domains/$($domain.id)/workspaces"  # illustrative
+    foreach ($ws in $wsResp.value) { $workspaceDomains[$ws.id] = $domain.displayName }
+}
+
+# 2. Enumerate items, keep the real-time ones, confirm domain inheritance.
+$findings = @()
+$itemsResp = Invoke-RestMethod -Method Get -Headers $Headers `
+    -Uri "$FabricAdminBaseUri/admin/items?type=All"              # illustrative endpoint
+foreach ($item in $itemsResp.itemEntities) {
+    if ($realTimeItemTypes -notcontains $item.type) { continue }
+
+    $claimedDomain = $workspaceDomains[$item.workspaceId]
+    if ([string]::IsNullOrEmpty($claimedDomain)) {
+        # Workspace carries no domain -> the item serves data under no anchor.
+        $findings += [pscustomobject]@{
+            Finding = 'DRIFT-PROVENANCE'; ItemType = $item.type
+            ItemId = $item.id; Reason = 'workspace has no domain assignment'
+        }
+    }
+    # An item-level OrgPath that disagrees with its workspace domain is mismatch
+    # drift, surfaced the same way the batch estate's mismatches are.
+}
+
+# 3. Return findings for the Evidence Bundle; no item is modified by this job.
+$findings
+```
+:::
