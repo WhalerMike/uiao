@@ -69,7 +69,7 @@ _WALKTHROUGH_STEPS = [
         ),
     ),
     (
-        "4. Walk the OrgPath Narrative",
+        "4. Walk the UIAO OrgPath",
         None,
         (
             "The 15-chapter narrative at "
