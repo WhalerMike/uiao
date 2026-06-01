@@ -109,9 +109,13 @@ FILE_DECOMP_RE = re.compile(
 def find_repo_root(start: Path) -> Path:
     p = start.resolve()
     for parent in [p, *p.parents]:
-        if (parent / ".git").is_dir():
+        # `.git` is a directory in a normal checkout and a file in a linked
+        # worktree (it contains `gitdir: ...`). Accept either so the script
+        # resolves the worktree root instead of walking up to an unrelated
+        # parent repo (e.g. a `.git` in the user's home directory).
+        if (parent / ".git").exists():
             return parent
-    raise RuntimeError(f"no .git directory found above {p}")
+    raise RuntimeError(f"no .git directory or file found above {p}")
 
 
 def parse_frontmatter(qmd_text: str) -> dict:
