@@ -51,53 +51,9 @@ The mechanism that closes the seam is the same domain-assignment reconciliation 
 
 The drift conditions worth surfacing for the real-time estate are concrete. A `KQL database` provisioned into a workspace that the reconciliation job has not yet assigned to any domain is an item serving data under no organizational anchor — exactly the ungoverned seam this chapter exists to prevent — and it produces a `DRIFT-PROVENANCE` finding the moment the enumeration reaches it. An `eventhouse` in a workspace whose assigned domain does not match the OrgPath its metadata claims is the streaming counterpart of the workspace-domain mismatch Chapter 5 already detects. Treating these as the same class of finding, emitted by the same job into the same bundle, is the point: the real-time estate is not audited by a separate process with a separate notion of correctness, it is folded into the one reconciliation discipline that governs the whole substrate.
 
-A short, idempotent enumeration over the Fabric Admin REST API illustrates the shape of the check. The endpoints below are illustrative — the exact Real-Time Intelligence item routes and their availability vary by deployment, and a production job binds to the endpoints published for the agency's cloud — but the logic is the one the substrate already applies to the batch estate.
+A short, idempotent enumeration over the Fabric Admin REST API illustrates the shape of the check. The endpoints it uses are illustrative — the exact Real-Time Intelligence item routes and their availability vary by deployment, and a production job binds to the endpoints published for the agency's cloud — but the logic is the one the substrate already applies to the batch estate.
 
-```powershell
-# Illustrative only: enumerate real-time items per workspace and confirm each
-# carries the Fabric Domain its workspace claims. Read-only; emits findings,
-# mutates nothing. Endpoint paths are representative, not deployment-exact.
-
-param(
-    [Parameter(Mandatory)] [string] $FabricAdminBaseUri,  # e.g. illustrative admin API root
-    [Parameter(Mandatory)] [hashtable] $Headers           # bearer auth for the Fabric Admin API
-)
-
-# Real-time item types that must be reconciled against the workspace domain.
-$realTimeItemTypes = @('Eventstream', 'Eventhouse', 'KQLDatabase')
-
-# 1. Read the domain each workspace is assigned to (the Chapter 5 assignment).
-$workspaceDomains = @{}
-$domainsResp = Invoke-RestMethod -Method Get -Headers $Headers `
-    -Uri "$FabricAdminBaseUri/admin/domains"                     # illustrative endpoint
-foreach ($domain in $domainsResp.domains) {
-    $wsResp = Invoke-RestMethod -Method Get -Headers $Headers `
-        -Uri "$FabricAdminBaseUri/admin/domains/$($domain.id)/workspaces"  # illustrative
-    foreach ($ws in $wsResp.value) { $workspaceDomains[$ws.id] = $domain.displayName }
-}
-
-# 2. Enumerate items, keep the real-time ones, confirm domain inheritance.
-$findings = @()
-$itemsResp = Invoke-RestMethod -Method Get -Headers $Headers `
-    -Uri "$FabricAdminBaseUri/admin/items?type=All"              # illustrative endpoint
-foreach ($item in $itemsResp.itemEntities) {
-    if ($realTimeItemTypes -notcontains $item.type) { continue }
-
-    $claimedDomain = $workspaceDomains[$item.workspaceId]
-    if ([string]::IsNullOrEmpty($claimedDomain)) {
-        # Workspace carries no domain -> the item serves data under no anchor.
-        $findings += [pscustomobject]@{
-            Finding = 'DRIFT-PROVENANCE'; ItemType = $item.type
-            ItemId = $item.id; Reason = 'workspace has no domain assignment'
-        }
-    }
-    # An item-level OrgPath that disagrees with its workspace domain is mismatch
-    # drift, surfaced the same way the batch estate's mismatches are.
-}
-
-# 3. Return findings for the Evidence Bundle; no item is modified by this job.
-$findings
-```
+That enumeration is reproduced in full, set in reduced type for reference, in [Appendix A — Reference PowerShell Scripts](Book_07a_CPT_10.qmd#chapter-9-real-time-item-audit).
 
 The script is deliberately small and read-only; its job is to demonstrate that the real-time estate is enumerable and that the domain-inheritance check the batch estate already passes is the same check applied to `eventstream`, `eventhouse`, and `KQL database` items. In production the enumeration is a stage of the existing domain-assignment reconciliation job, not a separate tool, so that the real-time estate and the batch estate share one source of truth and one Evidence Bundle.
 
