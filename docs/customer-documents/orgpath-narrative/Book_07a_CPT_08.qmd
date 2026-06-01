@@ -1,0 +1,42 @@
+---
+title: "Workspace and Item Security Mapped to OrgPath"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07a"
+series-order: 8
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 8 — Workspace and Item Security Mapped to OrgPath
+
+::: {.callout-note}
+## In this chapter
+Domain assignment in Chapter 5 placed workspaces under the right organizational hierarchy, but a domain is a governance container, not an access-control boundary. Access in Fabric is granted by workspace roles — Admin, Member, Contributor, Viewer — and by item-level permissions beneath them. This chapter closes the gap Chapter 5 left: it maps Fabric workspace-role and item-level grants to OrgPath, so the people who can read and build on a segment's data are exactly the people the segment's organizational position warrants, and so a transfer re-scopes data-plane access the same way it re-scopes everything else.
+:::
+
+<!-- FIGURE INTENT (materialize via fig-alt once numbering final): white background, engineering blueprint style, 16:9. A Fabric workspace box assigned to domain /Root/Finance (from Chapter 5). Beneath it, four role bands — Admin, Member, Contributor, Viewer — each fed by an amber OrgPath-derived group (e.g. Viewer ← /Root/Finance/* read population). An item (lakehouse) shows an item-level override grant also derived from OrgPath. A reconciliation job on the right reads the OrgTree registry and reconciles workspace-role membership, emitting DRIFT-PROVENANCE where a role assignment has no OrgPath justification. Monospace path/role labels. No human figures. -->
+
+## Why Domain Assignment Is Not Access Control
+
+Draw the distinction sharply: Chapter 5's domain assignment makes a workspace *governable* — it carries default sensitivity context and audit lineage — but it does not decide who can open the workspace. That decision is the workspace role grant, and if role grants are maintained by hand they drift from the organizational reality the domain already encodes.
+
+## The Fabric Role Model and Where OrgPath Binds
+
+Walk the role model — Admin, Member, Contributor, Viewer at the workspace, and item-level permissions for lakehouses, warehouses, semantic models, and mirrored databases. Identify the binding point: each role's membership should be an OrgPath-derived population, resolved from the same registry that named the domain.
+
+## Reconciling Workspace-Role Membership From the Registry
+
+Mechanism: a reconciliation job reads the OrgTree registry for the segment that owns the workspace, resolves the read/build populations by OrgPath, and reconciles workspace-role membership through the Fabric Admin API or the backing security group — idempotently, in the same pattern as the domain-assignment job in Chapter 5.
+
+## Item-Level Overrides Without Losing the Org Anchor
+
+Handle the exception path: item-level grants exist for legitimate reasons (a shared semantic model, a cross-segment report). Show how to allow item overrides while keeping every grant anchored to an OrgPath justification, so an override is a recorded, reviewable decision rather than an untraceable exception.
+
+## Drift, Evidence, and the Join to the User Plane
+
+Close on integrity: a workspace-role grant with no OrgPath justification is precisely the `DRIFT-PROVENANCE` condition, and the same OrgPath that scopes Purview user policy in Book 07 now also scopes Fabric data-plane access — making the two planes auditable through one key, and feeding the evidence bundle Chapter 6 assembles.

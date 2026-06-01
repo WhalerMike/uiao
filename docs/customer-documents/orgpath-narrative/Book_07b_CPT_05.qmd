@@ -1,0 +1,42 @@
+---
+title: "Wiring Risk and AI Policies into the Propagation Pipeline"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "07b"
+series-order: 5
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 5 — Wiring Risk and AI Policies into the Propagation Pipeline
+
+::: {.callout-note}
+## In this chapter
+The three preceding chapters each described a surface and the OrgPath scope it needs. This chapter wires them into the same propagation pipeline Book 07 built for Adaptive Scopes — three more idempotent reconciliation jobs reading the one OrgTree registry, each driving a surface that does not consume an Adaptive Policy Scope and so must be reconciled explicitly. The chapter establishes the shared job contract, the ordering against the lifecycle engine, and the drift findings each job emits, so risk and AI governance ride the propagation cadence already in production rather than a parallel pipeline.
+:::
+
+<!-- FIGURE INTENT (materialize via fig-alt once numbering final): white background, engineering blueprint style, 16:9. Center spine: the OrgTree registry. Three reconciliation-job lanes fan right — "IRM scope job", "Comm Compliance job", "DSPM-for-AI rollup job" — each reading the registry and writing to its Purview surface via Graph/Purview API, each emitting a DRIFT-* finding into a shared Evidence Bundle box on the far right. A lifecycle-engine event box on the left feeds all three (join/mover/leaver triggers). Monospace job/flag labels. No human figures. -->
+
+## The Shared Reconciliation-Job Contract
+
+State the contract these jobs share with Book 07's Adaptive-Scope jobs: read the registry as desired state, read the surface as actual state, compute the delta, apply idempotently, emit drift on divergence. Emphasize that none of these three surfaces consume an Adaptive Policy Scope, so the explicit reconciliation job is mandatory, not optional.
+
+## Ordering Against the Lifecycle Engine
+
+Explain sequencing: join/mover/leaver events must propagate to risk and AI scope in the right order relative to access changes — e.g. departing-user IRM posture should engage before deprovisioning completes. Define where these jobs sit in the propagation order Book 07 and Book 04 established.
+
+## Reusing Versus Duplicating the OrgPath Resolution Layer
+
+Reuse argument: the OrgPath resolution and segment-flag lookup already built for labels/DLP/retention is reused verbatim; only the surface-write adapter differs per job. Avoid a second source of OrgPath truth — that would itself be drift.
+
+## The Drift Findings Each Job Emits
+
+Catalog the findings: `DRIFT-PROVENANCE` for membership divergence, `DRIFT-SEGREGATION` for the Communication Compliance reviewer/supervised overlap, and an AI-posture staleness finding for DSPM rollups. Tie each to the Evidence Bundle the next chapter and Book 07a Chapter 6 describe.
+
+## Failure Modes and Idempotency Guarantees
+
+Close on robustness: partial-failure handling, retry semantics, and why idempotency matters most here — a non-idempotent risk-scope job that double-applies or half-removes surveillance scope is a compliance incident, not just a bug.
