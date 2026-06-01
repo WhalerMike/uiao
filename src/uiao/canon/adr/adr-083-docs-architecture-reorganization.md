@@ -50,7 +50,7 @@ The dominant industry framework for technical documentation organization is the 
 | **Tutorials** | Learning-oriented; hand-held | Beginner | (mostly absent — federal IT skips this) |
 | **How-to guides** | Task-oriented; problem-solving | Working on a goal | DNS Modernization Guide, PKI Modernization Guide, GPO Sunset Program, end-user training |
 | **Reference** | Information-oriented; lookup | Looking something up | OrgPath Codebook, JSON Schema, ADR catalog, adapter interfaces |
-| **Explanation** | Understanding-oriented; the "why" | Curious about design | OrgPath Narrative, executive briefs, whitepapers |
+| **Explanation** | Understanding-oriented; the "why" | Curious about design | UIAO OrgPath, executive briefs, whitepapers |
 
 Major-vendor documentation sites consistently implement this framework with a **single URL umbrella per program** plus a distinct **Reference Architecture** (or "Validated Designs", "Architecture Center") section as a sibling to operational guides:
 
@@ -123,7 +123,7 @@ Customer Documentation
 ├── Operational Guides              (← how-to guides, was /customer-documents/modernization/)
 ├── Executive Briefs                (unchanged)
 ├── Executive Governance Series     (unchanged)
-├── OrgPath Narrative               (unchanged — explanation/narrative)
+├── UIAO OrgPath               (unchanged — explanation/narrative)
 ├── Whitepapers                     (unchanged)
 ├── Platform Substrate              (unchanged)
 └── Other existing subsections      (unchanged)
@@ -195,7 +195,7 @@ Estimated total: **1 week** for a focused execution; **2 weeks** if interleaved 
 | Source | Reference | Last Verified |
 |---|---|---|
 | Recurring cross-surface duplication symptom | ADRs [076](adr-076-tier-conformance-model.md), [078](adr-078-orgpath-attribute-schema-15-facet.md), [079](adr-079-governance-principle-reconciliation.md), [080](adr-080-intune-first-scope-disambiguation.md), [081](adr-081-directory-migration-phase-canonical-model.md) | 2026-05-23 |
-| Specific cross-surface conflict noted but not yet ADR'd (OrgTree canon vs OrgPath Narrative companion) | `docs/modernization/orgtree.qmd` (27-doc canon index) + `docs/customer-documents/orgpath-narrative/index.qmd` (15-chapter narrative paraphrase) | 2026-05-23 |
+| Specific cross-surface conflict noted but not yet ADR'd (OrgTree canon vs UIAO OrgPath companion) | `docs/modernization/orgtree.qmd` (27-doc canon index) + `docs/customer-documents/orgpath-narrative/index.qmd` (15-chapter narrative paraphrase) | 2026-05-23 |
 | Divio Documentation System | https://docs.divio.com/documentation-system/ | 2026-05-23 |
 | ADR-076 lifecycle/authority separation by frontmatter (not URL) | [`adr-076-tier-conformance-model.md`](adr-076-tier-conformance-model.md) | 2026-05-23 |
 | ADR-072 publication policy by frontmatter (`publish_to_site`, `publication_style`) | [`adr-072-canon-publication-policy.md`](adr-072-canon-publication-policy.md) | 2026-05-23 |

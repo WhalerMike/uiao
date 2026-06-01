@@ -42,7 +42,7 @@ on shared subjects, not merely organizational differences:
 2. **Governance principles count disagrees across documents.** Canon
    `/modernization/` declares **seven** non-negotiable principles.
    The customer Governance OS Executive Brief declares **three**. The
-   OrgPath Narrative chapter 15 names only **one** explicitly. These
+   UIAO OrgPath chapter 15 names only **one** explicitly. These
    are not different vocabularies for the same set — they are
    different conceptual models.
 
