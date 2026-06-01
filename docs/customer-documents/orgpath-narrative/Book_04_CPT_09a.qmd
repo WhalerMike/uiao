@@ -1,0 +1,106 @@
+---
+title: "HR-Driven OrgPath Provisioning — From the System of Record to Entra ID"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+book: "04"
+series-order: 9.5
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Chapter 9A — HR-Driven OrgPath Provisioning: From the System of Record to Entra ID
+
+*Reconciling the adrift OU estate by overlay, not remediation.*
+
+::: {.callout-note}
+## In this chapter
+The chapters to this point built OrgTree from assessment data and stamped OrgPath onto the existing object population — a one-time construction. This chapter supplies the part that makes the construction *durable*: the upstream feed that keeps OrgTree and OrgPath true as people are hired, moved, and separated. It names the authoritative source (the HR system of record), walks the HR-agnostic provisioning pipeline that carries organizational truth into Entra ID and, during coexistence, back into Active Directory, and then confronts the problem most enterprises actually arrive with — an Organizational Unit estate that has drifted away from the real organization — and shows why the answer is to overlay OrgPath and retire the OU dependencies rather than remediate the containers. It closes with the federal instantiation of the source, OPM HRIT, framed as one vertical's choice rather than a property of the substrate.
+:::
+
+## The Construction Was a Snapshot; the Source Is the Stream
+
+Chapter 7 constructed the initial OrgTree from assessment output, and Chapter 9 ran the ETL pipeline that stamped a validated OrgPath value onto every user and device object in the environment. Both are correct, and both describe a single moment. They take the organization as it is on the day of the build and encode it into the registry and the attribute. What neither describes is what happens the day after — when someone is hired into a department that did not have that headcount yesterday, when a division is reorganized, when an employee transfers from the field-services group to the regional operations team, or when someone separates from the organization entirely.
+
+If those events are not carried into OrgTree and OrgPath automatically, the substrate begins to drift from the moment it is built, in exactly the way the Active Directory OU estate drifted before it. The construction is a snapshot. To stay true, the snapshot needs a source — a stream of authoritative organizational events that keeps the registry and the attribute synchronized with the organization as it actually changes. That source is the subject of this chapter.
+
+## The System of Record Is HR — for Identity and for Position
+
+The authoritative source for both who a worker is and where that worker sits in the organization is the human-resources system of record. This is a doctrinal commitment, fixed in [ADR-088](/docs/adr/adr-088-hr-as-orgtree-truth-source.html), and it resolves a question the architecture has assumed since Book 02: the registry governs organizational structure, but it does not invent it. The HR system holds two distinct authorities, and it is essential to see that it holds both:
+
+| Authority | What HR owns | Where it lands |
+| :--- | :--- | :--- |
+| **Identity authority** | The immutable correlation anchor (`employeeId`), legal name, worker type, employment status, hire and separation events | The directory user object's correlation and lifecycle state |
+| **Organizational-placement authority** | Department, division, cost-center, organization-code, location, and the reporting line (manager) | The inputs from which OrgPath is computed, and the manager chain |
+
+The canonical set of attributes a provisioning record must carry is fixed in Spec2-D1.1, the Canonical HR Attribute Schema: `employeeId` as the immutable anchor, legal name, `workerType`, `employmentStatus`, `hireDate`, `locationCode`, `country`, and the placement attributes — `department`, `division`, `costCenter`, `organizationCode` — that feed the OrgPath codebook, plus `managerEmployeeId` as the reporting-line reference. No other system is authoritative for these facts. Not the OU estate, not a manually maintained group, not a directory administrator's edit. Where a directory value disagrees with HR, HR is correct and the directory value is the thing that must be repaired.
+
+This is the principle that turns OrgPath from a clever attribute into a governed one. An attribute is only as trustworthy as the discipline that maintains it, and the most reliable maintenance discipline available is the one the organization already runs as a matter of payroll and personnel law: the HR system that cannot afford to be wrong about who works there and what their position is.
+
+## The Provisioning Pipeline Is HR-Agnostic by Design
+
+A natural objection is that the organization may not yet know which HR product it will run, or may run several, or may replace the one it has. The architecture is built to make that objection irrelevant. Per [ADR-003](/docs/adr/adr-003-api-driven-inbound-provisioning.html), the canonical provisioning path is **API-driven inbound provisioning via Microsoft Graph**, not a connector tied to any single HR vendor. Native connectors for products such as Workday, Oracle HCM Cloud, and SAP SuccessFactors are permitted as accelerators where they exist, but the architecture must function with only the Graph API as the integration surface, so that it works regardless of which system of record the organization runs today or selects tomorrow.
+
+The pipeline, specified in full in Spec2-D3.1, runs in four stages:
+
+| Stage | What happens | Authority |
+| :--- | :--- | :--- |
+| **1. HR system of record** | Emits worker records and lifecycle events (hire, position change, separation) | Business authority over identity and placement |
+| **2. Integration middleware** | A per-source adapter normalizes the HR feed to the canonical Spec2-D1.1 schema, computes OrgPath against the codebook ([ADR-035](/docs/adr/adr-035-orgpath-codebook-binding.html)), generates the UPN, validates the record, and assembles a SCIM 2.0 payload | UIAO-built; the layer where organizational truth becomes OrgPath |
+| **3. Microsoft Graph `bulkUpload`** | Accepts the SCIM 2.0 bulk payload and hands it to the Entra provisioning service | Microsoft transport |
+| **4. Entra ID provisioning service** | Applies attribute mappings, enforces the joiner-mover-leaver lifecycle, writes the cloud user object — and, during coexistence, drives the on-premises Active Directory write through the provisioning agent | Microsoft directory |
+
+The middleware stage is the one that matters most for this narrative, and it is required regardless of which HR system sits upstream. OrgPath is not a native HR attribute and not a native Entra attribute; it is *computed* — from the placement attributes HR supplies, against the codebook — and that computation has to happen somewhere before the value reaches the directory. That somewhere is the middleware. This is why the pipeline is HR-agnostic without being connector-free: the adapter that reads a given HR system changes from vendor to vendor, but the normalization-compute-validate-assemble core does not.
+
+## How Organizational Truth Becomes OrgPath, in the Directory
+
+Once the middleware has computed OrgPath, the value has to land on the directory object in the specific slot the rest of the substrate reads. The HR-to-Entra mapping (Spec2-D1.3) carries the canonical HR attributes onto their Entra equivalents — `employeeId` to the immutable correlation anchor, `department` to the directory department, `managerEmployeeId` to the manager reference — and carries the *computed* OrgPath into the extension attribute the codebook binding designates as its storage slot (`extensionAttribute1`, per [ADR-035](/docs/adr/adr-035-orgpath-codebook-binding.html) and the attribute-selection decision of [ADR-048](/docs/adr/adr-048-orgpath-attribute-selection.html)). From there, the node and branch dynamic groups built in Chapter 10 read the value exactly as they read the values stamped during the one-time ETL run; the steady-state feed and the initial construction converge on the same attribute, in the same slot, consumed the same way.
+
+During the coexistence window — while on-premises Active Directory still exists — the HR-to-AD mapping (Spec2-D1.4) carries the same values back down to the on-premises directory through the provisioning agent, including OrgPath in the corresponding on-premises extension attribute, so that any remaining OU-bound or on-premises-LDAP-bound consumer sees a consistent value. That writeback is explicitly a property of coexistence, not of the target state: once Active Directory is decommissioned, the writeback is disabled and the HR-to-AD mapping becomes a historical document.
+
+The end-to-end latency of this flow is specified in the OrgPath population pipeline (Spec2-D3.5): a single HR-side organizational change becomes observable in dynamic group membership within roughly fifteen minutes at the ninety-fifth percentile, in Intune policy targeting within roughly thirty minutes, and in device-plane resource tags within about an hour. Each record carries the version of the OrgPath calculator that produced it, so the drift engine can tell a deliberate recalculation (a codebook change) apart from genuine organizational drift.
+
+## The Mover Is the Hinge
+
+The lifecycle event that most directly exercises this feed is the mover — a worker who changes position without joining or leaving. The mover workflow (Spec2-D2.2) is triggered when the HR feed shows a non-empty change to any placement attribute: department, division, cost-center, organization-code, or location. The middleware recomputes OrgPath, emits a single provenance record capturing the old and new OrgPath in one delta block, and writes the change to the directory as a single atomic update so that group membership re-evaluates once rather than churning. Where the change crosses a meaningful boundary — a division change, a move into an elevated role, a manager change, a cross-region relocation — the workflow also raises an access-review event so the new manager can certify that the worker's inherited access still fits.
+
+This is the concrete mechanism behind the dependency that Book 11, Chapter 3 flagged from the security-operations side: the reliability of structural access realignment when an identity moves is exactly the reliability of the HR-to-OrgTree feed described here. If HR records a position change and this pipeline carries it through within its window, the mover workflow fires and access realigns. If the pipeline is not validated end to end, the position change is recorded in HR and never reaches the directory, and the realignment silently does not happen. The feed is not a convenience; it is the thing the mover workflow stands on.
+
+## Reconciling the Adrift OU Estate — Overlay, Not Remediation
+
+Most organizations do not arrive at this work with a clean directory. They arrive with an Organizational Unit estate that has drifted, often badly, from the organization it was built to model — containers that were created for a reorganization that has since been undone, objects parked in OUs that no longer correspond to anyone's actual position, a tree whose shape encodes the administrative history of the directory rather than the current structure of the enterprise. The instinct, on seeing this, is to fix it: to mount a project that moves objects between containers until the OU tree is correct again.
+
+The doctrine of this substrate, fixed in [ADR-088](/docs/adr/adr-088-hr-as-orgtree-truth-source.html), is that this instinct should be resisted. Remediating the OU estate into alignment is expensive, high-risk, and — once OrgPath is in place — pointless, because policy will no longer read OU position at all. The transition does not realign the containers; it overlays the truth as an attribute and retires the containers' role in governance. Concretely, the reconciliation runs in five movements:
+
+1. **Build OrgTree from HR, not from the OUs.** The initial OrgTree is seeded from the authoritative description of the organization's structure — which originates in the HR system of record — explicitly independent of the current AD OU layout, exactly as Chapter 1 required. The drifted OU tree is an input to the assessment, useful for discovering what exists, but it is never treated as the source of organizational truth.
+2. **Reconcile HR truth against AD reality, as a report.** The middleware compares the HR-derived placement of each worker against where that worker's object actually sits in the directory, and emits the delta as a reconciliation report. This report is the artifact that makes the drift visible and measurable for the first time — it is the answer to "how far adrift are we, exactly, and where."
+3. **Stamp HR-derived OrgPath on every object.** OrgPath is computed from HR placement and stamped onto each object regardless of which OU that object currently occupies. The object's position in the OU tree is now governance-irrelevant; its OrgPath value carries its true position.
+4. **Cut policy over to OrgPath groups.** Policy targeting moves from OU-linked Group Policy Objects to OrgPath-keyed node and branch dynamic groups (Chapter 10; [ADR-036](/docs/adr/adr-036-dynamic-group-provisioning.html), [ADR-039](/docs/adr/adr-039-policy-targeting.html)). From this point, governance reads OrgPath, and the correctness of the OU tree no longer affects what policy applies to whom.
+5. **Inventory and decommission residual OU dependencies.** The things that still bind to OU placement — Group Policy links, delegated administration scoped to OUs, and legacy applications that read the directory tree — are catalogued in the dependency map (Book 03, Chapter 8; Chapter 13 of this book) and retired deliberately on the cloud-forward path. They are decommissioned, not realigned.
+
+This is not a license to ignore the OU estate. While on-premises Active Directory persists during coexistence, residual OU-bound dependencies are real and must be governed — which is what the dependency map is for. The doctrine is narrower and more useful than "ignore OUs": it is that the drifted OU tree is *overlaid and retired*, never *remediated into alignment*. The organization stops paying to make a tree correct that it is, in any case, decommissioning.
+
+::: {.callout-tip title="The practical answer to a drifted directory"}
+If your OU structure no longer reflects your organization, the transition does not ask you to fix it. It asks you to build the true structure as OrgTree from your HR system of record, measure the drift as a reconciliation report, stamp the true position as OrgPath, move policy onto OrgPath groups, and retire the OU dependencies. The drift becomes a number you can see and then a thing you decommission — not a multi-year remediation project.
+:::
+
+## The Federal Instantiation: OPM HRIT
+
+Everything above is HR-agnostic. The specific system of record that fills the source slot is a property of the deployed vertical, not of the substrate — a point fixed by the universal-enterprise positioning of [ADR-085](/docs/adr/adr-085-universal-enterprise-positioning.html). In the federal vertical, that slot is filled by the federal HR IT estate, and the integration is specified in the Federal HRIT Integration Runbook (Spec2-D6.1).
+
+In that instantiation, the systems of record are the federal HR platforms — NFC EmpowHR / FPPS, Treasury HR Connect, the Defense Civilian Personnel Data System, and the Interior Business Center's HR service — which feed an OPM-operated Microsoft Entra Government tenant through the same API-driven inbound path described above. OPM's lifecycle services (USA Staffing upstream of hire, eOPF and EHRI downstream) participate as producers and consumers around that core; USAccess provides the PIV credential as the personnel trust anchor; and OPM's federation service supplies the authentication assertions. The federal binding adds federal constraints on top of the general pipeline — SCIM 2.0 near-real-time provisioning under the fifteen-minute service-level expectation of OMB M-25-21, Privacy Act and FedRAMP obligations, and the single-ATO reciprocity model of [ADR-054](/docs/adr/adr-054-single-ato-reciprocity.html), under which one OPM authorization covers consuming agencies through documented reciprocity rather than per-agency authorizations.
+
+The recent OPM and OMB direction toward consolidating federal HR onto a unified system does not change any of this; it changes only which system occupies the source slot. That is precisely the point of keeping the architecture HR-agnostic. **Outside the federal vertical, the OPM HRIT estate is simply replaced** — by Workday, Oracle HCM Cloud, SAP SuccessFactors, or whatever commercial HCM a regulated-commercial, state-and-local, or generic-enterprise deployment runs — with no change to the pipeline, the OrgPath computation, the reconciliation play, or the doctrine. OPM HRIT is the federal instantiation of a source role the substrate defines generically; it is not, and must not be described as, a property of the substrate itself.
+
+## What This Chapter Adds to the Build
+
+The preceding chapters built a governance substrate and stamped it onto the directory as it stood. This chapter connected that substrate to the system that keeps it true. OrgTree and OrgPath are now not only constructed but *fed* — by the HR system of record, through an HR-agnostic provisioning pipeline, with organizational truth recomputed into OrgPath every time a worker is hired, moved, or separated. The drifted OU estate that most organizations begin with is handled not by remediation but by overlay and retirement, and the federal vertical's OPM HRIT integration is one replaceable instantiation of the source role rather than a special case the substrate has to know about. The snapshot has become a stream.
+
+::: {.callout-tip}
+## Continue the series
+
+[← Previous: Chapter 9 — The ETL Pipeline](Book_04_CPT_09.qmd) · [Book 04 Index](Book_04.qmd) · [Next: Chapter 10 — From OrgPath to Policy Targeting →](Book_04_CPT_10.qmd)
+:::

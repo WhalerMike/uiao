@@ -83,6 +83,18 @@ A write is rejected when it falls into any of the following cases:
 
 When a write is rejected, the pipeline logs the rejection, records the attempted value, and reports the failure for remediation. The live environment never contains OrgPath values that reference an organizational reality that no longer exists in the governed registry.
 
+## The Source Upstream of the Loop
+
+The closed loop described so far runs from OrgTree to OrgPath and back: the registry defines valid structure, the attribute is derived and validated against it, and drift between them is detected and corrected. But the loop has an inlet. The registry does not author the organization's structure; it governs and versions a structure that originates elsewhere. The phrase used throughout this chapter — that OrgPath is "derived from one authoritative source" — refers, within the loop, to OrgTree as the authority over the attribute. One level up, OrgTree is itself fed by the authority over the organization: the human-resources system of record.
+
+This is the system that owns the facts the hierarchy is built from — who is employed, in what position, under which reporting line, in which division, at which location — and that records the events that change those facts as they happen. A worker is hired, promoted, transferred, or separated in the HR system first; the directory has historically been a hand-maintained projection of that truth, which is exactly why directory structure drifts from organizational reality over time. Binding OrgTree to the HR system of record closes that gap at the inlet: structural change enters through the registry's change-request workflow as a governed, reviewed delta, and per-person placement flows from HR through the integration middleware that computes OrgPath before it reaches the directory. The change-request workflow is not a competing source of truth — it is the control that governs HR-supplied change before it is committed.
+
+The loop is therefore best understood as having three stages rather than two: the HR system of record supplies organizational truth; OrgTree governs and versions it; OrgPath carries it, validated, onto every object. Each stage has a single authority, and authority runs strictly downstream — from HR, into the registry, out to the attribute — never the reverse.
+
+::: {.callout-note title="Companion canon — the inlet to the loop"}
+The doctrine naming the HR system of record as the authoritative source feeding OrgTree, with the change-request workflow as the governance gate over HR deltas, is fixed in [ADR-088](/docs/adr/adr-088-hr-as-orgtree-truth-source.html). Its transport is the API-driven inbound provisioning path of [ADR-003](/docs/adr/adr-003-api-driven-inbound-provisioning.html). The end-to-end implementation — including reconciliation of an inherited OU estate that has drifted from the true structure — is Book 04, Chapter 9A.
+:::
+
 ## What the Closed Loop Establishes
 
 The OrgTree-OrgPath system, taken together, establishes a single, governed, validated, continuously maintained model of organizational structure that spans every management surface, is derived from one authoritative source, and drives policy coverage automatically without requiring manual group management or point-in-time configuration effort. This is the architectural baseline that all subsequent requirements are addressed against. The specific requirements treated in the chapters that follow are each best understood as consequences of this baseline: each is a capability that the closed loop between OrgTree and OrgPath makes possible, and each represents a governance function that the cloud platform cannot provide without it.
