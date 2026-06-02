@@ -16,56 +16,53 @@ lifecycle_review: 2026-11-22
 
 ::: {.callout-note}
 ## In this chapter
-How the UIAO platform's disaster recovery posture applies the same governance
+How the UIAO platform's resilience posture applies the same governance
 discipline as the modernization pipeline itself — every procedure documented,
 deterministic, and executable by any authorized administrator. This chapter
-covers the twelve platform components the DR playbook protects, the explicit
-Recovery Point and Recovery Time Objectives validated through quarterly drills,
-and the scheduled-task backup architecture with its versioned storage and
-integrity verification.
+draws the line between the two tiers of recovery: **high-availability failover**,
+which keeps the single authority continuously available through a hot-standby
+replica with automatic, split-brain-safe promotion (near-zero data loss,
+minutes to recover), and **disaster recovery**, the cold-restore floor that the
+backup chain guarantees for the rare total-site loss. It then covers the twelve
+platform components the DR playbook protects, the explicit Recovery Point and
+Recovery Time Objectives for each tier, and the scheduled-task backup
+architecture with its versioned storage and integrity verification.
 :::
 
 ## Recovery as a Design Requirement
 
-The UIAO platform's disaster recovery posture reflects the same governance discipline applied to the modernization pipeline itself. Every recovery procedure is documented, deterministic, and executable by any authorized administrator — not just the person who built the system. This is a design requirement, not a documentation courtesy.
+The UIAO platform's recovery posture reflects the same governance discipline applied to the modernization pipeline itself. Every recovery procedure is documented, deterministic, and executable by any authorized administrator — not just the person who built the system. This is a design requirement, not a documentation courtesy.
 
 > A governance platform whose recovery depends on the institutional knowledge of a single individual is not a governance platform; it is a single point of failure with documentation theater attached to it.
 
-![The UIAO disaster recovery posture — twelve protected components, recovery objectives, and the backup architecture](images/book15cpt05-diagram-01-platform-recovery-posture.png){#fig-book-15-cpt-05-diagram-01 fig-alt="Engineering blueprint diagram on a white background depicting the UIAO platform disaster recovery posture. On the left, a federal navy (#1F3A5F) cluster labeled twelve protected components lists monospace items — Gitea app server, IIS reverse proxy with ARR and URL Rewrite, bare Git repositories and hooks, Gitea SQLite database, AD assessment JSON store, PKI and TLS certificate chain, canon governance artifacts, Quarto rendered output, governance hooks, PowerShell modules, replication infrastructure, audit logs. In the center, a teal (#1A9E8F) backup engine box shows four Windows Scheduled Tasks — nightly Gitea backup, nightly D drive UIAO backup, nightly secondary-server mirror push, six-hourly GitHub mirror push — flowing into a navy versioned backup store box labeled D drive UIAO Backups with timestamped subdirectories and a JSON manifest. An amber (#D4A017) panel on the right states the recovery objectives, RPO four hours and RTO eight hours, validated by quarterly drills against the secondary server. A red (#C0392B) flag marks a backup integrity verification failure path that raises an immediate alert to the monitoring dashboard. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
+![The UIAO recovery posture — high-availability failover, the disaster-recovery floor, twelve protected components, and the backup architecture](images/book15cpt05-diagram-01-platform-recovery-posture.png){#fig-book-15-cpt-05-diagram-01 fig-alt="Engineering blueprint diagram on a white background depicting the UIAO platform recovery posture in two tiers. On the left, a federal navy (#1F3A5F) cluster labeled twelve protected components lists monospace items — Gitea app server, IIS reverse proxy with ARR and URL Rewrite, bare Git repositories and hooks, Gitea relational database, AD assessment JSON store, PKI and TLS certificate chain, canon governance artifacts, Quarto rendered output, governance hooks, PowerShell modules, replication infrastructure, audit logs. In the center, a teal (#1A9E8F) backup engine box shows four Windows Scheduled Tasks — nightly Gitea backup, nightly D drive UIAO backup, nightly secondary-server mirror push, six-hourly GitHub mirror push — flowing into a navy versioned backup store box labeled D drive UIAO Backups with timestamped subdirectories and a JSON manifest. On the right, an amber (#D4A017) panel split into two stacked rows states the recovery objectives: top row Tier one, high-availability failover, RPO near-zero, RTO single-digit minutes, automatic witness-gated promotion to the hot standby; bottom row Tier two, disaster recovery restore, RPO four hours, RTO eight hours, cold restore for total-site loss, validated by quarterly drills. A red (#C0392B) flag marks a backup integrity verification failure path that raises an immediate alert to the monitoring dashboard. Monospace labels throughout, no human figures, 16:9 landscape." width="85%"}
 
-## What the DR Playbook Covers
+## Two Tiers of Recovery
 
-The DR playbook covers twelve platform components in explicit detail:
+Resilience and disaster recovery answer two different failure questions, and the platform treats them as two tiers rather than one.
 
-- The Gitea application server configuration and binary
-- The IIS reverse proxy configuration, including ARR and URL Rewrite rules
-- All bare Git repositories and their hook scripts
-- The Gitea SQLite database
-- The Active Directory assessment JSON output store
-- The PKI and TLS certificate chain
-- The canonical governance artifacts in the `canon/` directory
-- The Quarto-rendered documentation output
-- The governance hooks across all repositories
-- The PowerShell assessment and utility modules
-- The replication infrastructure, including scheduled tasks and mirror credentials
-- The audit logs that provide the tamper-evident operational record
+The first tier is **high-availability failover**. When the primary node fails, the hot-standby replica described in Chapter 3 is promoted automatically — gated by a quorum witness so that exactly one node ever binds commits, with the failed node fenced before the standby takes over. Because the standby is kept current by synchronous replication, an acknowledged commit already exists on both nodes, so failover loses essentially no data and completes in single-digit minutes with no human in the path. This is the everyday answer to a node, disk, power, or network failure, and it is the decision of record in **ADR-090, Substrate High Availability**.
+
+The second tier is **disaster recovery** — the cold-restore floor. It is the answer to the rare event that high availability cannot cover: loss of the whole site, both nodes and the witness together, or a corruption that propagates. Here the backup chain and the off-premises GitHub mirror rebuild the platform from versioned, integrity-checked artifacts. This tier is slower by design, and its objectives are deliberately conservative.
 
 ## Recovery Objectives
 
-Recovery objectives are defined explicitly and validated through quarterly drills.
+Recovery objectives are defined explicitly per tier and validated through quarterly drills.
 
-| Objective | Target | Basis |
-| :--- | :--- | :--- |
-| **Recovery Point Objective (RPO)** | Four hours — maximum acceptable data loss | The combination of the six-hour GitHub mirror synchronization cycle and the scheduled assessment commit frequency. In practice, the most recent commit in the GitHub mirror will be no more than four hours old at any point in the day. |
-| **Recovery Time Objective (RTO)** | Eight hours — maximum elapsed time to restore full functionality | Assumes a complete server loss scenario in which the secondary server is available and the most recent mirror synchronization has completed. |
+| Tier | Objective | Target | Basis |
+| :--- | :--- | :--- | :--- |
+| **High-availability failover** | RPO | Near-zero data loss | Synchronous replication of the relational database and the Git repositories with their LFS objects: an acknowledged commit is durable on both nodes before it is acknowledged. |
+| **High-availability failover** | RTO | Single-digit minutes | Automatic, witness-gated promotion of the hot standby; no human sits in the failover path. |
+| **Disaster recovery (restore)** | RPO | Four hours — maximum acceptable data loss | The combination of the six-hour GitHub mirror synchronization cycle and the scheduled assessment commit frequency. In practice, the most recent commit in the mirror will be no more than four hours old at any point in the day. |
+| **Disaster recovery (restore)** | RTO | Eight hours — maximum elapsed time to restore full functionality | Assumes a total-site-loss scenario in which the platform is rebuilt from backup and the most recent mirror synchronization has completed. |
 
-Both objectives are validated through quarterly DR drills that execute the recovery runbooks against the secondary server and verify that the restored environment passes the full platform validation test suite before the drill is marked successful.
+The disaster-recovery objectives are validated through quarterly DR drills that execute the recovery runbooks against a rebuilt environment and verify that it passes the full platform validation test suite before the drill is marked successful. High-availability failover is exercised on its own cadence through planned-failover drills, which confirm that promotion, fencing, and the virtual-address handover all behave as designed.
 
 ## Backup Architecture
 
 The backup architecture uses Windows Scheduled Tasks in the `\UIAO\` task folder to orchestrate four scheduled operations:
 
-1. A nightly full backup of the Gitea data directory and SQLite database
+1. A nightly full backup of the Gitea data directory and relational database
 2. A nightly backup of the `D:\UIAO\` assessment and module directories
 3. A nightly push of all governance repositories to the secondary server mirror via authenticated Git remote
 4. A six-hourly push to the GitHub external mirror

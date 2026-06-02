@@ -38,7 +38,11 @@ Governance substrates have properties that application servers don't:
 
 - **Single source of truth.** There is exactly one Gitea repo that holds
   the canon. Two hosts can't both be authoritative; they'd diverge.
-  Replication is for disaster recovery, not active-active load-sharing.
+  Replication is for resilience and recovery, not active-active
+  load-sharing — and where high availability is required, a hot-standby
+  replica with automatic, witness-gated failover keeps that single
+  authority continuously available without ever creating a second
+  writer (ADR-090).
 - **Deterministic provenance.** Every plan, every delivery, every drift
   report must be traceable to a commit on the canonical repo. A
   distributed-by-default architecture dilutes provenance; a single-host
@@ -75,9 +79,12 @@ verbal assurance. Every change is a commit; every commit is signed;
 every commit is attributable.
 
 Gitea is behind IIS (never exposed directly), anchored to enterprise
-PKI for client-cert + HTTPS, and replicated via nightly backup to
-Azure Blob. Active-passive replica failover is manual-triggered with an
-explicit RPO/RTO target.
+PKI for client-cert + HTTPS, and replicated to a standby. The baseline
+posture is a cold standby with manual failover and an explicit RPO/RTO
+target; an HA-enabled deployment uses a hot standby with automatic,
+witness-gated failover — near-zero RPO, single-digit-minute RTO — per
+ADR-090. Off-premises backup to Azure Blob and the GitHub mirror remain
+the floor for total-site loss.
 
 ### 2. HTTPS reverse proxy and client-cert terminator
 
@@ -210,8 +217,10 @@ has the following operational properties:
 - **Drift-monitored** — UIAO_163 reports the server's state on a schedule
   (OrgPath, AU membership, Gitea team mapping, Arc heartbeat). Any
   drift opens an SLA ticket per UIAO_167.
-- **DR-ready** — nightly backup to Azure Blob, manual failover to a
-  passive replica with documented RPO/RTO targets.
+- **DR-ready / HA-capable** — nightly backup to Azure Blob plus a standby
+  replica with documented RPO/RTO targets; the baseline is manual
+  failover to a cold standby, upgradable to automatic, witness-gated
+  failover to a hot standby per ADR-090.
 
 ## What the platform server is not
 
@@ -256,6 +265,9 @@ Pointers to the latest additions on both sides of the project:
 - **ADR-041 Git Infrastructure** — documents the Gitea-behind-IIS
   decision (Option B) and why Option A (IIS + `git-http-backend` alone)
   was rejected.
+- **ADR-090 Substrate High Availability** — the hot-standby replica with
+  automatic, split-brain-safe failover that extends ADR-041 for
+  customers requiring sub-4-hour RTO.
 - **Modernization canon** — [UIAO_151–UIAO_176](../../../customer-documents/reference-architecture/orgtree.html)
   for governance, [DM_010..080](../../../customer-documents/reference-architecture/directory-migration.html)
   for adapters.
