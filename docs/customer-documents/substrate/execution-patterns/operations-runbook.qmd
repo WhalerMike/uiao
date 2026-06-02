@@ -318,9 +318,11 @@ Regeneration Commands
 
 \# Regenerate Git hooks for all repositories: D:\\Gitea\\gitea.exe admin regenerate hooks \--config D:\\Gitea\\custom\\conf\\app.ini \# Regenerate authorized_keys file: D:\\Gitea\\gitea.exe admin regenerate keys \--config D:\\Gitea\\custom\\conf\\app.ini
 
-Database Optimization (SQLite)
+Database Optimization (PostgreSQL)
 
-\# Stop Gitea first Stop-Service gitea \# Optimize the database sqlite3 D:\\Gitea\\data\\gitea.db \"VACUUM;\" sqlite3 D:\\Gitea\\data\\gitea.db \"ANALYZE;\" \# Restart Gitea Start-Service gitea
+Gitea's relational state lives in the external PostgreSQL database `uiao_gitea` on `pg01.corp.contoso.com:5432` (per ADR-041), not in a local file --- so there is no need to stop the Gitea service to maintain it, and PostgreSQL autovacuum handles routine reclamation automatically. Periodic manual optimization is run by the database team against `pg01` via `psql`; it does not require a Gitea outage:
+
+\# Run against the uiao_gitea database on pg01 (database team): psql -h pg01.corp.contoso.com -U uiao_gitea -d uiao_gitea -c \"VACUUM (ANALYZE);\"
 
 Temporary Upload Cleanup
 
