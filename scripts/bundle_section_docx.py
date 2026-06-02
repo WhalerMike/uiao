@@ -56,8 +56,11 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sys
+import zipfile
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 # Imported lazily inside main() so --help works even without the dep
 # installed (useful for CI failure diagnostics).
@@ -131,6 +134,81 @@ def _strip_toc_blocks(doc) -> int:
                 parent.remove(sdt)
                 removed += 1
     return removed
+
+
+# Running-header rewrite for per-book bundles.
+#
+# The section reference doc (`_reference.docx`) wires the running header as two
+# STYLEREF fields: "Heading 1" on the left (intended: book title) and
+# "Heading 2" on the right (intended: chapter). But chapter titles are *also*
+# Heading 1, so STYLEREF "Heading 1" resolves to the chapter from page 2 on and
+# the book identity disappears from the header. For a per-book bundle the book
+# is fixed, so we replace the left field with a static "Book_NN — Title" run
+# (which can no longer be clobbered by a chapter heading) and repoint the right
+# field at Heading 1 so it shows the chapter. Result: the book title persists
+# on every page.
+_HDR_RPR = '<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="616161"/><w:sz w:val="18"/></w:rPr>'
+_LEFT_STYLEREF_FIELD = re.compile(
+    r"<w:r>" + re.escape(_HDR_RPR) + r'<w:fldChar w:fldCharType="begin"/></w:r>'
+    r'.*?STYLEREF "Heading 1".*?'
+    r"<w:r>" + re.escape(_HDR_RPR) + r'<w:fldChar w:fldCharType="end"/></w:r>',
+    re.DOTALL,
+)
+
+
+def _xml_escape(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _first_heading1_text(docx_path: Path) -> str | None:
+    """Return the text of the first Heading-1 paragraph in a .docx, or None.
+
+    For a per-book bundle the first Heading 1 is the landing page's
+    ``Book_NN — Title`` heading.
+    """
+    with zipfile.ZipFile(docx_path) as z:
+        doc = ET.fromstring(z.read("word/document.xml"))
+    for p in doc.iter(f"{{{W_NS}}}p"):
+        pPr = p.find(f"{{{W_NS}}}pPr")
+        ps = pPr.find(f"{{{W_NS}}}pStyle") if pPr is not None else None
+        if ps is not None and ps.get(f"{{{W_NS}}}val") == "Heading1":
+            return "".join(t.text or "" for t in p.iter(f"{{{W_NS}}}t")).strip()
+    return None
+
+
+def _rewrite_header_xml(xml: str, book_title: str) -> tuple[str, int]:
+    """Stamp the book title into one header part's XML. Returns (xml, n_left)."""
+    literal = "<w:r>" + _HDR_RPR + '<w:t xml:space="preserve">' + _xml_escape(book_title) + "</w:t></w:r>"
+    xml, n_left = _LEFT_STYLEREF_FIELD.subn(literal, xml, count=1)
+    # Right field: show the chapter (Heading 1) rather than the section heading.
+    xml = re.sub(r'STYLEREF "Heading 2"', 'STYLEREF "Heading 1"', xml, count=1)
+    return xml, n_left
+
+
+def _stamp_book_header(bundle_path: Path, book_title: str) -> int:
+    """Rewrite every running-header part in a bundle to show the book title.
+
+    Returns the number of header parts changed. No-op (returns 0, original
+    file left untouched) if no header carries the expected STYLEREF "Heading 1"
+    field, so it is safe to call on a bundle built from a different reference
+    doc.
+    """
+    tmp = bundle_path.with_suffix(".stamp.docx")
+    changed = 0
+    with zipfile.ZipFile(bundle_path) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if re.fullmatch(r"word/header\d*\.xml", item.filename):
+                new, n_left = _rewrite_header_xml(data.decode("utf-8"), book_title)
+                if n_left:
+                    changed += 1
+                data = new.encode("utf-8")
+            zout.writestr(item, data)
+    if changed:
+        shutil.move(str(tmp), str(bundle_path))
+    else:
+        tmp.unlink()
+    return changed
 
 
 def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
@@ -249,11 +327,18 @@ def _bundle_books(site_root: Path, section: str) -> list[tuple[bool, str]]:
             composer.append(chapter)
         composer.save(str(bundle_path))
 
+        # Stamp the book title into the running header so "Book_NN — Title"
+        # persists on every page instead of being clobbered by chapter
+        # headings. Falls back to the book id if no landing Heading 1 exists.
+        book_title = _first_heading1_text(bundle_path) or book_id
+        stamped = _stamp_book_header(bundle_path, book_title)
+
         results.append(
             (
                 True,
                 f"{section}/{book_id}: bundled {len(pages)} page(s) "
-                f"(stripped {tocs_stripped} per-chapter TOC block(s)) -> "
+                f"(stripped {tocs_stripped} per-chapter TOC block(s); "
+                f"header -> {book_title!r} on {stamped} part(s)) -> "
                 f"{bundle_path.relative_to(site_root.parent)}",
             )
         )
