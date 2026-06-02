@@ -49,7 +49,11 @@ If any of these conditions are not met, the pipeline blocks the state transition
 
 ## The Parallel-Phase Record Synchronization Problem
 
-One operational challenge specific to the Parallel phase is record synchronization: when a new DNS record is created in the DDI platform zone — because a new on-premises server is being deployed, for example — that record must also be created in the Azure DNS Private Zone so that Azure-hosted clients can resolve it without waiting for the next scheduled synchronization run. The governance pipeline addresses this through a change-feed subscription pattern. Both Infoblox NIOS and BlueCat BAM support outbound notifications or webhook-style integrations that fire when a record is created or modified. In NIOS, the Grid's Outbound API notification feature can be configured to POST a JSON payload to the pipeline webhook URL whenever a record change is committed to a zone in the Parallel migration phase. The pipeline webhook receiver, running as an Azure Function or as a Logic App, receives the notification, extracts the record data, and issues an Azure DNS record creation or update call through the Az.PrivateDns module. The record is in Azure DNS within seconds of being committed in NIOS, without any polling delay.
+One operational challenge specific to the Parallel phase is record synchronization: when a new DNS record is created in the DDI platform zone — because a new on-premises server is being deployed, for example — that record must also be created in the Azure DNS Private Zone so that Azure-hosted clients can resolve it without waiting for the next scheduled synchronization run. The governance pipeline addresses this through a change-feed subscription pattern.
+
+Both Infoblox NIOS and BlueCat BAM support outbound notifications or webhook-style integrations that fire when a record is created or modified. In NIOS, the Grid's Outbound API notification feature can be configured to POST a JSON payload to the pipeline webhook URL whenever a record change is committed to a zone in the Parallel migration phase.
+
+The pipeline webhook receiver, running as an Azure Function or as a Logic App, receives the notification, extracts the record data, and issues an Azure DNS record creation or update call through the Az.PrivateDns module. The record is in Azure DNS within seconds of being committed in NIOS, without any polling delay.
 
 In some environments the DDI platform's outbound notification feature is not available:
 
