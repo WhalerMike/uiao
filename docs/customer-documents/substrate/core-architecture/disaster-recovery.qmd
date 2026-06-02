@@ -150,6 +150,8 @@ All backup, recovery, monitoring, and validation procedures are implemented as P
 
 The following table defines the Recovery Point Objective (RPO), Recovery Time Objective (RTO), backup method, recovery priority, and dependencies for every UIAO platform component. Priority levels range from P1 (critical --- immediate recovery required) to P3 (important --- recovery within business day).
 
+These objectives span two tiers of recovery. **High-availability failover** (the hot-standby posture in **ADR-090**) handles node, disk, power, and network failures automatically: a quorum witness gates promotion so exactly one node ever binds commits, the failed node is fenced, and synchronous replication yields near-zero RPO with a single-digit-minute RTO. **Disaster recovery** --- the runbooks in this playbook --- is the cold-restore floor for total-site loss, rebuilding from the backup chain and the off-premises mirror. The component values below are the disaster-recovery targets; where high availability is enabled, the everyday failure path is the faster ADR-090 failover, not a restore.
+
   --------------------------------------------------------------------------------------------------------------------------------------------
   **Component**                 **RPO**          **RTO**   **Backup Method**                        **Priority**   **Dependencies**
   ----------------------------- ---------------- --------- ---------------------------------------- -------------- ---------------------------
@@ -218,7 +220,7 @@ The primary UIAO server hosts all platform components on a Windows Server 2025 i
 
 The UIAO platform employs five distinct backup targets to ensure redundancy and recovery capability:
 
-1. **Active-Passive Git Replica** --- Secondary server (git-dr.uiao.local) receives real-time repository mirrors via git push \--mirror. Triggered by post-receive hooks on every push to primary. Provides near-zero RPO for Git data.
+1. **Active-Passive Git Replica** --- Secondary server (git-dr.uiao.local) receives real-time repository mirrors via git push \--mirror. Triggered by post-receive hooks on every push to primary. Provides near-zero RPO for Git data. In an HA-enabled deployment (**ADR-090**) this secondary is a *hot* standby kept current by synchronous replication of both the relational database and the Git repositories with their LFS objects, with automatic, quorum-gated, fenced promotion --- never active-active.
 
 2. **Gitea DB Dump** --- Hourly VSS-consistent copy of gitea.db to D:\\UIAO\\Backups\\db\\. Provides local fast-restore capability for database corruption scenarios.
 

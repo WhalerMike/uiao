@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_114
 title: "UIAO High-Availability & Fault-Tolerance Layer"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
-updated_at: "2026-04-14"
+updated_at: "2026-06-02"
 boundary: "GCC-Moderate"
 ---
 
@@ -167,6 +167,18 @@ All transitions are logged, signed, and bound into provenance.
 
 ---
 
+## 9. Application to the Substrate Authority (On-Premises Canon Host)
+
+Sections 1–8 describe the HA posture of the UIAO control plane. The **substrate authority** — the single on-premises Gitea-behind-IIS host, inside the customer's GCC-Moderate boundary, on which every canonical commit becomes binding ([ADR-041](../adr/adr-041-uiao-git-infrastructure.md); Book 16) — follows the **same active-passive, single-writer model** defined in §2, applied at host rather than region scale:
+
+- **Single writer, preserved.** Exactly one node binds commits at any instant. Active-active multi-master is rejected for the substrate authority for the same determinism reason §2 gives for the control plane: two writers produce two histories. Horizontal scale lives at the target surfaces (Entra, Intune, Arc), never at the authority.
+- **Hot standby with automatic, split-brain-safe failover.** Where a customer's recovery requirement is tighter than the ADR-041 baseline (cold restore, RTO 4 h), the standby is kept current by **synchronous replication** of the PostgreSQL relational state and the bare Git repositories with their LFS objects, and promotion is **gated by a quorum witness** with the demoted node **fenced** before takeover — so automatic promotion never yields two writers. This is the substrate realization of §2's "manual or automated promotion of standby."
+- **Objectives.** For an HA-enabled substrate: **near-zero RPO** (synchronous replication) and **single-digit-minutes RTO** (automatic failover). Cold restore from backup plus the off-premises GitHub mirror remains the floor for total-site loss.
+
+The decision of record for this substrate HA posture is **[ADR-090](../adr/adr-090-substrate-high-availability.md)**, which extends ADR-041.
+
+---
+
 ## Summary: What This Layer Provides
 
 | Component | Purpose |
@@ -179,6 +191,7 @@ All transitions are logged, signed, and bound into provenance.
 | Failover/Failback | Signed, provenance-bound transition procedures |
 | SLA/SLOs/Error Budgets | Quantified targets with budget-driven freeze policies |
 | Disaster Recovery | Raw Zone as source of truth with full rebuild capability |
+| Substrate Authority HA (§9) | Single-writer canon host with hot-standby + witness-gated automatic failover (ADR-090) |
 
 ---
 

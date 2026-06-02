@@ -21,7 +21,7 @@ wrong — not for reasons of capacity, but of truth. This chapter shows why two
 hosts cannot both be authoritative without diverging, why replication exists
 for recovery rather than load-sharing, and why horizontal scale belongs at
 the target surfaces and not at the substrate authority. Scarcity, here, is a
-feature: one host means one audit surface a human can actually reason about.
+feature: one authority means one audit surface a human can actually reason about.
 :::
 
 ## Scale Out Is the Wrong Instinct Here
@@ -45,17 +45,23 @@ organizational truth into a pair of plausible ones.
 > earlier books invoked; it is a physical claim about how many machines are
 > allowed to say *yes*. The answer is one.
 
-[DIAGRAM-03: Engineering blueprint, white background, 16:9 landscape. Left panel labeled "REJECTED — two authorities" shows two federal-navy server boxes side by side, each accepting a commit arrow, their histories drifting apart into a red fork labeled "divergent truth". Right panel labeled "CANON — one authority + cold standby" shows a single federal-navy server box labeled "AUTHORITY (the one that says yes)" with all commit arrows converging on it, plus a greyed standby box connected by a dashed amber arrow labeled "DR failover only — never active-active". Below, a teal band labeled "scale lives here →" points to a separate cluster of small boxes labeled "TARGET SURFACES — Entra · Intune · Azure Arc (fan out freely)". Federal navy #1F3A5F for authority, teal #1A9E8F for the target-surface band, amber #D4A017 for the DR path, red #C0392B only on the rejected fork, monospace labels, no human figures.]
+[DIAGRAM-03: Engineering blueprint, white background, 16:9 landscape. Left panel labeled REJECTED — two authorities shows two federal-navy server boxes side by side, each accepting a commit arrow, their histories drifting apart into a red fork labeled divergent truth. Right panel labeled CANON — one authority plus standby shows a single federal-navy server box labeled AUTHORITY, the one that says yes, with all commit arrows converging on it, plus a standby box connected by a dashed amber arrow labeled automatic quorum-gated failover, never active-active. A small amber witness box sits above both, labeled quorum witness, only the quorum holder may bind commits, and a tiny amber tag on the standby path reads demoted node fenced. Below, a teal band labeled scale lives here points to a separate cluster of small boxes labeled TARGET SURFACES — Entra, Intune, Azure Arc, fan out freely. Federal navy #1F3A5F for authority, teal #1A9E8F for the target-surface band, amber #D4A017 for the failover path and witness, red #C0392B only on the rejected fork, monospace labels, no human figures.]
 
 ## Replication Is for Recovery, Not Load
 
 This does not mean the substrate is fragile, and it does not mean it cannot
-recover. Replication exists — but it exists for disaster recovery, not for
-load-sharing. A second copy is a cold standby that becomes authoritative only
-when the first has demonstrably stopped being so, through a deliberate
-failover, never through both serving traffic at once. The distinction is the
-whole point: redundancy that preserves a single answer is safety; redundancy
-that produces two answers is corruption wearing safety's clothes.
+recover. Replication exists — but it exists for resilience and recovery, not
+for load-sharing. The second copy may be a cold standby restored on demand, or —
+where a tighter recovery requirement justifies it — a hot standby kept
+continuously current and promoted automatically. What makes either one safe is
+not how fast it takes over but a single guarantee: only one node may ever say
+*yes*. A quorum witness arbitrates which node that is, and the node being
+replaced is fenced before the other takes over, so promotion — even automatic
+promotion — never becomes two machines serving traffic at once. The distinction
+is the whole point: redundancy that preserves a single answer is safety;
+redundancy that produces two answers is corruption wearing safety's clothes. The
+mechanics of the hot-standby posture are the subject of ADR-090; what matters
+here is that it changes the substrate's availability, never its singularity.
 
 ## Where the Scale Actually Goes
 
@@ -65,20 +71,22 @@ with them for throughput.
 
 | Layer | Sizing posture | Why |
 | :--- | :--- | :--- |
-| **Substrate authority** | One host, modest | Workload is correctness, not volume |
+| **Substrate authority** | One logical authority, modest | Workload is correctness, not volume |
 | **Target surfaces** (Entra, Intune, Arc) | Fan out, horizontal | Built to serve millions of objects |
 
-A single host, sized modestly, can hold the entire governance corpus of a
+A single authority, sized modestly, can hold the entire governance corpus of a
 large enterprise and serve every operator who needs to commit to it, because
 the workload is not volume — it is correctness.
 
 ## Governed Once
 
-And because there is exactly one of it, it can be governed exactly once. One
-host means one patch cadence, one compliance policy, one enrollment, one
+And because there is exactly one authority, it can be governed exactly once. One
+authority means one patch cadence, one compliance policy, one enrollment, one
 OrgPath tag, one object for the drift engine to evaluate. The host that holds
 canon is classified the way a domain controller is classified: Tier-0, the
-most trusted plane in the estate, hardened to match. Scarcity, here, is a
-feature — it collapses the audit surface to something a human can actually
-reason about. Having settled that there is one host and why, the next chapter
-describes what is actually running on it.
+most trusted plane in the estate, hardened to match. Where high availability
+adds a standby, that standby is held to the identical Tier-0 baseline, so a
+two-node authority is still governed as one. Scarcity, here, is a feature — it
+collapses the audit surface to something a human can actually reason about.
+Having settled that there is one authority and why, the next chapter describes
+what is actually running on it.

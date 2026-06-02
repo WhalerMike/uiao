@@ -297,8 +297,10 @@ customer-document portal location above.
   ADR's Azure Arc / Blob / Log Analytics dependencies inherit.
 - **Pending: ADR-042** — AD Computer Conversion Guide integration
   (orthogonal scope; different source document).
-- **Pending follow-up ADR** — hot-standby replication if a customer
-  requires sub-4-hour RTO.
+- **ADR-090** — substrate high availability: hot-standby replica with
+  automatic, split-brain-safe failover. Realizes the hot-standby
+  follow-up flagged here and in §Negative / mitigations; extends (does
+  not supersede) this ADR for customers requiring sub-4-hour RTO.
 
 ## Change log
 
@@ -307,3 +309,4 @@ customer-document portal location above.
 | 0.1 | 2026-04-20 | Skeleton created, pending docx extraction | Automation |
 | 0.2 | 2026-05-12 | Sections populated from `platform-server-build.qmd` v1.2 (PR #439); docx sources noted as absent; status remains `draft` pending governance review | Claude Code via `claude/assess-server-github-integration-bKTO3` |
 | 1.0 | 2026-05-12 | Status flipped `draft` → `accepted` by user directive; `decided` date set; build-guide v1.3 + release-manifest cross-references confirmed in Status block | Claude Code via `claude/adr-041-accepted-and-git-server-adapter` |
+| 1.1 | 2026-06-02 | §Related work: the deferred hot-standby follow-up is realized by ADR-090 (cross-reference added). No change to this ADR's decision — status remains `accepted`. | Claude Code via `docs/adr-090-substrate-ha-redundancy` |
