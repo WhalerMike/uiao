@@ -1,0 +1,84 @@
+---
+title: "Active Governance"
+subtitle: "The active platform that governs your providers — and incorporates them rather than competing with them"
+doc-type: architecture-explainer
+audience: "Platform engineers · architects · authorizing officials · integrators"
+canon-source: "src/uiao/canon/adr/adr-092-active-governance.md + src/uiao/canon/specs/Platform-Overview.md + src/uiao/canon/specs/Platform-Services-Layer.md + src/uiao/canon/data/control-planes.yml"
+derived-from: "ADR-092 (Active Governance); UIAO_101 Platform Overview; UIAO_102 Platform Services Layer; control-planes.yml; first worked instance Book_17 (ADR-073)"
+boundary: "GCC-Moderate"
+aspirational: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Active Governance {.unnumbered}
+
+::: {.callout-note}
+This page is the reader-facing articulation of **Active Governance** — UIAO's posture as an *active reconciliation control plane* that governs the providers running your estate without replacing them. The normative source is [ADR-092](../../../src/uiao/canon/adr/adr-092-active-governance.md); the platform machinery it describes is canon in [UIAO_101](../../../src/uiao/canon/specs/Platform-Overview.md) and [UIAO_102](../../../src/uiao/canon/specs/Platform-Services-Layer.md). The [Platform Server Build](./platform-server-build.qmd) pages describe the *substrate this runs on*; this page describes what runs on it.
+:::
+
+When Active Directory is retired, what is lost is not a directory — it is the *closed loop*. AD governed because it sat in the path: it authenticated the logon, evaluated the group, pushed the policy, and truth and enforcement were the same act. The cloud era deliberately tore that apart. Identity lives in one provider, devices in another, network admission in a third, privileged access in a fourth, and each keeps its own copy of the truth. A registry that merely records intended state and reports divergence can see the gap; it cannot close it. Governance without a closed loop is a spreadsheet that judges you.
+
+Active Governance closes the loop — but it does so as a **control plane**, never by climbing back into the runtime path the way AD did.
+
+## UIAO is the control plane; your providers are the data plane
+
+The line that makes this safe is the boundary between **governing** and **executing**. UIAO holds desired state, observes actual state, classifies divergence, and reconciles toward intent. The provider authenticates, authorizes, routes, resolves, or stores at runtime. UIAO *may* call a provider's management API to correct drift — the way it already calls Microsoft Graph to fix an Entra group — but it never becomes the runtime component: it does not sit inline in the authentication path, terminate a session or tunnel, route a packet, or issue the production credential.
+
+![The Active Governance reconciliation loop incorporating a governed provider](images/active-governance-image-01-reconciliation-loop.png){#fig-active-governance-image-01 fig-alt="Engineering blueprint diagram on a white background showing a closed reconciliation loop. On the left a federal navy #1F3A5F box labeled canon desired state OrgPath SSOT. An arrow leads to a teal #1A9E8F ring of four stages labeled observe, compare, classify, reconcile. From the compare stage a navy input arrow comes from a box on the right labeled provider data plane actual state. From the reconcile stage an amber #D4A017 arrow labeled change-making API call points to the provider box, annotated plan apply reconcile, dry-run by default. A red #C0392B band beneath the provider box reads lane discipline UIAO calls the provider API but never sits in the runtime path. Monospace labels, no human figures, 16:9 landscape." width="85%"}
+
+This is the same separation of concerns that lets a Kubernetes control plane govern a cluster without standing in the data path of a single packet. It is also what keeps UIAO from being a competitor that an incumbent provider would crush: UIAO rides on top of Entra, Intune, Arc, Cisco ISE, Infoblox, and the rest — it does not fight them for their runtime seat.
+
+## Don't compete — incorporate
+
+A provider is brought under governance as an **adapter** bound to one control-plane slot, through the Platform Services Layer ([UIAO_102](../../../src/uiao/canon/specs/Platform-Services-Layer.md)). UIAO does not reimplement what the provider does; it reconciles the provider's state against canon and emits evidence. To be incorporated, an adapter must:
+
+- **bind to one control-plane slot** — identity, addressing, network, telemetry, endpoint, or security;
+- **expose `plan / apply / reconcile`** — compute the change-set with no writes, execute it (dry-run by default), or both;
+- **carry OrgPath** — every governed object expresses its organizational position, so the provider's state is addressable in the same terms as every other plane;
+- **advertise governance metadata** — `controls_supported`, `side_effects`, `blast_radius`, `rollback_capable`;
+- **declare a governance mode** — its rung on the maturity ladder below.
+
+> The provider keeps its job. UIAO gives that job a single organizational truth to answer to, a continuous check that it still matches, and an audit trail proving it.
+
+## The six control-plane slots
+
+The estate decomposes into six provider-neutral control planes ([`control-planes.yml`](../../../src/uiao/canon/data/control-planes.yml)). Each is a *seat* a real provider fills — and UIAO governs the seat, not the vendor.
+
+| Control-plane slot | What it governs | Example incorporated provider(s) | Governing canon |
+|---|---|---|---|
+| **Identity** | Identity provider, ICAM, joiner/mover/leaver, PIM | Entra ID; SailPoint NERM (non-employee) | ADR-055, ADR-059 |
+| **Addressing** | IPAM, DNS, DHCP authority | Infoblox NIOS / BloxOne | Book_14 |
+| **Network** | Admission (802.1X / NAC), SD-WAN segmentation | Cisco ISE, Aruba ClearPass, Entra RADIUS; SD-WAN fabric | Book_17, ADR-073, ADR-066 |
+| **Telemetry** | SIEM, monitoring, evidence correlation | Microsoft Sentinel; cloud monitoring | UIAO_101 §1 |
+| **Endpoint** | Device compliance, configuration, EDR | Microsoft Intune, Microsoft Defender | ADR-071 |
+| **Security** | Zero-Trust enforcement, privileged access | CyberArk (PAM); Defender | control-planes.yml §security |
+
+![The six control-plane slots, each filled by an incorporated provider under one governance model](images/active-governance-image-02-control-plane-slots.png){#fig-active-governance-image-02 fig-alt="Engineering blueprint diagram on a white background. A central federal navy #1F3A5F hub labeled UIAO Active Governance control plane, with a monospace tag OrgPath SSOT. Six teal #1A9E8F slot boxes arranged around it, each labeled with a slot name and an example provider in monospace beneath. The boxes read identity Entra ID SailPoint NERM, addressing Infoblox, network Cisco ISE Aruba ClearPass Entra RADIUS, telemetry Microsoft Sentinel, endpoint Intune Defender, security CyberArk. Each slot connects to the hub with a teal line tagged plan apply reconcile. An amber #D4A017 band along the bottom reads providers are incorporated as governed adapters, not replaced. Monospace labels, no human figures, 16:9 landscape." width="85%"}
+
+## The actuation maturity ladder
+
+How far the loop closes is a declared property of each operation class — not a single switch. The ladder runs from recording intent to closing the loop autonomously:
+
+| Rung | Name | Behavior |
+|---|---|---|
+| **L0** | Record | Desired state recorded in canon only. |
+| **L1** | Observe | Actual state collected; drift detected. Read-only. |
+| **L2** | Advise | The specific corrective change-set is generated and shown; no writes. |
+| **L3** | Gated actuation | A human approves; UIAO then executes the change through the provider API. |
+| **L4** | Autonomous reconciliation | The loop closes without a human in each cycle, within declared guardrails. |
+
+This matters for accreditation: you can tell an authorizing official "this operation class is at L2 today, with a roadmap to L3," and that is a sentence they can sign. **The default production ceiling is L3 — human-approved actuation.** Autonomous (L4) reconciliation is permitted only for an explicitly enumerated, low-blast-radius, rollback-capable operation class with a clean advisory record, and only while stop-the-line `halt_on_critical` remains in force. High-blast-radius operations — a tenant-wide role assignment, a VLAN change touching thousands of devices — are capped at L3 permanently and always route to human review.
+
+And when reality and canon disagree, reconciliation is not always "force canon onto reality." Sometimes a legitimate change happened and *canon* is stale. Every finding can be **promoted** (update canon to match reality), **forced** (correct the drift), or **quarantined** (held for review) — and only the *force* path is ever allowed to run autonomously.
+
+## Worked example: network admission
+
+Book_17 — [OrgPath at the Network Edge](../orgpath-narrative/Book_17.qmd) — is the first end-to-end instance of this model. Network admission (802.1X / RADIUS / NAC) is governed by incorporating Cisco ISE, Aruba ClearPass, and the Entra RADIUS Proxy as adapters in the **network** slot, through the `OrgTreePolicyTargetingAdapter` (ADR-073). The adapter plans, applies, and reconciles VLAN, dACL, posture, and SGT assignments against canon — dry-run by default — while the AAA server keeps doing the authentication. Routine create/update operations auto-remediate; the high-blast-radius operations (a policy that doesn't exist, an assignment canon never declared) are gated to human review. That is Active Governance in one plane: the provider is governed, continuously reconciled, fully audited — and never replaced.
+
+The same shape now generalizes to every slot. Each forthcoming product surface — Identity Governance with SailPoint NERM, privileged access with CyberArk, addressing with Infoblox — is the same contract applied to a different seat.
+
+---
+
+For the binding doctrine — the control-plane/data-plane boundary, the incorporation contract, the L0–L4 ladder, and the federal L3 ceiling — see [ADR-092: Active Governance](../../../src/uiao/canon/adr/adr-092-active-governance.md).
