@@ -80,6 +80,7 @@ DEFAULT_SECTIONS = [
     "modernization-specs",
     "operational-guides",
     "orgpath-narrative",
+    "sql-server-narrative",
     "reference-architecture",
     "platform",
     "substrate",
@@ -94,7 +95,7 @@ SKIP_STEMS = {"index", "ROADMAP", "document-index", "TREE"}
 # Book_NN_CPT_MM.qmd). For these, in addition to the whole-section
 # bundle, emit one Book_NN-bundle.docx per book so a reader can download
 # a single book as one Word file. Keyed by section directory name.
-BOOK_BUNDLE_SECTIONS = {"orgpath-narrative"}
+BOOK_BUNDLE_SECTIONS = {"orgpath-narrative", "sql-server-narrative"}
 
 # Leading book identifier in a page filename, e.g. "Book_07a_CPT_03" ->
 # "Book_07a" and "Book_07a" (the landing page) -> "Book_07a". Used to
