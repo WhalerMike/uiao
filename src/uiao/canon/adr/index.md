@@ -99,6 +99,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-040](adr-040-drift-engine.md) | OrgTree Drift Detection Engine — Six-Phase Orchestrator | ACCEPTED | 2026-04-20 |
 | [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
 | [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
+| [ADR-091](adr-091-sql-server-authentication-transformation.md) | SQL Server Engine Authentication Transformation — Windows/SQL Auth to Entra ID for SQL Server 2022+ | PROPOSED | 2026-06-02 |
 
 ### Microsoft Coverage
 
