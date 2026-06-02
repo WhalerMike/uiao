@@ -1,23 +1,37 @@
 #!/usr/bin/env python3
-"""Scan src/uiao/ for content that should appear on the published site.
+"""Scan for content that should appear on the published site but is absent.
 
-Implements the policy declared in ADR-068
-(src/uiao/canon/adr/adr-068-canon-publication-policy.md):
+Implements the policy declared in ADR-072
+(src/uiao/canon/adr/adr-072-canon-publication-policy.md). The scanner runs
+two complementary passes, in opposite directions:
 
-  - Walks src/uiao/canon/, src/uiao/modernization/, and src/uiao/schemas/
-  - Reads frontmatter (or applies path-pattern defaults) for publish_to_site
-  - Parses docs/_quarto.yml to discover what is currently published
-  - Reports the gap: documents intended for publication that have no
-    .qmd page in the sidebar
+  Pass 1 — source -> sidebar ("publication gap"):
+    - Walks src/uiao/canon/, src/uiao/modernization/, and src/uiao/schemas/
+    - Reads frontmatter (or applies path-pattern defaults) for publish_to_site
+    - Reports canon documents intended for publication that have no
+      corresponding .qmd page registered in docs/_quarto.yml
+
+  Pass 2 — disk -> sidebar ("unregistered page"):
+    - Walks a configured allowlist of docs/**/*.qmd globs whose every match
+      is required to be wired into the sidebar (REGISTRATION_REQUIRED_GLOBS)
+    - Reports .qmd pages that exist on disk under those globs but are NOT
+      referenced anywhere in docs/_quarto.yml — i.e., pages that shipped to
+      the site filesystem but are unreachable via site navigation
+
+  Pass 2 closes a structural blind spot in Pass 1: orgpath-narrative chapters
+  are authored directly as .qmd under docs/ with no src/uiao/ source, so the
+  source-driven Pass 1 never considers them. They reached main unregistered
+  three separate times (PRs #746/#747 patched two; Book_07b was still
+  unregistered on 2026-06-02). See ADR-072 "Unregistered-page detection".
 
 Outputs:
-  - stdout:  human-readable summary table
+  - stdout:  human-readable summary table + unregistered-page list
   - tools/publication-gaps/report.md   (full markdown report)
   - tools/publication-gaps/report.json (machine-readable equivalent)
 
 Exit codes:
   0  always in advisory mode (default)
-  1  if --strict and any gap is detected
+  1  if --strict and any gap is detected (Pass 1 gap OR Pass 2 orphan)
 
 Usage:
   python scripts/scan_publication_gaps.py
@@ -29,8 +43,8 @@ Design notes:
   - Frontmatter parsing uses PyYAML (already a project dependency via
     scripts/validate_canon_frontmatter.py).
   - _quarto.yml is parsed as a generic YAML tree; the scanner walks it
-    looking for href/contents leaves and treats anything ending in .qmd
-    as a registered publication entry.
+    looking for href/contents/section leaves and treats anything ending
+    in .qmd as a registered publication entry.
 """
 
 from __future__ import annotations
@@ -67,6 +81,32 @@ CLASS_MODERNIZATION = "modernization"
 CLASS_SCHEMA = "schema"
 CLASS_OTHER = "other"
 
+# Pass 2 — disk -> sidebar "unregistered page" detection.
+#
+# Each entry is (glob, rule_description). The glob is evaluated relative to
+# REPO_ROOT; EVERY .qmd it matches must be referenced somewhere in
+# docs/_quarto.yml (as an href, a section: landing, or a contents leaf).
+# Any match that is absent from the sidebar is reported as an orphan and
+# (in --strict mode) fails the gate.
+#
+# Scope rationale: this list is a curated allowlist, not a blanket
+# "all docs/**/*.qmd" rule. A blanket rule would false-positive on pages
+# that are intentionally reachable only via the navbar (e.g.
+# docs/quickstart.qmd, docs/substrate-status.qmd), on render-excluded
+# trees (docs/architecture/, docs/meta/, ... — see the project.render
+# "!docs/..." excludes in _quarto.yml), and on include-only fragments.
+# The proven, recurring, blocking failure mode is orgpath-narrative Book
+# chapters authored directly as .qmd with no src/uiao/ source, so that is
+# what is enforced here. To extend coverage to another section, add a
+# (glob, description) tuple below — every page the glob matches then
+# becomes registration-required.
+REGISTRATION_REQUIRED_GLOBS: list[tuple[str, str]] = [
+    (
+        "docs/customer-documents/orgpath-narrative/Book_*.qmd",
+        "orgpath-narrative book landing/chapter (authored directly as .qmd; must be wired into docs/_quarto.yml)",
+    ),
+]
+
 
 @dataclass
 class CandidateDoc:
@@ -84,6 +124,14 @@ class CandidateDoc:
     matched_via: str | None = None  # "expected-path" | "link-back-path" | "link-back-id"
     in_sidebar: bool = False
     gap_reason: str | None = None
+
+
+@dataclass
+class UnregisteredDoc:
+    """A .qmd page that exists on disk but is not referenced in the sidebar."""
+
+    rel_path: str
+    rule: str
 
 
 def parse_frontmatter(text: str) -> dict[str, Any]:
@@ -266,6 +314,40 @@ def index_sidebar_content(sidebar_qmds: set[str]) -> dict[str, str]:
     return index
 
 
+def find_unregistered_docs(
+    repo_root: pathlib.Path,
+    sidebar_qmds: set[str],
+    globs: list[tuple[str, str]] | None = None,
+) -> list[UnregisteredDoc]:
+    """Pass 2: find .qmd pages on disk that are missing from the sidebar.
+
+    For each (glob, rule) in ``globs`` (defaults to
+    REGISTRATION_REQUIRED_GLOBS), every .qmd the glob matches under
+    ``repo_root`` must appear in ``sidebar_qmds`` (the set produced by
+    collect_sidebar_qmds(), whose entries are normalized to start with
+    "docs/"). Any match that is absent is returned as an UnregisteredDoc.
+
+    Pure function of its arguments (no module-level globals) so it can be
+    unit-tested against a fixture repo tree.
+    """
+    if globs is None:
+        globs = REGISTRATION_REQUIRED_GLOBS
+
+    orphans: list[UnregisteredDoc] = []
+    seen: set[str] = set()
+    for pattern, rule in globs:
+        for path in sorted(repo_root.glob(pattern)):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(repo_root).as_posix()
+            if rel in seen:
+                continue
+            seen.add(rel)
+            if rel not in sidebar_qmds:
+                orphans.append(UnregisteredDoc(rel_path=rel, rule=rule))
+    return orphans
+
+
 def scan() -> list[CandidateDoc]:
     """Walk SCAN_ROOTS and produce a CandidateDoc per file."""
     sidebar_qmds = collect_sidebar_qmds(QUARTO_CONFIG)
@@ -386,18 +468,47 @@ def render_summary_table(candidates: list[CandidateDoc]) -> str:
     return "\n".join(out)
 
 
-def render_markdown_report(candidates: list[CandidateDoc]) -> str:
+def render_unregistered_section(unregistered: list[UnregisteredDoc]) -> list[str]:
+    """Markdown lines for the Pass 2 unregistered-page section."""
+    lines: list[str] = []
+    lines.append(f"## Unregistered pages — on disk but not in the sidebar ({len(unregistered)})")
+    lines.append("")
+    if not unregistered:
+        lines.append("_None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._")
+        lines.append("")
+        return lines
+    lines.append(
+        "These `.qmd` pages exist on disk but are not referenced anywhere in "
+        "`docs/_quarto.yml`, so they are unreachable via site navigation. "
+        "Add each one to the sidebar."
+    )
+    lines.append("")
+    lines.append("| Page | Rule |")
+    lines.append("|---|---|")
+    for u in unregistered:
+        lines.append(f"| [`{u.rel_path}`]({u.rel_path}) | {u.rule} |")
+    lines.append("")
+    return lines
+
+
+def render_markdown_report(
+    candidates: list[CandidateDoc],
+    unregistered: list[UnregisteredDoc] | None = None,
+) -> str:
     """Full markdown gap report committed to tools/publication-gaps/report.md."""
+    unregistered = unregistered or []
     lines: list[str] = []
     lines.append("# Publication Gap Report")
     lines.append("")
     lines.append(
-        "Generated by `scripts/scan_publication_gaps.py` per ADR-068. "
+        "Generated by `scripts/scan_publication_gaps.py` per ADR-072. "
         "Lists canon documents intended for the published site at "
         "<https://whalermike.github.io/uiao/> that have no corresponding "
-        "`.qmd` entry in `docs/_quarto.yml`."
+        "`.qmd` entry in `docs/_quarto.yml` (Pass 1), and `.qmd` pages that "
+        "exist on disk but are not registered in the sidebar (Pass 2)."
     )
     lines.append("")
+    lines.extend(render_unregistered_section(unregistered))
     lines.append("## Summary")
     lines.append("")
     lines.append("```")
@@ -428,16 +539,26 @@ def render_markdown_report(candidates: list[CandidateDoc]) -> str:
 
     lines.append("## Methodology")
     lines.append("")
+    lines.append("**Pass 1 — source → sidebar (publication gap):**")
+    lines.append("")
     lines.append("1. Walk `src/uiao/canon/`, `src/uiao/modernization/`, and `src/uiao/schemas/`.")
     lines.append(
         "2. For each file, read frontmatter `publish_to_site` if present; otherwise "
-        "apply ADR-068 path-pattern defaults."
+        "apply ADR-072 path-pattern defaults."
     )
     lines.append(
         "3. For each file with `publish_to_site == true`, derive expected `.qmd` "
         "paths and check whether any of them appear in `docs/_quarto.yml`."
     )
     lines.append("4. Report files with `publish_to_site == true` and no matching `.qmd` as gaps.")
+    lines.append("")
+    lines.append("**Pass 2 — disk → sidebar (unregistered page):**")
+    lines.append("")
+    lines.append(
+        "5. For each registration-required glob (`REGISTRATION_REQUIRED_GLOBS`), "
+        "enumerate every matching `.qmd` on disk."
+    )
+    lines.append("6. Report any match that is not referenced anywhere in `docs/_quarto.yml` as an unregistered page.")
     lines.append("")
     lines.append("## How to close a gap")
     lines.append("")
@@ -464,8 +585,12 @@ def render_markdown_report(candidates: list[CandidateDoc]) -> str:
     return "\n".join(lines)
 
 
-def render_json_report(candidates: list[CandidateDoc]) -> str:
+def render_json_report(
+    candidates: list[CandidateDoc],
+    unregistered: list[UnregisteredDoc] | None = None,
+) -> str:
     """Machine-readable equivalent of the markdown report."""
+    unregistered = unregistered or []
 
     def to_dict(c: CandidateDoc) -> dict[str, Any]:
         d = asdict(c)
@@ -473,15 +598,17 @@ def render_json_report(candidates: list[CandidateDoc]) -> str:
         return d
 
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "generated_by": "scripts/scan_publication_gaps.py",
-        "adr_anchor": "ADR-068",
+        "adr_anchor": "ADR-072",
         "candidates": [to_dict(c) for c in candidates],
+        "unregistered_pages": [asdict(u) for u in unregistered],
         "summary": {
             "total_scanned": len(candidates),
             "publishable": sum(1 for c in candidates if c.publish_to_site),
             "published": sum(1 for c in candidates if c.publish_to_site and c.in_sidebar),
             "gaps": sum(1 for c in candidates if c.publish_to_site and not c.in_sidebar),
+            "unregistered_pages": len(unregistered),
         },
     }
     return json.dumps(payload, indent=2)
@@ -512,28 +639,42 @@ def main() -> int:
     args = parser.parse_args()
 
     candidates = scan()
+    sidebar_qmds = collect_sidebar_qmds(QUARTO_CONFIG)
+    unregistered = find_unregistered_docs(REPO_ROOT, sidebar_qmds)
+
     gap_count = sum(1 for c in candidates if c.publish_to_site and not c.in_sidebar)
+    unregistered_count = len(unregistered)
+    total_problems = gap_count + unregistered_count
 
     # Read-only by default in --strict mode (so pre-commit / CI do not see
     # files modified by this hook). Always write in advisory mode.
     write_reports = args.write_reports or not args.strict
     if write_reports:
         REPORT_DIR.mkdir(parents=True, exist_ok=True)
-        REPORT_MD.write_text(render_markdown_report(candidates), encoding="utf-8")
-        REPORT_JSON.write_text(render_json_report(candidates), encoding="utf-8")
+        REPORT_MD.write_text(render_markdown_report(candidates, unregistered), encoding="utf-8")
+        REPORT_JSON.write_text(render_json_report(candidates, unregistered), encoding="utf-8")
 
     if not args.json_only:
         print(render_summary_table(candidates))
+        if unregistered:
+            print("Unregistered pages (on disk but missing from docs/_quarto.yml):")
+            for u in unregistered:
+                print(f"  - {u.rel_path}")
+            print(
+                "  Fix: add each page to the sidebar in docs/_quarto.yml "
+                "(under its book section for orgpath-narrative chapters)."
+            )
         if write_reports:
             print(f"Full report:    {REPORT_MD.relative_to(REPO_ROOT)}")
             print(f"JSON report:    {REPORT_JSON.relative_to(REPO_ROOT)}")
         print(f"Gap count:      {gap_count}")
-        if gap_count > 0 and not args.strict:
+        print(f"Unregistered:   {unregistered_count}")
+        if total_problems > 0 and not args.strict:
             print("Mode:           ADVISORY (use --strict to fail on gaps)")
-        elif gap_count > 0:
+        elif total_problems > 0:
             print("Mode:           STRICT — exiting 1")
 
-    if args.strict and gap_count > 0:
+    if args.strict and total_problems > 0:
         return 1
     return 0
 

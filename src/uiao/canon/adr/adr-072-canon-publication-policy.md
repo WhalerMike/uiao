@@ -4,7 +4,7 @@ title: "Canon Publication Policy — `publish_to_site` Frontmatter Field and Pub
 status: ACCEPTED
 decided: 2026-05-14
 deciders: Michael Stratton
-updated: 2026-05-15
+updated: 2026-06-02
 next_review: 2026-11-01
 review_trigger: Substantive change to the published-site Quarto pipeline; introduction of an auto-include publication mode
 impact: Adds optional `publish_to_site` and `publication_style` frontmatter fields recognized by `src/uiao/schemas/metadata-schema.json`; introduces `scripts/scan_publication_gaps.py` as a blocking CI gate (promoted from advisory on 2026-05-15) and as a pre-commit hook; declares default publication intent per content class
@@ -209,6 +209,42 @@ makes it exit 1 if any gap is detected.
   pre-commit hook at `.pre-commit-config.yaml` (`id: publication-gap`).
   Backlog closed at 159 / 159 publishable canon docs surfaced.
 
+## Addendum — Unregistered-page detection (2026-06-02)
+
+The original scanner walks **source → sidebar**: it starts from canon
+documents under `src/uiao/` and asks whether each publishable doc has a
+`.qmd` page in `docs/_quarto.yml`. That direction has a structural blind
+spot. The OrgPath narrative books (`docs/customer-documents/orgpath-narrative/Book_*.qmd`)
+are authored **directly as `.qmd` under `docs/`** with no `src/uiao/`
+source, so Pass 1 never considers them. As a result, three separate
+batches of these pages reached `main` on the site filesystem but
+unreachable via navigation, and had to be wired into the sidebar by hand:
+
+- Book_16 landing + chapters and `Book_04_CPT_09a` — PR #746
+- `Book_07a` chapters 08–10 — PR #747
+- `Book_07b` landing + chapters — PR #748
+
+To close this, the scanner gained a second, opposite pass — **disk →
+sidebar**:
+
+- `scripts/scan_publication_gaps.py` defines `REGISTRATION_REQUIRED_GLOBS`,
+  a curated allowlist of `docs/**/*.qmd` globs whose **every** match must
+  be referenced in `docs/_quarto.yml`. It is seeded with
+  `docs/customer-documents/orgpath-narrative/Book_*.qmd` (landing pages
+  **and** `Book_*_CPT_*.qmd` chapters).
+- `find_unregistered_docs()` enumerates the matches on disk and reports any
+  that are absent from the sidebar. These count toward the strict-mode exit
+  code alongside Pass 1 gaps, so the existing blocking gate (CI workflow +
+  pre-commit hook) now fails on unregistered pages too.
+
+**Scope choice.** The check is a curated allowlist rather than a blanket
+"all `docs/**/*.qmd`" rule. A blanket rule would false-positive on pages
+reachable only via the navbar (e.g. `docs/quickstart.qmd`), on the
+render-excluded trees declared in `_quarto.yml` (`!docs/architecture/`,
+`!docs/meta/`, …), and on include-only fragments. Coverage extends to
+another section by adding a `(glob, description)` tuple to
+`REGISTRATION_REQUIRED_GLOBS`.
+
 ## Verification Sources
 
 | Source | Reference | Last Verified |
@@ -230,6 +266,9 @@ This ADR must be re-evaluated when any of the following occur:
       but a stricter mode might be introduced for the new field)
 - [x] The publication-gap scanner is promoted from advisory to
       blocking CI gate (completed 2026-05-15)
+- [x] The scanner gains a disk → sidebar pass for pages authored directly
+      under `docs/` with no `src/uiao/` source (completed 2026-06-02; see
+      Addendum — Unregistered-page detection)
 - [ ] The scanner's default-true rule for `src/uiao/canon/UIAO_*.md`
       proves to mis-classify a substantial fraction (≥ 20%) of canon
       docs, suggesting the default should be flipped or the path
