@@ -7,11 +7,15 @@
 
 | Title | Status | Audience |
 |-------|--------|----------|
+| [Adapter Ecosystem Overview — Executive Brief](executive-briefs/adapter-ecosystem-overview.html) | Active | — |
 | [Drift Engine Overview — Executive Brief](executive-briefs/drift-engine-overview.html) | Active | — |
 | [Evidence Fabric Overview — Executive Brief](executive-briefs/evidence-fabric-overview.html) | Active | — |
 | [Governance OS Overview — Executive Brief](executive-briefs/governance-os-overview.html) | Active | — |
+| [KSI Conformance Overview — Executive Brief](executive-briefs/ksi-conformance-overview.html) | Active | — |
 | [Executive Brief — Modernization Overview](executive-briefs/modernization-overview.html) | Active | — |
+| [Reciprocity & Single-ATO Overview — Executive Brief](executive-briefs/reciprocity-single-ato-overview.html) | Active | — |
 | [UIAO Executive Brief](executive-briefs/uiao-executive-brief.html) | Active | Executive, Customer |
+| [Universal-Enterprise Positioning — Executive Brief](executive-briefs/universal-enterprise-positioning-overview.html) | Active | — |
 | [Zero-Trust Overview](executive-briefs/zero-trust-overview.html) | Active | — |
 
 ### Architecture Series
@@ -95,8 +99,8 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Cloud Boundary — Case Study](case-studies/cloud-boundary-case-study.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
 | [Federal Modernization — Case Study](case-studies/federal-modernization-case-study.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
 | [Identity Modernization — Case Study](case-studies/identity-modernization-case-study.html) | framing-pattern | Customer, Sponsor, Program Lead |
-| [Federal Civilian AD → Entra ID + SQL Estate — Reference Deployment Pattern](case-studies/reference-deployment-fedciv-ad-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Architect, Assessor |
-| [Federal Civilian OPM HRIT → Entra ID — Reference Deployment Pattern](case-studies/reference-deployment-opm-hrit-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Architect, Assessor |
+| [Federal Civilian AD → Entra ID + SQL Estate — Reference Deployment Pattern](case-studies/reference-deployment-fedciv-ad-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
+| [Federal Civilian OPM HRIT → Entra ID — Reference Deployment Pattern](case-studies/reference-deployment-opm-hrit-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
 
 ### Whitepapers
 
