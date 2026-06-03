@@ -99,8 +99,8 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Cloud Boundary — Case Study](case-studies/cloud-boundary-case-study.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
 | [Federal Modernization — Case Study](case-studies/federal-modernization-case-study.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
 | [Identity Modernization — Case Study](case-studies/identity-modernization-case-study.html) | framing-pattern | Customer, Sponsor, Program Lead |
-| [Federal Civilian AD → Entra ID + SQL Estate — Reference Deployment Pattern](case-studies/reference-deployment-fedciv-ad-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
-| [Federal Civilian OPM HRIT → Entra ID — Reference Deployment Pattern](case-studies/reference-deployment-opm-hrit-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Authorizing Official |
+| [Federal Civilian AD → Entra ID + SQL Estate — Reference Deployment Pattern](case-studies/reference-deployment-fedciv-ad-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Architect, Assessor |
+| [Federal Civilian OPM HRIT → Entra ID — Reference Deployment Pattern](case-studies/reference-deployment-opm-hrit-to-entra.html) | framing-pattern | Customer, Sponsor, Program Lead, Architect, Assessor |
 
 ### Whitepapers
 
