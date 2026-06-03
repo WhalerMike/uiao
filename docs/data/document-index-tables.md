@@ -116,6 +116,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [UIAO Governance OS — Whitepaper](whitepapers/uiao-governance-os-whitepaper.html) | Active | Executive, Customer, Assessor |
 | [UIAO vs Microsoft Native Tools — Gap Analysis](whitepapers/uiao-vs-native-tools.html) | Active | Executive, Customer, Technical |
 | [Zero Trust Governance — Whitepaper](whitepapers/zero-trust-governance-whitepaper.html) | Active | Executive, Customer, Assessor |
+| [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](whitepapers/zta-scuba-relationship.html) | Active | Executive, Customer, Technical |
 
 ### Executive Governance Series
 
