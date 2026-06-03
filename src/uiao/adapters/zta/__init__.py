@@ -21,8 +21,12 @@ Public surface::
 
 from __future__ import annotations
 
+from uiao.adapters.zta.analytics import Fact, build_facts
 from uiao.adapters.zta.ingest import load_report
 from uiao.adapters.zta.model import ZtReport, ZtTest
 from uiao.adapters.zta.triage import Triage, build_triage
 
-__all__ = ["ZtReport", "ZtTest", "Triage", "build_triage", "load_report"]
+# Note: uiao.adapters.zta.render.dashboard is imported lazily by callers — it
+# pulls matplotlib, which we don't want to load on every `import`.
+
+__all__ = ["ZtReport", "ZtTest", "Triage", "Fact", "build_triage", "build_facts", "load_report"]

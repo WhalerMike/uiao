@@ -191,6 +191,31 @@ pin and `review_trigger` exist for this. `TestResultSummary` unreliability must
 be guarded in code. SecOps/AI pillars are empty today; the crosswalk table needs
 ongoing curation as Microsoft adds checks.
 
+## Future: Active UIAO integration (ADR-092)
+
+Today the adapter and its dashboard run **on demand** against an exported report
+and emit human-facing artefacts — squarely at the **observe / record / map /
+recommend** rungs of the ADR-092 Active Governance actuation ladder. The natural
+progression, once the canon half lands, is to make this a standing input to the
+**active reconciliation control plane**:
+
+1. **Scheduled ingestion** — a recurring assessment run feeds the adapter; each
+   `ztassess:<TestId>` record is committed to the in-boundary substrate as
+   versioned evidence (the provider-incorporation contract).
+2. **Drift as a first-class event** — a status flip (`Passed → Failed`) or a new
+   finding between runs raises a drift event in UIAO's existing taxonomy, rather
+   than being re-discovered by a human each cycle.
+3. **Crosswalk-driven posture** — with the `TestId → 800-53-Moderate / SCuBA`
+   table in canon, findings roll up into live control-coverage and KSI posture
+   alongside the ScubaGear plane (UIAO_002 / UIAO_005).
+4. **Staged actuation, not auto-remediation** — remediation stays **proposed**
+   through change-control; the federal **L3 default ceiling** is the hard stop.
+   UIAO governs and recommends; it does not silently change the tenant.
+
+This section is **direction, not commitment** — it is gated on the canon work
+(evidence record, crosswalk, drift detection) tracked above, and on ADR-092
+itself merging.
+
 ## Open questions
 
 1. Does the at-work `\zt-export\` folder emit the same JSON schema as
@@ -198,3 +223,5 @@ ongoing curation as Microsoft adds checks.
 2. Where does the crosswalk table live — a new `UIAO_NNN` canon doc (sibling to
    UIAO_005) or an annex to UIAO_002?
 3. Is the customer-facing surface a new Book chapter or the ADR-092 Platform page?
+   (Interim: the operational guide at
+   `docs/customer-documents/operational-guides/zero-trust-assessment/`.)

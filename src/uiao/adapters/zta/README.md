@@ -13,15 +13,19 @@ existing fields, and renders human-facing digests.
 ## Usage
 
 ```powershell
-# CLI (report is the .html the tool opens by default, or a .json export)
+# digest: text/CSV/xlsx/html artefacts (report is the .html the tool opens, or a .json export)
 uiao zta digest --input .\ZeroTrustReport\ZeroTrustAssessmentReport.html --out-dir .\out
-
-# pick formats / widen the worklist
 uiao zta digest -i report.json -o .\out --format xlsx --format csv --risk High --risk Medium
 
-# PowerShell wrapper (for analysts who don't invoke Python directly)
-.\runtime\run\adapter-run-zta.ps1 -ReportPath .\ZeroTrustAssessmentReport.html
+# dashboard: charts/heatmap + enriched workbook + Power BI CSV (severity + remediation priority)
+uiao zta dashboard --input .\ZeroTrustReport\ZeroTrustAssessmentReport.html --out-dir .\zt-dashboard
+
+# PowerShell wrappers (for analysts who don't invoke Python directly)
+.\runtime\run\adapter-run-zta.ps1 -ReportPath .\ZeroTrustAssessmentReport.html   # digest
 ```
+
+Customer-facing guide + downloadable dashboard wrapper:
+`docs/customer-documents/operational-guides/zero-trust-assessment/`.
 
 ```python
 from pathlib import Path
