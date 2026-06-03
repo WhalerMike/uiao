@@ -5,16 +5,16 @@ from __future__ import annotations
 import re
 
 from uiao.adapters.zta.applicability import is_premium_gated
-from uiao.adapters.zta.model import STATUS_ORDER, ZtTest
+from uiao.adapters.zta.model import STATUS_ORDER, ZtReport, ZtTest
 from uiao.adapters.zta.triage import Triage
 
 _UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
-def sanitize_basename(triage: Triage) -> str:
+def sanitize_basename(report: ZtReport) -> str:
     """Build a filesystem-safe base name from tenant + run date."""
-    tenant = triage.report.tenant_name or triage.report.domain or "zt-report"
-    date = (triage.report.executed_at or "")[:10]
+    tenant = report.tenant_name or report.domain or "zt-report"
+    date = (report.executed_at or "")[:10]
     raw = f"{tenant}-{date}" if date else tenant
     cleaned = _UNSAFE.sub("-", raw).strip("-")
     return cleaned or "zt-report"

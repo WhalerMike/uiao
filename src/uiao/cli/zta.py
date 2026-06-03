@@ -93,6 +93,52 @@ def digest_cmd(  # noqa: B008
     console.print("[dim]Findings are Controlled tenant data — keep in-boundary; do not publish raw results.[/dim]")
 
 
+@zta_app.command("dashboard")
+def dashboard_cmd(  # noqa: B008
+    input_path: Path = typer.Option(  # noqa: B008
+        ...,
+        "--input",
+        "-i",
+        help="Path to a ZeroTrustAssessmentReport .html or .json file.",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+    ),
+    out_dir: Path = typer.Option(  # noqa: B008
+        Path("./zt-dashboard"),
+        "--out-dir",
+        "-o",
+        help="Directory to write the dashboard workbook, charts, and Power BI CSV into.",
+        resolve_path=True,
+    ),
+) -> None:
+    """Render an analytics dashboard: severity scoring, remediation priority,
+    charts/heatmap, an enriched Excel workbook, and a Power BI-ready CSV."""
+    from uiao.adapters.zta.analytics import build_facts, findings
+    from uiao.adapters.zta.render.dashboard import write_dashboard
+
+    try:
+        report = load_report(input_path)
+    except (ZtIngestError, ValueError) as exc:
+        console.print(f"[red]Error:[/red] {input_path.name}: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    out = write_dashboard(report, out_dir)
+    facts = build_facts(report)
+    p1 = sum(1 for f in facts if f.bucket == "P1")
+    console.print(
+        f"[bold cyan]Dashboard[/bold cyan]  [dim]{report.tenant_name} · "
+        f"{len(report.tests)} checks · {len(findings(facts))} findings · {p1} P1[/dim]"
+    )
+    console.print(f"  workbook : [bold]{out.workbook}[/bold]")
+    console.print(f"  power bi : [bold]{out.powerbi_csv}[/bold]")
+    console.print(f"  charts   : [dim]{out.charts[0].parent}[/dim]")
+    if report.is_demo:
+        console.print("[yellow]Note:[/yellow] this is Microsoft's DEMO report (IsDemo=true).")
+    console.print("[dim]Findings are Controlled tenant data — keep in-boundary; do not publish raw results.[/dim]")
+
+
 def _print_summary(triage: Triage) -> None:
     """Print the honest roll-up to the console."""
     r = triage.report

@@ -46,7 +46,7 @@ def resolve_formats(requested: list[str] | None) -> list[str]:
 def write_outputs(triage: Triage, out_dir: Path, formats: list[str] | None = None) -> list[Path]:
     """Render the selected formats into ``out_dir``; return the written paths."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    base = sanitize_basename(triage)
+    base = sanitize_basename(triage.report)
     chosen = resolve_formats(formats)
     written: list[Path] = []
     for fmt in chosen:
