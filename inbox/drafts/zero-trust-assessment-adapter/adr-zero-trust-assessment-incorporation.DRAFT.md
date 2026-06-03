@@ -222,6 +222,14 @@ itself merging.
    `SampleReport.json`? (Confirm with one real export before locking the parser.)
 2. Where does the crosswalk table live — a new `UIAO_NNN` canon doc (sibling to
    UIAO_005) or an annex to UIAO_002?
+   - **Crosswalk source:** mine the upstream per-check test files at
+     `microsoft/zerotrustassessment` → `code-tests/test-assessments/Test-Assessment.<TestId>.Tests.ps1`.
+     They are keyed by the same numeric `TestId`s this adapter parses (e.g.
+     `35001`, `25392`) and encode each check's intent and expected logic — the
+     authoritative basis for mapping `TestId` → 800-53-Moderate / SCuBA controls.
+     Microsoft ships **no** downstream analytics/crosswalk tool of its own
+     (the repo provides only the producer module, the self-contained HTML
+     viewer, and that Pester suite), so the mapping is UIAO's to author.
 3. Is the customer-facing surface a new Book chapter or the ADR-092 Platform page?
    (Interim: the operational guide at
    `docs/customer-documents/operational-guides/zero-trust-assessment/`.)
