@@ -79,6 +79,43 @@ Book_17 — [OrgPath at the Network Edge](../orgpath-narrative/Book_17.qmd) — 
 
 The same shape now generalizes to every slot. Each forthcoming product surface — Identity Governance with SailPoint NERM, privileged access with CyberArk, addressing with Infoblox — is the same contract applied to a different seat.
 
+## Worked example: identity — sync moves the attribute, OrgPath governs it
+
+The **identity** slot is where the control-plane/data-plane line is easiest to mistake, because Microsoft already ships something that looks adjacent: Entra Connect Sync and Cloud Sync. It is worth being precise about what those tools are and are not, because the answer is exactly the line this whole page draws.
+
+Microsoft's sync tools are a **transport**. They move an attribute value from on-premises Active Directory into an Entra ID `onPremisesExtensionAttribute` slot, reliably and on a schedule. That is genuinely valuable — and it is *all* they do. They do not constrain what the value may be, notice when it stops matching the org chart, or compose it into policy. Whatever is in AD — including a typo, a stale department, or a free-form string no rule can parse — is what lands in Entra.
+
+Active Governance sits one layer up. The sync tool occupies the **data plane** (it executes the move at runtime); UIAO occupies the **control plane** (it holds the desired state, validates what arrived, and reconciles divergence). The two are complementary, not competing: **Microsoft's sync gets the OrgPath value into Entra; UIAO makes that value canonical, validated, drift-resistant, and policy-bearing.**
+
+| Concern | Microsoft sync alone (data plane) | + Active OrgPath (control plane) | Where it lives |
+|---|---|---|---|
+| What arrives | whatever attribute you mapped | the same slots, now **validated per facet** against an enumeration | [`Codebook`](../../../src/uiao/modernization/orgtree/codebook.py) (UIAO_151) |
+| Data quality | whatever AD holds — free-form, possibly messy | rejected at the gate if a facet value isn't in its codebook enum | `DriftEngine._classify_principal` |
+| Drift | invisible until an audit | a classified, per-facet `DRIFT-SCHEMA` / `DRIFT-SEMANTIC` finding with a severity | [`drift_engine.py`](../../../src/uiao/governance/drift_engine.py) |
+| Policy targeting | manual dynamic groups / CA, hand-maintained | facet predicates compiled into membership and CA rules | `DynamicGroupPlanner`, `OrgTreePolicyTargetingAdapter` |
+| Reconciliation | none | `plan / apply / reconcile`, dry-run by default, on the L0–L4 ladder | [`uiao orgtree govern`](../../../src/uiao/governance/orgpath_runtime.py) |
+
+### Model C, not a hyphenated string
+
+One correction worth stating plainly, because older material still circulates: OrgPath is **not** a single composite path like `ORG-FIN-AP-EAST` that policies text-parse with `-startsWith`. That Model A schema was retired by [ADR-078](../../../src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md). Under **Model C**, organizational identity is **10 named facets across `extensionAttribute1`–`extensionAttribute10`** (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType — plus five reserved slots), each validated independently. Policy composes *boolean facet predicates*, never string fragments:
+
+```text
+# Plain sync, free-form — fragile, unvalidated, text-parsed:
+extensionAttribute1 = "ORG-FIN-AP-EAST"
+rule:  (user.extensionAttribute1 -startsWith "ORG-FIN")
+
+# Active OrgPath, Model C — each facet in its canonical slot, enum-validated:
+extensionAttribute2 = "Finance"     # Department
+extensionAttribute3 = "AP"          # Division
+rule:  (user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute3 -eq "AP")
+```
+
+The same facets drive Conditional Access — "privileged Finance users get phishing-resistant MFA" becomes `(user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute10 -eq "Privileged")` — so one validated coordinate system targets dynamic groups, Administrative Units, CA, Intune, and lifecycle workflows alike. See the [OrgPath Codebook](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md) for the slot-to-facet map, the [Dynamic Group Library](../reference-architecture/dynamic-groups.qmd) for the composition pattern, and the [OrgPath FAQ](../reference-architecture/orgpath-faq.qmd) for the operator-level "how is this different from syncing an attribute?" answer.
+
+### What the closed loop adds
+
+Because the facet values flow through the control plane, the same L0–L4 ladder applies as in the network slot. `uiao orgtree govern` snapshots the tenant, classifies per-facet drift, and **plans** the corrective `membershipRule` change-set — emitting UIAO_174 governance telemetry (`SnapshotCreated`, `DriftDetected`, `DriftRemediated`) — all **dry-run by default**, with no transport until one is injected. Routine facet corrections can promote to gated actuation (L3); a finding that canon never declared, or a codebook-integrity (P1) violation, halts the line for human review. That is the difference the table above is really naming: not *whether* the attribute moves, but whether anything is **watching, validating, and closing the loop** after it lands.
+
 ---
 
 For the binding doctrine — the control-plane/data-plane boundary, the incorporation contract, the L0–L4 ladder, and the federal L3 ceiling — see [ADR-092: Active Governance](../../../src/uiao/canon/adr/adr-092-active-governance.md).
