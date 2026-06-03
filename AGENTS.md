@@ -90,6 +90,7 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 | Configuration-latitude drift | `uiao.governance.config_latitude` | (governance library) | Library | UIAO_140 §5, DRIFT-SCHEMA emission |
 | Evidence Graph v1.2 (ATO nodes) | `uiao.evidence.graph` | (via `uiao evidence graph`) | Library | UIAO_113 v1.2, ATO-decision + reciprocity-record nodes |
 | KSI-RECIP family | `uiao.rules.ksi` (KSI-RECIP-001..008) | (via `uiao ksi evaluate`) | Data | 8 KSIs covering reciprocity-program health |
+| **OrgPath Governance Runtime** | `uiao.governance.orgpath_runtime` | `uiao orgtree govern` | CLI | UIAO_163 / UIAO_174; composes the `DriftEngine` + Phase 5 adapters into a runnable governance loop, emits governance telemetry. Dry-run default; transport-free until a transport is injected in Python |
 
 ### Rules for moving a feature between tiers
 
