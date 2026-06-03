@@ -61,6 +61,7 @@ from uiao.cli.reciprocity import reciprocity_app  # noqa: E402
 from uiao.cli.scuba import scuba_app  # noqa: E402
 from uiao.cli.substrate import substrate_app  # noqa: E402
 from uiao.cli.tenant import tenant_app  # noqa: E402
+from uiao.cli.zta import zta_app  # noqa: E402
 
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(canon_app, name="canon")
@@ -79,6 +80,7 @@ app.add_typer(reciprocity_app, name="reciprocity")
 app.add_typer(scuba_app, name="scuba")
 app.add_typer(substrate_app, name="substrate")
 app.add_typer(tenant_app, name="tenant")
+app.add_typer(zta_app, name="zta")
 
 
 if __name__ == "__main__":
