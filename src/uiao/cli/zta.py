@@ -188,6 +188,53 @@ def remediate_cmd(  # noqa: B008
     console.print("[dim]Findings are Controlled tenant data — keep in-boundary; do not publish raw results.[/dim]")
 
 
+@zta_app.command("overlap")
+def overlap_cmd(  # noqa: B008
+    input_path: Path = typer.Option(  # noqa: B008
+        ...,
+        "--input",
+        "-i",
+        help="Path to a ZeroTrustAssessmentReport .html or .json file.",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+    ),
+    out_path: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--out",
+        "-o",
+        help="Optional path (file or directory) to write the overlap-map Markdown.",
+        resolve_path=True,
+    ),
+) -> None:
+    """Map the report's checks against the CISA SCuBA (ScubaGear) baselines —
+    which findings share a surface with ScubaGear vs which are ZT-only."""
+    from uiao.adapters.zta.overlap import build_overlap
+    from uiao.adapters.zta.render.overlap import write_overlap
+
+    try:
+        report = load_report(input_path)
+    except (ZtIngestError, ValueError) as exc:
+        console.print(f"[red]Error:[/red] {input_path.name}: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    overlap = build_overlap(report)
+    console.print(
+        f"[bold cyan]ZT ↔ SCuBA overlap[/bold cyan]  [dim]{report.tenant_name} · {overlap.total} checks[/dim]"
+    )
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Bucket")
+    table.add_column("Checks", justify="right")
+    table.add_column("Share", justify="right")
+    table.add_row("Shared surface (ScubaGear baseline)", str(overlap.shared), f"{overlap.shared_pct}%")
+    table.add_row("ZT-only (no ScubaGear baseline)", str(overlap.zt_only), f"{overlap.zt_only_pct}%")
+    console.print(table)
+    if out_path is not None:
+        written = write_overlap(report, out_path)
+        console.print(f"[green]✓[/green] wrote overlap map → [bold]{written}[/bold]")
+
+
 def _print_summary(triage: Triage) -> None:
     """Print the honest roll-up to the console."""
     r = triage.report
