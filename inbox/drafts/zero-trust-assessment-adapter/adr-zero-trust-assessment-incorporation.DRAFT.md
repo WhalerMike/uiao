@@ -27,6 +27,15 @@ Promote by assigning the next free ADR number against `main` and moving to
 `src/uiao/canon/adr/`. This ADR is **subordinate to ADR-092 (Active Governance)**
 — it is one worked instance of that ADR's provider-incorporation contract.
 
+**Implementation status:** the ingest + digest tool is built and shipped at
+`src/uiao/adapters/zta/` (`uiao zta digest`), with tests under `tests/test_zta_*.py`.
+What remains for this ADR's acceptance is the *governance* layer it describes:
+the canonical evidence record, the `TestId`→800-53-Moderate/SCuBA crosswalk
+table, drift detection against a committed baseline, and the
+required/above-baseline applicability split (the tool currently derives only the
+boundary-availability tag). The digest tool is the read/normalize half; the
+crosswalk + evidence-commit half is the canon work.
+
 ## Context
 
 Microsoft ships the **Zero Trust Assessment** — an open-source PowerShell module

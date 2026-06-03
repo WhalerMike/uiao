@@ -5,6 +5,15 @@ Staging area for incorporating Microsoft's open-source **Zero Trust Assessment**
 evidence. Pattern is the ScubaGear one already in canon (UIAO_002 / UIAO_005),
 under the ADR-092 (Active Governance) provider-incorporation contract.
 
+> **Promoted:** the production digest tool now lives at
+> [`src/uiao/adapters/zta/`](../../../src/uiao/adapters/zta/) and is invoked with
+> `uiao zta digest --input <report.html|.json> --out-dir <dir>` (or the
+> `runtime/run/adapter-run-zta.ps1` wrapper). It ingests the `.html` directly
+> (extracting the embedded `reportData`) or a `.json` export, and renders an
+> executive summary, full Markdown digest, Excel workbook, slim annotated HTML,
+> and a worklist CSV. The `triage_zt_report.py` script below is the original
+> zero-dependency prototype, kept for quick standalone use.
+
 ## Contents
 
 | File | What it is |
