@@ -20,6 +20,9 @@ uiao zta digest -i report.json -o .\out --format xlsx --format csv --risk High -
 # dashboard: charts/heatmap + enriched workbook + Power BI CSV (severity + remediation priority)
 uiao zta dashboard --input .\ZeroTrustReport\ZeroTrustAssessmentReport.html --out-dir .\zt-dashboard
 
+# remediate: per-finding how-to-fix playbook (console + Microsoft's steps + Learn links) + CSV tracker
+uiao zta remediate --input .\ZeroTrustReport\ZeroTrustAssessmentReport.html --out-dir .\zt-remediation
+
 # PowerShell wrappers (for analysts who don't invoke Python directly)
 .\runtime\run\adapter-run-zta.ps1 -ReportPath .\ZeroTrustAssessmentReport.html   # digest
 ```
