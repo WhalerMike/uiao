@@ -1,0 +1,204 @@
+---
+title: "OrgPath Runtime"
+subtitle: "Read/assess Active Directory → derive OrgPath facets → write Entra/Azure — plus the governance loop and the read-only web console"
+doc-type: architecture-explainer
+audience: "Platform engineers · identity architects · governance operators"
+canon-source: "src/uiao/canon/UIAO_151_OrgPath_Codebook.md + src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md + src/uiao/canon/UIAO_174_Governance_Telemetry_Model.md + src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md + src/uiao/canon/adr/adr-084-phase5-consumer-architecture.md + src/uiao/canon/adr/adr-038-device-plane-orgpath.md"
+derived-from: "UIAO_151 (Codebook); UIAO_163 (Drift Detection Engine); UIAO_174 (Governance Telemetry Model); ADR-078 (15-facet schema); ADR-084 (Phase 5 consumer architecture); ADR-038 (device-plane OrgPath)"
+boundary: "GCC-Moderate"
+aspirational: true
+lifecycle: aspirational
+tiers_adopted: [1]
+lifecycle_review: 2026-12-01
+---
+
+# OrgPath Runtime {.unnumbered}
+
+::: {.callout-note}
+This page is the operator-facing articulation of the **OrgPath Runtime** — the
+working software that reads and assesses Active Directory, derives each object's
+OrgPath facet values, and writes them to Entra/Azure, then governs them with a
+drift loop and surfaces the result in a read-only web console. The normative
+sources are the Codebook [UIAO_151](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md)
+(facet model), the Drift Detection Engine
+[UIAO_163](../../../src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md),
+and the [UIAO_174](../../../src/uiao/canon/UIAO_174_Governance_Telemetry_Model.md)
+telemetry model; the design decisions are
+[ADR-078](../../../src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md)
+(15-facet schema),
+[ADR-084](../../../src/uiao/canon/adr/adr-084-phase5-consumer-architecture.md)
+(Phase 5 consumer/adapter architecture, incl. the read-only HTTP surface §C7),
+and [ADR-038](../../../src/uiao/canon/adr/adr-038-device-plane-orgpath.md)
+(device-plane writes). This page describes the runtime that turns those specs
+into running software; the [Active Governance](./active-governance.qmd) page
+describes the control-plane posture it embodies.
+:::
+
+OrgPath is how every governed object — a user, a device, a service account —
+declares its organizational position in one canonical vocabulary: *region,
+department, division, role, cost-center, classification, hire/term date,
+clearance, account-type* (the ten named facets of the Codebook, UIAO_151). The
+**OrgPath Runtime** is the software that makes that vocabulary live across a real
+estate: it reads the organizational truth out of Active Directory, decides what
+each object's facet values *should* be, writes them onto the cloud objects, and
+then keeps checking that they still match.
+
+It is a **control plane, not a runtime path** (see [Active Governance](./active-governance.qmd)):
+it reads AD and calls Microsoft Graph / Azure Resource Manager to set
+attributes, but it never sits inline in authentication, policy evaluation, or
+packet routing. Every write is **dry-run by default**.
+
+[DIAGRAM-01: Engineering blueprint, white background, 16:9 landscape. Three stages left-to-right joined by arrows. Stage one a federal-navy #1F3A5F box labeled "Active Directory — read / assess", with small input arrows labeled OUs, users, computers, group membership. Stage two a teal #1A9E8F box labeled "Assess — derive OrgPath facets (UIAO_151 Codebook)", showing a small table of facet rows region department role classification, with a navy validation arrow labeled "validate vs codebook" looping back on itself. Stage three two stacked boxes on the right labeled "Entra — extensionAttributes (Graph)" and "Azure Arc — resource tags (ARM)", fed by amber #D4A017 arrows labeled "plan / apply — dry-run by default". A teal ring wraps stage two and a fourth element below labeled "Drift Engine — observe, compare, classify, reconcile (UIAO_163)" with an amber reconcile arrow back to the Entra/ARM boxes. Federal navy for source and target systems, teal for the runtime/assessment, amber for change-making arrows, no human figures, monospace labels.]
+
+## The assessment pipeline: read AD → derive facets → write Entra/Azure
+
+The runtime closes the gap between two halves that already existed — a survey
+that *reads* AD, and adapters that *write* facet values to the cloud — by adding
+the piece in the middle that nobody had: the **derivation** of facet values from
+AD attributes.
+
+### 1 · Read / assess Active Directory
+
+A focused directory read pulls just the attributes the mapping needs (identity,
+`department`, `title`, office, `employeeType`, group membership, SPNs, creation
+date) — either from a **live LDAP** bind or, for repeatable and offline runs,
+from a **JSON survey export**. The live read is deliberately thin: it does not
+re-implement the full forest archaeology of the AD survey, only the attribute
+pull the assessment consumes.
+
+### 2 · Derive OrgPath facets
+
+Each AD object is run through an **AD→facet mapping** that, per facet, names a
+source attribute and a transform:
+
+- **alias** — map a raw AD value onto a Codebook value (`"Information
+  Technology" → IT`, `"Reston VA" → EASTUS`), exact or substring;
+- **date** — normalise an AD generalized-time / ISO value to `YYYY-MM-DD`
+  (hire/term dates);
+- **derive** — compute a facet from structure rather than a single field
+  (`account_type` becomes `Service` when the object carries an SPN, `Privileged`
+  when it sits in a privileged group such as Domain Admins, else `Standard`).
+
+Every derived value is **validated against the Codebook** ([UIAO_151](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md))
+before it is allowed to proceed. A value that does not map to a valid Codebook
+entry is **not written** — it becomes a finding instead, so a typo or an
+un-mapped department never silently lands on a cloud object.
+
+The mapping ships with a sensible default and is **tenant-tunable** by YAML
+override — it is operator configuration, not canon, so you adjust the aliases
+for your directory without a code change. (See the *Codebook* reference at
+[codebook.qmd](../reference-architecture/codebook.qmd) for the facet vocabulary,
+and [where-data-lives.qmd](../reference-architecture/where-data-lives.qmd) for
+the authority model.)
+
+### 3 · Write Entra / Azure
+
+Validated facet values are written through the existing device adapter, which
+routes by the object's **disposition** ([ADR-038](../../../src/uiao/canon/adr/adr-038-device-plane-orgpath.md)):
+
+| Disposition | Plane | Write |
+|---|---|---|
+| `ENTRA-DEVICE` | Entra (Graph) | `onPremisesExtensionAttributes.extensionAttribute1..10` on the device |
+| `ARC-SERVER`, `STAY-AD-DEPENDENCY`, `MANAGED-IDENTITY-CANDIDATE` | Azure (ARM) | resource `tags` on the Arc machine |
+| `STAY-AD-DC`, `DECOMMISSION` | — | skip (no write) |
+
+Writes go out over a real Microsoft Graph transport (httpx + MSAL
+client-credentials, cloud-aware for Commercial / GCC-High / DoD), but only when
+you promote a run out of dry-run with valid credentials.
+
+## The governance loop
+
+Setting the attributes once is not governance — *keeping* them right is. The
+**governance runtime** composes the Codebook, the Phase 5 adapters, and the
+Drift Detection Engine ([UIAO_163](../../../src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md))
+into a single runnable pass over a tenant snapshot:
+
+1. **observe** the current per-object facet values;
+2. **compare** them against the Codebook;
+3. **classify** divergence into the five drift categories (Format, Value, Slot,
+   Orphan, Phantom);
+4. **reconcile** — plan, and optionally apply, the corrective writes.
+
+Each pass returns one report bundling the drift scan, a rollup, and a stream of
+**governance-telemetry events** ([UIAO_174](../../../src/uiao/canon/UIAO_174_Governance_Telemetry_Model.md):
+`SnapshotCreated`, `DriftDetected`, `DriftRemediated`, `EscalationTriggered`) so
+a run is observable, not just a return value.
+
+Two safety rails are inherited from the engine ([ADR-084](../../../src/uiao/canon/adr/adr-084-phase5-consumer-architecture.md) §C5):
+**halt-on-critical** stops the line and escalates when a P1 (codebook-integrity)
+finding fires, suppressing all remediation; and **governance-review** verbs
+(deleting a phantom group, rebinding a policy) are *never* auto-applied.
+
+## The web console
+
+The same data is surfaced in a read-only, Azure-Portal-style web console served
+by the UIAO API under `/orgpath` (ADR-084 §C7 — the HTTP surface observes and
+analyses; it does not write). Four views:
+
+- **Overview** — drift findings by severity, planned vs. remediated operations,
+  halt/escalation status, and a live telemetry feed;
+- **Codebook explorer** — the fifteen facet slots, their enumerated values,
+  typed patterns, and reserved slots;
+- **Principal lookup** — one object's ten facet values with per-facet
+  ok / drift / deprecated status;
+- **Run governance** — paste a tenant snapshot and view the resulting report.
+
+## Using it
+
+The OrgPath Runtime is reachable from the CLI (see the
+[UIAO CLI Reference](../substrate/platform-tooling/uiao-cli-reference.qmd),
+`orgtree` sub-app) and as a web app.
+
+**Read/assess AD and derive facets** (offline export or live LDAP):
+
+```bash
+# Offline / repeatable — assess a survey export and write the assignments
+uiao orgtree assess --from-export ad-users.json --out assignments.json
+
+# Live — read directly from a domain controller
+uiao orgtree assess --ldap-server dc01.contoso.com --base-dn "DC=contoso,DC=com"
+
+# Tune the mapping for your directory
+uiao orgtree assess --from-export ad-users.json --mapping my-mapping.yaml
+```
+
+**Write the derived facets to Entra / Azure** (devices; dry-run by default):
+
+```bash
+uiao orgtree assess --from-export ad-devices.json --target-type device --write
+# add --no-dry-run (with UIAO_ENTRA_* credentials) to dispatch the writes live
+```
+
+**Run a governance pass** over a tenant snapshot:
+
+```bash
+uiao orgtree govern snapshot.json --out report.json
+```
+
+**Run the web console** (read-only):
+
+```bash
+pip install -e ".[api]"
+uvicorn uiao.api.app:app --port 8000
+# then open http://localhost:8000/orgpath/
+```
+
+## Scope & boundaries
+
+- **Writes target devices today.** Entra-device `extensionAttributes` and Arc
+  resource tags are the supported, tested write path ([ADR-038](../../../src/uiao/canon/adr/adr-038-device-plane-orgpath.md)).
+  Writing OrgPath back onto *user* objects carries directory-sync semantics and
+  is gated on a separate decision.
+- **Dry-run is the default everywhere.** Promotion to live writes is an explicit
+  per-run operator action requiring credentials.
+- **Validation precedes every write.** No value reaches a cloud object unless it
+  is a valid Codebook value; everything else becomes a finding.
+
+::: {.callout-tip}
+## Related reading
+- [Active Governance](./active-governance.qmd) — the control-plane posture this runtime embodies
+- [OrgPath FAQ](../reference-architecture/orgpath-faq.qmd) — plain-language model overview
+- [Codebook](../reference-architecture/codebook.qmd) — the facet vocabulary (UIAO_151)
+- [Where the data lives](../reference-architecture/where-data-lives.qmd) — authority and data-flow model
+- [UIAO CLI Reference](../substrate/platform-tooling/uiao-cli-reference.qmd) — the `orgtree` sub-app
+:::

@@ -1,0 +1,71 @@
+# OrgPath AD→facet mapping — tenant override example.
+#
+# Copy, edit, and pass to:  uiao orgtree assess --mapping my-mapping.yaml
+# Loaded by uiao.modernization.orgtree.ad_mapping.OrgPathMapping.from_yaml().
+# This is operator/tenant configuration, NOT canon — tune the aliases freely.
+#
+# Each entry under `facets:` is one rule:
+#   facet     : codebook facet name (UIAO_151)
+#   source    : AD attribute to read (omit for transform: derive_account_type)
+#   transform : alias | passthrough | date | derive_account_type
+#   match     : exact | substring   (alias only; substring suits free-text titles)
+#   default   : value used when source is absent/unmapped (null = leave unset)
+#   aliases   : lowercased AD value -> codebook value
+#
+# Anything you omit falls back to the in-code defaults in ad_mapping.py.
+
+facets:
+  - facet: department
+    source: department
+    transform: alias
+    match: exact
+    aliases:
+      information technology: IT
+      human resources: HR
+      finance: Finance
+      legal: Legal
+      engineering: Engineering
+      operations: Operations
+      sales: Sales
+      executive: Executive
+
+  - facet: role
+    source: title
+    transform: alias
+    match: substring
+    default: Analyst
+    aliases:
+      ciso: CISO
+      director: Director
+      manager: Manager
+      architect: Architect
+      engineer: Engineer
+      analyst: Analyst
+
+  - facet: region
+    source: physicalDeliveryOfficeName
+    transform: alias
+    match: substring
+    aliases:
+      washington: NCR
+      reston: EASTUS
+      seattle: WESTUS
+      chicago: CENTRAL
+      london: EMEA
+
+  - facet: classification
+    source: employeeType
+    transform: alias
+    default: Employee
+    aliases:
+      employee: Employee
+      contractor: Contractor
+      intern: Intern
+
+  - facet: hire_date
+    source: whenCreated
+    transform: date
+
+  - facet: account_type
+    transform: derive_account_type
+    default: Standard

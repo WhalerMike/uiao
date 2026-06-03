@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}OrgPath Principals{% endblock %}
+{% block crumb %}Principals{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Principal lookup</h1>
+  <p class="subtitle">View a principal's per-facet OrgPath values from the active snapshot.</p>
+</div>
+
+<div class="cols">
+  <section class="card card-narrow">
+    <h2>Principals</h2>
+    <form method="get" action="/orgpath/principals" class="lookup">
+      <input type="text" name="id" value="{{ query }}" placeholder="principal id" />
+      <button type="submit">Look up</button>
+    </form>
+    <ul class="idlist">
+      {% for pid in ids %}
+      <li><a href="/orgpath/principals?id={{ pid }}" class="{% if pid == query %}active{% endif %}">{{ pid }}</a></li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="card">
+    {% if not_found %}
+      <p class="empty">No principal <code>{{ query }}</code> in the active snapshot.</p>
+    {% elif principal %}
+      <h2>{{ principal.principal_id }} <span class="kind kind-enumerated">{{ principal.principal_type }}</span></h2>
+      <table class="grid">
+        <thead><tr><th>Facet</th><th>Slot</th><th>Value</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td><code>{{ r.facet }}</code></td>
+            <td class="mono">{{ r.attribute }}</td>
+            <td>{{ r.value or '—' }}</td>
+            <td><span class="status status-{{ r.status }}">{{ r.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">Select a principal on the left to view its facet values.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
