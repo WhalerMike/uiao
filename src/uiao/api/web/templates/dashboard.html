@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}OrgPath Overview{% endblock %}
+{% block crumb %}Overview{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>OrgPath Governance — Overview</h1>
+  <p class="subtitle">
+    Snapshot <code>{{ report.snapshot_id }}</code> · generated {{ report.generated_at }}
+    · {% if report.dry_run %}dry-run{% else %}live{% endif %}
+    {% if report.halted %}<span class="badge badge-p1">HALTED</span>{% endif %}
+  </p>
+</div>
+
+<section class="tiles">
+  <div class="tile">
+    <div class="tile-num">{{ report.drift_count }}</div>
+    <div class="tile-label">Drift findings</div>
+  </div>
+  <div class="tile">
+    <div class="tile-num">{{ severity_counts.get('P1', 0) }}</div>
+    <div class="tile-label"><span class="dot dot-p1"></span>P1 critical</div>
+  </div>
+  <div class="tile">
+    <div class="tile-num">{{ severity_counts.get('P2', 0) }}</div>
+    <div class="tile-label"><span class="dot dot-p2"></span>P2 warnings</div>
+  </div>
+  <div class="tile">
+    <div class="tile-num">{{ severity_counts.get('P3', 0) }}</div>
+    <div class="tile-label"><span class="dot dot-p3"></span>P3 informational</div>
+  </div>
+  <div class="tile">
+    <div class="tile-num">{{ report.planned_count }}</div>
+    <div class="tile-label">Planned ops</div>
+  </div>
+  <div class="tile">
+    <div class="tile-num">{{ report.remediated_count }}</div>
+    <div class="tile-label">Remediated ops</div>
+  </div>
+</section>
+
+<div class="cols">
+  <section class="card">
+    <h2>Drift findings</h2>
+    {% if findings %}
+    <table class="grid">
+      <thead><tr><th>Severity</th><th>Facet</th><th>Category</th><th>Target</th><th>Reason</th></tr></thead>
+      <tbody>
+        {% for f in findings %}
+        <tr>
+          <td><span class="badge badge-{{ f.severity|lower }}">{{ f.severity }}</span></td>
+          <td><code>{{ f.facet }}</code></td>
+          <td>{{ f.drift_category }}</td>
+          <td class="mono">{{ f.target }}</td>
+          <td class="reason">{{ f.reason }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No drift detected — every facet value is canon-compliant.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Telemetry feed <span class="count">{{ events|length }}</span></h2>
+    <ul class="feed">
+      {% for e in events %}
+      <li>
+        <span class="evt evt-{{ e.event_type }}">{{ e.event_type }}</span>
+        <span class="evt-ts">{{ e.timestamp }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

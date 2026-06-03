@@ -91,6 +91,7 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 | Evidence Graph v1.2 (ATO nodes) | `uiao.evidence.graph` | (via `uiao evidence graph`) | Library | UIAO_113 v1.2, ATO-decision + reciprocity-record nodes |
 | KSI-RECIP family | `uiao.rules.ksi` (KSI-RECIP-001..008) | (via `uiao ksi evaluate`) | Data | 8 KSIs covering reciprocity-program health |
 | **OrgPath Governance Runtime** | `uiao.governance.orgpath_runtime` | `uiao orgtree govern` | CLI | UIAO_163 / UIAO_174; composes the `DriftEngine` + Phase 5 adapters into a runnable governance loop, emits governance telemetry. Dry-run default; transport-free until a transport is injected in Python |
+| **OrgPath Web Console** | `uiao.api.web.console` | ❌ None (web UI) | **`[api]` extra** | Azure-Portal-style, **read-only** (ADR-084 §C7) governance UI served by `uiao.api.app` under `/orgpath`. Server-rendered (Jinja2): drift dashboard, codebook explorer, principal lookup, run-a-governance-pass. Reads the runtime + Codebook; no writes |
 
 ### Rules for moving a feature between tiers
 

@@ -33,6 +33,7 @@ from .routes import (
     survey,
     ztmm,
 )
+from .web import console as orgpath_console
 
 
 # ------------------------------------------------------------------
@@ -113,3 +114,10 @@ app.include_router(
 )
 app.include_router(archive.router, prefix="/api/v1/archive", tags=["Data Lake (UIAO_109)"])
 app.include_router(cql.router, prefix="/api/v1/cql", tags=["CQL (UIAO_108)"])
+
+# ------------------------------------------------------------------
+# Web console — Azure-Portal-style read-only OrgPath governance UI.
+# Server-rendered (Jinja2) HTML under /orgpath; static assets under
+# /orgpath/static. Read-only per ADR-084 §C7. See uiao.api.web.console.
+# ------------------------------------------------------------------
+orgpath_console.mount(app, prefix="/orgpath")
