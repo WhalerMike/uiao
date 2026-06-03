@@ -1,0 +1,156 @@
+---
+title: "Zero Trust Assessment Dashboard"
+subtitle: "Turn a ZeroTrustAssessmentReport.html into a severity-scored, remediation-prioritized Excel dashboard and a Power BI-ready dataset — from PowerShell"
+doc-type: operational-guide
+audience: [Customer, Operator, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/zero-trust-assessment/index.qmd
+created-at: 2026-06-03
+updated-at: 2026-06-03
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-03
+---
+
+Microsoft's [Zero Trust Assessment](https://github.com/microsoft/zerotrustassessment)
+runs hundreds of read-only checks against your Entra / Intune / Azure / Purview
+tenant and writes a `ZeroTrustAssessmentReport.html`. That report is excellent
+for browsing but hard to *act on* as a team. This guide walks you — entirely
+from PowerShell — through turning it into:
+
+- an **Excel dashboard** (charts + pillar × risk heatmap, findings grouped by
+  pillar, **severity scored 0–100**, and a **remediation priority** P1–P4 with
+  quick-wins called out), and
+- a **Power BI-ready CSV** (one tidy row per check, every derived column).
+
+::: {.callout-important}
+## Handle the output as Controlled data
+The assessment report and everything derived from it contain sensitive tenant
+configuration — effectively a map of where you are weak. Keep all input and
+output **inside your authorization boundary**, share only with authorized
+personnel, and **do not publish raw findings**. Remediation guidance is
+**advisory**: apply changes only through your normal change-control process.
+:::
+
+## What you get
+
+| Output | Description |
+|---|---|
+| `…-dashboard.xlsx` | **Dashboard** sheet with four embedded charts; **Findings** (ranked, severity color-scale, P1–P4 fills); **By Pillar**; **All Tests**; **Methodology** (the exact scoring, documented). |
+| `charts\*.png` | The individual charts (status, findings-by-pillar, pillar × risk heatmap, severity × effort remediation quadrant). |
+| `…-powerbi.csv` | One row per check with severity, priority, applicability, and SKU columns — import directly into Power BI. |
+
+## Prerequisites
+
+- **PowerShell 7+** — [install guide](https://learn.microsoft.com/powershell/scripting/install/installing-powershell).
+- **Python 3.11+** on `PATH`.
+- **The UIAO toolkit** (provides the `uiao` command): `pip install uiao` from the
+  repository, which brings in the `openpyxl` and `matplotlib` dependencies the
+  dashboard needs.
+- A **`ZeroTrustAssessmentReport.html`** (or `.json`) from a completed assessment
+  run — produced in Step 1 below.
+
+```powershell
+# one-time: confirm the toolkit is available
+uiao --version
+uiao zta --help
+```
+
+## Step 1 — Run the Zero Trust Assessment
+
+If you have not already produced a report, run the assessment (read-only). The
+first run needs a Global Administrator to consent; later runs can use Global
+Reader. See Microsoft's [get-started guide](https://learn.microsoft.com/security/zero-trust/assessment/get-started).
+
+```powershell
+Install-Module ZeroTrustAssessment -Scope CurrentUser
+Connect-ZtAssessment
+Invoke-ZtAssessment            # writes .\ZeroTrustReport\ZeroTrustAssessmentReport.html
+```
+
+::: {.callout-note}
+The assessment can take a while on large tenants. The HTML it opens by default
+already embeds the full dataset — the dashboard reads it directly, so you do
+**not** need a separate JSON export.
+:::
+
+## Step 2 — Generate the dashboard
+
+Download **`Invoke-ZtDashboard.ps1`** (see [Downloads](#downloads)) and run it
+against the report:
+
+```powershell
+.\Invoke-ZtDashboard.ps1 -ReportPath .\ZeroTrustReport\ZeroTrustAssessmentReport.html -OutputDirectory .\zt-dashboard
+```
+
+That is a thin wrapper over the toolkit; the equivalent direct call is:
+
+```powershell
+uiao zta dashboard --input .\ZeroTrustReport\ZeroTrustAssessmentReport.html --out-dir .\zt-dashboard
+```
+
+You can also produce the lighter text/CSV digests (executive summary, Markdown,
+worklist) with:
+
+```powershell
+uiao zta digest --input .\ZeroTrustReport\ZeroTrustAssessmentReport.html --out-dir .\zt-digest
+```
+
+## Reading the dashboard
+
+- **Outcomes are recomputed from the per-test results.** The report's own
+  summary block is intentionally ignored because it does not reconcile.
+- **Only `Failed` and `Investigate` are findings.** `Skipped` (not applicable /
+  unlicensed) and `Planned` (a check Microsoft has not implemented yet) are shown
+  but are **not** gaps — don't chase them.
+- **Severity (0–100)** = risk × status weighting. **Priority** = severity ÷
+  effort, so a high-severity, low-effort check (a *quick win*) outranks a
+  high-severity, high-effort one. Buckets: **P1 ≥ 50, P2 ≥ 30, P3 ≥ 15, P4 > 0**.
+- The **Findings** sheet is your worklist — sorted P1 first, severity color-scaled.
+- The **remediation quadrant** chart splits findings into quick-wins (top-left)
+  vs major projects (top-right).
+
+::: {.callout-warning}
+## Verify boundary scope before acting
+Many checks require premium / P2-class SKUs (flagged in the **ApplicabilityNote**
+column). In a GCC / FedRAMP Moderate tenant some of those capabilities may not be
+available or authorized — so a "skipped" or "failed" premium check may not be a
+real gap. Confirm the SKU applies in your boundary before scoring it as one.
+:::
+
+## Power BI quickstart
+
+1. Power BI Desktop → **Get Data → Text/CSV** → select `…-powerbi.csv`.
+2. It's already tidy (one row per check). Build visuals directly — e.g. a matrix
+   of `Pillar` × `Status`, a bar of `PriorityBucket`, or a card for count of
+   `IsFinding = yes`.
+3. Useful measures: count of findings (`IsFinding = "yes"`), average
+   `SeverityScore` by `Pillar`, P1 count by `Pillar`.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `uiao: command not found` | The toolkit isn't installed/active. `pip install uiao`, or the wrapper will fall back to `python -m uiao.cli.app` if Python is on `PATH`. |
+| Unicode / `cp1252` errors in the console | Run `"$env:PYTHONUTF8 = 1"` before invoking, or use PowerShell 7. |
+| `could not locate an embedded reportData object` | The input isn't a Zero Trust Assessment report — point `-ReportPath` at the real `…Report.html` or a `.json` export. |
+
+## Downloads {#downloads}
+
+| Script | Version | SHA-256 |
+|---|---|---|
+| [`Invoke-ZtDashboard.ps1`](scripts/Invoke-ZtDashboard.ps1) | 1.0 | `f30811fd01616e2960e12dd0e870a4d19cd52a7c5c79f0e3bcc592ca5d13d509` |
+
+Verify the download before running it:
+
+```powershell
+Get-FileHash .\Invoke-ZtDashboard.ps1 -Algorithm SHA256
+```
