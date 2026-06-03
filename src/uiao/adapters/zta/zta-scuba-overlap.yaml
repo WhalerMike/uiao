@@ -1,0 +1,61 @@
+# ZT Assessment <-> CISA SCuBA (ScubaGear) overlap crosswalk.
+#
+# Classifies each Zero Trust Assessment check (by pillar, with category-keyword
+# overrides) onto the SCuBA product baseline it shares a surface with, or marks
+# it ZT-only where ScubaGear has no baseline. This is a SURFACE-level map (which
+# tool covers the area), not a per-check 1:1 control mapping — see the note.
+#
+# class: "shared"  -> ScubaGear has a baseline for this area (scuba names the product)
+#        "zt-only" -> no ScubaGear baseline exists (surface names what it is)
+#
+# Order of evaluation: category_overrides first (most specific; optional `pillar`
+# scope), else pillar_defaults, else the global zt-only fallback.
+
+note: >-
+  Surface-level overlap, not a 1:1 control mapping. ScubaGear's aad baseline is
+  ~20 prescriptive policies; the Zero Trust Assessment has many more Identity
+  checks, so "shared" means same area, not same check. True per-check
+  counterparts are a subset (legacy auth, MFA, Conditional Access basics,
+  privileged-role config, risky users, app consent).
+
+pillar_defaults:
+  Identity:       {scuba: aad,        class: shared,  surface: "Entra ID identity"}
+  Data:           {scuba: null,       class: zt-only, surface: "Microsoft Purview (labels / DLP / RMS / DSPM)"}
+  Devices:        {scuba: null,       class: zt-only, surface: "Intune device management"}
+  Network:        {scuba: null,       class: zt-only, surface: "Global Secure Access / Azure networking"}
+  Infrastructure: {scuba: null,       class: zt-only, surface: "Azure resources / Defender for Cloud"}
+
+category_overrides:
+  # SharePoint/OneDrive config IS a SCuBA baseline, even under the Data pillar.
+  - match: sharepoint
+    scuba: sharepoint
+    class: shared
+    surface: "SharePoint / OneDrive sharing"
+  # Entra-identity checks that surface under the Data pillar map to SCuBA aad.
+  - match: entra
+    pillar: Data
+    scuba: aad
+    class: shared
+    surface: "Entra ID identity"
+  # Application-management checks are Entra (aad) regardless of which pillar
+  # the tool files them under (Identity, Data, or none).
+  - match: application management
+    scuba: aad
+    class: shared
+    surface: "Entra ID identity"
+  # Entra Connect / hybrid sync is outside the SCuBA aad baseline.
+  - match: hybrid
+    pillar: Identity
+    scuba: null
+    class: zt-only
+    surface: "Entra Connect / hybrid identity"
+
+fallback: {scuba: null, class: zt-only, surface: "unclassified"}
+
+# SCuBA product baselines with essentially no Zero Trust Assessment counterpart
+# (the inverse gap — surfaces ScubaGear covers that ZT does not assess).
+scuba_only:
+  - {product: exo,            name: "Exchange Online",          note: "mail-flow, external forwarding, SPF / DKIM / DMARC, mailbox auditing"}
+  - {product: defender,       name: "Defender for Office 365",  note: "anti-phishing, Safe Links / Safe Attachments, preset security policies"}
+  - {product: teams,          name: "Microsoft Teams",          note: "external access, meeting and messaging policies"}
+  - {product: powerplatform,  name: "Power Platform",           note: "environment governance and DLP"}
