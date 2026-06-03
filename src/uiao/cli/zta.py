@@ -139,6 +139,55 @@ def dashboard_cmd(  # noqa: B008
     console.print("[dim]Findings are Controlled tenant data — keep in-boundary; do not publish raw results.[/dim]")
 
 
+@zta_app.command("remediate")
+def remediate_cmd(  # noqa: B008
+    input_path: Path = typer.Option(  # noqa: B008
+        ...,
+        "--input",
+        "-i",
+        help="Path to a ZeroTrustAssessmentReport .html or .json file.",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+    ),
+    out_dir: Path = typer.Option(  # noqa: B008
+        Path("./zt-remediation"),
+        "--out-dir",
+        "-o",
+        help="Directory to write the remediation playbook + tracker into.",
+        resolve_path=True,
+    ),
+    statuses: list[str] = typer.Option(  # noqa: B008
+        ["Failed"],
+        "--status",
+        "-s",
+        help="Statuses to include (Failed/Investigate). Repeatable. Default: Failed.",
+    ),
+) -> None:
+    """Build a per-finding remediation playbook: the console to fix each finding in,
+    the check's own remediation steps, Microsoft Learn links, and the failing-object
+    deep links — plus a CSV tracker. Portal steps + links only; no scripts."""
+    from uiao.adapters.zta.render.remediation import write_remediation
+
+    try:
+        report = load_report(input_path)
+    except (ZtIngestError, ValueError) as exc:
+        console.print(f"[red]Error:[/red] {input_path.name}: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    out = write_remediation(report, out_dir, statuses=tuple(statuses))
+    console.print(
+        f"[bold cyan]Remediation playbook[/bold cyan]  [dim]{report.tenant_name} · "
+        f"{out.count} findings ({'/'.join(statuses)})[/dim]"
+    )
+    console.print(f"  playbook : [bold]{out.playbook}[/bold]")
+    console.print(f"  tracker  : [bold]{out.tracker}[/bold]")
+    if report.is_demo:
+        console.print("[yellow]Note:[/yellow] this is Microsoft's DEMO report (IsDemo=true).")
+    console.print("[dim]Findings are Controlled tenant data — keep in-boundary; do not publish raw results.[/dim]")
+
+
 def _print_summary(triage: Triage) -> None:
     """Print the honest roll-up to the console."""
     r = triage.report
