@@ -15,6 +15,17 @@ published_at: docs/adr/adr-048-orgpath-attribute-selection.html
 ## Status
 **Accepted — 2026‑04‑28**
 
+> **Model-C note (2026-06-03).** This ADR's *decision* —
+> `extensionAttribute*` over Custom Security Attributes / Directory
+> Extensions — still holds under Model C. What has changed is the
+> **shape**: [ADR-078](adr-078-orgpath-attribute-schema-15-facet.md)
+> superseded the single composite-path string
+> (`CORP/US/EAST/BALTIMORE/IT`) described below with **10 named facets
+> spread across `extensionAttribute1`–`10`** (5 reserved). Read the
+> "single attribute" framing in this Context as "the
+> `extensionAttribute` family"; the per-facet decomposition lives in
+> ADR-078 and the [OrgPath Codebook (UIAO_151)](../UIAO_151_OrgPath_Codebook.md).
+
 ## Context
 UIAO’s organizational addressing model (OrgPath) requires a canonical attribute stamped on every user and device object in Entra ID. This attribute encodes the deterministic organizational path (e.g., `CORP/US/EAST/BALTIMORE/IT`) that replaces the legacy AD X.500 OU tree. OrgPath is the single most cross‑cutting decision in the identity transformation — it drives dynamic group membership, Administrative Unit scoping, Conditional Access targeting, Intune Scope Tags, and HR provisioning attribute mapping.
 
