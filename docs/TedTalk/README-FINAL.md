@@ -43,7 +43,8 @@ TedTalk/
 ├── IMAGE-INVENTORY.md                # Every image: path, description, slide, notes
 ├── Build-TedTalkSlides.ps1           # Verify files + (re)scaffold slides/ + print checklist
 ├── script/
-│   ├── ted-talk-full-script.md       # ★ Canonical spoken script (the source of truth)
+│   ├── ted-talk-full-script.md       # ★ Canonical spoken script (~20 min)
+│   ├── ted-talk-source-narrative.md  # Long-form source narrative (background, runs >22 min)
 │   └── speaker-notes.md              # ★ Per-slide timing, cues, and talking points
 ├── slides/                           # 12 populated slide markdown files (regenerable via -Force)
 ├── diagrams/

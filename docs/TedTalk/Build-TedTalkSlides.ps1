@@ -46,6 +46,7 @@ $keyFiles = @(
     'README-FINAL.md',
     'IMAGE-INVENTORY.md',
     'script\ted-talk-full-script.md',
+    'script\ted-talk-source-narrative.md',
     'script\speaker-notes.md',
     'video\FINAL-HEYGEN-SYNTHESIA-PROMPT.md',
     'video\ted-talk-slide-deck-outline.md',
