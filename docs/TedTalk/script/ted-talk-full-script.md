@@ -25,18 +25,18 @@ But we paid a hidden price: we lost the single source of truth. Twelve regions c
 And nobody replaced the single source of truth the mainframe had given us. That was the original sin — the moment the architecture began to drift toward fraud.
 
 **Act 2: When Security Ate the Architecture (6:00 – 10:00)**
-Around 2010, two powerful forces collided: compute began consolidating from twelve regional data centers toward four — Richmond, California, two in Kansas City, and Maryland as the anchor — and cybersecurity became the overriding priority.
+Around 2010, two powerful forces collided: compute began consolidating from twelve regional data centers toward four — California, two in Kansas City, and Virginia as the anchor — and cybersecurity became the overriding priority.
 
 Defense-in-depth brought layers of F5 load balancers acting as proxies, intrusion prevention systems, stacked firewalls, and multiple NAT sessions. These tools were designed to break and inspect sessions.
 
-At the same time, leadership assumed that faster MPLS bandwidth meant the network was still “local.” But latency is physics. Portland to Maryland is thousands of miles — thousands of milliseconds of round trip — and Active Directory expects under five. Sessions started breaking. Kerberos tickets failed. Group Policy processing slowed.
+At the same time, leadership assumed that faster MPLS bandwidth meant the network was still “local.” But latency is physics. Portland to Virginia is thousands of miles — thousands of milliseconds of round trip — and Active Directory expects under five. Sessions started breaking. Kerberos tickets failed. Group Policy processing slowed.
 
 Most importantly — **provenance disappeared**. No one could say with certainty: *this came from this authorized source, processed by this authorized system.* We had secured the sessions in a way that broke them — adding complexity without adding truth.
 
 **Act 3: The Cloud Collision (10:00 – 14:00)**
 Then M365, Azure, and AWS arrived. Compute moved to the cloud, but our regional Active Directory forest, OU structure, and session-based assumptions remained rooted in the early 2000s.
 
-A field office in Portland now authenticates to a domain controller in Maryland, queries a database in Azure, and runs an application in AWS — the session-based contract shattered across three different cloud vendors, using tools designed for machines in the same room. And the regional variations from Act 1 had calcified into institutional silos no one could see into.
+A field office in Portland now authenticates to a domain controller in Virginia, queries a database in Azure, and runs an application in AWS — the session-based contract shattered across three different cloud vendors, using tools designed for machines in the same room. And the regional variations from Act 1 had calcified into institutional silos no one could see into.
 
 In 2025–2026, we began seeing the real-world consequences: benefits paid to deceased individuals, duplicate payments, fraud hidden in fragmented data, and eroded public trust.
 

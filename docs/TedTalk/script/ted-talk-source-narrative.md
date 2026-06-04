@@ -53,7 +53,7 @@ That became the original sin — the moment the architecture started to drift to
 
 ## Act 2: When Security Ate the Architecture (2010–2020)
 
-Around 2010, your agency started consolidating compute. Not radically — but intentionally. The twelve regional data centers stayed, but the thinking shifted: consolidate to four. Richmond. California. Two in Kansas City, Kansas. Maryland as the anchor.
+Around 2010, your agency started consolidating compute. Not radically — but intentionally. The twelve regional data centers stayed, but the thinking shifted: consolidate to four. California. Two in Kansas City, Kansas. Virginia as the anchor.
 
 Simultaneously — and this is the critical inflection — cybersecurity became a board-level imperative. Not just "have a firewall." Defense-in-depth. Layered security. Multiple inspection points.
 
@@ -67,7 +67,7 @@ Meanwhile, bandwidth exploded. Gigabits across the country. Leadership made a fa
 
 That's the lie.
 
-Latency is physics. Portland to Maryland is thousands of miles. That's thousands of milliseconds of round-trip delay. Active Directory expects sub-five-millisecond latency. When you add session-breaking security appliances on top of that distance, sessions crater. Logon times creep up. GPO processing stalls.
+Latency is physics. Portland to Virginia is thousands of miles. That's thousands of milliseconds of round-trip delay. Active Directory expects sub-five-millisecond latency. When you add session-breaking security appliances on top of that distance, sessions crater. Logon times creep up. GPO processing stalls.
 
 But the agency didn't rearchitect. They just accepted the latency and kept the regional AD forest as-is. And they didn't rethink authentication — they added more proxies. Service accounts. Cached credentials. Trust relationships that bypassed the security stack because the security stack was incompatible with the authentication model.
 
@@ -91,7 +91,7 @@ But the agency didn't stop there. Application after application started moving t
 
 And here's the critical moment: the agency still had twelve regional Active Directory domains. Still had the OU tree structure designed for when compute lived regionally. Still had MPLS circuits connecting field offices to regional DCs that were increasingly just logical boundaries, not physical anchors.
 
-Now a field office in Portland authenticates to a regional DC that's physically in Maryland. A SQL query goes to a database in Azure. An application runs in AWS. The session-based contract — the assumption that client and server are talking synchronously over a trusted link — was shattered across three continents and three different cloud vendors.
+Now a field office in Portland authenticates to a regional DC that's physically in Virginia. A SQL query goes to a database in Azure. An application runs in AWS. The session-based contract — the assumption that client and server are talking synchronously over a trusted link — was shattered across three continents and three different cloud vendors.
 
 And the security stack? Still there. Still breaking sessions. Still working at the network layer, not the application layer. Still unable to verify provenance or trace where data actually came from.
 
