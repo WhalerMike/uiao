@@ -1,21 +1,35 @@
 ---
 document_id: UIAO_006
 title: "AODIM — Attribute-Oriented Directory & Identity Model"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-18"
-updated_at: "2026-04-18"
+updated_at: "2026-06-03"
 boundary: GCC-Moderate
 provenance:
   source: "inbox/EntraID Governance/AODIM_Architecture_Document.docx + inbox/EntraID Governance/AODIM_Executive_Whitepaper.docx"
   version: "1.0"
   derived_at: "2026-04-18"
   derived_by: "Copilot Tasks docx extraction; Architecture Document as base with Reference Implementation; Executive Whitepaper language polish applied. Promoted to canon in ADR-044 shadow-canon cleanup on 2026-04-23"
+  reconciled_at: "2026-06-03"
+  reconciled_by: "v1.1 — Attribute Model, Dynamic Group Model, and CLI examples reconciled from the retired composite-path orgPath (Model A/B) to the 15-facet multi-attribute schema (Model C) per ADR-078. Conceptual framing preserved unchanged."
 ---
 
 # AODIM — Attribute-Oriented Directory & Identity Model
+
+> **Data-model note (v1.1).** AODIM is the *conceptual* charter of UIAO's
+> organizational addressing: *attributes define structure; access is
+> computed, not assigned.* That thesis is unchanged. The concrete
+> `orgPath` data model has, however, evolved: the original
+> single composite path string (`CORP/US/EAST/BALTIMORE/IT`) was
+> **Model B (composite-slash)**, which **[ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)
+> superseded** with **Model C — the 15-facet multi-attribute schema**
+> (10 named facets across `extensionAttribute1`–`10`, 5 reserved). The
+> Attribute Model, Dynamic Group Model, and CLI sections below reflect
+> Model C. See the [OrgPath Codebook (UIAO_151)](UIAO_151_OrgPath_Codebook.md)
+> for the canonical facet→slot map.
 
 ## Executive Summary
 
@@ -45,36 +59,65 @@ HR System → Identity Attributes → Dynamic Groups → Access & Policy Enforce
 
 ## Attribute Model
 
-Key attributes include:
+OrgPath is **not** a single hierarchical string. Under Model C
+([ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)) the
+organizational position of every principal is decomposed into **10 named
+facets**, each bound to exactly one Entra `extensionAttribute` slot. Each
+facet is queried directly rather than parsed out of a composite path.
 
-| Attribute | Purpose |
-|-----------|---------|
-| `orgPath` | Hierarchical string encoding organizational position |
-| `orgCode` | Normalized identifier for the organizational node |
-| `department` | Functional department assignment |
-| `costCenter` | Financial allocation unit |
-| `manager` | Direct reporting relationship |
+| Facet | Slot | Purpose |
+|-------|------|---------|
+| `Region` | `extensionAttribute1` | Geographic / organizational region |
+| `Department` | `extensionAttribute2` | Functional department assignment |
+| `Division` | `extensionAttribute3` | Sub-department division |
+| `Role` | `extensionAttribute4` | Role / role-tier |
+| `CostCenter` | `extensionAttribute5` | Financial allocation unit |
+| `Classification` | `extensionAttribute6` | Account classification (Employee / Contractor / …) |
+| `HireDate` | `extensionAttribute7` | Hire date (typed, ISO 8601) |
+| `TermDate` | `extensionAttribute8` | Termination date (typed, empty = active) |
+| `ClearanceLevel` | `extensionAttribute9` | Clearance band |
+| `AccountType` | `extensionAttribute10` | Account type (Privileged / Service / …) |
 
-**Example:**
+Slots `extensionAttribute11`–`15` are reserved for tenant-declared facets
+introduced via governed PR. The native `manager` relationship is consumed
+alongside these facets but is a standard directory attribute, not an
+OrgPath facet.
+
+**Example (per-facet values on one principal):**
 
 ```
-orgPath = CORP/US/EAST/BALTIMORE/IT
+extensionAttribute1 = EASTUS        # Region
+extensionAttribute2 = IT            # Department
+extensionAttribute3 = InfraOps      # Division
+extensionAttribute4 = Engineer      # Role
 ```
 
 ## Dynamic Group Model
 
-Groups are defined by attribute-matching rules:
+Groups are defined by **boolean composition over facet predicates** — not
+by text-parsing a single composite path. Under Model C every membership
+rule uses one of three patterns:
 
-- **Node groups** — exact match on a specific organizational position
-- **Branch groups** — hierarchical match for subtree membership
-- **Functional groups** — role or department-based membership
+- **Single-facet** (`-eq` / `-in`) — all principals carrying a value (or
+  value set) in one facet.
+- **Multi-facet AND** — principals matching every clause across multiple
+  facets.
+- **Multi-facet OR / set** — cross-cutting groupings. This replaces the
+  retired Model A/B Branch (`-startsWith`) and Node (`-eq` on the path)
+  distinction: because each facet is already a discrete attribute, you
+  query the facet directly rather than parsing its position inside a
+  string.
 
 **Example Rules:**
 
 ```
-user.orgPath -startsWith "CORP/US/EAST"       # Branch group: all US-East
-user.orgPath -eq "CORP/US/EAST/BALTIMORE/IT"   # Node group: Baltimore IT only
+(attr2 -eq "IT")                          # All IT department users
+(attr2 -eq "IT") and (attr3 -eq "InfraOps")   # IT / Infrastructure division
+(attr1 -in ["NCR","EASTUS","WESTUS"])     # All US-region users
 ```
+
+See the [Dynamic Group Library (UIAO_152)](UIAO_152_Dynamic_Group_Library.md)
+for the canonical inventory.
 
 ## Delegation Model
 
@@ -119,11 +162,18 @@ The AODIM reference implementation includes:
 ### CLI Examples
 
 ```shell
-orgtree explain                          # Show current access derivation for a user
-orgtree move CORP/US/WEST/SEATTLE/HR     # Simulate access recalculation on transfer
+# Assign per-facet OrgPath values from an AD export and report findings
+uiao orgtree assess --from-export ad-users.json --out assignments.json
+
+# Run one governance pass over a tenant snapshot (dry-run by default):
+# detects per-facet drift and reports the remediation it would apply
+uiao orgtree govern snapshot.json --out report.json
 ```
 
-These commands demonstrate automatic access recalculation when a user's organizational position changes.
+`uiao orgtree govern` in its default dry-run mode is the simulation /
+explanation surface: it recomputes per-facet assignments against the
+codebook and reports the access recalculation a transfer or role change
+would produce, without writing.
 
 ## Strategic Impact
 
