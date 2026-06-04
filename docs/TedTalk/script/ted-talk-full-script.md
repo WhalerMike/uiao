@@ -25,7 +25,7 @@ But we paid a hidden price: we lost the single source of truth. Twelve regions c
 And nobody replaced the single source of truth the mainframe had given us. That was the original sin — the moment the architecture began to drift toward fraud.
 
 **Act 2: When Security Ate the Architecture (6:00 – 10:00)**
-Around 2010, two powerful forces collided: compute began consolidating from twelve regional data centers toward four — California, two in Kansas City, and Virginia as the anchor — and cybersecurity became the overriding priority.
+Around 2010, two powerful forces collided: compute began consolidating from twelve regional data centers toward four — California, two in Nebraska, and Virginia as the anchor — and cybersecurity became the overriding priority.
 
 Defense-in-depth brought layers of F5 load balancers acting as proxies, intrusion prevention systems, stacked firewalls, and multiple NAT sessions. These tools were designed to break and inspect sessions.
 

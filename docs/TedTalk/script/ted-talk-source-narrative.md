@@ -53,7 +53,7 @@ That became the original sin — the moment the architecture started to drift to
 
 ## Act 2: When Security Ate the Architecture (2010–2020)
 
-Around 2010, your agency started consolidating compute. Not radically — but intentionally. The twelve regional data centers stayed, but the thinking shifted: consolidate to four. California. Two in Kansas City, Kansas. Virginia as the anchor.
+Around 2010, your agency started consolidating compute. Not radically — but intentionally. The twelve regional data centers stayed, but the thinking shifted: consolidate to four. California. Two in Nebraska. Virginia as the anchor.
 
 Simultaneously — and this is the critical inflection — cybersecurity became a board-level imperative. Not just "have a firewall." Defense-in-depth. Layered security. Multiple inspection points.
 
