@@ -14,6 +14,8 @@ Coverage:
   8. Idempotence: repeated extraction yields identical output
   9. Schema validation: emitted artifact validates against orgtree-readiness schema
  10. Empty / no-SPN principals are skipped without error
+ 11. Stale-SPN screening (opt-in): DRIFT-PROVENANCE finding for phantom
+     registrations; disabled by default; one finding per principal
 
 All tests use synthetic in-memory principal records — no live LDAP required.
 
@@ -40,6 +42,7 @@ from uiao.adapters.modernization.active_directory.survey import (
     SPN_PHASE_UNSPECIFIED,
     ADSurveyReport,
     _parse_spn,
+    _spn_age_days,
     extract_spn_inventory,
 )
 
@@ -476,3 +479,135 @@ def test_empty_principal_list_produces_empty_inventory():
     assert inv.records == []
     assert findings == []
     assert inv.phase == SPN_PHASE_UNSPECIFIED
+
+
+# ---------------------------------------------------------------------------
+# 11. Stale-SPN check (opt-in) — phantom-SPN false-positive class
+# ---------------------------------------------------------------------------
+
+_SCAN_TS = "2026-05-11T12:00:00Z"
+
+
+def _stale_principal(name: str, spns: list[str], when_changed: str | None, **kw) -> dict[str, Any]:
+    p = _principal(name, spns, **kw)
+    if when_changed is not None:
+        p["when_changed"] = when_changed
+    return p
+
+
+def test_spn_age_days_helper_basic():
+    # whenChanged two years before the scan -> ~730 days old.
+    age = _spn_age_days("2024-05-11T12:00:00Z", _SCAN_TS)
+    assert age is not None and 720 <= age <= 740
+
+
+def test_spn_age_days_helper_handles_missing_and_malformed():
+    assert _spn_age_days(None, _SCAN_TS) is None
+    assert _spn_age_days("", _SCAN_TS) is None
+    assert _spn_age_days("not-a-date", _SCAN_TS) is None
+
+
+def test_stale_check_disabled_by_default_emits_no_staleness_finding():
+    # Ancient whenChanged, but stale_spn_days not passed -> no staleness finding.
+    principals = [_stale_principal("svc-sql", ["MSSQLSvc/sql01:1433"], "2000-01-01T00:00:00Z")]
+    _, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        principal_orgpath_index={"svc-sql": "/Root/Finance/DB"},
+    )
+    assert findings == []
+
+
+def test_stale_spn_emits_drift_provenance_finding():
+    principals = [_stale_principal("svc-sql", ["MSSQLSvc/sql01:1433"], "2024-01-01T00:00:00Z")]
+    _, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        principal_orgpath_index={"svc-sql": "/Root/Finance/DB"},  # attributed -> only staleness fires
+        stale_spn_days=365,
+    )
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.drift_class == "DRIFT-PROVENANCE"
+    assert f.severity == "P3"
+    assert f.object_type == "SPN"
+    assert f.error_code == "GOV-SPN-STALE-001"
+    assert "staleness window" in f.detail
+
+
+def test_fresh_spn_within_window_is_not_flagged():
+    principals = [
+        _stale_principal("svc-sql", ["MSSQLSvc/sql01:1433"], "2026-04-01T00:00:00Z")  # ~40 days old
+    ]
+    _, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        principal_orgpath_index={"svc-sql": "/Root/Finance/DB"},
+        stale_spn_days=365,
+    )
+    assert findings == []
+
+
+def test_stale_finding_emitted_once_per_principal_not_per_spn():
+    # Principal with three MSSQLSvc SPNs -> exactly one staleness finding.
+    principals = [
+        _stale_principal(
+            "svc-sql",
+            ["MSSQLSvc/sql01:1433", "MSSQLSvc/sql01:SQL2K22", "MSSQLSvc/sql01:OLD"],
+            "2020-01-01T00:00:00Z",
+        )
+    ]
+    _, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        principal_orgpath_index={"svc-sql": "/Root/Finance/DB"},
+        stale_spn_days=365,
+    )
+    stale = [f for f in findings if f.error_code.startswith("GOV-SPN-STALE")]
+    assert len(stale) == 1
+
+
+def test_stale_check_skips_principal_whose_spns_are_all_filtered_out():
+    # Ancient principal, but its only SPN is HTTP (filtered out by default MSSQLSvc filter).
+    principals = [_stale_principal("svc-web", ["HTTP/web01"], "2000-01-01T00:00:00Z")]
+    inv, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        stale_spn_days=365,
+    )
+    assert inv.records == []
+    assert findings == []
+
+
+def test_stale_and_unattributed_both_fire_independently():
+    # Ancient AND no OrgPath -> one DRIFT-IDENTITY (unattributed) + one DRIFT-PROVENANCE (stale).
+    principals = [_stale_principal("shadow-svc", ["MSSQLSvc/legacy01"], "2019-06-01T00:00:00Z")]
+    inv, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        stale_spn_days=365,
+    )
+    classes = sorted(f.drift_class for f in findings)
+    assert classes == ["DRIFT-IDENTITY", "DRIFT-PROVENANCE"]
+    # The unattributed back-reference still points only at the identity finding.
+    identity = next(f for f in findings if f.drift_class == "DRIFT-IDENTITY")
+    assert inv.records[0].drift_finding_ref == identity.error_code
+
+
+def test_missing_when_changed_is_not_flagged_stale():
+    # No whenChanged at all -> cannot assess -> no staleness finding even when enabled.
+    principals = [_stale_principal("svc-sql", ["MSSQLSvc/sql01:1433"], None)]
+    _, findings = extract_spn_inventory(
+        principals=principals,
+        phase=SPN_PHASE_PRE_MIGRATION,
+        discovery_timestamp=_SCAN_TS,
+        principal_orgpath_index={"svc-sql": "/Root/Finance/DB"},
+        stale_spn_days=365,
+    )
+    assert findings == []
