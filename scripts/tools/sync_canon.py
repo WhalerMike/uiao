@@ -83,6 +83,56 @@ FRONTMATTER_MARKER = "---"
 PRIMARY_EXT = ".qmd"
 LEGACY_PRIMARY_EXTS = (".md",)
 
+# Statuses that mark an adapter slot as not-yet-shippable. Scaffolds for
+# these are aspirational by definition and, when still carrying placeholder
+# bodies, must stay off the customer surface (see body_is_stub + issue #639).
+PREPUBLISH_STATUSES = {"reserved", "draft", "proposed", "stub"}
+
+# Body markers that identify an unauthored scaffold. Kept in sync with the
+# placeholders render_placeholder_body() emits and with the Gate A markers in
+# scripts/scan_publication_quality.py — a page is suppressed precisely when the
+# quality scanner would otherwise flag it.
+STUB_BODY_MARKERS = (
+    "Scaffold — awaiting authored content",
+    "Scaffold -- awaiting authored content",
+    "TODO — Author",
+    "TODO -- Author",
+)
+
+
+def body_is_stub(body: str) -> bool:
+    """True if the doc body still carries scaffold/TODO placeholder markers."""
+    return any(marker in body for marker in STUB_BODY_MARKERS)
+
+
+def _scaffold_unpublished(adapter: dict[str, Any]) -> bool:
+    """Whether a freshly scaffolded doc should be suppressed from the site.
+
+    A new scaffold always has a stub body (render_placeholder_body), so this
+    reduces to: is the adapter in a pre-publish status? Active adapters scaffold
+    as published so authors fill them in place.
+    """
+    return str(adapter.get("status", "")).lower() in PREPUBLISH_STATUSES
+
+
+def apply_publish_flag(text: str, unpublished: bool) -> str:
+    """Add or remove `publish_to_site: false` in the leading frontmatter block.
+
+    Unlike a full frontmatter regen, this preserves every other frontmatter
+    line and the body verbatim — so reconciling the publish flag on an existing
+    doc touches exactly one line and never drops author/lifecycle metadata.
+    """
+    if not text.startswith(FRONTMATTER_MARKER):
+        return text
+    end = text.find("\n---", len(FRONTMATTER_MARKER))
+    if end == -1:
+        return text
+    head, rest = text[:end], text[end:]  # rest begins with "\n---"
+    lines = [ln for ln in head.split("\n") if not re.match(r"\s*publish_to_site\s*:", ln)]
+    if unpublished:
+        lines.append("publish_to_site: false")
+    return "\n".join(lines) + rest
+
 
 # ------------------------------------------------------------------
 # Report dataclasses
@@ -244,8 +294,13 @@ def parse_frontmatter(path: Path) -> dict[str, Any] | None:
         return None
 
 
-def render_frontmatter(adapter: dict[str, Any], doc_kind: str, doc_title: str) -> str:
-    """Produce YAML frontmatter block for a scaffolded adapter doc."""
+def render_frontmatter(adapter: dict[str, Any], doc_kind: str, doc_title: str, *, unpublished: bool = False) -> str:
+    """Produce YAML frontmatter block for a scaffolded adapter doc.
+
+    When ``unpublished`` is set, the block carries ``publish_to_site: false`` so
+    the page is pruned before the site render and skipped by the publication
+    quality gate (issue #639). Callers pass it for reserved/stub scaffolds.
+    """
     fm = {
         "title": f"{adapter['name']} — {doc_title}",
         "doc-type": doc_kind,  # "ats" or "avs"
@@ -262,8 +317,11 @@ def render_frontmatter(adapter: dict[str, Any], doc_kind: str, doc_title: str) -
     # Reserved / draft / proposed adapter slots are aspirational by definition;
     # surface that consistently so the triage_aspirational_signals.py audit
     # classifies them as "flagged-already" instead of "needs author judgment".
-    if str(adapter["status"]).lower() in {"reserved", "draft", "proposed", "stub"}:
+    if str(adapter["status"]).lower() in PREPUBLISH_STATUSES:
         fm["aspirational"] = True
+    # Keep an unauthored scaffold off the published customer surface.
+    if unpublished:
+        fm["publish_to_site"] = False
     # Drop None values for a clean block
     fm = {k: v for k, v in fm.items() if v is not None}
     yaml_block = yaml.safe_dump(fm, sort_keys=False, default_flow_style=False, allow_unicode=True).rstrip()
@@ -442,13 +500,18 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                 )
                 if write:
                     primary.write_text(
-                        render_frontmatter(adapter, kind, doc_title)
+                        render_frontmatter(adapter, kind, doc_title, unpublished=_scaffold_unpublished(adapter))
                         + "\n"
                         + render_placeholder_body(adapter, kind, doc_title),
                         encoding="utf-8",
                     )
                     report.actions.append(ScaffoldAction("created-file", str(primary), "ATS/AVS scaffold"))
             else:
+                # Read body once: used for stub detection and any rewrite.
+                text = primary.read_text(encoding="utf-8")
+                body_start = text.find("\n---", len(FRONTMATTER_MARKER))
+                body = text[body_start + len("\n---") :] if body_start > 0 else "\n"
+
                 drifted_fields = []
                 for key, canon_key in (
                     ("adapter-class", "class"),
@@ -461,16 +524,35 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                     actual = fm.get(key)
                     if expected is not None and actual != expected:
                         drifted_fields.append(f"{key}: '{actual}' → '{expected}'")
+
+                # publish_to_site reconciliation (issue #639): a reserved/stub
+                # scaffold must declare publish_to_site: false so its literal
+                # "TODO — Author" body never reaches the customer surface.
+                # Authored or active pages keep the key absent (i.e. published).
+                # Reported under status-mismatch so the existing sync-canon gate
+                # treats it as blocking frontmatter drift, fixed by --scaffold.
+                want_unpublished = str(adapter.get("status", "")).lower() in PREPUBLISH_STATUSES and body_is_stub(body)
+                has_unpublished = fm.get("publish_to_site") is False
+                publish_flag_drift = want_unpublished != has_unpublished
+
                 if drifted_fields:
+                    # Registry fields drifted: regenerate the full block (this
+                    # also fixes the publish flag via the unpublished arg).
                     detail = "; ".join(drifted_fields)
                     report.drift.append(DriftItem("status-mismatch", folder_id, str(primary), detail))
                     if write:
-                        # Regenerate the frontmatter block, preserve body
-                        text = primary.read_text(encoding="utf-8")
-                        body_start = text.find("\n---", len(FRONTMATTER_MARKER))
-                        body = text[body_start + len("\n---") :] if body_start > 0 else "\n"
-                        new_fm = render_frontmatter(adapter, kind, doc_title)
+                        new_fm = render_frontmatter(adapter, kind, doc_title, unpublished=want_unpublished)
                         primary.write_text(new_fm + body, encoding="utf-8")
+                        report.actions.append(ScaffoldAction("updated-frontmatter", str(primary), detail))
+                elif publish_flag_drift:
+                    # Only the publish flag is wrong: edit that single line and
+                    # leave all other frontmatter (lifecycle, etc.) untouched.
+                    detail = (
+                        f"publish_to_site: {fm.get('publish_to_site')!r} → {False if want_unpublished else '(absent)'}"
+                    )
+                    report.drift.append(DriftItem("status-mismatch", folder_id, str(primary), detail))
+                    if write:
+                        primary.write_text(apply_publish_flag(text, want_unpublished), encoding="utf-8")
                         report.actions.append(ScaffoldAction("updated-frontmatter", str(primary), detail))
 
         # 2. Walk registries → detect additives (adapter with no folder)
@@ -492,7 +574,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
             if write and folder.is_dir():
                 if not primary.exists() or primary.stat().st_size == 0:
                     primary.write_text(
-                        render_frontmatter(adapter, kind, doc_title)
+                        render_frontmatter(adapter, kind, doc_title, unpublished=_scaffold_unpublished(adapter))
                         + "\n"
                         + render_placeholder_body(adapter, kind, doc_title),
                         encoding="utf-8",
