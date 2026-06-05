@@ -27,7 +27,7 @@ And nobody replaced the single source of truth the mainframe had given us. That 
 **Act 2: When Security Ate the Architecture (6:00 – 10:00)**
 Around 2010, two powerful forces collided: compute began consolidating from twelve regional data centers toward four — California, two in Nebraska, and Virginia as the anchor — and cybersecurity became the overriding priority.
 
-Defense-in-depth brought layers of F5 load balancers acting as proxies, intrusion prevention systems, stacked firewalls, and multiple NAT sessions. These tools were designed to break and inspect sessions.
+Defense-in-depth brought layers of load balancers acting as proxies, intrusion prevention systems, stacked firewalls, and multiple NAT sessions. These tools were designed to break and inspect sessions.
 
 At the same time, leadership assumed that faster MPLS bandwidth meant the network was still “local.” But latency is physics. Portland to Virginia is thousands of miles — thousands of milliseconds of round trip — and Active Directory expects under five. Sessions started breaking. Kerberos tickets failed. Group Policy processing slowed.
 
