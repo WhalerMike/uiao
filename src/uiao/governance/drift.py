@@ -5,8 +5,10 @@ UIAO Drift Engine — canonical drift taxonomy classifiers.
 
 Implements:
   - Generic DriftState builder (existing, unchanged)
-  - DRIFT-AUTHZ classifier  (ADR-012 DT-04, new)
-  - DRIFT-IDENTITY classifier (ADR-012 DT-05, new)
+  - DRIFT-AUTHZ classifier  (ADR-012 DT-04)
+  - DRIFT-IDENTITY classifier (ADR-012 DT-05)
+  - DRIFT-PROVENANCE classifier (ADR-012 DT-03) — in-memory evidence-envelope
+    integrity, complementing the substrate walker's structural provenance check
 
 Drift taxonomy reference: src/uiao/canon/adr/adr-012-canonical-drift-taxonomy.md
 DRIFT-BOUNDARY extension:  src/uiao/canon/adr/adr-033-gcc-boundary-drift-class.md
@@ -484,6 +486,117 @@ def classify_semantic_drift(*, resource_id, policy_ref, expected_state, actual_s
     )
 
 
+# ---------------------------------------------------------------------------
+# DRIFT-PROVENANCE Classifier
+# ADR-012 DT-03: Provenance drift
+#
+# Detects a broken or incomplete provenance envelope on a state/evidence
+# record. This operates at the in-memory IR comparison layer and is the
+# complement to the substrate walker's *structural* provenance check
+# (`src/uiao/substrate/walker.py`), which catches dangling registry paths and
+# code-citation references on disk. Together they cover the canonical
+# DRIFT-PROVENANCE definition:
+#   - UIAO_150 §Principle 2 — "Unsigned, unattributed changes are drift by
+#     definition."
+#   - UIAO_010 §Drift baseline — data referencing a source that no longer
+#     resolves is a DRIFT-PROVENANCE finding by definition.
+#
+# Fires when:
+#   1. INCOMPLETE envelope — a required attribution field (source / version /
+#      timestamp) is missing or empty: the change is unattributed.
+#   2. BROKEN envelope — content_hash is present but does not match
+#      canonical_hash(actual_state): the record's claimed integrity hash
+#      disagrees with the data it envelopes (tamper or stale seal).
+#   3. CITATION drift — an expected_provenance is supplied and the actual
+#      record's source or version no longer matches it: the evidence now
+#      cites a re-pointed / different source than the baseline declared.
+# ---------------------------------------------------------------------------
+
+# Attribution fields that must be present and non-empty for a provenance
+# envelope to be considered complete. (actor is intentionally excluded:
+# ProvenanceRecord.actor is optional and many legitimate records omit it;
+# a missing actor alone is not treated as drift here.)
+_PROVENANCE_REQUIRED_FIELDS = ("source", "version", "timestamp")
+
+
+def classify_provenance_drift(
+    *,
+    resource_id: str,
+    policy_ref: str,
+    expected_state: Dict[str, Any],
+    actual_state: Dict[str, Any],
+    provenance: ProvenanceRecord,
+    drift_id: str | None = None,
+    expected_provenance: ProvenanceRecord | None = None,
+) -> DriftState | None:
+    """
+    Classify provenance drift (DRIFT-PROVENANCE).
+
+    Returns a DriftState with drift_class=DRIFT-PROVENANCE if the provenance
+    envelope around ``actual_state`` is incomplete, broken, or re-pointed, or
+    None if the envelope is intact.
+
+    Provenance drift is detected when:
+      1. A required attribution field (source / version / timestamp) is
+         missing or empty on ``provenance`` (incomplete envelope), OR
+      2. ``provenance.content_hash`` is present but does not match the
+         recomputed canonical hash of ``actual_state`` (broken seal), OR
+      3. ``expected_provenance`` is supplied and the actual record's source
+         or version no longer matches it (citation drift).
+
+    A broken seal is always elevated to "unauthorized" — evidence whose
+    integrity hash disagrees with its data cannot be trusted to support any
+    downstream classification.
+    """
+    reasons: List[str] = []
+
+    # Check 1: envelope completeness — unattributed changes are drift
+    for field in _PROVENANCE_REQUIRED_FIELDS:
+        val = getattr(provenance, field, None)
+        if not val or (isinstance(val, str) and not val.strip()):
+            reasons.append(f"provenance envelope incomplete: '{field}' missing or empty")
+
+    # Check 2: envelope integrity — claimed seal vs recomputed actual hash
+    claimed_hash = getattr(provenance, "content_hash", None)
+    integrity_break = False
+    if claimed_hash:
+        recomputed = canonical_hash(actual_state)
+        if claimed_hash != recomputed:
+            integrity_break = True
+            reasons.append(f"provenance content_hash {claimed_hash!r} does not match actual state hash {recomputed!r}")
+
+    # Check 3: citation drift vs an expected provenance baseline
+    if expected_provenance is not None:
+        if expected_provenance.source != provenance.source:
+            reasons.append(f"provenance source re-pointed: {expected_provenance.source!r} -> {provenance.source!r}")
+        if expected_provenance.version != provenance.version:
+            reasons.append(f"provenance version changed: {expected_provenance.version!r} -> {provenance.version!r}")
+
+    if not reasons:
+        return None  # Intact provenance envelope
+
+    expected_hash = canonical_hash(expected_state)
+    actual_hash = canonical_hash(actual_state)
+    delta = _dict_delta(expected_state, actual_state)
+
+    # A broken seal cannot be trusted — always unauthorized.
+    risk = "unauthorized" if integrity_break else _classify_drift(expected_hash, actual_hash, delta)
+
+    drift_state_id = drift_id or f"drift-provenance:{resource_id}:{policy_ref}"
+    return DriftState(
+        id=drift_state_id,
+        resource_id=resource_id,
+        policy_ref=policy_ref,
+        expected_hash=expected_hash,
+        actual_hash=actual_hash,
+        drift_detected=True,
+        classification=risk,
+        delta={**delta, "provenance_reasons": reasons},  # type: ignore[arg-type]
+        provenance=provenance,
+        drift_class=DRIFT_PROVENANCE,
+    )
+
+
 def classify_drift(
     *,
     resource_id: str,
@@ -498,12 +611,21 @@ def classify_drift(
     Run all drift classifiers in priority order and return the first match.
 
     Priority order (highest to lowest specificity):
-      1. DRIFT-AUTHZ   — authorization escalation is highest priority
-      2. DRIFT-IDENTITY — identity plane gaps block all policy decisions
-      3. Generic (DRIFT-SCHEMA / risky / unauthorized) — fallback
+      1. DRIFT-AUTHZ      — authorization escalation is highest priority
+      2. DRIFT-PROVENANCE — a broken/unattributed evidence envelope undermines
+                            trust in every other classification, so it is
+                            checked before the state-delta classifiers
+      3. DRIFT-SEMANTIC   — security-weakening value changes
+      4. DRIFT-IDENTITY   — identity plane gaps block policy decisions
+      5. Generic (DRIFT-SCHEMA / risky / unauthorized) — fallback
 
     If no specific classifier fires, falls back to the generic build_drift_state
     with drift_class=None (unclassified).
+
+    The composite calls classify_provenance_drift without an
+    ``expected_provenance`` baseline, so only the envelope-completeness and
+    integrity checks apply here; citation-drift detection is available to
+    callers that invoke classify_provenance_drift directly with a baseline.
 
     This is the preferred entry point for adapter code. Use the specific
     classifiers directly only when you know the type in advance.
@@ -520,7 +642,20 @@ def classify_drift(
     if authz is not None:
         return authz
 
-    # DRIFT-SEMANTIC second
+    # DRIFT-PROVENANCE second — a broken evidence envelope is checked before
+    # the state-delta classifiers because it undermines trust in all of them.
+    provenance_drift = classify_provenance_drift(
+        resource_id=resource_id,
+        policy_ref=policy_ref,
+        expected_state=expected_state,
+        actual_state=actual_state,
+        provenance=provenance,
+        drift_id=drift_id,
+    )
+    if provenance_drift is not None:
+        return provenance_drift
+
+    # DRIFT-SEMANTIC third
     semantic = classify_semantic_drift(
         resource_id=resource_id,
         policy_ref=policy_ref,

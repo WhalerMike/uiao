@@ -2,12 +2,14 @@ from __future__ import annotations
 from uiao.governance.drift import (
     DRIFT_AUTHZ,
     DRIFT_IDENTITY,
+    DRIFT_PROVENANCE,
     build_drift_state,
     classify_authz_drift,
     classify_drift,
     classify_identity_drift,
+    classify_provenance_drift,
 )
-from uiao.ir.models.core import ProvenanceRecord
+from uiao.ir.models.core import ProvenanceRecord, canonical_hash
 
 PROV = ProvenanceRecord(source="test", timestamp="2026-04-20T00:00:00Z", version="0.1.0")
 # CODEBOOK constant removed per ADR-078 — classify_identity_drift no longer
@@ -160,3 +162,88 @@ class TestClassifyDrift:
             provenance=PROV,
         )
         assert result.drift_class is None
+
+    def test_provenance_break_routes_before_state_classifiers(self):
+        # A broken seal must be classified as DRIFT-PROVENANCE even though the
+        # display_name delta would otherwise fall through to the generic path.
+        sealed = ProvenanceRecord(
+            source="test", timestamp="2026-04-20T00:00:00Z", version="0.1.0", content_hash="sha256:wrong"
+        )
+        result = classify_drift(
+            resource_id="u1",
+            policy_ref="p1",
+            expected_state={"orgpath": "ORG-IT", "display_name": "Alice"},
+            actual_state={"orgpath": "ORG-IT", "display_name": "Alice B"},
+            provenance=sealed,
+        )
+        assert result.drift_class == DRIFT_PROVENANCE
+        assert result.classification == "unauthorized"
+
+
+class TestClassifyProvenanceDrift:
+    def test_returns_none_for_intact_envelope(self):
+        result = classify_provenance_drift(
+            resource_id="r1",
+            policy_ref="p1",
+            expected_state={"a": 1},
+            actual_state={"a": 1},
+            provenance=PROV,
+        )
+        assert result is None
+
+    def test_detects_incomplete_envelope(self):
+        incomplete = ProvenanceRecord(source="", timestamp="2026-04-20T00:00:00Z", version="")
+        result = classify_provenance_drift(
+            resource_id="r1",
+            policy_ref="p1",
+            expected_state={"a": 1},
+            actual_state={"a": 2},
+            provenance=incomplete,
+        )
+        assert result is not None
+        assert result.drift_class == DRIFT_PROVENANCE
+        reasons = result.delta["provenance_reasons"]
+        assert any("'source'" in r for r in reasons)
+        assert any("'version'" in r for r in reasons)
+
+    def test_intact_seal_is_not_drift(self):
+        state = {"a": 1, "b": 2}
+        good = ProvenanceRecord(
+            source="adapter", timestamp="2026-04-20T00:00:00Z", version="1.0.0", content_hash=canonical_hash(state)
+        )
+        result = classify_provenance_drift(
+            resource_id="r1", policy_ref="p1", expected_state=state, actual_state=state, provenance=good
+        )
+        assert result is None
+
+    def test_detects_broken_seal_as_unauthorized(self):
+        sealed = ProvenanceRecord(
+            source="adapter", timestamp="2026-04-20T00:00:00Z", version="1.0.0", content_hash="sha256:stale"
+        )
+        result = classify_provenance_drift(
+            resource_id="r1",
+            policy_ref="p1",
+            expected_state={"a": 1},
+            actual_state={"a": 1},
+            provenance=sealed,
+        )
+        assert result is not None
+        assert result.drift_class == DRIFT_PROVENANCE
+        assert result.classification == "unauthorized"
+
+    def test_detects_citation_drift_against_baseline(self):
+        baseline = ProvenanceRecord(source="canon:UIAO_010", timestamp="2026-04-20T00:00:00Z", version="1.0.0")
+        repointed = ProvenanceRecord(source="canon:UIAO_999", timestamp="2026-04-20T00:00:00Z", version="2.0.0")
+        result = classify_provenance_drift(
+            resource_id="r1",
+            policy_ref="p1",
+            expected_state={"a": 1},
+            actual_state={"a": 1},
+            provenance=repointed,
+            expected_provenance=baseline,
+        )
+        assert result is not None
+        assert result.drift_class == DRIFT_PROVENANCE
+        reasons = result.delta["provenance_reasons"]
+        assert any("re-pointed" in r for r in reasons)
+        assert any("version changed" in r for r in reasons)
