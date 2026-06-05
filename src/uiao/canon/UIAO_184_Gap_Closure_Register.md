@@ -39,10 +39,10 @@ The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/custo
 |---|---|---|
 | SSP Template (`PL-2`) — maps all 323 Moderate controls; states MP/PE inheritance | Authored, registered with a `UIAO_NNN` id | **Closed** — [UIAO_185](UIAO_185_System_Security_Plan_Template.md) |
 | Incident Response Plan (`IR-1`…`IR-8`) | Authored, registered | **Closed** — [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
-| POA&M Template (`CA-5`) — auto-generatable from assessment output | Authored, registered | Open |
+| POA&M Template (`CA-5`) — auto-generatable from assessment output | Authored, registered | **Closed** — [UIAO_189](UIAO_189_POAM_Template.md) |
 | Security Awareness & Training Program (`AT-1`…`AT-4`) — closes the **AT** family | Authored, registered | **Closed** — [UIAO_187](UIAO_187_Security_Awareness_and_Training_Program.md) |
 | Supply Chain Risk Management Plan (`SR-1`…`SR-12`) | Authored, registered | Open |
-| Continuous Monitoring Strategy (`CA-7`) | Authored, registered | Open |
+| Continuous Monitoring Strategy (`CA-7`) | Authored, registered | **Closed** — [UIAO_190](UIAO_190_Continuous_Monitoring_Strategy.md) |
 | Privacy Impact Assessment (PT family) | Authored, registered | Open |
 | **Personnel Security Program (`PS-1`…`PS-9`) — closes the PS family** | Authored, registered | **Closed** — [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
 | 15 document amendments (`compliance-mapping.qmd §7.2`) | Each amendment merged | Open |
@@ -108,4 +108,5 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 | 2026-06-05 | Register created (v1.0). Workstream B scaffolding (ADR-094 + UIAO_181/182/183) and Workstream C.1 (`DRIFT-PROVENANCE` classifier) landed and marked Closed. |
 | 2026-06-05 | Workstream A Phase 1: SSP Template (UIAO_185) and Incident Response Plan (UIAO_186) authored and registered. Gaps 1 & 2 advanced to In progress. |
 | 2026-06-05 | Workstream A: AT program (UIAO_187) and PS program (UIAO_188) authored and registered. All four named families now have corpus coverage (MP/PE inheritance + AT/PS programs) — **Gap 1 Closed**. |
+| 2026-06-05 | Workstream A: POA&M Template (UIAO_189, `CA-5`) and Continuous Monitoring Strategy (UIAO_190, `CA-7`) authored and registered. Gap 2 advancing — SR plan, PIA, and the 15 §7.2 amendments remain. |
 
