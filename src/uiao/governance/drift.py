@@ -276,8 +276,8 @@ def classify_authz_drift(
 
 # _ORGPATH_REGEX (Model A composite-string format) removed per ADR-078;
 # Model C OrgPath has no single composite regex (one regex per typed
-# facet). The Phase 5 consumer rebuild will reintroduce per-facet
-# validation here.
+# facet). Per-facet validation is performed by _classify_facet_drift
+# (below), which delegates format/membership checks to each Facet.
 
 # Identity fields whose absence or change constitutes identity drift
 _IDENTITY_REQUIRED_FIELDS = frozenset(
@@ -317,10 +317,91 @@ _LIFECYCLE_ACCOUNT_RULES = {
 }
 
 
-# _resolve_codebook removed per ADR-078: it extracted Model A composite-
-# string sets (.codes, .deprecated_codes) from the deleted Codebook
-# class. Model C's per-facet Codebook does not expose those attributes;
-# the Phase 5 rebuild will introduce a facet-aware drift classifier.
+# Model A's _resolve_codebook (composite-string .codes / .deprecated_codes)
+# was removed per ADR-078. Its Model C replacement is _classify_facet_drift
+# below: a per-facet classifier over the rebuilt 15-facet Codebook
+# (ADR-084 Phase 5 consumers are now in place), restoring DRIFT-IDENTITY's
+# OrgPath-validation arm that ADR-078 Phase 1 had temporarily disabled.
+
+
+def _is_model_c_codebook(codebook: object) -> bool:
+    """True for a Model C per-facet ``Codebook`` (duck-typed).
+
+    ``orgpath_codebook`` is historically typed ``Set[str] | Any`` for the
+    Model A composite-string set; a Model C ``Codebook`` is distinguished by
+    exposing a ``facets`` mapping whose members carry ``is_active`` /
+    ``is_deprecated``. Anything else (None, a bare set) is treated as "no
+    per-facet codebook supplied" and skips per-facet validation.
+    """
+    facets = getattr(codebook, "facets", None)
+    if not facets:
+        return False
+    return hasattr(next(iter(facets.values())), "is_active")
+
+
+def _classify_facet_drift(codebook: Any, actual_state: Dict[str, Any]) -> tuple[List[str], List[Dict[str, Any]]]:
+    """Per-facet OrgPath validation for DRIFT-IDENTITY (Model C).
+
+    Iterates every facet the Codebook declares (no hard-coded slot map) and
+    reads the principal's value for that facet from ``actual_state`` by the
+    facet's ``extensionAttribute`` slot, falling back to the facet name.
+    Each value is classified per UIAO_163 Format / Value / Phantom semantics:
+
+      * ``deprecated``           — value retired; carries its ``replacement``
+      * ``phantom``              — non-empty value unknown to the codebook
+      * ``reserved_violation``   — a reserved slot carries a value
+      * ``active`` / ``empty`` / ``reserved_empty`` — not drift
+
+    Returns ``(reasons, per_facet)`` where ``reasons`` lists the human-readable
+    drift findings (deprecated / phantom / reserved violations) and
+    ``per_facet`` is the structured per-slot result set for every facet; the
+    caller emits the drifting subset into the DriftState delta.
+    """
+    reasons: List[str] = []
+    per_facet: List[Dict[str, Any]] = []
+    for name, facet in codebook.facets.items():
+        slot = facet.attribute
+        raw = actual_state.get(slot)
+        if raw is None:
+            raw = actual_state.get(name)
+        value = "" if raw is None else str(raw)
+
+        entry: Dict[str, Any] = {"facet": name, "slot": slot, "value": value}
+
+        if facet.kind == "reserved":
+            if value != "":
+                entry["status"] = "reserved_violation"
+                reasons.append(f"reserved facet '{name}' ({slot}) is populated with '{value}'")
+            else:
+                entry["status"] = "reserved_empty"
+            per_facet.append(entry)
+            continue
+
+        if value == "":
+            # Empty typed (allow_empty) or unset enumerated slot. Absence of a
+            # *required* field is handled separately by the required-field check.
+            entry["status"] = "empty"
+            per_facet.append(entry)
+            continue
+
+        if facet.is_deprecated(value):
+            replacement = facet.replacement_for(value)
+            entry["status"] = "deprecated"
+            entry["replacement"] = replacement
+            reasons.append(f"facet '{name}' value '{value}' is deprecated (replaced_by '{replacement}')")
+            per_facet.append(entry)
+            continue
+
+        if facet.is_active(value):
+            entry["status"] = "active"
+            per_facet.append(entry)
+            continue
+
+        entry["status"] = "phantom"
+        reasons.append(f"facet '{name}' value '{value}' is not in the codebook (phantom)")
+        per_facet.append(entry)
+
+    return reasons, per_facet
 
 
 def classify_identity_drift(
@@ -341,31 +422,38 @@ def classify_identity_drift(
 
     Identity drift is detected when:
       1. Any sentinel identity field has changed, OR
-      2. OrgPath is missing, malformed, not in codebook, or deprecated, OR
+      2. A per-facet OrgPath value is deprecated, phantom (unknown to the
+         codebook), or a reserved slot is populated — when a Model C
+         ``orgpath_codebook`` is supplied, OR
       3. Lifecycle state is inconsistent with accountEnabled, OR
       4. Required identity fields are absent from actual_state
 
-    The ``orgpath_codebook`` parameter is retained for caller signature
-    compatibility but is now a no-op: per ADR-078, OrgPath was reset to
-    Model C (15-facet multi-attribute) and the Model A composite-string
-    codebook lookups previously performed here are no longer applicable.
-    Per-facet DRIFT-IDENTITY classification will be reintroduced when
-    the Model C consumer modules are rebuilt in a follow-up Phase 5 PR;
-    until then this classifier only emits sentinel-field-change findings.
+    When a Model C per-facet ``orgpath_codebook`` (15-facet, ADR-078) is
+    supplied, OrgPath validation runs per facet via ``_classify_facet_drift``
+    and the drifting facets (deprecated / phantom / reserved violations) are
+    attached to the DriftState delta as ``per_facet`` — pipe-delimited
+    ``facet|slot|value|status[|replacement]`` strings. A phantom value or a
+    populated reserved slot elevates the finding to ``unauthorized`` (governance
+    cannot determine what policy applies to an out-of-codebook facet value).
+    With no codebook supplied the
+    classifier behaves as before (sentinel / lifecycle / required-field arms
+    only), preserving the legacy ``Set[str]`` caller contract.
     """
-    _ = orgpath_codebook  # accepted but unused — see ADR-078 note above
     delta = _dict_delta(expected_state, actual_state)
     all_changed = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
 
     reasons: List[str] = []
+    per_facet: List[Dict[str, Any]] = []
 
     # Check 1: sentinel field changed
     if all_changed & _IDENTITY_SENTINEL_FIELDS:
         reasons.append(f"sentinel fields changed: {sorted(all_changed & _IDENTITY_SENTINEL_FIELDS)}")
 
-    # OrgPath-codebook validation (composite-string lookup; deprecated /
-    # not-in-codebook detection) removed per ADR-078. Model C per-facet
-    # DRIFT-IDENTITY will land in the Phase 5 consumer rebuild.
+    # Check 2: per-facet OrgPath validation against the Model C Codebook
+    # (reintroduced post ADR-078 / ADR-084 Phase 5 — see _classify_facet_drift).
+    if _is_model_c_codebook(orgpath_codebook):
+        facet_reasons, per_facet = _classify_facet_drift(orgpath_codebook, actual_state)
+        reasons.extend(facet_reasons)
 
     # Check 3: lifecycle consistency
     lifecycle = actual_state.get("lifecycle_state") or actual_state.get("extensionAttribute3")
@@ -393,6 +481,24 @@ def classify_identity_drift(
     if any("OrgPath missing" in r or "OrgPath" in r for r in reasons):
         risk = "unauthorized"
 
+    # A phantom (out-of-codebook) facet value or a populated reserved slot is
+    # also unauthorized: governance cannot determine what policy applies to it.
+    if any(p["status"] in ("phantom", "reserved_violation") for p in per_facet):
+        risk = "unauthorized"
+
+    delta_out: Dict[str, List[str]] = {**delta, "identity_reasons": reasons}
+    # Emit the drifting facets as pipe-delimited `facet|slot|value|status[|replacement]`
+    # strings (DriftState.delta is Dict[str, List[str]]); clean facets are omitted.
+    drifting = [
+        "|".join(
+            [p["facet"], p["slot"], p["value"], p["status"]] + ([p["replacement"]] if p.get("replacement") else [])
+        )
+        for p in per_facet
+        if p["status"] in ("deprecated", "phantom", "reserved_violation")
+    ]
+    if drifting:
+        delta_out["per_facet"] = drifting
+
     drift_state_id = drift_id or f"drift-identity:{resource_id}:{policy_ref}"
     return DriftState(
         id=drift_state_id,
@@ -402,7 +508,7 @@ def classify_identity_drift(
         actual_hash=actual_hash,
         drift_detected=True,
         classification=risk,
-        delta={**delta, "identity_reasons": reasons},  # type: ignore[arg-type]
+        delta=delta_out,  # type: ignore[arg-type]
         provenance=provenance,
         drift_class=DRIFT_IDENTITY,
     )

@@ -74,8 +74,8 @@ The plan is [ADR-084](adr/adr-084-phase5-consumer-architecture.md)'s Phase 5 seq
 | Item | Closure criterion | Status |
 |---|---|---|
 | `DRIFT-PROVENANCE` in-memory classifier (`classify_provenance_drift`) | Implemented in `src/uiao/governance/drift.py` with tests | **Closed** |
-| Per-facet `DRIFT-IDENTITY` validation (Codebook membership) | Reintroduced post ADR-084 phases 1–5 | Open |
-| ADR-084 consumer rebuilds (phases 1–5) | Each consumer module rebuilt (Model C) | Open |
+| Per-facet `DRIFT-IDENTITY` validation (Codebook membership) | Reintroduced post ADR-084 phases 1–5 | **Closed** — `classify_identity_drift` (`src/uiao/governance/drift.py`) validates each principal facet against the Model C `Codebook` (deprecated → replacement, phantom value, populated reserved slot); phantom & reserved violations elevate to `unauthorized`; drifting facets emitted on the DriftState delta as `per_facet`. Tests: `tests/test_drift_identity_facets.py` (11). |
+| ADR-084 consumer rebuilds (phases 1–5) | Each consumer module rebuilt (Model C) | Open — the five Model C modules (`rule_renderer`, `dynamic_groups`, `admin_units`, `device_orgpath`, `policy_targeting`) are present under `src/uiao/modernization/orgtree/` with tests under `tests/orgtree/`; full C1–C6 conformance audit pending before formal close. |
 | DriftEngine Model C orchestrator integration (phase 6) | Wired to rebuilt consumers | In progress |
 
 **Closure criterion for Gap 4:** `DRIFT-PROVENANCE` and per-facet `DRIFT-IDENTITY` both detecting; ADR-084 phases 1–6 complete. Ch 23's "only partially implemented" flips to "implemented."
@@ -95,7 +95,7 @@ This register **is** Workstream D. Closing the loop means:
 ```
 A.Phase1 (SSP/IR) ───► A.Phase2 (POA&M/AT/SR) ───► A.Phase3 (ConMon/PIA/PS)
 B.1 scaffolding ✓ ───► B.2 Import → Identity → PlanGenerators
-C.1 DRIFT-PROVENANCE ✓        C.2 DRIFT-IDENTITY ◄── blocked on ADR-084 ph1-5
+C.1 DRIFT-PROVENANCE ✓        C.2 DRIFT-IDENTITY ✓ (ph1-5 consumers present in-tree)
 D register ✓ ◄── all workstreams report status into this register
 ```
 
@@ -116,4 +116,4 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 | 2026-06-05 | Workstream B: **UIAOImportAdapters implemented** (`tools/powershell/UIAOImportAdapters/` — 6 roster functions per UIAO_182, Pester-tested, wired into the Pester CI). Output sealed with the canonical `content_hash` (verified byte-identical to `uiao.ir.models.core.canonical_hash`), making imports `DRIFT-PROVENANCE`-classifiable. First of the three Gap-3 modules; UIAOIdentityAssessment and UIAOPlanGenerators remain. |
 | 2026-06-05 | Workstream B: **UIAOIdentityAssessment implemented** (`tools/powershell/UIAOIdentityAssessment/` — 6 roster functions per UIAO_181: four Entra exporters, AD-vs-Entra reconciliation, orchestrator). Cloud-aware Graph endpoint resolution mirrors `uiao.adapters._graph_clouds` (fail-closed; `commercial` serves GCC-Moderate); offline `-SnapshotPath` makes it Pester-tested without a live tenant. Reconciliation surfaces `DRIFT-IDENTITY`; output sealed with the canonical `content_hash`. **2 of 3 Gap-3 modules done**; UIAOPlanGenerators (consumer) remains. |
 | 2026-06-05 | Workstream B: **UIAOPlanGenerators implemented** (`tools/powershell/UIAOPlanGenerators/` — 6 roster functions per UIAO_183: per-device / GPO / identity-wave / DNS / PKI generators + master plan). The marquee algorithm — decommissioning order from the OrgPath dependency graph — is a deterministic Kahn topological sort with cycle + cross-domain blocker detection; blockers make a plan not approvable. Plans cite `derived_from` and are sealed with the canonical `content_hash` (timestamp-free data ⇒ reproducible plans). **Gap 3 status flipped In progress → Closed** (all three modules implemented + Pester-tested). |
-
+| 2026-06-05 | Workstream C: **per-facet `DRIFT-IDENTITY` reintroduced** — `classify_identity_drift` (`src/uiao/governance/drift.py`) now validates each principal facet against the Model C `Codebook` (deprecated → replacement, phantom value, populated reserved slot), elevating phantom & reserved violations to `unauthorized` and emitting drifting facets on the DriftState delta (`per_facet`). 11 hermetic tests (`tests/test_drift_identity_facets.py`); 72-test drift suite green. **C.2 row flipped Open → Closed.** The phase 1–5 consumer modules are present in-tree (noted on that row); Gap 4 remains open pending the phase-6 orchestrator integration and the phase 1–5 conformance audit. |
