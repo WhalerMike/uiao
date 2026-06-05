@@ -25,7 +25,7 @@ Each of the four gaps named in Chapter 23 maps to a **workstream** (A–D). For 
 | # | Gap (Ch 23 wording) | Workstream | Status | Governing artifact |
 |---|---|---|---|---|
 | 1 | Four NIST 800-53 control families have no UIAO corpus coverage | A | **Closed** | MP/PE via [UIAO_185](UIAO_185_System_Security_Plan_Template.md) §5 inheritance; AT via [UIAO_187](UIAO_187_Security_Awareness_and_Training_Program.md); PS via [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
-| 2 | Eighty-seven controls require new or amended documents | A | In progress | `compliance-mapping.qmd §7`; [UIAO_185](UIAO_185_System_Security_Plan_Template.md) / [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
+| 2 | Eighty-seven controls require new or amended documents | A | **Closed** | `compliance-mapping.qmd §7`; [UIAO_185](UIAO_185_System_Security_Plan_Template.md) / [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
 | 3 | Three planned PowerShell modules have specs but no implementation | B | In progress | [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md); UIAO_181/182/183 |
 | 4 | OrgPath drift detection engine only partially implemented | C | In progress | [ADR-084](adr/adr-084-phase5-consumer-architecture.md); UIAO_163 |
 
@@ -49,7 +49,7 @@ The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/custo
 
 > The Personnel Security program is added here because `compliance-mapping.qmd §7` under-specifies it relative to the AT program, yet PS is one of the four named uncovered families. It is sequenced in Phase 3 alongside the PIA.
 
-**Closure criterion for Gaps 1 & 2:** every new document above authored and registered in `document-registry.yaml`; the residual ~87-control count recomputed to zero genuine doc gaps. **All seven new documents are now authored** (UIAO_185–192); only the 15 §7.2 amendments to existing documents remain before Gap 2 is fully Closed. New compliance docs receive `UIAO_NNN` allocations as authored (not pre-allocated, to avoid registering paths that do not yet resolve and tripping the substrate walker's `DRIFT-PROVENANCE` check).
+**Closure criterion for Gaps 1 & 2:** every new document above authored and registered in `document-registry.yaml`; the residual ~87-control count recomputed to zero genuine doc gaps. **All seven new documents are authored and registered** (UIAO_185–192) **and all 15 §7.2 amendments are merged** (the §7.2 row above enumerates each); every control enumerated in `compliance-mapping.qmd §7` is now addressed by a new document or a merged amendment. **Gaps 1 and 2 are Closed.** New compliance docs receive `UIAO_NNN` allocations as authored (not pre-allocated, to avoid registering paths that do not yet resolve and tripping the substrate walker's `DRIFT-PROVENANCE` check).
 
 ## Workstream B — PowerShell modules (Gap 3)
 
@@ -112,4 +112,5 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 | 2026-06-05 | Workstream A: SCRM Plan (UIAO_191, `SR`) and Privacy Impact Assessment (UIAO_192, PT) authored and registered. All seven §7.1 new documents complete; only the 15 §7.2 amendments remain for Gap 2. |
 | 2026-06-05 | Workstream A: 11 of 15 §7.2 amendments applied as additive control sections across existing docs (Identity/PKI/DR/Ops/Build/Training guides, ADR-041 `CA-6`, Master Plan, Quarto guide, CA library, Git-hooks doc). 4 remain (web.config, app.ini, replication guide, dashboard design) — functional config or new-doc decisions, deferred for direction. |
 | 2026-06-05 | Workstream A: final 4 §7.2 amendments done per user direction (functional + new docs). web.config hardened (removeServerHeader, Referrer/Permissions-Policy, documented Schannel TLS scope); canonical `deploy/windows-server/app.ini` created (PBKDF2 FIPS-approved hashing, LOGIN_REMEMBER_DAYS=0, OFFLINE_MODE); two new customer docs authored and wired into the site sidebar — Active-Passive Replication Guide and Governance Dashboard Design. **Gap 2 §7.2 amendments 15/15 complete.** |
+| 2026-06-05 | Workstream A complete: all 7 new documents (UIAO_185–192) registered and all 15 §7.2 amendments merged. **Gap 2 status flipped In progress → Closed** in the summary table and closure-criterion note. Workstreams B (Gap 3) and C (Gap 4) remain in progress. |
 
