@@ -79,6 +79,12 @@ DEFAULT_SECTIONS = [
     "executive-governance-series",
     "modernization-specs",
     "operational-guides",
+    # Nested sub-section: a focused bundle of just the OrgPath Intune/Arc
+    # implementation guides, in addition to the whole operational-guides
+    # bundle (which still includes these pages via its recursive walk).
+    # Resolved relative to the site root; the bundle filename uses only the
+    # final path component (see _bundle_filename).
+    "operational-guides/orgpath-implementation",
     "orgpath-narrative",
     "sql-server-narrative",
     "reference-architecture",
@@ -212,6 +218,18 @@ def _stamp_book_header(bundle_path: Path, book_title: str) -> int:
     return changed
 
 
+def _bundle_filename(section: str) -> str:
+    """Return the bundle filename for a section path.
+
+    Uses only the final path component so a nested section path (e.g.
+    ``operational-guides/orgpath-implementation``) yields
+    ``orgpath-implementation-bundle.docx`` rather than a name with an
+    embedded directory separator. Top-level sections are unaffected
+    (``operational-guides`` -> ``operational-guides-bundle.docx``).
+    """
+    return f"{Path(section).name}-bundle.docx"
+
+
 def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
     """Return the sorted list of page .docx files to include in a bundle.
 
@@ -241,7 +259,7 @@ def _bundle_one(site_root: Path, section: str) -> tuple[bool, str]:
     if not section_dir.is_dir():
         return False, f"{section}: directory not found at {section_dir}"
 
-    bundle_name = f"{section}-bundle.docx"
+    bundle_name = _bundle_filename(section)
     bundle_path = section_dir / bundle_name
 
     pages = _collect_docx(section_dir, bundle_name)
