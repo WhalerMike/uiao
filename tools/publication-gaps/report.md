@@ -11,14 +11,29 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 ```
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
-uiao-spec             44           38         38      0
-adr                   93           90         90      0
+uiao-spec             48           42         38      4
+adr                   98           95         94      1
 modernization         24           21         21      0
 schema                32           31         31      0
-other                115            0          0      0
+other                116            0          0      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                308          180        180      0
+TOTAL                318          189        184      5
 ```
+
+## Gaps — UIAO marquee specs (4)
+
+| Source | Intent source | Style | Expected .qmd candidates |
+|---|---|---|---|
+| [`src/uiao/canon/UIAO_181_UIAOIdentityAssessment_Module_Specification.md`](src/uiao/canon/UIAO_181_UIAOIdentityAssessment_Module_Specification.md) | frontmatter | include | `docs/canon/UIAO_181_UIAOIdentityAssessment_Module_Specification.qmd` |
+| [`src/uiao/canon/UIAO_182_UIAOImportAdapters_Module_Specification.md`](src/uiao/canon/UIAO_182_UIAOImportAdapters_Module_Specification.md) | frontmatter | include | `docs/canon/UIAO_182_UIAOImportAdapters_Module_Specification.qmd` |
+| [`src/uiao/canon/UIAO_183_UIAOPlanGenerators_Module_Specification.md`](src/uiao/canon/UIAO_183_UIAOPlanGenerators_Module_Specification.md) | frontmatter | include | `docs/canon/UIAO_183_UIAOPlanGenerators_Module_Specification.qmd` |
+| [`src/uiao/canon/UIAO_184_Gap_Closure_Register.md`](src/uiao/canon/UIAO_184_Gap_Closure_Register.md) | frontmatter | include | `docs/canon/UIAO_184_Gap_Closure_Register.qmd` |
+
+## Gaps — Architecture Decision Records (1)
+
+| Source | Intent source | Style | Expected .qmd candidates |
+|---|---|---|---|
+| [`src/uiao/canon/adr/adr-094-assessment-to-plan-toolchain.md`](src/uiao/canon/adr/adr-094-assessment-to-plan-toolchain.md) | frontmatter | include | `docs/adr/adr-094-assessment-to-plan-toolchain.qmd`<br>`docs/canon/adr/adr-094-assessment-to-plan-toolchain.qmd` |
 
 ## Methodology
 
