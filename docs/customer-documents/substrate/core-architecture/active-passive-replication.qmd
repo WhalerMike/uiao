@@ -1,0 +1,147 @@
+---
+title: "UIAO Active-Passive Replication Guide"
+subtitle: "Replication, failover, and integrity assurance for the Git substrate"
+doc-type: guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/substrate/core-architecture/active-passive-replication.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+## Purpose and scope
+
+This guide is the standalone reference for the UIAO Git substrate's
+active-passive replication posture. It consolidates the replication content
+previously embedded in the Platform Server Build Guide and the Disaster
+Recovery Playbook into a single operational surface, and adds the
+monitoring, failover-test, and encryption-verification requirements needed
+to operate replication as a governed control rather than a one-time setup.
+
+The architectural decision that establishes this topology is recorded in
+ADR-041 (Git infrastructure on Windows Server 2025 + IIS) and extended by
+ADR-090 (substrate high availability — hot-standby replica with
+split-brain-safe failover). This guide is the operator-facing companion to
+those decisions; it does not change them.
+
+### Topology
+
+The substrate runs one **active (primary)** Git host that serves all read
+and write traffic, and one **passive (standby)** host that continuously
+receives replicated state. A third copy — the GitHub mirror — provides an
+off-site, read-only durability tier. The standby is promoted to active only
+during a declared failover.
+
+| Role | Serves traffic | State source | Purpose |
+|---|---|---|---|
+| Active (primary) | Yes (read + write) | Authoritative | Normal operations |
+| Passive (standby) | No (until promoted) | Replicated from primary | Local recovery / fast failover |
+| GitHub mirror | Read-only | Pushed from primary | Off-site durability |
+
+## Replication mechanism
+
+Repository state replicates from the active host to the passive host on
+every accepted push. The `post-receive` governance hook on the primary
+triggers the replication push to the standby's bare repositories, so the
+standby is brought current as part of the same operation that records the
+push — there is no separate, lossy batch job in the normal path. A periodic
+reconciliation sweep re-pushes any refs that a transient failure left behind
+and confirms the standby's ref set matches the primary.
+
+## Replication monitoring (`SI-4`, `AU-6`)
+
+Replication is monitored, not assumed. The following signals are collected
+and alerted on:
+
+- **Replication lag** — the time and ref delta between the primary's tip and
+  the standby's tip for each repository. Lag beyond a defined threshold
+  (default: any ref more than 5 minutes behind) raises an alert.
+- **Replication failures** — a failed replication push (network, auth, or
+  disk) is logged on the primary and surfaces immediately; repeated failures
+  escalate to an incident under the Incident Response Plan.
+- **Standby liveness** — the standby is health-checked on a fixed interval;
+  loss of liveness is treated as a degraded-redundancy condition even while
+  the primary still serves traffic.
+- **Mirror freshness** — the GitHub mirror's last successful push timestamp
+  is tracked so the off-site tier cannot silently fall stale.
+
+Replication-lag and failure events are correlated with the drift engine: an
+unexplained divergence between primary and standby ref sets is treated as a
+`DRIFT-PROVENANCE` integrity signal, not merely an availability event.
+
+## Failover and failback
+
+A failover is a **declared** action, never automatic for write traffic
+without the split-brain protections defined in ADR-090. The high-level
+sequence is:
+
+1. Declare the primary unavailable per the Disaster Recovery Playbook
+   decision tree and confirm it is fenced (cannot accept writes).
+2. Verify the standby's ref set is current (or accept and record the known
+   data delta if the primary failed mid-replication).
+3. Promote the standby to active and repoint the IIS reverse proxy / DNS.
+4. Resume operations; the GitHub mirror continues as the off-site tier.
+
+Failback to the original primary reverses the flow only after the original
+host is rebuilt to baseline, re-synchronized from the current active, and
+verified — it is never assumed healthy on the basis of having been primary
+before.
+
+### Failover test schedule (`CP-4`)
+
+Failover is exercised on a schedule, not only during real incidents:
+
+- **Quarterly** — a non-disruptive verification that the standby is current
+  and promotable (ref-set comparison plus a promotion dry-run in an isolated
+  context).
+- **Annually** — a full functional failover test that promotes the standby,
+  serves traffic from it, and fails back, performed within a maintenance
+  window. Results, the measured recovery time against the RTO, and any gaps
+  are recorded, and corrective actions are tracked as POA&M items.
+
+## Encryption verification (`SC-8`, `SC-28`)
+
+Replicated data is protected both in transit and at rest, and that
+protection is verified rather than presumed:
+
+- **In transit (`SC-8`)** — replication pushes between primary and standby,
+  and to the GitHub mirror, traverse TLS. Verification confirms the
+  transport negotiates an approved TLS version and cipher suite (enforced by
+  the host Schannel baseline) and that TLS verification is not disabled on
+  the replication path.
+- **At rest (`SC-28`)** — the primary, standby, and any backup volumes are
+  encrypted at rest (BitLocker on the Windows hosts). Verification confirms
+  encryption is enabled and the protectors are healthy on every node that
+  holds a copy of the repository state, including the standby.
+
+Encryption verification is part of the quarterly failover verification above,
+so a node that has silently lost its at-rest protection cannot remain a
+sanctioned copy of the substrate.
+
+## Summary of controls
+
+| Area | Control(s) | Requirement |
+|---|---|---|
+| Replication monitoring | `SI-4`, `AU-6` | Lag, failure, liveness, and mirror-freshness signals are collected and alerted |
+| Failover testing | `CP-4` | Quarterly verification, annual functional failover test, results recorded |
+| Encryption in transit | `SC-8` | Replication paths use approved TLS; verification not disabled |
+| Encryption at rest | `SC-28` | All copies (primary, standby, backups) encrypted; protectors verified |
+| Integrity | `SI-7` | Primary/standby divergence treated as a provenance/integrity signal |
+
+---
+
+UIAO Active-Passive Replication Guide v1.0 | Classification: Controlled | Boundary: GCC-Moderate\
+Author: Michael Stratton | June 5, 2026 | Repository: https://github.com/WhalerMike/uiao

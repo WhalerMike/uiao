@@ -1,0 +1,124 @@
+---
+title: "UIAO Governance Dashboard Design"
+subtitle: "Access control, data retention, and the public Trust Center surface"
+doc-type: design
+audience: [Customer, Technical, Executive]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/platform/governance-dashboard-design.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+## Purpose and scope
+
+This document is the customer-facing design for the UIAO governance
+dashboard — the operator and stakeholder view onto control posture, drift,
+and compliance status. It promotes the internal dashboard specifications
+(the heatmap, systemic-risk panel, and related technical specs maintained
+under the governance specs area) into a single design surface that states
+**who may see what**, **how long dashboard data is kept**, and **what is
+published externally on the Trust Center**. It governs the design; the
+technical specs remain the implementation reference.
+
+## Surfaces
+
+The dashboard is delivered as three distinct surfaces with different
+audiences and exposure:
+
+| Surface | Audience | Exposure | Content |
+|---|---|---|---|
+| Operator dashboard | Internal operators / Canon Steward | Authenticated, in-boundary | Full control posture, live drift findings, evidence links |
+| Executive view | Internal leadership | Authenticated, in-boundary | Roll-up posture, systemic-risk panel, trend lines |
+| Trust Center | External (customers, assessors, public) | Public, read-only | Curated, non-sensitive posture summary |
+
+## Role-based access control (`AC-3`, `AC-6`)
+
+Dashboard access is role-based and least-privilege. Roles map to Entra ID
+groups and are enforced by Conditional Access (compliant device + MFA) on
+every authenticated surface:
+
+| Role | Sees | Can do |
+|---|---|---|
+| Viewer | Roll-up posture and trends for assigned scope | Read only |
+| Operator | Full findings, evidence links, drift detail | Acknowledge / annotate findings |
+| Canon Steward | All of the above, all scopes | Manage thresholds, publish Trust Center updates |
+| Auditor (external) | Read-only assessment view with evidence references | Read only, time-boxed access |
+
+Principles enforced:
+
+- **Least privilege (`AC-6`)** — a role sees only the scope it is assigned;
+  raw evidence and remediation detail are not exposed to Viewer or external
+  Auditor roles.
+- **Enforced, not advisory (`AC-3`)** — access is enforced server-side by
+  role and scope on every request, independent of what the UI renders.
+- **Separation of publish authority** — only the Canon Steward role may
+  publish to the external Trust Center; no operator action reaches the
+  public surface without that explicit, audited step.
+
+All access decisions and Trust Center publish actions are logged for audit
+review (`AU-2`, `AU-6`).
+
+## Data retention (`AU-11`, `SI-12`)
+
+Dashboard data has a defined lifecycle so that history is available for
+trend analysis and assessment without retaining sensitive detail
+indefinitely:
+
+| Data class | Retention | Disposition |
+|---|---|---|
+| Live findings (open drift, control failures) | Until resolved + 90 days | Roll into aggregates, then purge detail |
+| Resolved-finding detail | 90 days after closure | Purge; aggregate retained |
+| Posture aggregates / trend points | 13 months | Retained for year-over-year trend |
+| Audit log of dashboard access + publish actions | Per the audit-log retention policy (`AU-11`) | Retained per assessment requirement |
+| Trust Center published snapshots | Current + prior published version | Superseded snapshots archived |
+
+Retention is enforced by a scheduled job; purges are themselves logged so
+that the act of disposition is auditable (`SI-12`). Retention windows are
+reviewed at each authorization review.
+
+## Trust Center page (`CA-2`, `PM-31`)
+
+The Trust Center is the **public, read-only** surface. It exists to give
+customers and assessors a curated, current view of governance posture
+without exposing operational detail. Its design constraints:
+
+- **Curated, not raw** — it publishes posture summaries, control-family
+  coverage, and continuous-monitoring status. It never exposes live finding
+  detail, evidence artifacts, hostnames, identifiers, or anything outside
+  the published boundary classification.
+- **Steward-published** — content reaches the Trust Center only through an
+  explicit, audited publish action by the Canon Steward role; there is no
+  automatic path from internal findings to the public page.
+- **Point-in-time and dated** — every published view carries a generation
+  date and the boundary classification, and the prior published snapshot is
+  retained so changes over time are attributable.
+- **Continuous-monitoring aligned (`CA-2`)** — the posture it shows is
+  consistent with the assessment and continuous-monitoring evidence, so the
+  public claim and the internal record cannot diverge.
+
+## Summary of controls
+
+| Area | Control(s) | Requirement |
+|---|---|---|
+| Role-based access | `AC-3`, `AC-6` | Least-privilege roles enforced server-side on every surface |
+| Access logging | `AU-2`, `AU-6` | Access and publish actions logged and reviewed |
+| Data retention | `AU-11`, `SI-12` | Defined, enforced, and audited retention/disposition |
+| Public Trust Center | `CA-2`, `PM-31` | Curated, steward-published, dated, monitoring-aligned |
+
+---
+
+UIAO Governance Dashboard Design v1.0 | Classification: Controlled | Boundary: GCC-Moderate\
+Author: Michael Stratton | June 5, 2026 | Repository: https://github.com/WhalerMike/uiao
