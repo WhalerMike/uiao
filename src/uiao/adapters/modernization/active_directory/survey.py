@@ -933,6 +933,15 @@ SPN_METHOD_DSQUERY: str = "AD-SPN-DSQUERY"
 # surface per the Spec3-D1.1 / federal SSOT alignment.
 DEFAULT_SPN_SERVICE_CLASS_FILTER: tuple[str, ...] = ("MSSQLSvc",)
 
+# Recommended staleness window (days) for an SPN-registering principal. The
+# stale-SPN check is OPT-IN: extract_spn_inventory only evaluates staleness when
+# the caller passes stale_spn_days explicitly (default None = check disabled, so
+# existing callers are unaffected). This constant documents the suggested value —
+# AD updates a principal's whenChanged whenever its servicePrincipalName set is
+# modified, so a long-unchanged principal whose SPN points at a host that has
+# since been decommissioned is the classic "phantom SPN" false-positive source.
+_DEFAULT_STALE_SPN_DAYS: int = 365
+
 # AD objectClass values the spnRecord schema enumerates. Anything else maps to "other".
 _SPN_KNOWN_OBJECT_CLASSES: frozenset[str] = frozenset(
     {
@@ -1065,6 +1074,47 @@ def _resolve_hosting_computer_orgpath(
     return None
 
 
+def _parse_iso8601(value: str) -> datetime.datetime | None:
+    """
+    Parse an ISO-8601 timestamp into a timezone-aware UTC datetime.
+
+    Tolerates a trailing 'Z' (treated as +00:00) and naive timestamps (assumed
+    UTC). Returns None for missing or unparseable input so the caller can treat
+    'cannot assess' as 'do not flag' rather than raising.
+    """
+    try:
+        normalized = value.strip()
+    except AttributeError:
+        return None
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        dt = datetime.datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt
+
+
+def _spn_age_days(when_changed: str | None, reference_timestamp: str) -> int | None:
+    """
+    Age in days of an SPN-registering principal as of the scan reference time.
+
+    Compares the principal's whenChanged against discovery_timestamp (the scan
+    instant) rather than wall-clock now, so the result is deterministic and
+    reflects staleness as-of the survey. Returns None when either value is
+    missing or unparseable — the caller then emits no staleness finding.
+    """
+    if not when_changed:
+        return None
+    changed = _parse_iso8601(when_changed)
+    ref = _parse_iso8601(reference_timestamp)
+    if changed is None or ref is None:
+        return None
+    return (ref - changed).days
+
+
 def extract_spn_inventory(
     *,
     principals: list[dict],
@@ -1075,6 +1125,7 @@ def extract_spn_inventory(
     service_class_filter: list[str] | None = None,
     principal_orgpath_index: dict[str, str] | None = None,
     computer_orgpath_index: dict[str, str] | None = None,
+    stale_spn_days: int | None = None,
 ) -> tuple[SpnInventory, list[DriftFinding]]:
     """
     Build an SpnInventory artifact from a list of principal records.
@@ -1094,6 +1145,16 @@ def extract_spn_inventory(
     DRIFT-IDENTITY P2 finding is emitted and the record's drift_finding_ref carries the
     finding's error_code.
 
+    Staleness (opt-in): when ``stale_spn_days`` is provided, each principal whose
+    ``when_changed`` is older than that many days (measured against
+    ``discovery_timestamp``) and that contributes at least one in-filter SPN emits a
+    single DRIFT-PROVENANCE P3 finding (error code ``GOV-SPN-STALE-NNN``). This flags
+    the "phantom SPN" false-positive class — a registration that survives the
+    decommissioning of its instance. The SPNRecord shape is unchanged (the closed
+    spnRecord schema is not extended); staleness surfaces only as a finding, correlated
+    to the record by ``path``. When ``stale_spn_days`` is None (the default) no
+    staleness evaluation is performed and behavior is identical to prior callers.
+
     Returns the SpnInventory and the list of DriftFinding objects to merge into the
     parent ADSurveyReport.findings list.
     """
@@ -1109,6 +1170,7 @@ def extract_spn_inventory(
     )
     findings: list[DriftFinding] = []
     unattributed_idx = 0
+    stale_idx = 0
     for principal in principals:
         spns = principal.get("spns") or []
         if not spns:
@@ -1120,10 +1182,42 @@ def extract_spn_inventory(
         dn = principal.get("distinguished_name")
         when_created = principal.get("when_created")
         when_changed = principal.get("when_changed")
+        # Staleness is evaluated once per principal (whenChanged is a principal
+        # attribute, not per-SPN) and only when the caller opts in. The finding is
+        # emitted lazily on the first in-filter SPN so principals whose SPNs are all
+        # filtered out never produce a spurious staleness finding.
+        principal_age_days = _spn_age_days(when_changed, discovery_timestamp) if stale_spn_days is not None else None
+        stale_finding_emitted = False
         for spn in spns:
             service_class, host, port_or_instance, full_spn = _parse_spn(spn)
             if service_class not in classes:
                 continue
+            if (
+                stale_spn_days is not None
+                and principal_age_days is not None
+                and principal_age_days > stale_spn_days
+                and not stale_finding_emitted
+            ):
+                stale_finding_emitted = True
+                stale_idx += 1
+                findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P3",
+                        path=dn or principal_name or full_spn,
+                        detail=(
+                            f"SPN-registering principal '{principal_name}' was last modified "
+                            f"{principal_age_days} days before the scan (whenChanged={when_changed}), "
+                            f"exceeding the {stale_spn_days}-day staleness window. Its MSSQLSvc "
+                            "registration may be a phantom that survived decommissioning of the "
+                            "hosting instance. Validate the instance is live (Tier-A2 probe) before "
+                            "treating it as an in-scope migration target; clean up the SPN from AD "
+                            "if the instance is gone."
+                        ),
+                        error_code=f"GOV-SPN-STALE-{stale_idx:03d}",
+                        object_type="SPN",
+                    )
+                )
             principal_orgpath = _resolve_principal_orgpath(principal_name, sam, dn, principal_orgpath_index)
             hosting_orgpath = _resolve_hosting_computer_orgpath(host, computer_orgpath_index)
             drift_ref: str | None = None

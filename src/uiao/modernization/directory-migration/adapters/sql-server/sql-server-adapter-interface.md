@@ -45,6 +45,15 @@ and the data-plane bridge into the Azure SSOT stack (OneLake mirroring
 - Service account inventory for the principals owning the SPNs (Spec3-D1.1, [`UIAO_139`](../../../../canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md))
 - Instance enumeration including named instances and port-only bindings;
   `dbatools` `Find-DbaInstance` is the supported supplementary tool
+- Stale-SPN screening for the phantom-registration false-positive class:
+  `extract_spn_inventory(stale_spn_days=N)` (opt-in) emits a
+  `DRIFT-PROVENANCE` P3 finding (`GOV-SPN-STALE-NNN`) for any
+  SPN-registering principal whose `whenChanged` predates the scan by more
+  than `N` days (recommended default 365). A stale SPN may point at a
+  decommissioned instance; validate liveness before treating it as an
+  in-scope migration target and clean up the registration in AD if the
+  instance is gone. This is a discovery-time heuristic, not a liveness
+  probe — instance reachability is confirmed in the Tier-A2 pass.
 - Kerberos delegation chain inventory — unconstrained, constrained, and
   resource-based; cross-referenced with PKI adapter findings for ADCS-
   dependent SPN patterns
