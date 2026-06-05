@@ -302,6 +302,10 @@ customer-document portal location above.
   follow-up flagged here and in §Negative / mitigations; extends (does
   not supersede) this ADR for customers requiring sub-4-hour RTO.
 
+## Authorization and Risk Acceptance (`CA-6`)
+
+This infrastructure operates under a formal authorization. The authorizing official records an authorization decision (`CA-6`) for the Git host based on the System Security Plan (`UIAO_185`) control dispositions, the assessment results, and the open items in the POA&M (`UIAO_189`). Residual risks accepted as part of this authorization — including any documented in the §Negative / mitigations section above — are recorded as explicit risk-acceptance entries with the accepting official and date, and are re-evaluated at each authorization review or significant change. Withdrawal or expiry of the authorization halts production use until re-authorized.
+
 ## Change log
 
 | Version | Date | Change | Author |
@@ -310,3 +314,4 @@ customer-document portal location above.
 | 0.2 | 2026-05-12 | Sections populated from `platform-server-build.qmd` v1.2 (PR #439); docx sources noted as absent; status remains `draft` pending governance review | Claude Code via `claude/assess-server-github-integration-bKTO3` |
 | 1.0 | 2026-05-12 | Status flipped `draft` → `accepted` by user directive; `decided` date set; build-guide v1.3 + release-manifest cross-references confirmed in Status block | Claude Code via `claude/adr-041-accepted-and-git-server-adapter` |
 | 1.1 | 2026-06-02 | §Related work: the deferred hot-standby follow-up is realized by ADR-090 (cross-reference added). No change to this ADR's decision — status remains `accepted`. | Claude Code via `docs/adr-090-substrate-ha-redundancy` |
+| 1.2 | 2026-06-05 | §Authorization and Risk Acceptance added (`CA-6`) per the §7.2 compliance amendments (UIAO_184 Workstream A). No change to the decision — status remains `accepted`. | Claude Code via `claude/gap-analysis-filling-plan-N3MVa` |

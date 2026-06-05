@@ -45,7 +45,7 @@ The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/custo
 | Continuous Monitoring Strategy (`CA-7`) | Authored, registered | **Closed** — [UIAO_190](UIAO_190_Continuous_Monitoring_Strategy.md) |
 | Privacy Impact Assessment (PT family) | Authored, registered | **Closed** — [UIAO_192](UIAO_192_Privacy_Impact_Assessment.md) |
 | **Personnel Security Program (`PS-1`…`PS-9`) — closes the PS family** | Authored, registered | **Closed** — [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
-| 15 document amendments (`compliance-mapping.qmd §7.2`) | Each amendment merged | Open |
+| 15 document amendments (`compliance-mapping.qmd §7.2`) | Each amendment merged | In progress — 11 of 15 (additive control sections in Identity/PKI/DR/Ops/Build/Training guides, ADR-041, Master Plan, Quarto guide, CA library, Git-hooks doc). **4 remain**: `web.config` (functional XML), `app.ini` (no canonical file), Active-Passive Replication Guide and Governance Dashboard Design (no standalone doc — would be new docs). |
 
 > The Personnel Security program is added here because `compliance-mapping.qmd §7` under-specifies it relative to the AT program, yet PS is one of the four named uncovered families. It is sequenced in Phase 3 alongside the PIA.
 
@@ -110,4 +110,5 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 | 2026-06-05 | Workstream A: AT program (UIAO_187) and PS program (UIAO_188) authored and registered. All four named families now have corpus coverage (MP/PE inheritance + AT/PS programs) — **Gap 1 Closed**. |
 | 2026-06-05 | Workstream A: POA&M Template (UIAO_189, `CA-5`) and Continuous Monitoring Strategy (UIAO_190, `CA-7`) authored and registered. Gap 2 advancing — SR plan, PIA, and the 15 §7.2 amendments remain. |
 | 2026-06-05 | Workstream A: SCRM Plan (UIAO_191, `SR`) and Privacy Impact Assessment (UIAO_192, PT) authored and registered. All seven §7.1 new documents complete; only the 15 §7.2 amendments remain for Gap 2. |
+| 2026-06-05 | Workstream A: 11 of 15 §7.2 amendments applied as additive control sections across existing docs (Identity/PKI/DR/Ops/Build/Training guides, ADR-041 `CA-6`, Master Plan, Quarto guide, CA library, Git-hooks doc). 4 remain (web.config, app.ini, replication guide, dashboard design) — functional config or new-doc decisions, deferred for direction. |
 
