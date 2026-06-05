@@ -16,6 +16,7 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+
 # Microsoft Purview — Audit & Retention State (Reserved Slot) — Adapter Validation Suite
 
 ::: {.callout-note}
@@ -28,27 +29,77 @@ lifecycle_review: 2026-11-22
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Microsoft Purview — Audit & Retention State (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion ATS document where relevant._
+This Adapter Validation Suite (AVS) instantiates the [UIAO_121 Adapter Conformance Test Plan](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-conformance-test-plan-template.md) for the `purview-audit` adapter. It defines the Tier-1 contract-conformance criteria, the controls under validation, and the integration test plan that govern the adapter across its lifecycle.
+
+## Validation status
+
+**Reserved slot — not yet implemented.** `purview-audit` is `status: reserved` / `phase: phase-planning` in canon. No adapter code exists yet. The Tier-1 criteria below define the conformance gate the adapter **must** clear at activation; they are a forward-looking plan, not a current result.
 
 ## Scope
 
 Target surfaces / subsystems: `unified-audit-retention-tier`, `audit-event-coverage`, `dlp-policy-state`, `sensitivity-label-policy-state`, `information-protection-coverage`, `litigation-hold-state`, `insider-risk-policy-state`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Validation artifacts:** `purview-audit-tier-findings.json`, `purview-dlp-policy-state.json`, `purview-label-coverage.json`
 
-## Controls
+The suite validates that, for each target surface, the adapter normalizes vendor data into canonical claims, emits deterministic provenance, and produces KSI-anchored evidence — without mutating any source system (`ssot-mutation: never`).
+
+## Controls under validation
+
+The control roles below are mirrored from the adapter's companion [Adapter Technical Specification](../../../adapter-specs/purview-audit/purview-audit.html); the validation suite verifies that the adapter produces the evidence each role asserts.
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `AU-2`, `AU-11`, `SC-4`, `MP-3`, `RA-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AU-2** Event Logging | Primary | Audit-event coverage observation verifies which event categories are enabled and which workloads are in scope, producing the canonical evidence of what is being audited. |
+| **AU-11** Audit Record Retention | Primary | Audit retention tier observation activates FINDING-008 as a live signal — Standard (180d) vs Premium (1y) vs 10-year add-on. |
+| **SC-4** Information in Shared System Resources | Primary | DLP policy state inventory sources the control evidence for protections against cross-resource leakage. |
+| **MP-3** Media Marking | Primary | Sensitivity-label policy state and Information Protection coverage source the control evidence for labelling and marking. |
+| **RA-2** Security Categorization | Supporting | Information Protection coverage indicates how the agency has categorized information across workloads; gaps in coverage are categorization-completeness findings. |
+
+## Conformance Matrix
+
+Per `src/uiao/canon/specs/adapter-conformance-test-plan-template.md` v1.0 — Tier-1 (Contract Conformance).
+Adapter: `purview-audit` · Class: `conformance` · Mission: `telemetry` · Tier: **T1**
+
+| Domain | Criterion | Status |
+|--------|-----------|--------|
+| 2.1.1 | connect() returns ConnectionProvenance | PLANNED |
+| 2.1.2 | identity contains adapter-specific identifier | PLANNED |
+| 2.1.3 | endpoint matches configured backend | PLANNED |
+| 2.1.4 | auth_method reflects auth mechanism | PLANNED |
+| 2.1.5 | timestamp is UTC | PLANNED |
+| 2.2.1 | discover_schema() returns SchemaMappingObject | PLANNED |
+| 2.2.2 | vendor_schema has adapter-relevant fields | PLANNED |
+| 2.2.3 | canonical_schema has UIAO identity pattern | PLANNED |
+| 2.2.4 | unmapped_fields is non-empty | PLANNED |
+| 2.2.5 | version_hash is deterministic | PLANNED |
+| 2.3.1 | execute_query() returns QueryProvenance | PLANNED |
+| 2.3.2 | vendor_query has adapter-native syntax | PLANNED |
+| 2.3.3 | execution_plan_hash is deterministic | PLANNED |
+| 2.4.1 | normalize([]) returns empty ClaimSet | PLANNED |
+| 2.4.2 | normalize([one]) produces 1 ClaimObject | PLANNED |
+| 2.4.3 | claim_id follows adapter:... pattern | PLANNED |
+| 2.4.4 | source == ADAPTER_ID | PLANNED |
+| 2.4.5 | provenance_hash non-empty, deterministic | PLANNED |
+| 2.4.6 | multiple records produce unique claim_ids | PLANNED |
+| 2.5.1 | detect_drift() returns DriftReport | PLANNED |
+| 2.5.2 | drift_type has adapter-specific prefix | PLANNED |
+| 2.5.3 | details contains adapter key | PLANNED |
+| 2.6.1 | collect_evidence() returns EvidenceObject | PLANNED |
+| 2.6.2 | ksi_id preserved | PLANNED |
+| 2.6.3 | source == ADAPTER_ID | PLANNED |
+| 2.6.4 | provenance dict non-empty | PLANNED |
+| 2.7.1 | collect_and_align() returns dict | PLANNED |
+| 2.7.2 | adapter_id matches ADAPTER_ID | PLANNED |
+| 2.7.3 | vendor field non-empty | PLANNED |
+| 2.7.4 | metadata has last_collected timestamp | PLANNED |
+| 4.1 | ADAPTER_ID matches canon registry id | PLANNED |
+| 4.2 | registered in __init__.py __all__ | PLANNED |
+
+Reserved slot — criteria define the activation gate; no result is claimed until an implementation and per-adapter ADR land.
 
 ## Operational profile
 
@@ -70,13 +121,25 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Reserved slot per ADR-058. Read-only telemetry counterpart to the change-making Purview surface bundled inside the `m365` modernization adapter (modernization-registry, scope: purview). Continuously observes audit retention tier (Standard 180d / Premium 1y / 10-year add-on), audit-event coverage, DLP policy state, sensitivity-label policy state, Information Protection coverage, litigation-hold state, and Insider Risk policy state. Activates FINDING-008 (docs/findings/fedramp-gcc-moderate-purview-audit-180day-cliff.qmd) as a live drift signal in monthly ConMon packs (UIAO_132 / ADR-047) rather than a static one-shot finding. Sources control evidence for SC-4 (DLP), MP-3 (sensitivity labels), RA-2 (information classification) — closes three DRIFT-PROVENANCE registry-layer gaps for Purview-anchored controls.
+Reserved slot per ADR-059. Read-only telemetry counterpart to the change-making Purview surface bundled inside the `m365` modernization adapter (modernization-registry, scope: purview). Continuously observes audit retention tier (Standard 180d / Premium 1y / 10-year add-on), audit-event coverage, DLP policy state, sensitivity-label policy state, Information Protection coverage, litigation-hold state, and Insider Risk policy state. Activates FINDING-008 (docs/findings/fedramp-gcc-moderate-purview-audit-180day-cliff.qmd) as a live drift signal in monthly ConMon packs (UIAO_132 / ADR-047) rather than a static one-shot finding. Sources control evidence for SC-4 (DLP), MP-3 (sensitivity labels), RA-2 (information classification) — closes three DRIFT-PROVENANCE registry-layer gaps for Purview-anchored controls.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-058
+- ADR-059
+
+## Integration Test Plan
+
+Per `src/uiao/canon/specs/adapter-integration-test-plan.md` v1.0.
+
+| Phase | Status | Evidence |
+|-------|--------|----------|
+| 1. Unit | PLANNED | Reserved slot — implementation + per-adapter ADR required |
+| 2. Integration | PLANNED | Provenance/evidence pipeline (Tier-2) |
+| 3. System | PLANNED | CI enrollment in `adapter-conformance.yml` (Tier-3) |
+| 4. Acceptance | PLANNED | Requires live vendor credentials |
+| 5. Production | PLANNED | Requires Phase 4 + runner deployment |
 
 ---
 
-*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*
+*Validation suite authored from canon (`canon/adapter-registry.yaml`) and the companion ATS. Conformance criteria per UIAO_121. Frontmatter is regenerated by `uiao/tools/sync_canon.py`.*

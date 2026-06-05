@@ -32,27 +32,36 @@ lifecycle_review: 2026-11-22
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Microsoft Surface Management Portal Fleet Telemetry Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft Surface Management Portal (SMP) Fleet Telemetry Adapter is the **first-party Surface-hardware telemetry edge** of the UIAO substrate. As a conformance-class telemetry adapter, it observes Surface-specific fleet state — firmware versions across the fleet, DFCI compliance status, warranty and lifecycle drift, and device-health signals — and emits object-keyed claims and KSI-anchored evidence keyed to the canonical device identifier.
+
+It is the natural complement to the [`intune`](../intune/intune.html) adapter, with a deliberately non-overlapping surface: `intune` observes Intune-managed-device compliance regardless of hardware vendor, while SMP observes Surface-specific firmware and warranty state that **does not flow through** the Graph `/deviceManagement/managedDevices` surface. Surface *configuration authoring* (DFCI profiles, Surface-specific compliance settings) is explicitly out of scope here — that change-making surface flows through the `intune` modernization-side reserved slot (ADR-049). The parent doctrine establishing Surface as a first-class asset class lives in IFO_014 (`src/uiao/modernization/intune-first-onboarding/platforms/windows-surface.md`).
+
+This is a **reserved slot** (`status: reserved`, `phase: phase-planning`): the allocation and contract are defined here, but no adapter code exists yet. When promoted to `active`, a per-adapter ADR will document the chosen Graph API / SMP REST endpoint set, read-only OAuth scope minimization, runtime pin, and evidence-pack shape.
 
 ## Scope
 
 Target surfaces / subsystems: `surface-fleet-inventory`, `surface-firmware-versions`, `surface-dfci-compliance`, `surface-warranty-lifecycle`, `surface-device-health`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads (planned):** Microsoft Surface Management Portal surfaces (Graph API / SMP REST, endpoint set to be fixed by the activation ADR) for Surface fleet inventory, per-device firmware versions, DFCI compliance status, warranty / lifecycle state, and device-health signals. Read-only, scope-minimized OAuth.
+
+**Emits (planned):** `surface-fleet-inventory.json` (per-device inventory claims), `surface-firmware-drift-report.json` (firmware-version drift across the fleet), and `surface-dfci-compliance-report.json` (DFCI compliance state), plus `EvidenceObject` records that feed the CM-8 / SI-2 / CA-7 / SC-7 control evidence stream.
+
+**Does NOT:** mutate Surface configuration, author DFCI profiles or compliance settings, enroll or unenroll devices, or duplicate the `intune` managed-device compliance surface. This is the *observation* edge for Surface hardware; the *authoring* surface lives in the `intune` modernization-side reserved slot (ADR-049).
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `SI-2`, `CA-7`, `SC-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+All roles below are **`NEW (Proposed)`** per the No-Hallucination Protocol — this is a reserved slot with no implementation; the table states the role each control will play at activation, not a delivered capability.
+
+| Control | Role | Adapter capability (planned) |
+|---|---|---|
+| **CM-8** System Component Inventory | Primary `NEW (Proposed)` | Surface fleet enumeration with model, firmware version, and warranty/lifecycle state — the canonical Surface-hardware inventory, distinct from the Intune managed-device view. |
+| **SI-2** Flaw Remediation | Supporting `NEW (Proposed)` | Firmware-version drift across the fleet surfaces out-of-date Surface devices as monitoring evidence feeding patch/firmware remediation. |
+| **CA-7** Continuous Monitoring | Primary `NEW (Proposed)` | Scheduled fleet-telemetry collection provides continuous Surface posture evidence with the freshness-window semantics defined in canon. |
+| **SC-7** Boundary Protection | Supporting `NEW (Proposed)` | DFCI compliance and device-health state feed zero-trust boundary decisions for Surface endpoints. |
 
 ## Operational profile
 
