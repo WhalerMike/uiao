@@ -22,7 +22,7 @@ It was genuinely liberating. Programming and decision-making spread beyond Washi
 
 But we paid a hidden price: we lost the single source of truth. Twelve regions created twelve different versions of reality — different schemas, different business rules, different interpretations of the same policies.
 
-And nobody replaced the single source of truth the mainframe had given us. That was the original sin — the moment the architecture began to drift toward fraud.
+And nobody replaced the single source of truth the mainframe had given us. That was the original sin — the moment the architecture began to drift.
 
 **Act 2: When Security Ate the Architecture (6:00 – 10:00)**
 Around 2010, two powerful forces collided: compute began consolidating from twelve regional data centers toward four — California, two in Nebraska, and Virginia as the anchor — and cybersecurity became the overriding priority.
