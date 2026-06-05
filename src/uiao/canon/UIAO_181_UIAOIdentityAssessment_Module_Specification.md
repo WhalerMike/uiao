@@ -60,4 +60,4 @@ Identity assessment artifacts carry a provenance envelope (tenant id, Graph API 
 
 ## Implementation status
 
-Unimplemented. Tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md), Workstream B.
+**Implemented** at `tools/powershell/UIAOIdentityAssessment/` (`.psd1` + `.psm1` + Pester tests, wired into the Pester CI), satisfying the function roster, the cloud-aware Graph endpoint resolution (fail-closed; `commercial` serves GCC-Moderate per ADR-033), and the non-functional contract above. Every exporter supports offline `-SnapshotPath` normalization (the analogue of `OrgPathTools -PrincipalSnapshot`), so the module is testable without a live tenant or the Microsoft.Graph SDK. Reconciliation surfaces orphaned / missing / lifecycle-inconsistent principals as `DRIFT-IDENTITY`, and output is sealed with the canonical `content_hash` (byte-identical to `uiao.ir.models.core.canonical_hash`) for `DRIFT-PROVENANCE` classification by `src/uiao/governance/drift.py`. Authenticode signing occurs at release packaging (`pwsh-pack`). Tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md), Workstream B.
