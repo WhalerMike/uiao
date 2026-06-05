@@ -1,0 +1,152 @@
+---
+title: "5 · Intune Device Writeback (Entra / Graph)"
+subtitle: "Write OrgPath facets to Entra device extensionAttributes via Microsoft Graph"
+doc-type: operational-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/orgpath-implementation/05-intune-device-writeback.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+# 5 · Intune Device Writeback (Entra / Graph) {.unnumbered}
+
+This is the first of the two live write planes. For **Entra-joined client
+devices**, OrgPath facets are written to the device object's
+`onPremisesExtensionAttributes` via Microsoft Graph. Intune dynamic groups then
+target those attributes — that is how OrgPath "drives Intune."
+
+CLI: `uiao orgtree assess --write` · Adapter:
+`uiao.adapters.entra_device_orgpath.EntraDeviceOrgPathAdapter` · Transport:
+`uiao.adapters.graph_transport.GraphTransport`.
+
+::: {.callout-note}
+## Writeback ≠ profile authoring
+
+This writes OrgPath *facet values* onto device objects. Assigning Intune
+*configuration profiles / compliance policies* to the resulting dynamic groups
+is a separate concern — its targeting model is canon (UIAO_011), but the
+authoring adapter is a **reserved** slot, not part of this path. See Guide 7.
+:::
+
+## 5.1 Disposition decides the plane
+
+Each device record carries a **disposition** that routes its write:
+
+| Disposition | Plane | Transport |
+|---|---|---|
+| `ENTRA-DEVICE` | entra | Microsoft Graph (this guide) |
+| `ARC-SERVER`, `STAY-AD-DEPENDENCY`, `MANAGED-IDENTITY-CANDIDATE` | arm | Azure Resource Manager (Guide 6) |
+| `STAY-AD-DC`, `DECOMMISSION` | skip | No write attempted |
+
+Set `disposition` on each record in your device export (defaults to
+`ENTRA-DEVICE` if absent). This guide covers `ENTRA-DEVICE`.
+
+## 5.2 What gets written
+
+For an `ENTRA-DEVICE`, the adapter batches all derived facets into **one**
+Graph PATCH on the device:
+
+```
+PATCH /devices/{device_id}
+{
+  "onPremisesExtensionAttributes": {
+    "extensionAttribute1": "EASTUS",     # region
+    "extensionAttribute2": "IT",         # department
+    "extensionAttribute4": "Engineer",   # role
+    ...                                   # up to 10 named facets
+  }
+}
+```
+
+Reserved facets (slots 11–15) and any value that would land as drift are
+**skipped** — the adapter never writes a value the engine would immediately
+flag.
+
+## 5.3 Dry-run first (always)
+
+`--write` defaults to dry-run: it **plans** the per-facet writes and dispatches
+nothing. No credentials required.
+
+```bash
+uiao orgtree assess \
+  --from-export ad-devices.json \
+  --target-type device \
+  --write
+```
+
+```
+Device writes — dry_run=True, cloud=commercial
+  Planned : 870
+  Sent    : 0
+  Skipped : 870        # dry-run sends nothing
+```
+
+Review the plan: `Planned` is the per-facet operation count across all
+`ENTRA-DEVICE` records. If that number and the per-device facet spread look
+right, proceed.
+
+## 5.4 Go live
+
+Add `--no-dry-run`. This requires `UIAO_ENTRA_*` credentials (Guide 1) and the
+`[api]` extra. For GCC-Moderate keep `--cloud commercial`:
+
+```bash
+uiao orgtree assess \
+  --from-export ad-devices.json \
+  --target-type device \
+  --write --no-dry-run \
+  --cloud commercial
+```
+
+```
+Device writes — dry_run=False, cloud=commercial
+  Planned : 870
+  Sent    : 860
+  Skipped : 0
+  Errors  : 10
+```
+
+The CLI builds a `GraphTransport` from the environment, acquiring a
+**Graph-audience** token for the selected cloud (commercial Graph =
+`graph.microsoft.com`, which is correct for GCC-Moderate). Each `ENTRA-DEVICE`
+becomes one batched PATCH.
+
+::: {.callout-tip}
+## Pilot discipline
+
+Smoke-test on a **single device** before the fleet: export one record, run the
+dry-run, then `--no-dry-run`, then confirm in the Entra portal that
+`extensionAttribute1..10` carry the expected values. Only then widen scope.
+:::
+
+## 5.5 Failure modes
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `--no-dry-run requires UIAO_ENTRA_* credentials` then exit 1 | Env vars unset / `[api]` extra missing | Set `UIAO_ENTRA_*`; `pip install "uiao[api]"` |
+| HTTP 401 on PATCH | Missing admin consent for `Device.ReadWrite.All`, or wrong `--cloud` | Grant + consent the Graph app permission; match `--cloud` to the tenant |
+| HTTP 403 on PATCH | App lacks rights on the target object | Confirm application permission scope and consent |
+| Device facets blank after write | Values skipped as drift, or reserved facets | Run `govern` (Guide 4); resolve P2 Value drift; reserved slots aren't written |
+| `--write applies only to device assignments` | `--target-type` not `device` | Add `--target-type device` |
+| Per-op errors in the `Errors` count | Transient Graph errors / throttling on specific devices | Re-run; the plan is idempotent (PATCH of the same values is a no-op) |
+
+## 5.6 Re-running is safe
+
+The write is an idempotent PATCH of the desired facet state. Re-running after a
+source-data or mapping change converges the tenant to the new desired values;
+unchanged devices are effectively no-ops. This is the property that lets you run
+writeback on a reconcile cadence (Guide 7).
+
+**Next:** [Azure Arc server writeback](06-arc-server-writeback.qmd).

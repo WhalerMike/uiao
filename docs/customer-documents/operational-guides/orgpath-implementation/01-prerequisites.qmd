@@ -1,0 +1,149 @@
+---
+title: "1 · Prerequisites & Access"
+subtitle: "Tenant, licensing, app registration, RBAC, network egress, and CLI install"
+doc-type: operational-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/orgpath-implementation/01-prerequisites.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+# 1 · Prerequisites & Access {.unnumbered}
+
+This guide gets the control plane ready: the identities, permissions, network
+paths, and software that every later step depends on. Nothing here writes
+OrgPath — it makes the *later* writes possible and auditable.
+
+## 1.1 Tenant & licensing
+
+| Requirement | Why | Notes |
+|---|---|---|
+| Microsoft Entra ID tenant (GCC-Moderate) | Holds device objects + extension attributes | Commercial infra, FedRAMP-Moderate authorized (ADR-033) |
+| Entra ID P1 (P2 recommended) | Dynamic groups, Conditional Access targeting | P2 if you later adopt the reserved governance adapters |
+| Microsoft Intune | MDM for Entra-joined clients (device-plane consumer) | Device writeback targets the device object, not Intune directly |
+| Azure subscription with Azure Arc | Hosts `Microsoft.HybridCompute/machines` for servers | Required only for the Arc-server writeback (Guide 6) |
+
+::: {.callout-note}
+OrgPath writes facet values onto the **directory object** (Entra device) or the
+**ARM resource** (Arc machine). Intune and Azure Policy then *target* those
+values. You do not need the Intune-authoring or Policy-for-Arc adapters to run
+the device-plane writeback — those are separate, reserved capabilities.
+:::
+
+## 1.2 Entra app registration (client credentials)
+
+The CLI authenticates app-only (OAuth2 client-credentials) via MSAL. Create one
+app registration; it serves both the Graph (Intune/Entra) and ARM (Arc) planes.
+
+1. **Register an application** in Entra ID (single tenant).
+2. **Add a credential** — a client secret *or* (preferred) a certificate.
+3. **Record** the Tenant ID, Client ID, and the secret/cert.
+
+### Graph application permissions (for the Entra device plane)
+
+Grant **application** permissions (not delegated), then **grant admin consent**:
+
+| Permission | Used for |
+|---|---|
+| `Device.ReadWrite.All` | Writing `onPremisesExtensionAttributes` on device objects |
+| `Directory.Read.All` | Resolving devices / reading directory state |
+
+> Verify the minimal permission set against current Microsoft Learn before
+> production — Graph permission requirements evolve. The CLI requests the
+> Graph `…/.default` scope for the selected cloud, so admin-consented
+> application permissions are what actually gate the write.
+
+### Azure RBAC (for the Arc server plane)
+
+ARM authorization is **role-based**, not Graph-application-permission based. The
+same app registration (service principal) must hold a role that can write tags
+on the target Arc resources:
+
+- **Tags Contributor** (writes tags only — least privilege), or
+- **Contributor** (broader) on the resource group / subscription scope holding
+  the `Microsoft.HybridCompute/machines` resources.
+
+Assign the role to the **service principal** of your app registration at the
+narrowest scope that covers your Arc fleet.
+
+## 1.3 Network egress
+
+| Plane | Outbound to (illustrative) | Note |
+|---|---|---|
+| Auth | `login.microsoftonline.com` (commercial) / `login.microsoftonline.us` (gov) | MSAL token acquisition |
+| Graph | `graph.microsoft.com` (commercial) / `graph.microsoft.us` (gov) | Entra device writes |
+| ARM | `management.azure.com` (commercial) / `management.usgovcloudapi.net` (gov) | Arc tag writes |
+
+Arc *agent* enrollment has its own egress matrix (`*.his.arc.azure.com`,
+`*.guestconfiguration.azure.com`, `*.servicebus.windows.net`, …). The
+`assess_fleet_arc_readiness` helper flags servers whose egress is unvalidated;
+see Guide 6 and the endpoint list in
+`uiao.adapters.modernization.active_directory.arc_readiness.ARC_EGRESS_ENDPOINTS`.
+Always confirm against the current Microsoft Learn Arc network-requirements page.
+
+## 1.4 Install the CLI
+
+The live write path (httpx + MSAL) ships in the `[api]` optional extra:
+
+```bash
+pip install "uiao[api]"
+# dev/test tooling as well:
+pip install -e ".[api,dev]"
+```
+
+Read-only assessment and dry-run governance work **without** the extra; only
+the `--no-dry-run` dispatch needs httpx + msal.
+
+## 1.5 Credentials in the environment
+
+The token provider reads machine-level environment variables (never put these
+in code or git):
+
+```bash
+export UIAO_ENTRA_TENANT_ID="<tenant-guid>"
+export UIAO_ENTRA_CLIENT_ID="<app-client-id>"
+# one of:
+export UIAO_ENTRA_CLIENT_SECRET="<client-secret>"
+#   or certificate auth:
+export UIAO_ENTRA_CERT_PATH="/path/to/cert.pfx"
+export UIAO_ENTRA_CERT_PASSWORD="<pfx-password>"   # omit for PEM
+```
+
+On the Windows/IIS deployment surface (`deploy/windows-server/`) set these as
+**Machine-level** variables so the app pool inherits them.
+
+## 1.6 Cloud selection
+
+Every write command takes `--cloud`. The CLI derives the correct host **and**
+token audience **and** login authority per cloud — a commercial-audience token
+is rejected by sovereign endpoints (and a Graph-audience token is rejected by
+ARM):
+
+| `--cloud` | Graph host | ARM host | Login authority |
+|---|---|---|---|
+| `commercial` (also GCC-Moderate) | `graph.microsoft.com` | `management.azure.com` | `login.microsoftonline.com` |
+| `gcc-high` | `graph.microsoft.us` | `management.usgovcloudapi.net` | `login.microsoftonline.us` |
+| `dod` | `dod-graph.microsoft.us` | `management.usgovcloudapi.net` | `login.microsoftonline.us` |
+
+## 1.7 Verify the install
+
+```bash
+uiao --version
+uiao orgtree --help                 # validate codebook, assess, govern
+uiao substrate walk                 # confirm the package tree is intact
+```
+
+If `uiao orgtree --help` lists `validate`, `assess`, and `govern`, the control
+plane is ready. **Next:** [Author & validate the Codebook](02-codebook.qmd).

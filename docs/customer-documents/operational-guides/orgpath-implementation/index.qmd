@@ -1,0 +1,96 @@
+---
+title: "OrgPath Implementation Guides — Intune & Azure Arc"
+subtitle: "The operator how-to that turns the OrgPath narrative into a running deployment"
+doc-type: subcategory-landing
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/orgpath-implementation/index.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+# OrgPath Implementation Guides {.unnumbered}
+
+The **OrgPath narrative** explains *what* OrgPath is and *why* it replaces the
+Active Directory OU tree. These **implementation guides** are the companion
+*how* — a command-by-command path from an empty tenant to OrgPath facets
+landing on Intune-managed devices and Azure Arc-enrolled servers, governed by
+a drift loop.
+
+Every step here is grounded in the shipped `uiao` CLI and the
+`uiao.modernization.orgtree` / `uiao.adapters` modules — not aspirational
+design. Where a capability is reserved (planned but not built), the guide says
+so explicitly rather than implying it works.
+
+::: {.callout-important}
+## Boundary and scope
+
+These guides target the **GCC-Moderate** boundary (commercial Microsoft 365 /
+Azure infrastructure with FedRAMP-Moderate authorization, per ADR-033). The
+commands are cloud-aware (`--cloud commercial | gcc-high | dod`), so the same
+path applies to Azure Government tenants with the cloud flag changed and the
+sovereign endpoints substituted.
+
+**In scope:** the OrgPath *device-plane deployment path* — prerequisites,
+Codebook, assessment, dry-run governance, Intune device writeback, Arc-server
+writeback, and day-2 operations.
+
+**Out of scope (covered elsewhere, or reserved):** Intune *profile/compliance
+authoring*, Azure *Policy-for-Arc* enforcement, dynamic-group / Administrative
+Unit / policy-targeting provisioning. The targeting *model* is described in
+canon (UIAO_011, UIAO_152, UIAO_154); the *authoring adapters* are reserved
+slots that each require a per-adapter ADR before activation.
+:::
+
+## The deployment arc
+
+Read the guides in order — each builds on the artifacts produced by the last.
+
+| # | Guide | Outcome | Primary CLI / module |
+|---|---|---|---|
+| 1 | **[Prerequisites & access](01-prerequisites.qmd)** | Tenant, licensing, app registration, RBAC, network egress, `uiao[api]` install, `UIAO_ENTRA_*` set | `pip install "uiao[api]"` |
+| 2 | **[Author & validate the Codebook](02-codebook.qmd)** | A tenant-tuned 15-facet Codebook that passes schema + integrity validation | `uiao orgtree validate codebook` |
+| 3 | **[Assess AD → derive facets](03-assessment.qmd)** | Per-object facet assignments + a clean findings list, from live LDAP or an export | `uiao orgtree assess` |
+| 4 | **[Dry-run governance & drift](04-governance-dry-run.qmd)** | A `GovernanceReport` classifying every drift finding, writing nothing | `uiao orgtree govern` |
+| 5 | **[Intune device writeback](05-intune-device-writeback.qmd)** | OrgPath facets written to Entra device `extensionAttribute1..10` via Graph | `uiao orgtree assess --write` |
+| 6 | **[Azure Arc server writeback](06-arc-server-writeback.qmd)** | OrgPath facets written to Arc machine **tags** via Azure Resource Manager | `uiao orgtree assess --write` |
+| 7 | **[Operate & troubleshoot](07-operate-and-troubleshoot.qmd)** | Read-only console, reconcile cadence, evidence, and a failure-mode catalog | `uiao.api` web console |
+
+## What "ready" means before you start
+
+OrgPath Model C is **Tier-3+ doctrine** (per UIAO_151 / ADR-078): the engine,
+Codebook, drift classes, assessment, and dual-plane writeback are implemented
+and tested, but the framework has **no production adopters at ratification**.
+Treat your first deployment as a pilot:
+
+1. **Tune the Codebook enumerations** to your real org (Region, Department,
+   Division, Role, CostCenter, ClearanceLevel, AccountType) — the shipped
+   values are federal-IT defaults.
+2. **Run assessment and dry-run governance first** on a 5–10 % population
+   sample. Writes stay suppressed until you explicitly pass `--no-dry-run`.
+3. **Smoke-test the live write path on a single device and a single Arc
+   machine** before any fleet rollout. The Arc/ARM write path authenticates
+   correctly but should be proven against one live resource first.
+
+## Canon provenance
+
+These guides derive from, and must stay consistent with, the following canon.
+When a guide and canon disagree, canon wins and the guide is the drift:
+
+- **UIAO_151** OrgPath Codebook (the facet SSOT) · **UIAO_163** Drift Detection
+  Engine · **UIAO_174** Governance Telemetry
+- **UIAO_011** OrgPath in Intune & Device Governance · **UIAO_010** OrgPath in
+  Azure Policy (Arc side)
+- **ADR-038** Device-Plane OrgPath · **ADR-078** 15-Facet Schema · **ADR-084**
+  Phase 5 Consumer Architecture · **ADR-033** Cloud boundary
