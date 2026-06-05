@@ -326,3 +326,156 @@ def _apply_device_writes(results: list, records: list[dict], *, dry_run: bool, c
     console.print(f"  Skipped : {result.skipped_count}")
     if result.error_count:
         console.print(f"  [red]Errors  : {result.error_count}[/red]")
+
+
+def _load_export(path: Path, label: str) -> list[dict]:
+    """Load a raw export file: a JSON list, or a Graph/ARM ``{"value": [...]}``."""
+    if not path.exists():
+        console.print(f"[red]{label} export not found: {path}[/red]")
+        raise typer.Exit(code=1)
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        console.print(f"[red]Invalid {label} export JSON: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    if isinstance(payload, dict) and "value" in payload:
+        return list(payload["value"])
+    if isinstance(payload, list):
+        return payload
+    console.print(f"[red]{label} export must be a JSON list or an object with a 'value' array.[/red]")
+    raise typer.Exit(code=1)
+
+
+def _load_source_map(path: Path, label: str) -> dict:
+    """Load a source map (``key -> {facet: value}``) from JSON or YAML."""
+    from uiao.modernization.orgtree._yaml_loaders import read_yaml_path
+
+    if not path.exists():
+        console.print(f"[red]{label} not found: {path}[/red]")
+        raise typer.Exit(code=1)
+    try:
+        doc = read_yaml_path(path)  # YAML is a JSON superset, so this loads both
+    except Exception as exc:
+        console.print(f"[red]Invalid {label}: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    if not isinstance(doc, dict):
+        console.print(f"[red]{label} must be a mapping of key -> facet values.[/red]")
+        raise typer.Exit(code=1)
+    return doc
+
+
+@orgtree_app.command("inventory")
+def inventory(
+    devices_export: Path | None = typer.Option(
+        None, "--devices-export", help="Entra device objects JSON (offline). A list, or a Graph {'value':[...]}."
+    ),
+    machines_export: Path | None = typer.Option(
+        None, "--machines-export", help="Arc machine resources JSON (offline). A list, or an ARM {'value':[...]}."
+    ),
+    from_graph: bool = typer.Option(
+        False, "--from-graph", help="Live-read Entra devices via Graph (needs UIAO_ENTRA_* + the [api] extra)."
+    ),
+    from_arm: bool = typer.Option(
+        False, "--from-arm", help="Live-read Arc machines via ARM (needs UIAO_ENTRA_* + [api] + --subscription)."
+    ),
+    subscription: str = typer.Option("", "--subscription", help="Azure subscription id (required for --from-arm)."),
+    cloud: str = typer.Option("commercial", "--cloud", help="commercial | gcc-high | dod (for live reads)."),
+    asset_map_path: Path | None = typer.Option(
+        None, "--asset-map", help="serial/hostname -> facet values (CMDB/procurement source), JSON or YAML."
+    ),
+    owner_map_path: Path | None = typer.Option(
+        None, "--owner-map", help="ownerId -> facet values (primary-user derivation source), JSON or YAML."
+    ),
+    snapshot_out: Path | None = typer.Option(
+        None, "--snapshot-out", help="Write a `govern`-compatible snapshot of current state."
+    ),
+    worklist_out: Path | None = typer.Option(None, "--worklist-out", help="Write the backfill worklist JSON."),
+) -> None:
+    """Capture already-enrolled devices missing OrgPath, across Entra + Arc (read-only, UIAO_151).
+
+    Reads Entra device objects (Graph `onPremisesExtensionAttributes`) and/or Arc
+    machine resources (ARM `tags`) — live or from an export — classifies each
+    device's OrgPath capture status against the codebook (complete / partial /
+    absent), and proposes a backfill for the missing facets via the source
+    chain (`--asset-map` then `--owner-map`). Writes nothing.
+
+    Emit `--snapshot-out` to feed `uiao orgtree govern` (gaps re-surface as
+    DRIFT-IDENTITY), and `--worklist-out` for the per-device backfill plan.
+
+    Examples::
+
+        uiao orgtree inventory --devices-export entra-devices.json \\
+            --machines-export arc-machines.json --owner-map owners.json \\
+            --snapshot-out snap.json --worklist-out worklist.json
+
+        uiao orgtree inventory --from-graph --from-arm --subscription <sub> \\
+            --cloud commercial --worklist-out worklist.json
+    """
+    from uiao.modernization.orgtree.inventory import (
+        build_inventory,
+        device_from_entra,
+        machine_from_arm,
+    )
+
+    if not (devices_export or machines_export or from_graph or from_arm):
+        console.print(
+            "[red]Provide at least one source: --devices-export / --machines-export "
+            "(offline) or --from-graph / --from-arm (live).[/red]"
+        )
+        raise typer.Exit(code=1)
+    if from_arm and not subscription:
+        console.print("[red]--from-arm requires --subscription <azure-subscription-id>.[/red]")
+        raise typer.Exit(code=1)
+
+    codebook = load_codebook()
+    asset_map = _load_source_map(asset_map_path, "--asset-map") if asset_map_path else None
+    owner_map = _load_source_map(owner_map_path, "--owner-map") if owner_map_path else None
+
+    entra_raw: list[dict] = []
+    arm_raw: list[dict] = []
+
+    if devices_export:
+        entra_raw.extend(_load_export(devices_export, "devices"))
+    if machines_export:
+        arm_raw.extend(_load_export(machines_export, "machines"))
+
+    if from_graph or from_arm:
+        try:
+            if from_graph:
+                from uiao.adapters.graph_transport import GraphTransport
+                from uiao.modernization.orgtree.inventory import read_entra_devices
+
+                entra_raw.extend(read_entra_devices(GraphTransport.from_environment(cloud=cloud)))
+            if from_arm:
+                from uiao.adapters.arm_transport import ArmTransport
+                from uiao.modernization.orgtree.inventory import read_arm_machines
+
+                arm_raw.extend(read_arm_machines(ArmTransport.from_environment(cloud=cloud), subscription))
+        except Exception as exc:
+            console.print(f"[red]Live read failed (needs UIAO_ENTRA_* credentials + the [api] extra): {exc}[/red]")
+            raise typer.Exit(code=1) from exc
+
+    records = [device_from_entra(r, codebook) for r in entra_raw]
+    records += [machine_from_arm(r, codebook) for r in arm_raw]
+
+    report = build_inventory(records, codebook, asset_map=asset_map, owner_map=owner_map)
+    s = report.summary
+
+    console.print(f"[bold]OrgPath inventory[/bold] — {s['total']} device(s) (Entra {s['entra']}, Arc {s['arm']})")
+    console.print(f"  Captured (complete) : {s['complete']}")
+    console.print(f"  Partial             : [yellow]{s['partial']}[/yellow]")
+    console.print(f"  Absent (no OrgPath) : [red]{s['absent']}[/red]")
+    console.print(f"  Needs backfill      : {s['needs_backfill']}")
+    console.print(f"    proposal resolved : [green]{s['resolved']}[/green]")
+    console.print(f"    unresolved        : [red]{s['unresolved']}[/red] (no source match — manual review)")
+    if s["with_findings"]:
+        console.print(f"  [yellow]With findings       : {s['with_findings']} (proposed value not in codebook)[/yellow]")
+
+    if snapshot_out is not None:
+        snapshot_out.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_out.write_text(json.dumps(report.to_snapshot_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        console.print(f"[green]Snapshot written to {snapshot_out}[/green] (feed to `uiao orgtree govern`)")
+    if worklist_out is not None:
+        worklist_out.parent.mkdir(parents=True, exist_ok=True)
+        worklist_out.write_text(json.dumps(report.to_worklist_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        console.print(f"[green]Worklist written to {worklist_out}[/green]")
