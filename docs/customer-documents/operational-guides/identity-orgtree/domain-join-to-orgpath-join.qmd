@@ -139,3 +139,386 @@ can be retired.
    (XW-012, Track 3), then cut over to **Arc + Entra-join, non-domain-joined**
    (ADR-002). OrgPath rides both: `extensionAttribute1..10` on the Entra device
    for clients, ARM **tags** on the Arc machine for servers.
+
+# Part B — The OrgPath-join process
+
+Domain-join was one transaction; OrgPath-join is a **governed sequence**. Like
+the Intune + Azure Arc deployment, it drives every device to the **same
+destination — a stamped, governed OrgPath — regardless of where it starts.**
+Three entry states feed one end-state:
+
+| Entry state | Path | How OrgPath is established | Primary tooling |
+|---|---|---|---|
+| Brand-new device | **New Join → Entra OrgPath** (B.1) | Assigned at procurement, stamped at enrollment (Intune-First 5-phase) | Autopilot / ABM / Zero-Touch / Arc onboarding |
+| Existing **AD domain-joined** | **AD → Entra OrgPath** (B.2) | **Derived from AD** (OU + attributes), then the box sheds domain-join | `uiao orgtree assess`, GPO Sunset (ADR-080) |
+| Already **Entra/Arc, no OrgPath** | **Already-Entra → Entra OrgPath** (B.3) | **Captured + backfilled** (brownfield) | `uiao orgtree inventory` |
+
+All three converge on the identical **common end-state (B.4–B.9)**: OrgPath
+stamped on the device object/resource, dynamic-group membership, policy,
+certificates, DNS, and modern authentication. And **within every path the
+client-vs-server plane divergence holds** — Entra device object + Graph
+`extensionAttributes` for clients, Arc machine + ARM `tags` for servers —
+exactly the two writeback planes from the Intune (Graph) and Arc (ARM) deployment
+guides.
+
+```
+   New device ─────┐
+   (procure)       │
+                   ▼
+   AD-joined ──► [ OrgPath join ] ──► stamp ─► groups ─► policy ─► certs ─► DNS ─► auth ─► validate
+   (assess)        ▲                  (B.4)    (B.5)     (B.5)     (B.6)    (B.7)   (B.8)    (B.9)
+                   │
+   Entra, no ──────┘
+   OrgPath
+   (inventory)
+```
+
+::: {.callout-note}
+## The OrgPath source-precedence chain (IFO_001 §5)
+
+Every later step depends on the device carrying a valid OrgPath. The value is
+resolved by a strict precedence chain, and a source counts only if it is
+non-empty **and** resolves to a `Status: Active` node in the OrgTree registry:
+
+1. **Procurement record** (authoritative) — set on the PO.
+2. **Hardware-hash mapping CSV** (e.g. `governance/autopilot/orgpath-mapping.csv`).
+3. **Primary-user derivation** — the provisioning user's OrgPath (BYOD / pre-doctrine).
+4. **`/UNPOSITIONED`** — terminal quarantine; the device is governed but blocked
+   from resources until positioned.
+
+This guarantees *every* enrolled device has a non-empty OrgPath at the moment
+compliance and network-admission evaluation begins.
+:::
+
+## B.1 Path A — New Join → Entra OrgPath (net-new devices)
+
+The canonical **Intune-First five-phase** onboarding (`IFO_002`, ADR-071):
+Procure → Pre-stage → Position → Provision → Validate. It binds organizational
+position *before the device exists* — the cure for AD's drift-prone,
+after-the-fact OU placement. Phases 1–3 are below; **Position, Provision, and
+Validate are the common end-state** (B.4–B.9), shared with the other two paths.
+
+### Phase 1 — Procure (replaces: ad-hoc OU placement)
+
+Before hardware is ordered, the purchase request carries the **OrgPath** and the
+resolved `OrgNodeId`, validated against the OrgTree registry. The procurement
+record is committed to the governance repo. *This is the cloud replacement for
+"an admin drops the new computer object into an OU"* — except it is decided by
+policy, reviewed, and recorded, not improvised after the box powers on.
+
+- **Gate:** OrgPath valid on the PO and resolves to an Active node.
+- **Carrier:** the procurement record (`governance/procurement/orders/{PO}.json`).
+
+### Phase 2 — Pre-stage (replaces: pre-staged computer object / `djoin`)
+
+The vendor-program record is stamped with the OrgPath so the device is governed
+*before first boot*:
+
+| Device class | Pre-stage carrier |
+|---|---|
+| Windows client | **Windows Autopilot** group tag |
+| macOS / iOS | **Apple Business Manager** device note / ADE profile |
+| Android | **Zero-Touch** / KME config JSON |
+| Server (Arc) | **Arc resource tag** on the pre-created resource / onboarding script |
+
+The hardware hash (or serial) → OrgPath mapping is pre-staged so Phase 4 can
+stamp deterministically. This is the cloud analogue of offline-domain-join
+(`djoin /provision`) — the identity intent exists before the OS does.
+
+### Phase 3 — Join / Enroll (replaces: `Add-Computer -DomainName`)
+
+This is the actual "join," and it is **where clients and servers diverge**. The
+two sub-flows below are referenced by Path B as well (an AD-joined device that
+migrates runs the same join mechanics).
+
+#### Client — Entra Join (ADR-001)
+
+The client **Entra-joins** (cloud-only; **no Hybrid Azure AD Join** — HAADJ is
+deprecated per ADR-001) and auto-enrolls in Intune via Autopilot. The Entra
+**device object** is created — a token anchor for Primary Refresh Token +
+Conditional Access, **not** a security principal (XW-002). No domain membership,
+no DC line-of-sight, no GPO.
+
+> HAADJ is a dead-end, not an interim state. Existing HAADJ devices are
+> **wiped & re-provisioned** to reach Entra-joined (ADR-001).
+
+#### Server — hard cutover to Arc (ADR-002)
+
+Servers do **not** Entra-join like clients. Per ADR-002 this is a **hard
+cutover, not a gradual hybrid**:
+
+1. Inventory every Kerberos-dependent service and SPN/KCD/GMSA on the box first
+   (these are retirement blockers — B.10).
+2. Migrate those services to modern auth / managed identities.
+3. Replicate the box's GPO settings to Azure Policy / Arc configuration.
+4. Upgrade to **Windows Server 2025+** (required for `AADLoginForWindows`).
+5. **Unjoin from AD → install the Arc agent → deploy `AADLoginForWindows`.** The
+   machine becomes Microsoft Entra **joined via Arc** and can no longer join any
+   domain.
+6. Assign **Azure RBAC** roles (`Virtual Machine Administrator Login` /
+   `Virtual Machine User Login`) — these replace domain/local group membership
+   for RDP access.
+7. Validate access, then disable the AD computer object.
+
+::: {.callout-warning}
+## Server-class caveats (as of June 2026, ADR-002)
+
+- **Windows Server 2019/2022** can be **Arc-managed** but **cannot** use
+  `AADLoginForWindows` — they stay AD-joined temporarily (Exception Path C).
+- **Conditional Access cannot yet target Arc-enrolled server logins**, and
+  **Entra LAPS is unavailable** for Arc servers. Plan compensating controls.
+:::
+
+## B.2 Path B — AD → Entra OrgPath (existing domain-joined fleet)
+
+These devices already carry the **entire Part A footprint** — a computer object,
+an OU placement, GPOs, a machine cert, DNS records. The OrgPath-join doesn't
+invent their position; it **derives it from what AD already knows**, then sheds
+the domain-join machinery.
+
+1. **Derive OrgPath from AD.** `uiao orgtree assess` reads the AD computer (and
+   user) objects — OU, `department`, `physicalDeliveryOfficeName`, etc. — and
+   maps them onto OrgPath facets (the AD→facet mapping). This is the existing-
+   fleet counterpart to procurement: the OU tree *becomes* the OrgPath
+   (`UIAO_156` OU→Entra Migration Runbook). No procurement record is needed.
+2. **Migrate the join.** Run the Phase 3 join mechanics (B.1 §Phase 3): clients
+   **Entra-join** (wipe & re-provision any HAADJ, ADR-001); servers **hard-cut
+   over to Arc** (ADR-002). The domain-join footprint (Part A #1–16) is shed as
+   the box leaves the domain.
+3. **Retire GPO.** The **GPO Sunset Program** (ADR-080) replaces OU-linked GPOs
+   with OrgPath dynamic-group-targeted Intune profiles (clients) / Azure Policy
+   on Arc tags (servers). *Regenerate from policy intent — do not copy GPOs 1:1.*
+
+Then the device enters the **common end-state** (B.4): its derived OrgPath is
+written to the new Entra device object / Arc machine, and every governance intent
+from Part A is re-established on a cloud carrier.
+
+::: {.callout-note}
+The two clocks can run independently: derive + stamp OrgPath (steps 1 → B.4)
+**before** you finish retiring GPOs (step 3) — in fact you must, because the GPO
+Sunset's dynamic-group targeting depends on the OrgPath attributes existing
+first.
+:::
+
+## B.3 Path C — Already-Entra-only → Entra OrgPath (brownfield backfill)
+
+Devices that are **already Entra-joined or Arc-enrolled but were never stamped**
+with OrgPath — the gap our deployment guides' brownfield case covers. There is
+no re-join and no migration; there is only **capture and backfill**:
+
+1. **Capture.** `uiao orgtree inventory --from-graph --from-arm` scans both
+   planes (Entra device `extensionAttributes` + Arc machine `tags`). A device
+   missing OrgPath surfaces as a **`DRIFT-IDENTITY`** finding — that finding list
+   *is* the worklist.
+2. **Propose.** The collector proposes a backfill for the missing facets via the
+   source chain (`--asset-map` → `--owner-map`, i.e. CMDB/procurement then
+   primary-user derivation), validated against the Codebook; anything it can't
+   resolve is bucketed for manual review — never auto-guessed.
+3. **Backfill.** Resolved devices flow into the **common end-state** (B.4) via
+   `assess --write`; the same idempotent reconcile loop holds them stamped.
+
+```bash
+uiao orgtree inventory --from-graph --from-arm --subscription <sub> \
+  --owner-map owners.json --snapshot-out snap.json --worklist-out worklist.json
+```
+
+# Part B (cont.) — The common end-state
+
+Everything below is **identical for all three paths** and for both device
+classes (only the carrier differs: Graph `extensionAttributes` vs ARM `tags`).
+This is the cloud reconstruction of the Part A footprint.
+
+## B.4 Stamp OrgPath (replaces #6 OU placement) — ADR-038
+
+Write the resolved OrgPath onto the device's cloud object — the device-plane
+writeback from the Intune/Arc deployment guides:
+
+| Device class | Carrier | Mechanism |
+|---|---|---|
+| Entra client | `onPremisesExtensionAttributes.extensionAttribute1..10` | Graph `PATCH /devices/{id}` (`ArmTransport`'s Graph sibling) |
+| Arc server | `tags.Region`, `tags.Department`, … | ARM `PATCH {resourceId}?api-version=…` |
+
+A device whose OrgPath cannot be resolved lands on **`/UNPOSITIONED`** —
+governed but quarantined (B.8) until positioned. This *is* "Phase 4 — Provision /
+Position" of the Intune-First flow.
+
+## B.5 Policy & delegation (replaces #7 GPO, #9 OU ACLs, #11 LAPS)
+
+- **Policy:** OrgPath-driven **dynamic groups** (`UIAO_152`) materialize every
+  subtree; **Intune** configuration/compliance profiles (clients) and **Azure
+  Policy** (Arc servers) are assigned to those groups via `policy-targets.yaml`
+  (ADR-039). This replaces GPO-by-OU with attribute-driven, PR-reviewed targeting
+  (XW-004/XW-010).
+- **Delegation:** **Administrative Units** (`UIAO_154`) — configured as
+  **Restricted Management** AUs — with OrgPath-driven membership replace
+  OU-scoped delegation; admins get Entra roles scoped to the AU, not the OU
+  (XW-005).
+- **Local admin:** **Entra LAPS** + Intune endpoint-security policy replace
+  GPO-LAPS (XW-011) — *clients only* (unavailable for Arc servers, B.3).
+
+## B.6 Certificates (replaces #13 ADCS autoenrollment) — UIAO-PKI-MOD-001
+
+GPO-driven ADCS autoenrollment of a machine cert becomes **Intune certificate
+profiles** targeted by OrgPath dynamic group:
+
+- **Trust:** an Intune **Trusted Root** profile distributes the issuing CA chain.
+- **Issuance:** an Intune **SCEP** (or **PKCS**) profile issues a per-device cert
+  from **Microsoft Cloud PKI** (full-cloud or **BYOCA** under your existing root),
+  or from on-prem **ADCS via the Certificate Connector / NDES** during transition.
+- **Strong mapping (KB5014754):** SCEP from Cloud PKI auto-includes the SID URI
+  SAN (`tag:microsoft.com,2022-09-14:sid:<SID>`); PKCS needs Connector
+  v6.2406+. Hybrid devices need `onPremisesSecurityIdentifier` synced.
+- **OrgPath-in-cert:** for NAC, the device's OrgPath is written into the cert
+  **SAN OtherName** (ADR-073) so an 802.1X RADIUS server can read it directly.
+- **User auth:** **Entra CBA** (PIV/CAC against the Federal Common Policy CA
+  chain) + **Windows Hello for Business** replace smart-card-on-domain.
+
+::: {.callout-warning}
+**Domain Controller certificates stay on ADCS (BRIDGE).** Cloud PKI cannot issue
+the KDC Authentication EKU, so DC certs are enrolled by domain-joined DCs via
+ADCS autoenrollment until AD is decommissioned. The **PKI/CA observation
+adapter** (`pki-ca`) that would inventory CA health is a **reserved** slot, not
+yet implemented.
+:::
+
+## B.7 DNS (replaces #11 dynamic DNS, #12 DC-locator SRV) — UIAO-DNS-MOD-001
+
+A domain-joined host self-registers an **A** record (DHCP registers **PTR**) via
+secure dynamic update, and finds DCs via `_ldap/_kerberos` **SRV** records. In
+the cloud target:
+
+- **Name registration:** Azure VMs register via **Azure DNS Private Zone
+  auto-registration**; physical/on-prem devices keep using **on-prem DHCP/DNS**.
+  Hybrid resolution flows through the **Azure DNS Private Resolver** (inbound/
+  outbound endpoints + **forwarding rulesets**); **split-brain** zones serve
+  internal vs external answers.
+- **IPAM governance:** **Infoblox** (Federal-Preferred) or **BlueCat** adapters
+  give API-driven DNS/DHCP record management across both estates.
+- **DC-locator SRV records remain on AD-integrated DNS** for the whole migration
+  (they locate the DCs that still exist); they are decommissioned only after a
+  30-day validation gate when AD itself retires.
+
+## B.8 Authentication & network trust (replaces #2/#3 secure channel & Kerberos) — ADR-068
+
+The Netlogon secure channel and machine Kerberos give way to cloud auth:
+
+- **Cloud Kerberos Trust** issues Entra-backed Kerberos TGTs so Entra-joined /
+  Arc devices reach **legacy** file-share / print / SQL resources **without** an
+  on-prem domain join.
+- **Entra CBA + passwordless** (FIDO2 / WHfB) are the modern path; **NTLM
+  elimination is mandatory by 2027-04-01** (Notice 0009); rollout is privileged
+  accounts → service accounts (workload-identity-federation, ADR-004) →
+  non-privileged users **by OrgPath segment**.
+- **Device-based Conditional Access** (the Entra device object as token anchor,
+  XW-002/XW-008) replaces "computer Kerberos ticket = trusted."
+- **Network admission:** at 802.1X the RADIUS server reads the device's OrgPath
+  (from the cert SAN, B.6) and returns the VLAN / dACL / posture per
+  `UIAO_012`. A **`/UNPOSITIONED`** device lands on the **quarantine VLAN** at the
+  port — *before* compliance evaluation.
+
+## B.9 Validate (the gate AD never had) — IFO_002 Phase 5
+
+Domain-join had no success gate; OrgPath-join does. Confirm: the **stamped
+OrgPath equals the intended OrgPath**, the device is in the **expected dynamic
+groups**, compliance is green, certs issued, and DNS resolves. Persist the
+`GovernanceReport` as evidence (`uiao orgtree govern --out`). Drift after this
+point re-trips `DRIFT-IDENTITY` and the reconcile loop converges it.
+
+## B.10 Workload identities — the retirement blockers
+
+The machine **stops being a security principal**. Everything it did *as itself*
+moves to non-machine constructs, and until each is migrated **AD cannot be
+retired** (Track 3, `retirement_blocker: true`):
+
+| AD construct | Becomes | XW |
+|---|---|---|
+| SPNs | App Registration + Service Principal (OAuth2/OIDC) | XW-006 |
+| Kerberos constrained delegation | App-to-app OAuth2 / managed identities | XW-007 |
+| GMSAs | Managed Identity (system/user-assigned) | XW-013 |
+| Machine security principal | Workload identity / WIF (ADR-004) | XW-001 |
+
+These are catalogued per box during Path B step 2 (the server cutover inventory)
+and rebuilt per service — there is no flag-flip.
+
+# Part C — Quick-reference
+
+## C.1 DNS / Certificate / Auth crosswalk (the surfaces beyond the YAML)
+
+The master table covered the computer-object functions; these are the DNS, PKI,
+and auth surfaces a domain-join also establishes.
+
+| Domain-join establishes | Cloud-native carrier | Canon |
+|---|---|---|
+| Dynamic **A/PTR** registration (secure dynamic update) | Azure DNS Private Zone auto-registration (Azure VMs) / on-prem DHCP retained; DNS Private Resolver for hybrid | UIAO-DNS-MOD-001 |
+| **DC-locator SRV** records | Remain on AD DNS through migration; resolver forwarding rulesets; retired post-AD | UIAO-DNS-MOD-001 |
+| **Conditional forwarders** / split-horizon | DNS forwarding rulesets + Private/Public zones (split-brain); Infoblox / BlueCat IPAM | UIAO-DNS-MOD-001 |
+| **Machine certificate** via ADCS autoenrollment GPO | Intune Trusted Root + SCEP/PKCS profile from Cloud PKI (or ADCS via Certificate Connector), OrgPath-targeted | UIAO-PKI-MOD-001 |
+| **DC / KDC certificates** | Stay on ADCS (BRIDGE) — Cloud PKI can't issue KDC EKU | UIAO-PKI-MOD-001 §8.1 |
+| **Smart-card / user cert auth** | Entra CBA (FPKI chain) + Windows Hello for Business | ADR-068, UIAO-PKI-MOD-001 §7 |
+| **Secure channel + machine Kerberos** | Cloud Kerberos Trust (legacy) + device-based Conditional Access | ADR-068, XW-008 |
+| **NTLM** | Eliminated by 2027-04-01 (Notice 0009) | ADR-068 |
+| **W32Time** domain hierarchy | Cloud/host time (no domain time hierarchy) | — |
+| **802.1X via machine cert/NTLM** | OrgPath read from cert SAN → RADIUS VLAN/dACL; `/UNPOSITIONED` → quarantine | UIAO_012, ADR-073 |
+
+## C.2 Client join checklist (Entra)
+
+1. OrgPath on PO (new) / derived from AD (migrate) / inventory finding (brownfield).
+2. Autopilot group-tag pre-stage (new) or wipe-&-reprovision from HAADJ (migrate).
+3. **Entra Join** + Intune auto-enroll (no HAADJ).
+4. Stamp OrgPath → `extensionAttribute1..10` (Graph).
+5. Dynamic-group membership → Intune profiles + compliance; Entra LAPS.
+6. Trusted Root + SCEP cert (Cloud PKI), OrgPath in SAN.
+7. Cloud Kerberos Trust / CBA; device-based Conditional Access.
+8. Validate stamped == intended; evidence committed.
+
+## C.3 Server join checklist (Arc)
+
+1. Inventory SPNs / KCD / GMSA / Kerberos services (B.10 blockers) — migrate them.
+2. Replicate GPO → Azure Policy; upgrade to **Server 2025+**.
+3. **Unjoin AD → Arc agent → `AADLoginForWindows`** (hard cutover).
+4. Azure RBAC `Virtual Machine Administrator/User Login` (replaces RDP-by-Kerberos).
+5. Stamp OrgPath → ARM `tags` (ARM resource ID required).
+6. Azure Policy assigned by OrgPath tags; SCEP cert if needed.
+7. Validate; disable AD computer object.
+8. *(Caveats: 2019/2022 = Arc-managed only; no CA on Arc logins; no Entra LAPS.)*
+
+## C.4 Status — implemented vs doctrine vs reserved
+
+| Surface | Status |
+|---|---|
+| OrgPath device-plane writeback (Graph + ARM, incl. brownfield `inventory`) | **Implemented** |
+| `uiao orgtree assess` (AD → facets) / `govern` (drift) | **Implemented** |
+| Dynamic groups (UIAO_152), Administrative Units (UIAO_154) | **Implemented (canon)** |
+| Intune policy targeting (UIAO_011) | **Implemented** |
+| DNS modernization (UIAO-DNS-MOD-001), PKI modernization (UIAO-PKI-MOD-001) | **Adopted (Tier 1 doctrine)** |
+| Entra-join-only (ADR-001), Arc hard-cutover (ADR-002), auth modernization (ADR-068) | **Accepted doctrine** |
+| Azure Policy-for-Arc authoring, Intune profile authoring, PKI/CA observation (`pki-ca`) | **Reserved** (per-adapter ADR pending) |
+| AD Computer Object Conversion Guide (ADR-042) | **Draft** |
+
+::: {.callout-important}
+## Known gaps (June 2026)
+
+- **Conditional Access cannot target Arc-enrolled server logins**, and **Entra
+  LAPS is unavailable** for Arc servers (ADR-002).
+- **DC/KDC certs and DC-locator SRV records remain on AD** until full
+  decommission — they are BRIDGE, not migrable.
+- **Policy/profile authoring and Azure-Policy-for-Arc are reserved adapters** —
+  OrgPath writes the attributes/tags; you author the policies in Intune/Azure
+  directly until those activate.
+- OrgPath itself has **no production adopters** yet (Tier-3+ doctrine): pilot,
+  dry-run, and smoke-test single devices first.
+:::
+
+## Canon provenance
+
+- **Crosswalk spine:** `computer-object-crosswalk.yaml` (`UIAO_GAE_CROSSWALK`, ADR-031)
+- **Device join:** ADR-001 (Entra-join-only) · ADR-002 (Arc, non-domain-join) · ADR-034 (three-plane)
+- **OrgPath device plane:** ADR-038 · ADR-073 (cert SAN) · ADR-078 (15-facet)
+- **Onboarding:** `IFO_002` / ADR-071 (Intune-First 5-phase) · ADR-080 (GPO Sunset)
+- **Groups / delegation / policy:** UIAO_152 · UIAO_154 · UIAO_011 · ADR-039
+- **DNS:** UIAO-DNS-MOD-001 · **PKI:** UIAO-PKI-MOD-001 · **Auth:** ADR-068 · ADR-004 (WIF)
+- **NAC:** UIAO_012
+
+> This guide is a derived operator view; where it and canon disagree, canon
+> wins and the guide is the drift. Promotion of any new doctrinal claim here
+> requires its own ADR + governance review (AGENTS.md I5).
