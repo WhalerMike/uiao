@@ -2,14 +2,17 @@ name: Image generation pipeline
 
 # Image pipeline workflow with three trigger modes:
 #
-#   1. Manual generation  (workflow_dispatch) — run scripts/generate_images.py
-#      for real. Optional opt-in commit-back of new PNGs + sidecars +
-#      registry updates via Git LFS.
+# Figures are committed SVG, rasterized to PNG deterministically — ADR-093.
+# (The Gemini "NanoBanana" raster generator was retired; no API key required.)
 #
-#   2. Auto dry-run       (push)              — on any push that touches
-#      an IMAGE-PROMPTS.md, prompts.json, or the canonical image registry,
-#      re-scan and rebuild the manifest. Never calls Gemini. Never costs
-#      quota. Surfaces drift + missing canon refs as CI signal.
+#   1. Manual render      (workflow_dispatch) — run scripts/render_svg_images.py
+#      to rasterize committed *.svg -> PNG. Optional opt-in commit-back of PNGs +
+#      sidecars + registry updates via Git LFS.
+#
+#   2. Auto dry-run       (push)              — on any push that touches a
+#      committed .svg, IMAGE-PROMPTS.md, prompts.json, or the canonical image
+#      registry, re-scan and rebuild the manifest. Never renders. Never costs
+#      anything. Surfaces drift + missing canon refs as CI signal.
 #
 #   3. PR dry-run         (pull_request)      — same as #2 for PR review
 #      visibility: reviewers see what placeholders the PR introduces
@@ -26,7 +29,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Dry-run (print prompts, no Gemini API calls)"
+        description: "Dry-run (list SVGs that would render; no commit-back)"
         required: false
         default: false
         type: boolean
@@ -38,18 +41,22 @@ on:
 
   push:
     paths:
+      - "**/*.svg"
       - "**/IMAGE-PROMPTS.md"
       - "docs/prompts.json"
       - "src/uiao/canon/image-registry.yaml"
       - "scripts/generate_images.py"
+      - "scripts/render_svg_images.py"
       - ".github/workflows/image-gen.yml"
 
   pull_request:
     paths:
+      - "**/*.svg"
       - "**/IMAGE-PROMPTS.md"
       - "docs/prompts.json"
       - "src/uiao/canon/image-registry.yaml"
       - "scripts/generate_images.py"
+      - "scripts/render_svg_images.py"
       - ".github/workflows/image-gen.yml"
 
 # Serialize real generation runs so two concurrent commit-back dispatches
@@ -104,9 +111,10 @@ jobs:
           fi
 
   generate:
-    # Manual dispatch path — the only path that calls the Gemini API.
+    # Manual dispatch path — rasterizes committed SVG figures to PNG (ADR-093).
+    # No AI / no API key: deterministic SVG -> PNG via cairosvg.
     if: github.event_name == 'workflow_dispatch'
-    name: Generate images via Gemini Nano Banana
+    name: Render committed SVG figures to PNG
     runs-on: ubuntu-latest
     # Writeable by default so commit-back can push. Manual dispatch is
     # gated by repo permissions; non-maintainers can't trigger this.
@@ -134,7 +142,9 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install google-genai Pillow pyyaml
+          # cairosvg = SVG -> PNG rasterizer; cairosvg needs libcairo at runtime.
+          sudo apt-get update && sudo apt-get install -y libcairo2
+          pip install cairosvg Pillow pyyaml
 
       - name: Install Git LFS
         run: |
@@ -142,33 +152,24 @@ jobs:
           sudo apt-get install -y git-lfs
           git lfs install
 
-      - name: Verify GEMINI_API_KEY is set
-        if: ${{ ! inputs.dry_run }}
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "::error::GEMINI_API_KEY secret is not set on this repository."
-            echo "         Add it at: Settings → Secrets and variables → Actions → New repository secret"
-            echo "         Name: GEMINI_API_KEY  Value: <your Gemini API key>"
-            exit 1
-          fi
-          echo "GEMINI_API_KEY is present (length: ${#GEMINI_API_KEY}, first 6 chars: ${GEMINI_API_KEY:0:6}...)"
-
-      - name: Generate images
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - name: Render committed SVG figures to PNG (ADR-093)
+        # Deterministic SVG -> PNG. No API key. Walks committed *.svg, writes
+        # sibling PNG + sidecar (generator=claude-svg-v1). Cache skips unchanged.
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python scripts/generate_images.py --dry-run
+            python scripts/render_svg_images.py --dry-run
           else
-            python scripts/generate_images.py
+            python scripts/render_svg_images.py
           fi
 
+      - name: Rebuild image manifest (placeholder/canon scan)
+        # Keeps docs/images/.image-manifest.json current for replace_placeholders.py.
+        if: ${{ ! inputs.dry_run }}
+        run: python scripts/generate_images.py --dry-run --scan-only
+
       - name: Replace placeholders with Quarto figure refs in .qmd / .md
-        # After generation, swap [IMAGE-NN: ...] placeholders for full
-        # Quarto figure syntax: ![cap](path){#fig-id fig-alt="..." width="..."}.
-        # Reads docs/images/.image-manifest.json written by generate_images.py.
+        # Swap [IMAGE-NN: ...] placeholders for full Quarto figure syntax:
+        # ![cap](path){#fig-id fig-alt="..." width="..."}.
         if: ${{ ! inputs.dry_run }}
         run: python scripts/replace_placeholders.py
 
