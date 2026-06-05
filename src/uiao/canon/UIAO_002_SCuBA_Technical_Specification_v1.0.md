@@ -9,6 +9,7 @@ created_at: "2026-04-13"
 updated_at: "2026-04-14"
 boundary: "GCC-Moderate"
 author: "Michael Stratton"
+publish_to_site: true
 no_hallucination_mode: ENABLED
 nhp: true
 provenance:
@@ -25,7 +26,6 @@ provenance:
 **Date:** 2026-04-13
 **Author:** Michael Stratton
 **Compliance:** GCC-Moderate Only
-**No-Hallucination Mode:** ENABLED
 
 ---
 
@@ -85,9 +85,9 @@ For leadership: UIAO's SCuBA integration replaces manual compliance evidence gat
 
 The UIAO SCuBA pipeline is a four-plane sequential architecture with clear separation of concerns. Each plane is independently testable, deterministic, and produces artifacts that feed the next plane in sequence. The pipeline wraps CISA's ScubaGear assessment tool inside a provenance-first governance envelope.
 
-See Diagram 1 for the complete pipeline flow from ScubaGear execution through OSCAL artifact generation.
+@fig-uiao-002-pipeline traces the complete pipeline flow from ScubaGear execution through OSCAL artifact generation.
 
-[DIAGRAM-01: PH-001 — A 16:9 schematic showing the four-plane sequential pipeline. Left: ScubaGear executing against an M365 Tenant (GCC-Moderate boundary). Four horizontal planes flow left to right: Plane 1 (SCuBA → IR, blue), Plane 2 (IR → KSI, teal), Plane 3 (KSI → Evidence, steel gray), Plane 4 (Evidence → OSCAL, navy). Arrows connect each plane. Output artifacts shown at right: SSP, POA&M, SAR, Auditor Bundle. Provenance chain shown as a continuous line beneath all four planes. Muted blue palette, no text baked into the image. Publication-grade. Dimensions: 1920x1080.]
+![The four-plane SCuBA pipeline: ScubaGear executes against a GCC-Moderate M365 tenant and feeds Plane 1 (SCuBA→IR), Plane 2 (IR→KSI), Plane 3 (KSI→Evidence), and Plane 4 (Evidence→OSCAL), which emit the SSP, POA&M, SAR, and auditor bundle. A certificate-anchored provenance chain runs continuously beneath all four planes.](images/uiao-002-diagram-01-four-plane-pipeline.png){#fig-uiao-002-pipeline fig-alt="Left-to-right schematic of the four sequential SCuBA pipeline planes, from a ScubaGear source box through to the OSCAL output artifacts, with a provenance chain beneath all four planes." width="92%"}
 
 **Boundary Model.** The pipeline operates within the GCC-Moderate tenant boundary. ScubaGear connects to M365 services via PowerShell. All pipeline processing occurs within the UIAO-Core runtime. No data leaves the tenant boundary during processing.
 
@@ -97,9 +97,9 @@ See Diagram 1 for the complete pipeline flow from ScubaGear execution through OS
 
 **Adapter Classes.** The ScubaAdapter implements the DatabaseAdapterBase abstract class, providing five interface methods: connect (load report), discover_schema (field mapping), execute_query (filter results), normalize (build claims), and detect_drift (regression detection). Adapters are plural in class but singular in mission: serving SSOT + Identity + Security.
 
-See Diagram 2 for the module dependency architecture.
+@fig-uiao-002-modules shows the module dependency architecture.
 
-[DIAGRAM-02: PH-002 — A 16:9 module dependency diagram showing four layers: Foundation (abstractions, models, utils, config), Core Pipeline (scuba, ksi, evidence, oscal, ir), Analysis (diff, freshness, coverage, validators), and Output (ssp, dashboard, auditor, generators, monitoring). Arrows show dependency flow between modules. Navy and teal palette on white background. No text baked into the image. Publication-grade. Dimensions: 1920x1080.]
+![Module dependency architecture in four layers — Foundation (abstractions, models, utils, config), Core Pipeline (scuba, ksi, evidence, oscal, ir), Analysis (diff, freshness, coverage, validators), and Output (ssp, dashboard, auditor, generators, monitoring) — with dependency flow running downward; the Foundation layer has no upward dependencies.](images/uiao-002-diagram-02-module-dependency.png){#fig-uiao-002-modules fig-alt="Four stacked horizontal layer bands listing the modules in each layer, with arrows showing dependency flow from higher layers down to the Foundation layer." width="92%"}
 
 ---
 
@@ -115,13 +115,24 @@ The core data transformation in UIAO's SCuBA integration follows a deterministic
 
 **Hop 3: KSI → Compliance Evaluation.** The KSI evaluation engine (evaluate.py) processes the resolved KSI metadata against the normalized IR envelope to produce a pass/fail/warn determination per control. Multiple ScubaGear policies can map to the same KSI; when this occurs, the aggregation rule is conservative — if ANY constituent policy fails, the KSI fails.
 
-See Diagram 3 for the three-hop mapping chain visualization.
+@fig-uiao-002-three-hop visualizes the three-hop mapping chain.
 
-[DIAGRAM-03: PH-003 — A 16:9 horizontal flow diagram showing three hops. Left column: ScubaGear PolicyIds (MS.AAD.1.1v1, MS.DEFENDER.1.1v1, etc.) in steel gray boxes. Center column: NIST SP 800-53 controls (IA-2(1), SI-3, etc.) in teal boxes. Right column: KSI IDs (KSI-AC-01, KSI-ML-01, etc.) in navy boxes. Arrows connect each hop. A note shows "143 policies → 247 controls → 163 KSIs". White background, muted palette. No text baked into the image. Publication-grade. Dimensions: 1920x1080.]
+![The three-hop mapping chain: ScubaGear PolicyIds (steel-gray) map through NIST SP 800-53 controls (teal) to KSI identifiers (navy). The headline relationship is 143 policies → 247 controls → 163 KSIs, with conservative aggregation when several policies share one KSI.](images/uiao-002-diagram-03-three-hop-chain.png){#fig-uiao-002-three-hop fig-alt="Three columns of boxes — ScubaGear PolicyIds, NIST SP 800-53 controls, and KSI identifiers — connected left to right by arrows, with hop labels and a summary of 143 policies, 247 controls, and 163 KSIs." width="92%"}
 
-See Table 1 for the product-level policy distribution across the mapping chain.
+@tbl-uiao-002-products gives the product-level policy distribution across the mapping chain. Primary NIST families and KSI categories are derived from the live `SCUBA_TO_KSI_MAP` and `uiao-control-to-ksi-mapping.yaml`.
 
-[TABLE-01: A 5-column table showing the distribution of SCuBA policies by M365 product. Columns: Product, Policy Prefix, Policy Count, Primary NIST Families, Primary KSI Categories. Rows: Entra ID (MS.AAD, 28 policies), Defender (MS.DEFENDER, 9), Exchange Online (MS.EXO, 3), SharePoint (MS.SHAREPOINT, 8), Teams (MS.TEAMS, 14), Power Platform (MS.POWERPLATFORM, 9), Power BI (MS.POWERBI, 7), Security Suite (MS.SECURITYSUITE, 23). Total: 101 unique policies with 143 mapping entries including version variants.]
+| Product | Policy Prefix | Policy Count | Primary NIST Families | Primary KSI Categories |
+|---|---|---:|---|---|
+| Entra ID | `MS.AAD` | 28 | IA, AC, AU | iam, monitoring-logging |
+| Defender | `MS.DEFENDER` | 9 | SI | monitoring-logging |
+| Exchange Online | `MS.EXO` | 3 | SI, AC, SC | monitoring-logging, iam |
+| SharePoint | `MS.SHAREPOINT` | 8 | AC, AU, SC | iam, monitoring-logging |
+| Teams | `MS.TEAMS` | 14 | AC, AU, SI | iam, monitoring-logging |
+| Power Platform | `MS.POWERPLATFORM` | 9 | AC, CM | iam, configuration-management |
+| Power BI | `MS.POWERBI` | 7 | AC, SC, MP | iam, monitoring-logging |
+| Security Suite | `MS.SECURITYSUITE` | 23 | IR, SC, AC | iam, monitoring-logging |
+
+: Distribution of SCuBA policies by M365 product — 101 unique policies across 143 mapping entries (including version variants). {#tbl-uiao-002-products}
 
 ### 4.2 Plane 1 — SCuBA to IR Transform
 
@@ -137,9 +148,16 @@ See Table 1 for the product-level policy distribution across the mapping chain.
 
 **CLI Command:** `uiao scuba transform --input <path>`
 
-See Table 2 for the Plane 1 input/output contract summary.
+@tbl-uiao-002-plane1 summarizes the Plane 1 input/output contract.
 
-[TABLE-02: A 4-column table summarizing Plane 1 contracts. Columns: Attribute, Value, Format, Validation. Rows cover: Input (normalized SCuBA JSON, JSON, schema validation), Output (IR envelope, JSON, deterministic hash), Provenance (ProvenanceRecord, embedded, content_hash verification), Identity (evidence:scuba:{tenant}:{run}:{ksi}, URI, uniqueness guarantee).]
+| Attribute | Value | Format | Validation |
+|---|---|---|---|
+| Input | Normalized SCuBA JSON | JSON | Schema validation (`scuba-normalized.schema.json`) |
+| Output | IR envelope | JSON | Deterministic canonical hash |
+| Provenance | `ProvenanceRecord` | Embedded | `content_hash` verification |
+| Identity | `evidence:scuba:{tenant}:{run}:{ksi}` | URI | Uniqueness guarantee |
+
+: Plane 1 (SCuBA → IR Transform) input/output contract. {#tbl-uiao-002-plane1}
 
 ### 4.3 Plane 2 — IR to KSI Evaluation
 
@@ -183,9 +201,9 @@ See Table 2 for the Plane 1 input/output contract summary.
 
 **CLI Command:** `uiao oscal generate --evidence <path>`
 
-See Diagram 4 for the evidence integrity chain from ScubaGear through OSCAL output.
+@fig-uiao-002-integrity shows the evidence integrity chain from ScubaGear through OSCAL output.
 
-[DIAGRAM-04: PH-004 — A 16:9 vertical flow diagram showing the evidence integrity chain. Top: ScubaGear JSON (raw input). Each plane adds a provenance layer: Plane 1 attaches IR envelope with content hash, Plane 2 adds control mapping and evaluation, Plane 3 adds HMAC-SHA256 signature and stable hash, Plane 4 adds OSCAL schema validation and lineage traces. A verification arrow runs bottom-to-top showing "Any auditor can trace any OSCAL statement to source scan." Navy blocks, teal provenance annotations, amber for signature/hash elements. White background. No text baked into the image. Publication-grade. Dimensions: 1920x1080.]
+![The evidence integrity chain: ScubaGear JSON enters at the top and each plane adds a provenance layer — Plane 1 an IR envelope with content hash, Plane 2 control mapping and evaluation, Plane 3 an HMAC-SHA256 signature and stable hash, Plane 4 OSCAL schema validation and lineage traces. A bottom-to-top verification path means any auditor can trace any OSCAL statement back to the source scan.](images/uiao-002-diagram-04-evidence-integrity-chain.png){#fig-uiao-002-integrity fig-alt="A vertical stack of five boxes from ScubaGear JSON down through the four planes, each annotating the provenance layer it adds, with an upward verification arrow on the left labeled for end-to-end traceability." width="62%"}
 
 ### 4.6 Normalization Engine
 
@@ -223,9 +241,20 @@ The orchestrator chains all four planes into a single managed execution with err
 
 **CLI Command:** `python orchestrator.py --input <path> --output-dir <path> --tenant-id <id> --planes plane1,plane2,plane3,plane4`
 
-See Table 3 for the orchestrator configuration parameters.
+@tbl-uiao-002-orchestrator lists the orchestrator configuration parameters.
 
-[TABLE-03: A 4-column table listing orchestrator CLI parameters. Columns: Parameter, Type, Default, Description. Rows: --input (path, required), --output-dir (path, ./output), --config (path, None), --tenant-id (string, boundary:tenant:m365:contoso), --planes (comma-list, all four), --dry-run (boolean, false), --max-retries (int 0-5, 1), --log-level (string, INFO).]
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `--input` | path | *(required)* | ScubaGear report file or input directory |
+| `--output-dir` | path | `./output` | Destination directory for pipeline artifacts |
+| `--config` | path | `None` | Optional configuration file |
+| `--tenant-id` | string | `boundary:tenant:m365:contoso` | Object identity of the target tenant |
+| `--planes` | comma-list | all four | Subset of planes to execute |
+| `--dry-run` | boolean | `false` | Validate inputs and log the plan without side effects |
+| `--max-retries` | int (0–5) | `1` | Retry budget for transient failures |
+| `--log-level` | string | `INFO` | Console log verbosity |
+
+: Orchestrator CLI parameters. {#tbl-uiao-002-orchestrator}
 
 ### 4.8 Data Models
 
@@ -241,9 +270,28 @@ All pipeline data models are implemented in Pydantic for runtime validation, ser
 
 **Vendor Overlay Model.** The scuba.yaml vendor overlay defines product metadata (name, policy prefix, OSCAL component, KSI categories), control mappings with FedRAMP applicability flags, evidence collection settings, and UIAO extension metadata (gcc_moderate_focus, fedramp_20x_aligned).
 
-See Table 4 for the complete data model inventory.
+@tbl-uiao-002-models inventories the data models described above.
 
-[TABLE-04: A 5-column table listing all data models in the SCuBA pipeline. Columns: Model Name, Module, Purpose, Key Fields, Validation. 15+ rows covering all models from NormalizedClaim through VendorOverlay.]
+| Model Name | Module | Purpose | Key Fields | Validation |
+|---|---|---|---|---|
+| `NormalizedClaim` | IR core | Standardized compliance finding | claim + control reference | Pydantic |
+| `IREnvelope` | IR core | Wrapper with provenance metadata | claims, provenance | Pydantic |
+| `Provenance` | IR core | Source, timestamp, run tracking | source, timestamp, run_id | Pydantic |
+| `ControlMapping` | IR core | Claim-to-control relationship | claim, control | Pydantic |
+| `EvaluationResult` | IR core | Pass/fail per control | control, status, severity | Pydantic |
+| `EvidenceItem` | IR core | Single piece of compliance evidence | identity, data, evaluation | Pydantic |
+| `ConnectionProvenance` | SCuBA adapter | Report file identity + load metadata | file identity, load metadata | Pydantic |
+| `SchemaMappingObject` | SCuBA adapter | Vendor-to-canonical field mapping | source ↔ canonical fields | Pydantic |
+| `QueryProvenance` | SCuBA adapter | Filter execution metadata | filter, result metadata | Pydantic |
+| `ClaimSet` | SCuBA adapter | Collection of normalized claim objects | claim objects | Pydantic |
+| `DriftReport` | SCuBA adapter | Regression detection results | added / removed / changed | Pydantic |
+| `EvidenceBundle` | Evidence | Signed bundle of evidence items | items, HMAC-SHA256 signature, stable hash, metadata | Pydantic |
+| `SSP` | OSCAL | OSCAL System Security Plan | control implementations | OSCAL 1.1.2 schema |
+| `POA&M` | OSCAL | Plans of Action & Milestones | findings, finding-state machine | OSCAL 1.1.2 schema |
+| `SAR` | OSCAL | Security Assessment Report | assessment results | OSCAL 1.1.2 schema |
+| `VendorOverlay` (`scuba.yaml`) | Vendor overlay | Product metadata + control mappings | products, control mappings, extension metadata | YAML schema |
+
+: SCuBA pipeline data-model inventory (per §4.8). {#tbl-uiao-002-models}
 
 ### 4.9 CLI Architecture
 
@@ -598,21 +646,3 @@ CISA Binding Operational Directive 25-01 mandates that federal agencies implemen
 [^4]: HMAC-SHA256 was selected over PKI-based signing to avoid requiring certificate infrastructure for initial deployments. Migration to PKI is planned for UIAO v3.0.
 
 [^5]: OSCAL 1.1.2 is the target output version. Forward compatibility with OSCAL 2.0 is tracked as a future work item.
-
----
-
-## Validation Block
-
-[VALIDATION]
-All sections validated against source code in uiao repository.
-All 143 policy mappings verified against scuba_adapter.py SCUBA_TO_KSI_MAP.
-All four plane descriptions verified against transformer.py, evaluate.py, builder.py, generator.py.
-Orchestrator description verified against orchestrator/orchestrator.py.
-Normalization engine description verified against normalize_scuba.py.
-KSI mapping chain verified against uiao-control-to-ksi-mapping.yaml (163 KSIs, 247 controls).
-Vendor overlay verified against data/vendor-overlays/scuba.yaml.
-CLI commands verified against docs/scuba-architecture-guide.md.
-No hallucinations detected.
-GCC-Moderate boundary enforced throughout.
-No out-of-boundary cloud environment references present.
-[/VALIDATION]
