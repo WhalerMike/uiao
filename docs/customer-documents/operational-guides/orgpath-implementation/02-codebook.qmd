@@ -1,0 +1,151 @@
+---
+title: "2 · Author & Validate the Codebook"
+subtitle: "Tune the 15-facet OrgPath Codebook to your org and prove it valid"
+doc-type: operational-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/orgpath-implementation/02-codebook.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+# 2 · Author & Validate the Codebook {.unnumbered}
+
+The **Codebook** (UIAO_151) is the single source of truth for what an OrgPath
+*is*: which semantic facets exist, which directory slot each occupies, and
+which values are legal. Every downstream step — assessment, drift
+classification, device writeback — validates against it. Get this right first.
+
+Executable SSOT: `src/uiao/canon/data/orgpath/codebook.yaml`
+Schema: `src/uiao/schemas/orgpath/codebook.schema.json` (v2.0.0)
+Narrative canon: `UIAO_151`.
+
+## 2.1 The 15-facet model
+
+Model C (ADR-078) binds each facet to exactly one
+`onPremisesExtensionAttribute` slot on the directory object. Ten named facets
+are canonical; slots 11–15 are reserved for tenant extension.
+
+| Slot | Facet | Kind | Purpose |
+|---|---|---|---|
+| `extensionAttribute1` | `region` | enumerated | Geographic / cloud region anchor |
+| `extensionAttribute2` | `department` | enumerated | Top-level department |
+| `extensionAttribute3` | `division` | enumerated | Division within department |
+| `extensionAttribute4` | `role` | enumerated | Job role / persona |
+| `extensionAttribute5` | `cost_center` | enumerated | Cost center |
+| `extensionAttribute6` | `classification` | enumerated | Worker classification |
+| `extensionAttribute7` | `hire_date` | typed (date) | Lifecycle start |
+| `extensionAttribute8` | `term_date` | typed (date) | Lifecycle end |
+| `extensionAttribute9` | `clearance_level` | enumerated | Clearance / trust tier |
+| `extensionAttribute10` | `account_type` | enumerated | Human / service / privileged |
+| `extensionAttribute11–15` | *(reserved)* | reserved | Tenant-specific extension |
+
+::: {.callout-warning}
+The **slot assignments of the 10 named facets must not change** without a
+superseding ADR — they are part of the canonical contract that dynamic groups,
+Administrative Units, and Conditional Access compose against. You tune the
+*enumerations*, not the *slots*.
+:::
+
+## 2.2 Facet kinds
+
+| Kind | Validation rule | Drift if violated |
+|---|---|---|
+| **enumerated** | Value must be in the facet's closed `enumeration` list | Value Drift (`DRIFT-SEMANTIC`, P2) |
+| **typed** | Value must match `value_type` (e.g. `date`) and optional `value_pattern` | Format Drift (P1, never auto-fixed) |
+| **reserved** | No semantics declared; cannot be written until promoted | Writes skipped silently |
+
+Lifecycle dates (`hire_date`, `term_date`) are **typed** because dates can't be
+enumerated; everything else closed-world is **enumerated**.
+
+## 2.3 What you tune (and what you don't)
+
+**Tune:** the `enumeration` lists of the named facets to match your real
+organization. The shipped values are federal-IT defaults (e.g. `region` ships
+`NCR, EASTUS, WESTUS, CENTRAL, EMEA, APAC, LATAM`). Add, rename, or remove
+values so they reflect your actual regions, departments, divisions, roles,
+cost centers, classifications, clearance levels, and account types.
+
+**Don't tune:** slot bindings, facet names, or `kind` of the named facets
+without an ADR. To use a reserved slot (11–15), declare its facet semantics via
+a governed PR first — the engine refuses to write a slot with no declared
+meaning.
+
+### Anatomy of an enumerated facet
+
+```yaml
+facets:
+  region:
+    attribute: extensionAttribute1
+    description: >-
+      Geographic or cloud region where the principal is administratively
+      anchored.
+    kind: enumerated
+    enumeration:
+      - { value: NCR,     description: National Capital Region }
+      - { value: EASTUS,  description: Eastern United States }
+      # … add/replace with YOUR regions …
+```
+
+### Deprecating a value safely
+
+To retire an enumeration value without orphaning principals that still carry
+it, mark the replacement so the engine can auto-reassign (Phantom handling):
+
+```yaml
+      - { value: OLDREGION, description: Legacy region, replaced_by: EASTUS }
+```
+
+## 2.4 Validate
+
+The Codebook must pass schema **and** integrity validation (slot uniqueness,
+enumeration well-formedness) before you trust any later step:
+
+```bash
+# Validate the canonical shipped Codebook
+uiao orgtree validate codebook
+
+# Validate a working copy before promoting it
+uiao orgtree validate codebook --data ./my-codebook.yaml
+```
+
+A pass prints a one-line summary, e.g.:
+
+```
+PASS codebook (UIAO_151) — 10 named facets + 5 reserved slots;
+  46 enumerated values; model=C; adoption_tier_min=3
+```
+
+A failure prints the specific violation and exits non-zero — wire this into CI
+so a malformed Codebook can never merge.
+
+## 2.5 How the Codebook drives the rest
+
+- **Assessment** (Guide 3) validates every AD-derived value against the
+  enumeration; unmapped values become *findings*, not silent writes.
+- **Governance** (Guide 4) classifies any tenant value outside the Codebook as
+  drift, severity by facet kind.
+- **Writeback** (Guides 5–6) refuses to write reserved facets and skips values
+  that would land as drift.
+
+::: {.callout-tip}
+## Promotion discipline
+
+`codebook.yaml` is governed canon. In a real deployment you keep your
+tenant-tuned enumerations under change control and promote edits via a reviewed
+PR — never hand-edit the in-tenant state to match an unreviewed Codebook. The
+Codebook leads; the tenant follows.
+:::
+
+**Next:** [Assess AD → derive facets](03-assessment.qmd).

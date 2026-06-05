@@ -1,0 +1,138 @@
+---
+title: "4 · Dry-Run Governance & Drift"
+subtitle: "Run the OrgPath governance loop, classify drift, and write nothing"
+doc-type: operational-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/orgpath-implementation/04-governance-dry-run.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+# 4 · Dry-Run Governance & Drift {.unnumbered}
+
+Governance is the loop that compares a tenant snapshot against the Codebook,
+classifies every divergence, and emits telemetry. By default it **writes
+nothing** — it is your safe rehearsal before any live writeback.
+
+CLI: `uiao orgtree govern` · Runtime:
+`uiao.governance.orgpath_runtime.OrgPathGovernanceRuntime` (UIAO_163 / UIAO_174).
+
+## 4.1 The snapshot
+
+`govern` takes a JSON snapshot of current tenant state. Keys:
+
+```json
+{
+  "principals":   [ { "id": "...", "facets": { "region": "EASTUS", ... } } ],
+  "groups":       [ ... ],
+  "admin_units":  [ ... ],
+  "policy_targets": [ ... ]
+}
+```
+
+At minimum supply `principals` with their current facet values (the device or
+user objects and what OrgPath each carries today). `groups`, `admin_units`, and
+`policy_targets` feed the consumer adapters in a full pass.
+
+## 4.2 Run it
+
+```bash
+# Detection only — classify drift + emit telemetry, no adapters, no plans
+uiao orgtree govern snapshot.json --detection-only --out report.json
+
+# Full pass — also run the Phase 5 adapters (still dry-run by default)
+uiao orgtree govern snapshot.json --out report.json
+```
+
+Typical rollup:
+
+```
+OrgPath governance pass — mode=full, dry_run=True, snapshot=2026-06-05T...
+  Drift findings : 37
+    P1 : 2
+    P2 : 28
+    P3 : 7
+  Planned ops    : 28
+  Remediated ops : 0          # dry-run dispatches nothing
+  Telemetry      : 75 events
+```
+
+`--out report.json` persists the full `GovernanceReport` — scan results,
+per-finding classification, the UIAO_174 telemetry events, and the summary —
+for downstream pipelines and evidence.
+
+## 4.3 The five drift classes
+
+The engine validates each facet **independently** and classifies divergence:
+
+| Class | Severity | Trigger | Auto-fix? |
+|---|---|---|---|
+| **Format** | P1 | A typed facet value fails its `value_type` / `value_pattern` (e.g. a malformed date) | Never |
+| **Slot** | P1 | Codebook integrity problem (slot collision / undeclared slot) | Never |
+| **Value** | P2 | An enumerated facet carries a value not in the enumeration | Per-facet policy |
+| **Orphan** | P3 | An enumeration value with zero principals carrying it | Informational |
+| **Phantom** | P3 | A principal carries a deprecated value | Auto-reassign if `replaced_by` set |
+
+P1 findings are **codebook-integrity** problems — they indicate the Codebook or
+a typed value is broken, and they are never auto-remediated.
+
+## 4.4 Halt-on-critical and governance-review ops
+
+Two safety properties hold even when you later pass `--no-dry-run`:
+
+- **Halt-on-critical** — a P1 (codebook-integrity) finding stops the line:
+  remediation is suppressed and the run reports `HALTED`. Fix the integrity
+  problem before proceeding.
+- **Governance-review ops** — certain verbs (e.g. `phantom`, `rebind`) are
+  **never auto-remediated**. They surface for a human decision regardless of
+  dry-run state, because they can reconfigure broad populations.
+
+```
+  HALTED — critical finding present; remediation suppressed.
+```
+
+## 4.5 Reading the report for action
+
+Walk `report.json` in this order:
+
+1. **P1 findings first.** Any Format/Slot drift means the Codebook or a typed
+   value is wrong — fix in Guide 2, not here.
+2. **P2 Value drift.** Each one is an in-tenant value outside the Codebook.
+   Either add the value to the Codebook (governed PR) or correct the tenant
+   value. These are what writeback would *not* write (it skips values that
+   would land as drift).
+3. **P3 Orphan / Phantom.** Orphans hint at enumeration values you may retire;
+   Phantoms with `replaced_by` will auto-reassign on a live pass.
+
+## 4.6 Why this gate matters before writeback
+
+The same engine sits in front of the device-plane writeback. Running `govern`
+first means:
+
+- You see the **full drift picture** without touching the tenant.
+- You confirm there are **no P1 halts** that would block a live pass.
+- You know exactly which facet values are **clean enough to write** versus which
+  will be skipped as drift.
+
+::: {.callout-important}
+The shipped adapters are **transport-free by default**, so even a full
+`--no-dry-run` governance pass plans operations but dispatches nothing until a
+transport is injected in Python. The operator-facing live writes are driven by
+`uiao orgtree assess --write --no-dry-run` (Guides 5–6), which wires the
+Graph + ARM transports explicitly. `govern` is your classification and
+rehearsal surface.
+:::
+
+**Next:** [Intune device writeback](05-intune-device-writeback.qmd).
