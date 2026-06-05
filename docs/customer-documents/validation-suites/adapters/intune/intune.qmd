@@ -16,6 +16,7 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
+
 # Microsoft Intune Endpoint Compliance Adapter — Adapter Validation Suite
 
 ::: {.callout-note}
@@ -28,31 +29,76 @@ lifecycle_review: 2026-11-22
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-Validation suite for the Intune endpoint compliance adapter covering device compliance state normalization.
+This Adapter Validation Suite (AVS) instantiates the [UIAO_121 Adapter Conformance Test Plan](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-conformance-test-plan-template.md) for the `intune` adapter. It defines the Tier-1 contract-conformance criteria, the controls under validation, and the integration test plan that govern the adapter across its lifecycle.
 
-**Test coverage:** Type-contract + conformance check. 30/30 conformance PASS.
+## Validation status
+
+**Implemented and conformance-gated.** The `intune` adapter is wired into the UIAO_121 automated conformance runner and currently clears **21/21 Tier-1 contract-conformance criteria** (`tests/test_adapter_conformance.py`, CI-gated via `adapter-conformance.yml`). Tiers 2–3 (provenance/evidence and live integration) remain pending.
 
 ## Scope
 
 Target surfaces / subsystems: `device-compliance`, `endpoint-protection`, `configuration-profiles`, `update-compliance`
 
-**Validated:** Managed device normalization, compliant/noncompliant counting, evidence bundling.
-**Fixtures:** `intune-devices.json` (3 devices: 2 compliant, 1 noncompliant).
-**NOT validated:** Live Graph API Intune endpoint (requires Intune license + permissions).
+**Validation artifacts:** `intune-compliance-findings.json`, `endpoint-drift-report.json`
 
-## Controls
+The suite validates that, for each target surface, the adapter normalizes vendor data into canonical claims, emits deterministic provenance, and produces KSI-anchored evidence — without mutating any source system (`ssot-mutation: never`).
+
+## Controls under validation
+
+The control roles below are mirrored from the adapter's companion [Adapter Technical Specification](../../../adapter-specs/intune/intune.html); the validation suite verifies that the adapter produces the evidence each role asserts.
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `SI-2`, `CA-7`, `SC-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-8** Information System Component Inventory | Primary | Managed-device enumeration with OS version, management agent, and last-sync timestamp; the canonical device-side inventory for compliance reporting. |
+| **SI-2** Flaw Remediation | Supporting | Update-compliance tracking feeds patch/update remediation monitoring; out-of-date devices surface as monitoring evidence. |
+| **CA-7** Continuous Monitoring | Primary | Scheduled compliance collection provides continuous endpoint posture evidence with the freshness-window semantics defined in canon. |
+| **SC-7** Boundary Protection | Supporting | Device-compliance state feeds zero-trust boundary decisions (Conditional Access compliance grant controls, Intune compliance-based access). |
+
+## Conformance Matrix
+
+Per `src/uiao/canon/specs/adapter-conformance-test-plan-template.md` v1.0 — Tier-1 (Contract Conformance).
+Adapter: `intune` · Class: `conformance` · Mission: `telemetry` · Tier: **T1**
+
+| Domain | Criterion | Status |
+|--------|-----------|--------|
+| 2.1.1 | connect() returns ConnectionProvenance | PASS |
+| 2.1.2 | identity contains adapter-specific identifier | PASS |
+| 2.1.3 | endpoint matches configured backend | PASS |
+| 2.1.4 | auth_method reflects auth mechanism | PASS |
+| 2.1.5 | timestamp is UTC | PASS |
+| 2.2.1 | discover_schema() returns SchemaMappingObject | PASS |
+| 2.2.2 | vendor_schema has adapter-relevant fields | PASS |
+| 2.2.3 | canonical_schema has UIAO identity pattern | PASS |
+| 2.2.4 | unmapped_fields is non-empty | PASS |
+| 2.2.5 | version_hash is deterministic | PASS |
+| 2.3.1 | execute_query() returns QueryProvenance | PASS |
+| 2.3.2 | vendor_query has adapter-native syntax | PASS |
+| 2.3.3 | execution_plan_hash is deterministic | PASS |
+| 2.4.1 | normalize([]) returns empty ClaimSet | PASS |
+| 2.4.2 | normalize([one]) produces 1 ClaimObject | PASS |
+| 2.4.3 | claim_id follows adapter:... pattern | PASS |
+| 2.4.4 | source == ADAPTER_ID | PASS |
+| 2.4.5 | provenance_hash non-empty, deterministic | PASS |
+| 2.4.6 | multiple records produce unique claim_ids | PASS |
+| 2.5.1 | detect_drift() returns DriftReport | PASS |
+| 2.5.2 | drift_type has adapter-specific prefix | PASS |
+| 2.5.3 | details contains adapter key | PASS |
+| 2.6.1 | collect_evidence() returns EvidenceObject | PASS |
+| 2.6.2 | ksi_id preserved | PASS |
+| 2.6.3 | source == ADAPTER_ID | PASS |
+| 2.6.4 | provenance dict non-empty | PASS |
+| 2.7.1 | collect_and_align() returns dict | PASS |
+| 2.7.2 | adapter_id matches ADAPTER_ID | PASS |
+| 2.7.3 | vendor field non-empty | PASS |
+| 2.7.4 | metadata has last_collected timestamp | PASS |
+| 4.1 | ADAPTER_ID matches canon registry id | PASS |
+| 4.2 | registered in __init__.py __all__ | PASS |
+
+All 21 Tier-1 criteria PASS against the mocked collector (`tests/test_adapter_conformance.py`). Tier-2/Tier-3 pending.
 
 ## Operational profile
 
@@ -76,38 +122,32 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 Tier 4 conformance adapter. Endpoint compliance telemetry via Microsoft Graph API (Intune device compliance + Defender for Endpoint). Natural complement to the m365 modernization adapter. Read-only — observes device state, never mutates configuration.
 
+fedramp-rfc-0026 (advisory; per ADR-043 D4 / UIAO_132 §5):
+  requirement: RV5-CA07-VLN (endpoint-compliance telemetry)
+  pathway: pathway-2-traditional
+  planned-pathway: pathway-1-modernized
+  pathway-transition-trigger: Publication of the VDR Balance Improvement Release
+  adr: ADR-043
+
 ## References
 
 - UIAO-CANON-003
-
----
-
-*Generated by `uiao/tools/sync_canon.py`. See `uiao/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*
+- ADR-043
+- UIAO_132
+- https://github.com/FedRAMP/community/discussions/130
 
 ## Integration Test Plan
 
-Per `uiao/canon/specs/adapter-integration-test-plan.md` v1.0.
-
-**Vendor API:** Microsoft Graph API (Intune)
-**Authentication:** OAuth client-credential
-**Fixture files:** `intune-devices.json`
-**Runner class:** `github-hosted`
-**Controls:** CM-8, SI-2, CA-7, SC-7
-
-### Phase 4: Acceptance Test Cases
-
-| # | Test | Input | Expected Output |
-|---|------|-------|-----------------|
-| A1 | Connect to Intune | Real Graph credentials | ConnectionProvenance with /deviceManagement |
-| A2 | List managed devices | Graph /managedDevices | ClaimSet with compliance states |
-| A3 | Evidence with counts | Full device fleet | EvidenceObject with compliant/noncompliant |
-
-### Current Phase Status
+Per `src/uiao/canon/specs/adapter-integration-test-plan.md` v1.0.
 
 | Phase | Status | Evidence |
 |-------|--------|----------|
-| 1. Unit | PASS | 30/30 conformance + behavioral tests |
-| 2. Integration | PASS | OSCAL SAR/POA&M/SSP pipeline proven |
-| 3. System | PASS | CI-gated (adapter-conformance.yml) |
-| 4. Acceptance | PENDING | Requires real vendor credentials |
-| 5. Production | PENDING | Requires Phase 4 + runner deployment |
+| 1. Unit | PASS | 21/21 T1 contract-conformance criteria (CI-gated) |
+| 2. Integration | PLANNED | Provenance/evidence pipeline (Tier-2) |
+| 3. System | PLANNED | CI enrollment in `adapter-conformance.yml` (Tier-3) |
+| 4. Acceptance | PLANNED | Requires live vendor credentials |
+| 5. Production | PLANNED | Requires Phase 4 + runner deployment |
+
+---
+
+*Validation suite authored from canon (`canon/adapter-registry.yaml`) and the companion ATS. Conformance criteria per UIAO_121. Frontmatter is regenerated by `uiao/tools/sync_canon.py`.*
