@@ -26,7 +26,7 @@ Each of the four gaps named in Chapter 23 maps to a **workstream** (A–D). For 
 |---|---|---|---|---|
 | 1 | Four NIST 800-53 control families have no UIAO corpus coverage | A | **Closed** | MP/PE via [UIAO_185](UIAO_185_System_Security_Plan_Template.md) §5 inheritance; AT via [UIAO_187](UIAO_187_Security_Awareness_and_Training_Program.md); PS via [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
 | 2 | Eighty-seven controls require new or amended documents | A | **Closed** | `compliance-mapping.qmd §7`; [UIAO_185](UIAO_185_System_Security_Plan_Template.md) / [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
-| 3 | Three planned PowerShell modules have specs but no implementation | B | In progress | [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md); UIAO_181/182/183 |
+| 3 | Three planned PowerShell modules have specs but no implementation | B | **Closed** | [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md); UIAO_181/182/183 |
 | 4 | OrgPath drift detection engine only partially implemented | C | In progress | [ADR-084](adr/adr-084-phase5-consumer-architecture.md); UIAO_163 |
 
 > **Note on gaps 1 and the "four families."** Of the four uncovered families — **AT** (Awareness & Training), **MP** (Media Protection), **PE** (Physical & Environmental), **PS** (Personnel Security) — MP and PE are substantially **inherited** from the GCC-Moderate SaaS infrastructure and close via *inheritance declarations* in the SSP, not new programs. Only **AT** and **PS** are genuine documentation gaps requiring dedicated program docs. The headline count of "four" is accurate; the closure work is two programs plus two inheritance statements. This distinction is surfaced here so the SSP states it explicitly.
@@ -53,7 +53,7 @@ The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/custo
 
 ## Workstream B — PowerShell modules (Gap 3)
 
-Governance scaffolding **landed**; implementation is the remaining work, in the dependency order fixed by [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md).
+Governance scaffolding **landed** and **all three modules are now implemented**, in the dependency order fixed by [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md) — the two producers (UIAOImportAdapters, UIAOIdentityAssessment) then the consumer (UIAOPlanGenerators).
 
 | Item | Closure criterion | Status |
 |---|---|---|
@@ -63,9 +63,9 @@ Governance scaffolding **landed**; implementation is the remaining work, in the 
 | [UIAO_183](UIAO_183_UIAOPlanGenerators_Module_Specification.md) — UIAOPlanGenerators spec | Authored, registered | **Closed** (spec) |
 | Implement UIAOImportAdapters (producer) | `.psd1`+`.psm1`+Pester under `tools/powershell/`, signed | **Implemented** — `tools/powershell/UIAOImportAdapters/` (6 roster functions, Pester-tested, wired into the Pester CI). Output sealed with the canonical `content_hash` (byte-identical to `uiao.ir.models.core.canonical_hash`), so imports are `DRIFT-PROVENANCE`-classifiable by `src/uiao/governance/drift.py`. Authenticode signing occurs at release packaging (`pwsh-pack`). |
 | Implement UIAOIdentityAssessment (producer) | `.psd1`+`.psm1`+Pester under `tools/powershell/`, signed | **Implemented** — `tools/powershell/UIAOIdentityAssessment/` (6 roster functions: four Entra exporters, AD-vs-Entra reconciliation, orchestrator). Cloud-aware Graph resolution mirrors `uiao.adapters._graph_clouds` (fail-closed); offline `-SnapshotPath` path makes it Pester-tested without a live tenant. Reconciliation emits `DRIFT-IDENTITY`; output sealed with the canonical `content_hash`. Signing at release packaging. |
-| Implement UIAOPlanGenerators (consumer) — **highest value** | OrgPath-dependency-graph derivation, signed | Open |
+| Implement UIAOPlanGenerators (consumer) — **highest value** | OrgPath-dependency-graph derivation, signed | **Implemented** — `tools/powershell/UIAOPlanGenerators/` (6 roster functions: per-device / GPO / identity-wave / DNS / PKI generators + master plan). Decommissioning order via deterministic topological sort (Kahn) of the OrgPath dependency graph; cycles + cross-domain edges flagged as approval blockers. Plans cite `derived_from` and are sealed with the canonical `content_hash` (timestamp-free data ⇒ reproducible). Signing at release packaging. |
 
-**Closure criterion for Gap 3:** all three modules implemented, signed, Pester-tested, with output round-tripping the IR/OSCAL pipeline. The phrase "specifications but not implementations" in Ch 23 flips to "implemented" only when all three ship.
+**Closure criterion for Gap 3:** all three modules implemented, signed, Pester-tested, with output round-tripping the IR/OSCAL pipeline. The phrase "specifications but not implementations" in Ch 23 flips to "implemented" only when all three ship. **Met:** all three modules (UIAOImportAdapters, UIAOIdentityAssessment, UIAOPlanGenerators) are implemented under `tools/powershell/` and Pester-tested in CI; each emits canonical-`content_hash`-sealed output (IR/OSCAL-compatible). Authenticode signing is applied at release packaging (`pwsh-pack`). **Gap 3 is Closed.**
 
 ## Workstream C — OrgPath drift engine (Gap 4)
 
@@ -115,4 +115,5 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 | 2026-06-05 | Workstream A complete: all 7 new documents (UIAO_185–192) registered and all 15 §7.2 amendments merged. **Gap 2 status flipped In progress → Closed** in the summary table and closure-criterion note. Workstreams B (Gap 3) and C (Gap 4) remain in progress. |
 | 2026-06-05 | Workstream B: **UIAOImportAdapters implemented** (`tools/powershell/UIAOImportAdapters/` — 6 roster functions per UIAO_182, Pester-tested, wired into the Pester CI). Output sealed with the canonical `content_hash` (verified byte-identical to `uiao.ir.models.core.canonical_hash`), making imports `DRIFT-PROVENANCE`-classifiable. First of the three Gap-3 modules; UIAOIdentityAssessment and UIAOPlanGenerators remain. |
 | 2026-06-05 | Workstream B: **UIAOIdentityAssessment implemented** (`tools/powershell/UIAOIdentityAssessment/` — 6 roster functions per UIAO_181: four Entra exporters, AD-vs-Entra reconciliation, orchestrator). Cloud-aware Graph endpoint resolution mirrors `uiao.adapters._graph_clouds` (fail-closed; `commercial` serves GCC-Moderate); offline `-SnapshotPath` makes it Pester-tested without a live tenant. Reconciliation surfaces `DRIFT-IDENTITY`; output sealed with the canonical `content_hash`. **2 of 3 Gap-3 modules done**; UIAOPlanGenerators (consumer) remains. |
+| 2026-06-05 | Workstream B: **UIAOPlanGenerators implemented** (`tools/powershell/UIAOPlanGenerators/` — 6 roster functions per UIAO_183: per-device / GPO / identity-wave / DNS / PKI generators + master plan). The marquee algorithm — decommissioning order from the OrgPath dependency graph — is a deterministic Kahn topological sort with cycle + cross-domain blocker detection; blockers make a plan not approvable. Plans cite `derived_from` and are sealed with the canonical `content_hash` (timestamp-free data ⇒ reproducible plans). **Gap 3 status flipped In progress → Closed** (all three modules implemented + Pester-tested). |
 
