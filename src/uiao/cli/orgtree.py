@@ -301,11 +301,16 @@ def _apply_device_writes(results: list, records: list[dict], *, dry_run: bool, c
     graph_transport = None
     arm_transport = None
     if not dry_run:
+        from uiao.adapters.arm_transport import ArmTransport
         from uiao.adapters.graph_transport import GraphTransport
 
         try:
+            # Entra (Graph) and Arc (ARM) are distinct planes with distinct
+            # token audiences and hostnames — a Graph-audience token is
+            # rejected by ARM with HTTP 401. Each plane gets its own
+            # cloud-aware transport (same app registration / credentials).
             graph_transport = GraphTransport.from_environment(cloud=cloud)
-            arm_transport = graph_transport  # ARM writes share the credential path
+            arm_transport = ArmTransport.from_environment(cloud=cloud)
         except Exception as exc:
             console.print(f"[red]--no-dry-run requires UIAO_ENTRA_* credentials: {exc}[/red]")
             raise typer.Exit(code=1) from exc
