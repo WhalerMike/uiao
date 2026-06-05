@@ -57,4 +57,4 @@ Normalized artifacts carry a provenance envelope (source tool, export version, i
 
 ## Implementation status
 
-Unimplemented. Tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md), Workstream B.
+**Implemented** at `tools/powershell/UIAOImportAdapters/` (`.psd1` + `.psm1` + Pester tests, wired into the Pester CI), satisfying the function roster and non-functional contract above. The provenance seal (`content_hash`) is computed by the canonical Python hasher so it is byte-identical to `uiao.ir.models.core.canonical_hash`, making imported artifacts directly `DRIFT-PROVENANCE`-classifiable by `src/uiao/governance/drift.py`. Authenticode signing occurs at release packaging (`pwsh-pack`). Tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md), Workstream B.
