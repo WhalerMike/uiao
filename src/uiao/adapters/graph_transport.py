@@ -63,11 +63,20 @@ class GraphTransport:
         graph_api_version: str = "v1.0",
         graph_endpoint: str | None = None,
     ) -> GraphTransport:
-        """Build a transport from ``UIAO_ENTRA_*`` env vars (see EntraTokenProvider)."""
+        """Build a transport from ``UIAO_ENTRA_*`` env vars (see EntraTokenProvider).
+
+        The token is acquired with the *cloud-correct* Graph audience and
+        login authority — a commercial-audience token is rejected by the
+        sovereign Graph endpoints (gcc-high / dod) with HTTP 401.
+        """
+        from uiao.adapters._graph_clouds import graph_token_scope
         from uiao.api.auth.entra_token import EntraTokenProvider
 
         return cls(
-            EntraTokenProvider.from_environment(),
+            EntraTokenProvider.from_environment(
+                scopes=[graph_token_scope(cloud, adapter_name="GraphTransport")],
+                cloud=cloud,
+            ),
             cloud=cloud,
             graph_api_version=graph_api_version,
             graph_endpoint=graph_endpoint,
