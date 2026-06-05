@@ -93,6 +93,22 @@ class QualityFinding:
         return self.gate_a_stub or self.gate_b_drafting
 
 
+# Frontmatter values that mean "do not publish this page to the site".
+# YAML's safe_load already yields a real bool for `false`; the string forms
+# cover hand-written variants (`"false"`, `no`, `off`).
+_UNPUBLISHED_VALUES: frozenset[str] = frozenset({"false", "no", "off", "0"})
+
+
+def _is_unpublished(fm: dict[str, Any]) -> bool:
+    """True if frontmatter sets publish_to_site to a false-y value."""
+    val = fm.get("publish_to_site")
+    if isinstance(val, bool):
+        return val is False
+    if isinstance(val, str):
+        return val.strip().lower() in _UNPUBLISHED_VALUES
+    return False
+
+
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str, int]:
     """Return (frontmatter_dict, body_text, body_line_offset).
 
@@ -124,6 +140,16 @@ def evaluate(path: pathlib.Path) -> QualityFinding:
     status_str = str(status) if status is not None else None
 
     finding = QualityFinding(path=rel, status=status_str)
+
+    # Off-surface pages are out of scope for both gates. A page declared
+    # `publish_to_site: false` is pruned before the site render
+    # (scripts/prune_unpublished_qmd.py), so its stub/drafting content never
+    # reaches a customer — flagging it here would block --strict promotion
+    # for content that does not publish. This makes the remediation the
+    # report advertises ("add publish_to_site: false") actually clear a
+    # finding. See issue #639.
+    if _is_unpublished(fm):
+        return finding
 
     # Gate A: status: reserved AND a stub marker in body.
     if status_str and status_str.lower() == "reserved":
