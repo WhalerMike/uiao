@@ -41,15 +41,15 @@ The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/custo
 | Incident Response Plan (`IR-1`…`IR-8`) | Authored, registered | **Closed** — [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
 | POA&M Template (`CA-5`) — auto-generatable from assessment output | Authored, registered | **Closed** — [UIAO_189](UIAO_189_POAM_Template.md) |
 | Security Awareness & Training Program (`AT-1`…`AT-4`) — closes the **AT** family | Authored, registered | **Closed** — [UIAO_187](UIAO_187_Security_Awareness_and_Training_Program.md) |
-| Supply Chain Risk Management Plan (`SR-1`…`SR-12`) | Authored, registered | Open |
+| Supply Chain Risk Management Plan (`SR-1`…`SR-12`) | Authored, registered | **Closed** — [UIAO_191](UIAO_191_Supply_Chain_Risk_Management_Plan.md) |
 | Continuous Monitoring Strategy (`CA-7`) | Authored, registered | **Closed** — [UIAO_190](UIAO_190_Continuous_Monitoring_Strategy.md) |
-| Privacy Impact Assessment (PT family) | Authored, registered | Open |
+| Privacy Impact Assessment (PT family) | Authored, registered | **Closed** — [UIAO_192](UIAO_192_Privacy_Impact_Assessment.md) |
 | **Personnel Security Program (`PS-1`…`PS-9`) — closes the PS family** | Authored, registered | **Closed** — [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
 | 15 document amendments (`compliance-mapping.qmd §7.2`) | Each amendment merged | Open |
 
 > The Personnel Security program is added here because `compliance-mapping.qmd §7` under-specifies it relative to the AT program, yet PS is one of the four named uncovered families. It is sequenced in Phase 3 alongside the PIA.
 
-**Closure criterion for Gaps 1 & 2:** every new document above authored and registered in `document-registry.yaml`; the residual ~87-control count recomputed to zero genuine doc gaps. New compliance docs receive `UIAO_NNN` allocations as authored (not pre-allocated, to avoid registering paths that do not yet resolve and tripping the substrate walker's `DRIFT-PROVENANCE` check).
+**Closure criterion for Gaps 1 & 2:** every new document above authored and registered in `document-registry.yaml`; the residual ~87-control count recomputed to zero genuine doc gaps. **All seven new documents are now authored** (UIAO_185–192); only the 15 §7.2 amendments to existing documents remain before Gap 2 is fully Closed. New compliance docs receive `UIAO_NNN` allocations as authored (not pre-allocated, to avoid registering paths that do not yet resolve and tripping the substrate walker's `DRIFT-PROVENANCE` check).
 
 ## Workstream B — PowerShell modules (Gap 3)
 
@@ -109,4 +109,5 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 | 2026-06-05 | Workstream A Phase 1: SSP Template (UIAO_185) and Incident Response Plan (UIAO_186) authored and registered. Gaps 1 & 2 advanced to In progress. |
 | 2026-06-05 | Workstream A: AT program (UIAO_187) and PS program (UIAO_188) authored and registered. All four named families now have corpus coverage (MP/PE inheritance + AT/PS programs) — **Gap 1 Closed**. |
 | 2026-06-05 | Workstream A: POA&M Template (UIAO_189, `CA-5`) and Continuous Monitoring Strategy (UIAO_190, `CA-7`) authored and registered. Gap 2 advancing — SR plan, PIA, and the 15 §7.2 amendments remain. |
+| 2026-06-05 | Workstream A: SCRM Plan (UIAO_191, `SR`) and Privacy Impact Assessment (UIAO_192, PT) authored and registered. All seven §7.1 new documents complete; only the 15 §7.2 amendments remain for Gap 2. |
 
