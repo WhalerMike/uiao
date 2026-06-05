@@ -31,9 +31,16 @@ jobs:
 
       - name: Run Pester
         shell: pwsh
+        # UIAOImportAdapters seals its output via a stdlib-only Python helper
+        # (json + hashlib), byte-identical to uiao.ir.models.core.canonical_hash.
+        # ubuntu-latest ships python3 on PATH; the module auto-detects it. No
+        # package install needed (the seal does not import the uiao package).
         run: |
           $config = New-PesterConfiguration
-          $config.Run.Path = './tools/powershell/OrgTreeValidation/tests'
+          $config.Run.Path = @(
+            './tools/powershell/OrgTreeValidation/tests',
+            './tools/powershell/UIAOImportAdapters/tests'
+          )
           $config.Run.Exit = $true
           $config.Output.Verbosity = 'Detailed'
           $config.TestResult.Enabled = $true
