@@ -24,7 +24,7 @@ Each of the four gaps named in Chapter 23 maps to a **workstream** (A–D). For 
 
 | # | Gap (Ch 23 wording) | Workstream | Status | Governing artifact |
 |---|---|---|---|---|
-| 1 | Four NIST 800-53 control families have no UIAO corpus coverage | A | In progress | `compliance-mapping.qmd §7`; [UIAO_185](UIAO_185_System_Security_Plan_Template.md) §4/§5 |
+| 1 | Four NIST 800-53 control families have no UIAO corpus coverage | A | **Closed** | MP/PE via [UIAO_185](UIAO_185_System_Security_Plan_Template.md) §5 inheritance; AT via [UIAO_187](UIAO_187_Security_Awareness_and_Training_Program.md); PS via [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
 | 2 | Eighty-seven controls require new or amended documents | A | In progress | `compliance-mapping.qmd §7`; [UIAO_185](UIAO_185_System_Security_Plan_Template.md) / [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
 | 3 | Three planned PowerShell modules have specs but no implementation | B | In progress | [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md); UIAO_181/182/183 |
 | 4 | OrgPath drift detection engine only partially implemented | C | In progress | [ADR-084](adr/adr-084-phase5-consumer-architecture.md); UIAO_163 |
@@ -40,11 +40,11 @@ The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/custo
 | SSP Template (`PL-2`) — maps all 323 Moderate controls; states MP/PE inheritance | Authored, registered with a `UIAO_NNN` id | **Closed** — [UIAO_185](UIAO_185_System_Security_Plan_Template.md) |
 | Incident Response Plan (`IR-1`…`IR-8`) | Authored, registered | **Closed** — [UIAO_186](UIAO_186_Incident_Response_Plan.md) |
 | POA&M Template (`CA-5`) — auto-generatable from assessment output | Authored, registered | Open |
-| Security Awareness & Training Program (`AT-1`…`AT-4`) — closes the **AT** family | Authored, registered | Open |
+| Security Awareness & Training Program (`AT-1`…`AT-4`) — closes the **AT** family | Authored, registered | **Closed** — [UIAO_187](UIAO_187_Security_Awareness_and_Training_Program.md) |
 | Supply Chain Risk Management Plan (`SR-1`…`SR-12`) | Authored, registered | Open |
 | Continuous Monitoring Strategy (`CA-7`) | Authored, registered | Open |
 | Privacy Impact Assessment (PT family) | Authored, registered | Open |
-| **Personnel Security Program (`PS-1`…`PS-9`) — closes the PS family** | Authored, registered | Open |
+| **Personnel Security Program (`PS-1`…`PS-9`) — closes the PS family** | Authored, registered | **Closed** — [UIAO_188](UIAO_188_Personnel_Security_Program.md) |
 | 15 document amendments (`compliance-mapping.qmd §7.2`) | Each amendment merged | Open |
 
 > The Personnel Security program is added here because `compliance-mapping.qmd §7` under-specifies it relative to the AT program, yet PS is one of the four named uncovered families. It is sequenced in Phase 3 alongside the PIA.
@@ -107,4 +107,5 @@ A.Phase1, B.2 (producers), and C.2's prerequisites have no cross-workstream bloc
 |---|---|
 | 2026-06-05 | Register created (v1.0). Workstream B scaffolding (ADR-094 + UIAO_181/182/183) and Workstream C.1 (`DRIFT-PROVENANCE` classifier) landed and marked Closed. |
 | 2026-06-05 | Workstream A Phase 1: SSP Template (UIAO_185) and Incident Response Plan (UIAO_186) authored and registered. Gaps 1 & 2 advanced to In progress. |
+| 2026-06-05 | Workstream A: AT program (UIAO_187) and PS program (UIAO_188) authored and registered. All four named families now have corpus coverage (MP/PE inheritance + AT/PS programs) — **Gap 1 Closed**. |
 
