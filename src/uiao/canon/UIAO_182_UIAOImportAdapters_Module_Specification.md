@@ -57,4 +57,4 @@ Normalized artifacts carry a provenance envelope (source tool, export version, i
 
 ## Implementation status
 
-Unimplemented. Tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md), Workstream B.
+**Implemented (signing pending).** The module ships at `tools/powershell/UIAOImportAdapters/` (`.psd1` + `.psm1` + Pester tests), covering the full producer roster above, the content-hash-sealed provenance envelope, and offline canonical-JSON parity with `src/uiao/ir/models/core.py::canonical_hash` — gated in CI by Pester (`.github/workflows/pester.yml`). The one remaining non-functional-contract item is Authenticode signing + signed manifest (`SI-7` / `SA-10`), which requires the UIAO code-signing certificate and is therefore a maintainer release step (see the module README). Tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md), Workstream B.
