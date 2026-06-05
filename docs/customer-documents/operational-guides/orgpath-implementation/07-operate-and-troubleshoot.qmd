@@ -55,7 +55,45 @@ so every write is captured by the evidence pipeline. The console is for
 visibility, not action.
 :::
 
-## 7.2 The reconcile loop
+## 7.2 Brownfield capture — devices already enrolled without OrgPath
+
+Net-new devices get OrgPath at procurement; the existing AD fleet gets it
+during migration. The third population is devices **already enrolled** in
+Intune/Entra and/or Arc that were never stamped. `uiao orgtree inventory`
+captures them — **read-only**, across both planes:
+
+```bash
+# Offline (from Graph/ARM exports), with a primary-user source for proposals
+uiao orgtree inventory \
+  --devices-export entra-devices.json \
+  --machines-export arc-machines.json \
+  --owner-map owners.json \
+  --snapshot-out snap.json --worklist-out worklist.json
+
+# Live read of both planes (needs UIAO_ENTRA_* + the [api] extra)
+uiao orgtree inventory --from-graph --from-arm --subscription <sub> --cloud commercial \
+  --worklist-out worklist.json
+```
+
+It classifies each device against the Codebook — **complete / partial /
+absent** — and proposes a backfill for the missing facets via the source chain
+(`--asset-map` first, i.e. CMDB/procurement keyed by serial/hostname; then
+`--owner-map`, the primary-user/registered-owner derivation). Anything it can't
+resolve is bucketed as **unresolved** for manual review — never auto-guessed.
+
+Two outputs drive the rest of the loop:
+
+- **`--snapshot-out`** → feed to `uiao orgtree govern`; the gaps re-surface as
+  `DRIFT-IDENTITY` findings (§7.4-style worklist with full telemetry).
+- **`--worklist-out`** → the per-device backfill plan (current vs proposed,
+  with the resolution source or the unresolved reason). Devices whose proposal
+  is `resolved` are ready to backfill via `assess --write`; `unresolved` ones
+  need a source-data decision first.
+
+The command never writes — backfill still goes through `assess --write
+--no-dry-run` (Guides 5–6) so every write lands in the evidence pipeline.
+
+## 7.3 The reconcile loop
 
 Steady-state OrgPath is a loop, because HR data and device populations change:
 
@@ -68,7 +106,7 @@ Steady-state OrgPath is a loop, because HR data and device populations change:
 Because every step is idempotent, you can run this on a schedule (e.g. nightly).
 Unchanged objects are no-ops; only moved/changed principals produce writes.
 
-## 7.3 Evidence & telemetry
+## 7.4 Evidence & telemetry
 
 Every governance pass emits UIAO_174 telemetry (`SnapshotCreated`,
 `DriftDetected` per finding, `DriftRemediated` per dispatched op,
@@ -81,7 +119,7 @@ uiao orgtree govern snapshot.json --out evidence/orgpath-$(date +%F).json
 The report's telemetry + summary are the audit trail for *what drift existed*
 and *what was changed*, traceable to the Codebook version that classified it.
 
-## 7.4 Failure-mode catalog (cross-cutting)
+## 7.5 Failure-mode catalog (cross-cutting)
 
 | Symptom | Likely cause | Resolution |
 |---|---|---|
@@ -95,7 +133,7 @@ and *what was changed*, traceable to the Codebook version that classified it.
 | Facets blank after a "successful" write | Values skipped as drift, or reserved slots | Resolve P2 Value drift; reserved 11–15 aren't written |
 | Console shows sample data | No active snapshot loaded | Load your snapshot via the govern page / API |
 
-## 7.5 Known limits to plan around
+## 7.6 Known limits to plan around
 
 These are deliberate scope boundaries, not bugs — design your rollout around
 them:
@@ -112,7 +150,7 @@ them:
 - **Arc targets are resource IDs.** The pipeline must carry the full ARM
   resource ID for each Arc machine.
 
-## 7.6 Where to go deeper
+## 7.7 Where to go deeper
 
 - **Codebook / facet semantics:** `UIAO_151`
 - **Drift engine / telemetry:** `UIAO_163`, `UIAO_174`
