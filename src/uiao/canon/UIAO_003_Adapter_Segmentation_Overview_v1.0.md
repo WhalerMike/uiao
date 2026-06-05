@@ -8,16 +8,8 @@ owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-04-16"
 boundary: "GCC-Moderate"
+publish_to_site: true
 ---
-
-[DOCUMENT-METADATA]
-Document Title: UIAO Adapter Segmentation Overview
-Version: 1.0
-Date: 2026-04-13
-Author: Michael Stratton
-Compliance: GCC-Moderate Only
-No-Hallucination Mode: ENABLED
-[/DOCUMENT-METADATA]
 
 # UIAO Adapter Segmentation Overview
 
@@ -47,7 +39,6 @@ No-Hallucination Mode: ENABLED
    - Appendix D — References
 8. Glossary
 9. Footnotes
-10. Validation Block
 
 ---
 
@@ -59,9 +50,9 @@ The segmentation is identity-rooted and certificate-anchored. The Single Source 
 
 This Overview names the adapter classes referenced in the UIAO canon — Identity, Telemetry, Policy, Enforcement, and Integration — and summarizes the mission each class serves. Role statements and canonical constraints for all five classes have been ratified based on evidence from the operational adapter registries, schema invariants, and the resolved ODA-15 decision (2026-04-15). Remaining **NEW (Proposed)** content is limited to the §5 implementation sequence and is explicitly marked. Two **UNSURE** items remain on the class names "Telemetry" (§4.3) pending Master Document review.
 
-*As shown in Diagram 1, the five named adapter classes orbit a singular, certificate-anchored SSOT core.*
+As shown in @fig-uiao-003-ssot-adapters, the five named adapter classes orbit a singular, certificate-anchored SSOT core.
 
-[DIAGRAM-01: A 16:9 muted-blue schematic showing a singular SSOT core at center, five adapter-class nodes labeled Identity, Telemetry, Policy, Enforcement, Integration arranged symmetrically around it, directional arrows from each adapter toward the core and back, and a surrounding GCC-Moderate governance perimeter ring. No text baked into the image. Publication-grade.]
+![The five named adapter classes — Identity, Telemetry, Policy, Enforcement, and Integration — orbit a singular SSOT core, each linked by bidirectional arrows, all enclosed by a GCC-Moderate governance perimeter ring.](images/uiao-003-diagram-01-ssot-five-adapters.png){#fig-uiao-003-ssot-adapters fig-alt="A central navy SSOT core circled by five adapter-class nodes connected with two-way arrows, surrounded by a dashed GCC-Moderate perimeter ring." width="80%"}
 
 ---
 
@@ -87,13 +78,22 @@ The UIAO architecture is governed by five canonical elements that every adapter 
 4. **Adapter classes.** Adapters are plural in class but singular in mission. The named adapter classes in this Overview are Identity, Telemetry, Policy, Enforcement, and Integration.
 5. **Certificate-anchored provenance.** Every adapter transaction carries certificate-anchored provenance so that any downstream artifact can be traced back to its originating identity and SSOT state.
 
-*See Diagram 2 for the adapter-class arrangement against the SSOT boundary and certificate chain.*
+@fig-uiao-003-cert-chain shows the adapter-class arrangement against the SSOT boundary and certificate chain.
 
-[DIAGRAM-02: A 16:9 muted-blue schematic showing the SSOT boundary, five adapter classes (Identity, Telemetry, Policy, Enforcement, Integration), certificate chain nodes (C1–C5), directional flow arrows, and the Governance OS substrate. No text baked into the image. Publication-grade.]
+![The five adapter classes sit inside the SSOT boundary, each anchored to a certificate-chain node (C1–C5) and feeding the Governance OS substrate below. Every adapter transaction is certificate-anchored.](images/uiao-003-diagram-02-ssot-cert-chain.png){#fig-uiao-003-cert-chain fig-alt="A row of five adapter-class cards, each connected down to a certificate node C1 through C5 linked in a chain, all enclosed by a dashed SSOT boundary and resting on a navy Governance OS substrate band." width="92%"}
 
-*As shown in Table 1, each named adapter class maps to a defined role against SSOT, Identity, and Security.*
+As shown in @tbl-uiao-003-roles, each named adapter class maps to a defined role against SSOT, Identity, and Security.
 
-[TABLE-01: A 4-column table mapping adapter classes (Identity, Telemetry, Policy, Enforcement, Integration) to their SSOT interaction, Identity interaction, and Security interaction, with a sixth row for the singular mission statement.]
+| Adapter Class | SSOT interaction | Identity interaction | Security interaction |
+|---|---|---|---|
+| Identity | Binds canonical object identity into the SSOT; never mutates it | Certificate-anchors every tenant, policy, control, and evidence object | Object identity only; within the GCC-Moderate perimeter |
+| Telemetry | Emits normalized, timestamped observation records against the SSOT | Object-keyed, certificate-anchored records | Read-only with respect to the governed environment |
+| Policy | Evaluates telemetry and emits policy-outcome records; never mutates the SSOT | Certificate-anchored outcomes bound to framework bindings | Operates within the GCC-Moderate perimeter |
+| Enforcement | Emits assurance artifacts traceable to SSOT state; never mutates it | Certificate-anchored provenance back to the originating identity | Audit-facing, read-only assurance |
+| Integration | Emits certificate-anchored change records to the SSOT; never mutates it directly | Object-keyed, certificate-anchored change requests | Change-making against a target; within the GCC-Moderate perimeter |
+| **Mission (all classes)** | Consume from and emit to the SSOT — never mutate truth | Certificate-anchored; object identity only | Within the GCC-Moderate perimeter (Amazon Connect the sole exception) |
+
+: Adapter classes mapped to their SSOT, Identity, and Security roles — plural in class, singular in mission. {#tbl-uiao-003-roles}
 
 ---
 
@@ -124,7 +124,7 @@ The Identity Adapter class is a named adapter class in the UIAO canon. It exists
 
 **Role statement.** Establish and maintain canonical object identity for every tenant, policy, control, and evidence artifact that flows through UIAO, and bind those objects to the SSOT via certificate-anchored provenance. *Ratified 2026-04-16 based on operational evidence: `canon/modernization-registry.yaml` entra-id adapter scope (user-objects, group-objects, service-principals, conditional-access-policies) and schema invariant `object-identity-only: true` on all adapter entries.*
 
-[IMAGE-01: A muted-blue shield icon representing SSOT + Identity + Security with an "Identity" label node and four inbound certificate arrows. No text baked into the image.]
+![Identity adapter class — a shield representing SSOT + Identity + Security, with four inbound certificate arrows anchoring every object.](images/uiao-003-image-01-identity-shield.png){#fig-uiao-003-identity fig-alt="A shield icon labeled SSOT / Identity / Security with four certificate nodes feeding inward." width="38%"}
 
 ### 4.3 Telemetry Adapter Class
 
@@ -134,7 +134,7 @@ The Identity Adapter class is a named adapter class in the UIAO canon. It exists
 
 **UNSURE.** Whether "Telemetry" is the canonical class name or an alternative label (for example, "Observation") appears in the full UIAO Master Document Specification. Clarification requested from the document owner before the class name itself is ratified. The role statement and constraints are ratified independently of the name.
 
-[IMAGE-02: A muted-blue observation-lens icon with an outbound arrow feeding a timestamped record stack, annotated with a small certificate chain marker. No text baked into the image.]
+![Telemetry adapter class — an observation lens emitting normalized, timestamped records, marked with a certificate-chain anchor.](images/uiao-003-image-02-telemetry-lens.png){#fig-uiao-003-telemetry fig-alt="A magnifying-lens icon with an arrow to a stack of timestamped record cards and a certificate marker." width="46%"}
 
 ### 4.4 Policy Adapter Class
 
@@ -144,7 +144,7 @@ The Identity Adapter class is a named adapter class in the UIAO canon. It exists
 
 **Canonical framework bindings.** The following external control frameworks are named canonically for the Policy Adapter class, based on their presence in `ARCHITECTURE.md` §15 (Federal Compliance Mapping) and the `controls` fields across all adapter registry entries: **NIST SP 800-53 Rev 5** (moderate-impact baseline), **FedRAMP Moderate** (system categorization), **CISA SCuBA** (M365 Secure Configuration Baselines). *Resolved 2026-04-16; previously flagged as MISSING.*
 
-[IMAGE-03: A muted-blue rulebook icon with inbound observation records and outbound evaluated-outcome records, annotated with a certificate chain marker. No text baked into the image.]
+![Policy adapter class — a rulebook of framework bindings that takes in observation records and emits evaluated outcomes, certificate-anchored.](images/uiao-003-image-03-policy-rulebook.png){#fig-uiao-003-policy fig-alt="A rulebook icon with an inbound observations arrow on the left and an outbound outcomes arrow on the right, plus a certificate marker." width="46%"}
 
 ### 4.5 Enforcement Adapter Class
 
@@ -154,15 +154,15 @@ The Identity Adapter class is a named adapter class in the UIAO canon. It exists
 
 **Canonical artifact types.** The following external artifact types are named canonically for the Enforcement Adapter class, based on their implementation in `uiao/src/uiao/impl/generators/` and canonical data structures in `uiao/canon/data/fedramp_ssp_template_structure.yaml`: **OSCAL SSP** (System Security Plan), **POA&M** (Plan of Action and Milestones), **SAR** (Security Assessment Report). *Resolved 2026-04-16; previously flagged as MISSING.*
 
-[IMAGE-04: A muted-blue machine-seal icon producing a signed artifact along a certificate chain, with an arrow toward an external "Authorizing Official / Assessor" node. No text baked into the image.]
+![Enforcement adapter class — a signing seal producing OSCAL SSP, POA&M, and SAR artifacts delivered along a certificate chain to an authorizing official or assessor.](images/uiao-003-image-04-enforcement-seal.png){#fig-uiao-003-enforcement fig-alt="A signing-seal icon producing a signed document that flows along a certificate chain to an Authorizing Official / Assessor node." width="52%"}
 
 ### 4.6 Cross-Adapter Truth Flow
 
 **Flow statement.** Truth flows from the SSOT outward through the adapter classes and returns to the SSOT only as certificate-anchored provenance records. No adapter class rewrites the output of another. Drift between declared posture and observed posture is surfaced as an externally visible assurance signal. *Ratified 2026-04-16 based on `canon/UIAO-SSOT.md` ("All other representations are pointers, not copies") and the schema invariant `ssot-mutation: never` (literal enum value enforced on every adapter entry).*
 
-*As shown in Diagram 3, the canonical truth flow is unidirectional from SSOT through the adapter classes and back only as certificate-anchored provenance.*
+As shown in @fig-uiao-003-truth-flow, the canonical truth flow is unidirectional from the SSOT through the adapter classes and back only as certificate-anchored provenance.
 
-[DIAGRAM-03: A 16:9 muted-blue schematic showing unidirectional truth flow from a singular SSOT through the five named adapter classes and back to SSOT only as certificate-anchored provenance arrows, with a drift-signal annotation at the Policy/Enforcement interface and a change-intent annotation at the Integration interface. No text baked into the image. Publication-grade.]
+![Truth flows outward from the SSOT through Identity, Telemetry, Policy, Enforcement, and Integration, and returns only as certificate-anchored provenance records. A drift signal surfaces at the Policy/Enforcement interface and change intent enters at Integration.](images/uiao-003-diagram-03-unidirectional-truth-flow.png){#fig-uiao-003-truth-flow fig-alt="An SSOT box on the left feeds a left-to-right chain of five adapter-class boxes; a single curved return arrow loops back to the SSOT labeled certificate-anchored provenance, with drift-signal and change-intent annotations above the chain." width="92%"}
 
 ### 4.7 Integration Adapter Class
 
@@ -176,7 +176,7 @@ Added per resolved ODA-15 (see `ARCHITECTURE.md` §13, 2026-04-15, Option a). Th
 
 **Class name.** The term "Integration" was adopted via resolved ODA-15 (Option a, owner decision 2026-04-15) as the canonical class name. *Ratified 2026-04-16; previous UNSURE on alternative labels ("Modernization", "Actuation") is closed — the owner chose "Integration" and it is now canonical by decision.*
 
-[IMAGE-05: A muted-blue wrench-on-target icon representing an Integration adapter issuing a change-making action against a target environment, with an outbound certificate-anchored change-record arrow back toward the SSOT. No text baked into the image.]
+![Integration adapter class — a wrench acting on a target environment (create / update / delete) and emitting a certificate-anchored change record back to the SSOT.](images/uiao-003-image-05-integration-wrench.png){#fig-uiao-003-integration fig-alt="A wrench-on-target icon with a certificate-anchored change-record arrow returning to an SSOT provenance box." width="52%"}
 
 ---
 
@@ -276,27 +276,6 @@ Only sources provided by the document owner are cited.
 [^2]: "Plural in class but singular in mission" — canonical phrasing from the Adapter Doctrine.
 
 [^3]: The GCC-Moderate boundary and the Amazon Connect Contact Center exception are canonical governance constraints.
-
----
-
-## 10. Validation Block
-
-[VALIDATION]
-All sections validated against source text and operational canon evidence.
-No hallucinations detected.
-Promotion pass (2026-04-16): role statements for all five adapter classes
-  (Identity, Telemetry, Policy, Enforcement, Integration) ratified based on
-  operational adapter registry entries, schema invariants, and resolved ODA-15.
-  Canonical constraints blocks ratified (schema-enforced). §4.4 MISSING
-  frameworks and §4.5 MISSING artifact types resolved with canonical citations.
-  §4.7 UNSURE on class name closed (ODA-15 owner decision). §6 UNSURE on
-  drift cadence resolved citing CONMON.md §6.3.
-Remaining NEW (Proposed): §5 step 6 implementation sequence (speculative).
-Remaining UNSURE: §4.3 class name "Telemetry" vs alternative (needs Master Doc).
-Placeholder format conforms to UIAO Canonical Document Specification v1.3.
-Object referencing conforms to §11 of the canonical specification.
-Governance constraints (§12 of the canonical specification) are enforced.
-[/VALIDATION]
 
 ---
 
