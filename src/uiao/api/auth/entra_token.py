@@ -26,11 +26,31 @@ from typing import Optional
 
 import msal  # type: ignore
 
-# Graph API scope for application permissions
+# Graph API scope for application permissions (commercial / GCC-Moderate).
 GRAPH_SCOPE = ["https://graph.microsoft.com/.default"]
 
-# Entra ID authority base
+# Entra ID authority base (commercial / GCC-Moderate).
 AUTHORITY_BASE = "https://login.microsoftonline.com"
+
+# Sovereign-cloud login authorities. Azure Government (gcc-high, dod)
+# authenticates against login.microsoftonline.us, not the commercial
+# login host. Per ADR-033 "commercial" also serves GCC-Moderate.
+LOGIN_ENDPOINTS = {
+    "commercial": "https://login.microsoftonline.com",
+    "gcc-high": "https://login.microsoftonline.us",
+    "dod": "https://login.microsoftonline.us",
+}
+
+
+def resolve_authority_base(cloud: str) -> str:
+    """Return the login authority host for a sovereign cloud.
+
+    Unknown clouds raise :class:`ValueError` so a misconfigured cloud
+    fails at construction rather than as an opaque auth error.
+    """
+    if cloud not in LOGIN_ENDPOINTS:
+        raise ValueError(f"unknown cloud {cloud!r}. Supported clouds: {sorted(LOGIN_ENDPOINTS)}.")
+    return LOGIN_ENDPOINTS[cloud]
 
 
 @dataclass
@@ -57,10 +77,18 @@ class EntraTokenProvider:
         client_secret: Optional[str] = None,
         cert_path: Optional[str] = None,
         cert_password: Optional[str] = None,
+        scopes: Optional[list[str]] = None,
+        authority_base: Optional[str] = None,
     ) -> None:
         self._tenant_id = tenant_id
         self._client_id = client_id
-        self._authority = f"{AUTHORITY_BASE}/{tenant_id}"
+        # Audience for the client-credential flow. Defaults to Microsoft
+        # Graph (commercial / GCC-Moderate). ARM writers pass the ARM
+        # ``.default`` scope; sovereign-cloud Graph writers pass the
+        # cloud-correct Graph scope. A Graph-audience token sent to ARM
+        # (or vice versa) is rejected with HTTP 401.
+        self._scopes = scopes or list(GRAPH_SCOPE)
+        self._authority = f"{authority_base or AUTHORITY_BASE}/{tenant_id}"
 
         # Build credential — certificate takes precedence over secret.
         # MSAL accepts either a dict (cert bundle) or a str (client_secret).
@@ -79,11 +107,23 @@ class EntraTokenProvider:
         )
 
     @classmethod
-    def from_environment(cls) -> EntraTokenProvider:
+    def from_environment(
+        cls,
+        *,
+        scopes: Optional[list[str]] = None,
+        cloud: str = "commercial",
+    ) -> EntraTokenProvider:
         """
         Construct from machine-level environment variables.
         Raises clear RuntimeError if any required variable is missing.
+
+        ``scopes`` selects the token audience (defaults to Microsoft
+        Graph for the given cloud when omitted). ``cloud`` selects the
+        login authority host — Azure Government tenants must authenticate
+        against ``login.microsoftonline.us`` rather than the commercial
+        login host.
         """
+        authority_base = resolve_authority_base(cloud)
         tenant_id = os.environ.get("UIAO_ENTRA_TENANT_ID")
         client_id = os.environ.get("UIAO_ENTRA_CLIENT_ID")
         missing = [
@@ -110,15 +150,17 @@ class EntraTokenProvider:
             client_secret=os.environ.get("UIAO_ENTRA_CLIENT_SECRET"),
             cert_path=os.environ.get("UIAO_ENTRA_CERT_PATH"),
             cert_password=os.environ.get("UIAO_ENTRA_CERT_PASSWORD"),
+            scopes=scopes,
+            authority_base=authority_base,
         )
 
     def get_token(self) -> TokenResult:
         """
-        Acquire a Graph API token (synchronous).
+        Acquire a token for the configured audience (synchronous).
         MSAL returns from cache if the cached token is still valid (>5 min remaining).
         Automatically re-acquires if expired.
         """
-        result = self._msal_app.acquire_token_for_client(scopes=GRAPH_SCOPE)
+        result = self._msal_app.acquire_token_for_client(scopes=self._scopes)
 
         if "access_token" not in result:
             error = result.get("error", "unknown")
