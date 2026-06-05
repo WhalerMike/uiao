@@ -1,0 +1,141 @@
+---
+title: "Domain-Join → OrgPath-Join Crosswalk"
+subtitle: "Everything an AD domain-join silently establishes, and the OrgPath process that reproduces each governance intent — including DNS and certificates"
+doc-type: operational-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/identity-orgtree/domain-join-to-orgpath-join.qmd
+created-at: 2026-06-05
+updated-at: 2026-06-05
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-05
+---
+
+# Domain-Join → OrgPath-Join Crosswalk {.unnumbered}
+
+When a PC or server runs `Add-Computer -DomainName contoso.com` (or the GUI
+equivalent), a single action silently establishes **a dozen-plus governance
+facts** about that machine: an identity, a trust relationship, a place in the
+org tree, a policy inheritance path, a name in DNS, a machine certificate, and
+more. Operators rarely enumerate them because domain-join bundles them into one
+opaque transaction.
+
+Modernizing to the cloud does **not** remove the need for those governance
+facts — it removes the single bundling mechanism. The **OrgPath join** is the
+deliberate, governed process that reproduces each *intent* with a cloud-native
+carrier. This document does two things:
+
+1. **Part A** enumerates everything an AD domain-join creates or establishes.
+2. **Part B** gives the corresponding OrgPath-join process — phase by phase,
+   per device class (client vs server) — including DNS and certificates.
+
+The spine of the mapping is the canonical
+[`computer-object-crosswalk.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/computer-object-crosswalk.yaml)
+(`UIAO_GAE_CROSSWALK`, ADR-031); this guide makes it operator-readable and adds
+the DNS and PKI surfaces.
+
+::: {.callout-important}
+## The governing principle: reproduce intent, not mechanism
+
+Do not try to recreate domain-join in the cloud. **Regenerate from the
+governance intent** (the same doctrine the GPO Sunset Program uses for policy).
+A computer object's *intent* is "this machine has an identity, a place, a
+policy set, a name, and a trust boundary" — each of those gets a distinct,
+purpose-built cloud carrier, and several deliberately become **non-machine**
+constructs (a workload identity is an app, not a computer account).
+:::
+
+## Part A — What an AD domain-join establishes
+
+A domain-join is not one fact; it is this set, created at join time or shortly
+after (via the first GPO/autoenrollment cycle):
+
+### A.1 Identity & trust
+
+| # | Established at join | What it really is |
+|---|---|---|
+| 1 | **Computer account object** | A SID-backed **security principal** in `CN=Computers` (or the redirected OU) — the machine can authenticate as itself |
+| 2 | **Machine password + secure channel** | A rotating shared secret establishing the `Netlogon` secure channel to a DC; the basis of all machine auth |
+| 3 | **Kerberos machine identity** | The computer account's keys; the machine gets a TGT and can request service tickets |
+| 4 | **Service Principal Names (SPNs)** | `HOST/<name>`, `HOST/<fqdn>`, and any service SPNs — how Kerberos clients locate services on the box |
+| 5 | **Trust boundary / domain membership** | The machine is "inside" — it trusts domain DCs, honors domain policy, and is trusted by domain resources |
+
+### A.2 Organizational placement & policy
+
+| # | Established at join | What it really is |
+|---|---|---|
+| 6 | **OU placement (Distinguished Name)** | The computer object lands in an OU — its position in the x.500 tree, which *is* its organizational identity |
+| 7 | **GPO inheritance** | Every GPO linked to that OU (and parents) applies — Computer Configuration, security baselines, drive/printer maps, scripts |
+| 8 | **Group memberships** | `Domain Computers` at minimum; often security groups used for GPO filtering or resource access |
+| 9 | **Delegation / ACLs** | The object inherits OU ACLs; specific admins may be delegated rights over it (reset, manage) |
+| 10 | **Local-admin policy (LAPS)** | A GPO-delivered LAPS policy randomizes and escrows the local admin password |
+
+### A.3 Name resolution, certificates, time
+
+| # | Established at join | What it really is |
+|---|---|---|
+| 11 | **Dynamic DNS registration** | The host registers its **A** (and the DHCP/host registers **PTR**) record in AD-integrated DNS via secure dynamic update; it gets the primary **DNS suffix** of the domain |
+| 12 | **DC/service location** | The machine resolves `_ldap._tcp`, `_kerberos._tcp` **SRV** records to find DCs — name resolution *is* the control-plane locator |
+| 13 | **Machine certificate (autoenrollment)** | The autoenrollment GPO + an ADCS **certificate template** issue a machine/computer certificate (used for 802.1X, IPsec, RDP, etc.) with no user action |
+| 14 | **Time hierarchy** | `W32Time` syncs up the domain hierarchy (PDC emulator at the root) — Kerberos depends on it |
+
+### A.4 Lifecycle & inventory
+
+| # | Established at join | What it really is |
+|---|---|---|
+| 15 | **Inventory / discovery anchor** | The computer object is the authoritative directory record SCCM, monitoring, and audits key off |
+| 16 | **Workload-identity host** | The box can host **GMSAs**, **Kerberos constrained delegation**, and machine-context service auth |
+
+**The point:** join created identity (1–5), placement & policy (6–10), name +
+cert + time (11–14), and lifecycle/inventory/workload anchors (15–16) — in one
+step. OrgPath-join reproduces each, intentionally, with the right carrier.
+
+## The master crosswalk
+
+Every AD construct maps to a cloud-native carrier on one of four **planes**
+(identity, management, governance, workload). This table is the operator view
+of `computer-object-crosswalk.yaml`; the **Track** column is the migration
+track and `(blocker)` marks a construct whose migration must complete before AD
+can be retired.
+
+| AD construct | Cloud-native carrier | Plane | XW / Track |
+|---|---|---|---|
+| Computer account as **security principal** | Service Principal / Managed Identity / Workload Identity — the machine stops being a security principal | workload | XW-001 · T3 *(blocker)* |
+| Computer object as **device identity** | **Entra Device** (Joined/Registered) — a token anchor for PRT + Conditional Access, **not** a security principal | identity | XW-002 · T1 |
+| **OU placement** (Distinguished Name) | **OrgPath** (`extensionAttribute1..10` for Entra, ARM tags for Arc) + dynamic groups + Intune scope tags | governance | XW-003 · T1 |
+| **GPO** via OU hierarchy | Intune config profiles / Settings Catalog / security baselines (clients); Azure Policy (Arc servers) — scoped by OrgPath, not OUs | management | XW-004 · T1 |
+| **Delegation / OU ACLs** | Entra RBAC + PIM + **Administrative Units** with OrgPath-driven membership | governance | XW-005 · T1 |
+| **SPNs** | App Registration + Service Principal + OAuth2/OIDC endpoints (each SPN catalogued + rebuilt) | workload | XW-006 · T3 *(blocker)* |
+| **Kerberos constrained delegation** | App-to-app OAuth2 / API permissions / managed identities (rebuilt per service) | workload | XW-007 · T3 *(blocker)* |
+| **Machine Kerberos auth to resources** | Device-based Conditional Access + app tokens + managed identities | identity | XW-008 · T3 |
+| **Computer object as inventory anchor** | Intune device record (clients) / **Azure Arc machine** (servers) — split inventory, reconciled by the survey adapter | management | XW-009 · T2 |
+| **Config management** (GPO + SCCM) | Intune (clients) / Arc extensions + Azure Policy (servers) | management | XW-010 · T1/T2 |
+| **Local-admin / LAPS** | Intune Local Admin policies + **Entra LAPS** | management | XW-011 · T1 |
+| **Domain membership / trust boundary** | Entra Join (clients) / Arc + Entra-join, **non-domain-joined** (servers, ADR-002); AD-join is the *last* thing removed | identity | XW-012 · T1/T3 *(blocker)* |
+| **GMSAs** | Managed Identity (system- or user-assigned); on-prem GMSA users are per-workload tasks | workload | XW-013 · T3 *(blocker)* |
+
+**Two structural truths fall out of this table:**
+
+1. **The machine stops being a security principal.** The single biggest
+   conceptual shift: a domain computer authenticates *as itself* (XW-001).
+   In the cloud the Entra device object is **only** a token anchor for
+   Conditional Access (XW-002) — workloads authenticate as **apps / managed
+   identities**, not as the box. This is why SPNs, KCD, and GMSAs (XW-006/007/013)
+   are *retirement blockers*: each is real work, not a flag flip.
+2. **Servers and clients diverge.** Clients Entra-join immediately (Track 1).
+   Servers **stay AD-joined** until their workload identities migrate
+   (XW-012, Track 3), then cut over to **Arc + Entra-join, non-domain-joined**
+   (ADR-002). OrgPath rides both: `extensionAttribute1..10` on the Entra device
+   for clients, ARM **tags** on the Arc machine for servers.
