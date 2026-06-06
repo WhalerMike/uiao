@@ -345,7 +345,7 @@ function Test-UIAOArcAgentStatus {
         cloud         = $reportedCloud
         expected_cloud = $ExpectedCloud
         checks        = $checks
-        validation    = if (($checks | Where-Object { -not $_.passed }).Count -eq 0) { 'pass' } else { 'fail' }
+        validation    = if (@($checks | Where-Object { -not $_.passed }).Count -eq 0) { 'pass' } else { 'fail' }
     }
     $envelope = New-UIAOMigrationEnvelope -ArtifactType 'ArcAgentStatusValidation' -Records @($record) `
         -SourceRef $sourceRef -ExtraData ([ordered]@{ validation = $record.validation })
@@ -451,7 +451,7 @@ function Test-UIAOArcManagedIdentityToken {
         issuer            = $iss
         expires_utc       = $(if ($expUtc) { $expUtc.ToString('o') } else { $null })
         checks            = $checks
-        validation        = if (($checks | Where-Object { -not $_.passed }).Count -eq 0) { 'pass' } else { 'fail' }
+        validation        = if (@($checks | Where-Object { -not $_.passed }).Count -eq 0) { 'pass' } else { 'fail' }
     }
     $envelope = New-UIAOMigrationEnvelope -ArtifactType 'ArcManagedIdentityTokenValidation' -Records @($record) `
         -SourceRef $sourceRef -ExtraData ([ordered]@{ validation = $record.validation })
@@ -536,7 +536,7 @@ function Test-UIAOArcSqlExtension {
         extension_type        = $extType
         entra_auth_capable    = $entraCapable
         checks                = $checks
-        validation            = if (($checks | Where-Object { -not $_.passed }).Count -eq 0) { 'pass' } else { 'fail' }
+        validation            = if (@($checks | Where-Object { -not $_.passed }).Count -eq 0) { 'pass' } else { 'fail' }
     }
     $envelope = New-UIAOMigrationEnvelope -ArtifactType 'ArcSqlExtensionValidation' -Records @($record) `
         -SourceRef $sourceRef -ExtraData ([ordered]@{ validation = $record.validation })
@@ -650,10 +650,12 @@ function Invoke-UIAOArcOnboarding {
     $executed = $false
     $outcome = 'planned'
     if ($Execute) {
-        if (-not (Get-Command 'azcmagent' -ErrorAction SilentlyContinue)) {
-            throw "azcmagent not found on PATH; cannot -Execute. Remove -Execute to plan only."
-        }
         if ($PSCmdlet.ShouldProcess("Arc machine in $ResourceGroup ($Cloud)", "azcmagent connect")) {
+            # PATH check is gated behind ShouldProcess so -WhatIf plans without
+            # requiring azcmagent; the binary is only needed for real execution.
+            if (-not (Get-Command 'azcmagent' -ErrorAction SilentlyContinue)) {
+                throw "azcmagent not found on PATH; cannot -Execute. Remove -Execute to plan only."
+            }
             & azcmagent @argList
             if ($LASTEXITCODE -ne 0) { throw "azcmagent connect exited $LASTEXITCODE" }
             $executed = $true
@@ -958,7 +960,7 @@ function Test-UIAOLoginParallelRun {
     $perLogin = foreach ($login in ($byLogin.Keys | Sort-Object)) {
         $schemes = @($byLogin[$login])
         $hasAad = $schemes -contains 'AAD'
-        $hasLegacy = ($schemes | Where-Object { $_ -in @('NTLM', 'KERBEROS') }).Count -gt 0
+        $hasLegacy = @($schemes | Where-Object { $_ -in @('NTLM', 'KERBEROS') }).Count -gt 0
         $onlyLegacy = $hasLegacy -and -not $hasAad
         [ordered]@{
             login_name  = $login
