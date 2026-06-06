@@ -1,0 +1,90 @@
+---
+title: "SQL Server Identity Transformation — Implementation Companion"
+subtitle: "The executable layer beneath the narrative: runbooks, scripts, parameters, output schemas, and failure modes for the people doing the work"
+doc-type: section-landing
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: sql-server-implementation
+canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
+listing:
+  - id: impl-books
+    contents:
+      - "Book_[0-9][0-9].qmd"
+    type: table
+    fields: [title, subtitle, description]
+    sort: "series-order asc"
+    sort-ui: false
+    filter-ui: false
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2027-01-01
+---
+
+# SQL Server Identity Transformation — Implementation Companion {.unnumbered}
+
+::: {.callout-important appearance="default"}
+## Status — Draft companion
+This is the **executable companion** to the [SQL Server Identity Transformation
+narrative](../sql-server-narrative/index.qmd). The narrative is the
+architectural and governance layer — *why this must happen, in what order, and
+what good looks like*. This companion is the implementation layer — *how to
+actually do it*: the scripts, their parameters, their output schemas, and their
+failure modes. Like the narrative, it is **DRAFT** and tracks the **PROPOSED**
+[ADR-091](../../adr/adr-091-sql-server-authentication-transformation.qmd) and
+[ADR-068](../../adr/adr-068-kerberos-ntlm-elimination.qmd).
+:::
+
+## The two-layer model
+
+The narrative deliberately stays conceptual so it remains readable by architects,
+program leads, and governance bodies. It does not embed large scripts, because
+code and prose have different audiences and different update cadences:
+architectural decisions change slowly; scripts, Microsoft APIs, and edge cases
+change fast. This companion is where the executable detail lives.
+
+| | Narrative layer | Implementation companion (this) |
+|---|---|---|
+| **Audience** | Architects, governance, program management | DBAs, infrastructure engineers, migration teams |
+| **Content** | Reasoning, patterns, sequencing, ADRs | Scripts, parameters, output schemas, runbooks, failure modes |
+| **Cadence** | Slow (decisions change rarely) | Fast (scripts and APIs evolve) |
+| **Form** | Conceptual | Executable |
+
+The two layers are kept aligned by **book number**: Implementation Book 03 is the
+how-to for the audit the narrative's Book 03 reasons about, and so on. Where the
+narrative says *"the audit identifies every authentication event"*, the companion
+gives you the script that produces it, the parameters it takes, the columns it
+emits, and what it does when a domain controller is unreachable.
+
+## How this companion is built
+
+- **The scripts are the source of truth; the books are the runbook over them.**
+  The audit and discovery scripts already exist under
+  [`tools/discovery/`](https://github.com/WhalerMike/uiao/tree/main/tools/discovery)
+  (the `Spec*-D1.*` family) and the assessment/plan modules under
+  [`tools/powershell/`](https://github.com/WhalerMike/uiao/tree/main/tools/powershell).
+  Each book documents the real script — it does not paraphrase a fictional one.
+- **Derived, provenance-anchored.** Every book traces to canon
+  (`UIAO_135`, ADR-091, ADR-068) and to the specific `Spec` ID of the script it
+  documents. This companion introduces no new doctrine, so it needs no ADR — it
+  is the operational rendering of decisions already recorded.
+- **Honest about gaps.** Where the engineering sequence needs a script that does
+  not yet exist (parts of the Arc and login-migration runbooks), the book gives
+  the **pattern** — the exact commands, the validation, the rollback — and marks
+  the to-be-built automation explicitly rather than implying a script is shipped.
+
+::: {.callout-warning}
+## Production safety (GCC-Moderate / FedRAMP)
+Scripts in this companion that touch **service accounts, SQL logins, or the
+domain** — SPN remediation, `CREATE LOGIN ... FROM EXTERNAL PROVIDER`, NTLM
+Group Policy — change a production security posture. Treat every such snippet as
+**review-required**: run it in audit/`-WhatIf` mode first, capture the planned
+change, and route it through your environment's change-control and security
+review before enforcement. The discovery/audit scripts are read-only and safe to
+run first; the remediation scripts are not.
+:::
+
+## The books
+
+Each book is a standalone runbook. Start with the audit (Book 03) — it is
+read-only and produces the inventory every later step depends on.
