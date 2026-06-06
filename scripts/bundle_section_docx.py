@@ -85,6 +85,19 @@ DEFAULT_SECTIONS = [
     # Resolved relative to the site root; the bundle filename uses only the
     # final path component (see _bundle_filename).
     "operational-guides/orgpath-implementation",
+    # Additional nested operational-guides sub-sections that hold their own
+    # multi-page content (in addition to the whole operational-guides bundle,
+    # which still includes these pages via its recursive walk). Index-only
+    # navigation stubs (directory-migration, platform-substrate,
+    # transformation-engine, zero-trust-assessment) are intentionally omitted:
+    # they have no local content .docx to bundle, so a bundle link would 404.
+    "operational-guides/access-plane",
+    "operational-guides/client-server-to-hybrid-cloud",
+    "operational-guides/identity-orgtree",
+    "operational-guides/network-transformation",
+    "operational-guides/program-management",
+    "operational-guides/target-surface",
+    "operational-guides/uiao-modernization-program",
     "orgpath-narrative",
     "sql-server-narrative",
     "reference-architecture",
