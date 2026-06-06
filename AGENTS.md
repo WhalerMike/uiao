@@ -33,7 +33,7 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 
 ## Operating principles (substrate-wide)
 
-1. **SSOT** — every claim has exactly one canonical source under `src/uiao/canon/`. All other representations are provenance-anchored pointers.
+1. **SSOT** — every claim has exactly one canonical source under `src/uiao/canon/`. All other representations are provenance-anchored pointers. **ADRs are SSOT for the *decisions* they record, not for the *external facts* they cite** (statutory/regulatory mandates, vendor behavior, standards requirements): an external fact is authoritative only where the ADR directly links to its source, and downstream documents cite that authoritative source — not the ADR — for the fact. See [ADR-000 §"ADRs Are Decision Records, Not Sources of Truth"](src/uiao/canon/adr/adr-000-adr-process.md).
 2. **Canon-anchored evidence** — every artifact the substrate produces cites the canon document ID and version it derives from.
 3. **Dual-axis adapter taxonomy** — every adapter declares `class` (modernization | conformance) × `mission-class` (identity | telemetry | policy | enforcement | integration) per UIAO_003.
 4. **Schema-first governance** — five JSON Schemas under `src/uiao/schemas/` validate every registry, manifest, and frontmatter edit in CI.

@@ -73,6 +73,38 @@ Every ADR MUST include:
 
 Optional: **Superseded By** (link to successor ADR when status = SUPERSEDED)
 
+### ADRs Are Decision Records, Not Sources of Truth
+
+An ADR is the single source of truth (SSOT) **only for the decision it records** —
+the position taken, its rationale, and the program-internal commitments that follow
+(phasing, sequencing, target postures, owners, and the dates the program sets for
+itself).
+
+An ADR is **not** a source of truth for the **external facts** it cites — statutory or
+regulatory mandates, vendor product behavior, standards-body requirements, or any
+claim whose authority originates outside this program. For an external fact, the ADR
+carries authority **only if it directly and traceably links to the authoritative
+source** (the external SSOT) at the point the fact is asserted. An ADR that states an
+external fact without a direct link to its authority is, for that fact, unsourced, and
+MUST NOT be treated as canonical for it.
+
+Two obligations follow:
+
+1. **ADRs link their external facts.** Every external fact an ADR relies on carries an
+   inline, resolvable reference to the authoritative source (URL, document ID, or
+   clause) at the point of assertion. A References section is necessary but not
+   sufficient — the link must be traceable from the claim itself.
+2. **Downstream documents cite the external SSOT, not the ADR, for external facts.**
+   When a guide, narrative, or spec repeats an external fact, it cites the authoritative
+   source the ADR links to — not the ADR. The ADR is cited only for the program's
+   *decision*. Where both appear, attribute each to its proper source, e.g. *"NTLM
+   elimination is mandatory by 2027-04-01 (FedRAMP Notice 0009); this program phases it
+   assess → block → eliminate (ADR-068)."*
+
+This sharpens operating principle #1 ("every claim has exactly one canonical source"):
+for a **decision**, that source is the ADR; for an **external fact**, it is the
+authoritative source the ADR points to, never the ADR itself.
+
 ## Consequences
 
 - All 23 existing ADRs (ADR-005 through ADR-027) are retroactively subject
@@ -83,6 +115,19 @@ Optional: **Superseded By** (link to successor ADR when status = SUPERSEDED)
   for audit trail purposes.
 - The CI validation workflow (`validate-uiao-frontmatter.yml`) enforces
   required frontmatter fields on all ADR files.
+- An ADR that asserts an external fact without a direct, traceable link to its
+  authoritative source is a documentation defect; reviewers reject it as they would a
+  missing `UIAO_NNN` allocation.
+- A downstream document that cites an ADR as the authority for an external fact —
+  rather than the external SSOT the ADR links to — is a provenance-drift signal to be
+  corrected to point at the authoritative source.
+
+## Amendments
+
+- **2026-06-06** — Added "ADRs Are Decision Records, Not Sources of Truth." ADRs are
+  SSOT for the decisions they record but not for external facts; external facts require
+  a direct, traceable link to their authoritative source, and downstream documents cite
+  that source rather than the ADR. Decision basis otherwise unchanged.
 
 ## See Also
 
