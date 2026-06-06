@@ -6,6 +6,31 @@ build artifact. No AI runs at render time, so **text is always exactly what the
 SVG says** — this is the whole point (it retires the NanoBanana baked-in-text
 defects).
 
+> **Why PNG and not raw SVG?** The site builds `html`, `pdf`, and `docx`
+> (the narratives ship downloadable Word bundles). Pandoc's docx/LaTeX writers
+> need `rsvg-convert`/`inkscape` to embed SVG, which the build doesn't carry —
+> so a raw `.svg` reference renders on the web but drops out of the Word/PDF
+> bundle. The PNG (rendered at 2×, served `fig-format: retina`) is the portable
+> artifact every format embeds. You author and review the **SVG**; the PNG is
+> generated for you.
+
+## Two registers (ADR-093 + ADR-095)
+
+Every figure is in one of two registers, declared via the sidecar/registry
+`visual_style` field:
+
+- **`blueprint`** (default) — engineering schematics: flows, topologies,
+  decision gates, architecture. The rules below are written for this register.
+- **`illustrative`** ([ADR-095](../adr/adr-095-illustrative-svg-register.md)) —
+  covers, openers, and figures whose job is to make an **abstract idea** land
+  (a metaphor, a journey, a layer). Relaxes rules 1–2 only; see the
+  *Illustrative register* section at the end.
+
+Rule of thumb: **schematic → blueprint; abstract idea / cover / opener →
+illustrative.** When in doubt, blueprint. Both registers use the same pipeline,
+the same palette base, and the same absolute constraints (literal correctly
+spelled text; no photographs; no vendor logos; no generative raster).
+
 ## Canvas
 - **16:9 diagrams** → `viewBox="0 0 1280 720"`
 - **1:1 cover/square** → `viewBox="0 0 1080 1080"`
@@ -29,12 +54,45 @@ See [`palette.json`](palette.json). Quick reference:
 - Code/identifiers: `Consolas, monospace`.
 
 ## Rules
-1. White background; no photos, no people, no vendor logos.
-2. Engineering-blueprint look: rectangles, rounded rectangles, arrows, node + edge labels.
-3. **Spell everything correctly.** SVG `<text>` is literal — there is no excuse for a typo in a rendered figure.
+1. White background; **no photographs and no vendor logos — ever, in either register.** Human figures: forbidden in `blueprint`; permitted as stylized (non-photographic) silhouettes in `illustrative` only (ADR-095).
+2. **Blueprint look** (`blueprint` register): rectangles, rounded rectangles, arrows, node + edge labels; no artistic flourish. The `illustrative` register may use metaphor, scene composition, gradients, and iconography (see below).
+3. **Spell everything correctly.** SVG `<text>` is literal — there is no excuse for a typo in a rendered figure. (Both registers.)
 4. SVG `<text>` does not auto-wrap. Pre-wrap long lines into stacked `<tspan x=… dy=…>` lines, or center short labels with `text-anchor="middle"` + `dominant-baseline="central"`.
 5. Keep it portable: prefer plain SVG (`<rect>`, `<text>`, `<line>`, `<path>`). Use `<foreignObject>` only when you must (it requires the Playwright/Chromium rasterizer, not cairosvg).
 6. amber is reserved for severity/escalation — don't use it decoratively.
+
+## Illustrative register (ADR-095)
+
+Use when a figure's job is to make an **abstract idea** land rather than to
+specify a structure — series covers, book/chapter openers, and inline concept
+art (e.g. the silent NTLM fallback, the identity plane, the migration journey).
+
+**Permitted here (and only here):**
+- **Stylized human silhouettes** — simple shapes (a circle head + a rounded
+  body/`<path>`), never photographic. Use the `figure` / `figure_muted` tokens.
+- **Conceptual metaphor & scene** — horizons, paths, doors, layers, roots —
+  each carrying one specific, nameable idea.
+- **Gradients** — `<linearGradient>` / `<radialGradient>` for sky, depth, glow.
+  cairosvg renders these deterministically; keep stops to the palette tokens.
+- **Iconography** beyond rectangles and arrows.
+
+**Still absolute (inherited, do not break):**
+- No photographs, no vendor logos. Literal, correctly spelled `<text>`.
+- `amber` stays reserved for HIGH/CRITICAL severity — never decorative. `red`
+  keeps loss/gap semantics (an illustration *of* a loss may use it).
+- Portable SVG; `<foreignObject>` only when unavoidable.
+- **Carry an idea, not decoration.** A merely-pretty figure is out of register —
+  cut it or replace it with a blueprint that conveys information.
+
+**Illustrative palette** — see the `illustrative` group in
+[`palette.json`](palette.json): `figure` / `figure_muted` for silhouettes,
+`sky_top` → `sky_low` for horizon gradients, `glow` for luminous accents. Base
+structural tokens (navy, teal, ice, mid_blue, greys) carry the same meaning as
+in blueprint.
+
+**Naming:** illustrative figures use the `-image-NN-` infix (e.g.
+`book01-image-01-the-inheritance.svg`, `index-image-01-…`), reserving
+`-diagram-NN-` for blueprints.
 
 ## Authoring → render loop
 ```bash
