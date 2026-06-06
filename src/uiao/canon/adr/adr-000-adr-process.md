@@ -94,12 +94,18 @@ Two obligations follow:
    inline, resolvable reference to the authoritative source (URL, document ID, or
    clause) at the point of assertion. A References section is necessary but not
    sufficient — the link must be traceable from the claim itself.
-2. **Downstream documents cite the external SSOT, not the ADR, for external facts.**
-   When a guide, narrative, or spec repeats an external fact, it cites the authoritative
-   source the ADR links to — not the ADR. The ADR is cited only for the program's
-   *decision*. Where both appear, attribute each to its proper source, e.g. *"CCM Balance
-   Improvement Release adoption is mandatory by 2027-04-01 (FedRAMP Notice 0009); this
-   program gates its `ccm-bir` ConMon adapter on that date (ADR-043)."*
+2. **Downstream documents must trace external facts to an authoritative source.** When
+   a guide, narrative, or spec repeats an external fact, the citation must *resolve* to
+   the authority. This is satisfied either by citing the authoritative source directly,
+   **or** by citing an ADR that itself carries the inline, traceable link to that source
+   — in which case the ADR serves as the provenance-anchored pointer (the chain
+   document → ADR → source resolves). What is never acceptable is citing an ADR that
+   does **not** carry the link, or asserting an external fact with no traceable source
+   at all. Direct citation of the upstream source is *preferred* for customer-facing
+   clarity but not required when the ADR carries the link. Where a document separates the
+   external fact from the program's response, attribute each to its proper source, e.g.
+   *"NTLM elimination is mandatory by 2027-04-01 (FedRAMP Notice 0009); this program
+   phases it assess → block → eliminate (ADR-068)."*
 
 This sharpens operating principle #1 ("every claim has exactly one canonical source"):
 for a **decision**, that source is the ADR; for an **external fact**, it is the
@@ -118,16 +124,20 @@ authoritative source the ADR points to, never the ADR itself.
 - An ADR that asserts an external fact without a direct, traceable link to its
   authoritative source is a documentation defect; reviewers reject it as they would a
   missing `UIAO_NNN` allocation.
-- A downstream document that cites an ADR as the authority for an external fact —
-  rather than the external SSOT the ADR links to — is a provenance-drift signal to be
-  corrected to point at the authoritative source.
+- A downstream document that cites, for an external fact, an ADR that does **not** carry
+  an inline traceable link to the authority — or that asserts the fact with no traceable
+  source at all — is a provenance-drift signal to be corrected. Citing an ADR that *does*
+  carry the link is acceptable (the chain resolves); citing the upstream source directly
+  is preferred for customer-facing documents.
 
 ## Amendments
 
 - **2026-06-06** — Added "ADRs Are Decision Records, Not Sources of Truth." ADRs are
   SSOT for the decisions they record but not for external facts; external facts require
-  a direct, traceable link to their authoritative source, and downstream documents cite
-  that source rather than the ADR. Decision basis otherwise unchanged.
+  a direct, traceable link to their authoritative source, and downstream documents must
+  trace external facts to that source — either directly, or via an ADR that carries the
+  inline link (the ADR then serves as the resolving provenance pointer; direct upstream
+  citation preferred for customer-facing docs). Decision basis otherwise unchanged.
 
 ## See Also
 
