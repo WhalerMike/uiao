@@ -1,0 +1,128 @@
+---
+title: "Implementation Book 07 — Groups, Administrative Units & the Conditional Access Perimeter"
+subtitle: "Inventory the AD groups behind SQL access with the real Entra group export, classify them by the ADR-067 four-type taxonomy, then provision OrgPath dynamic groups and the DBA Administrative Unit through the modernization adapters — review-required, dry-run first"
+description: "How to transform the access-control layer of SQL Server from AD groups to Entra. Documents the shipped read-only inventory (UIAOIdentityAssessment Export-UIAOEntraGroups / Export-UIAOConditionalAccess, including dynamic-rule capture) and the ADR-067 four-type classification it feeds, then the review-required provisioning patterns routed through the entra-dynamic-groups (UIAO_152) and entra-admin-units (UIAO_154) modernization adapters and the SQL-side CREATE LOGIN FROM EXTERNAL PROVIDER for the group, with the AU-before-groups sequencing ADR-037 requires. The group-to-type classifier and the SQL group-login binding are marked [to build]."
+doc-type: sql-server-implementation-book
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: sql-server-implementation
+series-order: 07
+status: draft
+canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2027-01-01
+---
+
+::: {.content-visible when-format="docx"}
+# Implementation Book 07 — Groups, Administrative Units & the Conditional Access Perimeter
+:::
+
+::: {.callout-note}
+Companion to **narrative Book 07**. The narrative explains why the group-based access model survives the migration but its lifecycle and outer boundary do not; this book is the runbook. **Inventory is read-only and script-backed. Provisioning groups, Administrative Units, and SQL group-logins changes production** and is review-required throughout — dry-run / `-WhatIf` first, capture the planned change, route through change control. (ADR-036, ADR-067, ADR-037, ADR-008)
+:::
+
+## The two phases
+
+Access-control transformation is inventory-then-provision. **Inventory** the AD groups that gate SQL access and the Entra objects that already exist (read-only, shipped scripts). **Provision** the Entra targets — OrgPath dynamic groups, the assigned groups, the DBA Administrative Unit — and bind each access-bearing group to a SQL Server type-E login (review-required, no big-bang).
+
+## Phase 1 — Inventory (read-only, script-backed)
+
+### `Export-UIAOEntraGroups` — the Entra group inventory
+
+The `UIAOIdentityAssessment` module ([`tools/powershell/UIAOIdentityAssessment/`](https://github.com/WhalerMike/uiao/tree/main/tools/powershell/UIAOIdentityAssessment)) ships `Export-UIAOEntraGroups`, which inventories Entra groups and memberships into a sealed evidence envelope. It reads live via `Get-MgGroup` or replays a `-SnapshotPath`, so it runs offline against an export.
+
+| Parameter | Purpose |
+|---|---|
+| `-TenantId` | Target tenant (live mode) |
+| `-SnapshotPath` | Replay a captured Graph export instead of querying live |
+| `-IncludeDynamic` | Capture the **`membershipRule`** for dynamic groups (and flag them); without it dynamic groups are listed but the rule is omitted |
+| `-OutputPath` | Where the sealed envelope is written |
+| `-Cloud` / `-GraphApiVersion` / `-GraphEndpoint` | Cloud-aware endpoint resolution (GCC-Moderate uses the cloud-correct Graph base via `Resolve-UIAOGraphBase`) |
+
+Each record carries `id`, `display_name`, **`is_dynamic`**, **`security_enabled`**, **`mail_enabled`**, `membership_rule` (when `-IncludeDynamic` and dynamic), `member_count`, and `source_fields`. Those three flags are exactly the signal the ADR-067 classification needs: `security_enabled` + `mail_enabled` together distinguish the four types, and `is_dynamic` / `membership_rule` show whether a group is already OrgPath-driven.
+
+```powershell
+Import-Module ./tools/powershell/UIAOIdentityAssessment
+# Live, with dynamic membership rules captured — read-only
+Export-UIAOEntraGroups -TenantId <tenant-guid> -IncludeDynamic -OutputPath .\output
+# Or offline against a captured snapshot
+Export-UIAOEntraGroups -SnapshotPath .\snapshots\groups.json -IncludeDynamic -OutputPath .\output
+```
+
+### `Export-UIAOConditionalAccess` — the perimeter inventory
+
+The same module ships `Export-UIAOConditionalAccess` (live `Get-MgIdentityConditionalAccessPolicy` or `-SnapshotPath`), emitting per-policy `id`, `display_name`, and `state`. Use it to confirm the Conditional Access posture that will become the SQL access perimeter once every login is type-E — the narrative's binary outer boundary. (ADR-008)
+
+### Mapping to the ADR-067 four-type taxonomy
+
+Narrative Book 07 Chapter 1 classifies every migrating AD security group into one of four types; the group inventory flags drive the triage:
+
+| ADR-067 type | Inventory signal | Entra target | SQL consequence |
+|---|---|---|---|
+| **Type 1 — OU-derived** | security-enabled, organizational naming | OrgPath **dynamic** security group (ADR-036) | type-E login for the group |
+| **Type 2 — explicit role-assignment** | security-enabled, no org-derivation | flattened **assigned** security group | type-E login for the group |
+| **Type 3 — distribution list** | mail-enabled, security **off** | Microsoft 365 Group (`securityEnabled: false`) | **no SQL login** — Agent operator email only |
+| **Type 4 — mail-enabled security** | security **and** mail enabled | **split**: M365 Group (mail) + assigned security group (access), correlated by an OrgPath attribute | type-E login on the security half only |
+
+`[to build]` — a classifier that joins the AD source-group export to the `Export-UIAOEntraGroups` envelope and emits a per-group ADR-067 type assignment with the correlation attribute for Type 4 splits. Today the four flags are present in the envelope; the deterministic type-assignment pass over them is not yet a shipped function.
+
+## Phase 2 — Provision (review-required)
+
+::: {.callout-warning}
+## These change production identity
+Creating Entra groups, dynamic-membership rules, Administrative Units, scoped role assignments, and SQL Server type-E group-logins all alter live access control. Provision through the modernization adapters in **dry-run** (their default), review the planned writes, then apply through change control. Microsoft Graph writes resolve the cloud-correct endpoint via `resolve_graph_base()` (GCC-Moderate per ADR-033) and require the `[api]` extra (AGENTS.md).
+:::
+
+### Sequencing — the AU comes first
+
+ADR-037 makes Administrative Unit provisioning a **prerequisite** for the Type 2 explicit-role group migration: a Type 2 group can only be managed under least privilege after the AU and its scoped role assignment exist. The order is fixed:
+
+1. **Provision the DBA Administrative Unit** (confirmed restricted-management, so a Global Admin cannot bypass the division-level delegation).
+2. **Establish the scoped role assignment** (User Administrator scoped to that AU) for the DBA team lead.
+3. **Create the access groups inside the already-scoped boundary** and bind their SQL Server type-E logins.
+
+Provisioning the AU before the groups it will hold avoids the transitional window in which new Entra groups exist but only a tenant-wide administrator can manage them — the exact concentration of privilege the exercise removes.
+
+### Provision the DBA Administrative Unit (entra-admin-units / UIAO_154)
+
+The Administrative Unit is provisioned through the **`entra-admin-units`** modernization adapter (UIAO_154 in `src/uiao/canon/modernization-registry.yaml`), aligned to the OrgPath boundary the DBA team owns so the delegation boundary and the access boundary describe the same scope. ADR-037's restricted-management invariant and cross-canon integrity checks (which reject an AU whose referenced groups or OrgPath values do not resolve to live canon) are enforced by the adapter. Run it dry-run first, review the planned AU and the scoped assignment, then apply.
+
+### Provision OrgPath dynamic groups (entra-dynamic-groups / UIAO_152)
+
+Type 1 (OU-derived) groups become dynamic security groups whose `membershipRule` references OrgPath attributes — provisioned through the **`entra-dynamic-groups`** modernization adapter (UIAO_152). OrgPath attribute values are populated by the OrgPath HR-synchronization pipeline, not managed by hand, so migrating a Type 1 group is two things: confirm the OrgPath attribute infrastructure is in place (an OrgPath-narrative dependency), and author the rule that expresses the original group's organizational logic — for example `(user.extensionAttribute5 -eq "ORG/DEPT/TEAM") -and (user.jobTitle -contains "DBA")`. Validate the rule against the captured inventory before applying. (ADR-036)
+
+Type 2 (explicit-role) groups are flat **assigned** security groups: create the group, populate from the AD source members, and manage membership thereafter through the AU-scoped role assignment rather than a helpdesk ticket. Type 3 (distribution lists) become mail-only M365 Groups with **no** SQL login — only the SQL Agent operator's notification address is repointed. Type 4 (mail-enabled security) splits into the two-object pattern, correlated by an OrgPath extension attribute recorded in the migration audit.
+
+### Bind the group to a SQL Server type-E login
+
+Each access-bearing group (Types 1, 2, and the security half of 4) is bound to a SQL Server type-E login — the same `FROM EXTERNAL PROVIDER` mechanism Book 05 documents, but for the **group**, which is the preferred target because it removes per-user churn:
+
+```sql
+-- Group-based type-E login (review-required; preconditions per Book 05 — SQL 2022+, Arc, validated token)
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'sql-app-readers')
+    CREATE LOGIN [sql-app-readers] FROM EXTERNAL PROVIDER;
+GO
+-- Map the database user and grant the role the AD group previously held
+USE [AppDb];
+CREATE USER [sql-app-readers] FOR LOGIN [sql-app-readers];
+ALTER ROLE [db_datareader] ADD MEMBER [sql-app-readers];
+```
+
+`[to build]` — generation of these group-login statements from the ADR-067-classified inventory (which group → which type-E login → which server/database role), idempotent and dry-run, the way Book 05 generates per-principal logins from the audit CSV. The classification envelope holds the inputs; the emitter over it is not yet shipped.
+
+## Verification & rollback
+
+- **Verify dynamic membership** resolved correctly: confirm expected principals appear in the dynamic group before binding any SQL login to it (a too-broad rule grants SQL access too broadly).
+- **Verify the AU boundary**: the scoped role assignment can manage members of groups *inside* the AU and is denied on groups outside it and on tenant-level identity actions.
+- **Verify the perimeter**: a connection from a non-compliant device or outside Named Locations is denied a token (re-run `Export-UIAOConditionalAccess` to confirm the policy state covers the SQL resource).
+- **Rollback**: Entra groups, dynamic rules, and AUs created by the adapters are reversible (delete the object / revert the rule); the SQL group-login is reversible by `DROP LOGIN` once no user depends on it. Because the AU is restricted and provisioned first, the delegation can be validated long before any group lands inside it.
+
+## The perimeter dividend
+
+Once every SQL login is a type-E login backed by an Entra principal, Conditional Access becomes the binary outer perimeter for all SQL access — device compliance, Named Locations, sign-in risk — and a single surviving Windows-backed login is a bypass path around all of it. That is why Book 09's closure conditions include MFA-via-Conditional-Access for every human principal, and why the group transformation here is a precondition for the zero-trust posture, not a cosmetic relabeling. (ADR-008)
+
+---
+
+*Companion to [narrative Book 07](../sql-server-narrative/Book_07.qmd). Inventory script-backed: `tools/powershell/UIAOIdentityAssessment` (`Export-UIAOEntraGroups`, `Export-UIAOConditionalAccess`). Provisioning via the `entra-admin-units` (UIAO_154) and `entra-dynamic-groups` (UIAO_152) modernization adapters — review-required; the ADR-067 classifier and the group-login emitter are [to build]. Canon: ADR-036, ADR-067, ADR-037, ADR-008, UIAO_135 §3.2.*
