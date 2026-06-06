@@ -125,6 +125,5 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 - ADR-004 — Workload Identity Federation as Default (service-principal / Managed-Identity SQL connections)
 - ADR-090 — UIAO Substrate High Availability (unrelated; resolves the prior "forthcoming ADR-090" mislabel)
 - Spec3-D1.8 — `Get-SQLServerAuthAudit.ps1` (engine-layer discovery baseline)
-- ADR-043 — FedRAMP RFC-0026 / CA-7 ConMon integration (Notice 0009 CCM BIR adoption date 2027-04-01, which ADR-068's NTLM backstop aligns to)
 - Microsoft Learn: "Microsoft Entra authentication for SQL Server enabled by Azure Arc"
 - Microsoft Learn: "CREATE LOGIN ... FROM EXTERNAL PROVIDER (SQL Server 2022)"

@@ -39,7 +39,7 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 
 ### 1. NTLM is deprecated by Microsoft; this program eliminates it on a self-imposed 2027-04-01 backstop
 
-NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's deprecation of NTLM (Windows Server 2025 / Windows 11) and the zero-trust posture this boundary requires — it is **not** a FedRAMP NTLM mandate. FedRAMP Notice 0009 is the *Balance Improvement Release adoption schedule* (see ADR-043); it sets the **CCM BIR** continuous-monitoring adoption deadline of 2027-04-01 and says nothing about NTLM. This program sets its **own** NTLM-elimination backstop at **2027-04-01**, deliberately aligned to that CCM BIR adoption date so the transformed authentication posture is in place and continuously evidenced when BIR-based ConMon reporting becomes mandatory. The phasing below is this program's.
+NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's deprecation of NTLM (Windows Server 2025 / Windows 11) and the zero-trust posture this boundary requires — it is **not** a FedRAMP mandate, and no FedRAMP notice sets an NTLM deadline. This program sets its **own** NTLM-elimination backstop at **2027-04-01** as a planning decision, so the transformed authentication posture is in place across the estate well ahead of Microsoft's NTLM end-of-life. The phasing below is this program's.
 
 - **Phase A (assess):** Tier-2 NTLM telemetry adapter (CCM-BIR ingestion + `Spec3-D1.x` NTLM-audit discovery) inventories every NTLM authentication event in the estate.
 - **Phase B (block-where-safe):** NTLMv1 is disabled tenant-wide on schedule X (default: immediately on Phase A completion). NTLMv2 is restricted via Group Policy to documented exception groups only.
@@ -87,7 +87,7 @@ NTLM elimination is **a program decision recorded in this ADR**, driven by Micro
 ## Consequences
 
 **Positive:**
-- Concrete, sequenced timeline lands substrate authentication modernization ahead of the program's 2027-04-01 NTLM backstop (aligned to the CCM BIR adoption date — ADR-043).
+- Concrete, sequenced timeline lands substrate authentication modernization ahead of the program's 2027-04-01 NTLM backstop.
 - Cloud Kerberos trust preserves legitimate Kerberos use cases without retaining the on-prem KDC trust as the authoritative path.
 - CBA rollout sequence is deterministic; agencies execute the same pattern regardless of which RIT they're on.
 - Exception-class ADRs surface residual long-tail dependencies as named known-unknowns rather than silent failures.
@@ -107,6 +107,5 @@ NTLM elimination is **a program decision recorded in this ADR**, driven by Micro
 - ADR-051 — SAML federation trust anchor
 - UIAO_135 §3.2 — Partially Defined transformation gaps
 - Spec3-D1.8 — `Get-SQLServerAuthAudit.ps1` (SQL Server path covered separately)
-- ADR-043 — FedRAMP RFC-0026 / CA-7 ConMon integration (defines FedRAMP Notice 0009 as the Balance Improvement Release adoption schedule; CCM BIR adoption mandatory 2027-04-01 — the date this program aligns its NTLM backstop to)
 - Microsoft Learn: "NTLM deprecation"
 - Microsoft Learn: "Cloud Kerberos trust deployment"
