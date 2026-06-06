@@ -6,7 +6,7 @@ decided: 2026-05-13
 deciders: Michael Stratton
 updated: 2026-05-13
 next_review: 2026-11-01
-review_trigger: Microsoft Ignite 2026; Windows Server 2025 GA NTLM-deprecation milestones; any Cloud Kerberos trust posture change
+review_trigger: Microsoft Ignite 2026; the next major Windows Server release pinning a network-NTLM default-disable date; `BlockNTLMv1SSO` Oct 2026 enforcement landing; any Cloud Kerberos trust posture change
 impact: UIAO_135 §3.2 (Partially Defined gap closure); broader-than-SQL-server auth modernization (Spec3-D1.8 already covers SQL Server path)
 supersedes: null
 superseded_by: null
@@ -27,7 +27,7 @@ published_at: docs/adr/adr-068-kerberos-ntlm-elimination.html
 
 Spec3-D1.8 (`Get-SQLServerAuthAudit.ps1`) covers the SQL Server path from Windows Authentication (Kerberos/NTLM) to Entra ID auth for SQL 2022+. That covers one workload class. The broader auth modernization for the rest of the on-premises Windows estate remains without an explicit canonical pattern in canon as of UIAO_135 §3.2:
 
-- **NTLM** is the legacy challenge-response protocol Microsoft has signalled for retirement, with Windows Server 2025 GA and the Windows 11 NTLM-deprecation milestones establishing the vendor end-of-life trajectory. Without a canonical NTLM elimination timeline, agencies migrate ad-hoc, leaving long-lived NTLM dependencies in the estate that block zero-trust posture and produce monitoring noise.
+- **NTLM** is the legacy challenge-response protocol Microsoft formally **deprecated** in June 2024 (no further feature development) and is progressively **disabling by default** — not removing — across Windows releases: enhanced NTLM auditing in Windows Server 2025 / Windows 11 24H2; the `BlockNTLMv1SSO` default flipping Audit→Enforce via Windows Update in October 2026; Local KDC and IAKerb fallback-reduction features in H2 2026; and network NTLM disabled by default in the next major Windows Server release (~2027/2028, no fixed calendar date announced). Without a canonical NTLM elimination timeline, agencies migrate ad-hoc, leaving long-lived NTLM dependencies in the estate that block zero-trust posture and produce monitoring noise.
 - **Kerberos** is harder to retire because legitimate workloads still depend on it for delegated authentication patterns Entra ID does not yet fully replicate. The canonical question is **which Kerberos trust posture is the target** — full retirement, hybrid via Cloud Kerberos trust, or per-application carve-outs.
 - **Certificate-based authentication (CBA)** is the canonical modern-auth replacement for password-based auth in Entra ID, but its rollout sequencing relative to NTLM disablement is not yet documented as canon.
 
@@ -39,7 +39,7 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 
 ### 1. NTLM is deprecated by Microsoft; this program eliminates it on a self-imposed 2027-04-01 backstop
 
-NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's deprecation of NTLM (Windows Server 2025 / Windows 11) and the zero-trust posture this boundary requires — it is **not** a FedRAMP mandate, and no FedRAMP notice sets an NTLM deadline. This program sets its **own** NTLM-elimination backstop at **2027-04-01** as a planning decision, so the transformed authentication posture is in place across the estate well ahead of Microsoft's NTLM end-of-life. The phasing below is this program's.
+NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's formal deprecation of NTLM (June 2024) and its default-disable trajectory through the next major Windows Server release (~2027/2028), plus the zero-trust posture this boundary requires — it is **not** a FedRAMP mandate, and no FedRAMP notice sets an NTLM deadline. This program sets its **own** NTLM-elimination backstop at **2027-04-01** as a planning decision, sequenced to land the transformed authentication posture across the estate between Microsoft's October 2026 NTLMv1-SSO enforcement and the network-NTLM default-disable in the next major Server release. Microsoft is disabling NTLM by default, **not** removing it from the OS, and has announced no fixed calendar date for that final step; the 2027-04-01 anchor is the program's, not the vendor's. The phasing below is this program's.
 
 - **Phase A (assess):** Tier-2 NTLM telemetry adapter (CCM-BIR ingestion + `Spec3-D1.x` NTLM-audit discovery) inventories every NTLM authentication event in the estate.
 - **Phase B (block-where-safe):** NTLMv1 is disabled tenant-wide on schedule X (default: immediately on Phase A completion). NTLMv2 is restricted via Group Policy to documented exception groups only.
@@ -107,5 +107,5 @@ NTLM elimination is **a program decision recorded in this ADR**, driven by Micro
 - ADR-051 — SAML federation trust anchor
 - UIAO_135 §3.2 — Partially Defined transformation gaps
 - Spec3-D1.8 — `Get-SQLServerAuthAudit.ps1` (SQL Server path covered separately)
-- Microsoft Learn: "NTLM deprecation"
+- Microsoft Learn — NTLM deprecation roadmap (Jun 2024 formal deprecation; `BlockNTLMv1SSO` default Audit→Enforce Oct 2026; Local KDC + IAKerb H2 2026; network NTLM disabled by default in the next major Windows Server release, ~2027/2028 — no fixed date)
 - Microsoft Learn: "Cloud Kerberos trust deployment"
