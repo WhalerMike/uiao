@@ -492,7 +492,7 @@
 | [`docs/customer-documents/sql-server-narrative/Book_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_01.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_01_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_01_CPT_01.qmd) | 81 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_01_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_01_CPT_02.qmd) | 67 | Brief | ✅ | 2/2 | — |
-| [`docs/customer-documents/sql-server-narrative/Book_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_02.qmd) | 48 | Brief | ✅ | — | — |
+| [`docs/customer-documents/sql-server-narrative/Book_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_02.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_02_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_02_CPT_01.qmd) | 57 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_02_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_02_CPT_02.qmd) | 55 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_02_CPT_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_02_CPT_03.qmd) | 61 | Brief | ✅ | 1/1 | — |
@@ -500,10 +500,10 @@
 | [`docs/customer-documents/sql-server-narrative/Book_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_03.qmd) | 48 | Brief | ✅ | — | — |
 | [`docs/customer-documents/sql-server-narrative/Book_03_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_03_CPT_01.qmd) | 91 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_03_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_03_CPT_02.qmd) | 75 | Brief | ✅ | 1/1 | — |
-| [`docs/customer-documents/sql-server-narrative/Book_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_04.qmd) | 48 | Brief | ✅ | — | — |
+| [`docs/customer-documents/sql-server-narrative/Book_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_04.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_04_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_04_CPT_01.qmd) | 89 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_04_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_04_CPT_02.qmd) | 57 | Brief | ✅ | 1/1 | — |
-| [`docs/customer-documents/sql-server-narrative/Book_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_05.qmd) | 48 | Brief | ✅ | — | — |
+| [`docs/customer-documents/sql-server-narrative/Book_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_05.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_05_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_05_CPT_01.qmd) | 85 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_05_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_05_CPT_02.qmd) | 73 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_06.qmd) | 48 | Brief | ✅ | — | — |
@@ -512,13 +512,13 @@
 | [`docs/customer-documents/sql-server-narrative/Book_07.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_07.qmd) | 48 | Brief | ✅ | — | — |
 | [`docs/customer-documents/sql-server-narrative/Book_07_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_07_CPT_01.qmd) | 75 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_07_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_07_CPT_02.qmd) | 51 | Brief | ✅ | 1/1 | — |
-| [`docs/customer-documents/sql-server-narrative/Book_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_08.qmd) | 48 | Brief | ✅ | — | — |
+| [`docs/customer-documents/sql-server-narrative/Book_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_08.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_08_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_08_CPT_01.qmd) | 67 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_08_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_08_CPT_02.qmd) | 51 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_09.qmd) | 48 | Brief | ✅ | — | — |
 | [`docs/customer-documents/sql-server-narrative/Book_09_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_09_CPT_01.qmd) | 61 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_09_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_09_CPT_02.qmd) | 47 | Brief | ✅ | 1/1 | — |
-| [`docs/customer-documents/sql-server-narrative/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_10.qmd) | 48 | Brief | ✅ | — | — |
+| [`docs/customer-documents/sql-server-narrative/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_10.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_10_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_10_CPT_01.qmd) | 67 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/bridge-orgpath-sql.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/bridge-orgpath-sql.qmd) | 187 | Authored | ✅ | — | — |
 | [`docs/customer-documents/sql-server-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/index.qmd) | 123 | Navigation hub | ✅ | 1/1 | — |
