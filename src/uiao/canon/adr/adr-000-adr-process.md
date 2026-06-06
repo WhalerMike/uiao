@@ -97,9 +97,9 @@ Two obligations follow:
 2. **Downstream documents cite the external SSOT, not the ADR, for external facts.**
    When a guide, narrative, or spec repeats an external fact, it cites the authoritative
    source the ADR links to — not the ADR. The ADR is cited only for the program's
-   *decision*. Where both appear, attribute each to its proper source, e.g. *"NTLM
-   elimination is mandatory by 2027-04-01 (FedRAMP Notice 0009); this program phases it
-   assess → block → eliminate (ADR-068)."*
+   *decision*. Where both appear, attribute each to its proper source, e.g. *"CCM Balance
+   Improvement Release adoption is mandatory by 2027-04-01 (FedRAMP Notice 0009); this
+   program gates its `ccm-bir` ConMon adapter on that date (ADR-043)."*
 
 This sharpens operating principle #1 ("every claim has exactly one canonical source"):
 for a **decision**, that source is the ADR; for an **external fact**, it is the
