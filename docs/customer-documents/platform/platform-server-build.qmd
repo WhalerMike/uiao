@@ -3,7 +3,7 @@ title: "Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Int
 subtitle: "Canonical 14-phase runbook for the UIAO on-premises governance substrate"
 doc-type: runbook
 doc-id: UIAO_SBG_001
-version: "1.3"
+version: "1.4"
 status: DRAFT
 audience: "Platform engineers · sysadmins"
 canon-source: "self (this page) + src/uiao/canon/adr/adr-041-uiao-git-infrastructure.md + src/uiao/canon/release-manifests/platform-server-v1.2.yaml"
@@ -16,13 +16,6 @@ lifecycle_review: 2026-11-22
 ---
 
 # Platform Server Build Guide {.unnumbered}
-
-![14-phase build sequence flow](images/platform-server-build-image-01-14-phase-build-sequence-flow.png){#fig-platform-server-build-image-01 fig-alt="14-phase build sequence flow. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
-
-![reverse-proxy architecture (IIS to Gitea with auth chain)](images/platform-server-build-image-02-reverse-proxy-architecture-iis-t.png){#fig-platform-server-build-image-02 fig-alt="reverse-proxy architecture (IIS to Gitea with auth chain). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
-
-![OrgTree integration projection (Phase 14)](images/platform-server-build-image-03-orgtree-integration-projection-p.png){#fig-platform-server-build-image-03 fig-alt="OrgTree integration projection (Phase 14). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="85%"}
-
 
 ::: {.callout-note title="Canonical authority"}
 This page is the **operational source-of-truth** for the UIAO platform server
@@ -70,6 +63,11 @@ Intune for compliance telemetry and Azure Arc for hybrid management. As of
 this revision, the host is also a first-class OrgTree object: it carries an
 OrgPath, lives inside an Administrative Unit, and emits drift state to the
 UIAO_163 engine.
+
+![The platform host in one page: IIS terminates TLS on 443 and reverse-proxies to Gitea on loopback 3000; AD LDAPS and Entra OIDC supply authentication; Intune and Azure Arc provide compliance and hybrid management; the host carries an OrgPath and emits signed evidence to the UIAO_163 drift engine.](images/platform-server-build-diagram-01-architecture-one-page.png){#fig-architecture-one-page width="90%"}
+
+The text schematic below is the same picture in ASCII, for operators who want
+the literal port and path labels at a glance:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -299,6 +297,8 @@ Detailed operational PowerShell for each phase is **inlined below**
 (Phases 1–13). The Phase summary table here is the navigational index;
 Phase 14 (OrgTree Integration) follows after.
 
+![The fourteen-phase build sequence as a left-to-right pipeline, grouped: Foundation (phases 0–3), Service (4–5), Identity (6–7), Content and governance hooks (8–9), Cloud (10–11), Resilience (12–13), and the OrgTree integration that registers the host as a governed object (phase 14).](images/platform-server-build-diagram-02-phase-sequence.png){#fig-phase-sequence width="95%"}
+
 | # | Phase | Purpose | Posted §  |
 |---|---|---|---|
 | 1 | Windows Server 2025 base | Core role install, patch baseline, firewall profile, WinRM lockdown | §4 |
@@ -370,6 +370,12 @@ Set-WebConfigurationProperty -PSPath 'MACHINE/WEBROOT/APPHOST' `
 ```
 
 ## Phase 3 — TLS certificates
+
+The host requests a server certificate from the enterprise CA, then ACLs the
+private key down to exactly two principals — the Gitea service account and the
+IIS app-pool identity. Nothing else can read it.
+
+![Phase 3 certificate issuance: UIAO-GIT01 submits a certreq to the enterprise issuing CA and accepts the returned certificate into LocalMachine\My; the private key is then read-ACLed to only NT SERVICE\gitea and IIS AppPool\UIAOReverseProxy, with the key marked non-exportable.](images/platform-server-build-diagram-03-tls-issuance.png){#fig-tls-issuance width="85%"}
 
 ```powershell
 # 3.a Request a server certificate from the enterprise CA (template: WebServerV2)
@@ -490,6 +496,13 @@ Start-Service -Name gitea
 
 ## Phase 5 — IIS reverse proxy (443 → Gitea :3000)
 
+IIS terminates TLS on 443 and rewrites every request to Gitea on loopback
+`:3000`, handing off the original protocol and client address through
+`X-Forwarded-*` headers and stamping the security response headers on the way
+back out.
+
+![Phase 5 reverse proxy: an HTTPS client hits the IIS site on 443, which applies a URL Rewrite rule forwarding all paths to http://127.0.0.1:3000 with ARR proxy enabled, adds X-Forwarded-Proto, X-Forwarded-For, and X-Forwarded-Host, and returns HSTS, X-Content-Type-Options, and X-Frame-Options DENY headers; request body limit is 500 MB.](images/platform-server-build-diagram-04-reverse-proxy.png){#fig-reverse-proxy width="90%"}
+
 ```powershell
 # 5.a Site + binding
 Import-Module IISAdministration
@@ -552,6 +565,13 @@ iisreset /restart
 ```
 
 ## Phase 6 — AD LDAPS authentication (Gitea source-config)
+
+Gitea takes two authentication sources, registered across this phase and the
+next: AD DS over LDAPS for legacy local accounts (Phase 6), and Entra ID
+OAuth2/OIDC for federated single sign-on with group claims (Phase 7). The OIDC
+group claims arrive as native Gitea team membership — no manual user admin.
+
+![Phases 6 and 7 authentication: AD DS over LDAPS on port 636 (legacy local accounts, search base scoped to the platform OU) and Entra ID OAuth2/OIDC (federated SSO emitting SecurityGroup claims) both feed Gitea, whose teams are then populated automatically from the Entra group membership.](images/platform-server-build-diagram-05-auth-sources.png){#fig-auth-sources width="90%"}
 
 ```powershell
 # 6.a LDAPS bind account (least-privilege; can read users + group memberships only)
@@ -655,6 +675,13 @@ Test-Path 'D:\Gitea\data\lfs'
 
 ## Phase 9 — Gitea governance hooks
 
+Every push runs a gated hook chain before it can touch `main`: `pre-receive`
+enforces the canon-integrity rules, `update` enforces the branch-naming
+allowlist, and `post-receive` logs the push and fans out to GitHub Actions. A
+push that fails any `pre-receive` gate is rejected outright.
+
+![Phase 9 governance hook pipeline: a git push passes through five pre-receive gates (author in CanonStewards, reject FOUO markings, validate canon YAML frontmatter, enforce the UIAO filename regex, reject unsigned .ps1) — failing any one bounces the push back — then the update gate enforces the branch allowlist and post-receive logs the push and dispatches to GitHub Actions before the change is accepted to main.](images/platform-server-build-diagram-06-governance-hooks.png){#fig-governance-hooks width="95%"}
+
 The pre-receive / update / post-receive hook bodies are authored in
 [`git-server-implementation.qmd` §15 (Phase 12)](./git-server-implementation.qmd)
 and apply unchanged to Gitea; the only path difference is the hook destination —
@@ -754,6 +781,12 @@ New-AzConnectedMachineExtension @ama `
 
 ## Phase 12 — Backup, replication, DR
 
+The nightly job quiesces Gitea, dumps the database and repo storage, ships the
+archive to Azure Blob with a 30-day retention sweep, and keeps a passive
+replica warm for cold restore. The targets are a 24-hour RPO and a 4-hour RTO.
+
+![Phase 12 backup and DR: the active host stops the Gitea service, runs a Gitea dump, compresses the repos, and restarts; the nightly 02:00 job uploads the archive to an Azure Blob container retained 30 days and replicates to a passive replica. Targets are a 24-hour RPO and a 4-hour RTO via cold restore plus DNS cutover.](images/platform-server-build-diagram-07-backup-dr.png){#fig-backup-dr width="90%"}
+
 ```powershell
 function Backup-UIAOGitea {
     [CmdletBinding()]
@@ -805,6 +838,13 @@ RPO target: 24 h (nightly snapshot). RTO target: 4 h (cold restore from
 latest backup blob into the passive replica + DNS cutover).
 
 ## Phase 13 — Security hardening
+
+Hardening is layered: a CIS Level 2 baseline underneath, AppLocker and WDAC
+constraining execution to signed UIAO code, Defender for Servers Plan 2 on top,
+and an audit-policy floor — all forwarded to Sentinel through the Arc-managed
+Azure Monitor Agent.
+
+![Phase 13 defense-in-depth: a stack of layers from a CIS Level 2 baseline at the bottom, up through AppLocker (allow signed UIAO scripts, default deny), WDAC code integrity, Microsoft Defender for Servers Plan 2, and an audit-policy layer; all layers forward telemetry through the Azure Arc and Azure Monitor Agent to Sentinel and Log Analytics.](images/platform-server-build-diagram-08-hardening-layers.png){#fig-hardening-layers width="90%"}
 
 ```powershell
 # 13.a CIS Level 2 baseline via the Microsoft Security Compliance Toolkit GPO
@@ -859,6 +899,8 @@ auditpol /set /category:'Policy Change'        /success:enable /failure:enable
 
 Phase 14 registers the platform server inside the Modernization canon. Five
 sub-phases, each citing a MOD_* appendix rather than duplicating it.
+
+![Phase 14 OrgTree projection: UIAO-GIT01 carries an OrgPath in extensionAttribute1, which fans out to the Entra device object, mirrored Azure Arc tags, an AU for scoped delegation, and dynamic groups that map to Gitea teams; the host emits its canonical state to the UIAO_163 drift engine. The OrgPath must exist in the UIAO_151 codebook or the UIAO_158 schema rejects it.](images/platform-server-build-diagram-09-orgtree-projection.png){#fig-orgtree-projection width="90%"}
 
 ### 14.1 OrgPath tagging
 
@@ -965,6 +1007,8 @@ recalculation).
 
 The platform server emits its canonical state to UIAO_163 on a schedule. Five
 drift signals are reported; any non-zero count opens an SLA ticket per UIAO_167.
+
+![Phase 14.4 drift signals: five signals — OrgPath mismatch (Value Drift), OrgPath not in codebook (Format Drift), AU membership lost (Hierarchy Drift), dynamic group missing from Gitea (Phantom Drift), and a stale Arc heartbeat over 24 hours (operational alert) — all feed the UIAO_163 drift engine, and any non-zero count opens an SLA ticket under UIAO_167.](images/platform-server-build-diagram-10-drift-signals.png){#fig-drift-signals width="90%"}
 
 | Signal | Detection | Drift category |
 |---|---|---|
@@ -1087,6 +1131,8 @@ authoritative; Phase 14 is authored against the OrgTree Modernization Canon
 ADR-041 evaluates two architectures for self-hosting the UIAO Git
 infrastructure on Windows Server 2025 + IIS. Both are documented in this
 repo; only one is canon.
+
+![Appendix A architectural comparison: Option A (rejected) wires IIS Windows Authentication with Kerberos and NTLM to git-http-backend.exe over CGI — no web UI, manual group mapping, lab-mode only; Option B (canon) terminates TLS in IIS on 443 and proxies to native Gitea on 3000, adding a web UI and REST API, AD LDAPS plus Entra OIDC, native hooks and webhooks, and Entra-group-to-Gitea-team mapping. ADR-041 accepted 2026-05-12.](images/platform-server-build-diagram-11-option-a-vs-b.png){#fig-option-a-vs-b width="90%"}
 
 | Aspect | Option A — IIS + `git-http-backend` (CGI) | **Option B — Gitea behind IIS reverse proxy (CANON)** |
 |---|---|---|
