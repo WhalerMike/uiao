@@ -72,7 +72,7 @@ Finds the delegation configurations (unconstrained, KCD, RBCD) and NTLM dependen
 
 ::: {.callout-warning}
 ## These change production
-SPN edits, linked-server reconfiguration, and Group Policy changes alter live authentication. There is **no shipped remediation script** — the patterns below are the verified actions, to be run in a change window after the detection output is reviewed. Validate each in audit mode, capture the planned change, and route it through change control and security review before enforcement.
+SPN edits, linked-server reconfiguration, and Group Policy changes alter live authentication. The remediation **planning** is now shipped and **audit-first**: `New-UIAOSpnRemediationPlan` and `Get-UIAONtlmGpoReport` (`tools/powershell/UIAOSqlServerMigration/`) emit reviewable plans and posture reports but enforce **nothing** — they run no `setspn` and set no GPO. The `setspn` and Group Policy patterns below remain the verified actions, to be run in a change window after the plan is reviewed. Validate each in audit mode, capture the planned change, and route it through change control and security review before enforcement.
 :::
 
 ### Register a missing `MSSQLSvc` SPN
@@ -95,6 +95,8 @@ setspn -D MSSQLSvc/sqlhost:1433 CONTOSO\old-or-disabled-account
 
 A cross-object-type or 2+-enabled-account collision (severity CRITICAL) must be reduced to a single enabled owner before Kerberos will succeed.
 
+**Available** — `New-UIAOSpnRemediationPlan` (`tools/powershell/UIAOSqlServerMigration/`) consumes the Spec3-D1.7 collision report and derives this minimal action set per collision: a `setspn -D` for each disabled/shadowing account, and — for a cross-object-type collision — a `setspn -D` of the user-object SPN plus a workload-identity migration recommendation (ADR-004). It can scope to `MSSQLSvc` with `-ServiceClassFilter` and emit the safe `setspn -S` registration preview for a **missing** SPN. Every action carries `mutating=true` / `requires_review=true` and a `command_preview`; the plan is the deliverable — it runs no `setspn`. (Canon: ADR-068, ADR-004, UIAO_135 §3.2.)
+
 ### Linked-server passthrough
 
 Replace passthrough/impersonated security with a defined security context (or migrate the linked server to its own Entra-authenticated path) so the hop does not silently negotiate NTLM. Re-audit with D1.8 (`LinkedServers`) afterward.
@@ -107,6 +109,8 @@ NTLM elimination is sequenced, not a single cutover:
 - **Phase B — restrict NTLMv2** to documented exception groups via Group Policy.
 - **Phase C — full block** at the program's **2027-04-01** backstop (the program's own planning date — *not* an external FedRAMP or Microsoft mandate; see narrative Book 06 and ADR-068).
 
+**Available** — `Get-UIAONtlmGpoReport` (`tools/powershell/UIAOSqlServerMigration/`) reports each in-scope GPO's NTLM-reduction posture against this phased plan — classifying it `unconfigured` / `below_target` / `phase_b_ntlmv2_only` / `phase_c_full_block` from the LAN Manager authentication level and the Restrict NTLM settings — and records the 2027-04-01 date explicitly as the program backstop, not an external mandate. It is **read-only**: it audits posture and never calls `Set-GPRegistryValue` / `Set-GPO`, so the phased enforcement stays a reviewed change.
+
 ## Verification & rollback
 
 - **Verify Kerberos** after SPN work: `klist purge` then connect, and `klist` to confirm a `MSSQLSvc` ticket was issued (no NTLM).
@@ -115,4 +119,4 @@ NTLM elimination is sequenced, not a single cutover:
 
 ---
 
-*Companion to [narrative Book 06](../sql-server-narrative/Book_06.qmd). Detection scripts: `tools/discovery/Spec1-D1.5`, `Spec3-D1.7`, `Spec1-D1.4`. Remediation: review-required patterns (no shipped script). Canon: ADR-068, UIAO_135 §3.2.*
+*Companion to [narrative Book 06](../sql-server-narrative/Book_06.qmd). Detection scripts: `tools/discovery/Spec1-D1.5`, `Spec3-D1.7`, `Spec1-D1.4`. Remediation planning (shipped, audit-first, enforces nothing): `tools/powershell/UIAOSqlServerMigration/` (`New-UIAOSpnRemediationPlan`, `Get-UIAONtlmGpoReport`); the `setspn` / GPO changes themselves stay review-required. Canon: ADR-068, ADR-004, UIAO_135 §3.2.*
