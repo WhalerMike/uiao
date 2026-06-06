@@ -6,7 +6,7 @@ decided: 2026-06-02
 deciders: Michael Stratton
 updated: 2026-06-02
 next_review: 2026-12-01
-review_trigger: SQL Server vNext authentication GA; Azure extension for SQL Server feature changes; any change to the Notice 0009 2027-04-01 NTLM deadline; consolidation-program target-state decision
+review_trigger: SQL Server vNext authentication GA; Azure extension for SQL Server feature changes; any change to the program's 2027-04-01 NTLM-elimination backstop (ADR-068); consolidation-program target-state decision
 impact: UIAO_135 §3.2 (Partially Defined gap closure — SQL Server Authentication, Transformation #7); engine-layer companion to ADR-068 (protocol layer) and ADR-002 (server/OS layer)
 supersedes: null
 superseded_by: null
@@ -28,7 +28,7 @@ published_at: docs/adr/adr-091-sql-server-authentication-transformation.html
 UIAO_135 §3.2 classifies Transformation #7 (SQL Server Authentication — Service Identity) as **Partially Defined**. The destination is named in UIAO_135 §1.2: Windows Authentication and SQL Authentication are eliminated and replaced with Microsoft Entra ID authentication for SQL Server 2022 and later, enforced through OAuth 2.0 tokens, a Managed Identity for the engine process, and multi-factor authentication for all human principals. What is *partially defined* is the normative canon that governs **how the engine-layer transformation is reached**:
 
 - **Discovery is covered.** `Spec3-D1.8` (`Get-SQLServerAuthAudit.ps1`) is the discovery baseline and produces the per-instance authentication-posture record consumed by the CCM-BIR ingestion pipeline.
-- **The protocol layer is covered.** ADR-068 (Kerberos / NTLM Elimination) governs the mandatory elimination of NTLM by 2027-04-01 per Notice 0009, Cloud Kerberos trust posture, and certificate-based-auth rollout. ADR-068 explicitly scopes SQL Server as a separately-covered workload class.
+- **The protocol layer is covered.** ADR-068 (Kerberos / NTLM Elimination) governs the program's elimination of NTLM on its 2027-04-01 backstop, the Cloud Kerberos trust posture, and certificate-based-auth rollout. ADR-068 explicitly scopes SQL Server as a separately-covered workload class.
 - **The server/OS layer is covered.** ADR-002 (Arc-Enabled Servers Require Non-Domain-Joined State) governs the OS-level Entra identity, Arc enablement, and the domain-unjoin sequencing.
 - **The engine layer is NOT yet covered.** No ADR governs the SQL Server *engine* authentication transformation itself — the canonical login-migration sequence, the policy on SQL Authentication and the `sa` account, the exception path for pre-2022 instances, the relationship between estate consolidation and auth migration, and the CCM-BIR evidence artifact that proves an instance has completed the transformation. Without these positions, every engagement re-litigates the same engine-layer decisions and the migration audit cannot certify Transformation #7 closure.
 
@@ -86,7 +86,7 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 
 ## Implementation Plan
 
-| Phase | Deliverable | Owner | Notice 0009 alignment |
+| Phase | Deliverable | Owner | Program schedule |
 |---|---|---|---|
 | **0** | Full-estate consolidation assessment + per-instance retain/consolidate/retire classification (forthcoming `Spec3-D1.x` estate-consolidation inventory) | DBA + Infrastructure | Pre-2027-04-01 |
 | **A** | `Spec3-D1.8` Arc-eligibility + login-type inventory per **retain**/**target** instance | DBA team | Pre-2027-04-01 |
@@ -116,7 +116,7 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 ## References
 
 - UIAO_135 §1.2, §3.2, §3.3 — Identity & Directory Transformation Inventory (Transformation #7 destination; Partially Defined / Not Yet Defined gaps)
-- ADR-068 — Kerberos / NTLM Elimination (protocol layer; CBA interim posture; Notice 0009 2027-04-01 deadline)
+- ADR-068 — Kerberos / NTLM Elimination (protocol layer; CBA interim posture; program 2027-04-01 NTLM backstop)
 - ADR-002 — Arc-Enabled Servers Require Non-Domain-Joined State (server/OS layer; Arc Managed Identity)
 - ADR-069 — LDAP-Dependent Application Migration (upstream SQL-consuming application chain)
 - ADR-036 — Dynamic Group Provisioning (OrgPath-driven Entra security groups for SQL access)
@@ -125,6 +125,6 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 - ADR-004 — Workload Identity Federation as Default (service-principal / Managed-Identity SQL connections)
 - ADR-090 — UIAO Substrate High Availability (unrelated; resolves the prior "forthcoming ADR-090" mislabel)
 - Spec3-D1.8 — `Get-SQLServerAuthAudit.ps1` (engine-layer discovery baseline)
-- Notice 0009 — https://www.fedramp.gov/20x/notice-0009/
+- ADR-043 — FedRAMP RFC-0026 / CA-7 ConMon integration (Notice 0009 CCM BIR adoption date 2027-04-01, which ADR-068's NTLM backstop aligns to)
 - Microsoft Learn: "Microsoft Entra authentication for SQL Server enabled by Azure Arc"
 - Microsoft Learn: "CREATE LOGIN ... FROM EXTERNAL PROVIDER (SQL Server 2022)"

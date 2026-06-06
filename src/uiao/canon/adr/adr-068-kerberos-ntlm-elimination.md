@@ -27,7 +27,7 @@ published_at: docs/adr/adr-068-kerberos-ntlm-elimination.html
 
 Spec3-D1.8 (`Get-SQLServerAuthAudit.ps1`) covers the SQL Server path from Windows Authentication (Kerberos/NTLM) to Entra ID auth for SQL 2022+. That covers one workload class. The broader auth modernization for the rest of the on-premises Windows estate remains without an explicit canonical pattern in canon as of UIAO_135 §3.2:
 
-- **NTLM** is the legacy challenge-response protocol Microsoft has signalled for retirement, with Windows Server 2025 GA and Notice 0009 establishing concrete deprecation milestones. Without a canonical NTLM elimination timeline, agencies migrate ad-hoc, leaving long-lived NTLM dependencies in the estate that block zero-trust posture and produce monitoring noise.
+- **NTLM** is the legacy challenge-response protocol Microsoft has signalled for retirement, with Windows Server 2025 GA and the Windows 11 NTLM-deprecation milestones establishing the vendor end-of-life trajectory. Without a canonical NTLM elimination timeline, agencies migrate ad-hoc, leaving long-lived NTLM dependencies in the estate that block zero-trust posture and produce monitoring noise.
 - **Kerberos** is harder to retire because legitimate workloads still depend on it for delegated authentication patterns Entra ID does not yet fully replicate. The canonical question is **which Kerberos trust posture is the target** — full retirement, hybrid via Cloud Kerberos trust, or per-application carve-outs.
 - **Certificate-based authentication (CBA)** is the canonical modern-auth replacement for password-based auth in Entra ID, but its rollout sequencing relative to NTLM disablement is not yet documented as canon.
 
@@ -37,11 +37,13 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 
 **Three canonical positions, in operational sequence:**
 
-### 1. NTLM is deprecated and elimination is mandatory by 2027-04-01 (Notice 0009 mandate)
+### 1. NTLM is deprecated by Microsoft; this program eliminates it on a self-imposed 2027-04-01 backstop
+
+NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's deprecation of NTLM (Windows Server 2025 / Windows 11) and the zero-trust posture this boundary requires — it is **not** a FedRAMP NTLM mandate. FedRAMP Notice 0009 is the *Balance Improvement Release adoption schedule* (see ADR-043); it sets the **CCM BIR** continuous-monitoring adoption deadline of 2027-04-01 and says nothing about NTLM. This program sets its **own** NTLM-elimination backstop at **2027-04-01**, deliberately aligned to that CCM BIR adoption date so the transformed authentication posture is in place and continuously evidenced when BIR-based ConMon reporting becomes mandatory. The phasing below is this program's.
 
 - **Phase A (assess):** Tier-2 NTLM telemetry adapter (CCM-BIR ingestion + `Spec3-D1.x` NTLM-audit discovery) inventories every NTLM authentication event in the estate.
 - **Phase B (block-where-safe):** NTLMv1 is disabled tenant-wide on schedule X (default: immediately on Phase A completion). NTLMv2 is restricted via Group Policy to documented exception groups only.
-- **Phase C (eliminate):** All remaining NTLMv2 authentications are remediated to Kerberos or modern auth. Disablement at the LSA layer occurs on the Notice 0009 deadline.
+- **Phase C (eliminate):** All remaining NTLMv2 authentications are remediated to Kerberos or modern auth. Disablement at the LSA layer occurs on the program's 2027-04-01 backstop.
 - **Exception class:** A documented exception list of legacy applications that cannot be remediated by the deadline. Each exception requires a per-app ADR citing the inability-to-migrate reason and the compensating control.
 
 ### 2. Cloud Kerberos trust is the canonical hybrid Kerberos posture; standalone on-prem Kerberos is sunset
@@ -70,7 +72,7 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 
 ## Implementation Plan
 
-| Phase | Deliverable | Owner | Notice 0009 alignment |
+| Phase | Deliverable | Owner | Program schedule |
 |---|---|---|---|
 | **A** | `Spec3-D1.x` NTLM-audit discovery script | Identity team | Pre-2027-04-01 |
 | **A** | CCM-BIR adapter ingestion of NTLM telemetry | Telemetry team | Pre-2027-04-01 |
@@ -79,13 +81,13 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 | **C** | Entra CBA rollout — privileged accounts | Identity team | 2026-Q4 → 2027-Q1 |
 | **C** | Entra CBA rollout — service accounts (WIF per ADR-004) | Identity team | 2027-Q1 |
 | **C** | Entra CBA rollout — non-privileged users by OrgPath | Identity team | 2027-Q1 → 2027-Q2 |
-| **C** | NTLMv2 disablement at LSA layer | Identity team | **2027-04-01 (mandatory)** |
+| **C** | NTLMv2 disablement at LSA layer | Identity team | **2027-04-01 (program backstop)** |
 | **C** | Exception-class ADRs filed per residual legacy app | App owners | Continuous |
 
 ## Consequences
 
 **Positive:**
-- Concrete, sequenced timeline aligns substrate authentication modernization with Notice 0009 mandatory adoption date.
+- Concrete, sequenced timeline lands substrate authentication modernization ahead of the program's 2027-04-01 NTLM backstop (aligned to the CCM BIR adoption date — ADR-043).
 - Cloud Kerberos trust preserves legitimate Kerberos use cases without retaining the on-prem KDC trust as the authoritative path.
 - CBA rollout sequence is deterministic; agencies execute the same pattern regardless of which RIT they're on.
 - Exception-class ADRs surface residual long-tail dependencies as named known-unknowns rather than silent failures.
@@ -105,6 +107,6 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 - ADR-051 — SAML federation trust anchor
 - UIAO_135 §3.2 — Partially Defined transformation gaps
 - Spec3-D1.8 — `Get-SQLServerAuthAudit.ps1` (SQL Server path covered separately)
-- Notice 0009 — https://www.fedramp.gov/20x/notice-0009/
+- ADR-043 — FedRAMP RFC-0026 / CA-7 ConMon integration (defines FedRAMP Notice 0009 as the Balance Improvement Release adoption schedule; CCM BIR adoption mandatory 2027-04-01 — the date this program aligns its NTLM backstop to)
 - Microsoft Learn: "NTLM deprecation"
 - Microsoft Learn: "Cloud Kerberos trust deployment"
