@@ -1,7 +1,7 @@
 ---
 title: "Implementation Book 05 — Login Migration & Parallel-Run Validation"
 subtitle: "Turning the audited logins into Entra ID logins on SQL 2022+ via CREATE LOGIN FROM EXTERNAL PROVIDER, with a parallel-run harness and a 30-day observation window before cutover"
-description: "A review-required pattern runbook for migrating SQL Server authentication to Microsoft Entra ID. Takes the login inventory from Book 03, generates idempotent CREATE LOGIN ... FROM EXTERNAL PROVIDER statements, stands up a parallel-run validation harness with 30-day observation queries, and defines the cutover and rollback. No shipped migration script yet — the book gives the exact T-SQL and validation, marked review-required because it changes production logins."
+description: "A review-required runbook for migrating SQL Server authentication to Microsoft Entra ID. Takes the login inventory from Book 03, codifies the Windows-to-Entra mapping from the UIAO_181 reconciliation, generates idempotent CREATE LOGIN ... FROM EXTERNAL PROVIDER statements as a dry-run script, stands up a parallel-run validation harness with 30-day observation queries, and defines the cutover and rollback. The mapping, script generation, and parallel-run evaluation are shipped in the UIAOSqlServerMigration module and execute nothing against production; the steps stay review-required because the generated T-SQL changes production logins."
 doc-type: sql-server-implementation-book
 audience: [Technical, Customer]
 classification: Controlled
@@ -24,8 +24,8 @@ Companion to **narrative Book 05** and **ADR-091 §1** (parallel-run, consolidat
 :::
 
 ::: {.callout-important}
-## Gap notice + production safety
-There is **no shipped login-migration script** — the audit (Book 03) inventories logins but does not migrate them. This book is the verified *pattern*. Because it runs `CREATE LOGIN` / `ALTER` against production instances, every step is **review-required**: generate statements in dry-run, review them, execute in a change window, and **never drop a Windows login until the Entra login is validated in parallel**.
+## Automation status + production safety
+The login-mapping and script-generation steps are now **shipped** in the `UIAOSqlServerMigration` module (`tools/powershell/UIAOSqlServerMigration/`), and they are deliberately **non-executing**: `New-UIAOEntraLoginMapping` derives the mapping and `New-UIAOEntraLoginScript` writes a reviewable `.sql` file — neither opens a SQL connection. Because the generated T-SQL runs `CREATE LOGIN` / `ALTER` against production instances, every step remains **review-required**: generate statements in dry-run, review them, execute in a change window, and **never drop a Windows login until the Entra login is validated in parallel** (which `Test-UIAOLoginParallelRun` evaluates against the ADR-091 §1 exit criteria).
 :::
 
 ## Preconditions
@@ -63,7 +63,7 @@ Import-Csv .\output\*_logins.csv |
     } | Set-Content .\output\create-entra-logins.sql
 ```
 
-`[to build]` — the Windows-login → Entra-principal mapping (the `EntraPrincipal` column) is the one piece of real judgment here; codify it from the `UIAOIdentityAssessment` reconciliation (UIAO_181) rather than mapping by hand.
+**Available** — the Windows-login → Entra-principal mapping (the `EntraPrincipal` column) is the one piece of real judgment here, and `New-UIAOEntraLoginMapping` (`tools/powershell/UIAOSqlServerMigration/`) codifies it from the `UIAOIdentityAssessment` reconciliation (UIAO_181) rather than from a hand-built spreadsheet: it joins the Book 03 login audit to the `IdentityReconciliation` envelope, maps only cleanly **matched** principals automatically, prefers a supplied Entra **group** map (group-based logins are the target), and flags every unresolved login for review instead of silently dropping it. `New-UIAOEntraLoginScript` then turns that mapping into the idempotent `CREATE LOGIN ... FROM EXTERNAL PROVIDER` `.sql` file shown above — dry-run only, no SQL connection, with unresolved entries emitted as commented-out TODOs. (Canon: ADR-091, UIAO_181, UIAO_135 §3.2.)
 
 ## Step 2 — Map database users to the new logins
 
@@ -99,6 +99,8 @@ Stand up an Extended Events session (or SQL Audit) to capture `login` events for
 - **No** `NTLM` rows remain for the instance (cross-check Book 06).
 - No connection is *still* arriving only on the legacy Windows login.
 
+**Available** — `Test-UIAOLoginParallelRun` (`tools/powershell/UIAOSqlServerMigration/`) evaluates a captured set of these observations against the three exit criteria and returns a sealed `cutover_ready` verdict (per login: which auth schemes were seen, whether AAD is among them, whether the login still arrives only on a legacy scheme). It is read-only — it reports readiness; it never disables or drops a login.
+
 ## Step 4 — Cutover
 
 Only after the observation window's exit criteria are met:
@@ -130,4 +132,4 @@ ALTER LOGIN [sa] DISABLE;
 
 ---
 
-*Companion to [narrative Book 05](../sql-server-narrative/Book_05.qmd) and ADR-091 §1. No shipped script — review-required pattern; mapping marked [to build] against UIAO_181. Canon: ADR-091, UIAO_135 §3.2.*
+*Companion to [narrative Book 05](../sql-server-narrative/Book_05.qmd) and ADR-091 §1. Shipped automation: `tools/powershell/UIAOSqlServerMigration/` (`New-UIAOEntraLoginMapping` codifies the mapping from UIAO_181, `New-UIAOEntraLoginScript` generates dry-run T-SQL, `Test-UIAOLoginParallelRun` evaluates the cutover exit criteria) — review-required; the generated T-SQL executes nothing on generation. Canon: ADR-091, UIAO_181, UIAO_135 §3.2.*
