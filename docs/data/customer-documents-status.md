@@ -219,7 +219,7 @@
 | [`docs/customer-documents/operational-guides/orgpath-implementation/05-intune-device-writeback.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/orgpath-implementation/05-intune-device-writeback.qmd) | 155 | Authored | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/orgpath-implementation/06-arc-server-writeback.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/orgpath-implementation/06-arc-server-writeback.qmd) | 181 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/operational-guides/orgpath-implementation/07-operate-and-troubleshoot.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/orgpath-implementation/07-operate-and-troubleshoot.qmd) | 165 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/operational-guides/orgpath-implementation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/orgpath-implementation/index.qmd) | 112 | Navigation hub | ✅ | 1/1 | — |
+| [`docs/customer-documents/operational-guides/orgpath-implementation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/orgpath-implementation/index.qmd) | 117 | Navigation hub | ✅ | 1/1 | — |
 | [`docs/customer-documents/operational-guides/pki-modernization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/pki-modernization.qmd) | 1470 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/operational-guides/platform-substrate/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/platform-substrate/index.qmd) | 43 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/operational-guides/program-management/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/program-management/index.qmd) | 34 | Navigation hub | ✅ | — | aspirational |
@@ -456,7 +456,7 @@
 | [`docs/customer-documents/orgpath-narrative/Book_17_CPT_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_17_CPT_08.qmd) | 146 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_17_CPT_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_17_CPT_09.qmd) | 109 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_17_CPT_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_17_CPT_10.qmd) | 115 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 119 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 124 | Navigation hub | ✅ | — | — |
 
 ### `platform/`
 
@@ -501,7 +501,7 @@
 | [`docs/customer-documents/sql-server-implementation/Book_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_08.qmd) | 150 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-implementation/Book_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_09.qmd) | 124 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-implementation/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_10.qmd) | 125 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/sql-server-implementation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/index.qmd) | 109 | Navigation hub | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/index.qmd) | 114 | Navigation hub | ✅ | 1/1 | — |
 
 ### `sql-server-narrative/`
 
@@ -539,7 +539,7 @@
 | [`docs/customer-documents/sql-server-narrative/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_10.qmd) | 50 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/Book_10_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/Book_10_CPT_01.qmd) | 67 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/sql-server-narrative/bridge-orgpath-sql.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/bridge-orgpath-sql.qmd) | 187 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/index.qmd) | 123 | Navigation hub | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-narrative/index.qmd) | 128 | Navigation hub | ✅ | 1/1 | — |
 
 ### `substrate/`
 
