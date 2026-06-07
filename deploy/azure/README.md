@@ -38,7 +38,7 @@ best fit because:
 
 ## Components (Bicep)
 
-`bicep/main.bicep` orchestrates these modules:
+`bicep/main.bicep` orchestrates these modules (under `bicep/modules/`):
 
 | Module | Resource | Role |
 |---|---|---|
@@ -54,7 +54,8 @@ best fit because:
 ## Configuration
 
 The container reads `UIAO_SAAS_*` env vars (see
-`src/uiao/saas/settings.py`). The Bicep wires these from module outputs and
+`src/uiao/saas/settings.py`), plus the Azure SDK's `AZURE_CLIENT_ID` for
+managed-identity selection. The Bicep wires these from module outputs and
 secrets; the relevant ones:
 
 | Variable | Source |
@@ -100,7 +101,8 @@ az deployment group create -g <rg> \
 2. The control plane records the tenant (`pending → active`) and stamps the
    per-tenant resources (DB schema, Blob container, Key Vault scope). With
    `UIAO_SAAS_STAMP_EXECUTION_ENABLED=true` the `AzureStampExecutor`
-   (`uiao.saas.azure_provisioners`) executes the stamp against Azure; by
+   (`uiao.saas.azure_stamp`, constructed via `build_stamp_executor()` in
+   `uiao.saas.azure_provisioners`) executes the stamp against Azure; by
    default the `NoOpStampExecutor` plans it without executing.
 3. Inbound requests carrying that tenant's token are resolved by
    `TenantResolutionMiddleware` and bound to a per-request tenant context.
