@@ -69,30 +69,7 @@ is the chosen compute target because:
 
 ## 3. Architecture
 
-```
-            Entra ID — customer tenants (admin-consented)
-                         │  inbound JWT (carries the tid claim)
-                         ▼
-        ┌─────────────────────────────────────────────┐
-        │  Azure Container App: uiao.saas.asgi:app      │
-        │                                               │
-        │   Data plane                                  │
-        │     • TenantResolutionMiddleware              │
-        │       (verifies token → resolves tenant →     │
-        │        binds a per-request TenantContext)     │
-        │     • the existing uiao.api governance routes │
-        │                                               │
-        │   Control plane  (/control/v1)                │
-        │     • onboard / list / suspend / resume /     │
-        │       deprovision tenants                     │
-        │                                               │
-        │   Managed identity → per-tenant Graph / ARM   │
-        └─────────────────────────────────────────────┘
-             │                │                  │
-       PostgreSQL         Key Vault          Blob Storage
-   (tenant registry +   (per-tenant       (tenant-scoped
-    per-tenant state)    secrets)          evidence bundles)
-```
+![UIAO Azure SaaS architecture: customer Entra tenants send inbound JWTs (tid claim) to one Azure Container App running `uiao.saas.asgi:app`, which hosts the data plane (TenantResolutionMiddleware + uiao.api routes) and the control plane (/control/v1), uses a managed identity for per-tenant Graph/ARM tokens, and is backed by PostgreSQL, Key Vault, and Blob Storage.](images/saas-architecture.png){#fig-saas-architecture fig-alt="Engineering blueprint diagram on a white background. Three ice-blue navy-bordered boxes at top labeled Customer tenant A, B, C under the caption Entra ID customer tenants admin-consented. A teal arrow labeled inbound JWT tid claim points down into a large ice-blue box labeled Azure Container App uiao.saas.asgi:app, which contains two navy boxes — Data plane with TenantResolutionMiddleware plus uiao.api governance routes, and Control plane /control/v1 with onboard suspend resume deprovision — above a teal pill reading Managed identity to per-tenant Microsoft Graph / ARM tokens. Three teal arrows descend to three navy boxes labeled PostgreSQL tenant registry plus state, Key Vault per-tenant secrets, and Blob Storage evidence bundles. No human figures, 16:9 landscape." width="90%"}
 
 The two planes share one process and one `/healthz` liveness endpoint:
 
@@ -119,11 +96,7 @@ plane** (strong namespace isolation enforced in code) **plus a control-plane
 stamp pattern** for customers whose compliance posture requires dedicated
 resources. The lifecycle state machine is:
 
-```
-PENDING ──▶ ACTIVE ──▶ SUSPENDED ──▶ ACTIVE
-   │           │            │
-   └───────────┴────────────┴────────▶ DEPROVISIONED  (terminal)
-```
+![Tenant lifecycle state machine: PENDING transitions to ACTIVE on onboard/consent; ACTIVE to SUSPENDED on suspend and back on resume; any state can be deprovisioned into the terminal DEPROVISIONED state. Only ACTIVE serves governance traffic.](images/saas-tenant-lifecycle.png){#fig-saas-lifecycle fig-alt="Engineering blueprint state diagram on a white background. An ice-blue PENDING box has a teal arrow labeled onboard / consent to a teal ACTIVE box annotated serves governance traffic, which has a teal arrow labeled suspend to an ice-blue SUSPENDED box, and a curved teal return arrow labeled resume. Red arrows from all three states converge downward, labeled deprovision from any state, into a navy DEPROVISIONED box annotated terminal. No human figures, 16:9 landscape." width="85%"}
 
 Only `ACTIVE` tenants receive governance traffic; the middleware rejects all
 others.
