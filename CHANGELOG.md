@@ -12,6 +12,13 @@ ARM tokens via a managed identity.
 
 ### Added
 
+- **Concrete per-tenant stamp executor** (`uiao.saas.azure_stamp`
+  `AzureStampExecutor` + `uiao.saas.azure_provisioners`) — provisions a
+  tenant's Postgres schema, Blob container, and Key Vault secret scope (named
+  after the strictly-validated `data_namespace`). Orchestration is
+  dependency-free and fake-tested; the Azure-backed provisioners lazy-import
+  the `[saas]` SDKs. Wired into `attach_saas()`; executes only when
+  `UIAO_SAAS_STAMP_EXECUTION_ENABLED` is set (dry-run otherwise).
 - **`uiao.saas` package** — the multi-tenant layer that composes onto the
   existing `uiao.api` data plane via `attach_saas()`:
   - `tenant` — the `Tenant` aggregate + lifecycle state machine
