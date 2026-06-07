@@ -467,7 +467,7 @@
 | [`docs/customer-documents/platform/governance-dashboard-design.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/governance-dashboard-design.qmd) | 124 | Authored | ✅ | — | — |
 | [`docs/customer-documents/platform/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/index.qmd) | 61 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/platform/orgpath-runtime.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/orgpath-runtime.qmd) | 204 | Authored | ✅ | 1/1 | aspirational |
-| [`docs/customer-documents/platform/platform-server-build.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/platform-server-build.qmd) | 1121 | Substantial | ✅ | 3/3 | aspirational |
+| [`docs/customer-documents/platform/platform-server-build.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/platform-server-build.qmd) | 1167 | Substantial | ✅ | 11/11 | aspirational |
 
 ### `reference-architecture/`
 
@@ -479,7 +479,7 @@
 | [`docs/customer-documents/reference-architecture/directory-migration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/directory-migration.qmd) | 134 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/drift-walkthrough.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/drift-walkthrough.qmd) | 222 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/reference-architecture/dynamic-groups.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/dynamic-groups.qmd) | 132 | Authored | ✅ | — | — |
-| [`docs/customer-documents/reference-architecture/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/index.qmd) | 158 | Navigation hub | ✅ | 3/3 | — |
+| [`docs/customer-documents/reference-architecture/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/index.qmd) | 164 | Navigation hub | ✅ | 3/3 | — |
 | [`docs/customer-documents/reference-architecture/intune-first.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/intune-first.qmd) | 266 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/orgpath-faq.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/orgpath-faq.qmd) | 364 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/orgtree.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/orgtree.qmd) | 135 | Authored | ✅ | — | — |
