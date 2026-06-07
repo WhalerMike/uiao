@@ -102,6 +102,40 @@ The design principle is **lift the existing engine onto managed Azure compute
 and storage, change nothing about the control-plane/data-plane line.** Each
 existing component has a near-1:1 managed-Azure counterpart.
 
+![Azure-native OrgPath service architecture: Azure/M365 portals read native state on top; the managed OrgPath control plane (Mapping, Codebook, Drift Engine, Reconcile Orchestrator + the UIAO_102 provider-adapter layer across six control-plane slots) in the middle; provider data planes at the runtime bottom. The service writes via Graph/ARM/RADIUS/REST; the portals reflect the corrected state.](images/orgpath-azure-service-diagram-01-architecture.png)
+
+> **Figure (blueprint, ADR-093).** SVG is the source of truth
+> ([`images/orgpath-azure-service-diagram-01-architecture.svg`](images/orgpath-azure-service-diagram-01-architecture.svg));
+> the PNG is the rendered artifact (`python scripts/render_svg_images.py` /
+> `cairosvg`). No new Mermaid is introduced (AGENTS.md Operating Principle 7).
+>
+> **Slot reconciliation to canon.** The originating CoPilot blueprint used the
+> labels *Identity / Endpoint / Server / Network / Addressing / Telemetry*. The
+> figure renders the **six canonical slots** from
+> [`control-planes.yml`](../src/uiao/canon/data/control-planes.yml) instead:
+> *identity, addressing, network, telemetry, endpoint, security.* CoPilot's
+> "Server (Arc/ARM)" is the **endpoint** plane's server case (the endpoint plane
+> covers laptops, servers, VMs, containers — `control-planes.yml`), so Arc/ARM
+> folds into Endpoint; and CoPilot omitted the canonical **security** slot
+> (Azure Policy / Conditional Access / Zero Trust enforcement), which the figure
+> restores. This keeps the diagram on the SSOT slot taxonomy rather than an
+> ad-hoc one.
+
+**End-to-end flow** (the closed loop the figure depicts):
+
+1. **Codebook** defines the org — desired state (UIAO_151).
+2. **Mapping** derives facets from AD / HR.
+3. **Drift Engine** validates each facet and classifies divergence (UIAO_163;
+   five drift classes; P1 = codebook-integrity, never auto-remediated).
+4. **Reconcile Orchestrator** plans corrections (`plan / apply / verify`),
+   dry-run by default.
+5. **Provider adapters** (UIAO_102) apply them on the right plane: Graph →
+   Entra/Intune, ARM → Arc / Azure Policy, RADIUS/REST → NAC, REST → Infoblox —
+   L3 human-gated, L4 only for enumerated low-blast-radius ops.
+6. **Evidence** emits to Log Analytics / Sentinel (UIAO_174).
+7. **Portals reflect** the corrected state — they read the native attributes and
+   tags the service wrote; no portal change required.
+
 ### 3.1 Component mapping (current repo → Azure-native)
 
 | Concern | Today (repo) | Azure-native target | Notes |
