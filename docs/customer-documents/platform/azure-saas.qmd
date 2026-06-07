@@ -238,6 +238,31 @@ identity requests — consistent with the adapter cloud-resolution convention.
 A sovereign-cloud SaaS *offering* is a future decision and a listed ADR-096
 review trigger; no sovereign SaaS is stood up today.
 
+## 13. Verticals: SQL Server transformation (same plane, adjacent execution)
+
+A governed vertical does **not** mean its every operation runs inside the
+multi-tenant container. The SQL Server Identity Transformation
+([ADR-097](../../adr/adr-097-sql-server-saas-placement.qmd)) is the worked
+example of the placement rule: its **governance** is the *same* SaaS, its
+**host-level execution** is *adjacent*, in the customer's boundary.
+
+![SQL Server transformation placement: the UIAO Azure SaaS control & evidence plane (tenant onboarding, SQL-logins-to-Entra identity mapping, evidence fabric, ARM/managed-identity orchestration) on the left; the customer boundary on the right (Arc-connected host → execution runner → SQL Server engine). The SaaS orchestrates the runner and ingests signed evidence; it never connects directly to the SQL engine.](images/sql-saas-placement.png){#fig-sql-saas-placement fig-alt="Engineering blueprint diagram. Left: an ice-blue box titled UIAO Azure SaaS control and evidence plane containing four stacked boxes — Tenant onboarding plus data_namespace isolation; Identity mapping SQL logins to Entra principals; Evidence fabric auth audit KSI CCM-BIR; and a teal ARM plus managed-identity orchestration plan apply reconcile dry-run default. Right: a dashed-border box titled Customer boundary Arc-connected containing a navy Arc-connected host plus managed identity, a teal Execution runner UIAOSqlServerMigration PowerShell, and a navy SQL Server engine sysadmin credential stays in-boundary, connected top to bottom with login migration. Two teal arrows cross the gap: orchestrate from SaaS to runner, signed evidence from runner to SaaS. A red dashed line with an X along the bottom reads UIAO never opens a direct connection to the customer's SQL engine, ADR-092 lane discipline. No human figures, 16:9 landscape." width="95%"}
+
+- **Same SaaS** — tenant onboarding + `data_namespace` isolation, the
+  SQL-logins-→-Entra identity model, the evidence fabric (auth audit · KSI ·
+  CCM-BIR), and ARM/managed-identity orchestration. SQL is the **server
+  (Arc/ARM) case** of the endpoint plane, incorporated like Intune and Arc.
+- **Adjacent execution** — the authentication audit, Arc enrollment, and login
+  migration run on the **Arc-connected host** via an execution runner
+  (`UIAOSqlServerMigration`, PowerShell). The control plane orchestrates
+  (`plan`/`apply`/`reconcile`, dry-run default) and ingests **signed
+  evidence**; sysadmin credentials and engine access never leave the customer
+  boundary, and the SaaS never connects to the engine directly (ADR-092 lane
+  discipline).
+
+This is encoded in canon: `sql-server` is registered in the modernization
+adapter registry with `runner-class: on-prem-self-hosted`.
+
 ## Provenance
 
 - Decision record: [ADR-096](../../adr/adr-096-azure-saas-architecture.qmd).
