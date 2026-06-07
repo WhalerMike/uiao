@@ -572,6 +572,33 @@ python deploy/windows-server/run.py
 
 > **Note:** The REST API is for server-side deployment in GCC-Moderate environments. For local analysis, use the CLI commands in sections 3.7–3.9 instead.
 
+### 5.1 Multi-Tenant SaaS Control Plane (`[saas]` Extra — ADR-096)
+
+The `uiao.saas` module turns the single-tenant `uiao.api` service into a **multi-tenant SaaS** on Azure Container Apps. It composes onto the existing data plane and adds a tenant-resolution middleware plus a control-plane API. It is gated behind the `[saas]` optional extra (which pulls in `[api]` plus SQLAlchemy/asyncpg, PyJWT, and the Azure SDKs).
+
+**Installation & entrypoint:**
+
+```bash
+pip install "uiao[saas]"
+uvicorn uiao.saas.asgi:app --host 0.0.0.0 --port 8000
+```
+
+**Control-plane endpoints** (require a publisher-tenant bearer token carrying the `UIAO.SaaS.Admin` app role):
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/control/v1/tenants` | POST | Onboard a customer tenant; returns the admin-consent URL + planned stamp steps. |
+| `/control/v1/tenants` | GET | List onboarded tenants. |
+| `/control/v1/tenants/{id}` | GET | Inspect a single tenant. |
+| `/control/v1/tenants/{id}/suspend` | POST | Suspend a tenant (blocks its data-plane traffic). |
+| `/control/v1/tenants/{id}/resume` | POST | Resume a suspended tenant. |
+| `/control/v1/tenants/{id}` | DELETE | Deprovision a tenant (terminal). |
+| `/healthz` | GET | Liveness/readiness probe (public). |
+
+**Data-plane authentication:** every non-public request carries an Entra access token from the *customer's* tenant. `TenantResolutionMiddleware` verifies the token (RS256/JWKS in production), resolves the `tid` claim to a registered tenant, rejects non-onboarded/non-active tenants with `403`, and binds a per-request tenant context.
+
+> **Deployment & operations:** see the [UIAO Azure SaaS](../customer-documents/platform/azure-saas.qmd) platform guide and [ADR-096](../adr/adr-096-azure-saas-architecture.qmd). The deploy workflow is manual-dispatch only (dormant until launched).
+
 ---
 
 ## 6. Pipeline Architecture
