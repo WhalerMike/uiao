@@ -556,6 +556,7 @@
     - [Where SQL Server Touches ADCS](customer-documents/sql-server-narrative/Book_10_CPT_01.html)
 - **SQL Server Identity Transformation — Implementation Companion**
   - [SQL Server Identity Transformation — Implementation Companion](customer-documents/sql-server-implementation/index.html)
+  - [Implementation Book 01 — Prerequisites & Using This Companion](customer-documents/sql-server-implementation/Book_01.html)
   - [Implementation Book 02 — Estate Discovery & the Consolidation Gate](customer-documents/sql-server-implementation/Book_02.html)
   - [Implementation Book 03 — The Authentication Audit](customer-documents/sql-server-implementation/Book_03.html)
   - [Implementation Book 04 — Arc Deployment & the Managed Identity](customer-documents/sql-server-implementation/Book_04.html)

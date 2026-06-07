@@ -1,14 +1,14 @@
 ---
 title: "Implementation Book 08 — The Application Chain & Connection-String Migration"
-subtitle: "Inventory the LDAP-bind dependency with the real Spec3-D1.9 audit, classify each SQL-consuming application by the ADR-069 four-class taxonomy, then run the review-required connection-string change that removes the stored credential — the last mile"
-description: "How to complete the authentication chain upstream of SQL Server. Documents the shipped Spec3-D1.9 Get-LDAPBindAccountInventory audit with its real parameters, discovery methods, output fields, and risk/migration-target columns, maps its output onto the ADR-069 four-class taxonomy (OIDC / SAML / App Proxy / Entra Domain Services), then gives the review-required connection-string migration patterns — Active Directory Managed Identity / Service Principal / Default, the DefaultAzureCredential chain, and the three gate conditions — that remove the stored credential. The SQL-connection-target correlation and the per-application class emitter are marked [to build]."
+subtitle: "Inventory the LDAP-bind dependency with the real Spec3-D1.9 audit, correlate and classify each SQL-consuming application by the ADR-069 four-class taxonomy with New-UIAOAppConnectionPlan, then run the review-required connection-string change that removes the stored credential — the last mile"
+description: "How to complete the authentication chain upstream of SQL Server. Documents the shipped Spec3-D1.9 Get-LDAPBindAccountInventory audit with its real parameters, discovery methods, output fields, and risk/migration-target columns, then New-UIAOAppConnectionPlan — which correlates D1.9 to the Book 03 D1.8 audit, classifies each app by the ADR-069 four-class taxonomy (OIDC / SAML / App Proxy / Entra Domain Services), and emits the connection-string migration plan — followed by the review-required connection-string patterns (Active Directory Managed Identity / Service Principal / Default, the DefaultAzureCredential chain, and the three gate conditions) that remove the stored credential."
 doc-type: sql-server-implementation-book
 audience: [Technical, Customer]
 classification: Controlled
 boundary: GCC-Moderate
 family: sql-server-implementation
 series-order: 08
-status: draft
+status: active
 canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
 lifecycle: active
 tiers_adopted: []
@@ -60,7 +60,18 @@ Under `-OutputPath`: a `*_LDAPBindAccountInventory*.json` (`Summary` + the accou
 
 D1.9 inventories the **LDAP-bind accounts** and their risk and Graph-migration target. It does **not** record which SQL Server instance/database each application connects to, nor does it assign an ADR-069 class — those require correlation with the Book 03 `Spec3-D1.8` instance audit and with per-application modernization signals (SAML metadata URLs, OIDC discovery endpoints, vendor docs).
 
-`[to build]` — the correlation pass that joins the D1.9 bind-account inventory to the D1.8 instance audit (the way Book 03's run order chains the Spec family) and emits a per-application record with the **SQL connection target**, the **current SQL auth mechanism** (Windows Integrated / SQL Auth / already-Managed-Identity), and a recommended **ADR-069 class** with its detection signals. The two audits exist; the join + class-assignment emitter is not yet shipped.
+**`New-UIAOAppConnectionPlan`** (`tools/powershell/UIAOSqlServerMigration/`) is the correlation-and-classification pass. It joins the D1.9 bind-account inventory to the Book 03 `Spec3-D1.8` instance audit (matching each bind account to the SQL login it maps to, so the plan names the exact `correlated_sql_instances`), assigns each application an ADR-069 class — preferring the cleanest end-state, OIDC > SAML > App Proxy > Domain Services — from a supplied `-CapabilityMap` of observable signals (oidc / saml / reverse_proxy / vendor_locked), falling back to the D1.9 `MigrationTarget`, and for any app correlated to a SQL login emits the connection-string transformation that removes the stored credential. Apps with no capability signal and no `MigrationTarget` land in `review` rather than being mis-classified.
+
+```powershell
+Import-Module ./tools/powershell/UIAOSqlServerMigration
+New-UIAOAppConnectionPlan `
+    -LdapBindInventoryPath .\output\*LDAPBindAccountInventory*.json `
+    -AuthAuditPath         .\output\sqlserver-auth-audit.json `
+    -CapabilityMap         .\config\app-capabilities.json `
+    -OutputPath            .\output\app-connection-plan.json
+```
+
+It is **read-only derivation** — every record is `mutating` + `requires_review`, and the function changes nothing; the connection-string change itself (Phase 2) stays the gated, in-config step below.
 
 ## The ADR-069 four-class triage
 
@@ -79,7 +90,7 @@ The two tracks are independent and can sequence separately — but **both** must
 
 ::: {.callout-warning}
 ## The simplest change, the most gated
-Technically the connection-string change is one keyword; operationally it is the most gate-controlled step in the program. There is **no shipped script** — the change is made in application configuration. Three gate conditions must hold first, and the cutover runs in a change window.
+Technically the connection-string change is one keyword; operationally it is the most gate-controlled step in the program. `New-UIAOAppConnectionPlan` emits the per-application *plan* (which app, which instances, which target keyword), but the change itself is made in **application configuration** by deliberate choice — there is no script that rewrites a production connection string. Three gate conditions must hold first, and the cutover runs in a change window.
 :::
 
 ### The change
@@ -129,4 +140,4 @@ Note the **data-plane audience** (`https://database.usgovcloudapi.net/` in Azure
 
 ---
 
-*Companion to [narrative Book 08](../sql-server-narrative/Book_08.qmd). Inventory script-backed: `tools/discovery/Spec3-D1.9`. Connection-string migration: review-required pattern (no shipped script); the D1.9↔D1.8 correlation + ADR-069 class emitter is [to build]. Canon: ADR-069, ADR-051, ADR-004, UIAO_135 §3.2.*
+*Companion to [narrative Book 08](../sql-server-narrative/Book_08.qmd). Inventory script-backed: `tools/discovery/Spec3-D1.9`. Correlation + ADR-069 classification + connection-string plan: `tools/powershell/UIAOSqlServerMigration` (`New-UIAOAppConnectionPlan`). The connection-string change itself is a review-required, in-config step. Canon: ADR-069, ADR-051, ADR-004, UIAO_135 §3.2.*

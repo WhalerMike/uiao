@@ -3,11 +3,21 @@
 #
 # The shipped automation behind the "Implementation Companion" runbooks for the
 # SQL Server identity transformation:
+#   - Book 02 (estate discovery & the consolidation gate) — the fused Phase-0
+#     estate inventory with the ADR-091 §1 retain/consolidate/retire gate
 #   - Book 04 (Arc deployment & the managed identity) — onboarding + validation
 #   - Book 05 (login migration to Entra) — CREATE LOGIN ... FROM EXTERNAL PROVIDER
 #     script generation from the audit, with parallel-run validation
 #   - Book 06 (NTLM/Kerberos remediation) — SPN-collision remediation planning
 #     and NTLM-reduction Group Policy reporting
+#   - Book 07 (groups, AUs & the CA perimeter) — ADR-067 group classification and
+#     the group-login emitter
+#   - Book 08 (the application chain) — the Spec3-D1.9<->D1.8 correlation, ADR-069
+#     app classification, and the connection-string migration plan
+#   - Book 09 (continuous monitoring) — the ADR-091 §5 CCM-BIR closure record and
+#     the scheduled-run drift diff
+#   - Book 10 (certificate discovery) — SQL's three ADCS dependencies and the
+#     dependency-ordered CA-replacement (CBA-issuance) bridge
 #
 # Doctrine (matches the tools/powershell convention — OrgPathTools /
 # UIAOImportAdapters / UIAOIdentityAssessment / UIAOPlanGenerators):
@@ -28,6 +38,8 @@
 #     testable offline (snapshot inputs), exactly like the sibling modules.
 #
 # Exports (function roster):
+#   Estate discovery (Book 02):
+#     New-UIAOEstateInventory          fused Phase-0 inventory + retain/consolidate/retire gate
 #   Arc (Book 04):
 #     Test-UIAOArcAgentStatus          azcmagent status -> sealed validation
 #     Test-UIAOArcManagedIdentityToken IMDS token audience/exp validation
@@ -40,11 +52,21 @@
 #   NTLM / Kerberos (Book 06):
 #     New-UIAOSpnRemediationPlan       SPN-collision remediation plan (audit-first)
 #     Get-UIAONtlmGpoReport            NTLM-reduction GPO reporting (read-only)
+#   Groups / AUs (Book 07):
+#     New-UIAOEntraGroupClassification ADR-067 four-type group classification
+#     New-UIAOGroupLoginScript         CREATE LOGIN for access-backing groups (dry-run)
+#   Application chain (Book 08):
+#     New-UIAOAppConnectionPlan        D1.9<->D1.8 correlation + ADR-069 + conn-string plan
+#   Continuous monitoring (Book 09):
+#     New-UIAOClosureRecord            ADR-091 §5 CCM-BIR per-instance closure record
+#     Compare-UIAOClosureRun           scheduled-run drift diff (compliance violations)
+#   Certificates (Book 10):
+#     New-UIAOSqlCertificatePlan       SQL ADCS dependencies + CA-replacement sequence
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Script:ModuleVersion = '1.0.0'
+$Script:ModuleVersion = '1.1.0'
 
 # Safety cap for a single source artifact (SI-10). Inputs (audit CSV/JSON,
 # snapshots) are small relative to this; anything larger is rejected rather than
@@ -1225,6 +1247,964 @@ function Get-UIAONtlmGpoReport {
 
 
 # ---------------------------------------------------------------------------
+# Shared helpers for the Books 02/07/08/09/10 derivations
+# ---------------------------------------------------------------------------
+
+function Get-UIAOArrayProp {
+    # StrictMode-safe read of a named array property; returns @() when the
+    # property is absent or null (ConvertFrom-Json objects throw on a missing
+    # member under Set-StrictMode -Version Latest, so every nested-array read
+    # goes through here, mirroring the Accounts read in New-UIAOSpnRemediationPlan).
+    [CmdletBinding()]
+    [OutputType([object[]])]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()]$Row,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+    if ($null -eq $Row) { return @() }
+    foreach ($n in $Names) {
+        $p = $Row.PSObject.Properties | Where-Object { $_.Name -ieq $n } | Select-Object -First 1
+        if ($p -and ($null -ne $p.Value)) { return @($p.Value) }
+    }
+    return @()
+}
+
+function ConvertTo-UIAOBool {
+    # Coerce a JSON/CSV-sourced truthy value to [bool]. Absent/empty is $false.
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([Parameter(Mandatory = $false)][AllowNull()]$Value)
+    if ($null -eq $Value) { return $false }
+    if ($Value -is [bool]) { return $Value }
+    return ("$Value".Trim() -match '(?i)^(true|1|yes|y|enabled)$')
+}
+
+function Get-UIAOInstanceKey {
+    # Normalize a SQL instance identity to a stable join key. A default instance
+    # ('MSSQLSERVER' / blank) keys on the host alone, so the same instance found
+    # by different instruments deduplicates.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory = $false)][AllowNull()][string]$Server, [Parameter(Mandatory = $false)][AllowNull()][string]$Instance)
+    $s = if ($Server) { $Server.Trim().ToLowerInvariant() } else { '' }
+    if ($s.Contains('\')) { $s = $s.Split('\')[0] }   # SERVER\INST in the host field
+    $i = if ($Instance) { $Instance.Trim().ToLowerInvariant() } else { '' }
+    if ([string]::IsNullOrWhiteSpace($i) -or $i -in @('mssqlserver', 'default')) { return $s }
+    return "$s\$i"
+}
+
+
+# ===========================================================================
+# Book 02 — Estate discovery & the consolidation gate (ADR-091 §1)
+# ===========================================================================
+
+function New-UIAOEstateInventory {
+    <#
+    .SYNOPSIS
+        Fuse the shipped discovery instruments into one deduplicated estate
+        inventory and apply the ADR-091 §1 retain / consolidate / retire gate
+        (Book 02). Read-only derivation — the Phase-0 instrument.
+    .DESCRIPTION
+        Resolves the Book 02 [to build] marker: the fused Phase-0 estate-discovery
+        instrument. No single instrument finds every instance, so this consumes
+        the outputs the shipped scripts already produce and merges them into the
+        estate *denominator* every later book operates on:
+
+          -AuthAuditPath     Spec3-D1.8 discovery output (instances enumerated
+                             via registry/AD; the InstanceAudits[] / records).
+          -SpnInventoryPath  Spec1-D1.5 MSSQLSvc SPN trail (Kerberos-configured
+                             hosts otherwise off the radar). Optional.
+          -FindInstancePath  A Find-DbaInstance export (network/Browser sweep).
+                             Optional.
+
+        Each instance is keyed on host\instance (default instances key on host),
+        so the same instance seen by multiple instruments deduplicates while the
+        `discovered_by` set records coverage. The three rationalization lenses
+        resolve to one classification per instance:
+          - retire     — zombie: last access older than -ZombieThresholdDays.
+          - consolidate— pre-2022 engine (cannot accept Entra logins in place;
+                         the surviving workload moves to a SQL 2022 target).
+          - retain     — supported engine (SQL 2022+), enters auth migration.
+          - review     — insufficient signal (version/last-access unknown); never
+                         silently defaulted to retain.
+
+        Pure derivation over reviewed discovery output — it reads no live host or
+        directory and changes nothing. Consolidation *execution* stays review-
+        required and lives in the program's migration plan, not here.
+    .PARAMETER AuthAuditPath
+        Path to a Spec3-D1.8 discovery output (.json or .csv).
+    .PARAMETER SpnInventoryPath
+        Optional path to a Spec1-D1.5 MSSQLSvc SPN inventory (.json or .csv).
+    .PARAMETER FindInstancePath
+        Optional path to a Find-DbaInstance export (.csv or .json).
+    .PARAMETER ZombieThresholdDays
+        Last-access age (days) at/above which an instance with a last-access
+        signal is classified 'retire'. Default 400.
+    .PARAMETER OutputPath
+        Optional path for the sealed estate-inventory envelope JSON.
+    .NOTES
+        Canon: ADR-091 §1, UIAO_135 §3.2. Book 02. Read-only derivation.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$AuthAuditPath,
+        [Parameter(Mandatory = $false)][string]$SpnInventoryPath,
+        [Parameter(Mandatory = $false)][string]$FindInstancePath,
+        [Parameter(Mandatory = $false)][ValidateRange(1, 100000)][int]$ZombieThresholdDays = 400,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    $estate = @{}        # key -> [ordered] record
+    $derived = @()
+
+    function Merge-Estate {
+        param($Key, $Server, $Instance, $Source, [hashtable]$Fields)
+        if ([string]::IsNullOrWhiteSpace($Key)) { return }
+        if (-not $estate.ContainsKey($Key)) {
+            $estate[$Key] = [ordered]@{
+                instance_key        = $Key
+                server_name         = $Server
+                instance_name       = $Instance
+                port                = $null
+                sql_version_major   = $null
+                sql_edition         = $null
+                authentication_mode = $null
+                service_account     = $null
+                last_access_days    = $null
+                discovered_by       = @()
+            }
+        }
+        $rec = $estate[$Key]
+        if (-not ($rec.discovered_by -contains $Source)) { $rec.discovered_by = @($rec.discovered_by + $Source) }
+        foreach ($f in $Fields.Keys) {
+            if (($null -eq $rec[$f]) -or ("$($rec[$f])" -eq '')) {
+                if (($null -ne $Fields[$f]) -and ("$($Fields[$f])" -ne '')) { $rec[$f] = $Fields[$f] }
+            }
+        }
+    }
+
+    # --- Source 1: Spec3-D1.8 (authoritative instance enumeration) -------------
+    $auditFull = Assert-UIAOInputPath -Path $AuthAuditPath
+    $auditData = Read-UIAOSourceData -Path $auditFull
+    foreach ($r in (Get-UIAORows -Data $auditData -PreferredArrayKeys @('InstanceAudits', 'records', 'Instances'))) {
+        $server = Get-UIAOFieldValue $r @('ServerName', 'server_name', 'ComputerName', 'HostName')
+        $inst = Get-UIAOFieldValue $r @('InstanceName', 'instance_name', 'Instance')
+        $verRaw = Get-UIAOFieldValue $r @('SQLVersionMajor', 'sql_version_major', 'VersionMajor')
+        $ver = $null; if ($verRaw) { $tmp = 0; if ([int]::TryParse("$verRaw", [ref]$tmp)) { $ver = $tmp } }
+        Merge-Estate -Key (Get-UIAOInstanceKey -Server $server -Instance $inst) -Server $server -Instance $inst -Source 'Spec3-D1.8' -Fields @{
+            port                = Get-UIAOFieldValue $r @('Port', 'port')
+            sql_version_major   = $ver
+            sql_edition         = Get-UIAOFieldValue $r @('SQLEdition', 'sql_edition', 'Edition')
+            authentication_mode = Get-UIAOFieldValue $r @('AuthenticationMode', 'authentication_mode', 'LoginMode')
+            service_account     = Get-UIAOFieldValue $r @('ServiceAccountName', 'service_account', 'ServiceAccount')
+            last_access_days    = Get-UIAOFieldValue $r @('LastAccessDays', 'last_access_days')
+        }
+    }
+    $derived += [ordered]@{ source = 'Spec3-D1.8-Get-SQLServerAuthAudit'; source_file = (Split-Path -Leaf $auditFull) }
+
+    # --- Source 2: Spec1-D1.5 SPN trail (optional) -----------------------------
+    if (-not [string]::IsNullOrWhiteSpace($SpnInventoryPath)) {
+        $spnFull = Assert-UIAOInputPath -Path $SpnInventoryPath
+        $spnData = Read-UIAOSourceData -Path $spnFull
+        foreach ($r in (Get-UIAORows -Data $spnData -PreferredArrayKeys @('SPNs', 'records', 'Orphans'))) {
+            $spnHost = Get-UIAOFieldValue $r @('HostName', 'ServerName', 'Host', 'ComputerName')
+            $spn = Get-UIAOFieldValue $r @('SPN', 'spn', 'ServicePrincipalName')
+            if (-not $spnHost -and $spn -and $spn.Contains('/')) {
+                # MSSQLSvc/host[:port] — pull the host (and dynamic-port instance, if any).
+                $hp = $spn.Split('/')[-1]
+                $spnHost = $hp.Split(':')[0]
+            }
+            if (-not $spnHost) { continue }
+            Merge-Estate -Key (Get-UIAOInstanceKey -Server $spnHost -Instance $null) -Server $spnHost -Instance $null -Source 'Spec1-D1.5' -Fields @{}
+        }
+        $derived += [ordered]@{ source = 'Spec1-D1.5-Get-KerberosSPNInventory'; source_file = (Split-Path -Leaf $spnFull) }
+    }
+
+    # --- Source 3: Find-DbaInstance network sweep (optional) -------------------
+    if (-not [string]::IsNullOrWhiteSpace($FindInstancePath)) {
+        $fiFull = Assert-UIAOInputPath -Path $FindInstancePath
+        $fiData = Read-UIAOSourceData -Path $fiFull
+        foreach ($r in (Get-UIAORows -Data $fiData -PreferredArrayKeys @('records', 'Instances'))) {
+            $server = Get-UIAOFieldValue $r @('ComputerName', 'computer_name', 'ServerName', 'SqlInstance')
+            $inst = Get-UIAOFieldValue $r @('InstanceName', 'instance_name')
+            if (-not $server) { continue }
+            Merge-Estate -Key (Get-UIAOInstanceKey -Server $server -Instance $inst) -Server $server -Instance $inst -Source 'Find-DbaInstance' -Fields @{
+                port = Get-UIAOFieldValue $r @('Port', 'TCPPort', 'port')
+            }
+        }
+        $derived += [ordered]@{ source = 'Find-DbaInstance'; source_file = (Split-Path -Leaf $fiFull) }
+    }
+
+    # --- Classify (the gate) ---------------------------------------------------
+    $records = foreach ($key in ($estate.Keys | Sort-Object)) {
+        $rec = $estate[$key]
+        $basis = @()
+        $lastAccess = $null
+        if ($null -ne $rec.last_access_days -and "$($rec.last_access_days)" -ne '') {
+            $t = 0; if ([int]::TryParse("$($rec.last_access_days)", [ref]$t)) { $lastAccess = $t }
+        }
+        $ver = $rec.sql_version_major
+
+        $classification = 'review'
+        if (($null -ne $lastAccess) -and ($lastAccess -ge $ZombieThresholdDays)) {
+            $classification = 'retire'; $basis += "no access in >= $ZombieThresholdDays days (zombie)"
+        }
+        elseif ($null -ne $ver -and $ver -lt 16) {
+            $classification = 'consolidate'; $basis += "pre-2022 engine (v$ver) cannot accept Entra logins in place — move surviving workload to a SQL 2022 target"
+        }
+        elseif ($null -ne $ver -and $ver -ge 16) {
+            $classification = 'retain'; $basis += "supported engine (v$ver) — enters the authentication migration (Book 03+)"
+        }
+        else {
+            $basis += 'insufficient signal (engine version and last-access unknown) — classify manually before the gate'
+        }
+
+        $rec.classification = $classification
+        $rec.classification_basis = @($basis)
+        $rec.enters_auth_migration = ($classification -eq 'retain')
+        $rec
+    }
+    $records = @($records)
+
+    $counts = [ordered]@{
+        retain      = @($records | Where-Object { $_.classification -eq 'retain' }).Count
+        consolidate = @($records | Where-Object { $_.classification -eq 'consolidate' }).Count
+        retire      = @($records | Where-Object { $_.classification -eq 'retire' }).Count
+        review      = @($records | Where-Object { $_.classification -eq 'review' }).Count
+    }
+    $coverage = [ordered]@{}
+    foreach ($s in @('Spec3-D1.8', 'Spec1-D1.5', 'Find-DbaInstance')) {
+        $coverage[$s] = @($records | Where-Object { $_.discovered_by -contains $s }).Count
+    }
+    $envelope = New-UIAOMigrationEnvelope -ArtifactType 'EstateInventory' -Records $records `
+        -SourceRef "audit:$(Split-Path -Leaf $auditFull)" -DerivedFrom $derived `
+        -ExtraData ([ordered]@{
+            gate                = 'ADR-091 §1 retain/consolidate/retire'
+            denominator         = $records.Count
+            classification      = $counts
+            source_coverage     = $coverage
+            zombie_threshold_days = $ZombieThresholdDays
+            consolidation_execution = 'review_required'
+        })
+    return (Write-UIAOEnvelopeOutput -Envelope $envelope -OutputPath $OutputPath)
+}
+
+
+# ===========================================================================
+# Book 07 — Groups, AUs & the CA perimeter (ADR-067, ADR-036)
+# ===========================================================================
+
+function New-UIAOEntraGroupClassification {
+    <#
+    .SYNOPSIS
+        Classify each exported Entra/AD group into exactly one of the ADR-067
+        canonical group types and attach its transformation pattern (Book 07).
+        Read-only derivation.
+    .DESCRIPTION
+        Resolves the Book 07 [to build] marker (classifier side). Consumes an
+        Export-UIAOEntraGroups envelope (UIAOIdentityAssessment) and assigns each
+        group exactly one ADR-067 type from its observable shape
+        (groupTypes / mail_enabled / security_enabled / membership_rule):
+
+          - orgtree_dynamic_group  — dynamic membership (a rule, or groupTypes
+                                      contains DynamicMembership) → ADR-036.
+          - mail_enabled_split     — mail-enabled security group → two-object
+                                      pattern (M365 Group for mail + assigned
+                                      security group for access, correlated by
+                                      OrgPath).
+          - distribution_m365_group— mail-only distribution list → M365 Group,
+                                      securityEnabled:false (never access control).
+          - assigned_security_group— security-only group → assigned Entra security
+                                      group, flattened (record nesting in audit).
+          - m365_unified           — already a Unified M365 group (no access action).
+          - review                 — insufficient signal; classified manually.
+
+        Each record carries the type, its target_state, the transformation, the
+        provisioning adapter, and `becomes_sql_login` (the access-backing types a
+        SQL login is created for in Book 05/07). Pure derivation — reads no live
+        directory and writes nothing but the sealed classification.
+    .PARAMETER GroupExportPath
+        Path to an Export-UIAOEntraGroups envelope (.json) or a group list (.csv).
+    .PARAMETER OutputPath
+        Optional path for the sealed classification envelope JSON.
+    .NOTES
+        Canon: ADR-067, ADR-036, UIAO_135 §3.2. Book 07. Read-only derivation.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$GroupExportPath,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    $full = Assert-UIAOInputPath -Path $GroupExportPath
+    $data = Read-UIAOSourceData -Path $full
+    # Export-UIAOEntraGroups is a sealed envelope (.data.records); a raw .csv is a
+    # bare row set. Unwrap the envelope when present, else read the rows directly.
+    $rows = if (($data.PSObject.Properties.Name -contains 'data') -and $data.data -and ($data.data.PSObject.Properties.Name -contains 'records')) {
+        Get-UIAORows -Data $data.data.records
+    }
+    else {
+        Get-UIAORows -Data $data -PreferredArrayKeys @('records', 'groups', 'Groups')
+    }
+
+    $records = foreach ($r in $rows) {
+        $name = Get-UIAOFieldValue $r @('display_name', 'displayName', 'DisplayName', 'name', 'GroupName')
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
+        $mail = Get-UIAOFieldValue $r @('mail', 'Mail')
+        $mailEnabled = ConvertTo-UIAOBool (Get-UIAOFieldValue $r @('mail_enabled', 'mailEnabled', 'MailEnabled'))
+        $secEnabled = ConvertTo-UIAOBool (Get-UIAOFieldValue $r @('security_enabled', 'securityEnabled', 'SecurityEnabled'))
+        $rule = Get-UIAOFieldValue $r @('membership_rule', 'membershipRule', 'MembershipRule')
+        $gtJoined = ((Get-UIAOArrayProp -Row $r -Names @('groupTypes', 'GroupTypes', 'group_types')) | ForEach-Object { "$_" }) -join ','
+
+        $type = 'review'; $target = $null; $transform = 'Insufficient signal (no groupTypes / mail / security flags) — classify manually.'; $adapter = 'n/a'
+        $requiresSplit = $false; $flatten = $false; $dynamic = $false; $becomesLogin = $false
+        if ($gtJoined -match '(?i)Unified') {
+            $type = 'm365_unified'; $target = 'Microsoft 365 Group (already Unified)'
+            $transform = 'No access-group action; governed via M365 Group lifecycle (mail/Teams/SharePoint).'
+        }
+        elseif ($rule -or ($gtJoined -match '(?i)Dynamic')) {
+            $type = 'orgtree_dynamic_group'; $target = 'OrgTree-* dynamic group (ADR-036)'; $dynamic = $true; $becomesLogin = $true
+            $transform = 'Provision via the entra-dynamic-groups adapter (UIAO_152); membership derives from the OrgPath rule.'
+            $adapter = 'entra-dynamic-groups (UIAO_152)'
+        }
+        elseif ($mailEnabled -and $secEnabled) {
+            $type = 'mail_enabled_split'; $target = 'Two-object: M365 Group (mail) + assigned security group (access), correlated by OrgPath'; $requiresSplit = $true; $becomesLogin = $true
+            $transform = 'Split into a mail object and an access object; correlate via the OrgPath extension attribute (ADR-067).'
+            $adapter = 'manual split + entra-dynamic-groups (UIAO_152)'
+        }
+        elseif ($mailEnabled) {
+            $type = 'distribution_m365_group'; $target = 'Microsoft 365 Group, securityEnabled:false'
+            $transform = 'Mail-only distribution surface; never used for access control (ADR-067).'
+        }
+        elseif ($secEnabled) {
+            $type = 'assigned_security_group'; $target = 'Assigned Entra security group (flattened)'; $flatten = $true; $becomesLogin = $true
+            $transform = 'Direct membership; flatten any nesting and record the transitive chain in the migration audit (ADR-067).'
+            $adapter = 'entra-admin-units (UIAO_154) for DBA AU scoping'
+        }
+
+        [ordered]@{
+            display_name       = $name
+            group_type         = $type
+            target_state       = $target
+            transformation     = $transform
+            provisioning_adapter = $adapter
+            mail               = $mail
+            security_enabled   = $secEnabled
+            mail_enabled       = $mailEnabled
+            dynamic            = $dynamic
+            requires_split     = $requiresSplit
+            flatten_required   = $flatten
+            becomes_sql_login  = $becomesLogin
+        }
+    }
+    $records = @($records)
+
+    $typeCounts = [ordered]@{}
+    foreach ($t in @('assigned_security_group', 'orgtree_dynamic_group', 'distribution_m365_group', 'mail_enabled_split', 'm365_unified', 'review')) {
+        $typeCounts[$t] = @($records | Where-Object { $_.group_type -eq $t }).Count
+    }
+    $envelope = New-UIAOMigrationEnvelope -ArtifactType 'EntraGroupClassification' -Records $records `
+        -SourceRef "group_export:$(Split-Path -Leaf $full)" `
+        -DerivedFrom ([ordered]@{ source = 'UIAOIdentityAssessment.Export-UIAOEntraGroups'; source_file = (Split-Path -Leaf $full) }) `
+        -ExtraData ([ordered]@{ taxonomy = 'ADR-067 four-type'; type_counts = $typeCounts; review_required = (@($records | Where-Object { $_.group_type -eq 'review' }).Count -gt 0) })
+    return (Write-UIAOEnvelopeOutput -Envelope $envelope -OutputPath $OutputPath)
+}
+
+function New-UIAOGroupLoginScript {
+    <#
+    .SYNOPSIS
+        Generate idempotent CREATE LOGIN ... FROM EXTERNAL PROVIDER T-SQL for the
+        access-backing groups in an ADR-067 classification. DRY-RUN ONLY — writes
+        a reviewable .sql file and opens no SQL connection (Book 07).
+    .DESCRIPTION
+        Resolves the Book 07 [to build] marker (group-login-emitter side). Consumes
+        a New-UIAOEntraGroupClassification envelope and emits one idempotent
+        `IF NOT EXISTS (...) CREATE LOGIN [<group>] FROM EXTERNAL PROVIDER;` per
+        group whose ADR-067 type backs access (`becomes_sql_login` = true:
+        assigned security, OrgTree dynamic, and the access side of a mail-enabled
+        split). Mail-only distribution / Unified M365 groups and `review` groups
+        are NOT emitted as runnable T-SQL — they appear only as commented-out
+        lines so a mail group can never become a SQL login. The group name is
+        bracket-quoted with embedded `]` doubled. Like Book 05's login emitter it
+        never opens a SQL connection; the script is the deliverable.
+    .PARAMETER ClassificationPath
+        Path to a New-UIAOEntraGroupClassification envelope JSON.
+    .PARAMETER OutputPath
+        Path for the generated .sql script (recommended). When omitted the T-SQL
+        is returned as a string.
+    .NOTES
+        Canon: ADR-067, ADR-091, UIAO_135 §3.2. Book 07. Generates a script;
+        executes nothing — review-required before any change window.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$ClassificationPath,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    $full = Assert-UIAOInputPath -Path $ClassificationPath
+    $env = Read-UIAOSourceData -Path $full
+    $rows = Get-UIAORows -Data $env.data.records
+
+    $lines = @()
+    $lines += '-- Generated by UIAOSqlServerMigration (Book 07). DRY-RUN ARTIFACT — review before executing.'
+    $lines += '-- Idempotent CREATE LOGIN ... FROM EXTERNAL PROVIDER for access-backing Entra groups (ADR-067).'
+    $lines += "-- Source classification: $(Split-Path -Leaf $full)"
+    $lines += '-- Group-based logins are the target: they remove per-user login churn (Book 07).'
+    $lines += ''
+
+    $emitted = 0; $skipped = 0
+    foreach ($r in $rows) {
+        $name = Get-UIAOFieldValue $r @('display_name', 'DisplayName', 'name')
+        $type = Get-UIAOFieldValue $r @('group_type', 'GroupType')
+        $isLogin = ConvertTo-UIAOBool (Get-UIAOFieldValue $r @('becomes_sql_login', 'BecomesSqlLogin'))
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
+        if (-not $isLogin) {
+            $skipped++
+            $lines += "-- skipped ($type): '$name' does not back SQL access — no login emitted."
+            continue
+        }
+        $safe = $name.Replace(']', ']]')
+        $lines += "IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'$($name.Replace("'", "''"))')"
+        $lines += "    CREATE LOGIN [$safe] FROM EXTERNAL PROVIDER;"
+        $lines += 'GO'
+        $emitted++
+    }
+    $lines += ''
+    $lines += "-- Summary: $emitted group login(s) generated, $skipped non-access group(s) skipped."
+    $text = ($lines -join "`n") + "`n"
+
+    Write-UIAOTextOutput -Text $text -OutputPath $OutputPath
+    return $text
+}
+
+
+# ===========================================================================
+# Book 08 — The application chain & connection-string migration (ADR-069)
+# ===========================================================================
+
+function New-UIAOAppConnectionPlan {
+    <#
+    .SYNOPSIS
+        Correlate the Spec3-D1.9 LDAP-bind inventory with the Spec3-D1.8 SQL
+        audit, classify each app by the ADR-069 four-class taxonomy, and emit the
+        review-required connection-string migration plan (Book 08). Read-only
+        derivation.
+    .DESCRIPTION
+        Resolves the Book 08 [to build] marker: the D1.9 <-> D1.8 correlation plus
+        the ADR-069 class emitter. Consumes:
+
+          -LdapBindInventoryPath  Spec3-D1.9 output — the LDAP-bind accounts and
+                                  their source applications.
+          -AuthAuditPath          Spec3-D1.8 output (optional) — to correlate a
+                                  bind account to the SQL login(s) it maps to, so
+                                  the plan names the exact instances affected.
+          -CapabilityMap          optional app -> capability hashtable/JSON
+                                  ({ oidc; saml; reverse_proxy; vendor_locked }),
+                                  the observable signals ADR-069 classifies on.
+
+        Each app is assigned exactly one ADR-069 class, preferring the cleanest
+        end-state (OIDC > SAML > App Proxy > Domain Services):
+          - Class 3 — OIDC                  (oidc/oauth capable)
+          - Class 2 — SAML                  (SAML 2.0 capable)
+          - Class 1 — Entra App Proxy       (legacy web app behind a reverse proxy)
+          - Class 4 — Entra Domain Services (vendor-locked LDAP bind; carve-out)
+          - review                          (no capability signal and no D1.9
+                                            MigrationTarget — classified manually)
+
+        For apps correlated to a SQL login the plan also emits the connection-
+        string transformation that removes the stored credential — the last mile.
+        Every record is mutating + requires_review; the function changes nothing.
+    .PARAMETER LdapBindInventoryPath
+        Path to a Spec3-D1.9 LDAP-bind inventory (.json or .csv).
+    .PARAMETER AuthAuditPath
+        Optional path to a Spec3-D1.8 SQL audit for the bind-account correlation.
+    .PARAMETER CapabilityMap
+        Optional: hashtable, or path to a JSON object, mapping app -> capabilities.
+    .PARAMETER OutputPath
+        Optional path for the sealed connection-plan envelope JSON.
+    .NOTES
+        Canon: ADR-069, ADR-051, ADR-004, UIAO_135 §3.2. Book 08. Read-only
+        derivation; the connection-string change itself is review-required.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$LdapBindInventoryPath,
+        [Parameter(Mandatory = $false)][string]$AuthAuditPath,
+        [Parameter(Mandatory = $false)]$CapabilityMap,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    $full = Assert-UIAOInputPath -Path $LdapBindInventoryPath
+    $data = Read-UIAOSourceData -Path $full
+    $rows = Get-UIAORows -Data $data -PreferredArrayKeys @('LDAPBindAccounts', 'ldapAccounts', 'records', 'accountGroups')
+
+    # SQL-login lookup from the D1.8 audit (normalized account key -> [instances]).
+    $sqlLoginKeys = @{}
+    $auditRef = $null
+    if (-not [string]::IsNullOrWhiteSpace($AuthAuditPath)) {
+        $auditFull = Assert-UIAOInputPath -Path $AuthAuditPath
+        $auditData = Read-UIAOSourceData -Path $auditFull
+        $auditRef = "audit:$(Split-Path -Leaf $auditFull)"
+        foreach ($inst in (Get-UIAORows -Data $auditData -PreferredArrayKeys @('InstanceAudits', 'records', 'Instances'))) {
+            $server = Get-UIAOFieldValue $inst @('ServerName', 'server_name', 'ComputerName')
+            $instLogins = @()
+            foreach ($arr in @('WindowsLogins', 'SQLLogins', 'Logins')) { $instLogins += (Get-UIAOArrayProp -Row $inst -Names @($arr)) }
+            foreach ($lg in $instLogins) {
+                $ln = Get-UIAOFieldValue $lg @('LoginName', 'login_name', 'name', 'Name')
+                $k = ConvertTo-UIAOMatchKey -Name $ln
+                if (-not $k) { continue }
+                if (-not $sqlLoginKeys.ContainsKey($k)) { $sqlLoginKeys[$k] = @() }
+                if ($server -and -not ($sqlLoginKeys[$k] -contains $server)) { $sqlLoginKeys[$k] = @($sqlLoginKeys[$k] + $server) }
+            }
+        }
+    }
+
+    # Capability map (hashtable or JSON-object path) -> key lookup.
+    $capLookup = @{}
+    if ($CapabilityMap) {
+        $cmObj = $CapabilityMap
+        if ($CapabilityMap -is [string]) { $cmObj = Read-UIAOSourceData -Path (Assert-UIAOInputPath -Path $CapabilityMap) }
+        if ($cmObj -is [System.Collections.IDictionary]) {
+            foreach ($k in $cmObj.Keys) {
+                $v = $cmObj[$k]
+                # Normalize a nested hashtable to a PSCustomObject so Get-UIAOFieldValue
+                # (which reads PSObject.Properties) can see its capability keys.
+                if ($v -is [System.Collections.IDictionary]) { $v = [pscustomobject]$v }
+                $capLookup[(ConvertTo-UIAOMatchKey -Name "$k")] = $v
+            }
+        }
+        else {
+            foreach ($p in $cmObj.PSObject.Properties) { $capLookup[(ConvertTo-UIAOMatchKey -Name $p.Name)] = $p.Value }
+        }
+    }
+
+    $records = foreach ($r in $rows) {
+        $app = Get-UIAOFieldValue $r @('SourceApplication', 'source_application', 'Application', 'AppName')
+        $acct = Get-UIAOFieldValue $r @('AccountName', 'account_name', 'SamAccountName', 'sam_account_name')
+        if ([string]::IsNullOrWhiteSpace($app) -and [string]::IsNullOrWhiteSpace($acct)) { continue }
+        $bindType = Get-UIAOFieldValue $r @('BindType', 'bind_type')
+        $migTarget = Get-UIAOFieldValue $r @('MigrationTarget', 'migration_target')
+
+        # Capability signals.
+        $capKey = ConvertTo-UIAOMatchKey -Name $app
+        $cap = if ($capKey -and $capLookup.ContainsKey($capKey)) { $capLookup[$capKey] } else { $null }
+        $oidc = $false; $saml = $false; $proxy = $false; $locked = $false
+        if ($cap) {
+            $oidc = ConvertTo-UIAOBool (Get-UIAOFieldValue $cap @('oidc', 'oauth', 'OIDC'))
+            $saml = ConvertTo-UIAOBool (Get-UIAOFieldValue $cap @('saml', 'SAML'))
+            $proxy = ConvertTo-UIAOBool (Get-UIAOFieldValue $cap @('reverse_proxy', 'app_proxy', 'proxy'))
+            $locked = ConvertTo-UIAOBool (Get-UIAOFieldValue $cap @('vendor_locked', 'locked', 'unmigratable'))
+        }
+
+        $class = 'review'; $target = $null
+        if ($oidc) { $class = 'Class 3 — OIDC'; $target = 'Entra OIDC application (Microsoft identity platform)' }
+        elseif ($saml) { $class = 'Class 2 — SAML'; $target = 'Entra SAML SSO federation' }
+        elseif ($proxy) { $class = 'Class 1 — App Proxy'; $target = 'Entra ID Application Proxy (modernized ingress, legacy app preserved)' }
+        elseif ($locked) { $class = 'Class 4 — Entra Domain Services'; $target = 'Entra Domain Services (carve-out; on-prem AD trust not preserved)' }
+        elseif ($migTarget) {
+            switch -regex ($migTarget) {
+                '(?i)oidc|oauth' { $class = 'Class 3 — OIDC'; $target = $migTarget; break }
+                '(?i)saml' { $class = 'Class 2 — SAML'; $target = $migTarget; break }
+                '(?i)proxy' { $class = 'Class 1 — App Proxy'; $target = $migTarget; break }
+                '(?i)domain services|ds' { $class = 'Class 4 — Entra Domain Services'; $target = $migTarget; break }
+                default { $class = 'review'; $target = $migTarget }
+            }
+        }
+
+        # SQL correlation + connection-string transformation (the last mile).
+        $k = ConvertTo-UIAOMatchKey -Name $acct
+        $sqlInstances = @()
+        if ($k -and $sqlLoginKeys.ContainsKey($k)) { $sqlInstances = @($sqlLoginKeys[$k]) }
+        $connPattern = $null
+        if ($sqlInstances.Count -gt 0) {
+            $connPattern = 'Replace the stored SQL/Windows credential with Entra: set "Authentication=Active Directory Managed Identity" (service identity) or "Active Directory Default" (interactive), Encrypt=True; remove "User Id="/"Password=". Review-required.'
+        }
+
+        [ordered]@{
+            source_application   = $app
+            bind_account         = $acct
+            bind_type            = $bindType
+            ldap_class           = $class
+            target_state         = $target
+            correlated_sql_instances = $sqlInstances
+            connection_string_pattern = $connPattern
+            mutating             = $true
+            requires_review      = $true
+        }
+    }
+    $records = @($records)
+
+    $classCounts = [ordered]@{}
+    foreach ($c in @('Class 1 — App Proxy', 'Class 2 — SAML', 'Class 3 — OIDC', 'Class 4 — Entra Domain Services', 'review')) {
+        $classCounts[$c] = @($records | Where-Object { $_.ldap_class -eq $c }).Count
+    }
+    $correlated = @($records | Where-Object { @($_.correlated_sql_instances).Count -gt 0 }).Count
+    $envelope = New-UIAOMigrationEnvelope -ArtifactType 'AppConnectionPlan' -Records $records `
+        -SourceRef "ldap_bind:$(Split-Path -Leaf $full)" `
+        -DerivedFrom ([ordered]@{ source = 'Spec3-D1.9-Get-LDAPBindAccountInventory'; source_file = (Split-Path -Leaf $full); correlated_with = $auditRef }) `
+        -ExtraData ([ordered]@{ taxonomy = 'ADR-069 four-class'; class_counts = $classCounts; sql_correlated_count = $correlated; preference_order = 'OIDC > SAML > App Proxy > Domain Services'; enforcement = 'none_by_default' })
+    return (Write-UIAOEnvelopeOutput -Envelope $envelope -OutputPath $OutputPath)
+}
+
+
+# ===========================================================================
+# Book 09 — Continuous monitoring & the CCM-BIR closure record (ADR-091 §5)
+# ===========================================================================
+
+function Get-UIAOInstanceLoginNames {
+    # Collect the login names of a given type bucket from a D1.8 instance record.
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param([Parameter(Mandatory = $true)]$Instance, [Parameter(Mandatory = $true)][string[]]$ArrayNames)
+    $out = foreach ($lg in (Get-UIAOArrayProp -Row $Instance -Names $ArrayNames)) {
+        $n = Get-UIAOFieldValue $lg @('LoginName', 'login_name', 'name', 'Name')
+        if ($n) { $n }
+    }
+    # Unary comma so an empty result returns @() (not unrolled to $null) — the
+    # caller relies on .Count.
+    $arr = @($out | Sort-Object -Unique)
+    return , $arr
+}
+
+function New-UIAOClosureRecord {
+    <#
+    .SYNOPSIS
+        Project a Spec3-D1.8 audit run onto the ADR-091 §5 per-instance CCM-BIR
+        closure field set and emit a closure record per instance (Book 09).
+        Read-only derivation.
+    .DESCRIPTION
+        Resolves the Book 09 [to build] marker (ingestion side). Ingests one
+        scheduled D1.8 deep-audit run and, per instance, evaluates the ADR-091 §5
+        closure fields from the audit output:
+          - Windows Authentication Only (LoginMode = 1 / AuthenticationMode).
+          - zero active type-S (SQL-auth) logins outside the exception registry.
+          - zero active type-W/G (Windows) logins.
+          - sa disabled.
+          - Arc agent enrolled/healthy and the SQL extension / Managed Identity
+            active (EntraIDReady).
+
+        Transformation #7 is closed for an instance when all evaluable §5 fields
+        are satisfied. The MFA-via-Conditional-Access field is an external join
+        (Entra sign-in logs) and is reported as `external` rather than asserted
+        from the audit. An instance in the exception registry is marked
+        `excepted` (its type-S exception is tolerated) but still tracked. Pure
+        derivation over the read-only audit; emits evidence, changes nothing.
+    .PARAMETER AuditPath
+        Path to a Spec3-D1.8 deep-audit output (.json or .csv).
+    .PARAMETER ExceptionRegistryPath
+        Optional path to an exception registry (JSON array / object or CSV) whose
+        entries name excepted instances (server\instance or server).
+    .PARAMETER OutputPath
+        Optional path for the sealed closure-record envelope JSON.
+    .NOTES
+        Canon: ADR-091 §5, ADR-068 Phase C, UIAO_135 Transformation #7. Book 09.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$AuditPath,
+        [Parameter(Mandatory = $false)][string]$ExceptionRegistryPath,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    $full = Assert-UIAOInputPath -Path $AuditPath
+    $data = Read-UIAOSourceData -Path $full
+    $rows = Get-UIAORows -Data $data -PreferredArrayKeys @('InstanceAudits', 'records', 'Instances')
+
+    # Exception registry -> set of excepted instance keys.
+    $excepted = @{}
+    $excRef = $null
+    if (-not [string]::IsNullOrWhiteSpace($ExceptionRegistryPath)) {
+        $excFull = Assert-UIAOInputPath -Path $ExceptionRegistryPath
+        $excData = Read-UIAOSourceData -Path $excFull
+        $excRef = "exceptions:$(Split-Path -Leaf $excFull)"
+        foreach ($e in (Get-UIAORows -Data $excData -PreferredArrayKeys @('records', 'exceptions', 'instances'))) {
+            $srv = Get-UIAOFieldValue $e @('ServerName', 'server_name', 'instance', 'Instance', 'instance_key')
+            $ins = Get-UIAOFieldValue $e @('InstanceName', 'instance_name')
+            $key = if ($srv -and $srv.Contains('\')) { (Get-UIAOInstanceKey -Server $srv.Split('\')[0] -Instance $srv.Split('\')[1]) } else { (Get-UIAOInstanceKey -Server $srv -Instance $ins) }
+            if ($key) { $excepted[$key] = $true }
+        }
+    }
+
+    $records = foreach ($inst in $rows) {
+        $server = Get-UIAOFieldValue $inst @('ServerName', 'server_name', 'ComputerName')
+        $instance = Get-UIAOFieldValue $inst @('InstanceName', 'instance_name')
+        $key = Get-UIAOInstanceKey -Server $server -Instance $instance
+        $isExcepted = $excepted.ContainsKey($key)
+
+        $authMode = Get-UIAOFieldValue $inst @('AuthenticationMode', 'authentication_mode', 'LoginMode')
+        $windowsOnly = ($authMode -match '(?i)windows') -or ("$authMode".Trim() -eq '1')
+
+        $sqlLogins = Get-UIAOInstanceLoginNames -Instance $inst -ArrayNames @('SQLLogins', 'sql_logins')
+        $winLogins = Get-UIAOInstanceLoginNames -Instance $inst -ArrayNames @('WindowsLogins', 'windows_logins')
+        # Scalar count overrides if the audit supplied them directly.
+        $sqlCountRaw = Get-UIAOFieldValue $inst @('ActiveSqlLoginCount', 'active_sql_login_count')
+        $winCountRaw = Get-UIAOFieldValue $inst @('ActiveWindowsLoginCount', 'active_windows_login_count')
+        $sqlCount = if ($sqlCountRaw) { [int]$sqlCountRaw } else { $sqlLogins.Count }
+        $winCount = if ($winCountRaw) { [int]$winCountRaw } else { $winLogins.Count }
+
+        $saDisabled = ConvertTo-UIAOBool (Get-UIAOFieldValue $inst @('SaDisabled', 'sa_disabled'))
+        $arcHealthy = ConvertTo-UIAOBool (Get-UIAOFieldValue $inst @('ArcConnected', 'arc_connected', 'ArcHealthy'))
+        $entraReady = ConvertTo-UIAOBool (Get-UIAOFieldValue $inst @('EntraIDReady', 'entra_id_ready', 'EntraReady'))
+
+        $fields = @(
+            [ordered]@{ field = 'windows_auth_only'; satisfied = [bool]$windowsOnly; observed = $authMode }
+            [ordered]@{ field = 'zero_active_type_s_outside_exception'; satisfied = (($sqlCount -eq 0) -or $isExcepted); observed = $sqlCount }
+            [ordered]@{ field = 'zero_active_type_wg'; satisfied = ($winCount -eq 0); observed = $winCount }
+            [ordered]@{ field = 'sa_disabled'; satisfied = [bool]$saDisabled; observed = $saDisabled }
+            [ordered]@{ field = 'arc_enrolled_healthy'; satisfied = [bool]$arcHealthy; observed = $arcHealthy }
+            [ordered]@{ field = 'managed_identity_active'; satisfied = [bool]$entraReady; observed = $entraReady }
+        )
+        $failing = @($fields | Where-Object { -not $_.satisfied } | ForEach-Object { $_.field })
+        $verdict = if ($failing.Count -eq 0) { if ($isExcepted) { 'closed_excepted' } else { 'closed' } } else { 'open' }
+
+        [ordered]@{
+            instance_key   = $key
+            server_name    = $server
+            instance_name  = $instance
+            excepted       = $isExcepted
+            closure_fields = $fields
+            failing_fields = $failing
+            mfa_conditional_access = 'external'   # Entra sign-in log join (Step 2 note)
+            verdict        = $verdict
+        }
+    }
+    $records = @($records)
+
+    $closed = @($records | Where-Object { $_.verdict -match '^closed' }).Count
+    $open = @($records | Where-Object { $_.verdict -eq 'open' }).Count
+    $envelope = New-UIAOMigrationEnvelope -ArtifactType 'CcmBirClosureRecord' -Records $records `
+        -SourceRef "audit:$(Split-Path -Leaf $full)" `
+        -DerivedFrom ([ordered]@{ source = 'Spec3-D1.8-Get-SQLServerAuthAudit'; source_file = (Split-Path -Leaf $full); exceptions = $excRef }) `
+        -ExtraData ([ordered]@{ field_set = 'ADR-091 §5'; closed_count = $closed; open_count = $open; mfa_field = 'external join (Entra sign-in logs) — not asserted from the audit'; read_only = $true })
+    return (Write-UIAOEnvelopeOutput -Envelope $envelope -OutputPath $OutputPath)
+}
+
+function Compare-UIAOClosureRun {
+    <#
+    .SYNOPSIS
+        Diff two scheduled Spec3-D1.8 runs and emit the ADR-091 §5 drift events —
+        each a compliance violation, not an advisory (Book 09). Read-only.
+    .DESCRIPTION
+        Resolves the Book 09 [to build] marker (diff side). Indexes a baseline and
+        a current D1.8 run by instance and surfaces each ADR-091 §5 regression:
+          - mixed_mode_enabled    — LoginMode 1 -> 2 (Windows-Only -> Mixed Mode).
+          - new_sql_auth_login    — a type-S login present now but not in baseline.
+          - new_windows_login     — a type-W/G login reintroduced on a previously
+                                    Entra-only instance.
+          - arc_agent_offline     — Arc/extension healthy in baseline, not now.
+        Instances that appeared (a possible discovery gap) or disappeared are
+        reported as informational events. Drift is detected mechanically at the
+        next scheduled run; the function reads and reports only.
+    .PARAMETER BaselinePath
+        Path to the prior Spec3-D1.8 run (.json or .csv).
+    .PARAMETER CurrentPath
+        Path to the current Spec3-D1.8 run (.json or .csv).
+    .PARAMETER OutputPath
+        Optional path for the sealed drift-event envelope JSON.
+    .NOTES
+        Canon: ADR-091 §5, ADR-068 Phase C, UIAO_135 Transformation #7. Book 09.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$BaselinePath,
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$CurrentPath,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    function Read-Run {
+        param([string]$Path)
+        $full = Assert-UIAOInputPath -Path $Path
+        $rows = Get-UIAORows -Data (Read-UIAOSourceData -Path $full) -PreferredArrayKeys @('InstanceAudits', 'records', 'Instances')
+        $idx = @{}
+        foreach ($inst in $rows) {
+            $key = Get-UIAOInstanceKey -Server (Get-UIAOFieldValue $inst @('ServerName', 'server_name', 'ComputerName')) -Instance (Get-UIAOFieldValue $inst @('InstanceName', 'instance_name'))
+            if (-not $key) { continue }
+            $authMode = Get-UIAOFieldValue $inst @('AuthenticationMode', 'authentication_mode', 'LoginMode')
+            $idx[$key] = [ordered]@{
+                windows_only = ($authMode -match '(?i)windows') -or ("$authMode".Trim() -eq '1')
+                sql_logins   = Get-UIAOInstanceLoginNames -Instance $inst -ArrayNames @('SQLLogins', 'sql_logins')
+                win_logins   = Get-UIAOInstanceLoginNames -Instance $inst -ArrayNames @('WindowsLogins', 'windows_logins')
+                arc_healthy  = ConvertTo-UIAOBool (Get-UIAOFieldValue $inst @('ArcConnected', 'arc_connected', 'EntraIDReady', 'entra_id_ready'))
+            }
+        }
+        return @{ index = $idx; file = (Split-Path -Leaf $full) }
+    }
+    $base = Read-Run -Path $BaselinePath
+    $curr = Read-Run -Path $CurrentPath
+
+    $events = @()
+    foreach ($key in ($curr.index.Keys | Sort-Object)) {
+        $c = $curr.index[$key]
+        if (-not $base.index.ContainsKey($key)) {
+            $events += [ordered]@{ instance_key = $key; event = 'instance_appeared'; severity = 'info'; violation = $false; detail = 'present this run, absent in baseline — verify it was in the original audit scope (discovery gap)' }
+            continue
+        }
+        $b = $base.index[$key]
+        if ($b.windows_only -and -not $c.windows_only) {
+            $events += [ordered]@{ instance_key = $key; event = 'mixed_mode_enabled'; severity = 'high'; violation = $true; detail = 'LoginMode 1 -> 2 (Windows-Only -> Mixed Mode) without authorization' }
+        }
+        $newSql = @($c.sql_logins | Where-Object { $_ -notin $b.sql_logins })
+        foreach ($n in $newSql) {
+            $events += [ordered]@{ instance_key = $key; event = 'new_sql_auth_login'; severity = 'high'; violation = $true; detail = "SQL-auth login created: $n" }
+        }
+        $newWin = @($c.win_logins | Where-Object { $_ -notin $b.win_logins })
+        foreach ($n in $newWin) {
+            $events += [ordered]@{ instance_key = $key; event = 'new_windows_login'; severity = 'medium'; violation = $true; detail = "Windows-backed login reintroduced: $n" }
+        }
+        if ($b.arc_healthy -and -not $c.arc_healthy) {
+            $events += [ordered]@{ instance_key = $key; event = 'arc_agent_offline'; severity = 'high'; violation = $true; detail = 'Arc agent/extension healthy in baseline, not now — Managed-Identity engine auth interrupted' }
+        }
+    }
+    foreach ($key in ($base.index.Keys | Sort-Object)) {
+        if (-not $curr.index.ContainsKey($key)) {
+            $events += [ordered]@{ instance_key = $key; event = 'instance_disappeared'; severity = 'info'; violation = $false; detail = 'present in baseline, absent this run — retired or unreachable; confirm intended' }
+        }
+    }
+    $events = @($events)
+
+    $violations = @($events | Where-Object { $_.violation }).Count
+    $envelope = New-UIAOMigrationEnvelope -ArtifactType 'ClosureRunDiff' -Records $events `
+        -SourceRef "current:$($curr.file)" `
+        -DerivedFrom ([ordered]@{ source = 'Spec3-D1.8-Get-SQLServerAuthAudit'; baseline_file = $base.file; current_file = $curr.file }) `
+        -ExtraData ([ordered]@{ drift_event_count = $events.Count; violation_count = $violations; compliance_violation = ($violations -gt 0); read_only = $true })
+    return (Write-UIAOEnvelopeOutput -Envelope $envelope -OutputPath $OutputPath)
+}
+
+
+# ===========================================================================
+# Book 10 — Certificate discovery for SQL Server's ADCS dependencies (UIAO_135 §3.3)
+# ===========================================================================
+
+function New-UIAOSqlCertificatePlan {
+    <#
+    .SYNOPSIS
+        Extract SQL Server's three ADCS dependencies from a Spec3-D1.10 audit and
+        sequence the dependency-ordered CA-replacement (CBA-issuance) bridge
+        (Book 10). Read-only, analytical derivation.
+    .DESCRIPTION
+        Resolves the Book 10 [to build] marker: the SQL-specific certificate
+        extraction and the CBA-issuance bridge. Consumes a Spec3-D1.10
+        certificate audit and isolates the three dependencies SQL Server has on
+        ADCS:
+          - tls_server_cert         — the TLS server certificate that encrypts
+                                      SQL connections (scoped to SQL hosts via
+                                      -SqlHostFilter when supplied).
+          - certificate_mapped_login— a login mapped to a certificate / smart card.
+          - cba_posture             — certificate-based auth as the NTLM-
+                                      replacement posture (CBA readiness / required).
+
+        It then derives the CA-replacement order from the enterprise CA hierarchy
+        (roots before issuing CAs), the same dependency-ordering New-UIAOPKIMigrationPlan
+        applies — so the replacement CA is stood up and trusted before any ADCS
+        decommission date is set. Analytical only: there is no normative ADCS-
+        migration ADR, so every record is requires_review and the function changes
+        nothing.
+    .PARAMETER CertAuditPath
+        Path to a Spec3-D1.10 certificate-based-auth audit (.json or .csv).
+    .PARAMETER SqlHostFilter
+        Optional regex/substring to scope server-cert dependencies to SQL hosts
+        (matched against the certificate subject/host). When omitted, all server-
+        auth certificates are surfaced.
+    .PARAMETER OutputPath
+        Optional path for the sealed certificate-plan envelope JSON.
+    .NOTES
+        Canon: UIAO_135 §3.3, ADR-068. Book 10. Read-only, analytical — no
+        normative ADCS-migration ADR exists; every action is review-required.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$CertAuditPath,
+        [Parameter(Mandatory = $false)][string]$SqlHostFilter,
+        [Parameter(Mandatory = $false)][string]$OutputPath
+    )
+    $full = Assert-UIAOInputPath -Path $CertAuditPath
+    $audit = Read-UIAOSourceData -Path $full
+
+    $certs = @(Get-UIAOArrayProp -Row $audit -Names @('Certificates', 'certificates'))
+    if ($certs.Count -eq 0) { $certs = @(Get-UIAORows -Data $audit -PreferredArrayKeys @('Certificates', 'certificates', 'records')) }
+
+    $records = foreach ($c in $certs) {
+        $subject = Get-UIAOFieldValue $c @('Subject', 'subject', 'CertificateDN', 'SubjectName')
+        $issuer = Get-UIAOFieldValue $c @('Issuer', 'issuer')
+        $authType = Get-UIAOFieldValue $c @('AuthenticationType', 'authentication_type')
+        $isExpired = ConvertTo-UIAOBool (Get-UIAOFieldValue $c @('IsExpired', 'is_expired', 'HasExpiredCerts'))
+        $daysToExpiry = Get-UIAOFieldValue $c @('DaysToExpiry', 'days_to_expiry')
+        $smartCard = ConvertTo-UIAOBool (Get-UIAOFieldValue $c @('IsSmartCard', 'SmartCardCapable', 'HasSmartCardLogon'))
+        $certBased = ConvertTo-UIAOBool (Get-UIAOFieldValue $c @('CertBasedAuth', 'cert_based_auth'))
+
+        # SQL-host scoping for the server-cert (TLS) dependency.
+        $matchesSql = $true
+        if (-not [string]::IsNullOrWhiteSpace($SqlHostFilter)) {
+            $matchesSql = ("$subject" -match [regex]::Escape($SqlHostFilter)) -or ("$subject" -imatch $SqlHostFilter)
+        }
+
+        $dep = $null
+        if ($smartCard -or $certBased -or ("$authType" -match '(?i)cert|smart')) {
+            $dep = 'certificate_mapped_login'
+        }
+        elseif ($matchesSql -and ("$authType" -match '(?i)server|tls|ssl' -or [string]::IsNullOrWhiteSpace($authType))) {
+            $dep = 'tls_server_cert'
+        }
+        if (-not $dep) { continue }   # cert not relevant to SQL's three dependencies
+
+        [ordered]@{
+            dependency_class = $dep
+            subject          = $subject
+            issuer           = $issuer
+            is_expired       = $isExpired
+            days_to_expiry   = $daysToExpiry
+            replacement_action = if ($dep -eq 'certificate_mapped_login') { 'Re-issue from the replacement CA; bridge cert-mapped login to Entra CBA where it is the NTLM-replacement posture (review-required).' } else { 'Re-issue the SQL TLS server certificate from the replacement CA before any ADCS decommission date.' }
+            requires_review  = $true
+        }
+    }
+    $records = @($records)
+
+    # CBA posture (environment-level NTLM-replacement readiness).
+    $cbaRequired = ConvertTo-UIAOBool (Get-UIAOFieldValue $audit @('CBARequired', 'cba_required', 'EntraIDCBARequired'))
+    $cbaReadiness = Get-UIAOFieldValue $audit @('CBAReadiness', 'cba_readiness')
+    if ($cbaRequired -or $cbaReadiness) {
+        $records = @($records + [ordered]@{
+                dependency_class = 'cba_posture'
+                subject          = '<environment>'
+                issuer           = $null
+                is_expired       = $false
+                days_to_expiry   = $null
+                replacement_action = "CBA is the NTLM-replacement posture (readiness: $cbaReadiness). Stand up Entra CBA issuance on the replacement CA before retiring NTLM (ADR-068)."
+                requires_review  = $true
+            })
+    }
+
+    # Dependency-ordered CA-replacement sequence: roots before issuing CAs.
+    function Get-CaNames {
+        param($Items)
+        $names = @($Items | ForEach-Object { if ($_ -is [string]) { $_ } else { "$(Get-UIAOFieldValue $_ @('CAName', 'ca_name', 'Name'))" } } | Where-Object { $_ })
+        return , $names
+    }
+    $roots = Get-CaNames (Get-UIAOArrayProp -Row $audit -Names @('EnterpriseRootCAs', 'enterprise_root_cas'))
+    $subs = Get-CaNames (Get-UIAOArrayProp -Row $audit -Names @('EnterpriseSubCAs', 'enterprise_sub_cas'))
+    if ($roots.Count -eq 0 -and $subs.Count -eq 0) {
+        # Fall back to a flat EnterpriseCAs list (order preserved, roots assumed first by the audit).
+        $roots = Get-CaNames (Get-UIAOArrayProp -Row $audit -Names @('EnterpriseCAs', 'enterprise_cas'))
+    }
+    $sequence = @()
+    $order = 1
+    foreach ($r in $roots) { $sequence += [ordered]@{ order = $order; ca = $r; tier = 'root'; action = 'replace/trust first (parent of issuing CAs)' }; $order++ }
+    foreach ($s in $subs) { $sequence += [ordered]@{ order = $order; ca = $s; tier = 'issuing'; action = 'replace after its root is trusted' }; $order++ }
+
+    $depCounts = [ordered]@{}
+    foreach ($d in @('tls_server_cert', 'certificate_mapped_login', 'cba_posture')) {
+        $depCounts[$d] = @($records | Where-Object { $_.dependency_class -eq $d }).Count
+    }
+    $envelope = New-UIAOMigrationEnvelope -ArtifactType 'SqlCertificatePlan' -Records $records `
+        -SourceRef "cert_audit:$(Split-Path -Leaf $full)" `
+        -DerivedFrom ([ordered]@{ source = 'Spec3-D1.10-Get-CertBasedAuthAudit'; source_file = (Split-Path -Leaf $full) }) `
+        -ExtraData ([ordered]@{
+            dependency_counts     = $depCounts
+            ca_replacement_sequence = $sequence
+            analytical            = $true
+            normative_adr         = 'none (no ADCS-migration ADR) — plan is review-required'
+        })
+    return (Write-UIAOEnvelopeOutput -Envelope $envelope -OutputPath $OutputPath)
+}
+
+
+# ---------------------------------------------------------------------------
 # Exports
 # ---------------------------------------------------------------------------
 
@@ -1237,4 +2217,11 @@ Export-ModuleMember -Function `
     'New-UIAOEntraLoginScript', `
     'Test-UIAOLoginParallelRun', `
     'New-UIAOSpnRemediationPlan', `
-    'Get-UIAONtlmGpoReport'
+    'Get-UIAONtlmGpoReport', `
+    'New-UIAOEstateInventory', `
+    'New-UIAOEntraGroupClassification', `
+    'New-UIAOGroupLoginScript', `
+    'New-UIAOAppConnectionPlan', `
+    'New-UIAOClosureRecord', `
+    'Compare-UIAOClosureRun', `
+    'New-UIAOSqlCertificatePlan'
