@@ -23,10 +23,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-_SUMMARIZE_PROMPT = (
-    "Summarize the following at systems altitude, highlighting load-bearing "
-    "elements. Be concise.\n\n"
-)
+_SUMMARIZE_PROMPT = "Summarize the following at systems altitude, highlighting load-bearing elements. Be concise.\n\n"
 _CRITIQUE_PROMPT = (
     "Provide a structured critique of the following, focusing on invariants, "
     "boundary conditions, and architectural coherence.\n\n"

@@ -77,9 +77,7 @@ class Orchestrator:
         for capability in router.capabilities():
             name = router.agent_for(capability)
             if name not in self._clients:
-                raise OrchestrationError(
-                    f"router points {capability.value!r} at unknown agent {name!r}"
-                )
+                raise OrchestrationError(f"router points {capability.value!r} at unknown agent {name!r}")
 
     def _client(self, capability: Capability) -> LLMClient:
         return self._clients[self._router.agent_for(capability)]
@@ -98,13 +96,9 @@ class Orchestrator:
         try:
             output = await (client.summarize(prompt) if summarize else client.ask(prompt))
         except LLMError as exc:
-            self._events.emit(
-                Event(session_id, task_id, client.name, action, "error", error=str(exc))
-            )
+            self._events.emit(Event(session_id, task_id, client.name, action, "error", error=str(exc)))
             raise OrchestrationError(f"{client.name} failed during {action}: {exc}") from exc
-        self._events.emit(
-            Event(session_id, task_id, client.name, action, "success", content=output)
-        )
+        self._events.emit(Event(session_id, task_id, client.name, action, "success", content=output))
         return output
 
     async def run_cycle(self, task: str) -> CycleResult:
