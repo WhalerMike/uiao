@@ -114,6 +114,42 @@ def test_plan_unknown_disposition_rejected(codebook_model_c):
         planner.plan_device(assignment)
 
 
+def test_plan_honors_injected_routing_override(codebook_model_c):
+    """A deployment-supplied routing map overrides the hardcoded disposition set.
+
+    Closes the seam where ``load_disposition_routing`` was documented as the
+    override mechanism but the planner had no way to consume it.
+    """
+    routing = {
+        "ENTRA-DEVICE": "entra",
+        "ARC-SERVER": "arm",
+        "STAY-AD-DC": "skip",
+        # a deployment-declared disposition the hardcoded set doesn't know
+        "EDGE-APPLIANCE": "arm",
+    }
+    planner = DeviceOrgPathPlanner(codebook_model_c, routing=routing)
+    assignment = DeviceFacetAssignment(
+        device_id="edge-1",
+        disposition="EDGE-APPLIANCE",
+        facet_values={"region": "EASTUS"},
+    )
+    plan = planner.plan_device(assignment)
+    assert plan.plane == "arm"
+    assert plan.writes[0].attribute == "tags.Region"
+
+
+def test_plan_injected_routing_rejects_unlisted_disposition(codebook_model_c):
+    """With a routing override, dispositions absent from it are rejected too."""
+    planner = DeviceOrgPathPlanner(codebook_model_c, routing={"ENTRA-DEVICE": "entra"})
+    assignment = DeviceFacetAssignment(
+        device_id="x",
+        disposition="ARC-SERVER",  # valid canonically, but not in the override map
+        facet_values={"region": "EASTUS"},
+    )
+    with pytest.raises(ValueError, match="Unknown disposition"):
+        planner.plan_device(assignment)
+
+
 def test_plan_skips_invalid_facet_values(codebook_model_c):
     """Per-facet values failing is_active() are excluded from the write (engine surfaces them as drift on input)."""
     planner = DeviceOrgPathPlanner(codebook_model_c)
