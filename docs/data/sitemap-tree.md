@@ -589,6 +589,7 @@
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [AODIM — Attribute-Oriented Directory & Identity Model](customer-documents/whitepapers/aodim-executive-whitepaper.html)
   - [UIAO vs Microsoft Native Tools — Gap Analysis](customer-documents/whitepapers/uiao-vs-native-tools.html)
+  - [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.html)
   - [UIAO Git Server Interfaces — Windows Server 2025 Deployment](customer-documents/whitepapers/git-server-interfaces-whitepaper.html)
   - [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](customer-documents/whitepapers/zta-scuba-relationship.html)
 - **Architecture Series**
