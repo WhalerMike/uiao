@@ -57,6 +57,11 @@ class SaasSettings(BaseSettings):
     # --- Operational toggles ---------------------------------------------
     #: When true the control-plane provisioning endpoints are exposed.
     provisioning_enabled: bool = Field(default=True)
+    #: When true, tenant onboarding **executes** the Azure resource stamp
+    #: (Postgres schema / Blob container / Key Vault scope) via the
+    #: AzureStampExecutor. Default false → plans the stamp without touching
+    #: Azure (dry-run), even when backing resources are configured.
+    stamp_execution_enabled: bool = Field(default=False)
     #: When true (dev/test ONLY) inbound tokens are accepted without JWKS
     #: signature verification. Never enable in production.
     insecure_allow_unsigned_tokens: bool = Field(default=False)
