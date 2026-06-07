@@ -113,6 +113,7 @@ test job (`.[api]` only) stays green.
 | **Inbound Entra verification** | `uiao.saas.auth` | library | **`[api]` extra** (JWKS verify: `[saas]`) | Claim validation is pure-stdlib; RS256 JWKS signature verification is lazy-imported (PyJWT) behind `[saas]` |
 | **Tenant registry (durable)** | `uiao.saas.pg_repository` | library | **`[saas]` extra** | SQLAlchemy-async + asyncpg `saas_tenants` table. In-memory fallback (`uiao.saas.repository`) needs no extra |
 | **SaaS ASGI entrypoint** | `uiao.saas.asgi:app` | server | **`[saas]` extra** | `uvicorn uiao.saas.asgi:app` — composes the data plane + control plane. Container image + Bicep IaC under `deploy/azure/` |
+| **Per-tenant stamp executor** | `uiao.saas.azure_stamp`, `uiao.saas.azure_provisioners` | library | **`[saas]` extra** | `AzureStampExecutor` provisions a tenant's Postgres schema + Blob container + Key Vault secret scope (named after `data_namespace`, strictly validated). Dry-run unless `UIAO_SAAS_STAMP_EXECUTION_ENABLED`; orchestration is dependency-free + fake-tested, the Azure-backed provisioners lazy-import the SDKs |
 
 ### Rules for moving a feature between tiers
 

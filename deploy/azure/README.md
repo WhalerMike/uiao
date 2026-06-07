@@ -65,6 +65,7 @@ secrets; the relevant ones:
 | `UIAO_SAAS_API_AUDIENCE` | API app ID URI (e.g. `api://uiao`) |
 | `UIAO_SAAS_KEY_VAULT_URI` | Key Vault module output |
 | `UIAO_SAAS_STORAGE_ACCOUNT_URL` | Storage module output |
+| `UIAO_SAAS_STAMP_EXECUTION_ENABLED` | `true` to execute per-tenant stamps (default off = dry-run) |
 | `AZURE_CLIENT_ID` | Managed identity client id (Graph/ARM tokens) |
 
 ## Deploy
@@ -96,10 +97,11 @@ az deployment group create -g <rg> \
 1. A customer admin visits the admin-consent URL (returned by
    `POST /control/v1/tenants`) and grants the UIAO multi-tenant app the
    Graph / ARM application permissions.
-2. The control plane records the tenant (`pending → active`) and plans the
-   per-tenant stamp (DB schema, Blob prefix, Key Vault scope). The default
-   `NoOpStampExecutor` plans without executing — inject a concrete
-   `StampExecutor` to perform the Azure-side work.
+2. The control plane records the tenant (`pending → active`) and stamps the
+   per-tenant resources (DB schema, Blob container, Key Vault scope). With
+   `UIAO_SAAS_STAMP_EXECUTION_ENABLED=true` the `AzureStampExecutor`
+   (`uiao.saas.azure_provisioners`) executes the stamp against Azure; by
+   default the `NoOpStampExecutor` plans it without executing.
 3. Inbound requests carrying that tenant's token are resolved by
    `TenantResolutionMiddleware` and bound to a per-request tenant context.
 

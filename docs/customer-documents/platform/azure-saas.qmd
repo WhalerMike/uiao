@@ -31,10 +31,11 @@ to this page is
 ::: {.callout-important}
 **Status — shipped but dormant.** The code is merged and tested; the deploy
 workflow (`.github/workflows/azure-saas-deploy.yml`) is **manual-dispatch
-only** and nothing is deployed until an operator explicitly triggers it. The
-per-tenant resource stamping (`StampExecutor`) is **dry-run by default** — it
-plans the Azure-side work without executing it until a concrete executor is
-injected. Treat this page as the target operating model.
+only** and nothing is deployed until an operator explicitly triggers it.
+A concrete `AzureStampExecutor` now provisions the per-tenant resources
+(Postgres schema, Blob container, Key Vault secret scope), but stamping stays
+**dry-run by default**: it only executes when `UIAO_SAAS_STAMP_EXECUTION_ENABLED`
+is set. Treat this page as the target operating model.
 :::
 
 ## 1. What this is
@@ -130,6 +131,7 @@ and secrets:
 | `UIAO_SAAS_CLOUD` | `commercial` (also GCC-Moderate), `gcc-high`, `dod` | Operator |
 | `UIAO_SAAS_KEY_VAULT_URI` | Per-tenant secret store | Key Vault module |
 | `UIAO_SAAS_STORAGE_ACCOUNT_URL` | Evidence-bundle storage | Storage module |
+| `UIAO_SAAS_STAMP_EXECUTION_ENABLED` | Execute (not just plan) per-tenant resource stamps | Operator (default off) |
 | `AZURE_CLIENT_ID` | Managed-identity client ID for Graph/ARM tokens | Identity module |
 
 Without `UIAO_SAAS_DATABASE_URL` the runtime falls back to an **in-memory**
@@ -178,8 +180,12 @@ curl -X POST https://<app-fqdn>/control/v1/tenants \
 The response includes an **admin-consent URL**. The customer's Global
 Administrator visits it once to grant the UIAO app the Graph / ARM
 permissions. The control plane records the tenant (`pending → active`) and
-returns the planned per-tenant stamp steps. From that point, requests bearing
-that tenant's tokens are resolved automatically by the data plane.
+returns the per-tenant stamp steps. With `UIAO_SAAS_STAMP_EXECUTION_ENABLED`
+set, the `AzureStampExecutor` actually provisions those resources — it creates
+the tenant's Postgres schema, its Blob container, and a Key Vault secret-scope
+marker, each named after the tenant's `data_namespace`; without the flag the
+same steps are planned but not executed. From that point, requests bearing that
+tenant's tokens are resolved automatically by the data plane.
 
 ## 9. Lifecycle operations
 

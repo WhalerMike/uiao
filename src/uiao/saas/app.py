@@ -63,6 +63,14 @@ def attach_saas(
             insecure_allow_unsigned=settings.insecure_allow_unsigned_tokens,
         )
 
+    # When stamp execution is enabled, build the concrete Azure executor from
+    # the configured backing resources (lazy-imports the [saas] Azure deps).
+    # Otherwise leave it None → ProvisioningService uses the dry-run executor.
+    if stamp_executor is None and settings.stamp_execution_enabled:
+        from .azure_provisioners import build_stamp_executor
+
+        stamp_executor = build_stamp_executor(settings)
+
     if provisioning_service is None:
         provisioning_service = ProvisioningService(
             repository=repository,
