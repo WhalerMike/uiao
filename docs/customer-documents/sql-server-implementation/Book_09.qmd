@@ -1,14 +1,14 @@
 ---
 title: "Implementation Book 09 — Continuous Monitoring & the CCM-BIR Closure Record"
 subtitle: "Run Spec3-D1.8 on a schedule, assemble the ADR-091 §5 per-instance closure record, detect drift as a compliance violation, and treat 2027-04-01 as a validation deadline rather than a migration one"
-description: "How to prove and keep the transformed posture. Documents running the shipped Spec3-D1.8 audit in continuous-monitoring mode against the surviving estate, the exact ADR-091 §5 CCM-BIR per-instance closure field set the audit output maps to, the five UIAO_135 Transformation #7 closure conditions, drift detection as a compliance violation, the six live evidence artifact sets, and the correct reading of the 2027-04-01 network block. The CCM-BIR ingestion/diff orchestration and the Entra/Defender evidence joins are marked [to build]; the audit that feeds them is shipped."
+description: "How to prove and keep the transformed posture. Documents running the shipped Spec3-D1.8 audit in continuous-monitoring mode against the surviving estate, New-UIAOClosureRecord (which projects each run onto the ADR-091 §5 CCM-BIR per-instance closure field set) and Compare-UIAOClosureRun (which diffs two scheduled runs and flags each regression as a compliance violation), the five UIAO_135 Transformation #7 closure conditions, the six live evidence artifact sets, and the correct reading of the 2027-04-01 network block. The behavioral/MFA fields are reported as external-join fields (Entra sign-in logs, Defender for SQL) by design."
 doc-type: sql-server-implementation-book
 audience: [Technical, Customer]
 classification: Controlled
 boundary: GCC-Moderate
 family: sql-server-implementation
 series-order: 09
-status: draft
+status: active
 canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
 lifecycle: active
 tiers_adopted: []
@@ -20,7 +20,7 @@ lifecycle_review: 2027-01-01
 :::
 
 ::: {.callout-note}
-Companion to **narrative Book 09**. The narrative explains that a transformation achieves a *posture*, not a completion; this book is how you keep proving it. **The audit that produces the evidence is read-only and shipped**; the CCM-BIR ingestion/diff orchestration that turns repeated runs into drift events is the pattern, marked **[to build]**. (ADR-091 §5, ADR-068 Phase C, UIAO_135 Transformation #7)
+Companion to **narrative Book 09**. The narrative explains that a transformation achieves a *posture*, not a completion; this book is how you keep proving it. **The audit that produces the evidence is read-only and shipped**, and so are the two derivations over it: `New-UIAOClosureRecord` projects each run onto the ADR-091 §5 closure field set, and `Compare-UIAOClosureRun` diffs two runs into drift events. The behavioral/MFA fields are reported as **external joins** (Entra sign-in logs, Defender for SQL) by design — the structural record points at that telemetry rather than duplicating it. (ADR-091 §5, ADR-068 Phase C, UIAO_135 Transformation #7)
 :::
 
 ## Closure is a continuously-verified posture
@@ -55,7 +55,15 @@ ADR-091 §5 defines the closure artifact. Transformation #7 is closed for an ins
 | Azure extension for SQL Server **deployed, Managed Identity active** | `EntraIDReady` + extension state |
 | **MFA via Conditional Access** for human SQL sign-ins over a validation period | Entra sign-in logs + Conditional Access reports (external join) |
 
-`[to build]` — the CCM-BIR ingestion/diff orchestration: ingest each scheduled D1.8 JSON, project it onto the §5 field set per instance, **diff against the prior run**, and emit a closure record plus any drift events. The audit produces the inputs on every run; the projection + diff + record-emit step is the automation to codify (it is the same ingestion the discovery pipeline runs for D2.1/D2.3, applied on a schedule). The MFA/Conditional-Access field also requires joining Entra sign-in logs and `Export-UIAOConditionalAccess` output (Book 07) — likewise a join to build.
+**`New-UIAOClosureRecord`** (`tools/powershell/UIAOSqlServerMigration/`) is the ingestion-and-projection step. It reads one scheduled D1.8 JSON and, per instance, projects it onto the §5 field set — Windows-only, zero active type-S outside the exception registry, zero active type-W/G, `sa` disabled, Arc enrolled/healthy, Managed Identity active — emitting a sealed closure record with a `verdict` (`closed` / `closed_excepted` / `open`) and the `failing_fields` for any open instance. An optional `-ExceptionRegistryPath` tolerates an excepted instance's type-S login (verdict `closed_excepted`). The MFA-via-Conditional-Access field is reported as `external` — the record points at the Entra sign-in logs and `Export-UIAOConditionalAccess` output (Book 07) rather than asserting it from the structural audit.
+
+```powershell
+Import-Module ./tools/powershell/UIAOSqlServerMigration
+New-UIAOClosureRecord `
+    -AuditPath             .\output\2027-03-01\sqlserver-auth-audit.json `
+    -ExceptionRegistryPath .\config\sql-exception-registry.json `
+    -OutputPath            .\output\2027-03-01\ccm-bir-closure.json
+```
 
 ## Step 3 — Detect drift as a compliance violation
 
@@ -66,13 +74,22 @@ ADR-091 §5 records specific transitions as **compliance violations**, not advis
 - A **new type-W / type-G** login on a previously Entra-only instance — Windows-backed identity reintroduced.
 - The **Arc agent offline** or the SQL extension unavailable — Managed-Identity engine auth interrupted.
 
+**`Compare-UIAOClosureRun`** (`tools/powershell/UIAOSqlServerMigration/`) is the mechanical diff. It indexes a baseline and a current D1.8 run by instance and emits one event per regression — `mixed_mode_enabled`, `new_sql_auth_login`, `new_windows_login`, `arc_agent_offline` (each flagged `violation = true`) — plus informational `instance_appeared` / `instance_disappeared` events (an appeared instance is a possible discovery gap; re-run Book 02). The envelope's `compliance_violation` is true whenever any violation event is present.
+
+```powershell
+Compare-UIAOClosureRun `
+    -BaselinePath .\output\2027-02-01\sqlserver-auth-audit.json `
+    -CurrentPath  .\output\2027-03-01\sqlserver-auth-audit.json `
+    -OutputPath   .\output\2027-03-01\closure-drift.json
+```
+
 Each drift event triggers the program's remediation workflow. Because the audit is read-only and the diff is mechanical, drift is caught at the next scheduled run rather than at incident time.
 
 ## Step 4 — The behavioral layer (Defender for SQL)
 
 CCM-BIR monitors the **configuration** state (is `LoginMode` correct, are the login types correct). Microsoft Defender for SQL monitors the **behavioral** state — who connects, from where, when, with what mechanism — against the Entra-only baseline. In the transformed posture every connection produces an Entra sign-in event, so **any NTLM or Kerberos event in Defender for SQL telemetry should be zero** and is an immediate alert. An NTLM event means one of three things, all requiring investigation: an instance regressed to Mixed Mode (CCM-BIR should already have caught it), an instance was outside the original audit scope (a discovery gap — re-run Book 02 estate discovery), or a novel connection pattern the plan did not anticipate.
 
-`[to build]` — the join that pulls Defender for SQL alerts and Entra sign-in logs into the same per-instance evidence record as the CCM-BIR structural fields, so the two-layer view is a single artifact rather than two consoles.
+By design, the closure record keeps the **behavioral** layer as an external join rather than copying Defender for SQL alerts and Entra sign-in logs into the structural record: `New-UIAOClosureRecord` marks the MFA/Conditional-Access field `external` and points at that telemetry. The two layers stay authoritative in their own consoles — the structural record (configuration) here, the behavioral record (who connected, how) in Defender/Entra — and the closure decision reads both. Collapsing them into one artifact would duplicate a source of truth, which the SSOT principle forbids.
 
 ## The six live evidence artifact sets
 
@@ -97,4 +114,4 @@ Everything in this book is **read-only**: scheduled `Spec3-D1.8` runs in invento
 
 ---
 
-*Companion to [narrative Book 09](../sql-server-narrative/Book_09.qmd) and ADR-091 §5. Audit script-backed: `tools/discovery/Spec3-D1.8` (continuous mode). CCM-BIR ingestion/diff orchestration and the Entra/Defender evidence joins are [to build]. Canon: ADR-091 §5, ADR-068 Phase C, UIAO_135 Transformation #7.*
+*Companion to [narrative Book 09](../sql-server-narrative/Book_09.qmd) and ADR-091 §5. Audit script-backed: `tools/discovery/Spec3-D1.8` (continuous mode). CCM-BIR ingestion + diff: `tools/powershell/UIAOSqlServerMigration` (`New-UIAOClosureRecord`, `Compare-UIAOClosureRun`). The behavioral/MFA layer (Defender for SQL, Entra sign-in logs) is referenced as an external join by design. Canon: ADR-091 §5, ADR-068 Phase C, UIAO_135 Transformation #7.*

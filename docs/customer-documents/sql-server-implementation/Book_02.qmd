@@ -1,14 +1,14 @@
 ---
 title: "Implementation Book 02 — Estate Discovery & the Consolidation Gate"
-subtitle: "The Phase-0 runbook for building the estate inventory and the retain / consolidate / retire classification that gates every later book — with the general-purpose discovery instruments, because the canonical Spec does not exist yet"
-description: "How to assess and consolidate a twenty-year SQL Server estate before any login is touched. Documents the real discovery the audit family already provides (Spec3-D1.8 instance enumeration, Spec1-D1.5 MSSQLSvc SPN trail) and gives the verified pattern for the broader estate sweep that has no canonical Spec yet — dbatools Find-DbaInstance, the SPN trail, Azure Migrate / MAP / DMA — then the utilization, version, and dependency lenses that produce the retain / consolidate / retire decision ADR-091 §1 makes the gate for the whole series. Read-only discovery; consolidation execution is review-required."
+subtitle: "The Phase-0 runbook for building the estate inventory and the retain / consolidate / retire classification that gates every later book — fused into one inventory by New-UIAOEstateInventory"
+description: "How to assess and consolidate a twenty-year SQL Server estate before any login is touched. Documents the real discovery the audit family provides (Spec3-D1.8 instance enumeration, Spec1-D1.5 MSSQLSvc SPN trail), the broader Find-DbaInstance / SPN-trail / Azure Migrate sweep, and New-UIAOEstateInventory — the shipped Phase-0 instrument that fuses those sources into one deduplicated inventory and applies the ADR-091 §1 retain / consolidate / retire gate the whole series depends on. Read-only discovery; consolidation execution is review-required."
 doc-type: sql-server-implementation-book
 audience: [Technical, Customer]
 classification: Controlled
 boundary: GCC-Moderate
 family: sql-server-implementation
 series-order: 02
-status: draft
+status: active
 canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
 lifecycle: active
 tiers_adopted: []
@@ -23,9 +23,9 @@ lifecycle_review: 2027-01-01
 Companion to **narrative Book 02**. The narrative explains *why* you assess and consolidate before you migrate; this book is the discovery-and-rationalization runbook. Discovery is **read-only and run-first**; the consolidation *execution* it leads to — database moves, instance retirement — is review-required and lives in the program's migration plan, not here. (ADR-091 §1, UIAO_135 §3.2)
 :::
 
-::: {.callout-important}
-## Gap notice — pattern, with partial script backing
-There is **no canonical `Spec3-D1.x` estate-discovery instrument** — narrative Book 02 Chapter 2 names this as the ADR-091 §1 **Phase 0** gap. The authentication audit (`Spec3-D1.8`, Book 03) enumerates instances that are already known and measures their *auth posture*; estate discovery runs earlier and casts wider to establish the **denominator**. This book documents the real coverage the shipped scripts already give you, then gives the verified **pattern** for the broader sweep, marking the to-be-built automation **[to build]**.
+::: {.callout-note}
+## The Phase-0 instrument
+Narrative Book 02 Chapter 2 named the ADR-091 §1 **Phase 0** denominator as a gap: the authentication audit (`Spec3-D1.8`, Book 03) enumerates instances that are already known and measures their *auth posture*, but estate discovery runs earlier and casts wider to establish the **denominator**. That gap is now closed by **`New-UIAOEstateInventory`** (`tools/powershell/UIAOSqlServerMigration/`), which fuses the shipped discovery outputs into one deduplicated inventory and applies the retain / consolidate / retire gate. The individual instruments below remain the sources it consumes.
 :::
 
 ## Why this book runs before everything else
@@ -51,9 +51,9 @@ Two pieces of the sweep are backed by real scripts in [`tools/discovery/`](https
 ./Spec1-D1.5-Get-KerberosSPNInventory.ps1 -OutputPath .\output          # MSSQLSvc SPN trail
 ```
 
-### 1b — The broader sweep (pattern — no canonical Spec yet)
+### 1b — The broader sweep (the wider denominator)
 
-The shipped scripts find Kerberos-configured and registry-enumerable instances. They do **not** find a SQL Express instance an application installer dropped on an app server, nor do they capture per-database utilization. Close that gap with the general-purpose instruments narrative Book 02 Chapter 2 names:
+The shipped scripts find Kerberos-configured and registry-enumerable instances. They do **not** find a SQL Express instance an application installer dropped on an app server. Cast wider with the general-purpose instruments narrative Book 02 Chapter 2 names:
 
 ```powershell
 # Network + directory sweep — surfaces instances no inventory records
@@ -65,9 +65,24 @@ Find-DbaInstance -ComputerName (Get-Content .\hosts.txt) |
 setspn -T * -Q MSSQLSvc/* > .\output\estate-spn-trail.txt
 ```
 
-`[to build]` — the canonical **Phase 0** `Spec3-D1.x` estate-discovery script: a single pass that fuses `Find-DbaInstance`, the `MSSQLSvc` SPN trail, and per-database last-access into one inventory object whose output feeds the **same CCM-BIR ingestion pipeline** as the authentication audit (the way D1.8 / D1.5 already do). Until it exists, the sweep is a deliberate **program artifact**, not a canonical telemetry record — record it as such.
-
 Microsoft's migration-assessment tooling (Azure Migrate dependency analysis, the MAP Toolkit, the Data Migration Assistant) is the third instrument: it captures workload, dependency, and version-compatibility data the first two cannot, and it is useful here for what it reveals about the estate regardless of any decision to land on Azure.
+
+### 1c — Fuse the sources into one inventory: `New-UIAOEstateInventory`
+
+No single instrument finds every instance, and run side by side they double-count the ones they all see. **`New-UIAOEstateInventory`** (`tools/powershell/UIAOSqlServerMigration/`) is the Phase-0 instrument that fuses them: it reads the shipped `Spec3-D1.8` discovery output and, optionally, the `Spec1-D1.5` SPN trail and a `Find-DbaInstance` export, keys every instance on host\instance so the same instance seen by multiple instruments deduplicates, and records a `discovered_by` set so coverage is auditable. It then applies the gate (Step 3) to each instance and emits a sealed, reproducible inventory envelope — the **denominator** the rest of the series operates on.
+
+```powershell
+Import-Module ./tools/powershell/UIAOSqlServerMigration
+
+# Fuse the discovery outputs; classify; emit the sealed estate inventory.
+New-UIAOEstateInventory `
+    -AuthAuditPath    .\output\sqlserver-auth-audit.json `
+    -SpnInventoryPath .\output\kerberos-spn-inventory.json `
+    -FindInstancePath .\output\estate-find-dbainstance.csv `
+    -OutputPath       .\output\estate-inventory.json
+```
+
+The function is **pure derivation over the read-only discovery output** — it reads no live host or directory and changes nothing. Its `classification` counts (retain / consolidate / retire / review) and `denominator` are the gate's headline numbers; every instance whose signal is insufficient lands in `review` rather than being silently defaulted to retain.
 
 ### What the inventory must capture
 
@@ -137,8 +152,8 @@ The classified inventory is the surface Books 03–10 operate on. The forest-spa
 
 ## Safety
 
-Every script and query in this book is **read-only** discovery against live instances and AD. The shipped `Spec3-D1.8` (discovery-only) and `Spec1-D1.5` change nothing; `Find-DbaInstance`, `setspn -Q`, and the DMV queries are inventory reads. Nothing here alters a production security posture — that begins in Book 04 (Arc) and Book 05 (logins), and only on the **retain** / **target** set this book defines.
+Every script and query in this book is **read-only** discovery against live instances and AD. The shipped `Spec3-D1.8` (discovery-only) and `Spec1-D1.5` change nothing; `Find-DbaInstance`, `setspn -Q`, and the DMV queries are inventory reads; and `New-UIAOEstateInventory` derives over their captured output without touching anything live. Nothing here alters a production security posture — that begins in Book 04 (Arc) and Book 05 (logins), and only on the **retain** / **target** set this book defines.
 
 ---
 
-*Companion to [narrative Book 02](../sql-server-narrative/Book_02.qmd) and ADR-091 §1. Partial script backing — `tools/discovery/Spec3-D1.8` (discovery-only), `Spec1-D1.5`; the fused Phase-0 estate-discovery instrument is [to build]. Canon: ADR-091 §1, UIAO_135 §3.2.*
+*Companion to [narrative Book 02](../sql-server-narrative/Book_02.qmd) and ADR-091 §1. Script-backed: `tools/discovery/Spec3-D1.8` (discovery-only), `Spec1-D1.5`, and the fused Phase-0 instrument `New-UIAOEstateInventory` (`tools/powershell/UIAOSqlServerMigration/`). Canon: ADR-091 §1, UIAO_135 §3.2.*

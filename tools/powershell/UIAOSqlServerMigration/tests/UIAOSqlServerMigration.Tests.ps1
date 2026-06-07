@@ -44,15 +44,24 @@ sys.stdout.write(hashlib.sha256(canon.encode("utf-8")).hexdigest())
 }
 
 Describe 'Module surface' {
-    It 'exports exactly the nine roster functions' {
+    It 'exports exactly the sixteen roster functions' {
         $exported = @((Get-Command -Module UIAOSqlServerMigration).Name)
-        $exported.Count | Should -Be 9
+        $exported.Count | Should -Be 16
         foreach ($fn in @(
                 'Test-UIAOArcAgentStatus', 'Test-UIAOArcManagedIdentityToken', 'Test-UIAOArcSqlExtension',
                 'Invoke-UIAOArcOnboarding', 'New-UIAOEntraLoginMapping', 'New-UIAOEntraLoginScript',
-                'Test-UIAOLoginParallelRun', 'New-UIAOSpnRemediationPlan', 'Get-UIAONtlmGpoReport')) {
+                'Test-UIAOLoginParallelRun', 'New-UIAOSpnRemediationPlan', 'Get-UIAONtlmGpoReport',
+                'New-UIAOEstateInventory', 'New-UIAOEntraGroupClassification', 'New-UIAOGroupLoginScript',
+                'New-UIAOAppConnectionPlan', 'New-UIAOClosureRecord', 'Compare-UIAOClosureRun',
+                'New-UIAOSqlCertificatePlan')) {
             $exported | Should -Contain $fn
         }
+    }
+
+    It 'matches the manifest FunctionsToExport' {
+        $manifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot '..' 'UIAOSqlServerMigration.psd1')
+        $exported = @((Get-Command -Module UIAOSqlServerMigration).Name) | Sort-Object
+        (@($manifest.FunctionsToExport) | Sort-Object) | Should -Be $exported
     }
 }
 
@@ -365,6 +374,267 @@ Describe 'NTLM — Get-UIAONtlmGpoReport (Book 06 Phase 2, read-only)' {
     }
 }
 
+Describe 'Estate — New-UIAOEstateInventory (Book 02, the gate)' {
+    BeforeAll {
+        $Script:Audit02 = Join-Path $TestDrive 'd18-discovery.json'
+        Write-Json -Path $Script:Audit02 -Object @{
+            InstanceAudits = @(
+                @{ ServerName = 'SQL01'; InstanceName = 'MSSQLSERVER'; SQLVersionMajor = 16; SQLEdition = 'Enterprise'; AuthenticationMode = 'Mixed' }
+                @{ ServerName = 'SQL02'; InstanceName = 'MSSQLSERVER'; SQLVersionMajor = 13; SQLEdition = 'Standard' }
+                @{ ServerName = 'SQL03'; InstanceName = 'MSSQLSERVER'; SQLVersionMajor = 16; LastAccessDays = 500 }
+                @{ ServerName = 'SQL04'; InstanceName = 'MSSQLSERVER' }
+            )
+        }
+    }
+
+    It 'applies the retain / consolidate / retire / review gate' {
+        $r = New-UIAOEstateInventory -AuthAuditPath $Script:Audit02
+        $r.data.denominator | Should -Be 4
+        $r.data.classification.retain | Should -Be 1
+        $r.data.classification.consolidate | Should -Be 1
+        $r.data.classification.retire | Should -Be 1
+        $r.data.classification.review | Should -Be 1
+    }
+
+    It 'lets a zombie (stale last-access) override the supported-version retain' {
+        $r = New-UIAOEstateInventory -AuthAuditPath $Script:Audit02
+        $sql03 = $r.data.records | Where-Object { $_.instance_key -eq 'sql03' }
+        $sql03.classification | Should -Be 'retire'
+    }
+
+    It 'only retain instances enter the auth migration' {
+        $r = New-UIAOEstateInventory -AuthAuditPath $Script:Audit02
+        @($r.data.records | Where-Object { $_.enters_auth_migration }).Count | Should -Be 1
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql01' }).enters_auth_migration | Should -BeTrue
+    }
+
+    It 'merges the SPN trail and records source coverage (dedup by host)' {
+        $spn = Join-Path $TestDrive 'd15-spn.json'
+        Write-Json -Path $spn -Object @{ SPNs = @(
+                @{ HostName = 'SQL01'; SPN = 'MSSQLSvc/SQL01.contoso.gov:1433' }
+                @{ SPN = 'MSSQLSvc/SQL99:1433' }
+            ) }
+        $r = New-UIAOEstateInventory -AuthAuditPath $Script:Audit02 -SpnInventoryPath $spn
+        $r.data.denominator | Should -Be 5   # SQL99 is new; SQL01 dedups
+        $sql01 = $r.data.records | Where-Object { $_.instance_key -eq 'sql01' }
+        $sql01.discovered_by | Should -Contain 'Spec3-D1.8'
+        $sql01.discovered_by | Should -Contain 'Spec1-D1.5'
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql99' }).discovered_by | Should -Contain 'Spec1-D1.5'
+    }
+
+    It 'seals the inventory reproducibly' {
+        $r = New-UIAOEstateInventory -AuthAuditPath $Script:Audit02
+        (Get-ExpectedHash -DataObject $r.data) | Should -Be $r.provenance.content_hash
+    }
+}
+
+Describe 'Groups — New-UIAOEntraGroupClassification (Book 07, ADR-067)' {
+    BeforeAll {
+        $Script:Groups = Join-Path $TestDrive 'groups.json'
+        Write-Json -Path $Script:Groups -Object @{
+            data = @{ records = @(
+                    @{ display_name = 'SQL-DBAs'; security_enabled = $true; mail_enabled = $false }
+                    @{ display_name = 'OrgPath-Finance'; security_enabled = $true; mail_enabled = $false; membership_rule = '(user.department -eq "Finance")' }
+                    @{ display_name = 'All-Staff-DL'; security_enabled = $false; mail_enabled = $true; mail = 'all@contoso.gov' }
+                    @{ display_name = 'AppOwners'; security_enabled = $true; mail_enabled = $true; mail = 'appowners@contoso.gov' }
+                    @{ display_name = 'Project-Unified'; groupTypes = @('Unified') }
+                ) }
+        }
+    }
+
+    It 'assigns each group exactly one ADR-067 type' {
+        $r = New-UIAOEntraGroupClassification -GroupExportPath $Script:Groups
+        $by = @{}; foreach ($x in $r.data.records) { $by[$x.display_name] = $x.group_type }
+        $by['SQL-DBAs'] | Should -Be 'assigned_security_group'
+        $by['OrgPath-Finance'] | Should -Be 'orgtree_dynamic_group'
+        $by['All-Staff-DL'] | Should -Be 'distribution_m365_group'
+        $by['AppOwners'] | Should -Be 'mail_enabled_split'
+        $by['Project-Unified'] | Should -Be 'm365_unified'
+    }
+
+    It 'marks only access-backing groups as becoming SQL logins' {
+        $r = New-UIAOEntraGroupClassification -GroupExportPath $Script:Groups
+        ($r.data.records | Where-Object { $_.display_name -eq 'SQL-DBAs' }).becomes_sql_login | Should -BeTrue
+        ($r.data.records | Where-Object { $_.display_name -eq 'All-Staff-DL' }).becomes_sql_login | Should -BeFalse
+        ($r.data.records | Where-Object { $_.display_name -eq 'AppOwners' }).requires_split | Should -BeTrue
+    }
+
+    It 'seals reproducibly' {
+        $r = New-UIAOEntraGroupClassification -GroupExportPath $Script:Groups
+        (Get-ExpectedHash -DataObject $r.data) | Should -Be $r.provenance.content_hash
+    }
+}
+
+Describe 'Groups — New-UIAOGroupLoginScript (Book 07, dry-run)' {
+    BeforeAll {
+        $Script:GroupClass = Join-Path $TestDrive 'group-class.json'
+        Write-Json -Path $Script:GroupClass -Object @{
+            artifact_type = 'EntraGroupClassification'
+            data          = @{ records = @(
+                    @{ display_name = 'SQL-DBAs'; group_type = 'assigned_security_group'; becomes_sql_login = $true }
+                    @{ display_name = 'All-Staff-DL'; group_type = 'distribution_m365_group'; becomes_sql_login = $false }
+                ) }
+        }
+    }
+
+    It 'emits CREATE LOGIN only for access-backing groups' {
+        $sql = New-UIAOGroupLoginScript -ClassificationPath $Script:GroupClass
+        $sql | Should -Match 'CREATE LOGIN \[SQL-DBAs\] FROM EXTERNAL PROVIDER'
+        $sql | Should -Not -Match 'CREATE LOGIN \[All-Staff-DL\]'
+        $sql | Should -Match 'skipped \(distribution_m365_group\)'
+    }
+
+    It 'opens no SQL connection (no -Server/-Execute surface)' {
+        (Get-Command New-UIAOGroupLoginScript).Parameters.Keys | Should -Not -Contain 'Server'
+        (Get-Command New-UIAOGroupLoginScript).Parameters.Keys | Should -Not -Contain 'Execute'
+    }
+}
+
+Describe 'Apps — New-UIAOAppConnectionPlan (Book 08, ADR-069)' {
+    BeforeAll {
+        $Script:Ldap = Join-Path $TestDrive 'd19-ldap.json'
+        Write-Json -Path $Script:Ldap -Object @{
+            LDAPBindAccounts = @(
+                @{ SourceApplication = 'Billing'; AccountName = 'CONTOSO\svc-billing'; BindType = 'simple'; MigrationTarget = 'OIDC' }
+                @{ SourceApplication = 'LegacyHR'; AccountName = 'CONTOSO\svc-hr'; BindType = 'simple' }
+            )
+        }
+        $Script:Audit08 = Join-Path $TestDrive 'd18-for-apps.json'
+        Write-Json -Path $Script:Audit08 -Object @{
+            InstanceAudits = @(
+                @{ ServerName = 'SQL01'; WindowsLogins = @(@{ LoginName = 'CONTOSO\svc-billing' }) }
+            )
+        }
+    }
+
+    It 'classifies by ADR-069, preferring capability signals then D1.9 MigrationTarget' {
+        $r = New-UIAOAppConnectionPlan -LdapBindInventoryPath $Script:Ldap -AuthAuditPath $Script:Audit08 `
+            -CapabilityMap @{ LegacyHR = @{ vendor_locked = $true } }
+        $by = @{}; foreach ($x in $r.data.records) { $by[$x.source_application] = $x.ldap_class }
+        $by['Billing'] | Should -Be 'Class 3 — OIDC'
+        $by['LegacyHR'] | Should -Be 'Class 4 — Entra Domain Services'
+    }
+
+    It 'correlates the bind account to its SQL instances and emits the conn-string pattern' {
+        $r = New-UIAOAppConnectionPlan -LdapBindInventoryPath $Script:Ldap -AuthAuditPath $Script:Audit08
+        $billing = $r.data.records | Where-Object { $_.source_application -eq 'Billing' }
+        $billing.correlated_sql_instances | Should -Contain 'SQL01'
+        $billing.connection_string_pattern | Should -Match 'Active Directory Managed Identity'
+        $billing.requires_review | Should -BeTrue
+    }
+}
+
+Describe 'ConMon — New-UIAOClosureRecord (Book 09, ADR-091 §5)' {
+    BeforeAll {
+        $Script:Audit09 = Join-Path $TestDrive 'd18-closure.json'
+        Write-Json -Path $Script:Audit09 -Object @{
+            InstanceAudits = @(
+                @{ ServerName = 'SQL01'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Windows'; SaDisabled = $true; ArcConnected = $true; EntraIDReady = $true }
+                @{ ServerName = 'SQL02'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Mixed'; SaDisabled = $false; ArcConnected = $true; EntraIDReady = $true; SQLLogins = @(@{ LoginName = 'app_svc' }) }
+                @{ ServerName = 'SQL03'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Windows'; SaDisabled = $true; ArcConnected = $true; EntraIDReady = $true; SQLLogins = @(@{ LoginName = 'legacy_app' }) }
+            )
+        }
+        $Script:Exceptions = Join-Path $TestDrive 'exceptions.json'
+        Write-Json -Path $Script:Exceptions -Object @{ records = @(@{ ServerName = 'SQL03'; InstanceName = 'MSSQLSERVER' }) }
+    }
+
+    It 'closes an instance with every ADR-091 §5 field satisfied' {
+        $r = New-UIAOClosureRecord -AuditPath $Script:Audit09
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql01' }).verdict | Should -Be 'closed'
+    }
+
+    It 'leaves an instance open with the failing fields named' {
+        $r = New-UIAOClosureRecord -AuditPath $Script:Audit09
+        $sql02 = $r.data.records | Where-Object { $_.instance_key -eq 'sql02' }
+        $sql02.verdict | Should -Be 'open'
+        $sql02.failing_fields | Should -Contain 'windows_auth_only'
+        $sql02.failing_fields | Should -Contain 'sa_disabled'
+    }
+
+    It 'tolerates an excepted type-S login (closed_excepted)' {
+        $r = New-UIAOClosureRecord -AuditPath $Script:Audit09 -ExceptionRegistryPath $Script:Exceptions
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql03' }).verdict | Should -Be 'closed_excepted'
+    }
+
+    It 'reports MFA/Conditional-Access as an external join, not asserted' {
+        $r = New-UIAOClosureRecord -AuditPath $Script:Audit09
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql01' }).mfa_conditional_access | Should -Be 'external'
+    }
+}
+
+Describe 'ConMon — Compare-UIAOClosureRun (Book 09 drift diff)' {
+    BeforeAll {
+        $Script:Base = Join-Path $TestDrive 'run-base.json'
+        Write-Json -Path $Script:Base -Object @{
+            InstanceAudits = @(
+                @{ ServerName = 'SQL01'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Windows'; ArcConnected = $true }
+                @{ ServerName = 'SQL09'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Windows'; ArcConnected = $true }
+            )
+        }
+        $Script:Curr = Join-Path $TestDrive 'run-curr.json'
+        Write-Json -Path $Script:Curr -Object @{
+            InstanceAudits = @(
+                @{ ServerName = 'SQL01'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Mixed'; ArcConnected = $false; SQLLogins = @(@{ LoginName = 'new_sql_login' }) }
+                @{ ServerName = 'SQL05'; InstanceName = 'MSSQLSERVER'; AuthenticationMode = 'Windows'; ArcConnected = $true }
+            )
+        }
+    }
+
+    It 'flags mixed-mode, a new SQL-auth login, and Arc offline as violations' {
+        $r = Compare-UIAOClosureRun -BaselinePath $Script:Base -CurrentPath $Script:Curr
+        $events = @($r.data.records | Where-Object { $_.instance_key -eq 'sql01' } | ForEach-Object { $_.event })
+        $events | Should -Contain 'mixed_mode_enabled'
+        $events | Should -Contain 'new_sql_auth_login'
+        $events | Should -Contain 'arc_agent_offline'
+        $r.data.compliance_violation | Should -BeTrue
+    }
+
+    It 'reports appeared/disappeared instances as informational (non-violation)' {
+        $r = Compare-UIAOClosureRun -BaselinePath $Script:Base -CurrentPath $Script:Curr
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql05' }).event | Should -Be 'instance_appeared'
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql09' }).event | Should -Be 'instance_disappeared'
+        ($r.data.records | Where-Object { $_.instance_key -eq 'sql05' }).violation | Should -BeFalse
+    }
+}
+
+Describe 'Certificates — New-UIAOSqlCertificatePlan (Book 10)' {
+    BeforeAll {
+        $Script:Cert = Join-Path $TestDrive 'd110-cert.json'
+        Write-Json -Path $Script:Cert -Object @{
+            Certificates    = @(
+                @{ Subject = 'CN=SQL01.contoso.gov'; AuthenticationType = 'ServerAuth'; IsExpired = $false; DaysToExpiry = 30 }
+                @{ Subject = 'CN=jdoe'; AuthenticationType = 'Certificate'; IsSmartCard = $true }
+                @{ Subject = 'CN=webserver.contoso.gov'; AuthenticationType = 'ServerAuth' }
+            )
+            CBARequired     = $true
+            CBAReadiness    = 'Partial'
+            EnterpriseRootCAs = @(@{ CAName = 'Contoso-Root-CA' })
+            EnterpriseSubCAs  = @(@{ CAName = 'Contoso-Issuing-CA' })
+        }
+    }
+
+    It 'extracts SQL''s three ADCS dependency classes, scoped by -SqlHostFilter' {
+        $r = New-UIAOSqlCertificatePlan -CertAuditPath $Script:Cert -SqlHostFilter 'SQL01'
+        $r.data.dependency_counts.tls_server_cert | Should -Be 1     # only SQL01, webserver filtered out
+        $r.data.dependency_counts.certificate_mapped_login | Should -Be 1
+        $r.data.dependency_counts.cba_posture | Should -Be 1
+    }
+
+    It 'sequences the CA replacement root-first (the CBA-issuance bridge)' {
+        $r = New-UIAOSqlCertificatePlan -CertAuditPath $Script:Cert
+        $seq = @($r.data.ca_replacement_sequence)
+        $seq[0].ca | Should -Be 'Contoso-Root-CA'
+        $seq[0].tier | Should -Be 'root'
+        $seq[1].tier | Should -Be 'issuing'
+        $r.data.analytical | Should -BeTrue
+    }
+
+    It 'marks every record review-required' {
+        $r = New-UIAOSqlCertificatePlan -CertAuditPath $Script:Cert
+        foreach ($x in $r.data.records) { $x.requires_review | Should -BeTrue }
+    }
+}
+
 Describe 'Input validation' {
     It 'throws on a missing audit file' {
         { New-UIAOEntraLoginMapping -LoginAuditPath (Join-Path $TestDrive 'nope.csv') } | Should -Throw '*not found*'
@@ -374,5 +644,9 @@ Describe 'Input validation' {
         $empty = Join-Path $TestDrive 'empty.json'
         '' | Set-Content -LiteralPath $empty -Encoding UTF8
         { New-UIAOSpnRemediationPlan -CollisionReportPath $empty } | Should -Throw '*empty*'
+    }
+
+    It 'throws on a missing estate audit file' {
+        { New-UIAOEstateInventory -AuthAuditPath (Join-Path $TestDrive 'nope.json') } | Should -Throw '*not found*'
     }
 }
