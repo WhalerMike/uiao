@@ -1,0 +1,244 @@
+---
+title: "UIAO Azure SaaS"
+subtitle: "Running UIAO as a multi-tenant governance SaaS on Azure Container Apps — architecture, deployment, tenant onboarding, and operations"
+doc-type: architecture-explainer
+audience: "Platform engineers · cloud operators · identity architects"
+canon-source: "src/uiao/canon/adr/adr-096-azure-saas-architecture.md"
+derived-from: "ADR-096 (Azure SaaS architecture); ADR-033 (commercial endpoints also serve GCC-Moderate); ADR-084 (Phase 5 consumer architecture)"
+boundary: "GCC-Moderate"
+aspirational: true
+lifecycle: aspirational
+tiers_adopted: [1]
+lifecycle_review: 2026-12-07
+format:
+  html:
+    toc: true
+    toc-depth: 3
+---
+
+# UIAO Azure SaaS {.unnumbered}
+
+::: {.callout-note}
+This page is the operator-facing articulation of the **UIAO Azure SaaS**
+deployment — the multi-tenant governance plane that lets one operated
+service govern many customer Entra tenants. The normative source is
+[ADR-096](../../adr/adr-096-azure-saas-architecture.qmd); the implementation
+lives in the `uiao.saas` package and `deploy/azure/`. The in-repo companion
+to this page is
+[`deploy/azure/README.md`](https://github.com/WhalerMike/uiao/blob/main/deploy/azure/README.md).
+:::
+
+::: {.callout-important}
+**Status — shipped but dormant.** The code is merged and tested; the deploy
+workflow (`.github/workflows/azure-saas-deploy.yml`) is **manual-dispatch
+only** and nothing is deployed until an operator explicitly triggers it. The
+per-tenant resource stamping (`StampExecutor`) is **dry-run by default** — it
+plans the Azure-side work without executing it until a concrete executor is
+injected. Treat this page as the target operating model.
+:::
+
+## 1. What this is
+
+UIAO ships in two deployment shapes that share one codebase:
+
+- **Single-tenant (Windows/IIS)** — the original surface in
+  `deploy/windows-server/`. One agency runs UIAO inside its own boundary,
+  with Kerberos inbound auth and a single Microsoft Graph application token.
+  Unchanged by the SaaS work.
+- **Multi-tenant SaaS (Azure Container Apps)** — the surface described here.
+  One operated service governs **many** customer Entra tenants. Each customer
+  grants admin consent to the UIAO multi-tenant app registration; UIAO then
+  acquires **per-tenant** Microsoft Graph and Azure Resource Manager tokens
+  to run governance passes on their behalf.
+
+The SaaS surface is **additive** — it composes onto the existing `uiao.api`
+data plane via `uiao.saas.attach_saas()` rather than forking it.
+
+## 2. Why Azure Container Apps
+
+The SaaS plane is the "behind-the-scenes" governance runtime. Container Apps
+is the chosen compute target because:
+
+- **Managed identity is the governance principal.** Each revision runs under
+  a user-assigned managed identity — exactly the identity the existing
+  `EntraTokenProvider`, `GraphTransport`, and `ArmTransport` expect for
+  acquiring Graph / ARM tokens. No client secrets on disk.
+- **Scale-to-zero + KEDA** suits bursty, scheduled governance passes.
+- **Managed ingress, TLS, and revisions** give blue/green for free.
+- It is lighter to operate than AKS and more elastic than App Service.
+
+## 3. Architecture
+
+![UIAO Azure SaaS architecture: customer Entra tenants send inbound JWTs (tid claim) to one Azure Container App running `uiao.saas.asgi:app`, which hosts the data plane (TenantResolutionMiddleware + uiao.api routes) and the control plane (/control/v1), uses a managed identity for per-tenant Graph/ARM tokens, and is backed by PostgreSQL, Key Vault, and Blob Storage.](images/saas-architecture.png){#fig-saas-architecture fig-alt="Engineering blueprint diagram on a white background. Three ice-blue navy-bordered boxes at top labeled Customer tenant A, B, C under the caption Entra ID customer tenants admin-consented. A teal arrow labeled inbound JWT tid claim points down into a large ice-blue box labeled Azure Container App uiao.saas.asgi:app, which contains two navy boxes — Data plane with TenantResolutionMiddleware plus uiao.api governance routes, and Control plane /control/v1 with onboard suspend resume deprovision — above a teal pill reading Managed identity to per-tenant Microsoft Graph / ARM tokens. Three teal arrows descend to three navy boxes labeled PostgreSQL tenant registry plus state, Key Vault per-tenant secrets, and Blob Storage evidence bundles. No human figures, 16:9 landscape." width="90%"}
+
+The two planes share one process and one `/healthz` liveness endpoint:
+
+- **Data plane.** Every non-public request must carry an Entra access token.
+  `TenantResolutionMiddleware` verifies it, resolves the `tid` claim to a
+  registered tenant, rejects non-onboarded or non-active tenants with `403`,
+  and binds a `TenantContext` for the life of the request. Any governance
+  code downstream reads `uiao.saas.require_current_tenant()` to learn whose
+  data it is operating on — without threading the tenant through every call.
+- **Control plane.** `POST /control/v1/tenants` and the lifecycle routes are
+  the operator surface. They require a **publisher-tenant** token carrying
+  the `UIAO.SaaS.Admin` app role.
+
+## 4. Tenancy and data isolation
+
+Each onboarded customer is a `Tenant` (`uiao.saas.tenant`): identified by its
+Entra directory GUID, carrying a lifecycle status, a plan, and a
+**`data_namespace`** derived deterministically from the GUID. That namespace
+is the isolation handle — the Postgres row/schema scope, the Blob prefix, and
+the Key Vault secret scope all hang off it.
+
+The model is **per-request tenancy on a shared, elastically-scaled data
+plane** (strong namespace isolation enforced in code) **plus a control-plane
+stamp pattern** for customers whose compliance posture requires dedicated
+resources. The lifecycle state machine is:
+
+![Tenant lifecycle state machine: PENDING transitions to ACTIVE on onboard/consent; ACTIVE to SUSPENDED on suspend and back on resume; any state can be deprovisioned into the terminal DEPROVISIONED state. Only ACTIVE serves governance traffic.](images/saas-tenant-lifecycle.png){#fig-saas-lifecycle fig-alt="Engineering blueprint state diagram on a white background. An ice-blue PENDING box has a teal arrow labeled onboard / consent to a teal ACTIVE box annotated serves governance traffic, which has a teal arrow labeled suspend to an ice-blue SUSPENDED box, and a curved teal return arrow labeled resume. Red arrows from all three states converge downward, labeled deprovision from any state, into a navy DEPROVISIONED box annotated terminal. No human figures, 16:9 landscape." width="85%"}
+
+Only `ACTIVE` tenants receive governance traffic; the middleware rejects all
+others.
+
+## 5. Prerequisites
+
+Before the first deploy, an operator needs:
+
+1. An Azure subscription and a target **resource group**.
+2. A **multi-tenant app registration** (the UIAO app customers consent to),
+   with the Microsoft Graph / ARM application permissions the governance
+   passes require, and an Application ID URI (e.g. `api://uiao`).
+3. An app role `UIAO.SaaS.Admin` defined on that registration, assigned to
+   the operators who will drive the control plane.
+4. A federated (OIDC) deployer identity for the GitHub Actions workflow, with
+   `Contributor` on the resource group. See the secrets listed in
+   `.github/workflows/azure-saas-deploy.yml`.
+
+## 6. Configuration
+
+The container reads `UIAO_SAAS_*` environment variables (see
+`uiao.saas.settings.SaasSettings`). The Bicep wires these from module outputs
+and secrets:
+
+| Variable | Meaning | Source |
+|---|---|---|
+| `UIAO_SAAS_DATABASE_URL` | SQLAlchemy async DSN (password embedded) | Container Apps secret |
+| `UIAO_SAAS_APP_CLIENT_ID` | UIAO multi-tenant app client ID | App registration |
+| `UIAO_SAAS_PUBLISHER_TENANT_ID` | Home tenant that owns the control plane | Operator |
+| `UIAO_SAAS_API_AUDIENCE` | Audience inbound tokens must carry | App registration |
+| `UIAO_SAAS_CLOUD` | `commercial` (also GCC-Moderate), `gcc-high`, `dod` | Operator |
+| `UIAO_SAAS_KEY_VAULT_URI` | Per-tenant secret store | Key Vault module |
+| `UIAO_SAAS_STORAGE_ACCOUNT_URL` | Evidence-bundle storage | Storage module |
+| `AZURE_CLIENT_ID` | Managed-identity client ID for Graph/ARM tokens | Identity module |
+
+Without `UIAO_SAAS_DATABASE_URL` the runtime falls back to an **in-memory**
+tenant registry — useful for local dev, never durable.
+
+## 7. Deploy
+
+The CI workflow `.github/workflows/azure-saas-deploy.yml` is **manual-
+dispatch only**. To deploy by hand with the Azure CLI:
+
+```bash
+# 1. Stamp infrastructure (ACR, Postgres, Key Vault, Storage, Container App…)
+az deployment group create -g <rg> \
+  -f deploy/azure/bicep/main.bicep \
+  -p deploy/azure/bicep/main.bicepparam \
+  -p pgAdminPassword="$PG_PWD"
+
+# 2. Build and push the image
+az acr build --registry <acr> --image uiao-saas:latest \
+  --file deploy/azure/Dockerfile .
+
+# 3. Re-deploy pointing at the pushed image
+az deployment group create -g <rg> \
+  -f deploy/azure/bicep/main.bicep \
+  -p deploy/azure/bicep/main.bicepparam \
+  -p containerImage="<acr>.azurecr.io/uiao-saas:latest" \
+  -p pgAdminPassword="$PG_PWD"
+```
+
+The Bicep modules under `deploy/azure/bicep/modules/` provision Log Analytics
++ App Insights, the managed identity, ACR (with `AcrPull`), Key Vault (RBAC,
+with `Key Vault Secrets User`), PostgreSQL Flexible Server, a Storage account
+(with `Storage Blob Data Contributor`), the Container Apps environment, and
+the SaaS Container App itself.
+
+## 8. Onboarding a tenant
+
+```bash
+# Operator (publisher-tenant token with the UIAO.SaaS.Admin role):
+curl -X POST https://<app-fqdn>/control/v1/tenants \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tenant_id": "<customer-tenant-guid>", "display_name": "Acme", "plan": "standard"}'
+```
+
+The response includes an **admin-consent URL**. The customer's Global
+Administrator visits it once to grant the UIAO app the Graph / ARM
+permissions. The control plane records the tenant (`pending → active`) and
+returns the planned per-tenant stamp steps. From that point, requests bearing
+that tenant's tokens are resolved automatically by the data plane.
+
+## 9. Lifecycle operations
+
+| Action | Call |
+|---|---|
+| List tenants | `GET /control/v1/tenants` |
+| Inspect one | `GET /control/v1/tenants/{id}` |
+| Suspend (blocks data plane) | `POST /control/v1/tenants/{id}/suspend` |
+| Resume | `POST /control/v1/tenants/{id}/resume` |
+| Deprovision (terminal) | `DELETE /control/v1/tenants/{id}` |
+
+Suspension is immediate: the next data-plane request for a suspended tenant
+returns `403 tenant_not_active`. Deprovisioning plans the un-stamp (archive
+schema, retain evidence per policy, revoke secrets) and moves the tenant to
+the terminal `DEPROVISIONED` state.
+
+## 10. Security model
+
+- **Inbound.** Tokens are signature-verified against the issuing tenant's
+  JWKS (RS256) in production. The dev-only `insecure_allow_unsigned` switch
+  (claims still validated) defaults **off**.
+- **Authorization.** The data plane rejects non-onboarded and non-active
+  tenants. The control plane requires a publisher-tenant token with the
+  `UIAO.SaaS.Admin` app role.
+- **Secrets.** The DB DSN and per-tenant client secrets live in Key Vault /
+  Container Apps secrets, never in the image or in git. Outbound Graph / ARM
+  access uses the managed identity, not stored credentials.
+
+## 11. Local development
+
+```bash
+pip install -e ".[saas]"
+export UIAO_SAAS_INSECURE_ALLOW_UNSIGNED_TOKENS=true   # dev ONLY
+export UIAO_SAAS_API_AUDIENCE=api://uiao
+export UIAO_SAAS_PUBLISHER_TENANT_ID=<your-tenant-guid>
+uvicorn uiao.saas.asgi:app --reload
+```
+
+`tests/test_saas_app.py` exercises the full onboarding → lifecycle flow
+against the in-memory registry, so it is the fastest way to see the control
+plane and tenant resolution behave end to end.
+
+## 12. Sovereign clouds
+
+`UIAO_SAAS_CLOUD` selects `commercial` (which also serves GCC-Moderate per
+[ADR-033](../../adr/adr-033-gcc-boundary-drift-class.qmd)), `gcc-high`, or
+`dod`. It drives the Entra login authority, the issuer template inbound
+tokens are validated against, and the Graph / ARM audiences the managed
+identity requests — consistent with the adapter cloud-resolution convention.
+A sovereign-cloud SaaS *offering* is a future decision and a listed ADR-096
+review trigger; no sovereign SaaS is stood up today.
+
+## Provenance
+
+- Decision record: [ADR-096](../../adr/adr-096-azure-saas-architecture.qmd).
+- Implementation: `uiao.saas` (package) and `deploy/azure/` (container +
+  Bicep + deploy workflow).
+- In-repo operator companion:
+  [`deploy/azure/README.md`](https://github.com/WhalerMike/uiao/blob/main/deploy/azure/README.md).
+- Control-plane API reference:
+  [CLI Reference §5](../../docs/cli-reference.qmd).
+

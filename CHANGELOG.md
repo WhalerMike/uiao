@@ -2,6 +2,51 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [0.7.0] — 2026-06-07
+
+**Theme: Multi-tenant Azure SaaS (ADR-096).** Adds a multi-tenant SaaS
+deployment surface for UIAO on Azure Container Apps, parallel to (not
+replacing) the single-tenant Windows/IIS surface. One operated service can
+govern many customer Entra tenants, acquiring per-tenant Microsoft Graph /
+ARM tokens via a managed identity.
+
+### Added
+
+- **`uiao.saas` package** — the multi-tenant layer that composes onto the
+  existing `uiao.api` data plane via `attach_saas()`:
+  - `tenant` — the `Tenant` aggregate + lifecycle state machine
+    (`pending → active → suspended → deprovisioned`) with validated
+    transitions and a deterministic per-tenant `data_namespace`
+  - `repository` / `pg_repository` — async tenant registry, in-memory
+    (dependency-free) plus a Postgres-backed implementation (behind `[saas]`)
+  - `auth` — inbound Entra JWT verification; claim validation is pure-stdlib,
+    RS256/JWKS signature verification is lazy-imported behind `[saas]`
+  - `middleware` — `TenantResolutionMiddleware` binding a per-request
+    `TenantContext` (`context`)
+  - `control_plane` / `provisioning` — control-plane REST API (onboard /
+    list / suspend / resume / deprovision) with a dry-run-by-default
+    `StampExecutor`
+  - `asgi` — container entrypoint `uiao.saas.asgi:app`
+- **`[saas]` optional-dependency extra** (SQLAlchemy async + asyncpg, PyJWT,
+  azure-identity / azure-keyvault-secrets / azure-storage-blob). Isolated so
+  the blocking CI test job (`.[api]` only) stays green.
+- **`deploy/azure/`** — container image (`Dockerfile`, `.dockerignore`) and
+  Bicep IaC for Azure Container Apps (managed identity, ACR, Key Vault,
+  PostgreSQL Flexible Server, Storage, Log Analytics) + operator `README.md`.
+- **`.github/workflows/azure-saas-deploy.yml`** — manual-dispatch-only
+  (dormant) build + deploy workflow using OIDC.
+- **ADR-096** documenting the Azure SaaS architecture decision.
+- **Docs** — `docs/customer-documents/platform/azure-saas.qmd` operator
+  guide and a SaaS control-plane section in the CLI Reference (§5.1).
+- 31 new tests (`tests/test_saas_*.py`) covering the tenant model,
+  repository, inbound auth, middleware, and control-plane lifecycle.
+
+### Notes
+
+- The SaaS surface is additive — the single-tenant Windows/IIS deployment is
+  unchanged. The deploy workflow does not run on merge; nothing deploys until
+  an operator triggers it.
+
 ## [0.6.1] — 2026-05-15
 
 **Theme: ServiceNow tier-1 adapter completion.** Closes the tier-1
