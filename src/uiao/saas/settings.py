@@ -1,0 +1,86 @@
+"""
+uiao.saas.settings
+------------------
+Environment-driven configuration for the UIAO Azure SaaS runtime.
+
+All settings are read from ``UIAO_SAAS_*`` environment variables (the
+container injects these from Key Vault references / Container Apps secrets).
+Every field has a safe default so importing the package and constructing the
+ASGI app never fails on a fresh machine — misconfiguration surfaces as a
+runtime 401/403, not an import crash.
+"""
+
+from __future__ import annotations
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class SaasSettings(BaseSettings):
+    """Configuration for the multi-tenant SaaS control + data plane."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="UIAO_SAAS_",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # --- Identity / Entra multi-tenant app registration -------------------
+    #: The UIAO multi-tenant app registration (application/client) ID that
+    #: customer tenants grant admin consent to.
+    app_client_id: str = Field(default="")
+    #: The publisher (home) tenant that owns the multi-tenant app + control
+    #: plane. Control-plane admin tokens must originate from this tenant.
+    publisher_tenant_id: str = Field(default="")
+    #: The audience (``aud``) inbound data-plane tokens must carry — the
+    #: Application ID URI of the UIAO API (e.g. ``api://uiao``).
+    api_audience: str = Field(default="")
+    #: Comma-separated allowlist of customer tenant GUIDs permitted to
+    #: authenticate. ``"*"`` accepts any tenant that has a registered,
+    #: ACTIVE :class:`~uiao.saas.tenant.Tenant` record (the normal SaaS
+    #: case — the tenant registry is the gate, not a static allowlist).
+    allowed_issuer_tenants: str = Field(default="*")
+    #: Sovereign cloud — ``commercial`` (also GCC-Moderate per ADR-033),
+    #: ``gcc-high`` or ``dod``. Selects login / Graph / ARM endpoints.
+    cloud: str = Field(default="commercial")
+
+    # --- Data plane backing stores ---------------------------------------
+    #: SQLAlchemy async URL for the tenant registry + evidence state, e.g.
+    #: ``postgresql+asyncpg://user@host/uiao``. Empty → in-memory registry
+    #: (dev/test only; not durable).
+    database_url: str = Field(default="")
+    #: Azure Key Vault URI for per-tenant secrets (client secrets / certs).
+    key_vault_uri: str = Field(default="")
+    #: Azure Blob Storage account URL for evidence bundles / artifacts.
+    storage_account_url: str = Field(default="")
+
+    # --- Operational toggles ---------------------------------------------
+    #: When true the control-plane provisioning endpoints are exposed.
+    provisioning_enabled: bool = Field(default=True)
+    #: When true (dev/test ONLY) inbound tokens are accepted without JWKS
+    #: signature verification. Never enable in production.
+    insecure_allow_unsigned_tokens: bool = Field(default=False)
+    #: Paths exempt from tenant resolution (health probes, docs, control
+    #: plane). Comma-separated path prefixes.
+    public_path_prefixes: str = Field(
+        default="/healthz,/health,/api/docs,/api/redoc,/api/openapi.json,/control",
+    )
+
+    # --- Derived helpers --------------------------------------------------
+    def allowed_tenants(self) -> set[str] | None:
+        """Return the explicit issuer allowlist, or ``None`` for ``"*"``."""
+        value = self.allowed_issuer_tenants.strip()
+        if not value or value == "*":
+            return None
+        return {t.strip() for t in value.split(",") if t.strip()}
+
+    def public_prefixes(self) -> tuple[str, ...]:
+        """Return the request-path prefixes exempt from tenant resolution."""
+        return tuple(p.strip() for p in self.public_path_prefixes.split(",") if p.strip())
+
+    def has_database(self) -> bool:
+        """True when a durable Postgres registry is configured."""
+        return bool(self.database_url.strip())
+
+
+__all__ = ["SaasSettings"]
