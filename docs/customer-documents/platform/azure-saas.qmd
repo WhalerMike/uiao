@@ -276,6 +276,54 @@ example of the placement rule: its **governance** is the *same* SaaS, its
 This is encoded in canon: `sql-server` is registered in the modernization
 adapter registry with `runner-class: on-prem-self-hosted`.
 
+## The cross-boundary "one plane" — Book 18 capability #5, in depth
+
+The "Where this fits" callout at the top names this plane as the fifth
+differentiated capability in
+[Book 18 — OrgPath and the IGA Market](../orgpath-narrative/Book_18.qmd). This
+section is the substance behind that pointer: *why* a multi-tenant SaaS, built
+the way this page describes, is the concrete realization of the claim Book 18 §6
+argues no single-boundary product can make — a **single reconciled
+organizational substrate across many tenants and federal cloud boundaries**.
+
+The claim rests on three properties this architecture already has, each
+described operationally above:
+
+- **One runtime, many tenants.** The same `uiao.api` governance code runs every
+  tenant's drift pass; the SaaS surface is additive (`attach_saas()`), not a
+  fork (§1). There is one engine, one Codebook model, and one drift taxonomy in
+  force across the whole estate — so "reconciled by one runtime" is literal, not
+  aspirational. A department renamed in the Codebook is reasoned about
+  identically for every tenant.
+- **Per-tenant tokens, boundary-correct.** The managed identity acquires
+  **per-tenant** Microsoft Graph and ARM tokens (§1–§3), and `UIAO_SAAS_CLOUD`
+  selects the Entra login authority, the inbound issuer template, and the Graph
+  / ARM audiences for `commercial` (also GCC-Moderate), `gcc-high`, or `dod`
+  (§12). This is exactly Book 18 §6's point: the substrate model never changes
+  across boundaries, only the host and token audience do — and the SaaS selects
+  them per boundary rather than assuming the commercial defaults.
+- **Isolation that survives the shared plane.** Each tenant's
+  `data_namespace` (§4) scopes its Postgres rows, Blob prefix, and Key Vault
+  secrets; `TenantResolutionMiddleware` binds a `TenantContext` per request and
+  rejects non-active tenants. One reconciled *plane* does not mean one
+  commingled *dataset* — the boundaries between tenants (and between clouds)
+  stay intact while the substrate is governed uniformly across them.
+
+Set against the IGA market Book 18 surveys, this is the capability with the
+sharpest edge. The convergent IGA platforms — and Microsoft's own primitives —
+are overwhelmingly single-boundary: an estate that spans Commercial,
+GCC-Moderate, GCC-High, and DoD ends up maintaining a separate copy of its
+organizational structure in each, with nothing keeping them in agreement. This
+plane is the mechanism that keeps them in agreement: one governed Codebook, one
+typed drift engine, one runtime, reaching every tenant in every boundary
+through the correct cloud-specific door.
+
+> Reconciling across boundaries is not dissolving them. Each tenant keeps its
+> own namespace and each cloud its own trust root and token audience; what is
+> shared is the substrate model and the engine that governs it. That is the
+> "one plane" Book 18 §6 defends — and the SQL Server vertical above (§13) is
+> the first worked consumer of it.
+
 ## Provenance
 
 - Decision record: [ADR-096](../../adr/adr-096-azure-saas-architecture.qmd).
