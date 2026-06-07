@@ -156,8 +156,7 @@ class DeviceOrgPathPlanner:
                 return self._routing[disposition]
             except KeyError:
                 raise ValueError(
-                    f"Unknown disposition '{disposition}'. "
-                    f"Expected one of: {sorted(self._routing)}"
+                    f"Unknown disposition '{disposition}'. Expected one of: {sorted(self._routing)}"
                 ) from None
         if disposition in _ENTRA_DISPOSITIONS:
             return "entra"
