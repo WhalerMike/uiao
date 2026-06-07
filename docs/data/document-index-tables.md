@@ -113,6 +113,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Active | Executive, Customer, Technical |
 | [Modernization Governance — Whitepaper](whitepapers/modernization-governance-whitepaper.html) | Active | Executive, Customer, Architect |
 | [SCuBAGear Integration — Whitepaper](whitepapers/scubagear-integration-whitepaper.html) | Active | Customer, Assessor, Architect |
+| [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](whitepapers/snowflake-keypair-vs-uiao-orgpath.html) | Draft | Executive, Technical, Customer |
 | [UIAO Governance OS — Whitepaper](whitepapers/uiao-governance-os-whitepaper.html) | Active | Executive, Customer, Assessor |
 | [UIAO vs Microsoft Native Tools — Gap Analysis](whitepapers/uiao-vs-native-tools.html) | Active | Executive, Customer, Technical |
 | [Zero Trust Governance — Whitepaper](whitepapers/zero-trust-governance-whitepaper.html) | Active | Executive, Customer, Assessor |
