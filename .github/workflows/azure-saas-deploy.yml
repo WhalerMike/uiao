@@ -1,0 +1,100 @@
+# UIAO Azure SaaS — build & deploy (ADR-096)
+#
+# SEGREGATED / DORMANT BY DESIGN: this workflow is **manual-dispatch only**.
+# It has no push/PR triggers, so merging the SaaS branch does not deploy
+# anything. It runs only when an operator explicitly starts it (and, by
+# default, against a protected GitHub Environment that can gate approval) —
+# keeping the SaaS launch private until you choose to reveal it.
+#
+# Auth uses Entra workload-identity federation (OIDC) — no stored cloud
+# credentials. Configure these repo/environment secrets first:
+#   AZURE_CLIENT_ID         federated app registration (deployer)
+#   AZURE_TENANT_ID         publisher tenant
+#   AZURE_SUBSCRIPTION_ID   target subscription
+#   AZURE_RESOURCE_GROUP    target resource group (pre-created)
+#   PG_ADMIN_PASSWORD       PostgreSQL admin password
+name: azure-saas-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        description: Deployment environment
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      image_tag:
+        description: Container image tag to build/deploy
+        type: string
+        default: latest
+      deploy_infra:
+        description: Also (re)deploy the Bicep infrastructure
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: azure-saas-${{ github.event.inputs.environment_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Bind to a protected Environment so deploys can require manual approval.
+    environment: saas-${{ github.event.inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve ACR login server
+        id: acr
+        run: |
+          LOGIN_SERVER=$(az acr list \
+            -g "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --query "[?starts_with(name, 'uiao')].loginServer | [0]" -o tsv)
+          if [ -z "$LOGIN_SERVER" ]; then
+            echo "No ACR found yet — run with deploy_infra=true first to stamp it." >&2
+            exit 1
+          fi
+          echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push image to ACR
+        env:
+          LOGIN_SERVER: ${{ steps.acr.outputs.login_server }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          REGISTRY_NAME="${LOGIN_SERVER%%.*}"   # strip .azurecr.io suffix
+          IMAGE="${LOGIN_SERVER}/uiao-saas:${IMAGE_TAG}"
+          az acr build \
+            --registry "$REGISTRY_NAME" \
+            --image "uiao-saas:${IMAGE_TAG}" \
+            --file deploy/azure/Dockerfile .
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy Bicep
+        if: ${{ github.event.inputs.deploy_infra == 'true' }}
+        run: |
+          az deployment group create \
+            -g "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            -f deploy/azure/bicep/main.bicep \
+            -p deploy/azure/bicep/main.bicepparam \
+            -p environmentName=${{ github.event.inputs.environment_name }} \
+            -p containerImage="$IMAGE" \
+            -p pgAdminPassword="${{ secrets.PG_ADMIN_PASSWORD }}"
+
+      - name: Update Container App image only
+        if: ${{ github.event.inputs.deploy_infra != 'true' }}
+        run: |
+          APP=$(az containerapp list -g "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --query "[?ends_with(name, '-saas')].name | [0]" -o tsv)
+          az containerapp update -g "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            -n "$APP" --image "$IMAGE"
