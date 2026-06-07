@@ -137,6 +137,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | Title | Status | Audience |
 |-------|--------|----------|
 | [Active Governance](platform/active-governance.html) | Active | Platform engineers · architects · authorizing officials · integrators |
+| [UIAO Azure SaaS](platform/azure-saas.html) | Active | Platform engineers · cloud operators · identity architects |
 | [UIAO Git Server — Windows Server 2025 with IIS](platform/git-server-implementation.html) | Active | Customer, Technical |
 | [UIAO Governance Dashboard Design](platform/governance-dashboard-design.html) | Active | Customer, Technical, Executive |
 | [OrgPath Runtime](platform/orgpath-runtime.html) | Active | Platform engineers · identity architects · governance operators |
