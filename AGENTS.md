@@ -26,7 +26,7 @@ Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao
 | [`phase2/`](phase2/) | Phase 2 architecture artifacts | Generated output of `tools/Write-Phase2TSA.ps1` from the source model at `models/phase2/UIAO_Phase2_TSA.psd1`. Feeds the customer-facing **Phase 2 — Governance OS** chapter ([`docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd)). Uses the `UIAO_P2_NNN` namespace (not the canonical `UIAO_NNN` allocation). Most domain/lifecycle/transformation files are placeholder scaffolds pending design sessions; `_legacy/` holds the prior generator output. Index at [`phase2/UIAO_Phase2_Index.md`](https://github.com/WhalerMike/uiao/blob/main/phase2/UIAO_Phase2_Index.md). |
 | [`models/`](models/) | **Phase 2 source models — NOT canon authority.** | Holds `models/phase2/UIAO_Phase2_TSA.psd1`, the PowerShell-data-file source model that `tools/Write-Phase2TSA.ps1` consumes to generate `phase2/`. Renamed from `canon/` (which collided with `src/uiao/canon/`) so the role is explicit: generator-input source models, not canonical governance. Canon authority lives **only** at `src/uiao/canon/`. |
 | [`inbox/`](inbox/) | Scratch surface | Agent-authored drafts. Nothing here is canon. |
-| [`deploy/`](deploy/) | Deployment artifacts | `deploy/windows-server/` holds the IIS deployment surface (`run.py`, `web.config`, `requirements-windows.txt`) for the FastAPI service in `src/uiao/api/`. |
+| [`deploy/`](deploy/) | Deployment artifacts | `deploy/windows-server/` holds the IIS deployment surface (`run.py`, `web.config`, `requirements-windows.txt`) for the single-tenant FastAPI service in `src/uiao/api/`. `deploy/azure/` holds the **multi-tenant SaaS** surface (ADR-096): Dockerfile + Bicep IaC for Azure Container Apps, running `uiao.saas.asgi:app`. |
 | [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, mypy (non-blocking), ruff, quarto, link-check, release. |
 
 Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/cli/app.py).
@@ -96,6 +96,23 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 | **OrgPath brownfield inventory** | `uiao.modernization.orgtree.inventory` | `uiao orgtree inventory` | CLI | Captures **already-enrolled** devices missing OrgPath across Entra (Graph `onPremisesExtensionAttributes`) + Arc (ARM `tags`) — live (`--from-graph`/`--from-arm`, `[api]` extra) or offline (`--devices-export`/`--machines-export`). Classifies capture status (complete/partial/absent) vs the Codebook, proposes a backfill via the source chain (`--asset-map` → `--owner-map`), and emits a `govern`-compatible snapshot (gaps re-surface as `DRIFT-IDENTITY`) + a backfill worklist. **Read-only** — no writes |
 | **Graph transport** | `uiao.adapters.graph_transport` | (library, used by `--no-dry-run`) | **`[api]` extra** | Concrete `Transport` for the Entra/Graph plane: httpx + MSAL (`EntraTokenProvider`), cloud-aware via `resolve_graph_base`. `from_environment(cloud=…)` acquires the cloud-correct Graph audience + login authority |
 | **ARM transport** | `uiao.adapters.arm_transport` | (library, used by `--no-dry-run`) | **`[api]` extra** | ARM-plane counterpart to `GraphTransport` for the Arc device-plane writeback (`ARC-SERVER` dispositions): resolves `management.azure.com` (commercial/GCC-Moderate) or `management.usgovcloudapi.net` (Azure Government) via `resolve_arm_base`, and acquires an **ARM-audience** token (`arm_token_scope`). A Graph-audience token sent to ARM is rejected 401 — this is why the two planes need distinct transports |
+
+## Public surface additions (Azure SaaS — ADR-096)
+
+The multi-tenant SaaS plane (`uiao.saas`) turns the single-tenant `uiao.api`
+service into a per-request multi-tenant SaaS on Azure Container Apps. It is
+**additive** — the Windows/IIS surface (`deploy/windows-server/`) is retained
+for single-tenant/on-prem deployments. All Postgres / Azure-SDK code is
+isolated behind a new `[saas]` extra and lazy-imported, so the blocking CI
+test job (`.[api]` only) stays green.
+
+| Feature | Module | Surface | Tier | Notes |
+|---|---|---|---|---|
+| **SaaS data-plane tenancy** | `uiao.saas.middleware`, `uiao.saas.context` | ASGI middleware | **`[api]` extra** | Resolves the Entra `tid` claim → registered `Tenant`, binds a per-request `TenantContext`. Rejects non-onboarded / non-active tenants 403 |
+| **SaaS control plane** | `uiao.saas.control_plane`, `uiao.saas.provisioning` | REST `/control/v1` | **`[api]` extra** | Onboard / list / suspend / resume / deprovision tenants. Requires a publisher-tenant token with the `UIAO.SaaS.Admin` app role. Dry-run-by-default `StampExecutor` |
+| **Inbound Entra verification** | `uiao.saas.auth` | library | **`[api]` extra** (JWKS verify: `[saas]`) | Claim validation is pure-stdlib; RS256 JWKS signature verification is lazy-imported (PyJWT) behind `[saas]` |
+| **Tenant registry (durable)** | `uiao.saas.pg_repository` | library | **`[saas]` extra** | SQLAlchemy-async + asyncpg `saas_tenants` table. In-memory fallback (`uiao.saas.repository`) needs no extra |
+| **SaaS ASGI entrypoint** | `uiao.saas.asgi:app` | server | **`[saas]` extra** | `uvicorn uiao.saas.asgi:app` — composes the data plane + control plane. Container image + Bicep IaC under `deploy/azure/` |
 
 ### Rules for moving a feature between tiers
 

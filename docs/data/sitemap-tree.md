@@ -158,6 +158,7 @@
 - [Image Generation moves to committed Claude-authored SVG, rasterized deterministically in CI (NanoBanana retired)](adr/adr-093-image-generation-svg.html)
 - [Assessment-to-Plan PowerShell Toolchain — governed specs for UIAOImportAdapters, UIAOIdentityAssessment, UIAOPlanGenerators](adr/adr-094-assessment-to-plan-toolchain.html)
 - [Illustrative SVG register — expanding the figure house style beyond the engineering-blueprint boundary](adr/adr-095-illustrative-svg-register.html)
+- [Azure SaaS architecture — multi-tenant UIAO on Container Apps](adr/adr-096-azure-saas-architecture.html)
 
 ## Schema Reference
 
