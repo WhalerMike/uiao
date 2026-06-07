@@ -2,6 +2,20 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [Unreleased]
+
+### Added
+
+- **ADR-097 — SQL Server transformation placement.** Settles the SQL Server
+  Identity Transformation vertical against the Azure SaaS: its governance runs
+  in the **same** UIAO control + evidence plane; its host-level execution
+  (auth audit, Arc enrollment, login migration) runs **adjacent**, in the
+  customer boundary on the Arc-connected host, orchestrated by the control
+  plane (lane discipline, ADR-092). Registers `sql-server` in
+  `modernization-registry.yaml` with `runner-class: on-prem-self-hosted`,
+  adds a house-style placement figure, and documents it in the Azure SaaS
+  operator guide (§13).
+
 ## [0.7.0] — 2026-06-07
 
 **Theme: Multi-tenant Azure SaaS (ADR-096).** Adds a multi-tenant SaaS

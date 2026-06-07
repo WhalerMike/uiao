@@ -25,7 +25,7 @@
 
 schema-version: "1.0.0"
 registry-class: modernization
-updated: "2026-05-05"
+updated: "2026-06-07"
 
 adapters:
 
@@ -1143,3 +1143,57 @@ adapters:
       authorization are agency-specific; commercial-license
       considerations apply unlike the public-domain Login.gov.
       Activation requires a per-adapter ADR modeled on ADR-035.
+
+  - id: sql-server
+    name: SQL Server Identity Transformation
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Change-making transformation of SQL Server authentication from
+      Windows/NTLM to Entra-backed identity via Azure Arc + managed identity
+      (ADR-002, ADR-091). Classified `integration` per resolved ODA-15
+      (UIAO_003 §4.7): the identity outcome (SQL logins → Entra principals)
+      is governed in the UIAO control plane, while the change-making act runs
+      against the SQL engine in the customer boundary.
+    status: proposed
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    runtime: powershell-7.4
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - sql-logins
+      - sql-instances
+      - service-accounts
+      - arc-managed-identity
+    outputs:
+      - sql-auth-audit.json
+      - migration-manifest.json
+      - migration-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    freshness-window-hours: 24
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - ADR-097  # placement: same control plane, adjacent execution
+      - ADR-091  # SQL Server authentication transformation
+      - ADR-002  # Arc + managed identity
+    notes: >-
+      Same UIAO SaaS control + evidence plane; adjacent in-boundary
+      execution (ADR-097). The host-level operations (auth audit, Arc
+      enrollment, login migration) run on the Arc-connected host via the
+      execution runner; the SaaS control plane orchestrates them and ingests
+      signed evidence, and never opens a direct connection to the SQL engine
+      (ADR-092 lane discipline). `runner-class: on-prem-self-hosted` encodes
+      the adjacent execution lane. Status `proposed` until the
+      `UIAOSqlServerMigration` PowerShell tooling is wired to the control
+      plane as a runtime adapter.
