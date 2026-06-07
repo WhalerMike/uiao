@@ -23,16 +23,21 @@ lifecycle_review: 2027-01-01
 
 # SQL Server Identity Transformation — Implementation Companion {.unnumbered}
 
-::: {.callout-important appearance="default"}
-## Status — Draft companion
+::: {.callout-note appearance="default"}
+## The executable companion
 This is the **executable companion** to the [SQL Server Identity Transformation
 narrative](../sql-server-narrative/index.qmd). The narrative is the
 architectural and governance layer — *why this must happen, in what order, and
 what good looks like*. This companion is the implementation layer — *how to
 actually do it*: the scripts, their parameters, their output schemas, and their
-failure modes. Like the narrative, it is **DRAFT** and tracks the **PROPOSED**
+failure modes. Every book is backed by shipped automation (the `tools/discovery/`
+Spec family and the `tools/powershell/` modules); start at
+[Book 01](Book_01.qmd) for the toolchain, the evidence model, and the run order.
+The companion operationalizes
 [ADR-091](../../adr/adr-091-sql-server-authentication-transformation.qmd) and
-[ADR-068](../../adr/adr-068-kerberos-ntlm-elimination.qmd).
+[ADR-068](../../adr/adr-068-kerberos-ntlm-elimination.qmd), which remain
+**PROPOSED** — treat the *decisions* they record as not-yet-ratified even though
+the *automation* that implements them is shipped and tested.
 :::
 
 ## The two-layer model
@@ -59,19 +64,24 @@ emits, and what it does when a domain controller is unreachable.
 ## How this companion is built
 
 - **The scripts are the source of truth; the books are the runbook over them.**
-  The audit and discovery scripts already exist under
+  The audit and discovery scripts live under
   [`tools/discovery/`](https://github.com/WhalerMike/uiao/tree/main/tools/discovery)
-  (the `Spec*-D1.*` family) and the assessment/plan modules under
-  [`tools/powershell/`](https://github.com/WhalerMike/uiao/tree/main/tools/powershell).
+  (the `Spec*-D1.*` family) and the assessment/derivation/plan modules under
+  [`tools/powershell/`](https://github.com/WhalerMike/uiao/tree/main/tools/powershell)
+  (`UIAOSqlServerMigration`, `UIAOIdentityAssessment`, `UIAOPlanGenerators`).
   Each book documents the real script — it does not paraphrase a fictional one.
 - **Derived, provenance-anchored.** Every book traces to canon
-  (`UIAO_135`, ADR-091, ADR-068) and to the specific `Spec` ID of the script it
+  (`UIAO_135`, ADR-091, ADR-068) and to the specific `Spec` ID or function it
   documents. This companion introduces no new doctrine, so it needs no ADR — it
   is the operational rendering of decisions already recorded.
-- **Honest about gaps.** Where the engineering sequence needs a script that does
-  not yet exist (parts of the Arc and login-migration runbooks), the book gives
-  the **pattern** — the exact commands, the validation, the rollback — and marks
-  the to-be-built automation explicitly rather than implying a script is shipped.
+- **Every book has shipped automation.** Books 02–10 are each backed by a real,
+  Pester-tested function in `UIAOSqlServerMigration` (or a sibling module) —
+  the estate-inventory gate, the login and group emitters, the app-connection
+  plan, the CCM-BIR closure record and drift diff, the certificate plan. Where a
+  step is deliberately **not** scripted, the book says exactly why: the
+  connection-string change (Book 08) is made in application configuration, and
+  the behavioral/MFA telemetry (Book 09) is an external join to Defender for SQL
+  and Entra sign-in logs rather than a duplicated source of truth.
 
 ::: {.callout-warning}
 ## Production safety (GCC-Moderate / FedRAMP)
@@ -86,5 +96,7 @@ run first; the remediation scripts are not.
 
 ## The books
 
-Each book is a standalone runbook. Start with the audit (Book 03) — it is
-read-only and produces the inventory every later step depends on.
+Each book is a standalone runbook. Start with [Book 01](Book_01.qmd) for the
+toolchain, the evidence model, and the run order; then [Book 02](Book_02.qmd),
+which builds the estate inventory and the retain / consolidate / retire gate
+every later step operates on.

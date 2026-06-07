@@ -1,14 +1,14 @@
 ---
 title: "Implementation Book 07 — Groups, Administrative Units & the Conditional Access Perimeter"
-subtitle: "Inventory the AD groups behind SQL access with the real Entra group export, classify them by the ADR-067 four-type taxonomy, then provision OrgPath dynamic groups and the DBA Administrative Unit through the modernization adapters — review-required, dry-run first"
-description: "How to transform the access-control layer of SQL Server from AD groups to Entra. Documents the shipped read-only inventory (UIAOIdentityAssessment Export-UIAOEntraGroups / Export-UIAOConditionalAccess, including dynamic-rule capture) and the ADR-067 four-type classification it feeds, then the review-required provisioning patterns routed through the entra-dynamic-groups (UIAO_152) and entra-admin-units (UIAO_154) modernization adapters and the SQL-side CREATE LOGIN FROM EXTERNAL PROVIDER for the group, with the AU-before-groups sequencing ADR-037 requires. The group-to-type classifier and the SQL group-login binding are marked [to build]."
+subtitle: "Inventory the AD groups behind SQL access with the real Entra group export, classify them by the ADR-067 four-type taxonomy with New-UIAOEntraGroupClassification, then provision OrgPath dynamic groups and the DBA Administrative Unit and emit the group-logins — review-required, dry-run first"
+description: "How to transform the access-control layer of SQL Server from AD groups to Entra. Documents the shipped read-only inventory (UIAOIdentityAssessment Export-UIAOEntraGroups / Export-UIAOConditionalAccess, including dynamic-rule capture), the ADR-067 four-type classification New-UIAOEntraGroupClassification derives from it, and New-UIAOGroupLoginScript, which emits the dry-run CREATE LOGIN FROM EXTERNAL PROVIDER for the access-backing groups — then the review-required provisioning patterns routed through the entra-dynamic-groups (UIAO_152) and entra-admin-units (UIAO_154) modernization adapters, with the AU-before-groups sequencing ADR-037 requires."
 doc-type: sql-server-implementation-book
 audience: [Technical, Customer]
 classification: Controlled
 boundary: GCC-Moderate
 family: sql-server-implementation
 series-order: 07
-status: draft
+status: active
 canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
 lifecycle: active
 tiers_adopted: []
@@ -66,7 +66,14 @@ Narrative Book 07 Chapter 1 classifies every migrating AD security group into on
 | **Type 3 — distribution list** | mail-enabled, security **off** | Microsoft 365 Group (`securityEnabled: false`) | **no SQL login** — Agent operator email only |
 | **Type 4 — mail-enabled security** | security **and** mail enabled | **split**: M365 Group (mail) + assigned security group (access), correlated by an OrgPath attribute | type-E login on the security half only |
 
-`[to build]` — a classifier that joins the AD source-group export to the `Export-UIAOEntraGroups` envelope and emits a per-group ADR-067 type assignment with the correlation attribute for Type 4 splits. Today the four flags are present in the envelope; the deterministic type-assignment pass over them is not yet a shipped function.
+**`New-UIAOEntraGroupClassification`** (`tools/powershell/UIAOSqlServerMigration/`) is the deterministic type-assignment pass over the envelope. It reads the `Export-UIAOEntraGroups` output and assigns each group exactly one ADR-067 type from its observable shape (`groupTypes` / `mail_enabled` / `security_enabled` / `membership_rule`), attaching each group's target state, transformation, provisioning adapter, and a `becomes_sql_login` flag (true for the access-backing types — assigned security, OrgTree dynamic, and the access half of a mail-enabled split). A group with no usable signal lands in `review` rather than being mis-typed.
+
+```powershell
+Import-Module ./tools/powershell/UIAOSqlServerMigration
+New-UIAOEntraGroupClassification -GroupExportPath .\output\entra-groups.json -OutputPath .\output\group-classification.json
+```
+
+It is **read-only derivation** over the reviewed export — it reads no live directory and writes only the sealed classification, which is the input both the provisioning adapters and the group-login emitter consume.
 
 ## Phase 2 — Provision (review-required)
 
@@ -110,7 +117,13 @@ CREATE USER [sql-app-readers] FOR LOGIN [sql-app-readers];
 ALTER ROLE [db_datareader] ADD MEMBER [sql-app-readers];
 ```
 
-`[to build]` — generation of these group-login statements from the ADR-067-classified inventory (which group → which type-E login → which server/database role), idempotent and dry-run, the way Book 05 generates per-principal logins from the audit CSV. The classification envelope holds the inputs; the emitter over it is not yet shipped.
+**`New-UIAOGroupLoginScript`** (`tools/powershell/UIAOSqlServerMigration/`) generates these statements from the ADR-067-classified inventory, idempotent and dry-run, the way Book 05 generates per-principal logins from the audit CSV. It emits a `CREATE LOGIN ... FROM EXTERNAL PROVIDER` only for groups whose `becomes_sql_login` flag is true; mail-only distribution / Unified groups and `review` groups appear as commented-out lines, so a distribution list can never become a SQL login. Like Book 05's emitter it has no `-Server` or `-Execute` surface — it opens no SQL connection and the script is the deliverable.
+
+```powershell
+New-UIAOGroupLoginScript -ClassificationPath .\output\group-classification.json -OutputPath .\output\create-group-logins.sql
+```
+
+The database-user mapping and role grant above (the `USE [AppDb]; CREATE USER ...; ALTER ROLE ...` block) stays a review-required, per-database step: which database role each group inherits is a grant decision the emitter deliberately leaves to change control.
 
 ## Verification & rollback
 
@@ -125,4 +138,4 @@ Once every SQL login is a type-E login backed by an Entra principal, Conditional
 
 ---
 
-*Companion to [narrative Book 07](../sql-server-narrative/Book_07.qmd). Inventory script-backed: `tools/powershell/UIAOIdentityAssessment` (`Export-UIAOEntraGroups`, `Export-UIAOConditionalAccess`). Provisioning via the `entra-admin-units` (UIAO_154) and `entra-dynamic-groups` (UIAO_152) modernization adapters — review-required; the ADR-067 classifier and the group-login emitter are [to build]. Canon: ADR-036, ADR-067, ADR-037, ADR-008, UIAO_135 §3.2.*
+*Companion to [narrative Book 07](../sql-server-narrative/Book_07.qmd). Inventory script-backed: `tools/powershell/UIAOIdentityAssessment` (`Export-UIAOEntraGroups`, `Export-UIAOConditionalAccess`). Classification + group-login emission: `tools/powershell/UIAOSqlServerMigration` (`New-UIAOEntraGroupClassification`, `New-UIAOGroupLoginScript`). Provisioning via the `entra-admin-units` (UIAO_154) and `entra-dynamic-groups` (UIAO_152) modernization adapters — review-required. Canon: ADR-036, ADR-067, ADR-037, ADR-008, UIAO_135 §3.2.*

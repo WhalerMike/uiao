@@ -1,14 +1,14 @@
 ---
 title: "Implementation Book 10 — Certificate Discovery for SQL Server's ADCS Dependencies"
-subtitle: "Run the real Spec3-D1.10 certificate audit to find SQL Server's three ADCS dependencies — TLS, certificate-mapped logins, and CBA as the NTLM-replacement posture — and sequence the replacement-CA work, before any ADCS decommission date is set"
-description: "How to discover, ahead of an ADCS decommission, the certificate dependencies that break SQL Server if the certificate authority is removed without a replacement. Documents the shipped Spec3-D1.10 Get-CertBasedAuthAudit audit with its real parameters, the six analysis sections, and its machine/user-certificate and PKI output schema, then maps the output to SQL Server's three dependency classes and gives the dependency-ordered CA-migration planner (New-UIAOPKIMigrationPlan). Analytical and motivational — UIAO_135 §3.3 marks the ADCS-to-Cloud-PKI transformation Not Yet Defined and no normative ADR governs it; the SQL-specific cert extraction and the CBA-issuance bridge are marked [to build]."
+subtitle: "Run the real Spec3-D1.10 certificate audit to find SQL Server's three ADCS dependencies — TLS, certificate-mapped logins, and CBA as the NTLM-replacement posture — extract and sequence them with New-UIAOSqlCertificatePlan, before any ADCS decommission date is set"
+description: "How to discover, ahead of an ADCS decommission, the certificate dependencies that break SQL Server if the certificate authority is removed without a replacement. Documents the shipped Spec3-D1.10 Get-CertBasedAuthAudit audit with its real parameters, the six analysis sections, and its machine/user-certificate and PKI output schema, then New-UIAOSqlCertificatePlan — which extracts SQL Server's three dependency classes from that output and sequences the dependency-ordered CA-replacement (CBA-issuance) bridge — and the general PKI planner New-UIAOPKIMigrationPlan. Analytical — UIAO_135 §3.3 marks the ADCS-to-Cloud-PKI transformation Not Yet Defined and no normative ADR governs it, so every emitted action is review-required."
 doc-type: sql-server-implementation-book
 audience: [Technical, Customer]
 classification: Controlled
 boundary: GCC-Moderate
 family: sql-server-implementation
 series-order: 10
-status: draft
+status: active
 canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
 lifecycle: active
 tiers_adopted: []
@@ -57,7 +57,14 @@ Under `-OutputPath`: `UIAO_Spec3_D1.10_CertBasedAuthAudit_<domain>_<timestamp>.j
 
 D1.10 is an **AD-wide** certificate audit — machine and user certificates, smart cards, PKI infrastructure, LDAPS on DCs. It captures the issuing CA for each certificate, which is exactly the signal needed to know *what depends on ADCS*. It does **not** reach into a SQL Server instance to enumerate the engine's bound TLS certificate or its type-C certificate-mapped logins — those live in the instance's certificate store and in `master`, not in AD.
 
-`[to build]` — a SQL-specific extraction that, for each instance from the Book 03 D1.8 audit, reads the engine's bound TLS certificate (subject, SAN, **issuing CA**, expiry) and queries `sys.certificates` / `sys.server_principals` for type-C certificate-mapped logins and their issuing CA, then joins to the D1.10 PKI inventory to flag every ADCS-issued certificate the instance depends on. The instance-side queries are simple reads:
+**`New-UIAOSqlCertificatePlan`** (`tools/powershell/UIAOSqlServerMigration/`) is the SQL-specific extraction. It reads the D1.10 output and isolates the three dependencies SQL Server has on ADCS — `tls_server_cert` (scoped to SQL hosts via `-SqlHostFilter`), `certificate_mapped_login`, and `cba_posture` (the NTLM-replacement readiness) — then derives the dependency-ordered CA-replacement sequence (roots before issuing CAs), the CBA-issuance bridge. Every record is `requires_review`; the function is analytical and changes nothing.
+
+```powershell
+Import-Module ./tools/powershell/UIAOSqlServerMigration
+New-UIAOSqlCertificatePlan -CertAuditPath .\output\*CertBasedAuthAudit*.json -SqlHostFilter 'SQL' -OutputPath .\output\sql-cert-plan.json
+```
+
+Reading the engine's *bound* TLS certificate and its type-C certificate-mapped logins requires a live connection into the instance, which this module deliberately never opens (the same no-SQL-connection doctrine as Books 05 and 07). Those remain a read-only, in-engine step — capture their output and feed it alongside the D1.10 audit:
 
 ```sql
 -- Engine TLS certificate currently bound (read-only)
@@ -72,7 +79,7 @@ WHERE   sp.type = 'C';
 
 ## Step 2 — Map the audit to SQL Server's three dependencies
 
-Narrative Book 10 Chapter 1 names three distinct SQL Server capabilities that depend on ADCS-issued certificates. The D1.10 output (the issuing CA on every certificate) plus the `[to build]` instance-side reads classify each:
+Narrative Book 10 Chapter 1 names three distinct SQL Server capabilities that depend on ADCS-issued certificates. `New-UIAOSqlCertificatePlan` classifies the D1.10 output (the issuing CA on every certificate) into these three, with the in-engine reads above supplying the bound-certificate detail:
 
 | Dependency | What it is | What breaks if ADCS is decommissioned first | Migration direction |
 |---|---|---|---|
@@ -104,8 +111,8 @@ The three dependencies converge on one question the audit makes concrete: **does
 
 ## Safety
 
-This entire book is **read-only**: the D1.10 audit reads AD and (with `-IncludePKIAudit`) CA configuration; the `[to build]` instance-side queries are inventory reads; `New-UIAOPKIMigrationPlan` reads an assessment and emits a plan. Nothing here issues, binds, or revokes a certificate, and nothing decommissions a CA — those are governed actions awaiting the ADCS-migration ADR.
+This entire book is **read-only**: the D1.10 audit reads AD and (with `-IncludePKIAudit`) CA configuration; the in-engine queries are inventory reads; `New-UIAOSqlCertificatePlan` and `New-UIAOPKIMigrationPlan` derive over captured output and emit plans. Nothing here issues, binds, or revokes a certificate, and nothing decommissions a CA — those are governed actions awaiting the ADCS-migration ADR.
 
 ---
 
-*Companion to [narrative Book 10](../sql-server-narrative/Book_10.qmd). Discovery script-backed: `tools/discovery/Spec3-D1.10`; CA-sequencing via `tools/powershell/UIAOPlanGenerators` (`New-UIAOPKIMigrationPlan`). Analytical — no normative ADCS-migration ADR exists; the SQL-specific cert extraction and the CBA-issuance bridge are [to build]. Canon: UIAO_135 §3.3, ADR-068.*
+*Companion to [narrative Book 10](../sql-server-narrative/Book_10.qmd). Discovery script-backed: `tools/discovery/Spec3-D1.10`; SQL-specific extraction + CA-replacement sequence via `tools/powershell/UIAOSqlServerMigration` (`New-UIAOSqlCertificatePlan`); general PKI sequencing via `tools/powershell/UIAOPlanGenerators` (`New-UIAOPKIMigrationPlan`). Analytical — no normative ADCS-migration ADR exists, so every emitted action is review-required. Canon: UIAO_135 §3.3, ADR-068.*
