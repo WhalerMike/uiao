@@ -100,6 +100,11 @@ DEFAULT_SECTIONS = [
     "operational-guides/uiao-modernization-program",
     "orgpath-narrative",
     "sql-server-narrative",
+    # The executable companion to sql-server-narrative. Single-file books
+    # (Book_NN.qmd, no chapter splits), so it gets a whole-companion bundle
+    # only — not per-book bundles (a single-page per-book bundle would just
+    # duplicate the page's own Book_NN.docx render).
+    "sql-server-implementation",
     "reference-architecture",
     "platform",
     "substrate",

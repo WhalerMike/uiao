@@ -18,14 +18,14 @@
 | `modernization-specs/` | 0 | 0 | 6 | 0 | 1 | 7 |
 | `operational-guides/` | 0 | 1 | 10 | 29 | 13 | 53 |
 | `orgpath-narrative/` | 1 | 121 | 65 | 24 | 1 | 212 |
-| `platform/` | 0 | 0 | 3 | 3 | 1 | 7 |
+| `platform/` | 0 | 0 | 4 | 2 | 1 | 7 |
 | `reference-architecture/` | 0 | 0 | 9 | 2 | 1 | 12 |
 | `sql-server-implementation/` | 0 | 0 | 10 | 0 | 1 | 11 |
 | `sql-server-narrative/` | 0 | 31 | 1 | 0 | 1 | 33 |
 | `substrate/` | 0 | 0 | 3 | 8 | 4 | 15 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
 | `whitepapers/` | 0 | 0 | 5 | 6 | 1 | 12 |
-| **Total** | **1** | **162** | **220** | **84** | **49** | **516** |
+| **Total** | **1** | **162** | **221** | **83** | **49** | **516** |
 
 ## Section detail
 
@@ -463,7 +463,7 @@
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/platform/active-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/active-governance.qmd) | 121 | Authored | ✅ | 2/2 | aspirational |
-| [`docs/customer-documents/platform/azure-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/azure-saas.qmd) | 271 | Substantial | ✅ | — | aspirational |
+| [`docs/customer-documents/platform/azure-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/azure-saas.qmd) | 244 | Authored | ✅ | 2/2 | aspirational |
 | [`docs/customer-documents/platform/git-server-implementation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/git-server-implementation.qmd) | 1449 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/platform/governance-dashboard-design.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/governance-dashboard-design.qmd) | 124 | Authored | ✅ | — | — |
 | [`docs/customer-documents/platform/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/index.qmd) | 61 | Navigation hub | ✅ | — | aspirational |
@@ -491,17 +491,17 @@
 
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
-| [`docs/customer-documents/sql-server-implementation/Book_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_01.qmd) | 107 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_02.qmd) | 159 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_03.qmd) | 120 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_04.qmd) | 115 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_05.qmd) | 135 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_06.qmd) | 122 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_07.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_07.qmd) | 141 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_08.qmd) | 143 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_09.qmd) | 117 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_10.qmd) | 118 | Authored | ✅ | — | — |
-| [`docs/customer-documents/sql-server-implementation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/index.qmd) | 102 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/sql-server-implementation/Book_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_01.qmd) | 114 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_02.qmd) | 166 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_03.qmd) | 127 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_04.qmd) | 122 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_05.qmd) | 142 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_06.qmd) | 129 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_07.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_07.qmd) | 148 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_08.qmd) | 150 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_09.qmd) | 124 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/Book_10.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/Book_10.qmd) | 125 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/sql-server-implementation/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/sql-server-implementation/index.qmd) | 109 | Navigation hub | ✅ | 1/1 | — |
 
 ### `sql-server-narrative/`
 

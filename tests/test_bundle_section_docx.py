@@ -44,6 +44,15 @@ def test_orgpath_implementation_is_registered() -> None:
     assert "operational-guides/orgpath-implementation" in bsd.DEFAULT_SECTIONS
 
 
+def test_sql_server_implementation_is_registered() -> None:
+    """The SQL Server Implementation Companion is bundled by the --all run,
+    so ``sql-server-implementation-bundle.docx`` is produced on every deploy."""
+    assert "sql-server-implementation" in bsd.DEFAULT_SECTIONS
+    # Single-file books — bundled as a whole-companion pack, not per-book.
+    assert "sql-server-implementation" not in bsd.BOOK_BUNDLE_SECTIONS
+    assert bsd._bundle_filename("sql-server-implementation") == "sql-server-implementation-bundle.docx"
+
+
 def test_bundle_filename_matches_skip_filter() -> None:
     """Generated bundle names must be recognised by the bundle-skip filter
     (endswith '-bundle.docx') so a re-run never folds a bundle into itself."""
