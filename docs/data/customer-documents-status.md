@@ -463,7 +463,7 @@
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/platform/active-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/active-governance.qmd) | 121 | Authored | ✅ | 2/2 | aspirational |
-| [`docs/customer-documents/platform/azure-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/azure-saas.qmd) | 275 | Substantial | ✅ | 3/3 | aspirational |
+| [`docs/customer-documents/platform/azure-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/azure-saas.qmd) | 277 | Substantial | ✅ | 3/3 | aspirational |
 | [`docs/customer-documents/platform/git-server-implementation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/git-server-implementation.qmd) | 1449 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/platform/governance-dashboard-design.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/governance-dashboard-design.qmd) | 124 | Authored | ✅ | — | — |
 | [`docs/customer-documents/platform/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/index.qmd) | 61 | Navigation hub | ✅ | — | aspirational |
