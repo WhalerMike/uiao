@@ -42,8 +42,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+      - name: Set up Quarto (resilient install)
+        # Replaces quarto-dev/quarto-actions/setup@v2 with a download that
+        # survives transient GitHub release-CDN 502s — the failure that skipped
+        # a DOCX shard and the Pages deploy (run 27093643913). Resolves the
+        # latest quarto-cli release, then installs the .deb with retries
+        # (curl --retry-all-errors covers HTTP 5xx) plus an outer backoff loop.
+        run: |
+          set -euo pipefail
+          resolve_latest() {
+            curl -fsSLI -o /dev/null -w '%{url_effective}' \
+              https://github.com/quarto-dev/quarto-cli/releases/latest \
+              | sed 's#.*/tag/v##'
+          }
+          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
+          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
+          echo "Quarto $ver"
+          deb="quarto-${ver}-linux-amd64.deb"
+          curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
+            -o "/tmp/${deb}" \
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+          sudo dpkg -i "/tmp/${deb}"
+          quarto --version
 
       - name: Render HTML site
         working-directory: docs
@@ -71,8 +91,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+      - name: Set up Quarto (resilient install)
+        # See the HTML job for rationale: retry the release download so a
+        # transient CDN 502 on one shard no longer skips the whole deploy.
+        run: |
+          set -euo pipefail
+          resolve_latest() {
+            curl -fsSLI -o /dev/null -w '%{url_effective}' \
+              https://github.com/quarto-dev/quarto-cli/releases/latest \
+              | sed 's#.*/tag/v##'
+          }
+          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
+          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
+          echo "Quarto $ver"
+          deb="quarto-${ver}-linux-amd64.deb"
+          curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
+            -o "/tmp/${deb}" \
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+          sudo dpkg -i "/tmp/${deb}"
+          quarto --version
 
       - name: Render DOCX shard
         working-directory: docs
