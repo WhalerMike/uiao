@@ -7,7 +7,7 @@ classification: CANONICAL
 owner: "Michael Stratton"
 author: "Michal Doroszewski"
 created_at: "2026-04-18"
-updated_at: "2026-04-18"
+updated_at: "2026-06-06"
 boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
@@ -36,6 +36,10 @@ UIAO-core fills the missing half. It wraps around the entire SCuBA data path as 
 
 The result is a deterministic governance feedback system that transforms SCuBA from a compliance assessment tool into a continuously governed, audit-ready compliance pipeline. SCuBA assesses. ScubaConnect automates. UIAO governs.
 
+@fig-uiao-005-value-stack frames the three layers that operate over the same SCuBA data path, and what each one adds that the layer beneath it does not provide.
+
+![SCuBA assesses, ScubaConnect automates, and UIAO-core governs — three layers over a single SCuBA data path. SCuBA (ScubaGear / ScubaGoggles) produces assessment data but not meaning; ScubaConnect automates execution but not governance; UIAO-core wraps both as a two-way governance envelope that supplies the missing half through prompt and conversion on two legs.](images/uiao-005-diagram-04-assess-automate-govern.png){#fig-uiao-005-value-stack fig-alt="Three stacked horizontal bands labeled SCuBA (Assesses), ScubaConnect (Automates), and UIAO-core (Governs), each with a short description and a note on what it does not provide, connected top-to-bottom by arrows." width="92%"}
+
 ## 2. The Problem: Why SCuBA Alone Cannot Satisfy BOD 25-01
 
 BOD 25-01 imposes two non-negotiable requirements on FCEB agencies. First, agencies must deploy SCuBA automated assessment tools by April 25, 2025. Second, agencies must implement all future updates to mandatory SCuBA policies — a standing obligation that persists indefinitely.
@@ -58,6 +62,19 @@ BOD 25-01 explicitly requires eliminating this model. The directive mandates aut
 
 ### Table 1: Manual vs. Automated Assessment Models
 
+@tbl-uiao-005-manual-vs-automated contrasts the legacy manual model with the automated model BOD 25-01 requires, across the five weaknesses above.
+
+| Dimension | Legacy manual model | Automated model (ScubaConnect + UIAO-core) |
+|---|---|---|
+| Trigger | Human-dependent — an administrator must remember to run it; no schedule, cron, or event | Deterministic, time-based GitHub Actions cron; no human initiates the run |
+| Authentication | Interactive browser pop-up (OAuth device-code flow or interactive MFA) | Non-interactive Service Principal with certificate-based authentication |
+| Execution location | Local, on a single workstation bound to its CPU, RAM, and network | Orchestrated in GitHub Actions; no dependency on any one workstation |
+| Frequency | Point-in-time snapshots, at best quarterly — blind to drift between runs | Continuous; daily runs surface configuration drift within twenty-four hours |
+| Reporting | Manual formatting and upload to CyberScope by a human | Automated path to CISA's CDM Dashboard, plus governed, versioned artifacts |
+| BOD 25-01 alignment | Non-compliant with the directive's intent; exposed to drift between runs | Satisfies the automation mandate and the continuous-monitoring requirement |
+
+: Manual vs. automated assessment models. {#tbl-uiao-005-manual-vs-automated}
+
 ## 3. The Solution: UIAO-core as the Governance Envelope
 
 UIAO-core does not sit inline between ScubaConnect and CISA's CDM Dashboard. That data path is sacrosanct. CISA owns it. Agencies cannot inject middleware into it, nor should they. The official assessment results must flow, unaltered and unmediated, from ScubaConnect through the CLAW/TALON integration layer to CISA's CDM Dashboard. Any attempt to intercept, modify, or delay that path would violate the architectural contract that BOD 25-01 establishes.
@@ -70,9 +87,17 @@ Conversion: UIAO converts raw data — JSON assessment results, Rego policy diff
 
 The combination of prompt and conversion on two legs creates a two-way governance architecture that no other component in the SCuBA ecosystem provides. SCuBA assesses configuration state. ScubaConnect automates that assessment. UIAO-core governs the entire lifecycle — from assessment execution through policy absorption — as a continuous, deterministic feedback loop.
 
+@fig-uiao-005-envelope shows the complete two-way architecture: the three bounded contexts, both legs, and the sacrosanct CDM data path that UIAO-core wraps but never touches.
+
+![The two-way governance architecture. The Agency Cloud Environment (ScubaConnect in a GCC-Moderate boundary) pushes official results along the sacrosanct CDM path to the CISA Domain's CDM Dashboard — UIAO does not touch, intercept, modify, or delay it. In parallel (Leg 1), ScubaConnect feeds a read-only copy to the UIAO Governance Envelope, whose Upstream Policy Watcher, Governance Event Engine, Canonical Artifact Repository, and Drift Detection Engine convert it into governed artifacts. On Leg 2, a new cisagov/ScubaGear release is detected and a recalibration trigger re-runs the assessment, closing the loop.](images/uiao-005-diagram-01-two-way-governance-envelope.png){#fig-uiao-005-envelope fig-alt="A three-column schematic — Agency Cloud Environment on the left, UIAO Governance Envelope in the center, CISA Domain on the right. A red arc across the top carries the sacrosanct CDM path from ScubaConnect to the CDM Dashboard. A dashed teal Leg 1 arrow feeds the envelope in parallel; a navy Leg 2 arrow carries policy releases inbound and a return arrow along the bottom carries the recalibration trigger back to ScubaConnect." width="92%"}
+
 ## 4. Leg 1 — Outbound: Assessment to Governance to Reporting
 
 The outbound leg is the path most agencies already understand: assessment results flow from the M365 tenant toward CISA. What agencies typically do not have is a governance layer that intercepts those results — in parallel, never inline — and converts them into governed, versioned, actionable compliance artifacts.
+
+@fig-uiao-005-leg1 traces the outbound leg end to end: the shared assessment execution (Steps 1a–1d), the sacrosanct path to CISA (Step 1e), and the parallel governance pipeline UIAO-core runs on a read-only copy (Steps 1f–1j).
+
+![The Leg 1 outbound pipeline. The top row is the shared assessment execution: Step 1a orchestration (daily cron), Step 1b non-interactive certificate auth, Step 1c configuration pull (Graph, Exchange Online, SharePoint Online), and Step 1d ScubaGear evaluation against Rego baselines. Step 1d branches two ways — Step 1e pushes official results along the sacrosanct path to CISA's CDM Dashboard (untouched by UIAO), while Step 1f sends a parallel, read-only copy into UIAO's governance band: Step 1g event conversion, Step 1h canonical storage, Step 1i drift detection, and Step 1j alerting and remediation.](images/uiao-005-diagram-02-leg1-outbound-pipeline.png){#fig-uiao-005-leg1 fig-alt="A two-row flow diagram. The top row shows four assessment-execution steps left to right; the rightmost step branches up to a red sacrosanct-path box to CISA and down to a teal governance band. The bottom row shows four UIAO governance steps left to right: event conversion, canonical storage, drift detection, and alert/remediate." width="92%"}
 
 ### 4.1 Step-by-Step Data Flow
 
@@ -100,11 +125,29 @@ The outbound leg proceeds through the following stages:
 
 ### 4.2 Key Architectural Insight
 
+The defining property of Leg 1 is that governance happens in parallel, never inline. The official results flow to CISA untouched (Step 1e); UIAO-core operates only on a read-only, non-blocking copy (Step 1f). The agency therefore gains a governed, versioned, drift-aware view of its own posture without ever sitting in — or being able to delay — the sacrosanct CDM data path. Conversion is the unit of value: raw JSON and CSV become typed governance events, immutable canonical artifacts, drift deltas, and actionable remediation tickets that SCuBA alone never produces.
+
 ### Table 2: Outbound Data Transformation Pipeline
+
+@tbl-uiao-005-outbound walks the outbound transformation stage by stage, from the parallel copy of the raw results to the remediation ticket.
+
+| Stage | Input | UIAO component | Output artifact |
+|---|---|---|---|
+| Parallel ingest (Step 1f) | Read-only copy of the same results sent to CISA | Parallel feed | Raw assessment payload (JSON / CSV) |
+| Event conversion (Step 1g) | Raw JSON / CSV output | Governance Event Engine | Typed, timestamped governance event |
+| Canonical storage (Step 1h) | Governance event | Canonical Artifact Repository | Versioned, immutable artifact — one per run |
+| Drift detection (Step 1i) | Current artifact vs prior runs | Drift Detection Engine | Delta report (improvements + regressions) |
+| Alert + remediation (Step 1j) | Mandatory "Shall" violation | Agency Dashboard + ticketing | Alert + remediation ticket (control, expected value, baseline version) |
+
+: Outbound data transformation pipeline. {#tbl-uiao-005-outbound}
 
 ## 5. Leg 2 — Inbound: Policy Updates to Governance to Recalibration
 
 The inbound leg is the leg that does not exist without UIAO-core. It addresses the second, often overlooked requirement of BOD 25-01: agencies "shall implement all future updates to mandatory SCuBA policies." This is not a one-time event. It is a standing obligation that persists for the life of the directive.
+
+@fig-uiao-005-leg2 shows how UIAO-core turns CISA's pull-only policy surfaces into a governed, closed loop — from release detection through recalibration back into Leg 1.
+
+![The Leg 2 inbound recalibration loop. CISA publishes updates through pull-only surfaces (cisagov/ScubaGear releases, the SCuBA Baselines page, BOD 25-01 guidance) with no live push to agencies — so without UIAO-core the inbound signal is invisible and agencies run stale baselines for weeks. With UIAO-core: Step 2a Upstream Policy Watcher detects a release, Step 2b generates a governance event summarizing new, modified, and deprecated controls, Step 2c prompts the agency, Step 2d triggers the update workflow, and Step 2e re-runs the assessment against the new baseline — whose results flow through Leg 1, closing the loop.](images/uiao-005-diagram-03-leg2-inbound-recalibration.png){#fig-uiao-005-leg2 fig-alt="A loop diagram. A navy source box of CISA publish surfaces and an amber 'Without UIAO-core' risk callout sit on the left. Five teal step boxes (2a–2e) run clockwise from the watcher through to recalibrated assessment, which feeds a teal Leg 1 box; a navy return arrow closes the loop back to the watcher. A key-architectural-insight panel runs across the bottom." width="92%"}
 
 ### 5.1 How CISA Publishes Policy Updates
 
@@ -134,7 +177,18 @@ With UIAO-core, the inbound leg becomes governed:
 
 ### 5.3 Key Architectural Insight
 
+Leg 2 exists only because UIAO-core watches the upstream. CISA publishes policy updates through pull-only surfaces — GitHub releases, the SCuBA Baselines page, and BOD 25-01 guidance — with no live push channel to agencies. Without an automated watcher, absorbing a new mandatory control depends entirely on a human noticing the release. UIAO-core converts that silent signal into a governance event, prompts the agency, and triggers recalibration — so a new baseline automatically becomes an updated assessment whose results flow back through Leg 1, closing the loop.
+
 ### Table 3: Two-Way Architecture Summary
+
+@tbl-uiao-005-two-way summarizes both legs along the prompt-and-conversion axis that defines the architecture.
+
+| Leg | Direction | Trigger source | Prompt | Conversion | Outcome |
+|---|---|---|---|---|---|
+| Leg 1 | Outbound | New assessment results from ScubaConnect | New run detected (parallel feed, Step 1f) | Results → governed, versioned artifacts | Drift detection and violation alerting |
+| Leg 2 | Inbound | New baseline / Rego release on cisagov/ScubaGear | Upstream Policy Watcher detects a release | Policy diff → governance event | Agency prompt and assessment recalibration — closing the loop |
+
+: Two-way architecture summary. {#tbl-uiao-005-two-way}
 
 ## 6. The Six Value Pillars
 
@@ -226,35 +280,57 @@ The following subsections provide condensed, drop-in-ready versions of the UIAO-
 
 For leadership briefings, board presentations, and executive decision memos.
 
+BOD 25-01 requires Federal Civilian Executive Branch agencies to run automated, continuous SCuBA assessments and to implement every future mandatory policy update. SCuBA (ScubaGear and ScubaGoggles) supplies the assessment logic and ScubaConnect automates its execution — but neither governs the result. They produce data, not meaning. UIAO-core supplies the missing half as a two-way governance envelope that wraps the entire SCuBA data path without ever sitting inline. Outbound, it converts assessment results into governed, versioned, drift-aware artifacts in parallel with CISA's official feed. Inbound, it watches CISA's upstream policy releases, generates governance events, and triggers assessment recalibration. The result is a deterministic, audit-ready compliance pipeline that satisfies the directive's automation and continuous-monitoring mandates and eliminates the human-dependent workflows of the legacy manual model.
+
 ### 8.2 Pitch-Deck Slide
 
 Single-slide format for investor, analyst, and partner decks.
+
+**UIAO-core — the governance envelope for SCuBA.**
+
+- **SCuBA assesses. ScubaConnect automates. UIAO governs.** UIAO-core is the only component that closes a two-way governance loop around the SCuBA data path.
+- **Outbound (Leg 1):** assessment results → governed, versioned artifacts, with drift detection and "Shall" violation alerting — in parallel, never inline.
+- **Inbound (Leg 2):** upstream CISA policy releases → governance events → automatic assessment recalibration.
+- **Not middleware, not a plugin:** a reusable governance platform that absorbs the next CISA tool, baseline, or directive through the same architecture.
 
 ### 8.3 GitHub README Section
 
 For the uiao-core repository README.md.
 
+> **UIAO-core** wraps the CISA SCuBA data path as a two-way governance envelope. SCuBA assesses, ScubaConnect automates, and UIAO-core governs. On the outbound leg it captures assessment results in parallel with CISA's official CDM feed, converts them into versioned, immutable governance artifacts, and detects drift against prior baselines. On the inbound leg it watches the `cisagov/ScubaGear` repository for new releases, generates governance events, and triggers assessment recalibration — closing the loop. UIAO-core never sits inline on the sacrosanct CDM path; it operates on a read-only, non-blocking copy. The outcome is a deterministic, audit-ready compliance pipeline aligned to BOD 25-01.
+
 ### 8.4 Federal CIO/CISO Narrative
 
 For DHS, civilian agency, and interagency briefings.
 
-## Appendix A: PlantUML Diagram Source Reference
+BOD 25-01 imposes two standing obligations: deploy automated SCuBA assessment tools, and implement all future updates to mandatory SCuBA policies. The legacy manual model — interactive logins, local execution, quarterly snapshots, and manual CyberScope uploads — is explicitly the model the directive requires agencies to retire. ScubaConnect delivers the automation; UIAO-core delivers the governance. It gives agency security teams a governed, versioned record of their own posture before CISA's dashboards update, without intercepting or delaying the official data path that CISA owns. Critically, it also governs the inbound direction: when CISA publishes a new baseline, UIAO-core detects it, surfaces the affected "Shall" controls, and recalibrates the assessment — so compliance no longer depends on a human noticing a GitHub release. For an Authorizing Official or Inspector General, the canonical, immutable artifact history provides the traceability that ephemeral workstation reports cannot.
 
-The complete PlantUML source for Diagram 1 (DIAG-001-TWO-WAY-ARCH) is provided as a companion file:
+## Appendix A: Diagram Source Reference
 
-Filename: uiao-scuba-two-way-governance.puml
+The canonical figure for the two-way architecture (@fig-uiao-005-envelope) is authored as a committed, house-style SVG and rasterized to PNG by `scripts/render_svg_images.py`. Per [ADR-093](adr/adr-093-image-generation-svg.md), the SVG is the single source of truth and the PNG is a build artifact; no diagram is generated at render time, so the rendered text is always exactly what the SVG says. This supersedes the prior PlantUML companion file (`uiao-scuba-two-way-governance.puml`): the legacy PlantUML source is retired and is not part of the build.
 
-The diagram can be rendered using any PlantUML-compatible tool, including:
+Figure sources for this document live alongside it under `docs/canon/images/`:
 
-PlantUML CLI (java -jar plantuml.jar uiao-scuba-two-way-governance.puml)
+| Figure | Source SVG |
+|---|---|
+| @fig-uiao-005-value-stack | `uiao-005-diagram-04-assess-automate-govern.svg` |
+| @fig-uiao-005-envelope | `uiao-005-diagram-01-two-way-governance-envelope.svg` |
+| @fig-uiao-005-leg1 | `uiao-005-diagram-02-leg1-outbound-pipeline.svg` |
+| @fig-uiao-005-leg2 | `uiao-005-diagram-03-leg2-inbound-recalibration.svg` |
 
-PlantUML online server (plantuml.com/plantuml)
+Each SVG encodes the three bounded contexts (CISA Domain, Agency Cloud Environment, UIAO Governance Envelope), both legs of the two-way architecture, the sacrosanct CDM data path, and the color-coded legend, against the house palette in `src/uiao/canon/svg-style/`. The SVGs are version-controlled alongside this document and should be updated — then re-rendered with `python scripts/render_svg_images.py` — whenever the architecture evolves.
 
-VS Code with the PlantUML extension
+## Appendix B: Object List
 
-IntelliJ IDEA with the PlantUML Integration plugin
-
-The PlantUML source defines three bounded contexts (CISA Domain, Agency Cloud Environment, UIAO Governance Envelope), both legs of the two-way architecture, the sacrosanct CDM data path, and the color-coded legend. The source is version-controlled alongside this document and should be updated whenever the architecture evolves.
+| Object ID | Type | Title |
+|---|---|---|
+| DIAGRAM-01 | Diagram | Two-way governance envelope around the SCuBA data path |
+| DIAGRAM-02 | Diagram | Leg 1 outbound pipeline (Steps 1a–1j) |
+| DIAGRAM-03 | Diagram | Leg 2 inbound policy-update and recalibration loop (Steps 2a–2e) |
+| DIAGRAM-04 | Diagram | Three-layer value stack — SCuBA assesses, ScubaConnect automates, UIAO governs |
+| TABLE-01 | Table | Manual vs. automated assessment models |
+| TABLE-02 | Table | Outbound data transformation pipeline |
+| TABLE-03 | Table | Two-way architecture summary |
 
 UIAO-core Value Proposition · Controlled · Michal Doroszewski · April 2026
 
