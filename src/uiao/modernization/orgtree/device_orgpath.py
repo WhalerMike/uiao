@@ -82,10 +82,17 @@ class DeviceOrgPathPlanner:
 
     Per ADR-038 / ADR-078, one device → 10 per-facet writes routed to
     one of two transports based on disposition (or skipped entirely).
+
+    Routing defaults to the canonical disposition set hardcoded in this
+    module. Deployments that declare additional dispositions in
+    ``device-planes.yaml`` can pass the mapping from
+    :func:`load_disposition_routing` as ``routing`` to override it; the
+    hardcoded set is used when ``routing`` is ``None``.
     """
 
-    def __init__(self, codebook: Codebook) -> None:
+    def __init__(self, codebook: Codebook, routing: Mapping[str, str] | None = None) -> None:
         self.codebook = codebook
+        self._routing: dict[str, str] | None = dict(routing) if routing is not None else None
 
     def plan_device(self, assignment: DeviceFacetAssignment) -> DeviceOrgPathPlan:
         """Plan one device's writes — returns the full per-facet operation set."""
@@ -141,8 +148,17 @@ class DeviceOrgPathPlanner:
             all_ops.extend(plan.writes)
         return all_ops
 
-    @staticmethod
-    def _plane_for_disposition(disposition: str) -> str:
+    def _plane_for_disposition(self, disposition: str) -> str:
+        # Deployment-supplied routing (from load_disposition_routing) takes
+        # precedence over the hardcoded canonical set when provided.
+        if self._routing is not None:
+            try:
+                return self._routing[disposition]
+            except KeyError:
+                raise ValueError(
+                    f"Unknown disposition '{disposition}'. "
+                    f"Expected one of: {sorted(self._routing)}"
+                ) from None
         if disposition in _ENTRA_DISPOSITIONS:
             return "entra"
         if disposition in _ARM_DISPOSITIONS:
@@ -184,11 +200,12 @@ def load_disposition_routing(
     """Load the disposition→plane routing from the canonical YAML.
 
     Returns a mapping like ``{"ENTRA-DEVICE": "entra", "ARC-SERVER": "arm", "STAY-AD-DC": "skip", ...}``
-    suitable for overriding the module's hardcoded routing in deployments
-    that need to declare additional dispositions. The hardcoded routing
-    in :py:class:`DeviceOrgPathPlanner` matches this YAML 1:1 for the
-    canonical disposition set; the YAML is the audit-friendly source of
-    truth.
+    suitable for passing to :py:class:`DeviceOrgPathPlanner` as its
+    ``routing`` argument, which overrides the module's hardcoded routing
+    in deployments that declare additional dispositions. The hardcoded
+    routing in :py:class:`DeviceOrgPathPlanner` matches this YAML 1:1 for
+    the canonical disposition set; the YAML is the audit-friendly source
+    of truth.
     """
     document = read_yaml_resource(_YAML_PACKAGE, _YAML_RESOURCE) if yaml_path is None else read_yaml_path(yaml_path)
     schema = read_schema_resource(_SCHEMA_PACKAGE, _SCHEMA_RESOURCE)
