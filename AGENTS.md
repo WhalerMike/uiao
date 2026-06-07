@@ -48,7 +48,7 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 | Module declaration | `src/uiao/canon/substrate-manifest.yaml` (UIAO_200) | What modules exist, their roles, drift-scan scope |
 | Workspace binding | `src/uiao/canon/workspace-contract.yaml` (UIAO_201) | Local-root env var, module paths, build-output paths |
 | Document registry | `src/uiao/canon/document-registry.yaml` | UIAO_NNN allocations across the canon |
-| Modernization adapters | `src/uiao/canon/modernization-registry.yaml` | Change-making adapters (10 entries) |
+| Modernization adapters | `src/uiao/canon/modernization-registry.yaml` | Change-making adapters (20 entries) |
 | Conformance adapters | `src/uiao/canon/adapter-registry.yaml` | Read-only adapters (ScubaGear etc.) |
 | Adapter schema | `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` | Constrains both registries |
 | Metadata schema | `src/uiao/schemas/metadata-schema.json` | Constrains canon document frontmatter |

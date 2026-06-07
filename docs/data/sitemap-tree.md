@@ -159,6 +159,7 @@
 - [Assessment-to-Plan PowerShell Toolchain — governed specs for UIAOImportAdapters, UIAOIdentityAssessment, UIAOPlanGenerators](adr/adr-094-assessment-to-plan-toolchain.html)
 - [Illustrative SVG register — expanding the figure house style beyond the engineering-blueprint boundary](adr/adr-095-illustrative-svg-register.html)
 - [Azure SaaS architecture — multi-tenant UIAO on Container Apps](adr/adr-096-azure-saas-architecture.html)
+- [SQL Server transformation placement — same control plane, adjacent execution](adr/adr-097-sql-server-saas-placement.html)
 
 ## Schema Reference
 
