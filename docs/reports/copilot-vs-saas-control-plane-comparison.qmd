@@ -1,0 +1,132 @@
+---
+title: "Copilot \"Control Plane\" vs. UIAO SaaS Control Plane"
+subtitle: "A side-by-side comparison of the shared Copilot/Michael control-plane code and the repo's own `uiao.saas` control plane"
+date: 2026-06-07
+---
+
+# Copilot code vs. UIAO SaaS code
+
+Comparison date: 2026-06-07
+Scope: the **Copilot code** shared from OneDrive/Drive (folder
+`Michael_Control_Plane`) versus **our own SaaS code** in
+[`src/uiao/saas/`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/saas)
+([ADR-096](../adr/adr-096-azure-saas-architecture.qmd)).
+
+## TL;DR — they are false cognates
+
+Both code bases call themselves a *"control plane,"* but the word means two
+different things:
+
+* The **Copilot code** is a **control plane *for AI agents*** — a personal,
+  multi-LLM orchestration substrate that routes a human operator's tasks
+  across several assistants (Copilot/Azure OpenAI, Perplexity, dormant
+  Gemini/Grok) and synthesises a single answer.
+* The **UIAO SaaS code** is a **SaaS control plane** in the industry sense —
+  the *management plane* (as opposed to the *data plane*) that onboards,
+  provisions, suspends, and deprovisions paying customer **tenants** of the
+  UIAO governance product.
+
+They share vocabulary and a few structural instincts (a vendor-neutral
+interface, an injected executor, human-in-the-loop), but they solve
+unrelated problems. The comparison below is therefore less "which
+implementation is better" and more "what each one is, and what each could
+borrow from the other."
+
+## What was examined
+
+**Copilot code** (Drive folder `Michael_Control_Plane`, authored via
+Copilot + Perplexity, Feb 2026):
+
+| Area | Files |
+|---|---|
+| `01_Architecture/` | `INITIATE_MICHAEL_CONTROL_PLANE`, phase plans, validation checklists, operator runbook, executive summary |
+| `02_Clients/` | `llm_client.py` (abstract base), `copilot_client.py` (Azure OpenAI Chat Completions), `perplexity_client.py`, `gemini_client.py`, `grok_client.py` |
+| `03_Orchestrator/` | `orchestrator.py`, `routing.py`, `consensus.py`, `divergence.py`, `critique_engine.py`, `specialization.py`, `drift_detector.py`, `protocol_orchestrator.py`, `memory_orchestrator.py`, `automation_orchestrator.py`, `executor.py`, `task_queue.py`, `workflow_definitions.py`, `runbook_loader.py`, `human_checkpoint.py` |
+| `04_Memory` / `05_Logs` / `06_Config` | `settings.py`, `settings.json`, memory & log stores |
+| `CoPilot_Exports/` | `Exports_From_Copilot.txt` — a list of `copilot.microsoft.com/shares/…` conversation links |
+
+**UIAO SaaS code** ([`src/uiao/saas/`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/saas), ~1,640 LOC):
+`tenant.py`, `provisioning.py`, `control_plane.py`, `auth.py`, `app.py`,
+`middleware.py`, `repository.py` / `pg_repository.py`,
+`azure_provisioners.py` / `azure_stamp.py`, `settings.py`, `context.py`,
+`asgi.py`.
+
+## Side-by-side
+
+| Dimension | Copilot "Control Plane" | UIAO `uiao.saas` |
+|---|---|---|
+| **Problem solved** | Orchestrate many LLMs cooperatively for *one* human | Manage *many* customer tenants of one product |
+| **What "control plane" means** | The orchestration brain over cognitive engines (LLMs) | The management API plane vs. the data plane |
+| **Tenancy model** | Single operator ("Michael"); no multi-tenancy | Multi-tenant; Entra tenant-GUID isolation + `data_namespace` |
+| **Public surface** | `run_two_agent_cycle(task)` Python entrypoint | `/control/v1/tenants` REST API (onboard/list/get/suspend/resume/delete) |
+| **Vendor-neutral seam** | `LLMClient` ABC: `ask/summarize/critique/embed/metadata` | `StampExecutor` + `TenantRepository` protocols |
+| **Concurrency** | Synchronous `requests.post` | `async`/`await` throughout |
+| **AuthN/AuthZ** | API keys in `settings.json` | Entra OAuth2 bearer tokens, JWKS signature verify, app-role gate (`UIAO.SaaS.Admin`), admin-consent flow |
+| **Safety default** | Live API calls on every step | **Dry-run by default** (`NoOpStampExecutor` *plans* the Azure stamp; executes only when a real executor is injected) |
+| **Persistence** | JSON file → SQLite (planned); Google Drive for artifacts | In-memory repo for tests + Postgres repo for prod |
+| **Configuration** | `settings.json` / `SETTINGS` dict, module-level import | `SaasSettings` (pydantic), env-driven, DI'd at the composition root |
+| **Testability** | No tests present; flat imports + module-level globals | DI everywhere, in-memory repo, `insecure_allow_unsigned` test mode; CI gated so import needs only `[api]` |
+| **Error handling** | `raise_for_status()` + `log_event` | Typed domain errors (`TenantNotFoundError`, `ValueError`) mapped to HTTP 401/403/404/409/503 |
+| **State machine** | Phase model (1→5) described in prose | Explicit, validated `Tenant` lifecycle: `PENDING → ACTIVE → SUSPENDED → ACTIVE / → DEPROVISIONED` |
+| **Layout** | Flat sibling dirs (`clients/`, `orchestrator/`, `memory/`, …) | Cohesive subpackage with dependency isolation + lazy imports |
+| **Governance framing** | Invariants/boundaries/drift-alerts as narrative doctrine | ADRs (ADR-096), transport-free + dry-run doctrine inherited from the OrgPath runtime |
+
+## Where they actually rhyme
+
+Despite the different domains, the two designs reach for the same handful of
+ideas — worth noting because it validates both:
+
+1. **A vendor-neutral interface + an injected implementation.** Copilot's
+   `LLMClient` (each provider implements the same five methods) is the same
+   move as our `StampExecutor` / `TenantRepository` protocols: keep the
+   orchestration logic dependency-light and swap the backend.
+2. **Plan-vs-execute separation.** Copilot's loop lets Perplexity *"execute
+   or simulate"*; our provisioning *plans* a stamp and only executes when a
+   concrete executor is wired in. Both treat "describe what I would do"
+   as a first-class, safe mode.
+3. **Human-in-the-loop as an explicit boundary.** `human_checkpoint.py` and
+   the "Michael = final arbiter" invariant mirror our admin-token /
+   admin-consent gate — neither system acts on the world without a named
+   human authority.
+4. **Traceability is structural, not bolted on.** JSON-line event logs +
+   per-step `append_event` on one side; typed lifecycle transitions, audit
+   fields (`onboarded_by`, `suspended_reason`), and stamp-step records on the
+   other.
+
+## What each could borrow
+
+**The Copilot code could adopt from `uiao.saas`:**
+
+* **`async` + a settings model.** Synchronous `requests` and a module-level
+  `SETTINGS` dict make parallel agent calls and testing awkward; a pydantic
+  settings object + `httpx.AsyncClient` would unlock concurrent fan-out
+  (which is the whole point of consensus/divergence).
+* **Dependency injection over module-level globals.** `build_clients()`
+  reads `SETTINGS` directly and `orchestrator.py` imports concrete client
+  classes; injecting the client map (as `attach_saas` injects repo + verifier)
+  would make the consensus/critique engines unit-testable without live keys.
+* **Typed errors mapped to outcomes** instead of bare `raise_for_status()`,
+  so a single failing agent degrades gracefully rather than aborting the cycle.
+* **Tests.** There are none in the shared tree; the SaaS module's in-memory /
+  insecure-token pattern is a ready blueprint for testing orchestration
+  offline.
+
+**`uiao.saas` arguably has nothing to borrow back** for its own job — the
+Copilot project's consensus/divergence/critique/routing machinery is specific
+to multi-LLM orchestration and out of scope for tenant lifecycle management.
+The one transferable *idea* is the project's crisp **invariant/drift-alert
+doctrine**, which reads like a lightweight, prose version of what our ADRs
+encode more formally.
+
+## Bottom line
+
+The shared "Copilot code" is **not** an alternative implementation of our
+SaaS control plane — it is a different kind of control plane (an AI-agent
+orchestrator) that happens to share the name and a few good instincts
+(vendor-neutral seams, plan-vs-execute, human authority). Our `uiao.saas`
+control plane is more rigorous on the axes that matter for a multi-tenant
+product — async I/O, OAuth2/JWKS auth, dry-run-by-default provisioning,
+dependency injection, an explicit tenant state machine, and test coverage —
+because it has to be. The most useful cross-pollination runs one way: the
+Copilot orchestrator would benefit from the SaaS module's async, DI, typed
+errors, and testing patterns.
