@@ -111,6 +111,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization](whitepapers/federal-hrit-productization.html) | Active | Executive, Customer, Assessor |
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
 | [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Active | Executive, Customer, Technical |
+| [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](whitepapers/hybrid-join-without-governance.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Modernization Governance — Whitepaper](whitepapers/modernization-governance-whitepaper.html) | Active | Executive, Customer, Architect |
 | [SCuBAGear Integration — Whitepaper](whitepapers/scubagear-integration-whitepaper.html) | Active | Customer, Assessor, Architect |
 | [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](whitepapers/snowflake-keypair-vs-uiao-orgpath.html) | Draft | Executive, Technical, Customer |

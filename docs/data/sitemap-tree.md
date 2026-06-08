@@ -208,7 +208,7 @@
 
 - [Learning](customer-documents/learning/index.html)
 - [Old AD vs New EntraID — A Foundational Reference](customer-documents/learning/old-ad-vs-new-entra-reference.html)
-- [Entra Security Baseline Federal Crosswalk](customer-documents/learning/entra-security-baseline-federal-crosswalk.html)
+- [Entra Security Baseline — A Federal AD-to-Entra Crosswalk](customer-documents/learning/entra-security-baseline-federal-crosswalk.html)
 
 ### How-to Guides (task-oriented)
 
@@ -600,6 +600,7 @@
   - [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.html)
   - [UIAO Git Server Interfaces — Windows Server 2025 Deployment](customer-documents/whitepapers/git-server-interfaces-whitepaper.html)
   - [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](customer-documents/whitepapers/zta-scuba-relationship.html)
+  - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)
   - [AODIM Architecture Document](customer-documents/architecture-series/aodim-architecture.html)
