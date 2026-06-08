@@ -1,0 +1,319 @@
+---
+title: "Entra Security Baseline — A Federal AD-to-Entra Crosswalk"
+subtitle: "Microsoft's SFI / Zero-Trust configure-security checklist, scored for a GCC-Moderate agency with 20+ years of Active Directory"
+doc-type: learning-reference
+audience: [Architect, Engineer, Assessor, Technical-Lead]
+classification: Public
+boundary: GCC-Moderate
+status: framing-pattern
+canon-source: "docs/customer-documents/learning/"
+derived-from: "Microsoft Learn — Configure Microsoft Entra for increased security (SFI/Zero-Trust)"
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-03
+---
+
+# Entra Security Baseline — A Federal AD-to-Entra Crosswalk {.unnumbered}
+
+::: {.callout-note}
+## In this reference
+
+Microsoft's [Configure Microsoft Entra for increased security](https://learn.microsoft.com/en-us/entra/fundamentals/configure-security) page lists ~150 hardening controls grouped under the **Secure Future Initiative (SFI)** and Zero-Trust pillars, each tagged with a minimum license. That page is written for a **commercial workforce tenant** and is silent on the two things that decide what a federal agency can actually do: **government-cloud availability** and **20 years of Active Directory entanglement**.
+
+This reference re-scores every theme through that federal lens. Each control gets four added columns — **minimum license → GCC-Moderate availability → AD-friction → effort tier** — so you can read it as a sequencing plan, not just a checklist. [Annex A](#annex-a-zero-trust-assessment-federal-usability) covers the companion automation (the **Zero Trust Assessment** PowerShell module) and its real behavior against government tenants.
+
+This document is **pedagogical** — a planning and learning artifact for architects and assessors. It is not a runbook and assumes no dry-run against a production agency tenant.
+:::
+
+## 1. The assessment in one paragraph
+
+A 20-year AD agency on **GCC Moderate** can implement a meaningful slice of the SFI baseline **quickly** — the consent/guest/logging/break-glass/legacy-auth/PIM cluster is mostly Free/P1/P2, already licensed under M365 **G5**, and config-only. But three filters knock out or defer roughly a third of the page before any work starts: the **entire "Protect networks" theme is Global Secure Access**, which is **unavailable in GCC High/DoD and non-FIPS in GCC Moderate**; the **AI theme** is nascent and unconfirmed in gov; and the heaviest identity controls (**managed-device sign-in, token protection, org-wide phishing-resistant auth, cloud authentication**) are gated on **device, Intune, and federation modernization** that two decades of AD make a multi-quarter program rather than a toggle. The agency's one structural advantage is **PIV/CAC → Entra Certificate-Based Authentication (CBA)**, which turns several "project" phishing-resistant controls into "accelerated."
+
+## 2. The three filters
+
+### Filter 1 — Government-cloud eligibility
+
+| Theme | GCC-Moderate reality |
+|---|---|
+| Protect identities & secrets | Almost entirely **available** (Entra ID, PIM, ID Protection, CBA, Authentication Methods, Password Protection all parity in GCC). |
+| Protect tenants | Available. |
+| **Protect networks** | **Global Secure Access (Internet Access / Private Access).** **Not available in GCC High / DoD at all.** In **GCC Moderate it runs but is not FIPS 140-2 certified** (it is FedRAMP-High accredited) — an ATO consideration for a federal boundary. Treat as *evaluate*, not *quick win*. |
+| Protect engineering systems | Available. |
+| Monitor & detect | Available, except the GSA-dependent network-log checks. |
+| Accelerate response | Available (Workload ID is a separate SKU; confirm gov entitlement). |
+| **AI (Entra Agent ID)** | **Nascent; gov availability unconfirmed — defer.** |
+
+> Availability shifts as gov parity advances. Verify every code below against the authoritative
+> [Microsoft Entra feature availability in Azure for US Government](https://learn.microsoft.com/en-us/entra/identity/authentication/feature-availability)
+> and the [Global Secure Access certifications](https://learn.microsoft.com/en-us/entra/global-secure-access/reference-global-secure-access-certifications) page. Codes here are current as of **June 2026**.
+
+### Filter 2 — Licensing
+
+Federal agencies typically run **M365 G5**, which includes **Entra ID P2** (PIM, ID Protection, access reviews, entitlement management). So P1/P2/PIM items are *licensed*; the constraint is operational, not entitlement. The **Internet Access / Private Access / Entra Suite / Workload ID** tags are *separate SKUs* — and collide with Filter 1 anyway.
+
+### Filter 3 — 20-year AD friction
+
+The same control can be a 10-minute toggle or a 9-month program depending on the hybrid estate (Entra Connect sync, ADFS federation, basic-auth LOB apps, decades of service accounts and app registrations, AD-joined-not-Entra-joined devices, on-prem GPO password policy). The **AD-friction** column names that entanglement; the **effort tier** prices it.
+
+## 3. How to read the crosswalk
+
+**Minimum license** — `Free` · `P1` · `P2` · or a separate SKU (`Internet Access`, `Private Access`, `Suite`, `Workload ID`, `ID Governance`).
+
+**GCC-Moderate availability**
+
+| Code | Meaning |
+|---|---|
+| ✅ | Available in GCC Moderate today |
+| ⚠️ | Available but caveated (depends on non-FIPS GSA, or only partial in gov) |
+| ❌ | Not available in gov (GCC High/DoD); in GCC Moderate only via non-FIPS GSA |
+
+**AD-friction**
+
+| Code | Meaning |
+|---|---|
+| 🟢 | Cloud-only — no on-prem entanglement |
+| 🟡 | Hybrid-touching — coordinate with sync / devices / users |
+| 🔴 | Legacy-blocking — gated on retiring or modernizing a 20-year dependency |
+
+**Effort tier**
+
+| Tier | Meaning |
+|---|---|
+| **T0** | This week. Tenant toggle, no legacy dependency. |
+| **T1** | Quick (days). Config is fast; discovery / coordination / rollout is the work. |
+| **T2** | Weeks. Inventory + remediation, or staged rollout. |
+| **T3** | Multi-quarter program. Gated on device / identity / federation modernization. |
+| **—** | Not applicable / not available in your cloud. |
+
+## 4. Crosswalk — Protect identities and secrets
+
+The largest theme and the heart of the quick-win set. Source: [zero-trust-protect-identities](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-identities).
+
+| Control | License | GCC | AD-friction | Tier |
+|---|---|:--:|:--:|:--:|
+| User consent settings are restricted | Free | ✅ | 🟢 | **T0** |
+| Admin consent workflow is enabled | Free | ✅ | 🟢 | **T0** |
+| Require password reset notifications for administrator roles | P1 | ✅ | 🟢 | **T0** |
+| Block administrators from using SSPR | P1 | ✅ | 🟢 | **T0** |
+| Self-service password reset doesn't use security questions | P1 | ✅ | 🟢 | **T0** |
+| Smart lockout threshold set to 10 or less | P1 | ✅ | 🟢 | **T0** |
+| Smart lockout duration is set to a minimum of 60 | P1 | ✅ | 🟢 | **T0** |
+| Microsoft Authenticator app shows sign-in context | P1 | ✅ | 🟢 | **T0** |
+| Microsoft Authenticator report-suspicious-activity is enabled | P1 | ✅ | 🟢 | **T0** |
+| Microsoft services applications don't have credentials configured | Free | ✅ | 🟢 | **T1** |
+| Enforce standards for app secrets and certificates (app mgmt policy) | Free | ✅ | 🟢 | **T1** |
+| High Global Administrator to privileged user ratio | Free | ✅ | 🟢 | **T1** |
+| Passkey authentication method enabled | Free | ✅ | 🟢 | **T1** |
+| Security key authentication method enabled | Free | ✅ | 🟢 | **T1** |
+| Security key attestation is enforced | Free | ✅ | 🟢 | **T1** |
+| Temporary Access Pass is enabled | P1 | ✅ | 🟢 | **T1** |
+| Restrict Temporary Access Pass to single use | P1 | ✅ | 🟢 | **T1** |
+| Migrate from legacy MFA and SSPR policies (converged auth methods) | P1 | ✅ | 🟡 | **T1** |
+| SMS and Voice Call authentication methods are disabled | P1 | ✅ | 🟡 | **T1** |
+| Secure the MFA registration (My Security Info) page via CA | P1 | ✅ | 🟡 | **T1** |
+| All users are required to register for MFA | P2 | ✅ | 🟡 | **T1** |
+| Password expiration is disabled | P1 | ✅ | 🟡 *(on-prem GPO still governs synced users)* | **T1** |
+| Add organizational terms to the banned password list | P1 | ✅ | 🟡 *(on-prem Password Protection agent for AD)* | **T1** |
+| Require MFA for device join and device registration | P1 | ✅ | 🟡 | **T1** |
+| Directory sync account is locked down to a specific named location | P1 | ✅ | 🟡 | **T1** |
+| App Proxy applications require preauthentication | P1 | ✅ | 🟡 | **T1** |
+| Privileged accounts have phishing-resistant methods registered | P1 | ✅ | 🟡 *(PIV/CAC → CBA accelerator)* | **T1→T2** |
+| Block legacy Azure AD PowerShell module | Free | ✅ | 🟡 *(check automation deps)* | **T1** |
+| **Block legacy authentication policy is configured** | P1 | ✅ | 🔴 *(report-only + sign-in-log discovery first)* | **T1** |
+| Privileged roles aren't assigned to stale identities | P2 | ✅ | 🟡 | **T1→T2** |
+| Applications don't have client secrets configured | Free | ✅ | 🟡 | **T2** |
+| Service principals don't have certificates or credentials | Free | ✅ | 🟡 | **T2** |
+| Applications don't have certificates with expiration > 180 days | Free | ✅ | 🟡 | **T2** |
+| Application certificates must be rotated on a regular basis | Free | ✅ | 🟡 | **T2** |
+| No usage of ADAL in the tenant | Free | ✅ | 🟡 *(app remediation)* | **T2** |
+| Administrative privileges are tightly limited | P1 | ✅ | 🟡 *(synced admins)* | **T2** |
+| Privileged built-in roles targeted with CA for phishing-resistant | P1 | ✅ | 🟡 | **T2** |
+| Users have strong authentication methods configured | P1 | ✅ | 🟡 | **T2** |
+| All privileged role assignments are JIT, not permanently active (PIM) | P2 | ✅ | 🟡 | **T2** |
+| All Entra privileged role assignments are managed with PIM | P2 | ✅ | 🟡 | **T2** |
+| Entra Connect Sync is configured with service principal credentials | Free | ✅ | 🟡 | **T2** |
+| Local Admin Password Solution (LAPS) is deployed | P1 | ✅ | 🔴 *(Windows LAPS fleet rollout)* | **T2** |
+| Privileged accounts are cloud-native identities | Free | ✅ | 🔴 *(stop syncing on-prem admins; build cloud-only tier)* | **T2→T3** |
+| Use cloud authentication | P1 | ✅ | 🔴 *(ADFS → PHS/PTA migration)* | **T3** |
+| Reduce the user-visible password surface area | P1 | ✅ | 🔴 | **T3** |
+| User sign-in activity uses token protection | P1 | ✅ | 🔴 *(needs Entra-joined/compliant Windows)* | **T3** |
+| Token protection policies are configured | P1 | ✅ | 🔴 | **T3** |
+| All user sign-in activity uses phishing-resistant methods | P1 | ✅ | 🔴 *(org-wide; PIV/CAC accelerates)* | **T3** |
+| All sign-in activity comes from managed devices | P1 | ✅ | 🔴 *(Intune + join maturity)* | **T3** |
+| Application admin rights constrained to specific Private Access apps | Private Access | ❌ | — | **—** |
+| Conditional Access enforces strong auth for private apps | Private Access | ❌ | — | **—** |
+| Enable security defaults (free tenants only) | Free | ✅ | — | **—** *(mutually exclusive with CA — a P1/P2 agency uses Conditional Access instead)* |
+
+## 5. Crosswalk — Protect tenants and isolate production
+
+Source: [zero-trust-protect-tenants](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-tenants).
+
+| Control | License | GCC | AD-friction | Tier |
+|---|---|:--:|:--:|:--:|
+| Permissions to create new tenants limited to Tenant Creator role | Free | ✅ | 🟢 | **T0** |
+| Guests can't invite other guests | Free | ✅ | 🟢 | **T0** |
+| Guests have restricted access to directory objects | Free | ✅ | 🟢 | **T0** |
+| Guest self-service sign-up via user flow is disabled | Free | ✅ | 🟢 | **T0** |
+| Guests are not assigned high-privileged directory roles | Free / P2 | ✅ | 🟢 | **T0** |
+| Restrict non-admin users from recovering BitLocker keys | Free | ✅ | 🟢 | **T0** |
+| Enable protected actions for CA policy creation/changes | P1 | ✅ | 🟢 | **T1** |
+| Guest access is limited to approved tenants (X-tenant access) | Free | ✅ | 🟢 | **T1** |
+| Outbound cross-tenant access settings are configured | Free / P1 | ✅ | 🟢 | **T1** |
+| App instance property lock for all multitenant applications | Free | ✅ | 🟢 | **T1** |
+| Guests don't have long-lived sign-in sessions | P1 | ✅ | 🟢 | **T1** |
+| Guest access is protected by strong authentication | Free / P1 | ✅ | 🟡 | **T1** |
+| Guests don't own apps in the tenant | Free | ✅ | 🟡 | **T1** |
+| All guests have a sponsor | Free | ✅ | 🟢 | **T1** |
+| Inactive guest identities are disabled or removed | Free | ✅ | 🟡 *(access reviews)* | **T1** |
+| Manage local administrators on Entra joined devices | Free | ✅ | 🟡 *(few Entra-joined today)* | **T1** |
+| Entitlement-mgmt policies have an expiration date | P2 / ID Governance | ✅ | 🟢 | **T2** |
+| Entitlement-mgmt external policies require connected organizations | P2 / ID Governance | ✅ | 🟢 | **T2** |
+| Entitlement-mgmt external policies require approval | P2 / ID Governance | ✅ | 🟢 | **T2** |
+| Guest packages have expirations or access reviews | P2 / ID Governance | ✅ | 🟢 | **T2** |
+
+## 6. Crosswalk — Protect networks (mostly out-of-cloud)
+
+::: {.callout-warning}
+## The whole theme is Global Secure Access — handle as a gated evaluation, not a quick win
+
+All ~40 checks in [zero-trust-protect-networks](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-networks) belong to **Microsoft Entra Internet Access / Private Access (Global Secure Access)** except the handful of Conditional-Access primitives below. GSA is **❌ not available in GCC High/DoD** and **⚠️ non-FIPS in GCC Moderate**. To keep this crosswalk honest, the GSA family is **collapsed into one row** rather than reproduced as 35+ near-identical "—" entries; the originals are enumerated on the source page.
+:::
+
+| Control (or family) | License | GCC | AD-friction | Tier |
+|---|---|:--:|:--:|:--:|
+| Named locations are configured | P1 | ✅ | 🟢 | **T0→T1** |
+| Tenant restrictions v2 policy is configured | P1 | ⚠️ *(header-based works; universal enforcement needs GSA)* | 🟡 | **T2** |
+| Conditional Access policies use compliant-network controls | P1 | ⚠️ *(compliant network = GSA signaling)* | 🔴 | **—** until GSA |
+| **All GSA families** — Internet Access, Private Access, GSA client, TLS inspection, web-content filtering, threat-intel & file-transfer policy, AI gateway, cloud firewall, Universal CAE, universal tenant restrictions, private connectors/DNS, Quick Access, app segments, DC-RDP protection | Internet/Private Access / Suite | ❌ *(GCC High/DoD)* / ⚠️ *(non-FIPS GCC Moderate)* | — | **—** *(evaluate against ATO; not "quick")* |
+
+## 7. Crosswalk — Protect engineering systems
+
+Source: [zero-trust-protect-engineering-systems](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-engineering-systems).
+
+| Control | License | GCC | AD-friction | Tier |
+|---|---|:--:|:--:|:--:|
+| **Emergency access (break-glass) accounts configured** | P1 | ✅ | 🟢 | **T0** *(do before any CA work)* |
+| Limit the maximum number of devices per user to 10 | Free | ✅ | 🟢 | **T0** |
+| Global Administrators don't have standing Azure subscription access | Free | ✅ | 🟡 | **T1** |
+| Resource-specific consent is restricted | P1 | ✅ | 🟢 | **T1** |
+| Creating new applications and service principals restricted to privileged users | P1 | ✅ | 🟡 *(devs may rely on self-service)* | **T1** |
+| Enterprise apps require explicit assignment or scoped provisioning | P1 | ✅ | 🟡 | **T1** |
+| Enterprise applications have owners | Free | ✅ | 🟡 | **T1** |
+| Global Administrator role activation triggers an approval workflow | P2 | ✅ | 🟡 *(after PIM)* | **T1** |
+| Inactive applications don't have privileged Graph API permissions | P1 | ✅ | 🟡 *(discovery)* | **T2** |
+| Inactive applications don't have privileged built-in roles | P1 | ✅ | 🟡 | **T2** |
+| App registrations use safe redirect URIs | P1 | ✅ | 🟡 | **T2** |
+| Service principals use safe redirect URIs | P1 | ✅ | 🟡 | **T2** |
+| No dangling/abandoned domain redirect URIs | P1 | ✅ | 🟡 | **T2** |
+| Workload identities are not assigned privileged roles | P1 | ✅ | 🟡 | **T2** |
+| Conditional Access policies for Privileged Access Workstations | P1 | ✅ | 🔴 *(PAW program)* | **T2→T3** |
+
+## 8. Crosswalk — Monitor and detect cyberthreats
+
+Source: [zero-trust-monitor-detect](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-monitor-detect).
+
+| Control | License | GCC | AD-friction | Tier |
+|---|---|:--:|:--:|:--:|
+| Diagnostic settings configured for all Entra logs (→ Sentinel) | P1 | ✅ | 🟢 | **T0** |
+| ID Protection notifications are enabled | P2 | ✅ | 🟢 | **T0** |
+| Activation alert for Global Administrator role assignments | P2 | ✅ | 🟢 | **T1** |
+| Activation alert for all privileged role assignments | P2 | ✅ | 🟢 | **T1** |
+| Privileged role activations have monitoring and alerting | P2 | ✅ | 🟡 | **T1** |
+| All high-risk users are triaged | P2 | ✅ | 🟢 *(SOC process)* | **T1** |
+| All high-risk sign-ins are triaged | P2 | ✅ | 🟢 | **T1** |
+| All risky workload identities are triaged | P2 | ✅ | 🟢 | **T1** |
+| Tenant creation events are triaged | P1 | ✅ | 🟢 | **T1** |
+| High-priority Entra recommendations are addressed | P1 | ✅ | 🟢 | **T1** |
+| All Entra recommendations are addressed | P1 | ✅ | 🟢 | **T1** |
+| Privileged users sign in with phishing-resistant methods | P1 | ✅ | 🟡 | **T2** |
+| All user sign-in activity uses strong authentication methods | P1 | ✅ | 🟡 | **T2** |
+| No legacy authentication sign-in activity | P1 | ✅ | 🔴 *(tied to block-legacy-auth)* | **T2** |
+| Network access activity visible / logs retained / GSA deployment logs reviewed | P1 / GSA | ⚠️/❌ *(GSA-dependent)* | — | **—** until GSA |
+
+## 9. Crosswalk — Accelerate response and remediation
+
+Source: [zero-trust-response-remediation](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-response-remediation).
+
+| Control | License | GCC | AD-friction | Tier |
+|---|---|:--:|:--:|:--:|
+| Restrict high-risk sign-ins (risk-based CA) | P2 | ✅ | 🟡 | **T1** |
+| Restrict access to high-risk users (risk-based CA) | P2 | ✅ | 🟡 | **T1** |
+| Workload Identities configured with risk-based policies | Workload ID | ⚠️ *(separate SKU; confirm gov entitlement)* | 🟡 | **T2** |
+
+## 10. Crosswalk — AI (defer)
+
+::: {.callout-note}
+The [AI theme](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-ai) (Entra **Agent ID** controls — authentication to agents, CA over agent identities, custom security attributes, agent-identity governance and ownership) is **nascent and its government-cloud availability is unconfirmed**. **Defer the entire theme** unless the agency is actively standing up Entra Agent ID. Revisit at the `lifecycle_review` date.
+:::
+
+## 11. Recommended quick-win sequence
+
+Pulling the **T0/T1** rows into an execution order. License in brackets; all assume GCC-Moderate availability ✅.
+
+1. **Break-glass accounts** [P1] — prerequisite for every Conditional Access change. *(§7)*
+2. **Diagnostic settings → Sentinel** [P1] and **ID Protection notifications** [P2] — turn on visibility before you start changing posture. *(§8)*
+3. **Consent + guest hardening bundle** [Free] — restrict user consent, enable admin-consent workflow, guests-can't-invite-guests, restricted directory access, disable guest self-sign-up, limit tenant creation. *(§4, §5)*
+4. **Tenant-config toggles** [Free] — devices/user ≤ 10, restrict non-admin BitLocker recovery, app instance property lock. *(§5, §7)*
+5. **Password & lockout hygiene** [P1] — disable security questions, block admins from SSPR, smart-lockout ≤10 / ≥60s, banned-password org terms (+ on-prem agent), disable password expiration (note GPO caveat). *(§4)*
+6. **Migrate to converged authentication-methods policy** [P1] — deadline-driven; enable TAP (single-use), passkey/security-key methods. *(§4)*
+7. **Block legacy authentication** [P1] — **staged**: report-only Conditional Access → sign-in-log discovery of basic-auth LOB apps and service accounts → enforce. Highest value, highest legacy risk. *(§4, §8)*
+8. **Stand up PIM** [P2] — JIT activation, GA approval workflow, activation alerts, stale-privileged-identity reviews. *(§4, §7, §8)*
+9. **Risk-based Conditional Access** [P2] — restrict high-risk users and sign-ins; begin SOC triage cadence. *(§9)*
+10. **Phishing-resistant for admins via PIV/CAC → CBA** [P1] — the federal accelerator; start with privileged accounts, then expand. *(§4)*
+
+Everything tagged **T2/T3** (app-credential hygiene, LAPS, cloud-only admin tiering, ADFS→cloud-auth, managed-device sign-in, token protection, org-wide phishing-resistant, PAW) is **real program work** — sequence it into the modernization track, don't promise it as "quick."
+
+---
+
+## Annex A — Zero Trust Assessment: federal usability {#annex-a-zero-trust-assessment-federal-usability}
+
+Microsoft pairs the checklist with an automated checker — the **Zero Trust Assessment** ([overview](https://learn.microsoft.com/en-us/security/zero-trust/assessment/overview) · [get-started](https://learn.microsoft.com/en-us/security/zero-trust/assessment/get-started)). It is the "operationalize this checklist" tool the configure-security page points to. Here is what it is and how it actually behaves in a government tenant.
+
+### A.1 What it is
+
+An **open-source PowerShell module** (`ZeroTrustAssessment`, [GitHub](https://github.com/microsoft/zerotrustassessment)) that runs **read-only** against a tenant and produces a local HTML report (`ZeroTrustReport\ZeroTrustAssessmentReport.html`) with **Overview / Identity / Devices / Network / Data** tabs, scoring each test by **Risk** and **Status**. Checks are drawn from **NIST / CISA / CIS**, Microsoft's internal baselines, and customer telemetry — the same catalog behind the crosswalk above.
+
+### A.2 Architecture / data handling (the assessor-relevant facts)
+
+- **Read-only, runs locally, fully open source** — nothing is written back to the tenant; assessors can review the code. Strong for an ATO conversation.
+- **Stores sensitive tenant data on the local disk** (uses a local **DuckDB** database). Docs explicitly warn the output is attacker-grade intel — **treat the folder as sensitive (CUI-equivalent) and delete it after**. This is a data-handling decision, not a casual desktop run.
+- **Large tenants can take 24+ hours.** Requires **PowerShell 7** and the **VC++ 2015-2022 redistributable**; **no ARM64 support**.
+
+### A.3 What it costs to run (the access ask is the real gate)
+
+- **First run requires a Global Administrator** to consent the Microsoft Graph PowerShell app to ~20 read scopes (`AuditLog.Read.All`, `Directory.Read.All`, `Policy.Read.All`, `RoleManagement.Read.All`, `IdentityRisk*.Read.All`, `NetworkAccess.Read.All`, etc.). In a locked-down federal tenant, **standing up a new app consent is itself a governance gate** — usually the hardest step.
+- **Subsequent runs** need **Global Reader + Security Reader + Exchange Administrator + SharePoint Administrator**, plus an optional Azure sign-in (skip it and it drops only the log-export check).
+- It fans out beyond Entra — **Graph, Azure, Exchange, SharePoint, AIP**.
+
+### A.4 Government-cloud reality
+
+A `-Environment USGov` switch **exists**, so gov is *attempted* — but it is **not clean**, and neither Learn page makes any supportability statement about GCC/GCC High/DoD:
+
+- **[Issue #378 — GCC High](https://github.com/microsoft/zerotrustassessment/issues/378)**: `Connect-ZtAssessment -Environment USGov` fails on `servicePrincipalSignInActivities` (**400 — endpoint not present in gov Graph**), cascading into a DuckDB binder error. **Closed without a documented fix.**
+- Many checks are **meaningless in gov anyway** — the entire **Network** tab and scopes like `NetworkAccess.Read.All` map to **Global Secure Access**, which doesn't exist in GCC High/DoD and is non-FIPS in GCC Moderate. Expect those to error or mislead.
+
+**Verdict for GCC Moderate:** the `USGov` path may run further than it does for GCC High, but expect **broken checks and false signal in Network/Data**, and **no Microsoft support commitment**. This is a *read-every-result-with-a-gov-filter* tool, not a clean compliance score.
+
+### A.5 How to use it in a federal program
+
+Since the agency cannot dry-run against production, the durable value is the **check catalog as a learning/crosswalk source**, not the live dashboard:
+
+1. Treat the repo's [test definitions](https://github.com/microsoft/zerotrustassessment/tree/main/src/powershell) as the machine-readable twin of §4–§10 above.
+2. If it is run, do so from a **commercial-equivalent lab or a non-production GCC tenant** first; scope expectations to the **Identity** tab (the part that works in gov); **ignore Network results** as out-of-cloud noise.
+3. Surface the **access + data-handling gates** (Global-Admin consent; local sensitive-data storage) to the tenant owner up front — those, not the install, are what stall it in a federal environment.
+
+---
+
+## Sources
+
+- [Configure Microsoft Entra for increased security](https://learn.microsoft.com/en-us/entra/fundamentals/configure-security) — the SFI/Zero-Trust control catalog this crosswalk re-scores.
+- Theme detail pages: [protect identities](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-identities) · [protect tenants](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-tenants) · [protect networks](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-networks) · [protect engineering systems](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-protect-engineering-systems) · [monitor & detect](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-monitor-detect) · [response & remediation](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-response-remediation) · [AI](https://learn.microsoft.com/en-us/entra/fundamentals/zero-trust-ai).
+- [Microsoft Entra feature availability in Azure for US Government](https://learn.microsoft.com/en-us/entra/identity/authentication/feature-availability) — authoritative gov-parity reference; re-verify availability codes here against it.
+- [Global Secure Access certifications](https://learn.microsoft.com/en-us/entra/global-secure-access/reference-global-secure-access-certifications) — GSA FedRAMP/FIPS/gov-cloud status.
+- Zero Trust Assessment: [overview](https://learn.microsoft.com/en-us/security/zero-trust/assessment/overview) · [get-started](https://learn.microsoft.com/en-us/security/zero-trust/assessment/get-started) · [GitHub repo](https://github.com/microsoft/zerotrustassessment) · [issue #378 (GCC High)](https://github.com/microsoft/zerotrustassessment/issues/378).
+- Companion: [Old AD vs New EntraID — A Foundational Reference](old-ad-vs-new-entra-reference.qmd).
+
+::: {.callout-note}
+## Maintenance note
+Availability codes (✅/⚠️/❌) are **point-in-time (June 2026)** and move as government-cloud parity advances. At each `lifecycle_review`, re-verify the network theme and the AI theme against the feature-availability page, and re-check the Zero Trust Assessment's `-Environment USGov` behavior against the GitHub issue tracker.
+:::
