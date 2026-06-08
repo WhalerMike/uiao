@@ -10,8 +10,6 @@ review_trigger: A workforce-system-of-record vertical other than the federal OPM
 impact: 'Establishes that the workforce HR system of record is the authoritative upstream source for the assignment of persons to OrgTree nodes, and that the OrgTree change-request workflow is the governance gate over HR-supplied deltas rather than an independent origin of organizational truth. Resolves the unstated source question left open by the UIAO OrgPath (Book_02 Chapter 3, Book_03 Chapter 4) and the canonical OrgTree specification (UIAO_007). Establishes the doctrine that an inherited Active Directory OU estate that has drifted from the true organizational structure is overlaid by HR-sourced OrgPath and decommissioned, not realigned. Federal scope (OPM HRIT) is one vertical instantiation per ADR-085 and Spec2-D6.1; the source slot is swapped for a commercial HCM in other verticals without architectural change.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-088-hr-as-orgtree-truth-source.html

@@ -23,8 +23,6 @@ upstream_deliverables:
 sibling_deliverables:
   - Spec2-D2.6
   - Spec2-D3.8
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D3.7: Monitoring and Alerting Configuration

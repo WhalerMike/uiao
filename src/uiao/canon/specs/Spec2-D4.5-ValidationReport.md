@@ -19,8 +19,6 @@ upstream_deliverables:
   - Spec2-D4.4
 sibling_deliverables:
   - Spec2-D5.1
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D4.5: Validation Report (Template)

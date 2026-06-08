@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; any Entra ID group-type model change
 impact: UIAO_135 §3.2 (Partially Defined gap closure); ADR-036 (dynamic-group-provisioning) consumes the classification taxonomy this ADR defines
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-067-ad-security-group-rationalization.html

@@ -3,11 +3,9 @@ document_id: UIAO_186
 title: "UIAO Incident Response Plan"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-06-05"
 updated_at: "2026-06-05"
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 ---

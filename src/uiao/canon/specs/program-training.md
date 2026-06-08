@@ -3,11 +3,9 @@ document_id: UIAO_125
 title: "UIAO Training Program — Unified Internal & External Curriculum"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
 updated_at: "2026-04-17"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Training Program

@@ -3,11 +3,9 @@ document_id: UIAO_127
 title: "UIAO Project Plans Program — Internal Roadmap & Agency Templates"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
 updated_at: "2026-04-17"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Project Plans Program

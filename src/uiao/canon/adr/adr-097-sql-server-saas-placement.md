@@ -10,8 +10,6 @@ review_trigger: The SQL Server transformation is re-implemented from PowerShell 
 impact: "Settles where the SQL Server Identity Transformation vertical runs relative to the UIAO Azure SaaS (ADR-096): its governance — tenant onboarding, identity model, evidence/KSI, ARM/managed-identity orchestration — lives in the SAME SaaS control plane; its host-level execution (auth audit, Arc enrollment, login migration on the live engine) runs ADJACENT, in the customer's boundary on the Arc-connected host, orchestrated by the control plane and returning signed evidence. Registers `sql-server` in the modernization adapter registry with runner-class on-prem-self-hosted to encode the adjacent-execution lane. No new control plane; no in-container database access."
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-097-sql-server-saas-placement.html

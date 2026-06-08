@@ -3,11 +3,9 @@ document_id: UIAO_129
 title: "UIAO Application Identity Model"
 version: "1.1"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
 updated_at: "2026-05-04"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Application Identity Model

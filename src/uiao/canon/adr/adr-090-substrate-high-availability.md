@@ -10,8 +10,6 @@ review_trigger: An active-active (multi-writer) substrate authority is proposed;
 impact: 'Realizes the hot-standby follow-up ADR that ADR-041 deferred (ADR-041 §"Negative / mitigations" and §"Related work"). Establishes that an HA-enabled UIAO substrate runs a hot-standby replica with automatic, witness-gated, split-brain-safe failover, raising the recovery posture from ADR-041''s cold-restore (RPO 24 h / RTO 4 h) and Book_15 Ch5''s narrative (RPO 4 h / RTO 8 h) to a single coherent target of near-zero RPO (synchronous replication) and single-digit-minutes RTO (automatic failover). The single-logical-authority invariant (exactly one node binds commits at any instant) is preserved, not weakened — active-active multi-master remains rejected. Extends, does not supersede, ADR-041; HA is opt-in per customer. Doctrine + reference only: no schema, registry, or runtime change.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-090-substrate-high-availability.html

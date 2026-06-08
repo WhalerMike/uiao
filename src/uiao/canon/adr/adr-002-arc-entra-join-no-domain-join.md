@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; any Azure Arc or Windows Server identity 
 impact: UIAO_136 Spec 1 (Computer Object Transformation — Servers)
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-002-arc-entra-join-no-domain-join.html

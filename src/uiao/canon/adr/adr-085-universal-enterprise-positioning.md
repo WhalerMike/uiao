@@ -10,8 +10,6 @@ review_trigger: A new vertical adapter (non-federal compliance regime) is propos
 impact: 'Establishes the doctrinal positioning of the UIAO core engine as a universal enterprise governance product, with federal compliance (FedRAMP, OSCAL, KSI) scoped as one vertical adapter among many possible verticals. Aligns README.md, AGENTS.md, customer-facing briefs, and pitch materials with this positioning. Recontextualizes CHARTER-001 V1 federal framing as one audience variant of an underlying vertical-agnostic architecture rather than the architecture itself. Does not retire CHARTER-001 (foundational, supersedable: false) — establishes positioning that the next charter rebaseline will absorb.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-085-universal-enterprise-positioning.html

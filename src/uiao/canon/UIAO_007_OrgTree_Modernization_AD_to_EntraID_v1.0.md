@@ -3,11 +3,9 @@ document_id: UIAO_007
 title: "OrgTree Modernization — Active Directory to Entra ID Migration Guide"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-18"
 updated_at: "2026-04-18"
-boundary: GCC-Moderate
 provenance:
   source: "inbox/EntraID Governance/AD to EntraID Tree.docx"
   version: "1.0"

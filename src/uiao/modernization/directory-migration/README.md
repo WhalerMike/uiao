@@ -7,7 +7,6 @@ owner: "Michael Stratton"
 author: "Michal Doroszewski"
 created_at: "2026-04-19"
 updated_at: "2026-04-19"
-boundary: GCC-Moderate
 provenance:
   source_file: "uiao-gos-implementation-instructions.docx"
   extracted_by: "Copilot Tasks"

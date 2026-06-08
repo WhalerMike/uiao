@@ -3,11 +3,9 @@ document_id: UIAO_140
 title: "UIAO Single-ATO Reciprocity Model"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-04"
 updated_at: "2026-05-04"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Single-ATO Reciprocity Model

@@ -3,12 +3,10 @@ document_id: UIAO_005
 title: "UIAO-core Value Proposition — Two-Way Governance Architecture for SCuBA and BOD 25-01"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 author: "Michal Doroszewski"
 created_at: "2026-04-18"
 updated_at: "2026-06-06"
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/canon/UIAO_005_SCuBA_Value_Proposition_v1.0.html

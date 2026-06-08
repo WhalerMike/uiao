@@ -22,8 +22,6 @@ sibling_deliverables:
   - Spec2-D2.5
   - Spec2-D2.7
   - Spec2-D2.8
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D1.6: Worker Type Classification Taxonomy

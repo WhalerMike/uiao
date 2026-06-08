@@ -3,11 +3,9 @@ document_id: UIAO_158
 title: "Appendix H — OrgPath Codebook JSON Schema (Model C)"
 version: "3.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
 updated_at: "2026-05-24"
-boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_H"
   flattened_at: "2026-05-10"

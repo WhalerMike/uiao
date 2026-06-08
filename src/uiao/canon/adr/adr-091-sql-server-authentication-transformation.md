@@ -10,8 +10,6 @@ review_trigger: SQL Server vNext authentication GA; Azure extension for SQL Serv
 impact: UIAO_135 §3.2 (Partially Defined gap closure — SQL Server Authentication, Transformation #7); engine-layer companion to ADR-068 (protocol layer) and ADR-002 (server/OS layer)
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-091-sql-server-authentication-transformation.html

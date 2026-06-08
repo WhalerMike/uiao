@@ -6,7 +6,6 @@ status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-13"
 updated_at: "2026-05-15"
-boundary: GCC-Moderate
 canon_anchor: ADR-071
 publish_to_site: true
 publication_style: narrative

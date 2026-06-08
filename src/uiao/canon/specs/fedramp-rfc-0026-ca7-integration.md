@@ -3,11 +3,9 @@ document_id: UIAO_132
 title: "UIAO FedRAMP RFC-0026 CA-7 Pathway Integration"
 version: "0.2"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-21"
 updated_at: "2026-04-21T17:00:00Z"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO FedRAMP RFC-0026 CA-7 Pathway Integration

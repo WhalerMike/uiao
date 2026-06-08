@@ -3,11 +3,9 @@ document_id: UIAO_002
 title: "UIAO SCuBA Technical Specification"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-13"
 updated_at: "2026-04-14"
-boundary: "GCC-Moderate"
 author: "Michael Stratton"
 publish_to_site: true
 no_hallucination_mode: ENABLED

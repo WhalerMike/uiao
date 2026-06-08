@@ -10,8 +10,6 @@ review_trigger: First Phase 5 consumer rebuild PR ships; first non-Microsoft ada
 impact: 'Locks the design contract for the 5 retired Model A consumer modules (dynamic-groups, admin-units, device-orgpath, policy-targeting, drift-engine) so each rebuild PR can land independently against a stable interface. Establishes Codebook-as-shared-dependency, per-facet plan/apply semantics, and the renderer pattern for boolean composition of facet predicates. Does not write any consumer code itself — those land in separate Phase 5 sub-PRs.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-084-phase5-consumer-architecture.html

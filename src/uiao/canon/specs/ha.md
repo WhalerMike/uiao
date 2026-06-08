@@ -3,11 +3,9 @@ document_id: UIAO_114
 title: "UIAO High-Availability & Fault-Tolerance Layer"
 version: "1.1"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-06-02"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO High-Availability & Fault-Tolerance Layer

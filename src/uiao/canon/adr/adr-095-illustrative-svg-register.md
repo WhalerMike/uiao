@@ -10,8 +10,6 @@ review_trigger: A document adopts illustrative figures at scale and the register
 impact: "Adds a second visual register — 'illustrative' — alongside the default 'blueprint' register established by ADR-093, governed by the identical committed-SVG → deterministic-raster pipeline. Relaxes STYLE.md rules 1–2 for the illustrative register only (permits stylized human silhouettes, conceptual metaphor and scene composition, gradients, iconography) while preserving every hard constraint that made ADR-093 work: SVG is the source of truth, PNG is a build artifact, no generative AI runs at render time, text is literal and spelled correctly, no photographs, no vendor logos. Extends src/uiao/canon/svg-style/ (STYLE.md + palette.json). Pilots the register on the SQL Server narrative (series cover, book openers, inline concept illustrations). Does not supersede ADR-093 — blueprint remains the default for schematic and architecture diagrams."
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-095-illustrative-svg-register.html

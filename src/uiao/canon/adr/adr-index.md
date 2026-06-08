@@ -3,9 +3,7 @@ document_id: UIAO_133
 title: "Architectural Decision Records — Index"
 version: "1.0"
 status: Current
-classification: OPERATIONAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-04-28"
 updated_at: "2026-04-28"
 publish_to_site: true

@@ -3,11 +3,9 @@ document_id: UIAO_121
 title: "UIAO Adapter Conformance Test Plan — Template"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-16"
 updated_at: "2026-04-16"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Adapter Conformance Test Plan — Template

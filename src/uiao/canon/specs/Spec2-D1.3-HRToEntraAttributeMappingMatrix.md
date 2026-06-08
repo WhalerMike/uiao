@@ -24,8 +24,6 @@ sibling_deliverables:
   - Spec2-D1.6
   - Spec2-D3.2
   - Spec2-D3.4
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D1.3: HR to Entra ID Attribute Mapping Matrix

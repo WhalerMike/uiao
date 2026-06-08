@@ -7,8 +7,6 @@ owner: Michael Stratton
 author: Michal Doroszewski
 created_at: "2026-04-18"
 updated_at: "2026-05-24"
-boundary: GCC-Moderate
-classification: CANONICAL
 promotion:
   prior_version: "2.0 (Model A composite-hyphen AU rules: -startsWith \"ORG-FIN\")"
   promoted_by: "Governance Steward"

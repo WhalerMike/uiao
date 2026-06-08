@@ -3,11 +3,9 @@ document_id: UIAO_131
 title: "UIAO Adapter Test Strategy — Three-Tier Model for a Boundary-Outside Substrate"
 version: "1.1"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
 updated_at: "2026-04-26"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Adapter Test Strategy

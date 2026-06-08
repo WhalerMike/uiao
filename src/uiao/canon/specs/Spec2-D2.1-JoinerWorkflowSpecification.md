@@ -42,8 +42,6 @@ sibling_deliverables:
   - Spec2-D2.6   # error handling / quarantine
   - Spec2-D2.7   # pre-hire provisioning window
   - Spec2-D2.8   # provisioning scope filter
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D2.1: Joiner Workflow Specification

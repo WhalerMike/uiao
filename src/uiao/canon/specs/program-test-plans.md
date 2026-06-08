@@ -3,11 +3,9 @@ document_id: UIAO_126
 title: "UIAO Test Plans Program — Canonical Catalog"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
 updated_at: "2026-04-17"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Test Plans Program

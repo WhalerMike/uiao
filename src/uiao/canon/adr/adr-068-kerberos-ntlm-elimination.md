@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; the next major Windows Server release pin
 impact: UIAO_135 §3.2 (Partially Defined gap closure); broader-than-SQL-server auth modernization (Spec3-D1.8 already covers SQL Server path)
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-068-kerberos-ntlm-elimination.html

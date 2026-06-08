@@ -19,8 +19,6 @@ upstream_deliverables:
 sibling_deliverables:
   - Spec2-D4.3
   - Spec2-D4.5
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D4.4: UAT Acceptance Criteria

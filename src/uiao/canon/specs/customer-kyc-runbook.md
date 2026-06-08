@@ -3,11 +3,9 @@ document_id: UIAO_142
 title: "UIAO Customer KYC Onboarding & Reciprocity Runbook"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-05"
 updated_at: "2026-05-05"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Customer KYC Onboarding & Reciprocity Runbook

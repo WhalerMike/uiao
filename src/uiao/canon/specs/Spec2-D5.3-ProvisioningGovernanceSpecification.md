@@ -20,8 +20,6 @@ upstream_deliverables:
   - Spec2-D3.8
 sibling_deliverables:
   - Spec2-D5.5
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D5.3: Provisioning Governance Specification

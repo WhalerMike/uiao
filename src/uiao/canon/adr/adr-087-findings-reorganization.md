@@ -10,8 +10,6 @@ review_trigger: A new artifact class is proposed at top-level outside `/customer
 impact: 'Relocates the governance-findings artifact class from `docs/findings/` to `docs/customer-documents/findings/`, completing the single-URL-umbrella collapse begun in ADR-083 (which absorbed `/modernization/` into `/customer-documents/reference-architecture/` and renamed `/customer-documents/modernization/` to `/customer-documents/operational-guides/`). Preserves the §5.2 artifact-class semantics in full: findings remain distinct from canon (they document conditions the substrate does not control) and distinct from customer-document Tier 1 (they carry status lifecycle Open / Awaiting-External-Remediation / Resolved / Withdrawn, not the canon Aspirational / Adopted lifecycle from ADR-076). Only the URL path moves. Updates ADR-030 §5.2 in-place to point at the new path; supersedes that subsection only, not the ADR. Adds Quarto `aliases:` frontmatter to each moved page so the 12 existing `/uiao/findings/*.html` URLs continue to resolve. Adds the section to the `format-links: [docx]` scope so findings get the same per-page Word render and section bundle as the rest of customer-documents (current state: zero findings rendered to .docx).'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-087-findings-reorganization.html

@@ -3,11 +3,9 @@ document_id: UIAO_163
 title: "Appendix M — Drift Detection Engine Specification (Model C)"
 version: "2.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
 updated_at: "2026-05-24"
-boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_M"
   flattened_at: "2026-05-10"

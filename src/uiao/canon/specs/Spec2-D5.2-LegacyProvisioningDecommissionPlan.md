@@ -17,8 +17,6 @@ upstream_deliverables:
   - Spec2-D5.1
 sibling_deliverables:
   - Spec2-D5.3
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D5.2: Legacy Provisioning Decommission Plan

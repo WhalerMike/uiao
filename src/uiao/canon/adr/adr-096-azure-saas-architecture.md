@@ -10,8 +10,6 @@ review_trigger: The compute target changes (Container Apps → App Service / AKS
 impact: "Introduces a multi-tenant SaaS deployment surface for UIAO on Azure Container Apps, parallel to (not replacing) the single-tenant Windows/IIS surface. Adds the uiao.saas package (tenant registry, per-request tenant resolution, control-plane onboarding API, provisioning service), a [saas] optional-dependency extra, a container image and Bicep IaC under deploy/azure/, and a manual-dispatch-only deploy workflow. Establishes per-request multi-tenancy plus a control-plane stamp pattern. No change to the CLI or the existing data-plane routes."
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-096-azure-saas-architecture.html

@@ -10,8 +10,6 @@ review_trigger: A new top-level documentation surface is proposed outside /custo
 impact: 'Collapses the dual documentation URL surface (`/modernization/` + `/customer-documents/`) into a single `/customer-documents/` umbrella with Divio-aligned subsections. The current `/modernization/` (canon specifications) becomes `/customer-documents/reference-architecture/`; the current `/customer-documents/modernization/` (operational how-to guides) becomes `/customer-documents/operational-guides/` to remove the section-name collision. All moves preserve external bookmarks via Quarto `aliases:` frontmatter. No content rewrites — the ADR moves files and renames sidebar sections only. Lifecycle semantics from ADR-076 (canon = aspirational, customer-doc = adopted Tier 1) are unchanged: they live in frontmatter, not URLs. Closes the recurring "are these duplicates?" cross-surface review pattern that ADRs 076, 078, 079, 080, 081 each addressed one conflict at a time.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-083-docs-architecture-reorganization.html

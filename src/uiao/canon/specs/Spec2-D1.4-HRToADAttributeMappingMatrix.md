@@ -23,8 +23,6 @@ upstream_deliverables:
 sibling_deliverables:
   - Spec2-D3.3
   - Spec2-D3.6
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D1.4: HR to On-Prem AD Attribute Mapping Matrix

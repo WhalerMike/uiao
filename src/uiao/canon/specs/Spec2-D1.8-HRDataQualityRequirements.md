@@ -21,8 +21,6 @@ sibling_deliverables:
   - Spec2-D2.6
   - Spec2-D3.2
   - Spec2-D3.7
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D1.8: HR Data Quality Requirements

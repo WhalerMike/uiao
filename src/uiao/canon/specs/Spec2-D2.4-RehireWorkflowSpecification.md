@@ -36,8 +36,6 @@ sibling_deliverables:
   - Spec2-D2.1
   - Spec2-D2.3
   - Spec2-D2.6
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D2.4: Rehire Workflow Specification

@@ -3,11 +3,9 @@ document_id: UIAO_157
 title: "Appendix G — Diagram Pack (Text-Rendered)"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
 updated_at: "2026-04-18"
-boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_G"
   flattened_at: "2026-05-10"
