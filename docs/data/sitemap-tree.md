@@ -611,6 +611,7 @@
   - [UIAO Git Server Interfaces — Windows Server 2025 Deployment](customer-documents/whitepapers/git-server-interfaces-whitepaper.html)
   - [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](customer-documents/whitepapers/zta-scuba-relationship.html)
   - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
+  - [From Mainframe to Application-Aware Modernization](customer-documents/whitepapers/modernization-journey.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)
   - [AODIM Architecture Document](customer-documents/architecture-series/aodim-architecture.html)
