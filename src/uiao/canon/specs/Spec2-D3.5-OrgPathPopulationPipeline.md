@@ -28,8 +28,6 @@ upstream_deliverables:
   - Spec2-D3.4
 sibling_deliverables:
   - Spec2-D3.7
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D3.5: OrgPath Population Pipeline

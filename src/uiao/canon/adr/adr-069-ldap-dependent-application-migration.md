@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; any Entra ID App Proxy or Entra Domain Se
 impact: UIAO_135 §3.2 (Partially Defined gap closure); consumes Spec3-D1.9 (Get-LDAPBindAccountInventory.ps1) discovery output as input
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-069-ldap-dependent-application-migration.html

@@ -3,9 +3,7 @@ document_id: UIAO_010
 title: "OrgPath in Azure Policy"
 version: "0.1"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-05-14"
 updated_at: "2026-05-14"
 publish_to_site: false

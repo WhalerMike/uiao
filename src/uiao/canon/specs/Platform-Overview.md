@@ -3,11 +3,9 @@ document_id: UIAO_101
 title: "UIAO Platform Overview"
 version: "1.1"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-04-17"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Platform Overview

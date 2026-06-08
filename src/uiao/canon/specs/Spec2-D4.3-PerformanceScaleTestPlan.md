@@ -21,8 +21,6 @@ upstream_deliverables:
 sibling_deliverables:
   - Spec2-D4.2
   - Spec2-D4.5
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D4.3: Performance and Scale Test Plan

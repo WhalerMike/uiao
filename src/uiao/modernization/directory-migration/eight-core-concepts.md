@@ -6,7 +6,6 @@ status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-19"
 updated_at: "2026-04-19"
-boundary: GCC-Moderate
 ---
 
 # UIAO Eight Core Concepts

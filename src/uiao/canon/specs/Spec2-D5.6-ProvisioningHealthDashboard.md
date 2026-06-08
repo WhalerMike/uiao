@@ -17,8 +17,6 @@ upstream_deliverables:
   - Spec2-D3.7
   - Spec2-D5.5
 sibling_deliverables: []
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D5.6: Provisioning Health Dashboard

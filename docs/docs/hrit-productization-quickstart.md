@@ -2,7 +2,6 @@
 document_id: HRIT-QUICKSTART
 title: "UIAO v0.6.0 HRIT Productization: Quickstart — Three Signed Reciprocity Records in 10 Steps"
 version: "0.6.0"
-classification: DERIVED
 created_at: "2026-05-11"
 updated_at: "2026-05-11"
 canon_refs:

@@ -3,9 +3,7 @@ document_id: UIAO_135
 title: "Identity & Directory Transformation Inventory — AD to Entra ID"
 version: "0.1"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-04-28"
 updated_at: "2026-04-28"
 publish_to_site: true

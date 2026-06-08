@@ -6,7 +6,6 @@ status: DRAFT
 owner: "Michael Stratton"
 created_at: "2026-04-19"
 updated_at: "2026-04-19"
-boundary: GCC-Moderate
 core_concepts: ["#1 SSOT"]
 priority: HIGH
 risk: "Permanent AD dependency if sync engine lifecycle is unmanaged"

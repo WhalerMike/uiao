@@ -3,9 +3,7 @@ document_id: UIAO_012
 title: "OrgPath in NAC / 802.1X & Cert-Based Network Admission"
 version: "0.1"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-05-15"
 updated_at: "2026-05-15"
 # foundational-trace: <reserved — populate when Charter Restoration PR-E lands>

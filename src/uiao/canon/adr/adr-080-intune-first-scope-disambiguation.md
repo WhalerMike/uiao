@@ -10,8 +10,6 @@ review_trigger: A new program is proposed that would share the "Intune-First" na
 impact: 'Reserves "Intune-First" as the canonical name for the Asset Onboarding doctrine at `src/uiao/modernization/intune-first-onboarding/` (net-new devices, procurement-time governance). Renames the existing-fleet GPO replacement program to "GPO Sunset Program" (currently in `docs/customer-documents/modernization/target-surface/intune-policy-templates.qmd`). Preserves "regenerate, not copy" as the philosophy governing the GPO Sunset Program''s policy-creation phase, and reframes the 50-row GPO mapping as a "GPO→Intune Semantic Translation Reference" — explicitly NOT a literal 1:1 copy. No directory renames; no code SSOT changes; resolution is naming + cross-doc clarification.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-080-intune-first-scope-disambiguation.html

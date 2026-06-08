@@ -3,11 +3,9 @@ document_id: UIAO_113
 title: "UIAO Evidence Graph Model"
 version: "1.2"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-05-06"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Evidence Graph Model

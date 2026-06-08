@@ -3,11 +3,9 @@ document_id: UIAO_170
 title: "Appendix T — Identity Risk Scoring Model"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
 updated_at: "2026-04-18"
-boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_T"
   flattened_at: "2026-05-10"

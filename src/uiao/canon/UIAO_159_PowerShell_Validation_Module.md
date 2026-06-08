@@ -3,11 +3,9 @@ document_id: UIAO_159
 title: "OrgTree Validation Surface — Python CLI + PowerShell module"
 version: "2.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
 updated_at: "2026-05-16"
-boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
   flattened_at: "2026-05-10"

@@ -34,8 +34,6 @@ sibling_deliverables:
   - Spec2-D2.1
   - Spec2-D2.6
   - Spec2-D2.8
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D2.7: Pre-Hire Provisioning Window Specification

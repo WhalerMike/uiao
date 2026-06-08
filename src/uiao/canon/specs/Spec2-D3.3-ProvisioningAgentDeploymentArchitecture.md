@@ -21,8 +21,6 @@ sibling_deliverables:
   - Spec2-D3.2
   - Spec2-D3.6
   - Spec2-D3.8
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D3.3: Provisioning Agent Deployment Architecture

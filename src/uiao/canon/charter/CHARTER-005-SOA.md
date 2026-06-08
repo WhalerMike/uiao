@@ -3,9 +3,7 @@ document_id: CHARTER-005-SOA
 title: "UIAO Charter — Source of Authority: Location, Inter-Jurisdictional, Inter-Agency (cross-reference)"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-03-07"
 updated_at: "2026-05-15"
 tier: foundational

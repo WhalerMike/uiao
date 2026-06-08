@@ -3,11 +3,9 @@ document_id: UIAO_133
 title: "UIAO FedRAMP 20x Integration"
 version: "0.1"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-27"
 updated_at: "2026-04-27"
-boundary: "GCC-Moderate"
 mas-scope: "in-scope"
 ---
 

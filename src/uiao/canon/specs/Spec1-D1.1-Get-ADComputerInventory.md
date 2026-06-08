@@ -2,11 +2,9 @@ document_id: UIAO_137
 title: "Spec1-D1.1 - AD Computer Inventory Discovery"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-29"
 updated_at: "2026-04-29"
-boundary: "GCC-Moderate"
 ---
 
 # Spec1-D1.1 - AD Computer Inventory Discovery

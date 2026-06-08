@@ -19,8 +19,6 @@ upstream_deliverables:
   - Spec2-D3.2
   - Spec2-D5.1
 sibling_deliverables: []
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D5.4: HR System Onboarding Playbook

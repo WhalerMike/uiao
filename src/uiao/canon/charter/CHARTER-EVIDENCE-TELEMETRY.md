@@ -3,9 +3,7 @@ document_id: CHARTER-EVIDENCE-TELEMETRY
 title: "UIAO Charter — Federal Cloud Telemetry Gap (supporting evidence)"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-03-02"
 updated_at: "2026-05-15"
 tier: foundational

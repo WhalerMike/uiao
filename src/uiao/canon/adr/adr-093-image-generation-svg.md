@@ -10,8 +10,6 @@ review_trigger: A figure class emerges that vector SVG cannot serve (e.g., photo
 impact: "Replaces the Google Gemini 2.5 Flash Image ('NanoBanana') raster generator with committed SVG source files authored by Claude Code, rasterized to PNG deterministically in CI. Eliminates the recurring baked-in-text defects of generative raster (e.g., 'MICROSFT', 'decmposed', 'inherts'). SVG becomes the versioned source of truth; PNG is a build artifact. Drops the GEMINI_API_KEY CI secret and the google-genai dependency. Keeps the placeholder/registry/sidecar/manifest contract and replace_placeholders.py + quarto.yml unchanged. Adds scripts/render_svg_images.py and the src/uiao/canon/svg-style/ house style. Rollout regenerates existing figures in batches; a few artistic cover-art entries are flagged for separate handling."
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-093-image-generation-svg.html

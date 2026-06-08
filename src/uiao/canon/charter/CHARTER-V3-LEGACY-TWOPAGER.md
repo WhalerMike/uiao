@@ -3,9 +3,7 @@ document_id: CHARTER-V3-LEGACY-TWOPAGER
 title: "UIAO Charter — V3 TwoPager (LEGACY, superseded by CHARTER-001)"
 version: "1.0"
 status: Deprecated
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-02-26"
 updated_at: "2026-05-15"
 tier: foundational

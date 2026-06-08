@@ -3,11 +3,9 @@ document_id: UIAO_120
 title: "UIAO Zero-Trust Integration Layer"
 version: "1.2"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-05-05"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Zero-Trust Integration Layer

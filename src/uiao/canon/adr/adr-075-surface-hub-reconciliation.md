@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; any Surface Hub or Microsoft Teams Rooms 
 impact: ADR-001; ADR-071; IFO_014 (windows-surface platform annex)
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-075-surface-hub-reconciliation.html

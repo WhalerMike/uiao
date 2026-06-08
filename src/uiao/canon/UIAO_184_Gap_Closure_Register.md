@@ -3,11 +3,9 @@ document_id: UIAO_184
 title: "Gap Closure Register — The Gap That Remains"
 version: "1.0"
 status: Current
-classification: OPERATIONAL
 owner: Michael Stratton
 created_at: "2026-06-05"
 updated_at: "2026-06-05"
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 ---

@@ -2,11 +2,9 @@ document_id: UIAO_138
 title: "Spec2-D1.1 - HR Attribute Schema Discovery"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-29"
 updated_at: "2026-04-29"
-boundary: "GCC-Moderate"
 ---
 
 # Spec2-D1.1 - HR Attribute Schema Discovery

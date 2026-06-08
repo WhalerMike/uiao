@@ -3,11 +3,9 @@ document_id: UIAO_123
 title: "UIAO Adapter Integration & Test Plan — Canonical Template"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-16"
 updated_at: "2026-04-16"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Adapter Integration & Test Plan — Canonical Template

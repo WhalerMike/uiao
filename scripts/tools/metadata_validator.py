@@ -86,11 +86,9 @@ def validate_frontmatter(filepath: Path, fm: dict, body: str, base_path: Path) -
         "title",
         "version",
         "status",
-        "classification",
         "owner",
         "created_at",
         "updated_at",
-        "boundary",
     ]
     for field in required:
         if field not in fm or fm[field] is None or str(fm[field]).strip() == "":

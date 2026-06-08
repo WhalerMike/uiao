@@ -3,9 +3,7 @@ document_id: UIAO_143
 title: "SCIM Core Schema (RFC 7643) — Substrate Pin"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-05-07"
 updated_at: "2026-05-07"
 ---

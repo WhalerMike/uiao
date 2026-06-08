@@ -20,8 +20,6 @@ upstream_deliverables:
 sibling_deliverables:
   - Spec2-D5.3
   - Spec2-D5.6
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D5.5: Provisioning Drift Detection Rules

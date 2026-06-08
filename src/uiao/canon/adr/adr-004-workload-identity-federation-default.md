@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; any Entra ID workload identity announceme
 impact: UIAO_136 Spec 3 (Service Account to Workload Identity Mapping)
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-004-workload-identity-federation-default.html

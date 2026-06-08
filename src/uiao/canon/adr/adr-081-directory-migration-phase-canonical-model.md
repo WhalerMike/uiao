@@ -10,8 +10,6 @@ review_trigger: A new adapter migration guide is authored with a phase scheme th
 impact: 'Adds **Phase 6 Decommission** to the canon Directory Migration model (currently 5 phases: Discover/Normalize/Map/Migrate/Validate per `docs/modernization/directory-migration.qmd` L101). Establishes the canon 6-phase model as the universal scaffold. Customer adapter-specific guides (DNS 11-phase, PKI 6-phase, future DHCP/RADIUS/LDAP guides) keep their existing detailed phase lists but add a "Canon Phase Mapping" table at the top citing which canon phase each customer phase refines. Resolves the canon-vs-customer phase-count conflict surfaced by the 2026-05-22 review (canon=5, DNS=11, PKI=6 — none refines another).'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-081-directory-migration-phase-canonical-model.html

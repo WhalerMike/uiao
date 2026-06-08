@@ -6,7 +6,6 @@ status: DRAFT
 owner: "Michael Stratton"
 created_at: "2026-04-19"
 updated_at: "2026-04-19"
-boundary: GCC-Moderate
 core_concepts: ["#7 Embedded governance"]
 priority: HIGH
 risk: "Non-deterministic policy application without clean device groups"

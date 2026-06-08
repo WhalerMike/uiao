@@ -10,8 +10,6 @@ review_trigger: A new lifecycle state is proposed; the per-page banner shortcode
 impact: 'Establishes a per-page `lifecycle:` frontmatter field (values: aspirational / adopted / superseded / deprecated) and a companion `tiers_adopted:` field (list of ADR-076 conformance tier numbers). Page status banners are rendered from these fields by a Quarto shortcode rather than hand-authored `callout-warning` blocks. Distinct from the existing ADR lifecycle (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED per ADR-000), which governs ratification state and remains unchanged. Replaces the 12 hand-authored "Aspirational" callouts across canon `/modernization/` pages and the inconsistent customer-doc "Canonical — Authoritative Reference" / "Status: Active" markings with a single auditable frontmatter source. Adds CI gate validating field consistency (adopted implies non-empty tiers_adopted; superseded implies non-null superseded_by).'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-082-status-label-lifecycle-policy.html

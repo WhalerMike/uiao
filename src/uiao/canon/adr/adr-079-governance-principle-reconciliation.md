@@ -10,8 +10,6 @@ review_trigger: Substrate-manifest.yaml gains or loses a principle; a new tier-s
 impact: 'Formalizes 3 universal substrate principles (SSOT, Canon-anchored evidence, Drift is explicit — already declared in `substrate-manifest.yaml` UIAO_200) as universal across all 5 conformance tiers, and maps 3 tier-specific principles (Boundary Enforcement → Tier 4, Two-Brain Execution → Tier 3+, Tenant Agnosticism → Tier 5) from the canon narrative. Supersedes the canon `/modernization/index.qmd` "Seven Non-Negotiable Principles" framing as a flat list, and formalizes ADR-076 tier-mapping hints. Code impact: `substrate-manifest.yaml` gets a `tier_specific_principles` section.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-079-governance-principle-reconciliation.html

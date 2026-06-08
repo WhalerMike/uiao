@@ -6,7 +6,6 @@ status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-13"
 updated_at: "2026-05-14"
-boundary: GCC-Moderate
 canon_anchor: ADR-071
 provenance:
   promoted_from: "inbox/drafts/intune-first-asset-onboarding/"
