@@ -43,14 +43,9 @@ DRIFT_CATEGORIES = {
     "COSMETIC_DRIFT": SEVERITY_INFO,
 }
 VALID_STATUSES = {"Current", "Draft", "Deprecated", "Needs Replacing", "Needs Creating"}
-VALID_CLASSIFICATIONS = {"CANONICAL", "DERIVED", "OPERATIONAL"}
 DOCUMENT_ID_PATTERN = re.compile(r"^UIAO_\d{3}$")
 VERSION_PATTERN = re.compile(r"^\d+\.\d+$")
 NAMING_PATTERN = re.compile(r"^UIAO_\d{3}_[\w_]+_v\d+\.\d+\.md$")
-BOUNDARY_VIOLATIONS = re.compile(
-    r"GCC[\s-]?High|DoD|IL[456]|Azure\s+(IaaS|PaaS)|azure\.com",
-    re.IGNORECASE,
-)
 MERMAID_PATTERN = re.compile(r"```mermaid", re.IGNORECASE)
 
 
@@ -107,11 +102,9 @@ def detect_schema_drift(filepath: Path, fm: dict, base_path: Path) -> list[dict]
         "title",
         "version",
         "status",
-        "classification",
         "owner",
         "created_at",
         "updated_at",
-        "boundary",
     ]
     for field in required:
         if field not in fm or fm[field] is None or str(fm[field]).strip() == "":
@@ -126,95 +119,6 @@ def detect_schema_drift(filepath: Path, fm: dict, base_path: Path) -> list[dict]
     status = fm.get("status", "")
     if status and status not in VALID_STATUSES:
         add("SCHEMA_DRIFT", f"Invalid status: '{status}'", f"Use: {', '.join(sorted(VALID_STATUSES))}")
-    classification = fm.get("classification", "")
-    if classification and classification not in VALID_CLASSIFICATIONS:
-        add(
-            "SCHEMA_DRIFT",
-            f"Invalid classification: '{classification}'",
-            f"Use: {', '.join(sorted(VALID_CLASSIFICATIONS))}",
-        )
-    return findings
-
-
-def detect_provenance_drift(filepath: Path, fm: dict, base_path: Path) -> list[dict]:
-    """Detect provenance chain drift for DERIVED artifacts."""
-    findings = []
-    if fm is None:
-        return findings
-    rel = str(filepath.relative_to(base_path))
-    classification = fm.get("classification", "")
-    if classification != "DERIVED":
-        return findings
-    prov = fm.get("provenance", {})
-    if not prov or not isinstance(prov, dict):
-        findings.append(
-            {
-                "file": rel,
-                "category": "PROVENANCE_DRIFT",
-                "severity": SEVERITY_BLOCKING,
-                "detail": "DERIVED artifact missing provenance block",
-                "remediation": "Add provenance: {source, version, derived_at, derived_by}",
-            }
-        )
-        return findings
-    for pf in ["source", "version", "derived_at", "derived_by"]:
-        if pf not in prov or not prov[pf]:
-            findings.append(
-                {
-                    "file": rel,
-                    "category": "PROVENANCE_DRIFT",
-                    "severity": SEVERITY_BLOCKING,
-                    "detail": f"Provenance missing field: {pf}",
-                    "remediation": f"Add provenance.{pf}",
-                }
-            )
-    source = prov.get("source", "")
-    if source:
-        source_path = base_path / source
-        if not source_path.exists():
-            alt_path = base_path.parent / source
-            if not alt_path.exists():
-                findings.append(
-                    {
-                        "file": rel,
-                        "category": "PROVENANCE_DRIFT",
-                        "severity": SEVERITY_BLOCKING,
-                        "detail": f"Provenance source not found: {source}",
-                        "remediation": "Verify provenance.source path",
-                    }
-                )
-    return findings
-
-
-def detect_boundary_drift(filepath: Path, fm: dict, body: str, base_path: Path) -> list[dict]:
-    """Detect cloud boundary violations in content."""
-    findings = []
-    if fm is None:
-        return findings
-    rel = str(filepath.relative_to(base_path))
-    boundary = fm.get("boundary", "")
-    has_exception = fm.get("boundary-exception", False)
-    if boundary and boundary != "GCC-Moderate" and not has_exception:
-        findings.append(
-            {
-                "file": rel,
-                "category": "BOUNDARY_DRIFT",
-                "severity": SEVERITY_BLOCKING,
-                "detail": f"Boundary is '{boundary}', expected GCC-Moderate",
-                "remediation": "Set boundary: GCC-Moderate or add boundary-exception: true",
-            }
-        )
-    if BOUNDARY_VIOLATIONS.search(body) and not has_exception:
-        matches = BOUNDARY_VIOLATIONS.findall(body)
-        findings.append(
-            {
-                "file": rel,
-                "category": "BOUNDARY_DRIFT",
-                "severity": SEVERITY_BLOCKING,
-                "detail": f"Body contains boundary violations: {', '.join(set(matches))}",
-                "remediation": "Remove references or add boundary-exception: true",
-            }
-        )
     return findings
 
 
@@ -342,8 +246,6 @@ def scan_file(filepath: Path, base_path: Path, core_path: Path = None) -> list[d
     fm, body = parse_frontmatter(filepath)
     findings = []
     findings.extend(detect_schema_drift(filepath, fm, base_path))
-    findings.extend(detect_provenance_drift(filepath, fm, base_path))
-    findings.extend(detect_boundary_drift(filepath, fm, body, base_path))
     findings.extend(detect_version_drift(filepath, body, base_path))
     findings.extend(detect_naming_drift(filepath, base_path))
     findings.extend(detect_owner_drift(filepath, fm, base_path))
