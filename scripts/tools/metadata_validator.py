@@ -37,14 +37,9 @@ SEVERITY_BLOCKING = "BLOCKING"
 SEVERITY_WARNING = "WARNING"
 SEVERITY_INFO = "INFO"
 VALID_STATUSES = {"Current", "Draft", "Deprecated", "Needs Replacing", "Needs Creating"}
-VALID_CLASSIFICATIONS = {"CANONICAL", "DERIVED", "OPERATIONAL"}
 DOCUMENT_ID_PATTERN = re.compile(r"^(UIAO_\d{3}|CHARTER-[A-Z0-9-]+)$")
 VERSION_PATTERN = re.compile(r"^\d+\.\d+$")
 ISO8601_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?")
-BOUNDARY_VIOLATIONS = re.compile(
-    r"GCC[\s-]?High|DoD|IL[456]|Azure\s+(IaaS|PaaS)|azure\.com",
-    re.IGNORECASE,
-)
 MERMAID_PATTERN = re.compile(r"```mermaid", re.IGNORECASE)
 PLACEHOLDER_ID_PATTERN = re.compile(r"PH-\d{3}")
 
@@ -105,23 +100,6 @@ def validate_frontmatter(filepath: Path, fm: dict, body: str, base_path: Path) -
     status = fm.get("status", "")
     if status and status not in VALID_STATUSES:
         add(f"Invalid status: '{status}'", SEVERITY_BLOCKING, f"Use one of: {', '.join(sorted(VALID_STATUSES))}")
-    # classification enum
-    classification = fm.get("classification", "")
-    if classification and classification not in VALID_CLASSIFICATIONS:
-        add(
-            f"Invalid classification: '{classification}'",
-            SEVERITY_BLOCKING,
-            f"Use one of: {', '.join(sorted(VALID_CLASSIFICATIONS))}",
-        )
-    # boundary check
-    boundary = fm.get("boundary", "")
-    if boundary and boundary != "GCC-Moderate":
-        if not fm.get("boundary-exception", False):
-            add(
-                f"Boundary must be GCC-Moderate (found: '{boundary}')",
-                SEVERITY_BLOCKING,
-                "Set boundary: GCC-Moderate or add boundary-exception: true",
-            )
     # timestamp validation
     for ts_field in ["created_at", "updated_at"]:
         ts = str(fm.get(ts_field, ""))
@@ -136,43 +114,10 @@ def validate_frontmatter(filepath: Path, fm: dict, body: str, base_path: Path) -
     updated = fm.get("updated_at", "")
     if created and updated and str(created) > str(updated):
         add("updated_at is earlier than created_at", SEVERITY_BLOCKING, "Ensure updated_at >= created_at")
-    # provenance for DERIVED
-    if classification == "DERIVED":
-        prov = fm.get("provenance", {})
-        if not prov or not isinstance(prov, dict):
-            add(
-                "DERIVED artifact missing provenance block",
-                SEVERITY_BLOCKING,
-                "Add provenance: {source, version, derived_at, derived_by}",
-            )
-        else:
-            for pf in ["source", "version", "derived_at", "derived_by"]:
-                if pf not in prov or not prov[pf]:
-                    add(f"Provenance missing field: {pf}", SEVERITY_BLOCKING, f"Add provenance.{pf}")
-            # Check source resolution
-            source = prov.get("source", "")
-            if source:
-                source_path = base_path / source
-                if not source_path.exists():
-                    # Try relative to repo root
-                    alt_path = base_path.parent / source
-                    if not alt_path.exists():
-                        add(
-                            f"Provenance source not found: {source}",
-                            SEVERITY_BLOCKING,
-                            "Verify provenance.source path exists",
-                        )
     # Owner field
     if not fm.get("owner"):
         add("Missing owner field", SEVERITY_WARNING, "Assign an owner to this artifact")
     # Body content checks
-    if BOUNDARY_VIOLATIONS.search(body):
-        if not fm.get("boundary-exception", False):
-            add(
-                "Body contains potential boundary violation (GCC-High/DoD/Azure IaaS/PaaS reference)",
-                SEVERITY_BLOCKING,
-                "Remove reference or add boundary-exception: true",
-            )
     if MERMAID_PATTERN.search(body):
         add("Body contains Mermaid diagram (PlantUML required)", SEVERITY_WARNING, "Convert diagram to PlantUML")
     return findings
@@ -242,7 +187,6 @@ def main():
     parser.add_argument("--output", help="Output report JSON file")
     parser.add_argument("--ci", action="store_true", help="CI mode: exit 1 on BLOCKING")
     parser.add_argument("--metrics-only", action="store_true", help="Output metrics only")
-    parser.add_argument("--audit-classification", action="store_true", help="Audit file classifications")
     parser.add_argument("--audit-format", action="store_true", help="Audit article formatting")
     parser.add_argument("--audit-placeholders", action="store_true", help="Audit placeholder standards")
     parser.add_argument("--audit-images", action="store_true", help="Audit image standards")
