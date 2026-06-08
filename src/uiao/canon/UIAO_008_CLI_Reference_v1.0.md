@@ -3,11 +3,9 @@ document_id: UIAO_008
 title: "UIAO-Core CLI Reference"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
 updated_at: "2026-04-23"
-boundary: GCC-Moderate
 provenance:
   source: "canon/UIAO_132_CLI_Reference_v1.0.md (retired top-level shadow canon file)"
   version: "1.0"

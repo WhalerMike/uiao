@@ -3,11 +3,9 @@ document_id: UIAO_003
 title: "UIAO Adapter Segmentation Overview"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-04-16"
-boundary: "GCC-Moderate"
 publish_to_site: true
 ---
 

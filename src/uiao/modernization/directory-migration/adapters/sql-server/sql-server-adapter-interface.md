@@ -6,7 +6,6 @@ status: DRAFT
 owner: "Michael Stratton"
 created_at: "2026-05-11"
 updated_at: "2026-05-11"
-boundary: GCC-Moderate
 core_concepts: ["#1 SSOT", "#3 Identity as root namespace", "#5 Certificate-anchored overlay"]
 priority: HIGH
 risk: "Silent Kerberos failure post-migration; SQL sprawl into ungoverned data plane"

@@ -23,8 +23,6 @@ sibling_deliverables:
   - Spec2-D1.6
   - Spec2-D1.7
   - Spec2-D1.8
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D1.1: Canonical HR Attribute Schema

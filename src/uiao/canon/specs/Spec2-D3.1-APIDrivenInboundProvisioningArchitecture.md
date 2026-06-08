@@ -18,8 +18,6 @@ canonical_docs:
   - UIAO_007
   - UIAO_135
   - UIAO_136
-boundary: GCC-Moderate
-classification: Controlled
 verification_history:
   - date: 2026-04-30
     pass: "v0.1 → v0.2 (initial verification)"

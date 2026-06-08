@@ -22,8 +22,6 @@ sibling_deliverables:
   - Spec2-D2.1
   - Spec2-D2.6
   - Spec2-D2.7
-boundary: GCC-Moderate
-classification: Controlled
 verification_history:
   - date: 2026-05-01
     pass: "v0.1 → v0.2 (initial verification)"

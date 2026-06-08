@@ -39,8 +39,6 @@ sibling_deliverables:
   - Spec2-D2.2
   - Spec2-D2.3
   - Spec2-D2.6
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D2.5: Conversion Workflow Specification

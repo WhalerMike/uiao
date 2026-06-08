@@ -6,7 +6,6 @@ status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-18"
 updated_at: "2026-05-18"
-boundary: GCC-Moderate
 canon_anchor: ADR-071
 platform: windows-endpoint-surface
 publish_to_site: true

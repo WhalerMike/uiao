@@ -10,8 +10,6 @@ review_trigger: Any of the three module specifications (UIAO_181, UIAO_182, UIAO
 impact: "Promotes the three 'planned' PowerShell modules named in Book_15_CPT_23 (The Gap That Remains) from ungoverned API-preview prose into governed canon specifications with UIAO_NNN allocations, a fixed build-dependency order, and shared code-signing / provenance requirements. Establishes UIAOImportAdapters (UIAO_182) and UIAOIdentityAssessment (UIAO_181) as the assessment-data producers and UIAOPlanGenerators (UIAO_183) as the downstream consumer that derives migration sequence automatically. No implementation lands in this ADR; it is the governance scaffolding that makes implementation buildable under the canon-change process (AGENTS.md I5)."
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-094-assessment-to-plan-toolchain.html

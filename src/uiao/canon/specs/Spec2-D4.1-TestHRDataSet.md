@@ -21,8 +21,6 @@ sibling_deliverables:
   - Spec2-D4.2
   - Spec2-D4.3
   - Spec2-D4.4
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D4.1: Test HR Data Set

@@ -3,11 +3,9 @@ document_id: UIAO_001
 title: "UIAO Single Source of Truth (SSOT)"
 version: "1.1"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-04-23"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Single Source of Truth (SSOT)

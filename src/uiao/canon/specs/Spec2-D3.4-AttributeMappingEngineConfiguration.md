@@ -28,8 +28,6 @@ upstream_deliverables:
 sibling_deliverables:
   - Spec2-D3.5
   - Spec2-D3.6
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D3.4: Attribute Mapping Engine Configuration

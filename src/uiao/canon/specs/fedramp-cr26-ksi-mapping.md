@@ -3,11 +3,9 @@ document_id: UIAO_137
 title: "Local KSI Rules ↔ FedRAMP CR26 KSI Catalog Mapping"
 version: "0.1"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-10"
 updated_at: "2026-05-10"
-boundary: "GCC-Moderate"
 mas-scope: "in-scope"
 ---
 

@@ -6,7 +6,6 @@ status: DRAFT
 owner: "Michael Stratton"
 created_at: "2026-04-19"
 updated_at: "2026-04-19"
-boundary: GCC-Moderate
 core_concepts: ["#8 User experience first"]
 priority: MEDIUM
 risk: "Silent UNC path failure post AD retirement"

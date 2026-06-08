@@ -3,7 +3,6 @@ title: "OrgTree Module — Python Implementation Surface"
 status: Current
 owner: Michael Stratton
 updated_at: 2026-05-10
-boundary: GCC-Moderate
 ---
 
 # OrgTree Module — Python Implementation Surface

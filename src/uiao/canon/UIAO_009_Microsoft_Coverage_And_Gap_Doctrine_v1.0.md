@@ -3,11 +3,9 @@ document_id: UIAO_009
 title: "Microsoft Coverage And Gap Doctrine"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-30"
 updated_at: "2026-04-30"
-boundary: GCC-Moderate
 provenance:
   source: "ADR-049 §Decision 2 (allocation directive)"
   version: "1.0"

@@ -3,9 +3,7 @@ document_id: UIAO_136
 title: "Priority 1 Transformation Specs — Project Plans and Deliverable Inventories"
 version: "0.2"
 status: Draft
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-04-28"
 updated_at: "2026-04-30"
 parent: UIAO_135

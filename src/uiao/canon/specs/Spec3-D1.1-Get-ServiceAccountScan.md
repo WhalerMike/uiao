@@ -2,11 +2,9 @@ document_id: UIAO_139
 title: "Spec3-D1.1 - Service Account Discovery Scan"
 version: "1.0"
 status: Draft
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-29"
 updated_at: "2026-04-29"
-boundary: "GCC-Moderate"
 ---
 
 # Spec3-D1.1 - Service Account Discovery Scan

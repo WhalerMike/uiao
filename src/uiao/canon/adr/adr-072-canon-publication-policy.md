@@ -10,8 +10,6 @@ review_trigger: Substantive change to the published-site Quarto pipeline; introd
 impact: Adds optional `publish_to_site` and `publication_style` frontmatter fields recognized by `src/uiao/schemas/metadata-schema.json`; introduces `scripts/scan_publication_gaps.py` as a blocking CI gate (promoted from advisory on 2026-05-15) and as a pre-commit hook; declares default publication intent per content class
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-072-canon-publication-policy.html

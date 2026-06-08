@@ -10,8 +10,6 @@ review_trigger: First agency declares Model C adoption; Phase 1 schema rewrite s
 impact: 'Establishes Model C (15-facet multi-attribute) as the canonical OrgPath schema for new UIAO adoption. Supersedes Model A (composite-hyphen) and Model B (composite-slash) for new adoption while explicitly grandfathering existing tenants per the ADR-076 strict-subset rule. Triggers a 7-phase implementation rewrite of `codebook.yaml`, `codebook.schema.json`, `UIAO_151`, the 12 canon `/modernization/` pages, downstream UIAO_152/154/158/163, and adapters reading `extensionAttribute1`.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-078-orgpath-attribute-schema-15-facet.html

@@ -10,8 +10,6 @@ review_trigger: Material change to a capability's tier definition; first agency 
 impact: 'Establishes a five-tier capability model (Passive Observation → Embedded Libraries), per-capability tier declarations (Identity / Compliance / KYC / Substrate / Platform), a headline tier for procurement, and the GitHub-source / Platform-Server-release lifecycle distinction. Resolves canon-vs-customer doctrinal conflicts surfaced by the 2026-05-22 cross-surface review. Adds an optional `conformance_tier` frontmatter field permitted by the existing metadata schema (`additionalProperties: true`). No existing doc is retired; tier annotation is deferred to a follow-up sweep.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-076-tier-conformance-model.html

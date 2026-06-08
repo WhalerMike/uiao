@@ -3,11 +3,9 @@ document_id: UIAO_128
 title: "UIAO Education Program — Narrative-Led Agency Onboarding"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
 updated_at: "2026-04-17"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Education Program

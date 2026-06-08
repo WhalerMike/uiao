@@ -10,8 +10,6 @@ review_trigger: Microsoft Ignite 2026; any Autopilot, ABM, Android Zero-Touch, o
 impact: Establishes new doctrine and operational canon at `src/uiao/modernization/intune-first-onboarding/`; complements ADR-001 (HAADJ deprecation), ADR-002 (Arc non-domain-join), ADR-038 (device-plane OrgPath); fills the previously-empty `intune-native/` sub-adapter slot under `directory-migration/adapters/device-management/`
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-071-intune-first-asset-onboarding.html

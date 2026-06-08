@@ -10,8 +10,6 @@ review_trigger: A fourth program narrative pillar is proposed; the Divio Explana
 impact: 'Establishes that the UIAO program tells its story through three domain-scoped narrative pillars in the Divio Explanation quadrant (ADR-083): UIAO OrgPath (the governance substrate), UIAO Modernization (the Active Directory to Entra ID journey), and UIAO Compliance (the GCC-Moderate boundary and FedRAMP / SCuBA regime). Fixes that UIAO is the program and OrgPath is one part of it, so the governance-substrate narrative is named for its protagonist (UIAO OrgPath) rather than "UIAO Governance" — which would collide with the program-level term "UIAO Governance OS." The pillars are Explanation-layer narratives that do not duplicate the Reference (reference-architecture canon) or How-to (operational-guides) content of their domains. Doctrine only: no runtime, schema, or registry change. UIAO OrgPath is realized today (the orgpath-narrative section, renamed from "OrgPath Narrative" in PR #733); UIAO Modernization and UIAO Compliance are established incrementally as new narrative sections. Interim home for new governance-substrate product books (InfoBlox DDI, Identity Governance, PKI) is UIAO OrgPath.'
 supersedes: null
 superseded_by: null
-classification: Controlled
-boundary: GCC-Moderate
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-089-program-narrative-pillars.html

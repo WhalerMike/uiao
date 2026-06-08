@@ -3,11 +3,9 @@ document_id: UIAO_004
 title: "UIAO Compliance with Presidential Executive Orders"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-15"
 updated_at: "2026-04-15"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Compliance with Presidential Executive Orders

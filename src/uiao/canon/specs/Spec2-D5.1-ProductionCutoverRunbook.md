@@ -21,8 +21,6 @@ upstream_deliverables:
   - Spec2-D4.5
 sibling_deliverables:
   - Spec2-D5.2
-boundary: GCC-Moderate
-classification: Controlled
 ---
 
 # Spec 2 — D5.1: Production Cutover Runbook

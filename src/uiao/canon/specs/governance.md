@@ -3,11 +3,9 @@ document_id: UIAO_112
 title: "UIAO Multi-Tenant Isolation Model"
 version: "1.1"
 status: Current
-classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
 updated_at: "2026-05-04"
-boundary: "GCC-Moderate"
 ---
 
 # UIAO Multi-Tenant Isolation Model

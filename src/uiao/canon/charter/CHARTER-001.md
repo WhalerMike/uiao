@@ -3,9 +3,7 @@ document_id: CHARTER-001
 title: "UIAO Charter — UIAO-V1 Main Specification"
 version: "1.0"
 status: Current
-classification: CANONICAL
 owner: Michael Stratton
-boundary: GCC-Moderate
 created_at: "2026-03-09"
 updated_at: "2026-05-15"
 tier: foundational
