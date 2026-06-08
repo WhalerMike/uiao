@@ -298,7 +298,7 @@
   - [UIAO CLI and Operations Guide](customer-documents/substrate/execution-patterns/cli-operations-guide.html)
   - [UIAO Operations Runbook](customer-documents/substrate/execution-patterns/operations-runbook.html)
   - [UIAO Azure Arc Policy Library](customer-documents/substrate/platform-tooling/azure-arc-policy-library.html)
-  - [Invoke Ad Survey](customer-documents/substrate/platform-tooling/invoke-ad-survey.html)
+  - [Invoke-ADSurvey](customer-documents/substrate/platform-tooling/invoke-ad-survey.html)
   - [Invoke-GpoObsoleteAudit](customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.html)
   - [Invoke-GpoMigrationTriage](customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.html)
   - [UIAO PowerShell Module Reference](customer-documents/substrate/platform-tooling/powershell-module-reference.html)
