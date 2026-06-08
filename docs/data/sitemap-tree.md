@@ -226,6 +226,11 @@
   - [UIAO Read-Only AD Assessment Guide](customer-documents/operational-guides/read-only-ad-assessment.html)
   - [GPO Sunset Program](customer-documents/operational-guides/target-surface/intune-policy-templates.html)
   - [Zero Trust Assessment Dashboard](customer-documents/operational-guides/zero-trust-assessment/index.html)
+- **Help Desk / Cloud Services (Entra Operations)**
+  - [Help Desk / Cloud Services — Entra ID Operations](customer-documents/operational-guides/helpdesk-entra-operations/index.html)
+  - [Help Desk Administrative Responsibilities Guide](customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.html)
+  - [Enterprise Application Access Governance and Approval Model](customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.html)
+  - [OrgPath Identity Governance Structure](customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.html)
 - **OrgPath Implementation Guides (Intune & Azure Arc)**
   - [OrgPath Implementation Guides — Intune & Azure Arc](customer-documents/operational-guides/orgpath-implementation/index.html)
   - [1 · Prerequisites & Access](customer-documents/operational-guides/orgpath-implementation/01-prerequisites.html)
