@@ -231,6 +231,11 @@
   - [Help Desk Administrative Responsibilities Guide](customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.html)
   - [Enterprise Application Access Governance and Approval Model](customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.html)
   - [OrgPath Identity Governance Structure](customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.html)
+- **Intune + Azure Arc Modernization (Manual & Governed)**
+  - [Intune + Azure Arc Modernization](customer-documents/operational-guides/intune-arc-modernization/index.html)
+  - [Intune + Azure Arc — Manual Path](customer-documents/operational-guides/intune-arc-modernization/manual-path.html)
+  - [Intune + Azure Arc — Governed Path (UIAO / OrgPath)](customer-documents/operational-guides/intune-arc-modernization/governed-path.html)
+  - [Intune + Azure Arc — Add OrgPath Later (Retrofit)](customer-documents/operational-guides/intune-arc-modernization/retrofit-path.html)
 - **OrgPath Implementation Guides (Intune & Azure Arc)**
   - [OrgPath Implementation Guides — Intune & Azure Arc](customer-documents/operational-guides/orgpath-implementation/index.html)
   - [1 · Prerequisites & Access](customer-documents/operational-guides/orgpath-implementation/01-prerequisites.html)
