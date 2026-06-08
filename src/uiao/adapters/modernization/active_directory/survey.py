@@ -109,6 +109,12 @@ class ADSurveyReport:
 
     forest_root: str
     domain_count: int = 0
+    # Forest / tree / trust topology (PowerShell path; from Get-ADForest).
+    # Captured before the OU walk so DN-derived OrgPath has forest context.
+    dc_total: int = 0
+    site_link_total: int = 0
+    trust_total: int = 0
+    trust_sid_filtering_risk: int = 0
     # OU classification
     ou_total: int = 0
     ou_functional: int = 0
@@ -1694,6 +1700,24 @@ def _merge_ps_output(
     source_forest: str,
 ) -> None:
     """Parse structured JSON from Invoke-ADSurvey.ps1 and populate report."""
+    # Forest / tree / trust topology is emitted first by the PowerShell adapter
+    # (see scripts/ad-survey/Invoke-ADSurvey.ps1). Surface the counts so the
+    # report carries forest context for the DN-derived OrgPath work below.
+    #
+    # NOTE: `sidFilteringRisk` trusts (cross-boundary trusts with SID filtering
+    # not quarantined) are counted here but NOT emitted as DriftFindings — no
+    # registered GOV-* code currently fits a trust SID-history escalation path.
+    # Register one in the canonical error-code suite to make this a blocking
+    # finding; until then it remains an observational count.
+    forest = raw.get("forest") or {}
+    if forest:
+        report.domain_count = int(forest.get("domainCount", 0) or 0)
+        report.dc_total = len(forest.get("domainControllers", []) or [])
+        report.site_link_total = len(forest.get("siteLinks", []) or [])
+        trusts = forest.get("trusts", []) or []
+        report.trust_total = len(trusts)
+        report.trust_sid_filtering_risk = sum(1 for t in trusts if t.get("sidFilteringRisk"))
+
     for ou in raw.get("ous", []):
         intent = classify_ou_intent(
             ou["name"],
