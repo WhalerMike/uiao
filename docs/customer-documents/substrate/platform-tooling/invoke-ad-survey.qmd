@@ -1,0 +1,319 @@
+---
+title: "Invoke-ADSurvey"
+subtitle: "Read-only forest archaeological survey — captures forest/tree/trust topology, OUs, users, service accounts, sites, and GPOs as structured JSON for the UIAO AD adapter"
+doc-type: operational-guide
+audience: [Customer, Operator, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/substrate/platform-tooling/invoke-ad-survey.qmd
+created-at: 2026-06-03
+updated-at: 2026-06-03
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-03
+---
+
+`Invoke-ADSurvey.ps1` is the canonical **Phase 1 (Discovery)** adapter for the
+UIAO Active Directory → Entra ID modernization track. It performs a read-only
+enumeration of an on-premises forest and emits one structured JSON object that
+the UIAO AD adapter (`survey.py`) consumes directly.
+
+It runs the **forest / tree / trust topology pass first**, before walking the OU
+tree — deliberately. OrgPath is the DN-encoded organizational spine, and a
+`distinguishedName` only carries meaning once you know the forest root, the
+constituent domains (trees), and the trust boundaries that join them. So the
+survey establishes that context up front, then descends into OUs, users,
+service accounts, sites, and GPOs.
+
+::: {.callout-important}
+The survey output is a map of where your directory is weak — stale objects,
+unconstrained-delegation accounts, cross-boundary trusts with SID filtering
+disabled. Treat it as **Controlled**: keep input and output inside your
+authorization boundary, share only with authorized personnel, and do not
+publish raw findings.
+:::
+
+## Download
+
+| Artifact | Version | SHA256 |
+|---|---|---|
+| [`Invoke-ADSurvey.ps1`](https://github.com/WhalerMike/uiao/blob/main/scripts/ad-survey/Invoke-ADSurvey.ps1) | 1.0 | `9b590c08158a40f8b7e0145329101580ec29e7575735985301f1d291d665701f` |
+
+The script is served from its canonical home (`scripts/ad-survey/` in the repo)
+because it is also the runtime artifact the UIAO AD adapter invokes — one file,
+no drift. Use the **Download raw file** button on the GitHub page, then verify
+integrity after download:
+
+```powershell
+Get-FileHash .\Invoke-ADSurvey.ps1 -Algorithm SHA256
+# compare the output to the SHA-256 above before running
+```
+
+## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| PowerShell 5.1 or 7.x | `survey.py` invokes it via `pwsh`; interactively either host works. |
+| RSAT: Active Directory module for Windows PowerShell | Provides `Get-ADForest`, `Get-ADDomain`, `Get-ADDomainController`, `Get-ADOrganizationalUnit`, `Get-ADUser`, `Get-ADComputer`, `Get-ADTrust`, `Get-ADReplicationSite*`. The script does `Import-Module ActiveDirectory` and stops if it is missing. |
+| RSAT: Group Policy Management *(optional)* | Provides the `GroupPolicy` module. If absent, GPO enumeration is skipped with a warning and the rest of the survey still completes. |
+| Domain user with read access | Default `Authenticated Users` permission is sufficient for the read-only enumeration in most environments. |
+| Forest-wide reachability | The topology pass (`Get-ADForest` / `Get-ADTrust` / cross-domain `Get-ADDomain`) needs to reach the forest root and each domain. On a host that can only see one domain, topology degrades gracefully to an empty `forest` block (a warning is written) and the OU/user/SA/site survey still runs. |
+
+The survey is entirely read-only: it issues `Get-*` cmdlets only and writes
+nothing back to the directory.
+
+## Parameters
+
+| Parameter | Type | Required | Purpose |
+|---|---|---|---|
+| `-Server` | `string` | Yes | Domain controller FQDN or IP to bind against. |
+| `-BaseDN` | `string` | Yes | Forest root distinguished name, e.g. `DC=corp,DC=contoso,DC=com`. Scopes the OU/user/SA enumeration. |
+| `-OutputJson` | `switch` | No | Emit the full JSON object to stdout (for `survey.py` or `ConvertFrom-Json`). When omitted, a human-readable summary table is printed instead. |
+| `-IncludeComputers` | `switch` | No | Include computer-object enumeration. Off by default because it can be slow on large forests. |
+
+The script also honours the standard `-Verbose` common parameter and logs each
+discovery phase (topology, OUs, users, service accounts, sites, GPOs) with
+counts.
+
+## Usage
+
+### Emit JSON for the UIAO adapter
+
+```powershell
+.\Invoke-ADSurvey.ps1 -Server dc01.corp.contoso.com -BaseDN "DC=corp,DC=contoso,DC=com" -OutputJson
+```
+
+This is the shape `survey.py::_run_powershell_survey()` calls — it pipes the
+JSON to `_merge_ps_output()`, which lifts the forest topology counts and the OU
+and user inventories into the survey report.
+
+### Interactive summary (no JSON)
+
+```powershell
+.\Invoke-ADSurvey.ps1 -Server dc01.corp.contoso.com -BaseDN "DC=corp,DC=contoso,DC=com"
+```
+
+Prints a console summary — the fastest way to eyeball forest scale before a
+full run:
+
+```text
+=== UIAO AD Forest Survey Summary ===
+Forest:          DC=corp,DC=contoso,DC=com
+Forest name:     corp.contoso.com (mode Windows2016Forest)
+Domains/Trees:   3
+Domain Ctrls:    7
+Site Links:      4
+Trusts:          2 (1 SID-filtering risk)
+OUs:             214
+Users:           9842
+Service Accts:   118 (6 ADCS-suspect)
+Unconstrained:   3 delegation accounts
+Computer Objs:   0 (0 stale)
+Sites:           5 (1 stale/no-subnet)
+GPOs:            187 (41 not modified 5+ years)
+Existing OrgPath: 0 users already have extensionAttribute1
+```
+
+### Include computer objects
+
+```powershell
+.\Invoke-ADSurvey.ps1 -Server dc01.corp.contoso.com -BaseDN "DC=corp,DC=contoso,DC=com" -IncludeComputers -OutputJson
+```
+
+### Capture JSON to disk
+
+```powershell
+.\Invoke-ADSurvey.ps1 -Server dc01.corp.contoso.com -BaseDN "DC=corp,DC=contoso,DC=com" -OutputJson |
+    Out-File -Encoding utf8 .\forest-survey.json
+```
+
+## Output schema
+
+A single JSON object. The `forest` block is the topology pass; the remaining
+arrays are the object inventories.
+
+```json
+{
+  "forestRoot": "DC=corp,DC=contoso,DC=com",
+  "surveyTimestamp": "2026-06-03T14:02:11.000Z",
+  "forest": {
+    "name": "corp.contoso.com",
+    "forestMode": "Windows2016Forest",
+    "rootDomain": "corp.contoso.com",
+    "domainCount": 3,
+    "globalCatalogs": ["dc01.corp.contoso.com", "dc02.corp.contoso.com"],
+    "fsmoRoles": {
+      "schemaMaster": "dc01.corp.contoso.com",
+      "domainNamingMaster": "dc01.corp.contoso.com",
+      "pdcEmulator": "dc01.corp.contoso.com",
+      "ridMaster": "dc01.corp.contoso.com",
+      "infrastructureMaster": "dc02.corp.contoso.com"
+    },
+    "domains": [
+      {
+        "name": "corp.contoso.com",
+        "netbiosName": "CORP",
+        "domainMode": "Windows2016Domain",
+        "distinguishedName": "DC=corp,DC=contoso,DC=com",
+        "pdcEmulator": "dc01.corp.contoso.com",
+        "ridMaster": "dc01.corp.contoso.com",
+        "infrastructureMaster": "dc02.corp.contoso.com",
+        "isForestRoot": true
+      }
+    ],
+    "domainControllers": [
+      {
+        "name": "DC01",
+        "domain": "corp.contoso.com",
+        "site": "Default-First-Site-Name",
+        "ipv4Address": "10.0.0.10",
+        "operatingSystem": "Windows Server 2019 Datacenter",
+        "osVersion": "10.0 (17763)",
+        "isGlobalCatalog": true,
+        "isReadOnly": false,
+        "fsmoRoles": "SchemaMaster; DomainNamingMaster; PDCEmulator; RIDMaster"
+      }
+    ],
+    "siteLinks": [
+      { "name": "DEFAULTIPSITELINK", "cost": 100, "replicationFrequencyMinutes": 180, "sites": "Default-First-Site-Name; Branch-East" }
+    ],
+    "trusts": [
+      {
+        "name": "legacy.example.gov",
+        "source": "corp.contoso.com",
+        "target": "legacy.example.gov",
+        "direction": "Bidirectional",
+        "trustType": "External",
+        "intraForest": false,
+        "forestTransitive": false,
+        "selectiveAuthentication": false,
+        "sidFilteringForestAware": false,
+        "sidFilteringQuarantined": false,
+        "sidFilteringRisk": true
+      }
+    ]
+  },
+  "ous": [
+    { "distinguishedName": "OU=Finance,DC=corp,DC=contoso,DC=com", "name": "Finance", "hasGpo": true, "hasDelegationOwner": false, "whenCreated": "2009-03-14T00:00:00", "ageYears": 17 }
+  ],
+  "users": [
+    { "distinguishedName": "CN=Alice,OU=Finance,DC=corp,DC=contoso,DC=com", "samAccountName": "alice", "employeeId": "E1001", "department": "Finance", "jobTitle": "Analyst", "hasManager": true, "lastLogonDays": 2, "passwordAgeDays": 41, "existingOrgPath": null, "existingRegion": null, "existingLifecycle": null, "existingMigStatus": null }
+  ],
+  "serviceAccounts": [ ],
+  "computers": [ ],
+  "sites": [ ],
+  "gpos": [ ],
+  "summary": {
+    "domainCount": 3,
+    "dcCount": 7,
+    "siteLinkCount": 4,
+    "trustCount": 2,
+    "riskyTrustCount": 1,
+    "ouCount": 214,
+    "userCount": 9842,
+    "serviceAccountCount": 118,
+    "adcsSuspectCount": 6,
+    "unconstrainedDelegCount": 3,
+    "computerCount": 0,
+    "staleComputerCount": 0,
+    "siteCount": 5,
+    "staleSiteCount": 1,
+    "gpoCount": 187,
+    "staleGpoCount": 41,
+    "usersWithExistingOrgPath": 0
+  }
+}
+```
+
+### The `forest` block
+
+| Field | Meaning |
+|---|---|
+| `name`, `forestMode`, `rootDomain` | Forest identity and functional level. |
+| `domainCount`, `globalCatalogs` | Tree count and the GC inventory. |
+| `fsmoRoles` | The five operations-master holders (Schema, Domain-Naming, PDC, RID, Infrastructure). |
+| `domains[]` | Each tree/domain: DNS root, NetBIOS, domain mode, DN, per-domain FSMO holders, and an `isForestRoot` flag. |
+| `domainControllers[]` | Every DC: site, IP, OS/version, GC and RODC status, and its FSMO roles. |
+| `siteLinks[]` | Inter-site replication links with cost and frequency — the topology spine for multi-tree forests. |
+| `trusts[]` | Every trust: direction, type, intra-forest vs. cross-boundary, and SID-filtering state. |
+
+### Trust risk flag
+
+Each trust carries a computed `sidFilteringRisk` boolean. It is `true` when the
+trust is **cross-boundary** (`intraForest = false`) **and** SID filtering is
+**not** quarantined — a SID-history privilege-escalation path you want to
+remediate before migrating the forest. The survey surfaces it as an
+observational count (`summary.riskyTrustCount`); it is not yet a blocking
+governance finding.
+
+## Integration patterns
+
+### UIAO AD adapter (primary path)
+
+`survey.py` prefers an in-process `ldap3` survey. When `ldap3` is unavailable —
+or when you are running on a domain-joined Windows host — it falls back to this
+script:
+
+```text
+survey.py::_run_powershell_survey()
+  → pwsh -NonInteractive -File scripts/ad-survey/Invoke-ADSurvey.ps1 -Server … -BaseDN … -OutputJson
+  → json.loads(stdout)
+  → _merge_ps_output()   # lifts forest topology counts + OU/user inventories into ADSurveyReport
+```
+
+This is why the download links to `scripts/ad-survey/Invoke-ADSurvey.ps1` rather
+than a copy under `docs/`: the published download and the adapter's runtime
+dependency are the same file.
+
+### Scheduled discovery
+
+Run on a cadence under a managed service account with the read permissions
+above, directing JSON at a path the Evidence Ledger pickup job watches:
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute 'pwsh.exe' `
+    -Argument '-NoProfile -File C:\UIAO\Invoke-ADSurvey.ps1 -Server dc01.corp.contoso.com -BaseDN "DC=corp,DC=contoso,DC=com" -OutputJson' `
+    -WorkingDirectory 'C:\UIAO'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 2am
+Register-ScheduledTask -TaskName 'UIAO-ADSurvey' `
+    -Action $action -Trigger $trigger -User 'CORP\svc-uiao-survey' -RunLevel Highest
+```
+
+### Topology triage
+
+For a fast forest/trust read in-session:
+
+```powershell
+$survey = .\Invoke-ADSurvey.ps1 -Server dc01.corp.contoso.com -BaseDN "DC=corp,DC=contoso,DC=com" -OutputJson | ConvertFrom-Json
+$survey.forest.trusts | Where-Object sidFilteringRisk |
+    Format-Table name, direction, trustType, sidFilteringQuarantined
+```
+
+## Tuning notes
+
+- **`-IncludeComputers`** — left off by default; computer enumeration is the
+  slowest pass on large estates. Add it only when you need the stale-device
+  inventory (`computers[]` + `staleComputerCount`).
+- **Forest reachability** — if topology comes back empty, the host can reach the
+  bound domain but not the forest root or peer domains. Run from a host with
+  line of sight to the forest root, or accept the OU/user/SA/site survey alone.
+- **`-Server` selection** — bind to a domain controller in the domain that owns
+  the `-BaseDN` you scope; cross-domain object enumeration relies on referrals.
+
+## Provenance
+
+| Field | Value |
+|---|---|
+| Script version | 1.0 |
+| Script SHA256 | `9b590c08158a40f8b7e0145329101580ec29e7575735985301f1d291d665701f` |
+| Canonical source | [`scripts/ad-survey/Invoke-ADSurvey.ps1`](https://github.com/WhalerMike/uiao/blob/main/scripts/ad-survey/Invoke-ADSurvey.ps1) |
+| Target | Windows host with RSAT (ActiveDirectory module; GroupPolicy optional) |
+| Output | Single JSON object on stdout (`-OutputJson`) or a console summary |
+| Related canon | [UIAO PowerShell Module Reference](powershell-module-reference.qmd) for the broader assessment-output schema; `UIAO_007 OrgTree Modernization` for the OrgPath spine this discovery feeds |

@@ -9,6 +9,11 @@
     or domain-joined execution context.
 
     Enumerates:
+      - Forest / tree / trust topology (forest mode, every domain, DCs, FSMO
+        holders, inter-site links, and trust relationships) — captured FIRST,
+        because OrgPath is the DN-encoded org spine and a distinguishedName has
+        no meaning until the forest root, the constituent trees, and the trust
+        boundaries that join them are known.
       - All OUs with GPO linkage and ManagedBy status
       - All user objects with key governance attributes
       - All objects with SPNs (service accounts)
@@ -67,6 +72,125 @@ function Get-AgeDays {
         } catch { return -1 }
     }
     return -1
+}
+
+# ----------------------------------------------------------------
+# Forest / Tree / Trust Topology — Phase 1 baseline (run FIRST)
+#
+# Promoted from UIAOADAssessment.psm1::Export-UIAOForestTopology (inbox module)
+# into this canonical Appendix F Phase 1 adapter. OrgPath is the DN-encoded org
+# spine; a distinguishedName only has meaning once the forest root, the
+# constituent domains (trees), and the trust boundaries joining them are known.
+# So topology is established here, before the OU walk below.
+#
+# Wrapped in try/catch so the survey degrades gracefully (empty $Forest) on
+# hosts without forest-wide reachability — same pattern as the GPO block.
+# ----------------------------------------------------------------
+Write-Verbose "Discovering forest / tree / trust topology..."
+$Forest = $null
+try {
+    $adForest   = Get-ADForest -Server $Server
+    $rootDomain = Get-ADDomain -Server $adForest.RootDomain
+
+    # FSMO role holders (forest-wide + root-domain)
+    $fsmo = [PSCustomObject]@{
+        schemaMaster         = $adForest.SchemaMaster
+        domainNamingMaster   = $adForest.DomainNamingMaster
+        pdcEmulator          = $rootDomain.PDCEmulator
+        ridMaster            = $rootDomain.RIDMaster
+        infrastructureMaster = $rootDomain.InfrastructureMaster
+    }
+
+    # Each tree / domain in the forest
+    $DomainList = @()
+    foreach ($domName in $adForest.Domains) {
+        try {
+            $dom = Get-ADDomain -Server $domName
+            $DomainList += [PSCustomObject]@{
+                name                 = $dom.DNSRoot
+                netbiosName          = $dom.NetBIOSName
+                domainMode           = $dom.DomainMode.ToString()
+                distinguishedName    = $dom.DistinguishedName
+                pdcEmulator          = $dom.PDCEmulator
+                ridMaster            = $dom.RIDMaster
+                infrastructureMaster = $dom.InfrastructureMaster
+                isForestRoot         = ($dom.DNSRoot -eq $adForest.RootDomain)
+            }
+        } catch {
+            Write-Warning "Could not query domain $domName : $_"
+        }
+    }
+
+    # Domain controllers across the forest
+    $DCList = @()
+    foreach ($dc in (Get-ADDomainController -Server $Server -Filter *)) {
+        $DCList += [PSCustomObject]@{
+            name            = $dc.Name
+            domain          = $dc.Domain
+            site            = $dc.Site
+            ipv4Address     = $dc.IPv4Address
+            operatingSystem = $dc.OperatingSystem
+            osVersion       = $dc.OperatingSystemVersion
+            isGlobalCatalog = $dc.IsGlobalCatalog
+            isReadOnly      = $dc.IsReadOnly
+            fsmoRoles       = ($dc.OperationMasterRoles -join "; ")
+        }
+    }
+
+    # Inter-site replication links (topology spine for multi-tree forests)
+    $SiteLinkList = @()
+    foreach ($sl in (Get-ADReplicationSiteLink -Server $Server -Filter * `
+                -Properties Cost, ReplicationFrequencyInMinutes)) {
+        $SiteLinkList += [PSCustomObject]@{
+            name                        = $sl.Name
+            cost                        = $sl.Cost
+            replicationFrequencyMinutes = $sl.ReplicationFrequencyInMinutes
+            sites                       = ($sl.SitesIncluded -join "; ")
+        }
+    }
+
+    # Trust relationships — tree-internal (intra-forest) + cross-forest/external
+    $TrustList = @()
+    try {
+        foreach ($t in (Get-ADTrust -Server $Server -Filter * -Properties *)) {
+            $TrustList += [PSCustomObject]@{
+                name                    = $t.Name
+                source                  = $t.Source
+                target                  = $t.Target
+                direction               = $t.Direction.ToString()
+                trustType               = $t.TrustType.ToString()
+                intraForest             = $t.IntraForest
+                forestTransitive        = $t.ForestTransitive
+                selectiveAuthentication = $t.SelectiveAuthentication
+                sidFilteringForestAware = $t.SIDFilteringForestAware
+                sidFilteringQuarantined = $t.SIDFilteringQuarantined
+                # A cross-boundary trust with SID filtering NOT quarantined is a
+                # SID-history privilege-escalation path UIAO surfaces before
+                # migration. Informational here; see survey.py note re: a future
+                # registered GOV code if this should become a blocking finding.
+                sidFilteringRisk        = ((-not $t.IntraForest) -and (-not $t.SIDFilteringQuarantined))
+            }
+        }
+    } catch {
+        Write-Warning "Trust enumeration skipped: $_"
+    }
+
+    $Forest = [PSCustomObject]@{
+        name              = $adForest.Name
+        forestMode        = $adForest.ForestMode.ToString()
+        rootDomain        = $adForest.RootDomain
+        domainCount       = $adForest.Domains.Count
+        globalCatalogs    = @($adForest.GlobalCatalogs)
+        fsmoRoles         = $fsmo
+        domains           = $DomainList
+        domainControllers = $DCList
+        siteLinks         = $SiteLinkList
+        trusts            = $TrustList
+    }
+    Write-Verbose ("Forest: {0} | domains: {1} | DCs: {2} | trusts: {3}" -f `
+        $adForest.Name, $DomainList.Count, $DCList.Count, $TrustList.Count)
+} catch {
+    Write-Warning "Forest topology discovery failed (need RSAT AD module + forest reachability): $_"
 }
 
 # ----------------------------------------------------------------
@@ -238,9 +362,18 @@ try {
 # ----------------------------------------------------------------
 # Assemble output
 # ----------------------------------------------------------------
+# Forest-derived summary counts (null-safe: $Forest is $null when topology
+# discovery was unreachable).
+$forestDomainCount = if ($Forest) { $Forest.domainCount } else { 0 }
+$forestDcCount     = if ($Forest) { @($Forest.domainControllers).Count } else { 0 }
+$forestSiteLinks   = if ($Forest) { @($Forest.siteLinks).Count } else { 0 }
+$forestTrustCount  = if ($Forest) { @($Forest.trusts).Count } else { 0 }
+$forestRiskyTrusts = if ($Forest) { @($Forest.trusts | Where-Object { $_.sidFilteringRisk }).Count } else { 0 }
+
 $Output = [PSCustomObject]@{
     forestRoot      = $BaseDN
     surveyTimestamp = [datetime]::UtcNow.ToString("o")
+    forest          = $Forest
     ous             = $OUList
     users           = $UserList
     serviceAccounts = $SAList
@@ -248,6 +381,11 @@ $Output = [PSCustomObject]@{
     sites           = $SiteList
     gpos            = $GPOList
     summary         = [PSCustomObject]@{
+        domainCount              = $forestDomainCount
+        dcCount                  = $forestDcCount
+        siteLinkCount            = $forestSiteLinks
+        trustCount               = $forestTrustCount
+        riskyTrustCount          = $forestRiskyTrusts
         ouCount                  = $OUList.Count
         userCount                = $UserList.Count
         serviceAccountCount      = $SAList.Count
@@ -269,6 +407,15 @@ if ($OutputJson) {
     # Human-readable summary
     Write-Host "`n=== UIAO AD Forest Survey Summary ===" -ForegroundColor Cyan
     Write-Host "Forest:          $BaseDN"
+    if ($Forest) {
+        Write-Host "Forest name:     $($Forest.name) (mode $($Forest.forestMode))"
+        Write-Host "Domains/Trees:   $forestDomainCount"
+        Write-Host "Domain Ctrls:    $forestDcCount"
+        Write-Host "Site Links:      $forestSiteLinks"
+        Write-Host "Trusts:          $forestTrustCount ($forestRiskyTrusts SID-filtering risk)"
+    } else {
+        Write-Host "Forest topology: (unavailable — see warnings above)" -ForegroundColor Yellow
+    }
     Write-Host "OUs:             $($OUList.Count)"
     Write-Host "Users:           $($UserList.Count)"
     Write-Host "Service Accts:   $($SAList.Count) ($($Output.summary.adcsSuspectCount) ADCS-suspect)"
