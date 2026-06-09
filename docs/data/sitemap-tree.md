@@ -6,6 +6,7 @@
 - [Home](index.html)
 - **Getting started**
   - [10-minute quickstart](docs/quickstart.html)
+  - [OrgPath governance golden path](docs/orgpath-golden-path.html)
   - [Adapter authoring tutorial (30 min)](docs/adapter-authoring-tutorial.html)
   - [Substrate status](docs/substrate-status.html)
 - [Download](download/index.html)
