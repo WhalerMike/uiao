@@ -1,0 +1,67 @@
+---
+title: "What the Engine-Authentication Decision Settles"
+doc-type: sql-server-narrative-chapter
+audience: [Technical, Customer]
+family: sql-server-narrative
+book: "05"
+series-order: 2
+status: draft
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2027-01-01
+---
+
+# Chapter 2 — What the Engine-Authentication Decision Settles
+
+*The five governance positions that turn the migration pattern into enforceable canon.*
+
+::: {.callout-note}
+## In this chapter
+The five decisions the engine-authentication decision records — that consolidation gates auth migration, that the parallel-run sequence is required, that SQL Authentication is eliminated and `sa` disabled and renamed, that pre-2022 instances are upgrade-or-except with a Certificate-Based Authentication interim posture, and that the per-instance compliance record is the closure artifact.
+:::
+
+The migration pattern in Chapter 1 covers the core engineering case — Windows logins migrated to type-E logins through `FROM EXTERNAL PROVIDER` — but a pattern alone leaves a set of governance positions that a narrative is not the instrument to settle. Those positions require a governance decision rather than a narrative argument. That decision — the SQL Server engine-authentication decision — is currently proposed, and it stands as the engine-layer companion to the Kerberos/NTLM-elimination program (the protocol layer) and the Arc non-domain-join requirement (the server and OS layer). It does not defer these questions: it answers all five, in operational sequence, and this chapter presents each as the decision records it.
+
+## Decision 1 — Consolidation Precedes and Gates Auth Migration
+
+The engine-authentication decision records the first and ordering position: the estate consolidation assessment precedes and gates the engine-layer authentication migration. The SQL Server estate that has accumulated across an Active Directory forest over twenty years is not migrated in the shape it is discovered in. Before any instance is migrated to Entra ID authentication, the consolidation assessment must classify it as retain, consolidate-into-target, or retire.
+
+Engine-layer auth migration is performed only on instances classified retain or on the consolidation targets that absorb consolidated workloads. Instances classified retire or consolidate-into-target as a source are not migrated — they are decommissioned or collapsed, and migrating their logins to Entra ID first would be wasted effort. This is the decision Book 02 established at the assessment layer; the engine-authentication decision makes it the normative prerequisite to everything in this book.
+
+The Arc-eligibility classification from the authentication-audit script — Category 1, 2, or 3 — is layered on top of the consolidation classification, not before it. Consolidation and auth transformation are mutually reinforcing: collapsing many instances across multiple domains into fewer modern SQL Server 2022 targets, or into Azure SQL Managed Instance or Arc-enabled SQL, is the natural moment to retire cross-domain login sprawl, orphaned SPNs, and shared service accounts into Entra-backed identity.
+
+## Decision 2 — The Parallel-Run Sequence Is Required
+
+The decision records that the canonical login migration is a three-phase parallel run, and that it is required for production instances. For every instance classified retain or target, Windows logins — type-W users and type-G groups — and SQL Authentication service-account logins, type-S, are migrated to Entra ID external-provider logins across the three principal types Chapter 1 described.
+
+Phase 1 creates a type-E equivalent for every migrating login, with the Entra-to-AD principal mapping verified before each `CREATE LOGIN` and any unconfirmable principal raised as a blocking finding. Phase 2 exercises each type-E login with a real Entra-credentialed test authentication, which must succeed before the corresponding legacy login is touched. Phase 3 disables the legacy logins — not drops them — after their Entra equivalents validate, retains them for a 30-day observation window during which monitoring confirms no residual dependency, then drops them.
+
+The earlier draft framed this sequence as something a governance record "must decide" between required, recommended, and discretionary. The decision settles it: the parallel run is required for production, and non-production instances may compress the observation window only with documented owner sign-off. Disable-and-observe makes every cutover reversible inside the window, so no principal is locked out by a mapping that turned out wrong.
+
+## Decision 3 — SQL Authentication Eliminated; sa Disabled and Renamed
+
+The decision records the disposition of SQL Authentication. Every active type-S login on a retain or target instance is migrated to a type-E service-principal or Managed-Identity login, or carries a documented exception with a named compensating control and a sunset date. SQL Authentication produces no Entra ID sign-in events and is invisible to Conditional Access and Defender for Identity; it is not an acceptable steady-state credential.
+
+This is the position the earlier draft left open — whether every SQL Authentication login must migrate, or whether some type-S logins could be retained with justification. The decision closes it toward elimination, allowing only the documented-exception path rather than open-ended retention.
+
+The built-in `sa` account is disabled and renamed on every production instance. Emergency-access recovery, if retained, is documented as a break-glass procedure with its own monitoring, not as an active `sa` login. An enabled `sa` account with a non-rotated password is the highest-priority remediation finding in the authentication audit. A single active `sa` or type-S login defeats the entire Conditional Access perimeter, because it authenticates outside the Entra ID plane — the perimeter is binary, covering all connections or none.
+
+## Decision 4 — Pre-2022 Instances Are Upgrade-or-Except
+
+The decision records the exception path for instances that cannot accept type-E logins. `CREATE LOGIN ... FROM EXTERNAL PROVIDER` requires SQL Server 2022 plus the Azure extension for SQL Server on an Arc-enabled host, so a pre-2022 Category 3 instance cannot accept external-provider logins regardless of Arc status.
+
+A Category 3 instance classified retain has two paths: upgrade the engine to SQL Server 2022 and then proceed through the Category 2-to-Category 1 pathway, or file a documented exception with a sunset date. The decision notes that most Category 3 instances should be consolidation retire or consolidate-into-target candidates rather than upgrade candidates. The exception process requires the inability-to-migrate reason, the compensating control, the maximum exception duration, and explicit acknowledgement that the 2027-04-01 NTLM block is network-level and does not honor engine-layer exception status.
+
+Where a connection cannot reach Kerberos or Entra OAuth before that deadline, Certificate-Based Authentication is the authorized interim posture under the Kerberos/NTLM-elimination program. That makes the certificate-authority dependency — the ADCS-to-Cloud-PKI transformation, classified Not Yet Defined in the transformation inventory — a hard dependency for the exception long-tail. The earlier draft asked what evidence an exception requires, what its maximum duration is, and what happens if an instance is still excepted at the deadline; the decision records all three, with the Certificate-Based Authentication interim posture as the answer for connections that physically cannot reach the modern planes in time.
+
+## Decision 5 — The Per-Instance Compliance Record Is the Closure Artifact
+
+The decision records the closure condition. The SQL Server authentication transformation is closed for an instance when its per-instance compliance record simultaneously shows `LoginMode = 1` (Windows Authentication Only), zero active type-S logins outside the exception registry, zero active type-W or type-G logins, `sa` disabled and renamed, the Arc Connected Machine agent enrolled and healthy, the Azure extension for SQL Server deployed with the Managed Identity active, and — for human principals — Conditional Access MFA enforcement satisfied for SQL Server resource sign-ins over a defined validation period.
+
+The earlier draft observed that without a defined evidence artifact there was no enforceable completion criterion. The decision supplies exactly that field set: the specific values that, populated correctly, constitute proof that the instance has completed the transformation. "Done" stops being a subjective claim and becomes a queryable posture.
+
+Closure is continuously verified, not a point-in-time claim. The authentication-audit script runs on a recurring schedule, and compliance drift events — `LoginMode` reverting to Mixed Mode, a new type-S, type-W, or type-G login appearing, the Arc agent going offline — are compliance violations that trigger the remediation workflow. With all five positions recorded, the migration pattern of Chapter 1 becomes enforceable canon rather than operational best practice, and the books that follow operate against a defined closure artifact rather than a moving target.
+
+::: {.callout-note title="What Book 05 establishes — Chapter 2"}
+The engine-authentication decision records five positions in operational sequence. First: the consolidation assessment of Book 02 gates auth migration — only retain instances and consolidation targets are migrated. Second: the three-phase parallel run (create, validate, disable-not-drop, 30-day observe, drop) is required for production. Third: SQL Authentication is eliminated and `sa` disabled and renamed on every production instance. Fourth: pre-2022 instances upgrade or file a sunset-dated exception, with Certificate-Based Authentication as the interim posture against the network-level 2027-04-01 NTLM block. Fifth: the per-instance compliance record is the continuously-verified closure artifact for the SQL Server authentication transformation.
+:::
