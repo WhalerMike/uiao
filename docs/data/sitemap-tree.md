@@ -231,6 +231,7 @@
   - [Help Desk Administrative Responsibilities Guide](customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.html)
   - [Enterprise Application Access Governance and Approval Model](customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.html)
   - [OrgPath Identity Governance Structure](customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.html)
+  - [Help Desk Flow — Intake, Triage, and Routing](customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.html)
 - **Intune + Azure Arc Modernization (Manual & Governed)**
   - [Intune + Azure Arc Modernization](customer-documents/operational-guides/intune-arc-modernization/index.html)
   - [Intune + Azure Arc — Manual Path](customer-documents/operational-guides/intune-arc-modernization/manual-path.html)
