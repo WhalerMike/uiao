@@ -622,6 +622,7 @@
   - [Implementation Book 08 — The Application Chain & Connection-String Migration](customer-documents/sql-server-implementation/Book_08.html)
   - [Implementation Book 09 — Continuous Monitoring & the CCM-BIR Closure Record](customer-documents/sql-server-implementation/Book_09.html)
   - [Implementation Book 10 — Certificate Discovery for SQL Server's ADCS Dependencies](customer-documents/sql-server-implementation/Book_10.html)
+  - [Appendix — Microsoft How-To Implementation References](customer-documents/sql-server-implementation/appendix-microsoft-howto.html)
 - **Executive Briefs**
   - [Executive Briefs](customer-documents/executive-briefs/index.html)
   - [UIAO Executive Brief](customer-documents/executive-briefs/uiao-executive-brief.html)

@@ -1,0 +1,315 @@
+---
+title: "Appendix — Microsoft How-To Implementation References"
+subtitle: "The tactical 'how' companion: authoritative Microsoft Learn links and the core implementation steps for each capability the books reason about, scoped to the on-premises SQL Server engine enabled by Azure Arc"
+description: "A consolidated reference that maps each Microsoft Entra authentication capability in the SQL Server Identity Transformation companion to its authoritative Microsoft Learn documentation and the core implementation steps: Azure Arc enablement and the SQL Server extension, enabling Entra authentication, CREATE LOGIN ... FROM EXTERNAL PROVIDER, application connection-string migration with Microsoft.Data.SqlClient, and NTLM elimination. Scoped to the on-premises SQL Server engine enabled by Azure Arc (not Azure SQL Database), with the connection-string, proxy, and prerequisite details corrected for that boundary. Pairs with Books 04, 05, 06, and 08."
+doc-type: series-appendix
+audience: [Technical, Customer]
+family: sql-server-implementation
+series-order: 99
+status: active
+canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2027-01-01
+---
+
+::: {.content-visible when-format="docx"}
+# Appendix — Microsoft How-To Implementation References
+:::
+
+::: {.callout-tip}
+## Download this appendix
+**[appendix-microsoft-howto.docx](appendix-microsoft-howto.docx)** — this entire appendix as a single Word document. Regenerated on every site deploy.
+:::
+
+::: {.callout-note}
+This appendix is the tactical *how* companion to the strategic *why + sequencing*
+in the books. Each section gives the authoritative Microsoft Learn link and the
+core implementation steps for one capability, then points back to the book that
+reasons about it. It introduces no new doctrine; it operationalizes
+[ADR-091](../../adr/adr-091-sql-server-authentication-transformation.qmd) and
+[ADR-068](../../adr/adr-068-kerberos-ntlm-elimination.qmd) (both **PROPOSED**),
+which remain the governing decisions.
+:::
+
+::: {.callout-important}
+## Scope — on-premises SQL Server enabled by Azure Arc
+Every step below targets the **on-premises SQL Server engine enabled by Azure
+Arc** — SQL Server 2022 (16.x) or later running on a Windows Server host in your
+data center. It is **not** Azure SQL Database or Azure SQL Managed Instance. This
+distinction matters most for connection strings: the server endpoint is your own
+host (`tcp:<sqlhost>.<domain>,1433`), **never** a `*.database.windows.net`
+endpoint. Microsoft's connection-string articles are written against Azure SQL
+and use `*.database.windows.net` in their examples — the `Authentication=...`
+keywords carry over unchanged, but the server address does not.
+:::
+
+::: {.callout-warning}
+## Production safety (GCC-Moderate / FedRAMP)
+The steps that create logins, configure the engine, or change NTLM Group Policy
+alter a production security posture. Treat every such step as **review-required**:
+run discovery and audit read-only first, capture the planned change, and route it
+through your environment's change-control and security review before enforcement.
+Validate each step against your GCC-Moderate boundary requirements (proxy,
+private endpoints, policy initiatives) — several of the details below differ
+inside a restricted boundary, and those differences are called out where they
+occur.
+:::
+
+---
+
+## 1. Azure Arc enablement + SQL Server extension (the identity bridge)
+
+**Companion to:** [Book 04 — the Arc identity bridge](Book_04.qmd).
+
+**Primary Microsoft documentation:**
+
+- [SQL Server enabled by Azure Arc — overview](https://learn.microsoft.com/en-us/sql/sql-server/azure-arc/overview)
+- [Set up Microsoft Entra authentication with app registration for SQL Server](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/azure-ad-authentication-sql-server-setup-tutorial)
+
+**Core implementation steps:**
+
+1. **Install the Azure Connected Machine agent** on the Windows Server host
+   (Windows Server 2019+ supported). Ensure outbound HTTPS (TCP 443) to the Arc
+   endpoints (`management.azure.com`, `login.microsoftonline.com`, and the Arc
+   data-service endpoints). A proxy is supported for GCC-Moderate boundaries.
+2. **Register the server in Azure Arc.** This creates the ARM resource and the
+   host's **system-assigned managed identity**.
+3. **Install the Azure extension for SQL Server** (recommended via Azure Policy
+   for fleet scale; requires SQL Server 2022+). The SQL Server 2022 setup wizard
+   does not install the extension — install it from the command line or by
+   connecting the server to Arc.
+4. **Provision the app registration and certificate.** Entra authentication for
+   Arc-enabled SQL Server requires a **Microsoft Entra app registration**
+   (granted `User.Read.All`, `GroupMember.Read.All` / `Application.Read.All` or
+   `Directory.Read.All`) **and a certificate stored in Azure Key Vault**. The Arc
+   agent downloads the certificate to the host; the engine uses it to query Entra
+   ID on behalf of the instance. This is the actual crux of setup — not an
+   optional extra. (See §2.)
+5. **Verify the managed identity and agent health.** Confirm the agent is
+   connected with `azcmagent show`, and confirm the extension is healthy and the
+   managed identity is active under the Arc SQL resource in the Azure portal.
+   The Arc managed-identity token is served from the local IMDS endpoint on port
+   `40342`, but it is **not** a plain GET: the endpoint requires a `Metadata:true`
+   header and a challenge/response against a local secret file, so use the agent
+   tooling or the Azure Identity libraries (which perform that handshake) rather
+   than a bare `curl`.
+
+::: {.callout-note}
+## GCC-Moderate proxy correction
+Microsoft Entra authentication **does not use the Arc Connected Machine agent's
+proxy setting** for its calls to Entra ID. Inside a boundary that forces egress
+through a proxy, you must set the **machine-level WinHTTP proxy** separately:
+
+```console
+netsh winhttp set proxy proxy-server="http://proxyserver:port"
+```
+
+Setting only the Arc agent proxy (`azcmagent config set proxy.url ...`) covers
+the agent's own traffic but leaves Entra authentication unable to reach
+`login.microsoftonline.com`. This is a common GCC-Moderate failure mode.
+:::
+
+**Layer distinction (Microsoft alignment):** SQL Server *engine* Entra
+authentication (this program) works on a domain-joined host. Full *OS-level*
+Entra logon (RDP with Entra credentials) is a separate, later layer that requires
+domain unjoin and a newer Windows Server baseline — see
+[ADR-002](../../adr/adr-002-arc-entra-join-no-domain-join.qmd). Do not conflate
+the two: you do **not** need to unjoin the host to give the SQL engine Entra
+authentication.
+
+---
+
+## 2. Enable Microsoft Entra authentication on SQL Server
+
+**Companion to:** [Book 04](Book_04.qmd) and [Book 05](Book_05.qmd).
+
+**Primary Microsoft documentation:**
+
+- [Microsoft Entra authentication for SQL Server — overview](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/azure-ad-authentication-sql-server-overview)
+- [Tutorial: set up Microsoft Entra authentication for SQL Server](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/azure-ad-authentication-sql-server-setup-tutorial)
+
+**Core steps:**
+
+- The Arc Connected Machine agent **and** the Azure extension for SQL Server must
+  be deployed first (§1), along with the app registration and Key Vault
+  certificate.
+- In the Azure portal → the **SQL Server – Azure Arc** resource →
+  **Microsoft Entra ID and Purview** → **Set Admin**. Choose the customer-managed
+  certificate and the customer-managed app registration created in §1, then
+  **Save**. This designates the first Entra admin (a user or group granted
+  server-level `sysadmin`). *This portal flow applies to SQL Server 2022 (16.x);
+  SQL Server 2025 (17.x) configures the admin differently — follow the
+  version-selected guidance in the tutorial.*
+- SQL Server 2022 or later is required; failover cluster instances are not
+  supported for Entra authentication.
+- **Without Azure Arc** (not recommended for this program): Microsoft documents a
+  separate "enable Microsoft Entra authentication for SQL Server on Windows
+  without Azure Arc" path that still requires an app registration, a certificate,
+  and host registry configuration — it is not a single registry toggle. Prefer
+  the Arc path, which manages the certificate lifecycle for you.
+
+---
+
+## 3. `CREATE LOGIN ... FROM EXTERNAL PROVIDER` (Entra logins)
+
+**Companion to:** [Book 05 — login migration & parallel-run validation](Book_05.qmd).
+
+**Primary Microsoft documentation:**
+
+- [CREATE LOGIN (Transact-SQL)](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql)
+
+**Syntax examples** (run in the `master` database):
+
+```sql
+-- Entra user (principal name is the user principal name)
+CREATE LOGIN [user@contoso.com] FROM EXTERNAL PROVIDER;
+
+-- Entra security group (principal name is the group's display name)
+CREATE LOGIN [DBA-Team-Prod] FROM EXTERNAL PROVIDER;
+
+-- Entra service principal / application (principal name is the app's display name)
+CREATE LOGIN [MyApp-ServicePrincipal] FROM EXTERNAL PROVIDER;
+```
+
+**Database user mapping** (run in the target database):
+
+```sql
+CREATE USER [user@contoso.com] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [user@contoso.com];
+```
+
+**Granting a server role** (e.g. `sysadmin`) uses `ALTER SERVER ROLE`, run in
+`master`:
+
+```sql
+ALTER SERVER ROLE sysadmin ADD MEMBER [admin@contoso.com];
+```
+
+**Notes:**
+
+- The login name must match the Entra **user principal name** for users, or the
+  Entra **object's name** for groups and service principals.
+- No password is stored. Authentication occurs via an Entra-issued OAuth 2.0
+  access token validated by the engine.
+- List Entra principals with `SELECT * FROM sys.server_principals WHERE type IN
+  ('E','X');` (`E` = external user, `X` = external group/application).
+
+---
+
+## 4. Application connection-string migration
+
+**Companion to:** [Book 08 — the upstream application chain](Book_08.qmd).
+
+**Primary Microsoft documentation:**
+
+- [Connect with Microsoft Entra authentication using SqlClient](https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/azure-active-directory-authentication)
+
+The `Authentication=...` keywords below come from the SqlClient article, which is
+written for Azure SQL. **Point `Server` at your on-premises Arc-enabled host, not
+a `*.database.windows.net` endpoint.**
+
+- **Managed identity** (app runs on an Azure or Arc-enabled host with a managed
+  identity):
+
+  ```
+  Server=tcp:sqlhost.contoso.com,1433;Database=YourDB;Encrypt=True;Authentication=Active Directory Managed Identity;
+  ```
+
+- **Default credential chain** (recommended for dev/prod consistency; resolves
+  managed identity, Azure CLI, Visual Studio, etc. via `DefaultAzureCredential`):
+
+  ```
+  Server=tcp:sqlhost.contoso.com,1433;Database=YourDB;Encrypt=True;Authentication=Active Directory Default;
+  ```
+
+- **Service principal** (client ID + secret):
+
+  ```
+  Server=tcp:sqlhost.contoso.com,1433;Database=YourDB;Encrypt=True;Authentication=Active Directory Service Principal;User Id=<appId>;Password=<secret>;
+  ```
+
+**.NET code example** (`DefaultAzureCredential` chain; on an Arc host this
+resolves the managed identity through the Arc IMDS handshake automatically):
+
+```csharp
+using Microsoft.Data.SqlClient;
+
+// Authentication=Active Directory Default lets the driver acquire the token via
+// DefaultAzureCredential — no credential object is constructed by the app.
+using var connection = new SqlConnection(
+    "Server=tcp:sqlhost.contoso.com,1433;Database=YourDB;Encrypt=True;" +
+    "Authentication=Active Directory Default;");
+await connection.OpenAsync();
+```
+
+::: {.callout-note}
+## Microsoft.Data.SqlClient 7.0 package change
+Starting with **Microsoft.Data.SqlClient 7.0**, the Entra ID authentication modes
+(`Active Directory Default`, `Active Directory Managed Identity`, etc.) are no
+longer in the core package. If your application uses any of them, add the
+**`Microsoft.Data.SqlClient.Extensions.Azure`** NuGet package — otherwise the
+driver raises an actionable error at connect time. No connection-string changes
+are needed beyond adding the reference.
+:::
+
+Entra-authenticated connections are always encrypted (`Encrypt=True`); if the
+server uses a self-signed certificate you must also add `TrustServerCertificate=True`
+or, preferably, deploy a trusted TLS certificate. This pattern eliminates stored
+credentials from connection strings and configuration files.
+
+---
+
+## 5. NTLM elimination & hardening
+
+**Companion to:** [Book 06 — NTLM elimination at the SQL layer](Book_06.qmd).
+
+**Primary Microsoft documentation:**
+
+- [Network security: Restrict NTLM — NTLM authentication in this domain](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/network-security-restrict-ntlm-ntlm-authentication-in-this-domain)
+- [Network security: LAN Manager authentication level](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/network-security-lan-manager-authentication-level)
+
+**Key actions, aligned to the program phases:**
+
+- **Fix missing or incorrect SPNs** so Kerberos is negotiated instead of falling
+  back to NTLM:
+
+  ```
+  setspn -S MSSQLSvc/hostname.domain.com:port serviceaccount
+  ```
+
+- **Group Policy — LAN Manager authentication level:** set *Network security: LAN
+  Manager authentication level* to **Send NTLMv2 response only. Refuse LM & NTLM**
+  (registry `LmCompatibilityLevel` = 5). This refuses LM and NTLM and accepts only
+  NTLMv2.
+- **Group Policy — Restrict NTLM (domain controllers):** before denying, set the
+  matching **Audit NTLM authentication in this domain** policy first, review the
+  operational log under *Applications and Services Log\\Microsoft\\Windows\\NTLM*,
+  build a server-exception list, then move to a **Deny** option. Restricting
+  before auditing is how productivity-breaking outages happen.
+- **Migrate to Entra tokens** (type-E logins, §3) or Cloud Kerberos Trust where a
+  Kerberos path is still required.
+- **Monitor** with Windows Event IDs 4624 / 4625 (Logon Type 3, NTLM package) and
+  the dedicated NTLM operational log above.
+
+**SQL-specific outcome:** once an instance is migrated to Entra (type-E) logins,
+its connections use Entra OAuth 2.0 tokens and generate zero NTLM traffic — which
+is what the CCM-BIR closure record in [Book 09](Book_09.qmd) confirms per
+instance.
+
+---
+
+## How to use this appendix
+
+- Read each section alongside the book it points to — the book carries the
+  reasoning, sequencing, and the shipped UIAO automation; this appendix carries
+  the Microsoft links and the minimal step list.
+- The UIAO discovery and assessment tooling (the `Spec*-D1.*` family and the
+  `UIAOSqlServerMigration` module) provides program-level governance —
+  estate inventory, reconciliation, the CCM-BIR closure record and drift diff —
+  that goes beyond Microsoft's general-purpose tools (Azure Migrate, Defender for
+  SQL). The Microsoft steps here are the per-host mechanics; the UIAO tooling is
+  the fleet-level control loop over them.
+- Microsoft Learn content changes; the linked articles carry the current,
+  version-selected detail. Where this appendix and a linked article disagree,
+  the article wins — open an issue so this page can be reconciled.
