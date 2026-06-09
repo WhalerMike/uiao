@@ -100,6 +100,11 @@ DEFAULT_SECTIONS = [
     "operational-guides/uiao-modernization-program",
     "orgpath-narrative",
     "sql-server-narrative",
+    # The reference-free twin of sql-server-narrative (same ten-book reading
+    # sequence with internal cross-references stripped). Same chaptered Book_NN
+    # + Book_NN_CPT_MM layout, so it gets both a whole-section bundle here and
+    # per-book bundles via BOOK_BUNDLE_SECTIONS below — mirroring its twin.
+    "sql-server-narrative-standalone",
     # The executable companion to sql-server-narrative. Single-file books
     # (Book_NN.qmd, no chapter splits), so it gets a whole-companion bundle
     # only — not per-book bundles (a single-page per-book bundle would just
@@ -119,7 +124,7 @@ SKIP_STEMS = {"index", "ROADMAP", "document-index", "TREE"}
 # Book_NN_CPT_MM.qmd). For these, in addition to the whole-section
 # bundle, emit one Book_NN-bundle.docx per book so a reader can download
 # a single book as one Word file. Keyed by section directory name.
-BOOK_BUNDLE_SECTIONS = {"orgpath-narrative", "sql-server-narrative"}
+BOOK_BUNDLE_SECTIONS = {"orgpath-narrative", "sql-server-narrative", "sql-server-narrative-standalone"}
 
 # Leading book identifier in a page filename, e.g. "Book_07a_CPT_03" ->
 # "Book_07a" and "Book_07a" (the landing page) -> "Book_07a". Used to
