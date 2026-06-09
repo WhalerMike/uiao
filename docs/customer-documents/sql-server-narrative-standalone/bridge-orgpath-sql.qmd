@@ -1,0 +1,168 @@
+---
+title: "OrgPath × SQL Server — The Integration Bridge"
+subtitle: "How the OrgPath governance substrate powers the SQL Server identity transformation, and the order in which to read the two series"
+doc-type: sql-server-narrative-bridge
+audience: [Technical, Customer]
+family: sql-server-narrative
+status: draft
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2027-01-01
+---
+
+# OrgPath × SQL Server — The Integration Bridge {.unnumbered}
+
+::: {.callout-important appearance="default"}
+## Status — Draft bridge between two draft anchors
+Both endpoints of this bridge are pre-acceptance. The
+[SQL Server Identity Transformation](index.qmd) series is **DRAFT v0.1** and its
+governing decision — the **SQL Server engine-authentication decision** — is
+**PROPOSED**; the [OrgPath](../orgpath-narrative/index.qmd) series is the
+explanatory companion to the OrgPath substrate canon. Treat the integration
+patterns here as the seam these two series share, not as accepted normative
+governance, until the engine-authentication decision is accepted and both series
+are reviewed against it.
+:::
+
+The two reading sequences on this portal that most often get read in isolation
+are siblings. The [OrgPath](../orgpath-narrative/index.qmd) series builds a
+governance substrate; the [SQL Server Identity Transformation](index.qmd) series
+consumes it. Read apart, each is complete. Read together, they describe a single
+movement: an Active Directory forest's organizational structure becomes a set of
+Entra ID attributes, and those attributes become the access-control authority for
+a SQL Server estate that no longer trusts the domain. This page names the seams
+where the two meet, corrects the one place the relationship is most often
+described wrongly, and proposes the order to read them in.
+
+## The substrate and the consumer
+
+OrgPath is the organizational coordinate system Microsoft's identity stack does
+not supply on its own. The OrgPath series develops it across seventeen documents,
+beginning with what the native stack provides and ending with the synthesis; the
+implementation itself — populating the Entra ID attribute lineage from HR data —
+is the subject of [OrgPath Book 04](../orgpath-narrative/Book_04.qmd),
+"Implementing OrgTree and OrgPath." Everything downstream depends on Book 04
+being done.
+
+The SQL Server series consumes that coordinate system at exactly one structural
+point: access control. [SQL Book 07](Book_07_CPT_01.qmd), "AD Group Types and the
+Entra Perimeter," is where a migrated SQL Server stops being governed by AD
+security groups maintained through helpdesk tickets and starts being governed by
+Entra dynamic security groups whose membership is computed from OrgPath
+attributes. The dependency direction is therefore fixed: the OrgPath attribute
+infrastructure must precede the SQL dynamic-group access work, not the reverse.
+
+## The five seams
+
+| # | Seam | SQL side | OrgPath side |
+|---|------|----------|--------------|
+| 1 | **Dynamic-group access** | Book 07 — OU-derived groups become OrgPath dynamic groups | the dynamic-group provisioning model; the OrgPath attribute schema; the OrgPath dynamic-group definitions |
+| 2 | **DBA delegation** | Book 07 Ch 2 — Administrative Unit delegation | the Administrative Unit provisioning model |
+| 3 | **Migration sequencing** | Book 02 consolidation + the engine-authentication decision's consolidation gate | OrgPath Book 04 coverage maturity |
+| 4 | **Conditional Access perimeter** | Book 07 — the binary outer perimeter | OrgPath-derived groups + the Conditional Access policy design |
+| 5 | **Closure & drift** | the engine-authentication decision's compliance closure artifact | the OrgPath drift engine |
+
+### Seam 1 — Dynamic-group access (the one most often described wrongly)
+
+This is the load-bearing seam, and it is worth stating its mechanism precisely,
+because it is easy to get wrong. OrgPath is **not** a single packed string stored
+in one attribute. It is a multi-facet schema — the OrgPath attribute schema —
+materialized across several Entra `extensionAttribute` slots — region,
+department, division, clearance, account-type, and the rest — and a dynamic-group
+rule is composed from **per-facet predicates**, not from a string comparison
+against a whole path. The canonical rules are not hand-authored `New-MgGroup`
+calls; they are **rendered** by the dynamic-group library from the OrgPath
+dynamic-group definitions against the active per-facet Codebook, under the
+dynamic-group provisioning model and its rendering library. SQL Book 07's worked
+example — a single-facet rule that admits a principal whose OrgPath attribute
+matches and whose title contains "DBA" — is an illustrative slice of that general
+model, not the whole of it. Any integration artifact that hardcodes a single
+`extensionAttribute` holding a `path=...` string is describing a shortcut the
+substrate does not take.
+
+### Seam 2 — DBA delegation
+
+Once SQL access rides on Entra groups, the people who manage those groups need a
+scope. [SQL Book 07 Chapter 2](Book_07_CPT_02.qmd) puts DBA-team membership
+management inside an Administrative Unit so a DBA can manage the SQL groups for
+their branch and nothing else. That Administrative Unit is the OrgPath-shaped
+delegation surface the Administrative Unit provisioning model provisions — the
+same branch structure that drives the dynamic-group rules also bounds who may
+edit them.
+
+### Seam 3 — Migration sequencing
+
+The engine-authentication decision makes estate consolidation a **gate** in front
+of engine-layer auth migration: an instance is migrated only after it is
+classified retain or consolidation-target ([SQL Book 02](Book_02.qmd)). OrgPath
+coverage is the second gate on the same instances. A business unit whose OrgPath
+attributes are not yet populated cannot have its SQL access expressed as dynamic
+groups, so migration waves follow **both** the consolidation classification
+**and** OrgPath coverage maturity. The series do not assert calendar dates for
+this; the decision's own plan is anchored to the program's 2027-04-01 NTLM
+backstop, not to fixed quarters.
+
+### Seam 4 — Conditional Access perimeter
+
+Book 07 closes on the architectural dividend: once every SQL login is a type-E
+login backed by an Entra principal, Conditional Access becomes a **binary** outer
+perimeter — device compliance, Named Locations, sign-in risk — that a single
+surviving Windows login would bypass entirely. The principals that perimeter
+evaluates are the OrgPath-derived groups; the Conditional Access design that
+governs them is the same one the OrgPath series develops as the cloud successor
+to GPO logon restrictions ([OrgPath Book 15](../orgpath-narrative/Book_15.qmd)).
+The two series describe one perimeter from two sides.
+
+### Seam 5 — Closure and drift
+
+The engine-authentication decision defines the per-instance compliance record as
+the closure artifact for the SQL Server authentication transformation —
+`LoginMode = 1`, zero type-S/W/G logins, `sa` disabled, Arc + Managed Identity
+healthy, CA-MFA satisfied — and makes closure **continuously verified**, not a
+point-in-time claim. That continuous posture is where the substrate's own drift
+discipline — the OrgPath drift engine — closes the loop: an OrgPath drift on a
+SQL-governing dynamic group is not a cosmetic event, it is a change in who can
+reach the database, and it surfaces as a compliance signal for the transformation
+rather than disappearing into manual group management.
+
+## Recommended reading order
+
+The two series interleave; reading either straight through leaves the seam
+implicit. This order makes the dependency explicit.
+
+| Step | Read | Why here |
+|------|------|----------|
+| 1 | OrgPath Books 01–04 | Understand the substrate and **build it** (Book 04 is the attribute-population prerequisite) |
+| 2 | SQL Books 01–03 | The authentication inheritance, estate consolidation, and the discovery audit |
+| 3 | SQL Books 04–06 | The Arc identity bridge, the login migration, NTLM elimination at the SQL layer |
+| 4 | **SQL Book 07** ←→ OrgPath Book 04 | **The seam** — dynamic-group access and the Conditional Access perimeter consume the substrate from step 1 |
+| 5 | SQL Books 08–10 | The upstream application chain, the transformed steady state, and the ADCS → Cloud PKI dependency |
+| 6 | OrgPath Book 15 | The substrate synthesis as a capstone, now that you have seen a consumer end-to-end |
+
+## What this bridge deliberately does not claim
+
+For the avoidance of doubt, and because earlier external syntheses of this
+relationship got these details wrong:
+
+- It does **not** claim OrgPath lives in a single `extensionAttribute` as a
+  packed path string. OrgPath is a per-facet schema across multiple attributes,
+  and rules are composed from per-facet predicates.
+- It does **not** prescribe hand-authored `New-MgGroup` commands as the way to
+  create SQL access groups. The canonical groups are rendered from the OrgPath
+  dynamic-group definitions against the Codebook and extended by governed change.
+- It does **not** assign fixed calendar-quarter milestones to the integration.
+  Sequencing is gated by consolidation classification and OrgPath coverage, with
+  the program's 2027-04-01 NTLM block as the only fixed date in the plan.
+
+## Related decisions
+
+- The **SQL Server engine-authentication decision** — the engine-layer decision
+  the SQL series motivates (currently **PROPOSED**).
+- The **dynamic-group provisioning model** — the OrgPath-driven Entra
+  security-group model SQL Book 07 consumes.
+- The **Administrative Unit provisioning model** — the delegation surface for DBA
+  group management.
+- The **OrgPath attribute schema** — the multi-facet attribute model.
+- The **OrgPath drift engine** — makes OrgPath-on-SQL changes a compliance signal.
+- The **identity & directory transformation inventory** — where the SQL Server
+  authentication transformation, the gap this decision closes, is catalogued.
