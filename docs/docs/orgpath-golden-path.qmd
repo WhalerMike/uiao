@@ -1,0 +1,233 @@
+---
+document_id: ORGPATH-GOLDEN-PATH
+title: "OrgPath Governance Golden Path: AD → Drift → Signed Evidence in 10 Minutes"
+version: "1.0"
+created_at: "2026-06-09"
+updated_at: "2026-06-09"
+canon_refs:
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_163_OrgPath_Governance_Runtime
+  - UIAO_174_Governance_Telemetry
+  - adr-078-orgpath-attribute-schema-15-facet.md
+  - adr-084-phase5-consumer-architecture.md
+---
+
+# OrgPath Governance Golden Path
+
+This is the **one walkthrough** that runs the OrgPath wedge end-to-end on a
+single coherent sample tenant — the path a design partner runs on their own desk
+*before* a pilot ever touches a real directory.
+
+It takes Active Directory facts, derives canonical OrgPath facets, finds the
+devices that are missing them, classifies the resulting drift, and emits a
+**signed, auditor-grade evidence bundle** — in four commands, with **no live AD,
+no Azure tenant, and no API keys**. Everything is read-only or dry-run by
+default.
+
+> **Two quickstarts, two jobs.** The [10-minute
+> quickstart](quickstart.qmd) produces a SCuBA *compliance* drift report. This
+> golden path is the *identity-governance* story: the OrgPath differentiator,
+> from directory to signed evidence. They don't overlap.
+
+Prerequisites: Python 3.10+, git.
+
+## What you'll prove
+
+| Stage | Command | The claim it substantiates |
+|---|---|---|
+| 1 | `uiao orgtree assess` | AD attributes deterministically map to a governed, schema-validated OrgPath codebook. |
+| 2 | `uiao orgtree inventory` | We can find every enrolled device *missing* OrgPath and propose a backfill from a source of truth. |
+| 3 | `uiao orgtree govern` | Identity gaps re-surface as classified drift, with halt-on-critical and dry-run safety. |
+| 4 | `uiao ir orgtree-readiness-bundle` | The whole thing terminates in a **signed** bundle + **OSCAL** Assessment Results an auditor accepts. |
+
+## Run it now (the impatient path)
+
+```bash
+git clone https://github.com/WhalerMike/uiao && cd uiao
+pip install -e .
+examples/orgtree/golden-path/run.sh
+```
+
+`run.sh` executes all four stages against the committed sample data in
+`examples/orgtree/golden-path/` and writes every artifact to `./out`
+(gitignored). The rest of this page walks each stage so you understand what you
+just saw. The data dictionary — what every sample record seeds and the
+known-answer it produces — is in the
+[dataset README](https://github.com/WhalerMike/uiao/blob/main/examples/orgtree/golden-path/README.md).
+
+---
+
+## Stage 1 — `assess`: Active Directory → OrgPath facets
+
+The identity plane. `assess` reads AD user objects and derives each user's
+OrgPath facet values through a tenant-tunable AD→facet mapping, validating every
+derived value against the codebook (UIAO_151).
+
+```bash
+uiao orgtree assess \
+  --from-export examples/orgtree/golden-path/ad-users.json \
+  --out out/assignments.json
+```
+
+```
+OrgPath assessment — 5 user(s) from AD
+  Facets derived : 37
+  Findings       : 13
+Assignments written to out/assignments.json
+```
+
+The five sample users span the real cases: three map cleanly, `carol.unknown`
+(department "Astrophysics", title "Wizard") has **no codebook alias** and surfaces
+as findings, and `svc.backup` is derived as a service account from its
+`userAccountControl` flag. A finding is an AD value the codebook doesn't
+recognize — exactly the input a tenant uses to tune its mapping or fix its
+directory. The per-user assignment looks like:
+
+```json
+{
+  "target_id": "CN=alice.eng,OU=Engineering,OU=Users,DC=contoso,DC=com",
+  "target_type": "user",
+  "facet_values": {
+    "region": "EASTUS", "department": "Engineering", "role": "Engineer",
+    "classification": "Employee", "hire_date": "2021-01-15",
+    "account_type": "Standard"
+  },
+  "findings": [ ... ]
+}
+```
+
+> **Live AD?** Drop `--from-export` and pass `--ldap-server` / `--base-dn` for a
+> live read. Everything downstream is identical.
+
+---
+
+## Stage 2 — `inventory`: which devices are missing OrgPath?
+
+The device plane. Identity facets are only useful if your *devices* carry them —
+that's what makes Entra dynamic groups and Intune/Arc policy targeting
+deterministic. `inventory` reads already-enrolled devices across Entra (Graph
+`onPremisesExtensionAttributes`) and Arc (ARM `tags`), classifies each one's
+OrgPath capture status, and proposes a backfill from a source of truth.
+
+```bash
+uiao orgtree inventory \
+  --devices-export examples/orgtree/golden-path/entra-devices.json \
+  --machines-export examples/orgtree/golden-path/arc-machines.json \
+  --owner-map examples/orgtree/golden-path/owner-map.json \
+  --snapshot-out out/inventory-snapshot.json \
+  --worklist-out out/worklist.json
+```
+
+```
+OrgPath inventory — 6 device(s) (Entra 4, Arc 2)
+  Captured (complete) : 0
+  Partial             : 3
+  Absent (no OrgPath) : 3
+  Needs backfill      : 6
+    proposal resolved : 1
+    unresolved        : 5 (no source match — manual review)
+```
+
+`WS-HR-03` is **absent** but its registered owner `dana.hr` is in the owner-map
+with a full facet set, so its backfill is **fully resolved**. The Arc machines
+have no registered owner and no `--asset-map`, so they bucket for manual review.
+That spread — resolved, partial, unresolved — is the point: it's the honest
+output of a partial backfill source, and the `worklist.json` is the operator's
+to-do list. This step **writes nothing**; it emits a `worklist.json` plus a
+`govern`-compatible snapshot of current state for stage 3.
+
+---
+
+## Stage 3 — `govern`: gaps become classified drift
+
+Feed the current-state snapshot to one governance pass. The runtime
+(UIAO_163 / UIAO_174) runs the drift engine against the codebook and emits one
+telemetry event per finding.
+
+```bash
+uiao orgtree govern out/inventory-snapshot.json \
+  --detection-only \
+  --out out/drift-report.json
+```
+
+```
+OrgPath governance pass — mode=detection-only, dry_run=True, snapshot=snap-...
+  Drift findings : 100
+    P1 : 6
+    P2 : 40
+    P3 : 54
+  Planned ops    : 0
+  Remediated ops : 0
+  Telemetry      : 102 events
+  HALTED — critical finding present; remediation suppressed.
+```
+
+Two properties to notice, because they're the difference between a governance
+*product* and a diff script:
+
+- **`dry_run=True` and `Planned ops: 0`** — detection only. The pass classifies
+  and reports; it plans and writes nothing. Drop `--detection-only` to wire the
+  canonical Phase 5 adapters (ADR-084) and see *planned* operations — still
+  write-free until a transport is injected and `--no-dry-run` is set.
+- **`HALTED`** — a critical (P1) finding stops remediation. Fail-closed is the
+  default for a tool that can mutate a directory.
+
+The exact severity counts track the canonical codebook and will move as it
+evolves; the shape (drift present, criticals present, halted, dry-run) is the
+contract.
+
+---
+
+## Stage 4 — signed evidence bundle + OSCAL
+
+Terminate the path in something an auditor accepts: a signed bundle and OSCAL
+Assessment Results. This stage takes an AD survey — we reuse the larger
+committed synthetic forest — and emits the evidence artifacts.
+
+```bash
+uiao ir orgtree-readiness-bundle examples/orgtree/synthetic-forest-export.json \
+  --out-dir out/bundle \
+  --oscal-out out/oscal \
+  --insecure-dev-key
+```
+
+```
+OrgTree Readiness bundle written to out/bundle
+  Users : 50   Groups : 20   Computers : 30   Servers : 15
+  Hash  : 5e6be666...    Sig : 1229d39c...
+OSCAL evidence written to out/oscal/orgtree-evidence.json
+```
+
+You get four artifacts: `bundle.json` (schema-validated), `bundle.hash`
+(SHA-256), `bundle.sig` (HMAC-SHA256), and `oscal/orgtree-evidence.json` (OSCAL
+Assessment Results). The signature lets a consumer verify the bundle wasn't
+altered after issuance.
+
+> **`--insecure-dev-key` is for this offline demo only.** A real run sets the
+> `UIAO_BUNDLE_HMAC_KEY` environment variable and drops the flag, so the
+> signature is bound to a key you control. With the flag, the signature offers
+> no security — it only lets the demo run without a configured key.
+
+---
+
+## What you just demonstrated
+
+From a fresh clone, with no tenant and no keys, you took Active Directory facts
+to a **signed, OSCAL-shaped evidence bundle** — through deterministic OrgPath
+derivation, device-gap inventory, and classified, fail-closed, dry-run-safe
+drift. That is the OrgPath wedge, end to end, on one desk.
+
+The next step is the same path against a real `--from-export` (or live
+`--ldap-server`) — the dry-run-by-default posture makes that a low-risk pilot.
+
+## Reproducibility
+
+The pipeline is pinned by `tests/test_orgpath_golden_path.py`, which runs all
+four stages against the committed sample data in CI and asserts the structural
+invariants above — so this walkthrough can't silently rot as the CLI evolves.
+
+## Canon
+
+- **UIAO_151** — OrgPath codebook (15-facet Model C, ADR-078)
+- **UIAO_163 / UIAO_174** — OrgPath governance runtime + telemetry
+- **ADR-084** — Phase 5 consumer architecture (the adapters `govern` composes)
