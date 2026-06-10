@@ -11,26 +11,14 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 ```
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
-uiao-spec             57           51         50      1
-adr                  102           99         98      1
+uiao-spec             58           51         51      0
+adr                  103          100        100      0
 modernization         24           21         21      0
-schema                32           31         31      0
+schema                33           32         32      0
 other                117            0          0      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                332          202        200      2
+TOTAL                335          204        204      0
 ```
-
-## Gaps — UIAO marquee specs (1)
-
-| Source | Intent source | Style | Expected .qmd candidates |
-|---|---|---|---|
-| [`src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md`](src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md) | frontmatter | include | `docs/canon/UIAO_193_OrgPath_MultiCloud_Binding.qmd` |
-
-## Gaps — Architecture Decision Records (1)
-
-| Source | Intent source | Style | Expected .qmd candidates |
-|---|---|---|---|
-| [`src/uiao/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.md`](src/uiao/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.md) | frontmatter | include | `docs/adr/adr-098-orgpath-vendor-neutral-binding-profiles.qmd`<br>`docs/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.qmd` |
 
 ## Methodology
 
