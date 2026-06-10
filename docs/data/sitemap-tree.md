@@ -64,6 +64,7 @@
 - [UIAO Continuous Monitoring Strategy](canon/UIAO_190_Continuous_Monitoring_Strategy.html)
 - [UIAO Supply Chain Risk Management Plan](canon/UIAO_191_Supply_Chain_Risk_Management_Plan.html)
 - [UIAO Privacy Impact Assessment](canon/UIAO_192_Privacy_Impact_Assessment.html)
+- [OrgPath Multi-Cloud Binding Profiles — Vendor-Neutral Storage Contract & Zero Trust Subject](canon/UIAO_193_OrgPath_MultiCloud_Binding.html)
 
 ## Architecture Decision Records
 
@@ -161,6 +162,7 @@
 - [Illustrative SVG register — expanding the figure house style beyond the engineering-blueprint boundary](adr/adr-095-illustrative-svg-register.html)
 - [Azure SaaS architecture — multi-tenant UIAO on Container Apps](adr/adr-096-azure-saas-architecture.html)
 - [SQL Server transformation placement — same control plane, adjacent execution](adr/adr-097-sql-server-saas-placement.html)
+- [OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots](adr/adr-098-orgpath-vendor-neutral-binding-profiles.html)
 
 ## Schema Reference
 
