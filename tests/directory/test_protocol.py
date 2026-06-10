@@ -1,4 +1,4 @@
-"""LDAPv3 protocol parse/serialize tests (ADR-099)."""
+"""LDAPv3 protocol parse/serialize tests (ADR-100)."""
 
 from __future__ import annotations
 

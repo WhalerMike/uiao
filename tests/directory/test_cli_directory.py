@@ -1,4 +1,4 @@
-"""CLI tests for ``uiao directory`` (ADR-099)."""
+"""CLI tests for ``uiao directory`` (ADR-100)."""
 
 from __future__ import annotations
 

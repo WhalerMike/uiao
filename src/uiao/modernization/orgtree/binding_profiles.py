@@ -47,6 +47,7 @@ import yaml
 from uiao.modernization.orgtree.codebook import Codebook, load_codebook
 
 #: The profile ids shipped as executable canon (UIAO_193 first-class targets).
+#: The original six are ADR-098 §D3; pingone/keycloak/auth0 are ADR-099 §D1.
 CANONICAL_PROFILE_IDS: tuple[str, ...] = (
     "microsoft-entra",
     "aws",
@@ -54,6 +55,9 @@ CANONICAL_PROFILE_IDS: tuple[str, ...] = (
     "okta",
     "ldap",
     "vmware",
+    "pingone",
+    "keycloak",
+    "auth0",
 )
 
 

@@ -1,4 +1,4 @@
-"""BER/ASN.1 codec tests for the Active Governance Directory (ADR-099)."""
+"""BER/ASN.1 codec tests for the Active Governance Directory (ADR-100)."""
 
 from __future__ import annotations
 

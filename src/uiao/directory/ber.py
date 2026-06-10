@@ -4,7 +4,7 @@ LDAP rides on the Basic Encoding Rules of ASN.1. This module implements
 just enough of BER to encode and decode ``LDAPMessage`` and its
 ``protocolOp`` children — the *Active Governance Directory* (AGD) speaks
 the wire protocol directly rather than depending on a third-party LDAP
-stack, keeping the in-path directory data plane (ADR-099) pure-stdlib.
+stack, keeping the in-path directory data plane (ADR-100) pure-stdlib.
 
 Scope is deliberately narrow:
 

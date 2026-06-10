@@ -1,4 +1,4 @@
-"""End-to-end LDAP server tests over a real asyncio socket (ADR-099).
+"""End-to-end LDAP server tests over a real asyncio socket (ADR-100).
 
 These drive the server through an actual TCP connection using BER messages
 the test encodes itself, exercising the framing reader, bind policy, and
@@ -133,3 +133,30 @@ def test_size_limit_truncates_and_reports() -> None:
     tags = [ber.read_children(r.content)[1].tag for r in responses]
     assert tags.count(protocol.APP_SEARCH_RESULT_ENTRY) == 2
     assert tags[-1] == protocol.APP_SEARCH_RESULT_DONE
+
+
+def _modify(message_id: int, dn: str) -> bytes:
+    # A well-formed ModifyRequest the read projection must refuse, not service.
+    op = ber.encode_sequence(
+        [ber.encode_octet_string(dn), ber.encode_sequence([])],
+        tag=protocol.APP_MODIFY_REQUEST,
+    )
+    return ber.encode_sequence([ber.encode_integer(message_id), op])
+
+
+def test_unsupported_write_op_is_refused_without_dropping_connection() -> None:
+    # A write op must come back as unwillingToPerform on the matching
+    # response type, and the connection must survive so the following
+    # search still succeeds (ADR-100: refuse, don't drop).
+    server = LdapServer(directory=build_directory(PRINCIPALS))
+    requests = [
+        _modify(1, "cn=alice-uiao.gov,ou=people,dc=agd,dc=uiao,dc=gov"),
+        _search_present(2, "dc=agd,dc=uiao,dc=gov"),
+    ]
+    responses = asyncio.run(_run_session(server, requests))
+    refusal = responses[0]
+    assert ber.read_children(refusal.content)[1].tag == protocol.APP_MODIFY_RESPONSE
+    assert _result_code(refusal) == int(protocol.ResultCode.UNWILLING_TO_PERFORM)
+    later_tags = [ber.read_children(r.content)[1].tag for r in responses[1:]]
+    assert protocol.APP_SEARCH_RESULT_ENTRY in later_tags
+    assert later_tags[-1] == protocol.APP_SEARCH_RESULT_DONE

@@ -7,7 +7,7 @@ search ``Filter`` choice is modelled as a small algebraic tree
 (:class:`Filter`) so :mod:`uiao.directory.dit` can evaluate it against a
 projected entry.
 
-Out of scope for this first increment (ADR-099 roadmap): modify/add/
+Out of scope for this first increment (ADR-100 roadmap): modify/add/
 delete/compare write ops, SASL/StartTLS, controls, paged results, and
 the extensible-match filter choice. Unsupported protocol ops are
 surfaced as :class:`UnsupportedOperation` so the server answers
@@ -28,6 +28,23 @@ APP_UNBIND_REQUEST = ber.APPLICATION | 2  # 0x42 (primitive, NULL)
 APP_SEARCH_REQUEST = ber.APPLICATION | ber.CONSTRUCTED | 3  # 0x63
 APP_SEARCH_RESULT_ENTRY = ber.APPLICATION | ber.CONSTRUCTED | 4  # 0x64
 APP_SEARCH_RESULT_DONE = ber.APPLICATION | ber.CONSTRUCTED | 5  # 0x65
+
+# Write/compare/extended request tags — never serviced (read projection,
+# ADR-100), but recognised so the server can refuse them with
+# ``unwillingToPerform`` keyed to the matching response type rather than
+# silently dropping the request.
+APP_MODIFY_REQUEST = ber.APPLICATION | ber.CONSTRUCTED | 6  # 0x66
+APP_MODIFY_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 7  # 0x67
+APP_ADD_REQUEST = ber.APPLICATION | ber.CONSTRUCTED | 8  # 0x68
+APP_ADD_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 9  # 0x69
+APP_DEL_REQUEST = ber.APPLICATION | 10  # 0x4a (primitive, LDAPDN)
+APP_DEL_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 11  # 0x6b
+APP_MODIFY_DN_REQUEST = ber.APPLICATION | ber.CONSTRUCTED | 12  # 0x6c
+APP_MODIFY_DN_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 13  # 0x6d
+APP_COMPARE_REQUEST = ber.APPLICATION | ber.CONSTRUCTED | 14  # 0x6e
+APP_COMPARE_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 15  # 0x6f
+APP_EXTENDED_REQUEST = ber.APPLICATION | ber.CONSTRUCTED | 23  # 0x77
+APP_EXTENDED_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 24  # 0x78
 
 # --- Authentication choice (context tags inside BindRequest) ---------------
 AUTH_SIMPLE = ber.CONTEXT | 0  # [0] simple password (primitive)
@@ -70,7 +87,17 @@ class ProtocolError(ValueError):
 
 
 class UnsupportedOperation(ProtocolError):
-    """Raised for a well-formed but unsupported protocol op."""
+    """Raised for a well-formed but unsupported protocol op.
+
+    Carries the originating ``message_id`` and request ``op_tag`` so the
+    server can answer ``unwillingToPerform`` keyed to the request (RFC 4511
+    §4.2) instead of dropping the connection.
+    """
+
+    def __init__(self, message: str, *, message_id: int = 0, op_tag: int = 0) -> None:
+        super().__init__(message)
+        self.message_id = message_id
+        self.op_tag = op_tag
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +179,11 @@ def parse_message(data: bytes) -> BindRequest | SearchRequest | UnbindRequest:
         return _parse_search(message_id, op)
     if op.tag == APP_UNBIND_REQUEST:
         return UnbindRequest(message_id=message_id)
-    raise UnsupportedOperation(f"protocolOp tag 0x{op.tag:02x} is not supported")
+    raise UnsupportedOperation(
+        f"protocolOp tag 0x{op.tag:02x} is not supported",
+        message_id=message_id,
+        op_tag=op.tag,
+    )
 
 
 def _parse_bind(message_id: int, op: ber.TLV) -> BindRequest:
@@ -163,7 +194,11 @@ def _parse_bind(message_id: int, op: ber.TLV) -> BindRequest:
     name = ber.decode_octet_string(parts[1].content)
     auth = parts[2]
     if auth.tag != AUTH_SIMPLE:
-        raise UnsupportedOperation("only simple authentication is supported")
+        raise UnsupportedOperation(
+            "only simple authentication is supported",
+            message_id=message_id,
+            op_tag=APP_BIND_REQUEST,
+        )
     return BindRequest(
         message_id=message_id,
         version=version,
@@ -179,7 +214,12 @@ def _parse_search(message_id: int, op: ber.TLV) -> SearchRequest:
     base_object = ber.decode_octet_string(parts[0].content)
     scope = Scope(ber.decode_integer(parts[1].content))
     size_limit = ber.decode_integer(parts[3].content)
-    search_filter = _parse_filter(parts[6])
+    try:
+        search_filter = _parse_filter(parts[6])
+    except UnsupportedOperation as exc:
+        # Re-key an unsupported filter choice to the search so the server
+        # can answer searchResultDone(unwillingToPerform) for this message.
+        raise UnsupportedOperation(str(exc), message_id=message_id, op_tag=APP_SEARCH_REQUEST) from exc
     attributes = tuple(ber.decode_octet_string(a.content) for a in ber.read_children(parts[7].content))
     return SearchRequest(
         message_id=message_id,
@@ -263,4 +303,35 @@ def encode_search_result_entry(message_id: int, entry: Entry) -> bytes:
         [ber.encode_octet_string(entry.dn), ber.encode_sequence(attr_items)],
         tag=APP_SEARCH_RESULT_ENTRY,
     )
+    return _envelope(message_id, op)
+
+
+# Maps a request op tag to the response op tag that correlates with it, so an
+# unsupported-but-well-formed op can be refused with the right response type.
+# Every listed response body is a bare LDAPResult (a valid prefix for
+# BindResponse / ExtendedResponse too), which is all an unwilling refusal needs.
+_RESPONSE_FOR_REQUEST = {
+    APP_BIND_REQUEST: APP_BIND_RESPONSE,
+    APP_SEARCH_REQUEST: APP_SEARCH_RESULT_DONE,
+    APP_MODIFY_REQUEST: APP_MODIFY_RESPONSE,
+    APP_ADD_REQUEST: APP_ADD_RESPONSE,
+    APP_DEL_REQUEST: APP_DEL_RESPONSE,
+    APP_MODIFY_DN_REQUEST: APP_MODIFY_DN_RESPONSE,
+    APP_COMPARE_REQUEST: APP_COMPARE_RESPONSE,
+    APP_EXTENDED_REQUEST: APP_EXTENDED_RESPONSE,
+}
+
+
+def encode_unwilling_response(message_id: int, op_tag: int, message: str = "") -> bytes | None:
+    """Refuse an unsupported op with ``unwillingToPerform`` (RFC 4511 §4.2).
+
+    Returns the encoded response keyed to ``op_tag``'s correlating response
+    type, or ``None`` when the request type has no response to correlate
+    against (the server then logs and ignores rather than fabricating a
+    reply the client could not match to its request).
+    """
+    response_tag = _RESPONSE_FOR_REQUEST.get(op_tag)
+    if response_tag is None:
+        return None
+    op = ber.encode_sequence(_ldap_result(ResultCode.UNWILLING_TO_PERFORM, message=message), tag=response_tag)
     return _envelope(message_id, op)

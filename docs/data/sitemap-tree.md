@@ -31,6 +31,7 @@
 - **Identity (OrgTree)**
   - [OrgTree — Identity Modernization](customer-documents/reference-architecture/orgtree.html)
   - [OrgPath FAQ](customer-documents/reference-architecture/orgpath-faq.html)
+  - [OrgPath Portability — One Org Model, Any Cloud, Any IdP](customer-documents/reference-architecture/orgpath-portability.html)
   - [Where OrgTree & OrgPath Data Lives](customer-documents/reference-architecture/where-data-lives.html)
   - [Where OrgTree & OrgPath Data Lives — Devices and Azure Resources](customer-documents/reference-architecture/where-data-lives-devices-and-azure.html)
   - [Drift Detection — A Walk-through](customer-documents/reference-architecture/drift-walkthrough.html)
@@ -163,7 +164,8 @@
 - [Azure SaaS architecture — multi-tenant UIAO on Container Apps](adr/adr-096-azure-saas-architecture.html)
 - [SQL Server transformation placement — same control plane, adjacent execution](adr/adr-097-sql-server-saas-placement.html)
 - [OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots](adr/adr-098-orgpath-vendor-neutral-binding-profiles.html)
-- [Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception](adr/adr-099-active-governance-directory-ldap.html)
+- [OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0)](adr/adr-099-orgpath-idp-binding-profile-expansion.html)
+- [Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception](adr/adr-100-active-governance-directory-ldap.html)
 
 ## Schema Reference
 

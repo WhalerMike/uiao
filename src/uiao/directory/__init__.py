@@ -2,7 +2,7 @@
 
 The AGD is UIAO's *protocol layer*: it exposes the governance substrate
 over the LDAPv3 wire protocol so directory-bound tooling can query the
-Active Governance Directory in the terms it already speaks. Per ADR-099
+Active Governance Directory in the terms it already speaks. Per ADR-100
 it is a sanctioned, read-only data-plane exception to the ADR-092 §1
 control-plane boundary — it sits in the LDAP request path but holds no
 write op, so it cannot mutate canon or the provider of record.

@@ -1,4 +1,4 @@
-"""Active Governance Directory CLI: ``uiao directory ...`` (ADR-099).
+"""Active Governance Directory CLI: ``uiao directory ...`` (ADR-100).
 
 Thin verbs over :mod:`uiao.directory`:
 
@@ -11,7 +11,7 @@ A *principal snapshot* is the OrgPath governance-runtime shape::
     {"principals": [{"principal_id": "...", "principal_type": "user",
                      "attributes": {"extensionAttribute1": "NCR", ...}}]}
 
-Canon: ADR-099 (data-plane exception), UIAO_151 (codebook),
+Canon: ADR-100 (data-plane exception), UIAO_151 (codebook),
 UIAO_193 / ADR-098 (the ``ldap`` binding profile).
 """
 
@@ -30,7 +30,7 @@ from uiao.directory.server import LdapServer
 
 directory_app = typer.Typer(
     name="directory",
-    help="Active Governance Directory — in-path LDAPv3 read projection (ADR-099).",
+    help="Active Governance Directory — in-path LDAPv3 read projection (ADR-100).",
     no_args_is_help=True,
 )
 
@@ -90,14 +90,14 @@ def serve(
     snapshot: Path | None = _SNAPSHOT_OPT,
     base_dn: str = _BASE_DN_OPT,
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Bind address."),
-    port: int = typer.Option(3389, "--port", "-p", help="Bind port (default 3389 — unprivileged)."),
+    port: int = typer.Option(1389, "--port", "-p", help="Bind port (default 1389 — unprivileged)."),
     check: bool = typer.Option(
         False,
         "--check",
         help="Build the projection and print the listen plan without binding (CI-friendly).",
     ),
 ) -> None:
-    """Run the in-path LDAPv3 read projection (ADR-099)."""
+    """Run the in-path LDAPv3 read projection (ADR-100)."""
     principals = _load_principals(snapshot)
     directory = build_directory(principals, base_dn=base_dn)
     server = LdapServer(directory=directory)

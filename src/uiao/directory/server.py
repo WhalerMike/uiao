@@ -1,9 +1,9 @@
-"""Async LDAPv3 server for the Active Governance Directory (ADR-099).
+"""Async LDAPv3 server for the Active Governance Directory (ADR-100).
 
 A pure-``asyncio`` TCP server that answers the AGD's read surface:
 ``BIND`` (anonymous + simple), ``SEARCH`` (base / one-level / subtree),
 and ``UNBIND``. It is in-path on the LDAP request path — the data-plane
-position ADR-099 sanctions as an exception to ADR-092 §1 — but it remains
+position ADR-100 sanctions as an exception to ADR-092 §1 — but it remains
 a **read projection**: there is no add/modify/delete op, so the in-path
 server can never mutate the governance substrate.
 
@@ -16,7 +16,7 @@ Authentication policy for this first increment:
   otherwise ``invalidCredentials``.
 
 Kerberos/SASL, StartTLS, and write ops are explicitly out of scope and
-roadmapped in ADR-099 — unsupported ops answer ``unwillingToPerform``
+roadmapped in ADR-100 — unsupported ops answer ``unwillingToPerform``
 without dropping the connection.
 """
 
@@ -90,7 +90,16 @@ class LdapServer:
                 try:
                     req = protocol.parse_message(data)
                 except protocol.UnsupportedOperation as exc:
-                    logger.warning("unsupported op from %s: %s", peer, exc)
+                    # A read projection services no write op — refuse it with
+                    # unwillingToPerform (keyed to the request) and keep the
+                    # connection open, per ADR-100.
+                    refusal = protocol.encode_unwilling_response(exc.message_id, exc.op_tag, str(exc))
+                    if refusal is not None:
+                        writer.write(refusal)
+                        await writer.drain()
+                        logger.info("refused unsupported op from %s: %s", peer, exc)
+                    else:
+                        logger.warning("dropped uncorrelatable unsupported op from %s: %s", peer, exc)
                     continue
                 except protocol.ProtocolError as exc:
                     logger.warning("protocol error from %s: %s", peer, exc)
@@ -110,7 +119,7 @@ class LdapServer:
             writer.close()
             logger.info("AGD connection closed: %s", peer)
 
-    async def serve(self, host: str = "127.0.0.1", port: int = 3389) -> None:
+    async def serve(self, host: str = "127.0.0.1", port: int = 1389) -> None:
         """Run the server until cancelled."""
         server = await asyncio.start_server(self.handle_connection, host, port)
         sockets = ", ".join(str(s.getsockname()) for s in (server.sockets or ()))

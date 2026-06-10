@@ -15,7 +15,7 @@ name from the **``ldap`` binding profile** (UIAO_193 / ADR-098) — the
 traceable to canon rather than inventing attribute names here.
 
 Because the DIT is a projection, the directory is read-only by
-construction (ADR-099 §L1): there are no add/modify/delete entries, only
+construction (ADR-100 §L1): there are no add/modify/delete entries, only
 ``search``. Writes flow through the existing OrgPath modernization
 adapters into the provider of record, never into this in-path view.
 """

@@ -1,5 +1,5 @@
 ---
-adr_id: adr-099
+adr_id: adr-100
 title: "Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception"
 status: PROPOSED
 decided: 2026-06-10
@@ -13,10 +13,10 @@ superseded_by: null
 amends: adr-092-active-governance.md
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-099-active-governance-directory-ldap.html
+published_at: docs/adr/adr-100-active-governance-directory-ldap.html
 ---
 
-# ADR-099: Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception
+# ADR-100: Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception
 
 ## Status
 

@@ -1,4 +1,4 @@
-"""Directory Information Tree projection + filter tests (ADR-099)."""
+"""Directory Information Tree projection + filter tests (ADR-100)."""
 
 from __future__ import annotations
 
