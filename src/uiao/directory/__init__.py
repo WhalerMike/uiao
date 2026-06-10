@@ -13,12 +13,22 @@ Public surface:
 * :mod:`uiao.directory.protocol` — LDAPv3 message parse/serialize + filter model.
 * :mod:`uiao.directory.dit` — projection of the Codebook + principal snapshot
   into a read-only Directory Information Tree.
-* :mod:`uiao.directory.server` — the asyncio LDAP server.
+* :mod:`uiao.directory.policy` — per-bind read scoping (ADR-100 §5): sensitive
+  facets require an authenticated bind.
+* :mod:`uiao.directory.server` — the asyncio LDAP server (LDAPS-capable).
 """
 
 from __future__ import annotations
 
 from uiao.directory.dit import Directory, build_directory
-from uiao.directory.server import LdapServer
+from uiao.directory.policy import ReadPolicy, default_read_policy
+from uiao.directory.server import LdapServer, build_server_tls_context
 
-__all__ = ["Directory", "LdapServer", "build_directory"]
+__all__ = [
+    "Directory",
+    "LdapServer",
+    "ReadPolicy",
+    "build_directory",
+    "build_server_tls_context",
+    "default_read_policy",
+]
