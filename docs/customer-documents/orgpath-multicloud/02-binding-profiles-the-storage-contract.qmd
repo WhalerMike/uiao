@@ -1,0 +1,46 @@
+---
+title: "Binding Profiles — The Storage Contract"
+description: "What a profile declares, the three planes it can bind, the deterministic overflow rules for platforms that cannot hold fifteen facets, and the loader that makes the contract enforceable rather than aspirational."
+doc-type: orgpath-multicloud-chapter
+audience: [Technical, Customer]
+family: orgpath-multicloud
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-10
+---
+
+# Chapter 2 — Binding Profiles: The Storage Contract
+
+::: {.callout-note}
+## In this chapter
+A binding profile answers three questions for one platform: where each facet lives, how those locations are read and written, and what the platform cannot do — its attribute caps, its character sets, its length limits — together with a deterministic rule for what happens when a facet will not fit. This chapter walks the contract as UIAO_193 specifies it and as the shipped schema and loader enforce it, because a storage contract that lives only in prose is a suggestion, and the substrate does not run on suggestions.
+:::
+
+## Three Questions per Platform
+
+The first question a profile answers is *location*. For every facet the platform will carry, the profile names a locator — the native storage key on that platform. On an LDAP directory the locator is an attribute name. On a cloud workload it is a tag key or a label key. On an identity provider with an extensible user schema it is a custom-attribute identifier. The profile also names the locator's *kind*, because the transport that eventually writes the value needs to know whether it is setting an attribute, applying a tag, or attaching a label, and because the drift engine reading values back needs the same knowledge in reverse.
+
+The second question is *mechanics*. A profile declares the endpoint-resolution seam its transport uses — never a hardcoded hostname, always a named resolver that produces the correct endpoint for the declared boundary. This discipline is inherited directly from the Microsoft estate, where the Graph plane and the Azure Resource Manager plane taught the hard lesson: two surfaces on the same vendor can demand different hosts and different token audiences, and a credential minted for one is rejected by the other. The profile records which seam applies so the lesson stays learned.
+
+The third question is *constraint*. Platforms differ in what they will hold. A tag system caps the number of keys per object. A label system restricts values to lowercase letters, digits, hyphens, and underscores. An attribute system bounds value length. The profile records these limits explicitly, because the alternative is discovering them as write failures in production.
+
+## When Fifteen Facets Will Not Fit
+
+The interesting case is the platform that cannot hold everything. The contract's answer is the overflow rule, and its first principle is blunt: a facet is never silently dropped. A profile whose platform cannot store all bound facets must declare, in the profile document itself, exactly what happens to the ones that do not fit.
+
+Two rules are permitted. The *priority* rule declares an ordering — the facets stored natively, first to last — and accepts that facets past the cutoff are not stored on that platform. What makes this acceptable rather than lossy is the drift engine: an uncaptured facet surfaces as a typed identity-drift finding, so the gap is permanently visible in governance telemetry rather than quietly absorbed. The *composite-secondary* rule packs overflow facets into a single reserved key as delimited pairs, parsed back on read. The name carries a warning label: composite storage is a *secondary* mechanism only, never a replacement for native per-facet storage of the primary facets. The substrate already litigated composite paths once — ADR-078 retired them as a primary model precisely because values that must be text-parsed cannot be composed into native policy predicates — and the overflow rule is written so that history cannot repeat through a side door.
+
+> The overflow rule is the contract's honesty clause. A platform may be unable to store a facet; it may not be unable to *admit* it.
+
+## A Contract Is What a Loader Enforces
+
+Everything described so far could have been a well-written page of documentation, and it would have decayed the way well-written pages do. What makes the binding profile a contract is that it ships as executable canon: a YAML document per platform, validated on every load against a JSON Schema, and then checked again for the invariants a schema language cannot express.
+
+The schema layer catches the structural failures — a missing field, an unknown locator kind, a status outside the lifecycle vocabulary. It also encodes the boundary discipline from the first chapter: the boundary field admits exactly two values, commercial and GCC-Moderate, so a profile claiming a high-side surface is not merely against policy but *unrepresentable* — it fails validation before any code consumes it.
+
+The loader's integrity layer catches the semantic failures. Every facet a profile binds must exist in the codebook — a profile cannot invent a sixteenth facet by typo. A facet may bind at most once per plane, and no two facets may share a locator on the same plane, because either collision would make a read ambiguous. A priority ordering may name only facets the profile actually binds on the constrained plane. A composite locator may not collide with a native binding. Each of these rules exists because some draft of some profile, somewhere, will eventually violate it; the loader exists so that the violation is a failed continuous-integration run instead of a corrupted estate.
+
+One more word in the contract deserves attention: *plane*. A profile declares which of three planes it binds — identity, workload, enforcement — and every facet binding names the plane it lives on. The Microsoft reference profile binds two: facets on directory objects for people, tags on Arc-connected machines for servers. Most identity providers bind one. The reason the contract supports three will become clear in the fourth chapter, where a single vendor carries the same facets on a user, a virtual machine, and a firewall group — and the profile holds all three without strain.
+
+The next chapter takes the tour: what the contract looks like instantiated against the identity platforms an enterprise is actually running alongside Microsoft.

@@ -1,0 +1,44 @@
+---
+title: "The Other Identity Planes"
+description: "The same fifteen facets on Okta Universal Directory, generic LDAP and Red Hat IdM, AWS IAM Identity Center, and Google Cloud Identity — what each platform natively offers, and what its profile honestly records about the fit."
+doc-type: orgpath-multicloud-chapter
+audience: [Technical, Customer]
+family: orgpath-multicloud
+series-order: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-10
+---
+
+# Chapter 3 — The Other Identity Planes
+
+::: {.callout-note}
+## In this chapter
+Four platforms, four profiles, one codebook. Okta turns out to be the cleanest fit the substrate has ever had. Generic LDAP — and through it Red Hat IdM — is served two ways, depending on whether the directory's schema may be extended. AWS and Google Cloud each split into an identity surface that fits easily and a workload surface that demands the overflow rule. The chapter's quiet theme: writing a profile forces an honest accounting of each platform that marketing comparisons never produce.
+:::
+
+## Okta — The Cleanest Fit
+
+There is some irony in the fact that the platform fitting OrgPath most cleanly is not the one OrgPath was born on. Okta's Universal Directory carries an extensible profile per identity, and custom properties on that profile are unconstrained in number and effectively unconstrained in naming. The Okta profile therefore binds all ten named facets as custom attributes, names each property after its facet for deterministic round-tripping, and declares no overflow rule because nothing can overflow.
+
+The contrast with the reference profile is instructive. On Entra, the facets live in fifteen numbered slots whose names — `extensionAttribute1` — carry no meaning, and the codebook must hold the mapping from facet to slot number. On Okta, the locator *is* the facet name. The platform that needed the binding-profile abstraction least demonstrates its value most clearly: the profile for Okta is short, boring, and obviously correct, which is exactly what a storage contract should be when the platform cooperates.
+
+## LDAP — Two Modes, One Profile, and Red Hat in the Bargain
+
+Generic LDAP is the oldest identity surface in most enterprises and the least uniform. The profile serves it in two modes. Where the directory's schema may be extended — the common case for a directory the enterprise itself operates — a governed auxiliary object class contributes one attribute per facet, prefixed to avoid collision: `uiaoOrgPathRegion`, `uiaoOrgPathDepartment`, and so on through the ten. Schema extension is a deliberate act with change control, which suits a governed substrate; the attributes exist because governance put them there.
+
+Where schema extension is forbidden — a vendor-managed directory, an appliance, a directory frozen by compliance — the profile's reserved-attribute mode maps facets onto unused standard attributes through a tenant-supplied locator table. That table is operator configuration, not canon: the profile defines the contract and the default, and the tenant override travels with the deployment, exactly the pattern the Microsoft estate established for attribute mapping. When fewer attributes are available than facets, the priority overflow rule applies, and the uncaptured remainder surfaces as drift findings rather than silence.
+
+One consequence deserves its own sentence, because it answers a question enterprises ask with increasing frequency: Red Hat's identity stack — Red Hat IdM, built on FreeIPA and the 389 Directory Server — is an LDAP directory, and the LDAP profile in schema-extension mode serves it today, with no Red Hat-specific engineering at all. The substrate's first answer to "do you support this vendor" is increasingly "which surface does it expose," and that is the binding-profile model working as designed.
+
+## AWS — An Identity Surface and a Workload Surface
+
+The AWS profile binds two planes, and they fit differently. The identity plane is IAM Identity Center, whose users and groups carry custom attributes; all ten named facets bind there without strain, keyed by facet name. Where the enterprise federates Identity Center from an upstream identity provider — which is most enterprises — the facets originate in the upstream profile and project onto Identity Center attributes, making AWS a *consumer* of organizational truth rather than a second author of it. That direction of flow is a governance decision the profile makes legible: there is one codebook, and AWS reads from the estate that carries it.
+
+The workload plane is resource tags on EC2 and SSM-managed instances, and tags are where the constraint accounting begins. A tag system caps keys per resource, and an instance's tag budget is shared with every other team that tags things. The profile binds the seven facets that earn their place on a workload — region, department, division, role, classification, cost center, account type — and declares a priority overflow in exactly that order. Hire dates and termination dates belong to people, not instances; clearance level rides with the identity plane. The overflow rule makes that editorial judgment explicit and machine-checkable instead of folkloric.
+
+## Google Cloud — The Same Shape with a Sharper Charset
+
+The Google Cloud profile mirrors the AWS shape — Cloud Identity custom schema attributes for people, Compute Engine labels for workloads — but contributes the series' best example of the *constraint* clause earning its keep. GCP labels restrict keys and values to lowercase letters, digits, underscores, and hyphens. The codebook's enumerations are mixed-case. The profile records the character-set constraint, the mapping layer normalizes values on the way in, and the drift engine compares post-normalization, so a label reading `cyberops` and a codebook value reading `CyberOps` reconcile instead of producing a false drift finding. None of that is clever; all of it had to be written down somewhere that tooling could read, and the profile is that somewhere.
+
+Four platforms in, a pattern is visible. The identity planes fit easily — every serious identity platform has learned to carry arbitrary attributes. The workload planes are where platforms differ and where the contract's constraint and overflow clauses do their work. The next chapter pushes the pattern to its limit on a single vendor whose surfaces span identity, workload, and a plane no platform so far has offered: enforcement.

@@ -546,6 +546,14 @@
     - [The Typed Five-Class Drift Taxonomy](customer-documents/orgpath-narrative/Book_18_CPT_05.html)
     - [The Single Reconciled Cross-Boundary Plane](customer-documents/orgpath-narrative/Book_18_CPT_06.html)
     - [The Capability Matrix and How to Fill the Gap](customer-documents/orgpath-narrative/Book_18_CPT_07.html)
+- **OrgPath for All Clouds (6-chapter series)**
+  - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
+  - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)
+  - [Binding Profiles — The Storage Contract](customer-documents/orgpath-multicloud/02-binding-profiles-the-storage-contract.html)
+  - [The Other Identity Planes](customer-documents/orgpath-multicloud/03-the-other-identity-planes.html)
+  - [VMware and the Three-Plane Proof](customer-documents/orgpath-multicloud/04-vmware-and-the-three-plane-proof.html)
+  - [Zero Trust Across Vendors](customer-documents/orgpath-multicloud/05-zero-trust-across-vendors.html)
+  - [Adopting Without Replacing](customer-documents/orgpath-multicloud/06-adopting-without-replacing.html)
 - **SQL Server Identity Transformation (10-book reading sequence)**
   - [SQL Server Identity Transformation](customer-documents/sql-server-narrative/index.html)
   - [OrgPath × SQL Server — The Integration Bridge](customer-documents/sql-server-narrative/bridge-orgpath-sql.html)

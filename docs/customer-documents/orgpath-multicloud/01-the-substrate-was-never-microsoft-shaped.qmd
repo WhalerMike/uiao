@@ -1,0 +1,48 @@
+---
+title: "The Substrate Was Never Microsoft-Shaped"
+description: "What OrgPath actually is, why its first home was the Entra directory, and the one design decision that had to be unmade before governance could travel."
+doc-type: orgpath-multicloud-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-multicloud
+series-order: 1
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-10
+---
+
+# Chapter 1 — The Substrate Was Never Microsoft-Shaped
+
+::: {.callout-note}
+## In this chapter
+A reader arriving fresh needs only three ideas: that OrgPath gives every identity and device a structured organizational address made of fifteen facets, that a governed codebook makes those facets deterministic rather than free-text, and that a typed drift engine continuously compares what is stamped against what the codebook permits. None of those ideas mentions Microsoft. This chapter separates the substrate from its first storage location and names the decision — recorded in ADR-098 — that lets the same governance travel to any platform an enterprise actually runs.
+:::
+
+## Three Ideas, None of Them Vendor-Named
+
+Strip OrgPath to its load-bearing ideas and there are three. The first is that an identity — a person, a service account, a machine — carries a structured organizational address: not a display name to be parsed or a distinguished name to be split on commas, but discrete facets, each holding one fact. Region. Department. Division. Role. Cost center. Classification. Hire date. Termination date. Clearance level. Account type. Ten named facets, five held in reserve, fifteen in all.
+
+The second idea is that those facets are governed. A facet does not hold whatever a help-desk technician typed on a Tuesday; it holds a value drawn from a codebook — a versioned, schema-validated enumeration that says which values exist, which are deprecated, and what replaced them. The codebook is canon, and changing it is a governed act with review and provenance, not an edit.
+
+The third idea is that the substrate is *watched*. A drift engine walks the stamped estate on a cadence and classifies every divergence against a typed taxonomy — a value that is not in the codebook, a deprecated value still in use, a facet missing where it should be present. Drift is not an anomaly report; it is a typed finding with a class, a severity, and a remediation path.
+
+> Facets, codebook, drift. The whole substrate is those three ideas, and not one of them names a vendor.
+
+## The Decision That Was Microsoft-Shaped
+
+If the ideas are vendor-neutral, why did OrgPath live exclusively inside the Microsoft estate for its first chapters? Because of one early and entirely reasonable decision: the facet values had to be stored *somewhere*, and the first deployment boundary was a Microsoft 365 tenant at the Moderate boundary. The Entra directory object happens to carry exactly fifteen extension attributes — `onPremisesExtensionAttribute1` through `15` — and the symmetry was irresistible. ADR-078 bound facet one to slot one, facet two to slot two, and the substrate had a home. Dynamic groups composed membership rules against the slots. Administrative Units scoped delegation by them. Conditional Access policies targeted them. The drift engine read them back.
+
+Every one of those compositions was correct, and none of them is being walked back. But notice what the decision quietly did: it fused two questions that are logically separate. *What does the department facet mean?* is answered by the codebook, and the answer is the same everywhere. *Where does the department facet live?* was answered, implicitly and globally, with "in `extensionAttribute2` of an Entra object" — an answer that is meaningless on an AWS account, an Okta profile, a vSphere virtual machine, or an LDAP entry in a Red Hat IdM domain.
+
+An enterprise that runs only Microsoft never notices the fusion. Almost no enterprise runs only Microsoft.
+
+## Unmaking the Fusion Without Breaking the Tenant
+
+ADR-098 is the decision that unmakes the fusion, and the way it does so matters as much as the fact of it. The architectural move is to declare that the codebook facet is the canonical *subject* — the thing policy, drift, and delegation reason about — while the storage location becomes a *profile*: a named, versioned, schema-validated document that answers, for one platform, where each facet lives and how it is read and written.
+
+The Microsoft slot table is not deprecated by this move. It is *recast*. The assignment ADR-078 fixed — region to slot one, account type to slot ten — becomes the content of the `microsoft-entra` reference profile: the canonical worked example, byte-for-byte identical to what every existing tenant already runs, now understood as one profile among several rather than as the schema itself. A test in the repository makes the identity literal: the reference profile is validated against the codebook's slot assignments on every commit, so the two can never silently diverge. No Microsoft runtime behavior changes. Nothing is re-stamped. The fusion is unmade entirely in the architecture's self-description, which is the only place it ever lived.
+
+What the move opens is the subject of the rest of this series. If storage is a profile, then adding a platform is writing a profile — not forking the substrate, not standing up a second codebook, not teaching the drift engine a new model. The same fifteen facets, the same governed enumerations, the same typed drift taxonomy, projected onto whatever surface a platform natively offers: attributes where the platform has attributes, tags where it has tags, labels where it has labels.
+
+One boundary note before the tour begins. Everything this series describes is scoped to the Moderate and Commercial boundaries — the profiles resolve commercial endpoints, and the governed schema makes a high-side value structurally unrepresentable without a superseding decision record. That is not a limitation of the architecture; it is the architecture refusing to imply a deployment surface that has not been authorized.
+
+The next chapter examines the binding-profile contract itself — what a profile must declare, what happens when a platform cannot hold all fifteen facets, and why the contract is enforced by a loader rather than by good intentions.

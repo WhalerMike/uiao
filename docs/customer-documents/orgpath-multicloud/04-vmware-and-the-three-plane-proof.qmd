@@ -1,0 +1,50 @@
+---
+title: "VMware and the Three-Plane Proof"
+description: "One vendor, three surfaces: Workspace ONE Access carries the facets on people, vSphere tag categories carry them on virtual machines, and NSX security tags carry them into the firewall — the demonstration that the binding-profile contract was never an identity-provider abstraction."
+doc-type: orgpath-multicloud-chapter
+audience: [Technical, Customer]
+family: orgpath-multicloud
+series-order: 4
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-10
+---
+
+# Chapter 4 — VMware and the Three-Plane Proof
+
+::: {.callout-note}
+## In this chapter
+If the binding-profile contract only worked for identity providers, it would be a connector framework with better paperwork. VMware is the existence proof that it is more: a single profile binds the same facets onto users in Workspace ONE Access, onto virtual machines through vSphere tag categories whose single-cardinality discipline mirrors the one-facet-per-slot rule, and onto NSX security tags where the enforcement chapter of this series will pick them up. The chapter also explains why the profile names product surfaces rather than brand names, and why only some facets earn a place on the enforcement plane.
+:::
+
+## Why VMware Is the Test Case
+
+Every platform in the previous chapter, however different its storage, played the same role: it held facts about identities or workloads so that governance could read them back. VMware was chosen as a first-class target because it refuses to stay in that role. Its estate spans three planes that the substrate cares about — an identity surface, a virtualization surface that hosts a large share of the world's regulated workloads, and a network-enforcement surface — and an organization running VMware almost always runs all three together. A contract that could only describe one of them would leave the same enterprise with two ungoverned planes and a gap exactly where segmentation policy lives.
+
+The profile binds all three, and the fact that it can — in the same schema, validated by the same loader, with no special cases — is the proof that the contract's vocabulary of planes, locators, and kinds was pitched at the right altitude.
+
+## Identity — Workspace ONE Access
+
+The identity plane is the familiar story, told one more time. Workspace ONE Access carries custom user attributes; the profile binds all ten named facets, keyed by facet name. Access sits in most deployments as a federation and conditional-access layer in front of applications, which means the facets stamped there participate in the same kind of policy the Entra estate composes — and means the organizational address travels with the user into every application Access brokers, regardless of which directory authored the underlying account.
+
+## Workload — vSphere Tag Categories and an Old Discipline Rediscovered
+
+The workload plane is where VMware's native machinery aligns with the substrate so neatly it looks designed for it. vSphere organizes tags into categories, and a category can be declared single-cardinality: an object may carry at most one tag from it. The profile creates one category per facet — the category named for the facet, the tags within it named for the codebook's values — and declares every category single-cardinality.
+
+Readers who came through the OrgPath series will recognize the shape immediately. One facet per slot was ADR-078's central discipline on the Entra estate, the rule that made facets composable in policy instead of parseable in scripts. vSphere enforces the same discipline natively, in the platform, before any UIAO tooling is involved: a virtual machine cannot hold two departments, because the category will not allow it. The binding profile does not have to legislate the invariant; it only has to choose the structure that inherits it.
+
+Seven facets bind on this plane — the same workload-relevant seven as the cloud profiles, for the same editorial reasons. A virtual machine has a region, a department, a division, a role, a classification, a cost center, and an account type; it does not have a hire date.
+
+## Enforcement — NSX, and the Plane Nothing Else Offered
+
+The third plane is the one no previous profile could bind. NSX attaches security tags to virtual machines and resolves security groups from tag-based membership criteria — and NSX groups are not bookkeeping, they are the objects distributed firewall rules target. A facet value carried as an NSX tag is therefore not a label *about* enforcement; it is an input *to* enforcement, one membership evaluation away from deciding what traffic a machine may receive.
+
+The profile binds the enforcement-relevant subset there — department, division, role, classification, account type — under a dedicated tag scope so the substrate's tags cannot collide with anyone else's. The subset is smaller than the workload plane's seven by deliberate choice: segmentation policy composes on who a machine *belongs to* and *what kind of thing it is*, not on which cost center is billed for it, and a tag surface that feeds a firewall should carry exactly what the firewall needs and nothing it does not.
+
+What it means for facet predicates to compile into NSX group criteria — and into their equivalents on other vendors' enforcement surfaces — is the subject of the next chapter, because that story is bigger than VMware.
+
+## A Note on Names
+
+One last detail of the profile is a quiet hedge against history. Nowhere does the profile's contract depend on a brand name: the locators are pinned to product *surfaces* — Workspace ONE Access user attributes, vSphere tag categories, NSX security tags — rather than to the names on the box. Vendor portfolios get renamed, re-bundled, and re-sold; the acquisition that moved VMware's products under new ownership made the point unsubtly. APIs and object models outlive brand names, and a storage contract written against the durable layer keeps a tenant's profile valid through the next rebranding without a governed change for what is, substantively, no change at all.
+
+Three planes, one profile, one codebook. The substrate now lives on people, on machines, and on the surface that decides what the machines may talk to. The next chapter follows that last thread across every vendor at once: the facets as a Zero Trust policy subject that no single platform owns.
