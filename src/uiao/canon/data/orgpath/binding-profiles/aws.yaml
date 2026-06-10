@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../../../schemas/orgpath/binding-profile.schema.json
+#
+# UIAO OrgPath Binding Profile — aws
+# ==================================
+# Canonical source: src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md §aws
+# Binding ADR:      src/uiao/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.md
+
+schema_version: "1.0.0"
+document_id: UIAO_193
+profile_id: aws
+display_name: "AWS — IAM Identity Center + resource tags"
+status: proposed
+boundary: commercial
+planes: [identity, workload]
+endpoint_resolution: "commercial-partition Identity Center / resource-tagging endpoints (GovCloud partitions out of scope per ADR-098)"
+notes: >-
+  Identity plane stores facets as IAM Identity Center custom user/group
+  attributes (key = facet name). Where the directory is externally
+  federated, facets are sourced from the upstream IdP profile and projected
+  onto Identity Center attributes. Workload plane stores facets as resource
+  tags on EC2/SSM-managed instances (tag key = facet name).
+
+facet_bindings:
+  # Identity plane — Identity Center custom attributes (arbitrary keys; no overflow).
+  - { facet: region,          plane: identity, locator: region,          locator_kind: custom_attribute, writable: true }
+  - { facet: department,      plane: identity, locator: department,      locator_kind: custom_attribute, writable: true }
+  - { facet: division,        plane: identity, locator: division,        locator_kind: custom_attribute, writable: true }
+  - { facet: role,            plane: identity, locator: role,            locator_kind: custom_attribute, writable: true }
+  - { facet: cost_center,     plane: identity, locator: cost_center,     locator_kind: custom_attribute, writable: true }
+  - { facet: classification,  plane: identity, locator: classification,  locator_kind: custom_attribute, writable: true }
+  - { facet: hire_date,       plane: identity, locator: hire_date,       locator_kind: custom_attribute, writable: true }
+  - { facet: term_date,       plane: identity, locator: term_date,       locator_kind: custom_attribute, writable: true }
+  - { facet: clearance_level, plane: identity, locator: clearance_level, locator_kind: custom_attribute, writable: true }
+  - { facet: account_type,    plane: identity, locator: account_type,    locator_kind: custom_attribute, writable: true }
+  # Workload plane — EC2/SSM resource tags (tag key = facet name).
+  - { facet: region,          plane: workload, locator: region,          locator_kind: tag, writable: true }
+  - { facet: department,      plane: workload, locator: department,      locator_kind: tag, writable: true }
+  - { facet: division,        plane: workload, locator: division,        locator_kind: tag, writable: true }
+  - { facet: role,            plane: workload, locator: role,            locator_kind: tag, writable: true }
+  - { facet: classification,  plane: workload, locator: classification,  locator_kind: tag, writable: true }
+  - { facet: cost_center,     plane: workload, locator: cost_center,     locator_kind: tag, writable: true }
+  - { facet: account_type,    plane: workload, locator: account_type,    locator_kind: tag, writable: true }
+
+# Resource-tag count limits apply on the workload plane (UIAO_193 §aws):
+# priority overflow with the enforcement-relevant facets first; facets not
+# stored natively surface as DRIFT-IDENTITY "uncaptured".
+overflow:
+  rule: priority
+  plane: workload
+  ordering: [region, department, division, role, classification, cost_center, account_type]
+
+constraints:
+  max_keys: 50
+  max_value_length: 256

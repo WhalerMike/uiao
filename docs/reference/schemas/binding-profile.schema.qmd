@@ -1,0 +1,301 @@
+---
+title: "UIAO OrgPath Binding Profile — Vendor-Neutral Facet Storage Contract"
+subtitle: "Schema Reference · binding-profile.schema.json"
+date: 2026-05-14
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/orgpath/binding-profile.schema.json`](../../../src/uiao/schemas/orgpath/binding-profile.schema.json)
+- **Dialect:** `https://json-schema.org/draft/2020-12/schema`
+- **`$id`:** `https://uiao.io/schemas/orgpath/binding-profile.schema.json`
+:::
+
+## Description
+
+Machine-readable per-target declaration of where each OrgPath codebook facet lives on a platform. Per ADR-098, the 15-facet codebook (UIAO_151) defines what facets mean; a binding profile defines where each facet is stored (an attribute name, a tag key, a label key, a custom-attribute id) and how it is read/written at the Moderate/Commercial boundary. The Microsoft onPremisesExtensionAttribute1..15 slot table fixed by ADR-078 is recast as the microsoft-entra reference profile. Normative source: UIAO_193 §Binding-profile schema. Facet existence against the codebook, locator uniqueness per plane, and overflow-ordering integrity are enforced at load time by uiao.modernization.orgtree.binding_profiles, not in JSON Schema.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema_version` | string | ✓ | Binding-profile schema version (independent of the codebook version). Major pinned to 1. |
+| `document_id` | `const: 'UIAO_193'` | ✓ | Binding profiles are executable canon under the UIAO_193 allocation, the way codebook.yaml is under UIAO_151. |
+| `profile_id` | string | ✓ | Kebab-case stable identifier (microsoft-entra, aws, gcp, okta, ldap, vmware). Never renamed; retire via status=deprecated + successor. |
+| `display_name` | string | ✓ |  |
+| `status` | enum: 'reference', 'proposed', 'active', 'deprecated' | ✓ | reference = the canonical worked example (microsoft-entra); proposed = specified, no shipped transport; active = transport shipped and in use; deprecated = retiring, must name successor. |
+| `successor` | string |  | Required when status == deprecated. |
+| `boundary` | enum: 'commercial', 'gcc-moderate' | ✓ | Per ADR-098 the only permitted boundaries are Moderate and Commercial. The commercial cloud value also serves GCC-Moderate per ADR-033. High-side values require a superseding ADR and a schema change. |
+| `planes` | array&lt;enum: 'identity', 'workload', 'enforcement'&gt; | ✓ | Which planes this profile binds. A facet may bind once per plane (e.g. vmware binds department on identity, workload, and enforcement). |
+| `endpoint_resolution` | string | ✓ | Name of the resolution seam (never a hardcoded host) the profile's transport uses to reach the target at the declared boundary. |
+| `facet_bindings` | array&lt;`$ref: #/$defs/facetBinding`&gt; | ✓ | One entry per (facet, plane). Facet names must exist in the codebook; (plane, locator) pairs must be unique. Both enforced by the loader. |
+| `overflow` | `$ref: #/$defs/overflow` |  | Required when the target cannot store all bound facets natively on some plane. Declares the deterministic rule; never silently drop facets. |
+| `constraints` | object |  | Native platform limits the transport must respect. |
+| `notes` | string |  | Profile-level caveats (e.g. tenant-override modes, product-surface naming policy). |
+
+## Full Schema
+
+```{.json filename="binding-profile.schema.json"}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/binding-profile.schema.json",
+  "title": "UIAO OrgPath Binding Profile \u2014 Vendor-Neutral Facet Storage Contract",
+  "description": "Machine-readable per-target declaration of where each OrgPath codebook facet lives on a platform. Per ADR-098, the 15-facet codebook (UIAO_151) defines what facets mean; a binding profile defines where each facet is stored (an attribute name, a tag key, a label key, a custom-attribute id) and how it is read/written at the Moderate/Commercial boundary. The Microsoft onPremisesExtensionAttribute1..15 slot table fixed by ADR-078 is recast as the microsoft-entra reference profile. Normative source: UIAO_193 \u00a7Binding-profile schema. Facet existence against the codebook, locator uniqueness per plane, and overflow-ordering integrity are enforced at load time by uiao.modernization.orgtree.binding_profiles, not in JSON Schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "profile_id",
+    "display_name",
+    "status",
+    "boundary",
+    "planes",
+    "endpoint_resolution",
+    "facet_bindings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$",
+      "description": "Binding-profile schema version (independent of the codebook version). Major pinned to 1."
+    },
+    "document_id": {
+      "const": "UIAO_193",
+      "description": "Binding profiles are executable canon under the UIAO_193 allocation, the way codebook.yaml is under UIAO_151."
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "description": "Kebab-case stable identifier (microsoft-entra, aws, gcp, okta, ldap, vmware). Never renamed; retire via status=deprecated + successor."
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "reference",
+        "proposed",
+        "active",
+        "deprecated"
+      ],
+      "description": "reference = the canonical worked example (microsoft-entra); proposed = specified, no shipped transport; active = transport shipped and in use; deprecated = retiring, must name successor."
+    },
+    "successor": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "description": "Required when status == deprecated."
+    },
+    "boundary": {
+      "enum": [
+        "commercial",
+        "gcc-moderate"
+      ],
+      "description": "Per ADR-098 the only permitted boundaries are Moderate and Commercial. The commercial cloud value also serves GCC-Moderate per ADR-033. High-side values require a superseding ADR and a schema change."
+    },
+    "planes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "identity",
+          "workload",
+          "enforcement"
+        ]
+      },
+      "description": "Which planes this profile binds. A facet may bind once per plane (e.g. vmware binds department on identity, workload, and enforcement)."
+    },
+    "endpoint_resolution": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the resolution seam (never a hardcoded host) the profile's transport uses to reach the target at the declared boundary."
+    },
+    "facet_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/facetBinding"
+      },
+      "description": "One entry per (facet, plane). Facet names must exist in the codebook; (plane, locator) pairs must be unique. Both enforced by the loader."
+    },
+    "overflow": {
+      "$ref": "#/$defs/overflow",
+      "description": "Required when the target cannot store all bound facets natively on some plane. Declares the deterministic rule; never silently drop facets."
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Native platform limits the transport must respect.",
+      "properties": {
+        "max_keys": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum locator keys the platform allows per object (e.g. a resource-tag cap)."
+        },
+        "max_value_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "value_charset": {
+          "type": "string",
+          "description": "Regex describing the characters the platform accepts in values (e.g. GCP labels: ^[a-z0-9_-]*$). The mapping layer normalizes; the profile records the constraint."
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Profile-level caveats (e.g. tenant-override modes, product-surface naming policy)."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "deprecated"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "successor"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "facetBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facet",
+        "locator",
+        "locator_kind",
+        "writable"
+      ],
+      "properties": {
+        "facet": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Codebook facet name (snake_case). Must exist in codebook.yaml \u2014 enforced by the loader."
+        },
+        "plane": {
+          "enum": [
+            "identity",
+            "workload",
+            "enforcement"
+          ],
+          "description": "Which plane this binding applies to. Optional for single-plane profiles (defaults to the profile's only plane); required by the loader when the profile declares multiple planes."
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Native storage key on this target: attribute name, tag key/category, label key, or custom-attribute id."
+        },
+        "locator_kind": {
+          "enum": [
+            "attribute",
+            "tag",
+            "label",
+            "custom_attribute",
+            "group_membership"
+          ],
+          "description": "What species of native storage the locator names."
+        },
+        "writable": {
+          "type": "boolean",
+          "description": "Whether the write-back transport may set this locator. false = read-only source surface."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Per-facet caveats (length truncation, value normalization, scope/category mechanics)."
+        }
+      }
+    },
+    "overflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule"
+      ],
+      "properties": {
+        "rule": {
+          "enum": [
+            "priority",
+            "composite-secondary"
+          ],
+          "description": "priority = store the highest-priority facets per `ordering`; the rest surface as DRIFT-IDENTITY uncaptured. composite-secondary = store primary facets natively and pack overflow into one reserved composite key, parsed back on read; secondary mechanism only, never replaces native storage for primary facets (ADR-078 rationale)."
+        },
+        "plane": {
+          "enum": [
+            "identity",
+            "workload",
+            "enforcement"
+          ],
+          "description": "Which plane the overflow rule applies to (the constrained one). Optional for single-plane profiles."
+        },
+        "ordering": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": "Required when rule == priority. Facets stored natively first, in order; must be a subset of the profile's bound facets (loader-enforced)."
+        },
+        "composite_locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required when rule == composite-secondary. The single reserved key holding the packed overflow (facet=value;\u2026). Must not collide with any facet binding's locator (loader-enforced)."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "priority"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "required": [
+              "ordering"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "composite-secondary"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "required": [
+              "composite_locator"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
+```

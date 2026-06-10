@@ -172,6 +172,7 @@
 - [UIAO Adapter Registry Schema](reference/schemas/adapter-registry.schema.html)
 - [UIAO Delegation Matrix (AUs + Scoped Roles)](reference/schemas/admin-units.schema.html)
 - [UIAO Application Identity Schema (UIAO_129)](reference/schemas/application-identity.schema.html)
+- [UIAO OrgPath Binding Profile — Vendor-Neutral Facet Storage Contract](reference/schemas/binding-profile.schema.html)
 - [UIAO OrgPath Codebook](reference/schemas/codebook.schema.html)
 - [SCIM 2.0 Common Attributes (RFC 7643 §3.1)](reference/schemas/common.schema.html)
 - [UIAO Device OrgPath Plane Registry](reference/schemas/device-planes.schema.html)
