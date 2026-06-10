@@ -1,6 +1,6 @@
 """Tests for the OrgPath binding-profile loader (ADR-098 / UIAO_193).
 
-Covers the happy path (all six canonical profiles load, validate against
+Covers the happy path (all nine canonical profiles load, validate against
 the JSON Schema, and cross-check against the codebook) and the failure
 modes the loader must reject: unknown facets, duplicate locators,
 missing planes on multi-plane profiles, overflow-ordering integrity,
@@ -73,6 +73,26 @@ def test_okta_binds_all_named_facets_with_no_overflow():
     p = load_binding_profile("okta")
     assert len(p.bindings) == 10
     assert p.overflow is None
+
+
+@pytest.mark.parametrize("profile_id", ["pingone", "keycloak", "auth0"])
+def test_idp_expansion_profiles_are_pure_identity_no_overflow(profile_id):
+    """ADR-099: PingOne / Keycloak / Auth0 mirror the okta shape exactly."""
+    p = load_binding_profile(profile_id)
+    assert p.status == "proposed"
+    assert p.boundary == "commercial"
+    assert set(p.planes) == {"identity"}
+    assert len(p.bindings) == 10
+    assert p.overflow is None
+    assert all(b.locator_kind == "custom_attribute" and b.writable for b in p.bindings)
+    # Locators round-trip on the facet name (snake_case), like okta.
+    assert {b.facet for b in p.bindings} == {b.locator for b in p.bindings}
+
+
+def test_idp_expansion_profiles_are_canonical():
+    """The ADR-099 ids are registered so load_all picks them up."""
+    profiles = load_all_binding_profiles()
+    assert {"pingone", "keycloak", "auth0"} <= set(profiles)
 
 
 def test_priority_overflow_orderings_are_bound_facets():

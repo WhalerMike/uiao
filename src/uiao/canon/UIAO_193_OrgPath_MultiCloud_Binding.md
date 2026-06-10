@@ -22,14 +22,14 @@ This specification makes OrgPath the organizational substrate across a mixed ent
 
 1. The **binding-profile** abstraction: a per-target map from each codebook facet to a native storage locator, plus the read/write mechanics for that surface.
 2. The normative **binding-profile schema** that the executable per-target YAML (deferred to implementation per ADR-098 §D6) must satisfy.
-3. The **per-target profiles** for the six first-class targets at the Moderate and Commercial boundaries.
+3. The **per-target profiles** for the first-class targets at the Moderate and Commercial boundaries — the original six per [ADR-098](adr/adr-098-orgpath-vendor-neutral-binding-profiles.md) §D3, plus the three IdP targets (PingOne, Keycloak, Auth0) added by [ADR-099](adr/adr-099-orgpath-idp-binding-profile-expansion.md).
 4. The **Zero Trust** projection: how facet predicates resolve to native enforcement-policy constructs across vendors, and how this maps to the CISA Zero Trust Maturity Model pillars.
 
 The facet *semantics* and *value enumerations* remain the exclusive province of the codebook (UIAO_151 narrative; `data/orgpath/codebook.yaml` executable). This document never redefines a facet — it only declares where facets are stored and how they are projected onto policy.
 
 ## Scope
 
-Covers all 15 codebook facets across the six first-class binding-profile targets. Applies to the read (assess), derive, write-back (stamp), and enforcement-projection stages of the OrgPath lifecycle. Boundary scope is **Moderate and Commercial only** — every profile resolves only commercial / GCC-Moderate endpoints; no GovCloud, sovereign, or high-side surfaces are in scope. The `commercial` cloud value also serves GCC-Moderate per ADR-033.
+Covers all 15 codebook facets across the nine first-class binding-profile targets (the six in ADR-098 §D3 plus PingOne / Keycloak / Auth0 in ADR-099). Applies to the read (assess), derive, write-back (stamp), and enforcement-projection stages of the OrgPath lifecycle. Boundary scope is **Moderate and Commercial only** — every profile resolves only commercial / GCC-Moderate endpoints; no GovCloud, sovereign, or high-side surfaces are in scope. The `commercial` cloud value also serves GCC-Moderate per ADR-033.
 
 Out of scope: the facet semantics themselves (UIAO_151), the drift taxonomy mechanics (UIAO_163), and the Microsoft-tenant Zero Trust *assessment* digest (`uiao.adapters.zta`), which scores posture rather than enforcing policy. This document concerns the cross-vendor enforcement *subject* and the storage contract.
 
@@ -111,7 +111,7 @@ The executable per-target profile at `src/uiao/canon/data/orgpath/binding-profil
 | Field | Type | Required | Meaning |
 |---|---|---|---|
 | `schema_version` | semver string | yes | Profile-schema version (independent of the codebook version). |
-| `profile_id` | kebab-case string | yes | Stable identifier (`microsoft-entra`, `aws`, `gcp`, `okta`, `ldap`, `vmware`). Never renamed; retire via `status` + successor. |
+| `profile_id` | kebab-case string | yes | Stable identifier (`microsoft-entra`, `aws`, `gcp`, `okta`, `ldap`, `vmware`, `pingone`, `keycloak`, `auth0`). Never renamed; retire via `status` + successor. |
 | `display_name` | string | yes | Human-readable name. |
 | `status` | enum | yes | `reference` \| `proposed` \| `active` \| `deprecated`. The `microsoft-entra` profile is `reference`. |
 | `boundary` | enum | yes | `commercial` \| `gcc-moderate`. High-side values are out of scope per ADR-098. |
@@ -188,6 +188,30 @@ VMware is bound across all three planes — the proof that the contract is not I
 - **Overflow:** vSphere tag-category count is generous; `priority` overflow only if a tenant caps categories. NSX security-tag scope holds the enforcement-relevant subset (typically Department, Division, Role, Classification, AccountType).
 - **Naming note:** locators are pinned to product *surfaces* (Workspace ONE Access attributes, vSphere tags/categories, NSX security tags/groups), not brand names, to limit post-acquisition churn.
 
+### `pingone` (ADR-099)
+
+- **Planes:** identity.
+- **Identity storage:** PingOne directory custom user attributes (custom attribute keys named for the facet).
+- **Endpoint resolution:** the PingOne region API endpoint from operator config (resolved, never hardcoded); commercial only.
+- **Overflow:** none — PingOne custom attributes are arbitrary; all 10 named facets bind natively.
+- **Carriage note:** PingFederate is the federation hub for runtime claim carriage to relying parties (see "Facet carriage"); this profile governs directory *storage*, not token emission. PingOne (directory) is the storage surface; PingFederate (federation) and PingDirectory are distinct Ping surfaces — locators pin to PingOne directory attributes to limit brand-surface churn.
+
+### `keycloak` (ADR-099)
+
+- **Planes:** identity.
+- **Identity storage:** Keycloak user attributes (arbitrary key/values named for the facet). Applies equally to the Red Hat build of Keycloak.
+- **Endpoint resolution:** the Keycloak realm admin REST endpoint from operator config; commercial / on-prem only.
+- **Overflow:** none — user attributes are arbitrary; all 10 named facets bind natively.
+- **Carriage note:** protocol mappers project attributes into OIDC / SAML tokens per "Facet carriage". This is the open-source counterpart to the `okta` profile.
+
+### `auth0` (ADR-099)
+
+- **Planes:** identity.
+- **Identity storage:** the Auth0 user profile `app_metadata` namespace (administrator-controlled, not user-editable — distinct from `user_metadata`). Locators are the bare facet names scoped to `app_metadata`, recorded as a profile-level note rather than repeated per locator.
+- **Endpoint resolution:** the Auth0 tenant Management API endpoint from operator config; commercial only.
+- **Overflow:** none — `app_metadata` is an arbitrary object; all 10 named facets bind natively.
+- **Carriage note:** a custom Auth0 Action surfaces facets as token claims per "Facet carriage". This is the CIAM-oriented identity profile.
+
 ## Zero Trust — OrgPath as the cross-vendor policy subject
 
 Zero Trust requires that every access and segmentation decision be made against a verified subject, continuously, with least privilege. The hard part in a mixed estate is that each enforcement surface speaks its own dialect of "who/what is this." OrgPath solves this at the substrate layer: **the codebook facet set is the stable, vendor-independent policy subject**, and each binding profile's read side projects facets onto the native policy construct of an enforcement surface. A microsegmentation rule is authored once against facets and compiles per vendor.
@@ -247,7 +271,8 @@ Drift is profile-agnostic at the value layer: the engine validates facet values 
 - **UIAO_151 (codebook)** — unchanged SSOT for facet semantics and value enumerations. This spec stores and projects those facets; it never redefines them.
 - **ADR-078** — its slot table is now the content of the `microsoft-entra` reference profile.
 - **ADR-035** — its executable-codebook binding is generalized here across profiles; the YAML↔narrative reconciliation caveat applies per-profile.
-- **ADR-098** — authorizes this spec and the binding-profile model.
+- **ADR-098** — authorizes this spec and the binding-profile model (the original six targets).
+- **ADR-099** — amends ADR-098 §D3 to add the `pingone` / `keycloak` / `auth0` identity-plane targets specified above.
 - **UIAO_152 / UIAO_154** — dynamic groups and Administrative Units are the Microsoft profile's projection; the enforcement-projection table generalizes that pattern across vendors.
 - **UIAO_163** — the drift engine consumes facets from any profile; this spec adds the uncaptured and cross-profile drift conditions.
 - **`uiao.adapters.zta`** — complementary read-only Zero Trust assessment digest; this spec is the enforcement subject, not posture scoring.
@@ -262,7 +287,7 @@ All profiles and their transports are **Moderate and Commercial only**. No GovCl
 This document is the specification; the following are the implementation deliverables it targets, each landing with happy-path + failure-mode tests:
 
 1. **Binding-profile JSON Schema** — `src/uiao/schemas/orgpath/binding-profile.schema.json` implementing the normative table above.
-2. **Executable per-target profiles** — `src/uiao/canon/data/orgpath/binding-profiles/{microsoft-entra,aws,gcp,okta,ldap,vmware}.yaml`.
+2. **Executable per-target profiles** — `src/uiao/canon/data/orgpath/binding-profiles/{microsoft-entra,aws,gcp,okta,ldap,vmware,pingone,keycloak,auth0}.yaml` (the last three per ADR-099, shipped at `status: proposed`).
 3. **Per-target mapping + transport modules** — `<target>_mapping.py` (Source→facet) and `<target>_transport.py`, mirroring `ad_mapping.py` / Graph / ARM transports; commercial/Moderate endpoint resolution only.
 4. **Adapter-registry entries** — non-Microsoft identity adapters register `mission-class: identity` (a first), read-only assessors as `class: conformance`.
 5. **Enforcement-projection compiler** — facet predicate → native policy construct per surface (NSX, Palo Alto, Elisity, AWS, GCP), with per-surface conformance tests.
@@ -272,6 +297,7 @@ This document is the specification; the following are the implementation deliver
 ## References
 
 - [ADR-098 — OrgPath Vendor-Neutral Binding Profiles](adr/adr-098-orgpath-vendor-neutral-binding-profiles.md)
+- [ADR-099 — OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0)](adr/adr-099-orgpath-idp-binding-profile-expansion.md)
 - [ADR-078 — OrgPath Attribute Schema (15-Facet)](adr/adr-078-orgpath-attribute-schema-15-facet.md)
 - [ADR-035 — OrgPath Codebook Executable Binding](adr/adr-035-orgpath-codebook-binding.md)
 - [ADR-085 — Universal-Enterprise Positioning](adr/adr-085-universal-enterprise-positioning.md)

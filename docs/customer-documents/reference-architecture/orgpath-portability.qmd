@@ -1,0 +1,165 @@
+---
+title: "OrgPath Portability — One Org Model, Any Cloud, Any IdP"
+subtitle: "Why the OrgPath governance layer is not Microsoft-locked"
+date: 2026-06-10
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: aspirational
+lifecycle_review: 2026-12-10
+aliases:
+  - /customer-documents/reference-architecture/orgpath-portability.html
+---
+
+{{< lifecycle-banner >}}
+
+> **The short version.** OrgPath's value — a governed, deterministic
+> organizational model that drives access, segmentation, and audit — does
+> **not** depend on Microsoft Entra ID. The organizational *meaning* is
+> vendor-neutral canon; only the *storage location* is vendor-specific, and
+> that is handled by a small, swappable **binding profile** per platform. You
+> adopt a new cloud or identity provider by writing a profile, not by forking
+> the product. Provenance: [UIAO_193](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md),
+> [ADR-098](../../adr/adr-098-orgpath-vendor-neutral-binding-profiles.qmd),
+> [ADR-099](../../adr/adr-099-orgpath-idp-binding-profile-expansion.qmd).
+
+## The question this page answers
+
+> *"We're not all-Microsoft. We have Okta (or Ping, or Keycloak, or Auth0)
+> for identity, and workloads in AWS, GCP, and VMware. Is OrgPath only useful
+> if we live in Entra ID?"*
+
+No. OrgPath was designed from the start to separate **what your org structure
+means** from **where that structure is stored**. The first is universal; the
+second is the only part that changes per vendor — and it's deliberately the
+small part.
+
+## What travels, and what adapts
+
+| Component | Portability | Why |
+|---|---|---|
+| **OrgPath codebook** (the canonical org hierarchy, in YAML + JSON Schema) | **Very high** | A pure data model. No vendor dependency. It is the single source of truth every platform is governed against. |
+| **The OrgPath facets** (a governed set of org attributes: region, department, division, role, classification, lifecycle dates, clearance, account type, …) | **Very high** | Structured attribute values. Any directory, cloud, or workload platform that supports custom attributes, tags, or labels can hold them. |
+| **Governance layer** (drift detection, evidence/OSCAL generation, codebook validation) | **Very high** | Sits *above* the identity provider. It reasons over facets, not over a vendor API. |
+| **Event-driven recalculation** ("movers") | **High** | Triggered by attribute-change events (webhooks / SCIM events / polling) — mechanism, not vendor. |
+| **Policy & segmentation targeting** | **Medium-high** | Facets map to each platform's own rules engine (dynamic groups, group rules, policy expressions, security tags). |
+| **Storage location & per-vendor write APIs** | **Vendor-specific** | This is the *binding profile* — the deliberately small, swappable part. |
+
+The first four rows are the bulk of the value and they are vendor-neutral.
+Only the last row is platform-specific, and it is contained in a single
+declarative file per target.
+
+## How portability works: the binding-profile model
+
+Two things are kept strictly separate:
+
+1. **The facet is the *subject*.** What "Department = Finance" or
+   "Classification = Contractor" *means* is defined once, in the codebook
+   ([UIAO_151](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md)).
+   Every platform is governed against this same definition.
+2. **The binding profile is the *storage map*.** For one target platform, a
+   profile declares *where* each facet lives (an attribute name, a tag key, a
+   label, a custom-attribute id) and how it is read and written. The facet
+   model never changes; only the locator and the transport do.
+
+Because the facet vocabulary is constant, a policy authored against facets —
+*"Finance contractors below Secret clearance get step-up auth and session
+limits"* — is meaningful no matter which platform stamped the subject. The
+profile is the unit of projection; the facet predicate is the unit of policy.
+
+::: {.callout-tip}
+## The one-line portability claim
+A new platform is onboarded by **writing a binding profile (a locator map) +
+a transport** — mirroring the established AD-mapping / Graph / ARM pattern.
+**No core change is required**, and there are **no separate products to buy or
+fork**: profiles are additive within the single governed codebase.
+:::
+
+## Coverage today
+
+The following targets are first-class binding-profile targets at the
+Commercial / Moderate boundary. Each is specified in
+[UIAO_193](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md);
+the storage contracts ship as executable canon, with per-vendor write
+transports following on the established pattern.
+
+| Target | Plane(s) | Where facets live | Status |
+|---|---|---|---|
+| **Microsoft Entra ID** | identity, device | Directory extension attributes; Arc machine tags | Reference profile |
+| **AWS** | identity, workload | IAM Identity Center attributes; resource tags | Specified |
+| **GCP** | identity, workload | Cloud Identity attributes; resource labels | Specified |
+| **VMware** | identity, workload, enforcement | Workspace ONE Access attributes; vSphere tags; NSX security groups | Specified |
+| **Okta** | identity | Universal Directory custom attributes | Specified |
+| **Generic LDAP** | identity | Directory attributes (schema-extension or reserved) | Specified |
+| **Ping (PingOne)** | identity | PingOne directory custom attributes | Specified (ADR-099) |
+| **Keycloak / Red Hat build** | identity | Keycloak user attributes | Specified (ADR-099) |
+| **Auth0** | identity | User profile `app_metadata` | Specified (ADR-099) |
+
+VMware is intentionally the three-plane proof: the *same* facet set projects
+onto a user (Workspace ONE Access), a workload (a vSphere VM), and an
+enforcement construct (an NSX group) — evidence that the contract is not
+identity-provider-centric.
+
+The first-class list is curated, not open-ended: each new target is a governed
+decision (an ADR), which is why Ping/Keycloak/Auth0 arrived via
+[ADR-099](../../adr/adr-099-orgpath-idp-binding-profile-expansion.qmd) rather
+than as a quiet config change.
+
+## Getting facets to where they're consumed: carriage
+
+Storing a facet is one thing; getting it to the app or edge that enforces on
+it is another — especially across mixed identity providers. Two open
+mechanisms carry facets without locking you to one vendor:
+
+- **SCIM 2.0 provisioning.** Where a target supports SCIM, facets ride as
+  custom schema-extension attributes on the SCIM `User` resource — the
+  standards-based provisioning path for the identity profiles.
+- **Token claims (SAML / OIDC).** Facets project as custom claims in the
+  tokens your apps and your secure-access (SASE/SSE) layer already consume, so
+  every relying party sees the same organizational context regardless of which
+  IdP minted the token. This is the federation analog of the certificate-based
+  carriage used for network admission
+  ([UIAO_012](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_012_OrgPath_in_NAC_and_8021X.md))
+  and the signal the access-decision layer
+  ([UIAO_013](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_013_OrgPath_in_Zero_Trust_and_SASE.md))
+  acts on.
+
+## What stays the same no matter the platform
+
+This is the part that makes portability *governable* rather than merely
+*possible*:
+
+- **One source of truth.** The codebook defines org structure once; every
+  platform is reconciled against it.
+- **Drift is portable.** The drift engine validates facet *values* against the
+  codebook regardless of where they're stored — so a stale or out-of-policy
+  facet surfaces as the same `DRIFT-IDENTITY` finding on Okta, Keycloak, or
+  Entra. In a heterogeneous estate, that's the difference between org context
+  you can attest to and org context you merely hope is correct.
+- **Evidence is portable.** The same audit artifacts (codebook validation,
+  drift classification, OSCAL output) hold across a mixed estate — you don't
+  re-prove org-context accuracy per vendor.
+- **Zero Trust subject is portable.** Facets are the vendor-independent policy
+  subject: author a microsegmentation or access rule once against facets, and
+  it projects onto each platform's native enforcement construct.
+
+## What this means for a buyer
+
+- You are **not** betting your governance model on a single identity vendor.
+- You can run **multiple IdPs and multiple clouds** under one org model and one
+  audit story.
+- Adopting a new platform is **additive** — a profile, not a migration of the
+  governance layer.
+- The governance, drift, and evidence value you get on Microsoft is the **same
+  value** you get on Okta, Ping, Keycloak, Auth0, AWS, GCP, or VMware.
+
+## Sources
+
+- [UIAO_193 — OrgPath Multi-Cloud Binding Profiles](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md) — the binding-profile specification (storage + carriage + Zero Trust projection).
+- [ADR-098 — Vendor-Neutral Binding Profiles](../../adr/adr-098-orgpath-vendor-neutral-binding-profiles.qmd) — the decision that decoupled storage from the facet model.
+- [ADR-099 — IdP Expansion (PingOne, Keycloak, Auth0)](../../adr/adr-099-orgpath-idp-binding-profile-expansion.qmd) — adds the three IdP targets.
+- [OrgPath Codebook](codebook.qmd) — the org vocabulary that stays constant across platforms.
+- [Where Data Lives — OrgPath](where-data-lives.qmd) — the storage-topology companion for the Microsoft estate.
