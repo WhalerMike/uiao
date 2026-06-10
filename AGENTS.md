@@ -103,6 +103,25 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 |---|---|---|---|---|
 | **OrgPath binding profiles** | `uiao.modernization.orgtree.binding_profiles` | ❌ None | **Library-only** | UIAO_193 / ADR-098; loads + validates the six executable per-target storage contracts (`src/uiao/canon/data/orgpath/binding-profiles/`) against `binding-profile.schema.json` and the Codebook. `microsoft-entra` is the reference profile (the ADR-078 slot table); `aws`, `gcp`, `okta`, `ldap`, `vmware` are `proposed` until their transports ship. Boundary: Moderate/Commercial only |
 
+## Public surface additions (Active Governance Directory — ADR-099)
+
+The **Active Governance Directory (AGD)** is UIAO's protocol-projection plane: an
+in-path **read-only** LDAPv3 server (`uiao.directory`) that projects the OrgPath
+Codebook + a principal snapshot over the LDAP wire protocol, so directory-bound
+tooling can query the governance substrate in its native protocol. ADR-099 carves
+the narrow read-only exception to the ADR-092 §1 data-plane boundary that this
+in-path surface requires — it serves `BIND` / `SEARCH` / `UNBIND` and carries **no
+write op**, so it cannot mutate canon or the provider of record. Pure-stdlib
+(`asyncio` + a hand-rolled BER subset); no new runtime dependency. Kerberos/KDC,
+SASL/StartTLS, write ops, and AD-specific schema are explicit ADR-099 roadmap, not
+shipped.
+
+| Feature | Module | CLI surface | Tier | Notes |
+|---|---|---|---|---|
+| **AGD LDAP server** | `uiao.directory.server` | `uiao directory serve` | CLI | ADR-099; asyncio LDAPv3 read projection. Anonymous + simple bind; base/one/subtree search; `unwillingToPerform` for unsupported ops. Loopback + plaintext by default — must not leave loopback without LDAPS (roadmap). `--check` validates inputs without binding |
+| **AGD DIT projection** | `uiao.directory.dit` | `uiao directory tree` | CLI | ADR-099; projects a `{principal_id, principal_type, attributes}` snapshot into a read-only DIT using the `ldap` binding profile's `uiaoOrgPath<Facet>` attribute names (UIAO_193). `tree` emits LDIF for inspection. No store of its own — read-only by construction |
+| **AGD LDAP/BER codec** | `uiao.directory.ber`, `uiao.directory.protocol` | ❌ None | **Library-only** | ADR-099; minimal BER/ASN.1 codec + LDAPv3 message parse/serialize (RFC 4511 subset) + the search-filter algebra (and/or/not/present/equality/substrings) |
+
 ## Public surface additions (Azure SaaS — ADR-096)
 
 The multi-tenant SaaS plane (`uiao.saas`) turns the single-tenant `uiao.api`

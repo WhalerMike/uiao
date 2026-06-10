@@ -102,6 +102,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-091](adr-091-sql-server-authentication-transformation.md) | SQL Server Engine Authentication Transformation — Windows/SQL Auth to Entra ID for SQL Server 2022+ | PROPOSED | 2026-06-02 |
 | [ADR-098](adr-098-orgpath-vendor-neutral-binding-profiles.md) | OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots | PROPOSED | 2026-06-10 |
 | [ADR-099](adr-099-orgpath-idp-binding-profile-expansion.md) | OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0) | PROPOSED | 2026-06-10 |
+| [ADR-100](adr-100-active-governance-directory-ldap.md) | Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception | PROPOSED | 2026-06-10 |
 
 ### Microsoft Coverage
 
