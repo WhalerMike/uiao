@@ -32,6 +32,7 @@
   - [OrgTree — Identity Modernization](customer-documents/reference-architecture/orgtree.html)
   - [OrgPath FAQ](customer-documents/reference-architecture/orgpath-faq.html)
   - [OrgPath Portability — One Org Model, Any Cloud, Any IdP](customer-documents/reference-architecture/orgpath-portability.html)
+  - [GPO-to-Cloud Governance Gaps](customer-documents/reference-architecture/gpo-cloud-governance-gaps.html)
   - [Where OrgTree & OrgPath Data Lives](customer-documents/reference-architecture/where-data-lives.html)
   - [Where OrgTree & OrgPath Data Lives — Devices and Azure Resources](customer-documents/reference-architecture/where-data-lives-devices-and-azure.html)
   - [Drift Detection — A Walk-through](customer-documents/reference-architecture/drift-walkthrough.html)
