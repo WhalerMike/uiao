@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../../../schemas/orgpath/binding-profile.schema.json
+#
+# UIAO OrgPath Binding Profile — vmware (three-plane proof)
+# =========================================================
+# Canonical source: src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md §vmware
+# Binding ADR:      src/uiao/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.md
+#
+# VMware is bound across all three planes — the proof that the binding-
+# profile contract is not IdP-centric: the same facet set projects onto a
+# user (Workspace ONE Access), a workload (vSphere VM), and an enforcement
+# construct (NSX security group).
+
+schema_version: "1.0.0"
+document_id: UIAO_193
+profile_id: vmware
+display_name: "VMware — Workspace ONE Access / vSphere tags / NSX security tags"
+status: proposed
+boundary: commercial
+planes: [identity, workload, enforcement]
+endpoint_resolution: "commercial vCenter / NSX manager / Workspace ONE Access endpoints from operator config"
+notes: >-
+  Locators are pinned to product surfaces (Workspace ONE Access user
+  attributes, vSphere tag categories, NSX security tags/groups), not brand
+  names, to limit post-acquisition churn. Workload plane uses one vSphere
+  tag category per facet (category name = facet name, tag name = facet
+  value) with single-cardinality categories enforcing one value per facet
+  per VM. Enforcement plane carries the enforcement-relevant facet subset
+  as NSX security tags (scope uiao-orgpath); facet predicates compile to
+  NSX groups with tag-based membership per the UIAO_193 Zero Trust
+  projection table.
+
+facet_bindings:
+  # Identity plane — Workspace ONE Access custom user attributes.
+  - { facet: region,          plane: identity, locator: region,          locator_kind: custom_attribute, writable: true }
+  - { facet: department,      plane: identity, locator: department,      locator_kind: custom_attribute, writable: true }
+  - { facet: division,        plane: identity, locator: division,        locator_kind: custom_attribute, writable: true }
+  - { facet: role,            plane: identity, locator: role,            locator_kind: custom_attribute, writable: true }
+  - { facet: cost_center,     plane: identity, locator: cost_center,     locator_kind: custom_attribute, writable: true }
+  - { facet: classification,  plane: identity, locator: classification,  locator_kind: custom_attribute, writable: true }
+  - { facet: hire_date,       plane: identity, locator: hire_date,       locator_kind: custom_attribute, writable: true }
+  - { facet: term_date,       plane: identity, locator: term_date,       locator_kind: custom_attribute, writable: true }
+  - { facet: clearance_level, plane: identity, locator: clearance_level, locator_kind: custom_attribute, writable: true }
+  - { facet: account_type,    plane: identity, locator: account_type,    locator_kind: custom_attribute, writable: true }
+  # Workload plane — vSphere tag categories (category = facet, tag = value).
+  - { facet: region,          plane: workload, locator: region,          locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  - { facet: department,      plane: workload, locator: department,      locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  - { facet: division,        plane: workload, locator: division,        locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  - { facet: role,            plane: workload, locator: role,            locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  - { facet: cost_center,     plane: workload, locator: cost_center,     locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  - { facet: classification,  plane: workload, locator: classification,  locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  - { facet: account_type,    plane: workload, locator: account_type,    locator_kind: tag, writable: true, notes: "single-cardinality category" }
+  # Enforcement plane — NSX security tags (enforcement-relevant subset).
+  - { facet: department,      plane: enforcement, locator: department,     locator_kind: tag, writable: true, notes: "NSX tag scope uiao-orgpath" }
+  - { facet: division,        plane: enforcement, locator: division,       locator_kind: tag, writable: true, notes: "NSX tag scope uiao-orgpath" }
+  - { facet: role,            plane: enforcement, locator: role,           locator_kind: tag, writable: true, notes: "NSX tag scope uiao-orgpath" }
+  - { facet: classification,  plane: enforcement, locator: classification, locator_kind: tag, writable: true, notes: "NSX tag scope uiao-orgpath" }
+  - { facet: account_type,    plane: enforcement, locator: account_type,   locator_kind: tag, writable: true, notes: "NSX tag scope uiao-orgpath" }

@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=../../../../schemas/orgpath/binding-profile.schema.json
+#
+# UIAO OrgPath Binding Profile — gcp
+# ==================================
+# Canonical source: src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md §gcp
+# Binding ADR:      src/uiao/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.md
+
+schema_version: "1.0.0"
+document_id: UIAO_193
+profile_id: gcp
+display_name: "Google Cloud — Cloud Identity + resource labels"
+status: proposed
+boundary: commercial
+planes: [identity, workload]
+endpoint_resolution: "commercial Cloud Identity / Compute endpoints"
+notes: >-
+  Identity plane stores facets as Cloud Identity custom schema attributes
+  (key = facet name). Workload plane stores facets as resource labels on
+  Compute Engine instances; label keys/values are constrained to lowercase
+  [a-z0-9_-], so the mapping layer lowercases/normalizes facet values and
+  the drift engine compares post-normalization.
+
+facet_bindings:
+  # Identity plane — Cloud Identity custom schema attributes (no overflow).
+  - { facet: region,          plane: identity, locator: region,          locator_kind: custom_attribute, writable: true }
+  - { facet: department,      plane: identity, locator: department,      locator_kind: custom_attribute, writable: true }
+  - { facet: division,        plane: identity, locator: division,        locator_kind: custom_attribute, writable: true }
+  - { facet: role,            plane: identity, locator: role,            locator_kind: custom_attribute, writable: true }
+  - { facet: cost_center,     plane: identity, locator: cost_center,     locator_kind: custom_attribute, writable: true }
+  - { facet: classification,  plane: identity, locator: classification,  locator_kind: custom_attribute, writable: true }
+  - { facet: hire_date,       plane: identity, locator: hire_date,       locator_kind: custom_attribute, writable: true }
+  - { facet: term_date,       plane: identity, locator: term_date,       locator_kind: custom_attribute, writable: true }
+  - { facet: clearance_level, plane: identity, locator: clearance_level, locator_kind: custom_attribute, writable: true }
+  - { facet: account_type,    plane: identity, locator: account_type,    locator_kind: custom_attribute, writable: true }
+  # Workload plane — Compute Engine labels (lowercased keys; values normalized).
+  - { facet: region,         plane: workload, locator: region,         locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+  - { facet: department,     plane: workload, locator: department,     locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+  - { facet: division,       plane: workload, locator: division,       locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+  - { facet: role,           plane: workload, locator: role,           locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+  - { facet: classification, plane: workload, locator: classification, locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+  - { facet: cost_center,    plane: workload, locator: cost_center,    locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+  - { facet: account_type,   plane: workload, locator: account_type,   locator_kind: label, writable: true, notes: "values lowercased per label charset" }
+
+# Label-count and charset limits apply on the workload plane (UIAO_193 §gcp).
+overflow:
+  rule: priority
+  plane: workload
+  ordering: [region, department, division, role, classification, cost_center, account_type]
+
+constraints:
+  max_keys: 64
+  max_value_length: 63
+  value_charset: "^[a-z0-9_-]*$"
