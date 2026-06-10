@@ -48,6 +48,7 @@ from uiao.cli.adapter import adapter_app  # noqa: E402
 from uiao.cli.canon import canon_app  # noqa: E402
 from uiao.cli.conmon import conmon_app  # noqa: E402
 from uiao.cli.cql import cql_app  # noqa: E402
+from uiao.cli.directory import directory_app  # noqa: E402
 from uiao.cli.enforcement import enforcement_app  # noqa: E402
 from uiao.cli.evidence import evidence_app  # noqa: E402
 from uiao.cli.generate import generate_app  # noqa: E402
@@ -67,6 +68,7 @@ app.add_typer(adapter_app, name="adapter")
 app.add_typer(canon_app, name="canon")
 app.add_typer(conmon_app, name="conmon")
 app.add_typer(cql_app, name="cql")
+app.add_typer(directory_app, name="directory")
 app.add_typer(enforcement_app, name="enforcement")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(generate_app, name="generate")
