@@ -100,6 +100,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
 | [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
 | [ADR-091](adr-091-sql-server-authentication-transformation.md) | SQL Server Engine Authentication Transformation — Windows/SQL Auth to Entra ID for SQL Server 2022+ | PROPOSED | 2026-06-02 |
+| [ADR-098](adr-098-orgpath-vendor-neutral-binding-profiles.md) | OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots | PROPOSED | 2026-06-10 |
 
 ### Microsoft Coverage
 
