@@ -289,8 +289,8 @@ def encode_bind_response(message_id: int, code: ResultCode, message: str = "") -
     return _envelope(message_id, op)
 
 
-def encode_search_result_done(message_id: int, code: ResultCode, message: str = "") -> bytes:
-    op = ber.encode_sequence(_ldap_result(code, message=message), tag=APP_SEARCH_RESULT_DONE)
+def encode_search_result_done(message_id: int, code: ResultCode, message: str = "", matched_dn: str = "") -> bytes:
+    op = ber.encode_sequence(_ldap_result(code, matched_dn=matched_dn, message=message), tag=APP_SEARCH_RESULT_DONE)
     return _envelope(message_id, op)
 
 

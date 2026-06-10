@@ -52,6 +52,17 @@ class Directory:
     def _by_dn(self) -> dict[str, Entry]:
         return {_normalize_dn(e.dn): e for e in self.entries}
 
+    def contains(self, dn: str) -> bool:
+        """True when an entry with this DN exists in the tree.
+
+        An empty DN denotes the configured suffix (treated as present).
+        Used to distinguish ``noSuchObject`` — the base object does not
+        exist (RFC 4511 §4.5.3) — from a base that exists but matches no
+        entries (``success`` / 0 results).
+        """
+        target = _normalize_dn(dn) if dn else _normalize_dn(self.base_dn)
+        return any(_normalize_dn(e.dn) == target for e in self.entries)
+
     def search(self, base_object: str, scope: Scope, filt: Filter) -> list[Entry]:
         """Return entries in ``scope`` of ``base_object`` matching ``filt``."""
         norm_base = _normalize_dn(base_object) if base_object else _normalize_dn(self.base_dn)

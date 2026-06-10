@@ -124,6 +124,16 @@ an operator-supplied credential map. The AGD never becomes the place an
 organization's passwords live — that remains the incumbent IdP's job. SASL/
 Kerberos bind (the path a real AD replacement would need) is deferred per §4.
 
+Anonymous bind exposing the full projection without a prior-bind gate on
+`SEARCH` is **acceptable for this increment** specifically because the
+projection carries only already-governed facet data (OrgPath region,
+department, role, etc.) — never secrets, credentials, or password material.
+The disclosure surface is therefore the governed org structure, which is not
+sensitive at the Moderate/Commercial boundary this targets. Per-bind read
+scoping (restricting which facets/subtrees an anonymous vs. authenticated bind
+may read) is a §4 roadmap control to add before any sensitive-facet projection
+or non-loopback deployment.
+
 ## Consequences
 
 **Positive.**

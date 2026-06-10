@@ -42,6 +42,14 @@ def test_long_form_length() -> None:
     assert offset == len(encoded)
 
 
+def test_octet_string_invalid_utf8_is_replaced_not_rejected() -> None:
+    # decode_octet_string is intentionally lossy (errors="replace") so a
+    # malformed value in a DN/assertion degrades to U+FFFD rather than
+    # killing the connection — pin that contract for this read-only surface.
+    decoded = ber.decode_octet_string(b"ab\xffcd")
+    assert decoded == "ab�cd"
+
+
 def test_sequence_and_children() -> None:
     seq = ber.encode_sequence([ber.encode_integer(5), ber.encode_octet_string("x")])
     tlv, _ = ber.read_tlv(seq)

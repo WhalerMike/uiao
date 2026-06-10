@@ -64,6 +64,16 @@ class LdapServer:
         return protocol.encode_bind_response(req.message_id, code)
 
     def handle_search(self, req: protocol.SearchRequest) -> list[bytes]:
+        # The base object must exist for any scope (RFC 4511 §4.5.3); a base
+        # that exists but matches nothing is success/0 entries, not noSuchObject.
+        if not self.directory.contains(req.base_object):
+            return [
+                protocol.encode_search_result_done(
+                    req.message_id,
+                    protocol.ResultCode.NO_SUCH_OBJECT,
+                    message=f"base object '{req.base_object}' does not exist",
+                )
+            ]
         out: list[bytes] = []
         matched = self.directory.search(req.base_object, req.scope, req.filter)
         effective_limit = min(filter_positive(req.size_limit), self.size_limit) or self.size_limit

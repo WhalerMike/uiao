@@ -160,3 +160,41 @@ def test_unsupported_write_op_is_refused_without_dropping_connection() -> None:
     later_tags = [ber.read_children(r.content)[1].tag for r in responses[1:]]
     assert protocol.APP_SEARCH_RESULT_ENTRY in later_tags
     assert later_tags[-1] == protocol.APP_SEARCH_RESULT_DONE
+
+
+def test_search_missing_base_returns_no_such_object() -> None:
+    # A base object absent from the tree is noSuchObject (RFC 4511 §4.5.3),
+    # not success/0 entries.
+    server = LdapServer(directory=build_directory(PRINCIPALS))
+    responses = asyncio.run(_run_session(server, [_search_present(1, "ou=ghosts,dc=agd,dc=uiao,dc=gov")]))
+    tags = [ber.read_children(r.content)[1].tag for r in responses]
+    assert tags.count(protocol.APP_SEARCH_RESULT_ENTRY) == 0
+    assert tags[-1] == protocol.APP_SEARCH_RESULT_DONE
+    assert _result_code(responses[-1]) == int(protocol.ResultCode.NO_SUCH_OBJECT)
+
+
+def test_search_existing_base_no_match_is_success() -> None:
+    # Base exists but the filter matches nothing -> success, 0 entries.
+    server = LdapServer(directory=build_directory(PRINCIPALS))
+    eq = ber.encode_tlv(
+        protocol.FILTER_EQUALITY,
+        ber.encode_octet_string("uiaoOrgPathRegion") + ber.encode_octet_string("NOWHERE"),
+    )
+    op = ber.encode_sequence(
+        [
+            ber.encode_octet_string("dc=agd,dc=uiao,dc=gov"),
+            ber.encode_enumerated(int(protocol.Scope.WHOLE_SUBTREE)),
+            ber.encode_enumerated(0),
+            ber.encode_integer(0),
+            ber.encode_integer(0),
+            ber.encode_boolean(False),
+            eq,
+            ber.encode_sequence([]),
+        ],
+        tag=protocol.APP_SEARCH_REQUEST,
+    )
+    msg = ber.encode_sequence([ber.encode_integer(1), op])
+    responses = asyncio.run(_run_session(server, [msg]))
+    tags = [ber.read_children(r.content)[1].tag for r in responses]
+    assert tags.count(protocol.APP_SEARCH_RESULT_ENTRY) == 0
+    assert _result_code(responses[-1]) == int(protocol.ResultCode.SUCCESS)
