@@ -313,6 +313,7 @@ OrgPath-driven Zero-Trust / SASE targeting exists because:
 - [UIAO_011 OrgPath in Intune & Device Governance](UIAO_011_OrgPath_in_Intune_and_Device_Governance.md) — Entra-joined client compliance transport (sibling).
 - [UIAO_012 OrgPath in NAC / 802.1X](UIAO_012_OrgPath_in_NAC_and_8021X.md) — network-edge admission transport (sibling).
 - [UIAO_120 Zero-Trust Integration Layer](specs/zero-trust.md) — the ZT pillar/enforcement model this document consumes.
+- [UIAO_193 OrgPath Multi-Cloud Binding Profiles](UIAO_193_OrgPath_MultiCloud_Binding.md) — vendor-neutral storage + facet carriage (SCIM / token claims) that delivers org context to non-Microsoft IdPs and SASE consumers.
 - [UIAO_007 OrgTree Modernization AD → Entra ID](UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md) — programmatic context for the OrgTree work.
 - [UIAO_151 OrgPath Codebook](UIAO_151_OrgPath_Codebook.md) — selector vocabulary.
 - [UIAO_152 Dynamic Group Library](UIAO_152_Dynamic_Group_Library.md) — the `OrgTree-*` groups CA and SASE target.
