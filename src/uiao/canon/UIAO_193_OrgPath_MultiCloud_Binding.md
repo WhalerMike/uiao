@@ -59,6 +59,51 @@ The profile is the *only* place a vendor-specific storage decision is recorded. 
 
 The Assess→Derive→Write-back pipeline mirrors the established Microsoft pattern exactly: `OrgPathMapping` (`src/uiao/modernization/orgtree/ad_mapping.py`) derives facets, and the Graph/ARM transports write them. A new profile contributes a `<target>_mapping.py` and a `<target>_transport.py` of the same shape — this is the implementation phase ADR-098 authorizes, not part of this spec.
 
+## Facet carriage — SCIM provisioning and token claims
+
+A binding profile says *where* a facet is stored on a target and *how* it
+projects to that target's enforcement constructs. A separate concern is
+**carriage**: how a facet *travels* to the systems that consume it across a
+heterogeneous IdP estate — particularly downstream applications and the
+SASE / SSE access layer ([UIAO_013](UIAO_013_OrgPath_in_Zero_Trust_and_SASE.md)),
+which often integrate only via standard provisioning and federation
+protocols, not vendor-native attribute APIs. Two open mechanisms carry
+facets without coupling consumers to any one IdP:
+
+1. **SCIM 2.0 (provisioning / sync).** Where a target IdP or application is
+   SCIM-capable, facets are carried as **custom schema extension**
+   attributes on the SCIM `User` (and, where modeled, `Group`) resource.
+   SCIM is the provisioning-plane analog of the per-target write-back
+   transport: the profile's facet→locator map names the SCIM extension
+   attribute keys, and the transport is a SCIM client rather than a
+   vendor-specific SDK. This is the natural carriage for the `okta` and
+   `ldap` identity profiles and for any generic SCIM-capable consumer; a
+   `generic-scim` profile is the obvious additive target under the same
+   contract (its addition follows the ADR-098 target-list process, not
+   this spec).
+2. **Token claims (SAML / OIDC federation).** For runtime access decisions,
+   facets are projected as **custom claims** in SAML assertions and OIDC
+   ID / access tokens via the IdP's claim-mapping surface. A downstream app
+   or SASE / SSE proxy then receives consistent organizational context —
+   the same facet vocabulary — regardless of which IdP minted the token.
+   This is the federation-plane analog of the certificate carriage that
+   UIAO_012 specifies for NAC / 802.1X: the carrier differs (a claim, not
+   a cert SAN), but the principle is identical — the OrgPath value rides
+   the credential the relying party already trusts. Token-claim carriage
+   composes with the token-bound transport doctrine in
+   [ADR-066](adr/adr-066-application-aware-networking-and-token-bound-transport.md).
+
+Carriage is profile-aware but consumer-agnostic: the facet *values* are the
+codebook's (UIAO_151), so a claim or SCIM attribute is just another
+projection of the same governed subject. Accordingly, **carriage drift is
+DRIFT-IDENTITY**: a SCIM-provisioned attribute or an emitted token claim
+whose facet value diverges from canon is the same continuous-verification
+signal as a divergent native locator (UIAO_163), surfaced through the same
+path. Boundary is unchanged — Moderate / Commercial only; claims and SCIM
+attributes carry organizational metadata, and the sensitive
+Classification / ClearanceLevel combination with subject identity is
+handled in-boundary per "Boundary and handling" below.
+
 ## Binding-profile schema (normative)
 
 The executable per-target profile at `src/uiao/canon/data/orgpath/binding-profiles/<target>.yaml` (deferred to implementation) MUST satisfy the following contract. The JSON Schema (`src/uiao/schemas/orgpath/binding-profile.schema.json`) lands with the implementation; this table is its normative source.
@@ -206,6 +251,7 @@ Drift is profile-agnostic at the value layer: the engine validates facet values 
 - **UIAO_152 / UIAO_154** — dynamic groups and Administrative Units are the Microsoft profile's projection; the enforcement-projection table generalizes that pattern across vendors.
 - **UIAO_163** — the drift engine consumes facets from any profile; this spec adds the uncaptured and cross-profile drift conditions.
 - **`uiao.adapters.zta`** — complementary read-only Zero Trust assessment digest; this spec is the enforcement subject, not posture scoring.
+- **UIAO_012 / UIAO_013** — certificate carriage (NAC / 802.1X) and the Zero Trust / SASE access-decision transport; the "Facet carriage" section above is the multi-IdP federation analog of UIAO_012's cert carriage and feeds UIAO_013's SASE consumers.
 
 ## Boundary and handling
 
@@ -221,6 +267,7 @@ This document is the specification; the following are the implementation deliver
 4. **Adapter-registry entries** — non-Microsoft identity adapters register `mission-class: identity` (a first), read-only assessors as `class: conformance`.
 5. **Enforcement-projection compiler** — facet predicate → native policy construct per surface (NSX, Palo Alto, Elisity, AWS, GCP), with per-surface conformance tests.
 6. **Platform wiring** — extend `orgtree assess` / `govern` to accept a `--profile` selector; extend the multi-cloud SaaS governance plane to span profiles.
+7. **Carriage transports** — a SCIM 2.0 client transport (custom schema extension) and a token-claim mapping projector (SAML / OIDC), each emitting DRIFT-IDENTITY on carriage divergence, per "Facet carriage" above. A `generic-scim` profile, if adopted, follows the ADR-098 target-list process.
 
 ## References
 
