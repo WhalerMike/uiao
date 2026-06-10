@@ -97,6 +97,12 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 | **Graph transport** | `uiao.adapters.graph_transport` | (library, used by `--no-dry-run`) | **`[api]` extra** | Concrete `Transport` for the Entra/Graph plane: httpx + MSAL (`EntraTokenProvider`), cloud-aware via `resolve_graph_base`. `from_environment(cloud=…)` acquires the cloud-correct Graph audience + login authority |
 | **ARM transport** | `uiao.adapters.arm_transport` | (library, used by `--no-dry-run`) | **`[api]` extra** | ARM-plane counterpart to `GraphTransport` for the Arc device-plane writeback (`ARC-SERVER` dispositions): resolves `management.azure.com` (commercial/GCC-Moderate) or `management.usgovcloudapi.net` (Azure Government) via `resolve_arm_base`, and acquires an **ARM-audience** token (`arm_token_scope`). A Graph-audience token sent to ARM is rejected 401 — this is why the two planes need distinct transports |
 
+## Public surface additions (OrgPath multi-cloud — ADR-098)
+
+| Feature | Module | CLI surface | Tier | Notes |
+|---|---|---|---|---|
+| **OrgPath binding profiles** | `uiao.modernization.orgtree.binding_profiles` | ❌ None | **Library-only** | UIAO_193 / ADR-098; loads + validates the six executable per-target storage contracts (`src/uiao/canon/data/orgpath/binding-profiles/`) against `binding-profile.schema.json` and the Codebook. `microsoft-entra` is the reference profile (the ADR-078 slot table); `aws`, `gcp`, `okta`, `ldap`, `vmware` are `proposed` until their transports ship. Boundary: Moderate/Commercial only |
+
 ## Public surface additions (Azure SaaS — ADR-096)
 
 The multi-tenant SaaS plane (`uiao.saas`) turns the single-tenant `uiao.api`

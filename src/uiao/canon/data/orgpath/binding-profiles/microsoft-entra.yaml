@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../../../schemas/orgpath/binding-profile.schema.json
+#
+# UIAO OrgPath Binding Profile — microsoft-entra (REFERENCE)
+# ==========================================================
+# Canonical source: src/uiao/canon/UIAO_193_OrgPath_MultiCloud_Binding.md
+# Binding ADR:      src/uiao/canon/adr/adr-098-orgpath-vendor-neutral-binding-profiles.md
+#
+# This is the ADR-078 slot table recast as a binding profile: the canonical
+# worked example, not the schema. No Microsoft runtime behavior changes —
+# existing tenants, the drift engine, and the device adapters keep reading
+# and writing the numbered slots exactly as before.
+
+schema_version: "1.0.0"
+document_id: UIAO_193
+profile_id: microsoft-entra
+display_name: "Microsoft Entra ID + Azure Arc (reference profile)"
+status: reference
+boundary: gcc-moderate
+planes: [identity, workload]
+endpoint_resolution: "uiao.adapters._graph_clouds.resolve_graph_base (identity) / uiao.adapters._arm_clouds.resolve_arm_base (workload)"
+notes: >-
+  Identity plane stores facets in onPremisesExtensionAttribute1..10 per the
+  ADR-078 canonical slot assignments (slots 11-15 reserved; codebook governs
+  their promotion). Workload plane stores facets as Azure Arc machine tags
+  (key = facet name) per the existing ARC-SERVER writeback.
+
+facet_bindings:
+  # Identity plane — ADR-078 canonical slot table.
+  - { facet: region,          plane: identity, locator: extensionAttribute1,  locator_kind: attribute, writable: true }
+  - { facet: department,      plane: identity, locator: extensionAttribute2,  locator_kind: attribute, writable: true }
+  - { facet: division,        plane: identity, locator: extensionAttribute3,  locator_kind: attribute, writable: true }
+  - { facet: role,            plane: identity, locator: extensionAttribute4,  locator_kind: attribute, writable: true }
+  - { facet: cost_center,     plane: identity, locator: extensionAttribute5,  locator_kind: attribute, writable: true }
+  - { facet: classification,  plane: identity, locator: extensionAttribute6,  locator_kind: attribute, writable: true }
+  - { facet: hire_date,       plane: identity, locator: extensionAttribute7,  locator_kind: attribute, writable: true }
+  - { facet: term_date,       plane: identity, locator: extensionAttribute8,  locator_kind: attribute, writable: true }
+  - { facet: clearance_level, plane: identity, locator: extensionAttribute9,  locator_kind: attribute, writable: true }
+  - { facet: account_type,    plane: identity, locator: extensionAttribute10, locator_kind: attribute, writable: true }
+  # Workload plane — Arc-connected machine tags (key = facet name).
+  - { facet: region,          plane: workload, locator: region,          locator_kind: tag, writable: true }
+  - { facet: department,      plane: workload, locator: department,      locator_kind: tag, writable: true }
+  - { facet: division,        plane: workload, locator: division,        locator_kind: tag, writable: true }
+  - { facet: role,            plane: workload, locator: role,            locator_kind: tag, writable: true }
+  - { facet: cost_center,     plane: workload, locator: cost_center,     locator_kind: tag, writable: true }
+  - { facet: classification,  plane: workload, locator: classification,  locator_kind: tag, writable: true }
+  - { facet: account_type,    plane: workload, locator: account_type,    locator_kind: tag, writable: true }
