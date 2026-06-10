@@ -329,6 +329,8 @@ canon-first policy governance. Three invariants are visible from here:
 ## Related canon
 
 - [UIAO_010 OrgPath in Azure Policy](UIAO_010_OrgPath_in_Azure_Policy.md) — Arc-side companion (same ADR, different transport).
+- [UIAO_012 OrgPath in NAC / 802.1X](UIAO_012_OrgPath_in_NAC_and_8021X.md) — network-edge admission transport (sibling).
+- [UIAO_013 OrgPath in Zero Trust & SASE / SSE](UIAO_013_OrgPath_in_Zero_Trust_and_SASE.md) — access-decision transport (Conditional Access + SASE/CASB for generic cloud apps).
 - [UIAO_007_OrgTree_Modernization_AD_to_EntraID](UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md) — programmatic context for the OrgTree work.
 - [UIAO_151_OrgPath_Codebook](UIAO_151_OrgPath_Codebook.md) — selector vocabulary that drives dynamic-group membership.
 - [UIAO_152_Dynamic_Group_Library](UIAO_152_Dynamic_Group_Library.md) — the OrgTree-* group catalog this document targets.
