@@ -163,6 +163,7 @@
 - [Azure SaaS architecture — multi-tenant UIAO on Container Apps](adr/adr-096-azure-saas-architecture.html)
 - [SQL Server transformation placement — same control plane, adjacent execution](adr/adr-097-sql-server-saas-placement.html)
 - [OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots](adr/adr-098-orgpath-vendor-neutral-binding-profiles.html)
+- [Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception](adr/adr-099-active-governance-directory-ldap.html)
 
 ## Schema Reference
 
