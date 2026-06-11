@@ -56,3 +56,25 @@ def test_serve_check_does_not_bind(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert "would serve" in result.output.lower()
     assert "read-only" in result.output.lower()
+    assert "ldap://127.0.0.1:1389" in result.output
+
+
+def test_serve_check_with_tls_uses_ldaps_default_port(tmp_path: Path) -> None:
+    cert = tmp_path / "c.pem"
+    key = tmp_path / "k.pem"
+    cert.write_text("x", encoding="utf-8")
+    key.write_text("x", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["directory", "serve", "--check", "--tls-cert", str(cert), "--tls-key", str(key)],
+    )
+    assert result.exit_code == 0, result.output
+    assert "ldaps://127.0.0.1:636" in result.output
+
+
+def test_serve_tls_cert_without_key_fails(tmp_path: Path) -> None:
+    cert = tmp_path / "c.pem"
+    cert.write_text("x", encoding="utf-8")
+    result = runner.invoke(app, ["directory", "serve", "--check", "--tls-cert", str(cert)])
+    assert result.exit_code == 1
+    assert "together" in result.output.lower()

@@ -26,7 +26,7 @@ from rich.console import Console
 
 from uiao.directory import build_directory
 from uiao.directory.dit import Directory
-from uiao.directory.server import LdapServer
+from uiao.directory.server import LdapServer, build_server_tls_context
 
 directory_app = typer.Typer(
     name="directory",
@@ -90,7 +90,9 @@ def serve(
     snapshot: Path | None = _SNAPSHOT_OPT,
     base_dn: str = _BASE_DN_OPT,
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Bind address."),
-    port: int = typer.Option(1389, "--port", "-p", help="Bind port (default 1389 — unprivileged)."),
+    port: int = typer.Option(0, "--port", "-p", help="Bind port (default 1389 plaintext, 636 with TLS)."),
+    tls_cert: Path | None = typer.Option(None, "--tls-cert", help="PEM certificate for LDAPS (requires --tls-key)."),
+    tls_key: Path | None = typer.Option(None, "--tls-key", help="PEM private key for LDAPS (requires --tls-cert)."),
     check: bool = typer.Option(
         False,
         "--check",
@@ -98,6 +100,13 @@ def serve(
     ),
 ) -> None:
     """Run the in-path LDAPv3 read projection (ADR-100)."""
+    if bool(tls_cert) ^ bool(tls_key):
+        console.print("[red]--tls-cert and --tls-key must be supplied together.[/red]")
+        raise typer.Exit(code=1)
+    tls = tls_cert is not None
+    effective_port = port if port else (636 if tls else 1389)
+    scheme = "ldaps" if tls else "ldap"
+
     principals = _load_principals(snapshot)
     directory = build_directory(principals, base_dn=base_dn)
     server = LdapServer(directory=directory)
@@ -105,14 +114,23 @@ def serve(
     if check:
         console.print(
             f"[green]OK[/green] — would serve {entry_count} entries "
-            f"(suffix {base_dn}) on ldap://{host}:{port} (read-only)."
+            f"(suffix {base_dn}) on {scheme}://{host}:{effective_port} (read-only)."
         )
         return
+
+    ssl_context = None
+    if tls:
+        assert tls_cert is not None and tls_key is not None
+        if not tls_cert.exists() or not tls_key.exists():
+            console.print("[red]TLS cert or key file not found.[/red]")
+            raise typer.Exit(code=1)
+        ssl_context = build_server_tls_context(str(tls_cert), str(tls_key))
+
     console.print(
         f"[green]Active Governance Directory[/green] serving {entry_count} entries "
-        f"on ldap://{host}:{port} (read-only). Ctrl-C to stop."
+        f"on {scheme}://{host}:{effective_port} (read-only). Ctrl-C to stop."
     )
     try:
-        asyncio.run(server.serve(host=host, port=port))
+        asyncio.run(server.serve(host=host, port=effective_port, ssl_context=ssl_context))
     except KeyboardInterrupt:  # pragma: no cover - interactive only
         console.print("\nstopped.")
