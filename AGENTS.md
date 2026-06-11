@@ -102,6 +102,8 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 | Feature | Module | CLI surface | Tier | Notes |
 |---|---|---|---|---|
 | **OrgPath binding profiles** | `uiao.modernization.orgtree.binding_profiles` | ❌ None | **Library-only** | UIAO_193 / ADR-098; loads + validates the six executable per-target storage contracts (`src/uiao/canon/data/orgpath/binding-profiles/`) against `binding-profile.schema.json` and the Codebook. `microsoft-entra` is the reference profile (the ADR-078 slot table); `aws`, `gcp`, `okta`, `ldap`, `vmware` are `proposed` until their transports ship. Boundary: Moderate/Commercial only |
+| **OrgPath profile-driven planner** | `uiao.modernization.orgtree.profile_assign` | ❌ None | **Library-only** | UIAO_193 / ADR-098 phase 3; `BindingProfilePlanner` turns a binding profile + derived facets into `FacetOperation` writes routed by the profile's locators (the cross-vendor counterpart to `DeviceOrgPathPlanner`). Honors `writable`, skips reserved/inactive facets, emits `uncaptured` ops for `priority`-overflow casualties. Dependency-free, dry-run by nature |
+| **Okta / LDAP transports** | `uiao.adapters.okta_transport`, `uiao.adapters.ldap_transport` | ❌ None | **Library-only** | Write seams for the `okta` / `ldap` binding profiles; registered as the first `mission-class: identity` modernization adapters (`okta-orgpath`, `ldap-orgpath`, status `proposed`). `httpx` (Okta) and `ldap3` (LDAP) are lazy-imported so module import never hard-requires them. Endpoints resolved from operator config; commercial/on-prem only |
 
 ## Public surface additions (Active Governance Directory — ADR-099)
 
