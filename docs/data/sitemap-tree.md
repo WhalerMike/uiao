@@ -28,8 +28,9 @@
 ### Reference Architecture — Modernization Canon
 
 - [Modernization Canon](customer-documents/reference-architecture/index.html)
-- **Identity (OrgTree)**
+- **Addressing (OrgTree + LocPath)**
   - [OrgTree — Identity Modernization](customer-documents/reference-architecture/orgtree.html)
+  - [LocPath — Physical-Location Addressing](customer-documents/reference-architecture/locpath.html)
   - [OrgPath FAQ](customer-documents/reference-architecture/orgpath-faq.html)
   - [OrgPath Portability — One Org Model, Any Cloud, Any IdP](customer-documents/reference-architecture/orgpath-portability.html)
   - [GPO-to-Cloud Governance Gaps](customer-documents/reference-architecture/gpo-cloud-governance-gaps.html)

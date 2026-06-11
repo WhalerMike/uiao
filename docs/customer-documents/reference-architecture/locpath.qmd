@@ -1,0 +1,122 @@
+---
+title: "LocPath — Physical-Location Addressing"
+subtitle: "The OrgPath Counterpart for Place — E911, TIC 3.0 Direct Internet Access, and Location-Aware Governance"
+date: 2026-06-11
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: aspirational
+lifecycle_review: 2026-12-11
+aliases:
+  - /customer-documents/reference-architecture/locpath.html
+---
+
+{{< lifecycle-banner >}}
+
+> **LocPath is a second addressing dimension, not a sixteenth OrgPath facet.** OrgPath answers *where does this identity sit organizationally*; LocPath answers *where is it physically assigned*. The two are governed symmetrically, queried together as a matrix, and deliberately kept apart — per [ADR-102](../../adr/adr-102-locpath-location-addressing.qmd), LocPath claims no `extensionAttribute` slot and never will without its own binding profile. The canonical definition is the [LocPath Codebook (UIAO_194)](../../canon/UIAO_194_LocPath_Codebook.qmd).
+
+## The problem nobody owns
+
+Every enterprise already has location data — four or five copies of it, none of them governed:
+
+- the **HR system** carries a duty-station code on every person,
+- the **facilities** office keeps a building list,
+- the **network team** keeps a site inventory in the SD-WAN controller,
+- the **UCaaS platform** keeps hand-maintained emergency addresses,
+- and nothing reconciles them, so they drift apart silently.
+
+That fragmentation was tolerable until several obligations made *governed* location data load-bearing:
+
+| Forcing function | What it demands |
+|---|---|
+| **E911 dispatchable location** ([47 CFR Part 9](https://www.ecfr.gov/current/title-47/chapter-I/subchapter-A/part-9)) | Kari's Law (§ 9.8) and RAY BAUM'S Act (§ 9.16) require a civic address plus floor/room-level detail with 911 calls from MLTS/UCaaS — sourced from *something authoritative* |
+| **TIC 3.0 Direct Internet Access** ([CISA TIC program](https://www.cisa.gov/resources-tools/programs/trusted-internet-connections-tic)) | Risk-based use cases let *sites* break out directly to internet and cloud — "which sites are approved, at what capability level" is a per-site governance record |
+| **SD-WAN / EIS modernization** ([GSA EIS](https://www.gsa.gov/technology/it-contract-vehicles-and-purchasing-programs/telecommunications-and-network-services/enterprise-infrastructure-solutions)) | Transitioning off legacy MPLS needs one canonical site hierarchy that the network policy engine and the identity substrate agree on |
+| **Network path optimization** ([Microsoft 365 informed network routing](https://learn.microsoft.com/en-us/microsoft-365/enterprise/office-365-network-mac-perf-cpe)) | Per-site context drives routing decisions; an ungoverned site model drifts from the identity model with no detector |
+| **Location-scoped telemetry** | In constrained boundaries, *which telemetry may originate from which locations* is a governance assertion that needs a subject to attach to |
+
+LocPath gives all five the same answer: one canonical, hierarchical, drift-detected location model, governed exactly the way OrgPath governs organizational structure.
+
+## The LocPath architecture
+
+A LocPath is a path:
+
+```
+/USA/MD/ANNAPOLIS-HQ/BLDG-3/FL-2/RM-210
+```
+
+| Level | Role |
+|---|---|
+| **Country → Region** | Jurisdiction and geographic grouping |
+| **Site** | **The minimum governance unit.** DIA approval, telemetry boundary, SD-WAN classification, and assignment all resolve here |
+| **Building → Floor → Space** | Dispatchable-location precision for E911 |
+
+Governance rules match on **path prefixes** — `/USA/MD/ANNAPOLIS-HQ/*` covers the campus and everything in it — exactly as OrgPath rules match facet predicates. Site nodes carry the classification blocks that make them a policy subject: E911 dispatchable attributes, network/TIC 3.0 attributes (`diaApproved`, `sdwanBreakoutType`, an agency-defined `ticCapabilityTier` — TIC 3.0 itself defines no official tiers), and telemetry/service-boundary attributes.
+
+::: {.callout-note}
+## One name, two meanings
+
+The OrgPath **Region facet** (organizational reporting region) and the LocPath **Region level** (geography) are different things, and neither derives from the other. A person can report to the "Northeast" organization while sitting in a Maryland building. That is precisely why place is a second dimension rather than a facet.
+:::
+
+## Two layers: governed assignment vs observed position
+
+| Layer | What it is | Update cadence | Used for |
+|---|---|---|---|
+| **Primary LocPath** | The governed location of record, derived from the HR duty station | On assignment change | E911 location of record, access reviews, matrix rules, compliance reporting |
+| **Dynamic Location Context** | The most recent GPS / Wi-Fi / BLE / network signal, with source, accuracy, and confidence | Real-time | E911 precision enhancement, drift detection |
+
+The rule that keeps this honest: dynamic context **never overrides** the governed assignment. When a device persistently reports from somewhere other than the assigned place, that is a *drift finding*, not a silent update.
+
+## Where LocPath data actually lives
+
+| Layer | Where | What it holds |
+|---|---|---|
+| **Hierarchy** | `src/uiao/canon/data/locpath/location-registry.yaml` (Git) | The governed location nodes, validated against [location.schema.json](../../reference/schemas/location.schema.qmd) + [location-registry.schema.json](../../reference/schemas/location-registry.schema.qmd) |
+| **Translation** | `src/uiao/canon/data/locpath/duty-station-map.yaml` (Git) | The HR `locationCode` → LocPath map, validated against [duty-station-map.schema.json](../../reference/schemas/duty-station-map.schema.qmd); every target must resolve at Site or deeper |
+| **Assignment** | The Primary-LocPath assignment plan, derived per identity | Employee → LocPath + governing Site + provenance |
+| **Authority** | The HR system of record (duty station) | The upstream truth, extending the same doctrine ADR-088 fixed for organizational placement |
+
+Notice what is **not** in that table: an Entra attribute. Per ADR-102 §D5, LocPath stamps nothing on directory objects today. Location-scoped groups and Administrative Units work from **assigned membership** — the governed substrate itself is the membership source — and upgrade to dynamic membership rules only when a deployment names a storage locator (the seam a future ADR-098-style binding profile fills).
+
+## What ships today
+
+All five ADR-102 §D6 deliverables are in the substrate (`uiao.modernization.locpath`):
+
+| Capability | Module | What it does |
+|---|---|---|
+| **Location registry loader** | `registry` | Loads + validates the hierarchy: schema, level/depth consistency, uniqueness, parent existence; prefix-matching lookup |
+| **HR duty-station assignment** | `hr_assign` | Resolves HR records into Primary-LocPath assignments with governing Site + provenance; unresolvable records become findings, never exceptions (adapter `hr-duty-station-locpath`) |
+| **Location Mover** | `mover` | Diffs assignment states into join/leave/move events, each naming the surfaces now stale (E911 address, groups, AUs, boundary transitions) |
+| **Location drift classes** | `drift` | `DRIFT-IDENTITY::location-assignment`, `DRIFT-AUTHZ::location-policy`, `DRIFT-BOUNDARY::location-boundary` — sub-classes of the canonical taxonomy, e.g. flagging local internet breakout at a site whose governed classification says `diaApproved: false` |
+| **Entra exposure** | `entra_exposure` | Per-Site group + Administrative Unit plans (`LocPath-Site-<SEG>-Users`, `AU-Site-<SEG>`, restricted management), assigned membership by default |
+
+Everything is read-only and dry-run by nature; writes remain operator decisions through the existing Entra adapters.
+
+## Matrix governance — the payoff
+
+Identities carry both an OrgPath and a Primary LocPath, so rules can finally predicate on both axes at once:
+
+- *Finance-department identities whose assigned place is **not** under the HQ campus require step-up review.*
+- *A dynamic group of everyone at sites where `diaApproved: false`, for conditional-access backhaul policy.*
+- *Access certification: does this person still need Building-3 resources given their current duty station?*
+
+Neither dimension can express these alone. The matrix is always evaluated against governed values — never against the observational layer.
+
+## What LocPath is not
+
+Scope guardrails are doctrine (ADR-102 §D7), not aspiration:
+
+- **Not facilities management.** Work orders, space booking, leases, and moves belong in an IWMS/CMMS; UIAO governs the identity-relevant slice of location and nothing else.
+- **Not network orchestration.** SD-WAN controllers *consume* LocPath classification; UIAO never programs them.
+- **Not an E911 call-routing service.** UCaaS platforms consume the dispatchable location of record; UIAO never sits in the 911 call path.
+
+## Where to go next
+
+- [ADR-102 — the decision record](../../adr/adr-102-locpath-location-addressing.qmd): drivers, scope, consequences
+- [UIAO_194 — the LocPath Codebook](../../canon/UIAO_194_LocPath_Codebook.qmd): path syntax, attribute catalog, governance rules, normative schema
+- [OrgTree — Identity Modernization](orgtree.qmd): the organizational axis this page mirrors
+- [OrgPath FAQ](orgpath-faq.qmd): operator questions, including how location relates to facets
