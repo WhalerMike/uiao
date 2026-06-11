@@ -173,6 +173,55 @@ def test_search_missing_base_returns_no_such_object() -> None:
     assert _result_code(responses[-1]) == int(protocol.ResultCode.NO_SUCH_OBJECT)
 
 
+def _entry_attr_names(envelope: ber.TLV) -> set[str]:
+    """Attribute names carried by a SearchResultEntry envelope."""
+    _, op = ber.read_children(envelope.content)
+    _dn, attrs_seq = ber.read_children(op.content)
+    return {
+        ber.decode_octet_string(ber.read_children(a.content)[0].content) for a in ber.read_children(attrs_seq.content)
+    }
+
+
+def _entry_dn(envelope: ber.TLV) -> str:
+    _, op = ber.read_children(envelope.content)
+    dn_tlv, _attrs = ber.read_children(op.content)
+    return ber.decode_octet_string(dn_tlv.content)
+
+
+# A principal whose facets include the default-sensitive clearance + cost-center.
+CLEARED = [
+    {
+        "principal_id": "alice@uiao.gov",
+        "principal_type": "user",
+        "attributes": {"extensionAttribute2": "IT", "extensionAttribute5": "CC-4200", "extensionAttribute9": "Secret"},
+    },
+]
+
+
+def test_anonymous_search_redacts_sensitive_facets() -> None:
+    server = LdapServer(directory=build_directory(CLEARED))
+    responses = asyncio.run(_run_session(server, [_search_present(1, "dc=agd,dc=uiao,dc=gov")]))
+    alice = next(r for r in responses if _is_entry(r) and "alice" in _entry_dn(r))
+    names = _entry_attr_names(alice)
+    assert "uiaoOrgPathClearanceLevel" not in names
+    assert "uiaoOrgPathCostCenter" not in names
+    assert "uiaoOrgPathDepartment" in names  # non-sensitive facet still visible
+
+
+def test_authenticated_search_reveals_sensitive_facets() -> None:
+    server = LdapServer(directory=build_directory(CLEARED), credentials={"cn=admin": "pw"})
+    requests = [_bind(1, "cn=admin", "pw"), _search_present(2, "dc=agd,dc=uiao,dc=gov")]
+    responses = asyncio.run(_run_session(server, requests))
+    alice = next(r for r in responses if _is_entry(r) and "alice" in _entry_dn(r))
+    names = _entry_attr_names(alice)
+    assert "uiaoOrgPathClearanceLevel" in names
+    assert "uiaoOrgPathCostCenter" in names
+
+
+def _is_entry(envelope: ber.TLV) -> bool:
+    return ber.read_children(envelope.content)[1].tag == protocol.APP_SEARCH_RESULT_ENTRY
+
+
 def test_search_existing_base_no_match_is_success() -> None:
     # Base exists but the filter matches nothing -> success, 0 entries.
     server = LdapServer(directory=build_directory(PRINCIPALS))

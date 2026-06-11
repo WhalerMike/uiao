@@ -24,10 +24,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import ssl
 from dataclasses import dataclass, field
 
 from uiao.directory import ber, protocol
 from uiao.directory.dit import Directory
+from uiao.directory.policy import ReadPolicy, default_read_policy
 
 logger = logging.getLogger("uiao.directory.server")
 
@@ -43,6 +45,7 @@ class LdapServer:
     directory: Directory
     credentials: dict[str, str] = field(default_factory=dict)
     size_limit: int = _DEFAULT_SIZE_LIMIT
+    read_policy: ReadPolicy = field(default_factory=default_read_policy)
 
     # -- bind policy --------------------------------------------------------
     def _authenticate(self, name: str, password: str) -> protocol.ResultCode:
@@ -53,17 +56,31 @@ class LdapServer:
         return protocol.ResultCode.INVALID_CREDENTIALS
 
     # -- per-request handlers ----------------------------------------------
-    def handle_bind(self, req: protocol.BindRequest) -> bytes:
+    def process_bind(self, req: protocol.BindRequest) -> tuple[bytes, bool]:
+        """Return the bind response and whether the connection is now authed.
+
+        A successful *anonymous* bind (empty name/password) leaves the
+        connection unauthenticated; only a successful *simple* bind against
+        a known credential authenticates it (and thus unlocks sensitive
+        facets via :attr:`read_policy`). A failed bind drops the connection
+        back to anonymous (RFC 4511 §4.2.1).
+        """
         if req.version != 3:
-            return protocol.encode_bind_response(
+            response = protocol.encode_bind_response(
                 req.message_id,
                 protocol.ResultCode.PROTOCOL_ERROR,
                 f"only LDAPv3 is supported (got v{req.version})",
             )
+            return response, False
         code = self._authenticate(req.name, req.password)
-        return protocol.encode_bind_response(req.message_id, code)
+        authenticated = code == protocol.ResultCode.SUCCESS and bool(req.name) and req.password != ""
+        return protocol.encode_bind_response(req.message_id, code), authenticated
 
-    def handle_search(self, req: protocol.SearchRequest) -> list[bytes]:
+    def handle_bind(self, req: protocol.BindRequest) -> bytes:
+        """Bind response only (see :meth:`process_bind` for the auth state)."""
+        return self.process_bind(req)[0]
+
+    def handle_search(self, req: protocol.SearchRequest, *, authenticated: bool = False) -> list[bytes]:
         # The base object must exist for any scope (RFC 4511 §4.5.3); a base
         # that exists but matches nothing is success/0 entries, not noSuchObject.
         if not self.directory.contains(req.base_object):
@@ -82,7 +99,10 @@ class LdapServer:
             if len(out) >= effective_limit:
                 truncated = True
                 break
-            out.append(protocol.encode_search_result_entry(req.message_id, _project(entry, req.attributes)))
+            # Project to the requested attributes, then redact sensitive
+            # facets for anonymous binds (ADR-100 §5 per-bind read scoping).
+            scoped = self.read_policy.apply(_project(entry, req.attributes), authenticated=authenticated)
+            out.append(protocol.encode_search_result_entry(req.message_id, scoped))
         code = protocol.ResultCode.SUCCESS
         message = "" if not truncated else f"sizeLimit {effective_limit} reached"
         out.append(protocol.encode_search_result_done(req.message_id, code, message))
@@ -92,6 +112,8 @@ class LdapServer:
     async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         peer = writer.get_extra_info("peername")
         logger.info("AGD connection from %s", peer)
+        # Connections start anonymous; a successful simple bind flips this.
+        authenticated = False
         try:
             while True:
                 data = await _read_one_message(reader)
@@ -118,9 +140,10 @@ class LdapServer:
                 if isinstance(req, protocol.UnbindRequest):
                     break
                 if isinstance(req, protocol.BindRequest):
-                    writer.write(self.handle_bind(req))
+                    response, authenticated = self.process_bind(req)
+                    writer.write(response)
                 elif isinstance(req, protocol.SearchRequest):
-                    for chunk in self.handle_search(req):
+                    for chunk in self.handle_search(req, authenticated=authenticated):
                         writer.write(chunk)
                 await writer.drain()
         except (ConnectionResetError, asyncio.IncompleteReadError):
@@ -129,13 +152,34 @@ class LdapServer:
             writer.close()
             logger.info("AGD connection closed: %s", peer)
 
-    async def serve(self, host: str = "127.0.0.1", port: int = 1389) -> None:
-        """Run the server until cancelled."""
-        server = await asyncio.start_server(self.handle_connection, host, port)
+    async def serve(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 1389,
+        *,
+        ssl_context: ssl.SSLContext | None = None,
+    ) -> None:
+        """Run the server until cancelled.
+
+        When ``ssl_context`` is supplied the listener is LDAPS-on-connect
+        (TLS wraps the socket immediately, the conventional ``ldaps://``
+        deployment) — the transport-security control ADR-100 §4 requires
+        before the AGD may leave loopback. StartTLS (the in-band upgrade
+        extended op) remains roadmap.
+        """
+        server = await asyncio.start_server(self.handle_connection, host, port, ssl=ssl_context)
         sockets = ", ".join(str(s.getsockname()) for s in (server.sockets or ()))
-        logger.info("Active Governance Directory listening on %s", sockets)
+        scheme = "ldaps" if ssl_context else "ldap"
+        logger.info("Active Governance Directory listening on %s (%s)", sockets, scheme)
         async with server:
             await server.serve_forever()
+
+
+def build_server_tls_context(certfile: str, keyfile: str) -> ssl.SSLContext:
+    """Build a server-side TLS context for LDAPS from a cert + key (PEM)."""
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+    return context
 
 
 def filter_positive(value: int) -> int:
