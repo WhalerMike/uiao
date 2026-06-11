@@ -167,7 +167,7 @@ The matrix is evaluated against governed values only (Primary LocPath, registere
 
 ## Normative JSON Schema
 
-The executable schema (deferred per ADR-102 §D6) ships at `src/uiao/schemas/locpath/location.schema.json` and must be equivalent to the following normative definition:
+The executable node schema ships at `src/uiao/schemas/locpath/location.schema.json` and must remain equivalent to the following normative definition. The registry envelope (a versioned, provenance-anchored collection of nodes) ships at `src/uiao/schemas/locpath/location-registry.schema.json`, and the **reference registry** — the executable form of §Worked example — ships at `src/uiao/canon/data/locpath/location-registry.yaml`. Both are loaded and integrity-validated (level/depth consistency, case-insensitive path uniqueness, parent existence) by `uiao.modernization.locpath`.
 
 ```json
 {

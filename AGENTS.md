@@ -106,6 +106,12 @@ New CLI commands and library modules introduced by the HRIT Single-ATO Productiz
 | **Okta / LDAP transports** | `uiao.adapters.okta_transport`, `uiao.adapters.ldap_transport` | ❌ None | **Library-only** | Write seams for the `okta` / `ldap` binding profiles; registered as the first `mission-class: identity` modernization adapters (`okta-orgpath`, `ldap-orgpath`, status `proposed`). `httpx` (Okta) and `ldap3` (LDAP) are lazy-imported so module import never hard-requires them. Endpoints resolved from operator config; commercial/on-prem only |
 | **OrgPath enforcement projection** | `uiao.modernization.orgtree.enforcement_projection` | ❌ None | **Library-only** | UIAO_193 / ADR-098 phase 4; the cross-vendor generalization of `rule_renderer.render_rule`. `EnforcementProjector` compiles a `CompositionSpec` (facet predicate) against a binding profile's `enforcement` plane into a vendor-neutral `EnforcementGroup` (facets must be bound on that plane; values validated against the Codebook), then `to_nsx` / `to_tag_match` render NSX security groups and the generic tag-membership form (Palo Alto DAG / AWS SG / GCP secure tags). Pure-identity profiles are rejected (no enforcement plane). Microsoft's row of the projection table remains `rule_renderer` |
 
+## Public surface additions (LocPath — ADR-102)
+
+| Feature | Module | CLI surface | Tier | Notes |
+|---|---|---|---|---|
+| **LocPath location registry** | `uiao.modernization.locpath` | ❌ None | **Library-only** | UIAO_194 / ADR-102 §D6 phase 1; loads + validates LocPath location registries — envelope against `location-registry.schema.json`, every node against `location.schema.json` (the UIAO_194 normative node schema), plus the integrity rules JSON Schema cannot express (level/depth consistency, case-insensitive path uniqueness, parent existence, UUID/timestamp parseability). Ships the `reference` registry (`src/uiao/canon/data/locpath/location-registry.yaml`) — the executable UIAO_194 worked example, not deployment data. Prefix-matching lookup (`node_for`, `nodes_under`, `sites`, `ancestors_of`) is the contract governance rules use. HR duty-station adapter, Mover/drift extensions, and Entra exposure are later ADR-102 §D6 phases. Boundary: Moderate/Commercial only |
+
 ## Public surface additions (Active Governance Directory — ADR-100)
 
 The **Active Governance Directory (AGD)** is UIAO's protocol-projection plane: an
