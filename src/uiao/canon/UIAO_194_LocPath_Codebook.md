@@ -154,6 +154,8 @@ Identities carry both an OrgPath and a Primary LocPath. Governance rules may pre
 
 The matrix is evaluated against governed values only (Primary LocPath, registered node attributes) — never against Dynamic Location Context.
 
+The Entra ID exposure for the place axis ships in `uiao.modernization.locpath.entra_exposure` (ADR-102 §D6 phase 4): per-Site group and Administrative Unit plans (`LocPath-Site-<SEG>-Users`, `AU-Site-<SEG>`; AUs restricted-management per UIAO_154) derived from the assignment plan. Membership defaults to **assigned** — the governed substrate is the membership source, so no attribute storage is required, honoring ADR-102 §D5; an Entra dynamic-membership rule (`-startsWith` on the LocPath prefix) is rendered only when the deployment supplies a storage locator, the seam a future ADR-098 binding profile will fill.
+
 ## Governance and provenance rules
 
 1. **Registry-outward authority.** Like OrgTree over OrgPath, the location registry is authoritative over stamped/derived LocPath values; per-object edits are not authoritative.
