@@ -25,7 +25,9 @@
 # Canon invariants enforced on every entry:
 #   * gcc-boundary: gcc-moderate
 #   * ssot-mutation: never
-#   * certificate-anchored: true
+#   * certificate-anchored: true, except hr-duty-station-locpath (library
+#     resolver with no adapter-owned transport yet — see its notes; same
+#     basis as the ADR-098 identity adapters in the pair registry)
 #   * object-identity-only: true
 #
 # Pair registry: canon/modernization-registry.yaml (modernization class)
@@ -34,7 +36,7 @@
 
 schema-version: "1.0.0"
 registry-class: conformance
-updated: "2026-05-07"
+updated: "2026-06-11"
 
 adapters:
 
@@ -1656,3 +1658,69 @@ adapters:
       the SSOT-conflict resolution for any Entra/AD overlap (NERM
       reads UIAO-mediated or non-overlapping; writes against UIAO-SSOT
       objects must fail closed), and the audit-event format.
+
+  - id: hr-duty-station-locpath
+    name: HR Duty-Station LocPath Assignment
+    class: conformance
+    mission-class: identity
+    mission-class-notes: >-
+      Classified `identity` per UIAO_003 §4.2: its sole function is
+      deriving the Primary LocPath identity attribute from the HR
+      system of record's duty-station assignment (ADR-102 §D3,
+      extending ADR-088 from organizational to physical placement).
+      Read-only — it resolves and reports; the Entra ID write surface
+      is ADR-102 §D6 phase 4.
+    status: proposed
+    phase: phase-planning
+    vendor: Agency HR system of record
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - hr-records
+      - duty-station-resolution
+      - primary-locpath-assignment
+    outputs:
+      - locpath-assignment-plan.json
+      - locpath-unmapped-duty-stations.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - CM-8
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO_194
+      - ADR-102
+      - ADR-088
+    notes: >-
+      ADR-102 §D6 phase 2. Resolves the Spec2-D1.1 locationCode on
+      canonical HR records through the governed duty-station map
+      (canon/data/locpath/duty-station-map.yaml, validated by
+      schemas/locpath/duty-station-map.schema.json) into Primary-
+      LocPath assignments against the UIAO_194 location registry,
+      emitting DriftFinding-shaped findings (GOV-LOCPATH-NNN) for
+      anything that does not resolve. certificate-anchored is false on
+      the same basis as the ADR-098 binding-profile identity adapters:
+      the resolver is a library pass over HR records already extracted
+      inside the boundary — there is no adapter-owned transport to
+      anchor yet. Certificate anchoring lands with the live HR-feed
+      transport. Dedicated location drift classes
+      (location-assignment / -policy / -boundary) re-class the
+      GOV-LOCPATH findings in §D6 phase 3.
+    implementation:
+      python_module: src/uiao/modernization/locpath/hr_assign.py
+      tests: tests/test_locpath_hr_assign.py

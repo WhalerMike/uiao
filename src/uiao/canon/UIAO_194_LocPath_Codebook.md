@@ -167,7 +167,7 @@ The matrix is evaluated against governed values only (Primary LocPath, registere
 
 ## Normative JSON Schema
 
-The executable node schema ships at `src/uiao/schemas/locpath/location.schema.json` and must remain equivalent to the following normative definition. The registry envelope (a versioned, provenance-anchored collection of nodes) ships at `src/uiao/schemas/locpath/location-registry.schema.json`, and the **reference registry** — the executable form of §Worked example — ships at `src/uiao/canon/data/locpath/location-registry.yaml`. Both are loaded and integrity-validated (level/depth consistency, case-insensitive path uniqueness, parent existence) by `uiao.modernization.locpath`.
+The executable node schema ships at `src/uiao/schemas/locpath/location.schema.json` and must remain equivalent to the following normative definition. The registry envelope (a versioned, provenance-anchored collection of nodes) ships at `src/uiao/schemas/locpath/location-registry.schema.json`, and the **reference registry** — the executable form of §Worked example — ships at `src/uiao/canon/data/locpath/location-registry.yaml`. Both are loaded and integrity-validated (level/depth consistency, case-insensitive path uniqueness, parent existence) by `uiao.modernization.locpath`. The **duty-station → LocPath mapping table** is likewise executable: schema at `src/uiao/schemas/locpath/duty-station-map.schema.json`, reference map at `src/uiao/canon/data/locpath/duty-station-map.yaml`, consumed by the read-only HR assignment pass `uiao.modernization.locpath.hr_assign` (adapter `hr-duty-station-locpath`, ADR-102 §D6 phase 2) — every map target must resolve in the paired registry at Site level or deeper.
 
 ```json
 {
