@@ -184,6 +184,7 @@
 - [SCIM 2.0 Common Attributes (RFC 7643 §3.1)](reference/schemas/common.schema.html)
 - [UIAO Device OrgPath Plane Registry](reference/schemas/device-planes.schema.html)
 - [UIAO OrgTree Drift Engine Configuration](reference/schemas/drift-engine-config.schema.html)
+- [UIAO LocPath Duty-Station Map](reference/schemas/duty-station-map.schema.html)
 - [UIAO Dynamic Group Library](reference/schemas/dynamic-groups.schema.html)
 - [SCIM 2.0 Enterprise User Extension (RFC 7643 §4.3)](reference/schemas/enterprise-user.schema.html)
 - [UIAO KSI Evidence Bundle](reference/schemas/evidence-bundle.schema.html)
