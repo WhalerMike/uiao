@@ -78,3 +78,23 @@ def test_serve_tls_cert_without_key_fails(tmp_path: Path) -> None:
     result = runner.invoke(app, ["directory", "serve", "--check", "--tls-cert", str(cert)])
     assert result.exit_code == 1
     assert "together" in result.output.lower()
+
+
+def test_serve_check_starttls_mode(tmp_path: Path) -> None:
+    cert = tmp_path / "c.pem"
+    key = tmp_path / "k.pem"
+    cert.write_text("x", encoding="utf-8")
+    key.write_text("x", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["directory", "serve", "--check", "--starttls", "--tls-cert", str(cert), "--tls-key", str(key)],
+    )
+    assert result.exit_code == 0, result.output
+    # StartTLS serves on the plaintext port (1389), not LDAPS 636.
+    assert "ldap+starttls://127.0.0.1:1389" in result.output
+
+
+def test_serve_starttls_without_cert_fails() -> None:
+    result = runner.invoke(app, ["directory", "serve", "--check", "--starttls"])
+    assert result.exit_code == 1
+    assert "requires --tls-cert" in result.output.lower()

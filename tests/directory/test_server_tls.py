@@ -135,3 +135,60 @@ def test_ldaps_round_trip(tmp_path: Path) -> None:
     assert tags[0] == protocol.APP_BIND_RESPONSE
     assert protocol.APP_SEARCH_RESULT_ENTRY in tags
     assert tags[-1] == protocol.APP_SEARCH_RESULT_DONE
+
+
+def _starttls(message_id: int) -> bytes:
+    op = ber.encode_sequence(
+        [ber.encode_octet_string(protocol.STARTTLS_OID, tag=protocol.EXT_REQUEST_NAME)],
+        tag=protocol.APP_EXTENDED_REQUEST,
+    )
+    return ber.encode_sequence([ber.encode_integer(message_id), op])
+
+
+async def _starttls_round_trip(server: LdapServer, cert: Path) -> list[ber.TLV]:
+    srv = await asyncio.start_server(server.handle_connection, "127.0.0.1", 0)
+    host, port = srv.sockets[0].getsockname()[:2]
+    client_ctx = ssl.create_default_context()
+    client_ctx.check_hostname = False
+    client_ctx.load_verify_locations(str(cert))
+    responses: list[ber.TLV] = []
+    async with srv:
+        reader, writer = await asyncio.open_connection(host, port)
+        # 1) Ask for StartTLS in the clear and read the extendedResp ack.
+        writer.write(_starttls(1))
+        await writer.drain()
+        ack = await _read_message(reader)
+        responses.append(ack)
+        # 2) Upgrade the client side in-band, then run LDAP over TLS.
+        await writer.start_tls(client_ctx, server_hostname="localhost")
+        for req in [
+            _bind(2, "", ""),
+            _search_present(3, "dc=agd,dc=uiao,dc=gov"),
+            ber.encode_sequence([ber.encode_integer(4), ber.encode_null(tag=protocol.APP_UNBIND_REQUEST)]),
+        ]:
+            writer.write(req)
+        await writer.drain()
+        try:
+            while True:
+                responses.append(await _read_message(reader))
+        except asyncio.IncompleteReadError:
+            pass
+        writer.close()
+    return responses
+
+
+def test_starttls_round_trip(tmp_path: Path) -> None:
+    cert, key = _self_signed(tmp_path)
+    server = LdapServer(directory=build_directory(PRINCIPALS))
+    server.tls_context = build_server_tls_context(str(cert), str(key))
+    responses = asyncio.run(_starttls_round_trip(server, cert))
+    # First response is the StartTLS ack (extendedResp, success, in the clear).
+    ack = responses[0]
+    ack_op = ber.read_children(ack.content)[1]
+    assert ack_op.tag == protocol.APP_EXTENDED_RESPONSE
+    assert ber.decode_integer(ber.read_children(ack_op.content)[0].content) == int(protocol.ResultCode.SUCCESS)
+    # The bind + search that follow ran over the now-encrypted channel.
+    later = [ber.read_children(r.content)[1].tag for r in responses[1:]]
+    assert protocol.APP_BIND_RESPONSE in later
+    assert protocol.APP_SEARCH_RESULT_ENTRY in later
+    assert later[-1] == protocol.APP_SEARCH_RESULT_DONE
