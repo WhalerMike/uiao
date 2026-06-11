@@ -159,10 +159,10 @@ The matrix is evaluated against governed values only (Primary LocPath, registere
 1. **Registry-outward authority.** Like OrgTree over OrgPath, the location registry is authoritative over stamped/derived LocPath values; per-object edits are not authoritative.
 2. **Source priority.** HR duty station assigns people (Primary LocPath); facilities/real-property systems describe nodes (addresses, dispatchable attributes). Conflicts are reconciled toward the declared source for that attribute class and logged.
 3. **Change control.** Node creation, status changes, and classification changes (`diaApproved`, `telemetryBoundary`, `serviceAccessBoundary`, …) are canon changes: provenance-anchored, with impact analysis on assigned identities and dependent rules. Deactivating a Site with assigned identities is blocked until assignments are remapped.
-4. **Drift classes** (taxonomy extension deferred per ADR-102 §D6, names reserved here):
-   - **Location-assignment drift** — Primary LocPath disagrees with the HR duty station, or observed context persistently diverges from assignment.
-   - **Location-policy drift** — enforced network/access behavior disagrees with site classification (e.g., a `diaApproved: false` site exhibiting local breakout).
-   - **Location-boundary drift** — telemetry observed originating from, or egressing to, destinations outside the site's `telemetryBoundary` / `allowedTelemetryDestinations`.
+4. **Drift classes** (shipped per ADR-102 §D6 phase 3 in `uiao.modernization.locpath.drift`, expressed as **sub-classes** of the canonical taxonomy — the same extension mechanism as `DRIFT-SCHEMA::slot-occupied` (ADR-063) and `DRIFT-SEMANTIC::orphan`/`::phantom` (UIAO_163 v2.0); the five ADR-012 top-level classes and the ADR-033 `DRIFT-BOUNDARY` class are unchanged):
+   - **`DRIFT-IDENTITY::location-assignment`** — Primary LocPath disagrees with the HR duty station (stale assignment, unresolvable duty station, mover not yet reconciled), or observed context persistently diverges from assignment. Emitted by the HR assignment pass and the location Mover pass; error codes `GOV-LOCPATH-001..006`.
+   - **`DRIFT-AUTHZ::location-policy`** — observed network behavior disagrees with site classification (e.g., a `diaApproved: false` site exhibiting local breakout). Error codes `GOV-LOCPATH-008..009`.
+   - **`DRIFT-BOUNDARY::location-boundary`** — telemetry observed egressing outside the site's `telemetryBoundary` / `allowedTelemetryDestinations`. Error codes `GOV-LOCPATH-010..011`.
 5. **E911 completeness.** A Site with MLTS/UCaaS presence and no resolvable dispatchable-location attributes at the required depth is a standing compliance gap, surfaced like any other governance finding.
 
 ## Normative JSON Schema

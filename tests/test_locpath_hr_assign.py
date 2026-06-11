@@ -157,7 +157,7 @@ def test_unmapped_code_emits_finding_not_assignment() -> None:
     plan = assign_locpaths([_record(location_code="FIELD-99")])
     assert plan.assignments == ()
     (finding,) = plan.findings
-    assert finding.drift_class == "DRIFT-IDENTITY"
+    assert finding.drift_class == "DRIFT-IDENTITY::location-assignment"
     assert finding.error_code == ERROR_UNMAPPED_LOCATION_CODE
     assert finding.path == "E-1001"
     assert plan.unmapped_codes() == ("FIELD-99",)

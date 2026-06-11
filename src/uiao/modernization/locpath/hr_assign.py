@@ -27,13 +27,12 @@ Components:
   (same shape as every other modernization survey, so findings merge
   into a single substrate report).
 
-Drift classes: unresolved duty stations emit ``DRIFT-IDENTITY``, the
-same class the HRIT inventory uses for HR records that cannot be bound
-to an OrgPath. The dedicated location drift classes reserved by
-UIAO_194 §Governance (location-assignment / location-policy /
-location-boundary) land with the drift-taxonomy extension in ADR-102
-§D6 phase 3; error codes here are ``GOV-LOCPATH-NNN`` so the findings
-re-class cleanly when that taxonomy ships.
+Drift classes: unresolvable or degraded assignments emit
+``DRIFT-IDENTITY::location-assignment`` — the location-assignment drift
+class shipped by ADR-102 §D6 phase 3
+(:mod:`uiao.modernization.locpath.drift`), a sub-class of the canonical
+``DRIFT-IDENTITY`` per the ADR-063 / UIAO_163 sub-class convention,
+with stable ``GOV-LOCPATH-NNN`` error codes.
 
 Read-only and dry-run by nature: no Entra exposure (phase 4), no
 mutation of any system. Boundary: Moderate/Commercial only.
@@ -51,6 +50,7 @@ from typing import Iterable, Mapping
 import yaml
 
 from uiao.adapters.modernization.hrit.inventory import DriftFinding, HRRecord
+from uiao.modernization.locpath.drift import DRIFT_LOCATION_ASSIGNMENT
 from uiao.modernization.locpath.registry import (
     LocationRegistry,
     LocationRegistryValidationError,
@@ -275,7 +275,7 @@ def assign_locpaths(
         if anchor in seen_employees:
             findings.append(
                 DriftFinding(
-                    drift_class="DRIFT-IDENTITY",
+                    drift_class=DRIFT_LOCATION_ASSIGNMENT,
                     severity="P3",
                     path=anchor,
                     detail=f"duplicate employeeId '{anchor}' — first record wins; at most one "
@@ -291,7 +291,7 @@ def assign_locpaths(
         if not code:
             findings.append(
                 DriftFinding(
-                    drift_class="DRIFT-IDENTITY",
+                    drift_class=DRIFT_LOCATION_ASSIGNMENT,
                     severity="P2",
                     path=anchor,
                     detail="HR record carries no locationCode — Primary LocPath cannot be derived",
@@ -305,7 +305,7 @@ def assign_locpaths(
         if mapping is None:
             findings.append(
                 DriftFinding(
-                    drift_class="DRIFT-IDENTITY",
+                    drift_class=DRIFT_LOCATION_ASSIGNMENT,
                     severity="P2",
                     path=anchor,
                     detail=code,
@@ -319,7 +319,7 @@ def assign_locpaths(
         if node is None:
             findings.append(
                 DriftFinding(
-                    drift_class="DRIFT-IDENTITY",
+                    drift_class=DRIFT_LOCATION_ASSIGNMENT,
                     severity="P1",
                     path=anchor,
                     detail=f"duty-station map '{duty_map.map_id}' targets '{mapping.loc_path}' "
@@ -333,7 +333,7 @@ def assign_locpaths(
         if node.status != "Active":
             findings.append(
                 DriftFinding(
-                    drift_class="DRIFT-IDENTITY",
+                    drift_class=DRIFT_LOCATION_ASSIGNMENT,
                     severity="P3",
                     path=anchor,
                     detail=f"assigned location '{node.loc_path}' has status '{node.status}' — "
