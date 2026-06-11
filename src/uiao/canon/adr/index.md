@@ -104,6 +104,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-099](adr-099-orgpath-idp-binding-profile-expansion.md) | OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0) | PROPOSED | 2026-06-10 |
 | [ADR-100](adr-100-active-governance-directory-ldap.md) | Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception | PROPOSED | 2026-06-10 |
 | [ADR-101](adr-101-active-governance-directory-sasl-kerberos.md) | Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation | PROPOSED | 2026-06-11 |
+| [ADR-102](adr-102-locpath-location-addressing.md) | LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place) | PROPOSED | 2026-06-11 |
 
 ### Microsoft Coverage
 
