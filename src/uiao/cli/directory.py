@@ -91,8 +91,13 @@ def serve(
     base_dn: str = _BASE_DN_OPT,
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Bind address."),
     port: int = typer.Option(0, "--port", "-p", help="Bind port (default 1389 plaintext, 636 with TLS)."),
-    tls_cert: Path | None = typer.Option(None, "--tls-cert", help="PEM certificate for LDAPS (requires --tls-key)."),
-    tls_key: Path | None = typer.Option(None, "--tls-key", help="PEM private key for LDAPS (requires --tls-cert)."),
+    tls_cert: Path | None = typer.Option(None, "--tls-cert", help="PEM certificate for TLS (requires --tls-key)."),
+    tls_key: Path | None = typer.Option(None, "--tls-key", help="PEM private key for TLS (requires --tls-cert)."),
+    starttls: bool = typer.Option(
+        False,
+        "--starttls",
+        help="Serve plaintext but offer the StartTLS in-band upgrade (vs. LDAPS-on-connect).",
+    ),
     check: bool = typer.Option(
         False,
         "--check",
@@ -103,9 +108,18 @@ def serve(
     if bool(tls_cert) ^ bool(tls_key):
         console.print("[red]--tls-cert and --tls-key must be supplied together.[/red]")
         raise typer.Exit(code=1)
-    tls = tls_cert is not None
-    effective_port = port if port else (636 if tls else 1389)
-    scheme = "ldaps" if tls else "ldap"
+    if starttls and tls_cert is None:
+        console.print("[red]--starttls requires --tls-cert/--tls-key.[/red]")
+        raise typer.Exit(code=1)
+    have_cert = tls_cert is not None
+    ldaps = have_cert and not starttls  # LDAPS-on-connect vs. StartTLS-on-plaintext
+    effective_port = port if port else (636 if ldaps else 1389)
+    if ldaps:
+        scheme = "ldaps"
+    elif starttls:
+        scheme = "ldap+starttls"
+    else:
+        scheme = "ldap"
 
     principals = _load_principals(snapshot)
     directory = build_directory(principals, base_dn=base_dn)
@@ -119,12 +133,16 @@ def serve(
         return
 
     ssl_context = None
-    if tls:
+    if have_cert:
         assert tls_cert is not None and tls_key is not None
         if not tls_cert.exists() or not tls_key.exists():
             console.print("[red]TLS cert or key file not found.[/red]")
             raise typer.Exit(code=1)
-        ssl_context = build_server_tls_context(str(tls_cert), str(tls_key))
+        context = build_server_tls_context(str(tls_cert), str(tls_key))
+        if starttls:
+            server.tls_context = context  # in-band upgrade on the plaintext port
+        else:
+            ssl_context = context  # TLS-on-connect
 
     console.print(
         f"[green]Active Governance Directory[/green] serving {entry_count} entries "

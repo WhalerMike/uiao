@@ -150,6 +150,29 @@ class UnbindRequest:
 
 
 @dataclass(frozen=True)
+class ExtendedRequest:
+    """An LDAPv3 ExtendedRequest ([APPLICATION 23], RFC 4511 §4.12).
+
+    Only the ``request_name`` OID is decoded — that is all the AGD needs to
+    recognise StartTLS (:data:`STARTTLS_OID`). ``request_value`` is carried
+    verbatim for completeness.
+    """
+
+    message_id: int
+    request_name: str
+    request_value: bytes | None = None
+
+
+# The StartTLS extended-operation OID (RFC 4511 §4.14.1 / RFC 2830).
+STARTTLS_OID = "1.3.6.1.4.1.1466.20037"
+
+# ExtendedRequest field tags (context-specific, primitive).
+EXT_REQUEST_NAME = ber.CONTEXT | 0  # [0] requestName  LDAPOID
+EXT_REQUEST_VALUE = ber.CONTEXT | 1  # [1] requestValue OCTET STRING
+EXT_RESPONSE_NAME = ber.CONTEXT | 10  # [10] responseName LDAPOID
+
+
+@dataclass(frozen=True)
 class Entry:
     """A directory entry to serialize into a SearchResultEntry."""
 
@@ -160,7 +183,7 @@ class Entry:
 # ---------------------------------------------------------------------------
 # Inbound parsing
 # ---------------------------------------------------------------------------
-def parse_message(data: bytes) -> BindRequest | SearchRequest | UnbindRequest:
+def parse_message(data: bytes) -> BindRequest | SearchRequest | UnbindRequest | ExtendedRequest:
     """Parse one complete ``LDAPMessage`` envelope into a request object."""
     envelope, _ = ber.read_tlv(data)
     if envelope.tag != ber.TAG_SEQUENCE:
@@ -179,11 +202,25 @@ def parse_message(data: bytes) -> BindRequest | SearchRequest | UnbindRequest:
         return _parse_search(message_id, op)
     if op.tag == APP_UNBIND_REQUEST:
         return UnbindRequest(message_id=message_id)
+    if op.tag == APP_EXTENDED_REQUEST:
+        return _parse_extended(message_id, op)
     raise UnsupportedOperation(
         f"protocolOp tag 0x{op.tag:02x} is not supported",
         message_id=message_id,
         op_tag=op.tag,
     )
+
+
+def _parse_extended(message_id: int, op: ber.TLV) -> ExtendedRequest:
+    parts = ber.read_children(op.content)
+    if not parts or parts[0].tag != EXT_REQUEST_NAME:
+        raise ProtocolError("ExtendedRequest requires a requestName [0]")
+    request_name = ber.decode_octet_string(parts[0].content)
+    request_value = None
+    for extra in parts[1:]:
+        if extra.tag == EXT_REQUEST_VALUE:
+            request_value = extra.content
+    return ExtendedRequest(message_id=message_id, request_name=request_name, request_value=request_value)
 
 
 def _parse_bind(message_id: int, op: ber.TLV) -> BindRequest:
@@ -334,4 +371,23 @@ def encode_unwilling_response(message_id: int, op_tag: int, message: str = "") -
     if response_tag is None:
         return None
     op = ber.encode_sequence(_ldap_result(ResultCode.UNWILLING_TO_PERFORM, message=message), tag=response_tag)
+    return _envelope(message_id, op)
+
+
+def encode_extended_response(
+    message_id: int,
+    code: ResultCode,
+    *,
+    response_name: str | None = None,
+    message: str = "",
+) -> bytes:
+    """Encode an ExtendedResponse ([APPLICATION 24], RFC 4511 §4.12).
+
+    ``response_name`` (the [10] OID) is echoed on a successful StartTLS so
+    the client can correlate the upgrade; it is omitted on refusal.
+    """
+    fields = _ldap_result(code, message=message)
+    if response_name is not None:
+        fields.append(ber.encode_octet_string(response_name, tag=EXT_RESPONSE_NAME))
+    op = ber.encode_sequence(fields, tag=APP_EXTENDED_RESPONSE)
     return _envelope(message_id, op)
