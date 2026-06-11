@@ -12,12 +12,12 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
 uiao-spec             58           51         51      0
-adr                  104          101        101      0
+adr                  105          102        102      0
 modernization         24           21         21      0
 schema                33           32         32      0
 other                117            0          0      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                336          205        205      0
+TOTAL                337          206        206      0
 ```
 
 ## Methodology
