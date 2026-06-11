@@ -8,7 +8,7 @@ For each src/uiao/schemas/**/*.schema.json file, produces:
     table (name/type/required/description), and a collapsible code
     block of the full raw schema.
 
-Per ADR-068, schemas use `publication_style: reference` rather than
+Per ADR-072, schemas use `publication_style: reference` rather than
 `include` because they are not markdown bodies — they are structured
 JSON best surfaced as property tables for developer consumption.
 
@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import pathlib
 import sys
@@ -35,6 +36,31 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEMA_SOURCE_DIR = REPO_ROOT / "src" / "uiao" / "schemas"
 SCHEMA_OUTPUT_DIR = REPO_ROOT / "docs" / "reference" / "schemas"
 SIDEBAR_SNIPPET = REPO_ROOT / "tools" / "publication-gaps" / "schema-sidebar-snippet.yaml"
+
+# Schemas deliberately published under a different wrapper name than the source
+# stem. Keyed by path relative to SCHEMA_SOURCE_DIR (posix); value is the
+# output stem (wrapper filename without .qmd). These match the wrappers
+# committed on main and registered in docs/_quarto.yml.
+OUTPUT_STEM_OVERRIDES = {
+    "mssql-rationalization/abbreviation-dictionary.schema.json": "mssql-rationalization-abbreviation-dictionary.schema",
+    "mssql-rationalization/domain-catalog.schema.json": "mssql-rationalization-domain-catalog.schema",
+    "mssql-rationalization/reference-data-patterns.schema.json": "mssql-rationalization-reference-data-patterns.schema",
+}
+
+# Schemas surfaced on a page outside docs/reference/schemas/. The
+# publication-gap scanner matches these via link-back from that page; they get
+# no wrapper, no index row, and no sidebar entry here.
+EXCLUDED_SCHEMAS = {
+    "migration-adapter-registry/migration-adapter-registry.schema.json": (
+        "published via docs/customer-documents/reference-architecture/directory-migration.qmd"
+    ),
+}
+
+
+def output_stem(schema_path: pathlib.Path) -> str:
+    """Wrapper filename stem for a schema source, honoring committed overrides."""
+    rel = schema_path.relative_to(SCHEMA_SOURCE_DIR).as_posix()
+    return OUTPUT_STEM_OVERRIDES.get(rel, schema_path.stem)
 
 
 def _format_type(prop: dict[str, Any]) -> str:
@@ -100,17 +126,24 @@ def render_schema_qmd(schema: dict[str, Any], schema_path: pathlib.Path) -> str:
     # Page title can contain quotes that break YAML — escape them
     page_title = title.replace('"', '\\"')
 
+    # Renamed wrappers carry the family-qualified source name so the page
+    # is unambiguous (e.g. mssql-rationalization/abbreviation-dictionary…).
+    rel_in_schemas = schema_path.relative_to(SCHEMA_SOURCE_DIR).as_posix()
+    display_name = rel_in_schemas if rel_in_schemas in OUTPUT_STEM_OVERRIDES else schema_path.name
+
+    page_date = datetime.date.today().isoformat()
+
     return f"""---
 title: "{page_title}"
-subtitle: "Schema Reference · {schema_path.name}"
-date: 2026-05-14
+subtitle: "Schema Reference · {display_name}"
+date: {page_date}
 ---
 
 ::: {{.callout-note}}
 ## Developer Reference
 
 This is a UIAO JSON Schema, rendered as a developer-reference page per
-[ADR-068](../../adr/adr-068-canon-publication-policy.qmd).
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
 
 - **Source:** [`{schema_path.relative_to(REPO_ROOT).as_posix()}`]({rel_to_source_str})
 - **Dialect:** `{schema_dialect}`
@@ -136,22 +169,22 @@ This is a UIAO JSON Schema, rendered as a developer-reference page per
 def render_index_qmd(schemas: list[tuple[pathlib.Path, dict[str, Any]]]) -> str:
     """Build the docs/reference/schemas/index.qmd aggregate page."""
     rows = []
-    for path, schema in sorted(schemas, key=lambda x: x[0].stem):
+    for path, schema in sorted(schemas, key=lambda x: output_stem(x[0])):
         title = schema.get("title", path.stem)
         title_escaped = title.replace("|", "\\|")
-        rows.append(f"| [{title_escaped}]({path.stem}.qmd) | `{path.name}` |")
+        rows.append(f"| [{title_escaped}]({output_stem(path)}.qmd) | `{path.name}` |")
     table = "| Schema | File |\n|---|---|\n" + "\n".join(rows) if rows else "_(no schemas found)_"
     return f"""---
 title: "JSON Schema Reference — Index"
 subtitle: "All UIAO machine-readable schemas"
-date: 2026-05-14
+date: last-modified
 ---
 
 ::: {{.callout-note}}
 The UIAO JSON schemas define the machine-readable contracts for
 canon artifacts (orgpath registries, KSI evidence bundles, adapter
 manifests, etc.). Every schema is published as a developer-reference
-page per [ADR-068](../../adr/adr-068-canon-publication-policy.qmd).
+page per [ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
 
 The schemas are versioned alongside the canon they constrain. To
 contribute a new schema, see the canon-change process declared in
@@ -212,6 +245,11 @@ def main() -> int:
     schemas: list[tuple[pathlib.Path, dict[str, Any]]] = []
 
     for schema_path in sorted(SCHEMA_SOURCE_DIR.rglob("*.schema.json")):
+        rel = schema_path.relative_to(SCHEMA_SOURCE_DIR).as_posix()
+        if rel in EXCLUDED_SCHEMAS:
+            skipped.append((schema_path.name, f"excluded: {EXCLUDED_SCHEMAS[rel]}"))
+            continue
+
         try:
             with schema_path.open(encoding="utf-8") as fh:
                 schema = json.load(fh)
@@ -220,23 +258,24 @@ def main() -> int:
             continue
 
         schemas.append((schema_path, schema))
-        wrapper_path = SCHEMA_OUTPUT_DIR / f"{schema_path.stem}.qmd"
+        wrapper_path = SCHEMA_OUTPUT_DIR / f"{output_stem(schema_path)}.qmd"
 
         if wrapper_path.exists() and not args.force:
             skipped.append((schema_path.name, "wrapper exists"))
             continue
 
         if not args.dry_run:
-            wrapper_path.write_text(render_schema_qmd(schema, schema_path), encoding="utf-8")
+            wrapper_path.write_text(render_schema_qmd(schema, schema_path), encoding="utf-8", newline="\n")
         generated.append(schema_path.name)
 
     # Emit index + sidebar snippet
     if not args.dry_run:
         index_path = SCHEMA_OUTPUT_DIR / "index.qmd"
-        index_path.write_text(render_index_qmd(schemas), encoding="utf-8")
+        index_path.write_text(render_index_qmd(schemas), encoding="utf-8", newline="\n")
         SIDEBAR_SNIPPET.write_text(
-            generate_sidebar_snippet([p.stem for p, _ in schemas]),
+            generate_sidebar_snippet([output_stem(p) for p, _ in schemas]),
             encoding="utf-8",
+            newline="\n",
         )
 
     print(f"Schema source dir:  {SCHEMA_SOURCE_DIR.relative_to(REPO_ROOT)}")
