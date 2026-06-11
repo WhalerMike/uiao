@@ -7,6 +7,13 @@ from uiao.modernization.locpath.drift import (
     ObservedSiteState,
     detect_location_policy_drift,
 )
+from uiao.modernization.locpath.entra_exposure import (
+    LocPathAdminUnitSpec,
+    LocPathExposureError,
+    LocPathGroupSpec,
+    plan_locpath_admin_units,
+    plan_locpath_site_groups,
+)
 from uiao.modernization.locpath.hr_assign import (
     CANONICAL_MAP_RESOURCE,
     DutyStationMap,
@@ -45,8 +52,11 @@ __all__ = [
     "DutyStationMapValidationError",
     "LEVEL_DEPTH",
     "LEVELS",
+    "LocPathAdminUnitSpec",
     "LocPathAssignment",
     "LocPathAssignmentPlan",
+    "LocPathExposureError",
+    "LocPathGroupSpec",
     "LocationMoverPlan",
     "LocationNode",
     "LocationRegistry",
@@ -60,4 +70,6 @@ __all__ = [
     "load_location_registry",
     "load_location_registry_from_path",
     "plan_location_moves",
+    "plan_locpath_admin_units",
+    "plan_locpath_site_groups",
 ]
