@@ -67,6 +67,7 @@
 - [UIAO Supply Chain Risk Management Plan](canon/UIAO_191_Supply_Chain_Risk_Management_Plan.html)
 - [UIAO Privacy Impact Assessment](canon/UIAO_192_Privacy_Impact_Assessment.html)
 - [OrgPath Multi-Cloud Binding Profiles — Vendor-Neutral Storage Contract & Zero Trust Subject](canon/UIAO_193_OrgPath_MultiCloud_Binding.html)
+- [LocPath Codebook — Canonical Physical-Location Addressing & Site Classification](canon/UIAO_194_LocPath_Codebook.html)
 
 ## Architecture Decision Records
 
@@ -168,6 +169,7 @@
 - [OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0)](adr/adr-099-orgpath-idp-binding-profile-expansion.html)
 - [Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception](adr/adr-100-active-governance-directory-ldap.html)
 - [Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation](adr/adr-101-active-governance-directory-sasl-kerberos.html)
+- [LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place)](adr/adr-102-locpath-location-addressing.html)
 
 ## Schema Reference
 
