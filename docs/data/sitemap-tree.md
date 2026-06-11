@@ -190,6 +190,8 @@
 - [SCIM 2.0 Group Resource (RFC 7643 §4.2)](reference/schemas/group.schema.html)
 - [UIAO Image Registry Schema](reference/schemas/image-registry.schema.html)
 - [UIAO Unified Key Security Indicator (KSI) Schema](reference/schemas/ksi.schema.html)
+- [UIAO LocPath Location Registry](reference/schemas/location-registry.schema.html)
+- [UIAO Location Node](reference/schemas/location.schema.html)
 - [UIAO MS SQL Estate Inventory Schema](reference/schemas/mssql-inventory.schema.html)
 - [MS SQL Rationalization Abbreviation Dictionary Schema](reference/schemas/mssql-rationalization-abbreviation-dictionary.schema.html)
 - [MS SQL Rationalization Domain Catalog Schema](reference/schemas/mssql-rationalization-domain-catalog.schema.html)

@@ -1,0 +1,99 @@
+---
+title: "UIAO LocPath Location Registry"
+subtitle: "Schema Reference · location-registry.schema.json"
+date: 2026-06-11
+---
+
+::: {.callout-note}
+## Developer Reference
+
+This is a UIAO JSON Schema, rendered as a developer-reference page per
+[ADR-072](../../adr/adr-072-canon-publication-policy.qmd).
+
+- **Source:** [`src/uiao/schemas/locpath/location-registry.schema.json`](../../../src/uiao/schemas/locpath/location-registry.schema.json)
+- **Dialect:** `https://json-schema.org/draft/2020-12/schema`
+- **`$id`:** `https://uiao.io/schemas/locpath/location-registry.schema.json`
+:::
+
+## Description
+
+Envelope for an executable LocPath location registry (ADR-102 §D6 / UIAO_194). A registry is a versioned, provenance-anchored collection of location nodes; each node is validated individually against location.schema.json at load time by uiao.modernization.locpath (no JSON Schema $ref, so per-node errors stay addressable). The 'reference' registry shipped as executable canon is the UIAO_194 worked example, not deployment data — agency registries are loaded from their own paths with the same contract.
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|---|---|:---:|---|
+| `schema_version` | string | ✓ | Location-registry schema version (independent of the node schema). Major pinned to 1. |
+| `document_id` | `const: 'UIAO_194'` | ✓ | Location registries are executable canon under the UIAO_194 allocation, the way codebook.yaml is under UIAO_151 and binding profiles are under UIAO_193. |
+| `registry_id` | string | ✓ | Kebab-case stable identifier. 'reference' is the canonical worked example shipped with the substrate; agency registries use their own ids. |
+| `display_name` | string | ✓ |  |
+| `status` | enum: 'reference', 'proposed', 'active', 'deprecated' | ✓ | reference = the canonical worked example (UIAO_194 §Worked example); proposed = specified, not yet authoritative; active = the governed location registry of record; deprecated = retiring, must name successor. |
+| `description` | string |  |  |
+| `updated` | string | ✓ | Date of last governed change to this registry. |
+| `nodes` | array&lt;object&gt; | ✓ | Location nodes. Each is validated against location.schema.json plus the UIAO_194 integrity rules (level/depth consistency, uniqueness, parent existence) at load time. |
+
+## Full Schema
+
+```{.json filename="location-registry.schema.json"}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/locpath/location-registry.schema.json",
+  "title": "UIAO LocPath Location Registry",
+  "description": "Envelope for an executable LocPath location registry (ADR-102 \u00a7D6 / UIAO_194). A registry is a versioned, provenance-anchored collection of location nodes; each node is validated individually against location.schema.json at load time by uiao.modernization.locpath (no JSON Schema $ref, so per-node errors stay addressable). The 'reference' registry shipped as executable canon is the UIAO_194 worked example, not deployment data \u2014 agency registries are loaded from their own paths with the same contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "registry_id",
+    "display_name",
+    "status",
+    "updated",
+    "nodes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$",
+      "description": "Location-registry schema version (independent of the node schema). Major pinned to 1."
+    },
+    "document_id": {
+      "const": "UIAO_194",
+      "description": "Location registries are executable canon under the UIAO_194 allocation, the way codebook.yaml is under UIAO_151 and binding profiles are under UIAO_193."
+    },
+    "registry_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Kebab-case stable identifier. 'reference' is the canonical worked example shipped with the substrate; agency registries use their own ids."
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "reference",
+        "proposed",
+        "active",
+        "deprecated"
+      ],
+      "description": "reference = the canonical worked example (UIAO_194 \u00a7Worked example); proposed = specified, not yet authoritative; active = the governed location registry of record; deprecated = retiring, must name successor."
+    },
+    "description": {
+      "type": "string"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of last governed change to this registry."
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object"
+      },
+      "description": "Location nodes. Each is validated against location.schema.json plus the UIAO_194 integrity rules (level/depth consistency, uniqueness, parent existence) at load time."
+    }
+  }
+}
+```
