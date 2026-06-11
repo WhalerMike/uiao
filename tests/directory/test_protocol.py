@@ -127,6 +127,45 @@ def test_encode_bind_response_round_trips() -> None:
     assert ber.decode_integer(code.content) == int(protocol.ResultCode.SUCCESS)
 
 
+def test_parse_starttls_extended_request() -> None:
+    op = ber.encode_sequence(
+        [ber.encode_octet_string(protocol.STARTTLS_OID, tag=protocol.EXT_REQUEST_NAME)],
+        tag=protocol.APP_EXTENDED_REQUEST,
+    )
+    msg = ber.encode_sequence([ber.encode_integer(8), op])
+    req = protocol.parse_message(msg)
+    assert isinstance(req, protocol.ExtendedRequest)
+    assert req.message_id == 8
+    assert req.request_name == protocol.STARTTLS_OID
+
+
+def test_extended_request_without_name_is_protocol_error() -> None:
+    op = ber.encode_sequence([], tag=protocol.APP_EXTENDED_REQUEST)
+    msg = ber.encode_sequence([ber.encode_integer(1), op])
+    with pytest.raises(protocol.ProtocolError):
+        protocol.parse_message(msg)
+
+
+def test_encode_extended_response_with_name_round_trips() -> None:
+    raw = protocol.encode_extended_response(9, protocol.ResultCode.SUCCESS, response_name=protocol.STARTTLS_OID)
+    envelope, _ = ber.read_tlv(raw)
+    mid, op = ber.read_children(envelope.content)
+    assert ber.decode_integer(mid.content) == 9
+    assert op.tag == protocol.APP_EXTENDED_RESPONSE
+    parts = ber.read_children(op.content)
+    assert ber.decode_integer(parts[0].content) == int(protocol.ResultCode.SUCCESS)
+    name = next(p for p in parts if p.tag == protocol.EXT_RESPONSE_NAME)
+    assert ber.decode_octet_string(name.content) == protocol.STARTTLS_OID
+
+
+def test_encode_extended_response_refusal_omits_name() -> None:
+    raw = protocol.encode_extended_response(9, protocol.ResultCode.UNWILLING_TO_PERFORM)
+    envelope, _ = ber.read_tlv(raw)
+    _, op = ber.read_children(envelope.content)
+    parts = ber.read_children(op.content)
+    assert all(p.tag != protocol.EXT_RESPONSE_NAME for p in parts)
+
+
 def test_encode_search_result_entry_round_trips() -> None:
     entry = protocol.Entry(dn="cn=alice,dc=x", attributes={"cn": ["alice"], "uiaoOrgPathRegion": ["NCR"]})
     raw = protocol.encode_search_result_entry(6, entry)

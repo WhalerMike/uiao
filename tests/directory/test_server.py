@@ -222,6 +222,42 @@ def _is_entry(envelope: ber.TLV) -> bool:
     return ber.read_children(envelope.content)[1].tag == protocol.APP_SEARCH_RESULT_ENTRY
 
 
+def _starttls(message_id: int) -> bytes:
+    op = ber.encode_sequence(
+        [ber.encode_octet_string(protocol.STARTTLS_OID, tag=protocol.EXT_REQUEST_NAME)],
+        tag=protocol.APP_EXTENDED_REQUEST,
+    )
+    return ber.encode_sequence([ber.encode_integer(message_id), op])
+
+
+def test_starttls_refused_when_not_configured() -> None:
+    # No tls_context -> StartTLS is refused (unwillingToPerform) but the
+    # connection survives so a following search still works.
+    server = LdapServer(directory=build_directory(PRINCIPALS))
+    requests = [_starttls(1), _search_present(2, "dc=agd,dc=uiao,dc=gov")]
+    responses = asyncio.run(_run_session(server, requests))
+    ack_op = ber.read_children(responses[0].content)[1]
+    assert ack_op.tag == protocol.APP_EXTENDED_RESPONSE
+    assert ber.decode_integer(ber.read_children(ack_op.content)[0].content) == int(
+        protocol.ResultCode.UNWILLING_TO_PERFORM
+    )
+    later = [ber.read_children(r.content)[1].tag for r in responses[1:]]
+    assert protocol.APP_SEARCH_RESULT_ENTRY in later
+
+
+def test_unknown_extended_op_is_protocol_error() -> None:
+    op = ber.encode_sequence(
+        [ber.encode_octet_string("1.2.3.4.5", tag=protocol.EXT_REQUEST_NAME)],
+        tag=protocol.APP_EXTENDED_REQUEST,
+    )
+    msg = ber.encode_sequence([ber.encode_integer(1), op])
+    server = LdapServer(directory=build_directory(PRINCIPALS))
+    responses = asyncio.run(_run_session(server, [msg]))
+    ack_op = ber.read_children(responses[0].content)[1]
+    assert ack_op.tag == protocol.APP_EXTENDED_RESPONSE
+    assert ber.decode_integer(ber.read_children(ack_op.content)[0].content) == int(protocol.ResultCode.PROTOCOL_ERROR)
+
+
 def test_search_existing_base_no_match_is_success() -> None:
     # Base exists but the filter matches nothing -> success, 0 entries.
     server = LdapServer(directory=build_directory(PRINCIPALS))

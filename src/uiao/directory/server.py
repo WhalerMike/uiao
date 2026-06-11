@@ -46,6 +46,10 @@ class LdapServer:
     credentials: dict[str, str] = field(default_factory=dict)
     size_limit: int = _DEFAULT_SIZE_LIMIT
     read_policy: ReadPolicy = field(default_factory=default_read_policy)
+    # When set, the server offers StartTLS (RFC 4511 §4.14) so a client on the
+    # plaintext port can upgrade the connection in-band. Distinct from the
+    # ``ssl_context`` passed to :meth:`serve`, which is LDAPS-on-connect.
+    tls_context: ssl.SSLContext | None = None
 
     # -- bind policy --------------------------------------------------------
     def _authenticate(self, name: str, password: str) -> protocol.ResultCode:
@@ -108,12 +112,82 @@ class LdapServer:
         out.append(protocol.encode_search_result_done(req.message_id, code, message))
         return out
 
+    # -- extended ops (StartTLS) -------------------------------------------
+    async def _handle_extended(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        req: protocol.ExtendedRequest,
+        *,
+        tls_active: bool,
+        peer: object,
+    ) -> bool:
+        """Service an ExtendedRequest. Returns True iff a StartTLS upgrade happened.
+
+        Only StartTLS (RFC 4511 §4.14) is recognised. Anything else, or
+        StartTLS when no ``tls_context`` is configured / TLS is already up,
+        is refused with a non-success ExtendedResponse and no responseName.
+        """
+        if req.request_name != protocol.STARTTLS_OID:
+            writer.write(
+                protocol.encode_extended_response(
+                    req.message_id, protocol.ResultCode.PROTOCOL_ERROR, message="unsupported extended operation"
+                )
+            )
+            return False
+        if self.tls_context is None:
+            writer.write(
+                protocol.encode_extended_response(
+                    req.message_id, protocol.ResultCode.UNWILLING_TO_PERFORM, message="StartTLS is not configured"
+                )
+            )
+            return False
+        if tls_active:
+            writer.write(
+                protocol.encode_extended_response(
+                    req.message_id, protocol.ResultCode.OPERATIONS_ERROR, message="TLS is already established"
+                )
+            )
+            return False
+        # ``StreamWriter.start_tls`` is the in-band upgrade primitive — but it
+        # only exists on Python 3.11+. On 3.10 (still in ``requires-python``)
+        # there is no public way to upgrade an existing stream, so refuse
+        # rather than crash; LDAPS-on-connect remains available there.
+        start_tls = getattr(writer, "start_tls", None)
+        if start_tls is None:  # pragma: no cover - exercised only on Python 3.10
+            writer.write(
+                protocol.encode_extended_response(
+                    req.message_id,
+                    protocol.ResultCode.UNWILLING_TO_PERFORM,
+                    message="StartTLS requires Python 3.11+ (use LDAPS-on-connect)",
+                )
+            )
+            return False
+        # Acknowledge first, then perform the in-band handshake (RFC 4511
+        # §4.14.2): the success response is the last thing sent in the clear.
+        writer.write(
+            protocol.encode_extended_response(
+                req.message_id, protocol.ResultCode.SUCCESS, response_name=protocol.STARTTLS_OID
+            )
+        )
+        await writer.drain()
+        try:
+            await start_tls(self.tls_context)
+        except (ssl.SSLError, OSError) as exc:
+            # The handshake failed after we acknowledged; the connection is no
+            # longer usable in either mode (RFC 4511 §4.14.2). Drop it.
+            logger.warning("StartTLS handshake failed from %s: %s", peer, exc)
+            raise ConnectionResetError("StartTLS handshake failed") from exc
+        logger.info("StartTLS upgrade completed for %s", peer)
+        return True
+
     # -- connection loop ----------------------------------------------------
     async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         peer = writer.get_extra_info("peername")
         logger.info("AGD connection from %s", peer)
         # Connections start anonymous; a successful simple bind flips this.
         authenticated = False
+        tls_active = writer.get_extra_info("ssl_object") is not None  # LDAPS-on-connect
         try:
             while True:
                 data = await _read_one_message(reader)
@@ -145,6 +219,12 @@ class LdapServer:
                 elif isinstance(req, protocol.SearchRequest):
                     for chunk in self.handle_search(req, authenticated=authenticated):
                         writer.write(chunk)
+                elif isinstance(req, protocol.ExtendedRequest):
+                    upgraded = await self._handle_extended(reader, writer, req, tls_active=tls_active, peer=peer)
+                    if upgraded:
+                        # StartTLS discards any prior authentication state
+                        # (RFC 4513 §3.1.1): the connection is anonymous again.
+                        tls_active, authenticated = True, False
                 await writer.drain()
         except (ConnectionResetError, asyncio.IncompleteReadError):
             pass
