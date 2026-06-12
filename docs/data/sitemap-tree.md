@@ -171,6 +171,7 @@
 - [Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception](adr/adr-100-active-governance-directory-ldap.html)
 - [Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation](adr/adr-101-active-governance-directory-sasl-kerberos.html)
 - [LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place)](adr/adr-102-locpath-location-addressing.html)
+- [Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG](adr/adr-103-generated-illustrative-raster.html)
 
 ## Schema Reference
 
