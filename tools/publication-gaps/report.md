@@ -11,14 +11,20 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 ```
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
-uiao-spec             58           51         51      0
-adr                  105          102        102      0
+uiao-spec             59           52         52      0
+adr                  108          105        104      1
 modernization         24           21         21      0
-schema                33           32         32      0
+schema                36           35         35      0
 other                117            0          0      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                337          206        206      0
+TOTAL                344          213        212      1
 ```
+
+## Gaps — Architecture Decision Records (1)
+
+| Source | Intent source | Style | Expected .qmd candidates |
+|---|---|---|---|
+| [`src/uiao/canon/adr/adr-104-e911-compliance-layer.md`](src/uiao/canon/adr/adr-104-e911-compliance-layer.md) | frontmatter | include | `docs/adr/adr-104-e911-compliance-layer.qmd`<br>`docs/canon/adr/adr-104-e911-compliance-layer.qmd` |
 
 ## Methodology
 
