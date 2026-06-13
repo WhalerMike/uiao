@@ -7,7 +7,7 @@ deciders: Michael Stratton
 updated: 2026-06-13
 next_review: 2026-12-13
 review_trigger: The E911 completeness check is wired into a CLI surface or the substrate-drift report; the first agency location registry sets dispatchableLocationRequired in production; a UCaaS/MLTS emergency-address export consumes the dispatchable location of record; an RTLS tag/reader collection mechanism is proposed for the Dynamic Location Context; 47 CFR Part 9 (Kari's Law / RAY BAUM'S Act § 506) is amended; ADR-102 (LocPath) is revised.
-impact: 'Names and ships the E911 Compliance Layer over the LocPath substrate (ADR-102 / UIAO_194). Adds one governed node attribute (e911.dispatchableLocationRequired) that turns on a read-only dispatchable-location completeness check (uiao.modernization.locpath.e911_compliance), classifying gaps DRIFT-SEMANTIC::e911-completeness with error codes GOV-LOCPATH-012..014 against 47 CFR § 9.16. Extends the Dynamic Location Context source enum with the RTLS tag-and-reader sources UWB and RFID (BLE already present), defining their role as observational enhancement that never substitutes for the governed dispatchable location of record. Amends ADR-102 §D2/§D4 and UIAO_194; introduces no new boundary enum and no OrgPath facet/slot. Out of scope (unchanged from ADR-102 §D7): emergency-call routing, RTLS collection mechanisms, facilities/network orchestration.'
+impact: 'Names and ships the E911 Compliance Layer over the LocPath substrate (ADR-102 / UIAO_194). Adds one governed node attribute (e911.dispatchableLocationRequired) that turns on a read-only dispatchable-location completeness check (uiao.modernization.locpath.e911_compliance), classifying gaps DRIFT-SEMANTIC::e911-completeness with error codes GOV-LOCPATH-012..014 against 47 CFR § 9.16. Extends the Dynamic Location Context source enum with the indoor RTLS tag-and-reader sources UWB and RFID (BLE already present) and the wide-area LEO-PNT signals-of-opportunity source (Starlink-class, vendor-neutral), defining their role as observational enhancement and GPS-denied resilience that never substitutes for the governed dispatchable location of record. Amends ADR-102 §D2/§D4 and UIAO_194; introduces no new boundary enum and no OrgPath facet/slot. Out of scope (unchanged from ADR-102 §D7): emergency-call routing, RTLS/LEO-PNT collection mechanisms, facilities/network orchestration.'
 supersedes: null
 superseded_by: null
 publish_to_site: true
@@ -66,17 +66,17 @@ The codes continue the `GOV-LOCPATH-NNN` series (006–011 are the phase-3 locat
 
 Findings carry the class `DRIFT-SEMANTIC::e911-completeness` — a content-completeness gap (the governed model is missing data a regulatory obligation requires), sub-classed off the canonical ADR-012 `DRIFT-SEMANTIC` top level. This is the same extension mechanism as `DRIFT-SCHEMA::slot-occupied` ([ADR-063](adr-063-orgpath-storage-slot-binding.md)) and the phase-3 `DRIFT-*::location-*` classes ([ADR-102](adr-102-locpath-location-addressing.md) §D6 phase 3). The five ADR-012 top-level classes and the ADR-033 `DRIFT-BOUNDARY` class are unchanged.
 
-### D5. RTLS sources enhance the observational layer; they never become the record
+### D5. RTLS and LEO-PNT sources enhance the observational layer; they never become the record
 
-The Dynamic Location Context source enum (UIAO_194 §Two-layer model) is extended with the RTLS tag-and-reader sources **`UWB`** and **`RFID`** (`BLE` is already present). These are observational enhancement: on platforms that support real-time location they may sharpen an emergency-location answer at call time, and persistent divergence between observed and governed location is a drift signal (UIAO_194 §Two-layer model rule 4). They **never** substitute for the governed `e911` payload the UCaaS/MLTS platform consumes. Three constraints bind any use:
+The Dynamic Location Context source enum (UIAO_194 §Two-layer model) is extended with the indoor RTLS tag-and-reader sources **`UWB`** and **`RFID`** (`BLE` is already present) and the wide-area **`LEO-PNT`** source — Low-Earth-Orbit positioning/navigation/timing from communication-satellite signals of opportunity (Starlink-class), a resilient complement to GPS in GPS-denied or jammed conditions and at remote/austere sites where indoor RTLS does not reach. The enum is vendor-neutral by construction: `LEO-PNT` names the signal class, not a provider, the same way `GPS` names MEO GNSS rather than a constellation operator. All are observational enhancement: on platforms that support real-time location they may sharpen an emergency-location answer at call time, and persistent divergence between observed and governed location is a drift signal (UIAO_194 §Two-layer model rule 4). They **never** substitute for the governed `e911` payload the UCaaS/MLTS platform consumes or the governed Primary LocPath. As of 2026 `LEO-PNT` is a backup/augmentation layer, not a primary GNSS replacement. Three constraints bind any use:
 
-1. **Enterprise-managed only.** Tags, anchors, and readers must be enterprise-managed; consumer location services (e.g., Find My) are out of scope.
-2. **Collection requires its own review.** Defining the enum value is not authorization to collect. Any tag/reader collection mechanism — especially continuous people-tracking in the federal/GCC-Moderate privacy context — requires its own review before it ships (UIAO_194 §Two-layer model rule 5), and respects the node's telemetry `boundaries` block.
-3. **No call-path or reader orchestration.** UIAO consumes RTLS observations; it does not program readers and is not in the 911 path (ADR-102 §D7).
+1. **Enterprise-managed only.** Tags, anchors, readers, and LEO terminals must be enterprise-managed; consumer location services (e.g., Find My) are out of scope.
+2. **Collection requires its own review.** Defining the enum value is not authorization to collect. Any collection mechanism — RTLS tag/reader or LEO-PNT receiver, and especially continuous people-tracking in the federal/GCC-Moderate privacy context — requires its own review before it ships (UIAO_194 §Two-layer model rule 5), and respects the node's telemetry `boundaries` block.
+3. **No call-path or infrastructure orchestration.** UIAO consumes RTLS and LEO-PNT observations; it does not program readers or receivers and is not in the 911 path (ADR-102 §D7).
 
 ### D6. Amendment to ADR-102, not supersession
 
-ADR-102 remains CURRENT. This ADR amends its §D2 (source enum extended with `UWB`/`RFID`) and §D4 (the `dispatchableLocationRequired` flag) and discharges the dispatchable-location portion of the §D6 implementation intent. No other ADR-102 decision changes.
+ADR-102 remains CURRENT. This ADR amends its §D2 (source enum extended with `UWB`/`RFID`/`LEO-PNT`) and §D4 (the `dispatchableLocationRequired` flag) and discharges the dispatchable-location portion of the §D6 implementation intent. No other ADR-102 decision changes.
 
 ## Consequences
 
@@ -97,6 +97,6 @@ ADR-102 remains CURRENT. This ADR amends its §D2 (source enum extended with `UW
 ## Next actions
 
 1. Publish this ADR alongside the UIAO_194 amendment and the executable check — same PR.
-2. Future (own PRs): surface the check in the substrate-drift report and/or a `uiao locpath e911-check` CLI command; define the RTLS collection mechanism (with its own review) if and when a deployment needs observed enhancement.
+2. Future (own PRs): surface the check in the substrate-drift report and/or a `uiao locpath e911-check` CLI command; define the RTLS/LEO-PNT collection mechanism (with its own review) if and when a deployment needs observed enhancement.
 
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md

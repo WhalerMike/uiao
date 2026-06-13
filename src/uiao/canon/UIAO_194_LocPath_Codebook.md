@@ -129,7 +129,7 @@ These attributes are the policy subject for the TIC 3.0 Branch Office and Cloud 
 
 | Attribute | Type | Description |
 |---|---|---|
-| `source` | enum | `GPS` \| `WiFi` \| `BLE` \| `UWB` \| `RFID` \| `Network` \| `Hybrid` \| `Manual` — `UWB`/`RFID` (and `BLE`) are the RTLS tag-and-reader sources of the [E911 Compliance Layer](#e911-compliance-layer) (ADR-104) |
+| `source` | enum | `GPS` \| `WiFi` \| `BLE` \| `UWB` \| `RFID` \| `LEO-PNT` \| `Network` \| `Hybrid` \| `Manual` — `UWB`/`RFID` (and `BLE`) are the indoor RTLS tag-and-reader sources, and `LEO-PNT` the wide-area LEO signals-of-opportunity source (Starlink-class), of the [E911 Compliance Layer](#e911-compliance-layer) (ADR-104) |
 | `latitude` / `longitude` | number | WGS84 |
 | `accuracyMeters` | number | Estimated horizontal accuracy radius |
 | `floorHint` | string | Indoor-positioning floor estimate |
@@ -185,6 +185,8 @@ The **E911 Compliance Layer** (ADR-104) is the regulatory-completeness surface o
 Findings carry the `DRIFT-SEMANTIC::e911-completeness` class — a content-completeness sub-class of the canonical ADR-012 `DRIFT-SEMANTIC` top level (the same sub-classing mechanism as the phase-3 `DRIFT-*::location-*` classes; the five ADR-012 classes and the ADR-033 `DRIFT-BOUNDARY` class are unchanged). A single-structure Site may carry a complete dispatchable location with civic address alone, so no precision finding is raised at Site level.
 
 **3. RTLS enhancement (observational, never the system of record).** Real-Time Location System tags and readers — UWB and Active RFID (cm-to-room precision), BLE 5.1+ AoA/AoD (room/zone), passive RFID choke-point reads ("last seen at this node") — feed the **Dynamic Location Context** as the `UWB` / `RFID` / `BLE` `source` values. They *enhance* dispatchable location at call time on platforms that support real-time location, and persistent divergence between observed and governed location is a drift signal (§Two-layer model rule 4). They **never** substitute for the governed `e911` payload the UCaaS/MLTS platform consumes, and any tag/reader collection mechanism requires its own review before it ships (§Two-layer model rule 5). Enterprise-managed tags and readers only; consumer location services are out of scope. Consistent with ADR-102 §D7, UIAO governs the completeness of the dispatchable location of record — it never sits in the 911 call path and never programs the readers.
+
+**4. Wide-area PNT resilience (`LEO-PNT`, observational).** Where indoor RTLS does not reach — vehicles, field assets, and remote or austere sites — Low-Earth-Orbit positioning/navigation/timing from communication-satellite signals of opportunity (Starlink-class) is a resilient complement to GPS. Demonstrated meter-level fixes via Doppler and carrier-phase observables, stronger signals, distinct frequencies, and far more satellites in view than MEO GNSS make `LEO-PNT` valuable precisely in **GPS-denied or jammed** conditions — the same conditions that degrade an emergency-location answer at a remote site. It feeds the Dynamic Location Context as the `LEO-PNT` `source` under the identical governance posture as §3: observational enhancement and a drift signal only, never a substitute for the governed `e911` dispatchable location of record or the governed Primary LocPath. As of 2026 LEO-PNT is a backup/augmentation layer, not a primary GNSS replacement; like every other dynamic source it is enterprise-terminal-bound, and any collection mechanism requires its own review (§Two-layer model rule 5).
 
 ## Normative JSON Schema
 
