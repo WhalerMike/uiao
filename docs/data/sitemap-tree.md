@@ -172,6 +172,7 @@
 - [Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation](adr/adr-101-active-governance-directory-sasl-kerberos.html)
 - [LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place)](adr/adr-102-locpath-location-addressing.html)
 - [Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG](adr/adr-103-generated-illustrative-raster.html)
+- [E911 Compliance Layer — Dispatchable-Location Completeness over LocPath, with RTLS-fed Dynamic Enhancement](adr/adr-104-e911-compliance-layer.html)
 
 ## Schema Reference
 
