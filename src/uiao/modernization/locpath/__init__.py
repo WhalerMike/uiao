@@ -7,6 +7,10 @@ from uiao.modernization.locpath.drift import (
     ObservedSiteState,
     detect_location_policy_drift,
 )
+from uiao.modernization.locpath.e911_compliance import (
+    DRIFT_E911_COMPLETENESS,
+    detect_e911_completeness_gaps,
+)
 from uiao.modernization.locpath.entra_exposure import (
     LocPathAdminUnitSpec,
     LocPathExposureError,
@@ -44,6 +48,7 @@ from uiao.modernization.locpath.registry import (
 __all__ = [
     "CANONICAL_MAP_RESOURCE",
     "CANONICAL_REGISTRY_RESOURCE",
+    "DRIFT_E911_COMPLETENESS",
     "DRIFT_LOCATION_ASSIGNMENT",
     "DRIFT_LOCATION_BOUNDARY",
     "DRIFT_LOCATION_POLICY",
@@ -64,6 +69,7 @@ __all__ = [
     "MoverEvent",
     "ObservedSiteState",
     "assign_locpaths",
+    "detect_e911_completeness_gaps",
     "detect_location_policy_drift",
     "load_duty_station_map",
     "load_duty_station_map_from_path",
