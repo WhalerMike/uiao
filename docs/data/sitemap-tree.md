@@ -173,6 +173,7 @@
 - [LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place)](adr/adr-102-locpath-location-addressing.html)
 - [Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG](adr/adr-103-generated-illustrative-raster.html)
 - [E911 Compliance Layer — Dispatchable-Location Completeness over LocPath, with RTLS-fed Dynamic Enhancement](adr/adr-104-e911-compliance-layer.html)
+- [Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery](adr/adr-105-operational-guide-kit-conventions.html)
 
 ## Schema Reference
 

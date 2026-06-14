@@ -240,7 +240,7 @@ These rules define how the monorepo is organized and why. Violating any of them 
 
 `tests/` is the **single test suite** — unit, integration, adapter conformance, substrate drift. Authoritative; previously split between `impl/tests/` and `core/tests/`, now consolidated.
 
-`docs/` is **human-readable documentation source only**. Source extensions: `.qmd`, `.md`, `.yml`, `.yaml`, `.puml`. Binary build output (`.docx`, `.pdf`, `.png`, `.epub`, `.pptx`) is **generated**, not authored, and should live in build output directories (`docs/_site/`, `docs/publications/`) that are either gitignored or release-pinned. Never commit binary output into the source tree alongside source files.
+`docs/` is **human-readable documentation source only**. Source extensions: `.qmd`, `.md`, `.yml`, `.yaml`, `.puml`. **Exception (ADR-105):** a downloadable operational-guide kit commits its runnable `.ps1`/`.psm1` scripts in-repo under `docs/customer-documents/operational-guides/<kit>/scripts/`; PowerShell is permitted there and nowhere else under `docs/` (workspace tooling still belongs in `scripts/` or `tools/`). Binary build output (`.docx`, `.pdf`, `.png`, `.epub`, `.pptx`) is **generated**, not authored, and should live in build output directories (`docs/_site/`, `docs/publications/`) that are either gitignored or release-pinned. Never commit binary output into the source tree alongside source files.
 
 `scripts/` is **workspace tooling** — bootstrap, link check, schema validators, reorganization helpers. Short-lived; not imported at runtime.
 
