@@ -1,10 +1,10 @@
 ---
 adr_id: adr-092
 title: "Active Governance — Control-Plane-Governs-Data-Plane, Provider Incorporation, and the Actuation Maturity Ladder"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-06-02
 deciders: Michael Stratton
-updated: 2026-06-02
+updated: 2026-06-14
 next_review: 2026-12-01
 review_trigger: A control-plane slot promotes an adapter to L4 autonomous reconciliation; a new provider is incorporated that does not fit the enforcement-adapter contract; the federal autonomous-actuation posture (L4 ceiling) is revisited; UIAO_101/UIAO_102 are revised; ADR-066 transport lane discipline is amended
 impact: "Establishes Active Governance as UIAO's product posture: the substrate is an active reconciliation control plane that governs provider data planes, not a passive registry. Names the control-plane/data-plane boundary, the provider-incorporation contract (enforcement/evidence adapter bound to a control-plane slot), and the L0-L4 actuation maturity ladder with a federal L3 default ceiling. Gives the loosely-used term 'Active Governance' a single canonical home. Doctrine only; cites and unifies existing machinery (ADR-036-040, ADR-066, ADR-074, UIAO_101, UIAO_102, control-planes.yml) without changing runtime, schema, or registry entries. Positions the customer Platform section as the reader-facing home of Active Governance and Book_17 as the first worked instance."
@@ -19,7 +19,7 @@ published_at: docs/adr/adr-092-active-governance.html
 
 ## Status
 
-**PROPOSED** — June 2, 2026
+**ACCEPTED** — June 2, 2026
 
 This ADR is doctrine. It fixes UIAO's product posture and the boundary between what UIAO governs and what third-party providers own. It does not change any runtime behavior, schema, or registry entry; it names and unifies machinery that already exists.
 
