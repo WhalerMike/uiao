@@ -209,7 +209,7 @@ The federal government is not offering agencies a choice about whether to modern
 
 - **OMB M-22-09** required agencies to meet specific zero trust goals by the end of FY2024. Agencies that have not met these goals are now in remediation — with quarterly reporting to OMB and CISA on progress.
 - **OMB M-21-31 (Logging)** required agencies to reach EL3 (advanced) logging maturity by August 2023. Most agencies have not achieved this. CISA CDM dashboards now surface non-compliance.
-- **CISA Binding Operational Directives** (BOD 22-01, BOD 23-01, BOD 23-02, BOD 25-01) are mandatory and enforceable. Non-compliance is reported to the National Cyber Director and OMB.
+- **CISA Binding Operational Directives** (BOD 22-01, BOD 23-01, BOD 23-02, [BOD 25-01](https://cyber.dhs.gov/bod/25-01/)) are mandatory and enforceable. Non-compliance is reported to the National Cyber Director and OMB.
 - **DOJ Civil Cyber-Fraud Initiative** (launched 2021, expanded 2024) uses the False Claims Act to pursue contractors and agencies that misrepresent their cybersecurity compliance. This is not theoretical — settlements have exceeded $100M.
 - **FISMA Modernization Act of 2023** updated reporting requirements and gave CISA explicit authority to issue emergency directives to federal civilian agencies.
 

@@ -24,7 +24,7 @@ provenance:
 ---
 # UIAO-core Value Proposition
 
-## Two-Way Governance Architecture for SCuBA and BOD 25-01
+## Two-Way Governance Architecture for SCuBA and [BOD 25-01](https://cyber.dhs.gov/bod/25-01/)
 
 ## 1. Executive Summary
 
