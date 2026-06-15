@@ -43,7 +43,13 @@ def test_api_app_has_expected_route_prefixes() -> None:
     """
     from uiao.api.app import app
 
-    registered_paths = [route.path for route in app.routes if hasattr(route, "path")]
+    # FastAPI >=0.115 includes sub-routers lazily: each included router shows
+    # up in app.routes as a `fastapi.routing._IncludedRouter` placeholder with
+    # no `.path`, so walking app.routes can no longer see prefixes like
+    # /api/v1/survey (it did pre-0.115, when include_router copied the child
+    # APIRoutes in flat). The OpenAPI schema is the version-stable surface of
+    # registered path templates, so enumerate from there.
+    registered_paths = list(app.openapi().get("paths", {}))
 
     # /api/v1/orgpath retired per ADR-078: the Model A orgpath route module
     # (api/routes/orgpath.py) was deleted with the speculative consumer
@@ -55,9 +61,8 @@ def test_api_app_has_expected_route_prefixes() -> None:
             f"no route registered under {prefix!r}; routes={registered_paths}"
         )
 
-    # Health router has no prefix; presence check is that *some* non-prefixed
-    # route ended up on the app (FastAPI auto-adds /openapi.json /docs /redoc
-    # too, but those are fine signals that the app was constructed).
+    # Health router has no prefix; its /health path is in the schema, so a
+    # non-empty path set also confirms the unprefixed router was included.
     assert registered_paths, "app has no routes at all"
 
 
