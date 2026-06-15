@@ -45,7 +45,7 @@ separate PR for three reasons:
 | [agents-md.diff.md](agents-md.diff.md) | Substrate-walker description update + new public-surface rows for telemetry sink, validators, router, drift_finding, provenance + consent + identity-resolver models | [`AGENTS.md`](../../../AGENTS.md) |
 
 No ADR draft. Phase 4 doesn't make architectural decisions — every
-load-bearing call was made in ADR-070 / ADR-071 / ADR-072 / ADR-073.
+load-bearing call was made in ADR-098 / ADR-099 / ADR-100 / ADR-101.
 
 ## What Phase 4 does NOT do
 
@@ -73,7 +73,7 @@ Phase 4 is one PR. Promotion order is mechanical:
 2. Apply the agents-md.diff.md changes to `AGENTS.md`.
 3. Run `quarto render docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd` locally to confirm the table renders.
 4. PR title: `docs(whitepaper): flip runtime drift + continuous capture from TARGET to SHIPPED`
-5. Commit message body cites ADR-070 through ADR-073 as the engineering chain.
+5. Commit message body cites ADR-098 through ADR-101 as the engineering chain.
 
 ## Exit criteria
 
@@ -104,7 +104,7 @@ extension are both shipped. Remaining items live in future ADRs:
   class. Not a phase; ongoing.
 - **POA&M dedup** — Follow-on cleanup ADR; not Phase 4 scope.
 - **Federated provenance verification** — Cross-agency envelope
-  verification across the federal substrate. Mentioned in ADR-070 as
+  verification across the federal substrate. Mentioned in ADR-098 as
   a future ADR; not in scope here.
 
 ## Cross-references

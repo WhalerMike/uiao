@@ -3,7 +3,7 @@ title: "Phase 1 — Adapter emit() Hook + Continuous Event-Time Evidence Capture
 status: DRAFT
 date: 2026-05-15
 owner: Michael Stratton
-depends_on: Phase 0 (ADR-070 ACCEPTED)
+depends_on: Phase 0 (ADR-098 ACCEPTED)
 related_strategy: "Whitepaper TARGET → SHIPPED plan (governance-os whitepaper §3)"
 ---
 
@@ -31,7 +31,7 @@ Phase 1 ships the three-surface binding as one engineering stream but
 separate sub-PRs:
 
 - **Phase 1a — `BaseCollector` envelope upgrade.** Replace the 3-field
-  `EvidenceProvenance` with the 10-field `Envelope` from ADR-070. This is
+  `EvidenceProvenance` with the 10-field `Envelope` from ADR-098. This is
   the lowest-risk surface because there's already an envelope shape to
   upgrade (no greenfield).
 - **Phase 1b — `ModernizationAdapter` base class.** Introduce a thin ABC
@@ -49,7 +49,7 @@ separate sub-PRs:
 
 | File | Purpose | Lands at |
 |---|---|---|
-| [adr-071-adapter-emit-hook-and-event-log.md](adr-071-adapter-emit-hook-and-event-log.md) | Records the three-surface binding decision, the legacy `EvidenceProvenance` reconciliation, and the JSONL event-log shape | `src/uiao/canon/adr/` |
+| [adr-099-adapter-emit-hook-and-event-log.md](adr-099-adapter-emit-hook-and-event-log.md) | Records the three-surface binding decision, the legacy `EvidenceProvenance` reconciliation, and the JSONL event-log shape | `src/uiao/canon/adr/` |
 | [modernization_adapter.py](modernization_adapter.py) | New `ModernizationAdapter` ABC + `emit()` | `src/uiao/adapters/base.py` |
 | [provenance_sink.py](provenance_sink.py) | JSONL provenance event log writer; reused by all three surfaces | `src/uiao/telemetry/provenance.py` |
 | [base_collector_upgrade.diff.md](base_collector_upgrade.diff.md) | Diff sketch for the `BaseCollector` envelope upgrade (Phase 1a) | Inline in `src/uiao/collectors/base_collector.py` |
@@ -63,7 +63,7 @@ separate sub-PRs:
   validators are stubs that return `True`.
 - It is **not** a rewrite of the legacy `EvidenceProvenance`. The legacy
   3-field shape is preserved as a subset/projection of the new 10-field
-  envelope (see ADR-071 §3); existing tests stay green.
+  envelope (see ADR-099 §3); existing tests stay green.
 - It is **not** the OSCAL pipeline rewrite. Phase 1d adds an event-log
   reader; the existing snapshot-based assembly path is untouched.
 
@@ -72,7 +72,7 @@ separate sub-PRs:
 When this draft is reviewed and approved, Phase 1 ships as **four sub-PRs**
 in order:
 
-1. **PR-1d (foundation, lands first)** — `provenance_sink.py` + ADR-071
+1. **PR-1d (foundation, lands first)** — `provenance_sink.py` + ADR-099
    ACCEPTED. No adapter code changes; just the shared sink. Allows the
    sink to be reviewed in isolation.
 2. **PR-1a** — `BaseCollector` envelope upgrade + new `EvidenceProvenance →
