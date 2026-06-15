@@ -1,0 +1,221 @@
+name: UIAO Review Program Reminders
+# Opens GitHub Issues automatically when review wave windows open and deadlines approach.
+# Implements repo-native prompting for continuous monitoring per CA-7, CM-3, CM-6.
+#
+# Classification: Controlled | Boundary: GCC-Moderate | Owner: Michael Stratton
+on:
+  schedule:
+    - cron: '0 13 * * *'  # Daily at 1PM UTC = 9AM EDT
+  workflow_dispatch:
+    inputs:
+      force_wave:
+        description: 'Force-trigger a specific reminder (W1/W2/W3/W4/W5/UIAO013-MONTHLY)'
+        required: false
+        default: ''
+jobs:
+  review-deadline-checker:
+    name: Check Review Deadlines
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Check Deadlines and Open Issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().slice(0, 10);
+            const utcDay   = new Date().getUTCDate();
+            const utcMonth = new Date().getUTCMonth() + 1;
+            const utcYear  = new Date().getUTCFullYear();
+            const forceWave = context.payload.inputs?.force_wave || '';
+
+            const scheduleFile = 'docs/ato/review-program/phase-1/UIAO-Master-Index-Task-1.4-Priority-and-Schedule.xlsx';
+            const reviewRecord = 'docs/ato/review-program/phase-1/reviews/UIAO-013-review-2026-06-15.xlsx';
+
+            const waves = [
+              {
+                id: 'W1',
+                trigger_date: '2026-06-20',
+                title: '🔴 [W1 CRITICAL] UIAO-013 Action Items Due in 2 Days — Jun 22',
+                labels: ['review-reminder', 'critical', 'wave-1'],
+                body: [
+                  '## Wave 1 — UIAO-013 Action Items Deadline Alert',
+                  '',
+                  '> **Hard Deadline:** 2026-06-22 (items 1–3, 5–6) | **Extended:** 2026-06-29 (item 4)',
+                  '',
+                  '| Field | Value |',
+                  '|-------|-------|',
+                  '| Document | UIAO-013 · UIAO Master Project Plan |',
+                  '| Verdict | CONDITIONAL PASS — UPDATE REQUIRED |',
+                  '| Sections Reviewed | 10 of 10 |',
+                  `| Review Record | [\`${reviewRecord}\`](${reviewRecord}) |`,
+                  '',
+                  '### Action Items Due **2026-06-22**',
+                  '',
+                  '| # | Section | Action | Owner |',
+                  '|---|---------|--------|-------|',
+                  '| 1 | §2 Executive Summary | Update milestone % to June actuals; mark Wave 1 COMPLETE | Michael Stratton |',
+                  '| 2 | §4 Technical Specs | Replace WS2022→WS2025, PS 5.1→7.4, Git 2.43→2.45.1 | SME–Infrastructure |',
+                  '| 3 | §6 Gap Analysis | Close Quarto+AD gaps; add UIAO-019 impl gap OPEN | Michael Stratton |',
+                  '| 5 | §9 Cross-Doc Refs | Fix 3 broken links | Michael Stratton |',
+                  '| 6 | §10 Revision History | Add v1.0.1 entry for 2026-06-15 review | Michael Stratton |',
+                  '',
+                  '### Action Item Due **2026-06-29**',
+                  '',
+                  '| # | Section | Action | Owner |',
+                  '|---|---------|--------|-------|',
+                  '| 4 | §8 Dependency Map | Quarto→ACTIVE; add UIAO-018 edge; remove 012→011 block | SME–Infrastructure |',
+                  '',
+                  '**Next Monthly Review Due:** 2026-07-15',
+                  '',
+                  '*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*',
+                ].join('\n'),
+              },
+              {
+                id: 'W2',
+                trigger_date: '2026-06-30',
+                title: '🟠 [W2 HIGH] UIAO-014 & UIAO-018 Reviews Due in 1 Week — Jul 7',
+                labels: ['review-reminder', 'high', 'wave-2'],
+                body: [
+                  '## Wave 2 — HIGH Documents: 1 Week Remaining',
+                  '',
+                  '> **Window Closes:** 2026-07-07 | **Compliance Deadline:** 2026-07-21',
+                  '',
+                  '| Rank | Doc ID | Title | NIST | Est. Hrs | Reviewer |',
+                  '|------|--------|-------|------|----------|----------|',
+                  '| 2 | UIAO-014 | Conditional Access Policy Library | AC; IA; CM | 19 hrs | Compliance Officer |',
+                  '| 3 | UIAO-018 | Azure Arc Policy Library | CM; SI; SC | 19 hrs | Compliance Officer |',
+                  '',
+                  '**Total Wave 2 Effort:** 38 hours',
+                  '',
+                  `> Priority schedule: [\`${scheduleFile}\`](${scheduleFile})`,
+                  '',
+                  '*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*',
+                ].join('\n'),
+              },
+              {
+                id: 'W3',
+                trigger_date: '2026-06-23',
+                title: '🟡 [W3 MEDIUM] 7 Quarterly Documents — Wave 3 Review Window Opens Today',
+                labels: ['review-reminder', 'medium', 'wave-3'],
+                body: [
+                  '## Wave 3 — Quarterly/MEDIUM Review Window Open',
+                  '',
+                  '> **Window:** 2026-06-23 – 2026-07-07 | **Compliance Deadline:** 2026-07-21',
+                  '',
+                  '| Rank | Doc ID | Title | Score | Est. Hrs | Reviewer |',
+                  '|------|--------|-------|-------|----------|----------|',
+                  '| 4 | UIAO-021 | Disaster Recovery Playbook | 118.8 | 15 hrs | SME–Infrastructure |',
+                  '| 5 | UIAO-008 | Read-Only AD Assessment Guide | 115.2 | 15 hrs | SME–Infrastructure |',
+                  '| 6 | UIAO-022 | Operations Runbook | 114.0 | 15 hrs | SME–Infrastructure |',
+                  '| 7 | UIAO-009 | vs Microsoft Native Tools Gap Analysis | 104.5 | 14 hrs | Compliance Officer |',
+                  '| 8 | UIAO-024 | Compliance Mapping and Gap Analysis | 104.5 | 14 hrs | Compliance Officer |',
+                  '| 9 | UIAO-015 | Intune Policy Templates | 95.5 | 10 hrs | SME–Infrastructure |',
+                  '| 10 | UIAO-007 | Active Directory Interaction Guide | 92.0 | 13 hrs | SME–Infrastructure |',
+                  '',
+                  '**Total Wave 3 Effort:** 96 hours',
+                  '',
+                  `> Priority schedule: [\`${scheduleFile}\`](${scheduleFile})`,
+                  '',
+                  '*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*',
+                ].join('\n'),
+              },
+              {
+                id: 'W4',
+                trigger_date: '2026-08-01',
+                title: '🟢 [W4 LOW] 9 Semi-Annual Documents — Wave 4 Review Window Opens Today',
+                labels: ['review-reminder', 'low', 'wave-4'],
+                body: [
+                  '## Wave 4 — Semi-Annual/LOW Review Window Open',
+                  '',
+                  '> **Window:** 2026-08-01 – 2026-09-21 | **Compliance Deadline:** 2026-10-21',
+                  '',
+                  'Wave 4 covers **9 Semi-Annual documents** (Ranks 11–19). See the full priority schedule for details.',
+                  '',
+                  '**Total Wave 4 Effort:** 211 hours',
+                  '',
+                  `> Priority schedule: [\`${scheduleFile}\`](${scheduleFile})`,
+                  '',
+                  '*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*',
+                ].join('\n'),
+              },
+              {
+                id: 'W5',
+                trigger_date: '2027-01-04',
+                title: '🟢 [W5 LOW] 6 Annual Documents — Wave 5 Review Window Opens Today',
+                labels: ['review-reminder', 'low', 'wave-5'],
+                body: [
+                  '## Wave 5 — Annual/LOW Review Window Open',
+                  '',
+                  '> **Window:** 2027-01-04 – 2027-03-21 | **Compliance Deadline:** 2027-04-21',
+                  '',
+                  'Wave 5 covers **6 Annual documents** (Ranks 20–25). See the full priority schedule for details.',
+                  '',
+                  `> Priority schedule: [\`${scheduleFile}\`](${scheduleFile})`,
+                  '',
+                  '*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*',
+                ].join('\n'),
+              },
+              {
+                id: 'UIAO013-MONTHLY',
+                trigger_date: null,
+                monthly_day: 14,
+                active_from_year: 2026,
+                active_from_month: 7,
+                title: '📋 [UIAO-013 MONTHLY] Review Due Tomorrow — Monthly Cadence',
+                labels: ['review-reminder', 'critical', 'monthly', 'uiao-013'],
+                body: [
+                  '## UIAO-013 — Monthly Review Due Tomorrow',
+                  '',
+                  '| Field | Value |',
+                  '|-------|-------|',
+                  '| Document | UIAO-013 · UIAO Master Project Plan |',
+                  '| Cadence | Monthly (CRITICAL — Rank #1 of 25) |',
+                  '| NIST Families | PL; PM; SA |',
+                  '| Reviewer | Michael Stratton (Compliance Officer + Owner) |',
+                  '| Estimated Effort | 14 hours |',
+                  `| Prior Review Record | [\`${reviewRecord}\`](${reviewRecord}) |`,
+                  '',
+                  'Create a new review record in `phase-1/reviews/` and update the Master Index next review date upon completion.',
+                  '',
+                  '*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*',
+                ].join('\n'),
+              },
+            ];
+
+            for (const wave of waves) {
+              let shouldFire = false;
+
+              if (forceWave && wave.id === forceWave) {
+                shouldFire = true;
+                core.info(`Force-triggered: ${wave.id}`);
+              }
+
+              if (!shouldFire && wave.trigger_date && today === wave.trigger_date) {
+                shouldFire = true;
+              }
+
+              if (!shouldFire && wave.monthly_day) {
+                const afterStart = (
+                  utcYear > wave.active_from_year ||
+                  (utcYear === wave.active_from_year && utcMonth >= wave.active_from_month)
+                );
+                if (afterStart && utcDay === wave.monthly_day) {
+                  shouldFire = true;
+                }
+              }
+
+              if (shouldFire) {
+                core.info(`Opening Issue for ${wave.id}`);
+                const resp = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  title:  wave.title,
+                  body:   wave.body,
+                  labels: wave.labels,
+                });
+                core.info(`Issue #${resp.data.number} created for ${wave.id}`);
+              }
+            }
+
+            core.info(`Deadline check complete. Today: ${today}`);
