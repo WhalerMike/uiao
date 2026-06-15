@@ -26,7 +26,7 @@ would be re-defining the same envelope ad-hoc.
 
 | File | Purpose |
 |---|---|
-| [adr-070-runtime-provenance-envelope.md](adr-070-runtime-provenance-envelope.md) | The load-bearing ADR — records the inline-at-emit design choice and the sync/async validation split |
+| [adr-098-runtime-provenance-envelope.md](adr-098-runtime-provenance-envelope.md) | The load-bearing ADR — records the inline-at-emit design choice and the sync/async validation split |
 | [envelope.schema.json](envelope.schema.json) | Draft JSON Schema (2020-12) for the envelope; lands at `src/uiao/schemas/provenance/envelope.schema.json` |
 | [provenance.py](provenance.py) | Pydantic v2 model skeleton; lands at `src/uiao/models/provenance.py` |
 
@@ -42,12 +42,12 @@ Phase 0 ships the envelope and the design call; everything else binds to it.
 
 When this draft is reviewed and approved:
 
-1. Move `adr-070-*.md` → `src/uiao/canon/adr/`
+1. Move `adr-098-*.md` → `src/uiao/canon/adr/`
 2. Move `envelope.schema.json` → `src/uiao/schemas/provenance/envelope.schema.json`
 3. Move `provenance.py` → `src/uiao/models/provenance.py`
-4. Add an `adr-070` row to `src/uiao/canon/adr/adr-index.md`
+4. Add an `adr-098` row to `src/uiao/canon/adr/adr-index.md`
 5. Add the new schema path to `schema-validation.yml` (CI gate)
-6. Open the PR titled `phase 0 — runtime provenance envelope as typed contract (ADR-070)`
+6. Open the PR titled `phase 0 — runtime provenance envelope as typed contract (ADR-098)`
 
 The PR is intentionally narrow — no adapter code is changed, only canon
 (ADR + schema) and an unwired model. Phase 1 then wires the model into
@@ -57,7 +57,7 @@ The PR is intentionally narrow — no adapter code is changed, only canon
 
 - [docs/docs/15_ProvenanceProfile.qmd](../../../docs/docs/15_ProvenanceProfile.qmd) — envelope §3 (prose source of truth)
 - [docs/docs/16_DriftDetectionStandard.qmd](../../../docs/docs/16_DriftDetectionStandard.qmd) — drift classes that the envelope feeds
-- [src/uiao/canon/adr/adr-006-evidence-determinism.md](../../../src/uiao/canon/adr/adr-006-evidence-determinism.md) — determinism guarantees ADR-070 reuses
+- [src/uiao/canon/adr/adr-006-evidence-determinism.md](../../../src/uiao/canon/adr/adr-006-evidence-determinism.md) — determinism guarantees ADR-098 reuses
 - [src/uiao/canon/adr/adr-009-drift-ledger-immutability.md](../../../src/uiao/canon/adr/adr-009-drift-ledger-immutability.md) — immutability the envelope inherits
 - [src/uiao/canon/adr/adr-012-canonical-drift-taxonomy.md](../../../src/uiao/canon/adr/adr-012-canonical-drift-taxonomy.md) — drift classes the envelope cannot re-define
-- [src/uiao/substrate/walker.py](../../../src/uiao/substrate/walker.py) — canon-hygiene DRIFT-* detection that ADR-070's inline checks must reuse (not duplicate)
+- [src/uiao/substrate/walker.py](../../../src/uiao/substrate/walker.py) — canon-hygiene DRIFT-* detection that ADR-098's inline checks must reuse (not duplicate)

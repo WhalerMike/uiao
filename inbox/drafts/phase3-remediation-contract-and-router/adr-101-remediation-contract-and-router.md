@@ -1,5 +1,5 @@
 ---
-adr_id: adr-073
+adr_id: adr-101
 title: "Drift Finding Remediation Contract + Router — Promote §4 to Typed Inline Field, Dispatch Findings to Halt / Fix / Flag / Log Handlers"
 status: PROPOSED
 decided: null
@@ -12,10 +12,10 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
-depends_on: adr-070, adr-071, adr-072
+depends_on: adr-098, adr-099, adr-100
 ---
 
-# ADR-073: Drift Finding Remediation Contract + Router
+# ADR-101: Drift Finding Remediation Contract + Router
 
 ## Status
 
@@ -255,7 +255,7 @@ later cleanup ADR adds a dedup key derived from `(drift_class, path)`.
   engine's class; matches the established substrate idiom for
   internal-flow data (pydantic is reserved for wire-format contracts
   like the envelope and consent model).
-- ADR-073 does not commit to a specific POA&M store backend. The `flag`
+- ADR-101 does not commit to a specific POA&M store backend. The `flag`
   handler writes through `uiao.evidence.poam.PoamStore`, which has
   pluggable backends (filesystem JSONL today; Postgres in a future
   deployment).
