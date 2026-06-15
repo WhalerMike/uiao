@@ -1207,7 +1207,7 @@ This changes several recommendations materially. Your FedRAMP-Moderate context i
 
 ## 1. GitHub tier — revised given FedRAMP-Moderate posture
 
-My "stay on Pro" recommendation assumed the repos were private IP that happened to document federal systems. What you just told me is different: `uiao-core` and `uiao-docs` ARE FedRAMP-Moderate systems, with NIST / CISA / BOD 25-01 / SCuBA GCC-Moderate control coverage expected. That raises the bar on the source-of-truth platform itself, not just the deployment target.
+My "stay on Pro" recommendation assumed the repos were private IP that happened to document federal systems. What you just told me is different: `uiao-core` and `uiao-docs` ARE FedRAMP-Moderate systems, with NIST / CISA / [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) / SCuBA GCC-Moderate control coverage expected. That raises the bar on the source-of-truth platform itself, not just the deployment target.
 
 **Honest state of my knowledge (2026):** I'm UNSURE of GitHub's current FedRAMP authorization state as of April 2026 and you should verify before committing to a long-term choice. Historically GitHub Enterprise Cloud held a FedRAMP Tailored LI-SaaS (Low Impact) authorization, and GitHub was publicly pursuing FedRAMP Moderate. I don't know the current authorization boundary or whether a dedicated "GitHub Enterprise Cloud for Government" offering exists at Moderate today. Please confirm via the FedRAMP Marketplace at `marketplace.fedramp.gov` rather than take my word for it.
 

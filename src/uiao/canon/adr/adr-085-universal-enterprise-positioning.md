@@ -46,7 +46,7 @@ The positioning needs to be doctrinally fixed once, then enforced at PR-review t
 
 ## Decision
 
-The UIAO core engine is positioned as a **universal enterprise governance product**. Federal compliance (FedRAMP Moderate Rev 5, OSCAL, KSI, BOD 25-01, CISA SCuBA) is **one vertical adapter pack** that sits on top of the universal core, not the core itself.
+The UIAO core engine is positioned as a **universal enterprise governance product**. Federal compliance (FedRAMP Moderate Rev 5, OSCAL, KSI, [BOD 25-01](https://cyber.dhs.gov/bod/25-01/), CISA SCuBA) is **one vertical adapter pack** that sits on top of the universal core, not the core itself.
 
 ### D1. Core engine is vertical-agnostic
 
