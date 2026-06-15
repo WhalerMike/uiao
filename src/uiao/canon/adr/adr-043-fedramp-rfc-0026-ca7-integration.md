@@ -52,7 +52,7 @@ gates (stable Balance Improvement Release state + corresponding FedRAMP
 Marketplace guidance) are satisfied.
 
 The pathway commitments below transition from **intent** to **obligation**
-on this ratification. The Notice 0009 deadlines (CCM BIR mandatory
+on this ratification. The [FedRAMP Notice 0009](https://www.fedramp.gov/20x/notice-0009/) deadlines (CCM BIR mandatory
 2027-04-01; VDR BIR mandatory 2027-07-01) and the RFC-0026 enforcement
 schedule (gradual adoption end of June 2026; grace period through
 2026-12-31; enforcement 2027-01-01) carry forward unchanged.
@@ -91,7 +91,7 @@ marketplace de-listing, with a 12-month reset clock after each failure.
 RFC-0026's pathway posture (D1 below) is intentionally dual-track: UIAO runs
 Pathway 2 (traditional) at enforcement start and commits to migrate to
 Pathway 1 (modernized) when the Balance Improvement Releases publish.
-FedRAMP Notice 0009 — *Balance Improvement Release adoption schedule* —
+[FedRAMP Notice 0009](https://www.fedramp.gov/20x/notice-0009/) — *Balance Improvement Release adoption schedule* —
 constrains that migration with two hard dates that fall *inside* the
 RFC-0026 enforcement window, meaning Pathway-1 migration is not indefinitely
 deferrable:

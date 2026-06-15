@@ -1,7 +1,7 @@
 ---
 id: ADR-074
 title: "DRIFT-SSOT-CONTENTION — New Drift Class for Data-Plane Stewardship Authority"
-status: proposed
+status: accepted
 date: 2026-05-18
 deciders:
   - governance-steward
@@ -30,7 +30,7 @@ published_at: docs/adr/adr-074-drift-ssot-contention.html
 
 ## Status
 
-Proposed
+Accepted — 2026-06-15
 
 > **Implementation Status (per ADR-078, 2026-05-24).** The Python
 > module(s), YAML data file(s), and JSON schema(s) cited below were
