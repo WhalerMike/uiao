@@ -3,7 +3,7 @@ title: "Phase 2 — Runtime Drift Validators (semantic / authz / identity)"
 status: DRAFT
 date: 2026-05-15
 owner: Michael Stratton
-depends_on: Phase 0 (ADR-070 ACCEPTED), Phase 1 (ADR-071 ACCEPTED + provenance_sink in place)
+depends_on: Phase 0 (ADR-098 ACCEPTED), Phase 1 (ADR-099 ACCEPTED + provenance_sink in place)
 related_strategy: "Whitepaper TARGET → SHIPPED plan (governance-os whitepaper §3)"
 ---
 
@@ -61,7 +61,7 @@ Two material refinements ride with this:
 
 | File | Purpose | Lands at |
 |---|---|---|
-| [adr-072-runtime-drift-validators.md](adr-072-runtime-drift-validators.md) | Records the four validator design, the P1-only blocking rule, and identity-plane pluggability | `src/uiao/canon/adr/` |
+| [adr-100-runtime-drift-validators.md](adr-100-runtime-drift-validators.md) | Records the four validator design, the P1-only blocking rule, and identity-plane pluggability | `src/uiao/canon/adr/` |
 | [consent.py](consent.py) | Pydantic model for `17_ConsentEnvelope.qmd` §3; typed wire-format the AUTHZ validator consumes | `src/uiao/models/consent.py` |
 | [identity_resolver.py](identity_resolver.py) | `IdentityPlaneResolver` ABC + `EntraIDResolver` default; pluggable per adapter manifest | `src/uiao/identity/resolver.py` |
 | [validators.py](validators.py) | Four inline validators (signature, identity, authz, semantic) wired into the sink | `src/uiao/telemetry/validators.py` |
@@ -85,7 +85,7 @@ automatically). Promotion order:
 
 Phase 2 is complete when:
 
-1. ADR-072 ACCEPTED.
+1. ADR-100 ACCEPTED.
 2. The four validators are in `src/uiao/telemetry/validators.py` with
    the stubs removed.
 3. CI tests pass:

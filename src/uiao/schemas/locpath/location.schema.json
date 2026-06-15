@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/locpath/location.schema.json",
+  "title": "UIAO Location Node",
+  "description": "Canonical LocPath location node: core identity, E911 dispatchable location, network/TIC 3.0 classification, and telemetry/service boundaries. Normative per UIAO_194 / ADR-102. Level-vs-depth consistency, locPath/locPathId uniqueness, parent existence, and UUID/timestamp parseability are enforced at load time by uiao.modernization.locpath, not in JSON Schema.",
+  "type": "object",
+  "required": ["locPathId", "locPath", "displayName", "level", "status", "lastUpdated", "sourceSystem"],
+  "properties": {
+    "locPathId": { "type": "string", "format": "uuid" },
+    "locPath": { "type": "string", "pattern": "^/([A-Za-z0-9_.-]+)(/[A-Za-z0-9_.-]+)*$" },
+    "displayName": { "type": "string" },
+    "level": { "enum": ["Country", "Region", "Site", "Building", "Floor", "Space"] },
+    "status": { "enum": ["Active", "Inactive", "Planned", "Deprecated"] },
+    "owner": { "type": "string" },
+    "lastUpdated": { "type": "string", "format": "date-time" },
+    "sourceSystem": { "type": "string" },
+    "sourceRecordId": { "type": "string" },
+    "e911": {
+      "type": "object",
+      "properties": {
+        "dispatchableLocationRequired": { "type": "boolean" },
+        "civicAddress": { "type": "string" },
+        "floor": { "type": "string" },
+        "room": { "type": "string" },
+        "geoLatitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "geoLongitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "locationDescription": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "diaApproved": { "type": "boolean" },
+        "sdwanBreakoutType": { "enum": ["Local", "Centralized", "Hybrid"] },
+        "ticCapabilityTier": { "enum": ["Tier-1", "Tier-2", "Tier-3"] },
+        "networkZone": { "type": "string" },
+        "legacyMplsStatus": { "enum": ["Active", "Decommissioning", "Decommissioned"] }
+      },
+      "additionalProperties": false
+    },
+    "boundaries": {
+      "type": "object",
+      "properties": {
+        "telemetryBoundary": { "enum": ["InternalOnly", "GCCAllowed", "FedRAMPModerate", "Restricted"] },
+        "dataResidencyZone": { "type": "string" },
+        "serviceAccessBoundary": { "enum": ["Full", "Limited", "BoundaryEnforced", "Isolated"] },
+        "boundaryEnforcementLevel": { "enum": ["Strict", "Monitored", "Advisory"] },
+        "telemetryClassification": { "type": "string" },
+        "allowedTelemetryDestinations": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -94,6 +94,41 @@ in blueprint.
 `book01-image-01-the-inheritance.svg`, `index-image-01-…`), reserving
 `-diagram-NN-` for blueprints.
 
+## Generated illustrative raster (ADR-103)
+
+Per [ADR-103](../adr/adr-103-generated-illustrative-raster.md) the
+illustrative register has **two permitted production methods**; everything
+above in the illustrative section describes the *vector* method, which
+remains valid. The second method is **generated raster**: illustrative
+images may be produced by any tool — including generative models — and
+committed directly as PNG/JPEG with no SVG sibling.
+
+**This applies to `-image-NN-` figures only. `-diagram-NN-` blueprints are
+untouched: committed hand-authored SVG, the render pipeline, and every rule
+above remain mandatory for diagrams. Mermaid stays prohibited everywhere.**
+
+For generated images the rules above reduce to four absolutes; the rest
+(palette tokens, silhouette conventions, element restrictions) becomes
+advisory prompt guidance:
+
+1. **White background.**
+2. **No vendor logos/trademarks; no identifiable real individuals.**
+3. **No baked text — none.** The generator must be instructed to render no
+   words or letterforms; labels live in the figure caption or a
+   deterministic SVG/text overlay composited by tooling. (This is the
+   structural fix for the typo failure mode that retired the pre-ADR-093
+   pipeline — never rely on a generator to spell.)
+4. **Portability:** PNG (or baseline JPEG for photographic content) — never
+   WebP/AVIF (DOCX embedding breaks); long edge ≥ 2400 px (16:9 → 2400×1350,
+   1:1 → 2160×2160) for retina/mobile crispness; ≤ 1.5 MB per image;
+   16:9 or 1:1 aspect; embedded via standard Quarto figure syntax with
+   `width="85%"` and a complete `fig-alt`.
+
+**Provenance:** the generation prompt is the source of record — store it in
+`fig-alt` (the fig-alt-as-prompt convention) or the `<name>.png.json`
+sidecar (`generator`, `prompt_sha256`, `sha256`). The render script ignores
+rasters without SVG siblings, so no pipeline change is involved.
+
 ## Authoring → render loop
 ```bash
 # author docs/.../images/<name>.svg, then:

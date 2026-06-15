@@ -9,14 +9,19 @@
 # Doctrinal axis (UIAO_003 §4.2–§4.7): five canonical classes — Identity,
 # Telemetry, Policy, Enforcement, Integration. Per resolved ODA-15
 # (2026-04-15, Option a), the `integration` class covers change-making
-# actions against a target environment, and every adapter below declares
-# `mission-class: integration`. See ARCHITECTURE.md §13 (resolution) and
-# UIAO_003 §4.7 (Integration Adapter Class).
+# actions against a target environment, and most adapters below declare
+# `mission-class: integration`. The exceptions are the OrgPath binding-
+# profile identity adapters (`okta-orgpath`, `ldap-orgpath`) added per
+# ADR-098 / UIAO_193, which declare `mission-class: identity` (UIAO_003
+# §4.2) because their sole function is stamping OrgPath facets onto
+# identity objects in an external IdP. See ARCHITECTURE.md §13 (resolution)
+# and UIAO_003 §4.7 (Integration Adapter Class).
 #
 # Canon invariants enforced on every entry:
 #   * gcc-boundary: gcc-moderate (Amazon Connect exception noted per-adapter)
 #   * ssot-mutation: never
-#   * certificate-anchored: true
+#   * certificate-anchored: true, except the ADR-098 binding-profile
+#     identity adapters (transport cert-pinning is a Phase 3 follow-up)
 #   * object-identity-only: true
 #
 # Pair registry: canon/adapter-registry.yaml (conformance class)
@@ -650,6 +655,115 @@ adapters:
     implementation:
       python_module: src/uiao/adapters/modernization/active_directory
       tests: tests/test_active_directory_survey_enrichment.py
+  - id: okta-orgpath
+    name: Okta OrgPath Binding Profile (Universal Directory)
+    class: modernization
+    mission-class: identity
+    mission-class-notes: >-
+      First non-Microsoft `mission-class: identity` adapter (ADR-098 /
+      UIAO_193). Stamps the 15-facet OrgPath substrate onto Okta Universal
+      Directory custom profile attributes via the `okta` binding profile.
+      Classified `identity` per UIAO_003 §4.2 because its sole function is
+      writing OrgPath facets onto identity objects in an external IdP.
+    status: proposed
+    phase: phase-planning
+    vendor: Okta
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - orgpath-attributes
+    outputs:
+      - okta-orgpath-plan.json
+      - okta-orgpath-assignment-report.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO_193
+    notes: >-
+      Binds to UIAO_151 (OrgPath Codebook) through the `okta` binding
+      profile at canon/data/orgpath/binding-profiles/okta.yaml, validated
+      by schemas/orgpath/binding-profile.schema.json on load (ADR-098).
+      The profile carries status `proposed` until the transport ships in
+      production; planning is via
+      uiao.modernization.orgtree.profile_assign.BindingProfilePlanner and
+      the write seam is uiao.adapters.okta_transport (httpx lazy-imported
+      behind the [api] extra). Commercial Okta endpoints only.
+    implementation:
+      python_module: src/uiao/adapters/okta_transport.py
+      tests: tests/test_orgpath_profile_assign.py
+  - id: ldap-orgpath
+    name: LDAP OrgPath Binding Profile (schema-extension / reserved-attribute)
+    class: modernization
+    mission-class: identity
+    mission-class-notes: >-
+      `mission-class: identity` adapter (ADR-098 / UIAO_193) stamping the
+      15-facet OrgPath substrate onto generic LDAP directory attributes via
+      the `ldap` binding profile. Serves Red Hat IdM (FreeIPA / 389
+      Directory Server) in schema-extension mode with no vendor-specific
+      code. Classified `identity` per UIAO_003 §4.2.
+    status: proposed
+    phase: phase-planning
+    vendor: Generic
+    license: Open Source
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - orgpath-attributes
+    outputs:
+      - ldap-orgpath-plan.json
+      - ldap-orgpath-assignment-report.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO_193
+    notes: >-
+      Binds to UIAO_151 (OrgPath Codebook) through the `ldap` binding
+      profile at canon/data/orgpath/binding-profiles/ldap.yaml, validated
+      by schemas/orgpath/binding-profile.schema.json on load (ADR-098).
+      Default schema-extension mode contributes a governed auxiliary
+      objectClass (uiaoOrgPath<Facet>); reserved-attribute mode is tenant
+      operator configuration. Planning via
+      uiao.modernization.orgtree.profile_assign.BindingProfilePlanner; the
+      write seam is uiao.adapters.ldap_transport (ldap3 lazy-imported).
+      Commercial / on-prem directories only.
+    implementation:
+      python_module: src/uiao/adapters/ldap_transport.py
+      tests: tests/test_orgpath_profile_assign.py
 
   # ──────────────────────────────────────────────────────────────────
   # Reserved adapter slots allocated by ADR-049 (2026-04-30)
@@ -1197,3 +1311,115 @@ adapters:
       the adjacent execution lane. Status `proposed` until the
       `UIAOSqlServerMigration` PowerShell tooling is wired to the control
       plane as a runtime adapter.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-059 (Option B — pending)
+  # SailPoint ISC modernization side — boundary-expansion decision required
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: sailpoint-isc-actions
+    name: SailPoint Identity Security Cloud — Actions (Modernization, Reserved)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Change-making writes against ISC for identity lifecycle
+      joiner/mover/leaver, role grants/revokes, and certification-campaign
+      launch. Sibling of `sailpoint-isc-governance` (conformance side).
+      Classified per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: SailPoint
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - identity-lifecycle-joiner
+      - identity-lifecycle-mover
+      - identity-lifecycle-leaver
+      - role-grant-revoke
+      - certification-campaign-launch
+    outputs:
+      - isc-action-manifest.json
+      - isc-action-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-2
+      - AC-2(3)
+      - AC-5
+      - AC-6
+      - IA-4
+      - AU-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: commercial-exception-sailpoint-isc
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-059
+      - UIAO_129
+    notes: >-
+      Reserved pending Option-B boundary-expansion decision per ADR-059
+      §Notes. SSOT-conflict resolution per ADR-059 §Decision 5 is
+      required at activation: SailPoint write paths that overlap with
+      `entra-id`, `entra-id-governance`, or `active-directory` must
+      either be UIAO-mediated or fail closed. Activation requires a
+      per-adapter ADR modeled on ADR-035 plus the Option-B carve-out ADR.
+
+  - id: sailpoint-machine-identity-actions
+    name: SailPoint Machine Identity Security — Actions (Modernization, Reserved)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Change-making writes against Machine Identity Security for ownership
+      assignment, service-account decommission, and rotation orchestration.
+      Sibling of `sailpoint-machine-identity` (conformance side). Classified
+      per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: SailPoint
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - non-human-identity-ownership-assignment
+      - service-account-decommission
+      - credential-rotation-orchestration
+    outputs:
+      - machine-identity-action-manifest.json
+      - machine-identity-action-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - IA-5
+      - IA-5(6)
+      - AC-2
+      - AC-6
+      - AU-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: commercial-exception-sailpoint-isc
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-059
+      - UIAO_139
+      - ADR-004
+    notes: >-
+      Reserved pending Option-B boundary-expansion decision per ADR-059
+      §Notes. Operational counterpart to UIAO_139's recommended
+      modernization targets — UIAO_139 produces the decision (Managed
+      Identity / Workload Identity Federation / gMSA / App Registration);
+      this adapter executes the migration choreography under SailPoint
+      orchestration. Activation requires a per-adapter ADR modeled on
+      ADR-035 plus the Option-B carve-out ADR.

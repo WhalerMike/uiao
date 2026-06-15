@@ -100,6 +100,12 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
 | [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
 | [ADR-091](adr-091-sql-server-authentication-transformation.md) | SQL Server Engine Authentication Transformation — Windows/SQL Auth to Entra ID for SQL Server 2022+ | PROPOSED | 2026-06-02 |
+| [ADR-098](adr-098-orgpath-vendor-neutral-binding-profiles.md) | OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots | PROPOSED | 2026-06-10 |
+| [ADR-099](adr-099-orgpath-idp-binding-profile-expansion.md) | OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0) | PROPOSED | 2026-06-10 |
+| [ADR-100](adr-100-active-governance-directory-ldap.md) | Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception | PROPOSED | 2026-06-10 |
+| [ADR-101](adr-101-active-governance-directory-sasl-kerberos.md) | Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation | PROPOSED | 2026-06-11 |
+| [ADR-102](adr-102-locpath-location-addressing.md) | LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place) | PROPOSED | 2026-06-11 |
+| [ADR-103](adr-103-generated-illustrative-raster.md) | Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG | PROPOSED | 2026-06-12 |
 
 ### Microsoft Coverage
 
