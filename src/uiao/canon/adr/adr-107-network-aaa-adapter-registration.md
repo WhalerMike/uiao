@@ -1,5 +1,5 @@
 ---
-adr: ADR-047
+adr: ADR-107
 title: "Network AAA Adapter Registration and Control-Library `implemented_by` Closure"
 status: Proposed
 date: 2026-05-07
@@ -13,10 +13,10 @@ related:
   - ADR-044  # Substrate Governance Realignment
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-047-network-aaa-adapter-registration.html
+published_at: docs/adr/adr-107-network-aaa-adapter-registration.html
 ---
 
-# ADR-047: Network AAA Adapter Registration and Control-Library `implemented_by` Closure
+# ADR-107: Network AAA Adapter Registration and Control-Library `implemented_by` Closure
 
 ## Context
 
