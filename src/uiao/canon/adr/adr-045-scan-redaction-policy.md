@@ -117,7 +117,7 @@ This is the **lightweight** option among the three reviewed in the draft (CODEOW
 
 ### D7. Alignment with VDR-RPT-NID
 
-When the VDR Balance Improvement Release publishes (Notice 0009 deadline 2027-06-01), UIAO **retains ADR-045 as a supplemental policy above VDR-RPT-NID's floor**. The profile is designed to be *strictly more conservative* than VDR-RPT-NID is expected to require, so retaining it tightens UIAO's posture faster than any upstream change. A future retirement ADR supersedes ADR-045 only if VDR-RPT-NID introduces a profile that is equivalent-or-stricter — until then, ADR-045 is authoritative for UIAO's redaction floor.
+When the VDR Balance Improvement Release publishes ([FedRAMP Notice 0009](https://www.fedramp.gov/20x/notice-0009/) deadline 2027-06-01), UIAO **retains ADR-045 as a supplemental policy above VDR-RPT-NID's floor**. The profile is designed to be *strictly more conservative* than VDR-RPT-NID is expected to require, so retaining it tightens UIAO's posture faster than any upstream change. A future retirement ADR supersedes ADR-045 only if VDR-RPT-NID introduces a profile that is equivalent-or-stricter — until then, ADR-045 is authoritative for UIAO's redaction floor.
 
 ### D8. Class-differentiated profiles are a future-proof hook
 

@@ -1,7 +1,7 @@
 ---
 id: ADR-030
 title: "GCC Boundary Drift Class and Compensating Controls Architecture"
-status: proposed
+status: accepted
 date: 2026-04-19
 deciders:
   - governance-steward
@@ -25,7 +25,7 @@ published_at: docs/adr/adr-033-gcc-boundary-drift-class.html
 
 ## Status
 
-Proposed
+Accepted — 2026-06-15
 
 ## Context
 
