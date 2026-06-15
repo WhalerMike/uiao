@@ -82,7 +82,7 @@ Per CR-003, accepted ADRs are immutable.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-033](adr-033-gcc-boundary-drift-class.md) | GCC Boundary Drift Class and Compensating Controls Architecture | PROPOSED | 2026-04-19 |
+| [ADR-033](adr-033-gcc-boundary-drift-class.md) | GCC Boundary Drift Class and Compensating Controls Architecture | ACCEPTED | 2026-04-19 |
 | [ADR-043](adr-043-fedramp-rfc-0026-ca7-integration.md) | FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration | PROPOSED | 2026-04-21 |
 | [ADR-045](adr-045-scan-redaction-policy.md) | Scan Artifact Redaction Policy for Multi-Agency Distribution | PROPOSED | 2026-04-23 |
 
@@ -90,7 +90,7 @@ Per CR-003, accepted ADRs are immutable.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-034](adr-034-three-plane-device-model.md) | Three-Plane Device Model and OrgPath Plane-Aware Architecture | PROPOSED | 2026-04-20 |
+| [ADR-034](adr-034-three-plane-device-model.md) | Three-Plane Device Model and OrgPath Plane-Aware Architecture | ACCEPTED | 2026-04-20 |
 | [ADR-035](adr-035-orgpath-codebook-binding.md) | OrgPath Codebook — Executable Canon Binding | ACCEPTED | 2026-04-20 |
 | [ADR-036](adr-036-dynamic-group-provisioning.md) | Dynamic Group Library — Executable Canon + Entra Provisioning Adapter | ACCEPTED | 2026-04-20 |
 | [ADR-037](adr-037-admin-unit-provisioning.md) | Delegation Matrix — Executable Canon + Entra AU/Role Provisioning Adapter | ACCEPTED | 2026-04-20 |
@@ -177,8 +177,8 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [ADR-032](adr-032-single-package-consolidation.md) | Single-Package Consolidation — flatten src/uiao/ | ACCEPTED | 2026-04-20 |
-| [ADR-033](adr-033-gcc-boundary-drift-class.md) | GCC Boundary Drift Class and Compensating Controls Architecture | PROPOSED | 2026-04-19 |
-| [ADR-034](adr-034-three-plane-device-model.md) | Three-Plane Device Model and OrgPath Plane-Aware Architecture | PROPOSED | 2026-04-20 |
+| [ADR-033](adr-033-gcc-boundary-drift-class.md) | GCC Boundary Drift Class and Compensating Controls Architecture | ACCEPTED | 2026-04-19 |
+| [ADR-034](adr-034-three-plane-device-model.md) | Three-Plane Device Model and OrgPath Plane-Aware Architecture | ACCEPTED | 2026-04-20 |
 | [ADR-035](adr-035-orgpath-codebook-binding.md) | OrgPath Codebook — Executable Canon Binding | ACCEPTED | 2026-04-20 |
 | [ADR-036](adr-036-dynamic-group-provisioning.md) | Dynamic Group Library — Executable Canon + Entra Provisioning Adapter | ACCEPTED | 2026-04-20 |
 | [ADR-037](adr-037-admin-unit-provisioning.md) | Delegation Matrix — Executable Canon + Entra AU/Role Provisioning Adapter | ACCEPTED | 2026-04-20 |
@@ -213,7 +213,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | [ADR-065](adr-065-hrit-productization-mission.md) | HRIT Single-ATO Productization as v0.6.0 Mission Theme (renumbered from ADR-058) | ACCEPTED | 2026-05-11 |
 | [ADR-066](adr-066-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane (renumbered from ADR-057) | PROPOSED | 2026-05-05 |
 | [ADR-070](adr-070-foundational-primacy-charter-tier.md) | Foundational Primacy — Charter Tier and Amendment Process | ACCEPTED | 2026-05-15 |
-| [ADR-074](adr-074-drift-ssot-contention.md) | DRIFT-SSOT-CONTENTION — New Drift Class for Data-Plane Stewardship Authority | PROPOSED | 2026-05-18 |
+| [ADR-074](adr-074-drift-ssot-contention.md) | DRIFT-SSOT-CONTENTION — New Drift Class for Data-Plane Stewardship Authority | ACCEPTED | 2026-05-18 |
 
 ### Known frontmatter inconsistencies (deferred for separate cleanup)
 
