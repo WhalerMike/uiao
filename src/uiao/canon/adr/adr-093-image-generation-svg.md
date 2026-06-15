@@ -1,10 +1,10 @@
 ---
 adr_id: adr-093
 title: "Image Generation moves to committed Claude-authored SVG, rasterized deterministically in CI (NanoBanana retired)"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-06-04
 deciders: Michael Stratton
-updated: 2026-06-04
+updated: 2026-06-14
 next_review: 2026-12-04
 review_trigger: A figure class emerges that vector SVG cannot serve (e.g., photographic cover-art); the rasterizer (cairosvg/Playwright) is changed; the SVG house-style palette or canvas conventions are revised; a need arises to re-introduce a generative raster backend
 impact: "Replaces the Google Gemini 2.5 Flash Image ('NanoBanana') raster generator with committed SVG source files authored by Claude Code, rasterized to PNG deterministically in CI. Eliminates the recurring baked-in-text defects of generative raster (e.g., 'MICROSFT', 'decmposed', 'inherts'). SVG becomes the versioned source of truth; PNG is a build artifact. Drops the GEMINI_API_KEY CI secret and the google-genai dependency. Keeps the placeholder/registry/sidecar/manifest contract and replace_placeholders.py + quarto.yml unchanged. Adds scripts/render_svg_images.py and the src/uiao/canon/svg-style/ house style. Rollout regenerates existing figures in batches; a few artistic cover-art entries are flagged for separate handling."
@@ -19,7 +19,7 @@ published_at: docs/adr/adr-093-image-generation-svg.html
 
 ## Status
 
-**PROPOSED** — June 4, 2026
+**ACCEPTED** — June 4, 2026
 
 ## Context
 
