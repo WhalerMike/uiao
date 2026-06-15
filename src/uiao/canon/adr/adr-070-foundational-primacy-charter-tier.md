@@ -36,7 +36,7 @@ February through May 2026, accumulated a substantial body of governance,
 compliance, transformation, and boundary work in correct response to
 non-optional regulatory forcing functions: Microsoft vendor pressure
 toward Entra ID / Intune / Azure Arc; mandatory federal regimes (EO
-14028 / 14306, NIST 800-53 Rev 5, FedRAMP Rev 5, CISA SCuBA, BOD 25-01,
+14028 / 14306, NIST 800-53 Rev 5, FedRAMP Rev 5, CISA SCuBA, [BOD 25-01](https://cyber.dhs.gov/bod/25-01/),
 OMB memos); E911 federal law; and government-wide initiatives shipping
 weekly (HRIT, FRPP MS). This work is operationally live and correct.
 

@@ -131,7 +131,7 @@ is organized around continuous monitoring. The substrate already:
 ### Why this ADR exists now
 
 The repo owner commented on RFC-0026 flagging the intersection with CISA
-BOD 25-01 and the gap between point-in-time SCuBA assessments and
+[BOD 25-01](https://cyber.dhs.gov/bod/25-01/) and the gap between point-in-time SCuBA assessments and
 continuous drift detection. RFC-0026's traditional pathway bakes in a
 monthly cadence that UIAO's ConMon Playbook alignment already targets; the
 modernized pathway depends on the VDR/CCM Balance Improvement Releases,

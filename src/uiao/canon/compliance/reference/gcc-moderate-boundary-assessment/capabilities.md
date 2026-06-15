@@ -67,7 +67,7 @@ outbound telemetry their commercial-cloud features depend on.
 - **Workarounds:** Graph API export of sign-in and audit logs into Sentinel / Log Analytics; unified audit log + KQL; custom risk models on local IP, location, device-ID, failure-pattern correlation.
 - **Fidelity lost:** Microsoft's proprietary continuously-tuned ML risk scores; real-time cross-tenant correlation; vendor-supplied global threat intelligence.
 - **Detection-gap order of magnitude:** Commercial ≈ minutes; GCC-Moderate ≈ hours to days.
-- **Compliance impact:** BOD 25-01 core logging achievable; "rapid detection and investigation" intent harder. M-22-09 Identity pillar requires equivalent risk scoring for credible Advanced ZTMM claim.
+- **Compliance impact:** [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) core logging achievable; "rapid detection and investigation" intent harder. M-22-09 Identity pillar requires equivalent risk scoring for credible Advanced ZTMM claim.
 - **Gap matrix rows:** `entra-identity-protection-realtime-risk`, `cross-tenant-access-telemetry`.
 
 ### Intune — compliance, app protection, WUfB reporting, EPM

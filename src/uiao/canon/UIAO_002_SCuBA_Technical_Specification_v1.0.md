@@ -43,7 +43,7 @@ provenance:
    - 4.8 Data Models
    - 4.9 CLI Architecture
    - 4.10 CI/CD Integration
-   - 4.11 BOD 25-01 Compliance Integration
+   - 4.11 [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) Compliance Integration
 5. Implementation Guidance
 6. Risks and Mitigations
 7. Appendices

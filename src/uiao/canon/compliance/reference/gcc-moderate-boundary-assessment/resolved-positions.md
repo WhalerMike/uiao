@@ -12,7 +12,7 @@ basis.
 | Is M365 Usage Analytics available? | Available via the GCC-specific connector; the Marketplace template app is the only missing variant. |
 | Is the boundary-inference framework (NIST SI-4 / AU-2 / AU-3 / SC-7) valid? | Accepted as methodological, with explicit `documented: inferred` labeling rather than asserted unavailability. |
 | Is INR explicitly unavailable? | Yes — confirmed unavailable (verbatim Microsoft text). |
-| Are agencies in BOD 25-01 / M-22-09 violation? | Core requirements achievable with agency-side analytics; not free out of the box. Optimal maturity not achievable without compensating engineering. |
+| Are agencies in [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) / M-22-09 violation? | Core requirements achievable with agency-side analytics; not free out of the box. Optimal maturity not achievable without compensating engineering. |
 | Should TTPs and hour-level detection gaps be quantified? | Provided in [`mitre-chains.md`](mitre-chains.md) and the gap matrix with explicit acknowledgment that detection-gap orders of magnitude are analytical synthesis, not vendor-published numbers. |
 
 ## Conceptual framings used throughout this assessment

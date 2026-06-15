@@ -136,7 +136,7 @@ When the CCM Balance Improvement Release is published, UIAO will:
 
 ---
 
-## 4. Drift-ledger answer to BOD 25-01 / point-in-time SCuBA
+## 4. Drift-ledger answer to [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) / point-in-time SCuBA
 
 Per ADR-043 D6, the `scubagear` adapter remains a point-in-time assessor.
 Continuity between runs is materialized by the Drift Engine (UIAO_110):

@@ -7,7 +7,7 @@ Not AI-generated -- original source artwork.
 
 ## Description
 
-Layered diagram showing the three policy baselines UIAO evaluates: FedRAMP Moderate Rev 5 (323 controls), CISA SCuBA benchmarks and BOD 25-01 directives, and agency-specific organizational policies.
+Layered diagram showing the three policy baselines UIAO evaluates: FedRAMP Moderate Rev 5 (323 controls), CISA SCuBA benchmarks and [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) directives, and agency-specific organizational policies.
 
 ## Regeneration Guidance
 
