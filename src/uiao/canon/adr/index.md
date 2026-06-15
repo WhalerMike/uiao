@@ -98,7 +98,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-039](adr-039-policy-targeting.md) | OrgTree Policy Targeting — Intune + Azure Policy Dual Transport | ACCEPTED | 2026-04-20 |
 | [ADR-040](adr-040-drift-engine.md) | OrgTree Drift Detection Engine — Six-Phase Orchestrator | ACCEPTED | 2026-04-20 |
 | [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
-| [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
+| [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | PROPOSED | 2026-04-20 |
 | [ADR-091](adr-091-sql-server-authentication-transformation.md) | SQL Server Engine Authentication Transformation — Windows/SQL Auth to Entra ID for SQL Server 2022+ | PROPOSED | 2026-06-02 |
 | [ADR-098](adr-098-orgpath-vendor-neutral-binding-profiles.md) | OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots | PROPOSED | 2026-06-10 |
 | [ADR-099](adr-099-orgpath-idp-binding-profile-expansion.md) | OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0) | PROPOSED | 2026-06-10 |
@@ -186,7 +186,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | [ADR-039](adr-039-policy-targeting.md) | OrgTree Policy Targeting — Intune + Azure Policy Dual Transport | ACCEPTED | 2026-04-20 |
 | [ADR-040](adr-040-drift-engine.md) | OrgTree Drift Detection Engine — Six-Phase Orchestrator | ACCEPTED | 2026-04-20 |
 | [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
-| [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
+| [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | PROPOSED | 2026-04-20 |
 | [ADR-043](adr-043-fedramp-rfc-0026-ca7-integration.md) | FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration | ACCEPTED | 2026-04-21 |
 | [ADR-044](adr-044-substrate-governance-realignment.md) | Substrate Governance Realignment to Post-ADR-032 Single Package | ACCEPTED | 2026-04-23 |
 | [ADR-045](adr-045-scan-redaction-policy.md) | Scan Artifact Redaction Policy for Multi-Agency Distribution | PROPOSED | 2026-04-23 |
