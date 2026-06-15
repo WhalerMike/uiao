@@ -1,5 +1,5 @@
 ---
-adr_id: adr-072
+adr_id: adr-100
 title: "Runtime Drift Validators — Semantic, Authz, Identity Checks Inline at Emit"
 status: PROPOSED
 decided: null
@@ -12,10 +12,10 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
-depends_on: adr-070, adr-071
+depends_on: adr-098, adr-099
 ---
 
-# ADR-072: Runtime Drift Validators — Semantic, Authz, Identity Checks Inline at Emit
+# ADR-100: Runtime Drift Validators — Semantic, Authz, Identity Checks Inline at Emit
 
 ## Status
 
@@ -23,7 +23,7 @@ depends_on: adr-070, adr-071
 
 ## Context
 
-ADR-070 ships the typed provenance envelope. ADR-071 wires it into the
+ADR-098 ships the typed provenance envelope. ADR-099 wires it into the
 three adapter surfaces via a shared sink, with three sync validators
 stubbed to return `True`. The stubs let Phase 1 ship the contract
 shape without coupling the adapter retrofit to validator implementation
@@ -31,7 +31,7 @@ risk. Phase 2 is the validator implementation.
 
 Four design questions must be answered before the stubs can be replaced:
 
-1. **What does "signature resolves" actually check?** ADR-070 §2 lists
+1. **What does "signature resolves" actually check?** ADR-098 §2 lists
    it as DRIFT-PROVENANCE P1 sync, but the substrate walker today
    validates `trust-anchor:` declarations at canon-hygiene level — the
    runtime check is the *live* version of that hygiene check. The line
@@ -45,7 +45,7 @@ Four design questions must be answered before the stubs can be replaced:
    *without* touching the sink code. The strategy memo from Phase 0
    commits to pluggability; this ADR has to pick the plug-point.
 
-3. **Should DRIFT-SEMANTIC block emission?** ADR-070 §2 lists semantic
+3. **Should DRIFT-SEMANTIC block emission?** ADR-098 §2 lists semantic
    as a runtime check but doesn't pin the severity. `16_DriftDetectionStandard.qmd`
    §3 puts P2 at "Schema or semantic drift in a live claim" — high but
    not halt-and-alert. The substrate's other drift surfaces (walker,
@@ -57,7 +57,7 @@ Four design questions must be answered before the stubs can be replaced:
    defines a 15-field YAML schema (envelope_id, claim_id, legal_authority,
    purpose_code, consent_expiry, permitted_uses, prohibited_uses,
    cross_boundary_flag, ...). The AUTHZ validator can't operate on raw
-   dicts at runtime — it needs a typed model the same way ADR-070
+   dicts at runtime — it needs a typed model the same way ADR-098
    defines a typed `Envelope`.
 
 ## Decision
@@ -141,7 +141,7 @@ uses a 5-minute LRU cache to keep emit latency bounded.
 ### 4. Typed `ConsentEnvelope` model
 
 `17_ConsentEnvelope.qmd` §3 is promoted to a pydantic model the same
-way ADR-070 promoted the provenance envelope §3. The model lives at
+way ADR-098 promoted the provenance envelope §3. The model lives at
 `src/uiao/models/consent.py` and ships with:
 
 - 15 typed fields matching the §3 schema exactly
@@ -242,7 +242,7 @@ behavior change is material.
   imported by `src/uiao/telemetry/provenance.py`. Separation lets the
   validators be unit-tested independently of the sink's persistence
   side-effects.
-- ADR-072 does not commit to a specific OSCAL-pipeline integration of
+- ADR-100 does not commit to a specific OSCAL-pipeline integration of
   the runtime findings — that's Phase 3. Today they only land in the
   event log; Phase 3 makes them visible to the bundle generator.
 
@@ -329,8 +329,8 @@ def emit(envelope: Envelope, *, claim: dict, adapter_id: str) -> EmitOutcome:
 
 ## Cross-references
 
-- [`inbox/drafts/phase0-runtime-provenance-envelope/adr-070-runtime-provenance-envelope.md`](../phase0-runtime-provenance-envelope/adr-070-runtime-provenance-envelope.md) — envelope this phase validates
-- [`inbox/drafts/phase1-emit-hook-and-evidence-capture/adr-071-adapter-emit-hook-and-event-log.md`](../phase1-emit-hook-and-evidence-capture/adr-071-adapter-emit-hook-and-event-log.md) — sink + stubs this phase replaces
+- [`inbox/drafts/phase0-runtime-provenance-envelope/adr-098-runtime-provenance-envelope.md`](../phase0-runtime-provenance-envelope/adr-098-runtime-provenance-envelope.md) — envelope this phase validates
+- [`inbox/drafts/phase1-emit-hook-and-evidence-capture/adr-099-adapter-emit-hook-and-event-log.md`](../phase1-emit-hook-and-evidence-capture/adr-099-adapter-emit-hook-and-event-log.md) — sink + stubs this phase replaces
 - [`docs/docs/16_DriftDetectionStandard.qmd`](../../../docs/docs/16_DriftDetectionStandard.qmd) — taxonomy + severity model + §4 remediation contract (Phase 3 extends findings to carry it)
 - [`docs/docs/17_ConsentEnvelope.qmd`](../../../docs/docs/17_ConsentEnvelope.qmd) — §3 schema promoted to typed model in this phase
 - [`src/uiao/canon/adr/adr-012-canonical-drift-taxonomy.md`](../../../src/uiao/canon/adr/adr-012-canonical-drift-taxonomy.md) — taxonomy reused verbatim with `subkind="runtime"`

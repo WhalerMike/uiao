@@ -68,7 +68,7 @@ def build_component_definition(
     """... (existing docstring) ...
 
     When ``include_runtime_findings`` is True, runtime drift findings
-    from the JSONL provenance event log (per Phase 1d / ADR-071) over
+    from the JSONL provenance event log (per Phase 1d / ADR-099) over
     the past ``runtime_findings_window_hours`` are projected into OSCAL
     Observations under ``_UIAO_RUNTIME_NS`` and attached to the right
     implemented-requirement via the §6 compliance mapping. Default is

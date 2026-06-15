@@ -2,12 +2,12 @@
 title: "Phase 1 — Adapter retrofit migration plan"
 status: DRAFT
 date: 2026-05-15
-depends_on: ADR-070 (ACCEPTED), ADR-071 (ACCEPTED)
+depends_on: ADR-098 (ACCEPTED), ADR-099 (ACCEPTED)
 ---
 
 # Phase 1 — Adapter retrofit migration plan
 
-Phase 1 binds the runtime provenance envelope (ADR-070) to three adapter
+Phase 1 binds the runtime provenance envelope (ADR-098) to three adapter
 surfaces. This document is the **per-adapter migration order** that
 governs the rollout. Each entry below corresponds to one PR; each PR is
 gated by the relevant feature flag and lands independently.
@@ -20,9 +20,9 @@ with a documented `spec_ref` and `expires_at` per UIAO_119 v2:
 
 | Flag | Surface | spec_ref | Default | Expires |
 |---|---|---|---|---|
-| `uiao.envelope.collectors` | `BaseCollector._emit_envelope()` | ADR-071 §1 | off | 2026-12-31 |
-| `uiao.envelope.modernization` | `ModernizationAdapter.emit()` | ADR-071 §1 | off | 2026-12-31 |
-| `uiao.envelope.enforcement` | `EnforcementAdapter.enforce()` envelope field | ADR-071 §1 | off | 2027-03-31 |
+| `uiao.envelope.collectors` | `BaseCollector._emit_envelope()` | ADR-099 §1 | off | 2026-12-31 |
+| `uiao.envelope.modernization` | `ModernizationAdapter.emit()` | ADR-099 §1 | off | 2026-12-31 |
+| `uiao.envelope.enforcement` | `EnforcementAdapter.enforce()` envelope field | ADR-099 §1 | off | 2027-03-31 |
 
 A flag flips to `on` once all adapters on that surface have completed at
 least Pattern A migration. The `expires_at` removes the flag entirely
@@ -89,7 +89,7 @@ all three surfaces emit to.
 ## Sequencing
 
 ```
-Phase 0 (ACCEPTED) ── ADR-070 + Envelope model + schema
+Phase 0 (ACCEPTED) ── ADR-098 + Envelope model + schema
         │
         ▼
 Phase 1d.1–1d.4 ── shared infra (sink + event log + walker check)
@@ -118,7 +118,7 @@ Phase 1a (collectors)   Phase 1b (mod.)   Phase 1c (enforcement)
 The "Continuous event-time evidence capture" row flips to SHIPPED when
 **all** of the following hold:
 
-1. ADR-070 and ADR-071 both ACCEPTED in `src/uiao/canon/adr/`.
+1. ADR-098 and ADR-099 both ACCEPTED in `src/uiao/canon/adr/`.
 2. All three feature flags (`uiao.envelope.*`) flipped on.
 3. Reproducibility test (1d.5) passing in CI.
 4. Substrate walker emits zero P1 findings related to provenance event

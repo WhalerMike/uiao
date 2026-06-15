@@ -1,5 +1,5 @@
 ---
-adr_id: adr-071
+adr_id: adr-099
 title: "Adapter emit() Hook and Provenance Event Log — Three-Surface Binding for the Runtime Envelope"
 status: PROPOSED
 decided: null
@@ -7,15 +7,15 @@ deciders: Michael Stratton
 updated: 2026-05-15
 next_review: 2026-11-01
 review_trigger: First production adapter retrofit; OSCAL bundle latency regression; assessor feedback on event-log replay
-impact: Promotes ADR-070 envelope from typed contract to live wire-format on three adapter surfaces (collectors, modernization, enforcement); replaces the legacy 3-field `EvidenceProvenance` with a backward-compatible projection of the new envelope; adds `evidence/provenance/<adapter>/<yyyy-mm>/*.jsonl` as a canonical artifact tree
+impact: Promotes ADR-098 envelope from typed contract to live wire-format on three adapter surfaces (collectors, modernization, enforcement); replaces the legacy 3-field `EvidenceProvenance` with a backward-compatible projection of the new envelope; adds `evidence/provenance/<adapter>/<yyyy-mm>/*.jsonl` as a canonical artifact tree
 supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
-depends_on: adr-070
+depends_on: adr-098
 ---
 
-# ADR-071: Adapter emit() Hook and Provenance Event Log
+# ADR-099: Adapter emit() Hook and Provenance Event Log
 
 ## Status
 
@@ -23,8 +23,8 @@ depends_on: adr-070
 
 ## Context
 
-ADR-070 ships the provenance envelope as a typed contract. That contract
-is unwired — no adapter actually constructs one yet. ADR-071 wires it into
+ADR-098 ships the provenance envelope as a typed contract. That contract
+is unwired — no adapter actually constructs one yet. ADR-099 wires it into
 the substrate, and in doing so confronts a finding that the original
 whitepaper strategy did not surface:
 
@@ -78,7 +78,7 @@ three converge on `uiao.telemetry.provenance.emit(envelope, claim)`:
 | `EnforcementAdapter` | `enforce()` returns `AdapterResult` carrying an `Envelope` field | Yes — `enforce()` signature compatible (envelope optional in v1, required in v2) |
 
 All three hooks delegate to the same `provenance_sink.emit()`. The sink
-runs the sync validation suite from ADR-070 §2 inline:
+runs the sync validation suite from ADR-098 §2 inline:
 
 1. Schema check (pydantic model validation)
 2. Signature check (mTLS thumbprint resolves to a trusted issuer)
@@ -95,7 +95,7 @@ in the event log including failed ones (with the finding attached).
 The existing `BaseCollector.EvidenceProvenance` has three fields:
 `collector_id`, `hash`, `collection_timestamp`. The new `Envelope` has
 ten required fields. Rather than breaking every existing collector by
-removing the legacy class, ADR-071 retains it as a **projection** of the
+removing the legacy class, ADR-099 retains it as a **projection** of the
 new envelope:
 
 ```python
@@ -238,7 +238,7 @@ it. **Rejected** because:
 Drop the legacy 3-field class and require every collector to construct
 a full `Envelope`. **Rejected** because:
 
-- Touches every collector in one PR, blocking ADR-071 on full retrofit.
+- Touches every collector in one PR, blocking ADR-099 on full retrofit.
 - Loses the gentle migration path that lets us land the sink + base
   class without breaking production.
 - The projection is small (≈20 LOC) and has a defined end-of-life
@@ -301,7 +301,7 @@ class AdapterResult:
 
 ## Cross-references
 
-- [`inbox/drafts/phase0-runtime-provenance-envelope/adr-070-runtime-provenance-envelope.md`](../phase0-runtime-provenance-envelope/adr-070-runtime-provenance-envelope.md) — typed envelope this ADR wires
+- [`inbox/drafts/phase0-runtime-provenance-envelope/adr-098-runtime-provenance-envelope.md`](../phase0-runtime-provenance-envelope/adr-098-runtime-provenance-envelope.md) — typed envelope this ADR wires
 - [`src/uiao/canon/adr/adr-006-evidence-determinism.md`](../../../src/uiao/canon/adr/adr-006-evidence-determinism.md) — determinism extended to event-log replay
 - [`src/uiao/canon/adr/adr-009-drift-ledger-immutability.md`](../../../src/uiao/canon/adr/adr-009-drift-ledger-immutability.md) — immutability the JSONL log inherits
 - [`src/uiao/canon/adr/adr-022-evidence-compression.md`](../../../src/uiao/canon/adr/adr-022-evidence-compression.md) — compression policy that bounds event-log disk pressure

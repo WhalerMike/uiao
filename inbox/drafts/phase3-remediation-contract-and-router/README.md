@@ -3,7 +3,7 @@ title: "Phase 3 — Remediation Contract on Findings + Router + OSCAL Integratio
 status: DRAFT
 date: 2026-05-15
 owner: Michael Stratton
-depends_on: Phase 0 (ADR-070 ACCEPTED), Phase 1 (ADR-071 ACCEPTED), Phase 2 (ADR-072 ACCEPTED)
+depends_on: Phase 0 (ADR-098 ACCEPTED), Phase 1 (ADR-099 ACCEPTED), Phase 2 (ADR-100 ACCEPTED)
 related_strategy: "Whitepaper TARGET → SHIPPED plan (governance-os whitepaper §3)"
 ---
 
@@ -60,7 +60,7 @@ cleanup) unifies all three.
 
 | File | Purpose | Lands at |
 |---|---|---|
-| [adr-073-remediation-contract-and-router.md](adr-073-remediation-contract-and-router.md) | Records the three-axis change; commits to NOT refactoring OrgTree in this phase; pins the four router-handler types | `src/uiao/canon/adr/` |
+| [adr-101-remediation-contract-and-router.md](adr-101-remediation-contract-and-router.md) | Records the three-axis change; commits to NOT refactoring OrgTree in this phase; pins the four router-handler types | `src/uiao/canon/adr/` |
 | [drift_finding.py](drift_finding.py) | Canonical `DriftFinding` dataclass with §4 remediation contract fields; subsumes the walker and sink classes | `src/uiao/models/drift_finding.py` |
 | [remediation_router.py](remediation_router.py) | `RemediationRouter` + four handler implementations (`halt` / `fix` / `flag` / `log`) | `src/uiao/governance/router.py` |
 | [oscal_runtime_findings.diff.md](oscal_runtime_findings.diff.md) | Diff sketch for the OSCAL generator's `--include-runtime-findings` mode | Inline in `src/uiao/generators/oscal.py` |
@@ -85,7 +85,7 @@ whitepaper flip; PR-3b is the assessor-facing surface.
 
 Phase 3 is complete when:
 
-1. ADR-073 ACCEPTED.
+1. ADR-101 ACCEPTED.
 2. `src/uiao/models/drift_finding.py` is the canonical class; walker
    and sink both use it.
 3. `RemediationRouter` is registered into the substrate boot sequence;

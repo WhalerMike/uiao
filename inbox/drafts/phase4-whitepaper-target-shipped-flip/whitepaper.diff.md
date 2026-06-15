@@ -40,8 +40,8 @@ All other content stays as-is.
 | Substrate walker | `uiao substrate walk` / `uiao substrate drift` — emits `DRIFT-SCHEMA`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY` hygiene findings per `substrate-drift.yml` | **SHIPPED** |
 | Adapter taxonomy | `class` × `mission-class` per UIAO_003, registered in two registries, validated by `adapter-conformance.yml` | **SHIPPED** |
 | OSCAL evidence | SSP, POA&M, KSI, Component Definition generators with deterministic regeneration per ADR-006 | **SHIPPED** |
-| Runtime drift (semantic / authz / identity) | `uiao.telemetry.provenance` sink runs the four-validator pipeline (`uiao.telemetry.validators`) inline at adapter emit per ADR-070 / ADR-071 / ADR-072 | **SHIPPED** |
-| Continuous event-time evidence capture | Append-only JSONL provenance event log under `evidence/provenance/<adapter>/<yyyy-mm>/*.jsonl`; OSCAL bundles regenerable from event history per ADR-071 §3 | **SHIPPED** |
+| Runtime drift (semantic / authz / identity) | `uiao.telemetry.provenance` sink runs the four-validator pipeline (`uiao.telemetry.validators`) inline at adapter emit per ADR-098 / ADR-099 / ADR-100 | **SHIPPED** |
+| Continuous event-time evidence capture | Append-only JSONL provenance event log under `evidence/provenance/<adapter>/<yyyy-mm>/*.jsonl`; OSCAL bundles regenerable from event history per ADR-099 §3 | **SHIPPED** |
 ```
 
 ### Rationale for the text changes (not just the maturity flip)
@@ -86,7 +86,7 @@ Three honest limits:
   UIAO maps to NIST 800-53, FedRAMP CR26, and CISA ZTMM — it does not
   redefine the controls.
 - It is not a fully-populated auto-remediation surface. The
-  `RemediationRouter` (ADR-073) dispatches every finding to a
+  `RemediationRouter` (ADR-101) dispatches every finding to a
   `halt` / `fix` / `flag` / `log` handler, but adapter-specific
   apply() functions backing the `fix` handler are still being
   registered one adapter at a time. Until full coverage, the `fix`

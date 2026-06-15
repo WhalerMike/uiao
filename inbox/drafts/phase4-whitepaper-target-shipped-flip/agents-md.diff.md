@@ -32,7 +32,7 @@ Emits four classes of hygiene findings:
 - `DRIFT-AUTHZ` — every active adapter declares a non-empty `scope:` (UIAO_110)
 - `DRIFT-IDENTITY` — every `certificate-anchored: true` adapter declares a `trust-anchor:` (UIAO_110)
 
-For the **runtime** counterparts of these four classes (plus `DRIFT-SEMANTIC`), see `src/uiao/telemetry/provenance.py` — the same drift_class codes are emitted at adapter emit time with `subkind="runtime"`, validated inline by the four-validator pipeline in `src/uiao/telemetry/validators.py` per ADR-070 / ADR-071 / ADR-072 / ADR-073.
+For the **runtime** counterparts of these four classes (plus `DRIFT-SEMANTIC`), see `src/uiao/telemetry/provenance.py` — the same drift_class codes are emitted at adapter emit time with `subkind="runtime"`, validated inline by the four-validator pipeline in `src/uiao/telemetry/validators.py` per ADR-098 / ADR-099 / ADR-100 / ADR-101.
 ```
 
 ### Rationale
@@ -53,19 +53,19 @@ block (line 79 onward). Heading and content:
 ```markdown
 ## Public surface additions (v0.7.0)
 
-New library modules introduced by the Runtime Provenance + Drift program (ADR-070 / ADR-071 / ADR-072 / ADR-073). These rows supplement the v0.5.0 / v0.6.0 inventories above.
+New library modules introduced by the Runtime Provenance + Drift program (ADR-098 / ADR-099 / ADR-100 / ADR-101). These rows supplement the v0.5.0 / v0.6.0 inventories above.
 
 | Feature | Module | CLI surface | Tier | Notes |
 |---|---|---|---|---|
-| Provenance envelope (typed) | `uiao.models.provenance` | (library, used by adapters) | Library | ADR-070; promotes `15_ProvenanceProfile.qmd` §3 to pydantic v2 |
-| Consent envelope (typed) | `uiao.models.consent` | (library, used by validators) | Library | ADR-072 §4; promotes `17_ConsentEnvelope.qmd` §3 to pydantic v2 |
-| Canonical drift finding | `uiao.models.drift_finding` | (library, used by walker + sink + router) | Library | ADR-073; subsumes walker and sink classes; OrgTree engine class stays peer pending Phase 5 |
-| Identity-plane resolver | `uiao.identity.resolver` | (library; per-adapter manifest plug-point) | Library | ADR-072 §3; `EntraIDResolver` default, pluggable for Login.gov / PIV / federal IdP |
-| Provenance event sink | `uiao.telemetry.provenance` | (library; routed via adapter emit) | Library | ADR-071; runs the four-validator pipeline inline, appends JSONL event log |
-| Runtime drift validators | `uiao.telemetry.validators` | (library; constructed per adapter at sink init) | Library | ADR-072; four checks (signature/identity/authz P1; semantic P2 non-blocking) |
-| Remediation router | `uiao.governance.router` | (library; wired at substrate boot) | Library | ADR-073; dispatches every finding to halt/fix/flag/log; rule table in `src/uiao/canon/data/remediation-routes.yaml` |
-| OSCAL runtime-findings mode | `uiao.generators.oscal` | `uiao oscal generate --include-runtime-findings` | CLI | ADR-073 PR-3b; projects runtime findings as OSCAL Observations under `_UIAO_RUNTIME_NS` |
-| Modernization adapter base | `uiao.adapters.base.ModernizationAdapter` | (library; ABC for modernization adapters) | Library | ADR-071; new ABC for the third adapter surface |
+| Provenance envelope (typed) | `uiao.models.provenance` | (library, used by adapters) | Library | ADR-098; promotes `15_ProvenanceProfile.qmd` §3 to pydantic v2 |
+| Consent envelope (typed) | `uiao.models.consent` | (library, used by validators) | Library | ADR-100 §4; promotes `17_ConsentEnvelope.qmd` §3 to pydantic v2 |
+| Canonical drift finding | `uiao.models.drift_finding` | (library, used by walker + sink + router) | Library | ADR-101; subsumes walker and sink classes; OrgTree engine class stays peer pending Phase 5 |
+| Identity-plane resolver | `uiao.identity.resolver` | (library; per-adapter manifest plug-point) | Library | ADR-100 §3; `EntraIDResolver` default, pluggable for Login.gov / PIV / federal IdP |
+| Provenance event sink | `uiao.telemetry.provenance` | (library; routed via adapter emit) | Library | ADR-099; runs the four-validator pipeline inline, appends JSONL event log |
+| Runtime drift validators | `uiao.telemetry.validators` | (library; constructed per adapter at sink init) | Library | ADR-100; four checks (signature/identity/authz P1; semantic P2 non-blocking) |
+| Remediation router | `uiao.governance.router` | (library; wired at substrate boot) | Library | ADR-101; dispatches every finding to halt/fix/flag/log; rule table in `src/uiao/canon/data/remediation-routes.yaml` |
+| OSCAL runtime-findings mode | `uiao.generators.oscal` | `uiao oscal generate --include-runtime-findings` | CLI | ADR-101 PR-3b; projects runtime findings as OSCAL Observations under `_UIAO_RUNTIME_NS` |
+| Modernization adapter base | `uiao.adapters.base.ModernizationAdapter` | (library; ABC for modernization adapters) | Library | ADR-099; new ABC for the third adapter surface |
 ```
 
 ### Rationale

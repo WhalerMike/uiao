@@ -1,5 +1,5 @@
 ---
-adr_id: adr-070
+adr_id: adr-098
 title: "Runtime Provenance Envelope — Typed Contract, Inline-at-Emit Validation"
 status: PROPOSED
 decided: null
@@ -14,7 +14,7 @@ classification: Controlled
 boundary: GCC-Moderate
 ---
 
-# ADR-070: Runtime Provenance Envelope — Typed Contract, Inline-at-Emit Validation
+# ADR-098: Runtime Provenance Envelope — Typed Contract, Inline-at-Emit Validation
 
 ## Status
 
@@ -106,7 +106,7 @@ P2` finding without blocking the originating call.
 
 ### 3. Reuse the canonical drift taxonomy verbatim
 
-ADR-012 declares the five drift classes. ADR-070 reuses them — it does
+ADR-012 declares the five drift classes. ADR-098 reuses them — it does
 **not** introduce `RUNTIME-DRIFT-*` parallels. The substrate walker
 (`src/uiao/substrate/walker.py`) already emits `DRIFT-AUTHZ`,
 `DRIFT-IDENTITY`, `DRIFT-SCHEMA`, and `DRIFT-PROVENANCE` at canon-hygiene

@@ -17,7 +17,7 @@ the migration preserves the legacy `EvidenceProvenance` contract.
 Three additions, **zero removals or signature changes**:
 
 1. `EvidenceProvenance.from_envelope()` and `to_envelope()` classmethods —
-   the projection/promotion bridge per ADR-071 §2.
+   the projection/promotion bridge per ADR-099 §2.
 2. `BaseCollector._emit_envelope(envelope, claim)` — protected method
    that subclasses call once per emission, routing to
    `uiao.telemetry.provenance.emit()`.
