@@ -1,0 +1,127 @@
+name: UIAO Document Review Reminders
+# Scans all customer-facing docs for approaching lifecycle_review dates and
+# opens a GitHub Issue listing what needs review. Self-maintaining: no
+# hardcoded document list — driven entirely by frontmatter in each .qmd file.
+#
+# Owner: Michael Stratton | Controls: CA-7, CM-3, CM-6
+on:
+  schedule:
+    - cron: '0 13 * * 1'  # Mondays at 1PM UTC = 9AM EDT
+  workflow_dispatch:
+    inputs:
+      horizon_days:
+        description: 'Days ahead to scan for upcoming lifecycle_review dates'
+        required: false
+        default: '60'
+      force_issue:
+        description: 'Open an issue even if no docs are due (for testing)'
+        required: false
+        default: 'false'
+
+jobs:
+  review-reminder:
+    name: Scan and Notify
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Run review scanner
+        id: scan
+        run: |
+          HORIZON="${{ github.event.inputs.horizon_days || '60' }}"
+          python scripts/review_scanner.py --horizon "$HORIZON" --output /tmp/review-report.json
+          echo "horizon=$HORIZON" >> "$GITHUB_OUTPUT"
+          COUNT=$(python3 -c "import json; d=json.load(open('/tmp/review-report.json')); print(d['docs_in_window'])")
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Docs in window: $COUNT"
+
+      - name: Open GitHub Issue
+        if: ${{ steps.scan.outputs.count != '0' || github.event.inputs.force_issue == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('/tmp/review-report.json', 'utf8'));
+            const horizon = '${{ steps.scan.outputs.horizon_days || steps.scan.outputs.horizon }}';
+
+            if (report.docs_in_window === 0 && '${{ github.event.inputs.force_issue }}' !== 'true') {
+              core.info('No docs due in window — skipping issue creation.');
+              return;
+            }
+
+            const { critical, high, medium, low, total_hours } = report.summary;
+            const tierEmoji = { CRITICAL: '🔴', HIGH: '🟠', MEDIUM: '🟡', LOW: '🟢' };
+
+            // Group by lifecycle_review date
+            const byDate = {};
+            for (const doc of report.docs) {
+              const key = doc.lifecycle_review || 'No date set';
+              if (!byDate[key]) byDate[key] = [];
+              byDate[key].push(doc);
+            }
+
+            let body = [
+              `## UIAO Document Review Reminder`,
+              ``,
+              `**Scan date:** ${report.generated} | **Horizon:** ${report.horizon_days ?? 'all'} days`,
+              `**Docs in window:** ${report.docs_in_window} | **Total estimated hours:** ${total_hours}`,
+              ``,
+              `| Tier | Count |`,
+              `|------|-------|`,
+              `| 🔴 CRITICAL | ${critical} |`,
+              `| 🟠 HIGH | ${high} |`,
+              `| 🟡 MEDIUM | ${medium} |`,
+              `| 🟢 LOW | ${low} |`,
+              ``,
+            ];
+
+            for (const [reviewDate, docs] of Object.entries(byDate).sort()) {
+              const groupHours = docs.reduce((s, d) => s + d.est_hours, 0);
+              body.push(`### lifecycle_review: ${reviewDate} (${docs.length} docs, ${groupHours} hrs)`);
+              body.push('');
+              body.push('| Tier | Doc Type | Title | Path | Reviewer | Hrs |');
+              body.push('|------|----------|-------|------|----------|-----|');
+              for (const doc of docs) {
+                const emoji = tierEmoji[doc.tier] || '';
+                const title = doc.title || '(untitled)';
+                const path = doc.path;
+                body.push(`| ${emoji} ${doc.tier} | ${doc.doc_type} | ${title} | \`${path}\` | ${doc.reviewer} | ${doc.est_hours} |`);
+              }
+              body.push('');
+            }
+
+            body.push('---');
+            body.push('*Auto-opened by review-reminders.yml · CA-7 / CM-3 / CM-6*');
+            body.push('*To update review dates: edit `lifecycle_review:` in each document\'s frontmatter.*');
+
+            const titleDate = new Date().toISOString().slice(0,10);
+            const topTier = critical > 0 ? '🔴 CRITICAL' : high > 0 ? '🟠 HIGH' : medium > 0 ? '🟡 MEDIUM' : '🟢 LOW';
+            const title = `[Review Reminder ${titleDate}] ${report.docs_in_window} docs due within ${report.horizon_days ?? 'N'} days — ${topTier}`;
+
+            const labels = ['review-reminder'];
+            if (critical > 0) labels.push('critical');
+            else if (high > 0) labels.push('high');
+            else if (medium > 0) labels.push('medium');
+            else labels.push('low');
+
+            const resp = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title,
+              body: body.join('\n'),
+              labels,
+            });
+
+            core.info(`Issue #${resp.data.number} created: ${resp.data.html_url}`);
