@@ -106,6 +106,10 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-101](adr-101-active-governance-directory-sasl-kerberos.md) | Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation | PROPOSED | 2026-06-11 |
 | [ADR-102](adr-102-locpath-location-addressing.md) | LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place) | PROPOSED | 2026-06-11 |
 | [ADR-103](adr-103-generated-illustrative-raster.md) | Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG | PROPOSED | 2026-06-12 |
+| [ADR-104](adr-104-e911-compliance-layer.md) | E911 Compliance Layer — Dispatchable-Location Completeness over LocPath, with RTLS-fed Dynamic Enhancement | PROPOSED | 2026-06-13 |
+| [ADR-105](adr-105-operational-guide-kit-conventions.md) | Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery | PROPOSED | 2026-06-13 |
+| [ADR-106](adr-106-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption (renumbered from ADR-047) | PROPOSED | 2026-04-27 |
+| [ADR-107](adr-107-network-aaa-adapter-registration.md) | Network AAA Adapter Registration and Control-Library `implemented_by` Closure (renumbered from ADR-047) | PROPOSED | 2026-05-07 |
 
 ### Microsoft Coverage
 
@@ -150,16 +154,13 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-057](adr-057-thousandeyes-networks-pillar-scope.md) | ThousandEyes — Networks-Pillar Conditional Adoption Under GCC-Moderate — Proposed | PROPOSED | 2026-04-27 |
 | [ADR-066](adr-066-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane | PROPOSED | 2026-05-05 |
 
-### ADR-047 Numbering Collision
+### ADR-047 Numbering Collision (resolved 2026-06-15)
 
-Two files share the ADR-047 slot on disk. Maintainer action required to establish the canonical mapping:
+Three files previously shared the ADR-047 slot. Resolved by assigning the two later files to free slots:
 
-| File | Title | Status | Date |
-|------|-------|--------|------|
-| [adr-047-continuous-monitoring-program.md](adr-047-continuous-monitoring-program.md) | Continuous Monitoring Program and Customer Documentation Platform Architecture | PROPOSED | 2026-04-14 |
-| [adr-047-fedramp-20x-integration.md](adr-047-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption | PROPOSED | 2026-04-27 |
-
-> One of these files must be renumbered before the ADR-047 slot can be treated as canonically resolved.
+- **ADR-047** → `adr-047-continuous-monitoring-program.md` (canonical, oldest — 2026-04-14)
+- **ADR-106** → `adr-106-fedramp-20x-integration.md` (renumbered from ADR-047, 2026-04-27)
+- **ADR-107** → `adr-107-network-aaa-adapter-registration.md` (renumbered from ADR-047, 2026-05-07)
 
 ### ADR-057 Numbering Collision (resolved 2026-05-12)
 
@@ -191,8 +192,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | [ADR-044](adr-044-substrate-governance-realignment.md) | Substrate Governance Realignment to Post-ADR-032 Single Package | ACCEPTED | 2026-04-23 |
 | [ADR-045](adr-045-scan-redaction-policy.md) | Scan Artifact Redaction Policy for Multi-Agency Distribution | PROPOSED | 2026-04-23 |
 | [ADR-046](adr-046-cli-surface-convention.md) | CLI Surface Convention: Sub-App-per-Domain | ACCEPTED | 2026-04-23 |
-| [ADR-047a](adr-047-continuous-monitoring-program.md) | Continuous Monitoring Program and Customer Documentation Platform Architecture | PROPOSED | 2026-04-14 |
-| [ADR-047b](adr-047-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption | PROPOSED | 2026-04-27 |
+| [ADR-047](adr-047-continuous-monitoring-program.md) | Continuous Monitoring Program and Customer Documentation Platform Architecture | PROPOSED | 2026-04-14 |
 | [ADR-048](adr-048-orgpath-attribute-selection.md) | OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes | ACCEPTED | 2026-04-28 |
 | [ADR-049](adr-049-microsoft-adapter-coverage-expansion.md) | Microsoft Modernization Adapter Coverage Expansion | ACCEPTED | 2026-04-30 |
 | [ADR-050](adr-050-reference-middleware-implementation-choices.md) | D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices | ACCEPTED | 2026-04-30 |
@@ -219,7 +219,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 
 - `adr-033-gcc-boundary-drift-class.md` declares `id: ADR-030` in frontmatter; filename is the source of truth.
 - `adr-034-three-plane-device-model.md` declares `id: ADR-031` in frontmatter; filename is the source of truth.
-- ADR-047 has two files (`continuous-monitoring-program` and `fedramp-20x-integration`) — duplicate ADR number, listed as 047a / 047b.
+- ADR-047 collision resolved 2026-06-15: fedramp-20x → ADR-106, network-aaa → ADR-107.
 
 ## ADR Governance Rules
 

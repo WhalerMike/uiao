@@ -1,5 +1,5 @@
 ---
-id: ADR-047
+id: ADR-106
 title: "FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption"
 status: PROPOSED
 date: 2026-04-27
