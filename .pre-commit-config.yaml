@@ -8,6 +8,8 @@
 #   - mypy src/uiao              → mirrors .github/workflows/mypy.yml
 #   - check-metaschema           → fast subset of schema-validation.yml
 #   - substrate drift            → mirrors .github/workflows/substrate-drift.yml
+#   - sitemap drift              → mirrors .github/workflows/sitemap-drift.yml
+#   - document-index drift       → mirrors .github/workflows/document-index-status.yml
 #   - metadata validator         → mirrors .github/workflows/metadata-validator.yml
 #
 # Post-ADR-032 paths: all Python lives under src/uiao/, tests/, scripts/,
@@ -123,3 +125,25 @@ repos:
         language: system
         pass_filenames: false
         files: ^(src/uiao/canon/|src/uiao/modernization/|src/uiao/schemas/|docs/_quarto\.yml|docs/.*\.qmd|scripts/scan_publication_gaps\.py)
+
+      # Sitemap drift — mirrors .github/workflows/sitemap-drift.yml.
+      # Regenerates docs/data/sitemap-tree.md from the sidebar + .qmd tree;
+      # pre-commit fails if the committed file drifts. Closes the gap that
+      # let the ADR renumber land a stale sitemap on main (#928).
+      - id: sitemap-drift
+        name: Regenerate sitemap tree (matches sitemap-drift.yml)
+        entry: python scripts/generate_sitemap.py --output docs/data/sitemap-tree.md
+        language: system
+        pass_filenames: false
+        files: ^(docs/_quarto\.yml|docs/.*\.qmd|docs/data/sitemap-tree\.md|scripts/generate_sitemap\.py)$
+
+      # Document-index drift — mirrors .github/workflows/document-index-status.yml.
+      # Regenerates docs/data/document-index-tables.md from the
+      # customer-documents tree; pre-commit fails if the committed file drifts.
+      # Closes the gap that let the platform pages land a stale table on main (#938).
+      - id: document-index-drift
+        name: Regenerate document-index tables (matches document-index-status.yml)
+        entry: python scripts/generate_document_index.py --output docs/data/document-index-tables.md
+        language: system
+        pass_filenames: false
+        files: ^(docs/customer-documents/.*\.qmd|docs/data/document-index-tables\.md|scripts/generate_document_index\.py)$
