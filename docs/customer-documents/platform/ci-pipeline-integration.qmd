@@ -1,0 +1,362 @@
+---
+title: "UIAO CI / Pipeline Integration Guide"
+subtitle: "Test tiers, workflow gates, environment setup, and CLI usage in automated pipelines"
+doc-type: runbook
+doc-id: UIAO_CIG_001
+version: "1.0"
+status: DRAFT
+audience: "Platform engineers · DevSecOps · CI/CD operators"
+canon-source: ".github/workflows/ · tests/integration/README.md · AGENTS.md"
+derived-from: ".github/workflows/pytest.yml · .github/workflows/adapter-conformance.yml · tests/integration/README.md"
+aspirational: false
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-16
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+# UIAO CI / Pipeline Integration Guide {.unnumbered}
+
+::: {.callout-note title="What this page covers"}
+This page describes how UIAO uses CI — what gates run on every pull request,
+what runs on a schedule or manual dispatch, how the three test tiers are
+structured, how to run tests locally, and how to use the `uiao` CLI in your
+own pipelines. It is the operator complement to the engineering overview in
+[`AGENTS.md`](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md).
+:::
+
+---
+
+## Workflow inventory
+
+![UIAO CI gate flow from pull request to main. A PR triggers 13 blocking gates including pytest, ruff, mypy, schema-validation, substrate-drift, publication-gap, metadata-validator, sync-canon-check, three derived-table drift checks, link-check, and docs-leak-check. Any single failure blocks merge and the author fixes and pushes again. On merge to main, quarto renders the HTML site and DOCX to GitHub Pages, image-gen rasterizes SVGs to PNG, and release.yml publishes wheel plus SBOM on a tag push. Scheduled workflows run nightly and weekly. Manual dispatch workflows cover Azure SaaS deploy and tier-1 live-tenant adapter tests.](images/ci-pipeline-integration-diagram-01-gate-flow.png){#fig-ci-gate-flow width="90%"}
+
+UIAO runs **33 CI workflows** in `.github/workflows/`. They fall into four
+categories:
+
+### Blocking gates (run on every PR)
+
+These must pass before any merge. A single failure blocks the PR.
+
+| Workflow | File | What it checks |
+|---|---|---|
+| Pytest | `pytest.yml` | Full Python test suite (`pip install -e ".[api]"`) |
+| Ruff lint | `ruff.yml` | Python style and lint (zero-finding baseline) |
+| Mypy type check | `mypy.yml` | Static typing (zero-error baseline) |
+| Schema validation | `schema-validation.yml` | All JSON schemas in `src/uiao/schemas/` are valid |
+| Substrate drift | `substrate-drift.yml` | `substrate-manifest.yaml` matches on-disk module state |
+| Publication gap | `publication-gap.yml` | 0 publishable docs without a published wrapper (174/174 coverage) |
+| Metadata validator | `metadata-validator.yml` | Canon frontmatter schema compliance |
+| Sync canon check | `sync-canon-check.yml` | Canon sync state is consistent |
+| Customer docs status | `customer-docs-status.yml` | `docs/data/customer-docs-status.md` matches regen |
+| Document index status | `document-index-status.yml` | `docs/data/document-index.md` matches regen |
+| Sitemap drift | `sitemap-drift.yml` | `docs/data/sitemap.md` matches regen |
+| Link check | `link-check.yml` | No broken internal links in docs |
+| Docs leak check | `docs-leak-check.yml` | No sensitive patterns in committed docs |
+
+### Render and publish (main branch only)
+
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| `quarto.yml` | Push to `main` | Render HTML site + DOCX; deploy to GitHub Pages |
+| `release.yml` | Tag push (`v*`) | Build wheel + SBOM; sign with sigstore; publish to GitHub Releases |
+| `image-gen.yml` | Push to `main` or dispatch | Rasterize SVG → PNG via `render_svg_images.py` |
+
+::: {.callout-note}
+Quarto rendering runs **only on merge to main** — it does not run on PRs.
+Do not wait for "Render HTML site" to appear in a PR's check list; it will not.
+:::
+
+### Manual dispatch only
+
+| Workflow | When to run | Purpose |
+|---|---|---|
+| `azure-saas-deploy.yml` | Operator-initiated release | Deploy SaaS to Azure (dev/test/prod) |
+| `tier1-cyberark.yml` | When CyberArk creds available | Live-tenant CyberArk adapter test |
+| `tier1-palo-alto.yml` | When Palo Alto creds available | Live-tenant Palo Alto adapter test |
+| `tier1-service-now.yml` | When ServiceNow creds available | Live-tenant ServiceNow adapter test |
+| `fedramp-cr26-roundtrip.yml` | Compliance validation | FedRAMP CR26 OSCAL round-trip via oscal-cli |
+
+### Scheduled
+
+| Workflow | Schedule | Purpose |
+|---|---|---|
+| `orchestrator-schedule-nightly.yml` | Nightly | Orchestrator smoke run |
+| `conmon-aggregate.yml` | Weekly | ConMon evidence aggregation |
+| `scubagear-upstream-track.yml` | Weekly | SCuBA upstream drift tracking |
+
+---
+
+## Test tier architecture
+
+![UIAO three-tier test architecture. Tier-1 live-tenant tests in tests/integration/tier1/ call real vendor APIs and require network; they run on manual dispatch or nightly cron and call pytest.skip when secrets are absent so the suite is always green without credentials. Tier-2 contract fixture tests in tests/fixtures/contract/ validate adapter output schemas against recorded API responses with no network required; they run on every PR as part of the pytest blocking gate. Tier-3 reference deployment tests run quarterly in a live agency environment and produce compliance evidence artifacts coordinated with the agency AO.](images/ci-pipeline-integration-diagram-02-test-tiers.png){#fig-test-tiers width="90%"}
+
+UIAO uses a three-tier test strategy defined in `UIAO_131 §3.1` and
+documented in `tests/integration/README.md`.
+
+### Tier-1 — Live-tenant tests
+
+**Location:** `tests/integration/tier1/`
+**Trigger:** Manual `workflow_dispatch` (per adapter) or nightly cron once
+credentials are wired.
+**Network required:** Yes — calls the vendor's commercial cloud or developer
+tenant.
+
+Tier-1 tests are the strongest evidence the substrate emits. They call real
+APIs against real tenants. Because vendor sandbox access requires signup,
+account verification, and (for some adapters) sales engagement, these tests
+are **plumbing-first**: the test scaffolding lands in the repo before the
+credentials arrive. All tier-1 tests call `pytest.skip()` when their required
+environment variables are absent, so `pytest tests/integration/` is always
+green without secrets.
+
+### Tier-2 — Contract fixture tests
+
+**Location:** `tests/fixtures/contract/<adapter>/*.yaml` consumed by
+`tests/contract/test_<adapter>_contract.py`
+**Trigger:** Every PR via `pytest.yml`.
+**Network required:** No.
+
+Tier-2 tests validate that the adapter's output schema matches the UIAO
+substrate contract. They use recorded API responses as fixtures — no live
+calls. This is the gate that runs on every PR.
+
+### Tier-3 — Reference deployment tests
+
+**Location:** Agency tenant; evidence bundle lives outside this repo.
+**Trigger:** Quarterly, per agency.
+**Network required:** Yes — live agency environment.
+
+Tier-3 is an operational readiness check run against a real deployed
+environment. Results feed the compliance evidence bundle, not the CI gate.
+
+---
+
+## Running tests locally
+
+### Prerequisites
+
+```powershell
+# Clone the repo and install dev dependencies
+git clone https://github.com/WhalerMike/uiao.git C:\src\uiao
+cd C:\src\uiao
+
+# Install with all extras for full local test coverage
+pip install -e ".[api,dev]"
+
+# Install pre-commit hooks (runs ruff, mypy, schema validation locally)
+pre-commit install
+```
+
+### Run the full test suite (Tier-2 only — no credentials needed)
+
+```powershell
+pytest tests/ -v --ignore=tests/integration/tier1
+```
+
+### Run a specific adapter's contract tests
+
+```powershell
+pytest tests/contract/test_entra_id_contract.py -v
+pytest tests/contract/test_servicenow_contract.py -v
+```
+
+### Run the adapter conformance suite
+
+```powershell
+# All adapters — validates each adapter declares required fields
+pytest tests/conformance/ -v
+```
+
+### Run tier-1 tests with credentials
+
+Tier-1 tests read credentials from environment variables. Set them for the
+adapter under test, then run:
+
+```powershell
+# ServiceNow example
+$env:SERVICENOW_INSTANCE_URL = "https://yourinstance.service-now.com"
+$env:SERVICENOW_USERNAME     = "admin"
+$env:SERVICENOW_PASSWORD     = "..."
+
+pytest tests/integration/tier1/test_servicenow_tier1.py -v -s
+```
+
+Required environment variables per adapter are documented in
+`tests/integration/README.md`.
+
+### Schema validation locally
+
+```powershell
+# Validate all schemas in src/uiao/schemas/
+python scripts/validate_schemas.py
+
+# Validate canon frontmatter
+python scripts/validate_canon_frontmatter.py
+
+# Check for publication gaps
+python scripts/scan_publication_gaps.py
+```
+
+### Pre-commit (runs automatically on git commit)
+
+Pre-commit runs ruff, ruff-format, mypy, and schema validation before every
+commit. If `ruff-format` reformats a staged file, the commit aborts — stage
+the reformatted file and retry:
+
+```powershell
+# After a ruff-format abort:
+git add <reformatted-file>
+git commit -m "your message"
+```
+
+---
+
+## Interpreting CI failures
+
+### Pytest failure
+
+Read the `pytest` job output in the Actions tab. The failure is shown with
+the full traceback. Common causes:
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `ImportError: uiao.api` | `[api]` extra not installed | `pip install -e ".[api]"` |
+| `FileNotFoundError` on a schema | Schema path changed | Update the import or path in the failing test |
+| `AssertionError` in contract test | Adapter response schema drifted | Update the fixture or the adapter contract |
+| `pytest.skip` everywhere | Tier-1 without credentials | Expected — set env vars or run tier-2 only |
+
+### Publication gap failure
+
+The publication-gap gate enforces that **every publishable doc** (canon ADR,
+adapter spec, etc.) has a corresponding published `.qmd` wrapper. When it
+fails:
+
+```powershell
+# See which docs are missing wrappers
+python scripts/scan_publication_gaps.py
+
+# The output lists the canon path and the expected wrapper location
+```
+
+Create the missing wrapper (or correct the gap in the scanner's allow-list
+if the doc is intentionally unpublished).
+
+### Customer-docs drift failure
+
+Three gates diff committed `docs/data/*.md` files against the regen output.
+When they fail, regenerate and commit:
+
+```powershell
+cd C:\src\uiao
+python scripts/generate_customer_docs_status.py --output docs/data/customer-docs-status.md
+python scripts/generate_document_index.py       --output docs/data/document-index.md
+python scripts/generate_sitemap.py              --output docs/data/sitemap.md
+
+git add docs/data/
+git commit -m "chore: regen derived tables"
+```
+
+### Substrate drift failure
+
+The substrate-drift gate checks that `substrate-manifest.yaml` (UIAO_200)
+matches the on-disk module state. When it fails:
+
+```powershell
+# See what drifted
+python -m uiao.substrate walk --report
+
+# Update the manifest to match reality (or fix the code that drifted)
+```
+
+---
+
+## Using the `uiao` CLI in pipelines
+
+The `uiao` CLI is available after `pip install -e ".[api]"` (or the
+equivalent in your pipeline). Common pipeline usages:
+
+### OrgPath governance pass (dry-run)
+
+```yaml
+# GitHub Actions step
+- name: Run OrgPath governance pass
+  run: |
+    uiao orgtree govern --tenant ${{ env.TENANT_ID }} --dry-run
+  env:
+    UIAO_ENTRA_TENANT_ID: ${{ secrets.ENTRA_TENANT_ID }}
+    UIAO_ENTRA_CLIENT_ID: ${{ secrets.ENTRA_CLIENT_ID }}
+    UIAO_ENTRA_CLIENT_SECRET: ${{ secrets.ENTRA_CLIENT_SECRET }}
+```
+
+### Codebook validation
+
+```yaml
+- name: Validate OrgPath codebook
+  run: uiao orgtree validate codebook
+```
+
+### Schema validation gate
+
+```yaml
+- name: Validate all schemas
+  run: python scripts/validate_schemas.py
+```
+
+### Evidence bundle generation
+
+```yaml
+- name: Generate evidence bundle
+  run: |
+    uiao evidence bundle --output evidence/bundle-${{ github.run_id }}.json
+```
+
+---
+
+## Required secrets for CI
+
+Set these in **GitHub → Settings → Secrets and variables → Actions** at the
+repository level for the non-environment secrets, and in the appropriate
+**Environment** for environment-scoped secrets.
+
+### Repository secrets
+
+| Secret | Used by | Purpose |
+|---|---|---|
+| *(none required for blocking gates)* | — | Tier-2 tests and schema validation need no secrets |
+
+### Environment secrets (per environment: `saas-dev`, `saas-test`, `saas-prod`)
+
+| Secret | Used by | Purpose |
+|---|---|---|
+| `AZURE_CLIENT_ID` | `azure-saas-deploy.yml` | OIDC deployer identity |
+| `AZURE_TENANT_ID` | `azure-saas-deploy.yml` | Publisher tenant |
+| `AZURE_SUBSCRIPTION_ID` | `azure-saas-deploy.yml` | Target subscription |
+| `AZURE_RESOURCE_GROUP` | `azure-saas-deploy.yml` | Target resource group |
+| `PG_ADMIN_PASSWORD` | `azure-saas-deploy.yml` | Postgres admin password |
+
+### Adapter tier-1 secrets (manual-dispatch workflows)
+
+| Secret | Adapter | Workflow |
+|---|---|---|
+| `SERVICENOW_INSTANCE_URL`, `SERVICENOW_USERNAME`, `SERVICENOW_PASSWORD` | ServiceNow | `tier1-service-now.yml` |
+| `CYBERARK_*` | CyberArk | `tier1-cyberark.yml` |
+| `PALO_ALTO_*` | Palo Alto | `tier1-palo-alto.yml` |
+
+---
+
+## Canonical references
+
+| Resource | Location |
+|---|---|
+| Full workflow list | [`.github/workflows/`](https://github.com/WhalerMike/uiao/tree/main/.github/workflows) |
+| Integration test README | [`tests/integration/README.md`](https://github.com/WhalerMike/uiao/blob/main/tests/integration/README.md) |
+| Adapter test strategy | `src/uiao/canon/specs/adapter-test-strategy.md` (UIAO_131) |
+| Agent entry point | [`AGENTS.md`](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md) — CI gate table in §CI stack |
+| Windows Server deployment | [`windows-server-deployment.qmd`](./windows-server-deployment.qmd) |
+| Azure SaaS deployment | [`azure-saas.qmd`](./azure-saas.qmd) |

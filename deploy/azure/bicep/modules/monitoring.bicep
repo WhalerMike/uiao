@@ -35,3 +35,4 @@ output customerId string = workspace.properties.customerId
 #disable-next-line outputs-should-not-contain-secrets
 output sharedKey string = workspace.listKeys().primarySharedKey
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output appInsightsId string = appInsights.id

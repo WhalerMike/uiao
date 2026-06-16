@@ -1,0 +1,69 @@
+name: Build Windows MSI Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string (e.g. 0.9.1)"
+        required: true
+        default: "0.9.0"
+  release:
+    types: [published]
+
+jobs:
+  build-msi:
+    name: Build UIAO MSI
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.x"
+
+      - name: Install WiX v4
+        run: |
+          dotnet tool install --global wix
+          wix extension add --global WixToolset.UI.wixext
+          wix extension add --global WixToolset.Util.wixext
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "release") {
+            $v = "${{ github.event.release.tag_name }}" -replace '^v',''
+          } else {
+            $v = "${{ inputs.version }}"
+          }
+          echo "VERSION=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build MSI
+        shell: pwsh
+        env:
+          UIAO_SRC: ${{ github.workspace }}
+        run: |
+          .\deploy\windows-server\installer\Build-UIAOMsi.ps1 `
+            -Version "${{ steps.version.outputs.VERSION }}" `
+            -RepoRoot "${{ github.workspace }}" `
+            -OutputDir "${{ github.workspace }}"
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uiao-msi-${{ steps.version.outputs.VERSION }}
+          path: uiao-setup-${{ steps.version.outputs.VERSION }}.msi
+          retention-days: 30
+
+      - name: Attach MSI to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: uiao-setup-${{ steps.version.outputs.VERSION }}.msi

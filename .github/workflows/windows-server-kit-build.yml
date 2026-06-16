@@ -1,0 +1,83 @@
+name: Windows Server Deployment Kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach the kit to (e.g. windows-server-kit-v1.0)'
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-kit:
+    name: Assemble Windows Server Deployment Kit
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = python -c "from src.uiao.__version__ import __version__; print(__version__)" 2>$null
+          if (-not $ver) { $ver = "${{ github.event.inputs.tag }}" -replace '^windows-server-kit-v','' }
+          if (-not $ver) { $ver = "0.0.0" }
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Build kit zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          .\scripts\Build-WindowsServerKit.ps1 -Version "${{ steps.version.outputs.version }}" -OutDir dist
+
+      - name: Compute SHA-256
+        id: sha
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem dist\windows-server-kit-*.zip | Select-Object -First 1
+          $hash = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLower()
+          echo "sha256=$hash" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          echo "zipname=$($zip.Name)" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          Write-Host "SHA-256: $hash"
+
+      - name: Upload kit as workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-server-kit-${{ steps.version.outputs.version }}
+          path: dist/windows-server-kit-*.zip
+          retention-days: 90
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release' || github.event.inputs.tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/windows-server-kit-*.zip
+          fail_on_unmatched_files: true
+          body: |
+            ## Windows Server Deployment Kit
+
+            | File | SHA-256 |
+            |---|---|
+            | `${{ steps.sha.outputs.zipname }}` | `${{ steps.sha.outputs.sha256 }}` |
+
+            **Verify before running:**
+            ```powershell
+            Get-FileHash .\${{ steps.sha.outputs.zipname }} -Algorithm SHA256
+            # compare to the hash above
+            ```
+
+            Full guide: https://whalermike.github.io/uiao/customer-documents/platform/windows-server-deployment.html
