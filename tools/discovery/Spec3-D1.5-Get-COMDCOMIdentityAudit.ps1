@@ -392,7 +392,7 @@ if (-not $SkipCOMPlus) {
                         $componentList += [ordered]@{
                             Name        = $comp.Value("ProgID")
                             CLSID       = $comp.Value("CLSID")
-                            Constructor = try { $comp.Value("ConstructorString") } catch { "" }
+                            Constructor = $(try { $comp.Value("ConstructorString") } catch { "" })
                             Transaction = $comp.Value("Transaction")
                         }
                     }
