@@ -1,0 +1,82 @@
+---
+title: "The L0–L4 Actuation Ladder for Privileged Operations"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+family: orgpath-narrative
+book: "20"
+series-order: 4
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-14
+---
+
+# Chapter 4 — The L0–L4 Actuation Ladder for Privileged Operations
+
+::: {.callout-note}
+## In this chapter
+ADR-092's L0–L4 actuation maturity ladder — Record, Observe, Advise, Gated actuation, Autonomous reconciliation — applies to every governed operation class, and privileged operations are no exception. But they are also not average. Credential vaulting, safe ACL modification, break-glass provisioning, and automated credential rotation each carry different blast-radius and rollback-capability profiles, and those profiles determine the rung on the ladder where each operation class lands. This chapter maps the CyberArk operation classes to the L0–L4 ladder, explains why the federal default ceiling of L3 (human-approved actuation) is the correct default for all PAM operations, and names the single operation class — automated credential rotation on isolated, rotation-capable targets — that meets the conditions for L4 promotion, provided those conditions are explicitly met and governance-approved.
+:::
+
+![The L0–L4 actuation ladder applied to CyberArk PAM operations: safe ACL changes at L3, break-glass at L3-permanent-cap, rotation at candidate L4](images/book20cpt04-diagram-01-actuation-ladder-pam-operations.png){#fig-book-20-cpt-04-diagram-01 fig-alt="Engineering blueprint diagram on a white background, 16:9 landscape, no human figures. A vertical five-rung ladder drawn in thick navy #1F3A5F lines on the left side of the diagram, rungs labeled from bottom to top: L0 Record, L1 Observe, L2 Advise, L3 Gated Actuation, L4 Autonomous Reconciliation. Each rung has a horizontal label zone to its right. L0 row: teal #1A9E8F chip reading 'Desired state recorded in canon: OrgPath-to-safe mapping'. L1 row: teal chip reading 'Vault API snapshot: actual safe ACLs collected, drift detected'. L2 row: teal chip reading 'Corrective change-set surfaced to operator: no writes'. L3 row: three navy rounded boxes reading 'Safe ACL modification', 'Break-glass provisioning (L3 permanent cap)', 'JIT access provisioning'. A red #C0392B vertical bar on the right edge of the L3 row is labeled 'Federal default ceiling'. L4 row: one amber #D4A017 rounded box reading 'CPM credential rotation (low blast-radius, rollback-capable, governance-approved only)' with a small amber asterisk. Below the ladder a footnote box reads 'L4 requires: governance ADR approval + blast_radius=low + rollback_capable=true + clean advisory window + halt_on_critical active'. All labels in monospace, white background, clean layout." width="90%"}
+
+## The Ladder as a Governance Contract
+
+ADR-092's actuation maturity ladder is not a migration checklist. It is a governance contract: for any operation class that the UIAO enforcement adapter may execute against a provider, the organization has declared explicitly what level of human oversight applies to that class and under what conditions that declaration can be changed. A rung declaration is auditable, reviewable by an authorizing official, and modifiable only through the governance process that updates it.
+
+For PAM operations, the significance of this contract is acute. A PAM adapter that acts autonomously on safe ACLs — removing a principal from a break-glass safe, adding an account to a Tier 3 rotation policy, provisioning JIT access to a credential for a target that can affect thousands of devices — is an adapter whose error case is severe. The blast radius of a wrong safe ACL change is not a misconfigured Conditional Access policy that fails open and generates a log entry. It is an administrator locked out of the systems they need to manage, or a credential rotated on a service account that 40 downstream processes depend on, or a break-glass access path provisioned for a principal who should not have it.
+
+The ladder forces the question of blast radius to be answered per operation class, in advance, by someone with governance authority — not at execution time by the adapter deciding what it thinks is safe.
+
+## L0 and L1: The Foundation Before Any Writes
+
+The CyberArk incorporation begins, as all incorporations under ADR-092 must begin, at L0 and L1. These rungs are not preliminary states to be rushed through — they are where the governance model is built, and they produce the evidence that justifies promotion to higher rungs.
+
+At **L0 (Record)**, the desired state of the CyberArk data plane is captured in canon. This means enumerating every vault safe, recording its OrgPath scope metadata, recording the desired ACL membership derived from the Delegation Matrix for each safe, and recording the CPM rotation policy that each account class should be governed by. L0 is the establishment of the OrgPath-to-safe mapping as a managed artifact. Nothing in CyberArk has been touched; the mapping exists only in canon.
+
+At **L1 (Observe)**, the drift engine begins collecting actual state from the CyberArk vault API — safe ACLs, account assignments, rotation policy bindings — and comparing them to the L0 desired state. Drift findings begin to accumulate. L1 is read-only: the engine observes and reports, and no write operations reach the vault. The value of L1 is that it builds the baseline — the picture of how far actual CyberArk state deviates from OrgPath-derived desired state before any remediation has been attempted. That baseline is what the authorizing official examines when deciding whether the governance model is sound enough to promote to L2 and L3.
+
+## L2: Advisory Mode and the Corrective Change-Set
+
+At **L2 (Advise)**, the drift engine computes not just that drift exists but what the specific corrective change-set would be. For a safe ACL finding, L2 produces the ordered list of API calls that would bring the actual ACL into alignment with the OrgPath-derived desired membership — which accounts to add, which accounts to remove, in what order, with what rollback plan if an intermediate step fails. The change-set is surfaced to an operator through the governance interface; no writes reach the vault.
+
+L2 is the rung where the governance model is validated against operational reality. The corrective change-sets that L2 produces will, in many organizations, reveal surprises: accounts in safes that no one realized were there, safe families that have drifted far from the Delegation Matrix intent, rotation policies that were never applied to accounts that should have been governed. The UIAO_102 "advisory only" mode for adapters is exactly this: compute the corrective action with enough precision that a human can execute it, but don't execute it. L2 is how you learn whether your governance model is correct before you act on it.
+
+## L3: Gated Actuation — The Federal Default Ceiling
+
+**L3 (Gated Actuation)** is the rung where UIAO begins writing to the CyberArk vault — but only after a human has reviewed and approved the specific change-set, and only within the dry-run-default ADR-040 loop. At L3, the reconcile verb executes only after explicit per-scan approval. The dry-run mode produces the planned change-set; the operator reviews it; the operator approves or modifies it; UIAO executes through the vault API.
+
+All PAM operation classes default to L3. This is the federal default ceiling, and for most PAM operations it is also the permanent ceiling — not because UIAO cannot execute the change autonomously, but because the blast radius profile of PAM operations does not support autonomous reconciliation.
+
+**Safe ACL modification** is L3 permanently. The reason is not that safe ACL changes are technically complex — they are not. The reason is that a wrong safe ACL change on a break-glass safe, a Tier 3 safe, or a service account safe has operational consequences that are difficult to reverse quickly. If the drift engine removes an on-call administrator from a break-glass safe at 11:00 p.m. because their OrgPath position indicates they moved to a different division, and that administrator is then paged to handle a critical incident at 11:30 p.m. and cannot access the break-glass credential, the remediation path is itself a privileged access operation — one that may itself be blocked by the error. L3 ensures a human reviews every safe ACL change before it is applied.
+
+**Break-glass provisioning and deprovisioning** is L3 permanently, with ADR-092's high-blast-radius permanent cap. Break-glass accounts are, by definition, the accounts that exist to bypass other controls. An autonomous reconciliation loop that provisions or deprovisions break-glass access without human review is an autonomous reconciliation loop that can, in its error case, leave the environment without a recovery path. This is the definition of a high-blast-radius, non-rollback-capable operation class, and ADR-092 is explicit: high-blast-radius operation classes are L3-capped permanently.
+
+**JIT access provisioning** is L3, with a narrower time-to-execute window. JIT provisioning has a low blast radius compared to standing access changes — the provisioning expires on a schedule — but it is not rollback-capable in the same sense as a configuration change, because the provisioning has already granted access during the window. L3 with a time-bounded approval window is the appropriate model: human-approved, time-constrained, and auditable.
+
+> The federal default ceiling is L3. For PAM operations, L3 is not a transitional state on the way to L4 — it is the permanent rung for all high-blast-radius operation classes, of which break-glass provisioning is the clearest example. L4 is only for the narrow operation class that meets all five ADR-092 conditions.
+
+## L4: The One Operation Class That Qualifies
+
+ADR-092 defines five conditions that must all be met before an operation class may be declared L4 autonomous:
+
+1. The operation class is explicitly enumerated in a Governance-Plane-approved decision (an ADR or governance-board record).
+2. `blast_radius` is **low**.
+3. `rollback_capable` is **true**.
+4. The adapter has a clean dry-run/advisory record over a defined observation window.
+5. `halt_on_critical` remains in force — any P1 or above finding suspends autonomous reconciliation until a human resolves it.
+
+Among all CyberArk operation classes, **CPM credential rotation on isolated, rotation-capable targets** is the one class that can meet these conditions.
+
+The blast radius of automated credential rotation is low when the rotated credential is used exclusively by CyberArk-managed sessions: if every consumer of the credential reaches it through the vault, then rotating the credential in the vault and having CPM update the target immediately produces a credential that is valid in both the vault and on the target, and no consumer ever holds a stale copy. The rollback path is another rotation — returning the credential to its previous value is itself a CPM operation, and it is immediate. The operation is therefore rollback-capable.
+
+The condition that limits L4 to this narrow case is "isolated, rotation-capable targets." A service account whose password is embedded in 40 application configuration files is not an isolated target — rotating it breaks all 40 applications until they are reconfigured, which is a high-blast-radius event even though the vault operation itself is simple. A local administrator account on a server managed exclusively through PSM, with no application dependencies on the specific password value, is isolated. The distinction between these two cases must be made explicit in the adapter's `side_effects` declaration, not assumed.
+
+L4 for CPM rotation requires a governance ADR or governance-board record that enumerates the specific account classes eligible for autonomous rotation — not a blanket "all service accounts" declaration, but a per-class enumeration that has been reviewed and approved.
+
+## The halt_on_critical Interlock
+
+ADR-040 requires that `halt_on_critical` remain in force at all actuation rungs, including L4. In the PAM context, `halt_on_critical` means that any P1 or above finding in the drift scan — a break-glass safe with unauthorized membership, a Tier 3 safe with a Tier 2 principal, a rotation policy gap on a service account with an expired password — suspends autonomous reconciliation for the entire scan until a human resolves it.
+
+This interlock is especially important for PAM because the findings that would trigger a halt are precisely the findings that indicate a potential security incident. An unauthorized principal in a break-glass safe is not merely a configuration finding — it may be evidence that the break-glass path has been used without authorization, which is an incident response scenario, not a reconciliation scenario. The halt-on-critical behavior ensures that autonomous rotation and JIT provisioning do not continue in the background while an incident investigation is pending on a critical finding.
+
+The net result of the L0–L4 mapping for CyberArk is a governance model that is deliberate about what it automates and explicit about what it does not. The vault is governed; the governance is rung-declared; the rung is auditable. An authorizing official reviewing the UIAO PAM incorporation can be told exactly which operation classes operate autonomously, which require human approval, and which are permanently capped at L3 — and that statement is grounded in the ADR-092 governance record, not in an informal understanding of what the adapter does.

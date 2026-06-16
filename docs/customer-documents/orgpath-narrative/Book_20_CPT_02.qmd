@@ -1,0 +1,82 @@
+---
+title: "CyberArk in the Federal Landscape"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: "20"
+series-order: 2
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-14
+---
+
+# Chapter 2 — CyberArk in the Federal Landscape
+
+::: {.callout-note}
+## In this chapter
+CyberArk Privilege Cloud is not an aspirational choice in the federal PAM market — it is the incumbent, with FedRAMP authorization and broad adoption across civilian and defense agencies. This chapter walks the Privilege Cloud architecture: the Privileged Session Manager that brokers and records interactive sessions without surfacing credentials to the requester, the Central Policy Manager that automates credential rotation on a policy-driven schedule, the Vault itself as the cryptographic safe for credential storage, and Just-in-Time Access as the time-bounded provisioning model. It then maps each capability to the NIST controls the vendor-overlay identifies — AC-2, AC-6, AC-17, IA-2, IA-5, AU-3, AU-12 — and explains how CyberArk is incorporated into UIAO's governance framework as a governed security data plane under the provider-incorporation contract from ADR-092, without UIAO displacing any of CyberArk's runtime functions.
+:::
+
+![CyberArk Privilege Cloud architecture: Vault core, PSM session brokering, CPM credential rotation, and the UIAO governance layer above it](images/book20cpt02-diagram-01-cyberark-architecture-and-uiao-governance.png){#fig-book-20-cpt-02-diagram-01 fig-alt="Engineering blueprint diagram on a white background, 16:9 landscape, no human figures. Four horizontal tiers stacked top to bottom separated by thin navy lines. Top tier labeled 'UIAO Active Governance layer' in navy #1F3A5F, containing three teal #1A9E8F rounded boxes connected left to right: 'OrgPath-addressed desired state (safe membership, rotation policy)' → 'Drift detection (ADR-040 engine)' → 'Gated reconciliation (L3 actuation)'. An amber #D4A017 label on the right reads 'UIAO governs this tier'. Second tier labeled 'CyberArk Privilege Cloud management plane' in teal, containing three navy rounded boxes: 'Vault REST API / PVWA' connected via dashed arrows from above UIAO tier, 'CPM policy engine', 'PTA analytics'. An amber label reads 'UIAO writes here via enforcement-adapter'. Third tier labeled 'CyberArk runtime data plane' in teal, containing four navy rounded boxes left to right: 'Digital Vault (encrypted credential store)', 'Privileged Session Manager (PSM)', 'Central Policy Manager (CPM)', 'Conjur / Secrets Manager'. A red #C0392B label below the third tier reads 'UIAO does NOT sit inline here — CyberArk owns runtime'. Fourth tier labeled 'Governed targets' in light navy, containing four teal chips: 'Windows servers', 'Network infrastructure', 'Databases', 'Cloud IAM roles'. Thin dashed arrows descend from the PSM and CPM boxes to the governed targets. The full diagram has a clean white background with navy and teal palette." width="90%"}
+
+## Why CyberArk Is the Federal Incumbent
+
+CyberArk did not become the dominant PAM platform in federal environments because of marketing. It became the dominant platform because it was authorized early, deployed broadly, and proved its capability in environments where the alternative to a working PAM implementation is not an inferior product — it is an audit finding, a breach, or both.
+
+CyberArk Privilege Cloud holds a FedRAMP authorization that covers the GCC-Moderate boundary most civilian federal agencies operate in. This is not a minor administrative detail. FedRAMP authorization means that the platform has been assessed against the NIST 800-53 control baseline at the Moderate impact level and that a federal agency can use the existing authorization package rather than commissioning a new assessment. In a procurement environment where the timeline from "we need a PAM vault" to "we have an authorized PAM vault" can easily span eighteen months of assessment work, an existing FedRAMP authorization is a genuine accelerant.
+
+The broader adoption pattern follows from that authorization. When one agency deploys CyberArk under a FedRAMP package and demonstrates the operational model, neighboring agencies looking at the same audit findings and the same compliance requirements reach for the same authorized solution. The result is that CyberArk Privilege Cloud is not a niche choice in the federal market — it is the modal choice, and any UIAO PAM integration that aims to be operationally relevant in a federal environment needs to meet CyberArk where it already lives.
+
+> CyberArk is the federal PAM incumbent. UIAO's incorporation model does not choose CyberArk because it is theoretically the best PAM product — it chooses CyberArk because that is what is already running in the environments UIAO governs.
+
+## The Four Runtime Components
+
+CyberArk Privilege Cloud's architecture rests on four runtime components, each with a distinct function that corresponds to a distinct privileged access risk.
+
+**The Digital Vault** is the cryptographic core. It stores credentials in an encrypted format whose key material is protected separately from the credential material itself, so that access to the vault files without the key material produces only ciphertext. The Vault implements safe-based access control: every credential lives in a safe, every safe has an access control list, and the ACL determines which accounts can retrieve, view, change, or use credentials from that safe. The safe model is the primary authorization surface within CyberArk, which makes safe ACL membership the thing UIAO's governance model must address.
+
+**The Privileged Session Manager** (PSM) is the session-brokering component that gives CyberArk its most important security property: an authorized user can launch a privileged session to a target without ever seeing the credential used to authenticate to that target. The PSM retrieves the credential from the vault, injects it into the session at the protocol level, establishes the connection to the target, and records the full session — keystrokes and screen — for the audit trail. The requester sees a remote desktop or SSH session; they do not see the password. This addresses the social engineering and shoulder-surfing risks that come with any credential-sharing model, and it produces the session recordings that AU-3 (audit content) and AU-12 (audit generation) require.
+
+**The Central Policy Manager** (CPM) is the automated credential rotation component. It connects to managed accounts on governed targets — Windows servers, network devices, databases, application service accounts — and rotates their passwords on a policy-driven schedule, or on demand, or immediately after an account is checked out. The CPM eliminates the class of privileged access risk that comes from long-lived, human-known passwords on shared accounts: if the CPM rotates the password for the local administrator account on a server after every checkout, then knowing what the password was last week conveys no privilege.
+
+**Just-in-Time Access** is the time-bounded provisioning model that aligns CyberArk's access workflow most closely with PIM's eligible-assignment pattern: rather than granting standing vault safe membership, JIT provisions the membership for the duration of an approved access request and removes it when the request expires. JIT reduces standing privilege to near zero for access patterns where that reduction is operationally feasible.
+
+## NIST Control Coverage
+
+The UIAO vendor-overlay for CyberArk maps each of these capabilities to specific NIST 800-53 controls. These mappings are what an authorizing official examines when deciding whether CyberArk's deployment satisfies the control requirements the system security plan commits to.
+
+| NIST Control | What CyberArk Covers |
+| :--- | :--- |
+| **AC-2** (Account Management) | Privilege Cloud account lifecycle: safe membership provisioning, JIT checkout, account decommission |
+| **AC-6** (Least Privilege) | Vault safe ACLs enforce minimum necessary access per account |
+| **AC-17** (Remote Access) | PSM brokers all privileged remote sessions without exposing credentials |
+| **IA-2** (Identification and Authentication) | MFA challenge on vault authentication before credential retrieval |
+| **IA-5** (Authenticator Management) | CPM automated credential rotation on policy-driven schedules |
+| **AU-3** (Audit Record Content) | PTA session recordings contain keystroke and screen content for privileged sessions |
+| **AU-12** (Audit Record Generation) | Privilege Cloud generates audit events for all vault, session, and rotation operations |
+
+These seven controls cover the essential privileged access surface. An agency that can demonstrate CyberArk governing its privileged accounts has evidence for each of them — not assertions about configuration, but audit artifacts: session recordings, rotation event logs, safe ACL snapshots, and vault authentication audit trails.
+
+## The Incorporation Model: Governed Data Plane
+
+ADR-092 establishes a precise boundary between what UIAO governs and what a provider owns at runtime. The rule is direct: UIAO is the control plane; the provider is the data plane. UIAO holds desired state, observes actual state, classifies drift, and reconciles toward intent. CyberArk executes at runtime — it authenticates the requester, brokers the session, rotates the credential, and records the audit artifact. UIAO does not sit inline in CyberArk's authentication path, does not terminate sessions, and does not hold a copy of the credentials it governs.
+
+This boundary is not a limitation of UIAO's ambition. It is the architecture that makes UIAO governable and CyberArk trustworthy. An inline interceptor would make UIAO a new point of failure in the privileged access path — the one system that, if it fails, blocks every administrator from accessing every managed target. A governance layer that observes, reconciles, and gates its own changes through the CyberArk API makes UIAO an audit and reconciliation service that enhances CyberArk's governance posture without adding to its blast radius.
+
+Under the provider-incorporation contract from ADR-092, CyberArk is incorporated as a security-plane provider bound to the `security` slot in `control-planes.yml`. The enforcement adapter for CyberArk exposes `plan / apply / reconcile` verbs, carries OrgPath on every governed object (safe, account, rotation policy), advertises its governance metadata — `controls_supported`, `side_effects`, `blast_radius`, `rollback_capable` — and declares its current rung on the L0–L4 actuation maturity ladder per operation class.
+
+> UIAO governs CyberArk. It does not compete with CyberArk. The vault brokers sessions and rotates credentials; UIAO reconciles vault safe membership and rotation policy assignment against the organizational truth that OrgPath holds.
+
+No CyberArk adapter slot exists in canon today. The establishment of that slot — the registration of CyberArk as a governed security-plane provider with a named adapter, declared governance metadata, and an initial actuation rung — is the next step in the PAM incorporation program, building on the ADR-092 worked instance pattern that Book_17 established for the network admission plane.
+
+## Evidence Surfaces
+
+The incorporation model produces three evidence surfaces that an authorizing official can examine:
+
+**Vault configuration snapshots** from the CyberArk REST API (`/PasswordVault/API/Configuration`) provide point-in-time records of safe ACLs, account assignments, and rotation policies. These snapshots are the actual-state input to the drift engine.
+
+**Session recordings** from the PSM are archived by CyberArk with a default retention of 365 days. They satisfy AU-3's requirement for audit record content — every keystroke and screen interaction in every brokered privileged session is preserved.
+
+**PTA analytics** feed a SIEM destination — Splunk or Microsoft Sentinel — with behavioral events from privileged sessions: unusual access patterns, credential theft indicators, anomalous session behavior. This provides the real-time threat intelligence layer on top of the historical audit record.
+
+Together these three surfaces make CyberArk's governance posture observable from UIAO's perspective: desired state is OrgPath-addressed safe membership and rotation policy; actual state is the vault API snapshot; drift is the difference between them; remediation is a gated API call that adjusts the safe ACL or rotation schedule. The loop closes through exactly the evidence and API surfaces CyberArk already exposes.

@@ -1,0 +1,82 @@
+---
+title: "The Privileged Access Problem"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: "20"
+series-order: 1
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-14
+---
+
+# Chapter 1 — The Privileged Access Problem
+
+::: {.callout-note}
+## In this chapter
+Privileged access is not a configuration problem — it is a governance problem disguised as one. Entra PIM governs eligible role activation for Entra-native resources with time-boxing and approval workflows, but it does not vault credentials, record privileged sessions, rotate service account passwords, or reach any non-Entra privileged target. The gap between what PIM governs and what the full privileged attack surface contains is where most federal environments carry unmanaged risk. This chapter names that gap precisely, explains why it is structural rather than a configuration oversight, and states the thesis of the book: that OrgPath must become the authorization spine for privileged access across the full surface, and that CyberArk Privilege Cloud is the PAM data plane that makes that governance actionable.
+:::
+
+![The privileged access surface: Entra PIM governs eligible role activation at the top, CyberArk vaults everything below it, and the gap between them is where service accounts and non-Entra targets live ungoverned](images/book20cpt01-diagram-01-pam-surface-and-pim-gap.png){#fig-book-20-cpt-01-diagram-01 fig-alt="Engineering blueprint diagram on a white background, 16:9 landscape, no human figures. Three horizontal bands stacked vertically. The top band is navy #1F3A5F, labeled 'Entra PIM scope' and contains four teal #1A9E8F pill-shaped chips: 'Eligible role activation', 'Time-boxed assignment', 'Approval workflow', 'Entra resources only'. A red #C0392B dashed horizontal line separates the top band from the middle band; the line is labeled 'PIM boundary — nothing below here is governed by PIM'. The middle band is red-tinted with a transparent red fill, labeled 'The ungoverned zone' and contains four amber #D4A017 chips: 'Service account passwords', 'Non-Entra targets (network gear, servers, DBs)', 'Shared admin credentials', 'Break-glass accounts'. The bottom band is teal #1A9E8F, labeled 'CyberArk Privilege Cloud scope (candidate governed data plane)' and contains four navy chips: 'Privileged Session Manager', 'Central Policy Manager credential rotation', 'Vault safe ACLs', 'Just-in-Time Access'. Dashed vertical arrows rise from the bottom band through the red zone to the top band, labeled 'OrgPath position is the authorization spine across all three bands'. A small amber legend box in the bottom-right corner labels the red band 'The gap this book closes'." width="90%"}
+
+## What Privileged Access Actually Covers
+
+The phrase "privileged access" is used loosely in most governance conversations, which is precisely why the governance it names is so often incomplete. In a federal IT environment, privileged access is not simply administrator access to Entra ID. It is any credential or session that, if misused, can cause damage that a normal user credential could not. That definition is broader than most implementation plans acknowledge.
+
+It covers the Entra Global Administrator and Privileged Role Administrator accounts that most organizations think of first. But it also covers the local administrator account on every workstation and server in the environment. It covers the service account that runs a scheduled task against a database at 2:00 a.m., whose password has not been changed since the original deployment. It covers the break-glass account that exists precisely to bypass all the controls that would otherwise gate access — the account that is documented in a sealed envelope somewhere, or in a spreadsheet on a shared drive, or in neither place. It covers the credentials for network infrastructure — the switches, firewalls, and routers whose management interfaces are accessed with passwords that predate the current team. It covers the domain admin account that an AD migration left provisioned in the new Entra environment because nobody removed it.
+
+> Privileged access is any credential or session whose misuse can cause damage that a normal user credential cannot. Most federal environments have a clear picture of the first category and an incomplete picture of every other.
+
+This is not a failure of attention. It is a failure of surface. The surface is larger than the governance model that was designed to cover it, and the two most common responses — tighter Conditional Access policies and more aggressive PIM configurations — address only the Entra-native slice of it.
+
+## What Entra PIM Governs and What It Does Not
+
+Entra Privileged Identity Management is a genuine and valuable control for the surface it targets. PIM governs *eligible role activation* in Entra ID: an administrator can be made eligible for the Global Administrator role rather than permanently assigned to it, and when they need that elevation, they request it, optionally provide a justification, optionally wait for approval, receive the assignment for a bounded time window, and then the assignment expires. The audit trail of who activated what role, when, with what justification, and from which Conditional Access context is complete and queryable.
+
+For Entra-native resources — Entra ID itself, Azure subscriptions governed through Azure RBAC, Microsoft 365 services — PIM is the correct control. It does what it claims to do, and organizations that have not fully adopted it should.
+
+But PIM has a hard boundary, and that boundary is the Entra control plane. PIM does not vault credentials. It does not record privileged sessions. It does not rotate service account passwords. It does not manage access to targets that are not Entra-native — the database server on-premises, the network switch, the legacy application whose privileged interface is a local account. PIM cannot reach those surfaces because PIM operates on Entra role assignments, and those targets do not have Entra role assignments.
+
+| Capability | Entra PIM | CyberArk Privilege Cloud |
+| :--- | :--- | :--- |
+| Eligible role activation | Yes | No |
+| Time-boxed assignment with approval | Yes | Via Just-in-Time Access |
+| Entra / Azure RBAC roles | Yes | No |
+| Credential vaulting | No | Yes |
+| Session recording | No | Yes (PSM) |
+| Automated credential rotation | No | Yes (CPM) |
+| Non-Entra targets | No | Yes |
+| Service account password management | No | Yes |
+| Break-glass account vaulting | No | Yes |
+
+PIM covers the top of the privilege stack. CyberArk covers everything below it, and below it is the majority of the surface.
+
+## The Structural Nature of the Gap
+
+The gap between PIM's scope and the full privileged attack surface is not a configuration gap. It is a scope gap, and it is structural: PIM was designed to govern Entra role assignments, and it does that well. It was not designed to vault every service account password in an on-premises estate, and no configuration of PIM can make it do that.
+
+This matters because the instinct in a Microsoft-first environment is to solve every governance problem by deepening the Microsoft configuration — tighter Conditional Access, more aggressive PIM scoping, additional Entra ID Governance access reviews. Those are good instincts for the Entra surface. They leave the rest of the surface exactly where it was.
+
+> The gap is not a configuration gap. It is a scope gap. No amount of additional PIM configuration reaches the service account password on the database server. A PAM vault does.
+
+A federal environment operating under OMB M-22-09 Zero Trust requirements is required to apply MFA to privileged access and to apply session-level verification to privileged sessions. NIST 800-207 makes the same requirement explicit for Zero Trust Architecture: session-level verification is not optional for privileged operations. These requirements do not distinguish between Entra-native privilege and non-Entra privilege. They apply to the full surface, which means the governance model must cover the full surface.
+
+## Why Organizational Position Has to Drive It
+
+The deepest problem with ungoverned privileged access is not that credentials exist — it is that there is no authoritative answer to the question of who should have them. In a mature governance model, that question has a deterministic answer: the set of principals who hold a given privileged access right is derived from the set of principals whose organizational position entitles them to it. A network administrator at a given tier of the organization is entitled to certain network infrastructure credentials. A database administrator for a specific division is entitled to the credentials for that division's database servers. The mapping from organizational position to privileged entitlement is the authorization model.
+
+Without an organizational substrate that is itself governed and validated — one that can be reconciled against actual vault safe membership and surface drift — the mapping from organizational position to privileged access cannot be enforced. It can be approximated in manually maintained spreadsheets, or in vault safe membership lists that were correct when last reviewed, or in Entra group memberships that are themselves not reconciled. None of those approximations are deterministic. None of them can be audited against an authoritative truth.
+
+OrgPath is exactly that substrate. Its fifteen facets — Department, Division, Branch, Team, Role, Sub-Role, Tier, Security Clearance Level, and the rest — provide the per-facet, codebook-validated organizational position that makes the question "who should have this privileged access right" answerable in terms that can be reconciled against actual state.
+
+> OrgPath as the authorization spine for privileged access means that vault safe membership, rotation policy assignment, and session-brokering rules are all derived from organizational position — and that any divergence between what OrgPath says and what the vault contains is a detectable, addressable drift finding.
+
+## The Thesis of This Book
+
+The argument of this book is direct. Privileged access governance covers a surface that is larger than Entra PIM can reach, and the ungoverned portion of that surface — vaulted credentials, privileged sessions, automated credential rotation, service accounts, break-glass — is where the highest-consequence risks in a federal environment live. Governing that surface requires a PAM vault, and CyberArk Privilege Cloud is the PAM platform that federal agencies have broadly adopted. Governing it *well* requires an organizational authorization spine that connects every vault safe, rotation policy, and session-brokering rule to the organizational position of the principals and targets it covers.
+
+OrgPath provides that spine. CyberArk, incorporated as a governed security data plane under the Active Governance framework from ADR-092, provides the enforcement surface. Together they produce a privileged access governance model that is addressable in OrgPath terms, reconcilable against organizational truth, and auditable against the NIST controls the federal requirement names.
+
+The chapters that follow build that model out: how CyberArk is positioned in the federal landscape and incorporated into UIAO's governance framework, how OrgPath position drives vault safe membership and privileged access entitlement, how the L0–L4 actuation ladder from ADR-092 applies to credential rotation and break-glass operations, and what the before-and-after story looks like when the incorporation is complete.
+
+> The privileged access problem is a governance problem. OrgPath is the authorization spine. CyberArk is the enforcement surface. Everything that follows is the engineering of that pairing.

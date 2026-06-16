@@ -1,0 +1,87 @@
+---
+title: "OrgPath as the Privilege Spine"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: "20"
+series-order: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-14
+---
+
+# Chapter 3 — OrgPath as the Privilege Spine
+
+::: {.callout-note}
+## In this chapter
+The question "who gets privileged access" should have a deterministic answer, and in a governed UIAO environment it does: privileged access is a function of OrgPath position. This chapter establishes how the fifteen-facet OrgPath model maps to vault safe membership in CyberArk — which combinations of Department, Division, Role, Tier, and Security Clearance Level entitle a principal to which vaulted credentials — and places the Delegation Matrix (UIAO_154) as the authoritative source for privileged access authorization by organizational position. It explains how OrgPath facets drive safe scoping, how the Tier facet distinguishes between standard administrator access and elevated privileged access to high-blast-radius targets, and why a governed substrate is the difference between a vault that is auditable and a vault that is merely locked.
+:::
+
+![OrgPath facets as the authorization spine for CyberArk vault safe membership: fifteen facets collapse to safe ACL rules through the Delegation Matrix](images/book20cpt03-diagram-01-orgpath-to-safe-membership.png){#fig-book-20-cpt-03-diagram-01 fig-alt="Engineering blueprint diagram on a white background, 16:9 landscape, no human figures. Left side: a vertical column of fifteen small navy #1F3A5F rounded rectangles labeled with the OrgPath facets — Region, Department, Division, Branch, Team, Role, Sub-Role, Cost Center, Classification, Location, Tier, Contract Type, Security Clearance Level, Data Access Class, Policy Tier — connected by thin vertical lines forming a column. A teal #1A9E8F bracket on the left labels the column '15-facet OrgPath position'. Center: a large amber #D4A017 diamond labeled 'Delegation Matrix UIAO_154 Org Position to Admin Role mapping'. From the left column, five horizontal dashed navy arrows point into the diamond, labeled from top to bottom: 'Department drives safe family', 'Division narrows safe scope', 'Role determines access type', 'Tier sets blast-radius ceiling', 'Security Clearance Level gates classified targets'. Right side: three navy boxes labeled 'Vault Safe Family A (Dept IT / Tier 2 / Role SysAdmin)', 'Vault Safe Family B (Dept Finance / Tier 2 / Role DBA)', 'Break-Glass Safe (Tier 3 / Clearance TS / Governance approved)'. Teal arrows emerge from the diamond to each safe box. Below each safe box a small teal chip reads the CPM rotation policy name. White background, monospace labels, no clutter." width="90%"}
+
+## The Authorization Question PAM Vaults Cannot Answer Alone
+
+A privileged access vault is an excellent safe. It stores credentials in encrypted form, controls who can retrieve them, automates their rotation, and records what happens during sessions that use them. What a vault cannot do, by itself, is answer the question of who *should* have access to a given safe. That question requires an organizational truth that lives outside the vault — a truth about who this person is, what role they hold, which division they belong to, and what tier of administrative privilege their position entitles them to.
+
+Most CyberArk deployments answer this question through one of three imprecise mechanisms. The first is manual safe ACL maintenance: an administrator decides who belongs in a safe based on knowledge of the team structure, and the ACL is updated when someone joins or leaves the team. The second is Entra group membership: safe access is conditioned on membership in an Entra group that is itself maintained manually or through an HR feed of variable quality. The third is IT discretion: the team that manages the vault decides who gets what access based on ticket requests, institutional knowledge, and the workload of the day.
+
+All three mechanisms share a property: they are not reconcilable against an authoritative organizational truth. There is no audit procedure that can take a manual safe ACL and determine whether it correctly reflects the current organizational structure, because there is no governed representation of that structure to compare it against.
+
+> Without a governed organizational substrate, vault safe membership is a configuration artifact — something that was set correctly at a point in time and has drifted in unknown ways since.
+
+OrgPath is the governed substrate. Its fifteen facets are not attributes that are set once and forgotten — they are facets that are continuously reconciled by the ADR-040 drift engine against the HR and directory sources of truth, so that the organizational position they encode reflects actual organizational reality. When OrgPath drives vault safe membership, vault membership becomes reconcilable: the desired membership is derivable from OrgPath position, the actual membership is observable from the vault API, and any difference between them is a typed drift finding.
+
+## The Fifteen Facets and Their Privileged Access Semantics
+
+Not all fifteen OrgPath facets contribute equally to privileged access authorization. Five carry the primary semantic weight for PAM scoping, and the remaining ten provide context that refines the access model for specific edge cases.
+
+**Department** (facet 2, `extensionAttribute2`) is the primary organizational boundary for safe family assignment. A vault safe family groups credentials by the organizational unit responsible for the systems those credentials protect. An IT Department safe family contains server and network infrastructure credentials managed by IT. A Finance Department safe family contains database credentials for finance systems. The Department facet determines which safe family a principal can access at all — a Finance analyst does not belong in the IT safe family, and the IT administrator does not belong in the Finance safe family.
+
+**Division** (facet 3) narrows the safe scope within a department. A large IT department may have separate safe families for the Infrastructure Division, the Security Operations Division, and the Applications Division. A principal whose Division facet indicates Infrastructure has access to the infrastructure safe family; a Security Operations principal has access to the security operations safe family; neither has default access to the other's credentials.
+
+**Role** (facet 6) determines the *type* of access within a safe family. A System Administrator role entitles the principal to local administrator credentials on managed servers. A Database Administrator role entitles the principal to database privileged credentials. A Network Engineer role entitles the principal to network infrastructure management credentials. Role is the facet that answers "what kind of privileged access" within the department/division scope that answers "privileged access to what."
+
+**Tier** (facet 11) is the blast-radius governor. The OrgPath Tier facet encodes the administrative privilege tier: Tier 1 is standard user, Tier 2 is standard administrator, Tier 3 is elevated privileged administrator with access to high-blast-radius targets. A Tier 2 principal may access the safe family for routine administrative credentials. Access to break-glass safes, to credentials for tenant-wide privileged roles, or to credentials for systems whose compromise would affect the entire environment is restricted to Tier 3 — and Tier 3 assignment itself is gated by the governance process that elevates OrgPath Tier facet values.
+
+**Security Clearance Level** (facet 13) gates access to classified targets. Systems or credentials associated with classified information require a minimum clearance level, and the Security Clearance Level facet provides that gate without requiring a separate authorization model.
+
+## The Delegation Matrix as the Authorization Source
+
+UIAO_154, the Delegation Matrix (Appendix D — AUs and Roles, Model C), is the canonical source for the mapping from OrgPath position to administrative role. In the Entra ID governance model, UIAO_154 maps Org Position to Administrative Unit scope and Entra scoped role assignment. In the CyberArk governance model, the same Delegation Matrix is the source for the mapping from Org Position to vault safe membership.
+
+This is not a coincidence. It is a design principle. The authorization model for privileged access — who is entitled to administer what — should be derived from the same organizational truth that governs every other administrative delegation in the environment. If UIAO_154 says that a Tier 2 IT Infrastructure administrator is scoped to the `AU-Department-IT-Infrastructure` Administrative Unit in Entra, the same organizational position should entitle that principal to the corresponding IT Infrastructure safe family in CyberArk. The authorization model is one model, expressed against two enforcement surfaces.
+
+> The Delegation Matrix is the single authorization source for administrative delegation in UIAO environments. CyberArk safe membership is derived from the same matrix as Entra Administrative Unit scope — organizational position is the authoritative input to both.
+
+In practice, this means that the UIAO CyberArk adapter computes desired vault safe membership by evaluating OrgPath position against the Delegation Matrix rules, exactly as the Entra adapter computes desired Administrative Unit membership. The derivation is the same; the enforcement surface is different.
+
+## Safe Naming and OrgPath Addressing
+
+For safe membership to be OrgPath-addressable in the drift engine, vault safes must themselves carry OrgPath metadata. The incorporation model requires that every CyberArk safe carries its governing OrgPath scope as metadata — the facet values that define the organizational position entitled to membership in that safe.
+
+A safe for IT Infrastructure Tier 2 administrators is addressed as Department=IT, Division=Infrastructure, Tier=2. A safe for Finance Database Administrators is addressed as Department=Finance, Role=DBA, Tier=2. A break-glass safe is addressed as Tier=3, with an additional governance-approval requirement that the drift engine marks as a P0 finding if unmet.
+
+This OrgPath addressing of vault safes is what makes drift detection possible. The drift engine can enumerate every safe, read its OrgPath metadata, resolve the set of principals whose OrgPath position matches that safe's scope, compare that derived set to the actual safe ACL membership, and surface any principal who is in the ACL but not in the derived set (an access-creep finding) or in the derived set but not in the ACL (an access-gap finding).
+
+## The Access-Creep Failure Mode
+
+Access creep — the accumulation of privileged access rights beyond what a principal's current organizational position entitles them to — is the most common failure mode in unreconciled vault environments. It happens in a recognizable pattern: a principal is granted safe membership to support a project that requires temporary access to credentials outside their normal scope. The project ends. The access is not removed. The principal now holds safe membership that their OrgPath position does not entitle them to, and because no reconciliation process runs against an authoritative organizational truth, the access persists indefinitely.
+
+| Scenario | Without OrgPath reconciliation | With OrgPath reconciliation |
+| :--- | :--- | :--- |
+| Engineer moves from Infrastructure to Applications division | Safe membership in Infrastructure family persists | Drift engine detects Division mismatch; L3 gated removal queued |
+| Administrator promoted from Tier 2 to Tier 3 | Tier 2 safe access persists alongside Tier 3 | Drift engine detects Tier elevation; Tier 2 access reviewed for appropriateness |
+| Contractor role ends | Safe membership persists until manually removed | Contract Type facet change detected; safe access deprovisioned through enforcement adapter |
+| Break-glass safe created without Tier 3 governance gate | Safe accessible at Tier 2 | Drift engine flags as P0 finding; halts autonomous reconciliation per ADR-040 |
+
+In each case, the OrgPath reconciliation model converts an invisible, ongoing access-creep accumulation into a visible, actionable drift finding. The finding is typed — it names the facet, the expected value, the actual safe ACL state, and the remediation path — and it routes to human review at L3 before any change is made.
+
+> Access creep in a vault environment is not a people problem. It is a reconciliation problem. When safe membership is derived from OrgPath position and continuously compared against actual vault state, access creep produces drift findings rather than invisible accumulation.
+
+## The Organizational Position That Earns Privilege
+
+The concluding point of this chapter is the most important one. Privileged access in a governed UIAO environment is not granted on request, maintained by convention, or carried indefinitely once granted. It is earned by organizational position and revoked when that position changes.
+
+This is what it means for OrgPath to be the privilege spine. The spine is not a pretty diagram — it is an enforcement mechanism. The moment a principal's Department, Division, Role, Tier, or any other authorization-relevant facet changes in the OrgPath substrate, the desired state of their vault safe membership changes with it. The drift engine detects the difference between the new desired state and the unchanged actual state, surfaces it as a typed finding, and routes it to gated remediation. The vault reflects organizational reality not because administrators are diligent about keeping it updated, but because the governance model makes diligence unnecessary: the update happens as a consequence of the organizational change, not as a separate manual task that might be missed.
+
+That property — automatic derivation of privileged access entitlement from organizational position — is what distinguishes a governed PAM deployment from a well-configured vault that is nonetheless opaque. Both lock the credentials. Only one can tell you whether the right people have the keys.
