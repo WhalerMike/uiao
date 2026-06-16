@@ -1,0 +1,102 @@
+---
+title: "Incorporating CyberArk into Active Governance"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+family: orgpath-narrative
+book: "20"
+series-order: 5
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-14
+---
+
+# Chapter 5 — Incorporating CyberArk into Active Governance
+
+::: {.callout-note}
+## In this chapter
+Incorporation is the technical act of binding CyberArk to UIAO's governance framework as a security-plane provider: establishing the control-plane slot, authoring the enforcement-adapter contract, building the plan/apply/reconcile verb surface, and wiring the drift loop from OrgPath-derived desired state through vault API actual state to typed findings and gated remediation. This chapter walks the incorporation sequence — slot registration, adapter contract, operation-class declarations, evidence integration — and explains the design choices that keep the adapter on the governance side of the control-plane/data-plane boundary. It closes with the SSOT picture for privileged credential lifecycle: what is owned by canon, what is owned by CyberArk, and how the two are kept in alignment.
+:::
+
+![The CyberArk enforcement-adapter incorporation: slot registration, plan/apply/reconcile verb surface, drift loop from OrgPath desired state to vault API actual state](images/book20cpt05-diagram-01-cyberark-enforcement-adapter.png){#fig-book-20-cpt-05-diagram-01 fig-alt="Engineering blueprint diagram on a white background, 16:9 landscape, no human figures. A three-column layout. Left column header 'UIAO Canon (desired state)' in navy #1F3A5F. Contents: three stacked teal #1A9E8F rounded boxes reading 'OrgPath safe scope definitions', 'Delegation Matrix entitlement rules', 'CPM rotation policy declarations'. A downward dashed navy arrow from the bottom of the left column leads to a central navy diamond labeled 'ADR-040 Drift Engine six-phase loop: Snapshot → Compare → Classify → Alert → Remediate → Verify'. Middle column header 'CyberArk Enforcement Adapter' in teal. Contents: three stacked navy boxes reading 'plan: compute ordered change-set from desired vs actual', 'apply: execute via Vault REST API (dry-run default)', 'reconcile: plan + apply with halt_on_critical'. A horizontal teal arrow from the middle diamond flows into the adapter column. Right column header 'CyberArk Vault API (actual state)' in navy. Contents: three stacked teal boxes reading 'GET /Safes/{safeId}/Members — actual ACL', 'GET /Accounts — account rotation policy binding', 'GET /Configuration — vault-level settings'. Teal arrows from the right column flow left into the drift engine diamond labeled 'actual state input'. Below the diagram a footer band in amber #D4A017 reads 'Adapter sits on the governance side — never inline in the CyberArk runtime path'. White background, monospace labels." width="90%"}
+
+## The Slot Registration
+
+Under ADR-092, every incorporated provider is bound to exactly one control-plane slot in `control-planes.yml`. The six provider-neutral slots are identity, addressing, network, telemetry, endpoint, and security. CyberArk Privilege Cloud binds to the **security** slot — the slot that governs the privileged access, credential management, and session auditing functions that CyberArk owns at runtime.
+
+The slot registration is declarative. It names the provider, the abstract component type (`PAMProvider`), the capabilities the provider offers — Privileged Session Manager, Central Policy Manager, Secrets Manager, Conjur, Just-in-Time Access — and the adapter that governs it. Until the slot registration exists, CyberArk is a tool that the environment uses; after registration, it is a governed data plane with a declared governance mode, observable from UIAO's perspective in the same terms as every other governed surface.
+
+Registering the slot also establishes the naming convention for the adapter: `cyberark-privilege-cloud` in the Platform Services Layer enforcement marketplace, exposing the `plan / apply / reconcile` verb shape that ADR-092 §2 requires of every incorporated provider. The marketplace entry carries the governance metadata that an authorizing official examines:
+
+| Metadata field | Value for CyberArk PAM adapter |
+| :--- | :--- |
+| `controls_supported` | AC-2, AC-6, AC-17, IA-2, IA-5, AU-3, AU-12 |
+| `side_effects` | Safe ACL writes via Vault REST API; CPM policy binding writes; no runtime path involvement |
+| `blast_radius` | Per operation class: Safe ACL = medium; Break-glass = high; CPM rotation (isolated) = low |
+| `rollback_capable` | Per operation class: Safe ACL = true (ACL restore); CPM rotation = true (re-rotate); Break-glass = false |
+| `governance_mode` | L3 default; L4 for CPM rotation on enumerated account classes pending ADR |
+
+This declaration makes the adapter's behavior auditable before any operation runs. An authorizing official reviewing the system security plan does not need to read the adapter source code to understand what it does and what oversight applies — the governance metadata is the contract.
+
+## The Plan Verb: Computing the Ordered Change-Set
+
+The `plan` verb computes the desired change-set without executing any writes. For the CyberArk adapter, `plan` performs three operations.
+
+First, it reads the OrgPath-derived desired state from canon: for each vault safe in scope, it evaluates the Delegation Matrix rules against the current population of principals with OrgPath positions that match the safe's declared scope. The output is an ordered list of principals who *should* be members of each safe.
+
+Second, it reads the actual state from the CyberArk vault API: for each safe in scope, it calls `GET /PasswordVault/API/Safes/{safeId}/Members` and collects the current membership list. It also calls `GET /PasswordVault/API/Accounts` to collect current account-to-safe assignments and CPM rotation policy bindings.
+
+Third, it computes the difference. Each finding is typed against the five drift classes from ADR-040: principals in the actual ACL but absent from the desired set are **excess** findings; principals in the desired set but absent from the actual ACL are **gap** findings; accounts with no CPM rotation policy that the Delegation Matrix requires to be rotated are **policy-gap** findings. Each finding carries the safe ID, the principal or account involved, the OrgPath facet that makes the finding deterministic, and the specific API call that would remediate it.
+
+The `plan` output is the change-set document. It is what the operator reviews at L2 (advisory mode) and what they approve or modify at L3 before `apply` executes.
+
+## The Apply Verb: Gated Writes Through the Vault API
+
+The `apply` verb executes the approved change-set through the CyberArk vault REST API. The default is `dry_run=True` — the verb simulates the API calls and reports what it would have done, producing the exact same output as a live run without any state changes. This is the ADR-040 default, and it persists across every actuation rung including L4; the difference at each rung is not whether dry-run is available but whether the non-dry-run path requires human approval.
+
+At L3, the `apply` verb is preceded by an explicit approval gate. The operator reviews the `plan` output, authorizes the specific change-set (not a blanket "apply all"), and UIAO executes through the vault API:
+
+- **Safe ACL membership changes** via `POST /PasswordVault/API/Safes/{safeId}/Members` (add) and `DELETE /PasswordVault/API/Safes/{safeId}/Members/{memberName}` (remove).
+- **CPM rotation policy binding** via `PUT /PasswordVault/API/Accounts/{accountId}` updating the rotation policy association.
+- **JIT access provisioning** via the JIT API with a bounded duration derived from the access request.
+
+The `apply` verb does not call any CyberArk runtime API — it does not invoke a PSM session, does not directly retrieve a credential, and does not interact with PTA analytics. It writes only to the CyberArk management surface: the vault configuration and access control state that determines what the runtime components will do, not the runtime components themselves. This is the control-plane/data-plane boundary enforced at the verb level.
+
+## The Reconcile Verb and the Six-Phase Loop
+
+The `reconcile` verb is `plan` followed by `apply` within the ADR-040 six-phase orchestration loop: Snapshot, Compare, Classify, Alert, Remediate, Verify. In the CyberArk context:
+
+**Snapshot** collects the vault API actual state — safe ACL snapshots, account assignments, rotation policy bindings, vault configuration — and writes it to the drift engine's actual-state store with a timestamp.
+
+**Compare** evaluates the actual-state snapshot against the OrgPath-derived desired state from canon. Every safe in scope is compared; every account class governed by a rotation policy is compared.
+
+**Classify** assigns drift classes and severity to each finding. A principal in a break-glass safe whose Tier facet is 2 (not 3) is a P0 finding — it triggers `halt_on_critical`. An excess principal in a standard Tier 2 safe is a P2 finding — it is surfaced for review but does not halt the scan. A gap finding where a Tier 2 principal is missing from a safe their OrgPath position entitles them to is a P3 finding — a remediation candidate.
+
+**Alert** surfaces the classified findings through the configured alerting path: the operator dashboard, the SIEM feed, or the ticketing integration.
+
+**Remediate** is the L3/L4 actuation step. At L3, remediation requires explicit per-scan approval before any vault API write. At L4 (CPM rotation on enumerated account classes), remediation executes without per-cycle human approval but within the declared guardrails and subject to `halt_on_critical`.
+
+**Verify** re-reads the vault API state after remediation and confirms that the change-set was applied as planned. Any discrepancy between the planned and executed state is itself a finding and triggers operator review.
+
+## The SSOT Picture for Privileged Credential Lifecycle
+
+One of the most important governance questions for any PAM deployment is: where does the truth live? In an ungoverned environment, the answer is typically "in the vault, because that is where the credentials are." The practical implication is that the vault accumulates state — safe memberships, rotation policies, account assignments — and there is no external reference against which to audit it.
+
+In the CyberArk incorporation model, the truth picture is split deliberately:
+
+**Canon owns the desired state of privileged access entitlement.** The OrgPath-to-safe mapping, the Delegation Matrix rules that derive it, and the CPM rotation policy declarations for each account class are all managed artifacts in UIAO canon. Canon is the SSOT for *who should have access* and *under what rotation regime*.
+
+**CyberArk owns the runtime credential lifecycle.** The vault stores the credentials, the CPM rotates them, the PSM brokers the sessions, the PTA generates the audit record. CyberArk is the SSOT for *what the credentials are* and *what happened in each session*.
+
+**The drift engine is the reconciliation surface.** It holds neither the credentials nor the organizational truth independently — it compares canon's desired-state view against CyberArk's actual-state view and surfaces the difference. The findings are the evidence that the two are in alignment; the gated remediation is the mechanism that restores alignment when they are not.
+
+> Canon owns who should have privileged access. CyberArk owns the credentials and the sessions. The drift engine owns the comparison. No single system owns all three, and that separation is intentional — it means the loss or compromise of any one component does not simultaneously compromise the others.
+
+This SSOT picture also resolves the audit question. When an auditor asks "who had access to the break-glass vault safe on this date," the answer comes from two records: the CyberArk session and vault audit log (which is authoritative for what actually happened at runtime) and the canon desired-state record (which is authoritative for what should have been true). If they agree, the access was governed. If they disagree, the drift engine found the discrepancy and either remediated it or surfaced it for human disposition — and that finding is itself part of the audit record.
+
+## The Adapter as a Governed Citizen
+
+The CyberArk enforcement adapter is itself a governed object in the UIAO substrate. It carries an OrgPath scope (the security operations function that administers it), a governance mode declaration (current rung per operation class), and a change history (every `plan` output, every approval record, every `apply` execution log). It is not exempt from the governance model it enforces — it is a subject of it.
+
+This property matters when the adapter's behavior changes. If the Delegation Matrix rules are updated to reflect a reorganization, the next `plan` execution will produce a different desired-state derivation, and the change-set will reflect the reorganization. If the CyberArk vault API changes in a way that affects the adapter's `apply` path, the adapter is a versioned artifact whose upgrade is itself a governed change. The adapter's governance metadata must be updated when its behavior changes, and the update is auditable in the same record as every other governance change in the substrate.
+
+The incorporation is complete when the adapter's slot registration, governance metadata, operation-class rung declarations, and initial advisory-mode observation window are all in place and reviewed. The first L3 remediation cycle requires an explicit governance decision — an operator approval of the first real change-set — and that decision, like every subsequent one, is recorded in the governance audit trail that the UIAO platform maintains for every actuation across every incorporated provider.

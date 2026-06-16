@@ -571,6 +571,13 @@
     - [Drift for Place](customer-documents/orgpath-narrative/Book_19_CPT_08.html)
     - [Reaching the Directory Without a Slot](customer-documents/orgpath-narrative/Book_19_CPT_09.html)
     - [The Matrix, and What Place Is Not](customer-documents/orgpath-narrative/Book_19_CPT_10.html)
+  - [Book_20 — OrgPath and Privileged Access Management](customer-documents/orgpath-narrative/Book_20.html)
+    - [The Privileged Access Problem](customer-documents/orgpath-narrative/Book_20_CPT_01.html)
+    - [CyberArk in the Federal Landscape](customer-documents/orgpath-narrative/Book_20_CPT_02.html)
+    - [OrgPath as the Privilege Spine](customer-documents/orgpath-narrative/Book_20_CPT_03.html)
+    - [The L0–L4 Actuation Ladder for Privileged Operations](customer-documents/orgpath-narrative/Book_20_CPT_04.html)
+    - [Incorporating CyberArk into Active Governance](customer-documents/orgpath-narrative/Book_20_CPT_05.html)
+    - [What Gets Better](customer-documents/orgpath-narrative/Book_20_CPT_06.html)
 - **OrgPath for All Clouds (6-chapter series)**
   - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
   - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)
@@ -698,13 +705,6 @@
   - [Identity Modernization — Case Study](customer-documents/case-studies/identity-modernization-case-study.html)
   - [Cloud Boundary — Case Study](customer-documents/case-studies/cloud-boundary-case-study.html)
   - [Federal Modernization — Case Study](customer-documents/case-studies/federal-modernization-case-study.html)
-
-## TED Talk
-
-### The Hidden Cost of Progress
-
-- [The Hidden Cost of Progress](TedTalk/index.html)
-- [TED Talk — Full Script](TedTalk/script.html)
 
 ## About this repository
 

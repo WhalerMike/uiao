@@ -1,0 +1,74 @@
+---
+title: "What Gets Better"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: "20"
+series-order: 6
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-14
+---
+
+# Chapter 6 — What Gets Better
+
+::: {.callout-note}
+## In this chapter
+The argument of this book is complete. This chapter assembles it into a before-and-after picture: what privileged access governance looks like in a federal environment that has CyberArk deployed but not governed by an organizational substrate, and what it looks like after CyberArk is incorporated into UIAO's Active Governance framework with OrgPath as the authorization spine. The differences are specific and auditable: safe membership is derived rather than curated, access creep is a detectable drift class rather than an invisible accumulation, credential rotation is governed rather than ad hoc, and the audit record for privileged access aligns with the organizational structure that authorized it. The chapter closes with the capability the incorporation produces that neither CyberArk alone nor Entra PIM alone can provide: a continuous, typed, OrgPath-addressed reconciliation of the full privileged access surface against organizational truth.
+:::
+
+![Before and after: ungoverned CyberArk state versus CyberArk incorporated into UIAO Active Governance with OrgPath as the privilege spine](images/book20cpt06-diagram-01-before-after-pam-governance.png){#fig-book-20-cpt-06-diagram-01 fig-alt="Engineering blueprint diagram on a white background, 16:9 landscape, no human figures. Two equal-width columns separated by a vertical red #C0392B dashed line labeled 'UIAO PAM Incorporation'. Left column header 'Before: CyberArk deployed, not governed' in red. Five red rounded boxes stacked vertically in the left column: 'Safe ACL membership: manual, no authoritative truth', 'Access creep: invisible, accumulates over time', 'Credential rotation: ad hoc or scheduled by memory', 'Break-glass: undocumented or in a spreadsheet', 'Audit: vault log only, no org-structure context'. Right column header 'After: CyberArk as governed UIAO security data plane' in teal #1A9E8F. Five teal rounded boxes stacked in the right column aligned with the left boxes: 'Safe ACL membership: derived from OrgPath + Delegation Matrix, reconciled', 'Access creep: typed drift finding, L3 gated removal', 'Credential rotation: CPM governed by OrgPath account class, L4 eligible', 'Break-glass: vaulted, Tier 3 gated, P0 drift finding if violated', 'Audit: vault log + OrgPath context + drift finding record — three-surface alignment'. Horizontal teal arrows connect each red left box to its teal right counterpart crossing the dividing line. Below the diagram an amber #D4A017 footer band reads 'The vault was always locked. Now it is also governed.'." width="90%"}
+
+## What the Before State Actually Looks Like
+
+Before CyberArk is incorporated into UIAO's governance framework, it is not ungoverned in the sense of being unprotected. The vault is locking credentials, the PSM is brokering sessions, and the CPM is rotating passwords on whatever schedule was configured when the product was deployed. The platform is doing its job.
+
+What it cannot do — and what no vault can do by itself — is answer governance questions that require an external organizational reference. The before state has five specific failure modes, and they are failure modes of governance, not of the product.
+
+**Safe ACL membership has no authoritative derivation.** At any given moment, the membership of any vault safe is a historical artifact: it reflects the decisions made by the administrators who created the safe, modified by every add and remove operation since. There is no authoritative source that defines who *should* be in the safe against which to compare who *is* in it. When an auditor asks "is the membership of this safe correct?", the only honest answer in the before state is "it reflects the decisions that were made," which is not an answer to the governance question.
+
+**Access creep is invisible.** The pattern described in Chapter 3 — a principal is granted temporary access, the project ends, the access remains — produces no signal in the before state. The vault knows that the principal is a member of the safe. It has no information about whether their current role entitles them to that membership, because it has no information about their current role. Access creep accumulates silently until an access review campaign happens to catch it, which in most federal environments is annually at best.
+
+**Credential rotation is governed by memory or convention.** CPM rotation policies exist and work, but which accounts are governed by which policies, and whether the policies are consistent with the risk classification of the accounts they govern, depends on whoever configured the policies when the vault was deployed. A service account that was classified as high-risk when the vault was set up and is now running a critical business process may be on a 90-day rotation schedule because that was the default; it may be on a 365-day schedule because someone decided that was more operationally convenient; it may not be under CPM management at all because it was added to the environment after the initial deployment and nobody updated the configuration.
+
+**Break-glass is inconsistently documented and governed.** In most federal environments, break-glass accounts exist in one of three states: properly vaulted in CyberArk with a governance process for their use, documented in a sealed physical envelope that may or may not reflect the current credential, or undocumented as a break-glass account at all — just another admin account that someone knows about and will use in an emergency. The third state is the most common. The first state is the only one that is auditable.
+
+**The audit record has no organizational structure.** The CyberArk audit log records who accessed which safe, when, from which workstation, for how long, and what they did. It does not record what organizational position that person held at the time, whether that organizational position entitled them to that access, or whether the access was consistent with the Delegation Matrix in effect at the time. The vault log and the organizational authorization model are separate records that are never compared.
+
+> The before state is a vault that is locked but not governed. The credentials are protected; the governance of who should hold the keys is not.
+
+## What the After State Produces
+
+The after state is CyberArk incorporated as a governed security data plane under ADR-092, with OrgPath as the authorization spine and the Delegation Matrix as the entitlement derivation source. Five specific improvements correspond to the five failure modes above.
+
+**Safe ACL membership is derived and reconciled.** For every vault safe, the desired membership is computed from the OrgPath positions of the principals in the environment, evaluated against the Delegation Matrix rules for that safe's declared scope. The actual membership is collected from the vault API. The difference is a typed drift finding. Access creep produces excess findings; access gaps produce gap findings; both are surfaced within the drift scan cycle rather than discovered annually. The audit question "is this safe's membership correct?" has a deterministic answer: it is correct if the drift engine found no excess or gap findings in the last scan, and if there are findings, they are in the finding record with their classification and disposition.
+
+**Access creep is a detectable drift class.** When a principal moves from the Infrastructure Division to the Applications Division — a change reflected in their OrgPath Division facet — the desired membership of Infrastructure-scoped safes no longer includes them. The next drift scan produces an excess finding for their membership in those safes. The finding is classified, surfaced, and routed to L3 gated remediation. The operator reviews it, confirms the organizational change, and approves the removal. The access creep is remediated within the next governance cycle rather than persisting until the next annual review.
+
+**Credential rotation is governed by account class.** Each account class — local administrator accounts on managed servers, database service accounts, network infrastructure accounts — is declared in canon with a rotation policy that reflects its risk classification. The CPM rotation policy binding for each account is compared against the canon declaration in each drift scan. Accounts that should be on a 30-day rotation schedule but are configured for 90-day, accounts that should be under CPM management but are not, accounts that have been added to the environment since the last policy review — all produce policy-gap findings. For account classes that meet the ADR-092 L4 conditions (low blast radius, rollback-capable, isolated, governance-ADR approved), the rotation itself can close its own loop without per-cycle human approval. For every other class, rotation policy alignment is a reconcilable governance artifact.
+
+**Break-glass is vaulted, Tier 3 gated, and P0-protected.** In the after state, every break-glass account is registered in canon as a Tier 3 object requiring governance approval for any access change. The vault safe that holds break-glass credentials is declared with `blast_radius=high` in the adapter's governance metadata, making it L3 permanent-cap — no autonomous remediation ever touches it. Any principal found in the break-glass safe whose Tier facet is below 3 is a P0 finding that halts the entire reconciliation scan pending human resolution. The break-glass path is auditable, governed, and protected at the highest severity level the drift engine can express.
+
+**The audit record has three-surface alignment.** When an auditor asks about privileged access on a specific date, the answer comes from three aligned records: the CyberArk vault and session audit log (what happened at runtime), the canon desired-state record for that date (what should have been true based on OrgPath position), and the drift finding record (whether the desired and actual states agreed, and if not, what was found and what was done about it). A privileged session that is consistent with all three records is a governed session. A session that appears in the vault log for a principal whose OrgPath position did not entitle them to that safe membership is a finding that the drift record should contain — and if it does not, the absence of the finding is itself an audit artifact.
+
+## The Capability Neither CyberArk Alone Nor PIM Alone Provides
+
+The final accounting of what the incorporation produces is the capability that sits in the gap between the two incumbent tools.
+
+Entra PIM governs eligible role activation for Entra-native resources. It is the correct tool for that surface, and it does that job well. CyberArk Privilege Cloud vaults credentials, brokers sessions, rotates passwords, and records audit artifacts. It is the correct tool for the privileged runtime surface, and it does that job well. Neither tool, operating alone, provides a continuous, typed reconciliation of vault safe membership against an organizational truth that is itself governed and validated.
+
+PIM cannot do this because it does not reach the vault surface. CyberArk cannot do this because it has no organizational substrate — it can enforce the ACLs it has been given, but it cannot derive what the ACLs should be from first principles.
+
+> UIAO with OrgPath as the privilege spine is the continuous reconciliation layer that neither CyberArk nor PIM provides. It does not replace either; it governs the connection between them.
+
+The incorporation produces a privileged access governance story that is complete in a way that neither tool alone achieves: from the organizational position that authorizes privilege, through the vault that holds the credential, through the session that exercises it, through the audit record that proves it was authorized — all linked by OrgPath facets that are themselves continuously reconciled against organizational truth.
+
+## The Governance Story in One Statement
+
+A federal environment that has completed the CyberArk incorporation into UIAO Active Governance can make a statement to its authorizing official that previously could not be made:
+
+*Every privileged credential in the vault is scoped to a safe whose ACL membership is derived from OrgPath organizational position, reconciled against actual vault state on each governance cycle, and governed by the Delegation Matrix that is the authoritative source for administrative delegation across the environment. Access creep produces typed drift findings within the current cycle. Break-glass accounts are vaulted, Tier 3 gated, and P0-protected. Credential rotation for governed account classes is policy-declared in canon and enforced through CPM. The audit record for any privileged session can be traced from the vault log through the OrgPath position that authorized the access to the drift finding record that confirms the access was within governed bounds.*
+
+That statement is not a claim about configuration quality. It is a claim about continuous governance — a claim that is backed by the drift scan cycle, the finding record, the approval audit trail, and the vault evidence sources that the three-surface alignment model produces. It is the difference between a PAM deployment and a PAM governance program.
+
+The vault was always locked. Now it is also governed.

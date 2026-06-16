@@ -184,3 +184,48 @@ Over the manual end state, the governed path delivers:
 
 If you have not yet stood up a control plane, build the [manual path](manual-path.qmd)
 now and [retrofit OrgPath later](retrofit-path.qmd) — the work you do now carries forward.
+
+## 9. Rollback
+
+The governed path layers governance on top of the same operational back-outs as the
+manual path. Roll back in two layers if needed.
+
+**Operational back-out (same as [manual path §9](manual-path.qmd#9-rollback)):**
+
+- **Intune:** un-enroll devices and re-apply the GPO baseline.
+- **Arc:** `azcmagent disconnect` then uninstall the agent.
+- **Conditional Access:** keep policies report-only until validated; the
+  break-glass accounts are the emergency exclusion.
+- **NTLM:** revert `LmCompatibilityLevel` to 3 if a missed dependency surfaces —
+  this is exactly why the audit gate exists.
+
+**Governance-seam back-out:**
+
+- **OrgPath tags:** remove or blank the `OrgPath` Azure resource tag; the
+  objects continue to function — they simply lose their canon addressability.
+- **Approval enforcement:** lower `Assert-GovernanceApproval` to record-only
+  (`-ActuationCeiling L1`) to halt gated writes without disrupting the observers.
+- **Loop suspension:** stop the scheduled `Compare-*` and `Get-ModernizationDriftReport`
+  runs; the underlying provider state is unaffected.
+
+Rolling back the governance seam does **not** require re-onboarding, re-enrollment,
+or undoing any Intune / Arc / CA work. The operational state is always owned by
+the provider.
+
+## 10. Boundary impact
+
+::: {.callout-important title="Federal boundary ceiling: L3 (Gated)"}
+The **federal default write ceiling is L3** — `Assert-GovernanceApproval` refuses
+any write declared at L4 (Autonomous). No script in this kit closes the loop
+without a human-supplied `-ApprovalRef`. The L3 ceiling is the default; it can
+only be raised by deliberate configuration outside this kit.
+:::
+
+::: {.callout-note title="FedRAMP Moderate scope"}
+This kit targets **FedRAMP Moderate** baseline controls: Conditional Access
+policies enforce compliant device and MFA (Entra P1); Defender for Servers Plan 2
+and Defender for SQL are included at Moderate. Risk-based Conditional Access
+(Entra P2), PIV-only enforcement, FIPS-validated cryptography, and extended
+logging retention are **not** in scope here — those belong to a FedRAMP High
+posture and are handled through separate controls.
+:::
