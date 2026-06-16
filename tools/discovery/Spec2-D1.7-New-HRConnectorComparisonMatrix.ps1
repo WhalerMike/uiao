@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 2 — D1.7: HR Connector Comparison Matrix (script form)
 

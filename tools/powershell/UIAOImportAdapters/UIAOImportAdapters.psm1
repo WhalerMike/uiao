@@ -1,4 +1,4 @@
-# UIAOImportAdapters — assessment ingestion adapters (canon: UIAO_182, ADR-094).
+﻿# UIAOImportAdapters — assessment ingestion adapters (canon: UIAO_182, ADR-094).
 #
 # Producer in the assessment-to-plan toolchain (ADR-094 Decision 1). Ingests
 # already-produced third-party assessment artifacts (Azure Migrate, Intune GPO

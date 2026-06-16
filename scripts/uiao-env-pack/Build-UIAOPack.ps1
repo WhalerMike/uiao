@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Build-UIAOPack.ps1
     Assemble a UIAO PowerShell offline pack as a downloadable zip artifact.

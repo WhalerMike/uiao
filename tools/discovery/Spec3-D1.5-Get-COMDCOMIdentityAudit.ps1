@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.5: COM+/DCOM Application Identity Audit
 .DESCRIPTION
@@ -154,6 +154,7 @@ function ConvertFrom-DCOMPermissionSDDL {
             $accountName = $sidObj.Translate([System.Security.Principal.NTAccount]).Value
         } catch {
             # Keep raw SID
+            Write-Verbose "Suppressed error: $($_.Exception.Message)"
         }
 
         # Determine if this is a domain account (not BUILTIN, NT AUTHORITY, etc.)
@@ -333,12 +334,10 @@ function Get-ApplicationRiskScore {
     }
 
     # Determine level and migration target
-    $level = switch {
-        ($score -ge 8) { "Critical" }
-        ($score -ge 5) { "High" }
-        ($score -ge 3) { "Medium" }
-        default        { "Low" }
-    }
+    $level = if ($score -ge 8) { "Critical" }
+             elseif ($score -ge 5) { "High" }
+             elseif ($score -ge 3) { "Medium" }
+             else { "Low" }
 
     $migrationTarget = switch ($level) {
         "Critical" { "Managed Identity (immediate) — eliminate domain admin dependency per ADR-004" }
@@ -394,7 +393,7 @@ if (-not $SkipCOMPlus) {
                         $componentList += [ordered]@{
                             Name        = $comp.Value("ProgID")
                             CLSID       = $comp.Value("CLSID")
-                            Constructor = try { $comp.Value("ConstructorString") } catch { "" }
+                            Constructor = $(try { $comp.Value("ConstructorString") } catch { "" })
                             Transaction = $comp.Value("Transaction")
                         }
                     }
@@ -519,7 +518,7 @@ if (-not $SkipDCOM) {
                                 $result.Access = $sd.GetSddlForm('All')
                             }
                         }
-                    } catch {}
+                    } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
                     return $result
                 }
 
@@ -533,7 +532,7 @@ if (-not $SkipDCOM) {
                         $permData = Invoke-Command -ComputerName $server -ScriptBlock $regBlock `
                             -ArgumentList $appId @(if ($Credential) { @{Credential = $Credential} } else { @{} })
                     }
-                } catch {}
+                } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
                 if ($permData) {
                     if ($permData.Launch) {

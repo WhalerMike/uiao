@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 2 — D1.6: Worker Type Taxonomy
 .DESCRIPTION

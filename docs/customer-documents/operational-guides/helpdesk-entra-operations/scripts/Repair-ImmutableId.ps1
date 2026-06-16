@@ -1,4 +1,4 @@
-#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Users
+﻿#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Users
 <#
 .SYNOPSIS
     Repair a Hybrid AD -> Entra ID ImmutableID (onPremisesImmutableId) hard

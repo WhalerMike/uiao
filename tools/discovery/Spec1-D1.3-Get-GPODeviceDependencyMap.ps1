@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 1 — D1.3: GPO-to-Device Dependency Map
 .DESCRIPTION
@@ -304,7 +304,7 @@ foreach ($gpoId in $uniqueGPOIds) {
             }
         }
     }
-    catch { }
+    catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
     # WMI filter
     $wmiFilter = $null

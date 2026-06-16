@@ -183,6 +183,7 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | ✅ |
 | `ruff.yml` | Python PRs | ✅ |
 | `mypy.yml` | Python PRs | ✅ |
+| `pwsh-lint.yml` | `**/*.ps1`/`.psm1`/`.psd1` PRs | ✅ parse (syntax smoke); ⏳ PSScriptAnalyzer non-blocking (baseline) |
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | ✅ |
 | `release.yml` | Tag `v*.*.*` | — |
 

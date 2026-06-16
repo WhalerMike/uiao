@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Emit a per-.qmd coverage CSV across customer-documents/ for image-need triage.
 

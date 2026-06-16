@@ -1,4 +1,4 @@
-#Requires -Modules GroupPolicy, ActiveDirectory
+﻿#Requires -Modules GroupPolicy, ActiveDirectory
 <#
 .SYNOPSIS
     Triages every GPO in the domain for migration to Intune (workstations) or

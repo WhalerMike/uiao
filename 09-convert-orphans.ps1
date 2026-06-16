@@ -1,4 +1,4 @@
-# 09-convert-orphans.ps1
+﻿# 09-convert-orphans.ps1
 # Converts the remaining ORPHAN-MD files in docs/ to .qmd.
 # Splits into two groups:
 #   CONVERT — clear site content, converted automatically

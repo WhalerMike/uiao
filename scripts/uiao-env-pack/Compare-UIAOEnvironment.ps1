@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Compare-UIAOEnvironment.ps1
     Standalone drift detection for the UIAO PowerShell substrate.

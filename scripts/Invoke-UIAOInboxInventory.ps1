@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Invoke-UIAOInboxInventory.ps1
     Pre-sync inventory of UIAO inbox ZIP files.

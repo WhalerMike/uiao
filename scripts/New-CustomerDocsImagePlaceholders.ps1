@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Seed [IMAGE-NN: ...] placeholders into customer-documents .qmd files based
     on the Pass 2 image-coverage CSV, then optionally invoke the Nano Banana
