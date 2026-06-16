@@ -1,4 +1,4 @@
-# OrgPathTools — Model C per-facet OrgPath PowerShell wrapper (ADR-084 §C8).
+﻿# OrgPathTools — Model C per-facet OrgPath PowerShell wrapper (ADR-084 §C8).
 #
 # Canonical Model C entry point per ADR-084: Test-OrgPathFacets.
 # Operator-friendly wrapper that shells out to the Python loader for

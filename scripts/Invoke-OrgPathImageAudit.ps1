@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Audit and inspect the OrgPath narrative image manifest.
 

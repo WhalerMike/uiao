@@ -1,4 +1,4 @@
-# OrgTreeValidation — PowerShell module wrapping UIAO_159.
+﻿# OrgTreeValidation — PowerShell module wrapping UIAO_159.
 #
 # Companion to canon UIAO_150–UIAO_176. Python is the canonical
 # implementation of OrgTree validation logic; this module is the M365

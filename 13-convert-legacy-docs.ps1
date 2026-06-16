@@ -1,4 +1,4 @@
-# 13-convert-legacy-docs.ps1
+﻿# 13-convert-legacy-docs.ps1
 # Resolves the tractable portion of the 158 LEGACY-DOCS files in docs\docs\.
 # Converts 48 files with clear publish intent.
 # Archives 12 session/internal files to inbox\.

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Export-UIAOEnvironment.ps1
     Deterministic export of the current PowerShell substrate to CSV ledgers.

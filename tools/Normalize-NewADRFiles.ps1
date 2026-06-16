@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Normalizes new ADR files (ADR-001 through ADR-004, Index, Review Protocol)
     to match the existing UIAO canon ADR naming convention.

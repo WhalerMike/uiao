@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Shared library for the Help Desk / Cloud Services Entra ID operations toolkit.
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.8: SQL Server Authentication Audit
 .DESCRIPTION

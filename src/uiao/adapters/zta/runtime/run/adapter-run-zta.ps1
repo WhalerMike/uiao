@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Digest a Microsoft Zero Trust Assessment report into human-facing artefacts.
 

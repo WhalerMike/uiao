@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Plane 2 orchestrator: IR JSON -> KSI evaluation result JSON.
 

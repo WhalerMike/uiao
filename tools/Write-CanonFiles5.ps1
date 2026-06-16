@@ -1,4 +1,4 @@
-# Write-CanonFiles5.ps1 — Creates D1.4 discovery/analysis scripts for all 3 specs
+﻿# Write-CanonFiles5.ps1 — Creates D1.4 discovery/analysis scripts for all 3 specs
 # Run from: C:\Users\whale\git\uiao\tools\
 # Usage:    powershell -ExecutionPolicy Bypass -File .\Write-CanonFiles5.ps1
 

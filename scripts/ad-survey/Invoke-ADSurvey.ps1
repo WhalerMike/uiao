@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO AD Adapter — Forest Archaeological Survey
     Canon reference: Appendix F Phase 1 (Discovery)

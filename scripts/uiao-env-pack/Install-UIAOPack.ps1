@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Install-UIAOPack.ps1
     Offline installer for a UIAO PowerShell pack. Bundled inside the

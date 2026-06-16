@@ -1,4 +1,4 @@
-#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications
+﻿#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications
 <#
 .SYNOPSIS
     Build the Enterprise Application inventory that every governance step

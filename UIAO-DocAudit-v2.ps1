@@ -1,4 +1,4 @@
-# UIAO-DocAudit-v2.ps1
+﻿# UIAO-DocAudit-v2.ps1
 # Fixed version — three bugs corrected from v1:
 #   1. Now excludes docs\_site\ (Quarto build output — was producing false positives)
 #   2. Now correctly identifies docs\.github\ as INFRA-GITHUB (not ORPHAN-MD)

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Onboard a Windows server to Azure Arc (manual or OrgPath-governed path).

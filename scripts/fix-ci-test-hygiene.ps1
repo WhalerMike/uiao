@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # fix-ci-test-hygiene.ps1
 #
 # Bundles three backlog items into one CI/test hygiene PR:

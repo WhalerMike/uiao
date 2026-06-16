@@ -1,4 +1,4 @@
-#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Microsoft.Graph.Identity.Governance
+﻿#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Microsoft.Graph.Identity.Governance
 <#
 .SYNOPSIS
     Stand up the Help Desk Privileged Access Group (PAG): a role-assignable

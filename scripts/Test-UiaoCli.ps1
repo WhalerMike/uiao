@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO CLI Registration & Smoke-Test Harness
 .DESCRIPTION

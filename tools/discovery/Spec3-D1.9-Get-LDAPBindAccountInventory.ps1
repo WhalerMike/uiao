@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.9: LDAP Bind Account Inventory
 .DESCRIPTION

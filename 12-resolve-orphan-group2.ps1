@@ -1,4 +1,4 @@
-# 12-resolve-orphan-group2.ps1
+﻿# 12-resolve-orphan-group2.ps1
 # Resolves the 12 remaining ORPHAN-MD files (Group 2 — internal/ambiguous).
 # Clear deletes are handled automatically.
 # Borderline files are listed for review and left untouched.

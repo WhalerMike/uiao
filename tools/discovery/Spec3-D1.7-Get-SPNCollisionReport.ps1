@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.7: SPN Collision Report
 .DESCRIPTION

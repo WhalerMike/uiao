@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 1 — D1.2: Device State Classification Matrix
 .DESCRIPTION

@@ -1,4 +1,4 @@
-@{
+﻿@{
     RootModule        = 'UIAOSqlServerMigration.psm1'
     ModuleVersion     = '1.1.0'
     GUID              = '95f89c30-29d8-4eee-ae02-031c14d8013d'

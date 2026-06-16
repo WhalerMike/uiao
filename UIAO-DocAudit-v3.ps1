@@ -1,4 +1,4 @@
-# UIAO-DocAudit-v3.ps1
+﻿# UIAO-DocAudit-v3.ps1
 # Added from v2:
 #   - STAGING-INBOX category for inbox\ folder
 #   - PHASE2-SPEC category for phase2\ folder

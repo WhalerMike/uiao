@@ -1,4 +1,4 @@
-# Pester tests for UIAOSqlServerMigration (canon UIAO_135 #7; ADR-002/004/068/091).
+﻿# Pester tests for UIAOSqlServerMigration (canon UIAO_135 #7; ADR-002/004/068/091).
 #
 # Fully offline: fixtures (Arc status/token/extension snapshots, login audit,
 # reconciliation, collision report, GPO report) are written to $TestDrive. The
