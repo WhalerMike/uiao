@@ -69,26 +69,33 @@ jobs:
               -not ($excludeSegments | Where-Object { $p -like "*$_*" })
             }
 
-          $failedCount = 0
+          $failed = [System.Collections.Generic.List[string]]::new()
           foreach ($f in $files) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
               $f.FullName, [ref]$tokens, [ref]$errors) | Out-Null
             if ($errors -and $errors.Count -gt 0) {
-              $failedCount++
               $rel = [System.IO.Path]::GetRelativePath((Get-Location).Path, $f.FullName)
+              $failed.Add("$rel ($($errors.Count) error(s), first at line $($errors[0].Extent.StartLineNumber))")
               foreach ($e in $errors) {
                 $line = $e.Extent.StartLineNumber
                 $msg = $e.Message -replace "`r?`n", ' '
+                # GitHub annotation (file-linked) ...
                 Write-Host "::error file=$rel,line=$line::$msg"
+                # ... plus a plain stdout line so the filename is visible in
+                # the raw log too (annotations strip the file= metadata).
+                Write-Host "  $rel : line $line : $msg"
               }
             }
           }
 
-          Write-Host "Parsed $($files.Count) script(s); $failedCount with syntax errors."
-          if ($failedCount -gt 0) {
-            Write-Host "::error::$failedCount script(s) failed to parse. See annotations above."
+          Write-Host ""
+          Write-Host "Parsed $($files.Count) script(s); $($failed.Count) with syntax errors."
+          if ($failed.Count -gt 0) {
+            Write-Host "Scripts that failed to parse:"
+            $failed | ForEach-Object { Write-Host " - $_" }
+            Write-Host "::error::$($failed.Count) script(s) failed to parse. See the list above."
             exit 1
           }
 

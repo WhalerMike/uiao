@@ -333,12 +333,10 @@ function Get-ApplicationRiskScore {
     }
 
     # Determine level and migration target
-    $level = switch {
-        ($score -ge 8) { "Critical" }
-        ($score -ge 5) { "High" }
-        ($score -ge 3) { "Medium" }
-        default        { "Low" }
-    }
+    $level = if ($score -ge 8) { "Critical" }
+             elseif ($score -ge 5) { "High" }
+             elseif ($score -ge 3) { "Medium" }
+             else { "Low" }
 
     $migrationTarget = switch ($level) {
         "Critical" { "Managed Identity (immediate) — eliminate domain admin dependency per ADR-004" }

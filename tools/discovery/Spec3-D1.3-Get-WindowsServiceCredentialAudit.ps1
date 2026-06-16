@@ -262,12 +262,10 @@ begin {
             }
         }
 
-        $riskLevel = switch {
-            ($score -ge 80) { 'Critical' }
-            ($score -ge 50) { 'High' }
-            ($score -ge 25) { 'Medium' }
-            default         { 'Low' }
-        }
+        $riskLevel = if ($score -ge 80) { 'Critical' }
+                     elseif ($score -ge 50) { 'High' }
+                     elseif ($score -ge 25) { 'Medium' }
+                     else { 'Low' }
 
         return [ordered]@{
             Score   = [math]::Min($score, 100)
