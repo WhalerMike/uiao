@@ -206,8 +206,7 @@ function Resolve-MigrationTarget {
 #region --- Pre-load domain context --------------------------------------------
 
 Write-Verbose 'Loading domain context...'
-$domain   = Get-ADDomain
-$domainDN = $domain.DistinguishedName
+Get-ADDomain | Out-Null
 
 # OU canonical-name -> DistinguishedName lookup (canonical paths match the GPO
 # report XML SOMPath; DN is what Get-ADComputer -SearchBase needs).
@@ -224,7 +223,7 @@ Write-Verbose "Processing $($allGpos.Count) GPOs..."
 
 #region --- Helpers ------------------------------------------------------------
 
-function Get-OuComputerCounts {
+function Get-OuComputerCount {
     param([string] $OuDN)
 
     $result = [ordered]@{
@@ -268,7 +267,7 @@ function Test-OUNameMatch {
     return $false
 }
 
-function Classify-PlaneFromCounts {
+function Get-PlaneFromCount {
     param([hashtable] $Counts)
 
     if ($Counts.Total -eq 0) { return 'Unknown' }
@@ -280,7 +279,7 @@ function Classify-PlaneFromCounts {
     return 'Unknown'
 }
 
-function Classify-PlaneFromName {
+function Get-PlaneFromName {
     param([string] $CanonicalPath)
 
     $isWks = Test-OUNameMatch -CanonicalPath $CanonicalPath -Patterns $WorkstationOUNamePattern
@@ -338,10 +337,10 @@ foreach ($gpo in $allGpos) {
 
             if ($somType -eq 'OU') {
                 if (-not $SkipComputerEnumeration -and $ouByCanonical.ContainsKey($somPath)) {
-                    $ouCounts  = Get-OuComputerCounts -OuDN $ouByCanonical[$somPath]
-                    $byOSPlane = Classify-PlaneFromCounts -Counts $ouCounts
+                    $ouCounts  = Get-OuComputerCount -OuDN $ouByCanonical[$somPath]
+                    $byOSPlane = Get-PlaneFromCount -Counts $ouCounts
                 }
-                $byNamePlane = Classify-PlaneFromName -CanonicalPath $somPath
+                $byNamePlane = Get-PlaneFromName -CanonicalPath $somPath
             }
             elseif ($somType -eq 'Domain') {
                 # Domain-root link applies to every Computer object; treat as Both.

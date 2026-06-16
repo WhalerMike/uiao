@@ -28,7 +28,7 @@ function Write-Action {
     else         { Write-Host "$Verb`: $Path" -ForegroundColor $Color }
 }
 
-function Promote-ShellPage {
+function Publish-ShellPage {
     param(
         [string]$MdPath,
         [string]$Title,
@@ -87,28 +87,28 @@ Write-Host ""
 # ---------------------------------------------------------------------------
 Write-Host "Group A: Whitepapers" -ForegroundColor Yellow
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\whitepapers\uiao-governance-os-whitepaper.md") `
     -Title "UIAO Governance OS — Whitepaper" `
     -Subtitle "How deterministic governance replaces attestation-based compliance" `
     -CalloutTitle "Whitepaper in preparation" `
     -CalloutBody "This whitepaper is being drafted from the [Governance OS Canonical Suite](../executive-governance-series/index.qmd). For current coverage, see the [Executive Governance Series](../executive-governance-series/index.qmd) and the [Governance OS Overview](../executive-briefs/governance-os-overview.qmd)."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\whitepapers\modernization-governance-whitepaper.md") `
     -Title "Modernization Governance — Whitepaper" `
     -Subtitle "Governing the AD to Entra ID migration at federal scale" `
     -CalloutTitle "Whitepaper in preparation" `
     -CalloutBody "This whitepaper is being drafted from the [Modernization Program documentation](../customer-documents/reference-architecture/index.qmd). For current coverage, see the [Modernization Overview](../executive-briefs/modernization-overview.qmd) and the [AD to Entra ID migration guide](../customer-documents/reference-architecture/identity-orgtree/index.qmd)."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\whitepapers\zero-trust-governance-whitepaper.md") `
     -Title "Zero Trust Governance — Whitepaper" `
     -Subtitle "Implementing CISA Zero Trust maturity through UIAO's governance model" `
     -CalloutTitle "Whitepaper in preparation" `
     -CalloutBody "This whitepaper is being drafted from the compliance documentation. For current coverage, see the [Zero Trust Overview](../executive-briefs/zero-trust-overview.qmd) and the [FedRAMP and CISA update](../compliance/federal-mandates/index.qmd)."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\whitepapers\scubagear-integration-whitepaper.md") `
     -Title "SCuBAGear Integration — Whitepaper" `
     -Subtitle "Connecting CISA SCuBAGear outputs to UIAO's evidence pipeline" `
@@ -121,35 +121,35 @@ Promote-ShellPage `
 Write-Host ""
 Write-Host "Group B: Architecture Series" -ForegroundColor Yellow
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\architecture-series\drift-engine.md") `
     -Title "Drift Engine Architecture" `
     -Subtitle "How UIAO detects, quantifies, and enforces against configuration drift" `
     -CalloutTitle "Architecture document in preparation" `
     -CalloutBody "Full architecture documentation is being drafted. For current coverage, see the [Drift Engine Overview](../executive-briefs/drift-engine-overview.qmd). The drift detection specification is defined in ``src/uiao/governance/DRIFT-*`` modules."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\architecture-series\evidence-chain.md") `
     -Title "Evidence Chain Architecture" `
     -Subtitle "Provenance, signing, and audit trail from source to artifact" `
     -CalloutTitle "Architecture document in preparation" `
     -CalloutBody "Full architecture documentation is being drafted. For current coverage, see the [Evidence Fabric Overview](../executive-briefs/evidence-fabric-overview.qmd) and the [SCuBA technical specification](../compliance/evidence-telemetry/scuba-technical-spec.qmd)."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\architecture-series\boundary-impact-model.md") `
     -Title "Boundary Impact Model" `
     -Subtitle "Modeling authorization boundaries and their governance implications" `
     -CalloutTitle "Architecture document in preparation" `
     -CalloutBody "Full architecture documentation is being drafted. For current coverage, see the [GCC Moderate Boundary Model](../compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd) and the [Findings section](/findings/)."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\architecture-series\six-plane-architecture.md") `
     -Title "Six-Plane Architecture" `
     -Subtitle "UIAO's six control planes and their governance roles" `
     -CalloutTitle "Architecture document in preparation" `
     -CalloutBody "Full architecture documentation is being drafted. For current coverage, see the [Governance OS Canonical Suite](../executive-governance-series/governance-os-canonical-suite.qmd) which covers all six planes in detail."
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\architecture-series\three-layer-rule-model.md") `
     -Title "Three-Layer Rule Model" `
     -Subtitle "Policy, enforcement, and evidence layers in UIAO's governance model" `
@@ -162,7 +162,7 @@ Promote-ShellPage `
 Write-Host ""
 Write-Host "Group C: Case Studies" -ForegroundColor Yellow
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\case-studies\federal-modernization-case-study.md") `
     -Title "Federal Modernization — Case Study" `
     -Subtitle "AD to Entra ID migration governance at a federal civilian agency" `
@@ -170,7 +170,7 @@ Promote-ShellPage `
     -CalloutBody "This case study is being developed. For current program documentation, see the [Modernization Program](../customer-documents/reference-architecture/uiao-modernization-program/index.qmd) and the [AD to Entra ID migration guide](../customer-documents/reference-architecture/identity-orgtree/index.qmd)." `
     -CalloutType "tip"
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\case-studies\cloud-boundary-case-study.md") `
     -Title "Cloud Boundary — Case Study" `
     -Subtitle "Governing GCC Moderate compliance gaps with UIAO" `
@@ -178,7 +178,7 @@ Promote-ShellPage `
     -CalloutBody "This case study is being developed from the GCC Moderate findings. For current coverage, see the [Findings section](/findings/) documenting specific GCC Moderate capability gaps and the [Boundary Authorization documentation](../compliance/boundary-authorization/index.qmd)." `
     -CalloutType "tip"
 
-Promote-ShellPage `
+Publish-ShellPage `
     -MdPath (Join-Path $RepoRoot "docs\customer-documents\case-studies\identity-modernization-case-study.md") `
     -Title "Identity Modernization — Case Study" `
     -Subtitle "Identity plane governance during a large-scale directory migration" `
@@ -202,7 +202,7 @@ $domainSpecs = @(
 )
 
 foreach ($d in $domainSpecs) {
-    Promote-ShellPage `
+    Publish-ShellPage `
         -MdPath (Join-Path $RepoRoot "docs\customer-documents\modernization-specs\$($d.Slug)\$($d.Slug).md") `
         -Title $d.Title `
         -Subtitle $d.Subtitle `
@@ -225,7 +225,7 @@ Write-Host ""
 Write-Host "Group E: Validation Suite Domains (6 domains + template)" -ForegroundColor Yellow
 
 foreach ($d in $domainSpecs) {
-    Promote-ShellPage `
+    Publish-ShellPage `
         -MdPath (Join-Path $RepoRoot "docs\customer-documents\validation-suites\domains\$($d.Slug)\$($d.Slug).md") `
         -Title "$($d.Title -replace ' Spec',' Validation Suite')" `
         -Subtitle "Conformance tests and validation criteria for the $($d.Slug) domain" `

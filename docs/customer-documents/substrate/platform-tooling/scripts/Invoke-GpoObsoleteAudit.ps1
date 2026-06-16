@@ -77,7 +77,7 @@ Write-Verbose "Processing $($allGpos.Count) GPOs..."
 #endregion
 
 #region --- Helper: detect settings in a configuration section -----------------
-function Test-SectionHasSettings {
+function Test-SectionHasSetting {
     param([System.Xml.XmlElement] $Section)
 
     if (-not $Section) { return $false }
@@ -157,8 +157,8 @@ foreach ($gpo in $allGpos) {
     #endregion
 
     #region --- Detect settings presence per section ---------------------------
-    $computerHasSettings = Test-SectionHasSettings -Section $xml.GPO.Computer
-    $userHasSettings     = Test-SectionHasSettings -Section $xml.GPO.User
+    $computerHasSettings = Test-SectionHasSetting -Section $xml.GPO.Computer
+    $userHasSettings     = Test-SectionHasSetting -Section $xml.GPO.User
     #endregion
 
     #region --- Rule: OBSOLETE_NO_ENABLED_SETTINGS -----------------------------

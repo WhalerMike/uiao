@@ -156,7 +156,7 @@ if ($D5InputFile) {
         } else { "Never" }
 
         foreach ($spnRaw in $obj.servicePrincipalName) {
-            $parsed = Parse-SPN $spnRaw
+            $parsed = ConvertFrom-SPN $spnRaw
             $spnRecords += [PSCustomObject]@{
                 SPN              = $spnRaw
                 ServiceClass     = $parsed.ServiceClass
@@ -191,7 +191,7 @@ if ($D5InputFile) {
                     foreach ($obj in $childObjects) {
                         $objectType = if ($obj.objectClass -contains 'computer') { 'computer' } else { 'user' }
                         foreach ($spnRaw in $obj.servicePrincipalName) {
-                            $parsed = Parse-SPN $spnRaw
+                            $parsed = ConvertFrom-SPN $spnRaw
                             $spnRecords += [PSCustomObject]@{
                                 SPN              = $spnRaw
                                 ServiceClass     = $parsed.ServiceClass
@@ -225,7 +225,7 @@ Write-Host "  Total SPN records to analyze: $($spnRecords.Count)" -ForegroundCol
 # HELPER: SPN Parser
 # ═══════════════════════════════════════════════════════════════
 
-function Parse-SPN {
+function ConvertFrom-SPN {
     param([string]$RawSPN)
 
     $result = @{
@@ -290,7 +290,7 @@ foreach ($group in $spnGroups) {
         EnabledAccounts  = $enabledCount
         Severity         = $severity
         Accounts         = $accounts
-        Remediation      = Get-SPNRemediation -Type "ExactDuplicate" -Severity $severity -ServiceClass $group.Group[0].ServiceClass -Accounts $group.Group
+        Remediation      = Get-SPNRemediation -ServiceClass $group.Group[0].ServiceClass -Accounts $group.Group
     }
 }
 
@@ -502,8 +502,6 @@ if ($ResolveDNS) {
 
 function Get-SPNRemediation {
     param(
-        [string]$Type,
-        [string]$Severity,
         [string]$ServiceClass,
         $Accounts
     )

@@ -160,7 +160,7 @@ function Read-UIAOSourceData {
 }
 
 
-function Get-UIAORows {
+function Get-UIAORow {
     <#
     .SYNOPSIS
         Internal: coerce a loaded source object into an array of record rows.
@@ -217,7 +217,7 @@ function Get-UIAOFieldValue {
 }
 
 
-function ConvertTo-UIAOSourceFields {
+function ConvertTo-UIAOSourceField {
     <#
     .SYNOPSIS
         Internal: capture every original column of a row (values as strings)
@@ -336,7 +336,7 @@ function Import-UIAOAzureMigrateReport {
     )
     $full = Assert-UIAOInputPath -Path $ReportPath
     $loaded = Read-UIAOSourceData -Path $full
-    $rows = Get-UIAORows -Data $loaded -PreferredArrayKeys @('Machines', 'machines', 'assessedMachines', 'value')
+    $rows = Get-UIAORow -Data $loaded -PreferredArrayKeys @('Machines', 'machines', 'assessedMachines', 'value')
     $records = foreach ($row in $rows) {
         [ordered]@{
             name             = Get-UIAOFieldValue $row @('Machine', 'MachineName', 'Name', 'DisplayName', 'ComputerName')
@@ -345,7 +345,7 @@ function Import-UIAOAzureMigrateReport {
             cores            = Get-UIAOFieldValue $row @('Cores', 'NumberOfCores')
             memory_mb        = Get-UIAOFieldValue $row @('Memory(MB)', 'MemoryInMB', 'MemoryMB')
             readiness        = Get-UIAOFieldValue $row @('Azure VM readiness', 'AzureReadiness', 'Readiness')
-            source_fields    = ConvertTo-UIAOSourceFields $row
+            source_fields    = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOImportEnvelope -SourceTool 'AzureMigrate' -SourceVersion $SourceVersion `
@@ -376,7 +376,7 @@ function Import-UIAOGPOAnalyticsReport {
     )
     $full = Assert-UIAOInputPath -Path $ReportPath
     $loaded = Read-UIAOSourceData -Path $full
-    $rows = Get-UIAORows -Data $loaded -PreferredArrayKeys @('value', 'results', 'groupPolicySettingMappings', 'settings')
+    $rows = Get-UIAORow -Data $loaded -PreferredArrayKeys @('value', 'results', 'groupPolicySettingMappings', 'settings')
     $records = foreach ($row in $rows) {
         [ordered]@{
             gpo_name        = Get-UIAOFieldValue $row @('GroupPolicyName', 'groupPolicyName', 'PolicyName', 'DisplayName', 'Name')
@@ -384,7 +384,7 @@ function Import-UIAOGPOAnalyticsReport {
             setting_category = Get-UIAOFieldValue $row @('settingCategory', 'Category', 'parentId')
             mdm_support     = Get-UIAOFieldValue $row @('mdmSupported', 'MdmSupported', 'MDMSupport', 'isMdmSupported')
             migration_state = Get-UIAOFieldValue $row @('migrationReadiness', 'MigrationReadiness', 'Status', 'state')
-            source_fields   = ConvertTo-UIAOSourceFields $row
+            source_fields   = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOImportEnvelope -SourceTool 'IntuneGPOAnalytics' -SourceVersion $SourceVersion `
@@ -394,6 +394,7 @@ function Import-UIAOGPOAnalyticsReport {
 
 
 function Import-UIAODefenderFindings {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Normalize a Defender for Identity Secure Score export into a UIAO
@@ -415,7 +416,7 @@ function Import-UIAODefenderFindings {
     )
     $full = Assert-UIAOInputPath -Path $ReportPath
     $loaded = Read-UIAOSourceData -Path $full
-    $rows = Get-UIAORows -Data $loaded -PreferredArrayKeys @('value', 'controlScores', 'findings', 'results')
+    $rows = Get-UIAORow -Data $loaded -PreferredArrayKeys @('value', 'controlScores', 'findings', 'results')
     $records = foreach ($row in $rows) {
         [ordered]@{
             control_name  = Get-UIAOFieldValue $row @('controlName', 'ControlName', 'control', 'Name', 'title')
@@ -423,7 +424,7 @@ function Import-UIAODefenderFindings {
             score         = Get-UIAOFieldValue $row @('score', 'Score', 'currentScore')
             max_score     = Get-UIAOFieldValue $row @('maxScore', 'MaxScore', 'max')
             status        = Get-UIAOFieldValue $row @('implementationStatus', 'status', 'Status', 'state')
-            source_fields = ConvertTo-UIAOSourceFields $row
+            source_fields = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOImportEnvelope -SourceTool 'DefenderForIdentity' -SourceVersion $SourceVersion `
@@ -454,7 +455,7 @@ function Import-UIAOSCuBAReport {
     )
     $full = Assert-UIAOInputPath -Path $ReportPath
     $loaded = Read-UIAOSourceData -Path $full
-    $rows = Get-UIAORows -Data $loaded -PreferredArrayKeys @('Results', 'results', 'Findings', 'findings', 'value')
+    $rows = Get-UIAORow -Data $loaded -PreferredArrayKeys @('Results', 'results', 'Findings', 'findings', 'value')
     $records = foreach ($row in $rows) {
         [ordered]@{
             baseline      = Get-UIAOFieldValue $row @('Baseline', 'baseline', 'Product', 'ProductName')
@@ -462,7 +463,7 @@ function Import-UIAOSCuBAReport {
             requirement   = Get-UIAOFieldValue $row @('Requirement', 'requirement', 'Description')
             result        = Get-UIAOFieldValue $row @('Result', 'result', 'Passed', 'Status')
             details       = Get-UIAOFieldValue $row @('Details', 'details', 'Reason', 'ReportDetails')
-            source_fields = ConvertTo-UIAOSourceFields $row
+            source_fields = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOImportEnvelope -SourceTool 'ScubaGear' -SourceVersion $SourceVersion `
@@ -497,7 +498,7 @@ function Import-UIAOADReconReport {
     )
     $full = Assert-UIAOInputPath -Path $ReportPath
     $loaded = Read-UIAOSourceData -Path $full
-    $rows = Get-UIAORows -Data $loaded -PreferredArrayKeys @('Computers', 'computers', 'value')
+    $rows = Get-UIAORow -Data $loaded -PreferredArrayKeys @('Computers', 'computers', 'value')
     $records = foreach ($row in $rows) {
         [ordered]@{
             name             = Get-UIAOFieldValue $row @('Name', 'DNSHostName', 'SamAccountName', 'ComputerName')
@@ -506,7 +507,7 @@ function Import-UIAOADReconReport {
             ip_address       = Get-UIAOFieldValue $row @('IPv4Address', 'IPAddress', 'IPv6Address')
             last_logon       = Get-UIAOFieldValue $row @('LastLogonDate', 'lastLogonTimestamp', 'LastLogon')
             enabled          = Get-UIAOFieldValue $row @('Enabled')
-            source_fields    = ConvertTo-UIAOSourceFields $row
+            source_fields    = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOImportEnvelope -SourceTool 'ADRecon' -SourceVersion $SourceVersion `
@@ -516,6 +517,7 @@ function Import-UIAOADReconReport {
 
 
 function Merge-UIAOAssessmentSources {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Correlate multiple normalized assessment envelopes into one sealed bundle.

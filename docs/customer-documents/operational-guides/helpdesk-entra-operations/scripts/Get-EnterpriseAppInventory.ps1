@@ -64,7 +64,7 @@ $sps = Get-MgServicePrincipal -All -Property 'id,appId,displayName,servicePrinci
 $inventory = foreach ($sp in $sps) {
     # Owners
     $owners = Get-MgServicePrincipalOwner -ServicePrincipalId $sp.Id -ErrorAction SilentlyContinue
-    $ownerUpns = @($owners | ForEach-Object { $_.AdditionalProperties.userPrincipalName }) -ne $null
+    $ownerUpns = @($owners | ForEach-Object { $_.AdditionalProperties.userPrincipalName }) | Where-Object { $null -ne $_ }
     $isOrphan  = ($owners.Count -eq 0)
 
     # Application permissions this SP HOLDS (appRoleAssignments granted to it).

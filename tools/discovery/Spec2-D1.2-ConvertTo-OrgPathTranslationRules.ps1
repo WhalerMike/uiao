@@ -118,7 +118,6 @@ Write-Host "`n  [1/5] Analyzing OU structure for OrgPath patterns..." -Foregroun
 
 $ouData = $raw.OUStructure.TopOUs
 $ouRules = [System.Collections.Generic.List[object]]::new()
-$ouConflicts = [System.Collections.Generic.List[object]]::new()
 
 foreach ($ou in $ouData) {
     $ouPath = $ou.OUPath
