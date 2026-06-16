@@ -19,6 +19,8 @@
 #>
 
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ShowDetails', Justification = 'Switch read inside the script-scoped Test-Command function to gate verbose stdout/stderr output on failures.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'StopOnFail', Justification = 'Switch read inside the script-scoped Test-Command function to abort the run on the first failing command.')]
 param(
     [switch]$ShowDetails,
     [switch]$StopOnFail

@@ -72,6 +72,8 @@ $Connectors = @{
 
 # --- Destination connectors (pluggable) -------------------------------------
 function New-ServiceNowWorkItem {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', 'body', Justification = 'Scaffolded ServiceNow REST shape; Invoke-RestMethod is intentionally commented pending endpoint configuration.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', 'uri', Justification = 'Scaffolded ServiceNow REST shape; Invoke-RestMethod is intentionally commented pending endpoint configuration.')]
     param([pscustomobject]$Request, [pscustomobject]$Rule)
     # Canonical ServiceNow Table API call. Left as a guarded scaffold because
     # it writes to your ITSM system of record.
@@ -90,6 +92,8 @@ function New-ServiceNowWorkItem {
 }
 
 function New-SamAccessRequest {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', 'cfg', Justification = 'Scaffolded SAM connector; $Request is part of the uniform pluggable connector signature.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Request', Justification = 'Scaffolded SAM connector; $Request is part of the uniform pluggable connector signature.')]
     param([pscustomobject]$Request, [pscustomobject]$Rule)
     # SailPoint ISC access-request scaffold. A2/A3 items flow through SAM
     # approval first; on approval SAM raises a ServiceNow RITM back to the team.
@@ -100,6 +104,7 @@ function New-SamAccessRequest {
 }
 
 function Send-ToEscalationQueue {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Request', Justification = 'Scaffolded connector; $Request is part of the uniform pluggable connector signature.')]
     param([pscustomobject]$Request, [pscustomobject]$Rule)
     Write-HelpDeskLog -Level WARN -Message "ESCALATE (out of Help Desk scope): $($Rule.Key) -> $($Rule.Approver)"
     return "Escalate:$($Rule.Approver) (stub)"

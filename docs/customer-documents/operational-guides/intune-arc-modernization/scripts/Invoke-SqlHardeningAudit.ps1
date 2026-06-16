@@ -27,7 +27,7 @@ $mod = Get-ChildItem -Path $PSScriptRoot, "$PSScriptRoot/../lib", "$PSScriptRoot
 if (-not $mod) { throw 'IntuneArcModernization.psm1 not found beside the script or in ../lib' }
 Import-Module $mod.FullName -Force
 
-$dangerous = Get-SqlDangerousConfigs
+$dangerous = Get-SqlDangerousConfig
 $inList = ($dangerous | ForEach-Object { "'$_'" }) -join ','
 
 $query = @"

@@ -78,6 +78,7 @@
 #>
 
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'D1InputFile', Justification = 'Documented optional Spec3-D1.1 cross-reference parameter, part of the uniform discovery-suite CLI signature; accepted for forward compatibility even where this script does not yet consume it.')]
 param(
     [string]$OutputPath = ".\output",
     [string]$DomainController,
