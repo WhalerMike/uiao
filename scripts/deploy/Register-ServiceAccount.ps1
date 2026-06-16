@@ -59,7 +59,7 @@ foreach ($spn in $spns) {
 
 # Grant read permissions on all user attributes
 # (Domain Users already has Read on most attrs; this grants the explicit right)
-$acl = Get-Acl "AD:\$AccountOU"
+Get-Acl "AD:\$AccountOU" | Out-Null
 Write-Host "  NOTE: Verify $AccountName has 'Read all user attributes' in AD delegation" -ForegroundColor Yellow
 
 Write-Host "`nSERVICE ACCOUNT PASSWORD (store in vault NOW — not shown again):" -ForegroundColor Red

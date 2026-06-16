@@ -54,8 +54,6 @@
     Hours of event log history to analyze. Default: 168 (7 days).
 .PARAMETER IncludeDCLogs
     If set, queries Security event logs on all DCs for LDAP bind events.
-.PARAMETER FirewallLogPath
-    Optional path to firewall/netflow logs (CSV) for network-based discovery.
 .EXAMPLE
     .\Spec3-D1.9-Get-LDAPBindAccountInventory.ps1 -IncludeDCLogs
     .\Spec3-D1.9-Get-LDAPBindAccountInventory.ps1 -D1InputFile .\output\D1.1.json -EventLogHours 720
@@ -72,8 +70,7 @@ param(
     [string]$SearchBase,
     [string]$D1InputFile,
     [int]$EventLogHours = 168,
-    [switch]$IncludeDCLogs,
-    [string]$FirewallLogPath
+    [switch]$IncludeDCLogs
 )
 
 $ErrorActionPreference = "Stop"

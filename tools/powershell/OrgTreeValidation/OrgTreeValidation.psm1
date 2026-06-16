@@ -362,6 +362,7 @@ function Export-OrgTreeSnapshot {
 
 
 function Compare-OrgTreeSnapshots {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Diffs two OrgTree snapshots; emits drift entries.

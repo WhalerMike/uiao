@@ -59,10 +59,6 @@
     If set, enumerates scheduled tasks under built-in accounts.
 .PARAMETER IncludeIISPools
     If set, enumerates IIS application pools under built-in accounts.
-.PARAMETER IncludeCOMPlus
-    If set, enumerates COM+ applications under built-in accounts.
-.PARAMETER MaxConcurrent
-    Maximum concurrent remote queries. Default: 10.
 .EXAMPLE
     .\Spec3-D1.11-Get-NetworkServiceAccountAudit.ps1 -TargetServers SERVER01,SERVER02
     .\Spec3-D1.11-Get-NetworkServiceAccountAudit.ps1 -D1InputFile .\output\D1.1.json -IncludeScheduledTasks
@@ -80,9 +76,7 @@ param(
     [string]$DomainController,
     [string]$SearchBase,
     [switch]$IncludeScheduledTasks,
-    [switch]$IncludeIISPools,
-    [switch]$IncludeCOMPlus,
-    [int]$MaxConcurrent = 10
+    [switch]$IncludeIISPools
 )
 
 $ErrorActionPreference = "Stop"

@@ -44,7 +44,7 @@ function New-ShellPage {
     $script:created++
 }
 
-function Fix-BrokenRef {
+function Repair-BrokenRef {
     param([string]$FilePath, [string]$Pattern, [string]$Replacement, [string]$Description)
     $fullPath = Join-Path $RepoRoot $FilePath
     if (-not (Test-Path $fullPath)) {
@@ -106,7 +106,7 @@ Write-Host "Group 2: Fix broken references in source files" -ForegroundColor Yel
 Write-Host ""
 
 # canon/corpus-status-dashboard.qmd -- remove link to deleted documents/index.qmd
-Fix-BrokenRef `
+Repair-BrokenRef `
     -FilePath "docs\docs\canon\corpus-status-dashboard.qmd" `
     -Pattern '\[([^\]]+)\]\(docs\\documents\\index\.qmd\)' `
     -Replacement '$1' `
@@ -116,35 +116,35 @@ Fix-BrokenRef `
 # (no change needed -- the shell page we created above resolves it)
 
 # canon/index.qmd -- remove references to archived canon/migration-plan.md
-Fix-BrokenRef `
+Repair-BrokenRef `
     -FilePath "docs\docs\canon\index.qmd" `
     -Pattern '\[([^\]]+)\]\(migration-plan\.md\)' `
     -Replacement '$1 *(archived)*' `
     -Description "replace migration-plan.md link (archived)"
 
 # canon/index.qmd -- remove references to archived canon/pdf-layout-spec.md
-Fix-BrokenRef `
+Repair-BrokenRef `
     -FilePath "docs\docs\canon\index.qmd" `
     -Pattern '\[([^\]]+)\]\(pdf-layout-spec\.md\)' `
     -Replacement '$1 *(archived)*' `
     -Description "replace pdf-layout-spec.md link (archived)"
 
 # canon/index.qmd -- fix adr/index.md -> adr/index.qmd (shell page now exists)
-Fix-BrokenRef `
+Repair-BrokenRef `
     -FilePath "docs\docs\canon\index.qmd" `
     -Pattern 'adr/index\.md' `
     -Replacement 'adr/index.qmd' `
     -Description "fix adr/index.md -> adr/index.qmd"
 
 # canon/index.qmd -- fix canonical-rules.md -> canonical-rules.qmd (shell page now exists)
-Fix-BrokenRef `
+Repair-BrokenRef `
     -FilePath "docs\docs\canon\index.qmd" `
     -Pattern 'canonical-rules\.md' `
     -Replacement 'canonical-rules.qmd' `
     -Description "fix canonical-rules.md -> canonical-rules.qmd"
 
 # adapter-authoring-tutorial.qmd -- fix adapter-development-guide.md -> .qmd
-Fix-BrokenRef `
+Repair-BrokenRef `
     -FilePath "docs\docs\adapter-authoring-tutorial.qmd" `
     -Pattern 'adapter-development-guide\.md' `
     -Replacement 'adapter-development-guide.qmd' `

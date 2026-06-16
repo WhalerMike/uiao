@@ -246,6 +246,7 @@ function Test-OrgPathFacetValue {
 
 
 function Test-OrgPathFacets {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Per-facet validation of all 10 named OrgPath slots on one Entra principal.

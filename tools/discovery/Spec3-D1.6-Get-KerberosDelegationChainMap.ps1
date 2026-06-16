@@ -417,7 +417,6 @@ Write-Host "    Edges: $($edges.Count)" -ForegroundColor Green
 Write-Host "  [3/7] Detecting multi-hop delegation chains..." -ForegroundColor Yellow
 
 $chains = [System.Collections.Generic.List[object]]::new()
-$visited = @{}
 
 # Build adjacency list (source → targets)
 $adjacency = @{}

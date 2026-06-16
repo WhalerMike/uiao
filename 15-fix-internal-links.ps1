@@ -41,7 +41,6 @@ foreach ($file in $qmdFiles) {
     # We only replace .md -> .qmd when the linked file actually exists as .qmd
     # in the repo. This avoids fixing links to truly external or missing files.
 
-    $original = $content
     $changed  = 0
 
     # Find all candidate .md references
@@ -58,11 +57,9 @@ foreach ($file in $qmdFiles) {
     foreach ($stem in $stems.Keys) {
         # Resolve relative to the containing file's directory
         $dir     = Split-Path $file.FullName -Parent
-        $mdPath  = Join-Path $dir "$stem.md"  -Resolve -ErrorAction SilentlyContinue
         $qmdPath = Join-Path $dir "$stem.qmd"
 
         # Also try absolute from repo root (for paths like docs\something)
-        $mdAbs  = Join-Path $RepoRoot "docs\$stem.md"
         $qmdAbs = Join-Path $RepoRoot "docs\$stem.qmd"
 
         $qmdExists = (Test-Path $qmdPath) -or (Test-Path $qmdAbs)
@@ -101,7 +98,6 @@ foreach ($dir in $otherDirs) {
     foreach ($file in $files) {
         $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
         if (-not $content) { continue }
-        $original = $content
         $changed  = 0
 
         $mdMatches = [regex]::Matches($content, '(?<=\]\(|href:\s{0,4})([^)\s"'']+?)\.md(#[^\s"'')]*)?(?=\)|$|\s|")')

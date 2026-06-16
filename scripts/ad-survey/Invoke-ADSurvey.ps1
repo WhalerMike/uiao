@@ -59,6 +59,7 @@ Import-Module ActiveDirectory -ErrorAction Stop
 # never-logged-in sentinel value 0 / 9223372036854775807)
 # ----------------------------------------------------------------
 function Get-AgeDays {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = '''Days'' is a unit, not a plural noun.')]
     param([object]$Value)
     if ($null -eq $Value) { return -1 }
     if ($Value -is [datetime]) {

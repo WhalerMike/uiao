@@ -248,10 +248,10 @@ $script:LmCompatibilityLevels = [ordered]@{
     0='Send LM & NTLM'; 1='Send LM & NTLM, use NTLMv2 if negotiated'; 2='Send NTLM only';
     3='Send NTLMv2 only'; 4='Send NTLMv2 only, DC refuses LM'; 5='Send NTLMv2 only, DC refuses LM & NTLM'
 }
-function Get-LmCompatibilityLevels { $script:LmCompatibilityLevels }
+function Get-LmCompatibilityLevel { $script:LmCompatibilityLevels }
 
 Export-ModuleMember -Function `
     Connect-ModernizationGraph, Connect-ModernizationAzure, Write-ModernizationLog, `
     Assert-GovernanceApproval, Get-ActuationLadder, Get-ModernizationDomains, `
     ConvertTo-OrgPathProposal, `
-    Get-SqlDangerousConfigs, Get-LmCompatibilityLevels
+    Get-SqlDangerousConfigs, Get-LmCompatibilityLevel

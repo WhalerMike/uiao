@@ -122,7 +122,7 @@ function Get-Frontmatter {
 # Body metrics: word count, headings, code blocks, image refs. Frontmatter
 # and fenced code blocks are stripped before word counting so prose density
 # isn't inflated by long code listings.
-function Get-BodyMetrics {
+function Get-BodyMetric {
     param([string]$Text)
 
     # Strip frontmatter.
@@ -171,7 +171,7 @@ $rows = @(foreach ($q in $qmds) {
     if (-not $text) { continue }
 
     $fm = Get-Frontmatter -Text $text
-    $m  = Get-BodyMetrics  -Text $text
+    $m  = Get-BodyMetric  -Text $text
 
     $rel = $q.FullName.Substring($Root.Length).TrimStart('\','/').Replace('\','/')
     $section = if ($rel -match '/') { ($rel -split '/')[0] } else { '(root)' }

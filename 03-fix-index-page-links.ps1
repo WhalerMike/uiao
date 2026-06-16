@@ -37,7 +37,7 @@ if ($DryRun) {
 $totalFixed = 0
 
 # ─── HELPER: Linkify table slugs ───
-function Convert-TableSlugs {
+function Convert-TableSlug {
     param(
         [string]$FilePath,
         [string]$SlugPattern,       # Regex to match the slug cell content
@@ -51,7 +51,6 @@ function Convert-TableSlugs {
     }
 
     $content = Get-Content -Path $FilePath -Raw -Encoding UTF8
-    $original = $content
 
     # Match table rows where the slug is plain text (not already a link)
     # Pattern: | `slug` | or | slug |
@@ -95,7 +94,7 @@ function Convert-TableSlugs {
 
 # ─── ADAPTER SPECS ───
 $adapterFile = Join-Path $docsPath "adapter-specs" "index.qmd"
-$count = Convert-TableSlugs `
+$count = Convert-TableSlug `
     -FilePath $adapterFile `
     -SlugPattern '`[a-z][-a-z0-9]*`' `
     -LinkTemplate '{slug}/{slug}.html' `
@@ -104,7 +103,7 @@ $totalFixed += $count
 
 # ─── VALIDATION SUITES (Adapters) ───
 $validationFile = Join-Path $docsPath "validation-suites" "index.qmd"
-$count = Convert-TableSlugs `
+$count = Convert-TableSlug `
     -FilePath $validationFile `
     -SlugPattern '`[a-z][-a-z0-9]*`' `
     -LinkTemplate 'adapters/{slug}/{slug}.html' `
@@ -113,7 +112,7 @@ $totalFixed += $count
 
 # ─── MODERNIZATION SPECS ───
 $modSpecFile = Join-Path $docsPath "modernization-specs" "index.qmd"
-$count = Convert-TableSlugs `
+$count = Convert-TableSlug `
     -FilePath $modSpecFile `
     -SlugPattern '`[a-z][-a-z0-9]*`' `
     -LinkTemplate '{slug}/{slug}.html' `
@@ -122,7 +121,7 @@ $totalFixed += $count
 
 # ─── CASE STUDIES ───
 $caseFile = Join-Path $docsPath "case-studies" "index.qmd"
-$count = Convert-TableSlugs `
+$count = Convert-TableSlug `
     -FilePath $caseFile `
     -SlugPattern '`[a-z][-a-z0-9]*`' `
     -LinkTemplate '{slug}.html' `
