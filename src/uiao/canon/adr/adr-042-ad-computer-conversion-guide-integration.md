@@ -1,7 +1,7 @@
 ---
 id: ADR-042
 title: "AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes"
-status: draft
+status: proposed
 date: 2026-04-20
 deciders:
   - governance-steward
@@ -26,7 +26,7 @@ published_at: docs/adr/adr-042-ad-computer-conversion-guide-integration.html
 
 ## Status
 
-**DRAFT — extends ADR-038 without superseding it.**
+**PROPOSED — extends ADR-038 without superseding it.**
 
 ADR-038 (Phase 4, device-plane OrgPath) shipped the *write-side*
 plumbing: the plane registry, the dual-transport adapter, the
