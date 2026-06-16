@@ -1,4 +1,4 @@
-# UIAOPlanGenerators — assessment-to-plan derivation (canon UIAO_183, ADR-094).
+﻿# UIAOPlanGenerators — assessment-to-plan derivation (canon UIAO_183, ADR-094).
 #
 # Consumer at the end of the assessment-to-plan toolchain (ADR-094 Decision 1).
 # Derives draft migration plans deterministically from the normalized,

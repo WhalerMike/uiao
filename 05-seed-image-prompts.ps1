@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   UIAO Fix 05 — Seed IMAGE-PROMPTS.md files and inject [IMAGE-NN:] placeholders
   into the top-priority documents so the NanoBanana pipeline can generate images.

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.4: IIS Application Pool Identity Audit
 .DESCRIPTION
@@ -253,6 +253,7 @@ $scanBlock = {
                     if ($formsAuth -eq 'Forms') { $authConfig.Forms = $true }
                 } catch {
                     # Auth config read may fail on some sites
+                    Write-Verbose "Suppressed error: $($_.Exception.Message)"
                 }
 
                 # Virtual directories / applications
@@ -267,7 +268,7 @@ $scanBlock = {
                             EnabledProtocols    = $app.enabledProtocols
                         }
                     }
-                } catch { }
+                } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
                 $siteInfo = [ordered]@{
                     Name              = $site.Name

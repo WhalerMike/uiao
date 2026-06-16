@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Audit the whole monorepo for lingering references to old paths
     (core/canon, core/schemas, core/rules, core/ksi) after the

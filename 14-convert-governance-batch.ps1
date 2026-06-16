@@ -1,4 +1,4 @@
-# 14-convert-governance-batch.ps1
+﻿# 14-convert-governance-batch.ps1
 # Converts the final LEGACY-DOCS files:
 #   - docs\docs\adapter-authoring-tutorial.md  (no academy version — only copy)
 #   - docs\docs\governance\*.md               (84 files — all legitimate spec content)

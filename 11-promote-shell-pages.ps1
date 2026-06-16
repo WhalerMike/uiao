@@ -1,4 +1,4 @@
-# 11-promote-shell-pages.ps1
+﻿# 11-promote-shell-pages.ps1
 # Promotes the 26 remaining 0-byte shell .md files to shell .qmd files.
 # Each gets a YAML header and a visible "in progress" callout so the page
 # renders instead of 404ing, and visitors know what's coming.

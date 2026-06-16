@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.10: Certificate-Based Authentication Audit
 .DESCRIPTION
@@ -349,7 +349,7 @@ foreach ($user in $allCertUsers.Values) {
                     IsSmartCard  = ($ekuList -contains "Smart Card Logon")
                     IsClientAuth = ($ekuList -contains "Client Authentication")
                 }
-            } catch { }
+            } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
         }
     }
 

@@ -1,4 +1,4 @@
-# 10-delete-micro-shells.ps1
+﻿# 10-delete-micro-shells.ps1
 # Deletes the 36 x 47-byte micro-shell files in docs\docs\governance\.
 # These are YAML-header-only placeholders with no body content — they were
 # created as scaffolding and never written. Deleting them is safe: they render

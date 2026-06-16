@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Inventory images per customer-documents subfolder; flag orphans and
     broken references.

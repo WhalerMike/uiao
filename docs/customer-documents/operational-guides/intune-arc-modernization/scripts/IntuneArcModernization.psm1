@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Shared library for the Intune + Azure Arc modernization toolkit
     (manual path and UIAO/OrgPath-governed path).

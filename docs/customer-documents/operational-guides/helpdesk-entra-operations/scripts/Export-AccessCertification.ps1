@@ -1,4 +1,4 @@
-#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications, Microsoft.Graph.Groups
+﻿#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications, Microsoft.Graph.Groups
 <#
 .SYNOPSIS
     Produce a per-application access roster for owner certification (the input

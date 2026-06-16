@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.3: Windows Service Credential Audit
 .DESCRIPTION
@@ -62,6 +62,8 @@
 #>
 
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '',
+    Justification = 'The $CredentialClass parameters are classification labels (e.g. DomainAccount, gMSA, sMSA, LocalAccount), not secrets. The rule false-positives on the substring "Credential"; a SecureString/PSCredential type would be incorrect for a category string.')]
 param(
     [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
     [string[]]$ComputerName = @($env:COMPUTERNAME),

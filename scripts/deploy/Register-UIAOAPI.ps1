@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Register-UIAOAPI.ps1
     Creates the IIS app pool and site for the UIAO API.

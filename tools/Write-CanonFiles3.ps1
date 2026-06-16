@@ -1,4 +1,4 @@
-# Write-CanonFiles3.ps1 — Creates D1.2 analysis scripts for all 3 specs
+﻿# Write-CanonFiles3.ps1 — Creates D1.2 analysis scripts for all 3 specs
 # Run from: C:\Users\whale\git\uiao\tools\
 # Usage:    powershell -ExecutionPolicy Bypass -File .\Write-CanonFiles3.ps1
 

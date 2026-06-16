@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   UIAO Fix 06 — Verify all fixes were applied correctly.
 

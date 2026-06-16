@@ -1,4 +1,4 @@
-@{
+﻿@{
     # PSScriptAnalyzer ruleset for the UIAO PowerShell surface (~149 .ps1,
     # 9 .psm1, 7 .psd1). Consumed by .github/workflows/pwsh-lint.yml.
     #

@@ -1,10 +1,12 @@
-<#
+﻿<#
 .SYNOPSIS
     Register-ServiceAccount.ps1
     Creates the UIAO API service account and registers its SPN.
     Run on a DC or machine with RSAT AD tools.
 #>
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '',
+    Justification = 'This script generates a fresh random password to provision a brand-new AD service account and surfaces it once for vaulting. There is no pre-existing secret being exposed; converting the generated plaintext to a SecureString is the only way to set the initial AccountPassword.')]
 param(
     [string]$AccountName    = "SVC-UIAO-API",
     [string]$AccountOU      = "OU=Service Accounts,DC=corp,DC=contoso,DC=com",

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   UIAO Fix 03 — Convert plain-text index table entries into clickable links.
 

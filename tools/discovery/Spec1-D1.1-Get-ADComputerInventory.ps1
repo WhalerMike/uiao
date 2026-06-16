@@ -1,4 +1,4 @@
-# UIAO Spec 1 — D1.1: AD Computer Object Inventory
+﻿# UIAO Spec 1 — D1.1: AD Computer Object Inventory
 # Full export of all computer objects from all AD domains/forests.
 # Collects: DN, OS, OS version, last logon timestamp, OU path,
 # managed-by, SPN list, BitLocker recovery keys present,

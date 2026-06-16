@@ -45,11 +45,11 @@ foreach ($file in $qmdFiles) {
     $changed  = 0
 
     # Find all candidate .md references
-    $matches = [regex]::Matches($content, '(?<=\]\(|href:\s{0,4})([^)\s"'']+?)\.md(#[^\s"'')]*)?(?=\)|$|\s|")')
+    $mdMatches = [regex]::Matches($content, '(?<=\]\(|href:\s{0,4})([^)\s"'']+?)\.md(#[^\s"'')]*)?(?=\)|$|\s|")')
 
     # Collect unique stems to check existence once
     $stems = @{}
-    foreach ($m in $matches) {
+    foreach ($m in $mdMatches) {
         $stem = $m.Groups[1].Value
         if (-not $stems.ContainsKey($stem)) { $stems[$stem] = $null }
     }
@@ -104,9 +104,9 @@ foreach ($dir in $otherDirs) {
         $original = $content
         $changed  = 0
 
-        $matches = [regex]::Matches($content, '(?<=\]\(|href:\s{0,4})([^)\s"'']+?)\.md(#[^\s"'')]*)?(?=\)|$|\s|")')
+        $mdMatches = [regex]::Matches($content, '(?<=\]\(|href:\s{0,4})([^)\s"'']+?)\.md(#[^\s"'')]*)?(?=\)|$|\s|")')
         $stems = @{}
-        foreach ($m in $matches) { $stems[$m.Groups[1].Value] = $null }
+        foreach ($m in $mdMatches) { $stems[$m.Groups[1].Value] = $null }
 
         foreach ($stem in $stems.Keys) {
             $fileDir = Split-Path $file.FullName -Parent

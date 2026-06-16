@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.2: Scheduled Task Credential Audit
 .DESCRIPTION
@@ -230,7 +230,7 @@ $scanScript = {
             try {
                 $taskInfo = Get-ScheduledTaskInfo -TaskName $task.TaskName -TaskPath $task.TaskPath -ErrorAction SilentlyContinue
             }
-            catch { }
+            catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
             # Principal (run-as)
             $runAs = $null
@@ -434,7 +434,7 @@ foreach ($task in $allTasks) {
         try {
             $lastRunAgeDays = [int]((Get-Date) - [DateTime]$task.LastRunTime).TotalDays
         }
-        catch { }
+        catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
     }
 
     # Activity classification
