@@ -4,6 +4,8 @@
 > Container Apps** (ADR-096). This sits alongside `deploy/windows-server/`
 > (the single-tenant IIS surface) — it does not replace it.
 
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FWhalerMike%2Fuiao%2Fmain%2Fdeploy%2Fazure%2Fbicep%2Fmain.bicep)
+
 ## Why Container Apps
 
 The SaaS plane is the "behind-the-scenes" governance runtime: it acquires

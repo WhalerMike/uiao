@@ -192,6 +192,19 @@ module saasApp 'modules/containerapp.bicep' = {
   }
 }
 
+// ---------------------------------------------------------------------
+// Alert rules (App Insights)
+// ---------------------------------------------------------------------
+module alerts 'modules/alerts.bicep' = {
+  name: 'alerts'
+  params: {
+    namePrefix: namePrefix
+    location: location
+    tags: tags
+    appInsightsId: monitoring.outputs.appInsightsId
+  }
+}
+
 output containerAppFqdn string = saasApp.outputs.fqdn
 output managedIdentityClientId string = identity.outputs.clientId
 output registryLoginServer string = registry.outputs.loginServer

@@ -121,3 +121,32 @@ jobs:
               uiao-${{ needs.build.outputs.version }}-py3-none-any.whl \
               --bundle uiao-${{ needs.build.outputs.version }}-py3-none-any.whl.sigstore
             ```
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/uiao/
+    permissions:
+      id-token: write  # required for PyPI trusted publisher (OIDC)
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: uiao-dist-${{ needs.build.outputs.tag }}
+          path: dist/
+
+      - name: Publish to PyPI (trusted publisher — no API token needed)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Trusted publisher is configured on PyPI at:
+          #   pypi.org/manage/project/uiao/settings/publishing/
+          # Publisher: GitHub Actions
+          #   Owner: WhalerMike  Repository: uiao
+          #   Workflow: release.yml  Environment: pypi
+          # No PYPI_API_TOKEN secret needed — OIDC handles auth.
+          packages-dir: dist/
+          skip-existing: true  # idempotent: safe to rerun on retry

@@ -14,7 +14,7 @@ from uiao.__version__ import __version__
 app = typer.Typer(
     name="uiao",
     help="UIAO: OSCAL compliance toolkit for US Government systems.",
-    add_completion=False,
+    add_completion=True,  # enables `uiao --install-completion` and `uiao --show-completion`
 )
 
 console = Console()
@@ -49,6 +49,7 @@ from uiao.cli.canon import canon_app  # noqa: E402
 from uiao.cli.conmon import conmon_app  # noqa: E402
 from uiao.cli.cql import cql_app  # noqa: E402
 from uiao.cli.directory import directory_app  # noqa: E402
+from uiao.cli.doctor import doctor_app  # noqa: E402
 from uiao.cli.enforcement import enforcement_app  # noqa: E402
 from uiao.cli.evidence import evidence_app  # noqa: E402
 from uiao.cli.generate import generate_app  # noqa: E402
@@ -62,10 +63,13 @@ from uiao.cli.reciprocity import reciprocity_app  # noqa: E402
 from uiao.cli.scuba import scuba_app  # noqa: E402
 from uiao.cli.substrate import substrate_app  # noqa: E402
 from uiao.cli.tenant import tenant_app  # noqa: E402
+from uiao.cli.upgrade import upgrade_app  # noqa: E402
 from uiao.cli.zta import zta_app  # noqa: E402
 
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(canon_app, name="canon")
+app.add_typer(doctor_app, name="doctor")
+app.add_typer(upgrade_app, name="upgrade")
 app.add_typer(conmon_app, name="conmon")
 app.add_typer(cql_app, name="cql")
 app.add_typer(directory_app, name="directory")
