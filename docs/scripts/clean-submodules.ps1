@@ -1,22 +1,21 @@
 Write-Host "Scanning for stray submodules..."
 
 # Get submodule list (if any)
- = git submodule status 2>
+$status = git submodule status 2>$null
 
-if (0 -ne 0 -or  -eq  -or .Trim() -eq "") {
+if ($LASTEXITCODE -ne 0 -or $null -eq $status -or $status.Trim() -eq "") {
     Write-Host "No submodules detected."
     exit 0
 }
 
- =  -split "
-" | ForEach-Object {
-    ( -split " ")[1]
+$submodules = $status -split "`n" | ForEach-Object {
+    ($_ -split " ")[1]
 }
 
-foreach ( in ) {
-    Write-Host "Removing submodule: "
-    git rm -f 
-    Remove-Item -Recurse -Force  -ErrorAction SilentlyContinue
+foreach ($sub in $submodules) {
+    Write-Host "Removing submodule: $sub"
+    git rm -f $sub
+    Remove-Item -Recurse -Force $sub -ErrorAction SilentlyContinue
 }
 
 git add .

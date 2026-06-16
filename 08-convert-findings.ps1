@@ -1,4 +1,4 @@
-# 08-convert-findings.ps1
+﻿# 08-convert-findings.ps1
 # P1 fix: converts all .md files in docs\findings\ to .qmd and adds YAML headers.
 # Safe to rerun — skips files that are already .qmd or already have a YAML header.
 #

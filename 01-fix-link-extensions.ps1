@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   UIAO Fix 01 — Fix .qmd/.md link extensions in document content.
 

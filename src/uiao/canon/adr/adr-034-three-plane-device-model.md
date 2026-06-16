@@ -1,7 +1,7 @@
 ---
 id: ADR-031
 title: "Three-Plane Device Model and OrgPath Plane-Aware Architecture"
-status: proposed
+status: accepted
 date: 2026-04-20
 deciders:
   - governance-steward
@@ -27,7 +27,7 @@ published_at: docs/adr/adr-034-three-plane-device-model.html
 
 ## Status
 
-Proposed
+Accepted — 2026-06-15
 
 ## Context
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 1 — D1.6: BitLocker & LAPS State Assessment
 .DESCRIPTION
@@ -181,6 +181,7 @@ foreach ($comp in $allComputers) {
         }
     } catch {
         # Permission denied or other error — note it
+        Write-Verbose "Suppressed error: $($_.Exception.Message)"
     }
 
     # ── LAPS ──
@@ -212,7 +213,7 @@ foreach ($comp in $allComputers) {
             # Estimate password age (default LAPS rotation = 30 days)
             $lapsState.PasswordAge = [int]((Get-Date) - $expDate.AddDays(-30)).TotalDays
             $lapsState.IsCompliant = ($lapsState.PasswordAge -le 45) # 30 + 15 grace
-        } catch { }
+        } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
     } elseif ($legacyPwd) {
         $lapsState.HasLegacyLAPS = $true
         $lapsState.HasAnyLAPS = $true
@@ -233,7 +234,7 @@ foreach ($comp in $allComputers) {
             $lapsState.IsExpired = ($winLapsExp -lt (Get-Date))
             $lapsState.PasswordAge = [int]((Get-Date) - $winLapsExp.AddDays(-30)).TotalDays
             $lapsState.IsCompliant = ($lapsState.PasswordAge -le 45)
-        } catch { }
+        } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
         $lapsState.PasswordVersion = $winLapsVer
         $lapsState.IsEncrypted = ($null -ne $winLapsEnc)
     } elseif ($winLapsVer) {
@@ -330,13 +331,13 @@ try {
     $schema = Get-ADObject -SearchBase (Get-ADRootDSE).schemaNamingContext `
         -Filter { Name -eq 'ms-Mcs-AdmPwd' } -ErrorAction SilentlyContinue
     $lapsSchemaPresent.LegacyLAPS = ($null -ne $schema)
-} catch { }
+} catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
 try {
     $schema = Get-ADObject -SearchBase (Get-ADRootDSE).schemaNamingContext `
         -Filter { Name -eq 'msLAPS-PasswordExpirationTime' } -ErrorAction SilentlyContinue
     $lapsSchemaPresent.WindowsLAPS = ($null -ne $schema)
-} catch { }
+} catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
 Write-Host "    Legacy LAPS schema: $(if ($lapsSchemaPresent.LegacyLAPS) { 'Present' } else { 'Not found' })" -ForegroundColor DarkGray
 Write-Host "    Windows LAPS schema: $(if ($lapsSchemaPresent.WindowsLAPS) { 'Present' } else { 'Not found' })" -ForegroundColor DarkGray

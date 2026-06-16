@@ -1,4 +1,4 @@
-@{
+﻿@{
     RootModule        = 'OrgPathTools.psm1'
     ModuleVersion     = '1.0.0'
     GUID              = '7c0f8a4c-0d9e-4b3a-9c6a-5e2d8f4a6c3b'

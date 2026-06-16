@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 1 — D1.5: Kerberos SPN Inventory
 .DESCRIPTION

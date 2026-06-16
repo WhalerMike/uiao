@@ -64,7 +64,7 @@ This RFC is the authority for UIAO's CA-7 pathway posture, recorded in:
 ## Notable commenter positions
 
 Summarized in UIAO_132 §6. The repo owner's comment on the
-point-in-time SCuBA / BOD 25-01 gap is answered by the Drift Engine
+point-in-time SCuBA / [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) gap is answered by the Drift Engine
 (UIAO_110) per ADR-043 D6 and UIAO_132 §4.
 
 Do not modify files in this folder directly — treat as vendor/reference.

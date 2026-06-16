@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 2 — D1.4: HR-to-On-Prem AD Attribute Mapping Matrix
 .DESCRIPTION

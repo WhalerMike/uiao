@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.6: Kerberos Delegation Chain Map
 .DESCRIPTION

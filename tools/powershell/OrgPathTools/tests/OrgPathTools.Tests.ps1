@@ -1,4 +1,4 @@
-# Pester tests for OrgPathTools — Model C per-facet PowerShell wrapper (ADR-084 §C8).
+﻿# Pester tests for OrgPathTools — Model C per-facet PowerShell wrapper (ADR-084 §C8).
 # Tests run against a fixture codebook (no real Python required).
 
 BeforeAll {

@@ -1,4 +1,4 @@
-# UIAOSqlServerMigration — SQL Server identity-transformation automation
+﻿# UIAOSqlServerMigration — SQL Server identity-transformation automation
 # (canon: UIAO_135 Transformation #7; ADR-002, ADR-004, ADR-068, ADR-091).
 #
 # The shipped automation behind the "Implementation Companion" runbooks for the

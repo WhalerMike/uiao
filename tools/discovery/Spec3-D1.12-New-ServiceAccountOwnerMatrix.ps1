@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 3 — D1.12: Service Account Owner Accountability Matrix
 .DESCRIPTION
@@ -465,9 +465,9 @@ foreach ($key in @($registry.Keys)) {
                         $acct.OwnerStatus = "Owned"
                         continue
                     }
-                } catch { }
+                } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
             }
-        } catch { }
+        } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
     }
 
     # ── Method 3: Description field parsing ──
@@ -500,7 +500,7 @@ foreach ($key in @($registry.Keys)) {
                             $acct.OwnerConfidence = 80
                             $acct.OwnerStatus = "Owned"
                         }
-                    } catch { }
+                    } catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
                 }
                 break
             }

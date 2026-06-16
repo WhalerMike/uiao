@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   UIAO Fix 02 — Add missing documents to _quarto.yml sidebar.
 

@@ -1,4 +1,4 @@
-# Write-CanonFiles7.ps1 — Creates D1.6 discovery scripts for all 3 specs
+﻿# Write-CanonFiles7.ps1 — Creates D1.6 discovery scripts for all 3 specs
 # Run from: C:\Users\whale\git\uiao\tools\
 # Usage:    powershell -ExecutionPolicy Bypass -File .\Write-CanonFiles7.ps1
 

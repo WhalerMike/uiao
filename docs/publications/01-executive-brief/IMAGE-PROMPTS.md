@@ -50,7 +50,7 @@ A split-screen illustration. LEFT SIDE labeled "Before" (in muted red/gray): A c
 **Placement:** In the "How It Works" section, after the paragraph about three layers of rules.
 
 **Prompt:**
-A layered stack diagram showing three horizontal layers, each translucent and stacked like glass shelves. BOTTOM LAYER (widest, navy blue): "FedRAMP Moderate Rev 5 — 323 Controls" — represented by a grid of small shield icons. MIDDLE LAYER (medium, teal): "CISA SCuBA & BOD 25-01" — represented by a governance seal or official stamp icon. TOP LAYER (narrowest, steel gray): "Your Agency Policies" — represented by a small building or agency seal icon. An arrow runs vertically through all three layers labeled "Every configuration checked against all three." The layers are clean, not cluttered. White background. No people. Widescreen (16:9). Style: clean isometric or flat layered diagram.
+A layered stack diagram showing three horizontal layers, each translucent and stacked like glass shelves. BOTTOM LAYER (widest, navy blue): "FedRAMP Moderate Rev 5 — 323 Controls" — represented by a grid of small shield icons. MIDDLE LAYER (medium, teal): "CISA SCuBA & [BOD 25-01](https://cyber.dhs.gov/bod/25-01/)" — represented by a governance seal or official stamp icon. TOP LAYER (narrowest, steel gray): "Your Agency Policies" — represented by a small building or agency seal icon. An arrow runs vertically through all three layers labeled "Every configuration checked against all three." The layers are clean, not cluttered. White background. No people. Widescreen (16:9). Style: clean isometric or flat layered diagram.
 
 ---
 

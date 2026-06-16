@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Compare live Conditional Access policies against a saved JSON baseline (read-only).

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 1 — D1.4: Authentication Protocol Audit
 .DESCRIPTION
@@ -333,20 +333,20 @@ try {
         $protectedUsers = @($puMembers | Where-Object { $_.objectClass -eq 'computer' })
     }
 }
-catch { }
+catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
 # Check Authentication Policy Silos
 $authPolicies = @()
 try {
     $authPolicies = @(Get-ADAuthenticationPolicy -Filter * @adParams -ErrorAction SilentlyContinue)
 }
-catch { }
+catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
 $authPolicySilos = @()
 try {
     $authPolicySilos = @(Get-ADAuthenticationPolicySilo -Filter * @adParams -ErrorAction SilentlyContinue)
 }
-catch { }
+catch { Write-Verbose "Suppressed error: $($_.Exception.Message)" }
 
 $ntlmSummary = [ordered]@{
     ProtectedUsersComputers      = $protectedUsers.Count

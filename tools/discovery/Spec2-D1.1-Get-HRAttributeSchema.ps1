@@ -1,4 +1,4 @@
-# UIAO Spec 2 — D1.1 HR Attribute Schema Discovery
+﻿# UIAO Spec 2 — D1.1 HR Attribute Schema Discovery
 # Full discovery of HR/EMPL-relevant attributes on Active Directory user objects.
 # Builds schema table with attribute name, type, and sample values.
 

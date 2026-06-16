@@ -1,4 +1,4 @@
-# Write-CanonFiles8.ps1 — Creates D1.7-D1.12 discovery scripts (final Phase 1 batch)
+﻿# Write-CanonFiles8.ps1 — Creates D1.7-D1.12 discovery scripts (final Phase 1 batch)
 # Run from: C:\Users\whale\git\uiao\tools\
 # Usage:    powershell -ExecutionPolicy Bypass -File .\Write-CanonFiles8.ps1
 

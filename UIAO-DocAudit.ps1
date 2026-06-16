@@ -1,4 +1,4 @@
-# UIAO-DocAudit.ps1
+﻿# UIAO-DocAudit.ps1
 # Scans the uiao repo and classifies every .md and .qmd file.
 # Outputs a CSV to the repo root and prints a summary to the console.
 #

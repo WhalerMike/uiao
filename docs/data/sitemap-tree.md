@@ -122,8 +122,6 @@
 - [Scan Artifact Redaction Policy for Multi-Agency Distribution](adr/adr-045-scan-redaction-policy.html)
 - [CLI Surface Convention: Sub-App-per-Domain](adr/adr-046-cli-surface-convention.html)
 - [ADR-047: Continuous Monitoring Program and Customer Documentation Platform Architecture](adr/adr-047-continuous-monitoring-program.html)
-- [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-047-fedramp-20x-integration.html)
-- [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-047-network-aaa-adapter-registration.html)
 - [ADR‑048: OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes](adr/adr-048-orgpath-attribute-selection.html)
 - [Microsoft Modernization Adapter Coverage Expansion — Defender Suite, Azure Migrate, Azure Policy for Arc, Entra Governance, Entra Workload ID, Intune-Modernization](adr/adr-049-microsoft-adapter-coverage-expansion.html)
 - [D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices](adr/adr-050-reference-middleware-implementation-choices.html)
@@ -174,6 +172,8 @@
 - [Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG](adr/adr-103-generated-illustrative-raster.html)
 - [E911 Compliance Layer — Dispatchable-Location Completeness over LocPath, with RTLS-fed Dynamic Enhancement](adr/adr-104-e911-compliance-layer.html)
 - [Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery](adr/adr-105-operational-guide-kit-conventions.html)
+- [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-106-fedramp-20x-integration.html)
+- [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-107-network-aaa-adapter-registration.html)
 
 ## Schema Reference
 

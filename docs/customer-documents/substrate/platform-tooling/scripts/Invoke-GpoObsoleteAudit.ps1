@@ -1,4 +1,4 @@
-#Requires -Modules GroupPolicy, ActiveDirectory
+﻿#Requires -Modules GroupPolicy, ActiveDirectory
 <#
 .SYNOPSIS
     Audits all GPOs in the domain and flags obsolete or misconfigured objects.

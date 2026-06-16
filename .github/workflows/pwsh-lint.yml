@@ -1,0 +1,172 @@
+name: PowerShell Lint
+
+# Two complementary gates over the PowerShell surface (~149 .ps1, 9 .psm1,
+# 7 .psd1), neither of which existed before — see the "how can I be sure the
+# scripts will run in production" gap analysis:
+#
+#   parse   — syntax smoke check via the PowerShell language parser. Catches
+#             the "fails immediately on first run" class (unterminated
+#             strings/blocks, bad tokens) across every runtime script.
+#             BLOCKING: a parse error is an unambiguous, this-script-is-broken
+#             signal.
+#
+#   analyze — PSScriptAnalyzer static analysis (uninitialized vars, bad
+#             cmdlet usage, unsafe patterns). NON-BLOCKING for now
+#             (continue-on-error) to capture a baseline without instantly
+#             reddening CI, per the ruff/mypy gate-restoration pattern in
+#             AGENTS.md. Flip to blocking by removing `continue-on-error`
+#             once the baseline is cleared.
+#
+# Both run on ubuntu-latest with pwsh (PowerShell 7) — they only read and
+# parse scripts, they never execute them.
+
+on:
+  pull_request:
+    paths:
+      - '**/*.ps1'
+      - '**/*.psm1'
+      - '**/*.psd1'
+      - 'PSScriptAnalyzerSettings.psd1'
+      - '.github/workflows/pwsh-lint.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.ps1'
+      - '**/*.psm1'
+      - '**/*.psd1'
+      - 'PSScriptAnalyzerSettings.psd1'
+      - '.github/workflows/pwsh-lint.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  parse:
+    name: Syntax smoke check (parser)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Parse every runtime .ps1 / .psm1
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Scratch / draft trees hold fragments and work-in-progress that
+          # AGENTS.md classifies as non-canon — exclude them from the hard
+          # syntax gate so a half-finished snippet can't block unrelated PRs.
+          $excludeSegments = @(
+            '/inbox/',
+            '/downloads/',
+            '/session-logs/',
+            '/TedTalk/'
+          )
+
+          $files = Get-ChildItem -Path . -Recurse -File -Include '*.ps1', '*.psm1' |
+            Where-Object {
+              $p = ($_.FullName -replace '\\', '/')
+              -not ($excludeSegments | Where-Object { $p -like "*$_*" })
+            }
+
+          $failed = [System.Collections.Generic.List[string]]::new()
+          foreach ($f in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $f.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors -and $errors.Count -gt 0) {
+              $rel = [System.IO.Path]::GetRelativePath((Get-Location).Path, $f.FullName)
+              $failed.Add("$rel ($($errors.Count) error(s), first at line $($errors[0].Extent.StartLineNumber))")
+              foreach ($e in $errors) {
+                $line = $e.Extent.StartLineNumber
+                $msg = $e.Message -replace "`r?`n", ' '
+                # GitHub annotation (file-linked) ...
+                Write-Host "::error file=$rel,line=$line::$msg"
+                # ... plus a plain stdout line so the filename is visible in
+                # the raw log too (annotations strip the file= metadata).
+                Write-Host "  $rel : line $line : $msg"
+              }
+            }
+          }
+
+          Write-Host ""
+          Write-Host "Parsed $($files.Count) script(s); $($failed.Count) with syntax errors."
+          if ($failed.Count -gt 0) {
+            Write-Host "Scripts that failed to parse:"
+            $failed | ForEach-Object { Write-Host " - $_" }
+            Write-Host "::error::$($failed.Count) script(s) failed to parse. See the list above."
+            exit 1
+          }
+
+  analyze:
+    name: PSScriptAnalyzer (non-blocking baseline)
+    runs-on: ubuntu-latest
+    # Non-blocking until the warning baseline is burned down; remove this
+    # line to make the static-analysis gate blocking.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Pin PSScriptAnalyzer version
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.22.0 `
+            -Force -SkipPublisherCheck -Scope CurrentUser
+          Get-Module -ListAvailable PSScriptAnalyzer |
+            Select-Object Name, Version
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Same scratch/draft exclusions as the parse gate.
+          $excludeSegments = @(
+            '/inbox/',
+            '/downloads/',
+            '/session-logs/',
+            '/TedTalk/'
+          )
+
+          $files = Get-ChildItem -Path . -Recurse -File -Include '*.ps1', '*.psm1', '*.psd1' |
+            Where-Object {
+              $p = ($_.FullName -replace '\\', '/')
+              -not ($excludeSegments | Where-Object { $p -like "*$_*" })
+            }
+
+          $settings = Join-Path (Get-Location) 'PSScriptAnalyzerSettings.psd1'
+          $results = $files | ForEach-Object {
+            Invoke-ScriptAnalyzer -Path $_.FullName -Settings $settings
+          }
+
+          foreach ($r in $results) {
+            $sev = switch ($r.Severity) {
+              'Error'   { 'error' }
+              'Warning' { 'warning' }
+              default   { 'notice' }
+            }
+            $rel = [System.IO.Path]::GetRelativePath((Get-Location).Path, $r.ScriptPath)
+            Write-Host "::$sev file=$rel,line=$($r.Line)::[$($r.RuleName)] $($r.Message)"
+          }
+
+          $errors   = @($results | Where-Object Severity -eq 'Error').Count
+          $warnings = @($results | Where-Object Severity -eq 'Warning').Count
+          Write-Host ""
+          Write-Host "PSScriptAnalyzer baseline: $errors error(s), $warnings warning(s) across $($files.Count) file(s)."
+
+          # Group the baseline by rule so the burn-down has a worklist.
+          if ($results) {
+            $results |
+              Group-Object RuleName |
+              Sort-Object Count -Descending |
+              Format-Table Count, Name -AutoSize |
+              Out-String |
+              Write-Host
+          }
+
+          # The job is currently non-blocking (continue-on-error at the job
+          # level), so this exit code is advisory. When the gate is flipped
+          # to blocking, errors should fail the run.
+          if ($errors -gt 0) { exit 1 }

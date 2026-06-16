@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Initialize-UIAOCanonStructure.ps1
     Scaffolds the full UIAO Governance Canon directory structure across
@@ -44,6 +44,7 @@ $script:DirsSkipped  = 0
 # Helper: create a directory if it does not exist
 # ---------------------------------------------------------------------------
 function New-Dir {
+    [CmdletBinding(SupportsShouldProcess)]
     param([string]$Path)
     if (Test-Path $Path) {
         Write-Host "  [SKIP DIR]  $Path" -ForegroundColor DarkGray
@@ -61,6 +62,7 @@ function New-Dir {
 # Helper: create a stub file if it does not exist
 # ---------------------------------------------------------------------------
 function New-Stub {
+    [CmdletBinding(SupportsShouldProcess)]
     param([string]$Path, [string]$Content)
     if (Test-Path $Path) {
         Write-Host "  [SKIP FILE] $Path" -ForegroundColor DarkGray
@@ -78,6 +80,7 @@ function New-Stub {
 # Helper: back up mkdocs.yml with timestamp
 # ---------------------------------------------------------------------------
 function Backup-MkDocs {
+    [CmdletBinding(SupportsShouldProcess)]
     param([string]$MkDocsPath)
     if (Test-Path $MkDocsPath) {
         $ts     = Get-Date -Format "yyyyMMdd-HHmmss"

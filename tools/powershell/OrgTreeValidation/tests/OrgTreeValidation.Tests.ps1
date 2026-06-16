@@ -1,4 +1,4 @@
-# Pester 5.x tests for OrgTreeValidation.psm1.
+﻿# Pester 5.x tests for OrgTreeValidation.psm1.
 #
 # Coverage scope:
 #   - Test-OrgPathFormat            (offline regex; fully covered)

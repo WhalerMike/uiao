@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Turn a Microsoft Zero Trust Assessment report into an analytics dashboard,
     Excel workbook, and Power BI-ready dataset.

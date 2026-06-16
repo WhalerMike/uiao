@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 2 — D1.3: Attribute Mapping Matrix (HR → Entra ID)
 .DESCRIPTION

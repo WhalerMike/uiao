@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     UIAO Spec 2 — D1.2: HR-to-OrgPath Translation Rules Generator
 .DESCRIPTION

@@ -1,4 +1,4 @@
-# UIAOIdentityAssessment — hybrid identity assessment (canon UIAO_181, ADR-094).
+﻿# UIAOIdentityAssessment — hybrid identity assessment (canon UIAO_181, ADR-094).
 #
 # Producer in the assessment-to-plan toolchain (ADR-094 Decision 1). Inventories
 # Entra ID via Microsoft Graph and reconciles it against on-prem AD, emitting
