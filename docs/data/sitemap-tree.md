@@ -699,13 +699,6 @@
   - [Cloud Boundary — Case Study](customer-documents/case-studies/cloud-boundary-case-study.html)
   - [Federal Modernization — Case Study](customer-documents/case-studies/federal-modernization-case-study.html)
 
-## TED Talk
-
-### The Hidden Cost of Progress
-
-- [The Hidden Cost of Progress](TedTalk/index.html)
-- [TED Talk — Full Script](TedTalk/script.html)
-
 ## About this repository
 
 ### Project documents
