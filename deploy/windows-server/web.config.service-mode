@@ -1,0 +1,86 @@
+<!-- ===================================================================
+     deploy/windows-server/web.config.service-mode
+     IIS reverse-proxy configuration for UIAO when running as a
+     Windows Service (UIAOService) rather than via HttpPlatformHandler.
+
+     Use this file instead of web.config when:
+       - The UIAO API is installed as a Windows Service (uiao-service install)
+       - You want the service to survive IIS restarts independently
+       - You are deploying via the MSI installer (Phase 2)
+
+     The UIAOService binds to UIAO_SERVICE_PORT (default 8001) on loopback.
+     IIS ARR reverse-proxies all requests to that port.
+     IIS still handles TLS termination and Windows Authentication.
+     =================================================================== -->
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <system.webServer>
+
+    <!-- ARR reverse proxy — forward all requests to UIAOService on loopback -->
+    <rewrite>
+      <rules>
+        <!-- HTTP to HTTPS redirect (belt-and-suspenders; binding should be HTTPS-only) -->
+        <rule name="HTTP to HTTPS" stopProcessing="true">
+          <match url="(.*)" />
+          <conditions>
+            <add input="{HTTPS}" pattern="^OFF$" />
+          </conditions>
+          <action type="Redirect"
+                  url="https://{HTTP_HOST}/{R:1}"
+                  redirectType="Permanent" />
+        </rule>
+
+        <!-- Proxy all HTTPS requests to UIAOService -->
+        <rule name="Proxy to UIAOService" stopProcessing="true">
+          <match url="(.*)" />
+          <conditions>
+            <add input="{HTTPS}" pattern="^ON$" />
+          </conditions>
+          <action type="Rewrite" url="http://127.0.0.1:8001/{R:1}" />
+        </rule>
+      </rules>
+    </rewrite>
+
+    <!-- ARR proxy mode must be enabled at the server level:
+         Run once: Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'
+                   -filter 'system.webServer/proxy' -name enabled -value True    -->
+
+    <!-- ---------------------------------------------------------------
+         Security: Windows Authentication only
+         --------------------------------------------------------------- -->
+    <security>
+      <authentication>
+        <anonymousAuthentication enabled="false" />
+        <windowsAuthentication enabled="true">
+          <providers>
+            <add value="Negotiate" />
+            <add value="NTLM" />
+          </providers>
+        </windowsAuthentication>
+        <basicAuthentication enabled="false" />
+        <digestAuthentication enabled="false" />
+      </authentication>
+      <requestFiltering removeServerHeader="true" />
+    </security>
+
+    <!-- ---------------------------------------------------------------
+         Response headers — security hardening
+         --------------------------------------------------------------- -->
+    <httpProtocol>
+      <customHeaders>
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="X-Frame-Options" value="DENY" />
+        <add name="X-XSS-Protection" value="1; mode=block" />
+        <add name="Strict-Transport-Security"
+             value="max-age=31536000; includeSubDomains" />
+        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+        <add name="Permissions-Policy"
+             value="geolocation=(), microphone=(), camera=()" />
+        <remove name="X-Powered-By" />
+      </customHeaders>
+    </httpProtocol>
+
+    <httpLogging dontLog="false" />
+
+  </system.webServer>
+</configuration>

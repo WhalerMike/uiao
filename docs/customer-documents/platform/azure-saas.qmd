@@ -13,6 +13,8 @@ format:
   html:
     toc: true
     toc-depth: 3
+  docx:
+    toc: true
 ---
 
 # UIAO Azure SaaS {.unnumbered}
@@ -150,6 +152,8 @@ Without `UIAO_SAAS_DATABASE_URL` the runtime falls back to an **in-memory**
 tenant registry — useful for local dev, never durable.
 
 ## 7. Deploy
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FWhalerMike%2Fuiao%2Fmain%2Fdeploy%2Fazure%2Fbicep%2Fmain.bicep)
 
 The CI workflow `.github/workflows/azure-saas-deploy.yml` is **manual-
 dispatch only**. To deploy by hand with the Azure CLI:
@@ -322,6 +326,337 @@ through the correct cloud-specific door.
 > shared is the substrate model and the engine that governs it. That is the
 > "one plane" Book 18 §6 defends — and the SQL Server vertical above (§13) is
 > the first worked consumer of it.
+
+## 14. Entra app registration walkthrough
+
+This section expands §5 prerequisite 2 into actionable steps.
+
+### 14.1 Create the multi-tenant app registration
+
+In the [Entra admin center](https://entra.microsoft.com) under
+**App registrations → New registration**:
+
+| Field | Value |
+|---|---|
+| Name | `UIAO Governance SaaS` |
+| Supported account types | **Accounts in any organizational directory (multi-tenant)** |
+| Redirect URI | Leave blank (no user sign-in flow) |
+
+After creating the registration, note the **Application (client) ID** —
+this becomes `UIAO_SAAS_APP_CLIENT_ID`.
+
+### 14.2 Add API permissions (application permissions)
+
+Under **API permissions → Add a permission → Microsoft Graph → Application
+permissions**, add:
+
+| Permission | Why |
+|---|---|
+| `Directory.Read.All` | Read users, groups, OUs, devices |
+| `Device.Read.All` | Device inventory for OrgPath encoding |
+| `GroupMember.Read.All` | Group membership enumeration |
+
+Under **Azure Service Management → Application permissions**, add:
+
+| Permission | Why |
+|---|---|
+| `user_impersonation` | Arc resource tagging (if Arc writeback enabled) |
+
+After adding: **Grant admin consent** for your publisher tenant. Customer
+tenants grant consent through the admin-consent URL generated at onboarding.
+
+### 14.3 Expose an API (for inbound token audience)
+
+Under **Expose an API → Application ID URI**, set:
+
+```
+api://uiao
+```
+
+This value becomes `UIAO_SAAS_API_AUDIENCE`. Customers' tokens must carry
+this audience.
+
+### 14.4 Define the admin role (control plane)
+
+Under **App roles → Create app role**:
+
+| Field | Value |
+|---|---|
+| Display name | `UIAO SaaS Admin` |
+| Allowed member types | Applications |
+| Value | `UIAO.SaaS.Admin` |
+| Description | `Allows driving the UIAO SaaS control plane` |
+
+Assign this role to the identities (users or service principals) that will
+drive `POST /control/v1/tenants` and lifecycle operations.
+
+### 14.5 OIDC federation for GitHub Actions
+
+Under **Certificates & secrets → Federated credentials → Add credential**:
+
+| Field | Value |
+|---|---|
+| Federated credential scenario | GitHub Actions |
+| Organization | `WhalerMike` |
+| Repository | `uiao` |
+| Entity type | Environment |
+| GitHub environment name | `saas-prod` (or `saas-dev`, `saas-test`) |
+| Name | `uiao-saas-prod` |
+
+Repeat for each environment. Add the following GitHub secrets to the
+matching environment:
+
+| Secret | Value |
+|---|---|
+| `AZURE_CLIENT_ID` | App registration client ID |
+| `AZURE_TENANT_ID` | Publisher tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Target Azure subscription ID |
+| `AZURE_RESOURCE_GROUP` | Target resource group name |
+| `PG_ADMIN_PASSWORD` | Postgres admin password (store in Key Vault too) |
+
+---
+
+## 15. Post-deployment validation
+
+After the deploy workflow completes or after a manual `az deployment group create`,
+run these checks to confirm the deployment is healthy.
+
+### 15.1 Container App health
+
+```bash
+# Get the Container App FQDN
+FQDN=$(az containerapp show -g <rg> -n uiao-saas --query properties.configuration.ingress.fqdn -o tsv)
+echo "App FQDN: $FQDN"
+
+# Health check
+curl -sf "https://$FQDN/healthz" && echo "PASS: /healthz" || echo "FAIL: /healthz"
+```
+
+### 15.2 Inbound token verification
+
+Acquire a token for the UIAO audience from your publisher tenant and call
+the data plane:
+
+```bash
+# Acquire token (publisher tenant, app-only)
+TOKEN=$(az account get-access-token --resource "api://uiao" --query accessToken -o tsv)
+
+# Data plane — should return 403 (no tenant registered yet) not 401/500
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" \
+  "https://$FQDN/api/v1/orgtree/status")
+echo "Data plane status: $STATUS"   # expect 403 (no tenant) or 200
+```
+
+### 15.3 Control plane — onboard a test tenant
+
+```bash
+# Acquire admin token (publisher tenant, UIAO.SaaS.Admin role)
+ADMIN_TOKEN=$(az account get-access-token --resource "api://uiao" --query accessToken -o tsv)
+
+# Onboard — dry-run stamp (UIAO_SAAS_STAMP_EXECUTION_ENABLED is off by default)
+curl -X POST "https://$FQDN/control/v1/tenants" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tenant_id": "<test-tenant-guid>", "display_name": "Validation Test", "plan": "standard"}' \
+  | python3 -m json.tool
+
+# Verify it appears in the registry
+curl -s "https://$FQDN/control/v1/tenants" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | python3 -m json.tool
+
+# Clean up
+curl -X DELETE "https://$FQDN/control/v1/tenants/<test-tenant-guid>" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+### 15.4 Postgres connectivity
+
+```bash
+# From the Azure CLI — check Postgres is running and the DB exists
+az postgres flexible-server db list -g <rg> -s <postgres-server-name> -o table
+```
+
+---
+
+## 16. Monitoring and assess
+
+### 16.1 App Insights KQL — key signals
+
+Open **Application Insights → Logs** in the Azure portal and run these
+queries against your UIAO App Insights workspace.
+
+**Failed tenant onboards (last 24 h):**
+```kusto
+requests
+| where timestamp > ago(24h)
+| where url contains "/control/v1/tenants"
+| where resultCode !in ("200", "201")
+| project timestamp, resultCode, url, duration, operation_Id
+| order by timestamp desc
+```
+
+**Data-plane rejections (403 tenant not active):**
+```kusto
+requests
+| where timestamp > ago(1h)
+| where resultCode == "403"
+| extend customProps = tostring(customDimensions)
+| where customProps contains "tenant_not_active"
+| summarize count() by bin(timestamp, 5m)
+| render timechart
+```
+
+**Slow governance passes (>10 s):**
+```kusto
+requests
+| where timestamp > ago(24h)
+| where url contains "/orgpath" or url contains "/api/v1"
+| where duration > 10000
+| project timestamp, url, duration, resultCode
+| order by duration desc
+```
+
+**Authentication failures (MSAL / Graph outbound):**
+```kusto
+exceptions
+| where timestamp > ago(1h)
+| where outerMessage contains "401" or outerMessage contains "AADSTS"
+| project timestamp, outerMessage, operation_Id
+| order by timestamp desc
+```
+
+### 16.2 Tenant lifecycle audit
+
+Run weekly or before a compliance review:
+
+```bash
+# List all tenants and their status
+curl -s "https://$FQDN/control/v1/tenants" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  | python3 -c "
+import sys, json
+tenants = json.load(sys.stdin)
+for t in tenants:
+    print(f\"{t['status']:12} {t['tenant_id']}  {t.get('display_name','')}\")
+"
+```
+
+Flag any tenants in `PENDING` for more than 7 days (admin consent not
+completed) and any `SUSPENDED` tenants for review.
+
+### 16.3 Stamp execution status
+
+If `UIAO_SAAS_STAMP_EXECUTION_ENABLED` is set, verify per-tenant resources
+exist:
+
+```bash
+# Verify Postgres schema for a tenant
+az postgres flexible-server execute -n <server> -u <admin-user> -p <pwd> \
+  -d uiao --querytext "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%';"
+
+# Verify Blob containers
+az storage container list --account-name <storage-account> \
+  --query "[?starts_with(name,'tenant-')].[name,properties.lastModified]" -o table
+```
+
+---
+
+## 17. Disaster recovery
+
+### 17.1 PostgreSQL restore
+
+PostgreSQL Flexible Server is provisioned with geo-redundant backup by
+default (7-day retention). To restore to a point in time:
+
+```bash
+# Restore to a specific point in time (creates a NEW server)
+az postgres flexible-server geo-restore \
+  --resource-group <rg> \
+  --name uiao-saas-pg-restored \
+  --source-server <original-server-resource-id> \
+  --restore-time "2026-06-15T03:00:00Z" \
+  --location eastus2
+
+# Update the Container App to point at the restored server
+az containerapp secret set -g <rg> -n uiao-saas \
+  --secrets "database-url=postgresql+asyncpg://<user>:<pwd>@uiao-saas-pg-restored.postgres.database.azure.com/uiao"
+
+az containerapp update -g <rg> -n uiao-saas \
+  --set-env-vars "UIAO_SAAS_DATABASE_URL=secretref:database-url"
+```
+
+After restoring, verify the tenant registry is intact:
+
+```bash
+curl -s "https://$FQDN/control/v1/tenants" -H "Authorization: Bearer $ADMIN_TOKEN" | python3 -m json.tool
+```
+
+### 17.2 Key Vault recovery
+
+Key Vault has soft-delete (90 days) and purge protection enabled by the
+Bicep module. To recover a deleted vault:
+
+```bash
+# List soft-deleted vaults
+az keyvault list-deleted --query "[?contains(name,'uiao')]" -o table
+
+# Recover
+az keyvault recover --name <vault-name>
+```
+
+If the managed identity lost its `Key Vault Secrets User` role assignment
+(e.g., due to resource group recreation), re-assign it:
+
+```bash
+IDENTITY_PRINCIPAL=$(az containerapp show -g <rg> -n uiao-saas \
+  --query identity.userAssignedIdentities.*.principalId -o tsv)
+KV_ID=$(az keyvault show -g <rg> -n <vault-name> --query id -o tsv)
+
+az role assignment create \
+  --role "Key Vault Secrets User" \
+  --assignee $IDENTITY_PRINCIPAL \
+  --scope $KV_ID
+```
+
+### 17.3 Evidence blob recovery
+
+Blob Storage is provisioned with geo-redundant storage (GRS). If the
+primary region is unavailable, initiate a failover:
+
+```bash
+# Check replication status
+az storage account show -g <rg> -n <storage-account> \
+  --query "[geoReplicationStats, primaryEndpoints.blob]" -o json
+
+# Initiate failover (irreversible until Microsoft completes recovery)
+az storage account failover -g <rg> -n <storage-account> --yes
+```
+
+::: {.callout-warning}
+Storage account failover changes the account's FQDN in some configurations.
+After failover, verify `UIAO_SAAS_STORAGE_ACCOUNT_URL` still resolves and
+update the Container App secret if necessary.
+:::
+
+### 17.4 Full environment recreation
+
+If the entire resource group is lost, redeploy from scratch using the CI
+workflow (`azure-saas-deploy.yml`, `deploy_infra=true`). The Bicep deployment
+is idempotent. Tenant data (Postgres + Blob) must be restored from backups
+per §17.1 and §17.3 after infrastructure is up.
+
+Recovery time objective reference:
+
+| Component | Recovery path | Typical RTO |
+|---|---|---|
+| Container App | CI workflow redeploy | ~10 min |
+| PostgreSQL | Point-in-time restore to new server | ~20–40 min |
+| Key Vault | Soft-delete recovery | ~5 min |
+| Blob Storage | GRS failover | ~1 h (Microsoft-managed) |
+| End-to-end | All above in sequence | ~1–2 h |
+
+---
 
 ## Provenance
 
