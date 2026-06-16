@@ -436,7 +436,7 @@ foreach ($task in $allTasks) {
 
     # Activity classification
     $activityState = "Unknown"
-    if ($lastRunAgeDays -ne $null) {
+    if ($null -ne $lastRunAgeDays) {
         if ($lastRunAgeDays -le 7) { $activityState = "Active (last 7 days)" }
         elseif ($lastRunAgeDays -le 30) { $activityState = "Recent (last 30 days)" }
         elseif ($lastRunAgeDays -le 90) { $activityState = "Stale (30-90 days)" }
@@ -535,7 +535,7 @@ $serversWithDomainCreds = @($classifiedTasks |
 
 # Failed tasks with domain credentials
 $failedDomainTasks = @($classifiedTasks |
-    Where-Object { $_.CredentialType -eq 'Domain Account' -and $_.LastTaskResult -ne 0 -and $_.LastTaskResult -ne $null })
+    Where-Object { $_.CredentialType -eq 'Domain Account' -and $_.LastTaskResult -ne 0 -and $null -ne $_.LastTaskResult })
 
 # Dormant tasks with domain credentials (cleanup candidates)
 $dormantDomainTasks = @($classifiedTasks |

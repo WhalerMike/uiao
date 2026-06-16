@@ -147,7 +147,8 @@ if (-not $StandaloneMode -and $D4InputFile -and $D5InputFile) {
     }
     Import-Module ActiveDirectory -ErrorAction Stop
 
-    $domain = (Get-ADDomain @adParams).DNSRoot
+    # Validate domain connectivity (throws if unreachable); DNSRoot is not used here.
+    Get-ADDomain @adParams | Out-Null
 
     # Get all accounts with delegation
     $compProps = @('Name','SamAccountName','ObjectGUID','DistinguishedName','Enabled',

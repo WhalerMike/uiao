@@ -141,6 +141,7 @@ function Get-OrgTreeValidationReport {
     #>
     [CmdletBinding()]
     [OutputType([psobject])]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'TenantId', Justification = 'Consumed by the default $ConnectGraph scriptblock parameter (Connect-MgGraph -TenantId $TenantId); the analyzer does not trace references inside another parameter''s default value.')]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -225,6 +226,7 @@ function Test-DynamicGroupAlignment {
     #>
     [CmdletBinding()]
     [OutputType([psobject])]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'TenantId', Justification = 'Consumed by the default $ConnectGraph scriptblock parameter (Connect-MgGraph -TenantId $TenantId); the analyzer does not trace references inside another parameter''s default value.')]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]

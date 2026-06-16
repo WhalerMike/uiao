@@ -95,6 +95,8 @@
         2   manifest missing, module missing, or other precondition failure
 #>
 [CmdletBinding(DefaultParameterSetName = 'Audit')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Audit', Justification = 'Parameter-set discriminator selected via $PSCmdlet.ParameterSetName in the mode switch (default/Audit branch).')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'List', Justification = 'Parameter-set discriminator selected via $PSCmdlet.ParameterSetName in the mode switch (List branch).')]
 param(
     [Parameter(ParameterSetName = 'Audit')]
     [switch]$Audit,

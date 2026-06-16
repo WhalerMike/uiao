@@ -529,7 +529,7 @@ $populationRates = [ordered]@{}
 foreach ($attr in $auditAttributes) {
     $populated = @($sampleUsers | Where-Object {
         $val = $_.$attr
-        $val -ne $null -and $val -ne '' -and $val -ne 0
+        $null -ne $val -and $val -ne '' -and $val -ne 0
     }).Count
 
     $rate = if ($sampleCount -gt 0) { [math]::Round(($populated / $sampleCount) * 100, 1) } else { 0 }

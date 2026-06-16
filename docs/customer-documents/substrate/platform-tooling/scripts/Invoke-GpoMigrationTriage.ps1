@@ -69,6 +69,10 @@
     .\Invoke-GpoMigrationTriage.ps1 -SkipComputerEnumeration -Verbose
 #>
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'WorkstationOSPattern', Justification = 'Documented CLI tuning parameter; read inside the script-scoped Get-OuComputerCount helper when classifying OU OS predominance.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ServerOSPattern', Justification = 'Documented CLI tuning parameter; read inside the script-scoped Get-OuComputerCount helper when classifying OU OS predominance.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'WorkstationOUNamePattern', Justification = 'Documented CLI tuning parameter; read inside the script-scoped Get-PlaneFromName helper for the OU-name heuristic.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ServerOUNamePattern', Justification = 'Documented CLI tuning parameter; read inside the script-scoped Get-PlaneFromName helper for the OU-name heuristic.')]
 param(
     [string]   $OutputDirectory           = '.',
     [string[]] $WorkstationOSPattern      = @('Windows 10*','Windows 11*','Windows 7*','Windows 8*'),

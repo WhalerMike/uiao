@@ -7,6 +7,7 @@
 # Usage:  .\16-fix-warn-gaps.ps1
 # Dry run: .\16-fix-warn-gaps.ps1 -WhatIf
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'RepoRoot', Justification = 'Repo-root path parameter read inside the script-scoped New-ShellPage and Repair-BrokenRef functions to resolve target file paths.')]
 param(
     [string]$RepoRoot = "C:\Users\whale\git\uiao",
     [switch]$WhatIf
