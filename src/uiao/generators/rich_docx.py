@@ -34,7 +34,7 @@ from uiao.utils.context import get_settings, load_context
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_IMAGE_WIDTH: Any = Inches(5.5)  # module-level singleton for ruff B008
+_DEFAULT_IMAGE_WIDTH: Any = Inches(6.5)  # full text column (Letter, 1" margins); margin-to-margin per STYLE.md. Module-level singleton for ruff B008
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -594,7 +594,7 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
             img_path = Path(src)
             if img_path.exists():
                 try:
-                    doc.add_picture(str(img_path), width=Inches(6.0))
+                    doc.add_picture(str(img_path), width=Inches(6.5))
                     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
                 except Exception:
                     pass

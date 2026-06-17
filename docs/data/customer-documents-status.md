@@ -24,10 +24,10 @@
 | `sql-server-implementation/` | 0 | 0 | 10 | 1 | 1 | 12 |
 | `sql-server-narrative/` | 0 | 31 | 1 | 0 | 1 | 33 |
 | `sql-server-narrative-standalone/` | 0 | 31 | 1 | 0 | 1 | 33 |
-| `substrate/` | 0 | 0 | 3 | 9 | 4 | 16 |
+| `substrate/` | 1 | 0 | 3 | 8 | 4 | 16 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
 | `whitepapers/` | 0 | 0 | 5 | 9 | 1 | 15 |
-| **Total** | **1** | **228** | **224** | **96** | **53** | **602** |
+| **Total** | **2** | **228** | **224** | **95** | **53** | **602** |
 
 ## Section detail
 
@@ -654,7 +654,7 @@
 | [`docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) | 1744 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd) | 140 | Authored | ✅ | — | — |
 | [`docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd) | 1049 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd) | 525 | Substantial | ✅ | 4/4 | — |
+| [`docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd) | 33 | Stub | ✅ | — | — |
 
 ### `validation-suites/`
 
