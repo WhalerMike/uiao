@@ -5,7 +5,7 @@ version: "1.0"
 status: Draft
 owner: Michael Stratton
 created_at: "2026-05-18"
-updated_at: "2026-05-18"
+updated_at: "2026-06-17"
 # Draft canon, pending reconciliation review (see PR #556). Will flip
 # to true and gain a docs/.qmd entry once status moves to Current.
 publish_to_site: false
@@ -19,7 +19,27 @@ Specifies the canonical record shape that every UIAO adapter, classifier, and or
 
 ## Scope
 
-Applies to every drift-emitting surface in the substrate: tag governance (UIAO_177), provisioning (UIAO_178), tenancy and authz supplements, OrgTree validators, and conformance adapters. Does not replace ADR-012's drift class definitions; it consolidates how those classes are reported.
+Applies to every drift-emitting surface in the substrate: tag governance (UIAO_177), provisioning (UIAO_178), tenancy and authz supplements, OrgTree validators, conformance adapters, and the addressing-plane drift collector (UIAO_195). Does not replace ADR-012's drift class definitions; it consolidates how those classes are reported.
+
+## Shared primitive — `drift_core`
+
+As of ADR-108, the substrate uses a shared plane-agnostic primitive at
+`src/uiao/governance/drift_core.py`. Every plane's collector imports
+`Finding`, `Severity`, `Posture`, `gate`, and `events_json` from this module
+rather than duplicating them. The `Finding.to_event()` method emits an ODR
+telemetry event that aligns with the `DriftRecord` shape below.
+
+Callers that need the full `DriftRecord` (including `object_id`, `object_facet`,
+`recommended_action`, and `correlation_id`) wrap `Finding` at the
+orchestration layer; `drift_core` stays minimal and plane-agnostic.
+
+`drift_core` severity (P1/P2/P3) maps to `DriftRecord` severity as follows:
+
+| `drift_core.Severity` | `DriftRecord.severity` |
+|---|---|
+| P1 | `critical` |
+| P2 | `high` |
+| P3 | `medium` |
 
 ## Record shape
 
