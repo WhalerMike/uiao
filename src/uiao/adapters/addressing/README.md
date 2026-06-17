@@ -5,6 +5,35 @@ Canon: [UIAO_195](../canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.md) · [ADR-
 
 ---
 
+## Getting a test environment (no existing tenant)
+
+If you don't have an Azure subscription or Entra tenant yet, the fastest path
+is a **standalone Entra ID P2 trial** (30 days, no credit card required for
+the identity features alone):
+
+1. Go to `https://entra.microsoft.com` → sign in with any Microsoft account
+2. **Identity** → **Billing** → **Licenses** → **Try / Buy** → **Microsoft Entra ID P2** → **Free trial** → **Activate**
+3. For a full Azure subscription (needed to create DNS zones): sign up at
+   `https://azure.microsoft.com/free` — includes $200 credit and a real tenant
+
+Once you have a subscription, seed it with realistic test zones:
+
+```powershell
+az login
+.\Initialize-EntraTestEnvironment.ps1   # creates zones + my_bindings.json in .\test-env\
+
+# Then run the full audit against the seeded environment:
+.\Invoke-AddressingAudit.ps1 `
+    -IntendedBindingsPath .\test-env\my_bindings.json `
+    -OutputDirectory      .\test-env\audit
+```
+
+The init script seeds intentional drift (DRIFT-DANGLING, DRIFT-CONFLICT, DRIFT-SRV,
+DRIFT-SHADOW, DRIFT-ORPHAN) so the audit gate returns HALT — confirming the full
+pipeline is working before you point it at a real subscription.
+
+---
+
 ## Quick start — Azure DNS (no AD/DC required)
 
 ```powershell
