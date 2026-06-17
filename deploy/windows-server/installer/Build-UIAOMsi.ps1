@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Build-UIAOMsi.ps1
     Builds the UIAO governance API MSI installer using WiX v4.

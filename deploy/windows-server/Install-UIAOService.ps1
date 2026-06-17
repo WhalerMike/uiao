@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Install-UIAOService.ps1
     Registers UIAOService as a Windows Service and starts it.
@@ -24,7 +24,7 @@ param(
     [string]$ServiceAccount   = "CORP\SVC-UIAO-API",
     [SecureString]$ServicePassword,
     [string]$IISSitePath      = "C:\inetpub\uiao-api",
-    [switch]$StartImmediately = $true
+    [bool]$StartImmediately = $true
 )
 $ErrorActionPreference = "Stop"
 
