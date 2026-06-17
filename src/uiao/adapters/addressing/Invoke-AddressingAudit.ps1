@@ -4,16 +4,19 @@
     pipeline: zone export → drift classification → horizon probe → report.
 
 .DESCRIPTION
-    Wraps dns_zone_export.ps1, addressing_collector.py, and
+    Wraps the zone exporter, addressing_collector.py, and
     Invoke-DnsHorizonProbe.ps1 into a single runnable command.
 
-    Prerequisite: run from a Domain Controller or a machine with
-    RSAT DNS Server Tools installed.  Python 3.x must be on PATH.
+    Zone export source (choose one — no AD/DC required for Azure mode):
+      Azure DNS (default)  dns_zone_export_azure.ps1  requires: az login
+      AD / RSAT            dns_zone_export.ps1         requires: DC or RSAT tools
+
+    Python 3.x must be on PATH.
 
     Outputs (all in -OutputDirectory):
       observed_zone.json       exported DNS records
       resources.json           live host/IP inventory
-      intended_bindings.json   SSOT manifest (copied from -IntendedBindingsPath)
+      zone_manifest.json       zone metadata (Azure mode only)
       findings.json            drift-classifier findings (drift_core format)
       horizon_findings.json    DRIFT-HORIZON findings
       horizon_report.txt       human-readable horizon summary
@@ -22,10 +25,31 @@
     Canon reference: UIAO_195, ADR-108
 
 .PARAMETER ZoneName
-    DNS zone(s) to export.  If omitted, all primary forward zones are exported.
+    DNS zone name(s) to export.  Supports wildcards (Azure mode).
+    If omitted, all zones in the subscription / all primary forward zones (AD mode).
+
+.PARAMETER SubscriptionId
+    Azure subscription ID(s).  Azure mode only.  Defaults to current az account.
+
+.PARAMETER ResourceGroup
+    Limit Azure export to a specific resource group.  Azure mode only.
+
+.PARAMETER ZoneType
+    Which Azure zone types to export: Public, Private, or Both.
+    Azure mode only.  Default: Both.
+
+.PARAMETER AzureCloud
+    Azure cloud environment: AzureCloud | AzureUSGovernment.
+    Azure mode only.  If omitted, uses current az cloud setting.
+    GCC-Moderate = AzureCloud (commercial infra).
+    Azure Government workloads = AzureUSGovernment.
+
+.PARAMETER UseAdDnsExport
+    Switch to AD/DC mode (dns_zone_export.ps1).  Requires RSAT DNS tools.
+    If set, -DnsServer is used instead of Azure CLI.
 
 .PARAMETER DnsServer
-    DNS server to query.  Defaults to localhost.
+    AD DNS server to query.  AD mode only.  Default: localhost.
 
 .PARAMETER IntendedBindingsPath
     Path to your intended_bindings.json SSOT manifest.
@@ -36,26 +60,34 @@
     Public resolver for horizon probe external vantage.  Default: 8.8.8.8.
 
 .PARAMETER PrivateResolverIP
-    Azure DNS Private Resolver inbound endpoint IP (optional but recommended).
-    Enables per-VNet vantage comparison.
+    Azure DNS Private Resolver inbound endpoint IP.
+    Enables per-VNet vantage comparison in the horizon probe.
 
 .PARAMETER OutputDirectory
     Audit output directory.  Created if absent.  Default: .\dns-audit.
 
 .PARAMETER SkipHorizonProbe
-    Skip the multi-vantage horizon probe (runs faster; zone-file drift only).
+    Skip the multi-vantage horizon probe (zone-file drift only).
 
 .EXAMPLE
-    # Full audit — single zone, with Private Resolver
+    # Azure mode — full audit, GCC-Moderate subscription
     .\Invoke-AddressingAudit.ps1 `
-        -ZoneName "agency.gov" `
         -IntendedBindingsPath .\intended_bindings.json `
         -PrivateResolverIP 10.0.0.4 `
-        -OutputDirectory C:\Temp\dns-audit-2026-06-17
+        -OutputDirectory C:\Temp\dns-audit-$(Get-Date -Format 'yyyy-MM-dd')
 
 .EXAMPLE
-    # Zone-file drift only (no DC access needed for horizon probe)
+    # Azure mode — specific zone, Azure Government cloud
     .\Invoke-AddressingAudit.ps1 `
+        -ZoneName "agency.gov" `
+        -AzureCloud AzureUSGovernment `
+        -IntendedBindingsPath .\intended_bindings.json `
+        -OutputDirectory .\dns-audit-gov
+
+.EXAMPLE
+    # AD/DC mode — zone-file drift only, no horizon probe
+    .\Invoke-AddressingAudit.ps1 `
+        -UseAdDnsExport `
         -ZoneName "agency.gov" `
         -IntendedBindingsPath .\intended_bindings.json `
         -SkipHorizonProbe `
@@ -63,13 +95,23 @@
 #>
 [CmdletBinding()]
 param(
+    # Shared
     [string[]] $ZoneName,
-    [string]   $DnsServer            = "localhost",
     [string]   $IntendedBindingsPath,
     [string]   $ExternalResolver     = "8.8.8.8",
     [string]   $PrivateResolverIP,
     [string]   $OutputDirectory      = ".\dns-audit",
-    [switch]   $SkipHorizonProbe
+    [switch]   $SkipHorizonProbe,
+    # Azure mode (default)
+    [string[]] $SubscriptionId,
+    [string]   $ResourceGroup,
+    [ValidateSet("Public","Private","Both")]
+    [string]   $ZoneType             = "Both",
+    [ValidateSet("AzureCloud","AzureUSGovernment","AzureChinaCloud")]
+    [string]   $AzureCloud,
+    # AD/DC mode (opt-in)
+    [switch]   $UseAdDnsExport,
+    [string]   $DnsServer            = "localhost"
 )
 
 Set-StrictMode -Version Latest
@@ -94,13 +136,20 @@ $timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ" -AsUTC
 
 Write-Banner "Step 1 of 3: DNS Zone Export"
 
-$exportArgs = @{
-    DnsServer       = $DnsServer
-    OutputDirectory = $OutputDirectory
+if ($UseAdDnsExport) {
+    Write-Step "Mode: AD/DC  (dns_zone_export.ps1)  server=$DnsServer"
+    $exportArgs = @{ DnsServer = $DnsServer; OutputDirectory = $OutputDirectory }
+    if ($ZoneName) { $exportArgs["ZoneName"] = $ZoneName }
+    & "$ScriptDir\dns_zone_export.ps1" @exportArgs
+} else {
+    Write-Step "Mode: Azure DNS  (dns_zone_export_azure.ps1)"
+    $exportArgs = @{ OutputDirectory = $OutputDirectory; ZoneType = $ZoneType }
+    if ($ZoneName)        { $exportArgs["ZoneName"]        = $ZoneName }
+    if ($SubscriptionId)  { $exportArgs["SubscriptionId"]  = $SubscriptionId }
+    if ($ResourceGroup)   { $exportArgs["ResourceGroup"]   = $ResourceGroup }
+    if ($AzureCloud)      { $exportArgs["AzureCloud"]      = $AzureCloud }
+    & "$ScriptDir\dns_zone_export_azure.ps1" @exportArgs
 }
-if ($ZoneName) { $exportArgs["ZoneName"] = $ZoneName }
-
-& "$ScriptDir\dns_zone_export.ps1" @exportArgs
 
 $zonePath      = Join-Path $OutputDirectory "observed_zone.json"
 $resourcesPath = Join-Path $OutputDirectory "resources.json"
@@ -207,11 +256,12 @@ Write-Banner "Audit Summary"
 $classifierHalt = $gateLine -like "*HALT*"
 $overallDecision = if ($classifierHalt -or $horizonDecision -eq "HALT") { "HALT" } else { "PASS" }
 
+$exportMode = if ($UseAdDnsExport) { "AD/DC ($DnsServer)" } else { "Azure DNS ($(if ($AzureCloud) { $AzureCloud } else { 'current cloud' }))" }
 $summary = @(
     "UIAO Addressing-Plane Audit Summary"
     "Generated : $timestamp"
-    "DNS Server: $DnsServer"
-    "Zone(s)   : $(if ($ZoneName) { $ZoneName -join ', ' } else { '(all primary)' })"
+    "Export    : $exportMode"
+    "Zone(s)   : $(if ($ZoneName) { $ZoneName -join ', ' } else { '(all)' })"
     ""
     "Step 1 — Zone Export     : DONE  ($zonePath)"
     "Step 2 — Drift Classifier: $gateLine"
