@@ -69,6 +69,7 @@
 - [UIAO Privacy Impact Assessment](canon/UIAO_192_Privacy_Impact_Assessment.html)
 - [OrgPath Multi-Cloud Binding Profiles — Vendor-Neutral Storage Contract & Zero Trust Subject](canon/UIAO_193_OrgPath_MultiCloud_Binding.html)
 - [LocPath Codebook — Canonical Physical-Location Addressing & Site Classification](canon/UIAO_194_LocPath_Codebook.html)
+- [Addressing-Plane Drift Taxonomy — DNS and Namespace Governance](canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.html)
 
 ## Architecture Decision Records
 
@@ -174,6 +175,7 @@
 - [Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery](adr/adr-105-operational-guide-kit-conventions.html)
 - [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-106-fedramp-20x-integration.html)
 - [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-107-network-aaa-adapter-registration.html)
+- [Addressing-Plane Drift Gate and Shared drift_core Primitive](adr/adr-108-addressing-plane-drift-gate.html)
 
 ## Schema Reference
 

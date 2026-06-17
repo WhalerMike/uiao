@@ -6,6 +6,7 @@
 - [Home](index.html)
 - **Getting started**
   - [10-minute quickstart](docs/quickstart.html)
+  - [OrgPath governance golden path](docs/orgpath-golden-path.html)
   - [Adapter authoring tutorial (30 min)](docs/adapter-authoring-tutorial.html)
   - [Substrate status](docs/substrate-status.html)
 - [Download](download/index.html)
@@ -27,9 +28,12 @@
 ### Reference Architecture — Modernization Canon
 
 - [Modernization Canon](customer-documents/reference-architecture/index.html)
-- **Identity (OrgTree)**
+- **Addressing (OrgTree + LocPath)**
   - [OrgTree — Identity Modernization](customer-documents/reference-architecture/orgtree.html)
+  - [LocPath — Physical-Location Addressing](customer-documents/reference-architecture/locpath.html)
   - [OrgPath FAQ](customer-documents/reference-architecture/orgpath-faq.html)
+  - [OrgPath Portability — One Org Model, Any Cloud, Any IdP](customer-documents/reference-architecture/orgpath-portability.html)
+  - [GPO-to-Cloud Governance Gaps](customer-documents/reference-architecture/gpo-cloud-governance-gaps.html)
   - [Where OrgTree & OrgPath Data Lives](customer-documents/reference-architecture/where-data-lives.html)
   - [Where OrgTree & OrgPath Data Lives — Devices and Azure Resources](customer-documents/reference-architecture/where-data-lives-devices-and-azure.html)
   - [Drift Detection — A Walk-through](customer-documents/reference-architecture/drift-walkthrough.html)
@@ -63,6 +67,9 @@
 - [UIAO Continuous Monitoring Strategy](canon/UIAO_190_Continuous_Monitoring_Strategy.html)
 - [UIAO Supply Chain Risk Management Plan](canon/UIAO_191_Supply_Chain_Risk_Management_Plan.html)
 - [UIAO Privacy Impact Assessment](canon/UIAO_192_Privacy_Impact_Assessment.html)
+- [OrgPath Multi-Cloud Binding Profiles — Vendor-Neutral Storage Contract & Zero Trust Subject](canon/UIAO_193_OrgPath_MultiCloud_Binding.html)
+- [LocPath Codebook — Canonical Physical-Location Addressing & Site Classification](canon/UIAO_194_LocPath_Codebook.html)
+- [Addressing-Plane Drift Taxonomy — DNS and Namespace Governance](canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.html)
 
 ## Architecture Decision Records
 
@@ -116,8 +123,6 @@
 - [Scan Artifact Redaction Policy for Multi-Agency Distribution](adr/adr-045-scan-redaction-policy.html)
 - [CLI Surface Convention: Sub-App-per-Domain](adr/adr-046-cli-surface-convention.html)
 - [ADR-047: Continuous Monitoring Program and Customer Documentation Platform Architecture](adr/adr-047-continuous-monitoring-program.html)
-- [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-047-fedramp-20x-integration.html)
-- [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-047-network-aaa-adapter-registration.html)
 - [ADR‑048: OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes](adr/adr-048-orgpath-attribute-selection.html)
 - [Microsoft Modernization Adapter Coverage Expansion — Defender Suite, Azure Migrate, Azure Policy for Arc, Entra Governance, Entra Workload ID, Intune-Modernization](adr/adr-049-microsoft-adapter-coverage-expansion.html)
 - [D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices](adr/adr-050-reference-middleware-implementation-choices.html)
@@ -160,6 +165,17 @@
 - [Illustrative SVG register — expanding the figure house style beyond the engineering-blueprint boundary](adr/adr-095-illustrative-svg-register.html)
 - [Azure SaaS architecture — multi-tenant UIAO on Container Apps](adr/adr-096-azure-saas-architecture.html)
 - [SQL Server transformation placement — same control plane, adjacent execution](adr/adr-097-sql-server-saas-placement.html)
+- [OrgPath Vendor-Neutral Binding Profiles — Multi-Cloud OrgPath Beyond Microsoft Extension Slots](adr/adr-098-orgpath-vendor-neutral-binding-profiles.html)
+- [OrgPath Binding-Profile Targets — IdP Expansion (PingOne, Keycloak, Auth0)](adr/adr-099-orgpath-idp-binding-profile-expansion.html)
+- [Active Governance Directory — The In-Path LDAP Projection Plane and the Read-Only Data-Plane Exception](adr/adr-100-active-governance-directory-ldap.html)
+- [Active Governance Directory — SASL/GSSAPI (Kerberos) Bind as Gate-Only Ticket Validation](adr/adr-101-active-governance-directory-sasl-kerberos.html)
+- [LocPath — Canonical Physical-Location Addressing Dimension (the OrgPath Counterpart for Place)](adr/adr-102-locpath-location-addressing.html)
+- [Generated Illustrative Raster — Unblocking Images While Diagrams Stay Committed SVG](adr/adr-103-generated-illustrative-raster.html)
+- [E911 Compliance Layer — Dispatchable-Location Completeness over LocPath, with RTLS-fed Dynamic Enhancement](adr/adr-104-e911-compliance-layer.html)
+- [Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery](adr/adr-105-operational-guide-kit-conventions.html)
+- [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-106-fedramp-20x-integration.html)
+- [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-107-network-aaa-adapter-registration.html)
+- [Addressing-Plane Drift Gate and Shared drift_core Primitive](adr/adr-108-addressing-plane-drift-gate.html)
 
 ## Schema Reference
 
@@ -169,16 +185,20 @@
 - [UIAO Adapter Registry Schema](reference/schemas/adapter-registry.schema.html)
 - [UIAO Delegation Matrix (AUs + Scoped Roles)](reference/schemas/admin-units.schema.html)
 - [UIAO Application Identity Schema (UIAO_129)](reference/schemas/application-identity.schema.html)
+- [UIAO OrgPath Binding Profile — Vendor-Neutral Facet Storage Contract](reference/schemas/binding-profile.schema.html)
 - [UIAO OrgPath Codebook](reference/schemas/codebook.schema.html)
 - [SCIM 2.0 Common Attributes (RFC 7643 §3.1)](reference/schemas/common.schema.html)
 - [UIAO Device OrgPath Plane Registry](reference/schemas/device-planes.schema.html)
 - [UIAO OrgTree Drift Engine Configuration](reference/schemas/drift-engine-config.schema.html)
+- [UIAO LocPath Duty-Station Map](reference/schemas/duty-station-map.schema.html)
 - [UIAO Dynamic Group Library](reference/schemas/dynamic-groups.schema.html)
 - [SCIM 2.0 Enterprise User Extension (RFC 7643 §4.3)](reference/schemas/enterprise-user.schema.html)
 - [UIAO KSI Evidence Bundle](reference/schemas/evidence-bundle.schema.html)
 - [SCIM 2.0 Group Resource (RFC 7643 §4.2)](reference/schemas/group.schema.html)
 - [UIAO Image Registry Schema](reference/schemas/image-registry.schema.html)
 - [UIAO Unified Key Security Indicator (KSI) Schema](reference/schemas/ksi.schema.html)
+- [UIAO LocPath Location Registry](reference/schemas/location-registry.schema.html)
+- [UIAO Location Node](reference/schemas/location.schema.html)
 - [UIAO MS SQL Estate Inventory Schema](reference/schemas/mssql-inventory.schema.html)
 - [MS SQL Rationalization Abbreviation Dictionary Schema](reference/schemas/mssql-rationalization-abbreviation-dictionary.schema.html)
 - [MS SQL Rationalization Domain Catalog Schema](reference/schemas/mssql-rationalization-domain-catalog.schema.html)
@@ -542,6 +562,32 @@
     - [The Typed Five-Class Drift Taxonomy](customer-documents/orgpath-narrative/Book_18_CPT_05.html)
     - [The Single Reconciled Cross-Boundary Plane](customer-documents/orgpath-narrative/Book_18_CPT_06.html)
     - [The Capability Matrix and How to Fill the Gap](customer-documents/orgpath-narrative/Book_18_CPT_07.html)
+  - [Book_19 — Where People Sit: LocPath and the Place Axis](customer-documents/orgpath-narrative/Book_19.html)
+    - [The Place Nobody Governs](customer-documents/orgpath-narrative/Book_19_CPT_01.html)
+    - [The Forcing Functions](customer-documents/orgpath-narrative/Book_19_CPT_02.html)
+    - [A Second Axis, Not a Sixteenth Facet](customer-documents/orgpath-narrative/Book_19_CPT_03.html)
+    - [Where People Are Assigned](customer-documents/orgpath-narrative/Book_19_CPT_04.html)
+    - [The Two Layers](customer-documents/orgpath-narrative/Book_19_CPT_05.html)
+    - [The Site as Policy Subject](customer-documents/orgpath-narrative/Book_19_CPT_06.html)
+    - [When People Move](customer-documents/orgpath-narrative/Book_19_CPT_07.html)
+    - [Drift for Place](customer-documents/orgpath-narrative/Book_19_CPT_08.html)
+    - [Reaching the Directory Without a Slot](customer-documents/orgpath-narrative/Book_19_CPT_09.html)
+    - [The Matrix, and What Place Is Not](customer-documents/orgpath-narrative/Book_19_CPT_10.html)
+  - [Book_20 — OrgPath and Privileged Access Management](customer-documents/orgpath-narrative/Book_20.html)
+    - [The Privileged Access Problem](customer-documents/orgpath-narrative/Book_20_CPT_01.html)
+    - [CyberArk in the Federal Landscape](customer-documents/orgpath-narrative/Book_20_CPT_02.html)
+    - [OrgPath as the Privilege Spine](customer-documents/orgpath-narrative/Book_20_CPT_03.html)
+    - [The L0–L4 Actuation Ladder for Privileged Operations](customer-documents/orgpath-narrative/Book_20_CPT_04.html)
+    - [Incorporating CyberArk into Active Governance](customer-documents/orgpath-narrative/Book_20_CPT_05.html)
+    - [What Gets Better](customer-documents/orgpath-narrative/Book_20_CPT_06.html)
+- **OrgPath for All Clouds (6-chapter series)**
+  - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
+  - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)
+  - [Binding Profiles — The Storage Contract](customer-documents/orgpath-multicloud/02-binding-profiles-the-storage-contract.html)
+  - [The Other Identity Planes](customer-documents/orgpath-multicloud/03-the-other-identity-planes.html)
+  - [VMware and the Three-Plane Proof](customer-documents/orgpath-multicloud/04-vmware-and-the-three-plane-proof.html)
+  - [Zero Trust Across Vendors](customer-documents/orgpath-multicloud/05-zero-trust-across-vendors.html)
+  - [Adopting Without Replacing](customer-documents/orgpath-multicloud/06-adopting-without-replacing.html)
 - **SQL Server Identity Transformation (10-book reading sequence)**
   - [SQL Server Identity Transformation](customer-documents/sql-server-narrative/index.html)
   - [OrgPath × SQL Server — The Integration Bridge](customer-documents/sql-server-narrative/bridge-orgpath-sql.html)
@@ -661,13 +707,6 @@
   - [Identity Modernization — Case Study](customer-documents/case-studies/identity-modernization-case-study.html)
   - [Cloud Boundary — Case Study](customer-documents/case-studies/cloud-boundary-case-study.html)
   - [Federal Modernization — Case Study](customer-documents/case-studies/federal-modernization-case-study.html)
-
-## TED Talk
-
-### The Hidden Cost of Progress
-
-- [The Hidden Cost of Progress](TedTalk/index.html)
-- [TED Talk — Full Script](TedTalk/script.html)
 
 ## About this repository
 
