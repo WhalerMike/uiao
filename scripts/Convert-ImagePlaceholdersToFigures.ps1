@@ -12,7 +12,7 @@
     Each matched placeholder is replaced in place with a Quarto figure block:
 
         ![<short caption>](images/<png>){#fig-<docslug>-image-NN
-            fig-alt="<full prompt body>" width="85%"}
+            fig-alt="<full prompt body>" width="100%"}
 
     The short caption is the first sentence of the prompt (everything up to
     the first '.'), truncated to 80 chars. The fig-alt preserves the FULL
@@ -173,7 +173,7 @@ foreach ($q in $qmds) {
         # Escape double quotes inside fig-alt by backslash.
         $altEscaped = $body -replace '"', '\"'
 
-        $figureBlock = "![$caption]($relPng){#$figId fig-alt=`"$altEscaped`" width=`"85%`"}"
+        $figureBlock = "![$caption]($relPng){#$figId fig-alt=`"$altEscaped`" width=`"100%`"}"
 
         $changes.Add(@{
             Index  = $m.Index

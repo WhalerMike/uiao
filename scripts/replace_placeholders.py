@@ -10,7 +10,7 @@ Emitted syntax (Quarto figure with caption, accessible alt text, stable
 cross-reference label, and explicit width):
 
     ![Customer-facing caption](images/foo.png){#fig-doc-stem-image-01 \\
-        fig-alt="Full visual description for screen readers" width="85%"}
+        fig-alt="Full visual description for screen readers" width="100%"}
 
 Caption is the first sentence of the placeholder body, with any leading
 "Figure N.N - " prefix stripped so Quarto's auto-numbering produces a
@@ -209,7 +209,7 @@ def upgrade_existing_lines(repo_root, dry_run):
             fig_id = make_fig_id(q, placeholder_id)
             replacement = (
                 f"![{escape_md_brackets(caption)}]({rel_path})"
-                f'{{#{fig_id} fig-alt="{escape_attr(caption)}" width="85%"}}'
+                f'{{#{fig_id} fig-alt="{escape_attr(caption)}" width="100%"}}'
             )
 
             try:
@@ -329,7 +329,7 @@ def main():
             fig_id = make_fig_id(doc_path, pid)
             replacement = (
                 f"![{escape_md_brackets(caption)}](images/{img_filename})"
-                f'{{#{fig_id} fig-alt="{escape_attr(alt_text)}" width="85%"}}'
+                f'{{#{fig_id} fig-alt="{escape_attr(alt_text)}" width="100%"}}'
             )
 
             if args.dry_run:
