@@ -333,13 +333,23 @@ def report(findings: list[Finding], g: dict) -> None:
 
 
 if __name__ == "__main__":
+    import argparse
+    import os
+
     sample = Path(__file__).resolve().parent / "sample"
-    findings, g = run(
-        sample / "intended_bindings.json",
-        sample / "observed_zone.json",
-        sample / "resources.json",
+
+    parser = argparse.ArgumentParser(description="UIAO addressing-plane drift collector")
+    parser.add_argument("--intended", default=os.environ.get("UIAO_INTENDED", str(sample / "intended_bindings.json")))
+    parser.add_argument("--zone", default=os.environ.get("UIAO_ZONE", str(sample / "observed_zone.json")))
+    parser.add_argument("--resources", default=os.environ.get("UIAO_RESOURCES", str(sample / "resources.json")))
+    parser.add_argument(
+        "--output", default=os.environ.get("UIAO_OUTPUT", str(Path(__file__).resolve().parent / "findings.json"))
     )
+    args = parser.parse_args()
+
+    findings, g = run(args.intended, args.zone, args.resources)
     report(findings, g)
-    out = Path(__file__).resolve().parent / "findings.json"
+    out = Path(args.output)
     out.write_text(events_json(findings), encoding="utf-8")
     print(f"\nFindings written to {out}")
+    raise SystemExit(1 if g["decision"] == "HALT" else 0)
