@@ -122,7 +122,9 @@ advisory prompt guidance:
    WebP/AVIF (DOCX embedding breaks); long edge ≥ 2400 px (16:9 → 2400×1350,
    1:1 → 2160×2160) for retina/mobile crispness; ≤ 1.5 MB per image;
    16:9 or 1:1 aspect; embedded via standard Quarto figure syntax with
-   `width="85%"` and a complete `fig-alt`.
+   `width="100%"` (full text-column width, margin to margin — diagrams and
+   illustrative figures read best at the widest available measure) and a
+   complete `fig-alt`.
 
 **Provenance:** the generation prompt is the source of record — store it in
 `fig-alt` (the fig-alt-as-prompt convention) or the `<name>.png.json`

@@ -3,7 +3,7 @@
 
 Some .qmd pages have image markdown like:
 
-    ![alt text](images/foo.png){#fig-foo fig-alt="long prompt here" width="85%"}
+    ![alt text](images/foo.png){#fig-foo fig-alt="long prompt here" width="100%"}
 
 ...where the placeholder syntax was already substituted to the final
 markdown form but the underlying PNG was never generated (or was lost

@@ -68,10 +68,10 @@ Every illustrative image, generated or vector-rendered, must satisfy:
 | Requirement | Rule | Why |
 |---|---|---|
 | **Format** | PNG (flat/graphic content) or baseline JPEG (photographic content). **No WebP/AVIF/SVG-only.** | Pandoc embeds PNG/JPEG into DOCX reliably; WebP breaks Word embedding — the bundles are a first-class output |
-| **Resolution** | Long edge ≥ 2400 px (16:9 → 2400×1350; 1:1 → 2160×2160) | Serves as 2× retina at the site's 85%-width layout; stays crisp on high-DPI mobile |
+| **Resolution** | Long edge ≥ 2400 px (16:9 → 2400×1350; 1:1 → 2160×2160) | Serves as 2× retina at the site's full-column (100%-width) layout; stays crisp on high-DPI mobile |
 | **File size** | ≤ 1.5 MB per image | Mobile bandwidth; the orgpath-narrative section alone serves dozens of figures per book |
 | **Aspect** | 16:9 or 1:1, matching the established canvases | Layouts hold across desktop, mobile, and DOCX page flow without per-image CSS |
-| **Embedding** | Standard Quarto figure syntax with `width="85%"` and a complete `fig-alt` | HTML responsiveness (max-width scaling) and accessibility come from the figure machinery, not the file |
+| **Embedding** | Standard Quarto figure syntax with `width="100%"` (full text-column width, margin to margin) and a complete `fig-alt` | HTML responsiveness (max-width scaling) and accessibility come from the figure machinery, not the file; full-column width maximizes legibility of dense diagrams in the DOCX bundles |
 
 ### D6. Provenance: the prompt is the source of record
 
