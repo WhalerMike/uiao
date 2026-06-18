@@ -237,6 +237,7 @@
 
 - **Operational Guides**
   - [Modernization](customer-documents/operational-guides/index.html)
+  - [Active Governance Directory — Operator & Implementation Guide](customer-documents/operational-guides/active-governance-directory/index.html)
   - [UIAO Conditional Access Policy Library](customer-documents/operational-guides/access-plane/conditional-access-library.html)
   - [UIAO Active Directory Interaction Guide](customer-documents/operational-guides/ad-interaction-guide.html)
   - [UIAO End User Training Guide](customer-documents/operational-guides/end-user-training.html)
