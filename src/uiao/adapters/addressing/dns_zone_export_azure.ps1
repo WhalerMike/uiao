@@ -105,7 +105,7 @@ function Invoke-Az([string[]]$args) {
     $result = az @args 2>&1
     if ($LASTEXITCODE -ne 0) {
         $msg = $result -join " "
-        Write-Warn "az $($args -join ' ')  exited $LASTEXITCODE: $msg"
+        Write-Warn "az $($args -join ' ')  exited ${LASTEXITCODE}: $msg"
         return $null
     }
     return $result | ConvertFrom-Json
