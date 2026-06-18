@@ -1,0 +1,52 @@
+name: ADR Reference Integrity
+
+# Fails when any ADR-NNN reference in canon, docs, or the root agent files has
+# no matching src/uiao/canon/adr/adr-NNN-*.md — a typo or a hallucinated
+# decision record. Tests don't cover prose, so this is the gate that keeps a
+# confident-but-wrong canon citation from merging silently. The corpus resolves
+# cleanly today, so this guards against regressions only.
+#
+# To resolve a failing run: fix the reference, add the missing ADR, or — for an
+# intended placeholder — append 'adr-ref-allow' to the line. Run locally:
+#     python scripts/check_adr_references.py
+
+on:
+  pull_request:
+    paths:
+      - 'src/uiao/canon/adr/**'
+      - 'src/uiao/canon/**/*.md'
+      - 'docs/**/*.md'
+      - 'docs/**/*.qmd'
+      - 'AGENTS.md'
+      - 'AGENTS-public-surface.md'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'scripts/check_adr_references.py'
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/adr/**'
+      - 'src/uiao/canon/**/*.md'
+      - 'docs/**/*.md'
+      - 'docs/**/*.qmd'
+      - 'AGENTS.md'
+      - 'AGENTS-public-surface.md'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'scripts/check_adr_references.py'
+
+jobs:
+  adr-reference-integrity:
+    name: Check ADR references resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run ADR-reference guard
+        run: python scripts/check_adr_references.py
