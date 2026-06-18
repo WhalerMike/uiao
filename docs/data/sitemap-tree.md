@@ -176,6 +176,7 @@
 - [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-106-fedramp-20x-integration.html)
 - [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-107-network-aaa-adapter-registration.html)
 - [Addressing-Plane Drift Gate and Shared drift_core Primitive](adr/adr-108-addressing-plane-drift-gate.html)
+- [Active Governance Directory — Write Operations as Governed Intent, Not Store Mutation](adr/adr-109-active-governance-directory-write-as-intent.html)
 
 ## Schema Reference
 
