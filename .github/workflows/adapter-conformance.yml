@@ -1,14 +1,10 @@
 name: Adapter Conformance Check
 
+# Always triggers on PRs so the required check always reports; the conformance
+# run only happens when adapter code / registries / adapter tests changed (else
+# the job skips its work to a green result). See .github/actions/pr-relevant.
 on:
   pull_request:
-    paths:
-      - 'src/uiao/adapters/**'
-      - 'src/uiao/canon/adapter-registry.yaml'
-      - 'src/uiao/canon/modernization-registry.yaml'
-      - 'src/uiao/schemas/adapter-registry/**'
-      - 'tests/test_*adapter*.py'
-      - '.github/workflows/adapter-conformance.yml'
   push:
     branches: [main]
     paths:
@@ -21,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   conformance:
@@ -30,22 +27,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Detect relevant changes
+        id: changes
+        uses: ./.github/actions/pr-relevant
+        with:
+          pattern: '(^src/uiao/adapters/|^src/uiao/canon/adapter-registry\.yaml$|^src/uiao/canon/modernization-registry\.yaml$|^src/uiao/schemas/adapter-registry/|^tests/test_.*adapter.*\.py$|^\.github/workflows/adapter-conformance\.yml$|^\.github/actions/pr-relevant/)'
+
       - name: Set up Python 3.12
+        if: steps.changes.outputs.relevant == 'true'
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
       - name: Install
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -e . || pip install -e ".[dev]"
 
       - name: Run conformance check
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           python -m uiao.adapters.conformance_check --json > conformance-report.json
           python -m uiao.adapters.conformance_check
 
       - name: Verify zero failures
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           FAIL=$(python -c "import json; r=json.load(open('conformance-report.json')); print(r['summary']['fail'])")
           echo "Failures: $FAIL"
@@ -56,7 +63,7 @@ jobs:
           echo "::notice::All criteria passed: $(python -c "import json; r=json.load(open('conformance-report.json')); print(r['summary']['pass'])")/$(python -c "import json; r=json.load(open('conformance-report.json')); print(r['summary']['total'])")"
 
       - name: Upload conformance report
-        if: always()
+        if: always() && steps.changes.outputs.relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: conformance-report
