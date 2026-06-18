@@ -3,9 +3,9 @@
 Each constant is a ``DRIFT-CLASS::subtype`` string that extends the
 canonical drift taxonomy (ADR-012) with AI-specific finding types.
 The six classes below map to the OMB M-25-21 governance obligations
-identified in ADR-109 §1–§4.
+identified in ADR-112 §1–§4.
 
-Canon reference: UIAO_196, ADR-109, ADR-012
+Canon reference: UIAO_196, ADR-112, ADR-012
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ def finding_agentic_ungoverned(record: AISystemRecord, evidence_ref: str = "omg-
         drift_class=DRIFT_AI_AGENTIC_UNGOVERNED,
         severity=Severity.P1,
         posture=Posture.NEVER_AUTOFIX,
-        intended="Agentic AI system has ATO and declared governance mode (L1 minimum per ADR-109 §4)",
+        intended="Agentic AI system has ATO and declared governance mode (L1 minimum per ADR-112 §4)",
         observed=f"classification=Agentic AI  have_ato={record.ato_status.value}  governance_mode=undeclared",
         evidence_ref=evidence_ref,
     )

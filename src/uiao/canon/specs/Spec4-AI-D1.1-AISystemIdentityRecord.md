@@ -7,7 +7,7 @@ owner: governance-steward
 created_at: "2026-06-18"
 updated_at: "2026-06-18"
 canon_adrs:
-  - ADR-109   # Federal AI Use Case Governance — governing ADR
+  - ADR-112   # Federal AI Use Case Governance — governing ADR
   - ADR-059   # SailPoint adapter family — sailpoint-machine-identity slot
   - ADR-092   # Active Governance — agentic AI as governed data plane
   - ADR-054   # Single-ATO reciprocity — ATO enumeration
@@ -30,8 +30,8 @@ The record is the unit of comparison for the AI identity drift scan
 governance state; deviations produce `Finding` objects routed through the
 ADR-012 drift taxonomy.
 
-The governing ADR is **ADR-109**. This spec provides the operational schema
-detail that ADR-109's doctrine section leaves implicit.
+The governing ADR is **ADR-112**. This spec provides the operational schema
+detail that ADR-112's doctrine section leaves implicit.
 
 ---
 
@@ -128,7 +128,7 @@ for f in result.p1_findings:
 ```
 
 The scanner is read-only (L1, observe). No writes. Promotion to L2 (advise)
-or L3 (gated actuation) requires a governance-board decision per ADR-109 §3
+or L3 (gated actuation) requires a governance-board decision per ADR-112 §3
 and ADR-092.
 
 ---
@@ -174,7 +174,7 @@ ready for ingestion by the evidence fabric (ADR-006, ADR-016).
 ## Appendix A — Spec copy retained per UIAO global rule
 
 This spec is `UIAO_196` at version 1.0. Normative authority rests with
-ADR-109. The Python implementation lives at:
+ADR-112. The Python implementation lives at:
 
 ```
 src/uiao/governance/ai_inventory/
