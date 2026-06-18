@@ -30,6 +30,10 @@ from typing import Protocol, runtime_checkable
 
 from uiao.modernization.orgtree.types import ApplyResult, FacetOperation
 
+# A per-principal directory write: ``(target_dn, attribute, value) -> None``.
+# This is the seam a concrete transport (e.g. ``LdapTransport.modify``) fills.
+PrincipalWriteFn = Callable[[str, str, str], None]
+
 
 class ActuationDisabled(RuntimeError):
     """Raised when actuation is attempted on a not-explicitly-enabled actuator."""
@@ -90,3 +94,57 @@ class FacetActuator:
             self.apply(operations)
 
         return _apply
+
+
+@dataclass
+class FacetWriteAdapter:
+    """Adapt a per-principal directory write into the Phase-5 apply protocol.
+
+    The AGD write path (ADR-109) translates an LDAP ``modify`` into per-facet
+    ``write`` / ``remove`` :class:`FacetOperation`s against a target principal
+    DN. A directory *transport* (e.g. :meth:`LdapTransport.modify
+    <uiao.adapters.ldap_transport.LdapTransport.modify>`) knows how to set one
+    attribute on one DN, but it is **not** a Phase-5 ``Adapter`` — it has no
+    ``governance_review_ops`` and returns no :class:`ApplyResult`. This adapter
+    bridges the two: it presents the :class:`FacetApplyAdapter` contract the
+    :class:`FacetActuator` consumes while delegating the actual I/O to the
+    injected ``write_fn``.
+
+    ``write_fn`` receives ``(target_dn, attribute, value)``; a ``remove``
+    operation passes the empty string (the ``ldap`` profile clears a facet by
+    writing an empty value). Operations whose ``op`` is in ``review_ops`` are
+    held (skipped) for human review, never dispatched — the per-adapter half of
+    the ADR-092 §3/§4 gate that :class:`FacetActuator` enforces globally.
+    """
+
+    write_fn: PrincipalWriteFn
+    review_ops: frozenset[str] = frozenset()
+
+    @property
+    def governance_review_ops(self) -> frozenset[str]:
+        return self.review_ops
+
+    def apply(self, operations: Iterable[FacetOperation], *, dry_run: bool = True) -> ApplyResult:
+        ops = tuple(operations)
+        if dry_run:
+            return ApplyResult.dry(ops)
+        sent: list[FacetOperation] = []
+        skipped: list[FacetOperation] = []
+        errors: list[tuple[FacetOperation, str]] = []
+        for op in ops:
+            if op.op in self.review_ops:
+                skipped.append(op)
+                continue
+            try:
+                self.write_fn(op.target, op.attribute, op.value or "")
+            except Exception as exc:  # noqa: BLE001 — transport-agnostic; surfaced as a per-op error
+                errors.append((op, str(exc)))
+                continue
+            sent.append(op)
+        return ApplyResult(
+            operations=ops,
+            sent=tuple(sent),
+            skipped=tuple(skipped),
+            errors=tuple(errors),
+            dry_run=False,
+        )

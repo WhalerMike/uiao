@@ -6,7 +6,12 @@ from collections.abc import Iterable
 
 import pytest
 
-from uiao.directory.actuation import ActuationDisabled, ActuationError, FacetActuator
+from uiao.directory.actuation import (
+    ActuationDisabled,
+    ActuationError,
+    FacetActuator,
+    FacetWriteAdapter,
+)
 from uiao.directory.protocol import Modification, ModifyOp, ModifyRequest
 from uiao.directory.writes import WriteRouter
 from uiao.modernization.orgtree.types import ApplyResult, FacetOperation
@@ -98,3 +103,68 @@ def test_router_with_disabled_actuator_stays_plan_only() -> None:
     )
     with pytest.raises(ActuationDisabled):
         router.route(req)
+
+
+# ---------------------------------------------------------------------------
+# FacetWriteAdapter — adapts a per-principal transport into the apply protocol
+# ---------------------------------------------------------------------------
+
+
+def test_write_adapter_dry_run_dispatches_nothing() -> None:
+    calls: list[tuple[str, str, str]] = []
+    adapter = FacetWriteAdapter(write_fn=lambda dn, a, v: calls.append((dn, a, v)))
+    result = adapter.apply((_op(),), dry_run=True)
+    assert result.dry_run and result.sent_count == 0
+    assert calls == []  # dry-run never touches the transport
+
+
+def test_write_adapter_applies_via_write_fn() -> None:
+    calls: list[tuple[str, str, str]] = []
+    adapter = FacetWriteAdapter(write_fn=lambda dn, a, v: calls.append((dn, a, v)))
+    result = adapter.apply((_op(),), dry_run=False)
+    assert result.sent_count == 1
+    assert calls == [("cn=alice", "extensionAttribute2", "IT")]
+
+
+def test_write_adapter_remove_passes_empty_value() -> None:
+    calls: list[tuple[str, str, str]] = []
+    adapter = FacetWriteAdapter(write_fn=lambda dn, a, v: calls.append((dn, a, v)))
+    remove = FacetOperation(
+        facet="department", attribute="extensionAttribute2", op="remove", value=None, target="cn=alice"
+    )
+    adapter.apply((remove,), dry_run=False)
+    assert calls == [("cn=alice", "extensionAttribute2", "")]  # remove (value=None) → empty value
+
+
+def test_write_adapter_holds_governance_review_ops() -> None:
+    calls: list[tuple[str, str, str]] = []
+    adapter = FacetWriteAdapter(write_fn=lambda dn, a, v: calls.append((dn, a, v)), review_ops=frozenset({"remove"}))
+    result = adapter.apply((_op("write"), _op("remove")), dry_run=False)
+    assert result.sent_count == 1 and result.skipped_count == 1
+    assert calls == [("cn=alice", "extensionAttribute2", "IT")]  # remove held for review
+
+
+def test_write_adapter_captures_transport_errors() -> None:
+    def _boom(dn: str, a: str, v: str) -> None:
+        raise RuntimeError("connection reset")
+
+    adapter = FacetWriteAdapter(write_fn=_boom)
+    result = adapter.apply((_op(),), dry_run=False)
+    assert result.error_count == 1 and result.sent_count == 0
+    assert "connection reset" in result.errors[0][1]
+
+
+def test_write_adapter_drives_actuator_end_to_end() -> None:
+    # The provider-write seam the CLI --apply path wires: transport.modify →
+    # FacetWriteAdapter → FacetActuator(enabled) → WriteRouter(apply).
+    calls: list[tuple[str, str, str]] = []
+    actuator = FacetActuator(FacetWriteAdapter(write_fn=lambda dn, a, v: calls.append((dn, a, v))), enabled=True)
+    router = WriteRouter(dry_run=False, apply_fn=actuator.as_apply_fn())
+    req = ModifyRequest(
+        message_id=1,
+        object="cn=bob,ou=people,dc=agd,dc=uiao,dc=gov",
+        changes=(Modification(ModifyOp.REPLACE, "uiaoOrgPathDepartment", ("IT",)),),
+    )
+    result = router.route(req)
+    assert result.applied and not result.refused
+    assert calls == [("cn=bob,ou=people,dc=agd,dc=uiao,dc=gov", "extensionAttribute2", "IT")]

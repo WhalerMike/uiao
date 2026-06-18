@@ -29,9 +29,10 @@ Public surface:
 
 from __future__ import annotations
 
-from uiao.directory.actuation import ActuationDisabled, FacetActuator
+from uiao.directory.actuation import ActuationDisabled, FacetActuator, FacetWriteAdapter
 from uiao.directory.ad_schema import synthesize as synthesize_ad_veneer
 from uiao.directory.dit import Directory, build_directory
+from uiao.directory.feed import principals_from_assessment
 from uiao.directory.policy import ReadPolicy, default_read_policy
 from uiao.directory.sasl import SaslMechanism, SaslResult
 from uiao.directory.server import LdapServer, build_server_tls_context
@@ -41,6 +42,7 @@ __all__ = [
     "ActuationDisabled",
     "Directory",
     "FacetActuator",
+    "FacetWriteAdapter",
     "LdapServer",
     "ReadPolicy",
     "SaslMechanism",
@@ -50,6 +52,7 @@ __all__ = [
     "build_directory",
     "build_server_tls_context",
     "default_read_policy",
+    "principals_from_assessment",
     "synthesize_ad_veneer",
     "translate_modify",
 ]
