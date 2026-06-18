@@ -1,0 +1,43 @@
+name: PR-relevant paths
+description: >-
+  Outputs relevant=true when the current PR changes files matching the given
+  regex, else false. Always true on non-pull_request events (push / schedule /
+  dispatch). Lets an expensive gate always *trigger* on PRs (so its required
+  status check always reports) while only doing real work when relevant — a
+  skipped-to-green job instead of a never-reported one, which is what makes a
+  path-filtered check safe to mark "required" without dead-locking unrelated
+  PRs. Uses the PR's actual changed-file list (gh api), so it is correct
+  regardless of checkout depth and pulls in no third-party action.
+inputs:
+  pattern:
+    description: POSIX ERE matched (grep -E) against each changed file path.
+    required: true
+outputs:
+  relevant:
+    description: "'true' or 'false'"
+    value: ${{ steps.detect.outputs.relevant }}
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_PATTERN: ${{ inputs.pattern }}
+      run: |
+        set -euo pipefail
+        if [ "${{ github.event_name }}" != "pull_request" ]; then
+          echo "relevant=true" >> "$GITHUB_OUTPUT"
+          echo "Non-PR event (${{ github.event_name }}): gate runs."
+          exit 0
+        fi
+        files="$(gh api --paginate \
+          "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" \
+          --jq '.[].filename')"
+        if printf '%s\n' "$files" | grep -qE "$PR_PATTERN"; then
+          echo "relevant=true" >> "$GITHUB_OUTPUT"
+          echo "Relevant files changed; gate runs."
+        else
+          echo "relevant=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::No files matching this gate changed in the PR; reporting success without running."
+        fi
