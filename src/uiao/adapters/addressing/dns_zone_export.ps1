@@ -139,7 +139,7 @@ foreach ($zone in $ZoneName) {
             $liveHosts.Add($flat.name) | Out-Null
         }
     }
-    Write-Step "  $zone: $($recs.Count) records read"
+    Write-Step "  ${zone}: $($recs.Count) records read"
 }
 
 Write-Step "Total: $total records read, $skipped skipped (unsupported type), $($allRecords.Count) exported"
