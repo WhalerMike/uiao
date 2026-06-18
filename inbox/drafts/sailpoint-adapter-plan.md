@@ -677,7 +677,42 @@ Optional follow-on:
 - PR 4 — amend AGENTS.md cloud-boundary statement to list NERM as second Commercial-exception (per ADR-059 Decision 1).
 - PR 5+ — per-adapter activation ADRs (one per slot promoted to `active`).
 
-## 9. Open questions for architect review
+## 9. OMB AI Use Case Inventory as `sailpoint-machine-identity` discovery feed (2026-06-18)
+
+> **Status:** added post-ADR-059 landing, concurrent with ADR-109.
+
+The `sailpoint-machine-identity` conformance slot was allocated to observe *"discovered service / bot / RPA / AI-agent inventory, ownership graph, lifecycle state."* ADR-109 names the authoritative federal discovery feed for that slot: the **OMB 2025 Federal AI Use Case Inventory** (`github.com/ombegov/2025-Federal-Agency-AI-Use-Case-Inventory`), published under M-25-21 / EO 13960.
+
+### 9.1 Field mapping
+
+| OMB inventory field | `sailpoint-machine-identity` record attribute | Notes |
+|---|---|---|
+| `agency` / `agency_bureau` | OrgPath (agency + bureau → OrgTree node) | Bureau is the organizational placement anchor |
+| `system_name_ato` | machine-identity record name | Join key to UIAO registry; may be empty if `have_ato = No` |
+| `id` | external-id (OMB use-case ID) | Stable cross-year identifier per OMB guidance |
+| `classification` | agent-type (`agentic-ai`, `ml`, `nlp`, `cv`, etc.) | `Agentic AI` entries trigger highest governance priority per ADR-109 §4 |
+| `development_stage` | lifecycle-state (`deployed`, `pilot`, `pre-deployment`, `retired`) | Only `deployed` and `pilot` entries are candidate identity subjects at activation |
+| `vendor_name` | vendor (→ KYC/NERM non-employee surface) | Maps to `sailpoint-nerm` sponsorship chain |
+| `have_ato` | ato-status (`yes`, `no`, `not-applicable`) | `No` entries generate `DRIFT-COMPLIANCE::ato-gap` per ADR-109 §3 |
+| `has_pii` | pii-flag | PII-bearing systems are highest-priority identity subjects |
+| `pia_url` | pia-link | Privacy Impact Assessment evidence URL |
+| `operational_date` | operational-since | |
+| `hi_*` (12 fields) | hi-checklist (embedded JSON) | Evidence target for high-impact AI systems per ADR-109 §1 |
+
+### 9.2 Activation sequencing
+
+The OMB inventory feed does not change the activation gate for `sailpoint-machine-identity` — it still requires the Option-B boundary-expansion decision (§3 above) and a per-adapter activation ADR. What it does provide is:
+
+1. **A defined source of truth** — the slot is no longer a blank reserved entry; it has a named annual input corpus.
+2. **A seed roster** — at activation, the deployed/pilot subset of the OMB inventory is the Day-1 scan target, eliminating the cold-start discovery problem.
+3. **An ATO reconciliation feed** — `have_ato` + `system_name_ato` are cross-walked against ADR-054 reciprocity records at first scan (L1 observe rung per ADR-109 §3, ADR-092).
+4. **An annual staleness signal** — when the next-vintage OMB inventory publishes, the delta (new entries, retired entries, ATO status changes) drives the incremental reconciliation run.
+
+### 9.3 Shadow AI detection
+
+A machine-identity record in UIAO's registry that has **no corresponding OMB inventory entry** is a shadow AI system — a deployed federal AI system that M-25-21 required to be inventoried but was not. This is the highest-severity finding class from this surface. Per ADR-045, shadow AI findings are subject to scan redaction policy before multi-agency distribution.
+
+## 10. Open questions for architect review
 
 1. **Boundary path** — confirm Option A (NERM-only first) over Option B (full ISC family) and Option C (IIQ on-prem only). Draft selects A; confirm or redirect.
 2. **Schema enum value** — is `fedramp-moderate-aws-govcloud` the right name, or should it be `fedramp-moderate` (cloud-agnostic) with a new `cloud-substrate` field naming AWS GovCloud? The latter is more future-proof if Option B ever lands.

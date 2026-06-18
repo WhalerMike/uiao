@@ -111,8 +111,10 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-105](adr-105-operational-guide-kit-conventions.md) | Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery | PROPOSED | 2026-06-13 |
 | [ADR-106](adr-106-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption (renumbered from ADR-047) | PROPOSED | 2026-04-27 |
 | [ADR-107](adr-107-network-aaa-adapter-registration.md) | Network AAA Adapter Registration and Control-Library `implemented_by` Closure (renumbered from ADR-047) | PROPOSED | 2026-05-07 |
+| [ADR-108](adr-108-addressing-plane-drift-gate.md) | Addressing-Plane Drift Gate and Shared `drift_core` Primitive | PROPOSED | 2026-06-17 |
 | [ADR-109](adr-109-active-governance-directory-write-as-intent.md) | Active Governance Directory — Write Operations as Governed Intent, Not Store Mutation | PROPOSED | 2026-06-18 |
 | [ADR-110](adr-110-active-governance-directory-ad-schema-veneer.md) | Active Governance Directory — AD-Compatible Schema as a Read-Only Synthesized Veneer, Not an AD Store | PROPOSED | 2026-06-18 |
+| [ADR-112](adr-112-federal-ai-usecase-governance.md) | Federal AI Use Case Governance — M-25-21 IAM Obligations, OMB Inventory Integration, and ATO Drift Signal | PROPOSED | 2026-06-18 |
 
 ### Microsoft Coverage
 

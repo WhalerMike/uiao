@@ -1,0 +1,242 @@
+---
+title: "Federal AI Identity Governance — Manual Path"
+subtitle: "A standalone agency runbook for applying M-25-21 identity governance to your AI inventory — no external control plane required"
+doc-type: operational-guide
+audience: [Customer, Operator, Technical]
+author: Michael Stratton
+date: "June 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd
+created-at: 2026-06-18
+updated-at: 2026-06-18
+format:
+  html:
+    toc: true
+    toc-depth: 3
+lifecycle: proposed
+tiers_adopted: []
+lifecycle_review: 2026-12-18
+---
+
+# Federal AI Identity Governance — Manual Path {.unnumbered}
+
+This runbook applies M-25-21 identity governance to your agency's AI inventory
+**without** an external governance control plane. Every step is self-contained
+and runnable by technically qualified identity staff.
+
+The manual path is not the *un-governed* path. Because there is no automated
+control plane enforcing each step, **you** own the change record, the approval,
+and the remediation. Document accepted risks in a change request before you
+begin.
+
+::: {.callout-important}
+If you plan to add UIAO/OrgPath governance later, this path is designed so you
+can — nothing here forecloses it. See [governed path](governed-path.qmd).
+:::
+
+---
+
+## Phase 0 — Prerequisites
+
+**What you need:**
+
+- PowerShell 7.2 or later (Windows, Linux, or macOS)
+- The OMB 2025 AI Use Case Inventory CSV:
+  `github.com/ombegov/2025-Federal-Agency-AI-Use-Case-Inventory`
+  → `Data/2025_individually_reported_AI_use_cases.csv`
+- Your agency's abbreviated code (e.g. `DOD`, `HHS`, `GSA`)
+- Read access to your identity management system to look up service accounts
+  (used in Phase 3 — lookup is manual, not scripted)
+
+**Download the script:**
+
+```powershell
+# Save to your working directory
+# scripts/Invoke-AIInventoryScan.ps1  (in this kit)
+```
+
+---
+
+## Phase 1 — Inventory scan
+
+Run the scanner against the OMB CSV. This is read-only — it touches nothing
+in your environment.
+
+```powershell
+.\scripts\Invoke-AIInventoryScan.ps1 `
+    -CsvPath ".\2025_individually_reported_AI_use_cases.csv" `
+    -Agency  "GSA" `
+    -OutputPath ".\ai-identity-gaps.csv"
+```
+
+**What this produces:**
+
+A CSV with one row per finding:
+
+| Column | Meaning |
+|---|---|
+| `SystemName` | OMB `system_name_ato` or `use_case_name` |
+| `Bureau` | OMB `agency_bureau` |
+| `OrgPath` | Derived `AGENCY:Bureau` namespace prefix |
+| `DriftClass` | One of six governance gap types |
+| `Severity` | P1 (halt-the-line) or P2 (remediate) |
+| `Finding` | Human-readable description |
+| `AtoStatus` | `yes` / `no` / `not-applicable` |
+| `HasPii` | `true` / `false` |
+| `PiaUrl` | URL or blank |
+| `ContactEmail` | Owner or blank |
+| `AgentClass` | `agentic-ai`, `classical-ml`, etc. |
+
+**Expected findings for a typical agency:**
+
+- 10–30% of deployed systems have `ato_status = No` → **`DRIFT-COMPLIANCE::ai-ato-gap`** (P2)
+- 40–60% have no `contact_email` → **`DRIFT-IDENTITY::ai-unowned`** (P2)
+- Any `classification = Agentic AI` with no ATO → **`DRIFT-COMPLIANCE::ai-agentic-ungoverned`** (P1)
+- PII-bearing systems with no PIA URL → **`DRIFT-COMPLIANCE::ai-pii-no-pia`** (P2)
+
+---
+
+## Phase 2 — Triage P1 findings first
+
+P1 findings are halt-the-line: agentic AI without ATO, or shadow AI (systems
+in your registry with no OMB entry). Remediate these before addressing P2.
+
+### P1-A: Agentic AI without ATO
+
+For each `DRIFT-COMPLIANCE::ai-agentic-ungoverned` finding:
+
+1. Confirm the system is still operational (check with the bureau POC).
+2. Initiate ATO process if none exists. Escalate to your AO.
+3. Until ATO is granted: document in your POA&M, restrict to lowest-privilege
+   credential (read-only where possible), add to your next access review cycle.
+4. Record disposition in your remediation tracker.
+
+### P1-B: Shadow AI (manual detection)
+
+The script flags ATO gaps, but shadow AI (systems your agency runs that were
+never reported to OMB) requires a manual step:
+
+1. Export your identity management system's service accounts and managed
+   identities (query your IdM system for accounts with `ServiceAccount` or
+   `WorkloadIdentity` classification).
+2. Cross-reference against the OMB inventory entries for your agency.
+3. Any service account that connects to an AI workload with no matching OMB
+   entry is a shadow AI candidate. Investigate, then either:
+   - Report to OMB via the M-25-21 submission process, or
+   - Document why the system is exempt (classified, national security, etc.)
+
+---
+
+## Phase 3 — Remediate P2 findings
+
+Address in this order: unowned → ATO gap → PII/no PIA → no OrgPath.
+
+### P2-A: Unowned systems (`DRIFT-IDENTITY::ai-unowned`)
+
+For each system with no `contact_email`:
+
+1. Identify the bureau that deployed the system (OMB `agency_bureau` field).
+2. Contact the bureau's identity governance coordinator.
+3. Assign a named owner — a person or team with authority to:
+   - Approve credential rotation
+   - Respond to access review requests
+   - Execute deprovisioning on system retirement
+4. Record the owner in your identity management system, linking the owner to
+   the system's service account(s).
+5. Update your OMB inventory submission to include `contact_email`.
+
+### P2-B: ATO gaps (`DRIFT-COMPLIANCE::ai-ato-gap`)
+
+For each deployed/pilot system with `have_ato = No`:
+
+1. Verify the system is in active use (deployed systems must have an ATO per
+   M-25-21 §IV).
+2. Initiate ATO or inherit reciprocity from an existing ATO (ADR-054 pattern).
+3. If the system cannot be authorized, escalate to your AO for a risk
+   acceptance or mission necessity exception.
+4. Update `have_ato` in next OMB inventory submission.
+
+### P2-C: PII / no PIA (`DRIFT-COMPLIANCE::ai-pii-no-pia`)
+
+For each `has_pii = Yes` system with no `pia_url`:
+
+1. Confirm PII handling with the system owner.
+2. If PII is confirmed: initiate or locate the Privacy Impact Assessment.
+   PIA is required under M-25-21 §IV.
+3. Publish the PIA to your agency's public PIA index.
+4. Update `pia_url` in next OMB inventory submission.
+
+### P2-D: No OrgPath (`DRIFT-IDENTITY::ai-no-orgpath`)
+
+For each system where `agency_bureau` is blank in the OMB inventory:
+
+1. Identify the responsible bureau from procurement or project records.
+2. Update `agency_bureau` in next OMB inventory submission.
+3. Assign the system's credentials to the bureau's service account OU or
+   managed identity resource group.
+
+---
+
+## Phase 4 — Establish lifecycle processes
+
+One-time remediation is not governance. These processes prevent the gaps from
+re-appearing.
+
+### Credential rotation policy
+
+For each AI system service account:
+
+1. Assign to a credential rotation group in your PAM system (CyberArk,
+   Delinea, or equivalent).
+2. Set rotation cadence based on credential tier:
+   - High-sensitivity bureau or agentic AI: 90 days
+   - Standard bureau: 180 days
+   - Read-only / low-privilege: 365 days
+3. Assign rotation notification to the system owner (Phase 3-A).
+
+### Annual inventory reconciliation
+
+When OMB publishes each year's updated inventory:
+
+1. Re-run `Invoke-AIInventoryScan.ps1` against the new CSV.
+2. Compare `DriftClass` counts to the prior year's report.
+3. New P1 findings → immediate triage (Phase 2).
+4. New P2 findings → add to next access review cycle.
+
+### Deprovisioning on retirement
+
+For each system that moves to `development_stage = retired`:
+
+1. Trigger deprovisioning workflow for the system's service account(s).
+2. Archive the identity record (do not delete — retain for audit).
+3. Close the POA&M items related to the system.
+4. Confirm with system owner that all API keys and credentials are revoked.
+
+---
+
+## Phase 5 — Document and report
+
+At the end of each annual cycle, produce a one-page AI Identity Governance
+Summary:
+
+```powershell
+.\scripts\Invoke-AIInventoryScan.ps1 `
+    -CsvPath ".\2025_individually_reported_AI_use_cases.csv" `
+    -Agency  "GSA" `
+    -OutputPath ".\ai-identity-report.html" `
+    -Format  "HTML"
+```
+
+This summary is suitable for:
+
+- Your AO's annual review package
+- Your OMB M-25-21 self-assessment
+- Internal identity governance board reporting
+
+---
+
+::: {.callout-tip}
+When you are ready to automate this process — annual inventory refresh,
+continuous ATO monitoring, and OrgPath-bound credential lifecycle — see the
+[governed path](governed-path.qmd).
+:::

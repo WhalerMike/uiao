@@ -584,6 +584,8 @@
     - [The L0–L4 Actuation Ladder for Privileged Operations](customer-documents/orgpath-narrative/Book_20_CPT_04.html)
     - [Incorporating CyberArk into Active Governance](customer-documents/orgpath-narrative/Book_20_CPT_05.html)
     - [What Gets Better](customer-documents/orgpath-narrative/Book_20_CPT_06.html)
+  - [Book_21 — OrgPath and Federal AI Governance](customer-documents/orgpath-narrative/Book_21.html)
+    - [The Invisible Identity Surface](customer-documents/orgpath-narrative/Book_21_CPT_01.html)
 - **OrgPath for All Clouds (6-chapter series)**
   - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
   - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)
