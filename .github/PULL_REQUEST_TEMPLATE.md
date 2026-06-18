@@ -8,9 +8,10 @@
 
 ## Module(s) touched
 
-- [ ] `core/` (canon authority)
+- [ ] `src/uiao/canon/` (canon authority)
+- [ ] `src/uiao/` (Python implementation — non-canon)
+- [ ] `tests/` (test suite)
 - [ ] `docs/` (derived documentation)
-- [ ] `impl/` (Python implementation)
 - [ ] `.github/` (CI / workflows / repo config)
 
 ## Canon impact
@@ -24,15 +25,15 @@
 ## Test plan
 
 - [ ] Substrate walker passes (`uiao substrate walk`)
-- [ ] Ruff passes (`cd impl && ruff check .`)
-- [ ] Pytest passes (`cd impl && pytest -q`)
+- [ ] Ruff passes (`ruff check . && ruff format --check .`)
+- [ ] Pytest passes (`pytest -q`)
 - [ ] Schema validation passes (automatic in CI)
 - [ ] Quarto render passes (if `docs/` touched)
 - [ ] Other: <!-- describe -->
 
 ## Checklist
 
-- [ ] Commit convention followed (`[UIAO-<MODULE>] <verb>: ...`)
+- [ ] Commit convention followed (`<verb>: <module-or-area> — <description>`; see AGENTS.md)
 - [ ] No hardcoded canon paths — all runtime paths via `$UIAO_WORKSPACE_ROOT` or `--canon-path`
 - [ ] CODEOWNERS auto-requested the right owner
 - [ ] Related ADR(s) linked in the PR body if this changes doctrine
