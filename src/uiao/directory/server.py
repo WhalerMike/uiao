@@ -1,23 +1,25 @@
 """Async LDAPv3 server for the Active Governance Directory (ADR-100).
 
-A pure-``asyncio`` TCP server that answers the AGD's read surface:
-``BIND`` (anonymous + simple), ``SEARCH`` (base / one-level / subtree),
-and ``UNBIND``. It is in-path on the LDAP request path — the data-plane
-position ADR-100 sanctions as an exception to ADR-092 §1 — but it remains
-a **read projection**: there is no add/modify/delete op, so the in-path
-server can never mutate the governance substrate.
+A pure-``asyncio`` TCP server that answers the AGD's surface: ``BIND``
+(anonymous, simple, and SASL/GSSAPI per ADR-101), ``SEARCH`` (base /
+one-level / subtree), ``UNBIND``, ``StartTLS`` (ADR-100 §4), and — when a
+``write_router`` is configured — ``MODIFY`` as governed intent (ADR-109).
+It is in-path on the LDAP request path (the data-plane position ADR-100
+sanctions as an exception to ADR-092 §1) but it holds **no writable
+store**: a modify is translated to a control-plane intent and routed to the
+provider of record, never applied to the projection.
 
-Authentication policy for this first increment:
+Authentication policy:
 
-* **anonymous bind** (empty DN + empty password) — always succeeds and
-  yields the full read-only projection;
-* **simple bind** — succeeds only when the credentials match an entry in
-  an operator-supplied ``credentials`` map (``{bind_dn: password}``);
-  otherwise ``invalidCredentials``.
+* **anonymous bind** (empty DN + empty password) — succeeds and yields the
+  read-only projection (sensitive facets redacted, ADR-100 §5);
+* **simple bind** — succeeds when the credentials match an operator-supplied
+  ``credentials`` map; otherwise ``invalidCredentials``;
+* **SASL bind** — per ``sasl_mechanisms`` (GSSAPI/Kerberos, ADR-101).
 
-Kerberos/SASL, StartTLS, and write ops are explicitly out of scope and
-roadmapped in ADR-100 — unsupported ops answer ``unwillingToPerform``
-without dropping the connection.
+Writes require both a configured ``write_router`` and an authenticated bind;
+otherwise a modify is refused (``unwillingToPerform`` / ``insufficientAccessRights``).
+Unsupported ops answer ``unwillingToPerform`` without dropping the connection.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from uiao.directory import ber, protocol
 from uiao.directory.dit import Directory
 from uiao.directory.policy import ReadPolicy, default_read_policy
 from uiao.directory.sasl import SaslError, SaslMechanism, SaslMechanismFactory
+from uiao.directory.writes import WriteRouter
 
 logger = logging.getLogger("uiao.directory.server")
 
@@ -54,6 +57,10 @@ class LdapServer:
     # SASL mechanisms offered (name -> per-connection factory), ADR-101. Empty
     # by default; populate with {"GSSAPI": GssapiMechanism} to offer Kerberos.
     sasl_mechanisms: dict[str, SaslMechanismFactory] = field(default_factory=dict)
+    # When set, LDAP writes are accepted as governed intent (ADR-109): each
+    # modify is translated to a FacetOperation and routed (dry-run by default).
+    # None (default) keeps the AGD read-only — writes are refused.
+    write_router: WriteRouter | None = None
 
     # -- bind policy --------------------------------------------------------
     def _authenticate(self, name: str, password: str) -> protocol.ResultCode:
@@ -178,6 +185,37 @@ class LdapServer:
         out.append(protocol.encode_search_result_done(req.message_id, code, message))
         return out
 
+    def handle_modify(self, req: protocol.ModifyRequest, *, authenticated: bool = False) -> bytes:
+        """Translate a write into governed intent and route it (ADR-109).
+
+        Writes are refused unless a ``write_router`` is configured *and* the
+        connection has completed an authenticated bind (ADR-109 §3 + ADR-101).
+        A configured router translates the modify to FacetOperations and
+        routes them dry-run-by-default; an un-translatable or non-governed
+        write is refused ``unwillingToPerform``. The projection is never
+        mutated — writes flow to the provider of record, not the DIT.
+        """
+        if self.write_router is None:
+            return protocol.encode_modify_response(
+                req.message_id,
+                protocol.ResultCode.UNWILLING_TO_PERFORM,
+                "the Active Governance Directory is read-only; writes are not enabled (ADR-109)",
+            )
+        if not authenticated:
+            return protocol.encode_modify_response(
+                req.message_id,
+                protocol.ResultCode.INSUFFICIENT_ACCESS_RIGHTS,
+                "writes require an authenticated bind (ADR-109 §3 / ADR-101)",
+            )
+        result = self.write_router.route(req)
+        if result.refused:
+            return protocol.encode_modify_response(
+                req.message_id, protocol.ResultCode.UNWILLING_TO_PERFORM, result.message
+            )
+        # Accepted as governed intent — success carries the plan/apply state in
+        # the diagnostic (dry-run returns the plan; it is not applied).
+        return protocol.encode_modify_response(req.message_id, protocol.ResultCode.SUCCESS, result.message)
+
     # -- extended ops (StartTLS) -------------------------------------------
     async def _handle_extended(
         self,
@@ -292,6 +330,8 @@ class LdapServer:
                 elif isinstance(req, protocol.SearchRequest):
                     for chunk in self.handle_search(req, authenticated=authenticated):
                         writer.write(chunk)
+                elif isinstance(req, protocol.ModifyRequest):
+                    writer.write(self.handle_modify(req, authenticated=authenticated))
                 elif isinstance(req, protocol.ExtendedRequest):
                     upgraded = await self._handle_extended(reader, writer, req, tls_active=tls_active, peer=peer)
                     if upgraded:

@@ -108,6 +108,11 @@ def serve(
         "--gssapi-service",
         help="Service principal for GSSAPI (e.g. ldap@host); defaults to the host keytab's acceptor credential.",
     ),
+    enable_writes: bool = typer.Option(
+        False,
+        "--enable-writes",
+        help="Accept LDAP writes as governed intent, dry-run only (ADR-109). Plans changes; never applies or mutates.",
+    ),
     check: bool = typer.Option(
         False,
         "--check",
@@ -138,8 +143,15 @@ def serve(
         from uiao.directory.sasl import GssapiMechanism
 
         server.sasl_mechanisms["GSSAPI"] = lambda: GssapiMechanism(service_name=gssapi_service)
+    if enable_writes:
+        from uiao.directory.writes import WriteRouter
+
+        # Plan-only: dry_run, no apply_fn — translates + validates writes, never
+        # applies. Wiring apply to the modernization adapters is a later step.
+        server.write_router = WriteRouter(dry_run=True)
     entry_count = len(directory.entries)
     sasl_note = " +SASL/GSSAPI" if sasl_gssapi else ""
+    sasl_note += " +writes(dry-run)" if enable_writes else ""
     if check:
         console.print(
             f"[green]OK[/green] — would serve {entry_count} entries "

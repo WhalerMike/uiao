@@ -78,7 +78,16 @@ class ResultCode(IntEnum):
     AUTH_METHOD_NOT_SUPPORTED = 7
     NO_SUCH_OBJECT = 32
     INVALID_CREDENTIALS = 49
+    INSUFFICIENT_ACCESS_RIGHTS = 50
     UNWILLING_TO_PERFORM = 53
+
+
+class ModifyOp(IntEnum):
+    """A single change's operation in a ModifyRequest (RFC 4511 §4.6)."""
+
+    ADD = 0
+    DELETE = 1
+    REPLACE = 2
 
 
 class Scope(IntEnum):
@@ -158,6 +167,29 @@ class SaslBindRequest:
 
 
 @dataclass(frozen=True)
+class Modification:
+    """One change in a ModifyRequest: an operation on one attribute."""
+
+    operation: ModifyOp
+    attribute: str
+    values: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ModifyRequest:
+    """An LDAPv3 ModifyRequest ([APPLICATION 6], RFC 4511 §4.6).
+
+    The AGD does not apply these to its projection; per ADR-109 each is
+    translated into a governed control-plane intent. ``object`` is the
+    target DN; ``changes`` is the ordered list of per-attribute changes.
+    """
+
+    message_id: int
+    object: str
+    changes: tuple[Modification, ...]
+
+
+@dataclass(frozen=True)
 class SearchRequest:
     message_id: int
     base_object: str
@@ -208,7 +240,7 @@ class Entry:
 # ---------------------------------------------------------------------------
 def parse_message(
     data: bytes,
-) -> BindRequest | SaslBindRequest | SearchRequest | UnbindRequest | ExtendedRequest:
+) -> BindRequest | SaslBindRequest | SearchRequest | UnbindRequest | ExtendedRequest | ModifyRequest:
     """Parse one complete ``LDAPMessage`` envelope into a request object."""
     envelope, _ = ber.read_tlv(data)
     if envelope.tag != ber.TAG_SEQUENCE:
@@ -227,6 +259,8 @@ def parse_message(
         return _parse_search(message_id, op)
     if op.tag == APP_UNBIND_REQUEST:
         return UnbindRequest(message_id=message_id)
+    if op.tag == APP_MODIFY_REQUEST:
+        return _parse_modify(message_id, op)
     if op.tag == APP_EXTENDED_REQUEST:
         return _parse_extended(message_id, op)
     raise UnsupportedOperation(
@@ -234,6 +268,22 @@ def parse_message(
         message_id=message_id,
         op_tag=op.tag,
     )
+
+
+def _parse_modify(message_id: int, op: ber.TLV) -> ModifyRequest:
+    parts = ber.read_children(op.content)
+    if len(parts) < 2:
+        raise ProtocolError("ModifyRequest requires object and changes")
+    dn = ber.decode_octet_string(parts[0].content)
+    changes: list[Modification] = []
+    for change in ber.read_children(parts[1].content):
+        op_tlv, attr_tlv = ber.read_children(change.content)
+        operation = ModifyOp(ber.decode_integer(op_tlv.content))
+        type_tlv, vals_tlv = ber.read_children(attr_tlv.content)
+        attribute = ber.decode_octet_string(type_tlv.content)
+        values = tuple(ber.decode_octet_string(v.content) for v in ber.read_children(vals_tlv.content))
+        changes.append(Modification(operation=operation, attribute=attribute, values=values))
+    return ModifyRequest(message_id=message_id, object=dn, changes=tuple(changes))
 
 
 def _parse_extended(message_id: int, op: ber.TLV) -> ExtendedRequest:
@@ -376,6 +426,11 @@ def encode_bind_response(
 
 def encode_search_result_done(message_id: int, code: ResultCode, message: str = "", matched_dn: str = "") -> bytes:
     op = ber.encode_sequence(_ldap_result(code, matched_dn=matched_dn, message=message), tag=APP_SEARCH_RESULT_DONE)
+    return _envelope(message_id, op)
+
+
+def encode_modify_response(message_id: int, code: ResultCode, message: str = "") -> bytes:
+    op = ber.encode_sequence(_ldap_result(code, message=message), tag=APP_MODIFY_RESPONSE)
     return _envelope(message_id, op)
 
 
