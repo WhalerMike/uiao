@@ -1,16 +1,19 @@
 name: Mypy
 
+# Always triggers on PRs so the required check always reports; the type-check
+# only runs when Python / packaging changed (else the job skips its work to a
+# green result). See .github/actions/pr-relevant.
 on:
   pull_request:
-    paths:
-      - 'src/uiao/**/*.py'
-      - 'pyproject.toml'
-      - '.github/workflows/mypy.yml'
   push:
     branches: [main]
     paths:
       - 'src/uiao/**/*.py'
       - 'pyproject.toml'
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   mypy:
@@ -20,13 +23,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Detect relevant changes
+        id: changes
+        uses: ./.github/actions/pr-relevant
+        with:
+          pattern: '(^src/uiao/.*\.py$|^pyproject\.toml$|^\.github/workflows/mypy\.yml$|^\.github/actions/pr-relevant/)'
+
       - name: Set up Python
+        if: steps.changes.outputs.relevant == 'true'
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
       - name: Install package with dev extras
+        if: steps.changes.outputs.relevant == 'true'
         run: pip install --quiet -e ".[dev]"
 
       - name: Run mypy
+        if: steps.changes.outputs.relevant == 'true'
         run: mypy src/uiao --ignore-missing-imports
