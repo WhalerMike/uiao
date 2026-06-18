@@ -85,6 +85,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-033](adr-033-gcc-boundary-drift-class.md) | GCC Boundary Drift Class and Compensating Controls Architecture | ACCEPTED | 2026-04-19 |
 | [ADR-043](adr-043-fedramp-rfc-0026-ca7-integration.md) | FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration | PROPOSED | 2026-04-21 |
 | [ADR-045](adr-045-scan-redaction-policy.md) | Scan Artifact Redaction Policy for Multi-Agency Distribution | PROPOSED | 2026-04-23 |
+| [ADR-111](adr-111-bod-26-04-risk-based-vulnerability-sla.md) | BOD 26-04 Risk-Based Vulnerability Remediation SLA — Superseding the Flat 72-Hour Critical Clock (ADR-043 D2) | PROPOSED | 2026-06-18 |
 
 ### Device & Identity Modernization
 
