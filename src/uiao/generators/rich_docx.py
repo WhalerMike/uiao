@@ -34,7 +34,9 @@ from uiao.utils.context import get_settings, load_context
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_IMAGE_WIDTH: Any = Inches(6.5)  # full text column (Letter, 1" margins); margin-to-margin per STYLE.md. Module-level singleton for ruff B008
+_DEFAULT_IMAGE_WIDTH: Any = Inches(
+    6.5
+)  # full text column (Letter, 1" margins); margin-to-margin per STYLE.md. Module-level singleton for ruff B008
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

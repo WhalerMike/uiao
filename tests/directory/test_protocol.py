@@ -103,12 +103,13 @@ def test_unsupported_op_raises() -> None:
 
 
 def test_unsupported_auth_raises() -> None:
-    # SASL auth [3] is rejected for this increment.
+    # An unrecognised authentication choice (neither simple [0] nor SASL [3])
+    # is rejected; here a made-up [5] context tag.
     op = ber.encode_sequence(
         [
             ber.encode_integer(3),
             ber.encode_octet_string(""),
-            ber.encode_octet_string("x", tag=ber.CONTEXT | ber.CONSTRUCTED | 3),
+            ber.encode_octet_string("x", tag=ber.CONTEXT | 5),
         ],
         tag=protocol.APP_BIND_REQUEST,
     )
@@ -125,6 +126,39 @@ def test_encode_bind_response_round_trips() -> None:
     assert op.tag == protocol.APP_BIND_RESPONSE
     code = ber.read_children(op.content)[0]
     assert ber.decode_integer(code.content) == int(protocol.ResultCode.SUCCESS)
+
+
+def _sasl_bind(message_id: int, mechanism: str, credentials: bytes | None) -> bytes:
+    sasl_fields = [ber.encode_octet_string(mechanism)]
+    if credentials is not None:
+        sasl_fields.append(ber.encode_octet_string(credentials))
+    auth = ber.encode_sequence(sasl_fields, tag=protocol.AUTH_SASL)
+    op = ber.encode_sequence([ber.encode_integer(3), ber.encode_octet_string(""), auth], tag=protocol.APP_BIND_REQUEST)
+    return ber.encode_sequence([ber.encode_integer(message_id), op])
+
+
+def test_parse_sasl_bind_request() -> None:
+    req = protocol.parse_message(_sasl_bind(1, "GSSAPI", b"\x60\x01\x02"))
+    assert isinstance(req, protocol.SaslBindRequest)
+    assert req.mechanism == "GSSAPI"
+    assert req.credentials == b"\x60\x01\x02"
+
+
+def test_parse_sasl_bind_without_credentials() -> None:
+    req = protocol.parse_message(_sasl_bind(1, "GSSAPI", None))
+    assert isinstance(req, protocol.SaslBindRequest)
+    assert req.credentials is None
+
+
+def test_encode_bind_response_with_server_sasl_creds_round_trips() -> None:
+    raw = protocol.encode_bind_response(2, protocol.ResultCode.SASL_BIND_IN_PROGRESS, server_sasl_creds=b"\xaa\xbb")
+    envelope, _ = ber.read_tlv(raw)
+    _, op = ber.read_children(envelope.content)
+    assert op.tag == protocol.APP_BIND_RESPONSE
+    parts = ber.read_children(op.content)
+    assert ber.decode_integer(parts[0].content) == int(protocol.ResultCode.SASL_BIND_IN_PROGRESS)
+    creds = next(p for p in parts if p.tag == protocol.SERVER_SASL_CREDS)
+    assert creds.content == b"\xaa\xbb"
 
 
 def test_parse_starttls_extended_request() -> None:

@@ -15,19 +15,24 @@ Public surface:
   into a read-only Directory Information Tree.
 * :mod:`uiao.directory.policy` — per-bind read scoping (ADR-100 §5): sensitive
   facets require an authenticated bind.
-* :mod:`uiao.directory.server` — the asyncio LDAP server (LDAPS-capable).
+* :mod:`uiao.directory.sasl` — SASL mechanisms (ADR-101): GSSAPI/Kerberos
+  gate-only ticket validation, behind the ``[kerberos]`` extra.
+* :mod:`uiao.directory.server` — the asyncio LDAP server (LDAPS + StartTLS + SASL).
 """
 
 from __future__ import annotations
 
 from uiao.directory.dit import Directory, build_directory
 from uiao.directory.policy import ReadPolicy, default_read_policy
+from uiao.directory.sasl import SaslMechanism, SaslResult
 from uiao.directory.server import LdapServer, build_server_tls_context
 
 __all__ = [
     "Directory",
     "LdapServer",
     "ReadPolicy",
+    "SaslMechanism",
+    "SaslResult",
     "build_directory",
     "build_server_tls_context",
     "default_read_policy",
