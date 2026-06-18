@@ -98,6 +98,16 @@ def serve(
         "--starttls",
         help="Serve plaintext but offer the StartTLS in-band upgrade (vs. LDAPS-on-connect).",
     ),
+    sasl_gssapi: bool = typer.Option(
+        False,
+        "--sasl-gssapi",
+        help="Offer SASL GSSAPI (Kerberos) bind — gate-only ticket validation (ADR-101; needs the [kerberos] extra).",
+    ),
+    gssapi_service: str | None = typer.Option(
+        None,
+        "--gssapi-service",
+        help="Service principal for GSSAPI (e.g. ldap@host); defaults to the host keytab's acceptor credential.",
+    ),
     check: bool = typer.Option(
         False,
         "--check",
@@ -124,11 +134,16 @@ def serve(
     principals = _load_principals(snapshot)
     directory = build_directory(principals, base_dn=base_dn)
     server = LdapServer(directory=directory)
+    if sasl_gssapi:
+        from uiao.directory.sasl import GssapiMechanism
+
+        server.sasl_mechanisms["GSSAPI"] = lambda: GssapiMechanism(service_name=gssapi_service)
     entry_count = len(directory.entries)
+    sasl_note = " +SASL/GSSAPI" if sasl_gssapi else ""
     if check:
         console.print(
             f"[green]OK[/green] — would serve {entry_count} entries "
-            f"(suffix {base_dn}) on {scheme}://{host}:{effective_port} (read-only)."
+            f"(suffix {base_dn}) on {scheme}://{host}:{effective_port}{sasl_note} (read-only)."
         )
         return
 

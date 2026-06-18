@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from uiao.directory import ber, protocol
 from uiao.directory.dit import Directory
 from uiao.directory.policy import ReadPolicy, default_read_policy
+from uiao.directory.sasl import SaslError, SaslMechanism, SaslMechanismFactory
 
 logger = logging.getLogger("uiao.directory.server")
 
@@ -50,6 +51,9 @@ class LdapServer:
     # plaintext port can upgrade the connection in-band. Distinct from the
     # ``ssl_context`` passed to :meth:`serve`, which is LDAPS-on-connect.
     tls_context: ssl.SSLContext | None = None
+    # SASL mechanisms offered (name -> per-connection factory), ADR-101. Empty
+    # by default; populate with {"GSSAPI": GssapiMechanism} to offer Kerberos.
+    sasl_mechanisms: dict[str, SaslMechanismFactory] = field(default_factory=dict)
 
     # -- bind policy --------------------------------------------------------
     def _authenticate(self, name: str, password: str) -> protocol.ResultCode:
@@ -83,6 +87,68 @@ class LdapServer:
     def handle_bind(self, req: protocol.BindRequest) -> bytes:
         """Bind response only (see :meth:`process_bind` for the auth state)."""
         return self.process_bind(req)[0]
+
+    def handle_sasl_bind(
+        self, req: protocol.SaslBindRequest, session: SaslMechanism | None
+    ) -> tuple[bytes, bool, str | None, SaslMechanism | None]:
+        """Advance a (possibly multi-step) SASL bind (ADR-101).
+
+        Returns ``(response, authenticated, principal, session)``. While the
+        exchange is in progress the response is ``saslBindInProgress`` and the
+        live ``session`` is handed back to drive the next round-trip; on
+        completion the session is cleared. Gate-only: success sets read scope
+        via the validated ``principal``, never a write capability.
+        """
+        if req.version != 3:
+            response = protocol.encode_bind_response(
+                req.message_id,
+                protocol.ResultCode.PROTOCOL_ERROR,
+                f"only LDAPv3 is supported (got v{req.version})",
+            )
+            return response, False, None, None
+
+        factory = self.sasl_mechanisms.get(req.mechanism)
+        if factory is None:
+            response = protocol.encode_bind_response(
+                req.message_id,
+                protocol.ResultCode.AUTH_METHOD_NOT_SUPPORTED,
+                f"unsupported SASL mechanism '{req.mechanism}'",
+            )
+            return response, False, None, None
+
+        # A fresh exchange starts a new mechanism instance; a continuation
+        # reuses the in-progress one (state is per-bind, never shared).
+        if session is None or session.name != req.mechanism:
+            try:
+                session = factory()
+            except SaslError as exc:
+                response = protocol.encode_bind_response(
+                    req.message_id, protocol.ResultCode.AUTH_METHOD_NOT_SUPPORTED, str(exc)
+                )
+                return response, False, None, None
+
+        try:
+            result = session.step(req.credentials)
+        except SaslError as exc:
+            response = protocol.encode_bind_response(req.message_id, protocol.ResultCode.OPERATIONS_ERROR, str(exc))
+            return response, False, None, None
+
+        if not result.done:
+            response = protocol.encode_bind_response(
+                req.message_id,
+                protocol.ResultCode.SASL_BIND_IN_PROGRESS,
+                server_sasl_creds=result.response_token or b"",
+            )
+            return response, False, None, session
+        if result.success:
+            response = protocol.encode_bind_response(
+                req.message_id, protocol.ResultCode.SUCCESS, server_sasl_creds=result.response_token
+            )
+            return response, True, result.principal, None
+        response = protocol.encode_bind_response(
+            req.message_id, protocol.ResultCode.INVALID_CREDENTIALS, result.message
+        )
+        return response, False, None, None
 
     def handle_search(self, req: protocol.SearchRequest, *, authenticated: bool = False) -> list[bytes]:
         # The base object must exist for any scope (RFC 4511 §4.5.3); a base
@@ -185,8 +251,9 @@ class LdapServer:
     async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         peer = writer.get_extra_info("peername")
         logger.info("AGD connection from %s", peer)
-        # Connections start anonymous; a successful simple bind flips this.
+        # Connections start anonymous; a successful simple/SASL bind flips this.
         authenticated = False
+        sasl_session: SaslMechanism | None = None  # in-progress multi-step SASL bind
         tls_active = writer.get_extra_info("ssl_object") is not None  # LDAPS-on-connect
         try:
             while True:
@@ -215,6 +282,12 @@ class LdapServer:
                     break
                 if isinstance(req, protocol.BindRequest):
                     response, authenticated = self.process_bind(req)
+                    sasl_session = None  # a simple bind clears any SASL exchange
+                    writer.write(response)
+                elif isinstance(req, protocol.SaslBindRequest):
+                    response, authenticated, principal, sasl_session = self.handle_sasl_bind(req, sasl_session)
+                    if authenticated:
+                        logger.info("SASL %s bind authenticated %s as %s", req.mechanism, peer, principal)
                     writer.write(response)
                 elif isinstance(req, protocol.SearchRequest):
                     for chunk in self.handle_search(req, authenticated=authenticated):

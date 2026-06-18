@@ -48,6 +48,11 @@ APP_EXTENDED_RESPONSE = ber.APPLICATION | ber.CONSTRUCTED | 24  # 0x78
 
 # --- Authentication choice (context tags inside BindRequest) ---------------
 AUTH_SIMPLE = ber.CONTEXT | 0  # [0] simple password (primitive)
+AUTH_SASL = ber.CONTEXT | ber.CONSTRUCTED | 3  # [3] SaslCredentials (constructed)
+
+# BindResponse serverSaslCreds [7] (RFC 4511 §4.2.2) — the server's SASL token
+# returned during a multi-step SASL bind.
+SERVER_SASL_CREDS = ber.CONTEXT | 7
 
 # --- Filter choice context tags (RFC 4511 §4.5.1) --------------------------
 FILTER_AND = ber.CONTEXT | ber.CONSTRUCTED | 0
@@ -69,6 +74,8 @@ class ResultCode(IntEnum):
     SUCCESS = 0
     OPERATIONS_ERROR = 1
     PROTOCOL_ERROR = 2
+    SASL_BIND_IN_PROGRESS = 14
+    AUTH_METHOD_NOT_SUPPORTED = 7
     NO_SUCH_OBJECT = 32
     INVALID_CREDENTIALS = 49
     UNWILLING_TO_PERFORM = 53
@@ -135,6 +142,22 @@ class BindRequest:
 
 
 @dataclass(frozen=True)
+class SaslBindRequest:
+    """A SASL BindRequest (RFC 4511 §4.2 — the ``[3] SaslCredentials`` choice).
+
+    ``credentials`` is the per-step client token (``None`` on an empty
+    initial step). A SASL bind is multi-step: the server may answer
+    ``saslBindInProgress`` and the client re-binds with the same
+    ``mechanism`` and the next token until the exchange completes.
+    """
+
+    message_id: int
+    version: int
+    mechanism: str
+    credentials: bytes | None = None
+
+
+@dataclass(frozen=True)
 class SearchRequest:
     message_id: int
     base_object: str
@@ -183,7 +206,9 @@ class Entry:
 # ---------------------------------------------------------------------------
 # Inbound parsing
 # ---------------------------------------------------------------------------
-def parse_message(data: bytes) -> BindRequest | SearchRequest | UnbindRequest | ExtendedRequest:
+def parse_message(
+    data: bytes,
+) -> BindRequest | SaslBindRequest | SearchRequest | UnbindRequest | ExtendedRequest:
     """Parse one complete ``LDAPMessage`` envelope into a request object."""
     envelope, _ = ber.read_tlv(data)
     if envelope.tag != ber.TAG_SEQUENCE:
@@ -223,24 +248,38 @@ def _parse_extended(message_id: int, op: ber.TLV) -> ExtendedRequest:
     return ExtendedRequest(message_id=message_id, request_name=request_name, request_value=request_value)
 
 
-def _parse_bind(message_id: int, op: ber.TLV) -> BindRequest:
+def _parse_bind(message_id: int, op: ber.TLV) -> BindRequest | SaslBindRequest:
     parts = ber.read_children(op.content)
     if len(parts) < 3:
         raise ProtocolError("BindRequest requires version, name, authentication")
     version = ber.decode_integer(parts[0].content)
     name = ber.decode_octet_string(parts[1].content)
     auth = parts[2]
-    if auth.tag != AUTH_SIMPLE:
-        raise UnsupportedOperation(
-            "only simple authentication is supported",
+    if auth.tag == AUTH_SIMPLE:
+        return BindRequest(
             message_id=message_id,
-            op_tag=APP_BIND_REQUEST,
+            version=version,
+            name=name,
+            password=ber.decode_octet_string(auth.content),
         )
-    return BindRequest(
+    if auth.tag == AUTH_SASL:
+        # SaslCredentials ::= SEQUENCE { mechanism LDAPString,
+        #                                credentials OCTET STRING OPTIONAL }
+        sasl_parts = ber.read_children(auth.content)
+        if not sasl_parts:
+            raise ProtocolError("SaslCredentials requires a mechanism")
+        mechanism = ber.decode_octet_string(sasl_parts[0].content)
+        credentials = sasl_parts[1].content if len(sasl_parts) > 1 else None
+        return SaslBindRequest(
+            message_id=message_id,
+            version=version,
+            mechanism=mechanism,
+            credentials=credentials,
+        )
+    raise UnsupportedOperation(
+        f"unsupported authentication choice 0x{auth.tag:02x}",
         message_id=message_id,
-        version=version,
-        name=name,
-        password=ber.decode_octet_string(auth.content),
+        op_tag=APP_BIND_REQUEST,
     )
 
 
@@ -321,8 +360,17 @@ def _ldap_result(code: ResultCode, matched_dn: str = "", message: str = "") -> l
     ]
 
 
-def encode_bind_response(message_id: int, code: ResultCode, message: str = "") -> bytes:
-    op = ber.encode_sequence(_ldap_result(code, message=message), tag=APP_BIND_RESPONSE)
+def encode_bind_response(
+    message_id: int,
+    code: ResultCode,
+    message: str = "",
+    *,
+    server_sasl_creds: bytes | None = None,
+) -> bytes:
+    fields = _ldap_result(code, message=message)
+    if server_sasl_creds is not None:
+        fields.append(ber.encode_octet_string(server_sasl_creds, tag=SERVER_SASL_CREDS))
+    op = ber.encode_sequence(fields, tag=APP_BIND_RESPONSE)
     return _envelope(message_id, op)
 
 
