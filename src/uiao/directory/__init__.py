@@ -4,8 +4,9 @@ The AGD is UIAO's *protocol layer*: it exposes the governance substrate
 over the LDAPv3 wire protocol so directory-bound tooling can query the
 Active Governance Directory in the terms it already speaks. Per ADR-100
 it is a sanctioned, read-only data-plane exception to the ADR-092 §1
-control-plane boundary — it sits in the LDAP request path but holds no
-write op, so it cannot mutate canon or the provider of record.
+control-plane boundary — it holds **no writable store** (ADR-109): it can
+accept writes, but only as governed intent routed to the provider of
+record, never by mutating its own projection.
 
 Public surface:
 
@@ -17,6 +18,8 @@ Public surface:
   facets require an authenticated bind.
 * :mod:`uiao.directory.sasl` — SASL mechanisms (ADR-101): GSSAPI/Kerberos
   gate-only ticket validation, behind the ``[kerberos]`` extra.
+* :mod:`uiao.directory.writes` — write-as-governed-intent (ADR-109): translate a
+  modify into FacetOperations and route them dry-run-by-default.
 * :mod:`uiao.directory.server` — the asyncio LDAP server (LDAPS + StartTLS + SASL).
 """
 
@@ -26,6 +29,7 @@ from uiao.directory.dit import Directory, build_directory
 from uiao.directory.policy import ReadPolicy, default_read_policy
 from uiao.directory.sasl import SaslMechanism, SaslResult
 from uiao.directory.server import LdapServer, build_server_tls_context
+from uiao.directory.writes import WritePlan, WriteRouter, translate_modify
 
 __all__ = [
     "Directory",
@@ -33,7 +37,10 @@ __all__ = [
     "ReadPolicy",
     "SaslMechanism",
     "SaslResult",
+    "WritePlan",
+    "WriteRouter",
     "build_directory",
     "build_server_tls_context",
     "default_read_policy",
+    "translate_modify",
 ]

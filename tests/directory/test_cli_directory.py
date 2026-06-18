@@ -100,6 +100,12 @@ def test_serve_starttls_without_cert_fails() -> None:
     assert "requires --tls-cert" in result.output.lower()
 
 
+def test_serve_check_enable_writes_noted() -> None:
+    result = runner.invoke(app, ["directory", "serve", "--check", "--enable-writes"])
+    assert result.exit_code == 0, result.output
+    assert "writes(dry-run)" in result.output.lower()
+
+
 def test_serve_check_sasl_gssapi_noted() -> None:
     result = runner.invoke(app, ["directory", "serve", "--check", "--sasl-gssapi"])
     assert result.exit_code == 0, result.output

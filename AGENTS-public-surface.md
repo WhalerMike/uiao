@@ -56,11 +56,13 @@ in-path surface requires — it serves `BIND` / `SEARCH` / `UNBIND` and carries 
 write op**, so it cannot mutate canon or the provider of record. Pure-stdlib
 (`asyncio` + a hand-rolled BER subset + stdlib `ssl`); the core is pure-stdlib,
 no new core runtime dependency. SASL/GSSAPI bind is the one optional surface
-(behind the `[kerberos]` extra, ADR-101). KDC/ticket issuance, write ops, and
-AD-specific schema remain explicit roadmap, not shipped.
+(behind the `[kerberos]` extra, ADR-101). Writes are accepted as **governed
+intent** (ADR-109) — translated, never applied to a store. KDC/ticket issuance,
+the actuation seam into the adapters, and AD-specific schema remain roadmap.
 
 | Feature | Module | CLI surface | Tier | Notes |
 |---|---|---|---|---|
+| **AGD write-as-intent** | `uiao.directory.writes` | `uiao directory serve --enable-writes` | **Library-only** | ADR-109; a `modify` is translated by `translate_modify` into governed `FacetOperation`s (ADR-084) and routed by `WriteRouter` **dry-run by default** — never applied to the projection. Only governed `uiaoOrgPath<Facet>` attributes are writable (non-governed → `unwillingToPerform`); facets are single-valued; values Codebook-validated. Writes require an authenticated bind (→ `insufficientAccessRights` otherwise) and a configured router (→ `unwillingToPerform`, read-only, otherwise). `--enable-writes` is plan-only; the `apply_fn` seam into the modernization adapters is a later step |
 | **AGD LDAP server** | `uiao.directory.server` | `uiao directory serve` | CLI | ADR-100; asyncio LDAPv3 read projection. Anonymous + simple bind; base/one/subtree search; `noSuchObject` for absent base, `unwillingToPerform` for unsupported ops. **LDAPS-on-connect** via `--tls-cert`/`--tls-key` (`build_server_tls_context`; default port 636 with TLS, 1389 plaintext) **and StartTLS** in-band upgrade (RFC 4511 §4.14) via `--starttls` (plaintext port, `server.tls_context`). Loopback + plaintext by default. `--check` validates inputs without binding |
 | **AGD SASL/GSSAPI bind** | `uiao.directory.sasl` | `uiao directory serve --sasl-gssapi` | **`[kerberos]` extra** | ADR-101; gate-only Kerberos ticket validation. Mechanism-agnostic multi-step `SaslMechanism` state machine (driven over `saslBindInProgress`); `GssapiMechanism` (RFC 4752) lazy-imports `gssapi`, accepts the client's service ticket with the AGD's **own** keytab, and maps the validated principal into read scope (ADR-100 §5). Never issues tickets / runs a KDC / stores user secrets (ADR-101 §4 boundary). Auth gates reads only — no write op |
 | **AGD read scoping** | `uiao.directory.policy` | (via `serve`) | **Library-only** | ADR-100 §5 per-bind read scoping. `ReadPolicy` marks facets sensitive (default: clearance + cost-center, named via the `ldap` binding profile); sensitive attributes are redacted from results unless the connection completed an authenticated (non-anonymous) simple **or SASL** bind |
