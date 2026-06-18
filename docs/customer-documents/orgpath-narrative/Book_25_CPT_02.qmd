@@ -1,0 +1,103 @@
+---
+title: "Facets vs. Locators — The Abstraction That Makes It Work"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_25
+series-order: 2
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+The key insight behind multi-cloud OrgPath is a clean separation between two things that the original Entra-first implementation handled as one. The codebook (UIAO_151) defines what each facet means — that definition is universal and never changes. A binding profile defines where each facet lives on a particular platform — that definition is per-vendor and entirely substitutable. Once that separation is explicit, the drift engine can validate any platform by reading the binding profile for that target. The governance model becomes extensible by construction.
+:::
+
+![The binding-profile abstraction: the UIAO_151 codebook defines facet semantics; each binding profile maps those semantics to a platform-specific storage locator; the drift engine validates values against the codebook regardless of which profile it reads through.](Book_25_CPT_02_fig1.svg){#fig-book-25-cpt-02-fig1 fig-alt="Three-layer diagram. Top layer: UIAO_151 Codebook box with facet names listed. Middle layer: four binding profile boxes labeled microsoft-entra, aws, okta, and keycloak, each showing a locator map arrow from facet names to platform attribute names. Bottom layer: drift engine box with a validation arrow returning findings upward. White background, navy and teal palette." width="100%"}
+
+## The codebook as the semantic anchor
+
+UIAO_151 defines ten named OrgPath facets and reserves five slots for future use. The ten named facets are:
+
+| Facet | Semantic meaning |
+|---|---|
+| Region | Geographic or jurisdictional domain of the identity subject |
+| Department | Primary organizational unit of assignment |
+| Division | Sub-unit within Department |
+| Role | Functional classification (not RBAC role — organizational role) |
+| CostCenter | Budgetary attribution unit |
+| Classification | Information handling tier (Unclassified, Sensitive, Controlled, etc.) |
+| HireDate | Lifecycle inception date for workforce identities |
+| TermDate | Lifecycle expiration date, if bounded |
+| ClearanceLevel | Security clearance tier, where applicable |
+| AccountType | Category: human, device, service account, AI system, etc. |
+
+These definitions are vendor-neutral by intent. "Department" does not reference any Microsoft field. "ClearanceLevel" does not assume the existence of any attribute in any directory schema. The codebook defines the organizational concept; it is silent on where the concept is stored.
+
+This is not a philosophical nicety. It is the architectural precondition for everything that follows. If the codebook referenced extensionAttribute3 in its definition of Department, the concept would be Entra-native and no amount of abstraction layering could make it vendor-neutral. Because the codebook is silent on storage, every binding profile starts from the same clean slate: "here is what Department means; where does your platform store it?"
+
+## The binding-profile contract
+
+A binding profile is a YAML document with a defined structure specified in UIAO_193. Its components are:
+
+**Target identifier** — a short string naming the platform. The nine first-class profiles are `microsoft-entra`, `aws`, `gcp`, `okta`, `ldap`, `vmware`, `pingone`, `keycloak`, and `auth0`. An organization can also define custom profiles for internal platforms.
+
+**Planes** — the surfaces this target covers. Most identity-plane profiles cover one plane (identity). The `vmware` profile covers three: identity, workload, and enforcement. The `microsoft-entra` profile covers two: identity (Entra users and groups) and device (Arc-tagged resources).
+
+**Locator map** — for each facet, the platform-specific storage address. For `microsoft-entra`, Department maps to extensionAttribute3. For `aws`, Department maps to the IAM Identity Center user attribute named Department. For `keycloak`, Department maps to the custom user attribute key orgpath_department.
+
+**Transport** — the read/write mechanism. For Entra, the transport is Microsoft Graph API. For AWS, it is the IAM Identity Center SCIM endpoint. For Keycloak, it is the Keycloak Admin REST API. Transport is declared in the profile so the provisioning engine knows how to write facet values and the drift engine knows how to read them.
+
+**Overflow policy** — what to do when a facet value exceeds the platform's attribute length limit. Entra's extensionAttributes have a 1024-character limit that is never a constraint in practice; Keycloak's custom attributes are arbitrary strings; AWS tags have a 256-byte limit that can be a constraint for long classification strings. The overflow policy declares whether to truncate, reject, or route to a secondary attribute.
+
+## The microsoft-entra profile as reference example
+
+ADR-078 defined the extensionAttribute1..15 mapping before the binding-profile abstraction existed. It was authored as a direct schema decision: facet X lives in extensionAttributeY. That decision was correct for its time and its target.
+
+ADR-098 reframes that decision as the `microsoft-entra` reference binding profile. Nothing about the underlying mapping changes — extensionAttribute3 still carries Department. What changes is the framing: ADR-078 is now understood as the locator map for one specific target, not as the OrgPath schema itself. The reference profile is the best-documented and most-tested example of the pattern. It is the canonical implementation against which new profiles are validated for conformance. It is not privileged in any other sense.
+
+This reframing has a practical consequence: it prevents the Entra mapping from being treated as a constraint on what OrgPath can do elsewhere. A new profile for a platform where extensionAttribute doesn't exist is not a deviation from OrgPath — it is a conforming implementation of the same codebook on a different substrate.
+
+## How drift detection stays vendor-neutral
+
+The drift engine (ADR-085) validates OrgPath by comparing the stored facet value on an identity or workload object against the expected value from the authoritative source (the HRIT system, the HR system of record, or the provisioning event that created the object). When the stored value deviates from the expected value, the drift engine raises a DRIFT-IDENTITY finding.
+
+In the Entra-only world, the drift engine read extensionAttribute3 to check Department. The attribute name was hardcoded — not in the codebook, but effectively in the drift engine's read logic. In the multi-profile world, the drift engine reads the binding profile for the target to discover that Department is stored in extensionAttribute3 (for Entra), in the IAM Identity Center Department attribute (for AWS), or in orgpath_department (for Keycloak). It then reads that location from the actual object.
+
+The validation logic is identical regardless of which profile it reads through. The drift engine asks: "Does the value stored at the location specified by the binding profile match the value specified by the authoritative source?" That question is platform-neutral. The profile provides the platform-specific translation; the engine supplies the platform-neutral logic.
+
+This architecture means that adding a new binding profile — say, a profile for a custom LDAP directory — requires writing the profile YAML and wiring the transport. It does not require modifying the drift engine, extending the codebook, or changing any downstream policy definition. The governance model is genuinely extensible by adding profiles, not by re-engineering the core.
+
+## Profile comparison at a glance
+
+| Profile | Planes | Identity locator | Workload/enforcement locator |
+|---|---|---|---|
+| `microsoft-entra` | Identity, Device | extensionAttribute1..15 | Arc resource tags |
+| `aws` | Identity, Workload | IAM Identity Center user attributes | Resource tags (EC2, S3, RDS, etc.) |
+| `gcp` | Identity, Workload | Cloud Identity user attributes | Resource labels |
+| `okta` | Identity | Universal Directory custom schema attributes | — |
+| `ldap` | Identity | Directory attributes (schema-extension or reserved) | — |
+| `vmware` | Identity, Workload, Enforcement | Workspace ONE Access user attributes | vSphere tags; NSX security tags |
+| `pingone` | Identity | PingOne directory custom user attributes | — |
+| `keycloak` | Identity | Custom user attribute key/values | — |
+| `auth0` | Identity | `app_metadata` namespace | — |
+
+The table reveals a structural pattern that the next three chapters explore in depth. Identity-plane profiles (okta, ldap, pingone, keycloak, auth0) are the simplest: ten custom attributes mapped to the ten named codebook facets, no workload or enforcement surface to bridge. Cloud profiles (aws, gcp) add a workload plane — resource tags and labels that carry the same facets on compute objects as on user objects. VMware is the outlier: three planes, including an enforcement surface (NSX) that makes it the only profile where OrgPath facets directly govern network segmentation policy.
+
+## What the abstraction enables
+
+The facet-vs-locator separation enables three capabilities that were unavailable in the Entra-only architecture.
+
+**Cross-platform governance from one codebook.** An agency can validate that the Department value on an AWS IAM Identity Center user matches the Department value on the same person's Entra account — because both are read through their respective binding profiles and compared against the same codebook entry. Facet consistency across platforms is checkable, not just aspirational.
+
+**Profile portability.** If an agency migrates from Okta to PingOne for contractor identity, the OrgPath governance layer does not change. The profile declaration changes from okta to pingone, the locator map updates, and the transport is rewired. The codebook, the drift engine, the policy definitions, and the governance reporting all remain constant.
+
+**Incremental adoption.** An agency operating only the `microsoft-entra` profile today can add the `aws` profile without touching anything in the Microsoft stack. The profiles are additive. The governance posture for existing platforms is not disturbed by adding governance for new ones.
+
+These capabilities are the operational payoff of a design choice that might otherwise seem abstract. The separation of facet semantics from storage locators is not an architectural elegance preference — it is the mechanism that makes OrgPath governable at multi-cloud scale without requiring a re-implementation of the core model for every new platform the estate adds.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 3 — Cloud Identity: AWS, GCP, and the Workload Plane →](Book_25_CPT_03.qmd)
+:::

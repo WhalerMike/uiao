@@ -1,0 +1,90 @@
+---
+title: "The IdP Landscape: Okta, LDAP, PingOne, Keycloak, Auth0"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_25
+series-order: 5
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+Five binding profiles cover the identity-plane-only segment of the OrgPath family: okta, ldap, pingone, keycloak, and auth0. All five follow the same pattern — ten named codebook facets mapped to platform-specific custom attribute storage — but each serves a distinct deployment context. Okta governs enterprise and inter-agency federation. LDAP provides a vendor-neutral path for on-premises and specialized directories. PingOne serves federal partnerships where PingFederate already carries the federation trust. Keycloak is the dominant open-source IdP for classified and air-gapped environments. Auth0 governs citizen-facing identity. One important non-entry: SailPoint is not a binding profile. It is an IGA consumer of OrgPath facets, governed by a different ADR entirely.
+:::
+
+![The five identity-plane binding profiles arrayed around the UIAO_151 codebook: okta, ldap, pingone, keycloak, and auth0 each show a locator map to platform-specific custom attribute storage. SailPoint is shown separately as a governance consumer, not a binding profile target.](Book_25_CPT_05_fig1.svg){#fig-book-25-cpt-05-fig1 fig-alt="Hub-and-spoke diagram. Center hub labeled UIAO_151 Codebook. Five spokes connect to boxes labeled okta (Universal Directory attributes), ldap (schema-extension attributes), pingone (custom user attributes plus PingFederate), keycloak (custom key-value attributes), and auth0 (app_metadata namespace). A separate box labeled SailPoint with a dashed non-arrow boundary line is labeled IGA consumer, not a binding profile target. White background, navy and teal." width="100%"}
+
+## The okta profile: Universal Directory
+
+Okta is the dominant commercial IdP for enterprise federation in the United States, including a significant federal presence for inter-agency partnerships, contractor identity, and hybrid environments where Entra governs internal users and Okta federates external ones. Okta's Universal Directory supports custom schema attributes — administrator-defined fields that appear on every user object in the organization.
+
+The `okta` binding profile defines ten custom schema attributes in a group named OrgPath. The attributes are typed strings with names matching the codebook facets exactly: Department, Division, Region, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType. The schema group is created once as part of the binding profile onboarding; attribute values are written through the Okta Users API and read back through the same endpoint for drift detection.
+
+Okta custom attributes are available in OIDC token claims and SAML assertions through the Okta expression language. An OIDC ID token issued to an application can include `user.Department` and `user.Classification` as claims, making OrgPath facets natively available to any application that trusts the Okta IdP without requiring the application to query a separate directory. The facet predicate becomes a claim that travels with the authentication event.
+
+## The ldap profile: the vendor-neutral substrate
+
+Generic LDAP is the most heterogeneous target in the binding profile family. An LDAP directory might be OpenLDAP, 389 Directory Server, IBM Security Directory Server, Oracle Directory Server, or any other RFC 4511-compliant implementation. The `ldap` binding profile does not assume a specific product; it defines two mechanisms for placing OrgPath facets and lets the operator choose based on what the directory supports.
+
+The first mechanism is schema extension: the organization extends the LDAP schema with a new auxiliary object class named orgpathAttributes that adds ten optional single-valued string attributes (orgpathDepartment, orgpathClassification, and so on). Users are assigned the auxiliary class, and the attributes are populated through standard LDAP modify operations. This is the preferred mechanism when the directory allows schema modifications.
+
+The second mechanism uses reserved or underutilized existing attributes in the inetOrgPerson or similar object classes. Many LDAP deployments have unused string attributes (description, initials, carLicense in inetOrgPerson) that can serve as OrgPath storage for environments where schema extension is not permitted. The binding profile declares which existing attributes carry which facets, and the drift engine reads accordingly. This mechanism trades semantics for deployability: the attribute names are not meaningful, but the locator map makes them governable.
+
+The transport for the `ldap` profile is standard LDAP v3. The drift engine reads facet values through an LDAP search; provisioning writes them through LDAP modify. No SDK or API gateway is required beyond what any LDAP client can provide, making the `ldap` profile the lowest-friction path to OrgPath governance for on-premises directories that have no REST API.
+
+## The pingone profile: federal federation and claim carriage
+
+PingOne (and its enterprise predecessor PingFederate) is a common identity layer in federal environments where agencies have long-standing investment in Ping Identity products. PingFederate serves as the federation trust broker in many federal PIV-to-cloud workflows; PingOne is the cloud-hosted extension of that capability.
+
+The `pingone` binding profile places OrgPath facets in PingOne's custom user attribute storage. PingOne supports a population-scoped user attribute schema where administrators define custom fields; these are stored on user objects and available in token claims. The attribute names follow the same pattern as the okta profile: Department, Classification, CostCenter, and the remaining facets as named string attributes.
+
+The transport differentiator for the `pingone` profile is PingFederate's claim carriage capability. In federal environments where PingFederate mediates the federation trust between a PIV authentication event and a downstream application, OrgPath facets can be included in the SAML assertion or OIDC token as custom claims configured in PingFederate's attribute contract. An application receiving a PingFederate-issued assertion sees the user's Department and Classification as assertion attributes without querying any additional directory. The binding profile's transport specification includes the PingFederate attribute contract configuration as an optional component for environments where this integration path is in use.
+
+## The keycloak profile: open-source and air-gapped
+
+Keycloak is the dominant open-source identity platform for environments where commercial SaaS is unavailable or unacceptable — classified computing environments, air-gapped networks, and sovereign infrastructure deployments that require source-code-auditable identity software. Keycloak is distributed under the Apache 2.0 license and is maintained by Red Hat; it is the foundation of Red Hat Single Sign-On.
+
+Keycloak supports arbitrary custom user attributes through a simple key-value model. Any string key can be assigned to any user; there is no schema declaration or type enforcement at the Keycloak layer. The `keycloak` binding profile uses the `orgpath_` prefix convention for all facet keys: `orgpath_department`, `orgpath_classification`, `orgpath_costcenter`, and so on. The prefix prevents collision with application-specific custom attributes that may also be stored on the same user objects.
+
+The transport for the `keycloak` profile is the Keycloak Admin REST API. Attribute values are written through the user update endpoint and read back through the user representation endpoint. Keycloak custom attributes are available as token claims through mapper configurations in the realm — a mapper definition for each OrgPath attribute routes it into the OIDC ID token or SAML assertion for downstream applications.
+
+The air-gapped deployment scenario deserves emphasis. In a classified enclave where OrgPath governs the identity estate, the codebook and the drift engine run locally. The Keycloak Admin API is accessible within the enclave boundary. OrgPath governance operates without any dependency on external services — the binding-profile architecture is fully self-contained for environments where external connectivity is not available.
+
+## The auth0 profile: citizen-facing identity
+
+Auth0 (owned by Okta) is the dominant commercial customer identity and access management (CIAM) platform. It governs citizen-facing applications where users are members of the public authenticating to government services — benefits portals, permit applications, document requests, and similar services. Auth0's user store is the `app_metadata` namespace: a JSON object per user that can hold arbitrary structured data and is not directly accessible to the user (unlike `user_metadata`, which users can self-modify).
+
+The `auth0` binding profile places OrgPath facets in `app_metadata`. The full facet set is stored as named fields within the namespace: `app_metadata.orgpath.Department`, `app_metadata.orgpath.Classification`, and so on. The `orgpath` sub-object within `app_metadata` provides a clean namespace boundary that prevents collision with other application data stored in the same metadata object.
+
+The Auth0 Management API provides the transport: facet values are written through the user update endpoint and read back through the user detail endpoint. Auth0 rules and actions can include `app_metadata.orgpath` fields in OIDC tokens issued to the application, making facet values available at authorization time without additional API calls.
+
+The citizen-facing context shapes which facets are most relevant. AccountType (citizen vs. employee), Region (for routing to the correct service jurisdiction), and HireDate (reinterpreted as account inception date) are more relevant than ClearanceLevel for most citizen-facing applications. The binding profile carries all ten facets; the application populates the ones applicable to its population.
+
+## Why SailPoint is not a binding profile
+
+SailPoint (governed by ADR-059) manages identity governance, access certification, role management, and provisioning workflows across the enterprise. It is an IGA platform — it reads identity attributes from source systems, governs access based on those attributes, and drives provisioning to target systems. OrgPath facets are inputs to SailPoint's governance logic: access certifications are scoped by Department; provisioning rules reference Classification; role membership criteria include AccountType.
+
+SailPoint does not store OrgPath facets as authoritative values. It reads them from the directories and directories that do — from Entra, from Okta, from the HRIT system of record. When SailPoint governs an access certification for a Finance contractor, it reads Department=Finance and Classification=Contractor from Entra (through the `microsoft-entra` profile) and Classification=Contractor from the HRIT feed. SailPoint is a consumer of those values, not their storage surface.
+
+Adding SailPoint as a binding profile would mean the drift engine validates OrgPath facets stored in SailPoint — but SailPoint's stored values are copies of the authoritative values from the real binding-profile targets. Validating a copy against the codebook while ignoring whether the copy matches the source would produce governance theater: a drift check that passes even when the source directory is wrong.
+
+ADR-059 governs the SailPoint integration as an adapter: SailPoint receives facet values from the binding-profile targets through the UIAO adapter framework, uses them for governance workflows, and returns access decisions and certification results. The relationship is consumer-to-source, not peer-to-peer. Binding profiles are for directories that store authoritative facet values; SailPoint is for the governance layer that acts on them.
+
+## Profile comparison for identity-plane profiles
+
+| Profile | Platform context | Storage mechanism | Token delivery |
+|---|---|---|---|
+| `okta` | Enterprise/inter-agency federation | Universal Directory custom schema | OIDC claims, SAML attributes |
+| `ldap` | On-premises, generic directory | Schema extension or reserved attributes | Bind query result |
+| `pingone` | Federal PIV federation | Custom user attributes | PingFederate claim contract |
+| `keycloak` | Open-source, air-gapped, sovereign | Custom key-value pairs | OIDC mapper, SAML mapper |
+| `auth0` | Citizen-facing CIAM | `app_metadata` namespace | OIDC `app_metadata` claim |
+
+All five are pure-identity profiles: they do not extend to workload or enforcement planes. They are the right choice for environments where the primary governance question is "who is this user and what are their organizational attributes?" — the workload and enforcement questions belong to the cloud or VMware profiles. Together, the five identity-plane profiles cover every significant IdP deployment context in the federal and enterprise estate that is not already covered by the `microsoft-entra` profile.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 6 — Zero Trust Across a Mixed Estate →](Book_25_CPT_06.qmd)
+:::

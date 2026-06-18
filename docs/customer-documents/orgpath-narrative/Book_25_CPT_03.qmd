@@ -1,0 +1,74 @@
+---
+title: "Cloud Identity: AWS, GCP, and the Workload Plane"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_25
+series-order: 3
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+The cloud identity profiles for AWS and GCP introduce something the Entra profile did not need to address: the workload plane. An Entra user has an identity object that carries OrgPath facets. An EC2 instance or a GCS bucket also needs to carry those facets — not because it is a user, but because it is a governed workload that belongs to a bureau, has a CostCenter, and should be subject to the same drift detection and policy enforcement as any other asset in the estate. The aws and gcp binding profiles span both planes, and the governance model is the same on both sides.
+:::
+
+![The aws and gcp binding profiles: IAM Identity Center user attributes and Cloud Identity user schema carry OrgPath facets on the identity plane; resource tags and labels carry the same facets on the workload plane. A single codebook governs both planes on both clouds.](Book_25_CPT_03_fig1.svg){#fig-book-25-cpt-03-fig1 fig-alt="Side-by-side diagram showing aws profile on the left and gcp profile on the right. Each side has two boxes: an identity plane box at top showing user attribute mappings to OrgPath facet names, and a workload plane box below showing resource tag or label mappings to the same facet names. Both sides connect to a shared UIAO_151 Codebook box at the top center. White background, navy and teal palette." width="100%"}
+
+## The aws profile: identity and workload
+
+AWS IAM Identity Center (formerly AWS SSO) is the federally preferred mechanism for centralizing access to AWS accounts across an organization. It maintains a user directory — either a native store or a synchronized copy of an external identity provider — and provisions user access to AWS accounts through permission sets. Each user object in IAM Identity Center supports a set of standard SCIM attributes (name, email, locale, timezone) and an arbitrary set of custom user attributes.
+
+The `aws` binding profile places OrgPath facets in those custom user attributes. The locator map is direct: the facet named Department maps to the IAM Identity Center user attribute named Department; CostCenter maps to CostCenter; Classification maps to Classification; and so on for all ten named codebook facets. The attribute names match the facet names exactly, which makes the profile readable and auditable without consulting a crosswalk table.
+
+Custom attributes in IAM Identity Center are surfaced to AWS through ABAC (attribute-based access control). When a user with Department=Finance and Classification=Privileged assumes an IAM role, those attributes are available as session context. IAM permission boundaries and SCP conditions can reference them directly: `aws:PrincipalTag/Department` evaluates to the user's OrgPath Department value at the moment of role assumption. The facet predicate from the governance model becomes an enforceable IAM condition without any translation layer.
+
+The transport for the `aws` identity plane is the IAM Identity Center SCIM 2.0 endpoint. OrgPath provisioning writes facet values through SCIM; the drift engine reads them back through the same endpoint. If the agency uses an external IdP synchronized into IAM Identity Center — Okta, PingOne, or Entra — the facet values can be written at the source and synchronized forward, or written directly into IAM Identity Center and synchronized in parallel to the source directory. The binding profile declares which transport is in use; the provisioning engine handles the rest.
+
+## The aws workload plane: resource tags
+
+The second plane of the `aws` profile governs workloads. AWS resource tagging is the native mechanism for attaching metadata to EC2 instances, S3 buckets, RDS databases, Lambda functions, and every other AWS resource type. Tags are key-value pairs with a 256-byte value limit and no schema enforcement by default.
+
+The `aws` binding profile defines OrgPath resource tag keys using the `orgpath:` namespace prefix: `orgpath:department`, `orgpath:costcenter`, `orgpath:classification`, `orgpath:accounttype`, and so on. A governed EC2 instance carries these tags at creation time, sourced from the same provisioning event that stamps the IAM Identity Center user who owns the workload. The Department tag on the instance matches the Department attribute on the user — they are both read from the same codebook entry.
+
+This alignment has enforcement consequences. AWS Config rules can validate that every EC2 instance in an account carries required OrgPath tags and that the values fall within the codebook-allowed set. AWS Security Hub findings can be scoped to the OrgPath classification of the affected resource. Cost Explorer reports can be filtered by OrgPath CostCenter. The same facets that govern identity policy also govern workload accountability — not through a separate tagging standard, but through the same binding profile.
+
+The drift engine treats workload objects the same way it treats identity objects: it reads the binding profile, resolves the locator map, reads the tag values from the resource, and compares them against the expected values from the authoritative source. A resource with an incorrect CostCenter tag is a drift finding with the same severity as an Entra user with an incorrect CostCenter attribute. The governance posture is symmetric across planes.
+
+## The gcp profile: Cloud Identity and labels
+
+Google Cloud Platform organizes identity through Cloud Identity, the Google-native directory service. Cloud Identity supports custom user schema attributes — administrator-defined fields that appear on user objects alongside standard fields like name and email. GCP organizations that are federated to an external directory (Entra, Okta, or another IdP) can synchronize custom attributes through Google Cloud Directory Sync or the SCIM endpoint.
+
+The `gcp` binding profile places OrgPath facets in Cloud Identity custom schema attributes. The custom schema is named OrgPath and the fields within it match the ten named codebook facets. A Cloud Identity user at a GCP-hosted agency carries `OrgPath.Department`, `OrgPath.Classification`, `OrgPath.CostCenter`, and the remaining facets as typed fields in the custom schema. The schema definition is part of the binding profile's transport specification and is provisioned as a one-time setup step.
+
+Cloud Identity custom attributes are available in IAM as principal attributes for ABAC conditions. A GCP IAM binding that grants access only when `principal.attributes["OrgPath.Classification"]` equals `Controlled` references the OrgPath facet directly. The facet predicate is enforceable at every IAM binding in the GCP project, without requiring a separate attribute-resolution layer.
+
+## The gcp workload plane: resource labels
+
+GCP resource labels are the counterpart to AWS resource tags. Every GCP resource — Compute Engine VMs, Cloud Storage buckets, BigQuery datasets, GKE clusters — accepts key-value label pairs. The `gcp` binding profile defines OrgPath label keys using the same `orgpath-` namespace prefix (GCP label keys use hyphens, not colons): `orgpath-department`, `orgpath-classification`, `orgpath-costcenter`, and so on.
+
+Label values in GCP are constrained to lowercase letters, digits, and hyphens — a tighter constraint than AWS tags. The binding profile's overflow and normalization policy handles this: Classification values like "Controlled Unclassified Information" are normalized to `controlled-unclassified-information` at write time and denormalized at read time. The codebook's canonical values are preserved internally; the label representation is a normalized encoding of them.
+
+GCP Cloud Asset Inventory can be queried for resources by label, making OrgPath-scoped compliance reporting native: "show all BigQuery datasets with orgpath-classification=sensitive in the Finance department" is a single asset query. GCP Security Command Center findings include resource labels, so OrgPath context travels with every security finding without additional enrichment.
+
+## The unified cross-cloud posture
+
+The aws and gcp profiles together define a cross-cloud governance posture that was not achievable in the Entra-only architecture.
+
+| Capability | Entra only | With aws + gcp profiles |
+|---|---|---|
+| User facet governance | Entra users | Entra + IAM Identity Center + Cloud Identity users |
+| Workload facet governance | Arc-tagged resources only | EC2/S3/RDS tags + GCE/GCS/BQ labels |
+| Cross-cloud facet consistency check | Not possible | Drift engine validates same codebook across all three |
+| Policy predicate reuse | Conditional Access only | Conditional Access + IAM ABAC + GCP IAM conditions |
+| Cost allocation by OrgPath | Azure Cost Management | + AWS Cost Explorer + GCP Billing by label |
+
+The cross-cloud consistency check deserves emphasis. An agency user who has accounts in Entra, IAM Identity Center, and Cloud Identity now has three identity objects, each carrying OrgPath facets. A reorganization that updates the user's Department in the HRIT system of record triggers provisioning updates on all three objects through their respective binding profiles. The drift engine validates all three after provisioning. If one update fails — if the IAM Identity Center SCIM write fails silently, for example — the drift finding surfaces within the next drift cycle, not at the next manual audit.
+
+This is the governance payoff of the binding-profile architecture applied to cloud identity: the same authoritative source, the same drift engine, the same codebook, and three substrates that each receive the correct facet values through their own transport — with consistent validation that they all agree.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 4 — VMware: The Three-Plane Profile →](Book_25_CPT_04.qmd)
+:::
