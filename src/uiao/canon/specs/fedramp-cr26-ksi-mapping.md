@@ -1,11 +1,11 @@
 ---
 document_id: UIAO_137
 title: "Local KSI Rules ↔ FedRAMP CR26 KSI Catalog Mapping"
-version: "0.1"
+version: "0.2"
 status: Draft
 owner: "Michael Stratton"
 created_at: "2026-05-10"
-updated_at: "2026-05-10"
+updated_at: "2026-06-18"
 mas-scope: "in-scope"
 ---
 
@@ -80,7 +80,7 @@ Out of scope for this document:
 | Catalog metadata.version | `0.1.0` |
 | KSI themes present | 10 (KSI-CMT · KSI-CNA · KSI-CED · KSI-IAM · KSI-INR · KSI-MLA · KSI-PIY · KSI-RPL · KSI-SVC · KSI-SCR) |
 | KSI controls present | 46 |
-| Local KSI rules in `src/uiao/ksi/rules/` | 10 (KSI-001 … KSI-010) |
+| Local KSI rules in `src/uiao/ksi/rules/` | 14 (KSI-001 … KSI-014; KSI-011…014 are KSI-CMT scaffolds per ADR-111) |
 
 This mapping is **valid only against this pinned SHA**. When the pin
 advances per ADR-061 D2, this document and the YAML companion are
@@ -112,25 +112,33 @@ for the CR26 control.
 | KSI-008 | Safe Attachments Protection | SI-3, SI-4 | KSI-SVC-VCM · KSI-CNA-MAT | medium | VCM covers attachment scanning; MAT (Minimizing Attack Surface) covers reducing the live-payload paths. |
 | KSI-009 | Conditional Access Enforcement | AC-3, AC-17 | KSI-IAM-ELP · KSI-IAM-JIT · KSI-IAM-SUS | high | CA is the policy-enforcement layer for least privilege, just-in-time access, and suspicious-activity response — three IAM axes. |
 | KSI-010 | Data Loss Prevention Enforcement | MP-4, SC-28 | KSI-SVC-RUD | high | RUD (Removing Unwanted Data) is the direct CR26 expression of DLP. |
+| KSI-011 | Change Logging and Monitoring | CM-3, AU-6 | KSI-CMT-LMC | low (scaffold) | LMC requires modifications to be logged and monitored; scaffold targets substrate change-log completeness. Evidence binding pending CR26 VER. |
+| KSI-012 | Immutable Redeployment over Direct Modification | CM-2, SA-10 | KSI-CMT-RMV | low (scaffold) | RMV favors version-controlled redeploy over in-place mutation; scaffold targets deployment provenance. Evidence binding pending CR26 VER. |
+| KSI-013 | Change-Procedure Effectiveness Review | CM-3, CA-7 | KSI-CMT-RVP | low (scaffold) | RVP requires persistent review of change-management effectiveness; scaffold targets the ConMon review cadence. Evidence binding pending CR26 VER. |
+| KSI-014 | Automated Validation Throughout Deployment | CM-3(2), SA-11 | KSI-CMT-VTD | low (scaffold) | VTD requires automated testing/validation across deployment; scaffold targets deployment-validation telemetry. Evidence binding pending CR26 VER. |
 
 Coverage summary:
 
-- 10 of 10 local rules have at least one CR26 mapping (100% forward coverage).
-- 4 of 10 are `medium` confidence — these are the rows most likely to
+- 14 of 14 local rules have at least one CR26 mapping (100% forward coverage).
+- 4 of 14 are `medium` confidence — these are the rows most likely to
   shift in governance review and should be re-examined when CR26 issues
   control-level intent statements.
+- 4 of 14 are `low` confidence **scaffolds** (KSI-011…014, KSI-CMT theme):
+  the rule files exist and carry `Status: scaffold`, but their evidence
+  bindings are not yet evaluable. They finalize when the CR26 VDR/VER
+  evidence contract publishes (ADR-111 ratification gate; FINDING-004 §4).
 
 ---
 
 ## 4. Reverse coverage — CR26 themes the local corpus addresses
 
-The 10 local rules touch only **17 of the 46** CR26 KSI controls
-(~37%). The table below lists every CR26 theme and the local rules
+The 14 local rules touch **21 of the 46** CR26 KSI controls
+(~46%). The table below lists every CR26 theme and the local rules
 that contribute to it.
 
 | CR26 theme | Title | Controls | Covered by local rules | Gap |
 |---|---|---:|---|---|
-| KSI-CMT | Change Management | 4 | none | **all 4 controls** — LMC · RMV · RVP · VTD |
+| KSI-CMT | Change Management | 4 | KSI-011 (LMC), KSI-012 (RMV), KSI-013 (RVP), KSI-014 (VTD) — all `scaffold` | 0 controls — **theme covered by scaffolds** (not yet evaluable; ADR-111) |
 | KSI-CNA | Cloud Native Architecture | 8 | KSI-007 (RNT), KSI-008 (MAT) | 6 controls — DFP · EIS · IBP · OFA · RVP · ULN |
 | KSI-CED | Cybersecurity Education | 1 | none | **all 1 control** — RAT |
 | KSI-IAM | Identity and Access Management | 6 | KSI-001 (APM, SNU), KSI-002 (APM), KSI-003 (ELP, AAM), KSI-006 (ELP), KSI-009 (ELP, JIT, SUS) | 0 controls — **theme fully covered** |
@@ -141,15 +149,21 @@ that contribute to it.
 | KSI-SVC | Service Configuration | 8 | KSI-004 (SNT, RUD), KSI-006 (RUD), KSI-007 (VCM), KSI-008 (VCM), KSI-010 (RUD) | 4 controls — ACM · ASM · EIS · PRR · VRI |
 | KSI-SCR | Supply Chain Risk | 2 | none | **all 2 controls** — MIT · MON |
 
-**Themes uiao currently has zero local rules for: 6 of 10** —
-KSI-CMT · KSI-CED · KSI-INR · KSI-PIY · KSI-RPL · KSI-SCR.
+**Themes uiao currently has zero local rules for: 5 of 10** —
+KSI-CED · KSI-INR · KSI-PIY · KSI-RPL · KSI-SCR. (KSI-CMT exited this
+list 2026-06-18 with the KSI-011…014 scaffolds per ADR-111 / FINDING-004
+§4 — the rules exist but are not yet evaluable.)
 
 These gaps are expected: the local KSI corpus was authored against
 the SCuBA M365 assessment surface (ScubaGear) and naturally clusters
 on identity, mail, sharing, and DLP. CR26 spans the full FedRAMP 20x
-architecture, including change management, recovery, supply chain,
-and policy/inventory — surfaces uiao has not yet wired to a SCuBA-style
-evaluator. Closing these gaps is downstream work tracked separately.
+architecture, including recovery, supply chain, and policy/inventory —
+surfaces uiao has not yet wired to a SCuBA-style evaluator. The KSI-CMT
+(change management) theme is the first non-SCuBA theme seeded: its
+scaffolds bind to substrate-native change/drift telemetry (UIAO_110,
+UIAO_132 §3) rather than ScubaGear. Closing the remaining gaps, and
+making the KSI-CMT scaffolds evaluable, is downstream work tracked in
+FINDING-004 §4 and gated on the CR26 VDR/VER evidence contract.
 
 ---
 
