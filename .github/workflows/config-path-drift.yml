@@ -1,0 +1,41 @@
+name: Config Path Drift
+
+# Guards the repo-config surface (.github/ + .devcontainer/) against references
+# to retired path roots. Post-ADR-032 the tree is a single src/uiao/ package;
+# config that still points at the pre-flatten layout (the old core and impl
+# trees) becomes a silent no-op (the rule matches nothing, but nothing fails).
+# PR #946 fixed a batch of this by hand — this gate keeps it from creeping back.
+#
+# To resolve a failing run, re-point the flagged lines to src/uiao/** (or
+# tests/), or — for a genuinely-correct reference — append the inline marker
+# 'config-drift-allow' to the line. Run locally:
+#     python scripts/check_config_paths.py
+
+on:
+  pull_request:
+    paths:
+      - '.github/**'
+      - '.devcontainer/**'
+      - 'scripts/check_config_paths.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/**'
+      - '.devcontainer/**'
+      - 'scripts/check_config_paths.py'
+
+jobs:
+  config-path-drift:
+    name: Check repo config for retired path roots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run config-path guard
+        run: python scripts/check_config_paths.py
