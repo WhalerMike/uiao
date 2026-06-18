@@ -29,7 +29,7 @@ AI systems have no equivalent source — or rather, they had no equivalent sourc
 | Mover | HR transfer or role change | ATO re-authorization or bureau transfer | Stage change across inventory vintages, or `agency_bureau` change |
 | Leaver | HR separation | System retirement or decommission | `development_stage` changes to `retired`, or entry removed |
 
-The translation is not metaphorical. ADR-109 §2 formally binds `development_stage` values to JML events: `pre-deployment` through `pilot` maps to joiner; transitions within `deployed` (re-authorization, bureau transfer) map to mover; transition to `retired` maps to leaver. The governance model for AI system identities is not a new invention — it is the existing model applied to a new identity population, with the OMB inventory as the source of truth that makes it work.
+The translation is not metaphorical. ADR-112 §2 formally binds `development_stage` values to JML events: `pre-deployment` through `pilot` maps to joiner; transitions within `deployed` (re-authorization, bureau transfer) map to mover; transition to `retired` maps to leaver. The governance model for AI system identities is not a new invention — it is the existing model applied to a new identity population, with the OMB inventory as the source of truth that makes it work.
 
 ## The annual inventory as lifecycle driver
 
@@ -45,7 +45,7 @@ When a new vintage is published, the `ai-inventory-governance` scanner (UIAO_196
 
 **Stage changes to `retired`.** A system that appears in the new vintage with `development_stage = retired` is a leaver by declaration. The agency has reported the retirement. The deprovisioning workflow must begin.
 
-The annual cadence means the machine-identity surface is not real-time — it is updated when OMB publishes, not when an agency deploys a system. This is a known limitation of the inventory as a discovery feed (ADR-109 §2). Between vintages, the `sailpoint-machine-identity` adapter's continuous telemetry capability fills the gap for agencies that can provide it; for others, the annual vintage is the authoritative update.
+The annual cadence means the machine-identity surface is not real-time — it is updated when OMB publishes, not when an agency deploys a system. This is a known limitation of the inventory as a discovery feed (ADR-112 §2). Between vintages, the `sailpoint-machine-identity` adapter's continuous telemetry capability fills the gap for agencies that can provide it; for others, the annual vintage is the authoritative update.
 
 ## Pre-deployment to pilot: the provisional credential
 
@@ -56,7 +56,7 @@ When the system moves from `pre-deployment` to `pilot`, the joiner event fires. 
 - **Scope is limited to the pilot environment.** The credential has access only to the systems and data necessary for the pilot. Production access is not granted. The scope limitation is enforced at the credential level, not just at the policy level.
 - **The credential carries a time-bounded expiry.** A pilot credential that does not expire when the pilot concludes creates exactly the kind of ungoverned access path that identity governance exists to eliminate. The expiry is set at issuance; extension requires a documented authorization action.
 - **The rotation clock starts at pilot.** Credential rotation policy begins at first issuance, not at full deployment. A credential that is not rotated during the pilot phase is already drifting from policy before the system reaches production.
-- **The `have_ato` field is checked against the inventory.** If the system is in `pilot` status in the inventory and `have_ato = No`, that is an ATO gap finding. Per ADR-109 §3, this is classified as `DRIFT-COMPLIANCE::ato-gap` at L1 (observed). The finding routes to the bureau governance contact.
+- **The `have_ato` field is checked against the inventory.** If the system is in `pilot` status in the inventory and `have_ato = No`, that is an ATO gap finding. Per ADR-112 §3, this is classified as `DRIFT-COMPLIANCE::ato-gap` at L1 (observed). The finding routes to the bureau governance contact.
 
 The provisional credential is not a lesser credential — it is a scoped credential. The security controls that apply to it (rotation, access review, ownership tracking) are the same controls that apply to the full deployment credential. The difference is scope, not rigor.
 
@@ -95,7 +95,7 @@ The vintage diff is the most reliable source for leaver events because it is aut
 
 ## The SailPoint machine-identity adapter
 
-The governance model described in this chapter is doctrine: ADR-109 §2 binds the lifecycle states, ADR-059 allocates the adapter slot, ADR-054 governs the ATO re-authorization event. But doctrine without automation is a policy document. The automation that makes the lifecycle machine-driven rather than manual-dependent is the `sailpoint-machine-identity` adapter.
+The governance model described in this chapter is doctrine: ADR-112 §2 binds the lifecycle states, ADR-059 allocates the adapter slot, ADR-054 governs the ATO re-authorization event. But doctrine without automation is a policy document. The automation that makes the lifecycle machine-driven rather than manual-dependent is the `sailpoint-machine-identity` adapter.
 
 The adapter occupies a reserved slot in the UIAO adapter registry (phase-planning status). Its scope covers the full machine-identity surface: service accounts, bots, RPA agents, and AI agents. For the federal AI vertical, the OMB inventory is its primary discovery feed. Its operational profile:
 
@@ -115,7 +115,7 @@ The argument for automating the machine-identity lifecycle for federal AI is the
 
 When human identity lifecycle management was manual, access reviews were annual events that took weeks, joiner provisioning waited for someone to submit a ticket, and leaver deprovisioning depended on whether the manager remembered to notify IT. The resulting credential debt — excess permissions, orphaned accounts, credentials that should have been revoked months earlier — was the substrate for most significant breaches in the federal IT environment over the past two decades. The automation of human identity lifecycle management reduced that debt systematically, not by changing what the governance requirements were, but by making compliance the path of least resistance.
 
-Federal AI systems are starting from the position that human identity governance occupied thirty years ago: manual, informal, dependent on institutional memory and individual action. The OMB inventory provides the source of truth. ADR-109 provides the lifecycle binding. ADR-059 provides the adapter slot. The automation layer — the `sailpoint-machine-identity` adapter, the `ai-inventory-governance` scanner, the drift engine integration — makes the path of least resistance the governed path.
+Federal AI systems are starting from the position that human identity governance occupied thirty years ago: manual, informal, dependent on institutional memory and individual action. The OMB inventory provides the source of truth. ADR-112 provides the lifecycle binding. ADR-059 provides the adapter slot. The automation layer — the `sailpoint-machine-identity` adapter, the `ai-inventory-governance` scanner, the drift engine integration — makes the path of least resistance the governed path.
 
 The 90 agentic AI systems in the current OMB inventory act autonomously inside the federal identity substrate. They provision, query, transfer, and log without a human in the loop for each action. A governance model that depends on humans manually tracking their lifecycle is not a governance model for that population — it is an absence of governance with documentation. The machine-identity lifecycle model closes that absence the same way OrgPath closed the absence of organizational placement for devices: by making the authoritative source machine-readable, the lifecycle events deterministic, and the credential operations automated.
 

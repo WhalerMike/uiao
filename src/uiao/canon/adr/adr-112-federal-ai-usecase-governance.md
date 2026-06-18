@@ -1,5 +1,5 @@
 ---
-adr_id: adr-109
+adr_id: adr-112
 title: "Federal AI Use Case Governance — M-25-21 IAM Obligations, OMB Inventory Integration, and ATO Drift Signal"
 status: PROPOSED
 decided: 2026-06-18
@@ -12,10 +12,10 @@ supersedes: null
 superseded_by: null
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-109-federal-ai-usecase-governance.html
+published_at: docs/adr/adr-112-federal-ai-usecase-governance.html
 ---
 
-# ADR-109: Federal AI Use Case Governance — M-25-21 IAM Obligations, OMB Inventory Integration, and ATO Drift Signal
+# ADR-112: Federal AI Use Case Governance — M-25-21 IAM Obligations, OMB Inventory Integration, and ATO Drift Signal
 
 ## Status
 

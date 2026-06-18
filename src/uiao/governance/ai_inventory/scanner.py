@@ -4,7 +4,7 @@ Ingests the OMB 2025 Federal AI Use Case Inventory CSV and produces a
 ScanResult containing drift findings for every system that violates
 M-25-21 identity governance obligations.
 
-Operating mode: L1 (observe only). No writes. Per ADR-109 §3 and ADR-092,
+Operating mode: L1 (observe only). No writes. Per ADR-112 §3 and ADR-092,
 promotion to L2/L3 requires a separate governance-board decision.
 
 Usage::
@@ -16,7 +16,7 @@ Usage::
     for f in result.p1_findings:
         print(f.to_event())
 
-Canon reference: UIAO_196, ADR-109
+Canon reference: UIAO_196, ADR-112
 """
 
 from __future__ import annotations
@@ -199,7 +199,7 @@ def scan_inventory(
     -------
     ScanResult
         Contains all records, live records, findings, and gate decision.
-        No writes are made; the scan is read-only (L1 per ADR-109 §3).
+        No writes are made; the scan is read-only (L1 per ADR-112 §3).
     """
     path = Path(csv_path)
     rows = _load_csv(path)

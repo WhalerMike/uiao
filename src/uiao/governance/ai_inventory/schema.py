@@ -5,7 +5,7 @@ EO 13960 is an identity subject in UIAO's machine-identity surface. This
 module defines the canonical record shape, lifecycle states, and
 OrgPath-binding rules.
 
-Canon reference: UIAO_196, ADR-109 §2
+Canon reference: UIAO_196, ADR-112 §2
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ class AgentClass(str, Enum):
     """OMB classification field normalised to UIAO agent types.
 
     ``AGENTIC`` entries operate autonomously inside the identity substrate
-    and carry the highest governance priority per ADR-109 §4.
+    and carry the highest governance priority per ADR-112 §4.
     """
 
     AGENTIC = "agentic-ai"
@@ -48,7 +48,7 @@ class ATOStatus(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# OrgPath binding for AI systems (ADR-109 §2 field mapping)
+# OrgPath binding for AI systems (ADR-112 §2 field mapping)
 # ---------------------------------------------------------------------------
 
 

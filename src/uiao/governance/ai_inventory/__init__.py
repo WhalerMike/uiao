@@ -6,7 +6,7 @@ Case Inventory CSV and produces drift findings for systems that lack
 organizational placement, authorization-to-operate, owner identity, or
 PIA documentation.
 
-Canon reference: UIAO_196, ADR-109
+Canon reference: UIAO_196, ADR-112
 """
 
 from uiao.governance.ai_inventory.drift import (
