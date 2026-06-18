@@ -20,6 +20,8 @@ Public surface:
   gate-only ticket validation, behind the ``[kerberos]`` extra.
 * :mod:`uiao.directory.writes` — write-as-governed-intent (ADR-109): translate a
   modify into FacetOperations and route them dry-run-by-default.
+* :mod:`uiao.directory.actuation` — the ADR-092 §3-gated seam that routes an
+  approved write plan into a Phase-5 adapter's ``apply`` (off by default).
 * :mod:`uiao.directory.ad_schema` — read-only AD-compatibility veneer (ADR-110):
   synthesized, non-authoritative sAMAccountName / objectSid / objectClass.
 * :mod:`uiao.directory.server` — the asyncio LDAP server (LDAPS + StartTLS + SASL).
@@ -27,6 +29,7 @@ Public surface:
 
 from __future__ import annotations
 
+from uiao.directory.actuation import ActuationDisabled, FacetActuator
 from uiao.directory.ad_schema import synthesize as synthesize_ad_veneer
 from uiao.directory.dit import Directory, build_directory
 from uiao.directory.policy import ReadPolicy, default_read_policy
@@ -35,7 +38,9 @@ from uiao.directory.server import LdapServer, build_server_tls_context
 from uiao.directory.writes import WritePlan, WriteRouter, translate_modify
 
 __all__ = [
+    "ActuationDisabled",
     "Directory",
+    "FacetActuator",
     "LdapServer",
     "ReadPolicy",
     "SaslMechanism",
