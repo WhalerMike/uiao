@@ -110,6 +110,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-105](adr-105-operational-guide-kit-conventions.md) | Operational-Guide Kit Conventions — In-Repo Scripts and Paired Manual/Governed Delivery | PROPOSED | 2026-06-13 |
 | [ADR-106](adr-106-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption (renumbered from ADR-047) | PROPOSED | 2026-04-27 |
 | [ADR-107](adr-107-network-aaa-adapter-registration.md) | Network AAA Adapter Registration and Control-Library `implemented_by` Closure (renumbered from ADR-047) | PROPOSED | 2026-05-07 |
+| [ADR-109](adr-109-active-governance-directory-write-as-intent.md) | Active Governance Directory — Write Operations as Governed Intent, Not Store Mutation | PROPOSED | 2026-06-18 |
 
 ### Microsoft Coverage
 
