@@ -231,6 +231,69 @@ def _starttls(message_id: int) -> bytes:
     return ber.encode_sequence([ber.encode_integer(message_id), op])
 
 
+def _modify_change(message_id: int, dn: str, attr: str, values: list[str]) -> bytes:
+    partial = ber.encode_sequence(
+        [ber.encode_octet_string(attr), ber.encode_set([ber.encode_octet_string(v) for v in values])]
+    )
+    change = ber.encode_sequence([ber.encode_enumerated(int(protocol.ModifyOp.REPLACE)), partial])
+    op = ber.encode_sequence(
+        [ber.encode_octet_string(dn), ber.encode_sequence([change])], tag=protocol.APP_MODIFY_REQUEST
+    )
+    return ber.encode_sequence([ber.encode_integer(message_id), op])
+
+
+_AGD_DN = "cn=alice,ou=people,dc=agd,dc=uiao,dc=gov"
+
+
+def test_modify_refused_when_writes_not_enabled() -> None:
+    server = LdapServer(directory=build_directory(PRINCIPALS))  # write_router=None
+    responses = asyncio.run(_run_session(server, [_modify_change(1, _AGD_DN, "uiaoOrgPathDepartment", ["IT"])]))
+    op = ber.read_children(responses[0].content)[1]
+    assert op.tag == protocol.APP_MODIFY_RESPONSE
+    assert _result_code(responses[0]) == int(protocol.ResultCode.UNWILLING_TO_PERFORM)
+
+
+def test_modify_requires_authentication() -> None:
+    from uiao.directory.writes import WriteRouter
+
+    server = LdapServer(directory=build_directory(PRINCIPALS), write_router=WriteRouter(dry_run=True))
+    # No bind -> anonymous -> writes refused with insufficientAccessRights.
+    responses = asyncio.run(_run_session(server, [_modify_change(1, _AGD_DN, "uiaoOrgPathDepartment", ["IT"])]))
+    assert _result_code(responses[0]) == int(protocol.ResultCode.INSUFFICIENT_ACCESS_RIGHTS)
+
+
+def test_modify_authenticated_dry_run_succeeds_with_plan() -> None:
+    from uiao.directory.writes import WriteRouter
+
+    server = LdapServer(
+        directory=build_directory(PRINCIPALS),
+        credentials={"cn=admin": "pw"},
+        write_router=WriteRouter(dry_run=True),
+    )
+    requests = [_bind(1, "cn=admin", "pw"), _modify_change(2, _AGD_DN, "uiaoOrgPathDepartment", ["IT"])]
+    responses = asyncio.run(_run_session(server, requests))
+    assert _result_code(responses[0]) == int(protocol.ResultCode.SUCCESS)  # bind
+    modify_resp = responses[1]
+    assert ber.read_children(modify_resp.content)[1].tag == protocol.APP_MODIFY_RESPONSE
+    assert _result_code(modify_resp) == int(protocol.ResultCode.SUCCESS)
+    # diagnostic carries the dry-run plan note
+    diag = ber.read_children(ber.read_children(modify_resp.content)[1].content)[2]
+    assert "dry-run" in ber.decode_octet_string(diag.content)
+
+
+def test_modify_non_governed_attribute_refused() -> None:
+    from uiao.directory.writes import WriteRouter
+
+    server = LdapServer(
+        directory=build_directory(PRINCIPALS),
+        credentials={"cn=admin": "pw"},
+        write_router=WriteRouter(dry_run=True),
+    )
+    requests = [_bind(1, "cn=admin", "pw"), _modify_change(2, _AGD_DN, "cn", ["bob"])]
+    responses = asyncio.run(_run_session(server, requests))
+    assert _result_code(responses[1]) == int(protocol.ResultCode.UNWILLING_TO_PERFORM)
+
+
 def test_starttls_refused_when_not_configured() -> None:
     # No tls_context -> StartTLS is refused (unwillingToPerform) but the
     # connection survives so a following search still works.

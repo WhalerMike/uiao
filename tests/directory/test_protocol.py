@@ -95,8 +95,8 @@ def test_parse_substrings_filter() -> None:
 
 
 def test_unsupported_op_raises() -> None:
-    # ModifyRequest [APPLICATION 6] is not implemented.
-    op = ber.encode_sequence([], tag=ber.APPLICATION | ber.CONSTRUCTED | 6)
+    # AddRequest [APPLICATION 8] is not implemented (modify is, via ADR-109).
+    op = ber.encode_sequence([], tag=protocol.APP_ADD_REQUEST)
     msg = ber.encode_sequence([ber.encode_integer(9), op])
     with pytest.raises(protocol.UnsupportedOperation):
         protocol.parse_message(msg)
@@ -159,6 +159,50 @@ def test_encode_bind_response_with_server_sasl_creds_round_trips() -> None:
     assert ber.decode_integer(parts[0].content) == int(protocol.ResultCode.SASL_BIND_IN_PROGRESS)
     creds = next(p for p in parts if p.tag == protocol.SERVER_SASL_CREDS)
     assert creds.content == b"\xaa\xbb"
+
+
+def _modify_request(message_id: int, dn: str, op: int, attr: str, values: list[str]) -> bytes:
+    partial_attr = ber.encode_sequence(
+        [ber.encode_octet_string(attr), ber.encode_set([ber.encode_octet_string(v) for v in values])]
+    )
+    change = ber.encode_sequence([ber.encode_enumerated(op), partial_attr])
+    op_body = ber.encode_sequence(
+        [ber.encode_octet_string(dn), ber.encode_sequence([change])], tag=protocol.APP_MODIFY_REQUEST
+    )
+    return ber.encode_sequence([ber.encode_integer(message_id), op_body])
+
+
+def test_parse_modify_request() -> None:
+    req = protocol.parse_message(
+        _modify_request(3, "cn=alice,dc=x", int(protocol.ModifyOp.REPLACE), "uiaoOrgPathDepartment", ["IT"])
+    )
+    assert isinstance(req, protocol.ModifyRequest)
+    assert req.object == "cn=alice,dc=x"
+    assert len(req.changes) == 1
+    change = req.changes[0]
+    assert change.operation == protocol.ModifyOp.REPLACE
+    assert change.attribute == "uiaoOrgPathDepartment"
+    assert change.values == ("IT",)
+
+
+def test_parse_modify_delete_has_no_values() -> None:
+    req = protocol.parse_message(
+        _modify_request(1, "cn=a,dc=x", int(protocol.ModifyOp.DELETE), "uiaoOrgPathRegion", [])
+    )
+    assert isinstance(req, protocol.ModifyRequest)
+    assert req.changes[0].operation == protocol.ModifyOp.DELETE
+    assert req.changes[0].values == ()
+
+
+def test_encode_modify_response_round_trips() -> None:
+    raw = protocol.encode_modify_response(4, protocol.ResultCode.SUCCESS, "dry-run: 1 op planned")
+    envelope, _ = ber.read_tlv(raw)
+    mid, op = ber.read_children(envelope.content)
+    assert ber.decode_integer(mid.content) == 4
+    assert op.tag == protocol.APP_MODIFY_RESPONSE
+    parts = ber.read_children(op.content)
+    assert ber.decode_integer(parts[0].content) == int(protocol.ResultCode.SUCCESS)
+    assert ber.decode_octet_string(parts[2].content) == "dry-run: 1 op planned"
 
 
 def test_parse_starttls_extended_request() -> None:
