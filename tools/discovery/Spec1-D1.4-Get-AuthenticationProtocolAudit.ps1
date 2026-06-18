@@ -42,6 +42,7 @@
 #>
 
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'D1InputFile', Justification = 'Documented optional D1.1 cross-reference parameter, part of the uniform discovery-suite CLI signature; accepted for forward compatibility even where this script does not yet consume it.')]
 param(
     [string]$OutputPath = ".\output",
     [string]$DomainController,
@@ -193,7 +194,7 @@ foreach ($comp in $kcdComputers) {
 Write-Host "  [3/6] Resource-Based Constrained Delegation (RBCD) scan..." -ForegroundColor Yellow
 
 $rbcdComputers = @(Get-ADComputer -Filter * -Properties $compProps @adParams |
-    Where-Object { $_.'msDS-AllowedToActOnBehalfOfOtherIdentity' -ne $null })
+    Where-Object { $null -ne $_.'msDS-AllowedToActOnBehalfOfOtherIdentity' })
 
 Write-Host "    Computers with RBCD: $($rbcdComputers.Count)" -ForegroundColor $(if ($rbcdComputers.Count -gt 0) { 'Yellow' } else { 'Green' })
 
@@ -243,11 +244,6 @@ Write-Host "  [4/6] Protocol transition scan..." -ForegroundColor Yellow
 
 $protocolTransition = @(Get-ADComputer -Filter { TrustedToAuthForDelegation -eq $true } `
     -Properties $compProps @adParams)
-
-# Filter to non-KCD (those already captured) — just count overlap
-$ptOnlyCount = ($protocolTransition | Where-Object {
-    -not ($kcdComputers | Where-Object { $_.ObjectGUID -eq $_.ObjectGUID })
-}).Count
 
 Write-Host "    Protocol transition enabled: $($protocolTransition.Count) (overlap with KCD captured above)" -ForegroundColor DarkGray
 
@@ -313,16 +309,6 @@ $certResults = $certComputers | ForEach-Object {
 # Pass 6: NTLM Dependency Indicators
 # ══════════════════════════════════════════════════════════════
 Write-Host "  [6/6] NTLM dependency indicators..." -ForegroundColor Yellow
-
-# Check for computers in NTLM-related security groups
-$ntlmIndicators = [System.Collections.Generic.List[object]]::new()
-
-# Check network security GPO settings (NTLM restriction groups)
-$ntlmGroups = @(
-    'Network access: Restrict NTLM: Add server exceptions',
-    'Network access: Restrict NTLM: Audit NTLM authentication in this domain',
-    'Protected Users'
-)
 
 # Check Protected Users group membership
 $protectedUsers = @()

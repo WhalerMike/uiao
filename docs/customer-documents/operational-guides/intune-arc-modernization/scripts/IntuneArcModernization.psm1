@@ -187,7 +187,7 @@ $script:ModernizationDomains = @(
     [pscustomobject]@{ Domain='Cross-domain drift';    Plane='All';              Script='Get-ModernizationDriftReport.ps1';     Rung='L1'; Canon='ADR-040 / ADR-092' }
     [pscustomobject]@{ Domain='OrgPath survey';        Plane='All';              Script='Get-OrgPathSurvey.ps1';                Rung='L2'; Canon='UIAO_011 / ADR-092 (retrofit Step 2)' }
 )
-function Get-ModernizationDomains { $script:ModernizationDomains }
+function Get-ModernizationDomain { $script:ModernizationDomains }
 
 # ---------------------------------------------------------------------------
 # ORGPATH SURVEY HELPER (retrofit Step 2 — "derive OrgPath from structure")
@@ -241,17 +241,17 @@ $script:SqlDangerousConfigs = @(
     'xp_cmdshell','Ole Automation Procedures','clr enabled','cross db ownership chaining',
     'remote admin connections','Database Mail XPs','Ad Hoc Distributed Queries','scan for startup procs'
 )
-function Get-SqlDangerousConfigs { $script:SqlDangerousConfigs }
+function Get-SqlDangerousConfig { $script:SqlDangerousConfigs }
 
 # LmCompatibilityLevel meanings (NTLM hardening, per ADR-068 staging).
 $script:LmCompatibilityLevels = [ordered]@{
     0='Send LM & NTLM'; 1='Send LM & NTLM, use NTLMv2 if negotiated'; 2='Send NTLM only';
     3='Send NTLMv2 only'; 4='Send NTLMv2 only, DC refuses LM'; 5='Send NTLMv2 only, DC refuses LM & NTLM'
 }
-function Get-LmCompatibilityLevels { $script:LmCompatibilityLevels }
+function Get-LmCompatibilityLevel { $script:LmCompatibilityLevels }
 
 Export-ModuleMember -Function `
     Connect-ModernizationGraph, Connect-ModernizationAzure, Write-ModernizationLog, `
-    Assert-GovernanceApproval, Get-ActuationLadder, Get-ModernizationDomains, `
+    Assert-GovernanceApproval, Get-ActuationLadder, Get-ModernizationDomain, `
     ConvertTo-OrgPathProposal, `
-    Get-SqlDangerousConfigs, Get-LmCompatibilityLevels
+    Get-SqlDangerousConfig, Get-LmCompatibilityLevel

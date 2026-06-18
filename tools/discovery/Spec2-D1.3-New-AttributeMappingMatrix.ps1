@@ -668,7 +668,7 @@ foreach ($s in $sectionSummary) {
 # Data quality flags from D1.1
 if ($d1Data) {
     Write-Host "`n-- Data Quality (from D1.1) --" -ForegroundColor Cyan
-    $lowPopulation = $mappings | Where-Object { $_.Required -and $_.PopulationRate -ne $null -and $_.PopulationRate -lt 70 }
+    $lowPopulation = $mappings | Where-Object { $_.Required -and $null -ne $_.PopulationRate -and $_.PopulationRate -lt 70 }
     if ($lowPopulation) {
         foreach ($lp in $lowPopulation) {
             Write-Host "  ! $($lp.HRCanonicalField) -> $($lp.EntraIDProperty): $($lp.PopulationRate)% populated (REQUIRED)" -ForegroundColor Red

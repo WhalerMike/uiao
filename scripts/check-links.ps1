@@ -25,6 +25,7 @@
     pwsh scripts/check-links.ps1 -StartUrl https://whalermike.github.io/uiao/ -MaxDepth 3
 #>
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'MaxDepth', Justification = 'Documented CLI crawl-depth parameter; read inside the script-scoped Invoke-PageCrawl function to bound recursion.')]
 param(
     [string]$StartUrl = "https://whalermike.github.io/uiao/docs/",
     [int]$MaxDepth = 5

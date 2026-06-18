@@ -11,11 +11,10 @@ name: PowerShell Lint
 #             signal.
 #
 #   analyze — PSScriptAnalyzer static analysis (uninitialized vars, bad
-#             cmdlet usage, unsafe patterns). NON-BLOCKING for now
-#             (continue-on-error) to capture a baseline without instantly
-#             reddening CI, per the ruff/mypy gate-restoration pattern in
-#             AGENTS.md. Flip to blocking by removing `continue-on-error`
-#             once the baseline is cleared.
+#             cmdlet usage, unsafe patterns). BLOCKING on errors: the
+#             baseline was cleared to 0 errors / 0 warnings, so a new
+#             analyzer error fails the run. Warnings stay advisory for now,
+#             per the ruff/mypy gate-restoration pattern in AGENTS.md.
 #
 # Both run on ubuntu-latest with pwsh (PowerShell 7) — they only read and
 # parse scripts, they never execute them.
@@ -100,11 +99,12 @@ jobs:
           }
 
   analyze:
-    name: PSScriptAnalyzer (non-blocking baseline)
+    name: PSScriptAnalyzer (blocking — 0 errors)
     runs-on: ubuntu-latest
-    # Non-blocking until the warning baseline is burned down; remove this
-    # line to make the static-analysis gate blocking.
-    continue-on-error: true
+    # Blocking on errors: the baseline was burned down to 0 errors / 0
+    # warnings (#936 + the #937 re-land), so a NEW analyzer error now fails
+    # the run. Warnings stay advisory (the script exits 1 on errors only);
+    # tighten to also fail on warnings later if desired.
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -166,7 +166,7 @@ jobs:
               Write-Host
           }
 
-          # The job is currently non-blocking (continue-on-error at the job
-          # level), so this exit code is advisory. When the gate is flipped
-          # to blocking, errors should fail the run.
+          # Blocking gate: any analyzer error fails the run. Warnings stay
+          # advisory (baseline is 0/0; to also fail on warnings, add:
+          # if ($warnings -gt 0) { exit 1 }).
           if ($errors -gt 0) { exit 1 }

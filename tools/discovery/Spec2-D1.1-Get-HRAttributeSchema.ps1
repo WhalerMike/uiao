@@ -4,8 +4,7 @@
 
 param(
     [string]$OutputPath = ".\output",
-    [string]$SearchBase,
-    [bool]$IncludeDisabled = $true
+    [string]$SearchBase
 )
 
 if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {

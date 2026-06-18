@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     UIAO PowerShell Management Module
@@ -23,7 +23,7 @@ $ErrorActionPreference = "Stop"
 # Internal helpers
 # -----------------------------------------------------------------------
 
-function _Resolve-Python {
+function Resolve-UIAOPython {
     $candidates = @(
         [System.Environment]::GetEnvironmentVariable("UIAO_PYTHON_EXE", "Machine"),
         "C:\srv\uiao\.venv\Scripts\python.exe",
@@ -36,10 +36,10 @@ function _Resolve-Python {
     throw "Python not found. Set UIAO_PYTHON_EXE machine env var or install Python 3.13."
 }
 
-function _Resolve-BaseUrl {
-    $host = [System.Environment]::GetEnvironmentVariable("UIAO_API_HOST", "Machine")
-    if (-not $host) { $host = "$env:COMPUTERNAME" }
-    return "https://$host"
+function Resolve-UIAOBaseUrl {
+    $apiHost = [System.Environment]::GetEnvironmentVariable("UIAO_API_HOST", "Machine")
+    if (-not $apiHost) { $apiHost = "$env:COMPUTERNAME" }
+    return "https://$apiHost"
 }
 
 # -----------------------------------------------------------------------
@@ -77,7 +77,7 @@ function Install-UIAO {
         $secret = Read-Host "Client secret" -AsSecureString
         Install-UIAO -TenantId "<guid>" -ClientId "<guid>" -ClientSecret $secret
     #>
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding()]
     param(
         [string]$RepoPath     = "C:\srv\uiao",
         [string]$TenantId,
@@ -117,7 +117,7 @@ function Install-UIAO {
     }
 
     $params = @{
-        PythonExe      = (_Resolve-Python)
+        PythonExe      = (Resolve-UIAOPython)
         ServicePort    = $ServicePort
         IISSitePath    = $IISSitePath
         StartImmediately = $true
@@ -161,7 +161,7 @@ function Uninstall-UIAO {
                 Stop-Service -Name "UIAOService" -Force
                 Write-Host "  Stopped UIAOService" -ForegroundColor Green
             }
-            $py = _Resolve-Python
+            $py = Resolve-UIAOPython
             & $py -m uiao.service remove 2>&1 | Out-Null
             Write-Host "  Removed UIAOService from SCM" -ForegroundColor Green
         } else {
@@ -234,7 +234,7 @@ function Get-UIAOStatus {
 
     # Version
     try {
-        $pyExe = _Resolve-Python
+        $pyExe = Resolve-UIAOPython
         $ver = & $pyExe -c "import uiao; print(uiao.__version__)" 2>&1
         $status["UIAO version"]     = $ver
     } catch {
@@ -270,7 +270,7 @@ function Test-UIAOHealth {
     #>
     [CmdletBinding()]
     param(
-        [string]$BaseUrl       = (_Resolve-BaseUrl),
+        [string]$BaseUrl       = (Resolve-UIAOBaseUrl),
         [int]$WarnCertDays     = 30
     )
 
@@ -372,7 +372,7 @@ function Update-UIAO {
         [switch]$Force
     )
 
-    $py = _Resolve-Python
+    $py = Resolve-UIAOPython
 
     # Check current version
     $current = & $py -c "import uiao; print(uiao.__version__)" 2>&1

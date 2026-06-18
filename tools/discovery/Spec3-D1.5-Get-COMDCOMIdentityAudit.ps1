@@ -183,7 +183,7 @@ function ConvertFrom-DCOMPermissionSDDL {
 
 $resolvedAccountCache = @{}
 
-function Resolve-DomainAccountDetails {
+function Resolve-DomainAccountDetail {
     param([string]$AccountIdentity)
 
     if (-not $hasADModule) { return $null }
@@ -602,7 +602,7 @@ Write-Host "    Unique domain accounts found: $($domainAccountIdentities.Count)"
 
 $resolvedAccounts = [ordered]@{}
 foreach ($acct in $domainAccountIdentities) {
-    $details = Resolve-DomainAccountDetails -AccountIdentity $acct
+    $details = Resolve-DomainAccountDetail -AccountIdentity $acct
     $resolvedAccounts[$acct] = $details
     if ($details) {
         Write-Host "      Resolved: $acct -> $($details.ObjectType)" -ForegroundColor Gray

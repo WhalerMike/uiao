@@ -39,8 +39,6 @@
 .PARAMETER Credential
     PSCredential for remote server authentication.
     If omitted, uses current user's credentials.
-.PARAMETER ThrottleLimit
-    Maximum concurrent remote connections. Default: 10.
 .EXAMPLE
     .\Spec3-D1.2-Get-ScheduledTaskCredentialAudit.ps1
     .\Spec3-D1.2-Get-ScheduledTaskCredentialAudit.ps1 -ComputerName (Get-Content .\servers.txt)
@@ -56,8 +54,7 @@ param(
     [string[]]$ComputerName,
     [string]$D1InputFile,
     [string]$OutputPath = ".\output",
-    [PSCredential]$Credential,
-    [int]$ThrottleLimit = 10
+    [PSCredential]$Credential
 )
 
 $ErrorActionPreference = "Stop"
@@ -439,7 +436,7 @@ foreach ($task in $allTasks) {
 
     # Activity classification
     $activityState = "Unknown"
-    if ($lastRunAgeDays -ne $null) {
+    if ($null -ne $lastRunAgeDays) {
         if ($lastRunAgeDays -le 7) { $activityState = "Active (last 7 days)" }
         elseif ($lastRunAgeDays -le 30) { $activityState = "Recent (last 30 days)" }
         elseif ($lastRunAgeDays -le 90) { $activityState = "Stale (30-90 days)" }
@@ -505,7 +502,6 @@ Write-Host "  Computing summary statistics..." -ForegroundColor Yellow
 
 # Filter to non-Microsoft tasks with credentials
 $customTasks = @($classifiedTasks | Where-Object { -not $_.IsMicrosoftTask })
-$credentialTasks = @($customTasks | Where-Object { $_.CredentialRisk -in @('HIGH', 'MEDIUM') })
 
 $riskDistribution = [ordered]@{
     HIGH   = ($classifiedTasks | Where-Object { $_.CredentialRisk -eq 'HIGH' }).Count
@@ -539,7 +535,7 @@ $serversWithDomainCreds = @($classifiedTasks |
 
 # Failed tasks with domain credentials
 $failedDomainTasks = @($classifiedTasks |
-    Where-Object { $_.CredentialType -eq 'Domain Account' -and $_.LastTaskResult -ne 0 -and $_.LastTaskResult -ne $null })
+    Where-Object { $_.CredentialType -eq 'Domain Account' -and $_.LastTaskResult -ne 0 -and $null -ne $_.LastTaskResult })
 
 # Dormant tasks with domain credentials (cleanup candidates)
 $dormantDomainTasks = @($classifiedTasks |

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Test-UIAOHealth.ps1
     Standalone health check for the UIAO governance API on Windows Server.

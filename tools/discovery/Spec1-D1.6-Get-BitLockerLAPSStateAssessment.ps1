@@ -154,13 +154,6 @@ foreach ($comp in $allComputers) {
             foreach ($fve in $fveObjects) {
                 $keyAge = if ($fve.WhenCreated) { [int]((Get-Date) - $fve.WhenCreated).TotalDays } else { $null }
 
-                # Parse recovery info name for protector type and date
-                # Format: yyyy-MM-dd'T'HH:mm:ss-xx:xx{RecoveryGuid}
-                $protectorType = "RecoveryPassword"
-                if ($fve.Name -match '\{([0-9A-F\-]+)\}') {
-                    $protectorGuid = $Matches[1]
-                }
-
                 $bitlockerKeys += [ordered]@{
                     Name         = $fve.Name
                     Created      = if ($fve.WhenCreated) { $fve.WhenCreated.ToString("o") } else { $null }
@@ -316,10 +309,6 @@ Write-Progress -Activity "BitLocker/LAPS Audit" -Completed
 # Pass 3: LAPS GPO Coverage Analysis
 # ══════════════════════════════════════════════════════════════
 Write-Host "  [3/4] Analyzing LAPS GPO coverage..." -ForegroundColor Yellow
-
-$lapsGPOCoverage = [ordered]@{
-    Note = "Full LAPS GPO analysis requires D1.3 GPO Dependency Map. This is a summary indicator."
-}
 
 # Check if LAPS schema is extended
 $lapsSchemaPresent = [ordered]@{

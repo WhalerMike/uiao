@@ -132,7 +132,6 @@ $contentLog = @()
 foreach ($filePath in $targetFiles) {
     $fileName = Split-Path $filePath -Leaf
     $content = Get-Content -Path $filePath -Raw -Encoding UTF8
-    $originalContent = $content
     $replacementCount = 0
 
     foreach ($entry in $ContentReplacements.GetEnumerator()) {

@@ -33,14 +33,14 @@ if (-not $mod) { throw 'IntuneArcModernization.psm1 not found beside the script 
 Import-Module $mod.FullName -Force
 
 if ($ListLevels) {
-    (Get-LmCompatibilityLevels).GetEnumerator() | ForEach-Object { '{0} = {1}' -f $_.Key, $_.Value }
+    (Get-LmCompatibilityLevel).GetEnumerator() | ForEach-Object { '{0} = {1}' -f $_.Key, $_.Value }
     return
 }
 
 if (-not (Assert-GovernanceApproval -Operation "NTLM restriction (LmCompatibilityLevel=$Level)" -OrgPath $OrgPath -ApprovalRef $ApprovalRef -ActuationRung 'L3')) { return }
 
 $lsaPath = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
-$meaning = (Get-LmCompatibilityLevels)[$Level]
+$meaning = (Get-LmCompatibilityLevel)[$Level]
 
 if ($PSCmdlet.ShouldProcess($env:COMPUTERNAME, "Set LmCompatibilityLevel = $Level ($meaning)")) {
     Set-ItemProperty -Path $lsaPath -Name 'LmCompatibilityLevel' -Value $Level -Type DWord

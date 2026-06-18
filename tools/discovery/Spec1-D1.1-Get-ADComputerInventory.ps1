@@ -13,7 +13,6 @@
 param(
     [string]$OutputPath = ".\output",
     [string]$DomainController,
-    [bool]$IncludeStale = $true,
     [string]$SearchBase
 )
 
