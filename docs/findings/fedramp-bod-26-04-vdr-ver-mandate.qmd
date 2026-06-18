@@ -1,0 +1,239 @@
+---
+title: "FedRAMP NTC-0014 / CISA BOD 26-04 — mandatory VDR + VER adoption by 2026-12-07"
+finding_id: "FINDING-004"
+status: Awaiting-External-Remediation
+severity: P2
+created_at: "2026-06-18"
+updated_at: "2026-06-18"
+owner: "Michael Stratton"
+related_canon: ["UIAO_003", "UIAO_110", "UIAO_132", "UIAO_133", "UIAO_137"]
+related_adrs: ["ADR-043", "ADR-047", "ADR-061"]
+related_findings: ["FINDING-002", "FINDING-003"]
+supersedes: []
+superseded_by: []
+---
+
+# FedRAMP NTC-0014 / CISA BOD 26-04 — mandatory VDR + VER adoption by 2026-12-07
+
+## 1. Constraint
+
+Two coupled federal actions in June 2026 convert UIAO's previously
+open-ended vulnerability-reporting modernization gate into a **dated
+obligation** and introduce one rule UIAO does not yet model:
+
+1. **CISA Binding Operational Directive 26-04 — "Prioritizing Security
+   Updates Based on Risk" (issued 2026-06-10).** BOD 26-04 **supersedes
+   BOD 22-01 (KEV remediation) and BOD 19-02 (internet-accessible
+   systems)** and replaces flat, severity-only patch deadlines with a
+   **four-variable risk matrix**: (a) whether the asset is publicly
+   exposed, (b) whether the vulnerability is in the CISA Known Exploited
+   Vulnerabilities (KEV) catalog, (c) whether the exploit is
+   automatable, and (d) the post-exploit technical impact. The four
+   variables map to a remediation-timeline ladder ranging from **3
+   calendar days plus mandatory forensic triage** (KEV + total system
+   control) down to **"fix on next system upgrade."** A vulnerability may
+   be **mitigated** until it is no longer automatable or
+   internet-reachable in lieu of full remediation.
+
+2. **FedRAMP Notice NTC-0014 — "FedRAMP Response to CISA BOD 26-04"
+   (published 2026-06-16).** NTC-0014 announces that FedRAMP will
+   **mandate adoption of the Vulnerability Detection and Response (VDR)
+   and the new Vulnerability Evaluation and Reporting (VER) rules by
+   2026-12-07** to align FedRAMP Authorized cloud service offerings with
+   BOD 26-04. VDR and VER are being **finalized inside the Consolidated
+   Rules for 2026 (CR26)** by the end of June 2026. A notable new VER
+   requirement is **VER-EVA-EIR (Evaluate Internet-Reachability)** — an
+   evaluation determining whether a vulnerability is likely reachable
+   over the internet (the trigger for the BOD 26-04 mitigate-until-not-
+   reachable escape hatch).
+
+The constraint UIAO names is the **gap between a now-dated FedRAMP
+mandate and the substrate's current modelling**. UIAO pre-wired VDR as
+the Pathway-1 "modernized" path in [ADR-043](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-043-fedramp-rfc-0026-ca7-integration.md)
+/ [UIAO_132](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-rfc-0026-ca7-integration.md),
+but (i) the Pathway-1 migration trigger was written as the open-ended
+"publication of the VDR Balance Improvement Release" with **no date**,
+(ii) **VER is not modelled at all**, and (iii) the substrate's
+self-imposed **flat 72-hour critical SLA** (ADR-043 D2) does not encode
+BOD 26-04's four-variable tiered ladder.
+
+> **Disambiguation.** `fedramp.gov/notices/0014/` is **Notice NTC-0014**,
+> not **RFC-0014** (Phase Two Key Security Indicators). RFC-0014 is
+> already integrated via ADR-047 / UIAO_133 / UIAO_137; the two share
+> only the digit string `0014`. This finding concerns the Notice.
+
+## 2. Evidence
+
+### Primary sources
+
+- **[FedRAMP NTC-0014 — Response to CISA BOD 26-04](https://www.fedramp.gov/notices/0014/)** —
+  Published 2026-06-16. Announces mandatory VDR + VER adoption by
+  2026-12-07; VDR/VER finalized within CR26 by end of June 2026.
+- **[CISA BOD 26-04 — Prioritizing Security Updates Based on Risk](https://cyber.dhs.gov/bod/26-04/)** —
+  Issued 2026-06-10. Four-variable risk matrix; remediation-timeline
+  ladder (3-day + forensic triage → next upgrade); supersedes BOD 22-01
+  and BOD 19-02; three-phase agency rollout (immediate / 60-day /
+  180-day).
+- **[FedRAMP Vulnerability Detection and Response (VDR) documentation](https://www.fedramp.gov/docs/vulnerability-detection-and-response/)** —
+  VDR process: systematically identify, analyze, prioritize, mitigate,
+  and remediate vulnerabilities within a cloud service offering.
+- **[FedRAMP 20x — Vulnerability Detection and Response](https://www.fedramp.gov/docs/20x/vulnerability-detection-and-response/)** —
+  20x-context VDR rule surface; VER-EVA-EIR internet-reachability
+  evaluation.
+- **[FedRAMP Changelog](https://www.fedramp.gov/changelog/)** —
+  Authoritative publication timeline for the CR26 / VDR / VER releases.
+
+### Provenance note
+
+Dates and timeline tiers cited here (the 2026-12-07 mandate, the
+BOD 26-04 3-day floor, the CR26 end-of-June finalization) are snapshot
+facts as of the 2026-06-18 access date and must be re-verified against
+the FedRAMP.gov and cyber.dhs.gov primary sources at any time this
+finding is acted on, since CR26 is in active finalization. The
+`fedramp.gov` and `cyber.dhs.gov` hosts geo-gate cloud CI runners
+(see `.lycheeignore`); the URLs are human-navigable references.
+
+## 3. Capability gap
+
+Tied to specific UIAO_NNN capability statements:
+
+1. **UIAO_132 §2.4 Pathway-1 migration gate is now time-bound, not
+   open-ended.** The spec says UIAO flips affected adapters from
+   `pathway-2-traditional` to `pathway-1-modernized` on "publication of
+   the VDR Balance Improvement Release." NTC-0014 supplies the missing
+   date (**2026-12-07**) and a regulatory hook (BOD 26-04). The
+   substrate can no longer treat the migration as discretionary timing;
+   the gate has effectively fired.
+
+2. **VER is unmodelled (UIAO_132).** UIAO_132 models only VDR
+   (RV5-CA07-VLN) and Collaborative ConMon (RV5-CA07-CCM). The new VER
+   rule — and especially **VER-EVA-EIR (Evaluate Internet-Reachability)**
+   — has no canon home, no adapter binding, and no evidence-emission
+   row in [UIAO_133 §2.2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-20x-integration.md).
+
+3. **The flat 72-hour critical SLA does not encode BOD 26-04's tiered
+   ladder (ADR-043 D2 / UIAO_132 §2.2).** UIAO's self-imposed SLA is a
+   single 72-hour critical-finding clock layered over a monthly cadence.
+   BOD 26-04 keys remediation off four variables (exposure / KEV /
+   automatability / impact). The substrate cannot yet *express* a
+   per-finding SLA derived from that matrix.
+
+4. **CR26 snapshot pin predates VDR/VER (ADR-061 / UIAO_137).** The
+   vendored CR26 catalog is pinned at snapshot `c31eb04…`
+   (`metadata.version 0.1.0`, a shell). VDR/VER finalize inside CR26 by
+   end of June 2026, so a **snapshot-pin advance** (ADR-061 D2) is
+   required to ingest them — and [UIAO_137](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-cr26-ksi-mapping.md)
+   explicitly **defers the CR26 FRR-group mapping**, which is where the
+   VDR/VER requirements live. That deferred mapping is now on the
+   critical path.
+
+5. **KSI themes VDR/VER lean on have zero local-rule coverage.** Per
+   UIAO_137 §4, **KSI-CMT (continuous monitoring)**, KSI-RPL, and
+   KSI-SCR currently have **no local KSI rules**. VDR/VER evidence is
+   primarily KSI-CMT-shaped, so the existing coverage gap directly
+   limits how much VDR/VER evidence the substrate can emit natively
+   today.
+
+### What this does NOT change
+
+- **UIAO core / non-federal verticals.** BOD 26-04 and VDR/VER are a
+  federal-vertical concern; the vertical-agnostic substrate engine is
+  unaffected (per ADR-085 positioning).
+- **The BOD 25-01 drift-ledger answer (UIAO_132 §4).** BOD 26-04
+  supersedes BOD 22-01 / 19-02, **not** BOD 25-01 (logging). The SCuBA
+  drift-ledger continuity story is independent and unchanged.
+- **The OSCAL/KSI emission pipeline.** VDR/VER evidence rides the
+  existing emission surface (UIAO_133); no parallel pipeline is needed,
+  consistent with ADR-047 D1.
+
+## 4. Proposed remedy
+
+### Internal remedy (inside UIAO scope)
+
+1. **Fire the UIAO_132 §2.4 migration gate and add a VER section.**
+   Record the 2026-12-07 mandate and BOD 26-04 hook against the
+   Pathway-1 gate, and add a VER / VER-EVA-EIR subsection that binds
+   internet-reachability evaluation to the existing exposure primitive
+   in `src/uiao/modernization/locpath/entra_exposure.py`. *(Landed with
+   this finding — UIAO_132 v0.3.)*
+
+2. **Re-model the vulnerability SLA against BOD 26-04 (successor ADR to
+   ADR-043 D2).** Replace the flat 72-hour critical clock with a
+   four-variable (exposure / KEV / automatability / impact) tiered
+   ladder. Doctrinal — lands as its own ADR with governance review, not
+   in this finding's PR.
+
+3. **Advance the CR26 snapshot pin (ADR-061 D2) once VDR/VER finalize,
+   then close the UIAO_137 FRR-group mapping.** Sequenced after FedRAMP
+   publishes the finalized CR26; the pin-advance PR carries the VDR/VER
+   rules and the FRR mapping that UIAO_137 currently defers.
+
+4. **Seed KSI-CMT local rules.** Begin closing the KSI-CMT (and, as
+   VDR/VER scope clarifies, KSI-RPL) coverage gap named in UIAO_137 §4
+   so VDR/VER evidence can be emitted natively. Each rule lands with
+   happy-path + failure-mode tests per the AGENTS.md operating rule.
+
+Items 2–4 are tracked here so they are not lost; only item 1 lands in
+this finding's PR, keeping it reviewable.
+
+### External remedy (outside UIAO scope)
+
+1. **FedRAMP finalizes VDR and VER within CR26** (promised end of June
+   2026). The substrate cannot pin rules that have not published; item 3
+   above is gated on this.
+2. **The hosting CSP adopts VDR/VER for its government cloud offering**
+   by the 2026-12-07 mandate, so inherited vulnerability-management
+   evidence becomes available to tenants (same inheritance pattern as
+   [FINDING-002](./fedramp-20x-moderate-pilot.qmd)).
+3. **CISA / FedRAMP companion guidance on the four-variable matrix.**
+   Until "automatable" and "internet-reachable" have stable operational
+   definitions, 3PAOs will score identical findings differently —
+   mirroring the RFC-0005 "likely impact" interpretation risk in
+   FINDING-002.
+
+The external remedy is not a prerequisite for UIAO to deliver value;
+the in-scope internal items proceed on the substrate's own clock.
+
+## 5. Ownership trail
+
+- **2026-06-18** — Constraint identified during assessment of FedRAMP
+  Notice NTC-0014 (`fedramp.gov/notices/0014/`) for the UIAO substrate.
+  BOD 26-04 timeline tiers and the VDR/VER 2026-12-07 mandate verified
+  against the FedRAMP changelog and the CISA BOD 26-04 directive page.
+- **2026-06-18** — Finding lands under `docs/findings/` with status
+  **Awaiting-External-Remediation**. Michael Stratton owns the finding.
+  Internal remedy item 1 (UIAO_132 v0.3) lands in the same PR; items
+  2–4 are tracked here and proceed on the substrate roadmap. External
+  remedy stays tracked until FedRAMP finalizes CR26 VDR/VER and the
+  hosting CSP adopts them for its government cloud offering.
+
+## 6. Related
+
+- [FINDING-002 — FedRAMP 20x Moderate Pilot active](./fedramp-20x-moderate-pilot.qmd)
+  — the framework-movement finding this one extends; same internal-vs-
+  external remedy split and CSP-inheritance pattern.
+- [FINDING-003 — FedRAMP RFCs substrate readiness assessment](./fedramp-rfcs-substrate-assessment.qmd)
+  — broader RFC-readiness context; this finding sharpens the
+  RFC-0026 / VDR slice with the BOD 26-04 deadline.
+- [UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-rfc-0026-ca7-integration.md)
+  — gains the fired Pathway-1 gate (§2.4) and the VER / VER-EVA-EIR
+  subsection per §4 internal remedy item 1.
+- [UIAO_133 — FedRAMP 20x Integration spec](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-20x-integration.md)
+  — emission surface VDR/VER evidence rides.
+- [UIAO_137 — Local KSI Rules ↔ CR26 Catalog Mapping](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-cr26-ksi-mapping.md)
+  — deferred FRR-group mapping (§4 internal remedy item 3) and KSI-CMT
+  coverage gap (§4 item 4).
+- [ADR-043 — FedRAMP RFC-0026 CA-7 Integration](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-043-fedramp-rfc-0026-ca7-integration.md)
+  — D2 (flat 72h SLA) targeted for the successor ADR in §4 item 2.
+- [ADR-061 — FedRAMP CR26 Catalog Vendoring](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md)
+  — D2 snapshot-pin-advance mechanism for §4 item 3.
+
+## Status tracking
+
+| Date | Status | Note |
+|---|---|---|
+| 2026-06-18 | Awaiting-External-Remediation | Initial landing; UIAO_132 v0.3 lands in same PR |
+
+This table is append-only. Closure of the finding (Resolved or
+Withdrawn) moves the status and adds a row; the prior rows remain for
+audit.

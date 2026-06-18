@@ -1,11 +1,11 @@
 ---
 document_id: UIAO_132
 title: "UIAO FedRAMP RFC-0026 CA-7 Pathway Integration"
-version: "0.2"
+version: "0.3"
 status: Draft
 owner: "Michael Stratton"
 created_at: "2026-04-21"
-updated_at: "2026-04-21T17:00:00Z"
+updated_at: "2026-06-18"
 ---
 
 # UIAO FedRAMP RFC-0026 CA-7 Pathway Integration
@@ -77,14 +77,59 @@ lands.
 
 ### 2.4 Pathway-1 migration gate
 
-When the VDR Balance Improvement Release is published, UIAO will:
+> **Gate fired — 2026-06-16 (NTC-0014).** FedRAMP Notice
+> [NTC-0014](https://www.fedramp.gov/notices/0014/) ("Response to CISA
+> BOD 26-04") mandates adoption of the **VDR** and **VER** rules — being
+> finalized inside the Consolidated Rules for 2026 (CR26) — by
+> **2026-12-07**, to align FedRAMP Authorized offerings with
+> [CISA BOD 26-04](https://cyber.dhs.gov/bod/26-04/) (issued 2026-06-10).
+> The open-ended "publication of the VDR Balance Improvement Release"
+> trigger below now has a date and a regulatory hook; the migration is
+> no longer discretionary timing. The dated obligation and its full
+> internal/external remedy split are tracked in
+> [FINDING-004](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd).
 
-1. Review the VDR deliverable contract against §2.1.
+When the VDR / VER rules publish in CR26, UIAO will:
+
+1. Review the VDR + VER deliverable contract against §2.1 and §2.5.
 2. Amend `adapter-registry.yaml` to flip affected adapters' `pathway`
    field from `pathway-2-traditional` to `pathway-1-modernized`.
 3. Retire the manual POA&M CSV submission in favor of the
    machine-readable OSCAL feed VDR defines (expected).
-4. Supersede ADR-043 D2 with a successor ADR.
+4. Supersede ADR-043 D2 with a successor ADR that re-models the flat
+   72-hour critical SLA (§2.2) as the BOD 26-04 four-variable tiered
+   ladder (§2.5).
+
+### 2.5 VER — Vulnerability Evaluation and Reporting (VER-EVA-EIR)
+
+NTC-0014 pairs VDR with a **new VER rule** that UIAO_132 v0.2 did not
+model. VER governs how a vulnerability is *evaluated and reported*;
+its headline requirement, **VER-EVA-EIR (Evaluate Internet-Reachability)**,
+determines whether a vulnerability is likely reachable over the internet
+— the trigger for BOD 26-04's "mitigate until no longer
+internet-reachable or automatable" path in lieu of full remediation.
+
+BOD 26-04 keys remediation timelines off **four variables**: public
+exposure, KEV-catalog membership, exploit automatability, and
+post-exploit technical impact — a ladder from a 3-day floor (KEV +
+total system control) down to "fix on next upgrade." This supersedes the
+flat severity model that UIAO's §2.2 self-imposed 72-hour critical SLA
+assumes; re-modelling that SLA is deferred to the successor ADR named in
+§2.4 step 4.
+
+| VER concern | UIAO primitive that answers it | Status |
+|---|---|---|
+| VER-EVA-EIR internet-reachability evaluation | `locpath` exposure evaluator (`src/uiao/modernization/locpath/entra_exposure.py`) — already tags asset internet-exposure posture | active primitive; binding to VER pending CR26 publication |
+| KEV-catalog membership tagging | `vuln-scan` slot (reserved, §5) enriched against the CISA KEV feed | reserved |
+| Automatability / technical-impact scoring | finding-enrichment in the drift/evidence pipeline (UIAO_110) | unmodelled — successor-ADR scope |
+| VER reporting payload | existing OSCAL emission surface (UIAO_133 §2.2) — no parallel pipeline | rides existing pipeline (ADR-047 D1) |
+
+The internet-reachability binding is the cleanest near-term fit: the
+`locpath` exposure evaluator already produces the exposure signal
+VER-EVA-EIR needs, so VER evaluation becomes an enrichment of an
+existing emission rather than a new collector. The KEV / automatability /
+impact axes require the four-variable SLA re-model and are out of scope
+for this spec version.
 
 ---
 
@@ -227,6 +272,13 @@ position:
   that Pathway 2 inherits; local copy under
   `canon/compliance/reference/fedramp-conmon-playbook/`.
 - **CISA BOD 25-01** — directive that motivates §4.
+- **[FedRAMP NTC-0014](https://www.fedramp.gov/notices/0014/)** — Notice
+  firing the §2.4 Pathway-1 gate (VDR + VER mandatory by 2026-12-07).
+- **[CISA BOD 26-04](https://cyber.dhs.gov/bod/26-04/)** — risk-based
+  remediation directive VER (§2.5) aligns to; supersedes BOD 22-01 /
+  19-02 (not BOD 25-01).
+- **[FINDING-004](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd)**
+  — environmental-constraint record for the NTC-0014 / BOD 26-04 mandate.
 
 ---
 
@@ -236,3 +288,4 @@ position:
 |---|---|---|---|
 | 0.1 | 2026-04-21 | Initial draft during RFC-0026 comment window | Automation |
 | 0.2 | 2026-04-21 | O5 + O6 checked off — `conmon-aggregate.yml` + `scripts/conmon/aggregate.py` scaffolded; tests land under `tests/conmon/`; July-2026 dry-run agenda seeded under `docs/docs/conmon/templates/` | Automation |
+| 0.3 | 2026-06-18 | §2.4 Pathway-1 gate marked fired by NTC-0014 / BOD 26-04 (VDR + VER mandatory 2026-12-07); new §2.5 VER / VER-EVA-EIR subsection binding internet-reachability to the `locpath` exposure evaluator; §8 references + FINDING-004 cross-link added | Automation |
