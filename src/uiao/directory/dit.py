@@ -25,6 +25,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from uiao.directory.ad_schema import ad_object_classes
+from uiao.directory.ad_schema import synthesize as synthesize_ad
 from uiao.directory.protocol import Entry, Filter, Scope
 from uiao.modernization.orgtree.binding_profiles import BindingProfile, load_binding_profile
 from uiao.modernization.orgtree.codebook import Codebook, default_codebook
@@ -165,6 +167,7 @@ def build_directory(
     *,
     base_dn: str = "dc=agd,dc=uiao,dc=gov",
     codebook: Codebook | None = None,
+    ad_veneer: bool = False,
 ) -> Directory:
     """Project a principal snapshot into a read-only :class:`Directory`.
 
@@ -172,6 +175,12 @@ def build_directory(
     attributes}`` dicts — the OrgPath governance-runtime snapshot shape.
     Empty-valued facet slots are dropped (an absent value is not a
     governed assertion).
+
+    When ``ad_veneer`` is True, each person entry additionally carries the
+    bounded, read-only AD-compatibility veneer (ADR-110): synthesized
+    ``sAMAccountName`` / ``userPrincipalName`` / ``displayName`` / AD
+    ``objectClass`` values / a non-authoritative synthetic ``objectSid``.
+    Off by default; the veneer never adds a writable or governed attribute.
     """
     cb = codebook or default_codebook()
     profile = load_binding_profile("ldap")
@@ -198,6 +207,13 @@ def build_directory(
             locator = slot_to_locator.get(slot)
             if locator:
                 attrs[locator] = [str(value)]
+        if ad_veneer:
+            # Read-only AD-compatibility veneer (ADR-110): synthesized at build
+            # time, never stored authoritatively. AD objectClass values merge
+            # onto the existing ones; the rest are added as-is.
+            veneer = synthesize_ad(principal_id, ptype)
+            attrs["objectClass"] = attrs["objectClass"] + ad_object_classes(ptype)
+            attrs.update(veneer)
         entries.append(Entry(dn=f"cn={cn},{people_dn}", attributes=attrs))
 
     return Directory(base_dn=base_dn, entries=tuple(entries))

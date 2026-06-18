@@ -74,14 +74,22 @@ def _to_ldif(directory: Directory) -> str:
     return "\n".join(lines)
 
 
+_AD_VENEER_OPT = typer.Option(
+    False,
+    "--ad-veneer",
+    help="Project the read-only AD-compatibility veneer (sAMAccountName, objectSid, …) — synthetic, ADR-110.",
+)
+
+
 @directory_app.command("tree")
 def tree(
     snapshot: Path | None = _SNAPSHOT_OPT,
     base_dn: str = _BASE_DN_OPT,
+    ad_veneer: bool = _AD_VENEER_OPT,
 ) -> None:
     """Project a snapshot into the DIT and print it as LDIF."""
     principals = _load_principals(snapshot)
-    directory = build_directory(principals, base_dn=base_dn)
+    directory = build_directory(principals, base_dn=base_dn, ad_veneer=ad_veneer)
     console.print(_to_ldif(directory))
 
 
@@ -89,6 +97,7 @@ def tree(
 def serve(
     snapshot: Path | None = _SNAPSHOT_OPT,
     base_dn: str = _BASE_DN_OPT,
+    ad_veneer: bool = _AD_VENEER_OPT,
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Bind address."),
     port: int = typer.Option(0, "--port", "-p", help="Bind port (default 1389 plaintext, 636 with TLS)."),
     tls_cert: Path | None = typer.Option(None, "--tls-cert", help="PEM certificate for TLS (requires --tls-key)."),
@@ -137,7 +146,7 @@ def serve(
         scheme = "ldap"
 
     principals = _load_principals(snapshot)
-    directory = build_directory(principals, base_dn=base_dn)
+    directory = build_directory(principals, base_dn=base_dn, ad_veneer=ad_veneer)
     server = LdapServer(directory=directory)
     if sasl_gssapi:
         from uiao.directory.sasl import GssapiMechanism

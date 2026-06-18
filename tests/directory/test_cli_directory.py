@@ -106,6 +106,20 @@ def test_serve_check_enable_writes_noted() -> None:
     assert "writes(dry-run)" in result.output.lower()
 
 
+def test_tree_ad_veneer_emits_ad_attributes(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["directory", "tree", "--ad-veneer", "--snapshot", str(_write_snapshot(tmp_path))])
+    assert result.exit_code == 0, result.output
+    assert "sAMAccountName: alice" in result.output
+    assert "uiaoSyntheticSid: TRUE" in result.output  # advertised non-authoritative
+    assert "objectSid: S-1-5-21-" in result.output
+
+
+def test_tree_without_veneer_has_no_ad_attributes(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["directory", "tree", "--snapshot", str(_write_snapshot(tmp_path))])
+    assert result.exit_code == 0, result.output
+    assert "sAMAccountName" not in result.output
+
+
 def test_serve_check_sasl_gssapi_noted() -> None:
     result = runner.invoke(app, ["directory", "serve", "--check", "--sasl-gssapi"])
     assert result.exit_code == 0, result.output
