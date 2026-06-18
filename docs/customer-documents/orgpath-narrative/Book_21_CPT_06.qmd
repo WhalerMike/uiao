@@ -1,0 +1,124 @@
+---
+title: "Shadow AI — Deployed Without Inventory"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_21
+series-order: 6
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+An AI system without an Authorization to Operate is a governance failure. An AI system that was never reported to OMB at all is something categorically worse: it has no record, no owner, no governance chain, and no starting point for remediation. This chapter explains how shadow AI forms, why its absence from the OMB inventory makes it the highest-severity finding in the AI governance surface, and how UIAO detects it through a set-difference between the machine-identity registry and the inventory's ATO name list.
+:::
+
+![The set-difference between the UIAO machine-identity registry and the OMB M-25-21 inventory. Systems in the registry but absent from the inventory are shadow AI — P1 findings that immediately halt the governance gate. Systems in the inventory but absent from the registry have an ATO gap but at least have a governance record to remediate against.](Book_21_CPT_06_fig1.svg){#fig-shadow-venn fig-alt="Venn diagram with two overlapping circles on a white background. Left circle in navy labeled UIAO Machine-Identity Registry. Right circle in teal labeled OMB M-25-21 Inventory. Overlap zone labeled Governed — ATO Verified. Left-only red zone labeled Shadow AI — P1 HALT — ungoverned actors with no inventory record. Right-only amber zone labeled ATO Gap — inventory but not in registry." width="100%"}
+
+## The ATO gap is bad. Shadow AI is worse.
+
+Chapter 5 established that 596 live federal AI systems carry a `have_ato` value that is not `Yes`. Each is a compliance failure under M-25-21, and each produces a finding that blocks the UIAO governance gate. But every one of those 596 systems shares a critical attribute: it exists in the OMB inventory. There is a record. There is a bureau name. There is a use-case ID. There is, in almost every case, a contact email. The governance machinery has something to work with.
+
+A shadow AI system has none of that. It was never entered into the OMB inventory. From the inventory's perspective, it does not exist. From the identity governance substrate's perspective, it has credentials — credentials that are running, making API calls, touching data, producing outputs — attached to nothing recognizable.
+
+The difference is not merely a matter of degree. It is a difference in kind. An ATO gap is a documented system awaiting authorization. A shadow system is an undocumented actor that has already been authorized, informally, by the act of deploying it. The absence from the inventory is the governance failure, not a symptom of it.
+
+UIAO classifies this distinction as the boundary between P2 and P1. The ATO gap finding is Priority 2: serious, gate-blocking, but remediable through the normal ATO process because the system and its owner are already known. The shadow AI finding is Priority 1: the highest severity class in the AI governance surface, carrying the `NEVER_AUTOFIX` posture and triggering an immediate halt.
+
+## How shadow AI forms
+
+Shadow AI does not generally arise from malicious intent. In most cases, the path from legitimate deployment to undocumented operation follows one of four patterns.
+
+**Pre-mandate deployment.** The OMB M-25-21 inventory mandate has a compliance date. Systems that were deployed before the mandate existed — or before the agency completed its initial inventory submission — may never have been added to the record. The system was legal at the time of deployment. The reporting obligation arrived later. Nobody went back to reconcile.
+
+**Unauthorized side-projects.** A bureau-level team procures a cloud-based AI tool on a departmental credit card, integrates it with an agency data source, and begins using it for operational work. The procurement bypasses the enterprise IT process. The tool is never inventoried because the team that deployed it did not know that the inventory obligation applied to them, or did not know the obligation existed.
+
+**Vendor-deployed tooling.** A software vendor includes an AI component in a product update — a "smart" document classifier, an automated triage assistant, an anomaly detection layer. The agency accepts the update through its standard software maintenance process. The AI component was not in scope when the original system was inventoried, and no process exists to detect that the update added a reportable AI use case.
+
+**Administrative attrition.** A system was in the inventory. The system was retooled, renamed, or migrated to a new platform. The old inventory record was marked retired. The new deployment was never added as a fresh entry. The system is running under a new identity that has no inventory record, while the governance record it technically satisfied belongs to a predecessor system that no longer exists.
+
+In each case, the result is the same: a system with machine credentials operating inside the federal identity substrate, with no inventory record that a governance process can anchor to.
+
+## Why absence is categorically worse than ATO gap
+
+The OMB M-25-21 inventory serves as the authoritative list of what AI systems the federal government is operating. When a system is in the inventory without an ATO, the governance gap is:
+
+- What ATO process needs to start?
+- Who is the responsible bureau contact?
+- What credentials need to be brought under lifecycle management?
+
+All three questions have answers available in the inventory record itself. The `agency_name`, `bureau_name`, and `contact_email` fields point directly to the governance owner. The remediation path is clear: contact the owner, initiate the ATO process, bring the credentials into the identity governance substrate.
+
+When a system is absent from the inventory entirely, none of those questions have answers. The UIAO scanner knows the system exists — it found a credential in the machine-identity registry that correlates to an AI system. But the registry entry alone does not tell you which bureau deployed it, who to notify, or whether there is any governance process already in flight. There is no owner record. There is no contact. There is no ATO process to accelerate. There is nothing to remediate against.
+
+This is why the `NEVER_AUTOFIX` posture applies. Automated remediation requires a known correct state to restore. For an ATO gap, the correct state is a system with an ATO — a known target that can be worked toward. For a shadow system, there is no established correct state to compute. The system might be legitimate and merely unreported. It might be unauthorized. It might be a vendor component that should never have had credentials in the first place. Autonomous disposition would require making a policy determination that belongs to a human investigator and, ultimately, to OMB.
+
+## The detection mechanism: set difference
+
+The UIAO scanner detects shadow AI through a set-difference operation defined in ADR-109 §3. The logic is structurally simple: any system present in the UIAO machine-identity registry that is not accounted for by a matching record in the OMB inventory is a candidate shadow AI system.
+
+In practice, the scanner's `scan_inventory()` function accepts a `known_registry_ids` parameter — the full list of system identifiers recorded in the UIAO machine-identity registry. For each ID in that list, the function checks for a matching entry in the inventory's `system_name_ato` values. A match means the system has at least a reporting record; further checks then evaluate ATO status, credential lifecycle, and organizational placement. No match means the system has no reporting record at all.
+
+The matching is not a simple string equality check. Registry IDs are machine-generated identifiers; inventory entries carry human-readable system names assigned by reporting agencies. The scanner normalizes both sides — stripping whitespace, lowercasing, resolving known agency abbreviations — before comparing. A system that was inventoried as "NLP Document Processor v2" and registered in UIAO as `nlp-doc-proc-v2` is treated as a match. A system registered as `bureau-x-ai-classifier-2024` with no normalized counterpart in the inventory is not.
+
+When no match is found, the scanner emits a `DRIFT-IDENTITY::ai-shadow` finding.
+
+## The DRIFT-IDENTITY::ai-shadow finding
+
+The `DRIFT-IDENTITY::ai-shadow` finding is a P1 record in the UIAO findings schema. Its structure captures what is known — and what is not known — about the shadow system at the time of detection.
+
+| Field | Value |
+|---|---|
+| `finding_id` | `DRIFT-IDENTITY::ai-shadow` |
+| `severity` | P1 |
+| `posture` | `NEVER_AUTOFIX` |
+| `gate_action` | HALT |
+| `registry_id` | The UIAO machine-identity registry ID of the system |
+| `matched_inventory` | `false` |
+| `credential_owner` | Unknown (no inventory record) |
+| `bureau` | Unknown (no inventory record) |
+| `contact_email` | Unknown (no inventory record) |
+| `recommended_action` | Immediate investigation; OMB retroactive reporting or decommission |
+
+The gate action is HALT. Unlike P2 findings, which pause the gate pending remediation, a P1 shadow finding does not allow the governance workflow to proceed in any form. No credential lifecycle action, no access review, no drift resolution for any other finding in the same scan run can be completed until the shadow finding is dispositioned by a human investigator. The gate stays closed.
+
+The finding record is intentionally sparse on the identity side. This is not a data quality problem — it is the point. The finding documents the absence of information as an observed state, not a missing field. The investigator who receives the finding is not expected to fill in the blanks from memory; they are expected to determine whether the system should exist at all.
+
+## Disposition options
+
+When a P1 shadow finding is raised, three disposition paths are available. None of them are automatic.
+
+**Investigation and retroactive OMB reporting.** If the system is legitimate — if it was deployed in good faith and simply never entered into the inventory — the correct path is retroactive reporting to OMB under the M-25-21 annual inventory cycle, followed by initiation of the standard ATO process. Once the inventory record exists, the system transitions from a shadow finding to an ATO gap finding (P2), which has a defined remediation path. This is the most common expected outcome for pre-mandate deployments and administrative attrition cases.
+
+**Credential revocation and system decommission.** If investigation reveals that the system was deployed without authorization — an unauthorized side-project, a vendor component that was never formally adopted, a test system that was never shut down — the correct path is decommission. The credential is revoked through the identity governance substrate. The system is removed from operation. The finding is closed with a decommission record rather than an inventory registration.
+
+**Vendor coordination.** If the system is a vendor-deployed component embedded in a larger product, decommission may not be immediately feasible if the underlying product is under active contract. In this case, the disposition is a formal notification to the contracting officer, a time-limited remediation window, and a contract modification requiring the vendor to bring the component into the inventory. The finding remains open — and the gate remains halted — until the inventory record exists.
+
+What is not available is a fourth option: leaving the system in place without action. The `NEVER_AUTOFIX` posture prevents automated closure; the P1 severity prevents human disposition from treating the finding as advisory. A shadow finding that is acknowledged but not acted on is an open gate halt. The governance workflow does not resume.
+
+## Prevention: the onboarding gate
+
+Disposition of existing shadow AI is necessary but insufficient. The deeper control is preventing new shadow AI from forming.
+
+UIAO implements this through an onboarding gate: a precondition check that runs before any new machine identity can be provisioned in the federal identity substrate. The gate requires, as a blocking condition, that the requesting system have a verifiable record in the OMB M-25-21 inventory. No inventory record, no credential issuance.
+
+The gate is not a policy statement. It is an enforcement point implemented at the identity provisioning layer. A bureau that wants to deploy a new AI system must submit the inventory entry — or at minimum, initiate the inventory submission and receive a provisional use-case ID — before UIAO will issue the system's machine identity. The sequence is:
+
+1. Bureau submits AI use case to OMB inventory (or initiates submission).
+2. OMB issues a use-case ID.
+3. Bureau presents use-case ID to UIAO identity provisioning.
+4. UIAO verifies the ID against the current inventory feed.
+5. UIAO issues the machine identity, linked to the verified inventory record.
+6. The system's credential lifecycle is governed from day one.
+
+Systems that cannot complete step 1 — because they are unauthorized, because the bureau lacks approval authority, or because the use case does not qualify for inventory — cannot complete step 5. The identity substrate enforces the reporting obligation structurally, not through policy review.
+
+This is the same pattern UIAO uses to enforce the OrgPath obligation for human identities: the hire event in the HR system of record is the precondition for identity provisioning, not a consequence of it. Governance begins at the moment of creation, not as a retrofit after the system is already running.
+
+The chapters that follow examine how the credential lifecycle operates for governed AI systems and how drift detection maintains governance state across the full population of machine identities. Shadow AI represents the failure mode when those mechanisms do not fire at deployment time. The onboarding gate is what ensures they do.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 7 — Credential Lifecycle for Machine Identities →](Book_21_CPT_07.qmd)
+:::
