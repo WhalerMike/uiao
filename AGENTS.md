@@ -124,14 +124,16 @@ tooling can query the governance substrate in its native protocol. ADR-100 carve
 the narrow read-only exception to the ADR-092 §1 data-plane boundary that this
 in-path surface requires — it serves `BIND` / `SEARCH` / `UNBIND` and carries **no
 write op**, so it cannot mutate canon or the provider of record. Pure-stdlib
-(`asyncio` + a hand-rolled BER subset + stdlib `ssl`); no new runtime dependency.
-Kerberos/KDC, SASL, write ops, and AD-specific schema are explicit ADR-100
-roadmap, not shipped.
+(`asyncio` + a hand-rolled BER subset + stdlib `ssl`); the core is pure-stdlib,
+no new core runtime dependency. SASL/GSSAPI bind is the one optional surface
+(behind the `[kerberos]` extra, ADR-101). KDC/ticket issuance, write ops, and
+AD-specific schema remain explicit roadmap, not shipped.
 
 | Feature | Module | CLI surface | Tier | Notes |
 |---|---|---|---|---|
 | **AGD LDAP server** | `uiao.directory.server` | `uiao directory serve` | CLI | ADR-100; asyncio LDAPv3 read projection. Anonymous + simple bind; base/one/subtree search; `noSuchObject` for absent base, `unwillingToPerform` for unsupported ops. **LDAPS-on-connect** via `--tls-cert`/`--tls-key` (`build_server_tls_context`; default port 636 with TLS, 1389 plaintext) **and StartTLS** in-band upgrade (RFC 4511 §4.14) via `--starttls` (plaintext port, `server.tls_context`). Loopback + plaintext by default. `--check` validates inputs without binding |
-| **AGD read scoping** | `uiao.directory.policy` | (via `serve`) | **Library-only** | ADR-100 §5 per-bind read scoping. `ReadPolicy` marks facets sensitive (default: clearance + cost-center, named via the `ldap` binding profile); sensitive attributes are redacted from results unless the connection completed an authenticated (non-anonymous) simple bind |
+| **AGD SASL/GSSAPI bind** | `uiao.directory.sasl` | `uiao directory serve --sasl-gssapi` | **`[kerberos]` extra** | ADR-101; gate-only Kerberos ticket validation. Mechanism-agnostic multi-step `SaslMechanism` state machine (driven over `saslBindInProgress`); `GssapiMechanism` (RFC 4752) lazy-imports `gssapi`, accepts the client's service ticket with the AGD's **own** keytab, and maps the validated principal into read scope (ADR-100 §5). Never issues tickets / runs a KDC / stores user secrets (ADR-101 §4 boundary). Auth gates reads only — no write op |
+| **AGD read scoping** | `uiao.directory.policy` | (via `serve`) | **Library-only** | ADR-100 §5 per-bind read scoping. `ReadPolicy` marks facets sensitive (default: clearance + cost-center, named via the `ldap` binding profile); sensitive attributes are redacted from results unless the connection completed an authenticated (non-anonymous) simple **or SASL** bind |
 | **AGD DIT projection** | `uiao.directory.dit` | `uiao directory tree` | CLI | ADR-100; projects a `{principal_id, principal_type, attributes}` snapshot into a read-only DIT using the `ldap` binding profile's `uiaoOrgPath<Facet>` attribute names (UIAO_193). `tree` emits LDIF for inspection. No store of its own — read-only by construction |
 | **AGD LDAP/BER codec** | `uiao.directory.ber`, `uiao.directory.protocol` | ❌ None | **Library-only** | ADR-100; minimal BER/ASN.1 codec + LDAPv3 message parse/serialize (RFC 4511 subset) + the search-filter algebra (and/or/not/present/equality/substrings) |
 

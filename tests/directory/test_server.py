@@ -11,6 +11,7 @@ import asyncio
 
 from uiao.directory import ber, protocol
 from uiao.directory.dit import build_directory
+from uiao.directory.sasl import SaslMechanism, SaslResult
 from uiao.directory.server import LdapServer
 
 PRINCIPALS = [
@@ -256,6 +257,54 @@ def test_unknown_extended_op_is_protocol_error() -> None:
     ack_op = ber.read_children(responses[0].content)[1]
     assert ack_op.tag == protocol.APP_EXTENDED_RESPONSE
     assert ber.decode_integer(ber.read_children(ack_op.content)[0].content) == int(protocol.ResultCode.PROTOCOL_ERROR)
+
+
+def _sasl_bind(message_id: int, mechanism: str, credentials: bytes | None = b"tok") -> bytes:
+    sasl_fields = [ber.encode_octet_string(mechanism)]
+    if credentials is not None:
+        sasl_fields.append(ber.encode_octet_string(credentials))
+    auth = ber.encode_sequence(sasl_fields, tag=protocol.AUTH_SASL)
+    op = ber.encode_sequence([ber.encode_integer(3), ber.encode_octet_string(""), auth], tag=protocol.APP_BIND_REQUEST)
+    return ber.encode_sequence([ber.encode_integer(message_id), op])
+
+
+class _ScriptedMechanism(SaslMechanism):
+    name = "FAKE"
+    _calls = 0  # class-level so each fresh instance scripts independently below
+
+    def __init__(self, challenges: int) -> None:
+        self._remaining = challenges
+
+    def step(self, token: bytes | None) -> SaslResult:
+        if self._remaining > 0:
+            self._remaining -= 1
+            return SaslResult.challenge(b"srv")
+        return SaslResult.ok("alice@REALM")
+
+
+def test_sasl_multi_step_bind_authenticates() -> None:
+    # One challenge then success; the authenticated bind then sees sensitive
+    # facets (ADR-101 §3 feeds ADR-100 §5 read scoping).
+    server = LdapServer(
+        directory=build_directory(CLEARED),
+        sasl_mechanisms={"FAKE": lambda: _ScriptedMechanism(challenges=1)},
+    )
+    requests = [
+        _sasl_bind(1, "FAKE"),  # -> saslBindInProgress
+        _sasl_bind(2, "FAKE"),  # -> success
+        _search_present(3, "dc=agd,dc=uiao,dc=gov"),
+    ]
+    responses = asyncio.run(_run_session(server, requests))
+    assert _result_code(responses[0]) == int(protocol.ResultCode.SASL_BIND_IN_PROGRESS)
+    assert _result_code(responses[1]) == int(protocol.ResultCode.SUCCESS)
+    alice = next(r for r in responses if _is_entry(r) and "alice" in _entry_dn(r))
+    assert "uiaoOrgPathClearanceLevel" in _entry_attr_names(alice)
+
+
+def test_sasl_unsupported_mechanism_is_refused() -> None:
+    server = LdapServer(directory=build_directory(PRINCIPALS))  # no mechanisms registered
+    responses = asyncio.run(_run_session(server, [_sasl_bind(1, "GSSAPI")]))
+    assert _result_code(responses[0]) == int(protocol.ResultCode.AUTH_METHOD_NOT_SUPPORTED)
 
 
 def test_search_existing_base_no_match_is_success() -> None:
