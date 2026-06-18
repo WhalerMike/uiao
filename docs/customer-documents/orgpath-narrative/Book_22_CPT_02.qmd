@@ -1,0 +1,80 @@
+---
+title: "NIST 800-63 and the Three Assurance Levels"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_22
+series-order: 2
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+NIST Special Publication 800-63 introduced a tiered assurance model that applies to any digital identity system, not just the workforce. Identity Assurance Level, Authenticator Assurance Level, and Federation Assurance Level each measure a different dimension of trust in a citizen-facing transaction. This chapter explains what those levels mean, how they map to real federal mission workflows, and why assurance level is an OrgPath attribute of the bureau that owns the workflow — not a setting that follows the individual citizen.
+:::
+
+![NIST 800-63 three-axis assurance model: IAL governs how strongly an identity is proofed, AAL governs how strongly an authenticator is bound, and FAL governs how strongly a federated credential is trusted. Each axis is an OrgPath attribute of the owning bureau.](Book_22_CPT_02_fig1.svg){#fig-book-22-cpt-02-fig1 fig-alt="Three vertical columns on a white background, each representing one assurance axis. Left column labeled IAL shows three tiers: IAL1 self-attested in light teal, IAL2 remote proofing in teal, IAL3 in-person proofing in navy. Center column labeled AAL shows AAL1 single factor in light teal, AAL2 MFA in teal, AAL3 hardware key in navy. Right column labeled FAL shows FAL1 bearer assertion in light teal, FAL2 signed assertion in teal, FAL3 encrypted assertion with holder-of-key in navy. Horizontal amber bands on the right show example federal workflows mapped to each tier combination. White background." width="100%"}
+
+## The framework that finally named the problem
+
+For the first decade of citizen-facing federal digital services, there was no common vocabulary for identity assurance. Each agency described its identity requirements in its own terms. One agency required "strong authentication." Another required "identity verification." A third required "knowledge-based authentication plus a one-time password." None of those descriptions meant the same thing, and none of them could be compared across agencies.
+
+NIST SP 800-63, originally published in 2004 and substantially revised in 2017 and 2024, fixed that by defining three independent assurance dimensions: how strongly the identity was proven at enrollment (IAL), how strongly the credential used to authenticate is bound to that identity (AAL), and how strongly a federated assertion from a third-party IdP can be trusted (FAL). Together, the three levels provide a coordinate system — an IAL2/AAL2/FAL2 system, for example — that any agency can use to describe the assurance properties of any citizen-facing workflow.
+
+The 2024 revision (SP 800-63-4) extended the framework in directions that matter for UIAO. It recognized remote identity proofing as a first-class IAL2 pathway — no longer requiring physical presence for level-two assurance. It introduced new guidance on attribute validation and biometric comparison. And it tightened the requirements for federated identity at FAL2 and FAL3, making the Login.gov activation contract (ADR-056) more precisely specifiable than it was under the 2017 revision.
+
+## Identity Assurance Level — what was proven at enrollment
+
+IAL governs the enrollment event: what evidence did the agency collect, how was that evidence validated, and how confident is the agency that the person who enrolled is the person they claim to be?
+
+**IAL1** requires no identity evidence at all. The person self-asserts attributes — name, email, date of birth — and the agency accepts them without validation. IAL1 is appropriate for low-stakes interactions where the agency is not making a consequential determination about the individual's real-world identity. A citizen registering to receive general informational updates from an agency. A member of the public submitting a comment to a proposed rulemaking. An applicant filling out a preliminary inquiry form before an actual application.
+
+**IAL2** requires that identity evidence be collected and validated, and that the person be verified as the owner of that evidence. Under the 2024 revision, this can be done remotely — the applicant submits a photo of a government-issued document, the document is validated against issuing-authority records, and a live biometric comparison confirms the match. IAL2 is the standard for most consequential citizen-facing transactions: tax filing, benefits access, federal student aid, veteran services. The evidence requirement creates meaningful protection against impersonation without requiring the logistical burden of in-person proofing.
+
+**IAL3** requires in-person proofing by a trained operator, biometric binding, and documentary evidence. IAL3 is reserved for the highest-stakes transactions: immigration benefits where the adjudication has legal consequences for the petitioner's status in the country, certain national security clearance processes, and financial transactions above thresholds set by agency policy. IAL3 is not available through a web portal; it requires a physical encounter with the identity-proofing infrastructure.
+
+## Authenticator Assurance Level — what is used to authenticate
+
+AAL governs the authentication event: when the enrolled person returns to use the system, how strongly does the credential they present prove that the account has not been compromised?
+
+**AAL1** permits a single authentication factor — typically a password. Because passwords can be phished, shared, or stolen, AAL1 provides minimal protection against account takeover. It is appropriate only in combination with IAL1, where the account represents a self-attested identity with no consequential attributes attached.
+
+**AAL2** requires multi-factor authentication — something you know plus something you have, or something you have with a biometric binding. A TOTP authenticator application, a push notification to a registered device, or an SMS one-time code each satisfy AAL2's possession factor requirement (with SMS being the weakest option, permitted but not recommended under SP 800-63-4). AAL2 is the floor for any citizen-facing system that holds verified identity attributes, benefits entitlements, or financial information.
+
+**AAL3** requires a hardware cryptographic authenticator — a FIDO2 security key, a PIV-like device, or equivalent — that is bound to the enrolled identity and cannot be extracted from the device. AAL3 is appropriate for systems where account takeover would produce consequences equivalent to identity theft or where the attacker population is sophisticated enough to phish standard MFA factors.
+
+## Federation Assurance Level — what can be trusted from a third party
+
+FAL governs the federation event: when an agency accepts an identity assertion from a third-party IdP — like Login.gov — rather than proofing the user directly, how strongly can it trust that assertion?
+
+**FAL1** accepts a signed bearer assertion. The assertion carries the user's identity attributes, is signed by the IdP, and is consumed directly by the relying party. If the assertion is intercepted in transit, it can be replayed. FAL1 is appropriate for low-stakes federated interactions.
+
+**FAL2** requires that the assertion be bound to the browser or client that initiated the flow — a holder-of-key requirement that prevents replay attacks. All Login.gov relying parties operating at IAL2/AAL2 must accept FAL2 or higher assertions under the ADR-056 activation contract.
+
+**FAL3** requires that the holder-of-key binding be tied to a hardware cryptographic authenticator. FAL3 is rarely used in current federal practice but is available for high-assurance federated workflows.
+
+## Assurance level as an OrgPath attribute
+
+The most important governance implication of the 800-63 framework is this: assurance level is a property of the workflow that the bureau owns, not a property of the individual citizen. A citizen may have an IAL2-proofed Login.gov account, but if the workflow they are accessing only requires IAL1, the IAL2 proofing does not create any additional entitlement. Conversely, if the workflow requires IAL2 and the citizen only has an IAL1 account, they cannot complete the transaction regardless of what other credentials they hold.
+
+This means assurance level requirements belong in the governance record of the bureau that owns the workflow — in the OrgPath node that scopes the application or service. When OrgPath stamps an OrgPath node with the required IAL/AAL/FAL for each citizen-facing workflow, three governance capabilities become possible.
+
+First, the assurance requirement is discoverable. An auditor, a compliance officer, or an oversight body can read the OrgPath record to determine what the agency said it would require, without having to examine the application's configuration.
+
+Second, drift detection is possible. If the application's actual identity provider configuration delivers IAL1 proofing and the OrgPath record declares IAL2, that is a finding. The gap between declared requirement and actual delivery is a governance deficit with direct mission consequences: citizens are receiving access to consequential services without adequate identity proofing.
+
+Third, cross-agency assurance comparison becomes possible. When agency A relies on agency B's assertion of a citizen's identity — when the SSA beneficiary portal accepts a Login.gov assertion that IRS also accepts — the relying agencies can compare their declared assurance requirements against Login.gov's actual delivery tier and against each other's requirements. If SSA requires IAL2 and IRS requires IAL2 and Login.gov delivers IAL2, the cross-agency trust chain is consistent. If any link in that chain is weaker than declared, the inconsistency is a finding.
+
+| Assurance Level | Identity (IAL) | Authenticator (AAL) | Federation (FAL) | Example Federal Workflow |
+|---|---|---|---|---|
+| Low | IAL1 — self-attested | AAL1 — password | FAL1 — bearer | Public comment submission |
+| Standard | IAL2 — remote proofing | AAL2 — MFA | FAL2 — holder-of-key | Benefits access, tax filing |
+| High | IAL3 — in-person | AAL3 — hardware key | FAL3 — hardware holder-of-key | Immigration adjudication |
+
+The chapters that follow show how Login.gov implements this framework as the first UIAO-activated citizen IdP, and how the cross-agency attribute exchange extends assurance requirements across agency boundaries.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 3 — Login.gov: The Federal Identity Broker →](Book_22_CPT_03.qmd)
+:::

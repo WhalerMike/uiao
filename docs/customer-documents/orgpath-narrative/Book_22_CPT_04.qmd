@@ -1,0 +1,71 @@
+---
+title: "Agencies as Vendors and Customers of Each Other"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_22
+series-order: 4
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+The most consequential identity transactions in the federal government do not happen between an agency and a citizen. They happen between agencies. SSA produces the Social Security Number that IRS, employers, and DMVs consume. GSA produces the Unique Entity Identifier that every contracting agency consumes. USCIS produces the immigration status determination that employers verify through E-Verify. These are governed dependencies — authoritative attributes produced by one agency and consumed by others — and they are currently invisible in the governance layer.
+:::
+
+![Cross-agency attribute exchange: four federal authoritative sources (SSA, IRS, GSA, USCIS) each produce a single-source-of-truth attribute consumed by multiple downstream agencies and private-sector actors. Each dependency arrow represents a governed contract that UIAO must surface.](Book_22_CPT_04_fig1.svg){#fig-book-22-cpt-04-fig1 fig-alt="Hub-and-spoke diagram on a white background. Four navy source boxes on the left: SSA with SSOT label SSN, IRS with SSOT label TIN, GSA with SSOT label UEI, USCIS with SSOT label Immigration Status. From each source box, amber arrows labeled consumed by point to teal consumer boxes on the right: SSA feeds IRS, Employers, DMVs; IRS feeds SSA, Lenders; GSA feeds DoD, HHS, all contracting agencies; USCIS feeds Employers via E-Verify, DHS, DOL. Each consumer box has a small red dependency tag. White background." width="100%"}
+
+## The doctrine no one named
+
+Every federal program manager knows, in practice, that agencies depend on each other for identity data. The tax system depends on SSA's SSN database to connect taxpayers to their records. The contractor registration system depends on GSA's entity identifier to connect vendors to their awards. The employment eligibility system depends on USCIS's immigration status determinations to connect workers to their legal right to work. These dependencies are real, operationally critical, and legally grounded in statute and regulation.
+
+What no governance framework has named until UIAO is this: when agency A relies on agency B's authoritative attribute as the basis for an identity determination, agency A is acting as a customer of agency B. Agency B is acting as a vendor of identity data. The relationship is a governed dependency, and like every other governed dependency in a well-run enterprise, it should be visible, declared, auditable, and subject to drift detection.
+
+UIAO's KYC protocol formalizes this doctrine under the label "agencies as vendors and customers of each other." The label is deliberately provocative. Federal agencies do not typically think of themselves as being in a vendor relationship with each other. They think of inter-agency data sharing as a cooperative arrangement governed by memoranda of understanding, data sharing agreements, and statutory authority. All of that is true — and none of it constitutes a governance record in the identity management layer. The MOU lives in a file somewhere. The data sharing agreement was signed years ago. Neither of them appears in the OrgPath node of the agency that is currently relying on the shared attribute to make identity determinations about citizens.
+
+The doctrine says: that reliance must be surfaced. The attribute trustee — the agency that holds the SSOT — must be identified. The consuming agency must declare its dependency. The assurance level of the SSOT's proofing process must be compared against the assurance level the consuming agency requires. If they do not match, that is a finding.
+
+## SSA and the Social Security Number
+
+The Social Security Administration is the authoritative source for Social Security Numbers. Every SSN in existence was issued by SSA under a specific set of rules about who qualifies for one and what it certifies. An SSN certifies, at the moment of issuance, that SSA has verified the identity of the holder to the standard required by the Social Security Act — which is, effectively, an IAL2 proofing event for citizens born in the United States and an immigration-document-validated proofing event for non-citizens.
+
+The SSN is consumed everywhere. IRS uses it as the primary taxpayer identifier — the Taxpayer Identification Number for individuals is their SSN. State DMVs collect it to link driver records to federal databases. Financial institutions collect it for identity verification under the Bank Secrecy Act. Employers report it on payroll records that feed SSA's earnings database and IRS's tax withholding system. Healthcare providers collect it for insurance coordination.
+
+Every one of those consumption events is a reliance on SSA's proofing. When an employer uses an employee's SSN to verify their identity for payroll purposes, the employer is trusting that SSA verified that identity when the SSN was issued. That trust has never been explicitly surfaced as a governed dependency — but it is one, and when the SSN is fraudulently obtained or incorrectly issued, the downstream consequences propagate through every system that relied on it.
+
+## GSA and the Unique Entity Identifier
+
+GSA's System for Award Management (SAM.gov) is the authoritative source for the Unique Entity Identifier — the number that every legal entity doing business with the federal government must register and maintain. The UEI replaced the DUNS Number as the federal contractor identifier in 2022.
+
+When a contracting agency awards a contract, it records the awardee's UEI. The USASpending.gov transparency database aggregates awards by UEI. The Federal Procurement Data System uses UEI to connect awards across agencies. FPDS uses it to enforce exclusions — an entity that has been debarred or suspended is flagged by their UEI, and every contracting agency is legally required to check that flag before awarding.
+
+The consuming agencies in this chain are not verifying the contractor's identity independently. They are relying on GSA's entity registration process — on GSA's determination that the entity exists, that its legal name matches its UEI, and that it is not excluded from federal contracting. GSA is the attribute trustee. Every contracting agency is a customer of GSA's identity data.
+
+## USCIS and immigration status
+
+USCIS is the authoritative source for immigration status determinations. When USCIS adjudicates an immigration benefit — a visa, a green card, an employment authorization document — it makes a determination about the applicant's identity and legal status that has consequences across the federal government and the private sector.
+
+E-Verify, operated jointly by USCIS and SSA, allows employers to verify that a new hire's employment authorization matches USCIS and SSA records. Over 800,000 employers are enrolled in E-Verify and submit over 50 million queries per year. Each query is a reliance on USCIS's adjudication: the employer is asking USCIS whether it has previously determined that this person is authorized to work. The employer is not performing its own immigration adjudication; it is consuming USCIS's.
+
+The Department of Labor relies on USCIS status determinations for foreign labor certification. The Department of Homeland Security's own components rely on USCIS adjudications as inputs to enforcement decisions. State agencies rely on USCIS determinations for benefits eligibility. The web of dependency is extensive and currently undeclared in any governance layer.
+
+## What the dependency map reveals
+
+When the cross-agency attribute exchange is drawn as a dependency map — which agency produces which authoritative attribute, and which agencies consume it — the governance gap becomes visible in its full scale.
+
+| Attribute Trustee | SSOT Attribute | Primary Consumers | Annual Consumption Scale |
+|---|---|---|---|
+| SSA | Social Security Number | IRS, employers, DMVs, financial institutions | >400M records/year |
+| IRS | Taxpayer Identification Number | SSA, lenders, state agencies | >250M filings/year |
+| GSA | Unique Entity Identifier | All contracting agencies, USASpending | >4M awards/year |
+| USCIS | Immigration status / EAD | Employers (E-Verify), DOL, DHS | >50M queries/year |
+
+Each row in this table represents a governed dependency that currently exists in practice but does not appear in the identity governance layer of any of the consuming agencies. The consuming agency has a legal authority — a statute, a regulation, a data sharing agreement — that permits it to rely on the attribute. But it has no OrgPath record declaring that reliance, no declared assurance level for the dependency, and no drift detection comparing the SSOT's proofing tier against its own stated requirements.
+
+Chapter 5 shows how UIAO's KYC reciprocity protocol surfaces each of these dependencies as a governed attribute exchange contract — making the invisible dependency map visible, declared, and subject to continuous drift detection.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 5 — The KYC Protocol: Reciprocal Attribute Exchange →](Book_22_CPT_05.qmd)
+:::

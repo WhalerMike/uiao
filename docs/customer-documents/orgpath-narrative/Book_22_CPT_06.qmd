@@ -1,0 +1,70 @@
+---
+title: "Closing the Customer Identity Gap"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_22
+series-order: 6
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+The workforce identity surface is governed. The customer identity surface is not — not yet. This chapter describes what governed customer identity looks like when the full UIAO stack is applied: OrgPath-scoped proofing tiers, Login.gov as the activation pattern, attribute-exchange contracts surfaced in the governance layer, and drift detection running continuously on assurance mismatches. The gap between the two surfaces is real and measurable. Closing it uses the same substrate that already governs employees, contractors, and AI systems.
+:::
+
+![Before and after: ungoverned customer identity surface (left) versus UIAO-governed surface (right). Left shows agency silos, invisible inter-agency dependencies, and no drift detection. Right shows OrgPath-scoped bureau nodes, Login.gov activation contracts, declared attribute exchange, and continuous drift monitoring.](Book_22_CPT_06_fig1.svg){#fig-book-22-cpt-06-fig1 fig-alt="Split diagram on a white background. Left half labeled Before: Ungoverned shows grey agency boxes (SSA, IRS, VA, USCIS) with unlabeled arrows between them and question-mark dependency indicators. No OrgPath nodes visible. Right half labeled After: UIAO-Governed shows the same agency boxes in navy, each with an amber OrgPath node below it declaring IAL tier. Teal arrows labeled declared dependency connect the boxes. A central teal Login.gov box feeds IAL1/IAL2 proofing to each agency. A red drift engine box at the bottom right feeds findings to bureau governance contacts. White background." width="100%"}
+
+## The gap, stated plainly
+
+Federal agencies govern human workforce identities through a layered system that has been refined over three decades: Active Directory, PIV credentials, FICAM policy, and now OrgPath. The same person who maintains a federal employee's access lifecycle — provisioning on hire, updating on transfer, revoking on separation — has a governance substrate that makes each of those actions traceable, auditable, and subject to drift detection.
+
+No equivalent substrate governs the 300 million Americans those employees serve. The citizen who applies for Social Security benefits, files a federal tax return, petitions for an immigration benefit, or enrolls in a veterans' health program is an identity subject in every meaningful technical sense. They have an identifier. They have credentials. They have attributes that the agency has collected and, in some cases, verified. Their relationship with the agency has a lifecycle — enrollment, active use, suspension, closure — that governs what access they have to services and what decisions the agency makes about them.
+
+But that lifecycle is not governed in the identity management layer. It is managed in the application — in the SSA credentialing database, in the IRS Secure Access system, in the VA patient portal — without the schema, the audit trail, the drift engine, or the cross-agency visibility that the workforce surface takes for granted. And the cross-agency attribute exchange — the web of dependencies through which SSA's SSN becomes the foundation for IRS's taxpayer records and USCIS's immigration status becomes the foundation for E-Verify determinations — is not governed at all. It is managed through MOUs and data sharing agreements that live outside the identity management layer and are invisible to any drift detection system.
+
+## What the governed surface looks like
+
+Closing the customer identity gap does not require building new infrastructure from scratch. It requires extending three existing capabilities — OrgPath node scoping, adapter activation, and drift detection — to the customer identity surface.
+
+**OrgPath node scoping** means that every bureau's citizen-facing workflows are declared in the bureau's OrgPath node. The node carries the required IAL, AAL, and FAL for each workflow. The node identifies the Login.gov relying party registration (if Login.gov is the identity provider) or the equivalent identity system. The node carries the attribute exchange contracts for every SSOT attribute the bureau consumes from other agencies. The node names the bureau governance contact who receives findings.
+
+When the OrgPath node carries this information, the customer identity surface becomes visible at the governance layer without requiring changes to the underlying identity systems. SSA's credentialing system does not need to be replaced. IRS's Secure Access does not need to be replaced. Login.gov does not need new features. What changes is that each of those systems is now declared in an OrgPath node that connects it to the broader governance layer, and the drift engine can monitor whether the declared assurance requirements match the actual configuration.
+
+**Adapter activation** means that Login.gov — and future citizen-facing IdPs — are activated through the ADR-056 contract pattern. Before an agency connects its application to Login.gov as a relying party, it completes the activation contract: declares the required assurance levels, the attributes it will request, and the review cadence. That declaration lives in the OrgPath node. The drift engine compares it against Login.gov's configuration continuously. When the two diverge, a finding is generated.
+
+The adapter pattern is extensible. Login.gov is the first activation, but the same contract structure applies to ID.me (used by VA and IRS for some high-assurance workflows), to direct agency identity systems that have not yet federated with Login.gov, and to any future shared identity infrastructure that GSA or another agency builds. The governance structure is not specific to Login.gov; it is specific to the contract pattern, and any citizen-facing IdP can be governed through it.
+
+**Drift detection** means that the UIAO drift engine runs the same continuous comparison against the customer identity surface that it runs against the workforce surface. The comparisons are different — assurance level mismatches rather than OU placement drift — but the engine is the same. When a bureau declares IAL2 and the Login.gov configuration delivers IAL1, that is a finding. When an attribute exchange contract has not been reviewed within its declared cadence, that is a finding. When a consuming agency's required IAL exceeds the SSOT bureau's proofing tier, that is a finding. Each finding is routed to the bureau governance contact for disposition.
+
+## The comparison that matters
+
+The most useful way to understand what changes when the customer identity surface is governed is to compare the two states directly across the five governance dimensions that define identity management maturity.
+
+| Governance Dimension | Workforce Surface (Current) | Customer Surface (Ungoverned) | Customer Surface (Governed) |
+|---|---|---|---|
+| Identity inventory | OrgPath registry | Agency silos, no cross-agency view | OrgPath nodes with customer IAL declarations |
+| Assurance standard | PIV / FICAM / AAL3 | Agency-specific, inconsistently applied | NIST 800-63 IAL/AAL/FAL declared per workflow |
+| Cross-agency dependency | HRIT attribute exchange (ADR-051–054) | MOUs and data sharing agreements | KYC attribute exchange contracts in OrgPath |
+| Drift detection | OrgPath drift engine | None | OrgPath drift engine, customer surface schema |
+| Finding routing | Bureau governance contact | Manual audit, if ever | Bureau governance contact, automated routing |
+
+The right column describes the state that UIAO's customer identity canon — ADR-055, ADR-056, UIAO_141, UIAO_142 — is designed to produce. It is not a theoretical end state; it is the direct application of the existing substrate to a surface that has not been connected to it yet.
+
+## What remains to be done
+
+The canon is defined. The activation pattern is defined. The drift finding taxonomy is defined. What remains is adoption — bureau by bureau, workflow by workflow, attribute exchange contract by attribute exchange contract.
+
+The adoption sequence follows the risk gradient. High-stakes, high-volume citizen-facing workflows — SSA benefits, IRS tax filing, VA health records, USCIS immigration benefits — have the highest exposure and the clearest business case for governance investment. Login.gov relying parties are natural first movers because the activation contract provides a ready-made governance event: the moment an agency registers a relying party is the moment it should complete the OrgPath declaration.
+
+The cross-agency attribute exchange contracts follow the dependency map drawn in Chapter 4. SSA-to-IRS, GSA-to-contracting-agencies, USCIS-to-E-Verify are the highest-volume dependencies and the natural starting points. Each contract requires a conversation between the attribute trustee and the consuming agency — a conversation that, in most cases, is already happening informally through the MOU and data sharing agreement process. The KYC protocol does not replace that conversation; it records its outcome in a form that the governance layer can monitor.
+
+The governed customer identity surface, when fully adopted, does not look different from the outside. Citizens still use Login.gov. Agencies still maintain their own benefit systems. The cross-agency data flows still run. What changes is that every dependency is declared, every assurance level is stated, and every drift is detected — automatically, continuously, without depending on anyone remembering to check.
+
+That is the same governance promise OrgPath made for the workforce surface. It is the same promise, extended.
+
+::: {.callout-tip}
+## Book navigation
+
+This is the final chapter of Book_22. Return to the [Book_22 index](Book_22.qmd) or continue to the [Book Index](../index.qmd).
+:::

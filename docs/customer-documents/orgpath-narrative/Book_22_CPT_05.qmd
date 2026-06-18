@@ -1,0 +1,74 @@
+---
+title: "The KYC Protocol — Reciprocal Attribute Exchange"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_22
+series-order: 5
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+Knowing that agencies depend on each other's identity attributes is not enough. The dependency must be governed: which bureau holds the single source of truth, which attributes are shared, under what legal authority, at what assurance tier, with what evidence requirement, and who is accountable when the dependency drifts. The KYC reciprocity protocol — established in UIAO_142 — answers each of those questions and records the answers as a governed attribute exchange contract in the UIAO registry.
+:::
+
+![KYC attribute exchange contract lifecycle: a consuming agency declares its dependency on an SSOT attribute, the contract is recorded in the UIAO registry, the drift engine monitors assurance alignment, and findings route to the owning bureau's governance contact.](Book_22_CPT_05_fig1.svg){#fig-book-22-cpt-05-fig1 fig-alt="Four-stage horizontal flow diagram on a white background. Stage 1 labeled Declaration in navy shows a consuming agency OrgPath node with dependency fields filled in. Stage 2 labeled Contract Registration in teal shows the UIAO registry recording the attribute exchange contract between SSOT bureau and consuming agency. Stage 3 labeled Drift Monitoring in amber shows the drift engine comparing declared IAL against SSOT delivered IAL with a mismatch indicator. Stage 4 labeled Finding Routing in red shows a finding card routed to the bureau governance contact with an action required label. Arrows connect each stage left to right." width="100%"}
+
+## What a governed dependency looks like
+
+Most federal inter-agency attribute exchange is currently governed by instruments that exist outside the identity management layer. A memorandum of understanding records that agency A may access attribute X from agency B. A Privacy Act System of Records Notice discloses that the attribute is collected and shared. A data sharing agreement specifies the technical mechanism. Each of these instruments is real, legally significant, and invisible to the UIAO drift engine.
+
+The KYC reciprocity protocol does not replace those instruments. It records their existence in the identity governance layer, where they can be monitored, compared against assurance requirements, and surfaced when they drift. The protocol defines six fields that every attribute exchange contract must declare, and a finding taxonomy for when those declarations do not match reality.
+
+## The six contract fields
+
+**Field 1 — Attribute Trustee:** The bureau that holds the SSOT for the attribute. This is not the agency's general name but the specific OrgPath node within the agency that owns the authoritative record. For SSA's Social Security Number, the trustee is the SSA Office of Retirement and Disability Policy's data services division — not SSA as a whole. The specificity matters because it is the trustee node that receives findings when the dependency drifts.
+
+**Field 2 — Consumed Attribute:** The specific attribute being exchanged — SSN, TIN, UEI, immigration status determination, employment authorization document validity, or any other authoritative federal attribute. The attribute is named precisely because the same trustee may hold multiple attributes with different assurance levels and different legal authorities. SSA holds both SSNs (IAL2-proofed) and earnings records (SSN-linked but separately maintained); those are different attributes with different exchange contracts.
+
+**Field 3 — Legal Authority:** The statute, regulation, or executive order that authorizes the consuming agency to rely on the trustee's attribute. This field is required because attribute exchange without legal authority is a Privacy Act violation, and because the legal authority defines the scope of permitted use. IRS's authority to use SSNs is grounded in 26 U.S.C. § 6109. An employer's authority to verify employment authorization via E-Verify is grounded in 8 U.S.C. § 1324a. The authority must be named, not implied.
+
+**Field 4 — SSOT Proofing Tier:** The IAL at which the attribute trustee proofed the identity when the attribute was issued. This is not the IAL of the consuming agency's own identity system — it is the IAL that the trustee achieved when it created the record. SSA's SSN issuance process for U.S.-born citizens involves birth certificate validation by a Social Security card application processor — an in-person, document-based process equivalent to IAL3. For non-citizens, the process involves immigration document validation equivalent to IAL2. The proofing tier of the SSOT is the floor for the trust the consuming agency can place in the attribute.
+
+**Field 5 — Consuming Agency Required IAL:** The minimum IAL the consuming agency's workflow requires in order to use the attribute for its intended purpose. If IRS requires IAL2 identity for tax filing and relies on SSA's SSN as the identity anchor, the required IAL for the exchange contract is IAL2. If the SSOT proofing tier (Field 4) is lower than the consuming agency's required IAL (Field 5), that is a finding — the consuming agency is relying on an identity proofing event that does not meet its own declared requirement.
+
+**Field 6 — Evidence Requirement:** What the consuming agency requires the citizen to present in addition to the SSOT attribute, to complete the identity verification chain. IRS does not simply accept a taxpayer's self-reported SSN as proof of identity; it combines the SSN with additional authenticating factors — AGI from the prior year, account number, filing history. The evidence requirement documents what additional proofing the consuming agency layers on top of the SSOT attribute to achieve its required IAL.
+
+## The attribute trustee role
+
+Every attribute exchange contract names an attribute trustee — the bureau whose OrgPath node is accountable for the SSOT's integrity. The trustee role carries specific obligations.
+
+The trustee must declare the proofing tier at which the attribute is issued (Field 4). The trustee must notify consuming agencies when that proofing tier changes — when SSA changes its birth certificate validation process, or when USCIS changes its employment authorization document adjudication standard. The trustee must maintain a registry of consuming agencies that have declared dependencies on the attribute, so that notifications reach every affected party.
+
+In UIAO terms, the trustee's OrgPath node carries a `ssot_attributes` array — each entry naming an attribute the trustee owns — and a `dependent_agencies` array listing every consuming agency that has declared a dependency. When the trustee's proofing tier changes, the drift engine automatically generates findings for every consuming agency whose declared required IAL now exceeds the new SSOT proofing tier.
+
+## The assurance mismatch finding
+
+The most important finding the KYC protocol produces is the assurance mismatch: a consuming agency has declared that its workflow requires IAL2, but the SSOT attribute it relies on was proofed at IAL1.
+
+This finding matters because the consuming agency's mission decision is only as trustworthy as the weakest link in its identity proofing chain. If the VA approves a veteran's benefit claim based on identity verification that ultimately rests on an SSN that was issued without document validation, the proofing chain has a weak link that the VA's own IAL2 requirement does not compensate for. The benefit is being granted on the basis of weaker identity proofing than the agency declared as its standard.
+
+The assurance mismatch finding does not automatically halt the workflow. Federal agencies make trade-offs between identity assurance and mission accessibility constantly — not every benefit program can afford the user friction of full IAL2 proofing for every applicant. But the finding must be surfaced, must be dispositioned by the bureau governance contact, and must be documented as an accepted risk or remediated by strengthening the proofing chain.
+
+| Finding Type | Trigger | Severity | Routing |
+|---|---|---|---|
+| Assurance mismatch | Consuming agency required IAL exceeds SSOT proofing tier | High | Consuming bureau governance contact |
+| Authority gap | No legal authority declared for attribute consumption | Critical | Bureau counsel and governance contact |
+| SSOT change notification | Trustee proofing tier changed without consuming agency notification | High | Trustee bureau governance contact |
+| Contract staleness | Exchange contract not reviewed within declared cadence | Medium | Consuming bureau governance contact |
+| Attribute scope expansion | Consuming agency using attribute beyond declared scope | Critical | Bureau counsel and governance contact |
+
+## Reciprocity — when the dependency flows both ways
+
+Some attribute exchange relationships are reciprocal: agency A depends on agency B for attribute X, and agency B depends on agency A for attribute Y. SSA and IRS are the clearest example. SSA issues SSNs that IRS uses as taxpayer identifiers. IRS produces tax return data that SSA uses to calculate benefit entitlements. Each is simultaneously a trustee (for one attribute) and a consuming agency (for the other).
+
+UIAO's reciprocity protocol models this as two separate exchange contracts — one for each direction — rather than a single bilateral agreement. This separation is important because the two contracts may have different proofing tiers, different legal authorities, and different evidence requirements. Collapsing them into a single bilateral agreement obscures those asymmetries and makes it impossible to generate the right finding when only one direction drifts.
+
+The reciprocity framing also makes explicit what has always been true but never named: that the federal identity infrastructure is a network of mutual dependencies, not a hierarchy of independent systems. Each agency's ability to serve its mission depends, in part, on the integrity of the identity attributes produced by other agencies. Governing that network requires making every dependency visible, declared, and subject to continuous drift detection — which is exactly what the KYC protocol does.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 6 — Closing the Customer Identity Gap →](Book_22_CPT_06.qmd)
+:::

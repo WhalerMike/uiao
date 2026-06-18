@@ -1,0 +1,75 @@
+---
+title: "RTLS and the Observational Layer"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_23
+series-order: 5
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+Real-Time Location Systems can locate a device to within centimeters. Ultra-Wideband tags, active RFID readers, BLE 5.1 angle-of-arrival beacons, and passive RFID checkpoint readers each produce a stream of observed locations that are more precise, in their domain, than any governed floor-and-room record. But precision is not governance. An observed location is an estimate produced by physics — RF propagation, time-of-flight, signal angle — at a moment in time, under conditions that vary. The observational layer enhances the dispatchable location picture; it never becomes the system of record. LocPath represents RTLS feeds through the Dynamic Location Context source enum without owning the reader infrastructure, and without confusing the enhancement with the obligation.
+:::
+
+![RTLS observational layer: four sensor source types (UWB, Active RFID, BLE 5.1, Passive RFID) and LEO-PNT feed into the Dynamic Location Context overlay on top of the governed Primary LocPath node — the governed layer remains the system of record and the 911 transmission source.](Book_23_CPT_05_fig1.svg){#fig-rtls-layer fig-alt="Layered architecture diagram on white background. Bottom layer in navy: Primary LocPath Node with civicAddress, floorDesignation, locationDescription, and e911 block — labeled Governed Layer / System of Record. A gold shield icon labels 911 Transmission Source. Middle layer in teal: Dynamic Location Context overlay with five source boxes: UWB (cm precision), Active RFID (room/zone), BLE 5.1 AoA/AoD (room-level), Passive RFID (last-seen), LEO-PNT (wide-area). Arrows from each source point downward labeled Enhances. A red label on the middle layer reads Never Substitutes for Governed Layer. Top layer: PSAP icon receiving arrow from the governed layer only. White background." width="100%"}
+
+## What RTLS is and what it does
+
+Real-Time Location Systems are sensor networks that estimate the physical position of a tagged or tracked object within a defined space. The federal environment deploys RTLS for a range of purposes — tracking high-value assets (servers, medical equipment, classified media), monitoring personnel access patterns in restricted areas, and supporting operational awareness in facilities too large for visual monitoring. The E911 context adds a new use case: providing real-time observational enhancement to the governed dispatchable location record when a 911 call is placed.
+
+RTLS in the E911 context does not replace the governed location record. It supplements it. The distinction is important enough that it is stated as a governance invariant in ADR-104: no RTLS feed, regardless of its precision or currency, may substitute for the `e911.dispatchableLocationRequired` governed record as the authoritative dispatchable location. The governed record is what the MLTS transmits with the 911 call. The RTLS enhancement is what the agency may transmit through a supplemental channel after the call is established — a secondary location update to the PSAP through an ALI (Automatic Location Identification) database update or a PIDF-LO supplement.
+
+## The four RTLS source types
+
+The Dynamic Location Context source enum in UIAO_194 defines five source types that represent the observational layer. Each has a distinct precision profile, infrastructure requirement, and governance role.
+
+**Ultra-Wideband (UWB).** UWB systems use time-of-flight measurement between a tag and a network of anchor nodes to estimate position with centimeter-level precision. This is the highest-precision RTLS technology available at scale. UWB tags are used in federal facilities for high-value asset tracking and in some personnel tracking applications in restricted areas. For E911 purposes, UWB provides the most precise observational enhancement — if the caller is wearing or carrying a tagged device, the UWB system can locate that device to within a meter in three dimensions. The infrastructure requirement is significant: anchor nodes must be installed throughout the coverage area, typically at eight to twelve meter intervals on each floor.
+
+**Active RFID.** Active RFID systems use battery-powered tags that broadcast a unique identifier at regular intervals. RFID readers placed at room or zone boundaries detect the tags and record which zone the tag was last observed in. Precision is typically room-level or zone-level rather than point-level. Active RFID is common in federal facilities for equipment tracking and is a practical observational source for E911 purposes — it can narrow the caller's last-known location to a room or zone with low infrastructure overhead. The limitation is that zone-boundary detection tells you which side of the reader a tag was on when it was last seen, not where in the zone the tag currently is.
+
+**BLE 5.1 Angle-of-Arrival / Angle-of-Departure.** Bluetooth Low Energy 5.1 introduced angle-of-arrival (AoA) and angle-of-departure (AoD) direction-finding capabilities. BLE 5.1 anchor nodes with antenna arrays can determine the angle from which a BLE beacon signal arrives, and by triangulating across multiple anchors, they can estimate position at room-level precision. BLE 5.1 has a significant advantage over earlier RTLS technologies: BLE is already deployed in enterprise environments for other purposes (device pairing, proximity features, wireless headsets), and existing BLE infrastructure can be upgraded to support direction-finding without hardware replacement. For E911 purposes, BLE 5.1 provides a practical path to room-level observational enhancement in agencies that already have wireless infrastructure deployed.
+
+**Passive RFID.** Passive RFID tags carry no battery — they reflect energy from a reader beam to communicate their identifier. Passive RFID readers are deployed at checkpoints: doors, hallways, asset storage rooms. They produce a last-seen record: the tag was observed passing this reader at this timestamp. For E911 purposes, passive RFID provides last-seen location, not current location. If a caller passed a passive reader at the entrance to the third-floor east wing fifteen minutes ago, the system knows they were there — but not where they are now. This is the lowest-precision RTLS source but also the most common in federal facilities, where passive RFID is extensively used for access control and asset checkout.
+
+## LEO-PNT: wide-area GPS-denied resilience
+
+Low Earth Orbit Position, Navigation, and Timing systems — a category that includes Starlink-class services and purpose-built PNT constellations from commercial providers — provide an observational signal category distinct from RTLS infrastructure. LEO-PNT is not a local sensor network. It is a wide-area positioning signal that supplements or substitutes for GPS in GPS-denied environments.
+
+Federal buildings that use interior GPS repeaters — active GPS signal distribution that brings satellite signals inside a building — can extend GPS coverage to interior floors. LEO-PNT signals at lower orbital altitudes and higher power levels penetrate more building materials than traditional GPS and may reach interior spaces that GPS repeaters do not cover. For E911 purposes, LEO-PNT provides a fallback observational signal in environments where local RTLS infrastructure is not deployed: a large federal campus where most buildings have no RTLS but where LEO-PNT signals penetrate sufficiently to provide floor-level positioning through barometric altitude correlation.
+
+LEO-PNT is explicitly classified as observational in UIAO_194. It provides a positioning estimate, not a governed location record. The estimate may be accurate to three to five meters under favorable signal conditions, which is floor-level precision for standard floor-to-floor heights. It does not provide room-level precision. It cannot substitute for the governed LocPath record any more than GPS can.
+
+## How UIAO represents RTLS feeds without owning reader infrastructure
+
+A governance principle that runs through UIAO's design is that UIAO governs data about things it does not own the infrastructure for. The OrgPath governance substrate does not operate the Entra tenant it governs — it reads from it. The LocPath addressing layer does not own the PSAP database it validates against — it queries it. The RTLS observational layer follows the same principle: UIAO does not own, operate, or manage RTLS readers. It represents RTLS observations as structured data on the Dynamic Location Context overlay.
+
+The Dynamic Location Context is a sub-object on a LocPath node that records the most recent observational update from each source type. It carries:
+
+| Field | Type | Content |
+|---|---|---|
+| `sourceType` | enum | UWB / ActiveRFID / BLE51 / PassiveRFID / LEOPNT / GPS / WiFi |
+| `observedAt` | timestamp | Time of the most recent observation |
+| `confidence` | float | 0.0 to 1.0, source-specific confidence estimate |
+| `precision` | string | cm / room / zone / floor / building |
+| `locationEstimate` | object | Coordinates or textual zone/room identifier |
+| `adapterSource` | string | Identifier of the adapter that supplied this record |
+
+The adapter that writes to the Dynamic Location Context is the RTLS adapter — a read-only integration with the agency's RTLS middleware (ArcGIS Indoors, Aruba Meridian, Cisco DNA Spaces, or a custom integration). The adapter is not authoritative for anything. It reads from the RTLS system and writes structured observations to the LocPath node. Those observations are timestamped and expire after a configurable staleness window.
+
+When a 911 call is placed from an MLTS extension, the governed dispatchable location is read from the Primary LocPath node. The Dynamic Location Context observations are available for the supplemental location enhancement path — the secondary ALI update or PIDF-LO supplement. The PSAP may use both: the governed location for initial dispatch and the RTLS observation for refinement. But the governed location is always primary.
+
+## RTLS governance in GPS-denied environments
+
+A specific scenario where the observational layer becomes operationally important is the GPS-denied emergency. Federal facilities include underground levels, SCIF spaces with RF shielding, and data center floors with dense metal infrastructure — all environments where GPS is unavailable and where a worker in distress has no GPS-based location to offer. In these environments, the governed dispatchable location becomes even more critical because the observational layer may be degraded or unavailable.
+
+ADR-104 requires that LocPath nodes for GPS-denied spaces be populated with heightened sub-address precision. A node for a shielded SCIF on the basement level of a federal building must carry a `locationDescription` that is specific enough for first responders who have never been in the facility to find the space: the floor designation, the wing, and the access path ("Basement B2, secure corridor east of elevator bank, badge-controlled door, call Facility Security Officer at extension 4444 for escort"). This is not GPS-denied resilience from a technology standpoint; it is governance-level compensation for technology absence.
+
+Where RTLS infrastructure is deployed in GPS-denied spaces — UWB or active RFID in data centers and shielded facilities — the observational layer functions as designed: it provides dynamic enhancement to the governed record. The combination of a precise governed location description and a real-time UWB or BLE observation is the strongest E911 posture achievable in a GPS-denied federal facility.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 6 — From LocPath to Dispatch →](Book_23_CPT_06.qmd)
+:::
