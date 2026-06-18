@@ -360,6 +360,7 @@
     - [Active Directory Certificate Services and Cloud PKI — Certificate Governance at the Point of Issuance](customer-documents/orgpath-narrative/Book_01_CPT_14.html)
     - [The Defender Suite — Security Intelligence Without Governance Coherence](customer-documents/orgpath-narrative/Book_01_CPT_15.html)
     - [The Aggregate Picture](customer-documents/orgpath-narrative/Book_01_CPT_16.html)
+    - [Role-Based Administration — Replacing OU-Based Delegation](customer-documents/orgpath-narrative/Book_01_CPT_17.html)
   - [Book_02 — What Must Exist](customer-documents/orgpath-narrative/Book_02.html)
     - [The Gap, Expressed as Requirements](customer-documents/orgpath-narrative/Book_02_CPT_01.html)
     - [Every Identity Must Know Where It Sits](customer-documents/orgpath-narrative/Book_02_CPT_02.html)
