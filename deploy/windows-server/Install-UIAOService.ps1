@@ -63,9 +63,6 @@ $servicePy = Join-Path (Split-Path $PythonExe) "uiao-service.exe"
 if (-not (Test-Path $servicePy)) {
     # Fall back to running as a Python module
     $servicePy = $PythonExe
-    $serviceArgs = "-m uiao.service"
-} else {
-    $serviceArgs = ""
 }
 
 # Remove existing registration if present
