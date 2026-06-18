@@ -91,7 +91,7 @@ function Test-PathInExcludedDir {
     return $false
 }
 
-function Get-FilteredChildren {
+function Get-FilteredChild {
     param([string]$Base, [string]$Filter, [string[]]$Excluded)
     @(Get-ChildItem -Path $Base -Filter $Filter -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { -not (Test-PathInExcludedDir -AbsPath $_.FullName -Base $Base -Excluded $Excluded) })
@@ -107,7 +107,7 @@ $subfolders = if ($Section) {
     @(Get-Item $p)
 } else {
     @(Get-ChildItem -Path $Root -Directory | Where-Object {
-        $qmdCount = @(Get-FilteredChildren -Base $_.FullName -Filter '*.qmd' -Excluded $excludeDirs).Count
+        $qmdCount = @(Get-FilteredChild -Base $_.FullName -Filter '*.qmd' -Excluded $excludeDirs).Count
         $qmdCount -gt 0
     })
 }
@@ -117,8 +117,8 @@ $rows = @(foreach ($folder in $subfolders) {
 
     # Always @-wrap: function-pipeline returns unwrap to scalar (one item) or
     # $null (zero items), and strict mode then chokes on .Count.
-    $qmds = @(Get-FilteredChildren -Base $sectionRoot -Filter '*.qmd' -Excluded $excludeDirs)
-    $pngs = @(Get-FilteredChildren -Base $sectionRoot -Filter '*.png' -Excluded $excludeDirs)
+    $qmds = @(Get-FilteredChild -Base $sectionRoot -Filter '*.qmd' -Excluded $excludeDirs)
+    $pngs = @(Get-FilteredChild -Base $sectionRoot -Filter '*.png' -Excluded $excludeDirs)
 
     # PNG set on disk: section-relative paths, lowercased for case-insensitive set ops.
     $pngSet = [System.Collections.Generic.HashSet[string]]::new()

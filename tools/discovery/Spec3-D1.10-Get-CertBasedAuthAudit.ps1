@@ -78,6 +78,7 @@
 #>
 
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'D1InputFile', Justification = 'Documented optional Spec3-D1.1 cross-reference parameter, part of the uniform discovery-suite CLI signature; accepted for forward compatibility even where this script does not yet consume it.')]
 param(
     [string]$OutputPath = ".\output",
     [string]$DomainController,
@@ -111,7 +112,7 @@ Import-Module ActiveDirectory -ErrorAction Stop
 $adParams = @{}
 if ($DomainController) { $adParams['Server'] = $DomainController }
 $domain = (Get-ADDomain @adParams).DNSRoot
-$forestDN = (Get-ADForest).RootDomain
+Get-ADForest | Out-Null
 $configDN = (Get-ADRootDSE @adParams).configurationNamingContext
 
 # ═══════════════════════════════════════════════════════════════
@@ -167,7 +168,7 @@ try {
 if ($IncludePKIAudit) {
     Write-Host "  Running certutil PKI audit..." -ForegroundColor DarkGray
     try {
-        $certutilOutput = & certutil -TCAInfo 2>&1
+        & certutil -TCAInfo 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "  certutil PKI audit complete" -ForegroundColor DarkGreen
         }
@@ -246,9 +247,9 @@ foreach ($comp in $computersWithCerts) {
         LastLogon         = $lastLogon
         CertificateCount  = $certs.Count
         Certificates      = $certs
-        HasClientAuth     = ($certs | Where-Object { $_.HasClientAuth }) -ne $null
-        HasServerAuth     = ($certs | Where-Object { $_.HasServerAuth }) -ne $null
-        HasExpiredCerts   = ($certs | Where-Object { $_.IsExpired }) -ne $null
+        HasClientAuth     = @($certs | Where-Object { $_.HasClientAuth }).Count -gt 0
+        HasServerAuth     = @($certs | Where-Object { $_.HasServerAuth }).Count -gt 0
+        HasExpiredCerts   = @($certs | Where-Object { $_.IsExpired }).Count -gt 0
         HasSPNs           = ($comp.servicePrincipalName.Count -gt 0)
         MigrationImpact   = ""
     }
@@ -388,7 +389,7 @@ foreach ($user in $allCertUsers.Values) {
         AltSecIdentityCount   = if ($user.altSecurityIdentities) { $user.altSecurityIdentities.Count } else { 0 }
         CertificateCount      = $authCerts.Count
         AuthenticationType    = $authType
-        HasExpiredCerts       = ($authCerts | Where-Object { $_.IsExpired }) -ne $null
+        HasExpiredCerts       = @($authCerts | Where-Object { $_.IsExpired }).Count -gt 0
         Certificates          = $authCerts
         MigrationPath         = $migrationPath
     }

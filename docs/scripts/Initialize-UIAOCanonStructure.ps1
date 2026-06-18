@@ -80,6 +80,7 @@ function New-Stub {
 # Helper: back up mkdocs.yml with timestamp
 # ---------------------------------------------------------------------------
 function Backup-MkDocs {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = '''MkDocs'' is a product name, not a plural.')]
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$MkDocsPath)
     if (Test-Path $MkDocsPath) {

@@ -254,7 +254,7 @@ function Get-MigrationReadiness {
 # ══════════════════════════════════════════════════════════════
 
 function Get-MigrationTarget {
-    param($DeviceType, $Computer)
+    param($DeviceType)
 
     switch -Wildcard ($DeviceType) {
         'Workstation'        { return "Entra ID Join + Intune + Autopilot" }
@@ -280,7 +280,7 @@ foreach ($comp in $computers) {
     $deviceType = Get-DeviceType -Computer $comp
     $osCurrency = Get-OSCurrency -OS $comp.OperatingSystem
     $readiness  = Get-MigrationReadiness -Computer $comp -DeviceType $deviceType -OSCurrency $osCurrency
-    $migTarget  = Get-MigrationTarget -DeviceType $deviceType -Computer $comp
+    $migTarget  = Get-MigrationTarget -DeviceType $deviceType
 
     $record = [ordered]@{
         # Identity

@@ -32,9 +32,6 @@
     Target a specific DC. If omitted, uses auto-discovery.
 .PARAMETER SearchBase
     Optional AD search base (DN).
-.PARAMETER D4InputFile
-    Optional path to D1.4 Authentication Protocol Audit JSON for
-    delegation chain cross-reference.
 .PARAMETER ResolveDNS
     If set, performs DNS resolution for each unique SPN hostname.
     Can be slow in large environments. Default: $false.
@@ -51,7 +48,6 @@ param(
     [string]$OutputPath = ".\output",
     [string]$DomainController,
     [string]$SearchBase,
-    [string]$D4InputFile,
     [switch]$ResolveDNS
 )
 
@@ -85,7 +81,7 @@ if ($SearchBase) { $adParams['SearchBase'] = $SearchBase }
 # SPN Parser
 # ══════════════════════════════════════════════════════════════
 
-function Parse-SPN {
+function ConvertFrom-SPN {
     param([string]$SPN)
     # SPN format: serviceclass/host:port/servicename
     # or: serviceclass/host:port
@@ -191,7 +187,7 @@ foreach ($comp in $computerSPNs) {
     $isDC = ($comp.PrimaryGroupID -eq 516)
 
     foreach ($spn in $comp.ServicePrincipalName) {
-        $parsed = Parse-SPN $spn
+        $parsed = ConvertFrom-SPN $spn
 
         $isStale = $false
         $daysSinceLogon = $null
@@ -244,7 +240,7 @@ foreach ($user in $userSPNs) {
     }
 
     foreach ($spn in $user.ServicePrincipalName) {
-        $parsed = Parse-SPN $spn
+        $parsed = ConvertFrom-SPN $spn
 
         $isStale = $false
         $daysSinceLogon = $null

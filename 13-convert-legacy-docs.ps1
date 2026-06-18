@@ -51,7 +51,7 @@ function Convert-LegacyMd {
     $script:converted++
 }
 
-function Archive-ToInbox {
+function Move-ToInbox {
     param([string]$RelPath, [string]$DestSubfolder = "session-logs", [string]$Reason = "")
     $fullPath = Join-Path $RepoRoot $RelPath
     if (-not (Test-Path $fullPath)) {
@@ -210,8 +210,8 @@ Convert-LegacyMd "docs\docs\canon\corpus-status-dashboard.md" "Corpus Status Das
 Convert-LegacyMd "docs\docs\canon\index.md"                 "Canon Index"                 "UIAO canon document index and entry point"
 
 # Internal/tooling — archive rather than publish
-Archive-ToInbox "docs\docs\canon\migration-plan.md"   "drafts" "canon migration plan — internal"
-Archive-ToInbox "docs\docs\canon\pdf-layout-spec.md"  "drafts" "PDF layout spec — internal tooling"
+Move-ToInbox "docs\docs\canon\migration-plan.md"   "drafts" "canon migration plan — internal"
+Move-ToInbox "docs\docs\canon\pdf-layout-spec.md"  "drafts" "PDF layout spec — internal tooling"
 
 # ---------------------------------------------------------------------------
 # GROUP 5: Session logs — all archive (development history, not site content)
@@ -231,7 +231,7 @@ $sessionLogs = @(
     "docs\docs\session-logs\README.md"
     "docs\docs\session-logs\reports\canon-backfill-triage.md"
 )
-foreach ($log in $sessionLogs) { Archive-ToInbox $log "session-logs" }
+foreach ($log in $sessionLogs) { Move-ToInbox $log "session-logs" }
 
 # ---------------------------------------------------------------------------
 # GROUP 6: Conmon + CI — archive (internal operational/test docs)
@@ -239,8 +239,8 @@ foreach ($log in $sessionLogs) { Archive-ToInbox $log "session-logs" }
 Write-Host ""
 Write-Host "Group 6: conmon + ci — archive (internal)" -ForegroundColor Yellow
 
-Archive-ToInbox "docs\docs\conmon\templates\2026-07-agenda.md" "drafts" "ConMon agenda template"
-Archive-ToInbox "docs\docs\ci\TESTPLAN-metadata-validator.md"  "drafts" "CI test plan"
+Move-ToInbox "docs\docs\conmon\templates\2026-07-agenda.md" "drafts" "ConMon agenda template"
+Move-ToInbox "docs\docs\ci\TESTPLAN-metadata-validator.md"  "drafts" "CI test plan"
 
 # Tiny index stubs — delete
 $tinyStubs = @(

@@ -267,7 +267,7 @@ NDRIFT .. GOV : Escalation
     $puml | Set-Content -LiteralPath $path -Encoding ASCII -Force
 }
 
-function Invoke-UIAOPhase2Diagrams {
+function Invoke-UIAOPhase2Diagram {
     param([string]$Root)
 
     $paths = @(
@@ -299,4 +299,4 @@ function Invoke-UIAOPhase2Diagrams {
     Write-Host "Phase 2 domain diagrams written to $Root" -ForegroundColor Green
 }
 
-Invoke-UIAOPhase2Diagrams -Root $OutputRoot
+Invoke-UIAOPhase2Diagram -Root $OutputRoot

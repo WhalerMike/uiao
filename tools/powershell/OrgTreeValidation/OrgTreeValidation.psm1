@@ -141,6 +141,7 @@ function Get-OrgTreeValidationReport {
     #>
     [CmdletBinding()]
     [OutputType([psobject])]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'TenantId', Justification = 'Consumed by the default $ConnectGraph scriptblock parameter (Connect-MgGraph -TenantId $TenantId); the analyzer does not trace references inside another parameter''s default value.')]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -225,6 +226,7 @@ function Test-DynamicGroupAlignment {
     #>
     [CmdletBinding()]
     [OutputType([psobject])]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'TenantId', Justification = 'Consumed by the default $ConnectGraph scriptblock parameter (Connect-MgGraph -TenantId $TenantId); the analyzer does not trace references inside another parameter''s default value.')]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -362,6 +364,7 @@ function Export-OrgTreeSnapshot {
 
 
 function Compare-OrgTreeSnapshots {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Diffs two OrgTree snapshots; emits drift entries.

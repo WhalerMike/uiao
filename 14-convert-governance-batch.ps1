@@ -24,7 +24,7 @@ function Write-Action {
     else         { Write-Host "$Verb`: $Path" -ForegroundColor $Color }
 }
 
-function Stem-To-Title {
+function ConvertTo-Title {
     param([string]$Stem)
     # Replace hyphens with spaces, title-case each word
     $words = $Stem -replace '-', ' ' -split ' '
@@ -60,7 +60,7 @@ function Convert-BatchMd {
     $newContent = $content
     if (-not $hasYaml) {
         $stem  = [System.IO.Path]::GetFileNameWithoutExtension($FullPath)
-        $t     = if ($Title) { $Title } else { Stem-To-Title $stem }
+        $t     = if ($Title) { $Title } else { ConvertTo-Title $stem }
         $yaml  = "---`ntitle: `"$t`""
         if ($Subtitle) { $yaml += "`nsubtitle: `"$Subtitle`"" }
         $yaml += "`n---`n`n"

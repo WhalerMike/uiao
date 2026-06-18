@@ -115,7 +115,7 @@ function Read-UIAOSourceData {
     }
 }
 
-function Get-UIAORows {
+function Get-UIAORow {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Data,
@@ -146,7 +146,7 @@ function Get-UIAOFieldValue {
     return $null
 }
 
-function ConvertTo-UIAOSourceFields {
+function ConvertTo-UIAOSourceField {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)]$Row)
     $fields = [ordered]@{}
@@ -234,7 +234,7 @@ function Write-UIAOEnvelopeOutput {
     return $Envelope
 }
 
-function Get-UIAOGraphRows {
+function Get-UIAOGraphRow {
     <#
     .SYNOPSIS
         Internal: resolve exporter input rows from -SnapshotPath (offline) or a
@@ -252,7 +252,7 @@ function Get-UIAOGraphRows {
     if (-not [string]::IsNullOrWhiteSpace($SnapshotPath)) {
         $full = Assert-UIAOInputPath -Path $SnapshotPath
         $loaded = Read-UIAOSourceData -Path $full
-        return @{ Rows = (Get-UIAORows -Data $loaded -PreferredArrayKeys $PreferredArrayKeys); SourceRef = (Split-Path -Leaf $full) }
+        return @{ Rows = (Get-UIAORow -Data $loaded -PreferredArrayKeys $PreferredArrayKeys); SourceRef = (Split-Path -Leaf $full) }
     }
     if ([string]::IsNullOrWhiteSpace($TenantId)) {
         throw "Provide -SnapshotPath for offline normalization, or -TenantId for a live Graph read."
@@ -270,6 +270,7 @@ function Get-UIAOGraphRows {
 # ---------------------------------------------------------------------------
 
 function Export-UIAOEntraUsers {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Inventory Entra ID users into a sealed UIAO EntraUserInventory envelope.
@@ -305,7 +306,7 @@ function Export-UIAOEntraUsers {
         [Parameter(Mandatory = $false)][string]$GraphEndpoint
     )
     $endpoint = Resolve-UIAOGraphBase -Cloud $Cloud -GraphApiVersion $GraphApiVersion -Explicit $GraphEndpoint
-    $src = Get-UIAOGraphRows -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgUser' -LiveRefSuffix 'users' `
+    $src = Get-UIAOGraphRow -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgUser' -LiveRefSuffix 'users' `
         -LiveReader { Get-MgUser -All -Property 'id,userPrincipalName,displayName,accountEnabled,mail,userType,onPremisesSyncEnabled,onPremisesSamAccountName' }
     $records = foreach ($row in $src.Rows) {
         [ordered]@{
@@ -317,7 +318,7 @@ function Export-UIAOEntraUsers {
             user_type                = Get-UIAOFieldValue $row @('userType', 'UserType')
             on_prem_sync_enabled     = Get-UIAOFieldValue $row @('onPremisesSyncEnabled', 'OnPremisesSyncEnabled')
             on_prem_sam_account_name = Get-UIAOFieldValue $row @('onPremisesSamAccountName', 'OnPremisesSamAccountName', 'samAccountName')
-            source_fields            = ConvertTo-UIAOSourceFields $row
+            source_fields            = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOIdentityEnvelope -SourceTool 'EntraID' -TargetSchema 'EntraUserInventory' -TenantId $TenantId `
@@ -326,6 +327,7 @@ function Export-UIAOEntraUsers {
 }
 
 function Export-UIAOEntraGroups {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Inventory Entra ID groups and memberships into a sealed envelope.
@@ -344,7 +346,7 @@ function Export-UIAOEntraGroups {
         [Parameter(Mandatory = $false)][string]$GraphEndpoint
     )
     $endpoint = Resolve-UIAOGraphBase -Cloud $Cloud -GraphApiVersion $GraphApiVersion -Explicit $GraphEndpoint
-    $src = Get-UIAOGraphRows -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgGroup' -LiveRefSuffix 'groups' `
+    $src = Get-UIAOGraphRow -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgGroup' -LiveRefSuffix 'groups' `
         -LiveReader { Get-MgGroup -All -Property 'id,displayName,groupTypes,membershipRule,securityEnabled,mailEnabled' }
     $records = foreach ($row in $src.Rows) {
         $groupTypes = Get-UIAOFieldValue $row @('groupTypes', 'GroupTypes')
@@ -358,7 +360,7 @@ function Export-UIAOEntraGroups {
             mail_enabled    = Get-UIAOFieldValue $row @('mailEnabled', 'MailEnabled')
             membership_rule = if ($IncludeDynamic -and $isDynamic) { $rule } else { $null }
             member_count    = Get-UIAOFieldValue $row @('memberCount', 'MemberCount')
-            source_fields   = ConvertTo-UIAOSourceFields $row
+            source_fields   = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOIdentityEnvelope -SourceTool 'EntraID' -TargetSchema 'EntraGroupInventory' -TenantId $TenantId `
@@ -367,6 +369,7 @@ function Export-UIAOEntraGroups {
 }
 
 function Export-UIAOEntraApps {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Inventory Entra app registrations and service principals into a sealed
@@ -382,7 +385,7 @@ function Export-UIAOEntraApps {
         [Parameter(Mandatory = $false)][string]$GraphEndpoint
     )
     $endpoint = Resolve-UIAOGraphBase -Cloud $Cloud -GraphApiVersion $GraphApiVersion -Explicit $GraphEndpoint
-    $src = Get-UIAOGraphRows -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgServicePrincipal' -LiveRefSuffix 'apps' `
+    $src = Get-UIAOGraphRow -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgServicePrincipal' -LiveRefSuffix 'apps' `
         -LiveReader { Get-MgServicePrincipal -All -Property 'id,appId,displayName,servicePrincipalType,accountEnabled' }
     $records = foreach ($row in $src.Rows) {
         [ordered]@{
@@ -392,7 +395,7 @@ function Export-UIAOEntraApps {
             object_type      = Get-UIAOFieldValue $row @('servicePrincipalType', 'ServicePrincipalType', 'objectType', 'odata.type')
             sign_in_audience = Get-UIAOFieldValue $row @('signInAudience', 'SignInAudience')
             enabled          = Get-UIAOFieldValue $row @('accountEnabled', 'AccountEnabled')
-            source_fields    = ConvertTo-UIAOSourceFields $row
+            source_fields    = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOIdentityEnvelope -SourceTool 'EntraID' -TargetSchema 'EntraAppInventory' -TenantId $TenantId `
@@ -415,14 +418,14 @@ function Export-UIAOConditionalAccess {
         [Parameter(Mandatory = $false)][string]$GraphEndpoint
     )
     $endpoint = Resolve-UIAOGraphBase -Cloud $Cloud -GraphApiVersion $GraphApiVersion -Explicit $GraphEndpoint
-    $src = Get-UIAOGraphRows -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgIdentityConditionalAccessPolicy' -LiveRefSuffix 'conditionalAccess' `
+    $src = Get-UIAOGraphRow -SnapshotPath $SnapshotPath -TenantId $TenantId -LiveCommand 'Get-MgIdentityConditionalAccessPolicy' -LiveRefSuffix 'conditionalAccess' `
         -LiveReader { Get-MgIdentityConditionalAccessPolicy -All }
     $records = foreach ($row in $src.Rows) {
         [ordered]@{
             id            = Get-UIAOFieldValue $row @('id', 'Id')
             display_name  = Get-UIAOFieldValue $row @('displayName', 'DisplayName')
             state         = Get-UIAOFieldValue $row @('state', 'State')
-            source_fields = ConvertTo-UIAOSourceFields $row
+            source_fields = ConvertTo-UIAOSourceField $row
         }
     }
     $envelope = New-UIAOIdentityEnvelope -SourceTool 'EntraID' -TargetSchema 'ConditionalAccessInventory' -TenantId $TenantId `
@@ -454,6 +457,7 @@ function Get-UIAOEnabledState {
 }
 
 function Compare-UIAOIdentitySources {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Established exported module cmdlet; renaming would break the module''s public contract, manifest, tests, and canon spec.')]
     <#
     .SYNOPSIS
         Reconcile an on-prem AD identity assessment against an Entra inventory,

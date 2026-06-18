@@ -174,7 +174,7 @@ begin {
 
     # ── Migration target recommendation ──
     function Get-MigrationTarget {
-        param([string]$CredentialClass, [string]$ServiceName)
+        param([string]$CredentialClass)
 
         switch ($CredentialClass) {
             'DomainAccount' {
@@ -396,7 +396,7 @@ process {
                     RiskScore         = $risk.Score
                     RiskLevel         = $risk.Level
                     RiskFactors       = ($risk.Factors -join '; ')
-                    MigrationTarget   = Get-MigrationTarget -CredentialClass $credClass -ServiceName $svc.Name
+                    MigrationTarget   = Get-MigrationTarget -CredentialClass $credClass
                     D1_1_Match        = if ($d1Match) { $d1Match.sAMAccountName } else { $null }
                     D1_1_RiskLevel    = if ($d1Match) { $d1Match.RiskLevel } else { $null }
                     D1_1_HasSPN       = if ($d1Match) { $d1Match.HasSPN } else { $null }

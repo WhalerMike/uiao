@@ -14,8 +14,7 @@
 [CmdletBinding()]
 param(
     [string]$OutputPath = '.\intune-enrollment-status.csv',
-    [string]$TenantId,
-    [string]$OrgPath   # informational only on a read-only report
+    [string]$TenantId
 )
 $mod = Get-ChildItem -Path $PSScriptRoot, "$PSScriptRoot/../lib", "$PSScriptRoot/lib" -Filter 'IntuneArcModernization.psm1' -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $mod) { throw 'IntuneArcModernization.psm1 not found beside the script or in ../lib' }

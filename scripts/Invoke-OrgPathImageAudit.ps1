@@ -95,6 +95,8 @@
         2   manifest missing, module missing, or other precondition failure
 #>
 [CmdletBinding(DefaultParameterSetName = 'Audit')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Audit', Justification = 'Parameter-set discriminator selected via $PSCmdlet.ParameterSetName in the mode switch (default/Audit branch).')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'List', Justification = 'Parameter-set discriminator selected via $PSCmdlet.ParameterSetName in the mode switch (List branch).')]
 param(
     [Parameter(ParameterSetName = 'Audit')]
     [switch]$Audit,
@@ -158,7 +160,7 @@ $entries = foreach ($chapter in $manifest['chapters']) {
     }
 }
 
-function Get-SidecarFields {
+function Get-SidecarField {
     param([string]$Path)
     if (-not (Test-Path $Path)) { return $null }
     Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -263,7 +265,7 @@ switch ($PSCmdlet.ParameterSetName) {
             if (-not (Test-Path $qmdPath))     { $issues.Add('ChapterNotFound') }
 
             if ($issues.Count -eq 0) {
-                $side       = Get-SidecarFields -Path $sidecarPath
+                $side       = Get-SidecarField -Path $sidecarPath
                 $currentAlt = Get-FigAltByIdFromQmd -QmdPath $qmdPath -FigId $e.Id
                 if (-not $currentAlt) {
                     $issues.Add('FigAltNotFound')
