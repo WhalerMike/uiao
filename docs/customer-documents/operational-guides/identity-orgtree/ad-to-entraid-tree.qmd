@@ -213,6 +213,25 @@ So:
 
 - **OU for delegation → AU + dynamic membership.**
 
+**AD Delegation → Entra ID Equivalents**
+
+| AD Delegation Scenario | Entra ID Equivalent |
+|---|---|
+| Helpdesk resets passwords on `OU=Baltimore` | Authentication Administrator scoped to `AU-Baltimore` |
+| IT staff manages users in `OU=East-Region` | User Administrator scoped to `AU-US-East` |
+| Dept admin creates/manages groups on `OU=Applications` | Groups Administrator scoped to department AU |
+| Read-only view of all users (audit) | Global Reader (tenant) or User Reader (AU scope) |
+| GPO controls Intune enrollment policy for an OU | Intune policy set targeted at OrgPath dynamic group |
+| Site-linked GPO applies network-based policy | Conditional Access + Intune named locations / compliance policies |
+| Service account management on a specific OU | Workload Identity Administrator scoped to AU (or custom role) |
+| Domain Admin — forest-level changes | Privileged Role Administrator (PIM-eligible only, tenant scope) |
+| Delegated control of security group creation | Groups Administrator scoped to org-unit AU |
+| AD attribute read for reporting / service accounts | Microsoft Graph scoped API permission + least-privilege Entra role |
+
+::: {.callout-note}
+**Key difference:** AD delegation was implicit — it flowed from OU containment. Entra delegation is explicit — you define the AU membership rule (an OrgPath facet predicate) and then bind the role to that AU. No container; no inheritance; no silent scope creep.
+:::
+
 **5. Access control: org-based management without OUs**
 
 Once you have org attributes and dynamic groups, you can drive:
@@ -716,6 +735,21 @@ Administrative Units (AUs) replace OU-based delegation.
 
 This gives you **OU-like delegated admin** with **zero drift**.
 
+**Scenario-Level Delegation Reference**
+
+| What you had in AD | What you build in Entra |
+|---|---|
+| `OU=Baltimore` → Helpdesk password reset | `AU-Baltimore` (rule: `extensionAttribute5 -eq "CC-BAL"`) + Authentication Administrator |
+| `OU=East,OU=US` → regional IT admin | `AU-US-East` (rule: `extensionAttribute1 -eq "EASTUS"`) + User Administrator |
+| `OU=IT,OU=Baltimore` → division admin | `AU-Baltimore-IT` (two-facet rule) + Groups Administrator |
+| Forest-level privileged admin | Global Administrator — PIM-eligible only, never permanently active |
+| Domain Admin for service account provisioning | Privileged Role Administrator via PIM, justification + approval required |
+| GPO inherited down to `OU=Contractors` | Intune policy set targeted at `DG-Classification-Contractor` dynamic group |
+
+::: {.callout-important}
+**Never assign tenant-wide roles as a substitute for OU-scoped delegation.** Every role that can be AU-scoped must be AU-scoped. Unscoped assignments are a governance finding (Governance Rule 4 — see UIAO_154).
+:::
+
 **🛡️ 6. Governance Workflows**
 
 **Access Packages**
@@ -753,6 +787,22 @@ This gives you **OU-like delegated admin** with **zero drift**.
 - Account disable
 
 - Account delete (after retention)
+
+**Conditional Access and Administrative Unit Scope**
+
+Conditional Access (CA) and AU-scoped delegation are complementary but independent layers. AUs control *who can administer* a set of users. CA controls *what those users must satisfy to authenticate*. Both layers use OrgPath facet predicates, but through different mechanisms:
+
+| Governance objective | Mechanism | OrgPath connection |
+|---|---|---|
+| Scope helpdesk authority to a region | AU + scoped role (User Administrator) | AU membership rule: `attr1 -eq "EASTUS"` |
+| Require MFA for contractors | CA policy targeting `DG-Classification-Contractor` dynamic group | Group rule: `attr6 -eq "Contractor"` |
+| Restrict high-clearance users to compliant devices | CA policy + compliance policy on `DG-Clearance-SECRET` | Group rule: `attr8 -eq "SECRET"` |
+| Apply strict sign-in frequency to privileged roles | CA policy scoped to PAG members | Targets the PAG group directly |
+| Enforce network location for field-office users | CA named location + `DG-Region-EASTUS` | Group rule: `attr1 -eq "EASTUS"` |
+
+::: {.callout-note}
+**Key principle:** An AU-scoped role assignment tells Entra *who manages these users*. A CA policy targeting the same OrgPath group tells Entra *what authentication requirements apply to these users*. The same facet predicate drives both, from the same SSOT.
+:::
 
 **🔧 7. Operational Patterns for Long-Term Stability**
 
@@ -1852,6 +1902,56 @@ Tenant Root
 │ └── AU: Baltimore-IT
 
 └── AU: Global-IT
+
+**G.3.1 Worked Examples — Single-Facet AU**
+
+```text
+AU-Department-IT
+  membership rule: (extensionAttribute2 -eq "IT")
+  isMemberManagementRestricted: true
+  scoped roles:
+    - User Administrator        → assigned to IT-HelpDesk-L1 group
+    - Groups Administrator      → assigned to IT-Admin group
+```
+
+All IT users, regardless of region or division, fall in scope. Scope adjusts automatically when a user's `extensionAttribute2` changes.
+
+**G.3.2 Worked Examples — Two-Facet AU**
+
+```text
+AU-IT-InfraOps
+  membership rule: (extensionAttribute2 -eq "IT") and (extensionAttribute3 -eq "InfraOps")
+  isMemberManagementRestricted: true
+  scoped roles:
+    - Helpdesk Administrator    → assigned to InfraOps-HelpDesk group
+    - Password Administrator    → assigned to InfraOps-HelpDesk group
+```
+
+Only IT users in the InfraOps division are in scope. Equivalent to `OU=InfraOps,OU=IT` in AD — but membership is governed by OrgPath facets, not manual OU placement.
+
+**G.3.3 Worked Examples — Cross-Cutting AU (Multi-Facet)**
+
+```text
+AU-Region-EASTUS-Privileged
+  membership rule:
+    (extensionAttribute1 -eq "EASTUS") and (extensionAttribute8 -eq "SECRET")
+  isMemberManagementRestricted: true
+  scoped roles:
+    - Authentication Administrator → assigned to Security-East group
+```
+
+This AU crosses the department hierarchy: all East-region users with SECRET clearance, regardless of which department they're in. There is no AD OU equivalent — this scope would have required a manual security group in AD. In Entra with OrgPath it is fully dynamic.
+
+```text
+AU-Classification-Contractor-All
+  membership rule: (extensionAttribute6 -eq "Contractor")
+  isMemberManagementRestricted: true
+  scoped roles:
+    - Helpdesk Administrator    → assigned to Contractor-Support group
+    - Password Administrator    → assigned to Contractor-Support group
+```
+
+Scope cuts across every department and division — all contractors, everywhere. Membership tracks automatically as the Classification facet changes (onboarding/offboarding contractors updates `extensionAttribute6`).
 
 ------------------------------------------------------------------------
 

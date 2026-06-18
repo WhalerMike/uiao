@@ -1,0 +1,211 @@
+---
+title: "Role-Based Administration — Replacing OU-Based Delegation"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+family: orgpath-narrative
+book: 01
+series-order: 17
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-18
+---
+
+# Chapter 17 — Role-Based Administration — Replacing OU-Based Delegation
+
+::: {.callout-note}
+## In this chapter
+How administrative delegation — the ability to scope helpdesk, IT, and
+management authority to a subset of users — is reconstructed in Entra ID
+using Administrative Units, OrgPath facet predicates, and PIM. Chapter 6
+showed that AUs do not inherit; this chapter shows how OrgPath membership
+rules eliminate the need for inheritance.
+:::
+
+## The Problem Chapter 6 Left Open
+
+Chapter 6 established that Administrative Units are a real delegation
+mechanism — but one with a critical structural gap. In Active Directory,
+assigning a role at the `OU=West-Region` level automatically covered every
+sub-OU beneath it. Entra ID AUs do not work that way. Each AU is
+independent. A role assigned to the West Region AU does not flow to the
+West Finance AU or the West IT AU. Every level requires its own explicit
+role assignment.
+
+This leaves administrators facing an apparent dilemma: either flatten the
+delegation model to a handful of tenant-wide roles (which destroys
+granularity), or maintain dozens of manual per-AU role assignments (which
+creates drift and operational overhead that increases with organizational
+complexity).
+
+OrgPath resolves this dilemma by making AU membership rules deterministic
+and HR-driven, so that scope is always accurate without manual maintenance.
+
+## Why AU Membership Rules Change the Equation
+
+In the flat-delegation model without OrgPath, AU membership is managed
+manually. A user moves from Finance to Legal, and someone must remove them
+from `AU-Department-Finance` and add them to `AU-Department-Legal`. Until
+that happens, the departing-Finance employee can still have their password
+reset by the Finance helpdesk, and the Legal helpdesk cannot yet assist
+them. Scope is only as accurate as the most recent manual update.
+
+With OrgPath, AU membership is driven by facet predicates evaluated
+continuously against each user's `extensionAttribute` values:
+
+```text
+AU-Department-Finance
+  membership rule: (attr2 -eq "Finance")
+
+AU-Department-Legal
+  membership rule: (attr2 -eq "Legal")
+```
+
+When HR updates the user's department record, the provisioning pipeline
+writes the new value to `extensionAttribute2`. Both AU membership rules
+re-evaluate. The user leaves Finance's AU and enters Legal's AU
+automatically. No manual intervention. No window of incorrect scope.
+
+The role assignments bound to each AU do not change. The scope they express
+stays accurate because the membership that defines the scope is governed by
+the same SSOT that governs the org chart.
+
+This is the mechanism that makes AU-based delegation structurally equivalent
+to OU-based delegation — not inheritance, but deterministic, attribute-driven
+membership that tracks organizational position.
+
+![Three-tier AU delegation model: Tier 1 Enterprise, Tier 2 Department, Tier 3 Division, with OrgPath facet predicates driving each AU's dynamic membership and scoped Entra roles binding at each tier — no inheritance required because membership rules are always current](images/book01cpt17-diagram-01-three-tier-au-delegation-model.png){#fig-book-01-cpt-17-diagram-01 fig-alt="Three-tier AU delegation model. Top tier labeled 'AU-Enterprise' contains all governed users via populated extensionAttribute2 predicate; a 'Global Reader / Security Reader' role badge is pinned to it. Middle tier shows three boxes side by side: 'AU-Department-IT', 'AU-Department-Finance', 'AU-Department-Legal', each with a one-facet membership rule and 'User Administrator / Groups Administrator' role badge. Bottom tier shows 'AU-IT-InfraOps' and 'AU-Finance-Payroll' with two-facet rules and 'Helpdesk Administrator / Password Administrator' role badge. Each box shows the OrgPath rule in monospace. A vertical dashed line labeled 'OrgPath SSOT drives all membership — no manual AU updates' runs alongside the hierarchy. White background, federal navy (#1F3A5F) for AU boxes, teal (#1A9E8F) for role badges, amber (#D4A017) for the SSOT annotation, monospace labels, 16:9 landscape." width="85%"}
+
+## The Three-Tier Delegation Model
+
+The canonical delegation model (UIAO_154) organizes AUs into three tiers
+that mirror the organizational hierarchy without requiring inheritance
+between them:
+
+| Tier | AU Pattern | Membership Rule | Typical Roles |
+|---|---|---|---|
+| Tier 1 — Enterprise | `AU-Enterprise` | `(attr2 -ne "")` — any governed user | Global Reader, Security Reader |
+| Tier 2 — Department | `AU-Department-[DEPT]` | `(attr2 -eq "[DEPT]")` | User Administrator, Groups Administrator |
+| Tier 3 — Division | `AU-[DEPT]-[DIV]` | `(attr2 -eq "[DEPT]") and (attr3 -eq "[DIV]")` | Helpdesk Administrator, Password Administrator |
+| Cross-cutting | `AU-[FACETS]-[VALUE]` | Multi-facet predicate | Authentication Administrator |
+
+Each tier is independent — there is no AU-to-AU inheritance — but scope
+at each tier is always accurate because OrgPath facets define it. A
+Helpdesk Administrator scoped to `AU-IT-InfraOps` can only act on users
+whose `extensionAttribute2` is `IT` and `extensionAttribute3` is
+`InfraOps`. When a user's division changes, they leave the AU on the next
+membership evaluation; the helpdesk technician's scope adjusts without any
+change to the role assignment.
+
+## AD Delegation Patterns — Entra ID Equivalents
+
+Every common Active Directory delegation pattern has a direct Entra
+equivalent built from AU + OrgPath facet predicate + scoped role. The
+table below covers the patterns administrators encounter in practice:
+
+| Active Directory pattern | Entra ID equivalent |
+|---|---|
+| Helpdesk resets passwords on `OU=Baltimore` | Authentication Administrator scoped to `AU-Baltimore` (rule: `attr5 -eq "CC-BAL"`) |
+| IT staff manages users in `OU=East-Region` | User Administrator scoped to `AU-US-East` (rule: `attr1 -eq "EASTUS"`) |
+| Department admin creates groups on `OU=Finance` | Groups Administrator scoped to `AU-Department-Finance` |
+| Read-only view of all users for audit | Global Reader at tenant scope — no AU needed |
+| GPO controls Intune enrollment for a specific OU | Intune policy set targeted at the equivalent OrgPath dynamic group |
+| Site-linked GPO enforces network-based policy | Conditional Access named location + compliance policy, targeted by OrgPath group |
+| Service account management on `OU=ServiceAccounts` | Workload Identity Administrator (PIM-gated), scoped to service-account AU |
+| Domain Admin — forest-level privilege | Global Administrator, PIM-eligible only — never permanently active |
+| Schema Admin, Enterprise Admin | Privileged Role Administrator via PIM; requires dual approval |
+| Fine-grained password policy applied to specific OU | Entra ID authentication policy targeted at OrgPath dynamic group |
+
+::: {.callout-important}
+**Never substitute tenant-wide role assignments for AU-scoped ones.**
+If a role can be AU-scoped, it must be AU-scoped. Unscoped assignments
+for roles that have an AU-scope equivalent are a governance finding under
+UIAO_154 Governance Rule 4.
+:::
+
+## PIM: The Activation Layer
+
+Administrative Units define who can manage what objects. PIM defines
+whether that authority is available continuously or only on explicit,
+approved, time-bounded elevation. In the UIAO governance model, these
+two mechanisms are always used together:
+
+* Role assignments to AUs are **eligible**, not active. A technician
+  who is a member of `AU-IT-InfraOps` with Helpdesk Administrator eligible
+  cannot act until they activate via PIM.
+* Activation requires written justification and, for elevated roles,
+  supervisor approval and FIDO2 MFA.
+* Activation is time-bounded. A 4-hour helpdesk window is the standard
+  maximum. The session ends; the role is no longer active.
+* Every activation generates an immutable audit event in Entra ID Audit
+  Logs, tied to the ServiceNow RITM that authorized the work.
+
+The combination of AU scoping and PIM gating produces the closest
+available analog to the AD model of OU-scoped ACLs with delegated control
+— with the addition of time-bounding and audit that AD delegation natively
+lacked.
+
+## Multi-Facet AUs: Cross-Cutting Scope
+
+Some delegation requirements cut across the standard department/division
+hierarchy. A privileged-access team that must manage high-clearance users
+regardless of department. A security team with authentication rights over
+all contractor accounts. These scenarios are handled with cross-cutting
+AUs whose membership rules compose facets from multiple dimensions:
+
+```text
+AU-Region-EASTUS-Privileged
+  membership rule:
+    (attr1 -eq "EASTUS") and (attr8 -eq "SECRET")
+  roles:
+    Authentication Administrator (scoped to this AU)
+
+AU-Classification-Contractor-All
+  membership rule:
+    (attr6 -eq "Contractor")
+  roles:
+    Helpdesk Administrator (scoped to this AU)
+    Password Administrator (scoped to this AU)
+
+AU-IT-InfraOps-FullTime
+  membership rule:
+    (attr2 -eq "IT") and (attr3 -eq "InfraOps") and (attr6 -eq "Employee")
+  roles:
+    Groups Administrator (scoped to this AU)
+```
+
+The membership rules are still facet predicates — the same OrgPath SSOT
+governs them. Cross-cutting AUs compose predicates with boolean operators
+rather than traversing an OU path. There is no inheritance problem to solve
+because the rule itself expresses exactly the scope needed.
+
+## What This Replaces, and What It Does Not
+
+The AU + OrgPath model reproduces the functional outcomes of OU-based
+delegation with explicit, auditable construction rather than structural
+inheritance. What it provides:
+
+* Scoped management authority that tracks organizational position without
+  manual maintenance
+* Audit-grade evidence of every role activation (PIM logs), with the
+  organizational scope of the action captured in the AU record
+* Governance Rule 4 enforcement that prevents scope creep through
+  unscoped role assignments
+* Dynamic adjustment when org structure changes — membership rules
+  re-evaluate continuously
+
+What it does not reproduce from Active Directory:
+
+* **Inherited scope.** Roles do not flow from a parent AU to child AUs.
+  Each tier's roles must be assigned independently. This is explicit
+  work — but explicit work that is auditable, not implicit work that
+  silently accumulates.
+* **Automatic scope extension.** Adding a new division does not
+  automatically create a Tier 3 AU and assign helpdesk access to it.
+  The AU must be defined, the membership rule authored, and the role
+  assigned. The OrgPath codebook change triggers this obligation; it does
+  not execute it.
+
+Both gaps are operational, not architectural. They are addressed by the
+AU provisioning workflow (ADR-037) and the delegation matrix (UIAO_154),
+which together make AU lifecycle a governed, pipeline-driven process rather
+than a manual one.
