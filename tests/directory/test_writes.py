@@ -40,6 +40,15 @@ def test_non_governed_attribute_is_refused() -> None:
     assert "not a governed OrgPath facet" in (plan.refusal or "")
 
 
+def test_ad_veneer_attribute_is_not_writable() -> None:
+    # ADR-110 §4: synthesized AD attributes are read-only / non-governed, so a
+    # write to one is refused (they are not OrgPath facets).
+    plan = translate_modify(_modify(Modification(ModifyOp.REPLACE, "sAMAccountName", ("x",))))
+    assert plan.refused
+    plan_sid = translate_modify(_modify(Modification(ModifyOp.REPLACE, "objectSid", ("S-1-5-21-1-2-3-4",))))
+    assert plan_sid.refused
+
+
 def test_invalid_facet_value_is_refused() -> None:
     plan = translate_modify(_modify(Modification(ModifyOp.REPLACE, "uiaoOrgPathDepartment", ("NOTAREALDEPT",))))
     assert plan.refused
