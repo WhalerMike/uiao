@@ -1,0 +1,174 @@
+---
+title: Microsoft Entra Administrative Units — Adapter Technical Specification
+doc-type: ats
+adapter-id: entra-admin-units
+adapter-class: modernization
+mission-class: integration
+status: reserved
+phase: phase-planning
+gcc-boundary: gcc-moderate
+canon-source: src/uiao/canon/UIAO_154_Delegation_Matrix_AUs_Roles.md
+derived-from: uiao/canon (UIAO_154 v3.0, ADR-037, ADR-078)
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-12-18
+---
+
+# Microsoft Entra Administrative Units — Adapter Technical Specification
+
+![Entra Administrative Units adapter: OrgPath-facet-driven AU lifecycle, three-tier delegation model, and scoped role-assignment pipeline](images/entra-admin-units-image-01-au-adapter-architecture.png){#fig-entra-admin-units-image-01 fig-alt="Entra Administrative Units adapter architecture. Left column shows the OrgPath SSOT (HR system feeding extensionAttribute1-15 via provisioning pipeline). Center column shows three AU tiers in federal navy boxes: Tier 1 AU-Enterprise (single-facet rule), Tier 2 AU-Department-* boxes (one-facet rules), Tier 3 AU-DEPT-DIV boxes (two-facet rules), plus a Cross-Cutting row with multi-facet rule boxes. Right column shows scoped role assignments in teal badges pinned to each tier: Global Reader / Security Reader at Tier 1, User Administrator / Groups Administrator at Tier 2, Helpdesk Administrator / Password Administrator at Tier 3. A PIM eligibility shield overlays all role badges. Arrows flow left to right: OrgPath change → AU membership eval → scoped role in effect. White background, federal navy (#1F3A5F) primary, teal (#1A9E8F) secondary, amber (#D4A017) for PIM and audit annotations, monospace attribute labels, 16:9 landscape." width="85%"}
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+
+**Canon source:** `UIAO_154_Delegation_Matrix_AUs_Roles.md` (v3.0, Model C) + ADR-037 (admin-unit-provisioning) + ADR-078 (15-facet schema).
+
+This adapter provisions and governs the Entra Administrative Unit layer. It is the delegation-scope actuator in the UIAO Entra family, sitting alongside `entra-id` (identity fabric), `entra-dynamic-groups` (UIAO_152), `entra-id-governance` (PIM/lifecycle), and `entra-policy-targeting` (UIAO_164).
+:::
+
+## Overview
+
+The **Entra Administrative Units Adapter** is the delegation-boundary actuator in the UIAO governance stack. It provisions, maintains, and audits Entra ID Administrative Units — the mechanism that replaces Active Directory's OU-based delegation model in a flat, cloud-native directory.
+
+Active Directory delegated management authority implicitly through OU placement: assign a role on an OU, and it covered everything beneath it. Entra ID has no OU tree. The equivalent is an Administrative Unit with a membership rule and a scoped role assignment. The AU adapter makes that equivalence operational by:
+
+1. **Deriving AUs from the OrgPath codebook** (UIAO_151). Every facet value or facet-tuple combination that appears in the delegation matrix (UIAO_154) corresponds to an AU definition that this adapter provisions and governs.
+2. **Enforcing membership rule integrity**. AU membership rules are facet predicates (`extensionAttribute` expressions). The adapter validates them against the live codebook; a predicate referencing a retired facet value is a drift finding.
+3. **Auditing role assignments**. Every scoped role assignment is recorded in the delegation matrix and verified against the live tenant. Unscoped assignments for AU-scopable roles are flagged as Governance Rule 4 violations.
+4. **Enforcing the Restricted Management invariant**. All AUs in the governed estate must have `isMemberManagementRestricted: true`. The adapter detects and reports any AU without this flag.
+
+**Implementation:** Planned for Phase 1 of the `entra-admin-units` track. Canon definition: UIAO_154 v3.0 (Model C). Provisioning ADR: ADR-037.
+
+## What Administrative Units Replace
+
+The table below maps the AD delegation patterns this adapter operationalizes to their Entra equivalents:
+
+| Active Directory pattern | Entra ID equivalent (this adapter provisions) |
+|---|---|
+| Helpdesk rights on `OU=Baltimore` | `AU-Baltimore` with Authentication Administrator scoped |
+| IT admin rights on `OU=East-Region` | `AU-US-East` with User Administrator scoped |
+| Dept admin group management on `OU=Finance` | `AU-Department-Finance` with Groups Administrator scoped |
+| Forest-level privileged admin | Global Administrator, PIM-eligible only (not provisioned by this adapter — see `entra-id-governance`) |
+| Service account management OU | Service-account AU with Workload Identity Administrator scoped |
+| Site-linked GPO scope | Not delegation — see `entra-policy-targeting` (Intune scope tags / CA named locations) |
+
+## Three-Tier Delegation Model
+
+Per UIAO_154 v3.0 (Model C), the delegation model organizes AUs into three tiers. The adapter provisions all tiers from the delegation matrix:
+
+### Tier 1 — Enterprise AU
+
+| AU Name | Membership Rule | Roles Scoped |
+|---|---|---|
+| `AU-Enterprise` | `(attr2 -ne "")` — any principal with a populated Department facet | Global Reader, Security Reader, Reports Reader |
+
+The Enterprise AU is the "all governed users" scope. `isMemberManagementRestricted: true` is mandatory.
+
+### Tier 2 — Department AUs
+
+Membership rule: single `extensionAttribute2` predicate.
+
+| AU Pattern | Example rule | Roles typically scoped |
+|---|---|---|
+| `AU-Department-IT` | `(attr2 -eq "IT")` | User Administrator, Groups Administrator |
+| `AU-Department-Finance` | `(attr2 -eq "Finance")` | User Administrator, Groups Administrator |
+| `AU-Department-HR` | `(attr2 -eq "HR")` | User Administrator |
+
+One AU per active Department facet value in the codebook. The adapter creates a new Tier 2 AU when a new Department value is added to UIAO_151, and retires it (removing role assignments and then the AU) when the value is deprecated.
+
+### Tier 3 — Division AUs
+
+Membership rule: two-facet composition (`attr2` AND `attr3`).
+
+| AU Pattern | Example rule | Roles typically scoped |
+|---|---|---|
+| `AU-IT-InfraOps` | `(attr2 -eq "IT") and (attr3 -eq "InfraOps")` | Helpdesk Administrator, Password Administrator |
+| `AU-Finance-Payroll` | `(attr2 -eq "Finance") and (attr3 -eq "Payroll")` | Helpdesk Administrator |
+
+### Cross-Cutting AUs
+
+Membership rules composing facets from different dimensions — region × clearance, classification × department, etc.
+
+```text
+AU-Region-EASTUS-Privileged
+  rule: (attr1 -eq "EASTUS") and (attr8 -eq "SECRET")
+  roles: Authentication Administrator
+
+AU-Classification-Contractor-All
+  rule: (attr6 -eq "Contractor")
+  roles: Helpdesk Administrator, Password Administrator
+
+AU-IT-InfraOps-FullTime
+  rule: (attr2 -eq "IT") and (attr3 -eq "InfraOps") and (attr6 -eq "Employee")
+  roles: Groups Administrator
+```
+
+Cross-cutting AUs are declared explicitly in UIAO_154. The adapter does not infer them from the codebook — they require a delegation matrix entry.
+
+## PIM + AU Interaction
+
+AU scoping and PIM eligibility are independent layers that are always used together in the UIAO model:
+
+| Layer | What it controls | How set |
+|---|---|---|
+| AU scope | Which objects a role covers (the *what*) | Membership rule on the AU |
+| Role assignment | Which permission the role holder has (the *how*) | Scoped Entra role bound to the AU |
+| PIM eligibility | Whether the permission is immediately active or requires elevation (the *when*) | All assignments in this adapter are **eligible**, never active |
+
+::: {.callout-important}
+**All role assignments provisioned by this adapter are PIM-eligible, not permanently active.** A permanently active role assignment within the governed AU estate is a drift finding regardless of scope.
+:::
+
+PIM activation requirements per role tier (configured in `entra-id-governance`):
+
+| Role tier | Justification required | Approval required | Max session |
+|---|---|---|---|
+| Tier 1 (Global Reader) | No | No | 8 hours |
+| Tier 2 (User Administrator) | Yes | No | 4 hours |
+| Tier 3 (Helpdesk Administrator) | Yes (RITM number) | No | 4 hours |
+| Elevated (Authentication Admin) | Yes | Supervisor approval | 2 hours |
+| Privileged (Privileged Role Admin) | Yes | Dual approval | 1 hour |
+
+## Scope
+
+**Reads:** Microsoft Graph AU endpoints (`/directory/administrativeUnits`, `/directory/administrativeUnits/{id}/members`, `/directory/administrativeUnits/{id}/scopedRoleMembers`).
+
+**Writes:** Creates, updates, and retires AUs per UIAO_154. Modifies membership rules and role assignments. All writes are idempotent and logged.
+
+**Does NOT:** Modify user objects or group objects. Does not activate PIM sessions (that is `entra-id-governance`). Does not assign licenses or conditional access policies.
+
+## Canon Invariants
+
+Per ADR-037 and UIAO_154 Governance Rule 4:
+
+1. Every AU in the governed estate has `isMemberManagementRestricted: true`.
+2. Every AU membership rule references only active facet values from UIAO_151.
+3. Every role that has an AU-scope option is scoped to an AU — not assigned tenant-wide.
+4. Every role assignment is PIM-eligible, not permanently active.
+5. Cross-cutting AUs have an explicit entry in UIAO_154 — they are not inferred.
+
+Violations of any invariant are surfaced as drift findings by the adapter's audit run.
+
+## Controls
+
+| Control | Role | Capability |
+|---|---|---|
+| **AC-2** Account Management | Primary | AU scope ensures administrative access tracks org structure automatically |
+| **AC-5** Separation of Duties | Primary | Tier-scoped roles prevent any single administrator from having tenant-wide authority |
+| **AC-6** Least Privilege | Primary | AU scope + PIM eligibility enforces minimum necessary access |
+| **AC-6(2)** Non-Privileged Access | Supporting | Governance Rule 4 blocks unscoped role assignments |
+| **AU-2** Audit Events | Supporting | Every role activation (PIM) and AU membership change is logged |
+
+## Related Artifacts
+
+| Artifact | Role |
+|---|---|
+| [UIAO_154](../../../src/uiao/canon/UIAO_154_Delegation_Matrix_AUs_Roles.md) | Canonical delegation matrix — the SSOT this adapter executes |
+| [ADR-037](../../adr/adr-037-admin-unit-provisioning.qmd) | Architecture decision governing AU provisioning |
+| [UIAO_151](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md) | OrgPath codebook — authoritative source for facet values used in membership rules |
+| [UIAO_152](../../../src/uiao/canon/UIAO_152_Dynamic_Group_Library.md) | Dynamic group library — companion to AUs; groups supply the CA and policy targeting surface |
+| [entra-id-governance](../entra-id-governance/entra-id-governance.qmd) | Governs PIM configuration; activation eligibility requirements per role tier |
+| [Book_01 Chapter 6](../../orgpath-narrative/Book_01_CPT_06.qmd) | Narrative: AUs as partial compensation for missing OU structure |
+| [Book_01 Chapter 17](../../orgpath-narrative/Book_01_CPT_17.qmd) | Narrative: how OrgPath makes AU delegation structurally equivalent to OU delegation |

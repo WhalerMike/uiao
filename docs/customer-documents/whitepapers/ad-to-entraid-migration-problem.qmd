@@ -67,6 +67,24 @@ What you're describing isn't just a migration tool. It's a **governance discover
 
 That's a capability that hospitals, banks, universities, manufacturers, and federal agencies all need. The federal compliance angle (FedRAMP, Zero Trust, OSCAL) is just one vertical of a much broader market.
 
+### AD Governance Concepts → Entra ID Equivalents
+
+The reconstruction is not guesswork. Every AD delegation concept has a direct Entra counterpart — but it must be built explicitly rather than inherited structurally.
+
+| AD Concept | Entra ID Equivalent | Notes |
+|---|---|---|
+| Organizational Unit (OU) | Administrative Unit (AU) | AU membership is attribute-driven (OrgPath facets), not container-based |
+| OU-scoped delegation | Entra role scoped to AU | Same role (e.g., User Administrator) — different scope binding |
+| GPO inheritance down OU tree | Intune policy sets targeted at dynamic groups | Group rule replaces OU position |
+| Domain Admin | Global Administrator | PIM-eligible only; never permanently active |
+| Helpdesk delegation on leaf OU | Authentication Administrator scoped to AU | AU membership rule matches org facets |
+| Site-linked GPO (network policy) | Conditional Access + named locations | Token-based, not session/proximity-based |
+| OU read delegation for service accounts | Microsoft Graph scoped API + least-privilege Entra role | Explicit scope; no implicit OU traversal |
+| Security group creation by dept admin | Groups Administrator scoped to department AU | Role + AU together replace OU ACL |
+| Privileged service account OU | Workload Identity Administrator (PIM-gated) | No OU containment; explicit role binding |
+
+The UIAO Mapping step operationalizes this table: for each delegation record found in Discovery, it produces the AU definition, the membership rule (OrgPath facet predicate), and the role-assignment record needed in Entra. The output is executable canon, not a spreadsheet.
+
 ## The Strategic Question
 
 The reason this matters is architectural: the federal compliance machinery in UIAO (OSCAL generation, KSI engine, FedRAMP artifacts) is a **vertical add-on** to the core governance engine, not the other way around. That engine should be clean and universal, with the federal compliance module layered on top.
