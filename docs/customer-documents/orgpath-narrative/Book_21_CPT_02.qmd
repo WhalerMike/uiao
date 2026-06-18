@@ -1,0 +1,89 @@
+---
+title: "What M-25-21 Actually Requires"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_21
+series-order: 2
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+OMB M-25-21 is widely read as a transparency requirement — agencies report their AI deployments annually, check a few boxes, and move on. That reading is wrong. Every field in the M-25-21 inventory schema maps directly to an identity governance obligation. ATO status is a credential issuance gate. Contact email is an owner identity anchor. Bureau name is an OrgPath placement node. The high-impact checklist is a governance posture requirement. This chapter works through those mappings field by field, explains why the reporting framing persists and what it costs, and lays out ADR-109's reframe: M-25-21 obligations are IAM obligations, and they belong in the identity governance layer, not the compliance reporting layer.
+:::
+
+![The six M-25-21 inventory fields mapped to their IAM governance meaning: have_ato to Authorization Boundary Gate, contact_email to Owner Identity Anchor, agency_bureau to OrgTree Placement Node, has_pii/pia_url to Credential Sensitivity Tier, is_high_impact to Governance Posture Requirement, and development_stage to Credential Lifecycle State.](Book_21_CPT_02_fig1.svg){#fig-m2521-iam-mapping fig-alt="Two-column mapping diagram on a white background. Left column header reads 'M-25-21 Inventory Field' in navy. Right column header reads 'IAM Governance Meaning' in teal. Six rows of field-to-meaning pairs connected by amber arrows. Row 1: navy pill labeled 'have_ato / Authorization to Operate flag' pointing to teal box 'Authorization Boundary Gate — Credential issuance gated until ATO is granted'. Row 2: navy pill 'contact_email / Point-of-contact address' to teal box 'Owner Identity Anchor — Binds the AI system to a responsible human identity'. Row 3: navy pill 'agency_bureau / Reporting bureau name' to teal box 'OrgTree Placement Node — Maps directly to an OrgPath organizational position'. Row 4: navy pill 'has_pii / pia_url / PII flag and PIA link' to teal box 'Credential Sensitivity Tier — Determines rotation cadence and access review scope'. Row 5: navy pill 'is_high_impact / High-impact AI flag' to teal box 'Governance Posture Requirement — Triggers full checklist: testing, review, failsafe, appeal'. Row 6: navy pill 'development_stage / Lifecycle status label' to teal box 'Credential Lifecycle State — Retirement triggers credential revocation and OrgPath archive'. Title at top reads M-25-21 Inventory Fields Are IAM Fields. White background, navy and teal color palette, amber connector arrows." width="100%"}
+
+## What the Mandate Actually Says
+
+OMB Memorandum M-25-21, "Advancing the Responsible Acquisition and Use of AI in the Federal Government," was published in April 2025. It extends and sharpens the AI inventory mandate that originated in Executive Order 13960 §5, which required federal agencies to inventory their AI use cases beginning in 2020. M-25-21 makes three additions that matter for identity governance.
+
+First, it requires that every deployed AI system — not just planned or piloted systems — have an Authorization to Operate before it goes into production. The `have_ato` field in the inventory schema captures this as a binary yes/no, but the underlying requirement is a formal risk acceptance decision by an authorizing official. An ATO is not a checkbox; it is a documented determination that the system's security posture is acceptable at a defined impact level.
+
+Second, it establishes a high-impact designation for AI systems whose outputs affect rights, opportunities, safety, or access to critical services. High-impact systems carry an additional governance checklist — §V of the memorandum — that requires testing before deployment, independent assessment, ongoing monitoring, a failsafe mechanism, and an appeal process for affected individuals. The inventory schema captures this through the `is_high_impact` flag and six checklist fields: `hi_testing_conducted`, `hi_assessment_completed`, `hi_independent_review`, `hi_ongoing_monitoring`, `hi_failsafe_presence`, and `hi_appeal_process`.
+
+Third, it mandates annual re-submission of the inventory, which means the governance state of every deployed AI system must be re-evaluated every year. This is not a one-time disclosure; it is a recurring governance obligation.
+
+The mandate is real, the obligations are specific, and the data schema that captures them is published. What is missing is the recognition that these obligations are identity governance obligations in disguise.
+
+## The Six Inventory Fields That Are Identity Governance Fields
+
+The 2025 Federal AI Use Case Inventory schema contains seventeen fields. Six of them are, on inspection, IAM fields that happen to live in a reporting spreadsheet rather than an identity management system.
+
+| M-25-21 Field | Reported As | IAM Meaning |
+| :--- | :--- | :--- |
+| `have_ato` | Compliance status | Authorization boundary gate — the credential lifecycle cannot start without it |
+| `contact_email` | Administrative contact | Owner identity anchor — the human identity responsible for the system's credentials |
+| `agency_bureau` | Organizational placement | OrgTree node — the governance position that determines policy, rotation cadence, and access review |
+| `has_pii` / `pia_url` | Privacy indicator | Credential sensitivity tier — sets rotation requirements and access review scope |
+| `is_high_impact` | Risk classification | Governance posture requirement — triggers the full §V checklist as an active governance obligation |
+| `development_stage` | Lifecycle label | Credential lifecycle state — retirement is a deprovisioning trigger, not just a reporting update |
+
+None of these interpretations require inventing new meaning. Each one follows directly from what the field represents combined with what identity governance requires of any credential-bearing system. The gap is not conceptual; it is operational. The fields exist. The identity governance obligations they imply exist. The link between them does not.
+
+## The High-Impact Checklist as a Governance Posture Requirement
+
+The six high-impact checklist fields deserve particular attention because they are the most operationally demanding part of M-25-21 and the most commonly misread as paperwork rather than governance.
+
+`hi_testing_conducted` records whether the system was tested for performance, accuracy, bias, and safety before deployment. In IAM terms, this is a pre-issuance security review — the credential should not be provisioned until the system it serves has passed a defined testing threshold. An AI system that was deployed without testing and then received credentials retroactively has inverted the governance sequence. The ATO process is supposed to prevent that inversion; the testing checklist field makes it auditable.
+
+`hi_independent_review` records whether an entity outside the deploying bureau reviewed the system's design and outputs. In IAM terms, this maps to the principle that a system owner should not be the sole judge of whether their system's access is appropriate. Independent review is the AI-system equivalent of the separation-of-duties principle that governs privileged access in human identity management.
+
+`hi_ongoing_monitoring` records whether the deployed system is actively monitored for performance degradation, behavioral drift, and unexpected outputs. This is the operational equivalent of credential rotation and continuous access review combined: the assurance that a system that was safe at deployment remains safe in production.
+
+`hi_failsafe_presence` records whether the system has a mechanism to halt or override its outputs when something goes wrong. In IAM terms, this is the emergency revocation capability — the equivalent of the break-glass procedure that every privileged access program must have for its most sensitive credentials.
+
+`hi_appeal_process` records whether individuals affected by the system's decisions have a path to contest those decisions. This maps to the audit trail and remediation process that IAM requires for access decisions: every consequential decision must be reviewable, and individuals must have recourse.
+
+Taken together, the high-impact checklist is not a communications document. It is a governance posture specification. An agency that checks all six boxes has demonstrated pre-deployment testing, independent review, active monitoring, emergency response capability, and due process. An agency that has not is not just missing paperwork — it is missing the governance controls that M-25-21 requires.
+
+## Why Agencies Treat This as Reporting, Not Governance
+
+The reporting-not-governance framing is not irrational. It reflects the institutional context in which M-25-21 was implemented.
+
+The inventory was created as a transparency instrument. Its purpose, as stated in EO 13960, was to make federal AI activity visible to oversight bodies and the public. Transparency instruments produce reporting workflows: a coordinator collects data from program offices, validates the schema, and submits to OMB by the annual deadline. That workflow is handled by compliance staff, not by the identity governance team. The IAM team never sees the inventory data. The inventory coordinator never thinks about service accounts.
+
+The result is that the M-25-21 inventory is maintained in parallel with the identity governance program rather than integrated into it. A system that appears in the inventory as `have_ato = Yes` may have credentials that were provisioned before the ATO was granted, are owned by a contractor who left the agency, have never been rotated, and will persist indefinitely after the system is retired. None of that is visible in the inventory because the inventory does not ask about credentials. None of it is caught by the identity governance program because the identity governance program does not read the inventory.
+
+The cost of that parallel operation compounds over time. Every year that an AI system is in production without an identity governance record is a year during which the credential's blast radius is unknown, the owner is unverifiable, and the audit trail for the system's actions runs through an account that no governance process has reviewed. At the scale of 1,480 live federal AI systems, that gap represents a substantial and measurable exposure surface — one that the previous chapter's scanner findings make concrete.
+
+The framing persists because fixing it requires a cross-functional decision that neither the compliance team nor the identity governance team has clear authority to make unilaterally. The compliance team owns the inventory process; the identity governance team owns the credential lifecycle. Integrating them requires an architectural decision that names IAM as the authoritative home for M-25-21 governance obligations.
+
+## ADR-109's Reframe: These Are IAM Obligations
+
+ADR-109 makes that architectural decision explicit. Its §1 position statement is direct: M-25-21 inventory obligations are IAM obligations. Classification, ATO status, ownership, and PIA are machine-identity governance fields, not reporting fields. They belong in the identity governance layer, and the inventory is the discovery feed that populates that layer — not the destination where governance ends.
+
+The practical consequence of this reframe is a reversal of the current operational sequence. Under the current model, an AI system is deployed, reported to the inventory, and then (sometimes) governed. Under ADR-109's model, an AI system cannot receive credentials until it has an OrgPath record derived from the inventory data. The `have_ato` field gates credential issuance. The `contact_email` field populates the owner record. The `agency_bureau` field determines the OrgTree placement. The `development_stage` field drives the credential lifecycle. The `is_high_impact` flag determines which governance posture checklist applies.
+
+This is not a new governance regime imposed on top of M-25-21. It is M-25-21's existing obligations, read correctly and executed in the right system. The data already exists. The obligations already apply. The gap is that nobody has connected the inventory to the identity layer. ADR-109 closes that gap by designating the OMB inventory as a governed discovery source, mapping each identity-relevant field to its IAM counterpart, and establishing the scanner (UIAO_196) as the mechanism that reads the inventory, produces OrgPath records, and gates credential issuance on ATO status.
+
+The reframe does not change what agencies are required to report. It changes what they are required to do with what they report. A `have_ato = Yes` entry in the inventory is no longer the end of the ATO governance story; it is the beginning of the credential lifecycle story. A `development_stage = retired` update is no longer a reporting action; it is a deprovisioning trigger. The inventory becomes live input to a governance process rather than a static record of a completed disclosure.
+
+The chapters that follow show how each piece of that process works in practice: how the OrgPath record is derived from inventory data, how the ATO link connects to the credential lifecycle, how the high-impact checklist maps to governance posture verification, and how agentic AI systems are handled at the highest priority tier the substrate supports.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 3 — OrgPath as the AI Identity Substrate →](Book_21_CPT_03.qmd)
+:::

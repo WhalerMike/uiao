@@ -1,0 +1,101 @@
+---
+title: "OrgPath as the Authorization Spine for AI"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_21
+series-order: 7
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+OrgPath is not a label applied to AI systems after the fact. It is the organizational position that makes every downstream governance decision deterministic — which bureau owns the blast radius, which credential tier applies, which access review cycle governs the system, and which drift findings route to which governance contact. This chapter explains how that position is derived from the OMB inventory, what the derivation looks like for real agencies, and how the same OrgPath spine that governs privileged access management and device identities now governs the AI surface.
+:::
+
+![Three-column diagram showing navy OrgPath node pills (DOD:DISA, HHS:CDC, DOJ:BOP) on the left, three teal governed-surface boxes per row (Human, Device, AI System) in the center, and amber governance output chips (rotation cadence, access tier, blast radius, drift routing, lifecycle) on the right. Arrows flow left to right. Title: OrgPath: One Authorization Spine, Three Identity Surfaces. White background.](Book_21_CPT_07_fig1.svg){#fig-orgpath-spine fig-alt="Three-column diagram showing navy OrgPath node pills (DOD:DISA, HHS:CDC, DOJ:BOP) on the left, three teal governed-surface boxes per row (Human, Device, AI System) in the center, and amber governance output chips (rotation cadence, access tier, blast radius, drift routing, lifecycle) on the right. Arrows flow left to right. Title: OrgPath: One Authorization Spine, Three Identity Surfaces. White background." width="100%"}
+
+## What the OMB inventory provides — and what it cannot
+
+The 2025 Federal Agency AI Use Case Inventory is an authoritative transparency instrument. It records 3,611 AI use cases across 56 agencies, with fields for use case name, deploying agency, bureau, PII handling, Authorization to Operate status, development stage, and point-of-contact email. For each live system, the inventory answers the question: what does this system do, and who deployed it?
+
+What the inventory cannot answer — because it has no fields for it — is the question of organizational position. "Who deployed it" is not the same as "where does this system sit in the governance hierarchy." The bureau field tells you a name. OrgPath tells you what that name means: which governance contact owns the identity lifecycle, which credential tier applies, which access review schedule governs the system, what the blast radius boundary is if the credential is compromised.
+
+The inventory is the discovery feed. OrgPath is the authorization layer that gives the inventory's data governance meaning. Neither works without the other.
+
+## The derivation: from bureau field to OrgPath prefix
+
+The mechanism that connects the OMB inventory to the OrgPath authorization spine is a single function: `_orgpath_from_bureau(agency, agency_bureau)`. It reads the `agency` and `agency_bureau` fields from the inventory record and derives a structured OrgPath namespace prefix.
+
+The logic is straightforward. The agency field maps to the top-level OrgTree node. The agency_bureau field maps to the bureau node beneath it. The result is a colon-delimited prefix that places the AI system inside the same namespace as the human and device identities that the bureau already governs.
+
+| Agency field | Agency_bureau field | Derived OrgPath prefix |
+|---|---|---|
+| Department of Defense | Defense Information Systems Agency | `DOD:DISA` |
+| Department of Health and Human Services | Centers for Disease Control and Prevention | `HHS:CDC` |
+| Department of Justice | Bureau of Prisons | `DOJ:BOP` |
+| Department of Transportation | Federal Aviation Administration | `DOT:FAA` |
+| Department of Energy | National Nuclear Security Administration | `DOE:NNSA` |
+
+Once the prefix is established, the system leaf is derived from the use case name or, where an ATO exists, the `system_name_ato` field. The full OrgPath for a deployed AI system takes the form `DOD:DISA:ai:joint-ai-ops-assistant` — bureau prefix, identity surface type, system leaf. That fully qualified path is the identity anchor that makes every downstream governance process addressable.
+
+This derivation is specified in ADR-109 §2. The binding rules are not discretionary: `agency_bureau` maps to the OrgPath node, and the system leaf is derived deterministically from `use_case_name` or `system_name_ato`. The governance contact, credential tier, rotation cadence, and access review cycle all follow from the node. They are not set independently per system — they are inherited from the bureau's existing governance posture and applied uniformly to every identity surface the bureau owns.
+
+## DRIFT-IDENTITY::ai-no-orgpath — what a blank bureau field means operationally
+
+The most consequential finding the UIAO AI identity governance scanner produces is not a credential violation or an expired ATO. It is a blank bureau field.
+
+When `agency_bureau` is blank in the inventory record, the `_orgpath_from_bureau` function cannot produce a valid OrgPath prefix. The system has no organizational placement. Every downstream governance process that depends on OrgPath — credential tier assignment, rotation scheduling, access review routing, blast radius scoping, drift finding disposition — is blind to the system.
+
+The scanner surfaces this as **DRIFT-IDENTITY::ai-no-orgpath**, a Priority 2 finding. Priority 2 in the UIAO drift taxonomy means the finding blocks certification: the system cannot pass an access review, cannot receive a credential rotation notice, and cannot have its deprovisioning event triggered on retirement until the finding is resolved. The bureau field must be populated, verified against the OMB agency inventory, and bound to a valid OrgTree node before any other identity governance action can proceed.
+
+Operationally, a blank bureau field is not a data quality problem. It is a governance failure. Without an OrgPath node, no one owns the identity lifecycle. No one receives rotation alerts. No one is accountable for the blast radius if the system's credential is compromised. The system is present in the transparency inventory and invisible in the authorization layer simultaneously — which is the worst combination, because it creates the appearance of governance where none exists.
+
+In the 2025 inventory dataset, 488 live AI systems — 33 percent of all deployed systems — have a blank or unresolvable `contact_email` field, which is the surface manifestation of the same underlying absence. A system without a resolvable ownership anchor cannot have a valid OrgPath. The ai-no-orgpath finding and the contact-email gap are two expressions of the same root condition: the system was deployed without being placed in the organizational hierarchy.
+
+## The authorization spine: PAM, devices, and AI systems share one model
+
+The OrgPath spine that governs AI systems is not a new construct built for AI. It is the same spine that was built for device identities in ADR-038 and extended to privileged access management in Book_20.
+
+ADR-038 established that device identities — workstations, servers, network infrastructure — derive their OrgPath placement from the bureau that owns the asset. A device at DOD:DISA inherits the same credential tier, rotation cadence, and access review cycle as a human identity at DOD:DISA. The governance posture of the bureau propagates uniformly to every identity subject in its namespace.
+
+Book_20 extended this model to CyberArk PAM vaults. A privileged service account that accesses a DOD:DISA system is governed at the DOD:DISA node. The vault that holds the credential is within the same blast radius boundary as the system it accesses. The access review that certifies the human's access to the vault runs on the same cycle as the access review that certifies the AI system's service account.
+
+This is the authorization spine: one OrgPath node, three identity surfaces, one governance model. When an AI system at DOD:DISA is assigned the OrgPath `DOD:DISA:ai:joint-ai-ops-assistant`, it is placed in the same governance namespace as the human analysts who use the system, the devices the system runs on, and the privileged accounts the system uses to access sensitive data. The credential tier that applies to the PAM vault also applies to the AI service account. The rotation cadence that governs the device certificates also governs the AI system's API credentials. The access review that certifies human access also certifies the system's access.
+
+Consistency is not a design preference. It is a security requirement. An authorization model that treats human, device, and AI identities as separate governance domains creates seams at the boundaries — and seams are where adversaries move laterally. A uniform spine eliminates the seams by ensuring that every identity subject in the bureau's namespace is governed by the same rules, reviewed on the same schedule, and rotated on the same cadence.
+
+## Blast radius scoping: OrgPath defines the investigation boundary
+
+When a credential is compromised, the first operational question is scope: how much of the environment is affected, and how quickly can the investigation boundary be established? For human identities in a well-governed environment, that boundary is the OrgPath node. The bureau's governance contact knows exactly which systems, credentials, and data are within the node's scope because the OrgPath model maintains that map continuously.
+
+For AI systems, the blast radius calculation follows the same logic. An AI system at `DOD:DISA:ai:joint-ai-ops-assistant` has access to data and systems within the DOD:DISA governance boundary. If the system's service account credential is compromised, the investigation scope is the DOD:DISA node: every system the credential can reach, every dataset it can query, every API it can call. The OrgPath model has maintained that map since the credential was provisioned, because every permission grant is recorded against the OrgPath node, not just against the credential itself.
+
+This is the operational value of placing AI systems in the OrgPath spine before a credential compromise occurs, not after. When the node is established at provisioning time, the blast radius boundary is already drawn. When a compromise is detected, the investigation team does not need to reconstruct the scope from scratch — they query the OrgPath node and receive the complete map of what the compromised identity could reach.
+
+Compare this to an ungoverned AI system: no OrgPath node, no maintained permission map, no recorded access scope. When the credential is compromised, the investigation must trace every permission grant manually, querying every system the credential might have touched, reconstructing from logs what should have been recorded in the governance model. The difference between hours and days of investigation time is, in large part, the difference between a system that has an OrgPath record and one that does not.
+
+## Cross-surface policy consistency: one cadence governs all
+
+The final consequence of placing AI systems on the OrgPath spine is the one that is easiest to overlook because it is invisible when it is working correctly: policy consistency across identity surfaces.
+
+Credential tier, rotation cadence, and access review cycle are properties of the OrgPath node, not properties of the individual identity subject. When a bureau establishes that its credential tier is Privileged — requiring hardware-backed authentication, 90-day rotation, and quarterly access review — that tier applies to the bureau's human accounts, the bureau's device certificates, the bureau's PAM vault credentials, and the bureau's AI service accounts. There is no separate policy negotiation per system, no exception process to handle AI service accounts differently from human accounts, no governance seam where AI credentials escape the rotation schedule that applies to everything else.
+
+| OrgPath property | Human identity | Device identity | AI system identity |
+|---|---|---|---|
+| Credential tier source | OrgPath node | OrgPath node | OrgPath node |
+| Rotation cadence | Bureau standard | Bureau standard | Bureau standard |
+| Access review cycle | Annual / bureau | Annual / bureau | Annual / bureau |
+| Drift routing | Bureau CIO | Bureau CIO | Bureau CIO |
+| Blast radius boundary | OrgPath node | OrgPath node | OrgPath node |
+| Deprovisioning trigger | Separation event | Retirement event | `development_stage = retired` |
+
+The rows differ only in the event that triggers deprovisioning. Everything else is inherited from the bureau's OrgPath node. This is the authorization spine in its most useful form: a single, maintainable governance posture that propagates to every identity surface the bureau owns, including identity surfaces that did not exist when the governance posture was written.
+
+OrgPath was not designed for AI systems. It was designed for organizational placement — the idea that every identity subject exists somewhere in a hierarchy, and that organizational position is the correct anchor for policy, lifecycle, and accountability. AI systems, like humans and devices before them, are identity subjects with organizational positions. Placing them on the spine is not a workaround. It is the correct application of a model that was always meant to govern every identity surface the organization runs.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 8 — The Agentic AI Tier: When the System Acts →](Book_21_CPT_08.qmd)
+:::
