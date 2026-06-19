@@ -1,0 +1,256 @@
+---
+title: "Appendix — Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_21
+series-order: 9
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+This appendix defines every term, acronym, drift finding code, and external citation used in this book. It is intended to make the bundle fully self-contained for readers who do not have access to the UIAO customer portal or the canonical ADR library. Normative authority rests with the cited Architecture Decision Records; this glossary paraphrases them for accessibility.
+:::
+
+---
+
+## Part I — Glossary of Terms
+
+### Identity Governance Concepts
+
+**Active Governance**
+The operating posture in which UIAO acts as a reconciliation control plane — continuously comparing the observed state of a governed surface against the authoritative expected state and producing structured findings when they diverge. Active Governance does not replace provider data planes; it governs them. Defined in ADR-092.
+
+**Architecture Decision Record (ADR)**
+UIAO's numbered, binding governance specification. Each ADR documents a specific platform decision — its context, the options considered, the chosen approach, and the constraints that follow from it. ADRs are the authoritative source of truth for platform behavior. References in this book follow the form *ADR-NNN*. A complete list of ADRs cited in this book appears in Part III.
+
+**Authorization to Operate (ATO)**
+A formal federal security authorization issued under the NIST Risk Management Framework (NIST SP 800-37) that authorizes a federal information system to operate. An ATO documents the residual risk accepted by an authorizing official. Under OMB M-25-21, every deployed and piloted federal AI system is required to have a current ATO. See also: *Single-ATO Reciprocity*.
+
+**Blast Radius**
+The scope of access reachable by a compromised credential or identity record. For an AI system, blast radius is the graph of every data store, API, and downstream system the system's service account is authorized to reach. Blast radius is bounded by OrgPath-tier credential policy and by the access review cycle.
+
+**Credential Lifecycle**
+The full operational life of an identity credential — creation, rotation, permission scoping, access review, and revocation. UIAO governs credential lifecycle for AI system identities through the same mechanisms it uses for human service accounts: OrgPath-anchored rotation schedules, access review prompts to the bureau governance contact, and deprovisioning on retirement.
+
+**Drift**
+A deviation between the expected state of a governed identity surface (as defined by the authoritative source of record) and its observed state. Drift is detected by the Drift Engine and expressed as structured finding objects. Not all drift is an emergency: P1 drift halts the governance gate; P2 drift is routed for operator disposition. See also: *Drift Finding*, *Drift Engine*.
+
+**Drift Engine**
+The six-phase orchestration layer in UIAO that detects, classifies, routes, and gates on identity surface drift. The six phases are: collect, normalize, compare, classify, gate, and remediate. For the AI identity surface, the Drift Engine ingests the OMB Federal AI Use Case Inventory as the authoritative source and compares it against the UIAO machine-identity registry to produce findings. Defined in ADR-040.
+
+**Drift Finding**
+A structured record produced by the Drift Engine when it detects a governance gap. Each finding carries: a deterministic finding ID (SHA-256 hash of the finding content), a drift class (e.g., `DRIFT-COMPLIANCE::ai-ato-gap`), a severity (P1, P2, or P3), a posture (NEVER_AUTOFIX, PER_POLICY, or INFORMATIONAL), the intended state, the observed state, and an evidence reference. A complete table of drift finding codes used in this book appears in Part II.
+
+**Ghost Credential**
+A service account or workload identity credential that persists after the system it was created for has been retired, decommissioned, or replaced. Ghost credentials retain the access permissions assigned at creation and are not covered by any access review cycle because no system claims ownership of them. Ghost credentials in the federal AI identity surface arise when `development_stage` moves to `retired` in the OMB inventory but no deprovisioning workflow fires against the associated credentials.
+
+**Governance Mode**
+A declaration, required for all AI systems governed under ADR-112, of where in the L0–L4 actuation ladder the system's autonomous authority ends and human oversight begins. For agentic AI systems (L4 actors), a governance mode declaration is required as a condition of ATO and is a prerequisite for clearing a `DRIFT-COMPLIANCE::ai-agentic-ungoverned` finding.
+
+**Identity Subject**
+Any entity — human, device, or AI system — that holds an identity record in the UIAO governance substrate. An identity subject has an OrgPath placement, a credential lifecycle, and a set of governed permissions. AI systems become identity subjects when they are enrolled in UIAO; unenrolled AI systems are *shadow AI* until their enrollment is completed.
+
+**JML (Joiner / Mover / Leaver)**
+The three lifecycle transitions that govern the full operational life of an identity subject: the *Joiner* event provisions the identity and credentials when a subject enters the governed environment; the *Mover* event updates placement and credentials when the subject's organizational position or capabilities change; the *Leaver* event deprovisions credentials and seals the audit record when the subject exits. JML is the organizing model for UIAO's identity lifecycle governance for both human identities and, by extension, AI system identities.
+
+**L0–L4 Actuation Ladder**
+UIAO's five-level model of active governance intensity, defined in ADR-092:
+
+| Level | Name | Description |
+|---|---|---|
+| **L0** | Observe | Read and enumerate the governed surface; detect deviations |
+| **L1** | Alert | Emit findings to a human decision-maker; no automated action |
+| **L2** | Advise | Propose remediation actions for human approval |
+| **L3** | Gated actuation | Execute remediations automatically within a defined policy scope, with human override |
+| **L4** | Autonomous | Execute multi-step workflows across system boundaries without a human approval step |
+
+UIAO's current activation level for federal AI governance is L1. Promotion to L2 or L3 requires a governance-board decision per ADR-112 §3 and ADR-092.
+
+**Machine Identity**
+A non-human identity — a service account, API key, workload identity, managed identity, or bot account — that holds credentials and acts inside a governed identity environment. AI systems are machine identities. Machine identities are governed through the SailPoint Machine Identity Security adapter (ADR-059) and the UIAO AI identity governance scanner (UIAO_196).
+
+**OrgPath**
+UIAO's organizational placement model. OrgPath assigns every identity object a position in the federal bureau hierarchy using a colon-separated namespace path. For AI systems, OrgPath is derived from the OMB inventory's `agency` and `agency_bureau` fields. A system's OrgPath anchors every downstream governance process: policy application, credential rotation scheduling, access review assignment, and deprovisioning authority.
+
+OrgPath notation: `AGENCY:BUREAU::SYSTEM-NAME`
+
+Examples:
+- `DOD:DISA` — a system owned by the Defense Information Systems Agency within DoD
+- `DOD:DISA::ACAS` — the Assured Compliance Assessment Solution, leaf identifier within DISA
+- `HHS:CDC` — a system owned by the Centers for Disease Control and Prevention within HHS
+
+A system with no OrgPath — because its `agency` field is blank in the OMB inventory — produces a `DRIFT-IDENTITY::ai-no-orgpath` finding and is invisible to all OrgPath-dependent governance processes.
+
+**OrgTree**
+The hierarchical registry of organizational nodes that OrgPath paths are validated against. OrgTree maps agency codes and bureau names to their canonical positions in the federal hierarchy. OrgPath values that do not resolve against OrgTree are flagged as governance gaps.
+
+**P1 / P2 / P3 Severity**
+The three severity tiers in UIAO's drift finding taxonomy:
+
+- **P1 — Integrity**: A finding that represents an active breach, ungoverned actor, or auth-breaking condition. P1 findings halt the governance gate immediately. Examples: shadow AI, agentic AI without ATO.
+- **P2 — Binding divergence**: A compliance gap or governance deficit that requires human disposition but does not halt the gate by default. Examples: ATO gap, missing owner, PII without PIA.
+- **P3 — Hygiene**: An informational finding. Does not block.
+
+**Privacy Impact Assessment (PIA)**
+A structured analysis, required by the Privacy Act and OMB M-25-21, that documents how an AI system that processes personally identifiable information (PII) collects, uses, stores, and protects that information. An AI system with `has_pii = Yes` and no `pia_url` in the OMB inventory produces a `DRIFT-COMPLIANCE::ai-pii-no-pia` finding.
+
+**Shadow AI**
+An AI system that operates inside the federal identity substrate but has no entry in the OMB Federal AI Use Case Inventory. Shadow AI represents the highest-severity class in the AI identity surface because the M-25-21 reporting obligation is positive — absence from the inventory is not a neutral condition, it is a violation. Shadow AI is detected by cross-referencing the UIAO machine-identity registry against the OMB inventory; systems present in the registry but absent from the inventory produce `DRIFT-IDENTITY::ai-shadow` (P1) findings.
+
+**Single-ATO Reciprocity**
+The principle, defined in ADR-054, that a federal information system authorized under one ATO framework (e.g., FedRAMP Authorized) should be recognized as authorized across participating agencies without requiring a separate ATO for each. For AI systems, Single-ATO Reciprocity means the `system_name_ato` field in the OMB inventory can be cross-walked against the UIAO ATO registry to identify systems whose authorization is already recognized.
+
+**UIAO Specification (UIAO_NNN)**
+A UIAO operational specification document defining a schema, field mapping, scanner interface, or governance workflow. Specifications are subordinate to ADRs — they provide the operational detail that ADRs leave implicit. UIAO_196 (the AI System Identity Record specification, cited throughout this book) defines the canonical record shape, OrgPath binding rules, drift finding types, and scanner interface for federal AI identity governance.
+
+**Workload Identity**
+A type of machine identity associated with a cloud-hosted workload rather than a named service account. Workload identities authenticate via platform-managed credentials (e.g., Azure Managed Identity, AWS IAM Role) that are automatically rotated by the cloud provider. AI systems hosted in cloud environments may use workload identities rather than static service accounts. UIAO governs workload identities through the same OrgPath and lifecycle model as static credentials.
+
+---
+
+### AI Classification Terms
+
+**Agent Class**
+The classification of an AI system's operational behavior, drawn from the OMB inventory's `classification` field. UIAO maps these to an internal `AgentClass` enum:
+
+| Agent Class | OMB Value | Governance Priority |
+|---|---|---|
+| Agentic AI | `agentic-ai` | P1 — highest priority; L4 actor |
+| Classical ML | `classical-ml` | P2 standard |
+| Generative AI | `generative-ai` | P2 standard |
+| Natural Language Processing | `nlp` | P2 standard |
+| Computer Vision | `computer-vision` | P2 standard |
+| Reinforcement Learning | `reinforcement-learning` | P2 standard |
+| Other | `other` | P2 standard |
+
+**Agentic AI**
+An AI system that executes multi-step workflows autonomously across system boundaries — querying, deciding, submitting, and logging — without requiring a human approval step in the loop between actions. Agentic AI systems are the highest-risk class in the federal AI identity estate because they operate continuously, hold credentials across multiple system boundaries, and generate access patterns indistinguishable from normal operation even when compromised.
+
+**Development Stage**
+The operational lifecycle phase of an AI system in the OMB inventory (`development_stage` field):
+
+| Stage | Meaning | Governance |
+|---|---|---|
+| `pre-deployment` | Approved but not yet in production | Not in live scan population |
+| `pilot` | Active pilot deployment | In live scan population |
+| `deployed` | Full production deployment | In live scan population |
+| `retired` | No longer operational | Not in live scan; triggers Leaver lifecycle |
+| `unknown` | Stage not reported | Not in live scan; informational flag |
+
+Only `pilot` and `deployed` records enter the active drift scan population.
+
+**High-Impact AI System**
+An AI system designated `is_high_impact = True` in the OMB inventory, indicating that it meets the thresholds in OMB M-25-21 §V for safety, rights, or critical infrastructure impact. High-impact systems are subject to additional governance checklist requirements (the `hi_*` fields): testing, assessment, independent review, ongoing monitoring, failsafe presence, and appeal process.
+
+---
+
+## Part II — Drift Finding Codes
+
+The following drift finding codes are used in this book. Each is a string constant in the UIAO drift taxonomy (ADR-012). The format is `DRIFT-CLASS::subtype`.
+
+| Code | Severity | Posture | Trigger | Remediation |
+|---|---|---|---|---|
+| `DRIFT-COMPLIANCE::ai-ato-gap` | P2 | NEVER_AUTOFIX | AI system is `deployed` or `pilot` with `have_ato ≠ Yes` | Initiate or locate an ATO; link `system_name_ato` to UIAO registry |
+| `DRIFT-IDENTITY::ai-no-orgpath` | P2 | PER_POLICY | `agency` field blank in OMB inventory; OrgPath cannot be derived | Confirm bureau affiliation; update OMB inventory entry; re-run scanner |
+| `DRIFT-IDENTITY::ai-unowned` | P2 | NEVER_AUTOFIX | `contact_email` blank in OMB inventory | Assign a named bureau identity governance contact; update inventory |
+| `DRIFT-COMPLIANCE::ai-pii-no-pia` | P2 | NEVER_AUTOFIX | `has_pii = True` and `pia_url` blank | Author and publish a Privacy Impact Assessment; submit URL to OMB inventory |
+| `DRIFT-IDENTITY::ai-shadow` | **P1** | NEVER_AUTOFIX | System in UIAO registry absent from OMB inventory | Submit system to OMB inventory under M-25-21; governance-board review required |
+| `DRIFT-COMPLIANCE::ai-agentic-ungoverned` | **P1** | NEVER_AUTOFIX | `agent_class = agentic-ai` and `have_ato ≠ Yes` | (1) Create OrgPath record with named contact; (2) Initiate or link ATO; (3) Document and enroll all credentials in rotation schedule |
+
+**Gate behavior:** P1 findings halt the governance gate — no new identity provisioning, access expansion, or OrgPath assignments proceed through the automated pipeline in the affected bureau until the finding is resolved or a written risk acceptance is filed by an authorizing official.
+
+---
+
+## Part III — Architecture Decision Records Cited in This Book
+
+Architecture Decision Records are UIAO's binding governance specifications. The records below are cited in this book. Authoritative text is available through the UIAO customer portal at `/docs/adr/`.
+
+**ADR-006 — Evidence Fabric**
+Defines UIAO's evidence collection, storage, and OSCAL correlation architecture. The Evidence Fabric receives structured finding objects from the Drift Engine and produces compliance evidence bundles for auditor consumption. AI identity drift findings are ingested by the Evidence Fabric as `omg-inventory` evidence records.
+
+**ADR-012 — Canonical Drift Taxonomy**
+Defines the drift classification system used throughout UIAO: the `DRIFT-CLASS::subtype` naming convention, the three severity tiers (P1, P2, P3), and the three posture values (NEVER_AUTOFIX, PER_POLICY, INFORMATIONAL). The six AI-specific drift codes in this book are extensions of the ADR-012 taxonomy.
+
+**ADR-016 — Evidence Bundle Lifecycle**
+Governs the sealing and retention of evidence records. Sealed evidence bundles are immutable audit artifacts. For AI systems, the Leaver lifecycle event (system retirement) produces a sealed bundle covering the system's full operational history. ADR-016 specifies a 7-year retention minimum for compliance attestation records.
+
+**ADR-038 — Device Identity OrgPath Governance**
+Governs how device identities receive OrgPath assignments. The AI identity governance model (ADR-112) follows the same derivation mechanism: the scanner reads an authoritative source (for devices, the device management system; for AI systems, the OMB inventory), derives the OrgPath from organizational fields, and stamps the identity record. ADR-038 establishes the precedent this book applies to the AI surface.
+
+**ADR-040 — Drift Engine**
+Defines the six-phase drift orchestration pipeline: collect, normalize, compare, classify, gate, and remediate. The AI identity governance scanner operates at L1 (observe) within this pipeline. ADR-040 defines the gate function: any P1 finding produces a HALT decision; P2 findings are routed for operator disposition.
+
+**ADR-054 — Single-ATO Reciprocity**
+Defines how UIAO recognizes ATOs issued under different federal frameworks (FedRAMP, DISA, agency-specific) without requiring re-authorization for every deployment. For AI systems, ADR-054 governs the cross-walk between the OMB inventory's `system_name_ato` field and the UIAO ATO registry.
+
+**ADR-059 — SailPoint Adapter Family**
+Defines the SailPoint integration architecture within UIAO, including the `sailpoint-machine-identity` conformance slot that observes the machine-identity surface (service accounts, workload identities, bot accounts, AI agent accounts). ADR-059 establishes the Option-B commercial exception carve-out that governs the SailPoint integration pattern.
+
+**ADR-088 — Human Resource Integration (HRIT)**
+Governs how UIAO derives OrgPath for human identities from the HR system of record. The Joiner workflow reads the HR record, derives OrgPath from the bureau and division fields, and stamps the identity record. ADR-112's AI Joiner model follows the same derivation and stamping pattern with the OMB inventory substituting for the HR system.
+
+**ADR-092 — Active Governance**
+Defines UIAO's core operating posture as a reconciliation control plane, the control-plane/data-plane boundary, the provider-incorporation contract, and the L0–L4 actuation ladder. ADR-092 establishes that promotion from L1 (observe) to L2 (advise) or L3 (gated actuation) requires an explicit governance-board decision. The current AI governance activation level is L1.
+
+**ADR-112 — Federal AI Use Case Governance**
+The governing ADR for this book. Defines UIAO's M-25-21 IAM obligations, the OMB inventory integration architecture, the six AI-specific drift finding types, the minimum governance mode requirements for agentic AI systems, and the OrgPath binding rules for AI systems. ADR-112 is the canon source for every normative claim in this book.
+
+---
+
+## Part IV — UIAO Specifications Cited
+
+**UIAO_196 — AI System Identity Record**
+Defines the canonical record shape, OrgPath binding rules, six drift finding types, and the scanner interface (`uiao.governance.ai_inventory.scan_inventory`) for federal AI identity governance. UIAO_196 is the operational specification that ADR-112's doctrine section leaves implicit. It specifies the 19 record fields sourced from the OMB inventory, the live-population filter (`development_stage ∈ {deployed, pilot}`), the shadow AI detection algorithm, and the OSCAL evidence reference mapping.
+
+---
+
+## Part V — Federal Mandates Referenced
+
+**Executive Order 13960** — *Promoting the Use of Trustworthy Artificial Intelligence in the Federal Government* (December 3, 2020). Required federal agencies to inventory their AI systems and established principles for the responsible use of AI by the federal government. The annual Federal AI Use Case Inventory originates from this order.
+
+**OMB M-25-21** — *Advancing the Responsible Acquisition and Use of Artificial Intelligence in the Federal Government* (April 2025). The binding memorandum governing federal AI governance requirements addressed in this book. Key provisions relevant to identity governance: §IV (ATO requirement for all deployed AI systems), §V (governance checklist for high-impact systems), and the annual reporting requirement that produces the Federal AI Use Case Inventory. Issued by the Office of Management and Budget, Office of the Federal Chief Information Officer.
+
+**OMB M-22-09** — *Moving the U.S. Government Toward Zero Trust Cybersecurity Principles* (January 26, 2022). Requires agencies to inventory and govern non-human identities as part of the zero trust transition. M-22-09's Identity Pillar requirements are directly applicable to the AI system credential surface governed in this book.
+
+**Federal AI Use Case Inventory (2025 vintage)** — The machine-readable dataset published by OMB containing 3,611 AI use cases reported by 56 federal agencies. The 2025 vintage records 1,480 systems in active deployment or pilot. This dataset is the authoritative discovery feed for the UIAO AI identity governance scanner. Published at: [ai.gov/ai-use-case-inventory](https://ai.gov/ai-use-case-inventory).
+
+---
+
+## Part VI — NIST Controls Referenced
+
+The following NIST SP 800-53 Rev 5 controls are mapped to AI identity governance findings and events in this book:
+
+| Control | Title | Relevance to AI Identity |
+|---|---|---|
+| **AC-2** | Account Management | Joiner/Leaver events are the canonical account creation and deletion record for AI system identities |
+| **AC-2(3)** | Account Management — Disable Accounts | Leaver lifecycle triggers the disable sequence for AI system credentials on retirement |
+| **AC-2(7)** | Account Management — Privileged User Accounts | Agentic AI systems with broad cross-system access are governed as privileged accounts |
+| **CA-7** | Ongoing Assessments | The AI identity drift scan (annual + between-vintage runs) is the CA-7 continuous monitoring record |
+| **CM-8** | System Component Inventory | The UIAO AI identity registry, populated from the OMB inventory, is the authoritative CM-8 component inventory for the machine-identity surface |
+| **IA-2** | Identification and Authentication | AI system credentials are subject to identification and authenticator management under the same framework as human accounts |
+| **IA-4** | Identifier Management | OrgPath-bound identity records establish the `system_name_ato` as the canonical identifier for AI systems in the UIAO registry |
+| **PT-2** | Authority to Process Personally Identifiable Information | `has_pii = True` AI systems require a documented authority to process; the `pia_url` field is the evidence pointer |
+
+---
+
+## Part VII — External Standards and Publications
+
+**NIST SP 800-37 Rev 2** — *Risk Management Framework for Information Systems and Organizations*. The RMF process under which federal ATOs are issued. The ATO records referenced in OMB M-25-21 and UIAO ADR-054 are issued under this framework.
+
+**NIST SP 800-53 Rev 5** — *Security and Privacy Controls for Information Systems and Organizations*. The control catalog from which the NIST control mappings in Part VI are drawn.
+
+**CISA Zero Trust Maturity Model (Version 2.0)** — Published by the Cybersecurity and Infrastructure Security Agency. The Identity Pillar of the CISA ZTMM explicitly includes service accounts and workload identities as governed identity surfaces. AI system credentials fall within this scope.
+
+**SailPoint Machine Identity Security** — SailPoint's product for governing non-human identities, including service accounts, API keys, bots, and AI agent identities. UIAO's `sailpoint-machine-identity` conformance adapter (ADR-059) observes this surface and provides the `known_registry_ids` feed that enables shadow AI detection.
+
+**OSCAL (Open Security Controls Assessment Language)** — A NIST-developed, machine-readable language for representing security control documentation, assessment plans, and results. UIAO's Evidence Fabric (ADR-006) produces OSCAL-compatible output. The AI identity drift findings in this book carry `evidence_ref` tags that map to OSCAL control correlation points.
+
+---
+
+::: {.callout-tip}
+## Return to the beginning
+
+[← Chapter 1 — The Invisible Identity Surface](Book_21_CPT_01.qmd)
+:::
