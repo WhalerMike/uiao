@@ -10,7 +10,7 @@ tiers_adopted: []
 ---
 
 ::: {.callout-note}
-Federal identity governance has a well-understood model for human identities: someone joins the agency, moves between roles, and eventually leaves. Every step triggers a defined set of credential operations. Federal AI systems need exactly the same model — but driven by entirely different sources. The hire event is an ATO grant. The job change is a re-authorization or bureau transfer. The resignation is a retirement entry in the OMB inventory. This chapter shows how that model works, why the annual OMB inventory vintage cycle is the engine that drives it, and how the SailPoint machine-identity adapter makes the whole thing automated rather than manual.
+Federal identity governance has a well-understood model for human identities: someone joins the agency, moves between roles, and eventually leaves. Every step triggers a defined set of credential operations. Federal AI systems need exactly the same model — but driven by entirely different sources. The hire event is an ATO grant. The job change is a re-authorization or bureau transfer. The resignation is a retirement entry in the OMB inventory. This chapter shows how that model works, why the annual OMB inventory vintage cycle is the engine that drives it, and how credential lifecycle automation — today via `Invoke-AIInventoryScan.ps1` and in the target architecture via the SailPoint machine-identity adapter — makes compliance durable rather than dependent on institutional memory.
 :::
 
 ![Federal AI machine-identity lifecycle: four stages driven by OMB inventory vintage diffs, with JML events feeding the SailPoint machine-identity adapter.](Book_21_CPT_08_fig1.svg){#fig-machine-identity-lifecycle fig-alt="Horizontal swimlane diagram showing four lifecycle stages left to right: PRE-DEPLOYMENT (grey), PILOT (amber), DEPLOYED (teal), RETIRED (navy). Below each stage are the identity governance events triggered. An OMB inventory vintage diff row spans all four stages showing how new entries become joiners, stage changes become movers, and removed entries become leavers. A SailPoint machine-identity adapter box at the bottom feeds up into the vintage diff row with arrows. White background, navy and teal palette." width="100%"}
@@ -94,6 +94,10 @@ A ghost credential is a service account, API key, or workload identity that was 
 The vintage diff is the most reliable source for leaver events because it is authoritative: if the agency reported retirement to OMB, the machine-identity surface receives a structured trigger. The gap is when agencies retire systems without updating the inventory — a compliance failure under M-25-21's reporting obligations, and a governance failure that the continuous telemetry layer is designed to catch between vintages.
 
 ## The SailPoint machine-identity adapter
+
+::: {.callout-note}
+The SailPoint machine-identity adapter described in this section is a **target architecture** — it represents the full-automation end-state that the governance model is designed to reach. The adapter slot is reserved in the UIAO adapter registry (phase-planning) pending the Option-B boundary-expansion decision in ADR-059. The `ai-inventory-governance` scanner and `Invoke-AIInventoryScan.ps1` are available today and produce the same OrgPath records and drift findings; the SailPoint integration adds automated credential lifecycle management for agencies that reach phase-3 adoption.
+:::
 
 The governance model described in this chapter is doctrine: ADR-112 §2 binds the lifecycle states, ADR-059 allocates the adapter slot, ADR-054 governs the ATO re-authorization event. But doctrine without automation is a policy document. The automation that makes the lifecycle machine-driven rather than manual-dependent is the `sailpoint-machine-identity` adapter.
 
