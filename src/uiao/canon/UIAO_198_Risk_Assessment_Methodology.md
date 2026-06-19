@@ -1,5 +1,5 @@
 ---
-document_id: UIAO_195
+document_id: UIAO_198
 title: "UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)"
 version: "0.1"
 status: Draft
@@ -150,6 +150,11 @@ record: every risk rating in the ServiceNow GRC Risk Register
 ([`RA-3.yml`](data/control-library/ra/RA-3.yml)) is the cell where its assessed
 likelihood row meets its impact column. Rows are **likelihood**; columns are
 **impact**.
+
+@fig-uiao-198-risk-matrix renders the matrix as the canonical risk heatmap; the
+table beneath it is the literal, accessible equivalent of the same cells.
+
+![The UIAO risk-determination heatmap reproducing NIST SP 800-30 Rev 1 Table I-2: a five-by-five grid with likelihood (Very High down to Very Low) on the rows and impact (Very Low up to Very High) on the columns. Each cell shows the resulting risk level, shaded from red for Very High through amber for High, light amber for Moderate, and light teal to ice for Low and Very Low.](images/uiao-198-diagram-01-risk-matrix.png){#fig-uiao-198-risk-matrix fig-alt="Five-by-five risk matrix. Rows are likelihood from Very High at top to Very Low at bottom; columns are impact from Very Low at left to Very High at right. Cells read, by row from top: Very Low, Low, Moderate, High, Very High; Very Low, Low, Moderate, High, Very High; Very Low, Low, Moderate, Moderate, High; Very Low, Low, Low, Low, Moderate; Very Low, Very Low, Very Low, Low, Low. Colour grades from red at highest risk to ice at lowest." width="92%"}
 
 | Likelihood ↓ / Impact → | Very Low | Low | Moderate | High | Very High |
 |---|---|---|---|---|---|
