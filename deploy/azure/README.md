@@ -62,14 +62,29 @@ secrets; the relevant ones:
 
 | Variable | Source |
 |---|---|
-| `UIAO_SAAS_DATABASE_URL` | Container Apps secret (DSN with password) |
+| `UIAO_SAAS_DATABASE_URL` | Container Apps secret (passwordless DSN, no embedded password) |
+| `UIAO_SAAS_DATABASE_USE_ENTRA_AUTH` | `true` — authenticate to Postgres with an Entra token (ADR-116) |
+| `UIAO_SAAS_DATABASE_ENTRA_USER` | Managed identity name (the Postgres connection username) |
 | `UIAO_SAAS_APP_CLIENT_ID` | Multi-tenant app registration |
 | `UIAO_SAAS_PUBLISHER_TENANT_ID` | Home tenant |
 | `UIAO_SAAS_API_AUDIENCE` | API app ID URI (e.g. `api://uiao`) |
 | `UIAO_SAAS_KEY_VAULT_URI` | Key Vault module output |
 | `UIAO_SAAS_STORAGE_ACCOUNT_URL` | Storage module output |
 | `UIAO_SAAS_STAMP_EXECUTION_ENABLED` | `true` to execute per-tenant stamps (default off = dry-run) |
-| `AZURE_CLIENT_ID` | Managed identity client id (Graph/ARM tokens) |
+| `AZURE_CLIENT_ID` | Managed identity client id (Graph/ARM + Postgres tokens) |
+
+### Passwordless Postgres (ADR-116)
+
+The PostgreSQL Flexible Server runs **Entra-only** (password auth disabled).
+The Container App's managed identity is bound as the server's Entra
+administrator, and the app presents a short-lived OSSRDBMS access token as the
+connection password (`uiao.saas.pg_auth`) — there is no long-lived database
+password in CI, the deployment, or Container Apps secrets. The Bicep template
+graph is compile-validated on every `deploy/azure/**` change by
+`.github/workflows/bicep-validate.yml` (no Azure credentials required).
+
+> Private networking (VNet + private endpoints, public-access disabled) is a
+> deferred follow-up — see ADR-116 "Deferred".
 
 ## Deploy
 
@@ -77,11 +92,11 @@ The CI workflow `.github/workflows/azure-saas-deploy.yml` is **manual-
 dispatch only** (segregated until launch). To deploy by hand:
 
 ```bash
-# 1. Stamp infrastructure (creates ACR, Postgres, Key Vault, etc.)
+# 1. Stamp infrastructure (creates ACR, Postgres, Key Vault, etc.).
+#    Postgres is passwordless (Entra-only, ADR-116) — no DB password to pass.
 az deployment group create -g <rg> \
   -f deploy/azure/bicep/main.bicep \
-  -p deploy/azure/bicep/main.bicepparam \
-  -p pgAdminPassword="$PG_PWD"
+  -p deploy/azure/bicep/main.bicepparam
 
 # 2. Build & push the image
 az acr build --registry <acr> --image uiao-saas:latest \
@@ -91,8 +106,7 @@ az acr build --registry <acr> --image uiao-saas:latest \
 az deployment group create -g <rg> \
   -f deploy/azure/bicep/main.bicep \
   -p deploy/azure/bicep/main.bicepparam \
-  -p containerImage="<acr>.azurecr.io/uiao-saas:latest" \
-  -p pgAdminPassword="$PG_PWD"
+  -p containerImage="<acr>.azurecr.io/uiao-saas:latest"
 ```
 
 ## Multi-tenant onboarding
