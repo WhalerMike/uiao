@@ -58,6 +58,17 @@ class SaasSettings(BaseSettings):
     #: set — typically the managed identity's name. If empty, the user encoded
     #: in ``database_url`` is used.
     database_entra_user: str = Field(default="")
+    #: When true the Postgres connection authenticates with an AWS RDS IAM
+    #: token (passwordless, ADR-117) instead of a password. The ECS task role
+    #: must hold ``rds-db:connect`` on the database user. Mutually exclusive
+    #: with ``database_use_entra_auth``.
+    database_use_aws_iam_auth: bool = Field(default=False)
+    #: AWS region for RDS IAM token signing + the per-tenant stamp clients.
+    aws_region: str = Field(default="")
+    #: S3 bucket holding per-tenant evidence-bundle prefixes (AWS stamp).
+    aws_s3_bucket: str = Field(default="")
+    #: Secrets Manager name prefix for per-tenant secret scopes (AWS stamp).
+    aws_secrets_prefix: str = Field(default="uiao")
     #: Azure Key Vault URI for per-tenant secrets (client secrets / certs).
     key_vault_uri: str = Field(default="")
     #: Azure Blob Storage account URL for evidence bundles / artifacts.

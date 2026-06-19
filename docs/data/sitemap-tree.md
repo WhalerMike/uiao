@@ -182,6 +182,7 @@
 - [AI System JML Lifecycle — Joiner, Mover, and Leaver Events for Federal AI System Identities](adr/adr-114-ai-system-jml-lifecycle.html)
 - [SaaS production-readiness — quotas, rate limiting, audit trail, and problem+json](adr/adr-115-saas-production-readiness.html)
 - [Azure SaaS deployment hardening — passwordless Postgres and an IaC validation gate](adr/adr-116-azure-saas-deployment-hardening.html)
+- [AWS SaaS surface — multi-tenant UIAO on ECS Fargate + RDS, via AWS CDK](adr/adr-117-aws-saas-surface.html)
 
 ## Schema Reference
 

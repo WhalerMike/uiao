@@ -92,17 +92,34 @@ class PostgresTenantRepository(TenantRepository):
         use_entra_auth: bool = False,
         entra_user: str = "",
         cloud: str = "commercial",
+        use_aws_iam_auth: bool = False,
+        aws_region: str = "",
     ) -> None:
         self._engine: AsyncEngine = engine or create_async_engine(database_url, pool_pre_ping=True)
         self._sessionmaker = async_sessionmaker(self._engine, expire_on_commit=False)
-        # Passwordless Entra auth (ADR-116): issue a fresh OSSRDBMS token as the
-        # connection password on every new asyncpg connection. Only wired when
-        # the caller did not inject a pre-built engine (tests pass their own).
-        if use_entra_auth and engine is None:
-            from .pg_auth import EntraPostgresTokenProvider, apply_entra_auth, ossrdbms_scope_for
+        # Passwordless auth: issue a fresh token as the connection password on
+        # every new asyncpg connection. Only wired when the caller did not
+        # inject a pre-built engine (tests pass their own). Entra (Azure,
+        # ADR-116) and RDS IAM (AWS, ADR-117) share the do_connect seam.
+        if engine is None and use_entra_auth:
+            from .pg_auth import EntraPostgresTokenProvider, apply_token_auth, ossrdbms_scope_for
 
             provider = EntraPostgresTokenProvider(scope=ossrdbms_scope_for(cloud))
-            apply_entra_auth(self._engine, provider, username=entra_user)
+            apply_token_auth(self._engine, provider, username=entra_user)
+        elif engine is None and use_aws_iam_auth:
+            from sqlalchemy.engine import make_url
+
+            from .aws_pg_auth import RdsIamTokenProvider
+            from .pg_auth import apply_token_auth
+
+            url = make_url(database_url)
+            iam = RdsIamTokenProvider(
+                hostname=url.host or "",
+                username=url.username or "",
+                region=aws_region,
+                port=url.port or 5432,
+            )
+            apply_token_auth(self._engine, iam, username=url.username or "")
 
     async def create_all(self) -> None:
         """Create the registry table if it does not exist (idempotent)."""
