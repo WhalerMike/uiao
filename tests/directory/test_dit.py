@@ -110,3 +110,19 @@ def test_substring_match() -> None:
     assert match(filt, entry) is True
     miss = Filter(kind="substrings", attribute="cn", initial="zz")
     assert match(miss, entry) is False
+
+
+def test_principal_for_resolves_id_and_type() -> None:
+    # The projected DN's RDN is sanitized; principal_for recovers the real id
+    # (from the cn attribute) + type so a provider can address the object.
+    directory = build_directory(PRINCIPALS)
+    dn = "cn=alice-uiao.gov,ou=people,dc=agd,dc=uiao,dc=gov"
+    assert directory.principal_for(dn) == ("alice@uiao.gov", "user")
+    svc = "cn=svc-backup,ou=people,dc=agd,dc=uiao,dc=gov"
+    assert directory.principal_for(svc) == ("svc-backup", "servicePrincipal")
+
+
+def test_principal_for_returns_none_for_containers_and_unknowns() -> None:
+    directory = build_directory(PRINCIPALS)
+    assert directory.principal_for("ou=people,dc=agd,dc=uiao,dc=gov") is None  # container, no cn/type
+    assert directory.principal_for("cn=ghost,ou=people,dc=agd,dc=uiao,dc=gov") is None  # absent
