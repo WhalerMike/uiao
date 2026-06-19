@@ -439,19 +439,26 @@ uiao directory serve --snapshot snapshot.json --bind svc-reports=$PW --tls-cert 
 `--enable-writes` accepts an LDAP `modify` of a governed `uiaoOrgPath<Facet>`
 attribute, translates it to a `FacetOperation`, and **plans** it (dry-run; never
 applied to the projection). `--apply` promotes that to gated **L3 actuation**,
-routing the write through the `ldap` binding-profile transport to the provider of
-record — it requires `--enable-writes`, an authenticated bind, and a `--provider-*`
-target:
+routing the write to the selected provider of record — it requires
+`--enable-writes`, an authenticated bind, and a `--provider` target. Two
+providers are wired: `ldap` (a directory, via the `ldap` binding-profile
+transport; addressed by DN) and `entra` (Graph `onPremisesExtensionAttributes`;
+addressed by the resolved principal id + type):
 
 ```bash
 # Plan-only (L2): translates + validates + Codebook-checks; applies nothing.
 uiao directory serve --snapshot snapshot.json --enable-writes --bind admin=$PW \
     --tls-cert agd.pem --tls-key agd.key
 
-# Gated actuation (L3): routes accepted writes to the provider directory.
-uiao directory serve --snapshot snapshot.json --enable-writes --apply --bind admin=$PW \
-    --provider-host dc01.contoso.com --provider-bind-dn 'cn=svc,dc=contoso,dc=com' \
-    --provider-password $PROV_PW --tls-cert agd.pem --tls-key agd.key
+# Gated actuation (L3) → an LDAP directory of record.
+uiao directory serve --snapshot snapshot.json --enable-writes --apply --provider ldap \
+    --bind admin=$PW --provider-host dc01.contoso.com \
+    --provider-bind-dn 'cn=svc,dc=contoso,dc=com' --provider-password $PROV_PW \
+    --tls-cert agd.pem --tls-key agd.key
+
+# Gated actuation (L3) → Entra via Graph (needs UIAO_ENTRA_* + the [api] extra).
+uiao directory serve --snapshot snapshot.json --enable-writes --apply --provider entra \
+    --provider-cloud commercial --bind admin=$PW --tls-cert agd.pem --tls-key agd.key
 ```
 
 Non-governed attributes are refused `unwillingToPerform`; writes without an

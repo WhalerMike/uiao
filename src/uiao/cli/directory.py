@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
@@ -27,6 +28,9 @@ from rich.console import Console
 from uiao.directory import build_directory
 from uiao.directory.dit import Directory
 from uiao.directory.server import LdapServer, build_server_tls_context
+
+if TYPE_CHECKING:
+    from uiao.directory.actuation import FacetApplyAdapter
 
 directory_app = typer.Typer(
     name="directory",
@@ -108,6 +112,41 @@ def _parse_bind_pairs(binds: list[str]) -> dict[str, str]:
     return creds
 
 
+def _build_ldap_actuator_adapter(
+    host: str, bind_dn: str, password: str, port: int, insecure: bool
+) -> tuple[FacetApplyAdapter, str]:
+    """Construct the LDAP-provider write adapter for --apply (lazy/guarded)."""
+    from uiao.adapters.ldap_transport import LdapTransport
+    from uiao.directory.actuation import FacetWriteAdapter
+
+    try:
+        transport = LdapTransport.from_environment(
+            host=host, bind_dn=bind_dn, password=password, use_ssl=not insecure, port=port or None
+        )
+    except Exception as exc:  # noqa: BLE001 — ldap3 missing / connect / bind failure
+        console.print(f"[red]--provider ldap could not connect to the directory: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    def _write(dn: str, attribute: str, value: str) -> None:
+        transport.modify(dn, attribute, value)  # result dict discarded; errors propagate
+
+    return FacetWriteAdapter(write_fn=_write), f"{'ldap' if insecure else 'ldaps'}://{host}"
+
+
+def _build_entra_actuator_adapter(cloud: str) -> tuple[FacetApplyAdapter, str]:
+    """Construct the Entra/Graph-provider write adapter for --apply (lazy/guarded)."""
+    from uiao.adapters.entra_facet_writer import EntraFacetWriter
+    from uiao.adapters.graph_transport import GraphTransport
+
+    try:
+        transport = GraphTransport.from_environment(cloud=cloud)
+    except Exception as exc:  # noqa: BLE001 — missing [api] extra / UIAO_ENTRA_* creds
+        console.print(f"[red]--provider entra requires UIAO_ENTRA_* credentials + the [api] extra: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    return EntraFacetWriter(transport), f"entra/graph ({cloud})"
+
+
 def _to_ldif(directory: Directory) -> str:
     lines: list[str] = []
     for entry in directory.entries:
@@ -177,11 +216,19 @@ def serve(
     apply: bool = typer.Option(
         False,
         "--apply",
-        help="Promote writes from plan-only to gated L3 actuation routed to the provider directory (ADR-109 §3). "
-        "Requires --enable-writes and --provider-host.",
+        help="Promote writes from plan-only to gated L3 actuation routed to the provider of record (ADR-109 §3). "
+        "Requires --enable-writes and a --provider target.",
+    ),
+    provider: str = typer.Option(
+        "ldap",
+        "--provider",
+        help="Provider of record for --apply: 'ldap' (a directory) or 'entra' (Graph onPremisesExtensionAttributes).",
+    ),
+    provider_cloud: str = typer.Option(
+        "commercial", "--provider-cloud", help="Graph cloud for --provider entra: commercial | gcc-high | dod."
     ),
     provider_host: str = typer.Option(
-        "", "--provider-host", help="Provider-of-record LDAP host for --apply (commercial/on-prem only)."
+        "", "--provider-host", help="Provider-of-record LDAP host for --provider ldap (commercial/on-prem only)."
     ),
     provider_bind_dn: str = typer.Option(
         "", "--provider-bind-dn", help="Bind DN for the provider directory (--apply)."
@@ -211,8 +258,11 @@ def serve(
     if apply and not enable_writes:
         console.print("[red]--apply requires --enable-writes (the L2→L3 promotion is explicit, ADR-109 §3).[/red]")
         raise typer.Exit(code=1)
-    if apply and not provider_host:
-        console.print("[red]--apply requires --provider-host (the provider of record writes route to).[/red]")
+    if apply and provider not in ("ldap", "entra"):
+        console.print(f"[red]--provider must be 'ldap' or 'entra', got '{provider}'.[/red]")
+        raise typer.Exit(code=1)
+    if apply and provider == "ldap" and not provider_host:
+        console.print("[red]--provider ldap requires --provider-host (the directory writes route to).[/red]")
         raise typer.Exit(code=1)
     have_cert = tls_cert is not None
     ldaps = have_cert and not starttls  # LDAPS-on-connect vs. StartTLS-on-plaintext
@@ -240,7 +290,7 @@ def serve(
     entry_count = len(directory.entries)
     sasl_note = " +SASL/GSSAPI" if sasl_gssapi else ""
     if enable_writes:
-        sasl_note += " +writes(apply→provider, L3)" if apply else " +writes(dry-run)"
+        sasl_note += f" +writes(apply→{provider}, L3)" if apply else " +writes(dry-run)"
     if check:
         console.print(
             f"[green]OK[/green] — would serve {entry_count} entries "
@@ -251,33 +301,29 @@ def serve(
 
     if enable_writes and apply:
         # L3 actuation opt-in (ADR-092 §3 / ADR-109 §3): build the gated seam
-        # that routes a translated, authenticated write to the provider of
-        # record via the `ldap` binding profile's transport. Deferred to here
-        # (never reached under --check) so no connection opens during validation.
-        from uiao.adapters.ldap_transport import LdapTransport
-        from uiao.directory.actuation import FacetActuator, FacetWriteAdapter
+        # that routes a translated, authenticated write to the selected provider
+        # of record. Deferred to here (never reached under --check) so no
+        # connection / token acquisition happens during validation. The
+        # principal resolver maps the projected DN → real (id, type) so a
+        # provider that addresses by id (Graph) can find the object.
+        from uiao.directory.actuation import FacetActuator
         from uiao.directory.writes import WriteRouter
 
-        try:
-            transport = LdapTransport.from_environment(
-                host=provider_host,
-                bind_dn=provider_bind_dn,
-                password=provider_password,
-                use_ssl=not provider_insecure,
-                port=provider_port or None,
+        if provider == "entra":
+            adapter, target_desc = _build_entra_actuator_adapter(provider_cloud)
+        else:
+            adapter, target_desc = _build_ldap_actuator_adapter(
+                provider_host, provider_bind_dn, provider_password, provider_port, provider_insecure
             )
-        except Exception as exc:  # noqa: BLE001 — ldap3 missing / connect / bind failure
-            console.print(f"[red]--apply could not connect to the provider directory: {exc}[/red]")
-            raise typer.Exit(code=1) from exc
 
-        def _provider_write(dn: str, attribute: str, value: str) -> None:
-            transport.modify(dn, attribute, value)  # result dict discarded; errors propagate
-
-        actuator = FacetActuator(FacetWriteAdapter(write_fn=_provider_write), enabled=True)
-        server.write_router = WriteRouter(dry_run=False, apply_fn=actuator.as_apply_fn())
+        actuator = FacetActuator(adapter, enabled=True)
+        server.write_router = WriteRouter(
+            dry_run=False,
+            apply_fn=actuator.as_apply_fn(),
+            principal_resolver=directory.principal_for,
+        )
         console.print(
-            f"[yellow]Write actuation ENABLED[/yellow] (L3) → provider "
-            f"{'ldap' if provider_insecure else 'ldaps'}://{provider_host} — "
+            f"[yellow]Write actuation ENABLED[/yellow] (L3) → provider {target_desc} — "
             "writes require an authenticated bind."
         )
 

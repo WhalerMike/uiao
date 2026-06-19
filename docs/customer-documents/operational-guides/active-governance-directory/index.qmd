@@ -187,21 +187,45 @@ planned or routed to the provider of record. There are three rungs:
 |---|---|---|
 | *(none)* | **L1** | Read-only. A `modify` is refused `unwillingToPerform`. |
 | `--enable-writes` | **L2 (plan)** | A governed `uiaoOrgPath<Facet>` `modify` is translated, validated, and **planned** (dry-run). Nothing is applied; the projection is untouched. |
-| `--enable-writes --apply --provider-*` | **L3 (gated actuation)** | The planned operations are routed through the `ldap` binding-profile transport to the **provider of record**. Requires an authenticated bind. |
+| `--enable-writes --apply --provider …` | **L3 (gated actuation)** | The planned operations are routed to the selected **provider of record**. Requires an authenticated bind. |
+
+### 6.1 Choosing a provider of record (`--provider`)
+
+L3 actuation routes each governed write to one of two providers:
+
+| `--provider` | Target | Addressing | Required flags |
+|---|---|---|---|
+| `ldap` *(default)* | A commercial/on-prem directory via the `ldap` binding-profile transport | the principal's DN | `--provider-host` (+ `--provider-bind-dn` / `--provider-password`) |
+| `entra` | Entra principals via Graph `PATCH onPremisesExtensionAttributes` | the resolved principal **id + type** (`/users/{id}`, `/devices/{id}`) | `--provider-cloud` (default `commercial`); `UIAO_ENTRA_*` creds + the `[api]` extra |
+
+The AGD resolves the projected entry DN to the real `(principal_id, principal_type)` before routing, so the Entra target hits the right `/users` or `/devices` object even though the wire `modify` named a projected DN.
 
 ```bash
 # L2 — plan only. Safe to expose to write tooling; it changes nothing.
 uiao directory serve --from-assessment assignments.json --enable-writes \
     --bind admin=$PW --tls-cert agd.pem --tls-key agd.key
 
-# L3 — route accepted writes to the provider directory of record.
+# L3 (ldap) — route accepted writes to a directory of record.
 uiao directory serve --from-assessment assignments.json --enable-writes --apply \
-    --bind admin=$PW \
+    --provider ldap --bind admin=$PW \
     --provider-host dc01.contoso.com \
     --provider-bind-dn 'cn=svc-uiao,ou=svc,dc=contoso,dc=com' \
     --provider-password $PROVIDER_PW \
     --tls-cert agd.pem --tls-key agd.key
+
+# L3 (entra) — route accepted writes to Entra via Graph (onPremisesExtensionAttributes).
+uiao directory serve --from-assessment assignments.json --enable-writes --apply \
+    --provider entra --provider-cloud commercial --bind admin=$PW \
+    --tls-cert agd.pem --tls-key agd.key
 ```
+
+::: {.callout-warning}
+For an `onPremisesSyncEnabled` (AD-synced) Entra user, Graph treats
+`onPremisesExtensionAttributes` as **read-only** (on-prem is the source of
+authority). The `entra` provider therefore writes successfully for **cloud-only
+users and devices**; a synced user surfaces the Graph error per operation rather
+than silently no-op'ing. `servicePrincipal` has no such container and is refused.
+:::
 
 Boundary behavior, enforced on the wire:
 
@@ -219,11 +243,12 @@ The AGD is a working plane with known, bounded edges as of this guide:
 - **Live snapshot feed.** `--from-assessment` / `--snapshot` are point-in-time;
   the AGD does not yet subscribe to a streaming OrgPath change feed. Re-run the
   feed and reload to refresh.
-- **Write actuation target.** `--apply` routes to the `ldap` binding-profile
-  transport (a commercial/on-prem directory). Other providers (Entra/Graph) are
-  not yet wired as `--apply` targets.
-- **`remove` semantics.** A facet removal is routed to the transport as an
-  empty-value write; native attribute deletion is a follow-up.
+- **Write actuation targets.** `--apply --provider ldap` (a directory) and
+  `--apply --provider entra` (Graph `onPremisesExtensionAttributes`) are wired.
+  Synced-user Entra writes are read-only at Graph (see §6.1); other enforcement
+  surfaces (AWS, GCP, Okta) are not yet `--apply` targets.
+- **`remove` semantics.** A facet removal is routed as an empty-value write
+  (LDAP) / a `null` slot (Entra); native attribute deletion is a follow-up.
 - **Deployment packaging.** No service-unit / IIS / Container Apps packaging
   ships yet — run `serve` under your platform's process supervisor.
 - **Status.** ADR-100/101/109/110 are PROPOSED (built ahead of Governance Board
@@ -237,5 +262,6 @@ uiao directory tree  --from-assessment assignments.json            # LDIF inspec
 uiao directory serve --from-assessment assignments.json --check    # validate, don't bind
 uiao directory serve --snapshot snap.json --tls-cert c.pem --tls-key k.key   # LDAPS read
 uiao directory serve --snapshot snap.json --enable-writes --bind a=$PW ...    # L2 plan
-uiao directory serve --snapshot snap.json --enable-writes --apply --provider-host ...  # L3
+uiao directory serve --snapshot snap.json --enable-writes --apply --provider ldap --provider-host ...   # L3 ldap
+uiao directory serve --snapshot snap.json --enable-writes --apply --provider entra --provider-cloud ... # L3 entra
 ```
