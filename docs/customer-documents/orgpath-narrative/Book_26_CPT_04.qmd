@@ -1,0 +1,52 @@
+---
+title: "The Same Plane on AWS"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_26
+series-order: 4
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+Everything to this point has been Azure. This chapter is where the cloud-neutrality claim is put to the test: the *same* governance application, unchanged, stood up on AWS (ADR-117). What it takes turns out to be small — a different infrastructure description, a different database-token source, and different per-tenant resource stamps — because the application underneath was already built not to care which cloud it runs on.
+:::
+
+![The same application on AWS: an Application Load Balancer fronts an ECS Fargate service running the identical uiao.saas application, backed by RDS PostgreSQL with IAM authentication, an S3 evidence bucket, and Secrets Manager — the AWS counterparts of the Azure services, with the application unchanged.](Book_26_CPT_04_fig1.svg){#fig-same-plane-aws fig-alt="Engineering blueprint diagram. An Application Load Balancer box feeds an ECS Fargate service box labeled identical uiao.saas application, which connects down to three boxes: RDS PostgreSQL with IAM auth, S3 evidence bucket, and Secrets Manager. A side note reads same application, AWS substrate. White background, navy and teal palette. No human figures." width="100%"}
+
+## A second cloud, on purpose
+
+Cloud-neutrality is the kind of claim that is easy to assert and hard to earn. An application that has only ever run on one cloud has untested assumptions baked into it everywhere — an endpoint here, a credential shape there — and no one knows how many until a second cloud forces them into the open. Standing the plane up on AWS is partly for the programs that standardized on AWS and could not otherwise run UIAO's SaaS plane, and partly to *test* the neutrality claim against a real second substrate instead of taking it on faith.
+
+The mapping from Azure to AWS is clean because the architecture's pieces are generic. Container Apps becomes **ECS Fargate** behind an Application Load Balancer — serverless containers with managed ingress and TLS, no node fleet to operate. PostgreSQL Flexible Server becomes **RDS PostgreSQL**. Key Vault becomes **Secrets Manager**. Blob Storage becomes **S3**. The managed identity becomes an **IAM task role** — the same governance principal, by a different name. Log Analytics becomes **CloudWatch**. Each is the AWS-idiomatic equivalent of an Azure service the application already knew how to use through a thin seam.
+
+## The application does not change
+
+This is the heart of the chapter, and it is best stated plainly: the `uiao.saas` application is identical on both clouds. The control plane, the tenant resolution, the per-plan quotas, the audit trail, the problem+json error surface from Chapter 2 — none of it is touched. A tenant onboarded against the AWS deployment is onboarded by the same control-plane code, returns the same lifecycle states, and is governed by the same engine as a tenant on Azure. The parts that are genuinely AWS-specific are three, and they are narrow: the infrastructure description, the database-token source, and the per-tenant resource stamps.
+
+## Infrastructure as code, in the repo's own language
+
+The Azure deployment is Bicep; the AWS deployment is **AWS CDK in Python**. The choice is deliberate — CDK keeps the infrastructure in the repository's primary language, which makes it type-checked and testable, and it synthesizes to CloudFormation the way Bicep compiles to a deployment template. A single stack stamps the platform: a virtual private cloud, the RDS database in private subnets, the Fargate service behind the load balancer, the S3 evidence bucket, and the IAM task role that ties them together. Configuration comes from deployment context the way the Bicep took parameters.
+
+And it carries the same validation discipline as Azure. A continuous-integration gate synthesizes the entire CDK app to CloudFormation on every change to the AWS infrastructure — credential-free, no AWS account — catching construct and API errors before any deployment. It is the exact analogue of the Azure compile gate from Chapter 3: prove the infrastructure is well-formed cheaply, on every change, before it reaches a real account.
+
+## The same connection hook, a different token
+
+Chapter 3 ended on a promise: the connection hook that turns a token into a database password would be reused on AWS with a different token source. This is where it is kept. Amazon RDS accepts a short-lived **IAM authentication token** as the connection password, exactly as Azure Postgres accepts an Entra token. The task role is granted permission to connect as the database user, and a token provider mints and caches the IAM token — regenerating it before it expires, just like the Entra provider.
+
+The provider satisfies the *same* interface the Entra provider does, so the *same* connection hook serves both. The application's database layer does not branch on cloud; it asks a provider for a token and presents it as the password, and whether that provider is talking to Entra or to RDS IAM is a detail settled at configuration time. The token-as-password pattern, introduced for Azure, generalized to AWS without a single change to the seam — which is the strongest possible evidence that the seam was the right abstraction. There is no stored database password on AWS either; the data tier is private and encrypted, reachable only from the service.
+
+## Per-tenant stamps, AWS edition
+
+The last cloud-specific piece is the per-tenant resource stamp. On Azure, onboarding a tenant can provision its isolated resources — a database schema, a storage container, a secret scope — each named after the tenant's `data_namespace`. AWS mirrors this exactly across its own services: the database schema, an **S3 key prefix**, and a **Secrets Manager scope**. The stamp executor reuses the cloud-neutral safety guard that validates a namespace before it is ever used to name a resource, so a malformed tenant identifier cannot become an injection vector on either cloud. Like Azure, stamping is dry-run by default and only executes when explicitly enabled.
+
+## What "the same plane" proved
+
+Standing the plane up on AWS did more than add a deployment target. It demonstrated that the cloud-specific surface area is genuinely small — three narrow pieces, all behind seams the architecture already had — and that the governance application is cloud-neutral in fact, not just in aspiration. The honest caveat is that the AWS stack is synthesis-validated, not yet deploy-validated against a live account; that, like Azure's private networking, is named as a tracked next step rather than glossed over. But the load-bearing claim held: one application, two clouds, unchanged. The final chapters take that result and ask what it means for an estate that spans not just two clouds but the federal boundaries between them.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 5 — One Plane, Many Clouds →](Book_26_CPT_05.qmd)
+:::
