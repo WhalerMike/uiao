@@ -349,6 +349,7 @@
   - [UIAO Governance Dashboard Design](customer-documents/platform/governance-dashboard-design.html)
   - [OrgPath Runtime](customer-documents/platform/orgpath-runtime.html)
   - [UIAO Azure SaaS](customer-documents/platform/azure-saas.html)
+  - [UIAO AWS SaaS](customer-documents/platform/aws-saas.html)
   - [Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Intune, Azure Arc, and OrgTree](customer-documents/platform/platform-server-build.html)
   - [UIAO Git Server — Windows Server 2025 with IIS](customer-documents/platform/git-server-implementation.html)
 
