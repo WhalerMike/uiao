@@ -1,0 +1,93 @@
+name: Cloud SaaS IaC Kit
+
+# Assembles the UIAO Cloud SaaS IaC Kit (Azure Bicep + AWS CDK + runbook) and
+# attaches it to a GitHub Release. The build script is cross-platform
+# PowerShell, so this runs on ubuntu-latest via pwsh.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach the kit to (e.g. iac-kit-v1.0)'
+        required: true
+        type: string
+  release:
+    types: [published]
+  # Build (but do not publish) on PRs that touch the kit or its inputs, so the
+  # build script is validated before release. The release-attach step below is
+  # gated to release / dispatch events only.
+  pull_request:
+    paths:
+      - 'scripts/Build-IaCKit.ps1'
+      - 'deploy/azure/**'
+      - 'deploy/aws/**'
+      - '.github/workflows/iac-kit-build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-kit:
+    name: Assemble Cloud SaaS IaC Kit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = python3 -c "from src.uiao.__version__ import __version__; print(__version__)" 2>$null
+          if (-not $ver) { $ver = "${{ github.event.inputs.tag }}" -replace '^iac-kit-v','' }
+          if (-not $ver) { $ver = "0.0.0" }
+          "version=$ver" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+
+      - name: Build kit zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          ./scripts/Build-IaCKit.ps1 -Version "${{ steps.version.outputs.version }}" -OutDir dist
+
+      - name: Compute SHA-256
+        id: sha
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem dist/uiao-iac-kit-*.zip | Select-Object -First 1
+          $hash = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          "zipname=$($zip.Name)" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          Write-Host "SHA-256: $hash"
+
+      - name: Upload kit as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uiao-iac-kit-${{ steps.version.outputs.version }}
+          path: dist/uiao-iac-kit-*.zip
+          retention-days: 90
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release' || github.event.inputs.tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/uiao-iac-kit-*.zip
+          fail_on_unmatched_files: true
+          body: |
+            ## Cloud SaaS IaC Kit
+
+            Azure Bicep + AWS CDK + a cross-cloud deploy runbook for the
+            multi-tenant UIAO SaaS plane (passwordless data tier on both clouds).
+
+            | File | SHA-256 |
+            |---|---|
+            | `${{ steps.sha.outputs.zipname }}` | `${{ steps.sha.outputs.sha256 }}` |
+
+            **Verify before running:**
+            ```bash
+            sha256sum ${{ steps.sha.outputs.zipname }}   # compare to the hash above
+            ```
+
+            Guides: https://whalermike.github.io/uiao/customer-documents/platform/azure-saas.html ·
+            https://whalermike.github.io/uiao/customer-documents/platform/aws-saas.html
