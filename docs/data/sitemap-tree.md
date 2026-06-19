@@ -70,6 +70,7 @@
 - [OrgPath Multi-Cloud Binding Profiles — Vendor-Neutral Storage Contract & Zero Trust Subject](canon/UIAO_193_OrgPath_MultiCloud_Binding.html)
 - [LocPath Codebook — Canonical Physical-Location Addressing & Site Classification](canon/UIAO_194_LocPath_Codebook.html)
 - [Addressing-Plane Drift Taxonomy — DNS and Namespace Governance](canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.html)
+- [UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)](canon/UIAO_198_Risk_Assessment_Methodology.html)
 
 ## Architecture Decision Records
 
