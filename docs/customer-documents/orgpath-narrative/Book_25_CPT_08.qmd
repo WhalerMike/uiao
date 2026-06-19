@@ -1,0 +1,210 @@
+---
+title: "Appendix — Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_25
+series-order: 8
+lifecycle: draft
+tiers_adopted: []
+---
+
+This appendix provides a self-contained reference for every term, specification, mandate, and standard cited in Book 25. It is designed to support readers who encounter this document outside the UIAO customer portal, as well as practitioners who need a single-page reference during implementation.
+
+---
+
+## Part I — Glossary
+
+**Adapter Pattern**
+A software design pattern in which a translator layer converts the interface of one system into the interface expected by another, without modifying either system. In UIAO, adapter modules wrap each identity target (Entra, AWS, Okta, etc.) and expose a uniform read/write surface to the drift engine and binding-profile loader.
+
+**ATO (Authorization to Operate)**
+A formal federal approval, issued by an Authorizing Official under FISMA and NIST SP 800-37, that authorizes a system to operate in a federal environment. ATOs define the authorized configuration boundary; OrgPath facets are part of the identity-layer configuration that must remain within that boundary.
+
+**Binding Profile**
+A YAML document that maps each OrgPath facet to its platform-specific storage location on a given identity or workload target. The binding profile answers the structural question — where does Department live on Keycloak? — while the codebook answers the semantic question — what does Department mean? Nine first-class binding profiles are defined: microsoft-entra, aws-iam, gcp-iam, okta, ldap, vmware, pingone, keycloak, and auth0.
+
+**Control Plane**
+The layer of an architecture that governs policy, configuration, and orchestration, as distinct from the data plane that executes workloads. UIAO is a control plane: it does not replace Entra, AWS, or Okta; it governs them by maintaining authoritative codebook state and detecting drift from it.
+
+**Data Plane**
+The layer of an architecture that executes workload operations — authentication, authorization, data access, network routing. In UIAO's model, each identity provider (Entra, Okta, AWS IAM Identity Center) is a data plane; the drift engine reads their state and reconciles it against the control plane.
+
+**Drift**
+Any condition in which a governed object's stored attribute values diverge from the expected state defined by the codebook or binding profile. Drift is quantified as a finding with a severity (P1–P4) and a code (e.g., `DRIFT-IDENTITY::orgpath-mismatch`). The drift engine (ADR-040) produces findings continuously.
+
+**Federated Identity**
+An authentication model in which a user's identity is established by a trusted third-party identity provider and accepted by relying-party systems without requiring a separate credential at each system. Federal inter-agency identity federation is governed by OMB M-19-17 and FICAM. OrgPath facets must travel with federated assertions to remain useful at every enforcement surface.
+
+**JML (Joiner, Mover, Leaver)**
+The three lifecycle events that govern identity objects: a Joiner creates a new identity record; a Mover updates organizational placement when a person or workload changes position; a Leaver triggers deprovisioning. Binding profiles must support all three events to maintain OrgPath consistency across platforms.
+
+**LDAP (Lightweight Directory Access Protocol)**
+An open, vendor-neutral protocol for reading and writing directory service entries, defined in RFC 4510. The ldap binding profile uses LDAP to read and write OrgPath facets to any RFC 4510-compliant directory, including OpenLDAP, 389 Directory Server, and Oracle Internet Directory.
+
+**Machine Identity**
+A non-human credential issued to a system, service, or device to authenticate it to other systems. Examples include service accounts, TLS client certificates, API keys, and workload identity tokens. UIAO governs machine identities using the same OrgPath facets as human identities.
+
+**Namespace Portability**
+The property of an OrgPath namespace path (e.g., `DOJ:FBI:CJIS`) remaining valid and meaningful regardless of which platform stores it. Namespace portability is guaranteed by the binding profile pattern: the codebook defines the namespace; profiles translate it to each storage surface.
+
+**OAuth 2.0**
+An authorization framework (RFC 6749) that allows a client to obtain scoped access tokens from an authorization server. Workload identity binding profiles for cloud platforms use OAuth 2.0 token exchange as the transport mechanism for carrying OrgPath claims to enforcement surfaces.
+
+**OpenID Connect (OIDC)**
+An identity layer built on OAuth 2.0 that issues ID tokens containing user claims. OIDC is the primary protocol for carrying OrgPath facets as claims in federated authentication flows. The IdP-family binding profiles (Okta, PingOne, Keycloak, auth0) all use OIDC claim mapping as the read transport.
+
+**OrgPath**
+UIAO's organizational placement model — a colon-separated namespace path that anchors every governed identity object to its position in the organizational hierarchy (e.g., `HHS:CMS:OfficeOfIT`). OrgPath is defined in UIAO_007 and ADR-035. The facet model (15 attributes) is vendor-neutral; binding profiles map it to each platform's storage schema.
+
+**OrgTree**
+The hierarchical registry of valid OrgPath nodes, maintained as the authoritative codebook of organizational positions. Every leaf in the OrgTree represents a valid placement target for an identity object. The OrgTree is the reference against which all binding profiles are validated.
+
+**Provider Incorporation**
+The UIAO architectural principle (ADR-092) by which identity providers (Entra, AWS, Okta, etc.) are incorporated as data planes under UIAO's control-plane governance, rather than replaced or duplicated. Provider incorporation means UIAO reads and writes native platform attributes; it does not require a separate identity repository.
+
+**SAML 2.0 (Security Assertion Markup Language)**
+An XML-based open standard (OASIS) for exchanging authentication and authorization data between an identity provider and a service provider. Several federal agency federations rely on SAML 2.0 assertions; OrgPath facets can be carried as SAML attributes in the assertion's AttributeStatement.
+
+**Schema Translation**
+The process by which an OrgPath facet value (e.g., `Department = "CJIS"`) is converted from the UIAO canonical representation to the platform-specific attribute format required by a binding profile target (e.g., AWS IAM user attribute `Department = "CJIS"`). Schema translation is performed by the adapter layer; no transformation is applied to the semantic value, only to the storage format.
+
+**SCIM 2.0 (System for Cross-domain Identity Management)**
+An IETF standard protocol (RFC 7643 schema, RFC 7644 protocol) for provisioning and synchronizing identity attributes across systems. SCIM is the write transport used by the Okta, PingOne, Keycloak, and auth0 binding profiles, and is the recommended transport for any new IdP-family profile.
+
+**Vendor-Neutral Governance**
+A governance model in which policy, schema, and drift detection are defined independently of any specific identity platform. UIAO's binding profile pattern is the mechanism of vendor neutrality: the governance contract (codebook, drift rules, lifecycle events) is defined once; binding profiles translate it to each platform.
+
+**Workload Identity**
+An identity issued to a compute workload — a container, function, VM, or service — rather than to a human user. Workload identities require OrgPath governance because they can hold access to sensitive data and systems, and because their lifecycle is often disconnected from the human who deployed them.
+
+**Zero Trust**
+An enterprise security model (NIST SP 800-207) that eliminates implicit trust and requires continuous verification of every request based on identity, device, and context attributes. Zero Trust policy enforcement requires that organizational attributes — including OrgPath facets — travel with the identity subject to every enforcement surface.
+
+---
+
+## Part II — Drift Finding Codes
+
+The following drift codes are produced by the UIAO drift engine (ADR-040) in multi-vendor OrgPath deployments. Findings are classified P1 (immediate remediation required) through P4 (informational).
+
+| Code | Class | Severity | Description |
+|---|---|---|---|
+| `DRIFT-IDENTITY::orgpath-mismatch` | IDENTITY | P2 | OrgPath facet values for the same principal disagree across two or more binding profile targets (e.g., Department differs between Entra and AWS). |
+| `DRIFT-IDENTITY::orgpath-missing` | IDENTITY | P2 | A governed identity object on a bound target has no OrgPath facets stamped. Indicates the binding profile was not applied at provisioning time. |
+| `DRIFT-BINDING::schema-gap` | BINDING | P3 | A binding profile references a facet storage location that does not exist on the target platform (e.g., a required SCIM attribute is not in the provider's schema). |
+| `DRIFT-BINDING::transport-failure` | BINDING | P2 | The binding profile's read or write transport returned an error for a governed object. Facets cannot be validated for the affected principal until the transport is restored. |
+| `DRIFT-BINDING::profile-absent` | BINDING | P1 | A governed identity target has objects in scope but no binding profile is registered for the target. OrgPath governance is not operational for this platform. |
+| `DRIFT-LIFECYCLE::jml-lag` | LIFECYCLE | P3 | A JML event (mover or leaver) was applied on one bound platform but not yet propagated to one or more other bound platforms. OrgPath values are temporarily inconsistent across the estate. |
+| `DRIFT-AI::orgpath-missing` | AI | P1 | An AI system identity (UIAO_196) has no OrgPath record on any bound platform. The system is ungoverned in the identity substrate. |
+| `DRIFT-AI::binding-absent` | AI | P2 | An AI system identity is registered in OrgPath but has no binding profile wiring it to the platform on which it operates. Drift detection cannot reach the system. |
+
+---
+
+## Part III — ADRs Cited
+
+**ADR-012 — Canonical Drift Taxonomy**
+Defines the authoritative taxonomy of drift finding classes, subtypes, and severity levels. Establishes the `DRIFT-CLASS::subtype` notation used by all UIAO scanners and the drift engine. All drift codes in this book conform to ADR-012 naming conventions.
+
+**ADR-035 — OrgPath Codebook**
+Defines the 15-facet OrgPath model — Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType, and five reserved slots — and establishes the codebook as the authoritative source of facet semantics. The codebook is vendor-neutral by definition; storage decisions are out of scope.
+
+**ADR-040 — Drift Engine**
+Specifies the drift detection engine architecture: scanner interface, finding generation, severity assignment, and routing. The drift engine consumes binding profiles to locate facets on any target; it does not require platform-specific logic once a valid binding profile is registered.
+
+**ADR-059 — SailPoint Adapter Family**
+Accepts SailPoint IdentityNow (IIQ) and NERM as a named commercial exception to the open-standard-first adapter policy. The SailPoint family interoperates with OrgPath via SCIM 2.0 and is referenced in multi-vendor deployments where SailPoint governs joiner/mover/leaver for identity targets covered by other binding profiles.
+
+**ADR-062 — OrgPath Leaf Naming**
+Establishes the naming convention for OrgPath leaf nodes: uppercase, hyphen-free, matching the organizational unit's authoritative short name from the HRIT system of record. Leaf naming applies identically across all binding profile targets; the leaf value is never platform-normalized.
+
+**ADR-092 — Active Governance**
+Establishes UIAO as an active reconciliation control plane operating over provider data planes. Defines the provider-incorporation contract: UIAO reads and writes native platform attributes; providers are not replaced. Defines the L0–L4 actuation ladder governing the level of automated remediation authorized per deployment.
+
+**ADR-098 — Vendor-Neutral Binding Profiles**
+Defines the binding profile specification: required fields (target, version, facet-map, transport), YAML schema, and the first six first-class profiles (microsoft-entra, aws-iam, gcp-iam, okta, ldap, vmware). Establishes the principle that the OrgPath codebook is storage-neutral and that binding profiles are the only authorized mechanism for platform-specific storage mapping.
+
+**ADR-099 — Multi-Vendor OrgPath**
+Extends ADR-098 with three additional first-class profiles (pingone, keycloak, auth0), defines cross-platform drift detection semantics for principals present on multiple bound targets, and establishes the JML propagation contract for multi-vendor JML events.
+
+---
+
+## Part IV — UIAO Specifications
+
+**UIAO_007 — OrgPath Specification**
+The authoritative operational specification for the OrgPath model. Defines the 15-facet schema, namespace path syntax, OrgTree registry format, and the normative relationship between the codebook and any platform-specific binding. All binding profiles are implementations of UIAO_007.
+
+**UIAO_193 — OrgPath Multi-Cloud Binding**
+The operational specification for multi-cloud OrgPath deployment: how to register binding profiles with the drift engine, how cross-platform drift findings are generated and deduplicated, and how JML events are propagated across bound targets. UIAO_193 is the implementation reference for ADR-098 and ADR-099.
+
+---
+
+## Part V — Federal Mandates
+
+**OMB M-19-17 — Enabling Mission Delivery through Improved Identity, Credential, and Access Management**
+Requires federal agencies to adopt modern identity federation standards, consolidate identity providers, and interoperate with the FICAM trust framework. M-19-17 is the foundational federal mandate for vendor-neutral identity governance: agencies may not remain dependent on a single identity provider's proprietary schema.
+
+**Cloud Smart Strategy (OMB, 2019)**
+Directs agencies to adopt cloud services based on security, performance, and cost considerations rather than defaulting to a single vendor or deployment model. Cloud Smart is the policy basis for the multi-cloud federal estate that binding profiles are designed to govern.
+
+**OMB M-22-09 — Moving the U.S. Government Toward Zero Trust Cybersecurity Principles**
+Requires agencies to achieve specific Zero Trust architecture milestones by the end of fiscal year 2024, including full enterprise-wide identity governance. M-22-09's identity pillar requires that access decisions be based on continuously validated organizational attributes — the enforcement model that OrgPath binding profiles enable across every platform.
+
+**Executive Order 14028 — Improving the Nation's Cybersecurity**
+Directs federal agencies to adopt Zero Trust architecture, modernize cybersecurity standards, and move to cloud environments. EO 14028 is the executive authority under which M-22-09 and Cloud Smart are implemented.
+
+**FICAM (Federal Identity, Credential, and Access Management)**
+The GSA-maintained framework defining identity federation architecture for the U.S. federal government. FICAM's trust framework governs how agency identity providers federate with each other and with shared services. OrgPath binding profiles that include OIDC or SAML transports are compatible with FICAM federation requirements.
+
+---
+
+## Part VI — NIST Controls
+
+| Control | Title | Relevance to This Book |
+|---|---|---|
+| IA-2 | Identification and Authentication (Organizational Users) | Binding profiles ensure that the same organizational attributes used for IA-2 authentication are present on every platform where authentication occurs. |
+| IA-4 | Identifier Management | OrgPath facets constitute the authoritative organizational metadata for each identifier. Binding profiles propagate that metadata across platforms when a new identifier is created. |
+| AC-2 | Account Management | The JML contract in ADR-099 implements AC-2's requirement for account lifecycle management (provisioning, modification, deprovisioning) across all bound targets. |
+| AC-17 | Remote Access | Zero Trust enforcement at remote-access surfaces requires that organizational attributes (Department, Classification, Role) are readable at the enforcement point. Binding profiles provide that readability. |
+| CM-8 | System Component Inventory | Binding profiles that cover workload identity targets (aws-iam, gcp-iam, vmware) contribute to the CM-8 inventory by stamping each workload component with its organizational placement. |
+| SC-28 | Protection of Information at Rest | OrgPath Classification facets, once stamped via binding profiles on storage-adjacent workload identities, support SC-28 enforcement by making the classification of data-bearing workloads visible to encryption and access control engines. |
+| SI-12 | Information Management and Retention | OrgPath TermDate and lifecycle event records produced by JML propagation support SI-12 retention and disposal requirements by associating identity objects with their authorized retention period. |
+
+---
+
+## Part VII — External Standards
+
+**SCIM 2.0 — RFC 7643 (Schema) and RFC 7644 (Protocol)**
+IETF standards defining the schema and HTTP-based protocol for cross-domain identity provisioning. RFC 7643 defines the User and Group resources and extension schema mechanism used by IdP-family binding profiles. RFC 7644 defines the REST API endpoints for create, read, update, delete, and search operations.
+*Reference: https://www.rfc-editor.org/rfc/rfc7643 and https://www.rfc-editor.org/rfc/rfc7644*
+
+**LDAP — RFC 4510 (Technical Specification Road Map)**
+IETF standard defining the Lightweight Directory Access Protocol suite, including RFC 4511 (protocol), RFC 4512 (directory information models), and RFC 4519 (schema). The ldap binding profile is compliant with RFC 4510 and its subordinate specifications.
+*Reference: https://www.rfc-editor.org/rfc/rfc4510*
+
+**OpenID Connect Core 1.0**
+OpenID Foundation specification defining the identity layer on top of OAuth 2.0. Defines ID token format, UserInfo endpoint, and claim structures. OrgPath facets are carried as additional claims in OIDC ID tokens and UserInfo responses in IdP-family binding profiles.
+*Reference: https://openid.net/specs/openid-connect-core-1_0.html*
+
+**OAuth 2.0 — RFC 6749**
+IETF standard defining the authorization framework for token-based access delegation. Workload identity profiles for cloud platforms use OAuth 2.0 token exchange (RFC 8693) to carry OrgPath claims from the control plane to enforcement surfaces.
+*Reference: https://www.rfc-editor.org/rfc/rfc6749*
+
+**SAML 2.0 — OASIS Standard**
+OASIS standard for XML-based authentication and authorization assertion exchange. SAML 2.0 AttributeStatement elements carry OrgPath facets in inter-agency federation scenarios where OIDC is not available.
+*Reference: https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf*
+
+**Microsoft Entra SCIM Documentation**
+Microsoft's implementation guidance for SCIM 2.0 provisioning to Entra ID, including supported attribute mappings and extension attribute conventions. The microsoft-entra binding profile's SCIM transport references this implementation.
+*Reference: https://learn.microsoft.com/en-us/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups*
+
+**AWS IAM Identity Center — Attribute-Based Access Control**
+AWS documentation for ABAC using identity attributes in IAM Identity Center. The aws-iam binding profile maps OrgPath facets to IAM Identity Center user attributes as specified in this reference.
+*Reference: https://docs.aws.amazon.com/singlesignon/latest/userguide/attributesforaccesscontrol.html*
+
+**Okta SCIM API**
+Okta's SCIM 2.0 provisioning API documentation, covering attribute mappings, custom schema extensions, and lifecycle event handling. The okta binding profile uses this API as its write transport for OrgPath facets.
+*Reference: https://developer.okta.com/docs/reference/scim/*
+
+---
+
+[← Chapter 1](Book_25_CPT_01.qmd)

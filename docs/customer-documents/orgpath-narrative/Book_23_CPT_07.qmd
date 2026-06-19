@@ -1,0 +1,192 @@
+---
+title: "Appendix — Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_23
+series-order: 7
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+This appendix defines every term, acronym, drift finding code, and external citation used in this book. It is intended to make the bundle fully self-contained for readers who do not have access to the UIAO customer portal or the canonical ADR library. Normative authority rests with the cited Architecture Decision Records and the federal statutes and FCC regulations listed below; this glossary paraphrases them for accessibility.
+:::
+
+---
+
+## Part I — Glossary of Terms
+
+### Core Platform Concepts
+
+**Architecture Decision Record (ADR)**
+UIAO's numbered, binding governance specification. Each ADR documents a specific platform decision — its context, the options considered, the chosen approach, and the constraints that follow from it. ADRs are the authoritative source of truth for platform behavior. References in this book follow the form *ADR-NNN*. A complete list of ADRs cited in this book appears in Part III.
+
+**Authorization to Operate (ATO)**
+A formal federal security authorization issued under the NIST Risk Management Framework (NIST SP 800-37) that authorizes a federal information system to operate. An ATO documents the residual risk accepted by an authorizing official. Referenced in this book in the context of MLTS and UCaaS systems whose ATO perimeters must include a current dispatchable location of record.
+
+**Drift**
+A deviation between the expected state of a governed location surface (as defined by the authoritative source of record) and its observed state. Drift is detected by the Drift Engine and expressed as structured finding objects. For E911 compliance, drift arises when a LocPath node that hosts a telephone extension lacks a validated civic address, sub-address precision, or PSAP confirmation. Not all drift is an emergency: P1 drift halts the governance gate; P2 drift is routed for operator disposition.
+
+**Drift Engine**
+The six-phase orchestration layer in UIAO that detects, classifies, routes, and gates on surface drift. The six phases are: collect, normalize, compare, classify, gate, and remediate. For E911 compliance, the Drift Engine ingests the LocPath inventory and the telephony extension registry as its authoritative sources and compares them to produce GOV-LOCPATH findings. Defined in ADR-040.
+
+**Jurisdiction**
+The geographic and legal authority boundary within which a PSAP operates. Jurisdiction determines which PSAP a 911 call is routed to based on the civic address of the caller's location. A federal facility that spans multiple jurisdictions — a campus on a city boundary, a leased floor in a building the agency does not own — requires explicit PSAP jurisdiction mapping at the LocPath Site and Building levels to ensure correct dispatch routing.
+
+**OrgPath**
+UIAO's organizational placement model. OrgPath assigns every identity and location object a position in the federal bureau hierarchy using a colon-separated namespace path. In the E911 context, OrgPath anchors the responsibility for maintaining and validating a LocPath node's dispatchable location: the bureau that owns the LocPath node owns the remediation obligation when a GOV-LOCPATH finding is raised.
+
+OrgPath notation: `AGENCY:BUREAU::LOCATION-ID`
+
+**OrgTree**
+The hierarchical registry of organizational nodes that OrgPath paths are validated against. OrgTree maps agency codes and bureau names to their canonical positions in the federal hierarchy. LocPath nodes inherit OrgPath context from the OrgTree node they are assigned to, making the bureau the unit of accountability for E911 compliance across all telephone extensions under its purview.
+
+---
+
+### Physical Location Concepts
+
+**Dispatchable Location**
+The legally required location output mandated by 47 CFR Part 9 §9.16 for any 911 call placed from a multi-line telephone system or hosted UCaaS platform. A dispatchable location is a civic address — street number, street name, city, state, postal code — plus sufficient additional detail (floor designation, suite, room, or equivalent) to enable a first responder to locate the caller within the building without additional assistance from the caller or the PSAP dispatcher. A street address alone does not satisfy the dispatchable location requirement for multi-story buildings or large floor plates. LocPath's civic address schema at the Site and Building levels, combined with `floorDesignation` and `locationDescription` at the Floor and Space levels, is the data model through which the dispatchable location of record is produced and maintained.
+
+**Fixed Telephony**
+A telephony extension that is permanently bound to a physical location — a desk phone at a fixed workstation, a conference room phone, a receptionist console. Fixed telephony extensions are the simplest case for E911 compliance: the extension-to-location binding is static, and the dispatchable location can be validated once and monitored for drift. The LocPath `e911` block stamps the obligation at the Space or Floor node where the extension is registered.
+
+**Location Mover Event**
+A lifecycle event that fires when a telephony extension is physically relocated, an employee moves to a different floor or building with a soft client, or hot-desk occupancy changes the effective location of a registered extension. Location Mover Events are the primary trigger for `GOV-LOCPATH-014` (nomadic device location stale) findings. The E911 compliance layer requires that the dispatchable location of record be updated and revalidated against the PSAP database whenever a Location Mover Event is detected.
+
+**LocPath**
+UIAO's physical-location addressing dimension, defined in ADR-102. LocPath models a four-level location hierarchy — Site, Building, Floor, Space — with civic address fields at the Site and Building levels and sub-address precision fields at the Floor and Space levels. Every LocPath node carries a `civicAddress` schema element. Floor nodes carry a `floorDesignation` field. Space nodes carry a `locationDescription` field. The E911 compliance layer (ADR-104) adds an `e911` block to LocPath nodes where a multi-line telephone system or UCaaS extension is present, stamping the dispatchable location obligation on those nodes and enabling continuous completeness checking through the Drift Engine.
+
+LocPath hierarchy notation: `SITE-CODE/BLDG-CODE/FLOOR-CODE/SPACE-CODE`
+
+**Multi-Line Telephone System (MLTS)**
+Any system of telephone equipment that connects multiple telephone extensions at a single location to the public switched telephone network (PSTN) through one or more outbound trunks. IP-PBX systems, key systems, centrex systems, and hosted UCaaS platforms operating under a shared trunk are all multi-line telephone systems for purposes of 47 CFR Part 9 and Kari's Law. Federal agencies almost universally operate MLTS infrastructure: even agencies that have migrated to cloud UCaaS platforms retain the structural characteristic that many extensions share a common outbound path, which means the MLTS E911 obligation applies regardless of whether the underlying infrastructure is on-premises or cloud-hosted.
+
+**Nomadic Device**
+A telephony endpoint — typically a soft client on a laptop or mobile device, or a Wi-Fi-connected desk phone — whose physical location is not permanently fixed. Nomadic devices create the highest E911 compliance risk in the federal estate because the dispatchable location associated with the device at registration time may not reflect where the device actually is when a 911 call is placed. The FCC's dispatchable location rule requires that MLTS operators implement a mechanism to acquire and transmit the nomadic device's current location. In the LocPath model, nomadic devices require active Location Mover Event detection and a shorter revalidation cadence than fixed telephony extensions.
+
+**PSAP (Public Safety Answering Point)**
+The emergency communications center — staffed by trained 911 dispatchers — that receives incoming 911 calls from a geographic service area and coordinates the dispatch of law enforcement, fire, and emergency medical services. A PSAP receives both the audio of the 911 call and the associated Automatic Location Identification (ALI) data transmitted by the telephone network. The ALI data for an MLTS call is sourced from the location database maintained by the MLTS operator or its UCaaS provider; that database must contain a validated dispatchable location for every extension. PSAP routing is determined by the caller's civic address — the call is delivered to the PSAP whose jurisdiction contains the address. A LocPath node whose civic address has not been validated against the PSAP database may route the call to the wrong PSAP.
+
+**VoIP (Voice over Internet Protocol)**
+Telephone service transmitted over IP data networks rather than the traditional public switched telephone network. Hosted UCaaS platforms, Microsoft Teams Phone, Cisco Webex Calling, and similar services are VoIP systems. The FCC's dispatchable location rule applies to VoIP-based MLTS in the same manner as traditional circuit-switched MLTS. VoIP systems present additional E911 governance challenges because endpoints can move across network segments, and the MLTS operator's location database must be updated to reflect the current location of each VoIP endpoint, not just its original registration point.
+
+---
+
+### Regulatory Concepts
+
+**47 CFR Part 9**
+The Code of Federal Regulations chapter governing Emergency Communications — specifically the FCC's rules implementing Kari's Law and the RAY BAUM's Act E911 mandate. Section 9.16 of Part 9 contains the dispatchable location requirement for MLTS and hosted VoIP services: covered systems must be capable of providing a dispatchable location with every 911 call. Section 9.10 contains the direct-dialing requirement (no prefix digit before 911) and the on-site notification requirement for MLTS. Federal agencies are covered entities under both provisions.
+
+**GOV-LOCPATH Finding Codes**
+Structured drift finding codes produced by the UIAO E911 compliance scanner when it detects gaps in the LocPath E911 data. The finding code format is `GOV-LOCPATH-NNN`. A complete table appears in Part II.
+
+**Kari's Law**
+The Kari's Law Act of 2018 (47 U.S.C. §615c), enacted after Kari Hunt was killed in a hotel room in Texas in 2013 when her nine-year-old daughter's 911 calls failed to connect because the hotel PBX required a prefix digit before dialing an outside line. Kari's Law prohibits prefix-digit requirements on any multi-line telephone system manufactured, imported, or installed after February 16, 2020. It also requires that a 911 notification — identifying the location of the activated extension — be sent to a central, on-site location within the facility when a 911 call is placed. Federal agencies must comply with both requirements for any MLTS acquired or installed after the effective date.
+
+**RAY BAUM's Act**
+The Repack Airwaves Yielding Better Access for Users of Modern Services Act of 2018. Section 506 of this law directed the FCC to promulgate rules requiring that the dispatchable location of a caller be conveyed with all 911 calls, including those placed from MLTS and hosted VoIP platforms. The FCC implemented §506 through 47 CFR Part 9 §9.16. RAY BAUM's Act is the statutory basis for the dispatchable location obligation that the LocPath E911 compliance layer enforces.
+
+---
+
+## Part II — Drift Finding Codes
+
+### Standard AI Governance Drift Codes
+
+The following six drift finding codes represent UIAO's standard AI and governance surface taxonomy (ADR-040, ADR-012). They appear in cross-book references and in any finding that involves an AI or identity governance gap that intersects with the E911 or LocPath surface.
+
+| Code | Severity | Posture | Trigger | Remediation |
+|---|---|---|---|---|
+| `DRIFT-COMPLIANCE::ai-ato-gap` | P2 | NEVER_AUTOFIX | AI or system component deployed without a current ATO | Initiate or locate an ATO; link to UIAO registry |
+| `DRIFT-IDENTITY::ai-no-orgpath` | P2 | PER_POLICY | Bureau affiliation absent; OrgPath cannot be derived | Confirm bureau; update source record; re-run scanner |
+| `DRIFT-IDENTITY::ai-unowned` | P2 | NEVER_AUTOFIX | No named governance contact for the system | Assign bureau identity governance contact |
+| `DRIFT-COMPLIANCE::ai-pii-no-pia` | P2 | NEVER_AUTOFIX | PII-bearing system with no Privacy Impact Assessment | Author and publish PIA; submit URL |
+| `DRIFT-IDENTITY::ai-shadow` | **P1** | NEVER_AUTOFIX | System present in environment but absent from authoritative inventory | Submit to inventory; governance-board review required |
+| `DRIFT-COMPLIANCE::ai-agentic-ungoverned` | **P1** | NEVER_AUTOFIX | Agentic system deployed without ATO | Create OrgPath record; initiate ATO; enroll credentials |
+
+### LocPath E911 Compliance Finding Codes
+
+The following finding codes are specific to the E911 compliance layer (ADR-104) and are produced when the LocPath completeness scanner detects a governance gap in a node that hosts a telephone extension.
+
+| Code | Severity | Posture | Trigger | Remediation |
+|---|---|---|---|---|
+| `GOV-LOCPATH-012` | **P1** | NEVER_AUTOFIX | LocPath node hosting an MLTS or UCaaS extension has no civic address — no dispatchable location is producible | Record a complete civic address at the Site or Building level; validate against PSAP ALI database; rerun completeness check |
+| `GOV-LOCPATH-013` | P2 | NEVER_AUTOFIX | Civic address is present but sub-address precision is missing — floor designation or `locationDescription` absent at Floor or Space level | Add `floorDesignation` to the Floor node and `locationDescription` to the Space node; confirm precision meets §9.16 adequacy standard for building type |
+| `GOV-LOCPATH-014` | P2 | PER_POLICY | Nomadic device or soft client last validated more than the policy-defined revalidation interval ago, or a Location Mover Event was detected without a subsequent revalidation | Re-confirm current physical location of the device or extension; update the LocPath Space record; revalidate against the PSAP database; reset the revalidation clock |
+
+**Gate behavior:** `GOV-LOCPATH-012` findings are P1 — they halt the E911 compliance gate for the affected LocPath node and all extensions registered under it. No new telephony extensions may be provisioned on a node carrying a P1 GOV-LOCPATH finding until the finding is resolved or a written risk acceptance is filed by the agency's authorizing official. `GOV-LOCPATH-013` and `GOV-LOCPATH-014` are P2 — they are routed through OrgPath to the bureau responsible for the LocPath node for operator disposition.
+
+---
+
+## Part III — Architecture Decision Records Cited in This Book
+
+Architecture Decision Records are UIAO's binding governance specifications. The records below are cited in this book. Authoritative text is available through the UIAO customer portal at `/docs/adr/`.
+
+**ADR-035 — OrgPath Codebook**
+The foundational ADR defining OrgPath as UIAO's organizational placement model. ADR-035 establishes the colon-separated namespace path notation, the OrgTree hierarchy against which OrgPath values are validated, and the principle that every governed object — identity, device, or location — carries an OrgPath assignment as the anchor for all downstream governance processes. LocPath nodes inherit organizational context from the OrgPath assignment at the Site level.
+
+**ADR-040 — Drift Engine**
+Defines the six-phase drift orchestration pipeline: collect, normalize, compare, classify, gate, and remediate. The E911 compliance scanner operates as a specialized Drift Engine module, ingesting the LocPath inventory and the telephony extension registry, comparing them against the dispatchable location completeness rules in ADR-104, and producing GOV-LOCPATH findings. ADR-040 defines the gate function: P1 findings halt the governance gate; P2 findings are routed for operator disposition.
+
+**ADR-062 — OrgPath Leaf Naming**
+Governs the convention for naming leaf nodes in the OrgPath and LocPath hierarchies. ADR-062 specifies the canonicalization rules that ensure LocPath node identifiers are stable, collision-free, and legible in finding reports. Location identifiers used in GOV-LOCPATH findings follow the naming rules in ADR-062.
+
+**ADR-092 — Active Governance**
+Defines UIAO's core operating posture as a reconciliation control plane, the control-plane/data-plane boundary, the provider-incorporation contract, and the L0–L4 actuation ladder. The E911 compliance layer operates at L1 (observe and alert) by default; promotion to L2 (advise with remediation proposals routed to the bureau contact) is the expected steady-state for agencies that have completed initial LocPath enrollment. ADR-092 establishes that promotion from L1 to L2 or L3 requires an explicit governance-board decision.
+
+**ADR-102 — LocPath Physical Location Codebook**
+The governing ADR for UIAO's physical-location addressing dimension. ADR-102 defines the four-level LocPath hierarchy (Site, Building, Floor, Space), the `civicAddress` schema at the Site and Building levels, the `floorDesignation` field at the Floor level, the `locationDescription` field at the Space level, and the LocPath node lifecycle (provisioning, mover, decommission). LocPath is the substrate on which the E911 compliance layer (ADR-104) operates.
+
+**ADR-104 — E911 Compliance Layer over LocPath**
+The governing ADR for this book. ADR-104 defines the `e911` block in the LocPath schema, the obligation-stamp mechanism that marks LocPath nodes where MLTS or UCaaS extensions are present, the three GOV-LOCPATH finding codes (012, 013, 014), the PSAP validation workflow, and the Location Mover Event detection and revalidation cadence. ADR-104 is the canon source for every normative claim about E911 compliance in this book.
+
+---
+
+## Part IV — UIAO Specifications Cited
+
+**UIAO_194 — LocPath Codebook**
+Defines the canonical record shape, field mappings, and schema constraints for LocPath nodes. UIAO_194 specifies the full `civicAddress` object structure (including the NENA/IETF RFC 5985 field mappings), the `e911` block schema introduced by ADR-104, the `psapValidation` sub-object, and the enumerated values for `obligationStatus` (REQUIRED, EXEMPT, UNKNOWN). UIAO_194 is the operational specification that ADR-102's and ADR-104's doctrine sections leave implicit. It defines the scanner interface, the PSAP database integration points, and the Location Mover Event detection algorithm.
+
+---
+
+## Part V — Federal Mandates Referenced
+
+**47 CFR Part 9** — *Emergency Calling Requirements.* The Code of Federal Regulations chapter administered by the Federal Communications Commission governing 911 and enhanced 911 (E911) requirements. Section 9.10 requires that MLTS be configured for direct 911 dialing without a prefix digit and provide on-site notification when a 911 call is placed. Section 9.16 requires that the dispatchable location of the caller be conveyed with every 911 call from an MLTS or hosted VoIP service. Compliance deadlines have passed; federal agencies are required to comply with both provisions now.
+
+**Kari's Law Act of 2018** — Public Law 115-127, codified at 47 U.S.C. §615c. Enacted February 16, 2018. Requires that multi-line telephone systems allow direct 911 dialing from any extension without a prefix digit, and that on-site notification be provided when a 911 call is placed. Named after Kari Hunt, who died in 2013 after her daughter's 911 calls from a hotel room phone failed to connect because of a prefix-digit requirement.
+
+**RAY BAUM's Act of 2018** — Repack Airwaves Yielding Better Access for Users of Modern Services Act of 2018, Public Law 115-141. Section 506 directed the FCC to promulgate rules requiring that the dispatchable location of a caller be conveyed with all 911 calls, including those placed from multi-line telephone systems and hosted VoIP services. The FCC implemented §506 through 47 CFR Part 9 §9.16. Federal agencies are covered entities under these rules.
+
+**CISA Requirements for Federal Facilities** — The Cybersecurity and Infrastructure Security Agency, through its role as the federal authority for physical security and emergency communications at federal facilities, has issued guidance requiring that federal agencies maintain current, validated E911 dispatchable location records for all facilities under agency control. CISA's emergency communications guidance is referenced by GSA Real Property standards as a compliance baseline for federally occupied space, including leased commercial space where the agency is the primary MLTS operator.
+
+---
+
+## Part VI — NIST Controls Referenced
+
+The following NIST SP 800-53 Rev 5 controls are mapped to the E911 compliance obligations and LocPath governance findings in this book:
+
+| Control | Title | Relevance to E911 and LocPath |
+|---|---|---|
+| **PE-6** | Monitoring Physical Access | Physical access monitoring at the Floor and Space level requires accurate LocPath records that identify the physical space being monitored; a LocPath node with a GOV-LOCPATH-012 finding also lacks the precision needed for PE-6 zone assignment |
+| **CP-8** | Telecommunications Services | Continuity of emergency communications is a CP-8 obligation; the validated dispatchable location of record is the evidence that 911 telecommunications services can be correctly routed from every occupied space |
+| **IR-6** | Incident Reporting | Reporting the location of a security or medical incident requires a current, validated physical address; LocPath E911 node data is the authoritative location reference for incident report fields |
+| **PE-22** | Component Marking | Physical telephony equipment (IP phones, conference room systems) requires asset marking that correlates the device to its LocPath Space node; an unmarked or misregistered telephone extension is both a PE-22 gap and a potential GOV-LOCPATH-014 (stale nomadic location) trigger |
+
+---
+
+## Part VII — External Standards and Publications
+
+**FCC E911 Regulations** — The Federal Communications Commission's E911 rules, codified at 47 CFR Part 9, establish the technical and operational requirements for emergency calling from multi-line telephone systems and hosted VoIP services. The FCC's *Report and Order* implementing RAY BAUM's Act §506 (FCC 19-128, released November 2019) contains the definitive interpretive guidance for what constitutes an adequate dispatchable location under §9.16. Federal agencies implementing the LocPath E911 compliance layer should consult FCC 19-128 for the floor-level precision thresholds applicable to their building types.
+
+**NENA i3 Standard** — The National Emergency Number Association's i3 Architecture Standard (NENA-STA-010) defines the Next Generation 911 (NG911) technical architecture, including the Location Information Server (LIS) interface through which MLTS operators provide dispatchable location data to the 911 network. The LocPath `e911.psapValidation` sub-object in UIAO_194 maps to the NENA i3 location object schema, ensuring that LocPath-derived dispatchable location records are structurally compatible with NG911 LIS interfaces.
+
+**IETF RFC 5985 — HTTP-Enabled Location Delivery (HELD)** — The Internet Engineering Task Force standard defining the protocol by which devices and MLTS systems query a Location Information Server to obtain their current location. RFC 5985 specifies the location object format — the `civic` location element — that PSAP ALI databases and NG911 systems ingest. UIAO_194's `civicAddress` field mapping is derived from the RFC 5985 civic location schema, ensuring that LocPath records are directly usable as HELD location objects without translation.
+
+---
+
+::: {.callout-tip}
+## Return to the beginning
+
+[← Chapter 1 — Where the Phone Call Goes](Book_23_CPT_01.qmd)
+:::
