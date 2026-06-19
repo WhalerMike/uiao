@@ -4,11 +4,11 @@ subtitle: "Running UIAO as a multi-tenant governance SaaS on Azure Container App
 doc-type: architecture-explainer
 audience: "Platform engineers · cloud operators · identity architects"
 canon-source: "src/uiao/canon/adr/adr-096-azure-saas-architecture.md"
-derived-from: "ADR-096 (Azure SaaS architecture); ADR-033 (commercial endpoints also serve GCC-Moderate); ADR-084 (Phase 5 consumer architecture)"
+derived-from: "ADR-096 (Azure SaaS architecture); ADR-115 (SaaS production-readiness — quotas, rate limiting, audit, problem+json); ADR-116 (Azure deployment hardening — passwordless Postgres, IaC validation gate); ADR-033 (commercial endpoints also serve GCC-Moderate); ADR-084 (Phase 5 consumer architecture)"
 aspirational: true
 lifecycle: aspirational
 tiers_adopted: [1]
-lifecycle_review: 2026-12-07
+lifecycle_review: 2026-12-19
 format:
   html:
     toc: true
@@ -50,6 +50,18 @@ A concrete `AzureStampExecutor` now provisions the per-tenant resources
 (Postgres schema, Blob container, Key Vault secret scope), but stamping stays
 **dry-run by default**: it only executes when `UIAO_SAAS_STAMP_EXECUTION_ENABLED`
 is set. Treat this page as the target operating model.
+:::
+
+::: {.callout-note}
+## Recently hardened (ADR-115, ADR-116)
+This plane now ships a **production-readiness layer** —
+per-plan quotas + per-tenant rate limiting, an append-only control-plane audit
+trail (`GET /control/v1/audit`), RFC 9457 `application/problem+json` errors,
+and a real `/readyz` readiness probe ([ADR-115](../../adr/adr-115-saas-production-readiness.qmd))
+— and **passwordless Postgres**: the managed identity is the database's Entra
+administrator and the app authenticates with a short-lived token, so there is
+no long-lived DB password ([ADR-116](../../adr/adr-116-azure-saas-deployment-hardening.qmd)).
+Both are detailed in [§Production-readiness](#production-readiness--quotas-rate-limiting-audit-and-the-passwordless-data-tier) below.
 :::
 
 ## 1. What this is
@@ -138,15 +150,19 @@ and secrets:
 
 | Variable | Meaning | Source |
 |---|---|---|
-| `UIAO_SAAS_DATABASE_URL` | SQLAlchemy async DSN (password embedded) | Container Apps secret |
+| `UIAO_SAAS_DATABASE_URL` | SQLAlchemy async DSN — **passwordless** (no embedded password) | Container Apps secret |
+| `UIAO_SAAS_DATABASE_USE_ENTRA_AUTH` | `true` — authenticate to Postgres with an Entra token (ADR-116) | Bicep (passwordless default) |
+| `UIAO_SAAS_DATABASE_ENTRA_USER` | Managed-identity name = the Postgres connection username | Identity module |
 | `UIAO_SAAS_APP_CLIENT_ID` | UIAO multi-tenant app client ID | App registration |
 | `UIAO_SAAS_PUBLISHER_TENANT_ID` | Home tenant that owns the control plane | Operator |
 | `UIAO_SAAS_API_AUDIENCE` | Audience inbound tokens must carry | App registration |
 | `UIAO_SAAS_CLOUD` | `commercial` (also GCC-Moderate), `gcc-high`, `dod` | Operator |
 | `UIAO_SAAS_KEY_VAULT_URI` | Per-tenant secret store | Key Vault module |
 | `UIAO_SAAS_STORAGE_ACCOUNT_URL` | Evidence-bundle storage | Storage module |
+| `UIAO_SAAS_RATE_LIMITING_ENABLED` | Per-tenant request-rate limiting (default on, ADR-115) | Operator |
+| `UIAO_SAAS_AUDIT_ENABLED` | Control-plane audit trail + `GET /control/v1/audit` (default on) | Operator |
 | `UIAO_SAAS_STAMP_EXECUTION_ENABLED` | Execute (not just plan) per-tenant resource stamps | Operator (default off) |
-| `AZURE_CLIENT_ID` | Managed-identity client ID for Graph/ARM tokens | Identity module |
+| `AZURE_CLIENT_ID` | Managed-identity client ID for Graph/ARM + Postgres tokens | Identity module |
 
 Without `UIAO_SAAS_DATABASE_URL` the runtime falls back to an **in-memory**
 tenant registry — useful for local dev, never durable.
@@ -159,11 +175,12 @@ The CI workflow `.github/workflows/azure-saas-deploy.yml` is **manual-
 dispatch only**. To deploy by hand with the Azure CLI:
 
 ```bash
-# 1. Stamp infrastructure (ACR, Postgres, Key Vault, Storage, Container App…)
+# 1. Stamp infrastructure (ACR, Postgres, Key Vault, Storage, Container App…).
+#    Postgres is passwordless (Entra-only, ADR-116) — there is no DB password
+#    to supply.
 az deployment group create -g <rg> \
   -f deploy/azure/bicep/main.bicep \
-  -p deploy/azure/bicep/main.bicepparam \
-  -p pgAdminPassword="$PG_PWD"
+  -p deploy/azure/bicep/main.bicepparam
 
 # 2. Build and push the image
 az acr build --registry <acr> --image uiao-saas:latest \
@@ -173,15 +190,17 @@ az acr build --registry <acr> --image uiao-saas:latest \
 az deployment group create -g <rg> \
   -f deploy/azure/bicep/main.bicep \
   -p deploy/azure/bicep/main.bicepparam \
-  -p containerImage="<acr>.azurecr.io/uiao-saas:latest" \
-  -p pgAdminPassword="$PG_PWD"
+  -p containerImage="<acr>.azurecr.io/uiao-saas:latest"
 ```
 
 The Bicep modules under `deploy/azure/bicep/modules/` provision Log Analytics
 + App Insights, the managed identity, ACR (with `AcrPull`), Key Vault (RBAC,
-with `Key Vault Secrets User`), PostgreSQL Flexible Server, a Storage account
-(with `Storage Blob Data Contributor`), the Container Apps environment, and
-the SaaS Container App itself.
+with `Key Vault Secrets User`), PostgreSQL Flexible Server (Entra-admin bound to
+the managed identity, password auth disabled), a Storage account (with `Storage
+Blob Data Contributor`), the Container Apps environment, and the SaaS Container
+App itself. The whole template graph is compile-validated on every
+`deploy/azure/**` change by `.github/workflows/bicep-validate.yml` —
+credential-free, before any deploy.
 
 ## 8. Onboarding a tenant
 
@@ -226,9 +245,54 @@ the terminal `DEPROVISIONED` state.
 - **Authorization.** The data plane rejects non-onboarded and non-active
   tenants. The control plane requires a publisher-tenant token with the
   `UIAO.SaaS.Admin` app role.
-- **Secrets.** The DB DSN and per-tenant client secrets live in Key Vault /
-  Container Apps secrets, never in the image or in git. Outbound Graph / ARM
-  access uses the managed identity, not stored credentials.
+- **Secrets.** There is **no long-lived database password** — the Postgres
+  connection authenticates with a short-lived Entra token minted by the managed
+  identity (ADR-116). Per-tenant client secrets live in Key Vault, never in the
+  image or in git. Outbound Graph / ARM access uses the managed identity, not
+  stored credentials.
+- **Error surface.** Both planes emit RFC 9457 `application/problem+json` with
+  a stable machine `error` code (ADR-115), so the standardized envelope never
+  leaks token contents or internal detail.
+
+## Production-readiness — quotas, rate limiting, audit, and the passwordless data tier
+
+The plane ships a cloud-agnostic production-readiness layer
+([ADR-115](../../adr/adr-115-saas-production-readiness.qmd)) plus passwordless
+deployment hardening ([ADR-116](../../adr/adr-116-azure-saas-deployment-hardening.qmd)).
+
+**Per-plan quotas + rate limiting.** Each `TenantPlan` (trial / standard /
+enterprise / gov) maps to a `PlanQuota` with a sustained request rate + burst.
+A per-tenant fixed-window limiter enforces it; over-budget requests get `429`
+with `Retry-After` and `RateLimit-*` headers, and admitted requests carry the
+same `RateLimit-*` headers so clients can self-throttle. The limiter is
+best-effort per-replica; a globally-exact limit is a documented Redis-backed
+follow-up. Toggle with `UIAO_SAAS_RATE_LIMITING_ENABLED`.
+
+**Control-plane audit trail.** Every lifecycle action (onboard / suspend /
+resume / deprovision — success *and* rejection) is recorded as an immutable
+`AuditEvent` with the publisher-admin actor, and exposed to admins at
+`GET /control/v1/audit`. The default sink is in-memory; a durable sink is a
+drop-in behind the `AuditSink` protocol. Toggle with `UIAO_SAAS_AUDIT_ENABLED`.
+
+**Liveness vs. readiness.** `/healthz` is the static liveness probe;
+**`/readyz`** confirms the tenant registry is actually reachable
+(`SELECT 1`) and returns `503 degraded` otherwise, so a revision that cannot
+reach Postgres is withheld from the ingress pool. The Container App readiness
+probe targets `/readyz`.
+
+**Passwordless Postgres.** The managed identity is bound as the PostgreSQL
+Flexible Server's **Entra administrator** and password auth is disabled. The
+app presents a short-lived OSSRDBMS token as the connection password
+(`uiao.saas.pg_auth`) — no DB password reaches CI, the deployment, or the
+Container App's secret store. The token audience is sovereign-cloud aware.
+
+| Capability | Surface | Default |
+|---|---|---|
+| Per-plan quotas / rate limiting | `429` + `RateLimit-*` headers | on |
+| Audit trail | `GET /control/v1/audit` (admin) | on |
+| Problem+json errors | `application/problem+json` both planes | always |
+| Readiness probe | `GET /readyz` | always |
+| Passwordless Postgres | Entra token as DB password | on (Bicep) |
 
 ## 11. Local development
 
@@ -412,7 +476,8 @@ matching environment:
 | `AZURE_TENANT_ID` | Publisher tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Target Azure subscription ID |
 | `AZURE_RESOURCE_GROUP` | Target resource group name |
-| `PG_ADMIN_PASSWORD` | Postgres admin password (store in Key Vault too) |
+
+(No `PG_ADMIN_PASSWORD` — Postgres is passwordless under Entra auth, ADR-116.)
 
 ---
 
@@ -578,9 +643,12 @@ az postgres flexible-server geo-restore \
   --restore-time "2026-06-15T03:00:00Z" \
   --location eastus2
 
-# Update the Container App to point at the restored server
+# Update the Container App to point at the restored server (passwordless DSN —
+# the app still authenticates with the managed identity's Entra token). The
+# restored server must also have the managed identity re-bound as its Entra
+# administrator (az postgres flexible-server ad-admin create).
 az containerapp secret set -g <rg> -n uiao-saas \
-  --secrets "database-url=postgresql+asyncpg://<user>:<pwd>@uiao-saas-pg-restored.postgres.database.azure.com/uiao"
+  --secrets "database-url=postgresql+asyncpg://<identity-name>@uiao-saas-pg-restored.postgres.database.azure.com:5432/uiao"
 
 az containerapp update -g <rg> -n uiao-saas \
   --set-env-vars "UIAO_SAAS_DATABASE_URL=secretref:database-url"

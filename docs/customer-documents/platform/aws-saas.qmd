@@ -1,0 +1,308 @@
+---
+title: "UIAO AWS SaaS"
+subtitle: "Running UIAO as a multi-tenant governance SaaS on AWS — ECS Fargate, RDS PostgreSQL, passwordless IAM auth, deployed with AWS CDK"
+doc-type: architecture-explainer
+audience: "Platform engineers · cloud operators · identity architects"
+canon-source: "src/uiao/canon/adr/adr-117-aws-saas-surface.md"
+derived-from: "ADR-117 (AWS SaaS surface — ECS Fargate + RDS via CDK); ADR-116 (passwordless data-tier doctrine, applied here as RDS IAM auth); ADR-115 (SaaS production-readiness); ADR-096 (Azure SaaS architecture — the surface this parallels)"
+aspirational: true
+lifecycle: aspirational
+tiers_adopted: [1]
+lifecycle_review: 2026-12-19
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+# UIAO AWS SaaS {.unnumbered}
+
+::: {.callout-note}
+This page is the operator-facing articulation of the **UIAO AWS SaaS**
+deployment — the same multi-tenant governance plane as
+[UIAO Azure SaaS](./azure-saas.qmd), running on a second cloud. The normative
+source is [ADR-117](../../adr/adr-117-aws-saas-surface.qmd); the implementation
+lives in the `uiao.saas` package and `deploy/aws/`. The in-repo companion to
+this page is
+[`deploy/aws/README.md`](https://github.com/WhalerMike/uiao/blob/main/deploy/aws/README.md).
+:::
+
+::: {.callout-important}
+**Status — shipped but dormant, synth-validated not deploy-validated.** The
+application code is merged and tested; the CDK app **synthesizes** cleanly in CI
+(`.github/workflows/cdk-synth.yml`) but has **not** yet been deployed against a
+real AWS account. Treat this page as the target operating model; deploy-time
+validation against a live account is a tracked follow-up (ADR-117 "Deferred").
+:::
+
+::: {.callout-note}
+## One application, two clouds
+The `uiao.saas` application is unchanged between Azure and AWS — same control
+plane, tenancy, per-plan quotas, audit trail, and `application/problem+json`
+errors ([ADR-115](../../adr/adr-115-saas-production-readiness.qmd)). Only the
+*deployment substrate* differs, and that difference is small: the IaC, the
+passwordless-DB token source, and the per-tenant resource stamps. This page is
+the AWS half of that story; [UIAO Azure SaaS](./azure-saas.qmd) is the Azure
+half.
+:::
+
+## 1. What this is
+
+UIAO's multi-tenant SaaS plane runs `uiao.saas.asgi:app` — the existing
+`uiao.api` data plane plus the SaaS control plane and tenant-resolution
+middleware — on **AWS ECS Fargate** behind an Application Load Balancer,
+against an **RDS PostgreSQL** tenant registry. One operated service governs
+**many** customer Entra tenants, exactly as on Azure: each customer grants
+admin consent to the UIAO multi-tenant app registration, and UIAO acquires
+per-tenant Microsoft Graph / ARM tokens to run governance passes.
+
+The AWS surface is **parallel to, not a replacement for**, the Azure surface
+(ADR-096) and the single-tenant Windows/IIS surface. It exists so programs
+standardised on AWS can run UIAO's SaaS plane natively.
+
+## 2. Why ECS Fargate + RDS
+
+| Concern | Azure (ADR-096) | AWS (ADR-117) |
+|---|---|---|
+| Compute | Container Apps | **ECS Fargate** behind an ALB |
+| Tenant registry | PostgreSQL Flexible Server | **RDS PostgreSQL** |
+| Passwordless DB | Entra token-as-password | **RDS IAM** token-as-password |
+| Per-tenant secrets | Key Vault | **Secrets Manager** |
+| Evidence bundles | Blob Storage | **S3** |
+| Governance principal | Managed identity | **IAM task role** |
+| Logs | Log Analytics | **CloudWatch** |
+
+Fargate is the AWS analogue of Container Apps: serverless containers, managed
+ingress/TLS via the ALB, no node fleet to operate. The **task role** is the
+governance principal — the AWS equivalent of the managed identity — and the
+same cloud-resolution conventions select boundary-correct Graph/ARM audiences.
+
+## 3. Architecture
+
+![UIAO AWS SaaS architecture: customer Entra tenants send inbound JWTs to an Application Load Balancer fronting an ECS Fargate service running uiao.saas.asgi:app (data plane + control plane), which uses its IAM task role for per-tenant Graph/ARM tokens and an RDS IAM token for the database, backed by RDS PostgreSQL, Secrets Manager, and an S3 evidence bucket inside a VPC.](images/aws-saas-architecture.svg){#fig-aws-saas-architecture fig-alt="Engineering blueprint diagram on a white background. Three boxes at top labeled Customer tenant A, B, C send an inbound JWT arrow down to an Application Load Balancer box. Below it a large box labeled VPC contains an ECS Fargate service box running uiao.saas.asgi:app with a Data plane and Control plane, holding a pill labeled IAM task role. Three arrows descend to three boxes labeled RDS PostgreSQL tenant registry, Secrets Manager per-tenant secrets, and S3 evidence bundles. A note reads passwordless: RDS IAM token as DB password. 16:9 landscape, no human figures." width="100%"}
+
+The two planes share one process, a `/healthz` liveness endpoint, and a
+`/readyz` readiness endpoint (the ALB target-group health check):
+
+- **Data plane.** Every non-public request carries an Entra access token.
+  `TenantResolutionMiddleware` verifies it, resolves the `tid` claim to a
+  registered tenant, rejects non-onboarded / non-active tenants with `403`
+  problem+json, enforces the tenant's plan rate limit, and binds a
+  `TenantContext` for the request.
+- **Control plane.** `POST /control/v1/tenants` and the lifecycle routes
+  require a publisher-tenant token carrying the `UIAO.SaaS.Admin` app role.
+
+## 4. Tenancy and data isolation
+
+Tenancy is identical to the Azure surface: each customer is a `Tenant`
+identified by its Entra GUID, carrying a lifecycle status, a plan, and a
+deterministic **`data_namespace`**. On AWS that namespace scopes the RDS
+schema, the **S3 key prefix**, and the **Secrets Manager name prefix**
+(`uiao/<namespace>/…`). The lifecycle state machine
+(`PENDING → ACTIVE ⇄ SUSPENDED → DEPROVISIONED`) and the rule that only
+`ACTIVE` tenants receive governance traffic are unchanged.
+
+## 5. Prerequisites
+
+1. An AWS account and a target **region**.
+2. The **CDK toolchain**: `npm install -g aws-cdk@2`, plus the app's
+   deploy-time deps (`pip install -r deploy/aws/requirements.txt`).
+3. A **CDK bootstrap** in the account/region (`cdk bootstrap`) — once.
+4. The same **multi-tenant Entra app registration** as the Azure surface
+   (UIAO governs Entra tenants regardless of where the SaaS runs): an
+   Application ID URI (e.g. `api://uiao`), the Graph/ARM application
+   permissions, and the `UIAO.SaaS.Admin` app role. See
+   [Azure SaaS §14](./azure-saas.qmd#entra-app-registration-walkthrough).
+5. A built **`uiao-saas` container image** pushed to **ECR** (the cloud-neutral
+   image — same `deploy/azure/Dockerfile`).
+
+## 6. Configuration
+
+The container reads the same `UIAO_SAAS_*` variables as the Azure surface
+(`uiao.saas.settings.SaasSettings`); the CDK stack wires them:
+
+| Variable | Meaning | Source |
+|---|---|---|
+| `UIAO_SAAS_DATABASE_URL` | SQLAlchemy async DSN — **passwordless** (no password) | CDK (RDS endpoint) |
+| `UIAO_SAAS_DATABASE_USE_AWS_IAM_AUTH` | `true` — authenticate to RDS with an IAM token (ADR-117) | CDK |
+| `UIAO_SAAS_AWS_REGION` | Region for IAM token signing + stamp clients | CDK |
+| `UIAO_SAAS_AWS_S3_BUCKET` | Evidence-bundle bucket (per-tenant prefixes) | CDK (S3) |
+| `UIAO_SAAS_AWS_SECRETS_PREFIX` | Secrets Manager prefix for per-tenant scopes | Operator (default `uiao`) |
+| `UIAO_SAAS_APP_CLIENT_ID` | UIAO multi-tenant app client ID | App registration |
+| `UIAO_SAAS_PUBLISHER_TENANT_ID` | Home tenant that owns the control plane | Operator |
+| `UIAO_SAAS_API_AUDIENCE` | Audience inbound tokens must carry | App registration |
+| `UIAO_SAAS_CLOUD` | `commercial` (also GCC-Moderate), `gcc-high`, `dod` | Operator |
+| `UIAO_SAAS_RATE_LIMITING_ENABLED` | Per-tenant rate limiting (default on) | Operator |
+| `UIAO_SAAS_AUDIT_ENABLED` | Audit trail + `GET /control/v1/audit` (default on) | Operator |
+| `UIAO_SAAS_STAMP_EXECUTION_ENABLED` | Execute per-tenant resource stamps | Operator (default off) |
+
+## 7. Deploy
+
+```bash
+cd deploy/aws
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+npm install -g aws-cdk@2
+
+# Synthesize (no AWS account needed — same as the CI gate)
+cdk synth -c environmentName=dev
+
+# Deploy (uses your AWS credentials)
+cdk bootstrap                      # once per account/region
+cdk deploy -c environmentName=dev \
+  -c imageUri=<acct>.dkr.ecr.<region>.amazonaws.com/uiao-saas:latest \
+  -c appClientId=<client-id> -c publisherTenantId=<tenant-guid>
+```
+
+The stack (`deploy/aws/uiao_saas_stack.py`) provisions a VPC, RDS PostgreSQL
+(IAM auth, private subnets, encrypted), an ECS Fargate service + ALB running
+`uiao.saas.asgi:app`, an S3 evidence bucket (TLS-enforced, private, versioned),
+and the IAM task role. Every change under `deploy/aws/` is compile-validated by
+`cdk synth` in CI (`.github/workflows/cdk-synth.yml`), credential-free, before
+any deploy.
+
+### 7.1 One-time DB role bootstrap
+
+RDS IAM auth requires the `uiao_app` role to exist with the `rds_iam` role
+granted. After the first deploy, connect once as the master user (from the
+generated Secrets Manager secret) and run:
+
+```sql
+CREATE USER uiao_app;
+GRANT rds_iam TO uiao_app;
+GRANT ALL PRIVILEGES ON DATABASE uiao TO uiao_app;
+```
+
+This is the AWS counterpart of binding the managed identity as the Postgres
+Entra administrator on Azure — it is a data-plane (SQL) step, not expressible
+in CDK.
+
+## 8. Onboarding a tenant
+
+Identical to the Azure surface — the control-plane API is the same:
+
+```bash
+curl -X POST https://<alb-dns>/control/v1/tenants \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tenant_id": "<customer-tenant-guid>", "display_name": "Acme", "plan": "standard"}'
+```
+
+The response includes the admin-consent URL and the planned per-tenant stamp
+steps. With `UIAO_SAAS_STAMP_EXECUTION_ENABLED` set, the `AwsStampExecutor`
+provisions the tenant's RDS schema, S3 prefix, and Secrets Manager scope, each
+named after its `data_namespace`.
+
+## 9. Lifecycle operations
+
+The lifecycle routes are cloud-independent — see
+[Azure SaaS §9](./azure-saas.qmd#lifecycle-operations). `GET /control/v1/audit`
+returns the control-plane audit trail (admin only).
+
+## 10. Security model
+
+- **Inbound.** Tokens are signature-verified against the issuing tenant's JWKS
+  (RS256) in production; the dev-only unsigned switch defaults off.
+- **Authorization.** The data plane rejects non-onboarded / non-active tenants;
+  the control plane requires the `UIAO.SaaS.Admin` app role.
+- **No long-lived database password.** RDS IAM authentication is enabled and
+  the task role holds `rds-db:connect` on the `uiao_app` user; the app mints a
+  short-lived IAM token as the connection password (`uiao.saas.aws_pg_auth`).
+- **Private, encrypted data tier.** RDS is not publicly accessible and is
+  reachable only from the service security group; the evidence bucket enforces
+  TLS, blocks public access, and is encrypted + versioned.
+- **Error surface.** RFC 9457 `application/problem+json` on both planes.
+
+## 11. Production-readiness
+
+The AWS surface carries the same production-readiness layer as Azure
+([ADR-115](../../adr/adr-115-saas-production-readiness.qmd)): per-plan quotas +
+per-tenant rate limiting (`429` + `RateLimit-*` headers), the
+`GET /control/v1/audit` trail, problem+json errors, and the **`/readyz`**
+readiness probe — which here backs the **ALB target-group health check**, so a
+task that cannot reach RDS is withheld from the load-balancer pool. The
+passwordless RDS IAM auth (ADR-117) is the AWS realization of the ADR-116
+passwordless doctrine, sharing the same SQLAlchemy `do_connect` token seam as
+the Entra provider.
+
+## 12. Local development
+
+Local dev is cloud-neutral — the in-memory registry needs no AWS:
+
+```bash
+pip install -e ".[aws]"
+export UIAO_SAAS_INSECURE_ALLOW_UNSIGNED_TOKENS=true   # dev ONLY
+export UIAO_SAAS_API_AUDIENCE=api://uiao
+export UIAO_SAAS_PUBLISHER_TENANT_ID=<your-tenant-guid>
+uvicorn uiao.saas.asgi:app --reload
+```
+
+`tests/test_saas_aws_pg_auth.py` and `tests/test_saas_aws_stamp.py` cover the
+RDS IAM token cache and the AWS stamp executor against fakes (no boto3, no AWS).
+
+## 13. Sovereign clouds (GovCloud)
+
+`UIAO_SAAS_CLOUD` selects the Entra boundary for the tenants UIAO governs, the
+same as on Azure. The AWS *substrate* itself in **GovCloud (US)** is not a
+target of ADR-117: the RDS IAM endpoint and partition ARNs (`aws-us-gov`) would
+need verification for a GovCloud stamp — a listed review trigger. No GovCloud
+SaaS is stood up today.
+
+## 14. Post-deployment validation
+
+```bash
+# ALB DNS
+ALB=$(aws cloudformation describe-stacks --stack-name uiao-saas-dev \
+  --query "Stacks[0].Outputs[?OutputKey=='LoadBalancerDns'].OutputValue" -o text)
+
+# Liveness + readiness
+curl -sf "https://$ALB/healthz" && echo "PASS: /healthz"
+curl -sf "https://$ALB/readyz"  && echo "PASS: /readyz (registry reachable)"
+
+# Data plane — expect 403 problem+json (no tenant) not 401/500
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" \
+  "https://$ALB/api/v1/orgtree/status"
+```
+
+## 15. Monitoring (CloudWatch)
+
+ECS Fargate ships container logs and metrics to CloudWatch (Container Insights
+is enabled on the cluster). Useful signals:
+
+```bash
+# Tail the service logs
+aws logs tail /ecs/uiao-saas-dev --follow
+
+# 5xx at the load balancer (CloudWatch metric)
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/ApplicationELB --metric-name HTTPCode_Target_5XX_Count \
+  --start-time "$(date -u -d '1 hour ago' +%FT%TZ)" --end-time "$(date -u +%FT%TZ)" \
+  --period 300 --statistics Sum
+```
+
+The tenant lifecycle audit is cloud-independent: `GET /control/v1/audit`.
+
+## 16. Disaster recovery
+
+| Component | Recovery path | Typical RTO |
+|---|---|---|
+| Fargate service | `cdk deploy` (idempotent) | ~10 min |
+| RDS PostgreSQL | Point-in-time restore to a new instance (7-day backup) | ~20–40 min |
+| Secrets Manager | 7-day recovery window on delete | ~5 min |
+| S3 evidence | Versioned + retained; cross-region replication optional | ~min |
+| End-to-end | All above in sequence | ~1 h |
+
+After an RDS restore, re-run the §7.1 role bootstrap on the restored instance
+and update `UIAO_SAAS_DATABASE_URL` to its endpoint (the DSN stays
+passwordless; the app re-authenticates with an IAM token).
+
+## Provenance
+
+- Decision record: [ADR-117](../../adr/adr-117-aws-saas-surface.qmd).
+- Implementation: `uiao.saas` (package), `uiao.saas.aws_pg_auth` /
+  `aws_stamp` / `aws_provisioners`, and `deploy/aws/` (CDK app).
+- In-repo operator companion:
+  [`deploy/aws/README.md`](https://github.com/WhalerMike/uiao/blob/main/deploy/aws/README.md).
+- Azure counterpart: [UIAO Azure SaaS](./azure-saas.qmd).
