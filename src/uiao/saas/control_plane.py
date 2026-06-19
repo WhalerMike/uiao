@@ -15,6 +15,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from .audit import AuditEvent, AuditSink
 from .auth import EntraTokenVerifier, TokenError
 from .provisioning import ProvisioningService
 from .repository import TenantNotFoundError
@@ -131,7 +132,7 @@ async def suspend_tenant(
     admin: str = Depends(require_control_admin),
 ) -> Tenant:
     try:
-        return await _service(request).suspend(tenant_id, reason=body.reason)
+        return await _service(request).suspend(tenant_id, reason=body.reason, actor=admin)
     except TenantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"tenant {tenant_id} not found") from exc
     except ValueError as exc:
@@ -141,7 +142,7 @@ async def suspend_tenant(
 @router.post("/tenants/{tenant_id}/resume", response_model=Tenant)
 async def resume_tenant(tenant_id: str, request: Request, admin: str = Depends(require_control_admin)) -> Tenant:
     try:
-        return await _service(request).resume(tenant_id)
+        return await _service(request).resume(tenant_id, actor=admin)
     except TenantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"tenant {tenant_id} not found") from exc
     except ValueError as exc:
@@ -155,7 +156,7 @@ async def deprovision_tenant(
     admin: str = Depends(require_control_admin),
 ) -> StampResponse:
     try:
-        result = await _service(request).deprovision(tenant_id)
+        result = await _service(request).deprovision(tenant_id, actor=admin)
     except TenantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"tenant {tenant_id} not found") from exc
     return StampResponse(
@@ -163,6 +164,20 @@ async def deprovision_tenant(
         executed=result.executed,
         steps=[{"action": s.action, "target": s.target, "detail": s.detail} for s in result.steps],
     )
+
+
+@router.get("/audit", response_model=list[AuditEvent])
+async def list_audit(
+    request: Request,
+    tenant_id: str | None = None,
+    limit: int = 100,
+    admin: str = Depends(require_control_admin),
+) -> list[AuditEvent]:
+    """Return the control-plane audit trail (most-recent-first)."""
+    sink: AuditSink | None = getattr(request.app.state, "saas_audit", None)
+    if sink is None:
+        raise HTTPException(status_code=503, detail="audit trail unavailable")
+    return await sink.list(tenant_id=tenant_id, limit=limit)
 
 
 __all__ = ["router", "require_control_admin", "CONTROL_ADMIN_ROLE"]

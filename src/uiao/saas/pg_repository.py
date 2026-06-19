@@ -117,6 +117,15 @@ class PostgresTenantRepository(TenantRepository):
         async with self._engine.begin() as conn:
             await conn.execute(sa.delete(tenants_table).where(tenants_table.c.tenant_id == tenant_id))
 
+    async def ping(self) -> bool:
+        """Cheap ``SELECT 1`` connectivity check for the readiness probe."""
+        try:
+            async with self._engine.connect() as conn:
+                await conn.execute(sa.text("SELECT 1"))
+        except Exception:
+            return False
+        return True
+
     async def dispose(self) -> None:
         await self._engine.dispose()
 
