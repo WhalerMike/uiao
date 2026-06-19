@@ -179,6 +179,7 @@
 - [Active Governance Directory — Write Operations as Governed Intent, Not Store Mutation](adr/adr-109-active-governance-directory-write-as-intent.html)
 - [Active Governance Directory — AD-Compatible Schema as a Read-Only Synthesized Veneer, Not an AD Store](adr/adr-110-active-governance-directory-ad-schema-veneer.html)
 - [BOD 26-04 Risk-Based Vulnerability Remediation SLA — Superseding the Flat 72-Hour Critical Clock (ADR-043 D2)](adr/adr-111-bod-26-04-risk-based-vulnerability-sla.html)
+- [AI System JML Lifecycle — Joiner, Mover, and Leaver Events for Federal AI System Identities](adr/adr-114-ai-system-jml-lifecycle.html)
 
 ## Schema Reference
 

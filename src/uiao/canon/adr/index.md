@@ -116,6 +116,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-110](adr-110-active-governance-directory-ad-schema-veneer.md) | Active Governance Directory — AD-Compatible Schema as a Read-Only Synthesized Veneer, Not an AD Store | PROPOSED | 2026-06-18 |
 | [ADR-112](adr-112-federal-ai-usecase-governance.md) | Federal AI Use Case Governance — M-25-21 IAM Obligations, OMB Inventory Integration, and ATO Drift Signal | PROPOSED | 2026-06-18 |
 | [ADR-113](adr-113-orgpath-idp-transport-activation.md) | OrgPath IdP Transport Activation — Keycloak / Auth0 / PingOne Write Seams (Stage 1) | PROPOSED | 2026-06-19 |
+| [ADR-114](adr-114-ai-system-jml-lifecycle.md) | AI System JML Lifecycle — Joiner, Mover, and Leaver Events for Federal AI System Identities | PROPOSED | 2026-06-19 |
 
 ### Microsoft Coverage
 
