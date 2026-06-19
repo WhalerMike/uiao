@@ -96,6 +96,21 @@ saas = [
   "azure-keyvault-secrets>=4.8",
   "azure-storage-blob>=12.19",
 ]
+# Runtime deps for the multi-tenant AWS SaaS plane (uiao.saas on AWS, ADR-117).
+# The AWS analogue of [saas]: ECS Fargate runs uiao.saas.asgi:app against an RDS
+# Postgres tenant registry (SQLAlchemy async + asyncpg), with passwordless RDS
+# IAM auth + per-tenant S3 / Secrets Manager stamps via boto3. Same isolation
+# doctrine — uiao.saas lazy-imports the boto3 surfaces, so the blocking CI test
+# job (.[api] only) never needs these. The CDK IaC under deploy/aws/ has its own
+# deploy-time requirements (deploy/aws/requirements.txt); aws-cdk-lib is not a
+# runtime dependency.
+aws = [
+  "uiao[api]",
+  "sqlalchemy[asyncio]>=2.0",
+  "asyncpg>=0.29",
+  "pyjwt[crypto]>=2.8",
+  "boto3>=1.34",
+]
 # Visual-asset pipeline deps (ADR-093 — figures are committed SVG, rasterized):
 #   - cairosvg: primary SVG -> PNG rasterizer for scripts/render_svg_images.py.
 #   - playwright: fallback rasterizer (Chromium) for SVGs using <foreignObject>

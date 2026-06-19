@@ -133,3 +133,17 @@ behind the `[saas]` extra, so the blocking CI test job covers the new code.
 |---|---|---|---|---|
 | **Passwordless Postgres (Entra)** | `uiao.saas.pg_auth` | library | **`[api]` extra** (token acquire: `[saas]`) | `EntraPostgresTokenProvider` caches + refreshes an OSSRDBMS access token used as the Postgres connection password; `apply_entra_auth` injects it per-connection via a SQLAlchemy `do_connect` listener. Sovereign-cloud-aware scope (`ossrdbms_scope_for`). Wired by `build_repository` when `UIAO_SAAS_DATABASE_USE_ENTRA_AUTH=true`. Removes the long-lived DB password entirely |
 | **Bicep IaC validation gate** | `.github/workflows/bicep-validate.yml` | CI | n/a | Compiles the whole Bicep graph + validates the param file on every `deploy/azure/**` change — credential-free (`az bicep build` / `build-params`), no subscription. Postgres Bicep now binds the managed identity as Entra admin with password auth disabled |
+
+## Public surface additions (AWS SaaS surface — ADR-117)
+
+The AWS parallel of the Azure SaaS surface — same `uiao.saas` application, a
+second cloud substrate. AWS runtime deps (`boto3` + shared SQLAlchemy/asyncpg)
+are the new `[aws]` extra; `import uiao.saas` pulls neither boto3 nor the Azure
+SDKs, so the blocking CI job covers the new application code.
+
+| Feature | Module | Surface | Tier | Notes |
+|---|---|---|---|---|
+| **Passwordless Postgres (RDS IAM)** | `uiao.saas.aws_pg_auth` | library | **`[api]` extra** (token sign: `[aws]`) | `RdsIamTokenProvider` caches + regenerates a short-lived RDS IAM auth token used as the Postgres connection password, through the **same** `pg_auth.apply_token_auth` `do_connect` seam as the Entra provider (ADR-116). `boto3` lazy-imported. Wired by `build_repository` when `UIAO_SAAS_DATABASE_USE_AWS_IAM_AUTH=true` |
+| **AWS per-tenant stamp executor** | `uiao.saas.aws_stamp`, `uiao.saas.aws_provisioners` | library | **`[api]` extra** (provisioners: `[aws]`) | `AwsStampExecutor` mirrors `AzureStampExecutor` across RDS schema / S3 prefix / Secrets Manager scope, reusing the cloud-neutral `Provisioner` protocol + `require_safe_namespace` guard. Dry-run unless `UIAO_SAAS_STAMP_EXECUTION_ENABLED`; orchestration is dependency-free + fake-tested, the boto3 provisioners lazy-import |
+| **AWS CDK IaC** | `deploy/aws/` (`app.py`, `uiao_saas_stack.py`) | server | **CDK (`[aws]` runtime)** | `UiaoSaasStack`: VPC · RDS PostgreSQL (IAM auth, private, encrypted) · ECS Fargate + ALB running `uiao.saas.asgi:app` · S3 evidence bucket · IAM task role. Image referenced from ECR (cloud-neutral `uiao-saas`) |
+| **CDK synthesis gate** | `.github/workflows/cdk-synth.yml` | CI | n/a | `cdk synth` on every `deploy/aws/**` change — credential-free, no account. The AWS analogue of `bicep-validate` |
