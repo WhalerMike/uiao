@@ -766,6 +766,183 @@ adapters:
       tests: tests/test_orgpath_profile_assign.py
 
   # ──────────────────────────────────────────────────────────────────
+  # IdP transport activation (Stage 1) — ADR-113 (2026-06-19)
+  # Keycloak / Auth0 / PingOne write seams for the ADR-099 profiles
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: keycloak-orgpath
+    name: Keycloak OrgPath Binding Profile (user attributes)
+    class: modernization
+    mission-class: identity
+    mission-class-notes: >-
+      `mission-class: identity` adapter (ADR-099 / ADR-113 / UIAO_193) stamping
+      the 15-facet OrgPath substrate onto Keycloak user attributes via the
+      `keycloak` binding profile — the open-source counterpart to `okta-orgpath`.
+      Classified `identity` per UIAO_003 §4.2 because its sole function is
+      writing OrgPath facets onto identity objects in an external IdP.
+    status: proposed
+    phase: phase-planning
+    vendor: Red Hat / Keycloak community
+    license: Apache-2.0
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - orgpath-attributes
+    outputs:
+      - keycloak-orgpath-plan.json
+      - keycloak-orgpath-assignment-report.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO_193
+      - ADR-099
+      - ADR-113
+    notes: >-
+      Binds to UIAO_151 (OrgPath Codebook) through the `keycloak` binding
+      profile at canon/data/orgpath/binding-profiles/keycloak.yaml, validated
+      by schemas/orgpath/binding-profile.schema.json on load (ADR-098).
+      Keycloak user attributes are arbitrary key/values so all ten named facets
+      bind natively with no overflow. Planning via
+      uiao.modernization.orgtree.profile_assign.BindingProfilePlanner; the
+      write seam is uiao.adapters.keycloak_transport (httpx lazy-imported
+      behind the [api] extra), issuing Admin REST user updates. Commercial /
+      on-prem Keycloak endpoints only.
+    implementation:
+      python_module: src/uiao/adapters/keycloak_transport.py
+      tests: tests/test_orgpath_idp_transports.py
+
+  - id: auth0-orgpath
+    name: Auth0 OrgPath Binding Profile (app_metadata)
+    class: modernization
+    mission-class: identity
+    mission-class-notes: >-
+      `mission-class: identity` adapter (ADR-099 / ADR-113 / UIAO_193) stamping
+      the 15-facet OrgPath substrate onto the Auth0 user profile's app_metadata
+      namespace via the `auth0` binding profile. Classified `identity` per
+      UIAO_003 §4.2.
+    status: proposed
+    phase: phase-planning
+    vendor: Okta (Auth0)
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - orgpath-attributes
+    outputs:
+      - auth0-orgpath-plan.json
+      - auth0-orgpath-assignment-report.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO_193
+      - ADR-099
+      - ADR-113
+    notes: >-
+      Binds to UIAO_151 (OrgPath Codebook) through the `auth0` binding profile
+      at canon/data/orgpath/binding-profiles/auth0.yaml, validated by
+      schemas/orgpath/binding-profile.schema.json on load (ADR-098). Facets
+      live in the administrator-controlled app_metadata namespace (not the
+      user-editable user_metadata). Planning via
+      uiao.modernization.orgtree.profile_assign.BindingProfilePlanner; the
+      write seam is uiao.adapters.auth0_transport (httpx lazy-imported),
+      issuing Management API user PATCHes. Commercial Auth0 endpoints only.
+    implementation:
+      python_module: src/uiao/adapters/auth0_transport.py
+      tests: tests/test_orgpath_idp_transports.py
+
+  - id: pingone-orgpath
+    name: PingOne OrgPath Binding Profile (directory custom attributes)
+    class: modernization
+    mission-class: identity
+    mission-class-notes: >-
+      `mission-class: identity` adapter (ADR-099 / ADR-113 / UIAO_193) stamping
+      the 15-facet OrgPath substrate onto PingOne directory custom user
+      attributes via the `pingone` binding profile. Classified `identity` per
+      UIAO_003 §4.2.
+    status: proposed
+    phase: phase-planning
+    vendor: Ping Identity
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - orgpath-attributes
+    outputs:
+      - pingone-orgpath-plan.json
+      - pingone-orgpath-assignment-report.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO_193
+      - ADR-099
+      - ADR-113
+    notes: >-
+      Binds to UIAO_151 (OrgPath Codebook) through the `pingone` binding
+      profile at canon/data/orgpath/binding-profiles/pingone.yaml, validated by
+      schemas/orgpath/binding-profile.schema.json on load (ADR-098). PingOne
+      directory custom attributes are arbitrary so all ten named facets bind
+      natively with no overflow; PingFederate carries claims at runtime per
+      UIAO_193 §Facet carriage. Planning via
+      uiao.modernization.orgtree.profile_assign.BindingProfilePlanner; the
+      write seam is uiao.adapters.pingone_transport (httpx lazy-imported),
+      issuing PingOne platform API user PATCHes. Commercial PingOne endpoints
+      only.
+    implementation:
+      python_module: src/uiao/adapters/pingone_transport.py
+      tests: tests/test_orgpath_idp_transports.py
+
+  # ──────────────────────────────────────────────────────────────────
   # Reserved adapter slots allocated by ADR-049 (2026-04-30)
   # ──────────────────────────────────────────────────────────────────
 

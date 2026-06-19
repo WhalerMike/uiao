@@ -52,6 +52,22 @@ The OMB M-25-21 inventory is not primarily an identity governance instrument. It
 
 **`vendor_name` → NERM non-employee surface.** Commercial AI systems are built and often operated by vendors. The vendor relationship is a non-employee identity relationship — the vendor's engineers, support staff, and operational processes have access to the environment the system operates in. ADR-059 established the SailPoint NERM carve-out for exactly this surface. When `vendor_name` is populated, the AISystemRecord flags the vendor identity as a NERM surface requiring governance. A vendor-operated AI system that has no non-employee identity record is a gap in the same governance chain as a contractor with no NERM entry.
 
+::: {.callout-note}
+## OrgPath governs the AI system with or without SailPoint
+
+It is worth being precise about what depends on what. **OrgPath governs an AI
+system on its own** — the `agency_bureau` → OrgPath leaf placement, the owner
+anchor, the lifecycle, and the drift monitoring all run from the core substrate
+and the Microsoft/Entra estate, with no SailPoint involvement. SailPoint NERM
+(ADR-059) is an **optional add-on that deepens one branch only**: the
+non-employee / vendor / partner relationship behind `vendor_name`, which
+Microsoft has no FedRAMP-Moderate product to govern. Turn NERM off and the AI
+system is still fully governed as an identity subject; you lose only the deep
+non-employee lifecycle behind the vendor. The two are complementary —
+`agency_bureau → OrgPath` places the system; `vendor_name → NERM` governs the
+people behind it — not a single coupled dependency.
+:::
+
 **`have_ato` → ATO reciprocity gate.** This is the binary gate. `have_ato = Yes` does not automatically pass the gate — the reciprocity check requires that `system_name_ato` resolves to a valid entry in the ATO registry. But `have_ato ≠ Yes` immediately produces a P1 finding for non-agentic systems and a gate halt for agentic systems. The OMB inventory records 596 live AI systems without an ATO. Each of those is a credential operating in the federal environment without a formal security authorization.
 
 **`contact_email` → owner identity anchor.** The contact email is the closest thing the OMB inventory has to an owner field. The AISystemRecord uses it as the owner identity anchor — the link between the AI system and the human who is accountable for its governance. The contact email resolves to a user record in the identity management system, which means the owner has an OrgPath position, a bureau, and a governance role. When the contact email is blank — 488 live systems in the 2025 inventory — there is no owner, and every downstream governance process has no one to route to.
