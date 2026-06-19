@@ -14,11 +14,15 @@ build a Postgres repository + JWKS signature verification from
 from __future__ import annotations
 
 from fastapi import FastAPI
+from starlette.responses import JSONResponse, Response
 
+from .audit import AuditSink, InMemoryAuditSink, NullAuditSink
 from .auth import EntraTokenVerifier, SignatureVerifier, jwks_verifier
 from .control_plane import router as control_router
+from .errors import install_problem_handlers
 from .middleware import TenantResolutionMiddleware
 from .provisioning import ProvisioningService, StampExecutor
+from .ratelimit import TenantRateLimiter
 from .repository import TenantRepository, build_repository
 from .settings import SaasSettings
 
@@ -39,10 +43,18 @@ def attach_saas(
     admin_verifier: EntraTokenVerifier | None = None,
     provisioning_service: ProvisioningService | None = None,
     stamp_executor: StampExecutor | None = None,
+    rate_limiter: TenantRateLimiter | None = None,
+    audit_sink: AuditSink | None = None,
 ) -> FastAPI:
     """Wire SaaS tenancy + control plane onto ``app`` and return it."""
     settings = settings or SaasSettings()
     repository = repository or build_repository(settings)
+
+    if audit_sink is None:
+        audit_sink = InMemoryAuditSink() if settings.audit_enabled else NullAuditSink()
+
+    if rate_limiter is None and settings.rate_limiting_enabled:
+        rate_limiter = TenantRateLimiter(window_seconds=settings.rate_limit_window_seconds)
 
     if data_verifier is None:
         data_verifier = EntraTokenVerifier(
@@ -77,6 +89,7 @@ def attach_saas(
             app_client_id=settings.app_client_id,
             cloud=settings.cloud,
             executor=stamp_executor,
+            audit=audit_sink,
         )
 
     # Stash on app.state for routers / dependencies.
@@ -85,6 +98,11 @@ def attach_saas(
     app.state.saas_data_verifier = data_verifier
     app.state.saas_admin_verifier = admin_verifier
     app.state.saas_provisioning = provisioning_service
+    app.state.saas_audit = audit_sink
+    app.state.saas_rate_limiter = rate_limiter
+
+    # Uniform RFC 9457 problem+json for control-plane HTTPExceptions.
+    install_problem_handlers(app)
 
     # Tenant-resolution middleware for the data plane.
     app.add_middleware(
@@ -92,18 +110,29 @@ def attach_saas(
         verifier=data_verifier,
         repository=repository,
         public_prefixes=settings.public_prefixes(),
+        rate_limiter=rate_limiter,
     )
 
     # Control plane.
     if settings.provisioning_enabled:
         app.include_router(control_router, prefix="/control/v1", tags=["SaaS Control Plane"])
 
-    # Liveness probe (Container Apps health probe target).
+    # Liveness probe (Container Apps / ECS health probe target).
     if not any(getattr(r, "path", None) == "/healthz" for r in app.routes):
 
         @app.get("/healthz", tags=["Health"])
         async def _healthz() -> dict[str, str]:  # pragma: no cover - trivial
             return {"status": "ok", "plane": "saas"}
+
+    # Readiness probe — confirms the tenant registry is reachable. Container
+    # orchestrators withhold traffic until this returns 200.
+    if not any(getattr(r, "path", None) == "/readyz" for r in app.routes):
+
+        @app.get("/readyz", tags=["Health"])
+        async def _readyz() -> Response:
+            ok = await repository.ping()
+            body = {"status": "ready" if ok else "degraded", "registry": "ok" if ok else "unreachable"}
+            return JSONResponse(status_code=200 if ok else 503, content=body)
 
     return app
 

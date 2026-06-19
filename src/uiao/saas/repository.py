@@ -41,6 +41,18 @@ class TenantRepository(abc.ABC):
     async def delete(self, tenant_id: str) -> None:
         """Remove a tenant record (hard delete; use deprovision for soft)."""
 
+    async def ping(self) -> bool:
+        """Return True if the backing store is reachable (readiness probe).
+
+        The default implementation exercises a cheap read; durable backends
+        override it with a lightweight connectivity check.
+        """
+        try:
+            await self.list()
+        except Exception:  # pragma: no cover - defensive; durable stores override
+            return False
+        return True
+
     async def require(self, tenant_id: str) -> Tenant:
         """Return the tenant or raise :class:`TenantNotFoundError`."""
         tenant = await self.get(tenant_id)

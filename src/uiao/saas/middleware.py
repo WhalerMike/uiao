@@ -21,17 +21,15 @@ from __future__ import annotations
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from .auth import EntraTokenVerifier, TokenError
 from .context import TenantContext, clear_current_tenant, set_current_tenant
+from .errors import problem_response
+from .ratelimit import TenantRateLimiter
 from .repository import TenantRepository
 from .tenant import TenantStatus
-
-
-def _json_error(status_code: int, error: str, message: str) -> JSONResponse:
-    return JSONResponse(status_code=status_code, content={"error": error, "message": message})
 
 
 class TenantResolutionMiddleware(BaseHTTPMiddleware):
@@ -44,11 +42,13 @@ class TenantResolutionMiddleware(BaseHTTPMiddleware):
         verifier: EntraTokenVerifier,
         repository: TenantRepository,
         public_prefixes: tuple[str, ...] = (),
+        rate_limiter: TenantRateLimiter | None = None,
     ) -> None:
         super().__init__(app)
         self._verifier = verifier
         self._repository = repository
         self._public_prefixes = public_prefixes
+        self._rate_limiter = rate_limiter
 
     def _is_public(self, path: str) -> bool:
         return any(
@@ -56,25 +56,53 @@ class TenantResolutionMiddleware(BaseHTTPMiddleware):
         )
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if self._is_public(request.url.path):
+        path = request.url.path
+        if self._is_public(path):
             return await call_next(request)
 
         auth = request.headers.get("authorization", "")
         scheme, _, token = auth.partition(" ")
         if scheme.lower() != "bearer" or not token.strip():
-            return _json_error(401, "unauthorized", "Bearer token required.")
+            return problem_response(401, code="unauthorized", detail="Bearer token required.", instance=path)
 
         try:
             claims = self._verifier.verify(token.strip())
         except TokenError as exc:
-            return _json_error(401, "invalid_token", str(exc))
+            return problem_response(401, code="invalid_token", detail=str(exc), instance=path)
 
         tenant = await self._repository.get(claims.tenant_id)
         if tenant is None:
-            return _json_error(403, "tenant_not_onboarded", f"Tenant {claims.tenant_id} is not onboarded.")
+            return problem_response(
+                403,
+                code="tenant_not_onboarded",
+                detail=f"Tenant {claims.tenant_id} is not onboarded.",
+                instance=path,
+                tenant=claims.tenant_id,
+            )
         if tenant.status is not TenantStatus.ACTIVE:
             reason = tenant.suspended_reason or tenant.status.value
-            return _json_error(403, "tenant_not_active", f"Tenant {claims.tenant_id} is {reason}.")
+            return problem_response(
+                403,
+                code="tenant_not_active",
+                detail=f"Tenant {claims.tenant_id} is {reason}.",
+                instance=path,
+                tenant=claims.tenant_id,
+            )
+
+        # Per-plan request-rate enforcement (best-effort, per-replica).
+        rate_headers: dict[str, str] = {}
+        if self._rate_limiter is not None:
+            decision = self._rate_limiter.check(tenant)
+            rate_headers = decision.headers()
+            if not decision.allowed:
+                return problem_response(
+                    429,
+                    code="rate_limited",
+                    detail=f"Tenant {tenant.tenant_id} exceeded its {tenant.plan.value}-plan request rate.",
+                    instance=path,
+                    tenant=tenant.tenant_id,
+                    headers=rate_headers,
+                )
 
         context = TenantContext(tenant=tenant, subject=claims.subject, scopes=claims.principal_scopes)
         token_handle = set_current_tenant(context)
@@ -84,6 +112,8 @@ class TenantResolutionMiddleware(BaseHTTPMiddleware):
         finally:
             clear_current_tenant(token_handle)
         response.headers["x-uiao-tenant"] = tenant.tenant_id
+        for header, value in rate_headers.items():
+            response.headers[header] = value
         return response
 
 

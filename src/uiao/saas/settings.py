@@ -57,6 +57,14 @@ class SaasSettings(BaseSettings):
     # --- Operational toggles ---------------------------------------------
     #: When true the control-plane provisioning endpoints are exposed.
     provisioning_enabled: bool = Field(default=True)
+    #: When true, per-tenant request-rate limiting is enforced on the data
+    #: plane using the per-plan quota table (:mod:`uiao.saas.quotas`).
+    rate_limiting_enabled: bool = Field(default=True)
+    #: Length of the rate-limit window in seconds.
+    rate_limit_window_seconds: int = Field(default=60)
+    #: When true, control-plane lifecycle actions are written to the audit
+    #: trail and the ``GET /control/v1/audit`` endpoint is exposed.
+    audit_enabled: bool = Field(default=True)
     #: When true, tenant onboarding **executes** the Azure resource stamp
     #: (Postgres schema / Blob container / Key Vault scope) via the
     #: AzureStampExecutor. Default false → plans the stamp without touching
@@ -68,7 +76,7 @@ class SaasSettings(BaseSettings):
     #: Paths exempt from tenant resolution (health probes, docs, control
     #: plane). Comma-separated path prefixes.
     public_path_prefixes: str = Field(
-        default="/healthz,/health,/api/docs,/api/redoc,/api/openapi.json,/control",
+        default="/healthz,/readyz,/health,/api/docs,/api/redoc,/api/openapi.json,/control",
     )
 
     # --- Derived helpers --------------------------------------------------

@@ -123,6 +123,28 @@ Without `UIAO_SAAS_DATABASE_URL` the runtime uses the in-memory tenant
 registry (not durable). See `tests/test_saas_app.py` for the full
 onboarding → lifecycle flow exercised against the in-memory store.
 
+## Production-readiness (ADR-115)
+
+The SaaS runtime ships a cloud-agnostic hardening layer:
+
+- **Per-plan rate limiting.** Each tenant gets its `TenantPlan` request budget
+  (`uiao.saas.quotas`) enforced per-replica; over-budget requests get `429`
+  with `Retry-After` + `RateLimit-*` headers. Toggle with
+  `UIAO_SAAS_RATE_LIMITING_ENABLED` / `UIAO_SAAS_RATE_LIMIT_WINDOW_SECONDS`.
+- **Audit trail.** Control-plane lifecycle actions are recorded and exposed at
+  `GET /control/v1/audit` (publisher-admin only). Toggle with
+  `UIAO_SAAS_AUDIT_ENABLED`.
+- **RFC 9457 errors.** Both planes emit `application/problem+json` with a
+  stable machine `error` code.
+- **Readiness probe.** `/readyz` confirms the tenant registry is reachable
+  (the Container App readiness probe targets it); `/healthz` is liveness.
+
+| Variable | Source | Default |
+|---|---|---|
+| `UIAO_SAAS_RATE_LIMITING_ENABLED` | App setting | `true` |
+| `UIAO_SAAS_RATE_LIMIT_WINDOW_SECONDS` | App setting | `60` |
+| `UIAO_SAAS_AUDIT_ENABLED` | App setting | `true` |
+
 ## Sovereign clouds
 
 `UIAO_SAAS_CLOUD` selects `commercial` (also GCC-Moderate per ADR-033),

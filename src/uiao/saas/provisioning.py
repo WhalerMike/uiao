@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from .audit import AuditAction, AuditEvent, AuditOutcome, AuditSink, NullAuditSink
 from .auth import ISSUER_V2_TEMPLATES
 from .repository import TenantRepository
 from .tenant import Tenant, TenantPlan, TenantStatus, derive_namespace, is_tenant_guid
@@ -90,11 +91,26 @@ class ProvisioningService:
         app_client_id: str = "",
         cloud: str = "commercial",
         executor: StampExecutor | None = None,
+        audit: AuditSink | None = None,
     ) -> None:
         self._repo = repository
         self._app_client_id = app_client_id
         self._cloud = cloud
         self._executor: StampExecutor = executor or NoOpStampExecutor()
+        self._audit: AuditSink = audit or NullAuditSink()
+
+    async def _record(
+        self,
+        action: AuditAction,
+        tenant_id: str,
+        *,
+        actor: str = "",
+        outcome: AuditOutcome = AuditOutcome.SUCCESS,
+        detail: str = "",
+    ) -> None:
+        await self._audit.record(
+            AuditEvent(action=action, tenant_id=tenant_id, actor=actor, outcome=outcome, detail=detail)
+        )
 
     def admin_consent_url(self, tenant_id: str) -> str:
         """Build the admin-consent URL a customer admin visits to grant access."""
@@ -115,6 +131,13 @@ class ProvisioningService:
 
         existing = await self._repo.get(tenant_id)
         if existing is not None and existing.status is not TenantStatus.DEPROVISIONED:
+            await self._record(
+                AuditAction.ONBOARD,
+                tenant_id,
+                actor=onboarded_by,
+                outcome=AuditOutcome.FAILURE,
+                detail=f"already onboarded ({existing.status.value})",
+            )
             raise ValueError(f"tenant {tenant_id} is already onboarded ({existing.status.value})")
 
         tenant = Tenant(
@@ -132,6 +155,12 @@ class ProvisioningService:
         # Promote to ACTIVE once the stamp planned/executed without error.
         active = tenant.with_status(TenantStatus.ACTIVE)
         await self._repo.upsert(active)
+        await self._record(
+            AuditAction.ONBOARD,
+            tenant_id,
+            actor=onboarded_by,
+            detail=f"plan={plan.value} executed={stamp.executed}",
+        )
 
         return OnboardingResult(
             tenant=active,
@@ -139,16 +168,21 @@ class ProvisioningService:
             admin_consent_url=self.admin_consent_url(tenant_id),
         )
 
-    async def suspend(self, tenant_id: str, *, reason: str = "") -> Tenant:
-        return await self._repo.set_status(tenant_id, TenantStatus.SUSPENDED, reason=reason)
+    async def suspend(self, tenant_id: str, *, reason: str = "", actor: str = "") -> Tenant:
+        tenant = await self._repo.set_status(tenant_id, TenantStatus.SUSPENDED, reason=reason)
+        await self._record(AuditAction.SUSPEND, tenant_id, actor=actor, detail=reason)
+        return tenant
 
-    async def resume(self, tenant_id: str) -> Tenant:
-        return await self._repo.set_status(tenant_id, TenantStatus.ACTIVE)
+    async def resume(self, tenant_id: str, *, actor: str = "") -> Tenant:
+        tenant = await self._repo.set_status(tenant_id, TenantStatus.ACTIVE)
+        await self._record(AuditAction.RESUME, tenant_id, actor=actor)
+        return tenant
 
-    async def deprovision(self, tenant_id: str) -> StampResult:
+    async def deprovision(self, tenant_id: str, *, actor: str = "") -> StampResult:
         tenant = await self._repo.require(tenant_id)
         result = await self._executor.unstamp(tenant)
         await self._repo.set_status(tenant_id, TenantStatus.DEPROVISIONED)
+        await self._record(AuditAction.DEPROVISION, tenant_id, actor=actor, detail=f"executed={result.executed}")
         return result
 
 
