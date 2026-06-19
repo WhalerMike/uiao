@@ -594,6 +594,7 @@
     - [Shadow AI — Deployed Without Inventory](customer-documents/orgpath-narrative/Book_21_CPT_06.html)
     - [OrgPath as the Authorization Spine for AI](customer-documents/orgpath-narrative/Book_21_CPT_07.html)
     - [The Machine-Identity Lifecycle for Federal AI](customer-documents/orgpath-narrative/Book_21_CPT_08.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_21_CPT_09.html)
   - [Book_22 — OrgPath and Customer Identity](customer-documents/orgpath-narrative/Book_22.html)
     - [The Identity Surface Agencies Actually Serve](customer-documents/orgpath-narrative/Book_22_CPT_01.html)
     - [NIST 800-63 and the Three Assurance Levels](customer-documents/orgpath-narrative/Book_22_CPT_02.html)
