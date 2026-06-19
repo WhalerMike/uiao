@@ -256,6 +256,11 @@
   - [Enterprise Application Access Governance and Approval Model](customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.html)
   - [OrgPath Identity Governance Structure](customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.html)
   - [Help Desk Flow — Intake, Triage, and Routing](customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.html)
+- **Federal AI Identity Governance**
+  - [Federal AI Identity Governance](customer-documents/operational-guides/ai-identity-governance/index.html)
+  - [Federal AI Identity Governance — Manual Path](customer-documents/operational-guides/ai-identity-governance/manual-path.html)
+  - [Federal AI Identity Governance — Governed Path](customer-documents/operational-guides/ai-identity-governance/governed-path.html)
+  - [Federal AI Identity Governance — Centralized OFCIO Deployment Model](customer-documents/operational-guides/ai-identity-governance/central-deployment.html)
 - **Intune + Azure Arc Modernization (Manual & Governed)**
   - [Intune + Azure Arc Modernization](customer-documents/operational-guides/intune-arc-modernization/index.html)
   - [Intune + Azure Arc — Manual Path](customer-documents/operational-guides/intune-arc-modernization/manual-path.html)
