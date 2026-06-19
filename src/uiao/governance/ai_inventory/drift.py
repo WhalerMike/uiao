@@ -171,3 +171,33 @@ def finding_pii_no_pia(record: AISystemRecord, evidence_ref: str = "omg-inventor
         observed="has_pii=Yes  pia_url: None",
         evidence_ref=evidence_ref,
     )
+
+
+DRIFT_AI_STALENESS = "DRIFT-COMPLIANCE::ai-staleness"
+"""Live AI system has had no mover event detected in 365+ days.
+
+The inventory record may be stale — either the system is genuinely
+unchanged (acceptable) or governance fields have drifted without
+the inventory being updated (governance failure).
+
+Severity: P3 (informational — does not block certification)
+Posture:  PER_POLICY (auto-closes when any mover event is detected)
+Threshold: STALENESS_THRESHOLD_DAYS (365) days since last mover event
+"""
+
+
+def finding_staleness(
+    record: AISystemRecord,
+    days_since_mover: int,
+    evidence_ref: str = "omg-inventory",
+) -> Finding:
+    return Finding(
+        plane="identity",
+        name=record.identity_label,
+        drift_class=DRIFT_AI_STALENESS,
+        severity=Severity.P3,
+        posture=Posture.PER_POLICY,
+        intended="mover event detected within last 365 days — inventory record is current",
+        observed=f"no mover event in {days_since_mover} days — record may be stale",
+        evidence_ref=evidence_ref,
+    )
