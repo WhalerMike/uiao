@@ -638,6 +638,13 @@
     - [Zero Trust Across a Mixed Estate](customer-documents/orgpath-narrative/Book_25_CPT_06.html)
     - [Adopting Multi-Cloud OrgPath — The Binding Profile Onboarding Path](customer-documents/orgpath-narrative/Book_25_CPT_07.html)
     - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_25_CPT_08.html)
+  - [Book_26 — OrgPath as a Multi-Cloud Governance SaaS](customer-documents/orgpath-narrative/Book_26.html)
+    - [One Substrate, Many Tenants](customer-documents/orgpath-narrative/Book_26_CPT_01.html)
+    - [Hardening the Plane](customer-documents/orgpath-narrative/Book_26_CPT_02.html)
+    - [Passwordless on Azure](customer-documents/orgpath-narrative/Book_26_CPT_03.html)
+    - [The Same Plane on AWS](customer-documents/orgpath-narrative/Book_26_CPT_04.html)
+    - [One Plane, Many Clouds](customer-documents/orgpath-narrative/Book_26_CPT_05.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_26_CPT_06.html)
 - **OrgPath for All Clouds (6-chapter series)**
   - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
   - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)

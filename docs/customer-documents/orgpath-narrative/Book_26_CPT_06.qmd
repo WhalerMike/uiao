@@ -1,0 +1,96 @@
+---
+title: "Appendix — Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_26
+series-order: 6
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+This appendix makes the bundle self-contained. It collects every term, architecture decision record, cloud-service mapping, and external standard the book cites, so a reader who received this document independently has the full reference set in one place.
+:::
+
+## Part I — Glossary of Terms
+
+### Multi-tenancy and the planes
+
+**Multi-tenant SaaS plane** — one operated UIAO service that governs many customer tenants with a single governance runtime, as opposed to running a separate runtime copy per customer. The governance code is shared; only the resolved tenant differs per request.
+
+**Single-tenant surface** — the original UIAO deployment shape: one agency running the runtime inside its own boundary. Retained and supported; not replaced by the SaaS plane.
+
+**Data plane** — the governed surface. Every non-public request carries a customer access token; the tenant-resolution middleware verifies it and binds a tenant context for the request. Governance passes run here.
+
+**Control plane** — the operator surface (`/control/v1`): onboard, list, suspend, resume, deprovision tenants. Requires a publisher-tenant token carrying the administrative role; not for customers.
+
+**Publisher tenant** — the home tenant that operates the service and owns the control plane. Control-plane tokens must originate from it.
+
+**`attach_saas()`** — the single composition point that augments the existing `uiao.api` data plane with the tenant-resolution middleware and control-plane routes. The mechanism by which the SaaS surface is *additive* rather than a fork.
+
+### Tenancy and isolation
+
+**Tenant** — one customer's Microsoft Entra directory, identified by its tenant GUID, carrying a lifecycle status and a commercial plan.
+
+**`data_namespace`** — the deterministic isolation handle derived from a tenant's GUID. Scopes the tenant's database schema/rows, its object-storage prefix, and its secret scope on either cloud.
+
+**Tenant lifecycle** — the state machine `PENDING → ACTIVE ⇄ SUSPENDED → DEPROVISIONED`. Only `ACTIVE` tenants receive governance traffic.
+
+**Stamp / stamp executor** — the provisioning of a tenant's isolated resources (schema, storage prefix, secret scope) at onboarding. Dry-run by default; executes only when explicitly enabled. A namespace-safety guard validates the namespace before it names any resource.
+
+### Production-readiness (ADR-115)
+
+**Per-plan quota** — the request budget (sustained rate plus burst) mapped to each commercial plan: trial, standard, enterprise, government. Unknown plans fall back to the most restrictive ceiling.
+
+**Rate limiting** — per-tenant enforcement of the plan quota over a rolling window. Over-budget requests receive `429 Too Many Requests` with `Retry-After`; admitted requests carry `RateLimit-*` headers. Best-effort per replica.
+
+**Audit trail** — the append-only record of every control-plane lifecycle action (success and rejection), carrying action, tenant, actor, outcome, and timestamp; exposed to operators at a control-plane endpoint.
+
+**problem+json** — RFC 9457 problem-details error documents, emitted on both planes, carrying a stable machine-readable error code plus standard human-readable fields, and no token contents or internal detail.
+
+**Liveness vs. readiness** — liveness answers "is the process up?"; readiness answers "can this instance reach the tenant registry?" An instance that fails readiness is withheld from the traffic pool.
+
+### Passwordless data tier (ADR-116, ADR-117)
+
+**Passwordless authentication** — authenticating to the database with a short-lived, auto-refreshed cloud token presented as the connection password, instead of a stored password.
+
+**Managed identity / IAM task role** — the workload's own cloud identity and the governance principal. On Azure a user-assigned managed identity; on AWS an ECS task role. Bound to the database so the workload authenticates as itself.
+
+**Connection token seam** — the single database-layer hook that injects a freshly-minted token as the connection password on each new connection. Identical across clouds; only the token *source* differs (Entra vs. RDS IAM).
+
+**IaC validation gate** — a credential-free continuous-integration check that compiles/synthesizes the infrastructure (Bicep on Azure, CDK on AWS) on every change, catching malformed templates before deployment.
+
+## Part II — Architecture Decision Records Cited in This Book
+
+- **ADR-096 — Azure SaaS Architecture.** The multi-tenant control plane, per-request tenancy, the publisher/customer boundary, and the per-tenant stamp pattern on Azure Container Apps. The foundational canon for this book.
+- **ADR-115 — SaaS Production-Readiness.** Per-plan quotas and rate limiting, the control-plane audit trail, RFC 9457 problem+json errors, and the `/readyz` readiness probe. The hardening layer of Chapter 2.
+- **ADR-116 — Azure Deployment Hardening.** Passwordless Entra Postgres authentication (managed identity as the database's Entra administrator, password auth disabled) and the Bicep validation gate. Chapter 3.
+- **ADR-117 — AWS SaaS Surface.** The AWS deployment on ECS Fargate + RDS via AWS CDK, passwordless RDS IAM authentication reusing the shared connection seam, the AWS stamp executor, and the CDK synthesis gate. Chapter 4.
+- **ADR-033 — GCC Boundary Drift Class.** The convention that commercial endpoints also serve the moderate government boundary; referenced in the boundary discussion of Chapter 5.
+
+## Part III — Cloud Service Equivalents
+
+The mapping that made "the same plane on AWS" a small change:
+
+| Concern | Azure (ADR-096 / ADR-116) | AWS (ADR-117) |
+|---|---|---|
+| Compute | Container Apps | ECS Fargate behind an ALB |
+| Tenant registry | PostgreSQL Flexible Server | RDS PostgreSQL |
+| Passwordless DB token | Microsoft Entra access token | RDS IAM authentication token |
+| Governance principal | User-assigned managed identity | IAM task role |
+| Per-tenant secrets | Key Vault | Secrets Manager |
+| Evidence bundles | Blob Storage | S3 |
+| Logs / telemetry | Log Analytics + App Insights | CloudWatch |
+| Infrastructure as code | Bicep | AWS CDK (Python) |
+
+## Part IV — External Standards and Publications Referenced
+
+- **RFC 9457 — Problem Details for HTTP APIs.** The standard the unified `application/problem+json` error surface implements.
+- **OAuth 2.0 / OpenID Connect bearer tokens.** The inbound authentication model — customer access tokens carrying the tenant (`tid`) claim, signature-verified against the issuing tenant's keys.
+- **Microsoft Entra ID token authentication for Azure Database for PostgreSQL.** The mechanism behind passwordless Postgres on Azure.
+- **AWS IAM database authentication for Amazon RDS.** The AWS counterpart behind passwordless Postgres on AWS.
+
+## Return to the beginning
+
+[← Back to Book_26 landing page](Book_26.qmd) · [Series index](index.qmd)

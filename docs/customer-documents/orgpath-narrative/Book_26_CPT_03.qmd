@@ -1,0 +1,52 @@
+---
+title: "Passwordless on Azure"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_26
+series-order: 3
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+The hardened plane from Chapter 2 has to run somewhere. On Azure it runs on Container Apps, backed by a managed Postgres database, deployed by infrastructure-as-code. This chapter is about the deployment — and specifically about removing the single highest-value secret in it: the database password. The result (ADR-116) is a data tier with no long-lived password anywhere, authenticated entirely by the workload's own managed identity.
+:::
+
+![Passwordless Postgres on Azure: the Container App's managed identity is bound as the database's Entra administrator; at connect time the app requests a short-lived token from Entra and presents it as the database password, so no password is stored in CI, the deployment, or the app's secret store.](Book_26_CPT_03_fig1.svg){#fig-passwordless-azure fig-alt="Engineering blueprint diagram. A box labeled Azure Container App with managed identity has an arrow to Microsoft Entra labeled request token, and a return arrow labeled short-lived token. A second arrow from the Container App to a box labeled PostgreSQL Flexible Server is labeled connect, token as password. A red crossed-out box at the side reads no stored database password. White background, navy and teal palette. No human figures." width="100%"}
+
+## Why Container Apps
+
+The SaaS plane is a behind-the-scenes governance runtime, not an interactive app, and its compute target is chosen to match. Azure Container Apps runs serverless containers with managed ingress, TLS, and revisions, and — the decisive property — it runs each revision under a **user-assigned managed identity**. That identity is precisely the principal the governance code already expects: the thing that acquires per-tenant Microsoft Graph and Azure Resource Manager tokens to run passes against customer directories. No client secrets sit on disk; the workload *is* an identity, and that identity is the governance principal. Scale-to-zero suits the bursty, scheduled rhythm of governance passes, and managed revisions give blue-green deployment for free.
+
+The infrastructure is described in Bicep — modules for the container registry, the Key Vault, the Postgres server, the storage account, the Container Apps environment, and the app itself — so the whole platform is stamped from version-controlled templates rather than clicked together in a portal.
+
+## The secret that should not exist
+
+The original deployment had one glaring weakness, and it was the database password. It was a deployment parameter, composed into a connection string, injected from a continuous-integration secret, and stored as a secret on the running app. That single value sat in three places at once — the CI system, the deployment, and the app's secret store — it never rotated on its own, and a leak of it granted standing access to the tenant registry. Meanwhile the managed identity already existed and already authenticated the app to Microsoft Graph and Resource Manager. The database was the one door still using a password while every other door used the identity.
+
+The fix is to make the database use the identity too. Azure Database for PostgreSQL accepts a short-lived Microsoft Entra access token *as the connection password*. The deployment binds the app's managed identity as the database server's **Entra administrator** and disables password authentication entirely. With password auth off, the identity is the only way in; no administrator login or password is provisioned at all. The deployment parameter, the CI secret, and the password-bearing connection string are simply deleted.
+
+## How the token becomes the password
+
+The application side is small and deliberate. A token provider acquires an Entra access token scoped to the database service and caches it, refreshing it shortly before it expires so token acquisition stays off the hot path of every connection while a near-expired token is never presented. The token's audience is sovereign-cloud aware — commercial and government clouds use different endpoints — so the right token is requested for the boundary the deployment runs in.
+
+The token is injected as the connection password through a single hook in the database layer: on each new connection, the provider mints a fresh token and hands it over as the password. The mechanism is worth noticing precisely because it is so contained — one connection hook, one cached-token provider — because the next chapter reuses the *exact same hook* on AWS with a different token source. The cloud-specific part of passwordless authentication is just "where does the token come from?"; the plumbing that turns a token into a connection is shared.
+
+## Proving the infrastructure before it deploys
+
+Removing the password is half the hardening; the other half is making the infrastructure itself trustworthy before it ever touches a live subscription. The deployment previously reached the cloud unchecked — a malformed template or a stale parameter would only surface mid-deployment, against real resources, after credentials were already in play.
+
+ADR-116 adds a validation gate: on every change to the Azure infrastructure, continuous integration compiles the entire template graph and validates the parameter file. It is a pure compile-and-lint — no subscription, no credentials, no deployment — so it runs on every proposed change and catches malformed templates, bad resource shapes, and broken parameter references before they can reach a real deployment. A credentialed preview against live state remains a step at deploy time; the cheap, credential-free gate catches the large class of defects that never needed a cloud account to find.
+
+## What is left, honestly
+
+Two things are deliberately *not* claimed. The database's network access is unchanged by this work — disabling public network access is coupled with building private networking, and that is scoped as its own deploy-validated step rather than shipped half-finished. And the validation gate proves the template is *well-formed*, not that a deployment *succeeds* against real Azure state; that remains the deploy-time check. Naming those boundaries is part of the doctrine: the hardening that shipped is real and complete, and the hardening that did not ship is named rather than implied.
+
+What did ship is significant: the highest-value long-lived secret in the Azure deployment is gone, access to the tenant registry is a short-lived token bound to the workload's identity, and the infrastructure is compile-validated on every change. The next chapter takes the same application — unchanged — and stands it up on a second cloud, reusing the very connection hook this chapter introduced.
+
+::: {.callout-tip}
+## Continue reading
+
+[Chapter 4 — The Same Plane on AWS →](Book_26_CPT_04.qmd)
+:::
