@@ -1,0 +1,208 @@
+---
+title: "Appendix — Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_22
+series-order: 7
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+This appendix defines every term, acronym, drift finding code, and external citation used in this book. It is intended to make the bundle fully self-contained for readers who do not have access to the UIAO customer portal or the canonical ADR library. Normative authority rests with the cited Architecture Decision Records; this glossary paraphrases them for accessibility.
+:::
+
+---
+
+## Part I — Glossary of Terms
+
+### Core Identity Governance Concepts
+
+**Active Governance**
+The operating posture in which UIAO acts as a reconciliation control plane — continuously comparing the observed state of a governed surface against the authoritative expected state and producing structured findings when they diverge. Active Governance does not replace provider data planes; it governs them. Defined in ADR-092.
+
+**Architecture Decision Record (ADR)**
+UIAO's numbered, binding governance specification. Each ADR documents a specific platform decision — its context, the options considered, the chosen approach, and the constraints that follow from it. ADRs are the authoritative source of truth for platform behavior. References in this book follow the form *ADR-NNN*. A complete list of ADRs cited in this book appears in Part III.
+
+**Authorization to Operate (ATO)**
+A formal federal security authorization issued under the NIST Risk Management Framework (NIST SP 800-37) that authorizes a federal information system to operate. An ATO documents the residual risk accepted by an authorizing official. Single-ATO Reciprocity (ADR-054) governs how UIAO recognizes ATOs issued under different federal frameworks without requiring re-authorization for every deployment.
+
+**Citizen Identity**
+The identity record a federal agency maintains for an external individual — a beneficiary, taxpayer, petitioner, applicant, or member of the public — who receives a government service or fulfills a legal obligation. Citizen identity is the primary population in Scope 1 of UIAO's KYC protocol. Unlike workforce identities, citizen identities are not subject to PIV requirements; their assurance properties are governed by NIST SP 800-63-3 and agency-specific IAL declarations registered in the OrgPath node that owns the workflow.
+
+**Customer Identity**
+The broader category that includes both citizen identity (agency-to-individual interactions) and organizational identity (agency-to-business, agency-to-contractor, agency-to-grantee interactions). UIAO's Customer Identity Canon Block (ADR-055) establishes the governance model for both populations and the KYC protocol that governs them.
+
+**Drift**
+A deviation between the expected state of a governed identity surface (as defined by the authoritative source of record) and its observed state. Drift is detected by the Drift Engine and expressed as structured finding objects. P1 drift halts the governance gate; P2 drift is routed for operator disposition. See also: *Drift Finding*, *Drift Engine*.
+
+**Drift Engine**
+The six-phase orchestration layer in UIAO that detects, classifies, routes, and gates on identity surface drift. The six phases are: collect, normalize, compare, classify, gate, and remediate. For the customer identity surface, the Drift Engine compares declared IAL requirements in OrgPath nodes against the observed proofing infrastructure to detect assurance gaps. Defined in ADR-040.
+
+**Drift Finding**
+A structured record produced by the Drift Engine when it detects a governance gap. Each finding carries: a deterministic finding ID, a drift class, a severity (P1, P2, or P3), a posture (NEVER_AUTOFIX, PER_POLICY, or INFORMATIONAL), the intended state, the observed state, and an evidence reference. A complete table of drift finding codes used in this book appears in Part II.
+
+**Federation**
+A trust arrangement in which one identity provider's assertion about an identity subject is accepted by a relying party without that party re-performing the underlying proofing process. In the federal context, Login.gov functions as a federation hub: it proofs a citizen once and its assertions are accepted by participating agencies under the federation contract defined in ADR-056. Inter-agency identity exchange (Scope 2 of the KYC protocol) is a specialized form of federation in which one agency's authoritative attribute — an SSN, a UEI, an immigration status determination — is consumed as trusted input by another agency.
+
+**Ghost Credential**
+A service account, external identity token, or proofed identity record that persists after the person, system, or transaction it was created for has ended. Ghost credentials in the citizen identity surface arise when an enrollee exits a program or benefit but their identity record is not offboarded from the agency's identity store, leaving an active credential attached to no current obligation.
+
+**Identity Assurance Level (IAL) / Level of Assurance (LOA)**
+A tiered measure of the rigor with which an agency has verified that an enrollee's claimed identity corresponds to a real person. NIST SP 800-63-3 defines three levels: IAL1 (self-asserted; no real-world identity verification), IAL2 (remote or in-person evidence verification; identity proofing performed), and IAL3 (in-person proofing with biometric binding). The older Level of Assurance (LOA) framework from OMB M-04-04 maps approximately to IAL1–IAL3. Under the KYC protocol, every OrgPath node owning a citizen-facing workflow must declare the IAL it operates at; a mismatch between the declared level and the actual proofing infrastructure produces a drift finding.
+
+**Identity Proofing**
+The process by which an agency verifies that an enrollee's claimed identity corresponds to a real-world person and that the enrollee controls the identity they are asserting. Identity proofing may be self-asserted (IAL1), evidence-based (IAL2), or biometric (IAL3). Login.gov performs remote identity proofing at IAL2 on behalf of participating agencies under the activation contract in ADR-056.
+
+**Inter-Agency Identity Exchange**
+The governance scope in which one federal agency produces an authoritative identity attribute and another agency consumes it as trusted input. SSA produces Social Security Numbers; IRS consumes them as the basis for taxpayer identification. GSA produces Unique Entity Identifiers; contracting agencies consume them as the basis for vendor identity. USCIS produces immigration status determinations; employers rely on them through E-Verify. These dependencies are real, legally consequential, and — absent UIAO governance — invisible in the identity layer. Scope 2 of the KYC protocol governs them through attribute exchange contracts registered in the UIAO registry.
+
+**JML (Joiner / Mover / Leaver)**
+The three lifecycle transitions that govern the full operational life of an identity subject. The *Joiner* event provisions the identity when a subject enters the governed environment. The *Mover* event updates placement and attributes when the subject's circumstances change. The *Leaver* event deprovisions credentials and seals the audit record when the subject exits. In the customer identity surface, JML governs the enrollment, re-proofing, and offboarding of external identity subjects under the KYC protocol.
+
+**KYC (Know Your Customer)**
+UIAO's customer identity governance protocol, defined in UIAO_141 and UIAO_142, operating at two distinct scopes: Scope 1 (agency-to-citizen) and Scope 2 (inter-agency attribute exchange). KYC in the federal context extends beyond financial sector usage — it is the doctrine that agencies must know, at a governed assurance level, who they are serving and what attributes about that person come from which authoritative source. The protocol establishes that agencies are simultaneously vendors of identity attributes (producing authoritative outputs consumed by other agencies) and customers of them (consuming authoritative outputs produced elsewhere).
+
+**Login.gov**
+GSA's shared federal identity provider, activated under ADR-056, that provides IAL1 and IAL2 identity proofing and authentication for citizen-facing federal services. Login.gov eliminates the need for each agency to build and operate its own proofing infrastructure. Agencies adopting Login.gov inherit its FedRAMP authorization and its proofing process; their OrgPath node records the Login.gov activation as the declared proofing mechanism for the workflows it covers. Chapter 3 covers the Login.gov activation contract in detail.
+
+**Machine Identity**
+A non-human identity — a service account, API key, workload identity, managed identity, or bot account — that holds credentials and acts inside a governed identity environment. The SailPoint Non-Employee Relationship Management (NERM) adapter (ADR-059) governs the machine identity surface as well as non-employee human identities.
+
+**NERM (Non-Employee Relationship Management)**
+SailPoint's product family governing identity lifecycle for populations outside the traditional workforce: contractors, partners, vendors, grantees, and, under ADR-059, machine identities. In the UIAO architecture, the SailPoint NERM adapter is the commercial-exception carve-out that observes and governs the non-employee and non-human identity surface. Non-employee identity governance is directly adjacent to the citizen identity surface: a contractor who also interacts with an agency as a taxpayer may appear in both the workforce and the citizen-facing surface under different identifiers.
+
+**Non-Employee Identity**
+An identity for a person who has a relationship with a federal agency without being a federal employee — a contractor, grantee, partner, vendor, or external collaborator. Non-employee identities occupy a governance gap between the workforce surface (covered by PIV and OrgPath) and the citizen surface (covered by the KYC protocol). ADR-059 governs non-employee identity through the SailPoint NERM adapter.
+
+**OrgPath**
+UIAO's organizational placement model. OrgPath assigns every identity object — human, device, or external identity subject — a position in the federal bureau hierarchy using a colon-separated namespace path. For citizen-facing workflows, OrgPath is the anchor for IAL declarations, attribute exchange contracts, and KYC governance obligations. A bureau that owns a citizen-facing workflow declares that ownership in its OrgPath node.
+
+OrgPath notation: `AGENCY:BUREAU::WORKFLOW-NAME`
+
+Examples:
+- `SSA:BENEFITS` — the Benefits Administration bureau within the Social Security Administration
+- `IRS:TAXPAYER-SERVICES` — the Taxpayer Services bureau within the Internal Revenue Service
+- `USCIS:ADJUDICATIONS` — the Adjudications bureau within U.S. Citizenship and Immigration Services
+
+**OrgTree**
+The hierarchical registry of organizational nodes that OrgPath paths are validated against. OrgTree maps agency codes and bureau names to their canonical positions in the federal hierarchy. OrgPath values that do not resolve against OrgTree are flagged as governance gaps.
+
+**Privacy Act**
+The Privacy Act of 1974 (5 U.S.C. § 552a) governs how federal agencies collect, maintain, use, and disseminate personally identifiable information about individuals. Every citizen-facing identity system that collects PII operates under a Privacy Act System of Records Notice (SORN). UIAO's KYC protocol requires that the SORN governing a citizen-facing identity workflow be registered as an attribute of the OrgPath node that owns the workflow.
+
+**Privacy Impact Assessment (PIA)**
+A structured analysis, required by the E-Government Act of 2002 and OMB guidance, that documents how a system that processes personally identifiable information collects, uses, stores, and protects that information. Every citizen-facing identity workflow that collects PII requires a current PIA. A PIA URL that is absent or expired in the OrgPath node produces a drift finding.
+
+**SSOT (Single Source of Truth)**
+The principle that a given identity attribute has one authoritative origin, and all other consumers of that attribute derive it from that origin rather than maintaining independent copies. SSA is the SSOT for Social Security Numbers; GSA is the SSOT for Unique Entity Identifiers; USCIS is the SSOT for immigration status determinations. Establishing and governing SSOT relationships for inter-agency attribute exchange is the primary purpose of Scope 2 of the KYC protocol.
+
+---
+
+## Part II — Drift Finding Codes
+
+The following drift finding codes are used in this book. Each is a string constant in the UIAO drift taxonomy (ADR-012). The format is `DRIFT-CLASS::subtype`.
+
+| Code | Severity | Posture | Trigger | Remediation |
+|---|---|---|---|---|
+| `DRIFT-COMPLIANCE::ai-ato-gap` | P2 | NEVER_AUTOFIX | Deployed or piloted system with no current ATO | Initiate or locate an ATO; link to UIAO registry |
+| `DRIFT-IDENTITY::ai-no-orgpath` | P2 | PER_POLICY | OrgPath cannot be derived from organizational fields | Confirm bureau affiliation; update registry entry; re-run scanner |
+| `DRIFT-IDENTITY::ai-unowned` | P2 | NEVER_AUTOFIX | No named owner recorded for the identity or workflow | Assign a named bureau identity governance contact |
+| `DRIFT-COMPLIANCE::ai-pii-no-pia` | P2 | NEVER_AUTOFIX | PII-bearing system or workflow with no current PIA URL | Author and publish a Privacy Impact Assessment; register URL |
+| `DRIFT-IDENTITY::ai-shadow` | **P1** | NEVER_AUTOFIX | Identity present in the environment but absent from the governed registry | Submit to registry; governance-board review required |
+| `DRIFT-COMPLIANCE::ai-agentic-ungoverned` | **P1** | NEVER_AUTOFIX | Agentic system operating without ATO and without governance mode declaration | Create OrgPath record; initiate ATO; document governance mode |
+| `DRIFT-IDENTITY::kyc-assurance-gap` | P2 | NEVER_AUTOFIX | OrgPath node owns a citizen-facing workflow but IAL declaration is absent or inconsistent with proofing infrastructure | Author IAL declaration in OrgPath node; align proofing infrastructure |
+| `DRIFT-IDENTITY::attribute-exchange-ungoverned` | P2 | NEVER_AUTOFIX | Inter-agency attribute dependency detected but not registered as a governed attribute exchange contract | Register the dependency; identify SSOT bureau; establish exchange contract |
+
+**Gate behavior:** P1 findings halt the governance gate — no new identity provisioning, access expansion, or OrgPath assignments proceed through the automated pipeline in the affected bureau until the finding is resolved or a written risk acceptance is filed by an authorizing official.
+
+---
+
+## Part III — Architecture Decision Records Cited in This Book
+
+Architecture Decision Records are UIAO's binding governance specifications. The records below are cited in this book. Authoritative text is available through the UIAO customer portal at `/docs/adr/`.
+
+**ADR-035 — OrgPath Codebook**
+Defines the canonical OrgPath namespace syntax, the colon-separated hierarchical path format, the agency and bureau code registry, and the rules for deriving and validating OrgPath values. ADR-035 is the foundational specification that all other OrgPath-dependent ADRs build on. This book uses OrgPath notation throughout; ADR-035 is the authoritative source for path construction rules.
+
+**ADR-040 — Drift Engine**
+Defines the six-phase drift orchestration pipeline: collect, normalize, compare, classify, gate, and remediate. The customer identity governance scanner operates within this pipeline. ADR-040 defines the gate function: any P1 finding produces a HALT decision; P2 findings are routed for operator disposition.
+
+**ADR-054 — Single-ATO Reciprocity**
+Defines how UIAO recognizes ATOs issued under different federal frameworks (FedRAMP, DISA, agency-specific) without requiring re-authorization for every deployment. For citizen-facing identity systems, ADR-054 governs how a Login.gov FedRAMP authorization is recognized as satisfying the ATO requirement for the proofing component of an agency's citizen identity workflow.
+
+**ADR-055 — Customer Identity Canon Block**
+The governing ADR for this book. Establishes the two-scope KYC protocol (agency-to-citizen and inter-agency attribute exchange), defines citizen identity as a first-class UIAO governance surface distinct from the workforce surface, specifies the IAL declaration requirement for OrgPath nodes owning citizen-facing workflows, and establishes the attribute exchange contract registry. ADR-055 is the canon source for every normative claim about customer identity governance in this book.
+
+**ADR-056 — Login.gov Activation**
+Defines the activation contract under which agencies adopt Login.gov as their proofing infrastructure. Specifies the OrgPath node attributes that record a Login.gov activation (service tier, IAL level covered, activation date, ATO reference), the conditions under which a Login.gov activation satisfies the IAL2 proofing requirement, and the drift detection rules that monitor for activation drift (e.g., a Login.gov activation recorded at IAL2 but the workflow operating at IAL1).
+
+**ADR-059 — SailPoint Adapter Family**
+Defines the SailPoint integration architecture within UIAO, including the `sailpoint-nerm` conformance slot that governs non-employee identity lifecycle (contractors, partners, vendors, grantees) and the `sailpoint-machine-identity` slot that governs machine identities. ADR-059 establishes the commercial-exception carve-out that governs the SailPoint integration pattern. The non-employee surface governed by the NERM adapter is directly adjacent to the citizen identity surface covered by ADR-055.
+
+**ADR-062 — OrgPath Leaf Naming**
+Defines the naming conventions for leaf-level OrgPath identifiers — the rightmost component of an OrgPath path that identifies a specific workflow, system, or identity record within a bureau. Consistent leaf naming is required for the drift engine to produce stable finding IDs across scan runs.
+
+**ADR-092 — Active Governance**
+Defines UIAO's core operating posture as a reconciliation control plane, the control-plane/data-plane boundary, the provider-incorporation contract, and the L0–L4 actuation ladder. ADR-092 establishes that promotion from L1 (observe) to L2 (advise) or L3 (gated actuation) requires an explicit governance-board decision. The current customer identity governance activation level is L1.
+
+---
+
+## Part IV — UIAO Specifications Cited
+
+**UIAO_141 — KYC Protocol: Scope Definitions**
+Defines the two scopes of UIAO's Know Your Customer protocol: Scope 1 (agency-to-citizen, external identity proofing) and Scope 2 (inter-agency attribute exchange, SSOT dependency governance). UIAO_141 specifies the schema for citizen identity enrollment records, the IAL declaration field in OrgPath nodes, and the population boundary that distinguishes the citizen identity surface from the workforce surface.
+
+**UIAO_142 — KYC Protocol: Attribute Exchange Contracts**
+Defines the operational specification for inter-agency attribute exchange contracts: the producing bureau, the consuming bureau, the attribute type, the SSOT designation, the legal basis for sharing, the freshness requirement, and the drift detection rule that monitors for undeclared dependencies. UIAO_142 is the operational specification that ADR-055's Scope 2 doctrine leaves implicit.
+
+**UIAO_196 — AI System Identity Record**
+Referenced in the context of machine identity governance. Defines the canonical record shape and OrgPath binding rules for AI system identities. Cited in this book where AI systems participate in citizen-facing workflows (e.g., an AI system that adjudicates a benefits eligibility determination must itself be an OrgPath-governed identity subject in addition to the citizen it is adjudicating).
+
+---
+
+## Part V — Federal Mandates Referenced
+
+**OMB M-19-17** — *Enabling Mission Delivery through Improved Identity, Credential, and Access Management* (May 21, 2019). The binding memorandum that established the Federal Identity, Credential, and Access Management (FICAM) framework for the current era. M-19-17 explicitly extended ICAM governance obligations to externally-facing services, establishing the federal mandate that ADR-055 implements at the platform layer. Key provisions: §III (identity proofing standards for public-facing digital services), §IV (federation requirements), and Appendix A (FICAM architecture).
+
+**NIST SP 800-63-3** — *Digital Identity Guidelines* (June 2017, with subsequent updates). The normative technical framework for federal digital identity, defining the three assurance level taxonomies: Identity Assurance Level (IAL), Authenticator Assurance Level (AAL), and Federation Assurance Level (FAL). IAL1 through IAL3 are the assurance tiers used throughout this book. 800-63-3 is organized as a suite: the base document plus SP 800-63A (Identity Proofing), SP 800-63B (Authentication), and SP 800-63C (Federation). Chapter 2 of this book covers the IAL framework from SP 800-63A in detail.
+
+**Privacy Act of 1974** (5 U.S.C. § 552a). Governs how federal agencies collect, maintain, use, and disseminate personally identifiable information about individuals. Every citizen-facing identity system is subject to the Privacy Act's System of Records Notice (SORN) requirements. The Privacy Act is the foundational legal authority under which agency citizen identity stores operate; it establishes individual rights (access, amendment, accounting of disclosures) that must be reflected in the governance model for any citizen-facing identity workflow.
+
+**E-Government Act of 2002** (44 U.S.C. § 3501 note). Requires federal agencies to conduct Privacy Impact Assessments for systems that collect or use PII. The PIA requirement applies to every citizen-facing identity system and every inter-agency attribute exchange that handles personal information. The KYC protocol's Scope 2 attribute exchange contracts include a PIA reference requirement under this authority.
+
+**FISMA** — *Federal Information Security Modernization Act of 2014* (44 U.S.C. § 3551 et seq.). The primary federal information security law. FISMA requires each agency to implement a risk-based information security program and authorizes NIST to develop the standards and guidelines (including SP 800-53 and SP 800-63) that govern it. The ATO requirement for citizen-facing identity systems flows from FISMA; Login.gov's FedRAMP authorization satisfies the FISMA-based ATO requirement for the proofing component.
+
+---
+
+## Part VI — NIST Controls Referenced
+
+The following NIST SP 800-53 Rev 5 controls are mapped to customer identity governance findings and events in this book:
+
+| Control | Title | Relevance to Customer Identity |
+|---|---|---|
+| **AC-2** | Account Management | Joiner/Leaver events are the canonical enrollment and offboarding record for citizen identity subjects; IAL declarations are a required attribute of the account provisioning workflow |
+| **IA-2** | Identification and Authentication | Login.gov and agency-specific proofing systems are the authenticator infrastructure; IAL level determines the minimum IA-2 compliance tier for the workflow |
+| **IA-4** | Identifier Management | The identifier management control requires that each citizen identity subject be assigned a unique identifier; duplicate detection and identifier deconfliction across the citizen-facing surface are governed under this control |
+| **IA-8** | Identification and Authentication — Non-Organizational Users | The primary NIST control for citizen-facing identity. IA-8 explicitly covers non-organizational users (the public, external partners, contractors not covered by PIV) and references SP 800-63 as the normative implementation guidance. The KYC protocol's IAL declaration requirement is the IA-8 implementation mechanism at the OrgPath layer |
+| **AC-17** | Remote Access | Remote identity proofing (IAL2 remote) and federation-based authentication introduce remote access governance obligations. Login.gov IAL2 activations under ADR-056 are governed as AC-17 events |
+| **PS-7** | External Personnel Security | Non-employee identities governed by the SailPoint NERM adapter (ADR-059) fall within the PS-7 external personnel security control. The joiner/leaver lifecycle for contractors and grantees is the PS-7 implementation record |
+
+---
+
+## Part VII — External Standards and Publications
+
+**NIST SP 800-63-3** — *Digital Identity Guidelines*, National Institute of Standards and Technology (June 2017). The normative framework for Identity Assurance Level, Authenticator Assurance Level, and Federation Assurance Level. Organized as a four-document suite: 800-63 (base), 800-63A (Identity Proofing and Enrollment), 800-63B (Authentication and Lifecycle Management), 800-63C (Federation and Assertions). Available at: [pages.nist.gov/800-63-3](https://pages.nist.gov/800-63-3/).
+
+**Login.gov Developer Documentation** — GSA's technical documentation for agencies integrating with Login.gov, covering OIDC and SAML federation protocols, IAL1 and IAL2 configuration, sandbox and production environments, and the MOU and inter-agency agreement process for activation. Available at: [developers.login.gov](https://developers.login.gov).
+
+**OpenID Connect (OIDC) Core 1.0** — The federation protocol used by Login.gov for citizen authentication. OIDC is built on OAuth 2.0 and adds an identity layer, including the `id_token` assertion that carries authenticated identity claims from Login.gov to relying agency applications. The IAL level is conveyed in the `acr` claim of the OIDC assertion.
+
+**OAuth 2.0** (RFC 6749) — The authorization framework on which OpenID Connect is built. OAuth 2.0 governs the delegation of access tokens between the identity provider (Login.gov), the relying party (the agency application), and the resource server. The attribute exchange contracts in UIAO's Scope 2 KYC protocol may use OAuth 2.0 authorization flows where the attribute producer exposes an API.
+
+**SCIM 2.0** (RFC 7642, RFC 7643, RFC 7644) — System for Cross-domain Identity Management. The protocol used for automated provisioning and deprovisioning of identity records across system boundaries. The SailPoint NERM adapter (ADR-059) uses SCIM to synchronize non-employee identity lifecycle events between the NERM platform and the UIAO registry. SCIM is also the protocol mechanism for inter-agency identity attribute synchronization in structured exchange agreements.
+
+---
+
+[← Chapter 1](Book_22_CPT_01.qmd)
