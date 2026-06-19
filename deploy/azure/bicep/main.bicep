@@ -46,13 +46,6 @@ param publisherTenantId string = subscription().tenantId
 @description('API audience (Application ID URI) inbound tokens must carry.')
 param apiAudience string = 'api://uiao'
 
-@description('PostgreSQL administrator login.')
-param pgAdminLogin string = 'uiaoadmin'
-
-@description('PostgreSQL administrator password.')
-@secure()
-param pgAdminPassword string
-
 @description('Minimum Container App replicas (0 = scale to zero).')
 param minReplicas int = 1
 
@@ -124,14 +117,16 @@ module keyvault 'modules/keyvault.bicep' = {
 // ---------------------------------------------------------------------
 // Tenant registry + evidence state
 // ---------------------------------------------------------------------
+// Passwordless (ADR-116): the managed identity is bound as the server's Entra
+// administrator; the app authenticates with an Entra token, no DB password.
 module postgres 'modules/postgres.bicep' = {
   name: 'postgres'
   params: {
     namePrefix: namePrefix
     location: location
     tags: tags
-    adminLogin: pgAdminLogin
-    adminPassword: pgAdminPassword
+    entraAdminObjectId: identity.outputs.principalId
+    entraAdminName: identity.outputs.name
   }
 }
 
@@ -185,10 +180,12 @@ module saasApp 'modules/containerapp.bicep' = {
     apiAudience: apiAudience
     keyVaultUri: keyvault.outputs.vaultUri
     storageAccountUrl: storage.outputs.blobEndpoint
-    // Compose the password-bearing DSN here (kept out of postgres outputs
-    // so the secret never lands in deployment outputs). Passed to the
-    // container module as a @secure() param → Container Apps secret.
-    databaseUrl: 'postgresql+asyncpg://${pgAdminLogin}:${pgAdminPassword}@${postgres.outputs.fqdn}:5432/${postgres.outputs.databaseName}'
+    // Passwordless DSN (no embedded secret) + Entra-auth toggle: the app
+    // mints a short-lived Entra token as the connection password at runtime
+    // (uiao.saas.pg_auth), connecting as the managed identity.
+    databaseUrl: postgres.outputs.sqlAlchemyUrl
+    databaseUseEntraAuth: true
+    databaseEntraUser: postgres.outputs.entraAdminName
   }
 }
 

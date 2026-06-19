@@ -122,3 +122,14 @@ compute target (Azure Container Apps today; AWS later).
 | **Control-plane audit trail** | `uiao.saas.audit` | REST `GET /control/v1/audit` | **`[api]` extra** | Immutable `AuditEvent` per lifecycle action (onboard/suspend/resume/deprovision, success *and* rejection) with actor = publisher-admin subject. `InMemoryAuditSink` (bounded ring) default; durable sink is a drop-in behind the `AuditSink` protocol. Endpoint gated behind `UIAO.SaaS.Admin` |
 | **RFC 9457 problem+json** | `uiao.saas.errors` | both planes | **`[api]` extra** | `application/problem+json` everywhere — standard members plus `error` (stable machine code, preserved from prior shapes) + `tenant` extensions. Data-plane middleware builds it directly; `HTTPException` handler renders control-plane errors identically |
 | **Readiness probe** | `uiao.saas.app` (`/readyz`), `TenantRepository.ping()` | server | **`[api]` extra** | `/readyz` confirms the tenant registry is reachable (`SELECT 1` for Postgres) → `503 degraded` otherwise. Azure Container App readiness probe repointed `/healthz` → `/readyz`. `/healthz` stays the static liveness probe |
+
+## Public surface additions (Azure SaaS deployment hardening — ADR-116)
+
+Cloud-portable deployment hardening on top of ADR-096. The token-cache logic is
+stdlib-only (`[api]` extra); `azure-identity` and `sqlalchemy` are lazy-imported
+behind the `[saas]` extra, so the blocking CI test job covers the new code.
+
+| Feature | Module | Surface | Tier | Notes |
+|---|---|---|---|---|
+| **Passwordless Postgres (Entra)** | `uiao.saas.pg_auth` | library | **`[api]` extra** (token acquire: `[saas]`) | `EntraPostgresTokenProvider` caches + refreshes an OSSRDBMS access token used as the Postgres connection password; `apply_entra_auth` injects it per-connection via a SQLAlchemy `do_connect` listener. Sovereign-cloud-aware scope (`ossrdbms_scope_for`). Wired by `build_repository` when `UIAO_SAAS_DATABASE_USE_ENTRA_AUTH=true`. Removes the long-lived DB password entirely |
+| **Bicep IaC validation gate** | `.github/workflows/bicep-validate.yml` | CI | n/a | Compiles the whole Bicep graph + validates the param file on every `deploy/azure/**` change — credential-free (`az bicep build` / `build-params`), no subscription. Postgres Bicep now binds the managed identity as Entra admin with password auth disabled |

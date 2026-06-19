@@ -84,9 +84,25 @@ def _tenant_to_values(tenant: Tenant) -> dict[str, Any]:
 class PostgresTenantRepository(TenantRepository):
     """SQLAlchemy-async implementation of the tenant registry."""
 
-    def __init__(self, database_url: str, *, engine: AsyncEngine | None = None) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        engine: AsyncEngine | None = None,
+        use_entra_auth: bool = False,
+        entra_user: str = "",
+        cloud: str = "commercial",
+    ) -> None:
         self._engine: AsyncEngine = engine or create_async_engine(database_url, pool_pre_ping=True)
         self._sessionmaker = async_sessionmaker(self._engine, expire_on_commit=False)
+        # Passwordless Entra auth (ADR-116): issue a fresh OSSRDBMS token as the
+        # connection password on every new asyncpg connection. Only wired when
+        # the caller did not inject a pre-built engine (tests pass their own).
+        if use_entra_auth and engine is None:
+            from .pg_auth import EntraPostgresTokenProvider, apply_entra_auth, ossrdbms_scope_for
+
+            provider = EntraPostgresTokenProvider(scope=ossrdbms_scope_for(cloud))
+            apply_entra_auth(self._engine, provider, username=entra_user)
 
     async def create_all(self) -> None:
         """Create the registry table if it does not exist (idempotent)."""

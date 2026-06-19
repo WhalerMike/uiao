@@ -1,0 +1,52 @@
+# UIAO Azure SaaS — Bicep validation gate (ADR-116)
+#
+# Compiles the whole Bicep graph (main.bicep transitively pulls every module)
+# and validates the example parameter file on any change under deploy/azure/.
+# This is a pure compile + lint — no Azure login, no subscription, no
+# deployment — so it runs on every PR with zero cloud credentials and catches
+# malformed templates, bad API shapes, and broken param references before they
+# reach `az deployment group create`. A credentialed `what-if` preview remains
+# a deploy-time step in azure-saas-deploy.yml.
+name: bicep-validate
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/azure/**'
+      - '.github/workflows/bicep-validate.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'deploy/azure/**'
+      - '.github/workflows/bicep-validate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bicep-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bicep CLI
+        run: az bicep install
+
+      - name: Show Bicep version
+        run: az bicep version
+
+      - name: Build (compile + lint) all Bicep modules
+        # main.bicep references every module, so a successful build compiles
+        # and lints the entire graph. Lint warnings are surfaced; errors fail.
+        run: az bicep build --file deploy/azure/bicep/main.bicep --stdout > /dev/null
+
+      - name: Validate the example parameter file
+        # Ensures main.bicepparam matches main.bicep's parameter contract
+        # (no stale/removed params, correct types).
+        run: az bicep build-params --file deploy/azure/bicep/main.bicepparam --outfile /dev/null

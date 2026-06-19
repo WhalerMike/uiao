@@ -1,10 +1,10 @@
 ---
 adr_id: adr-096
 title: "Azure SaaS architecture — multi-tenant UIAO on Container Apps"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-06-07
 deciders: Michael Stratton
-updated: 2026-06-07
+updated: 2026-06-19
 next_review: 2026-12-07
 review_trigger: The compute target changes (Container Apps → App Service / AKS); a customer requires single-tenant deployment-per-tenant isolation that the shared data plane cannot satisfy; the inbound auth model changes (e.g. CAE / continuous access evaluation); a sovereign-cloud (GCC-High / DoD) SaaS offering is stood up; the tenant registry outgrows a single PostgreSQL Flexible Server
 impact: "Introduces a multi-tenant SaaS deployment surface for UIAO on Azure Container Apps, parallel to (not replacing) the single-tenant Windows/IIS surface. Adds the uiao.saas package (tenant registry, per-request tenant resolution, control-plane onboarding API, provisioning service), a [saas] optional-dependency extra, a container image and Bicep IaC under deploy/azure/, and a manual-dispatch-only deploy workflow. Establishes per-request multi-tenancy plus a control-plane stamp pattern. No change to the CLI or the existing data-plane routes."
@@ -19,7 +19,13 @@ published_at: docs/adr/adr-096-azure-saas-architecture.html
 
 ## Status
 
-**PROPOSED** — June 7, 2026
+**ACCEPTED** — proposed June 7, 2026; accepted June 19, 2026.
+
+The `uiao.saas` package, container image, and Bicep IaC have landed and merged;
+the SaaS production-readiness layer (per-plan quotas, rate limiting, audit
+trail, RFC 9457 errors, readiness probe) was added in **ADR-115**, and Azure
+deployment hardening (passwordless Entra Postgres auth, IaC validation gate) in
+**ADR-116**.
 
 ## Context
 

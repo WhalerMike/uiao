@@ -49,6 +49,15 @@ class SaasSettings(BaseSettings):
     #: ``postgresql+asyncpg://user@host/uiao``. Empty → in-memory registry
     #: (dev/test only; not durable).
     database_url: str = Field(default="")
+    #: When true the Postgres connection authenticates with a Microsoft Entra
+    #: access token (passwordless, ADR-116) instead of a password embedded in
+    #: ``database_url``. The Container App's managed identity must be bound as
+    #: the server's Entra administrator.
+    database_use_entra_auth: bool = Field(default=False)
+    #: Entra principal name to connect as when ``database_use_entra_auth`` is
+    #: set — typically the managed identity's name. If empty, the user encoded
+    #: in ``database_url`` is used.
+    database_entra_user: str = Field(default="")
     #: Azure Key Vault URI for per-tenant secrets (client secrets / certs).
     key_vault_uri: str = Field(default="")
     #: Azure Blob Storage account URL for evidence bundles / artifacts.
