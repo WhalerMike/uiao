@@ -150,6 +150,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [UIAO Governance Dashboard Design](platform/governance-dashboard-design.html) | Active | Customer, Technical, Executive |
 | [OrgPath Runtime](platform/orgpath-runtime.html) | Active | Platform engineers · identity architects · governance operators |
 | [Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Intune, Azure Arc, and OrgTree](platform/platform-server-build.html) | DRAFT | Platform engineers · sysadmins |
+| [UIAO SaaS Quickstart](platform/saas-quickstart.html) | Active | Platform engineers · cloud operators · evaluators |
 | [UIAO API — Windows Server Deployment Guide](platform/windows-server-deployment.html) | DRAFT | Platform engineers · sysadmins · AD administrators |
 
 
