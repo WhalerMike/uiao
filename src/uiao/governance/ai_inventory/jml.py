@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from uiao.governance.ai_inventory.drift import (
@@ -549,3 +550,72 @@ def detect_events(
                 result.staleness_findings.append(finding_staleness(record, days_since_mover=days))
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Evidence artifact writer (UIAO_197 §7)
+# ---------------------------------------------------------------------------
+
+
+def write_evidence_artifacts(event_set: JMLEventSet, output_dir: str | Path) -> list[Path]:
+    """Write the two UIAO_197 §7 evidence artifacts to *output_dir*.
+
+    Produces:
+    - ``jml-event-log.json``   — all events with their changed fields and findings
+    - ``jml-action-log.json``  — all actions across all events, flat list with system label
+
+    Returns the list of paths written.
+
+    Canon reference: UIAO_197 §7
+    """
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    # --- jml-event-log.json -------------------------------------------------
+    event_log: list[dict] = []
+    for ev in event_set.all_events:
+        event_log.append(
+            {
+                "event_type": ev.event_type.value,
+                "system": ev.system_label,
+                "omg_id": ev.record.omg_id,
+                "agency": ev.record.agency,
+                "development_stage": ev.record.development_stage.value,
+                "candidate_leaver": ev.candidate_leaver,
+                "changed_fields": ev.changed_fields,
+                "findings": [
+                    {
+                        "finding_id": f.finding_id,
+                        "drift_class": f.drift_class,
+                        "severity": f.severity.value,
+                        "observed": f.observed,
+                    }
+                    for f in ev.findings
+                ],
+            }
+        )
+    event_log_path = out / "jml-event-log.json"
+    event_log_path.write_text(
+        json.dumps({"events": event_log}, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    # --- jml-action-log.json ------------------------------------------------
+    action_log: list[dict] = []
+    for ev in event_set.all_events:
+        for action in ev.actions:
+            action_log.append(
+                {
+                    "system": ev.system_label,
+                    "event_type": ev.event_type.value,
+                    "candidate_leaver": ev.candidate_leaver,
+                    **action.to_dict(),
+                }
+            )
+    action_log_path = out / "jml-action-log.json"
+    action_log_path.write_text(
+        json.dumps({"actions": action_log}, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    return [event_log_path, action_log_path]

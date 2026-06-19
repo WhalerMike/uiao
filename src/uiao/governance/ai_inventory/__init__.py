@@ -26,6 +26,7 @@ from uiao.governance.ai_inventory.jml import (
     JMLEventSet,
     JMLEventType,
     detect_events,
+    write_evidence_artifacts,
 )
 from uiao.governance.ai_inventory.scanner import ScanResult, scan_inventory
 from uiao.governance.ai_inventory.schema import AgentClass, AISystemRecord, DevStage
@@ -48,6 +49,7 @@ __all__ = [
     "ScanResult",
     # jml
     "detect_events",
+    "write_evidence_artifacts",
     "JMLEventType",
     "JMLEvent",
     "JMLAction",

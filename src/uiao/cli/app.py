@@ -45,6 +45,7 @@ def main(
 # Sub-app registrations (canonical CLI surface — see ADR-046)
 # ---------------------------------------------------------------------------
 from uiao.cli.adapter import adapter_app  # noqa: E402
+from uiao.cli.ai_inventory import ai_inventory_app  # noqa: E402
 from uiao.cli.canon import canon_app  # noqa: E402
 from uiao.cli.conmon import conmon_app  # noqa: E402
 from uiao.cli.cql import cql_app  # noqa: E402
@@ -68,6 +69,7 @@ from uiao.cli.upgrade import upgrade_app  # noqa: E402
 from uiao.cli.zta import zta_app  # noqa: E402
 
 app.add_typer(adapter_app, name="adapter")
+app.add_typer(ai_inventory_app, name="ai-inventory")
 app.add_typer(canon_app, name="canon")
 app.add_typer(doctor_app, name="doctor")
 app.add_typer(upgrade_app, name="upgrade")
