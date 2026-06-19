@@ -1,18 +1,18 @@
 ---
 document_id: UIAO_191
 title: "UIAO Supply Chain Risk Management Plan"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO Supply Chain Risk Management Plan
 
-> **Status: Draft / template.** SCRM plan identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `SR-1` through `SR-12`. Bracketed `[PLACEHOLDER]` fields are completed per authorizing agency.
+> **Status: Current — authoritative template.** SCRM plan identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `SR-1` through `SR-12`. Bracketed `[PLACEHOLDER]` fields are completed per authorizing agency.
 
 ## Purpose
 

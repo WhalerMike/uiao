@@ -1,18 +1,18 @@
 ---
 document_id: UIAO_185
 title: "UIAO System Security Plan (SSP) Template"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO System Security Plan (SSP) Template
 
-> **Status: Draft / template.** This is the foundational FedRAMP-authorization artifact identified as the single most critical gap in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). It is a **template**: bracketed `[PLACEHOLDER]` fields are completed per authorizing system. It addresses `PL-2` (System Security Plan) and provides the control-implementation framework that maps all 323 FedRAMP Moderate controls to a UIAO implementation, a shared-responsibility statement, or an inheritance declaration.
+> **Status: Current — authoritative template.** This is the foundational FedRAMP-authorization artifact identified as the single most critical gap in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). UIAO-canonical fields are pre-filled for the reference deployment (the **UIAO Governance OS**, v0.7.0, within the GCC-Moderate boundary); bracketed `[…]` fields are **agency-ATO instantiation parameters** completed by the authorizing agency (system owner, authorizing official, agency policy references). It addresses `PL-2` (System Security Plan) and provides the control-implementation framework that maps all 323 FedRAMP Moderate controls to a UIAO implementation, a shared-responsibility statement, or an inheritance declaration.
 
 ## Purpose
 
@@ -24,7 +24,7 @@ This template covers a UIAO Governance OS deployment within the **GCC-Moderate**
 
 ## How to use this template
 
-1. Complete every `[PLACEHOLDER]` in §1.
+1. Complete the remaining agency-ATO `[…]` parameters in §1 (system owner, authorizing official); the UIAO-canonical identity fields are pre-filled.
 2. For each control family in §3, record the implementation status using the responsibility model in §2 and cite the UIAO artifact (canon doc id, adapter, or KSI) that satisfies it.
 3. Record every control with no full implementation in the POA&M (`CA-5`) and cross-reference it here.
 4. Re-validate at each `lifecycle_review`.
@@ -33,13 +33,13 @@ This template covers a UIAO Governance OS deployment within the **GCC-Moderate**
 
 | Field | Value |
 |---|---|
-| System name | `[SYSTEM NAME]` |
-| System owner | `[OWNER]` |
-| Authorizing official | `[AO]` |
+| System name | UIAO Governance OS |
+| System owner | `[OWNER]` *(agency-ATO parameter)* |
+| Authorizing official | `[AO]` *(agency-ATO parameter)* |
 | Authorization boundary | GCC-Moderate (Microsoft 365 SaaS) |
 | Impact level | FedRAMP Moderate |
 | Baseline | NIST SP 800-53 Rev 5 (Release 5.2.0) |
-| UIAO version | `[vX.Y.Z]` |
+| UIAO version | v0.7.0 |
 
 ## §2 — Responsibility model
 

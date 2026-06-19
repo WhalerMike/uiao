@@ -1,18 +1,18 @@
 ---
 document_id: UIAO_189
 title: "UIAO Plan of Action and Milestones (POA&M) Template"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO Plan of Action and Milestones (POA&M) Template
 
-> **Status: Draft / template.** FedRAMP-compliant POA&M format identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `CA-5`. It is the structured ledger of open control gaps and their remediation, and the document the SSP ([UIAO_185](UIAO_185_System_Security_Plan_Template.md) §6) and Incident Response Plan ([UIAO_186](UIAO_186_Incident_Response_Plan.md) §5) both feed into.
+> **Status: Current — authoritative template.** FedRAMP-compliant POA&M format identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `CA-5`. It is the structured ledger of open control gaps and their remediation, and the document the SSP ([UIAO_185](UIAO_185_System_Security_Plan_Template.md) §6) and Incident Response Plan ([UIAO_186](UIAO_186_Incident_Response_Plan.md) §5) both feed into.
 
 ## Purpose
 
