@@ -193,7 +193,7 @@
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/operational-guides/access-plane/conditional-access-library.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/access-plane/conditional-access-library.qmd) | 1884 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/operational-guides/access-plane/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/access-plane/index.qmd) | 34 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/operational-guides/active-governance-directory/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/active-governance-directory/index.qmd) | 241 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/operational-guides/active-governance-directory/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/active-governance-directory/index.qmd) | 267 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/ad-interaction-guide.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ad-interaction-guide.qmd) | 865 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd) | 199 | Authored | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/ai-identity-governance/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/index.qmd) | 89 | Navigation hub | ✅ | — | — |

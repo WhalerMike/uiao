@@ -207,6 +207,7 @@ def test_apply_requires_enable_writes() -> None:
 
 
 def test_apply_requires_provider_host() -> None:
+    # Default provider is ldap, which needs a host.
     result = runner.invoke(app, ["directory", "serve", "--check", "--enable-writes", "--apply"])
     assert result.exit_code == 1
     assert "--provider-host" in result.output
@@ -218,7 +219,26 @@ def test_apply_check_reports_l3_actuation() -> None:
         ["directory", "serve", "--check", "--enable-writes", "--apply", "--provider-host", "dc01.contoso.com"],
     )
     assert result.exit_code == 0, result.output
-    assert "apply→provider" in result.output.lower() or "apply" in result.output.lower()
+    assert "apply→ldap" in result.output.lower()
     assert "l3" in result.output.lower()
     # --check must not open a connection or claim read-only when applying.
     assert "(read-only)" not in result.output
+
+
+def test_apply_entra_provider_check_needs_no_host() -> None:
+    # The entra provider addresses by id via Graph — no --provider-host required.
+    result = runner.invoke(app, ["directory", "serve", "--check", "--enable-writes", "--apply", "--provider", "entra"])
+    assert result.exit_code == 0, result.output
+    assert "apply→entra" in result.output.lower()
+
+
+def test_apply_unknown_provider_fails() -> None:
+    result = runner.invoke(app, ["directory", "serve", "--check", "--enable-writes", "--apply", "--provider", "gcp"])
+    assert result.exit_code == 1
+    assert "'ldap' or 'entra'" in result.output
+
+
+def test_apply_ldap_provider_still_requires_host() -> None:
+    result = runner.invoke(app, ["directory", "serve", "--check", "--enable-writes", "--apply", "--provider", "ldap"])
+    assert result.exit_code == 1
+    assert "--provider-host" in result.output

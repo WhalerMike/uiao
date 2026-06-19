@@ -81,6 +81,25 @@ class Directory:
                 candidates.append(entry)
         return candidates
 
+    def principal_for(self, dn: str) -> tuple[str, str] | None:
+        """Resolve a projected entry DN to its ``(principal_id, principal_type)``.
+
+        A write routed through the AGD carries the projected entry DN as its
+        target, but the DN's RDN is a DN-safe *sanitized* form of the principal
+        id — not the id a provider (Graph, a directory) needs. The real id is
+        preserved in the entry's ``cn`` attribute and the type in
+        ``uiaoPrincipalType``; this looks both up by DN. Returns ``None`` when
+        the DN names no projected principal (e.g. a container).
+        """
+        entry = self._by_dn().get(_normalize_dn(dn))
+        if entry is None:
+            return None
+        cn = entry.attributes.get("cn")
+        ptype = entry.attributes.get("uiaoPrincipalType")
+        if not cn or not ptype:
+            return None
+        return cn[0], ptype[0]
+
 
 # ---------------------------------------------------------------------------
 # Filter evaluation (RFC 4511 §4.5.1; caseIgnore semantics)

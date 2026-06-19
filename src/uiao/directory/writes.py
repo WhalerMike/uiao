@@ -26,6 +26,11 @@ from uiao.modernization.orgtree.types import FacetOperation
 
 _IDENTITY_PLANE = "identity"
 
+# Resolves a routed write's target DN to ``(principal_id, principal_type)`` so a
+# provider transport that addresses an object by id+type (Graph) — not by the
+# projected DN — can find it. ``None`` means the DN names no projected principal.
+PrincipalResolver = Callable[[str], "tuple[str, str] | None"]
+
 
 @dataclass(frozen=True)
 class WritePlan:
@@ -64,11 +69,24 @@ def translate_modify(
     *,
     codebook: Codebook | None = None,
     profile: BindingProfile | None = None,
+    resolver: PrincipalResolver | None = None,
 ) -> WritePlan:
-    """Translate a ModifyRequest into a governed :class:`WritePlan` (ADR-109)."""
+    """Translate a ModifyRequest into a governed :class:`WritePlan` (ADR-109).
+
+    When ``resolver`` is supplied, the routed write's target DN is resolved to
+    ``(principal_id, principal_type)`` and stamped onto each operation's
+    ``metadata`` (keys ``principal_id`` / ``principal_type``). A provider
+    transport that addresses by id+type (Graph) reads it from there; the LDAP
+    transport keeps using the DN target and ignores it.
+    """
     cb = codebook or default_codebook()
     prof = profile or load_binding_profile("ldap")
     locator_map = _locator_to_facet(prof)
+
+    resolved = resolver(req.object) if resolver is not None else None
+    meta: dict[str, str] = {}
+    if resolved is not None:
+        meta = {"principal_id": resolved[0], "principal_type": resolved[1]}
 
     operations: list[FacetOperation] = []
     for change in req.changes:
@@ -78,7 +96,14 @@ def translate_modify(
         facet = cb.facet(facet_name)
         if change.operation == ModifyOp.DELETE:
             operations.append(
-                FacetOperation(facet=facet_name, attribute=facet.attribute, op="remove", value=None, target=req.object)
+                FacetOperation(
+                    facet=facet_name,
+                    attribute=facet.attribute,
+                    op="remove",
+                    value=None,
+                    target=req.object,
+                    metadata=meta,
+                )
             )
             continue
         # add / replace: single-valued, Codebook-validated.
@@ -88,7 +113,9 @@ def translate_modify(
         if not facet.is_valid_value(value):
             return WritePlan(refusal=f"value '{value}' is not valid for facet '{facet_name}'")
         operations.append(
-            FacetOperation(facet=facet_name, attribute=facet.attribute, op="write", value=value, target=req.object)
+            FacetOperation(
+                facet=facet_name, attribute=facet.attribute, op="write", value=value, target=req.object, metadata=meta
+            )
         )
     return WritePlan(operations=tuple(operations))
 
@@ -107,9 +134,10 @@ class WriteRouter:
     profile: BindingProfile | None = None
     dry_run: bool = True
     apply_fn: Callable[[tuple[FacetOperation, ...]], None] | None = None
+    principal_resolver: PrincipalResolver | None = None
 
     def route(self, req: ModifyRequest) -> RouteResult:
-        plan = translate_modify(req, codebook=self.codebook, profile=self.profile)
+        plan = translate_modify(req, codebook=self.codebook, profile=self.profile, resolver=self.principal_resolver)
         if plan.refused:
             return RouteResult(applied=False, refused=True, message=plan.refusal or "refused", plan=plan)
         count = len(plan.operations)

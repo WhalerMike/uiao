@@ -154,6 +154,36 @@ def test_write_adapter_captures_transport_errors() -> None:
     assert "connection reset" in result.errors[0][1]
 
 
+def test_router_resolver_stamps_principal_metadata() -> None:
+    # With a principal_resolver, the routed FacetOperation carries the real
+    # (principal_id, principal_type) in metadata — the LDAP target DN is unchanged.
+    def resolver(dn: str) -> tuple[str, str] | None:
+        return ("alice@uiao.gov", "user")
+
+    router = WriteRouter(dry_run=True, principal_resolver=resolver)
+    req = ModifyRequest(
+        message_id=1,
+        object="cn=alice,ou=people,dc=agd,dc=uiao,dc=gov",
+        changes=(Modification(ModifyOp.REPLACE, "uiaoOrgPathRegion", ("NCR",)),),
+    )
+    result = router.route(req)
+    op = result.plan.operations[0]
+    assert op.metadata["principal_id"] == "alice@uiao.gov"
+    assert op.metadata["principal_type"] == "user"
+    assert op.target == "cn=alice,ou=people,dc=agd,dc=uiao,dc=gov"  # DN target preserved
+
+
+def test_router_without_resolver_leaves_metadata_empty() -> None:
+    router = WriteRouter(dry_run=True)
+    req = ModifyRequest(
+        message_id=1,
+        object="cn=alice,dc=x",
+        changes=(Modification(ModifyOp.REPLACE, "uiaoOrgPathRegion", ("NCR",)),),
+    )
+    op = router.route(req).plan.operations[0]
+    assert dict(op.metadata) == {}
+
+
 def test_write_adapter_drives_actuator_end_to_end() -> None:
     # The provider-write seam the CLI --apply path wires: transport.modify →
     # FacetWriteAdapter → FacetActuator(enabled) → WriteRouter(apply).
