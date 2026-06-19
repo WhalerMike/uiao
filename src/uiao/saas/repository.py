@@ -102,7 +102,12 @@ def build_repository(settings) -> TenantRepository:  # type: ignore[no-untyped-d
     if getattr(settings, "database_url", "").strip():
         from .pg_repository import PostgresTenantRepository
 
-        return PostgresTenantRepository(settings.database_url)
+        return PostgresTenantRepository(
+            settings.database_url,
+            use_entra_auth=bool(getattr(settings, "database_use_entra_auth", False)),
+            entra_user=getattr(settings, "database_entra_user", ""),
+            cloud=getattr(settings, "cloud", "commercial"),
+        )
     return InMemoryTenantRepository()
 
 

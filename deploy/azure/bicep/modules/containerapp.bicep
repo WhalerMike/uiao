@@ -25,9 +25,15 @@ param apiAudience string = 'api://uiao'
 param keyVaultUri string = ''
 param storageAccountUrl string = ''
 
-@description('SQLAlchemy async DSN, password embedded (stored as a secret).')
+@description('SQLAlchemy async DSN (passwordless under Entra auth; stored as a secret).')
 @secure()
 param databaseUrl string
+
+@description('Authenticate to Postgres with a Microsoft Entra token (passwordless, ADR-116).')
+param databaseUseEntraAuth bool = false
+
+@description('Entra principal name to connect to Postgres as (the managed identity name).')
+param databaseEntraUser string = ''
 
 @description('Container target/ingress port.')
 param targetPort int = 8000
@@ -83,8 +89,11 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'UIAO_SAAS_STORAGE_ACCOUNT_URL', value: storageAccountUrl }
             { name: 'UIAO_SAAS_PROVISIONING_ENABLED', value: 'true' }
             { name: 'UIAO_SAAS_DATABASE_URL', secretRef: 'database-url' }
+            { name: 'UIAO_SAAS_DATABASE_USE_ENTRA_AUTH', value: string(databaseUseEntraAuth) }
+            { name: 'UIAO_SAAS_DATABASE_ENTRA_USER', value: databaseEntraUser }
             // The managed identity client id the app uses for Graph / ARM
-            // token acquisition (DefaultAzureCredential / MSAL managed id).
+            // token acquisition (DefaultAzureCredential / MSAL managed id), and
+            // for the Postgres Entra token (uiao.saas.pg_auth).
             { name: 'AZURE_CLIENT_ID', value: identityClientId }
           ]
           probes: [
