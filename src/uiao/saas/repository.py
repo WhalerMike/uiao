@@ -107,6 +107,8 @@ def build_repository(settings) -> TenantRepository:  # type: ignore[no-untyped-d
             use_entra_auth=bool(getattr(settings, "database_use_entra_auth", False)),
             entra_user=getattr(settings, "database_entra_user", ""),
             cloud=getattr(settings, "cloud", "commercial"),
+            use_aws_iam_auth=bool(getattr(settings, "database_use_aws_iam_auth", False)),
+            aws_region=getattr(settings, "aws_region", ""),
         )
     return InMemoryTenantRepository()
 

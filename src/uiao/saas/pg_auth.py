@@ -115,23 +115,38 @@ class EntraPostgresTokenProvider:
         self._cached = None
 
 
-def apply_entra_auth(async_engine: Any, provider: EntraPostgresTokenProvider, *, username: str = "") -> None:
-    """Make ``async_engine`` authenticate each new connection with an Entra token.
+class _TokenProvider(Protocol):
+    """Anything that can mint a current connection token (the password)."""
+
+    def token(self) -> str: ...
+
+
+def apply_token_auth(async_engine: Any, provider: _TokenProvider, *, username: str = "") -> None:
+    """Make ``async_engine`` authenticate each new connection with a token.
 
     Registers a ``do_connect`` listener on the engine's underlying sync engine
-    that injects a fresh token as the connection password (and, when given, the
-    Entra principal name as the user). SQLAlchemy is imported lazily so this
-    module stays free of the ``[saas]`` extra at import time.
+    that injects a fresh token (from ``provider.token()``) as the connection
+    password — and, when given, ``username`` as the connection user. SQLAlchemy
+    is imported lazily so this module stays free of the ``[saas]`` extra at
+    import time.
+
+    The provider is duck-typed: both :class:`EntraPostgresTokenProvider` (Azure)
+    and :class:`uiao.saas.aws_pg_auth.RdsIamTokenProvider` (AWS) satisfy it, so
+    the same connection seam serves passwordless auth on either cloud.
     """
     from sqlalchemy import event
 
     @event.listens_for(async_engine.sync_engine, "do_connect")
-    def _provide_entra_token(_dialect, _conn_rec, _cargs, cparams):  # type: ignore[no-untyped-def]
+    def _provide_token(_dialect, _conn_rec, _cargs, cparams):  # type: ignore[no-untyped-def]
         cparams["password"] = provider.token()
         if username:
             cparams["user"] = username
         # Return None → SQLAlchemy proceeds with the (mutated) cparams.
         return None
+
+
+#: Backwards-compatible alias (ADR-116 shipped ``apply_entra_auth``).
+apply_entra_auth = apply_token_auth
 
 
 __all__ = [
@@ -140,5 +155,6 @@ __all__ = [
     "ossrdbms_scope_for",
     "TokenAcquirer",
     "EntraPostgresTokenProvider",
+    "apply_token_auth",
     "apply_entra_auth",
 ]

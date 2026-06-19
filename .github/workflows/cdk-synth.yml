@@ -1,0 +1,56 @@
+# UIAO AWS SaaS — CDK synthesis gate (ADR-117)
+#
+# Synthesizes the CDK app to CloudFormation on any change under deploy/aws/.
+# This is a pure `cdk synth` — no AWS account, no credentials, no deployment —
+# so it runs on every PR with zero cloud access and catches construct/API
+# errors, bad props, and import breakage before they reach `cdk deploy`. The
+# AWS analogue of the Bicep validation gate (bicep-validate.yml, ADR-116).
+name: cdk-synth
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/aws/**'
+      - '.github/workflows/cdk-synth.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'deploy/aws/**'
+      - '.github/workflows/cdk-synth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cdk-synth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synth:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/aws
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node (CDK CLI runtime)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CDK CLI
+        run: npm install -g aws-cdk@2
+
+      - name: Install CDK app dependencies
+        run: pip install -r requirements.txt
+
+      - name: cdk synth (no credentials, environment-agnostic)
+        run: cdk synth -c environmentName=ci --quiet
