@@ -382,6 +382,87 @@ uiao substrate walk --json       # machine-readable
 uiao substrate drift             # exit-code-only summary (CI-friendly)
 ```
 
+### 3.12 Active Governance Directory (`uiao directory` — ADR-100)
+
+The **Active Governance Directory (AGD)** is UIAO's protocol-projection plane: an
+in-path LDAPv3 server that projects the OrgPath substrate over the LDAP wire
+protocol so directory-bound tooling can query governance state in its native
+protocol. It is a separate process from the FastAPI service and the SaaS plane —
+you run it directly from the CLI. Read is L1 (sanctioned read-only data-plane
+exception, ADR-100 §2); writes are governed intent (ADR-109).
+
+| Command | Purpose |
+|---------|---------|
+| `uiao directory tree` | Project a principal snapshot (or an assessment feed) into the read-only Directory Information Tree and emit it as **LDIF** for inspection / diffing. |
+| `uiao directory serve` | Run the in-path LDAPv3 read projection over TCP (`BIND` / `SEARCH` / `UNBIND` / StartTLS, and — opt-in — `MODIFY` as governed intent). |
+
+**Input — two feeds.** The projection is computed, never stored. Supply
+principals either as a hand-authored snapshot or directly from a real OrgPath
+producer:
+
+```bash
+# (a) OrgPath-runtime snapshot shape: {"principals":[{principal_id,principal_type,attributes}]}
+uiao directory tree --snapshot snapshot.json
+
+# (b) straight from `uiao orgtree assess` output (facet-name values → extensionAttribute slots)
+uiao orgtree assess --from-export ad-users.json --out assignments.json
+uiao directory tree --from-assessment assignments.json
+```
+
+`--snapshot` and `--from-assessment` are mutually exclusive. `--ad-veneer` adds
+the read-only, synthetic AD-compatibility attributes (`sAMAccountName`,
+`objectSid`, …; ADR-110).
+
+**Serving + transport security.** Loopback + plaintext by default; supply TLS
+before leaving loopback (ADR-100 §4):
+
+```bash
+uiao directory serve --snapshot snapshot.json --check            # validate inputs, don't bind (CI)
+uiao directory serve --snapshot snapshot.json                    # ldap://127.0.0.1:1389
+uiao directory serve --snapshot snapshot.json \
+    --tls-cert agd.pem --tls-key agd.key                         # ldaps://…:636 (TLS-on-connect)
+uiao directory serve --snapshot snapshot.json \
+    --starttls --tls-cert agd.pem --tls-key agd.key              # StartTLS in-band upgrade
+```
+
+**Authentication.** Anonymous bind yields the projection with sensitive facets
+(clearance, cost-center) redacted; an authenticated simple bind unlocks them
+(ADR-100 §5). Supply simple-bind credentials with repeatable `--bind name=password`;
+offer Kerberos with `--sasl-gssapi` (gate-only ticket validation, ADR-101; needs
+the `[kerberos]` extra).
+
+```bash
+uiao directory serve --snapshot snapshot.json --bind svc-reports=$PW --tls-cert agd.pem --tls-key agd.key
+```
+
+**Writes — plan-only vs. gated actuation (ADR-109).** Writes are off by default.
+`--enable-writes` accepts an LDAP `modify` of a governed `uiaoOrgPath<Facet>`
+attribute, translates it to a `FacetOperation`, and **plans** it (dry-run; never
+applied to the projection). `--apply` promotes that to gated **L3 actuation**,
+routing the write through the `ldap` binding-profile transport to the provider of
+record — it requires `--enable-writes`, an authenticated bind, and a `--provider-*`
+target:
+
+```bash
+# Plan-only (L2): translates + validates + Codebook-checks; applies nothing.
+uiao directory serve --snapshot snapshot.json --enable-writes --bind admin=$PW \
+    --tls-cert agd.pem --tls-key agd.key
+
+# Gated actuation (L3): routes accepted writes to the provider directory.
+uiao directory serve --snapshot snapshot.json --enable-writes --apply --bind admin=$PW \
+    --provider-host dc01.contoso.com --provider-bind-dn 'cn=svc,dc=contoso,dc=com' \
+    --provider-password $PROV_PW --tls-cert agd.pem --tls-key agd.key
+```
+
+Non-governed attributes are refused `unwillingToPerform`; writes without an
+authenticated bind are refused `insufficientAccessRights`. L4 (autonomous write)
+is not available for the AGD.
+
+> **Operator guide.** The end-to-end deployment walkthrough — posture, the
+> snapshot/assessment feed, TLS/Kerberos, read scoping, write-as-intent, and the
+> security boundary — is the
+> [Active Governance Directory operator guide](../customer-documents/operational-guides/active-governance-directory/index.qmd).
+
 ---
 
 ## 4. Library-Only Features
