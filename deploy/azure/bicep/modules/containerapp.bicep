@@ -1,7 +1,8 @@
 // The UIAO SaaS Container App — data plane + control plane.
 // Runs uiao.saas.asgi:app; pulls from ACR and reads secrets via the
 // user-assigned managed identity. External ingress with platform TLS;
-// the /healthz endpoint backs the liveness/readiness probes.
+// /healthz backs the liveness probe; /readyz (registry reachable) backs
+// the readiness probe (ADR-115).
 @description('Resource name prefix.')
 param namePrefix string
 param location string
@@ -94,8 +95,10 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               periodSeconds: 30
             }
             {
+              // /readyz confirms the tenant registry is reachable before the
+              // revision is added to the ingress pool (ADR-115).
               type: 'Readiness'
-              httpGet: { path: '/healthz', port: targetPort }
+              httpGet: { path: '/readyz', port: targetPort }
               initialDelaySeconds: 5
               periodSeconds: 15
             }

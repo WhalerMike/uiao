@@ -37,6 +37,7 @@ the control-plane router. The container entrypoint is
 
 from __future__ import annotations
 
+from .audit import AuditAction, AuditEvent, AuditSink, InMemoryAuditSink
 from .context import (
     TenantContext,
     clear_current_tenant,
@@ -44,6 +45,8 @@ from .context import (
     require_current_tenant,
     set_current_tenant,
 )
+from .quotas import DEFAULT_QUOTAS, PlanQuota, quota_for
+from .ratelimit import RateLimitDecision, TenantRateLimiter
 from .repository import InMemoryTenantRepository, TenantRepository
 from .settings import SaasSettings
 from .tenant import Tenant, TenantPlan, TenantStatus
@@ -56,6 +59,15 @@ __all__ = [
     "TenantContext",
     "TenantRepository",
     "InMemoryTenantRepository",
+    "PlanQuota",
+    "DEFAULT_QUOTAS",
+    "quota_for",
+    "RateLimitDecision",
+    "TenantRateLimiter",
+    "AuditAction",
+    "AuditEvent",
+    "AuditSink",
+    "InMemoryAuditSink",
     "get_current_tenant",
     "require_current_tenant",
     "set_current_tenant",

@@ -107,3 +107,18 @@ test job (`.[api]` only) stays green.
 | **Tenant registry (durable)** | `uiao.saas.pg_repository` | library | **`[saas]` extra** | SQLAlchemy-async + asyncpg `saas_tenants` table. In-memory fallback (`uiao.saas.repository`) needs no extra |
 | **SaaS ASGI entrypoint** | `uiao.saas.asgi:app` | server | **`[saas]` extra** | `uvicorn uiao.saas.asgi:app` — composes the data plane + control plane. Container image + Bicep IaC under `deploy/azure/` |
 | **Per-tenant stamp executor** | `uiao.saas.azure_stamp`, `uiao.saas.azure_provisioners` | library | **`[saas]` extra** | `AzureStampExecutor` provisions a tenant's Postgres schema + Blob container + Key Vault secret scope (named after `data_namespace`, strictly validated). Dry-run unless `UIAO_SAAS_STAMP_EXECUTION_ENABLED`; orchestration is dependency-free + fake-tested, the Azure-backed provisioners lazy-import the SDKs |
+
+## Public surface additions (SaaS production-readiness — ADR-115)
+
+A cloud-agnostic production-readiness layer on top of ADR-096. All of it is
+stdlib + `pydantic` + Starlette (the `[api]` extra) — no `[saas]` dependency —
+so the blocking CI test job covers every line, and it ships unchanged on any
+compute target (Azure Container Apps today; AWS later).
+
+| Feature | Module | Surface | Tier | Notes |
+|---|---|---|---|---|
+| **Per-plan quotas** | `uiao.saas.quotas` | library | **`[api]` extra** | `PlanQuota` per `TenantPlan` (trial/standard/enterprise/gov): `requests_per_minute` + `burst` + advisory caps. Defaults monotonic, override-friendly; unknown plan fails closed to trial ceilings |
+| **Per-tenant rate limiting** | `uiao.saas.ratelimit` | ASGI middleware | **`[api]` extra** | `TenantRateLimiter` fixed-window over each plan's `window_limit`, keyed by tenant id. Best-effort **per-replica** (global = future Redis swap behind the same interface). `429` + `Retry-After` + `RateLimit-*` headers; admitted requests carry `RateLimit-*` too. Injectable clock → deterministic tests |
+| **Control-plane audit trail** | `uiao.saas.audit` | REST `GET /control/v1/audit` | **`[api]` extra** | Immutable `AuditEvent` per lifecycle action (onboard/suspend/resume/deprovision, success *and* rejection) with actor = publisher-admin subject. `InMemoryAuditSink` (bounded ring) default; durable sink is a drop-in behind the `AuditSink` protocol. Endpoint gated behind `UIAO.SaaS.Admin` |
+| **RFC 9457 problem+json** | `uiao.saas.errors` | both planes | **`[api]` extra** | `application/problem+json` everywhere — standard members plus `error` (stable machine code, preserved from prior shapes) + `tenant` extensions. Data-plane middleware builds it directly; `HTTPException` handler renders control-plane errors identically |
+| **Readiness probe** | `uiao.saas.app` (`/readyz`), `TenantRepository.ping()` | server | **`[api]` extra** | `/readyz` confirms the tenant registry is reachable (`SELECT 1` for Postgres) → `503 degraded` otherwise. Azure Container App readiness probe repointed `/healthz` → `/readyz`. `/healthz` stays the static liveness probe |
