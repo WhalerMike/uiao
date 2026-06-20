@@ -19,6 +19,9 @@ never leaks one request's tenant into the next.
 
 from __future__ import annotations
 
+from inspect import isawaitable
+from typing import Any
+
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
@@ -27,7 +30,6 @@ from starlette.types import ASGIApp
 from .auth import EntraTokenVerifier, TokenError
 from .context import TenantContext, clear_current_tenant, set_current_tenant
 from .errors import problem_response
-from .ratelimit import TenantRateLimiter
 from .repository import TenantRepository
 from .tenant import TenantStatus
 
@@ -42,7 +44,9 @@ class TenantResolutionMiddleware(BaseHTTPMiddleware):
         verifier: EntraTokenVerifier,
         repository: TenantRepository,
         public_prefixes: tuple[str, ...] = (),
-        rate_limiter: TenantRateLimiter | None = None,
+        # A sync TenantRateLimiter or an async DistributedTenantRateLimiter;
+        # both expose ``check(tenant) -> RateLimitDecision`` (ADR-118).
+        rate_limiter: Any = None,
     ) -> None:
         super().__init__(app)
         self._verifier = verifier
@@ -89,10 +93,14 @@ class TenantResolutionMiddleware(BaseHTTPMiddleware):
                 tenant=claims.tenant_id,
             )
 
-        # Per-plan request-rate enforcement (best-effort, per-replica).
+        # Per-plan request-rate enforcement. The limiter may be the in-process
+        # per-replica TenantRateLimiter (sync) or a DistributedTenantRateLimiter
+        # over a shared store (async, ADR-118) — await the latter.
         rate_headers: dict[str, str] = {}
         if self._rate_limiter is not None:
             decision = self._rate_limiter.check(tenant)
+            if isawaitable(decision):
+                decision = await decision
             rate_headers = decision.headers()
             if not decision.allowed:
                 return problem_response(

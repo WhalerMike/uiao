@@ -13,6 +13,8 @@ build a Postgres repository + JWKS signature verification from
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI
 from starlette.responses import JSONResponse, Response
 
@@ -43,7 +45,7 @@ def attach_saas(
     admin_verifier: EntraTokenVerifier | None = None,
     provisioning_service: ProvisioningService | None = None,
     stamp_executor: StampExecutor | None = None,
-    rate_limiter: TenantRateLimiter | None = None,
+    rate_limiter: Any = None,
     audit_sink: AuditSink | None = None,
 ) -> FastAPI:
     """Wire SaaS tenancy + control plane onto ``app`` and return it."""
@@ -54,7 +56,16 @@ def attach_saas(
         audit_sink = InMemoryAuditSink() if settings.audit_enabled else NullAuditSink()
 
     if rate_limiter is None and settings.rate_limiting_enabled:
-        rate_limiter = TenantRateLimiter(window_seconds=settings.rate_limit_window_seconds)
+        if settings.rate_limit_redis_url:
+            # Globally-exact limit across replicas via a shared Redis store (ADR-118).
+            from .ratelimit import DistributedTenantRateLimiter, RedisWindowStore
+
+            rate_limiter = DistributedTenantRateLimiter(
+                RedisWindowStore(settings.rate_limit_redis_url),
+                window_seconds=settings.rate_limit_window_seconds,
+            )
+        else:
+            rate_limiter = TenantRateLimiter(window_seconds=settings.rate_limit_window_seconds)
 
     if data_verifier is None:
         data_verifier = EntraTokenVerifier(

@@ -46,7 +46,14 @@ from .context import (
     set_current_tenant,
 )
 from .quotas import DEFAULT_QUOTAS, PlanQuota, quota_for
-from .ratelimit import RateLimitDecision, TenantRateLimiter
+from .ratelimit import (
+    DistributedTenantRateLimiter,
+    InMemoryWindowStore,
+    RateLimitDecision,
+    RedisWindowStore,
+    TenantRateLimiter,
+    WindowStore,
+)
 from .repository import InMemoryTenantRepository, TenantRepository
 from .settings import SaasSettings
 from .tenant import Tenant, TenantPlan, TenantStatus
@@ -64,6 +71,10 @@ __all__ = [
     "quota_for",
     "RateLimitDecision",
     "TenantRateLimiter",
+    "DistributedTenantRateLimiter",
+    "WindowStore",
+    "InMemoryWindowStore",
+    "RedisWindowStore",
     "AuditAction",
     "AuditEvent",
     "AuditSink",
