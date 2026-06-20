@@ -2,17 +2,17 @@
 document_id: UIAO_186
 title: "UIAO Incident Response Plan"
 version: "1.0"
-status: Draft
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO Incident Response Plan
 
-> **Status: Draft.** Standalone incident-response plan identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Covers `IR-1` through `IR-8`. Bracketed `[PLACEHOLDER]` fields are completed per authorizing agency.
+> **Status: Current — authoritative template.** Standalone incident-response plan identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Covers `IR-1` through `IR-8`. Bracketed `[PLACEHOLDER]` fields are completed per authorizing agency.
 
 ## Purpose and scope
 

@@ -1,18 +1,18 @@
 ---
 document_id: UIAO_190
 title: "UIAO Continuous Monitoring Strategy"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO Continuous Monitoring Strategy
 
-> **Status: Draft / template.** Formal ConMon strategy identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `CA-7` and links to the FedRAMP 20x KSI framework. It defines what is monitored, how often, how it is reported, and when it escalates — the operational counterpart to the point-in-time SSP assessment.
+> **Status: Current — authoritative template.** Formal ConMon strategy identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `CA-7` and links to the FedRAMP 20x KSI framework. It defines what is monitored, how often, how it is reported, and when it escalates — the operational counterpart to the point-in-time SSP assessment.
 
 ## Purpose
 
