@@ -37,7 +37,7 @@ the control-plane router. The container entrypoint is
 
 from __future__ import annotations
 
-from .audit import AuditAction, AuditEvent, AuditSink, InMemoryAuditSink
+from .audit import AuditAction, AuditEvent, AuditSink, InMemoryAuditSink, build_audit_sink
 from .context import (
     TenantContext,
     clear_current_tenant,
@@ -79,6 +79,7 @@ __all__ = [
     "AuditEvent",
     "AuditSink",
     "InMemoryAuditSink",
+    "build_audit_sink",
     "get_current_tenant",
     "require_current_tenant",
     "set_current_tenant",
