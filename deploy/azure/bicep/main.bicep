@@ -52,6 +52,9 @@ param minReplicas int = 1
 @description('Maximum Container App replicas.')
 param maxReplicas int = 10
 
+@description('Deploy a VNet and run Postgres + the Container Apps env privately (ADR-119). Default off keeps the public-access deployment.')
+param enablePrivateNetworking bool = false
+
 var tags = {
   workload: workload
   environment: environmentName
@@ -115,10 +118,24 @@ module keyvault 'modules/keyvault.bicep' = {
 }
 
 // ---------------------------------------------------------------------
+// Private networking (ADR-119) — VNet + delegated subnets + private DNS.
+// Deployed only when enablePrivateNetworking; the default keeps public access.
+// ---------------------------------------------------------------------
+module network 'modules/network.bicep' = if (enablePrivateNetworking) {
+  name: 'network'
+  params: {
+    namePrefix: namePrefix
+    location: location
+    tags: tags
+  }
+}
+
+// ---------------------------------------------------------------------
 // Tenant registry + evidence state
 // ---------------------------------------------------------------------
 // Passwordless (ADR-116): the managed identity is bound as the server's Entra
 // administrator; the app authenticates with an Entra token, no DB password.
+// Private (ADR-119): VNet-integrated when enablePrivateNetworking.
 module postgres 'modules/postgres.bicep' = {
   name: 'postgres'
   params: {
@@ -127,6 +144,8 @@ module postgres 'modules/postgres.bicep' = {
     tags: tags
     entraAdminObjectId: identity.outputs.principalId
     entraAdminName: identity.outputs.name
+    delegatedSubnetId: enablePrivateNetworking ? network.outputs.postgresSubnetId : ''
+    privateDnsZoneId: enablePrivateNetworking ? network.outputs.privateDnsZoneId : ''
   }
 }
 
@@ -155,6 +174,7 @@ module containerEnv 'modules/containerapp-env.bicep' = {
     tags: tags
     logAnalyticsCustomerId: monitoring.outputs.customerId
     logAnalyticsSharedKey: monitoring.outputs.sharedKey
+    infrastructureSubnetId: enablePrivateNetworking ? network.outputs.infraSubnetId : ''
   }
 }
 

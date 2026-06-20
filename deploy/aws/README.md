@@ -78,6 +78,15 @@ This is the AWS counterpart of binding the managed identity as the Postgres
 Entra administrator on Azure — it cannot be expressed in CDK because it is a
 data-plane (SQL) operation.
 
+### Private networking (ADR-119, opt-in)
+
+The RDS data tier is already private (private subnets, not publicly accessible).
+Deploy with `-c enablePrivateNetworking=true` to also add **VPC endpoints** (S3
+gateway; ECR api/dkr, Secrets Manager, CloudWatch Logs interface) so image
+pulls, secret reads, and log writes stay inside the VPC instead of traversing
+NAT/the internet. Default is **off**. Synth-validated by `cdk-synth`;
+deploy-validate against a real account before production.
+
 ## Validation
 
 `.github/workflows/cdk-synth.yml` runs `cdk synth` on every change under
