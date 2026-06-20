@@ -5,7 +5,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 
-from uiao.saas.audit import AuditAction, AuditEvent, AuditOutcome, InMemoryAuditSink, NullAuditSink
+from types import SimpleNamespace
+
+from uiao.saas.audit import (
+    AuditAction,
+    AuditEvent,
+    AuditOutcome,
+    InMemoryAuditSink,
+    NullAuditSink,
+    build_audit_sink,
+)
 from uiao.saas.provisioning import ProvisioningService
 from uiao.saas.repository import InMemoryTenantRepository
 from uiao.saas.tenant import TenantPlan
@@ -103,3 +112,27 @@ def test_default_executor_has_null_audit_and_does_not_crash():
     # No audit sink injected → NullAuditSink; lifecycle still works.
     _run(svc.onboard(tenant_id=GUID, onboarded_by="admin"))
     _run(svc.suspend(GUID, reason="x"))
+
+
+# --------------------------------------------------------------------------
+# build_audit_sink selection (the durable Postgres branch lazy-imports the
+# [saas] extra, so only the dependency-free branches are exercised here)
+# --------------------------------------------------------------------------
+def _settings(**kw) -> SimpleNamespace:
+    base = dict(audit_enabled=True, database_url="")
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+def test_build_audit_sink_disabled_is_null():
+    assert isinstance(build_audit_sink(_settings(audit_enabled=False)), NullAuditSink)
+
+
+def test_build_audit_sink_no_database_is_in_memory():
+    assert isinstance(build_audit_sink(_settings()), InMemoryAuditSink)
+
+
+def test_build_audit_sink_disabled_overrides_database():
+    # Disabled wins even when a database URL is present — no durable import.
+    sink = build_audit_sink(_settings(audit_enabled=False, database_url="postgresql+asyncpg://x@h/db"))
+    assert isinstance(sink, NullAuditSink)

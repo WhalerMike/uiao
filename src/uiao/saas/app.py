@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import FastAPI
 from starlette.responses import JSONResponse, Response
 
-from .audit import AuditSink, InMemoryAuditSink, NullAuditSink
+from .audit import AuditSink, build_audit_sink
 from .auth import EntraTokenVerifier, SignatureVerifier, jwks_verifier
 from .control_plane import router as control_router
 from .errors import install_problem_handlers
@@ -53,7 +53,9 @@ def attach_saas(
     repository = repository or build_repository(settings)
 
     if audit_sink is None:
-        audit_sink = InMemoryAuditSink() if settings.audit_enabled else NullAuditSink()
+        # Durable Postgres sink when a database is configured, else in-memory
+        # (or null when auditing is disabled). ADR-115.
+        audit_sink = build_audit_sink(settings)
 
     if rate_limiter is None and settings.rate_limiting_enabled:
         if settings.rate_limit_redis_url:
