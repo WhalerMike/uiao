@@ -28,6 +28,7 @@ cloud = app.node.try_get_context("cloud") or "commercial"
 app_client_id = app.node.try_get_context("appClientId") or ""
 publisher_tenant_id = app.node.try_get_context("publisherTenantId") or ""
 api_audience = app.node.try_get_context("apiAudience") or "api://uiao"
+enable_private_networking = str(app.node.try_get_context("enablePrivateNetworking") or "").lower() == "true"
 
 env = Environment(
     account=os.environ.get("CDK_DEFAULT_ACCOUNT"),
@@ -43,6 +44,7 @@ stack = UiaoSaasStack(
     app_client_id=app_client_id,
     publisher_tenant_id=publisher_tenant_id,
     api_audience=api_audience,
+    enable_private_networking=enable_private_networking,
 )
 
 Tags.of(stack).add("workload", "uiao")
