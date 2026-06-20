@@ -1,8 +1,8 @@
 ---
 document_id: UIAO_198
 title: "UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-19"
 updated_at: "2026-06-19"
@@ -12,7 +12,7 @@ publication_style: include
 
 # UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)
 
-> **Status: Draft / template.** Canonical scoring methodology backing the
+> **Status: Current — authoritative template.** Canonical scoring methodology backing the
 > Risk Assessment (RA) control family. `RA-3` asserts that "risk assessment
 > methodology aligns with NIST SP 800-30 Rev 1"
 > ([`RA-3.yml`](data/control-library/ra/RA-3.yml), `PARAM-RA-003-003`); until

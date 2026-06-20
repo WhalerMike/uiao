@@ -1,18 +1,18 @@
 ---
 document_id: UIAO_192
 title: "UIAO Privacy Impact Assessment"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO Privacy Impact Assessment
 
-> **Status: Draft / template.** PIA identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses the **PT (Personally Identifiable Information Processing and Transparency)** family and the privacy considerations of identity data processed during AD-to-Entra ID modernization. Bracketed `[PLACEHOLDER]` fields are completed per authorizing system.
+> **Status: Current — authoritative template.** PIA identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses the **PT (Personally Identifiable Information Processing and Transparency)** family and the privacy considerations of identity data processed during AD-to-Entra ID modernization. Bracketed `[PLACEHOLDER]` fields are completed per authorizing system.
 
 ## Purpose
 

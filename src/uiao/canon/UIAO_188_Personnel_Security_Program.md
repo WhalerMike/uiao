@@ -1,18 +1,18 @@
 ---
 document_id: UIAO_188
 title: "UIAO Personnel Security Program"
-version: "0.1"
-status: Draft
+version: "1.0"
+status: Current
 owner: Michael Stratton
 created_at: "2026-06-05"
-updated_at: "2026-06-05"
+updated_at: "2026-06-19"
 publish_to_site: true
 publication_style: include
 ---
 
 # UIAO Personnel Security Program
 
-> **Status: Draft / template.** Agency-responsibility program template that closes the **PS (Personnel Security)** family — one of the four families Chapter 23 names as uncovered. The SSP ([UIAO_185](UIAO_185_System_Security_Plan_Template.md) §4) declares PS as an agency-responsibility program; this document is that program template. Covers `PS-1` through `PS-9`. Bracketed `[PLACEHOLDER]` fields are completed per authorizing agency. Tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A).
+> **Status: Current — authoritative template.** Agency-responsibility program template that closes the **PS (Personnel Security)** family — one of the four families Chapter 23 names as uncovered. The SSP ([UIAO_185](UIAO_185_System_Security_Plan_Template.md) §4) declares PS as an agency-responsibility program; this document is that program template. Covers `PS-1` through `PS-9`. Bracketed `[PLACEHOLDER]` fields are completed per authorizing agency. Tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A).
 
 ## Purpose
 
