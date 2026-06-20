@@ -44,15 +44,22 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 LIB_DIR = REPO_ROOT / "src" / "uiao" / "canon" / "data" / "control-library"
 INDEX = LIB_DIR / "index.yaml"
 
+# Legacy schema-B fields. The canonical control schema (schema-A) uses
+# narrative / implemented_by / evidence / parameters; these field names are a
+# retired second-schema variant and must not reappear (see the control_narrative
+# → narrative normalization and the automation → implemented_by/evidence unify).
+_LEGACY_FIELDS = {"control_narrative", "responsible_role", "implementation_status", "automation"}
+
 
 def scan() -> dict:
     idx = yaml.safe_load(INDEX.read_text())
     families = idx.get("families", {})
-    rows, mismatches = {}, []
+    rows, mismatches, schema_drift = {}, [], []
     base = enh = total_files = 0
     for fam, meta in families.items():
         famdir = LIB_DIR / fam
-        files = sorted(p.name for p in famdir.glob("*.yml")) if famdir.is_dir() else []
+        paths = sorted(famdir.glob("*.yml")) if famdir.is_dir() else []
+        files = [p.name for p in paths]
         n = len(files)
         total_files += n
         fam_enh = sum(1 for f in files if "(" in f)
@@ -61,6 +68,17 @@ def scan() -> dict:
         rows[fam] = {"declared": meta.get("count"), "actual": n}
         if meta.get("count") != n:
             mismatches.append(f"family {fam}: index={meta.get('count')} files={n}")
+        # Schema-drift guard: every control must use the canonical schema-A
+        # field set. Flag legacy schema-B fields so the control_narrative /
+        # automation drift (fixed once) cannot silently return.
+        for p in paths:
+            try:
+                d = yaml.safe_load(p.read_text()) or {}
+            except Exception:
+                continue
+            legacy = _LEGACY_FIELDS & set(d)
+            if legacy:
+                schema_drift.append(f"{fam}/{p.name}: {', '.join(sorted(legacy))}")
 
     if idx.get("total_controls") != total_files:
         mismatches.append(f"total_controls: index={idx.get('total_controls')} sum_of_families={total_files}")
@@ -68,6 +86,12 @@ def scan() -> dict:
         mismatches.append(f"base_controls: index={idx.get('base_controls')} computed={base}")
     if idx.get("enhancements") != enh:
         mismatches.append(f"enhancements: index={idx.get('enhancements')} computed={enh}")
+
+    if schema_drift:
+        mismatches.append(
+            f"schema drift: {len(schema_drift)} file(s) use non-canonical "
+            f"(schema-B) fields — {', '.join(sorted(_LEGACY_FIELDS))}"
+        )
 
     root_legacy = sorted(p.name for p in LIB_DIR.glob("*.yml"))
     return {
@@ -77,6 +101,7 @@ def scan() -> dict:
         "index_total": idx.get("total_controls"),
         "families": rows,
         "root_legacy_files": root_legacy,
+        "schema_drift": schema_drift,
         "mismatches": mismatches,
     }
 
@@ -96,6 +121,9 @@ def main() -> int:
         print(f"Family controls on disk : {r['total_files']}  (base {r['base']} + enhancements {r['enhancements']})")
         print(f"index.yaml total_controls: {r['index_total']}")
         print(f"Legacy root-schema files : {', '.join(r['root_legacy_files']) or '(none)'}")
+        print(f"Schema-drift files       : {len(r['schema_drift'])}")
+        for d in r["schema_drift"]:
+            print(f"    - {d}")
         if r["mismatches"]:
             print("\nMISMATCHES:")
             for m in r["mismatches"]:
