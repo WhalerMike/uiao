@@ -164,3 +164,59 @@ def test_both_implemented_by_schemas(tmp_path: Path) -> None:
 
     assert "TYPED-1" in result
     assert result["TYPED-1"]["implemented_by"][1]["type"] == "FirewallCluster"
+
+
+def test_load_scans_family_subdirectories(tmp_path: Path) -> None:
+    """Controls in family subdirectories are loaded, not just root-level files."""
+    from uiao.generators.narrative_loader import load_control_library
+
+    control_lib = tmp_path / "control-library"
+    # Root-level (legacy schema) control.
+    _write_yaml(
+        control_lib / "ROOT-1.yml",
+        {"control_id": "ROOT-1", "title": "Root Control", "narrative": "Root narrative."},
+    )
+    # Family-subdir (full schema) control — must also be discovered.
+    _write_yaml(
+        control_lib / "ac" / "AC-2.yml",
+        {
+            "control_id": "AC-2",
+            "title": "Account Management",
+            "family": "Access Control",
+            "narrative": "Family-dir narrative for AC-2.",
+        },
+    )
+
+    result = load_control_library(data_dir=tmp_path, context={})
+
+    assert "ROOT-1" in result, "root-level controls must still load"
+    assert "AC-2" in result, "family-subdirectory controls must be loaded (recursive scan)"
+    assert result["AC-2"]["family"] == "Access Control"
+
+
+def test_family_subdir_wins_over_root_duplicate(tmp_path: Path) -> None:
+    """When a control id exists at root and under a family dir, the family wins."""
+    from uiao.generators.narrative_loader import load_control_library
+
+    control_lib = tmp_path / "control-library"
+    # Legacy root copy (sparse).
+    _write_yaml(
+        control_lib / "SC-8.yml",
+        {"control-id": "SC-8", "title": "Root SC-8", "narrative": "Sparse root narrative."},
+    )
+    # Richer family copy — should take precedence.
+    _write_yaml(
+        control_lib / "sc" / "SC-8.yml",
+        {
+            "control_id": "SC-8",
+            "title": "Transmission Confidentiality and Integrity",
+            "family": "System and Communications Protection",
+            "narrative": "Rich family-dir narrative for SC-8.",
+        },
+    )
+
+    result = load_control_library(data_dir=tmp_path, context={})
+
+    assert "SC-8" in result
+    assert result["SC-8"]["family"] == "System and Communications Protection"
+    assert "Rich family-dir narrative" in result["SC-8"]["narrative"]

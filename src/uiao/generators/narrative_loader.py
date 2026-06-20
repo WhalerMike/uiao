@@ -1,8 +1,12 @@
 """Control-library narrative loader (v2 – Gold Standard).
 
-Scans ``data/control-library/*.yml``, renders Jinja2 templates in each
-``narrative`` field using a context built from ``load_context()``, and
-returns a dict keyed by control ID ready for injection into the OSCAL SSP.
+Recursively scans ``data/control-library/`` — the legacy root-level files
+*and* the per-family subdirectories (``ac/``, ``ia/``, ``sc/`` …) — renders
+Jinja2 templates in each ``narrative`` field using a context built from
+``load_context()``, and returns a dict keyed by control ID ready for injection
+into the OSCAL SSP. Where a control id exists both at the root (legacy schema)
+and under a family subdirectory (full schema), the richer family-dir entry
+wins.
 
 Improvements over v1
 --------------------
@@ -310,9 +314,14 @@ def load_control_library(
         org_name = context.get("organization_name", "")
 
     result: dict[str, dict[str, Any]] = {}
+    # Track whether each control_id was sourced from a family subdirectory, so
+    # the richer family-dir control wins over a legacy root-level file sharing
+    # the same id (SC-8 / IA-2 exist both at the root, legacy schema, and under
+    # sc/ ia/ in the full schema).
+    from_family: dict[str, bool] = {}
     skipped = 0
 
-    for yml_file in sorted(control_lib_dir.glob("*.yml")):
+    for yml_file in sorted(control_lib_dir.rglob("*.yml")):
         try:
             with yml_file.open("r", encoding="utf-8") as fh:
                 data = yaml.safe_load(fh) or {}
@@ -365,7 +374,15 @@ def load_control_library(
         evidence = data.get("evidence", [])
         related = _resolve_field(data, "related_controls") or []
 
+        # --- De-duplicate: prefer the family-subdir control over a legacy
+        # root-level file of the same id ---
+        is_family = yml_file.parent != control_lib_dir
+        if ctrl_id in result and from_family.get(ctrl_id, False) and not is_family:
+            skipped += 1
+            continue
+
         # --- Build entry ---
+        from_family[ctrl_id] = is_family
         result[ctrl_id] = {
             "control_id": ctrl_id,
             "title": title,
