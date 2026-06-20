@@ -156,9 +156,16 @@ Phases 0–14.
   data, logs; `D:\GitRepos\` for bare repos (the
   `[repository] ROOT` value); `D:\Gitea\data\lfs\` for LFS chunks.
   Postgres on a separate host (`pg01.corp.contoso.com:5432`,
-  database `uiao_gitea`) holds Gitea's relational state. Secrets
-  (DB password, internal token, JWT secret) sourced from
-  `Microsoft.PowerShell.SecretManagement` / `SecretStore` under the
+  database `uiao_gitea`) holds Gitea's relational state in the default
+  full-production profile. The **single-host SQLite profile** — lab,
+  proof-of-concept, air-gapped, or small-footprint deployments that
+  cannot stand up a separate Postgres host — is sanctioned as an
+  additive alternative: Gitea runs on its embedded SQLite backend
+  (`DB_TYPE = sqlite3`, `D:\Gitea\data\gitea.db`) on the same host,
+  trading the separate relational tier for a single-file database that
+  the Phase 12 Volume Shadow Copy backup captures consistently. Secrets
+  (DB password where applicable, internal token, JWT secret) sourced
+  from `Microsoft.PowerShell.SecretManagement` / `SecretStore` under the
   gMSA. Build-guide Phases 4.b, 4.d.
 - **Identity model.** Gitea runs as the gMSA `svc-uiao-gitea$`. The
   IIS reverse-proxy app pool runs as the built-in
@@ -175,7 +182,14 @@ Phases 0–14.
   uploads both to a customer-tenant Azure Blob container under the
   managed identity assigned to the Arc resource, and applies a
   30-day retention policy. RPO target 24 h; RTO target 4 h via cold
-  restore into a passive replica. Build-guide Phase 12.
+  restore into a passive replica. For the **single-host SQLite
+  profile** — and any deployment without reachable Azure Blob (lab,
+  air-gapped) — the sanctioned backup is
+  `scripts/deploy/Backup-GiteaDatabase.ps1`: it quiesces Gitea, takes a
+  Volume Shadow Copy–consistent snapshot of `gitea.db`, compresses it
+  with a timestamp, and ships it to on-prem local + SMB targets under
+  the same 30-day retention. Both paths satisfy the 24 h RPO / 4 h RTO
+  targets. Build-guide Phase 12.
 - **Hardening.** CIS Level-2 GPO baseline applied via LGPO; AppLocker
   policy restricts script execution to publisher `CN=UIAO Canon
   Signing`; WDAC enforces UMCI for the same publisher; Defender for
@@ -315,3 +329,4 @@ This infrastructure operates under a formal authorization. The authorizing offic
 | 1.0 | 2026-05-12 | Status flipped `draft` → `accepted` by user directive; `decided` date set; build-guide v1.3 + release-manifest cross-references confirmed in Status block | Claude Code via `claude/adr-041-accepted-and-git-server-adapter` |
 | 1.1 | 2026-06-02 | §Related work: the deferred hot-standby follow-up is realized by ADR-090 (cross-reference added). No change to this ADR's decision — status remains `accepted`. | Claude Code via `docs/adr-090-substrate-ha-redundancy` |
 | 1.2 | 2026-06-05 | §Authorization and Risk Acceptance added (`CA-6`) per the §7.2 compliance amendments (UIAO_184 Workstream A). No change to the decision — status remains `accepted`. | Claude Code via `claude/gap-analysis-filling-plan-N3MVa` |
+| 1.3 | 2026-06-20 | §Storage layout + §Backup / DR: sanction the single-host SQLite profile (embedded `gitea.db` instead of separate-host Postgres) with `scripts/deploy/Backup-GiteaDatabase.ps1` (VSS-consistent; on-prem local + SMB; 30-day retention) as its backup tool, for lab / air-gapped / small-footprint deployments. Additive profile — the Postgres + `gitea dump` → Azure Blob path remains the full-production default; no change to the Option-B decision. Status remains `accepted`. | Claude Code via `claude/gitea-db-backup-script-o78ml9` |
