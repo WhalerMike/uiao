@@ -46,6 +46,22 @@ cdk deploy -c environmentName=dev \
 The container image is the cloud-neutral `uiao-saas` image (same
 `deploy/azure/Dockerfile`); build + push it to ECR before `cdk deploy`.
 
+### CI/CD (manual-dispatch)
+
+`.github/workflows/aws-saas-deploy.yml` automates build → push → deploy: it
+builds the image, pushes it to ECR (creating the `uiao-saas` repo on first run),
+and optionally `cdk deploy`s the stack at the pushed image. It is
+**manual-dispatch only** and authenticates via **GitHub OIDC → an AWS IAM role**
+(no stored keys). Configure before first use:
+
+| Name | Kind | Purpose |
+|---|---|---|
+| `AWS_DEPLOY_ROLE_ARN` | secret | IAM role the workflow assumes via OIDC (ECR + ECS + CloudFormation/CDK permissions) |
+| `AWS_REGION` | variable | Target region (e.g. `us-east-1`) |
+
+The deploy job binds to a protected `saas-<env>` GitHub Environment, so it can
+require manual approval.
+
 ### One-time DB role bootstrap
 
 RDS IAM auth requires the `uiao_app` role to exist with the `rds_iam` role
