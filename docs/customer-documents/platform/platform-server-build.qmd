@@ -3,7 +3,7 @@ title: "Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Int
 subtitle: "Canonical 14-phase runbook for the UIAO on-premises governance substrate"
 doc-type: runbook
 doc-id: UIAO_SBG_001
-version: "1.4"
+version: "1.5"
 status: DRAFT
 audience: "Platform engineers · sysadmins"
 canon-source: "self (this page) + src/uiao/canon/adr/adr-041-uiao-git-infrastructure.md + src/uiao/canon/release-manifests/platform-server-v1.2.yaml"
@@ -835,6 +835,20 @@ Register-ScheduledTask -TaskName 'UIAO-GiteaBackup' -Action $action -Trigger $tr
 
 RPO target: 24 h (nightly snapshot). RTO target: 4 h (cold restore from
 latest backup blob into the passive replica + DNS cutover).
+
+::: {.callout-note title="Single-host SQLite profile — on-prem backup"}
+For lab, proof-of-concept, air-gapped, or small-footprint deployments that run
+Gitea on its embedded SQLite backend (`DB_TYPE = sqlite3`,
+`D:\Gitea\data\gitea.db`) instead of a separate Postgres host — or that cannot
+reach Azure Blob — the sanctioned backup is
+[`scripts/deploy/Backup-GiteaDatabase.ps1`](../../../scripts/deploy/Backup-GiteaDatabase.ps1).
+It quiesces Gitea, takes a Volume Shadow Copy–consistent snapshot of `gitea.db`,
+compresses it with a timestamp, and ships it to on-prem local + SMB targets under
+the same 30-day retention sweep — no Azure dependency, same 24 h RPO / 4 h RTO
+targets. The `Backup-UIAOGitea` function above remains the default for the
+full-production Postgres profile. See ADR-041 §Backup / DR (this is an additive
+deployment profile, not a replacement for Option B).
+:::
 
 ## Phase 13 — Security hardening
 

@@ -8,12 +8,12 @@
     timestamp, copies to local and network backup targets, enforces 30-day
     retention, restarts Gitea, and logs all operations.
 
-    NOTE ON ARCHITECTURE: This script backs up a *SQLite* `gitea.db` to on-prem
-    local + SMB targets. The canonical UIAO Git host (ADR-041, build-guide
-    Phase 12) runs Gitea on PostgreSQL and backs up via `gitea dump` to Azure
-    Blob. Use this script only against a SQLite-backed instance (lab / Option-A
-    deployment); it is not a substitute for `Backup-UIAOGitea` on the canonical
-    Postgres host.
+    DEPLOYMENT PROFILE: This is the sanctioned backup tool for the single-host
+    SQLite profile defined in ADR-041 §Backup / DR (build-guide Phase 12) —
+    Gitea on its embedded `gitea.db` backend, for lab / air-gapped /
+    small-footprint deployments. The full-production default profile
+    (separate-host PostgreSQL) uses `Backup-UIAOGitea` (`gitea dump` → Azure
+    Blob) instead; this script is not a substitute for that path.
 
 .OUTPUTS
     Exit code 0 on success, 1 on any failure.
