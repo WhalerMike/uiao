@@ -577,7 +577,7 @@
 | [`docs/customer-documents/platform/governance-dashboard-design.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/governance-dashboard-design.qmd) | 122 | Authored | ✅ | — | — |
 | [`docs/customer-documents/platform/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/index.qmd) | 67 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/platform/orgpath-runtime.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/orgpath-runtime.qmd) | 244 | Authored | ✅ | 1/1 | aspirational |
-| [`docs/customer-documents/platform/platform-server-build.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/platform-server-build.qmd) | 1166 | Substantial | ✅ | 11/11 | aspirational |
+| [`docs/customer-documents/platform/platform-server-build.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/platform-server-build.qmd) | 1180 | Substantial | ✅ | 11/11 | aspirational |
 | [`docs/customer-documents/platform/saas-quickstart.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/saas-quickstart.qmd) | 203 | Authored | ✅ | — | aspirational |
 | [`docs/customer-documents/platform/windows-server-deployment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/windows-server-deployment.qmd) | 687 | Substantial | ✅ | ⚠️ 0/3 | 3 missing image ref(s) |
 
