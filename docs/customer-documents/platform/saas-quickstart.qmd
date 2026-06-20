@@ -1,0 +1,203 @@
+---
+title: "UIAO SaaS Quickstart"
+subtitle: "From zero to your first onboarded tenant in ~10 minutes — locally, then a pointer to either cloud"
+doc-type: operational-guide
+audience: "Platform engineers · cloud operators · evaluators"
+canon-source: "src/uiao/canon/adr/adr-096-azure-saas-architecture.md"
+derived-from: "ADR-096 (Azure SaaS architecture); ADR-115 (SaaS production-readiness); ADR-116 (Azure passwordless Postgres); ADR-117 (AWS SaaS surface)"
+aspirational: true
+lifecycle: aspirational
+tiers_adopted: [1]
+lifecycle_review: 2026-12-19
+format:
+  html:
+    toc: true
+    toc-depth: 2
+  docx:
+    toc: true
+---
+
+# UIAO SaaS Quickstart {.unnumbered}
+
+::: {.callout-note}
+This is the **learning-oriented** companion to the two SaaS reference guides
+([Azure](./azure-saas.qmd) · [AWS](./aws-saas.qmd)) and the narrative
+[Book 26](../orgpath-narrative/Book_26.qmd). It walks you, end to end, from a
+clean checkout to a running multi-tenant control plane with your first tenant
+onboarded, suspended, audited, and deprovisioned — all **locally**, with no
+cloud account and no database. When you are ready for a real deployment, the
+last section points you at the cloud guides.
+:::
+
+::: {.callout-important}
+Everything here runs against the **in-memory tenant registry** with
+**dev-only unsigned tokens** (`UIAO_SAAS_INSECURE_ALLOW_UNSIGNED_TOKENS`). That
+switch defaults **off** and must never be enabled in production — it skips JWT
+signature verification. It exists precisely so a quickstart like this needs no
+Entra tenant.
+:::
+
+## What you'll do
+
+1. Install the SaaS extra and boot `uiao.saas.asgi:app` locally.
+2. Confirm liveness (`/healthz`) and readiness (`/readyz`).
+3. Mint a dev **admin** token and onboard your first tenant.
+4. List it, suspend it, and watch the **audit trail** record every action.
+5. Deprovision it and stop.
+
+Total time: about ten minutes. Every step is copy-paste and deterministic.
+
+## Prerequisites
+
+- Python 3.11+ and `pip`.
+- A clone of the repo (`git clone https://github.com/WhalerMike/uiao`).
+- `curl` and `python3` on your PATH. That's it — no Docker, no cloud, no DB.
+
+## Step 1 — Install and boot
+
+From the repo root:
+
+```bash
+python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -e ".[saas]"                          # or ".[aws]" — either includes the app
+
+# Dev configuration: in-memory registry + unsigned tokens (DEV ONLY).
+export UIAO_SAAS_INSECURE_ALLOW_UNSIGNED_TOKENS=true
+export UIAO_SAAS_API_AUDIENCE=api://uiao
+export UIAO_SAAS_PUBLISHER_TENANT_ID=00000000-0000-0000-0000-000000000001
+
+uvicorn uiao.saas.asgi:app --port 8000
+```
+
+Leave that running. The control plane is now at `http://localhost:8000/control/v1`.
+
+## Step 2 — Liveness and readiness
+
+In a second terminal:
+
+```bash
+curl -s http://localhost:8000/healthz   # liveness  → {"status":"ok",...}
+curl -s http://localhost:8000/readyz    # readiness → {"status":"ready",...}
+```
+
+`/readyz` confirms the tenant registry is reachable (here, the in-memory one is
+always ready). In a cloud deployment this is what the load balancer probes
+before sending the instance traffic (ADR-115).
+
+## Step 3 — Mint a dev admin token
+
+Control-plane calls need a **publisher-tenant** token carrying the
+`UIAO.SaaS.Admin` role. In dev mode the token is unsigned, so you can mint one
+with a few lines of Python. Save this helper:
+
+```bash
+cat > mint_token.py <<'PY'
+import base64, json, sys, time
+
+def b64(d): return base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip("=")
+
+tid   = sys.argv[1]                      # tenant GUID
+roles = sys.argv[2:] or None             # optional app roles
+payload = {
+    "tid": tid, "aud": "api://uiao",
+    "iss": f"https://login.microsoftonline.com/{tid}/v2.0",
+    "oid": "quickstart", "exp": time.time() + 3600,
+}
+if roles: payload["roles"] = roles
+print(f'{b64({"alg":"none"})}.{b64(payload)}.sig')
+PY
+
+PUBLISHER=00000000-0000-0000-0000-000000000001
+ADMIN=$(python3 mint_token.py $PUBLISHER UIAO.SaaS.Admin)
+```
+
+`$ADMIN` is now a publisher-tenant admin token. (A token *without* the role, or
+from a different tenant, is rejected — that's the control-plane gate working.)
+
+## Step 4 — Onboard your first tenant
+
+```bash
+TENANT=12345678-1234-1234-1234-1234567890ab
+
+curl -s -X POST http://localhost:8000/control/v1/tenants \
+  -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
+  -d "{\"tenant_id\": \"$TENANT\", \"display_name\": \"Acme\", \"plan\": \"standard\"}" \
+  | python3 -m json.tool
+```
+
+The response includes the tenant record (now `active`), an **admin-consent URL**
+(what a real customer's Global Admin would visit), and the per-tenant **stamp
+steps** that *would* provision the tenant's schema / storage / secret scope
+(dry-run by default). List it:
+
+```bash
+curl -s http://localhost:8000/control/v1/tenants \
+  -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+```
+
+## Step 5 — Suspend, and watch the audit trail
+
+```bash
+# Suspend — the data plane would now reject this tenant's traffic with 403.
+curl -s -X POST http://localhost:8000/control/v1/tenants/$TENANT/suspend \
+  -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
+  -d '{"reason": "quickstart demo"}' | python3 -m json.tool
+
+# The control-plane audit trail (ADR-115) recorded every action:
+curl -s http://localhost:8000/control/v1/audit \
+  -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+```
+
+You'll see `onboard` and `suspend` events, each with the actor and a timestamp —
+the substrate keeping evidence about its own decisions. Resume it:
+
+```bash
+curl -s -X POST http://localhost:8000/control/v1/tenants/$TENANT/resume \
+  -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" -d '{}' \
+  | python3 -m json.tool
+```
+
+## Step 6 — Deprovision and stop
+
+```bash
+curl -s -X DELETE http://localhost:8000/control/v1/tenants/$TENANT \
+  -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+```
+
+The tenant moves to the terminal `deprovisioned` state (the un-stamp is planned,
+evidence retained per policy). Stop `uvicorn` with `Ctrl-C`. You just drove the
+full tenant lifecycle — onboard → active → suspend → resume → deprovision — and
+saw the audit trail, readiness probe, and stamp planning, all locally.
+
+::: {.callout-tip}
+## What just happened
+You exercised the **control plane** and the **production-readiness layer**
+(audit, readiness, problem+json errors) against the in-memory registry. The
+**data plane** — per-request tenant resolution and per-plan rate limiting — is
+the same code; it simply needs real inbound customer tokens, which a cloud
+deployment provides. See [Book 26, Chapter 2](../orgpath-narrative/Book_26_CPT_02.qmd)
+for what the hardening layer does and why.
+:::
+
+## Next: deploy for real
+
+The local run uses the in-memory registry. A real deployment swaps in a durable
+Postgres tenant registry and runs the same `uiao.saas.asgi:app` on managed
+compute — **passwordless** on either cloud:
+
+- **Azure** — Container Apps + PostgreSQL Flexible Server (Entra token auth).
+  Follow [UIAO Azure SaaS](./azure-saas.qmd).
+- **AWS** — ECS Fargate + RDS PostgreSQL (IAM token auth).
+  Follow [UIAO AWS SaaS](./aws-saas.qmd).
+- **Offline / hand-off** — grab the
+  [Cloud SaaS IaC Kit](../../download/index.qmd) (Azure Bicep + AWS CDK + a
+  cross-cloud deploy runbook) from the Downloads page.
+
+## Provenance
+
+- Decisions: [ADR-096](../../adr/adr-096-azure-saas-architecture.qmd) (architecture),
+  [ADR-115](../../adr/adr-115-saas-production-readiness.qmd) (production-readiness),
+  [ADR-116](../../adr/adr-116-azure-saas-deployment-hardening.qmd) /
+  [ADR-117](../../adr/adr-117-aws-saas-surface.qmd) (passwordless deployment).
+- Implementation: the `uiao.saas` package; `tests/test_saas_app.py` runs this
+  exact onboarding → lifecycle flow against the in-memory registry.
