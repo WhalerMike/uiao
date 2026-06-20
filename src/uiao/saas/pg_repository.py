@@ -81,6 +81,45 @@ def _tenant_to_values(tenant: Tenant) -> dict[str, Any]:
     }
 
 
+def build_pg_engine(
+    database_url: str,
+    *,
+    use_entra_auth: bool = False,
+    entra_user: str = "",
+    cloud: str = "commercial",
+    use_aws_iam_auth: bool = False,
+    aws_region: str = "",
+) -> AsyncEngine:
+    """Build a pooled async engine, wiring passwordless auth if requested.
+
+    Shared by the tenant registry and the durable audit sink so both connect to
+    the same database with the same posture. Passwordless auth issues a fresh
+    token as the connection password on every new asyncpg connection — Entra
+    (Azure, ADR-116) and RDS IAM (AWS, ADR-117) share the do_connect seam.
+    """
+    engine = create_async_engine(database_url, pool_pre_ping=True)
+    if use_entra_auth:
+        from .pg_auth import EntraPostgresTokenProvider, apply_token_auth, ossrdbms_scope_for
+
+        provider = EntraPostgresTokenProvider(scope=ossrdbms_scope_for(cloud))
+        apply_token_auth(engine, provider, username=entra_user)
+    elif use_aws_iam_auth:
+        from sqlalchemy.engine import make_url
+
+        from .aws_pg_auth import RdsIamTokenProvider
+        from .pg_auth import apply_token_auth
+
+        url = make_url(database_url)
+        iam = RdsIamTokenProvider(
+            hostname=url.host or "",
+            username=url.username or "",
+            region=aws_region,
+            port=url.port or 5432,
+        )
+        apply_token_auth(engine, iam, username=url.username or "")
+    return engine
+
+
 class PostgresTenantRepository(TenantRepository):
     """SQLAlchemy-async implementation of the tenant registry."""
 
@@ -95,31 +134,17 @@ class PostgresTenantRepository(TenantRepository):
         use_aws_iam_auth: bool = False,
         aws_region: str = "",
     ) -> None:
-        self._engine: AsyncEngine = engine or create_async_engine(database_url, pool_pre_ping=True)
+        # Tests inject a pre-built engine; production builds one with the
+        # configured (passwordless) auth via the shared helper.
+        self._engine: AsyncEngine = engine or build_pg_engine(
+            database_url,
+            use_entra_auth=use_entra_auth,
+            entra_user=entra_user,
+            cloud=cloud,
+            use_aws_iam_auth=use_aws_iam_auth,
+            aws_region=aws_region,
+        )
         self._sessionmaker = async_sessionmaker(self._engine, expire_on_commit=False)
-        # Passwordless auth: issue a fresh token as the connection password on
-        # every new asyncpg connection. Only wired when the caller did not
-        # inject a pre-built engine (tests pass their own). Entra (Azure,
-        # ADR-116) and RDS IAM (AWS, ADR-117) share the do_connect seam.
-        if engine is None and use_entra_auth:
-            from .pg_auth import EntraPostgresTokenProvider, apply_token_auth, ossrdbms_scope_for
-
-            provider = EntraPostgresTokenProvider(scope=ossrdbms_scope_for(cloud))
-            apply_token_auth(self._engine, provider, username=entra_user)
-        elif engine is None and use_aws_iam_auth:
-            from sqlalchemy.engine import make_url
-
-            from .aws_pg_auth import RdsIamTokenProvider
-            from .pg_auth import apply_token_auth
-
-            url = make_url(database_url)
-            iam = RdsIamTokenProvider(
-                hostname=url.host or "",
-                username=url.username or "",
-                region=aws_region,
-                port=url.port or 5432,
-            )
-            apply_token_auth(self._engine, iam, username=url.username or "")
 
     async def create_all(self) -> None:
         """Create the registry table if it does not exist (idempotent)."""

@@ -9,11 +9,14 @@ The trail answers "who changed which tenant, when, and what happened", which
 is the evidence a governance substrate is obliged to keep about *itself*.
 
 The default :class:`InMemoryAuditSink` is a bounded ring buffer — dependency-
-free, used by tests and single-node dev. A durable Postgres-backed sink is a
-drop-in behind the same protocol (future work, ADR-115); the control plane and
-provisioning service only ever see :class:`AuditSink`.
+free, used by tests and single-node dev. A durable, append-only Postgres sink
+(:class:`uiao.saas.pg_audit.PostgresAuditSink`) is a drop-in behind the same
+protocol, selected by :func:`build_audit_sink` when a database is configured;
+the control plane and provisioning service only ever see :class:`AuditSink`.
 
-Pure stdlib + ``pydantic`` — no ``[saas]`` dependency.
+This module is pure stdlib + ``pydantic`` — no ``[saas]`` dependency. The
+Postgres sink is lazy-imported by :func:`build_audit_sink`, so importing this
+module never requires SQLAlchemy.
 """
 
 from __future__ import annotations
@@ -94,6 +97,36 @@ class NullAuditSink:
         return []
 
 
+def build_audit_sink(settings) -> AuditSink:  # type: ignore[no-untyped-def]
+    """Return the audit sink appropriate to ``settings``.
+
+    * auditing disabled → :class:`NullAuditSink`
+    * a database is configured → durable :class:`~uiao.saas.pg_audit.PostgresAuditSink`
+      (lazy-imported; the ``[saas]`` extra)
+    * otherwise → the in-memory ring buffer
+
+    Mirrors :func:`uiao.saas.repository.build_repository`: the Postgres sink is
+    only imported when a durable store is actually requested, so this stays
+    importable without SQLAlchemy.
+    """
+    if not getattr(settings, "audit_enabled", True):
+        return NullAuditSink()
+
+    if getattr(settings, "database_url", "").strip():
+        from .pg_audit import PostgresAuditSink
+
+        return PostgresAuditSink(
+            settings.database_url,
+            use_entra_auth=bool(getattr(settings, "database_use_entra_auth", False)),
+            entra_user=getattr(settings, "database_entra_user", ""),
+            cloud=getattr(settings, "cloud", "commercial"),
+            use_aws_iam_auth=bool(getattr(settings, "database_use_aws_iam_auth", False)),
+            aws_region=getattr(settings, "aws_region", ""),
+        )
+
+    return InMemoryAuditSink()
+
+
 __all__ = [
     "AuditAction",
     "AuditOutcome",
@@ -101,4 +134,5 @@ __all__ = [
     "AuditSink",
     "InMemoryAuditSink",
     "NullAuditSink",
+    "build_audit_sink",
 ]
