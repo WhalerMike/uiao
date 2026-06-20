@@ -74,11 +74,26 @@ class UiaoSaasStack(Stack):
         publisher_tenant_id: str = "",
         api_audience: str = "api://uiao",
         desired_count: int = 2,
+        enable_private_networking: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         vpc = ec2.Vpc(self, "Vpc", max_azs=2, nat_gateways=1)
+
+        # Private networking (ADR-119): keep AWS service traffic (ECR pulls,
+        # Secrets Manager, CloudWatch Logs, S3) inside the VPC via endpoints
+        # rather than over the internet/NAT. The RDS data tier is already
+        # private (below); this hardens the egress path. Opt-in, default off.
+        if enable_private_networking:
+            vpc.add_gateway_endpoint("S3Endpoint", service=ec2.GatewayVpcEndpointAwsService.S3)
+            for name, svc in (
+                ("EcrApiEndpoint", ec2.InterfaceVpcEndpointAwsService.ECR),
+                ("EcrDockerEndpoint", ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER),
+                ("SecretsManagerEndpoint", ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER),
+                ("CloudWatchLogsEndpoint", ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS),
+            ):
+                vpc.add_interface_endpoint(name, service=svc)
 
         # --- Tenant registry: RDS PostgreSQL, IAM auth, private -------------
         registry = rds.DatabaseInstance(

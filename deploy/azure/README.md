@@ -83,8 +83,14 @@ password in CI, the deployment, or Container Apps secrets. The Bicep template
 graph is compile-validated on every `deploy/azure/**` change by
 `.github/workflows/bicep-validate.yml` (no Azure credentials required).
 
-> Private networking (VNet + private endpoints, public-access disabled) is a
-> deferred follow-up — see ADR-116 "Deferred".
+### Private networking (ADR-119, opt-in)
+
+Deploy with `-p enablePrivateNetworking=true` to stamp a VNet, VNet-inject the
+Container Apps environment, and run Postgres **VNet-integrated with public
+network access disabled** (the Azure-services firewall rule is omitted) — the
+database is then reachable only from the VNet. Default is **off** (public
+access, unchanged). Compile-validated by `bicep-validate`; deploy-validate
+against a real account before production (ADR-119).
 
 ## Deploy
 
