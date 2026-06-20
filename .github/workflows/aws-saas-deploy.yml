@@ -1,0 +1,99 @@
+# UIAO AWS SaaS — build & deploy (ADR-117)
+#
+# SEGREGATED / DORMANT BY DESIGN: this workflow is **manual-dispatch only**.
+# It has no push/PR triggers, so merging the SaaS branch deploys nothing. It
+# runs only when an operator explicitly starts it (and, by default, against a
+# protected GitHub Environment that can gate approval) — the AWS analogue of
+# azure-saas-deploy.yml.
+#
+# Auth uses GitHub OIDC → an AWS IAM role (no stored AWS keys). Configure these
+# repo/environment values first:
+#   secret  AWS_DEPLOY_ROLE_ARN   IAM role the workflow assumes via OIDC
+#   var     AWS_REGION            target region (e.g. us-east-1)
+# The image is the cloud-neutral uiao-saas (same deploy/azure/Dockerfile). RDS
+# is passwordless (IAM-auth, ADR-117) — no DB password secret.
+name: aws-saas-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        description: Deployment environment
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      image_tag:
+        description: Container image tag to build/push
+        type: string
+        default: latest
+      deploy_infra:
+        description: Also (re)deploy the CDK stack at the pushed image
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: aws-saas-${{ github.event.inputs.environment_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Bind to a protected Environment so deploys can require manual approval.
+    environment: saas-${{ github.event.inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names uiao-saas >/dev/null 2>&1 \
+            || aws ecr create-repository \
+                 --repository-name uiao-saas \
+                 --image-scanning-configuration scanOnPush=true \
+                 --image-tag-mutability MUTABLE >/dev/null
+
+      - name: Build & push image to ECR
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          IMAGE="${REGISTRY}/uiao-saas:${IMAGE_TAG}"
+          docker build -f deploy/azure/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy CDK stack
+        if: ${{ github.event.inputs.deploy_infra == 'true' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r deploy/aws/requirements.txt
+          npm install -g aws-cdk@2
+          cd deploy/aws
+          cdk deploy \
+            -c environmentName=${{ github.event.inputs.environment_name }} \
+            -c imageUri="$IMAGE" \
+            --require-approval never
+
+      - name: Update Fargate service image only
+        if: ${{ github.event.inputs.deploy_infra != 'true' }}
+        run: |
+          # Force a new deployment so the service pulls the freshly-pushed tag.
+          CLUSTER=$(aws ecs list-clusters \
+            --query "clusterArns[?contains(@, 'uiao-saas')] | [0]" -o text)
+          SERVICE=$(aws ecs list-services --cluster "$CLUSTER" \
+            --query "serviceArns[?contains(@, 'Saas')] | [0]" -o text)
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+            --force-new-deployment >/dev/null

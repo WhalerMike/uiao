@@ -570,7 +570,7 @@
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/platform/active-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/active-governance.qmd) | 120 | Authored | ✅ | 2/2 | aspirational |
-| [`docs/customer-documents/platform/aws-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/aws-saas.qmd) | 308 | Substantial | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/platform/aws-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/aws-saas.qmd) | 319 | Substantial | ✅ | 1/1 | aspirational |
 | [`docs/customer-documents/platform/azure-saas.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/azure-saas.qmd) | 738 | Substantial | ✅ | 3/3 | aspirational |
 | [`docs/customer-documents/platform/ci-pipeline-integration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/ci-pipeline-integration.qmd) | 362 | Substantial | ✅ | ⚠️ 0/2 | 2 missing image ref(s) |
 | [`docs/customer-documents/platform/git-server-implementation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/git-server-implementation.qmd) | 1447 | Substantial | ✅ | 2/2 | — |
