@@ -184,6 +184,7 @@
 - [SaaS production-readiness — quotas, rate limiting, audit trail, and problem+json](adr/adr-115-saas-production-readiness.html)
 - [Azure SaaS deployment hardening — passwordless Postgres and an IaC validation gate](adr/adr-116-azure-saas-deployment-hardening.html)
 - [AWS SaaS surface — multi-tenant UIAO on ECS Fargate + RDS, via AWS CDK](adr/adr-117-aws-saas-surface.html)
+- [Distributed rate limiting for the SaaS data plane — a shared-store, globally-exact limiter](adr/adr-118-distributed-rate-limiting.html)
 
 ## Schema Reference
 
