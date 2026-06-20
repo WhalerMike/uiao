@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from uiao.saas import InMemoryTenantRepository, TenantRateLimiter, attach_saas  # noqa: E402
 from uiao.saas.errors import PROBLEM_MEDIA_TYPE  # noqa: E402
 from uiao.saas.quotas import quota_for  # noqa: E402
+from uiao.saas.ratelimit import DistributedTenantRateLimiter, InMemoryWindowStore  # noqa: E402
 from uiao.saas.settings import SaasSettings  # noqa: E402
 from uiao.saas.tenant import Tenant, TenantPlan, TenantStatus  # noqa: E402
 
@@ -158,6 +159,27 @@ def test_rate_limiting_disabled_when_no_limiter():
     client = _make_client(repo, settings=_settings(rate_limiting_enabled=False))
     for _ in range(quota_for(TenantPlan.TRIAL).window_limit + 10):
         assert client.get("/api/v1/ping", headers=_bearer(TENANT)).status_code == 200
+
+
+def test_distributed_async_limiter_is_awaited_by_middleware():
+    # An async DistributedTenantRateLimiter (ADR-118) must be awaited in the
+    # middleware; the same 429-after-budget behaviour as the sync limiter.
+    clock = _Clock()
+    limiter = DistributedTenantRateLimiter(InMemoryWindowStore(clock=clock), window_seconds=60)
+    client = _make_client(_active(TenantPlan.TRIAL), rate_limiter=limiter)
+
+    budget = quota_for(TenantPlan.TRIAL).window_limit
+    for _ in range(budget):
+        assert client.get("/api/v1/ping", headers=_bearer(TENANT)).status_code == 200
+
+    blocked = client.get("/api/v1/ping", headers=_bearer(TENANT))
+    assert blocked.status_code == 429
+    assert blocked.json()["error"] == "rate_limited"
+    assert int(blocked.headers["Retry-After"]) >= 1
+    assert blocked.headers["RateLimit-Remaining"] == "0"
+
+    clock.t += 61  # window resets → budget restored
+    assert client.get("/api/v1/ping", headers=_bearer(TENANT)).status_code == 200
 
 
 # --------------------------------------------------------------------------

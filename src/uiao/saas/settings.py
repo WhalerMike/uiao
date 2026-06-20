@@ -82,6 +82,11 @@ class SaasSettings(BaseSettings):
     rate_limiting_enabled: bool = Field(default=True)
     #: Length of the rate-limit window in seconds.
     rate_limit_window_seconds: int = Field(default=60)
+    #: When set, rate limiting uses a **shared Redis store** for a
+    #: globally-exact limit across replicas (ADR-118) instead of the in-process
+    #: per-replica limiter. E.g. ``redis://uiao-cache:6379/0``. Requires the
+    #: ``[redis]`` extra.
+    rate_limit_redis_url: str = Field(default="")
     #: When true, control-plane lifecycle actions are written to the audit
     #: trail and the ``GET /control/v1/audit`` endpoint is exposed.
     audit_enabled: bool = Field(default=True)
