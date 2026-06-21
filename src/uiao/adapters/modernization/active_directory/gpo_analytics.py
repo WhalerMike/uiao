@@ -135,9 +135,16 @@ class GpoSetting:
     setting_class: str  # admin-template | security | preference | script | …
     extension_type: str  # raw xsi:type local name as authored
     setting_name: str
-    portability_class: str  # COARSE, indicative — Phase 2 overrides per-setting
+    portability_class: str  # COARSE heuristic until Phase 2 overrides per-setting
     state: str = ""  # Enabled | Disabled | "" (not applicable)
     category: str = ""  # ADMX category path when present
+    # Phase-2 enrichment (Intune Group Policy Analytics over Graph). Default
+    # ``verdict_source == "heuristic"`` means only the type-based triage has
+    # run; ``"intune-gpa"`` means ``portability_class`` carries Microsoft's
+    # authoritative ``isMdmSupported`` verdict for this setting.
+    mdm_supported: bool | None = None
+    mdm_uri: str = ""
+    verdict_source: str = "heuristic"
 
     def to_dict(self) -> dict:
         return {
@@ -148,6 +155,9 @@ class GpoSetting:
             "portability_class": self.portability_class,
             "state": self.state,
             "category": self.category,
+            "mdm_supported": self.mdm_supported,
+            "mdm_uri": self.mdm_uri,
+            "verdict_source": self.verdict_source,
         }
 
 
