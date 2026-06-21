@@ -11,26 +11,14 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 ```
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
-uiao-spec             62           55         54      1
-adr                  122          119        118      1
+uiao-spec             62           55         55      0
+adr                  122          119        119      0
 modernization         24           21         21      0
 schema                36           35         35      0
 other                119            2          2      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                363          232        230      2
+TOTAL                363          232        232      0
 ```
-
-## Gaps — UIAO marquee specs (1)
-
-| Source | Intent source | Style | Expected .qmd candidates |
-|---|---|---|---|
-| [`src/uiao/canon/UIAO_014_GPO_Modernization_Parse_Crosswalk_OrgPath_Join_v1.0.md`](src/uiao/canon/UIAO_014_GPO_Modernization_Parse_Crosswalk_OrgPath_Join_v1.0.md) | frontmatter | include | `docs/canon/UIAO_014_GPO_Modernization_Parse_Crosswalk_OrgPath_Join_v1.0.qmd` |
-
-## Gaps — Architecture Decision Records (1)
-
-| Source | Intent source | Style | Expected .qmd candidates |
-|---|---|---|---|
-| [`src/uiao/canon/adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.md`](src/uiao/canon/adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.md) | frontmatter | include | `docs/adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.qmd`<br>`docs/canon/adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.qmd` |
 
 ## Methodology
 
