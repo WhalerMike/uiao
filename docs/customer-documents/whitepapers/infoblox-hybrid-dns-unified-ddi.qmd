@@ -1015,6 +1015,13 @@ architecture provides high availability: any Grid member can serve DNS and
 DHCP queries, and the database is replicated across all members in near
 real-time.
 
+**NIOS-X** is the newer cloud-native variant. Where classic NIOS runs as a
+virtual appliance, NIOS-X is containerized and deployable in Kubernetes
+environments, including cloud-native infrastructure in AWS, Azure, and GCP.
+NIOS-X participates in the same Universal DDI management plane and is
+particularly relevant for agencies that are expanding Grid coverage into
+cloud environments without running full virtual appliance stacks per VPC.
+
 Key NIOS capabilities relevant to the hybrid multi-cloud context:
 
 **DNS authoritative and recursive resolution.** NIOS can serve as both
@@ -1045,12 +1052,142 @@ for Route 53 private hosted zones to the Route 53 Resolver inbound endpoint.
 In the per-CSP model, these forwarding rules must be maintained manually.
 In Universal DDI, they are managed through a single interface.
 
-**IPAM and DHCP.** NIOS tracks the IP address space as a hierarchy of
-networks, address blocks, and subnets, with each subnet having a DHCP scope
-that drives lease assignment. Lease events trigger automatic DNS record
-creation and removal.
+**Grid replication and WAN latency.** The NIOS Grid replicates its database
+across all Grid members. This replication is subject to the same WAN physics
+that govern any distributed system: propagation delay is fixed by distance
+(approximately 5 ms per 1,000 km, one-way), and that floor cannot be
+reduced by any networking technique. A Grid spanning a coast-to-coast
+enterprise is therefore replicating across a propagation floor of roughly
+25–30 ms round-trip minimum — meaning DNS record updates made at the Grid
+Primary reach remote Grid Members with a physical minimum latency of that
+magnitude before any congestion or routing overhead is added. Infoblox's
+Grid tolerates this by allowing each member to serve authoritatively from
+its local database copy, accepting bounded staleness in exchange for local
+performance. In practice, the operational implication is: DNS record changes
+propagate to all Grid members within seconds under normal WAN conditions,
+but agencies should not rely on millisecond convergence for time-critical
+security operations in WAN-distributed Grids. The BloxOne SaaS plane
+provides a single authoritative source of truth that is not subject to
+Grid replication latency between remote sites.
 
-### 7.3 BloxOne DDI and Universal DDI: the SaaS management plane
+### 7.3 DHCP: the full governance surface
+
+DHCP (Dynamic Host Configuration Protocol) is the most widely deployed
+network service that most engineers think about least. Every device on a
+managed network — workstation, server, printer, IoT sensor, mobile device,
+VDI session — acquires its IP address, default gateway, DNS server, and
+domain search suffix through DHCP. In a hybrid multi-cloud environment,
+DHCP failures are invisible until they cascade into connectivity outages
+whose root cause is not DNS, not routing, but address assignment.
+
+Infoblox NIOS DHCP is a full enterprise DHCP server integrated with IPAM
+and DNS. The governance surface it manages is larger than the "IP address"
+abstraction suggests.
+
+**Scopes, ranges, and exclusions.** A DHCP scope defines the address range
+available for dynamic assignment within a subnet. Exclusion ranges carve out
+addresses that are assigned statically (servers, printers, infrastructure).
+Reservations bind a specific MAC address or client identifier to a specific
+IP address, providing the benefits of static assignment without the overhead
+of manual DNS record management — because the reservation triggers automatic
+A and PTR record creation just like a dynamic lease. Infoblox NIOS tracks
+all three (scope, exclusion, reservation) as a unified IPAM object, which
+means the IPAM view always reflects what is actually assigned, not what was
+last updated in a spreadsheet.
+
+**DHCP options: the configuration broadcast.** Every DHCP response carries
+option fields that tell the client how to configure itself. The options most
+relevant to hybrid multi-cloud DNS governance:
+
+| Option | Name | Function | Governance implication |
+|---|---|---|---|
+| 6 | DNS Servers | Which resolvers to use | Must point to Infoblox/NIOS, not per-CSP resolvers |
+| 15 | Domain Name | Default search domain | Must match authoritative zone; wrong value causes unresolved FQDNs |
+| 119 | Domain Search List | Ordered list of search suffixes | Complex multi-domain environments; stale entries cause resolution to wrong zone |
+| 43 | Vendor-Specific | Vendor-specific config (PXE, phones) | Often carries IP Phone server addresses; must be consistent across sites |
+| 60 | Vendor Class ID | Client identifies vendor class | Allows DHCP to return different option sets per device type (PXE vs. phone vs. workstation) |
+| 82 | Relay Agent Info | Added by DHCP relay (router) | Circuit-ID and remote-ID identify the physical switch port; used for IPAM attribution and security logging |
+| 252 | WPAD (Proxy Auto-Discovery) | Web proxy configuration URL | Carries the WPAD script location; incorrect value bypasses proxy; security-relevant |
+
+Option 6 is the highest-consequence option in a hybrid DDI context: if
+DHCP distributes the wrong DNS server address — or if multiple DHCP servers
+in different parts of the estate are distributing different option-6 values
+— clients resolve DNS through different resolvers and the RPZ, DNSSEC, and
+forwarding policy is unevenly applied. In the per-CSP model, cloud DHCP
+services (AWS VPC DHCP options sets, Azure DHCP) each distribute their own
+option-6 values pointing to their own resolvers. Unifying this across the
+estate requires pushing consistent option-6 values through all DHCP surfaces
+— which Infoblox Universal DDI manages through its DHCP policy model.
+
+**DHCP fingerprinting.** NIOS analyzes the sequence and content of DHCP
+options presented by a requesting client to identify the operating system,
+device type, and vendor class. Windows clients, macOS clients, Linux hosts,
+Cisco IP phones, printers, and IoT devices each send characteristic option
+patterns. DHCP fingerprinting enables: (1) policy decisions by device class
+(different lease times, option sets, VLAN assignments per device type);
+(2) rogue device detection (a device fingerprinting as a Cisco phone on
+a workstation VLAN is anomalous); (3) visibility into device population
+without requiring an MDM enrollment — DHCP fingerprinting is passive.
+
+**DHCP failover and the Grid.** NIOS DHCP supports two high-availability
+modes: (1) DHCP failover pairs — two NIOS members configured as primary
+and secondary with synchronized lease state; if the primary fails, the
+secondary takes over without loss of lease continuity; (2) Grid DHCP
+redundancy — multiple Grid members serve overlapping address ranges with
+the Grid database as the shared lease store. In a distributed environment,
+the WAN latency physics described in §7.2 apply to lease synchronization:
+a DHCP failover pair separated by a WAN with a 50 ms round-trip will have
+a lease-state propagation latency of at least that magnitude. Infoblox
+handles this with a split-scope model for sites with unreliable WAN: each
+site serves a fraction of the total address pool locally, ensuring that a
+WAN outage does not prevent new device connectivity in either location.
+
+**Dynamic DNS update (DDNS).** The most operationally critical integration
+between DHCP and DNS is the Dynamic DNS update: when a DHCP lease is
+assigned, NIOS automatically creates an A record and a PTR record for the
+leased address; when the lease expires or is released, those records are
+removed. This automation is what keeps DNS accurate in environments where
+device addresses change. Without DDNS, DNS becomes a stale map of where
+things used to be. NIOS implements DDNS using two methods: (1) direct
+internal update — NIOS-as-DHCP updates NIOS-as-DNS directly within the Grid
+(zero latency, atomic, the default for integrated deployments); (2) RFC 2136
+dynamic update — NIOS sends a signed DNS UPDATE message to an external DNS
+server (used when the DNS server is Windows Server DNS or another non-NIOS
+server). In Universal DDI, cloud-sourced addresses (from AWS VPC IP
+assignment, Azure NIC allocation, etc.) are also published as DNS records
+through API integration, extending DDNS semantics to cloud-native workloads.
+
+**DHCP lease analytics and security audit trail.** Every DHCP lease event —
+assignment, renewal, expiry, release, decline — is logged with timestamp,
+client MAC address, hostname, leased address, and option fingerprint. This
+log is the primary mechanism for answering the question "what device had
+IP address X at time T?" — a question that arises constantly in security
+investigations. In a per-CSP model, DHCP logs are scattered across AWS VPC
+flow logs, Azure DHCP diagnostics, NIOS syslog, and Windows DHCP event logs,
+each in a different format with a different retention policy. In Universal DDI,
+the lease history is in one place, queryable with a unified interface, and
+available to SIEM integrations through a consistent API.
+
+**DHCP for IPv6.** DHCPv6 (RFC 3315) carries the same governance surface
+as DHCPv4 with additional complexity from stateless address autoconfiguration
+(SLAAC). In a dual-stack federal environment, NIOS manages both DHCPv4
+scopes and DHCPv6 prefix delegation, and DDNS creates both A and AAAA
+records on lease assignment. OMB M-21-07 requires IPv6 in federal
+environments; DHCP governance for IPv6 is frequently the unfinished half
+of compliance programs that have addressed IPv4.
+
+**DHCP in cloud environments.** AWS VPCs, Azure VNets, and GCP VPCs each
+run their own DHCP services that cannot be replaced by an external DHCP server.
+Infoblox's integration approach for cloud DHCP is not to replace the per-CSP
+DHCP service but to: (1) ingest cloud DHCP lease events via API, publishing
+them into the IPAM model; (2) push DHCP option values (including option 6
+DNS server addresses) through each CSP's DHCP options mechanism (AWS DHCP
+Option Sets, Azure custom DNS server configuration, GCP DNS server policy),
+ensuring clients in cloud environments receive the same resolver addresses
+as on-premises clients; (3) track cloud-native IP allocations in IPAM,
+providing a unified address map across the hybrid estate.
+
+### 7.4 BloxOne DDI and Universal DDI: the SaaS management plane
 
 BloxOne DDI is Infoblox's SaaS-delivered DDI platform. BloxOne Endpoints
 are lightweight software agents deployed on-premises or in cloud environments;
@@ -1081,43 +1218,218 @@ a single console where the state of all surfaces is visible.
 
 ![Infoblox Universal DDI capability map: the full feature set spanning NIOS on-premises, BloxOne SaaS endpoints, Universal DDI overlay management, and BloxOne Threat Defense — showing how each capability layer addresses a distinct governance problem](images/infoblox-hybrid-dns-diagram-02-universal-ddi-plane.png){#fig-universal-ddi fig-alt="Architecture diagram on a white background. At the top center, a large teal rounded rectangle labeled INFOBLOX UNIVERSAL DDI — SaaS Management Plane — single console, single API, unified policy. Below it, seven boxes arranged in two rows connected by solid teal lines downward: Row 1 — on-premises: NIOS grid (navy), NIOS-X (navy), Windows Server DNS (navy); Row 2 — cloud: Amazon Route 53 (amber outline), Microsoft Azure DNS (amber outline, dagger note: integration limitations documented), Google Cloud DNS (amber outline), Cloudflare and Akamai (teal outline, labeled edge/CDN, added Nov 2025). A horizontal red dashed line below the management plane labeled WITHOUT UNIVERSAL DDI — separate console per surface, manual policy replication, no reconciliation. Caption: one policy object propagated down to every DNS surface simultaneously. White background. Federal navy #1F3A5F, teal #1A9E8F, amber #D4860B." width="100%"}
 
-### 7.4 Infoblox features beyond DDI
+**BloxOne Endpoint** is the lightweight agent component of BloxOne DDI.
+Installed on endpoints — physical workstations, cloud instances, remote
+workers' laptops — BloxOne Endpoint intercepts all DNS queries from the
+device, applies local policy (RPZ, threat feeds), and forwards to the
+BloxOne SaaS plane for analytics. This is significant in a zero trust
+context: it extends DNS policy enforcement to the endpoint, ensuring that
+a device that has bypassed the corporate resolver (because it is on a
+hotel Wi-Fi network, for example) still receives threat protection and
+still has its queries logged centrally. Endpoint-level DNS enforcement
+closes the largest gap in resolver-based DNS security: the user who is
+not on the corporate network.
 
-Infoblox's platform extends beyond core DDI into a security and analytics
-feature set that is particularly relevant in the hybrid multi-cloud context:
+**Cloud Services Portal (CSP)** is the web console for all BloxOne services.
+It provides a single pane of glass across BloxOne DDI, BloxOne Threat
+Defense, and the Universal DDI overlay. Role-based access control in the
+CSP can be scoped to specific services, regions, or object types, enabling
+delegation models appropriate for large agencies where different teams own
+different parts of the address space.
 
-**BloxOne Threat Defense.** A SaaS-delivered DNS security service that uses
-DNS as an early-warning indicator for threats. BloxOne Threat Defense analyzes
-DNS query patterns to detect:
+### 7.5 Infoblox platform services: ecosystem, automation, and discovery
 
-- *Data exfiltration via DNS tunneling* — encoding data in DNS query labels
-  and exfiltrating it through recursive resolution to an attacker-controlled
-  authoritative server
-- *Command-and-control (C2) communication* — malware that uses DNS to
-  communicate with C2 infrastructure, using algorithmically generated domains
-  (DGA) that rotate to evade static block lists
-- *Lookalike domain attacks* — queries for domains that are visually similar
-  to legitimate domains (typosquatting, homograph attacks) that indicate
-  phishing preparation
+Beyond DDI core and BloxOne, the Infoblox platform provides a set of
+services that are particularly relevant for federal agencies managing
+large, heterogeneous networks.
 
-The detection operates at the DNS layer, before network connections are
-established — meaning it catches threats that endpoint agents may not see
-because the endpoint has not yet made a network connection.
+**REST API and WAPI (Web API).** Every object in the NIOS and BloxOne DDI
+data model is accessible through a REST API (WAPI for NIOS, CSP API for
+BloxOne). This makes IPAM, DNS, and DHCP operations scriptable and
+composable with infrastructure-as-code workflows. The practical implications
+for federal agencies:
 
-**DNS traffic analytics.** Universal DDI aggregates DNS query logs across
-all managed surfaces and provides a unified analytics view. This is the
-inverse of the per-CSP problem: in the fragmented model, query logs are in
-five places (Route 53 query logs, Azure Monitor, GCP Cloud Logging, NIOS
-Syslog, Windows Event Logs). In Universal DDI, they are in one place,
-searchable with a unified query model.
+- *Terraform provider* — Infoblox maintains an official Terraform provider,
+  enabling IPAM and DNS record lifecycle to be managed alongside compute,
+  storage, and network infrastructure in a single Terraform plan. A new cloud
+  workload and its DNS A record and PTR record are created and destroyed
+  together, eliminating the gap between infrastructure and DNS.
+- *Ansible integration* — Infoblox provides Ansible modules for IPAM and
+  DNS operations, enabling DNS record management to be embedded in
+  configuration management playbooks.
+- *IPAM-driven CI/CD* — pipelines that provision cloud environments can
+  allocate addresses from IPAM via API at deploy time, ensuring that
+  every provisioned workload has a tracked, governed address and a
+  corresponding DNS record.
 
-**IPAM for the application namespace.** As described in Part 6, the DNS
-namespace is now the application surface registry. Universal DDI's IPAM
-module tracks the full FQDN namespace — which zones are active, which
-wildcard records are defined, which subdomains are in use — providing
-visibility into the application surface that no per-CSP tool provides.
+**Network Insight (device and network discovery).** Network Insight is
+Infoblox's active and passive network discovery service. It discovers devices
+on the network using multiple methods: SNMP polling of network infrastructure,
+passive monitoring of ARP tables, active scanning, and integration with
+existing asset management systems. The output is populated back into IPAM:
+discovered devices appear as IP objects with MAC addresses, vendor
+fingerprints, and last-seen timestamps. The operational implication is that
+IPAM becomes an accurate reflection of what is actually on the network,
+not just what was manually entered. In a federal context where address space
+management is a compliance requirement (FedRAMP, FISMA inventory), Network
+Insight provides the automation necessary to keep IPAM current without a
+manual reconciliation process.
 
-### 7.5 Why federal agencies need to get ahead of this now
+Network Insight also detects **rogue DHCP servers** — DHCP servers that are
+not managed by Infoblox and are distributing addresses (and potentially
+incorrect option-6 DNS values) on segments where only Infoblox DHCP should
+be responding. Rogue DHCP is a common attack vector (a rogue server can
+distribute a malicious DNS server in option-6, redirecting all client
+resolution through an attacker-controlled resolver); Network Insight flags
+rogue responses for immediate investigation.
+
+**Ecosystem Exchange integrations.** Infoblox publishes a catalog of
+pre-built integrations with third-party security platforms:
+
+| Integration partner | Integration type | Capability unlocked |
+|---|---|---|
+| Splunk | Log streaming + Splunk App | DNS query logs, lease events, threat events in Splunk; pre-built dashboards |
+| ServiceNow | CMDB + ITSM connector | IPAM allocation requests via ServiceNow catalog; automatic CMDB population from IPAM |
+| Palo Alto Networks NGFW | RPZ ↔ EDL sync | Threat intelligence sharing: Infoblox threat feeds flow into Palo Alto External Dynamic Lists; blocked domains and IPs shared bidirectionally |
+| CrowdStrike Falcon | Host attribute enrichment | Device IP-to-hostname resolution at investigation time; DHCP history answers "who had this IP during the incident?" |
+| Cisco ISE | IPAM ↔ policy context | Device IP address context fed into ISE for network access policy decisions |
+| Microsoft Sentinel | Log connector | DNS query events and threat detections ingested into Sentinel; correlated with Entra ID and Defender signals |
+| Qualys / Tenable | Scan target enrichment | Discovered IP inventory from IPAM drives vulnerability scanner scope |
+
+The ecosystem integrations matter for a specific reason: DNS is often the
+earliest signal of an incident. A C2 beacon DNS query happens before a
+malicious network connection is established; a DHCP fingerprint anomaly
+appears before a rogue device is enumerated by a vulnerability scanner.
+The Infoblox platform's integration surface allows that early signal to
+flow into the SIEM, SOAR, and EDR workflows that act on it — making DNS
+a first-class input to the security operations center, not an afterthought.
+
+**Audit trail and change control.** Every change in the NIOS Grid or
+BloxOne management plane is logged: who made the change, what changed,
+when, and from which management interface (Grid Manager, API call, or
+pre-commit hook). The audit trail covers DNS record additions, deletions,
+and modifications; DHCP scope changes; IPAM allocations and releases;
+and policy object updates. For federal agencies, this log is the record
+of accountability for the DNS and DHCP infrastructure — it answers the
+question "when was this DNS record added, and by whom?" which arises in
+incident investigations and in ATO documentation reviews.
+
+NIOS's change control feature extends audit trail into an approval workflow:
+DNS or IPAM changes that meet defined criteria (modifying a production zone,
+changing an option-6 value that affects a large scope) can be required to go
+through a change request queue rather than taking effect immediately. This
+maps directly to federal change management requirements (ITIL-aligned change
+management, NIST SP 800-53 CM controls).
+
+### 7.6 BloxOne Threat Defense: DNS as the security enforcement plane
+
+BloxOne Threat Defense is Infoblox's DNS security service. Its core function
+is using DNS as the earliest point of detection in the kill chain —
+intercepting malicious activity before network connections are established,
+before file downloads occur, before exploits are executed.
+
+**Threat Intelligence Data Exchange (TIDE).** TIDE is Infoblox's threat
+intelligence platform. It aggregates indicators of compromise (IoCs) from
+multiple sources — Infoblox's own research team, commercial threat feeds,
+open-source threat intelligence, and customer-contributed data — and
+normalizes them into a searchable, API-accessible data set. TIDE feeds
+are automatically ingested into BloxOne Threat Defense RPZ rules and into
+Infoblox NIOS RPZ configurations. Federal agencies with their own threat
+intelligence feeds can contribute to TIDE and receive enriched, deduplicated
+intelligence back — turning DNS telemetry into a bidirectional threat
+intelligence loop.
+
+**DNS tunneling detection.** DNS tunneling encodes data in DNS query and
+response labels, allowing an attacker to exfiltrate data through a corporate
+DNS resolver that allows external queries. Detection is based on multiple
+signals: unusually long query labels (a tunneling query might encode
+`aGVsbG8gd29ybGQ=.exfil.attacker.com`, where the first label is
+base64-encoded exfiltrated data), high query frequency to a single domain,
+high entropy in query labels, and the use of uncommon record types (TXT,
+NULL) that are not typical of normal application traffic. BloxOne Threat
+Defense classifies tunneling traffic with a confidence score and can
+automatically block, alert, or redirect traffic matching tunnel signatures.
+
+**Domain Generation Algorithm (DGA) detection.** Malware families that use
+DGA generate thousands of algorithmically created domain names, querying
+each one hoping that the attacker has registered one of them as the current
+C2 endpoint. DGA domains have characteristic statistical properties —
+high entropy, consonant clusters, lengths inconsistent with human-readable
+names. BloxOne Threat Defense applies machine learning models trained on
+known DGA families to classify new queries and flag DGA activity before the
+C2 connection is established.
+
+**Lookalike domain detection.** Attackers register domains that are
+visually similar to legitimate targets — `rnyagency.gov` (r+n reads as m),
+`agency-gov.com`, `агеncy.gov` (Cyrillic а). BloxOne Threat Defense
+maintains a lookalike detection model seeded with the agency's authoritative
+domain list and flags queries to known-lookalike domains as phishing
+preparation indicators.
+
+**SOC Insights.** SOC Insights is an AI-driven prioritization layer within
+BloxOne Threat Defense. It aggregates DNS threat events across the estate,
+correlates them with DHCP lease data (identifying the specific endpoint
+and user behind each suspicious query), and presents a ranked list of
+security events requiring investigation. The correlation between DNS signals
+and DHCP history is what allows "this IP queried a C2 domain" to become
+"this workstation, assigned to this user, queried a C2 domain at this time"
+— the attribution chain that SOC analysts need to triage and escalate.
+
+**The TIDE → RPZ → NIOS pipeline for federal environments.** In a NIOS-on-premises
+federal deployment, the BloxOne Threat Defense detection pipeline connects
+to NIOS through RPZ: threat intelligence from TIDE is translated into RPZ
+policy objects and pushed to NIOS Grid members. This means that threat
+feeds from the SaaS-delivered BloxOne Threat Defense reach on-premises
+resolvers that may be in air-gapped or limited-internet environments,
+as long as TIDE can push RPZ updates to a Grid member that is reachable.
+Federal agencies with GCC Moderate or GCC High restrictions should verify
+the network path from Infoblox's TIDE delivery endpoints to on-premises
+NIOS Grid members as part of their architecture assessment.
+
+### 7.7 Network Discovery and IPAM governance
+
+For federal agencies, IPAM is not optional infrastructure — it is a FISMA
+and FedRAMP compliance requirement. NIST SP 800-53 CM-8 (Information System
+Component Inventory) requires a comprehensive inventory of all IT components,
+updated continuously. For IP-connected devices, the IP address inventory
+maintained by IPAM is the most current and automated form of that component
+inventory available.
+
+**Active discovery.** Infoblox Network Insight performs SNMP polling,
+ICMP probing, and port scanning to discover devices. It queries network
+infrastructure (routers, switches) for ARP tables and MAC address tables,
+correlating MAC-to-IP bindings with DHCP lease history to build a device
+population map that reflects current state rather than last-provisioned state.
+
+**Passive discovery.** NIOS in the recursive resolver role observes every
+DNS query made by every client on the network. The source IP of each query
+is an asset assertion: that IP address has a device that is active and
+resolving DNS. Passive observation does not require any active scan or
+agent, making it the least intrusive discovery mechanism and the one most
+likely to find devices that block active scans (ICS sensors, legacy
+embedded systems, IoT devices).
+
+**Cloud IPAM and address space management.** Each CSP's address space is
+managed through a different tool (AWS IPAM, Azure IPAM, GCP IPAM). In a
+multi-cloud environment, these produce isolated islands of address knowledge.
+Universal DDI imports the address allocation data from each CSP via API,
+presenting the entire RFC 1918 address space — on-premises and cloud —
+as a unified hierarchy. This is necessary for: (1) detecting address overlap
+(two VPCs with the same 10.x.x.0/24 that are being peered or connected
+via transit gateway); (2) planning new subnet allocations without
+collisions; (3) compliance reporting (what is the full inventory of
+IP-connected assets in my hybrid estate?).
+
+**IPAM and the zero trust inventory requirement.** Zero trust architectures
+require continuous, authoritative knowledge of every device on the network —
+its address, its identity, its compliance state. IPAM provides the address
+layer of that inventory. When integrated with the ecosystem (CMDB for asset
+attributes, MDM for device compliance, DHCP fingerprinting for device class),
+IPAM becomes the join table between "IP address" and "identity" — the
+lookup that turns a network observable (IP address seen in a log) into a
+managed, identifiable asset.
+
+### 7.8 Why federal agencies need to get ahead of this now
 
 Federal agencies face a convergence of forces that makes DNS governance
 urgent rather than optional:
@@ -1157,6 +1469,14 @@ API gateways, and service mesh architectures are implicitly adopting
 FQDN-based service identity. Once that transition is underway, the consequence
 of DNS inconsistency is not "some workloads reach the wrong IP" — it is
 "zero trust policy is unenforced for callers whose DNS is inconsistent."
+
+**The DHCP option-6 attack surface.** A rogue DHCP server distributing a
+malicious DNS resolver in option-6 can redirect every client on a subnet
+through an attacker-controlled resolver, bypassing all RPZ and threat
+defense controls in one step. This attack vector is not hypothetical —
+it is a documented technique in red team playbooks and has been observed
+in federal network incidents. Unified DHCP governance, with rogue DHCP
+detection and option-6 consistency enforcement, closes this attack surface.
 
 ---
 
