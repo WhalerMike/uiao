@@ -19,6 +19,7 @@ import csv
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 
@@ -117,7 +118,7 @@ def chart_heatmap(facts: list[Fact], path: Path) -> Path:
     risks = list(RISK_ORDER)
     pidx = {p: i for i, p in enumerate(pillars)}
     ridx = {r: i for i, r in enumerate(risks)}
-    grid = np.zeros((len(pillars), len(risks)), dtype=int)
+    grid: Any = np.zeros((len(pillars), len(risks)), dtype=int)
     for f in facts:
         if f.is_finding and f.risk in ridx:
             grid[pidx[f.pillar], ridx[f.risk]] += 1

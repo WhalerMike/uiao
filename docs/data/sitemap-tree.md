@@ -186,6 +186,8 @@
 - [AWS SaaS surface — multi-tenant UIAO on ECS Fargate + RDS, via AWS CDK](adr/adr-117-aws-saas-surface.html)
 - [Distributed rate limiting for the SaaS data plane — a shared-store, globally-exact limiter](adr/adr-118-distributed-rate-limiting.html)
 - [Private networking for the SaaS data tier — VNet-integrated Postgres (Azure) and VPC endpoints (AWS)](adr/adr-119-saas-private-networking.html)
+- [GPO settings-level analysis: own the parse, consume Microsoft's GPO→MDM crosswalk](adr/adr-120-gpo-settings-analyzer.html)
+- [OrgPath projection subset — stamp fewer attributes per object than the codebook defines](adr/adr-121-orgpath-projection-subset.html)
 
 ## Schema Reference
 
@@ -204,6 +206,7 @@
 - [UIAO Dynamic Group Library](reference/schemas/dynamic-groups.schema.html)
 - [SCIM 2.0 Enterprise User Extension (RFC 7643 §4.3)](reference/schemas/enterprise-user.schema.html)
 - [UIAO KSI Evidence Bundle](reference/schemas/evidence-bundle.schema.html)
+- [UIAO GPO Settings Analysis Schema](reference/schemas/gpo-analytics.schema.html)
 - [SCIM 2.0 Group Resource (RFC 7643 §4.2)](reference/schemas/group.schema.html)
 - [UIAO Image Registry Schema](reference/schemas/image-registry.schema.html)
 - [UIAO Unified Key Security Indicator (KSI) Schema](reference/schemas/ksi.schema.html)

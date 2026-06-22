@@ -87,6 +87,12 @@ class Facet:
     value_type: str | None = None
     value_pattern: str | None = None
     allow_empty: bool = False
+    # Whether this facet is stamped onto a directory extensionAttribute slot.
+    # ``False`` keeps the facet's semantics (HR-SSOT / reporting / lifecycle)
+    # without consuming one of the scarce 15 directory slots — the projection
+    # subset that controls "attributes written per object" (ADR-121). Defaults
+    # ``True`` so existing in-memory codebooks are unaffected.
+    projected: bool = True
 
     # ------------------------------------------------------------------
     # Convenience accessors used by the drift engine and adapters
@@ -163,6 +169,15 @@ class Codebook:
 
     def has_facet(self, name: str) -> bool:
         return name in self.facets
+
+    def projected_facets(self) -> Mapping[str, Facet]:
+        """Facets stamped onto a directory slot (``projected`` and not reserved).
+
+        This is the subset that determines how many extensionAttributes are
+        written per object. Non-projected facets keep their semantics but are
+        not pushed to the directory (ADR-121).
+        """
+        return {n: f for n, f in self.facets.items() if f.projected and f.kind != "reserved"}
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +283,7 @@ def _build_facet(name: str, facet_doc: Dict, deprecated_doc: Dict) -> Facet:
         value_type=facet_doc.get("value_type"),
         value_pattern=facet_doc.get("value_pattern"),
         allow_empty=bool(facet_doc.get("allow_empty", False)),
+        projected=bool(facet_doc.get("projected", True)),
     )
 
 
