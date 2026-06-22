@@ -44,6 +44,12 @@ The value of the chain is that a single credential code path works unchanged acr
 
 The `Authentication=Active Directory Default` keyword is the preferred approach for new connection-string configurations, because it delegates credential resolution to the `DefaultAzureCredential` chain automatically. The result is that the connection-string change is a net reduction in complexity for .NET applications: one keyword replaces an entire credential-management system. This is the workload-identity model ADR-004 establishes — the application authenticates as itself through a Managed Identity, with no human credential and no stored secret anywhere in the path. (ADR-004)
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** the `Authentication=` keyword options — Active Directory Managed Identity, Service Principal, Default; the `Azure.Identity` SDK `DefaultAzureCredential` chain; Azure Key Vault for interim credential management.
+
+**What only you can provide:** the connection-string inventory across every application that connects to SQL Server; the per-connection-string owner assignment; the migration tracking; the pre-cutover testing that validates each updated string against its target instance before the NTLM block is applied.
+:::
+
 ::: {.callout-note title="What Book 08 establishes — Chapter 2"}
 The connection-string change is the last mile of the application-chain migration: Integrated Security or SQL Authentication becomes `Authentication=Active Directory Managed Identity`, `Service Principal`, or `Default`, and the stored credential disappears. It is the simplest step technically but the most gate-controlled — it requires the Entra ID login to exist on the instance, the identity to hold the right database role, and a tested change in a production-equivalent non-production environment. For .NET, the `Azure.Identity` SDK's `DefaultAzureCredential` chain and the `Authentication=Active Directory Default` keyword collapse credential management to a single keyword, realizing the workload-identity model of ADR-004.
 :::

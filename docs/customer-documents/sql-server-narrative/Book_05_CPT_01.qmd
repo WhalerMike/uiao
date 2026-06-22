@@ -78,6 +78,12 @@ In Phase 2, each type-E login is validated by executing a test authentication us
 
 After the 30-day window, the disabled logins are dropped, and the type-E logins become the sole authentication mechanism for those principals. ADR-091 §2 permits non-production instances to compress the observation window with documented owner sign-off, but the create-validate-disable-observe-drop sequence itself is the canonical pattern, and the next chapter records the four further decisions ADR-091 makes around it.
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** the `FROM EXTERNAL PROVIDER` syntax in SQL Server 2022; the three principal type mappings — user, group, service principal; the `Azure.Identity` SDK `DefaultAzureCredential` chain; Conditional Access enforcement on the token before it reaches SQL Server.
+
+**What only you can provide:** the Entra-to-AD principal mapping for every Windows login being migrated; the OrgPath dynamic group design that drives SQL Server access without manual DBA action (ADR-036); the parallel-run sequence — create, validate, disable, observe, drop — that prevents access disruption during migration.
+:::
+
 ::: {.callout-note title="What Book 05 establishes — Chapter 1"}
 The `FROM EXTERNAL PROVIDER` syntax creates type-E logins that carry no password and authenticate by Entra-issued OAuth 2.0 token validated at connect time. The three principal types are the Entra user (UPN-mapped, MFA enforced by Conditional Access in the Entra plane, ADR-008), the Entra security group (OrgPath-driven dynamic groups provision access without DBA action, ADR-036), and the Entra service principal or Managed Identity (no credential in connection strings, ADR-004). The canonical migration is the three-phase parallel run ADR-091 §2 requires: create, validate, then disable — not drop — the legacy login, observe for 30 days, and only then drop it.
 :::
