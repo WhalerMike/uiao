@@ -17,7 +17,7 @@ This spec defines the **token-based, per-call authorization unit** for the
 mandated by [ADR-066](../adr/adr-066-application-aware-networking-and-token-bound-transport.md)
 (Application-Aware Networking and Token-Bound Transport Plane) and
 re-allocated from the squatted UIAO_122 slot to UIAO_203 by
-[ADR-120](../adr/adr-120-transport-plane-reconciliation.md).
+[ADR-123](../adr/adr-123-transport-plane-reconciliation.md).
 
 It is the canon counterpart to the doctrinal decision ADR-066 §Decision #2
 ratified: *a "session" — any long-lived authorization context that survives
@@ -214,7 +214,7 @@ fail-closed events, not just successes.
 ## 6. Drift binding (`DRIFT-OVERLAY`)
 
 This spec is the SSOT for the **issuance-side** severities of the
-`DRIFT-OVERLAY` class introduced by ADR-066 and renamed by ADR-120. The
+`DRIFT-OVERLAY` class introduced by ADR-066 and renamed by ADR-123. The
 full taxonomy lands in `docs/docs/16_DriftDetectionStandard.qmd` as part of
 the cross-cutting UIAO_205 work; the issuance-side rows are:
 
@@ -251,7 +251,7 @@ findings.
   — doctrinal anchor (sixth mission class; token-bound per-call
   authorization; `OverlayTunnel`; EO 14028 §3 / EO 14144 / NIST SP 800-207
   citation chain).
-- [ADR-120](../adr/adr-120-transport-plane-reconciliation.md) — `transport`
+- [ADR-123](../adr/adr-123-transport-plane-reconciliation.md) — `transport`
   → `overlay` rename; UIAO_122 → UIAO_203 re-allocation; this spec's slot of
   record.
 - **UIAO_204** (Application-Aware Overlay Fabric Model) — the `OverlayTunnel`
