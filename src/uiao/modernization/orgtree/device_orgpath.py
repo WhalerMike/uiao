@@ -111,6 +111,10 @@ class DeviceOrgPathPlanner:
             if facet.kind == "reserved":
                 # Reserved facets cannot be written until promoted.
                 continue
+            if not facet.projected:
+                # Non-projected facet: semantics kept (HR-SSOT/reporting/
+                # lifecycle) but not stamped to a directory slot (ADR-121).
+                continue
             if not facet.is_active(value):
                 # Skip writes that would create per-facet drift on landing.
                 # Engine surfaces these as Value Drift (P2) on the input.

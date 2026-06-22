@@ -36,7 +36,7 @@
 
 schema-version: "1.0.0"
 registry-class: conformance
-updated: "2026-06-11"
+updated: "2026-06-21"
 
 adapters:
 
@@ -120,6 +120,62 @@ adapters:
     implementation:
       python_module: src/uiao/adapters/scubagear_adapter.py
       tests: tests/test_scubagear_adapter.py
+
+  - id: intune-gpo-analytics
+    name: Intune Group Policy Analytics (GPO → MDM Verdict)
+    class: conformance
+    mission-class: policy
+    status: active
+    phase: phase-2
+    vendor: Microsoft
+    license: proprietary-saas
+    runtime: python-3.11
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    policy-engine: none
+    scope:
+      - intune
+      - group-policy-analytics
+    outputs:
+      - gpo-analysis.json
+      - gpo-migration-plan.json
+    triggers:
+      - cli
+    evidence-class: point-in-time
+    retention-years: 3
+    freshness-window-hours: 720
+    controls:
+      - CM-2
+      - CM-6
+      - CM-8
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=DigiCert Global Root G2, OU=www.digicert.com, O=DigiCert Inc, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - devices
+      - applications-and-workloads
+    references:
+      - ADR-120
+      - https://learn.microsoft.com/mem/intune/configuration/group-policy-analytics
+    notes: >-
+      Read-mostly Graph adapter over the Intune `groupPolicyMigrationReports`
+      surface. Pairs with the offline Phase-1 GPO parser
+      (`uiao.adapters.modernization.active_directory.gpo_analytics`): the parser
+      owns the gpreport.xml inventory + a coarse type-based portability
+      heuristic; this adapter supplies Microsoft's authoritative per-setting
+      `isMdmSupported` verdict, which `apply_mdm_verdicts` joins onto the
+      inventory. We CONSUME Microsoft's GPO→CSP crosswalk; we do not rebuild it
+      (ADR-120). The `createMigrationReport` action writes a transient analysis
+      object, so the Graph permission is DeviceManagementConfiguration.ReadWrite.All;
+      no governed customer object is mutated (ssot-mutation: never).
+    implementation:
+      python_module: src/uiao/adapters/intune_gpo_analytics.py
+      tests: tests/test_intune_gpo_analytics.py
 
   - id: vuln-scan
     name: Vulnerability Scanner (Reserved Slot)
