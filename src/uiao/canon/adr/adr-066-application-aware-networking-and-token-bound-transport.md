@@ -25,7 +25,7 @@ published_at: docs/adr/adr-066-application-aware-networking-and-token-bound-tran
 
 # ADR-066: Application-Aware Networking and Token-Bound Transport Plane
 
-> **Amended by [ADR-120](adr-120-transport-plane-reconciliation.md) (2026-06-22):**
+> **Amended by [ADR-123](adr-123-transport-plane-reconciliation.md) (2026-06-22):**
 > the proposed sixth mission class is renamed `transport` → **`overlay`**
 > (the name `transport` was already taken by the identity-plane
 > `*_transport` write-back adapters of ADR-098/099/113), the drift class
@@ -34,7 +34,7 @@ published_at: docs/adr/adr-066-application-aware-networking-and-token-bound-tran
 > adapter-program docs — are re-allocated to **UIAO_203/204/205**. The
 > doctrine below (sixth mission class, token-bound per-call authorization,
 > typed `OverlayTunnel`) is unchanged; read every `transport` /
-> `DRIFT-TRANSPORT` / `UIAO_12{2,3,4}` reference below through ADR-120.
+> `DRIFT-TRANSPORT` / `UIAO_12{2,3,4}` reference below through ADR-123.
 
 > **Renumber history:** This ADR was originally drafted as ADR-047 on a
 > stale branch base, then renumbered to ADR-057 (next free slot above the

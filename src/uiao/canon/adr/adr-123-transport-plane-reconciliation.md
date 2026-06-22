@@ -1,5 +1,5 @@
 ---
-adr_id: adr-120
+adr_id: adr-123
 title: "Transport-Plane Reconciliation — Rename the Sixth Mission Class to `overlay`, Re-Allocate ADR-066's Squatted Spec Slots"
 status: PROPOSED
 decided: 2026-06-22
@@ -12,11 +12,20 @@ superseded_by: null
 amends: adr-066
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-120-transport-plane-reconciliation.html
+published_at: docs/adr/adr-123-transport-plane-reconciliation.html
 impact: "Corrects two bookkeeping defects in ADR-066 (Application-Aware Networking and Token-Bound Transport Plane) without changing its doctrine. (1) Renames the proposed sixth mission class from `transport` to `overlay`, because `transport` is already the established name for identity-plane write-back seams (uiao.adapters.okta_transport, ldap_transport, keycloak_transport, auth0_transport, pingone_transport — ADR-098/099/113), and a sixth mission class sharing that token would be permanently ambiguous. The drift class renames `DRIFT-TRANSPORT` → `DRIFT-OVERLAY` for consistency; `overlay-fabric.schema.json` keeps its name. (2) Re-allocates ADR-066's three reserved spec slots — UIAO_122/123/124 — which were silently squatted by unrelated adapter-program docs (Adapter Developer Training Program, Adapter Integration & Test Plan, Adapter Operations Runbook). The corrected reservations are UIAO_203 / UIAO_204 / UIAO_205. No spec is authored here and no document-registry entry is added (registering a path that does not yet resolve would emit a blocking DRIFT-PROVENANCE finding); the slots are entered into document-registry.yaml when each spec is drafted, with this ADR as the reservation of record. Changes no shipped code, no facet semantics, no boundary scope."
 ---
 
-# ADR-120: Transport-Plane Reconciliation
+# ADR-123: Transport-Plane Reconciliation
+
+> **Renumber history:** This ADR was authored and merged as **ADR-120**
+> (PR #1005, 2026-06-22). The slot collided with
+> `adr-120-gpo-settings-analyzer.md` (PR #1001, decided 2026-06-21), which
+> claimed ADR-120 first and was already wired to the published site.
+> Renumbered to **ADR-123** (next free slot above ADR-122) on 2026-06-22 to
+> resolve the duplicate; the gpo-settings-analyzer ADR retains ADR-120. The
+> doctrinal content here is unchanged. (The irony that an ADR fixing a
+> number-squat itself squatted a number is noted and now closed.)
 
 ## Status
 
@@ -216,8 +225,8 @@ none is in scope for this ADR:
 
 This ADR's own acceptance is verified by:
 
-- [ ] ADR-066 carries a forward-pointer banner to ADR-120.
-- [ ] The ADR index lists ADR-120 alongside ADR-066.
+- [ ] ADR-066 carries a forward-pointer banner to ADR-123.
+- [ ] The ADR index lists ADR-123 alongside ADR-066.
 - [ ] No `document-registry.yaml` change ships in this PR (D3).
 
 The substantive verification is the refreshed checklist above; each line
