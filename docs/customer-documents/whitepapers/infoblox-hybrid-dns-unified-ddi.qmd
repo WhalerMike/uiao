@@ -10,7 +10,7 @@ canon-source: "src/uiao/canon/"
 derived-from: "Synthesized from Infoblox Universal DDI documentation, AWS/Azure/GCP/VMware NSX-T DNS product documentation, Microsoft Learn INR and AD deprecation guidance, Cisco Catalyst SD-WAN INR integration documentation, RFC 1034/1035/5625/6762, and NIST Zero Trust Architecture SP 800-207. Fills the documented gap: no single publication explains how DNS governs the intersection of hybrid multi-cloud private addressing, public SaaS endpoint selection, PKI certificate validation, and Layer 7 application surface definition."
 repo-path: docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd
 created-at: 2026-06-22
-updated-at: 2026-06-22
+updated-at: 2026-06-23
 format:
   html:
     toc: true
@@ -40,7 +40,7 @@ systematically underestimating how much of their security posture, application
 availability, certificate trust chain, and identity infrastructure now depends
 on DNS being correct, consistent, and governed.
 
-This paper makes nine arguments, one per part. Taken together, they describe
+This paper makes ten arguments, one per part. Taken together, they describe
 a discipline that has quietly become the most consequential ungoverned surface
 in the federal enterprise:
 
@@ -53,10 +53,12 @@ in the federal enterprise:
    This breaks private IP addressing, public SaaS endpoint selection, and
    security policy enforcement simultaneously.
 
-3. Each cloud platform's DNS architecture — AWS Route 53, Azure Private DNS,
-   GCP Cloud DNS, and VMware NSX-T — has unique behavior that affects how
-   private addresses are published, how cross-cloud queries resolve, and what
-   controls are available. Managing them independently compounds the problem.
+3. DNS is not a single record type — it is a protocol with more than fifty
+   standardized record types, at least fifteen of which are directly relevant
+   to federal security, certificate governance, email authentication, and
+   application-aware routing. A/AAAA/CNAME are the floor, not the ceiling.
+   SRV, CAA, TLSA, SSHFP, SPF, DKIM, DMARC, HTTPS/SVCB, and DNSSEC types
+   each carry their own split-brain failure modes.
 
 4. Active Directory has served as the hidden DNS substrate for on-premises
    federal networks for twenty years. As Microsoft deprecates AD and agencies
@@ -92,7 +94,14 @@ in the federal enterprise:
    cloud environments cannot use Microsoft INR. The Infoblox DDI architecture
    is unchanged; only the SD-WAN telemetry loop is absent.
 
-The reference architecture in Part 9 does not exist in any vendor publication.
+10. A complete reference architecture unifying all of the above — ten-part
+    governance model, record type surface, AD DNS departure, cert-DNS surface,
+    Layer 7 application namespace, Infoblox DDI management plane, and SD-WAN
+    interception chain — does not exist in any vendor publication. It is
+    synthesized here from first principles, vendor documentation, and RFC-level
+    behavior.
+
+The reference architecture in Part 10 does not exist in any vendor publication.
 It is synthesized here from first principles, vendor documentation, and
 RFC-level behavior.
 :::
@@ -100,7 +109,7 @@ RFC-level behavior.
 ::: {.callout-important}
 ## Scope boundary — Cisco Catalyst SD-WAN only
 
-The SD-WAN DNS interception analysis in Part 8 addresses exclusively
+The SD-WAN DNS interception analysis in Part 8 (Cisco Catalyst SD-WAN DNS Interception) addresses exclusively
 **Cisco Catalyst SD-WAN (IOS XE SD-WAN ≥ 20.4/17.4)**, which as of the
 Microsoft Learn INR documentation (updated 2026-03-10) is the only SD-WAN
 vendor listed in the INR "Currently enabled solutions" table. No other SD-WAN
@@ -401,9 +410,169 @@ by the control plane, not by manual audit.
 
 ---
 
-## Part 3 — The Active Directory DNS Departure
+## Part 3 — The Modern DNS Record Catalog: Types, Security Integration, and Application-Aware Routing
 
-### 3.1 What Active Directory DNS actually does
+DNS is most commonly described through its two workhorse record types — A and CNAME. But the modern DNS protocol supports more than fifty standardized record types, and at least fifteen of them are directly relevant to federal hybrid multi-cloud security, certificate governance, application-aware routing, and threat defense. This part provides a practitioner-level catalog of those record types, organized by function, with specific attention to how each integrates with security enforcement, certificate infrastructure, and Layer 7 routing systems.
+
+### 3.1 Address and Alias Records
+
+These records perform the core function DNS was designed for: mapping names to addresses or other names.
+
+**A (Address, RFC 1035).** Maps a hostname to an IPv4 address. The fundamental record type. In a hybrid multi-cloud environment, A records are published by every DNS surface — NIOS, Route 53, Azure DNS, GCP Cloud DNS — and the inconsistency of those publications across surfaces is the structural cause of split-brain DNS. A records are the unit of inconsistency. Every private endpoint in AWS (VPC Resolver), Azure (Private DNS Zone), and GCP (Cloud DNS private zone) is ultimately an A record, and the split-brain condition manifests as the same A record returning different answers on different surfaces.
+
+**AAAA (IPv6 Address, RFC 3596).** Maps a hostname to an IPv6 address. IPv6 is mandatory in federal environments under OMB M-21-07. In practice, many federal hybrid environments run dual-stack, meaning both A and AAAA records must be consistently published across all DNS surfaces. The governance complexity doubles: a split-brain condition in IPv6 space is often invisible to diagnostic tools that default to testing IPv4 resolution.
+
+**CNAME (Canonical Name, RFC 1034).** Aliases one name to another. CNAME is prohibited at the zone apex (RFC 1034 §3.6.2) — you cannot create a CNAME for `agency.gov` itself, only for subdomains. This restriction creates real problems for load balancing and CDN integration, where operators want to alias the apex domain to a CDN endpoint. CNAME interaction with security records is also important: a CNAME chain delays resolution (each hop requires a new lookup), and a CNAME pointing into an attacker-controlled zone creates a dangling DNS record vulnerability (subdomain takeover). CNAME coexistence with DNSSEC records requires careful handling.
+
+**ALIAS / ANAME (non-standard, widely implemented).** Infoblox NIOS, AWS Route 53 (where it is called an "Alias record"), Azure DNS ("Alias record set"), and most modern authoritative servers implement a pseudo-record type that resolves a CNAME-like reference at the zone apex. These records are synthesized as A/AAAA records at query time, avoiding the zone-apex restriction. They are not standardized in any RFC and their behavior varies between implementations — a governance gap when the same zone is managed across multiple surfaces.
+
+**PTR (Pointer, RFC 1035).** Maps an IP address to a hostname, in the `in-addr.arpa.` (IPv4) or `ip6.arpa.` (IPv6) reverse zone. PTR records are the most commonly neglected DNS record type in cloud environments. They matter for: (1) email deliverability — sending MTAs that lack reverse DNS are frequently rejected or spam-scored; (2) security logging — SIEM rules that resolve source IPs to hostnames rely on PTR records; (3) LDAP/Kerberos — some Kerberos implementations perform reverse lookup to validate the client host during authentication; (4) compliance — NIST CSF logging requirements implicitly assume that log entries can be attributed to a named host. Cloud-managed private IP space requires explicit PTR record management, which Infoblox IPAM automates as part of address allocation.
+
+### 3.2 Service Discovery Records
+
+**SRV (Service, RFC 2782).** Maps a service name and transport protocol to a host and port, with priority and weight fields for load balancing. The SRV record format is:
+
+```
+_service._proto.name. TTL IN SRV priority weight port target.
+```
+
+SRV records are the most security-consequential record type in Active Directory environments, and the most underestimated in the context of AD deprecation. Active Directory publishes SRV records for:
+
+- `_kerberos._tcp.<domain>` — points clients to Kerberos KDC servers
+- `_kerberos._udp.<domain>` — same, for UDP
+- `_ldap._tcp.<domain>` — points clients and applications to LDAP servers
+- `_ldap._tcp.dc._msdcs.<domain>` — DC locator records; every domain-joined machine uses these at startup
+- `_gc._tcp.<forest>` — Global Catalog servers
+- `_kpasswd._tcp.<domain>` — Kerberos password change protocol
+- `_ldap._tcp.pdc._msdcs.<domain>` — Primary Domain Controller
+- `_msdcs.<domain>` — entire subtree of AD-specific service records
+
+When Active Directory is deprecated, none of these records migrate automatically. Applications that perform SRV lookups for LDAP or Kerberos — including many legacy Java applications, Linux hosts joined to AD, and network devices — begin failing silently or with cryptic errors when the SRV records disappear. Part 4 covers this in detail; the key point here is that SRV records are the DNS-layer representation of service topology, and their lifecycle must be governed independently of the servers they point to.
+
+Beyond Active Directory, SRV records are used by:
+
+- **SIP and VoIP** (`_sip._tls`, `_sips._tcp`) — UCaaS platforms and telephony trunks use SRV for endpoint discovery; Cisco Unified Communications Manager, Microsoft Teams Direct Routing, and Zoom Phone all publish or consume SRV records
+- **XMPP/Jabber** (`_xmpp-client._tcp`, `_xmpp-server._tcp`) — still used in some federal agencies for secure messaging
+- **IMAP/POP/SMTP** (`_imap._tcp`, `_imaps._tcp`, `_smtp._tcp`) — email client autoconfiguration
+- **Application-aware routing** — service meshes such as Istio and Consul use SRV records (or their own equivalent discovery protocols) for service endpoint registration; Cisco SD-WAN application-aware routing can consume DNS SRV data for FQDN-based path selection
+
+**NAPTR (Naming Authority Pointer, RFC 3403).** Used primarily in VoIP and telephony. NAPTR records provide regular-expression-based rewriting of URIs, enabling E.164 phone numbers to be resolved to SIP URIs through the ENUM protocol (RFC 6116). In federal environments, NAPTR records appear in: (1) Cisco Unified Communications Manager integration with PSTN; (2) E911 routing, where the query `_e911._udp.agency.gov` or an ENUM lookup resolves to an emergency service routing target; (3) some UCaaS integration patterns for Microsoft Teams Phone. NAPTR records interact with SRV records in the resolution chain: a NAPTR record may rewrite a URI and then reference an SRV record for the resulting service name.
+
+### 3.3 Certificate Governance Records
+
+These records exist to govern certificate issuance and establish cryptographic trust through DNS.
+
+**CAA (Certification Authority Authorization, RFC 8659).** Published in the zone served by the domain's authoritative DNS. Specifies which Certificate Authorities are authorized to issue certificates for the domain. The record has three tag types:
+- `issue` — which CA may issue single-name or SAN certificates
+- `issuewild` — which CA may issue wildcard certificates (can be more restrictive than `issue`)
+- `iodef` — where to report unauthorized issuance attempts (an email or HTTPS URL)
+
+CAA records are now mandatory: every public CA that is a member of the CA/Browser Forum must check CAA records before issuance (CA/B Forum Baseline Requirements §3.2.2.8, effective 2017). A CAA record mismatch causes certificate issuance to fail, which in a poorly governed DNS environment means certificate renewal failures that are blamed on the CA rather than on the DNS record.
+
+In a hybrid multi-cloud split-brain environment, CAA records present a specific governance problem: if the authoritative DNS for `agency.gov` is managed by one system but private zones in AWS and Azure have local overrides, a cloud workload that queries its local resolver may receive a different (or missing) CAA record than the authoritative server publishes. This does not affect most issuance workflows (which query the public authoritative server), but it does affect internal ACME-based certificate automation that runs inside the private cloud environment.
+
+**TLSA (TLS Authentication, RFC 6698) / DANE (DNS-Based Authentication of Named Entities).** Associates a TLS certificate or public key directly with a DNS name, allowing clients to validate TLS certificates through DNS rather than relying solely on the CA hierarchy. A TLSA record specifies: (1) Usage — whether the record pins an end-entity cert, an intermediate CA, a trust anchor, or pins any cert matching a public key; (2) Selector — whether to match the full certificate or only the public key; (3) Matching type — exact match, SHA-256, or SHA-512.
+
+DANE/TLSA is significant for federal environments because it provides a second layer of TLS validation that does not depend on commercial CAs. An agency that operates its own CA hierarchy can publish TLSA records to assert that only certs issued by its own CA are valid for a given FQDN — even if a commercial CA could theoretically issue a certificate for the same name. **DNSSEC is required for DANE to be meaningful**: without DNSSEC, a TLSA record can be spoofed, eliminating the security benefit. This creates a chain: DANE → DNSSEC → authoritative DNS consistency across all surfaces.
+
+**SSHFP (SSH Fingerprint, RFC 4255).** Associates an SSH host key fingerprint with a DNS name. Allows SSH clients to verify host keys through DNS rather than through the `known_hosts` file. Like DANE, SSHFP requires DNSSEC to be meaningful: without DNSSEC signing, the SSHFP record can be spoofed, replacing a legitimate fingerprint with an attacker's key. In a federal zero trust context, SSHFP provides a DNS-layer binding between a hostname and its cryptographic identity, analogous to what certificate SANs do for TLS.
+
+**SMIMEA (S/MIME Certificate Association, RFC 8162).** Associates an S/MIME certificate with an email address, enabling certificate discovery for encrypted email without requiring a central directory. Published in the `_smimecert` subdomain of the email domain. Requires DNSSEC. Less widely deployed than TLSA or SSHFP, but relevant for agencies that operate S/MIME encrypted email between departments.
+
+### 3.4 Email Authentication Records
+
+Email authentication in DNS has evolved from a single TXT record to a layered ecosystem of five complementary mechanisms. All are published as TXT records or CNAME redirects; none require a new record type. Their complexity and interdependency make email authentication one of the most frequently misconfigured DNS surfaces in federal environments.
+
+**SPF (Sender Policy Framework, RFC 7208).** A TXT record published at the domain apex (or a subdomain used as an email sender) that lists the IP addresses and hostnames authorized to send mail on behalf of the domain. The record uses a purpose-specific syntax (`v=spf1 include:... -all`). SPF has three well-known governance failure modes in multi-cloud environments:
+
+1. **Multiple SPF records** — RFC 7208 §3.2 states exactly one SPF TXT record is permitted per domain; two records cause a permanent SPF failure. When cloud services (Microsoft 365, Salesforce, SendGrid) each add their own SPF includes, agencies frequently end up with multiple TXT records or exceed the 10-lookup limit.
+2. **Lookup limit** — SPF processing may make at most 10 DNS lookups (for `include:`, `a:`, `mx:`, `ptr:`, `exists:` mechanisms). Modern cloud environments with multiple SaaS senders exceed this limit, causing SPF to fail during evaluation.
+3. **Split-brain interaction** — an SPF TXT record that resolves differently on internal and external resolvers causes mail from internal relay hosts to fail SPF evaluation at receiving MTAs.
+
+**DKIM (DomainKeys Identified Mail, RFC 6376).** A TXT record published at `<selector>._domainkey.<domain>` that contains the public key corresponding to the private key used to sign outgoing email. The receiving MTA fetches this TXT record, verifies the signature in the email header, and confirms that the body and headers were not modified in transit. DKIM selectors allow multiple concurrent keys (for key rotation and multiple sending systems). DKIM has no lookup limit issues; its primary governance challenges are key rotation (the private key lives in the mail system; the public key in DNS must be updated simultaneously) and orphaned selectors (selectors that remain published in DNS after the corresponding mail system is decommissioned, presenting a potential key misuse risk).
+
+**DMARC (Domain-based Message Authentication, Reporting and Conformance, RFC 7489).** A TXT record published at `_dmarc.<domain>` that tells receiving MTAs what to do when SPF and/or DKIM fail, and where to send aggregate and forensic reports. DMARC policy has three settings: `none` (monitor only), `quarantine` (move to spam), and `reject` (discard). CISA BOD 18-01 requires federal agencies to implement DMARC at `p=reject` for all second-level domains. DMARC reporting provides the only mechanism for an agency to discover unauthorized use of its domain as a spoofed sender, because the aggregate reports show all mail sources claiming to be from the domain, including attackers.
+
+**BIMI (Brand Indicators for Message Identification, IETF draft / AuthIndicators WG).** A TXT record at `default._bimi.<domain>` that points to an SVG logo file and optionally a Verified Mark Certificate (VMC). When DMARC is at `p=reject` and BIMI is properly configured, supported email clients (Gmail, Apple Mail, Yahoo) display the agency logo next to email from the domain. VMC issuance requires that DMARC be at enforcement (`quarantine` or `reject`). BIMI is an emerging standard; major federal agencies with constituent-facing communications are beginning to evaluate it.
+
+**MTA-STS (Mail Transfer Agent Strict Transport Security, RFC 8461).** A combination of a TXT record (`_mta-sts.<domain>`) and an HTTPS policy file (`https://mta-sts.<domain>/.well-known/mta-sts.txt`) that tells sending MTAs to use TLS when delivering to the domain and to reject delivery if TLS negotiation fails. MTA-STS eliminates opportunistic TLS downgrade attacks in SMTP. It requires that `mta-sts.<domain>` resolve to an HTTPS endpoint — adding a DNS record dependency on a web server — and that the TLS certificate on that endpoint be valid, creating an additional PKI dependency.
+
+### 3.5 Modern Service Binding Records
+
+**HTTPS and SVCB (Service Binding, RFC 9460, August 2023).** The most significant new DNS record types in recent history. HTTPS is a special case of SVCB optimized for HTTP/HTTPS services. These records move application-layer service negotiation — previously performed through HTTP headers, TLS extensions, and client-side configuration — into DNS.
+
+An HTTPS record for `agency.gov` can carry:
+- **ALPN (Application-Layer Protocol Negotiation)** — whether the service supports HTTP/3 (QUIC), HTTP/2, or HTTP/1.1, eliminating the round-trip needed to negotiate protocol version
+- **ECH (Encrypted Client Hello) configuration** — the public key needed to encrypt the TLS ClientHello, hiding the SNI from network observers before the connection is established
+- **Port mapping** — redirect to a non-standard port without requiring a browser redirect
+- **IPv4 and IPv6 hints** — IP address hints to avoid a separate A/AAAA lookup, reducing latency
+
+HTTPS records are beginning to be deployed by major providers. Cloudflare serves HTTPS records for its customers; Google serves them for Google services. From a federal agency perspective, HTTPS records are significant for three reasons:
+
+1. **Split-brain interaction** — if HTTPS records are published on the external authoritative DNS but not in private zones, cloud workloads that query internal resolvers will not receive ECH configurations, potentially exposing TLS SNI on internal networks that have deep packet inspection
+2. **Infoblox DDI management** — Infoblox Universal DDI added HTTPS/SVCB record support; managing these records consistently across surfaces requires the same unified management plane as A records
+3. **HTTP/3 and QUIC adoption** — federal agencies evaluating QUIC for application performance improvements will need to govern HTTPS records as part of that adoption
+
+### 3.6 DNSSEC Record Types
+
+DNSSEC (DNS Security Extensions, RFC 4033/4034/4035) adds cryptographic signing to the DNS protocol. DNSSEC does not encrypt DNS queries — it provides origin authentication and data integrity. Understanding the record types it adds is essential for understanding what DNSSEC can and cannot protect.
+
+**DNSKEY.** Published in the zone; contains the public key used to verify signatures on records in that zone. There are two types: the Zone Signing Key (ZSK), which signs individual records, and the Key Signing Key (KSK), which signs the DNSKEY RRset. The separation allows more frequent ZSK rotation (lower operational impact) while the KSK changes less often.
+
+**DS (Delegation Signer).** Published in the parent zone; contains a hash of the child zone's KSK. The DS record is the cryptographic link between parent and child zones — it is what makes the chain of trust traversable from the root. When an agency registers a subdomain and wants DNSSEC, the DS record must be published at the parent (the registrar or the parent zone operator). In a multi-cloud environment, the DS records for delegated subdomains must be kept synchronized; if a subdomain's KSK rotates, the parent's DS record must be updated within the TTL window or DNSSEC validation fails globally.
+
+**RRSIG (Resource Record Signature).** Accompanies every signed RRset; contains the digital signature over the record data. RRSIG records have an expiration time — this is the operational challenge of DNSSEC. If zone signing does not complete before the RRSIG validity window expires, DNSSEC-validating resolvers begin returning SERVFAIL for all records in the zone, causing complete resolution failure. Zone signing must be automated; manual signing is not operationally viable at enterprise scale.
+
+**NSEC / NSEC3 (Next Secure).** Provides authenticated denial of existence. When a DNSSEC-validating resolver asks for a name that does not exist, the authoritative server must prove that the name does not exist — it cannot simply return NXDOMAIN without a signature, because an attacker could forge NXDOMAIN responses. NSEC chains together all existing names in the zone alphabetically, proving that nothing exists between two adjacent names. NSEC3 hashes the names before chaining, preventing zone enumeration (an attacker walking the NSEC chain to discover all names in the zone). Federal zones handling sensitive subdomain names should use NSEC3 with opt-out.
+
+**CDS / CDNSKEY (Child DS / Child DNSKEY, RFC 7344).** Allow the child zone to signal the parent that its KSK has changed and the DS record should be updated. This automates the most error-prone step of DNSSEC key rollover — the cross-zone coordination between child zone operator and parent zone operator. Infoblox NIOS supports CDS/CDNSKEY for automated KSK rollover.
+
+### 3.7 Security Integration Matrix
+
+The following table summarizes how each record type integrates with the security enforcement mechanisms relevant to federal hybrid environments.
+
+| Record Type | Requires DNSSEC | CA/PKI Integration | Split-Brain Impact | Threat Defense Relevance | App-Aware Routing |
+|---|---|---|---|---|---|
+| A / AAAA | No | Indirect (cert SAN match) | **High** — core private/public divergence | RPZ blocking target | FQDN-based path selection |
+| CNAME | No | Indirect | **High** — dangling records, takeover | RPZ resolves chain | FQDN forwarding |
+| PTR | No | No | Medium | Logging, attribution | No |
+| SRV | No | No | **High** — AD deprecation orphaning | No | Service mesh discovery |
+| NAPTR | No | No | Low | No | UCaaS routing |
+| CAA | No | **Direct** — controls issuance | Medium | Issuance audit | No |
+| TLSA/DANE | **Required** | **Direct** — cert pinning via DNS | **High** — pin must match on all surfaces | Cert validation layer | No |
+| SSHFP | **Required** | SSH key binding | Medium | Host key validation | No |
+| SMIMEA | **Required** | S/MIME cert discovery | Low | Encrypted email | No |
+| SPF (TXT) | No | No | **High** — multi-record failures | Email spoofing defense | No |
+| DKIM (TXT) | No | Indirect (key rotation) | Low | Email integrity | No |
+| DMARC (TXT) | No | No | Medium | **Spoofing enforcement** | No |
+| BIMI (TXT) | No | VMC cert required | Low | Brand protection | No |
+| MTA-STS (TXT) | No | TLS cert required | Medium | SMTP downgrade defense | No |
+| HTTPS / SVCB | No | ECH public key | **High** — ECH config missing in private | Protocol negotiation | **HTTP/3, QUIC** |
+| DNSKEY | Yes (is part of) | **Direct** — zone signing | High | Zone integrity | No |
+| DS | Yes (parent) | **Direct** — chain of trust | **High** — KSK rotation coordination | Chain of trust | No |
+| RRSIG | Yes (is part of) | **Direct** — record signing | High | Signature freshness | No |
+| NSEC3 | Yes (is part of) | No | Medium | Zone enumeration prevention | No |
+| CDS/CDNSKEY | Yes | **Direct** — automated rollover | Medium | Automated key management | No |
+
+### 3.8 Infoblox DDI and the Full Record Type Surface
+
+Infoblox Universal DDI manages the full record type surface described above. Key capabilities per category:
+
+- **Address records (A/AAAA/PTR):** IPAM-driven automatic A and PTR record creation on address allocation; synchronization across NIOS, Route 53, Azure DNS, GCP Cloud DNS, and Windows Server DNS
+- **SRV:** Managed SRV record lifecycle, including templated creation of AD service records during domain migration and explicit orphan detection when AD is deprecated
+- **CAA:** CAA record management integrated with certificate lifecycle tracking; CAA record drift alerts when issuance policy changes
+- **TLSA/DANE:** TLSA record creation from certificate metadata; integration with Infoblox Certificate Authority integration; automated TLSA update on certificate renewal
+- **Email authentication (SPF/DKIM/DMARC):** SPF lookup count validation (flags records that exceed the 10-lookup limit at publication time); DKIM selector management; DMARC aggregate report integration
+- **HTTPS/SVCB:** Full HTTPS record management as of BloxOne DDI release; ECH configuration distribution
+- **DNSSEC:** Zone signing, key generation, key rollover automation, NSEC3 with opt-out, CDS/CDNSKEY for automated parent-child coordination; DNSSEC validation enforcement on BloxOne recursive resolvers; DNSSEC validation required for BloxOne Threat Defense DANE enforcement
+
+The governance implication: DNS record types that appear unrelated to each other — a CAA record and an SSHFP record, for example — share the same consistency requirement. If the authoritative DNS surface is fragmented across five systems, each record type is independently subject to the split-brain failure mode. Unified DDI management is the only mechanism that applies consistency governance to all of these record types simultaneously.
+
+---
+
+## Part 4 — The Active Directory DNS Departure
+
+### 4.1 What Active Directory DNS actually does
 
 For twenty years, Active Directory has been the DNS server for most federal
 on-premises networks — not as an architectural choice but as a consequence of
@@ -445,7 +614,7 @@ the enterprise. It is the service that everything else depends on. When AD
 DNS is unavailable, authentication fails, policy fails, file access fails,
 and every Windows-integrated application fails simultaneously.
 
-### 3.2 Microsoft's deprecation trajectory
+### 4.2 Microsoft's deprecation trajectory
 
 Microsoft has been systematically reducing the role of Active Directory in its
 modern identity architecture. The trajectory is clear:
@@ -467,7 +636,7 @@ in the context of database authentication. The pattern is universal: every
 place that AD authentication is used is a deprecation candidate, and every
 deprecation exposes a DNS dependency that was previously invisible.
 
-### 3.3 What happens to DNS when AD goes away
+### 4.3 What happens to DNS when AD goes away
 
 When an agency begins decommissioning domain controllers and migrating to
 Entra-only identities, the DNS records that AD maintained do not migrate
@@ -491,7 +660,7 @@ consuming AD DNS without recognizing that it is the thread holding together
 their hybrid DNS topology — and when that thread is cut, the topology
 collapses.
 
-### 3.4 What must be reprovisioned before AD leaves
+### 4.4 What must be reprovisioned before AD leaves
 
 A DNS governance program that runs alongside AD deprecation must explicitly
 account for every DNS record category that AD currently maintains:
@@ -519,9 +688,9 @@ account for every DNS record category that AD currently maintains:
 
 ---
 
-## Part 4 — Kerberos to Tokens: The Certificate-DNS Surface Problem
+## Part 5 — Kerberos to Tokens: The Certificate-DNS Surface Problem
 
-### 4.1 How Kerberos uses DNS
+### 5.1 How Kerberos uses DNS
 
 Kerberos authentication has a deep and often underappreciated dependency on
 DNS. When a client authenticates to a service using Kerberos, the process
@@ -545,7 +714,7 @@ to different IPs, the service ticket is valid but the connection target
 doesn't match — authentication fails at step 5 in a way that is extremely
 difficult to diagnose without knowing to look at DNS.
 
-### 4.2 How Entra ID tokens replace Kerberos — and why DNS still matters
+### 5.2 How Entra ID tokens replace Kerberos — and why DNS still matters
 
 Entra ID replaces Kerberos with OAuth 2.0 / OpenID Connect token-based
 authentication. A client authenticates to Entra ID (via a browser redirect,
@@ -584,7 +753,7 @@ DNS names. If the OCSP responder's FQDN does not resolve — or resolves to
 the wrong IP, or resolves differently from different network locations —
 certificate validation fails or falls back to a degraded mode.
 
-### 4.3 The certificate split-brain problem
+### 5.3 The certificate split-brain problem
 
 The certificate-DNS intersection produces a specific form of split-brain that
 is more difficult to diagnose than the private IP form because it manifests
@@ -618,7 +787,7 @@ failure as an OCSP unreachability event, not as a DNS failure. The incident
 ticket is opened against PKI, not against DNS. The root cause — an absent
 forwarding rule in Route 53 — may not be discovered for days.
 
-### 4.4 The implication: DNS correctness is a PKI trust prerequisite
+### 5.4 The implication: DNS correctness is a PKI trust prerequisite
 
 The logical conclusion is that PKI trust in a hybrid multi-cloud environment
 is a dependent of DNS correctness. A certificate that is issued correctly,
@@ -632,11 +801,42 @@ about PKI integrity. An agency cannot claim to have a functioning PKI trust
 chain in a hybrid multi-cloud environment unless DNS resolution is consistent
 from every network location — on-premises, in every CSP, and at every branch.
 
+### 5.5 Geographic certificate scoping and the DNS namespace
+
+A related challenge emerges when agencies deploy applications across geographically distributed regions and need to scope certificate trust to specific geographic boundaries — for data residency, sovereignty compliance, or risk containment purposes.
+
+**The question of mid-label wildcards.** It is natural to ask whether a certificate for `application.*.agency.gov` could serve this purpose, allowing the `*` to match region names (`eastus`, `westus`, etc.). The answer is: this was technically ambiguous for a brief historical window, is now formally prohibited for all public certificates, and does not work on any modern TLS client.
+
+The history in brief:
+- **RFC 2818 (2000)** — the original HTTPS specification described wildcard matching as applying to "component fragments," language ambiguous enough that some implementations allowed mid-label matching (`application.*.agency.gov` matching `application.eastus.agency.gov`)
+- **RFC 6125 (2011)** — clarified that wildcards SHOULD apply only in the leftmost label; mid-label matching SHOULD NOT be supported
+- **CA/Browser Forum Baseline Requirements (2012)** — prohibited public CAs from issuing certificates containing mid-label wildcards; any such certificate is non-compliant and browsers reject it
+- **RFC 9525 (2023)** — codified MUST NOT; mid-label wildcards are now formally prohibited in all conformant TLS implementations
+- **Current client behavior** — OpenSSL, BoringSSL (Chrome/Android), NSS (Firefox), SChannel (Windows/Edge) all reject mid-label wildcards at validation time; `application.*.agency.gov` will fail TLS handshake on every modern client
+
+**How geographic scoping is actually done.** The correct pattern uses the DNS namespace structure and leftmost-position wildcards:
+
+*DNS layer:* Publish per-region specific A records for application instances (`app.eastus.agency.gov`, `app.westus.agency.gov`), and optionally leftmost-position wildcard records for region namespaces (`*.eastus.agency.gov`, `*.westus.agency.gov`). These are DNS wildcards conforming to RFC 1034 — the `*` is in the leftmost label position.
+
+*Certificate layer:* Use multi-SAN wildcard certificates, with one SAN per region: `*.eastus.agency.gov` and `*.westus.agency.gov` as separate Subject Alternative Names in a single certificate. This is current practice, widely deployed, and fully supported. The blast radius is wider than a per-region certificate — a compromised private key exposes all regions covered by the SANs — which is the principal operational trade-off.
+
+*Trust boundary layer:* The strongest geographic scoping mechanism is Name Constraints on intermediate CA certificates. An agency that operates a subordinate CA for each geographic region can issue certificates from `Agency-EastUS-Intermediate` with a Name Constraints extension `permitted: eastus.agency.gov`. Any certificate issued by that intermediate CA is cryptographically constrained to names within the permitted subtree — a browser or TLS client will reject a certificate from `Agency-EastUS-Intermediate` that claims to cover `westus.agency.gov`, even if the certificate itself is otherwise valid. This is the only mechanism that provides cryptographic (rather than procedural) geographic enforcement.
+
+**The three-layer geographic trust architecture:**
+
+| Layer | Mechanism | Enforcement | Split-Brain Risk |
+|---|---|---|---|
+| DNS namespace | `*.eastus.agency.gov` zone | DNS resolution | High — zone must be consistent on all surfaces |
+| Certificate SANs | Multi-SAN cert: `*.eastus.agency.gov`, `*.westus.agency.gov` | TLS handshake SAN matching | Medium — cert is issued once; DNS must resolve to correct region |
+| Name Constraints | Intermediate CA with `permitted: eastus.agency.gov` | Cryptographic — client enforces | Low — the constraint is in the cert, not DNS |
+
+The DNS layer is where split-brain re-enters this picture: even if the certificate is correctly scoped to `eastus.agency.gov`, a split-brain DNS condition that causes a client in Azure West US to receive the East US endpoint address means the client connects to the wrong region — the certificate validates (it covers the FQDN), but the data sovereignty boundary has been crossed silently. Correct geographic enforcement requires DNS consistency, not just correct certificate scoping.
+
 ---
 
-## Part 5 — Layer 7 Networking and DNS as the Application Surface
+## Part 6 — Layer 7 Networking and DNS as the Application Surface
 
-### 5.1 Session networking versus application networking
+### 6.1 Session networking versus application networking
 
 For most of the internet's history, network policy was written in terms of
 Layer 4 constructs: IP addresses and ports. A firewall rule said "allow
@@ -665,7 +865,7 @@ RFC 1918 space is used by every CSP and on-premises network simultaneously.
 A policy written for `10.1.0.0/16` in AWS is meaningless in Azure where
 the same CIDR block is assigned to a different VNet.
 
-### 5.2 FQDN as the stable service identity
+### 6.2 FQDN as the stable service identity
 
 Application-layer networking resolves these problems by using the FQDN as
 the stable service identity. A zero trust policy says "allow `payments-service`
@@ -688,7 +888,7 @@ from different locations — then the service identity itself is inconsistent,
 and policy, certificates, and access controls that reference that identity
 may behave differently depending on where the caller is located.
 
-### 5.3 Wildcard DNS and the application surface
+### 6.3 Wildcard DNS and the application surface
 
 As agencies adopt application-layer networking, a new DNS pattern has emerged:
 the wildcard subdomain as application surface definition.
@@ -710,7 +910,7 @@ perspective, the entire application surface is defined by one record.
 
 ![Layer 4 versus Layer 7 networking: IP-port policy gives way to FQDN-based service identity — and wildcard DNS subdomains become the declaration of the application surface, governing not just routing but TLS certificates, WAF rules, and zero trust policy simultaneously](images/infoblox-hybrid-dns-diagram-09-layer7-wildcard.png){#fig-layer7-wildcard fig-alt="Two-panel comparison diagram on a white background. Left panel labeled LAYER 4 SESSION NETWORKING. Shows a firewall policy table with rows listing IP address port pairs: allow 10.0.5.42:443 to 10.1.0.12:8443 PAYMENTS, allow 10.0.5.43:443 to 10.1.0.14:8443 GRANTS, allow 10.0.5.44:443 to 10.1.0.16:8443 IDENTITY. Red callout: 300 services means 300 IP rules; pod restart changes IP and breaks rule. Right panel labeled LAYER 7 APPLICATION NETWORKING. Shows a single wildcard DNS record at top: asterisk.api.agency.gov pointing to API Gateway 10.2.0.1. Below it, a teal application surface box listing payments.api.agency.gov, grants.api.agency.gov, identity.api.agency.gov, documents.api.agency.gov. Three policy objects all referencing the same wildcard surface: TLS Certificate SAN asterisk.api.agency.gov, WAF Rule block known-bad on Host: asterisk.api.agency.gov, Zero Trust Policy allow identity-service to call asterisk.api.agency.gov. Teal callout: one DNS record defines the surface; policy, cert, and WAF all compose against it. Red warning at bottom right: if this wildcard resolves inconsistently from any origin, every application in the surface is affected simultaneously. White background, navy #1F3A5F, teal #1A9E8F, amber #D4860B, red #C0392B." width="100%"}
 
-### 5.4 What wildcard DNS means for governance
+### 6.4 What wildcard DNS means for governance
 
 The wildcard pattern amplifies the consequences of DNS misconfiguration. If
 `*.api.agency.gov` is a wildcard that resolves to the API gateway, and that
@@ -728,7 +928,7 @@ certificate is simultaneously valid (for callers whose DNS is correct) and
 untrusted (for callers whose DNS is wrong) — a failure mode that cannot be
 diagnosed by examining the certificate itself, only by examining DNS resolution.
 
-### 5.5 The IPAM implication
+### 6.5 The IPAM implication
 
 IP Address Management was historically the management of IP address assignments —
 tracking which IP address was assigned to which device, ensuring no conflicts,
@@ -753,11 +953,23 @@ across all managed surfaces. This makes it the only currently available platform
 that can answer the question "what is the complete FQDN namespace of our hybrid
 multi-cloud estate?" from a single console.
 
+### 6.6 Geographic namespace and the application surface boundary
+
+As agencies deploy applications across multiple geographic regions — for performance, redundancy, data residency, or sovereignty — the DNS namespace must encode regional identity. The correct pattern is a hierarchical geographic namespace: `{app}.{region}.agency.gov`, where `{region}` is a stable label such as `eastus`, `westus`, or `govcloud-east`.
+
+This namespace is populated with specific A records per application per region (`payroll.eastus.agency.gov`, `payroll.westus.agency.gov`) and optionally with leftmost-label wildcard records per region namespace (`*.eastus.agency.gov`, `*.westus.agency.gov`). These wildcard records are RFC 1034-compliant — the `*` occupies the leftmost label position.
+
+The geographic namespace creates a new dimension of split-brain risk: **geographic split-brain**. In a per-CSP model, the AWS private zone in US-East might correctly resolve `payroll.eastus.agency.gov`, while the Azure private zone in US-West lacks the record entirely. A user whose DNS query is forwarded to the Azure resolver receives NXDOMAIN for a name that exists on AWS. The failure is not a different IP address (classic split-brain) but a missing record — which produces a different failure signature and may not trigger the same alerting thresholds.
+
+Geographic split-brain also creates **data residency violations that appear as application behavior**. If `payroll.eastus.agency.gov` (which should route to the east datacenter) resolves to the west datacenter IP address on a client whose DNS forwarder has a stale or incorrect entry, payroll data crosses a geographic boundary that policy prohibits — with no network-layer indication that anything went wrong. The TLS connection succeeds; the certificate validates; the application responds. Only the data location is wrong.
+
+Governing a geographic namespace requires that the same authoritative source of truth publish consistent records for `*.eastus.agency.gov` and `*.westus.agency.gov` across every DNS surface where clients may query. This is precisely the consistency problem that per-CSP DNS cannot solve and unified DDI management directly addresses.
+
 ---
 
-## Part 6 — Infoblox Universal DDI: The Federal Answer
+## Part 7 — Infoblox Universal DDI: The Federal Answer
 
-### 6.1 What DDI is
+### 7.1 What DDI is
 
 DDI stands for DNS, DHCP, and IP Address Management — the three interrelated
 network services that govern how devices get addresses, how those addresses
@@ -787,7 +999,7 @@ that DNS records still reference.
 Unified DDI eliminates this class of inconsistency by making the three
 services a single managed object.
 
-### 6.2 Infoblox NIOS: on-premises DDI
+### 7.2 Infoblox NIOS: on-premises DDI
 
 Infoblox NIOS (Network Identity Operating System) is Infoblox's on-premises
 DDI platform, deployable as a physical appliance, a virtual appliance (vNIOS),
@@ -832,7 +1044,7 @@ networks, address blocks, and subnets, with each subnet having a DHCP scope
 that drives lease assignment. Lease events trigger automatic DNS record
 creation and removal.
 
-### 6.3 BloxOne DDI and Universal DDI: the SaaS management plane
+### 7.3 BloxOne DDI and Universal DDI: the SaaS management plane
 
 BloxOne DDI is Infoblox's SaaS-delivered DDI platform. BloxOne Endpoints
 are lightweight software agents deployed on-premises or in cloud environments;
@@ -863,7 +1075,7 @@ a single console where the state of all surfaces is visible.
 
 ![Infoblox Universal DDI capability map: the full feature set spanning NIOS on-premises, BloxOne SaaS endpoints, Universal DDI overlay management, and BloxOne Threat Defense — showing how each capability layer addresses a distinct governance problem](images/infoblox-hybrid-dns-diagram-02-universal-ddi-plane.png){#fig-universal-ddi fig-alt="Architecture diagram on a white background. At the top center, a large teal rounded rectangle labeled INFOBLOX UNIVERSAL DDI — SaaS Management Plane — single console, single API, unified policy. Below it, seven boxes arranged in two rows connected by solid teal lines downward: Row 1 — on-premises: NIOS grid (navy), NIOS-X (navy), Windows Server DNS (navy); Row 2 — cloud: Amazon Route 53 (amber outline), Microsoft Azure DNS (amber outline, dagger note: integration limitations documented), Google Cloud DNS (amber outline), Cloudflare and Akamai (teal outline, labeled edge/CDN, added Nov 2025). A horizontal red dashed line below the management plane labeled WITHOUT UNIVERSAL DDI — separate console per surface, manual policy replication, no reconciliation. Caption: one policy object propagated down to every DNS surface simultaneously. White background. Federal navy #1F3A5F, teal #1A9E8F, amber #D4860B." width="100%"}
 
-### 6.4 Infoblox features beyond DDI
+### 7.4 Infoblox features beyond DDI
 
 Infoblox's platform extends beyond core DDI into a security and analytics
 feature set that is particularly relevant in the hybrid multi-cloud context:
@@ -893,13 +1105,13 @@ five places (Route 53 query logs, Azure Monitor, GCP Cloud Logging, NIOS
 Syslog, Windows Event Logs). In Universal DDI, they are in one place,
 searchable with a unified query model.
 
-**IPAM for the application namespace.** As described in Part 5, the DNS
+**IPAM for the application namespace.** As described in Part 6, the DNS
 namespace is now the application surface registry. Universal DDI's IPAM
 module tracks the full FQDN namespace — which zones are active, which
 wildcard records are defined, which subdomains are in use — providing
 visibility into the application surface that no per-CSP tool provides.
 
-### 6.5 Why federal agencies need to get ahead of this now
+### 7.5 Why federal agencies need to get ahead of this now
 
 Federal agencies face a convergence of forces that makes DNS governance
 urgent rather than optional:
@@ -942,9 +1154,9 @@ of DNS inconsistency is not "some workloads reach the wrong IP" — it is
 
 ---
 
-## Part 7 — Cisco Catalyst SD-WAN DNS Interception
+## Part 8 — Cisco Catalyst SD-WAN DNS Interception
 
-### 7.1 The gap in vendor documentation
+### 8.1 The gap in vendor documentation
 
 Neither Infoblox nor Cisco has published documentation explaining how Cisco
 Catalyst SD-WAN DNS interception interacts with the Infoblox DDI resolution
@@ -952,7 +1164,7 @@ chain. The Infoblox Universal DDI product page contains a single generic
 bullet — "Optimize SD-WAN" — with no technical detail. The Cisco INR blog
 covers URL categorization and traffic steering at a marketing level.
 
-### 7.2 How Cisco Catalyst SD-WAN intercepts DNS
+### 8.2 How Cisco Catalyst SD-WAN intercepts DNS
 
 Cisco Catalyst SD-WAN (IOS XE SD-WAN ≥ 20.4/17.4) implements DNS interception
 through its `redirect-dns` data policy feature. When a branch device sends a
@@ -981,7 +1193,7 @@ If `redirect-dns` forwards to Cisco Umbrella, the Infoblox DDI policy plane
 is bypassed for every branch query. From the Infoblox console, those queries
 are invisible: no log entry, no RPZ evaluation, no DNSSEC validation.
 
-### 7.3 DNSSEC validation and the forwarder position problem
+### 8.3 DNSSEC validation and the forwarder position problem
 
 DNSSEC validation requires the validating resolver to sit at the first
 recursive position in the chain. When `redirect-dns` sends queries to Umbrella
@@ -994,7 +1206,7 @@ Umbrella-first configuration is non-compliant.
 BloxOne Endpoint. Umbrella, if used for DNS security, must be a downstream
 forwarder within the BloxOne DDI chain — not the primary redirect target.
 
-### 7.4 INR telemetry and DNS interaction
+### 8.4 INR telemetry and DNS interaction
 
 Cisco Catalyst SD-WAN's INR integration collects telemetry at the traffic-flow
 level, not the DNS query level. DNS interception and INR are independent
@@ -1007,9 +1219,9 @@ through Infoblox.
 
 ---
 
-## Part 8 — The Federal Sovereign Cloud Gap
+## Part 9 — The Federal Sovereign Cloud Gap
 
-### 8.1 INR is WW Commercial only
+### 9.1 INR is WW Commercial only
 
 Microsoft 365 Informed Network Routing (INR) is restricted to WW Commercial
 cloud tenants. Microsoft Learn (updated 2026-03-10) states verbatim:
@@ -1024,7 +1236,7 @@ agency operating in a sovereign cloud environment.
 
 ![Federal sovereign cloud INR exclusion: Cisco Catalyst SD-WAN INR applies only to WW Commercial tenants — GCC Moderate, GCC High, and DoD are explicitly excluded, and no published alternative achieves equivalent M365 traffic optimization for federal customers](images/infoblox-hybrid-dns-diagram-04-federal-inr-gap.png){#fig-federal-inr-gap fig-alt="Two-column comparison diagram on a white background. Left column header: WW COMMERCIAL (green check badge). Shows Cisco Catalyst SD-WAN router connected by teal arrows to Microsoft 365 INR telemetry exchange, which returns routing recommendations. M365 services (Teams, SharePoint, Exchange) shown with optimized routing paths. Right column header: GCC MODERATE / GCC HIGH / DoD (red X badge). Shows same Cisco Catalyst SD-WAN router with a red blocked line across the INR telemetry path labeled EXCLUDED — sovereign cloud boundary. M365 GCC services shown with static routing only, no telemetry feedback loop. Red callout: INR not available — no published Microsoft alternative for federal tenants. Caption from Microsoft Learn 2026-03-10: INR supports WW Commercial cloud but not GCC Moderate, GCC High, DoD, Germany, or China clouds. White background, navy #1F3A5F, teal #1A9E8F, red #C0392B, green #27AE60." width="100%"}
 
-### 8.2 What federal agencies use instead
+### 9.2 What federal agencies use instead
 
 The absence of INR does not eliminate SD-WAN value for federal agencies.
 Available mechanisms:
@@ -1043,13 +1255,13 @@ telemetry — operationally sound, with an incremental gap.
 **Infoblox DDI** operates identically in federal sovereign cloud environments.
 DNS resolution, RPZ enforcement, DNSSEC validation, and IPAM management are
 unaffected by INR availability. The `redirect-dns` configuration guidance
-in Part 7 applies unchanged.
+in Part 8 applies unchanged.
 
 ---
 
-## Part 9 — Reference Architecture
+## Part 10 — Reference Architecture
 
-### 9.1 The end-to-end resolution flow
+### 10.1 The end-to-end resolution flow
 
 This reference architecture synthesizes the components addressed in Parts 1–8
 into a complete DNS governance model for a hybrid multi-cloud federal
@@ -1059,7 +1271,7 @@ the federal sovereign cloud boundary.
 
 ![End-to-end reference architecture: Cisco Catalyst SD-WAN branch to Infoblox Universal DDI to per-CSP private zones — the complete DNS resolution flow that neither Infoblox nor Cisco has published](images/infoblox-hybrid-dns-diagram-05-reference-architecture.png){#fig-reference-arch fig-alt="Comprehensive left-to-right architecture diagram on a white background. Three zones separated by vertical dashed navy lines. Zone 1 labeled BRANCH (SD-WAN). Contains workstation icon, arrow to Cisco Catalyst SD-WAN edge router (IOS XE 20.4+) with redirect-dns label, arrow to BloxOne Endpoint (local DNS listener). Zone 2 labeled INFOBLOX UNIVERSAL DDI CONTROL PLANE (SaaS). Contains BloxOne DDI box (teal, large) with three internal function blocks: RPZ Enforcement, DNSSEC Validation, IPAM Policy. Teal arrows connect from BloxOne Endpoint inbound and from BloxOne DDI outbound to Zone 3. Zone 3 labeled PER-CSP PRIVATE RESOLUTION. Contains three stacked boxes: Amazon Route 53 Resolver with private zone, Microsoft Azure Private DNS Resolver with private zone, Google Cloud DNS with private zone. A red dashed bypass arrow from SD-WAN to Cisco Umbrella (outside the Infoblox plane) labeled AVOID — redirect-dns to Umbrella bypasses Universal DDI policy. Top-right corner callout: INR telemetry path (WW Commercial only) — dashed amber line from SD-WAN edge to Microsoft 365 INR service, labeled NOT AVAILABLE in GCC/DoD sovereign cloud. Caption: the correct configuration routes all branch DNS through BloxOne Endpoint so Universal DDI policy is evaluated before any per-CSP resolution. White background, navy #1F3A5F, teal #1A9E8F, amber #D4860B, red #C0392B." width="100%"}
 
-### 9.2 The five critical configuration decisions
+### 10.2 The five critical configuration decisions
 
 **Decision 1 — redirect-dns destination.** Cisco Catalyst SD-WAN `redirect-dns`
 must designate the local Infoblox BloxOne Endpoint as the redirect target.
@@ -1086,7 +1298,7 @@ CSP, every branch. OCSP FQDNs that are private-only in AD DNS must be
 published in Universal DDI with forwarding rules that make them reachable
 from cloud-originating queries.
 
-### 9.3 Deployment comparison: Commercial versus federal
+### 10.3 Deployment comparison: Commercial versus federal
 
 | Component | WW Commercial | GCC Moderate / GCC High / DoD |
 |---|:--:|:--:|
@@ -1152,10 +1364,10 @@ from cloud-originating queries.
 ## Document status
 
 This whitepaper is **DRAFT v0.2** (June 2026). Parts 3 (AD DNS departure),
-4 (Kerberos → token / certificate DNS surface), and 5 (Layer 7 wildcard DNS)
+5 (Kerberos → token / certificate DNS surface), and 6 (Layer 7 wildcard DNS)
 are synthesized from first principles, RFC behavior, and Microsoft product
 documentation — not from Infoblox or Cisco publications, which do not address
-these topics. The SD-WAN interception chain analysis in Part 7 is similarly
+these topics. The SD-WAN interception chain analysis in Part 8 is similarly
 synthesized. Before customer distribution, verify against the two unreachable
 sources in Appendix A and obtain Infoblox and Cisco technical review.
 :::
