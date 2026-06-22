@@ -17,7 +17,7 @@ lifecycle_review: 2027-01-01
 
 ::: {.callout-note}
 ## In this chapter
-Why NTLMv1 is blocked early — in ADR-068's Phase B, by default upon completion of the Phase A assessment (targeted 2026-Q3) — through the LAN Manager Authentication Level policy, while NTLMv2 carries a phased deadline of 2027-04-01, and the four distinct SQL Server connection patterns that generate NTLM traffic — a missing or incorrect SPN, cross-site connections where the KDC is unreachable, linked-server passthrough authentication, and non-domain-joined application hosts created by the server transformation.
+Why NTLMv1 is blocked early — in ADR-068's Phase B, by default upon completion of the Phase A assessment (targeted 2026-Q3) — through the LAN Manager Authentication Level policy, while NTLMv2 is phased out as dependencies are remediated ahead of Microsoft's progressive NTLM defaults, and the four distinct SQL Server connection patterns that generate NTLM traffic — a missing or incorrect SPN, cross-site connections where the KDC is unreachable, linked-server passthrough authentication, and non-domain-joined application hosts created by the server transformation.
 :::
 
 NTLM is a protocol, not a configuration setting, and that distinction governs everything in this book. There is no single switch to flip and no single Group Policy change that removes NTLM from SQL Server connections. Eliminating NTLM at the SQL layer requires identifying every connection pattern that generates NTLM traffic, and there are more such patterns than most database teams expect.
@@ -40,13 +40,13 @@ In a modern SQL Server environment, NTLMv1 should not appear in any connection. 
 
 If the Spec3-D1.8 audit or the Phase A network-traffic analysis reveals NTLMv1 in SQL Server connection traffic, it is a critical finding that requires immediate remediation regardless of the broader migration timeline. NTLMv1 in a production SQL Server connection stream is a significant security vulnerability and a compliance violation under ADR-068, and it cannot be treated as a routine migration item.
 
-## NTLMv2: The 2027-04-01 Deadline
+## NTLMv2: The Elimination Phase
 
 NTLMv2 is the current NTLM variant, and it addresses the cryptographic weaknesses of its predecessor. It uses HMAC-MD5 rather than MD4, incorporates a client challenge in addition to the server challenge to prevent replay attacks, and supports session signing. NTLMv2 is the variant that most SQL Server NTLM traffic in a modern federal environment will be generating.
 
-Unlike NTLMv1, NTLMv2 is not removed in Phase B. ADR-068 restricts it via Group Policy to documented exception groups during Phase B, but full disablement waits for the elimination phase — Phase C — which carries a hard cutover at 2027-04-01. The phased timeline exists to give programs the operational space to identify and remediate NTLMv2-generating connection patterns before the hard block is applied.
+Unlike NTLMv1, NTLMv2 is not removed in Phase B. ADR-068 restricts it via Group Policy to documented exception groups during Phase B, but full disablement waits for the elimination phase — Phase C — which is applied as operational readiness allows. The phased timeline exists to give programs the operational space to identify and remediate NTLMv2-generating connection patterns before the block is applied.
 
-That space is not infinite, and the timeline is not flexible. ADR-068 sets 2027-04-01 as the date on which domain-wide NTLM restrictions take effect program-wide, in its elimination phase — the program's own NTLM-elimination backstop. SQL Server NTLMv2 connections must be migrated either to Kerberos as an interim posture — using Cloud Kerberos trust per ADR-068 (Cloud Kerberos trust) — or to Entra ID OAuth 2.0 authentication as the final destination, before that date. (ADR-068)
+That space narrows with each release as Microsoft tightens defaults, and the program must maintain forward momentum. ADR-068's elimination phase applies domain-wide NTLM restrictions program-wide — the program's own NTLM-elimination step, timed to complete ahead of Microsoft's progressive default-disable. SQL Server NTLMv2 connections must be migrated either to Kerberos as an interim posture — using Cloud Kerberos trust per ADR-068 (Cloud Kerberos trust) — or to Entra ID OAuth 2.0 authentication as the final destination. (ADR-068)
 
 ## Pattern One: Missing or Incorrect SPN
 
@@ -87,5 +87,5 @@ An application host that has been domain-unjoined and whose connection string us
 :::
 
 ::: {.callout-note title="What Book 06 establishes — Chapter 1"}
-NTLM is a protocol, not a setting, so there is no single switch that removes it from SQL Server connections. NTLMv1 is blocked early — in ADR-068's Phase B, through the LAN Manager Authentication Level policy — and should never appear in a modern estate; NTLMv2 is restricted to exception groups in Phase B and fully blocked at the Phase C cutover of 2027-04-01 (ADR-068). Four connection patterns generate NTLM at the SQL layer — a missing or incorrect SPN, cross-site connections where the KDC is unreachable, linked-server passthrough authentication, and non-domain-joined application hosts created by the ADR-002 transformation — and each must be detected before it can be remediated.
+NTLM is a protocol, not a setting, so there is no single switch that removes it from SQL Server connections. NTLMv1 is blocked early — in ADR-068's Phase B, through the LAN Manager Authentication Level policy — and should never appear in a modern estate; NTLMv2 is restricted to exception groups in Phase B and fully blocked at the Phase C elimination step, applied ahead of Microsoft's progressive NTLM default-disable (ADR-068). Four connection patterns generate NTLM at the SQL layer — a missing or incorrect SPN, cross-site connections where the KDC is unreachable, linked-server passthrough authentication, and non-domain-joined application hosts created by the ADR-002 transformation — and each must be detected before it can be remediated.
 :::
