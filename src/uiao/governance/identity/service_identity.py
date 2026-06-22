@@ -26,6 +26,10 @@ Events detected:
 
 Canon refs: ADR-092 L3 actuation, UIAO_129 (application identity binding),
 governance/identity/jml.py (human JML, leaver events).
+
+Actuation tier: L2 (Advise).  ORPHANED findings are P1 but the system
+cannot disable an account or rotate credentials without human execution.
+All OR-* actions carry ``requires_confirmation=True``.  See UIAO_200.
 """
 
 from __future__ import annotations

@@ -17,6 +17,10 @@ Ticket categories:
 
 Canon reference: ADR-092 L3 actuation, governance/identity/routing.py,
 adapters/servicenow_adapter.py (ServiceNowCollector read shape).
+
+Actuation tier: L2 (dry_run=True, default) / L3 (dry_run=False).
+The L3 boundary is the POST to ServiceNow.  A human in ServiceNow must
+review and approve before any action executes.  See UIAO_200.
 """
 
 from __future__ import annotations
