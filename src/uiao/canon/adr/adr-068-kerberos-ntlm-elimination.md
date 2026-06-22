@@ -4,7 +4,7 @@ title: "Kerberos / NTLM Elimination — Cloud Kerberos Trust, Certificate-Based 
 status: ACCEPTED
 decided: 2026-05-13
 deciders: Michael Stratton
-updated: 2026-05-13
+updated: 2026-06-22
 next_review: 2026-11-01
 review_trigger: Microsoft Ignite 2026; the next major Windows Server release pinning a network-NTLM default-disable date; `BlockNTLMv1SSO` Oct 2026 enforcement landing; any Cloud Kerberos trust posture change
 impact: UIAO_135 §3.2 (Partially Defined gap closure); broader-than-SQL-server auth modernization (Spec3-D1.8 already covers SQL Server path)
@@ -25,7 +25,7 @@ published_at: docs/adr/adr-068-kerberos-ntlm-elimination.html
 
 Spec3-D1.8 (`Get-SQLServerAuthAudit.ps1`) covers the SQL Server path from Windows Authentication (Kerberos/NTLM) to Entra ID auth for SQL 2022+. That covers one workload class. The broader auth modernization for the rest of the on-premises Windows estate remains without an explicit canonical pattern in canon as of UIAO_135 §3.2:
 
-- **NTLM** is the legacy challenge-response protocol Microsoft formally **deprecated** in June 2024 (no further feature development) and is progressively **disabling by default** — not removing — across Windows releases: enhanced NTLM auditing in Windows Server 2025 / Windows 11 24H2; the `BlockNTLMv1SSO` default flipping Audit→Enforce via Windows Update in October 2026; Local KDC and IAKerb fallback-reduction features in H2 2026; and network NTLM disabled by default in the next major Windows Server release (~2027/2028, no fixed calendar date announced). Without a canonical NTLM elimination timeline, agencies migrate ad-hoc, leaving long-lived NTLM dependencies in the estate that block zero-trust posture and produce monitoring noise.
+- **NTLM** is the legacy challenge-response protocol Microsoft formally **deprecated** in June 2024 (no further feature development) and is progressively **disabling by default** — not removing — across Windows releases: enhanced NTLM auditing in Windows Server 2025 / Windows 11 24H2; the `BlockNTLMv1SSO` default flipping Audit→Enforce via Windows Update in October 2026; Local KDC and IAKerb fallback-reduction features in H2 2026; and network NTLM disabled by default in the next major Windows Server release (~2027/2028, no fixed calendar date announced). Without a canonical NTLM elimination strategy, agencies migrate ad-hoc, leaving long-lived NTLM dependencies in the estate that block zero-trust posture and produce monitoring noise.
 - **Kerberos** is harder to retire because legitimate workloads still depend on it for delegated authentication patterns Entra ID does not yet fully replicate. The canonical question is **which Kerberos trust posture is the target** — full retirement, hybrid via Cloud Kerberos trust, or per-application carve-outs.
 - **Certificate-based authentication (CBA)** is the canonical modern-auth replacement for password-based auth in Entra ID, but its rollout sequencing relative to NTLM disablement is not yet documented as canon.
 
@@ -35,14 +35,18 @@ UIAO_135 §3.2 explicitly flags this as a gap. Without canonical positions, ever
 
 **Three canonical positions, in operational sequence:**
 
-### 1. NTLM is deprecated by Microsoft; this program eliminates it on a self-imposed 2027-04-01 backstop
+### 1. NTLM is deprecated by Microsoft; this program eliminates it as operational readiness allows
 
-NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's formal deprecation of NTLM (June 2024) and its default-disable trajectory through the next major Windows Server release (~2027/2028), plus the zero-trust posture this boundary requires — it is **not** a FedRAMP mandate, and no FedRAMP notice sets an NTLM deadline. This program sets its **own** NTLM-elimination backstop at **2027-04-01** as a planning decision, sequenced to land the transformed authentication posture across the estate between Microsoft's October 2026 NTLMv1-SSO enforcement and the network-NTLM default-disable in the next major Server release. Microsoft is disabling NTLM by default, **not** removing it from the OS, and has announced no fixed calendar date for that final step; the 2027-04-01 anchor is the program's, not the vendor's. The phasing below is this program's.
+NTLM elimination is **a program decision recorded in this ADR**, driven by Microsoft's formal deprecation of NTLM (June 2024) and its progressive default-disable trajectory — it is **not** a FedRAMP mandate, and no FedRAMP notice sets an NTLM deadline. No federal law, OMB memo, CISA directive, NIST publication, or FedRAMP control mandates NTLM removal by any specific date. Microsoft is disabling NTLM by default, **not** removing it from the OS, and has announced no fixed calendar date for that final step.
+
+Microsoft's milestones are **progressive warnings, not hard deadlines**: the October 2026 `BlockNTLMv1SSO` default, the Local KDC and IAKerb fallback-reduction features in H2 2026, and network NTLM disabled by default in the next major Windows Server release (~2027/2028). Each release increases friction for NTLM reliance while preserving compatibility for organizations that still depend on it. None constitutes a forced cutover event.
+
+The program treats these milestones as **risk indicators**: each tightening of Microsoft's defaults raises the operational cost and security risk of continued NTLM reliance. The program eliminates NTLM as operational readiness and dependency remediation allow, sequenced to stay ahead of Microsoft's defaults. No fixed elimination date is imposed. The phasing below is this program's own governance structure.
 
 - **Phase A (assess):** Tier-2 NTLM telemetry adapter (CCM-BIR ingestion + `Spec3-D1.x` NTLM-audit discovery) inventories every NTLM authentication event in the estate.
 - **Phase B (block-where-safe):** NTLMv1 is disabled tenant-wide on schedule X (default: immediately on Phase A completion). NTLMv2 is restricted via Group Policy to documented exception groups only.
-- **Phase C (eliminate):** All remaining NTLMv2 authentications are remediated to Kerberos or modern auth. Disablement at the LSA layer occurs on the program's 2027-04-01 backstop.
-- **Exception class:** A documented exception list of legacy applications that cannot be remediated by the deadline. Each exception requires a per-app ADR citing the inability-to-migrate reason and the compensating control.
+- **Phase C (eliminate):** All remaining NTLMv2 authentications are remediated to Kerberos or modern auth. Disablement at the LSA layer occurs when dependency remediation is complete and validated, sequenced to stay ahead of Microsoft's progressive NTLM defaults.
+- **Exception class:** A documented exception list of legacy applications that cannot be remediated within the current operational cycle. Each exception requires a per-app ADR citing the inability-to-migrate reason, the compensating control, and a planned sunset horizon.
 
 ### 2. Cloud Kerberos trust is the canonical hybrid Kerberos posture; standalone on-prem Kerberos is sunset
 
@@ -58,7 +62,7 @@ NTLM elimination is **a program decision recorded in this ADR**, driven by Micro
 
 ## Rationale
 
-1. **NTLM has no zero-trust story.** Every NTLM event is opaque to telemetry, lacks meaningful auditability beyond the originating account name, and grants no device-trust context. PWS p. 112 zero-trust posture cannot be satisfied while NTLM is in-band; the only question is timeline.
+1. **NTLM has no zero-trust story.** Every NTLM event is opaque to telemetry, lacks meaningful auditability beyond the originating account name, and grants no device-trust context. PWS p. 112 zero-trust posture cannot be satisfied while NTLM is in-band; the direction is clear, and the question is operational sequencing, not whether.
 
 2. **Cloud Kerberos trust preserves the legitimate Kerberos use cases without retaining the legacy KDC dependency.** The bulk of legitimate Kerberos use is "user on Entra-managed device needs an SMB share on a legacy file server" — Cloud Kerberos trust covers that flow without preserving on-prem domain join.
 
@@ -66,26 +70,26 @@ NTLM elimination is **a program decision recorded in this ADR**, driven by Micro
 
 4. **Sequencing matters.** Disabling NTLM before CBA is rolled out leaves the estate without an authentication path for the migrated workloads. The canonical sequence — assess → block-where-safe → CBA rollout → eliminate — produces a workable migration without breaking workloads, but only if the order is preserved.
 
-5. **Exception class prevents the spec from being aspirational.** A small number of legacy applications cannot be migrated by 2027-04-01 (mainframe-bound terminal emulators, vendor appliances with hard-coded NTLM, etc.). A documented exception class with per-app ADRs makes the deprecation real for everything else while honestly accepting the residual long-tail.
+5. **Exception class prevents the strategy from being aspirational.** A portion of legacy applications cannot be migrated on any near-term timeline (mainframe-bound terminal emulators, vendor appliances with hard-coded NTLM, etc.). A documented exception class with per-app ADRs makes the elimination real for everything else while honestly accepting the residual long-tail — each exception tracked with a compensating control, not ignored.
 
 ## Implementation Plan
 
 | Phase | Deliverable | Owner | Program schedule |
 |---|---|---|---|
-| **A** | `Spec3-D1.x` NTLM-audit discovery script | Identity team | Pre-2027-04-01 |
-| **A** | CCM-BIR adapter ingestion of NTLM telemetry | Telemetry team | Pre-2027-04-01 |
+| **A** | `Spec3-D1.x` NTLM-audit discovery script | Identity team | Ahead of vendor defaults |
+| **A** | CCM-BIR adapter ingestion of NTLM telemetry | Telemetry team | Ahead of vendor defaults |
 | **B** | NTLMv1 disablement Group Policy + tenant-wide audit | Identity team | 2026-Q3 |
 | **B** | Cloud Kerberos trust enabled tenant-wide | Identity team | 2026-Q4 |
 | **C** | Entra CBA rollout — privileged accounts | Identity team | 2026-Q4 → 2027-Q1 |
 | **C** | Entra CBA rollout — service accounts (WIF per ADR-004) | Identity team | 2027-Q1 |
 | **C** | Entra CBA rollout — non-privileged users by OrgPath | Identity team | 2027-Q1 → 2027-Q2 |
-| **C** | NTLMv2 disablement at LSA layer | Identity team | **2027-04-01 (program backstop)** |
+| **C** | NTLMv2 disablement at LSA layer | Identity team | When dependencies remediated |
 | **C** | Exception-class ADRs filed per residual legacy app | App owners | Continuous |
 
 ## Consequences
 
 **Positive:**
-- Concrete, sequenced timeline lands substrate authentication modernization ahead of the program's 2027-04-01 NTLM backstop.
+- Readiness-based, sequenced approach lands authentication modernization ahead of Microsoft's progressive NTLM defaults without forcing a premature cutover.
 - Cloud Kerberos trust preserves legitimate Kerberos use cases without retaining the on-prem KDC trust as the authoritative path.
 - CBA rollout sequence is deterministic; agencies execute the same pattern regardless of which RIT they're on.
 - Exception-class ADRs surface residual long-tail dependencies as named known-unknowns rather than silent failures.
