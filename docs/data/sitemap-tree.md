@@ -187,6 +187,7 @@
 - [Distributed rate limiting for the SaaS data plane — a shared-store, globally-exact limiter](adr/adr-118-distributed-rate-limiting.html)
 - [Private networking for the SaaS data tier — VNet-integrated Postgres (Azure) and VPC endpoints (AWS)](adr/adr-119-saas-private-networking.html)
 - [GPO settings-level analysis: own the parse, consume Microsoft's GPO→MDM crosswalk](adr/adr-120-gpo-settings-analyzer.html)
+- [OrgPath projection subset — stamp fewer attributes per object than the codebook defines](adr/adr-121-orgpath-projection-subset.html)
 
 ## Schema Reference
 
