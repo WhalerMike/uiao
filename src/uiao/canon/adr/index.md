@@ -125,6 +125,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-048](adr-048-orgpath-attribute-selection.md) | OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes | ACCEPTED | 2026-04-28 |
 | [ADR-049](adr-049-microsoft-adapter-coverage-expansion.md) | Microsoft Modernization Adapter Coverage Expansion — Defender Suite, Azure Migrate, Azure Policy for Arc, Entra Governance, Entra Workload ID, Intune-Modernization | ACCEPTED | 2026-04-30 |
 | [ADR-050](adr-050-reference-middleware-implementation-choices.md) | D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices | ACCEPTED | 2026-04-30 |
+| [ADR-122](adr-122-gpo-modernization-parse-crosswalk-orgpath.md) | GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join | PROPOSED | 2026-06-21 |
 
 > **ADR-048 numbering note:** Two files share the ADR-048 slot on disk:
 > `adr-048-orgpath-attribute-selection.md` (canonical OrgPath attribute selection decision, ACCEPTED 2026-04-28)
