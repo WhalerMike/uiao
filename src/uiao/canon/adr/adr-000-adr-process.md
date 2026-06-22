@@ -104,8 +104,8 @@ Two obligations follow:
    at all. Direct citation of the upstream source is *preferred* for customer-facing
    clarity but not required when the ADR carries the link. Where a document separates the
    external fact from the program's response, attribute each to its proper source, e.g.
-   *"NTLM elimination is mandatory by 2027-04-01 ([FedRAMP Notice 0009](https://www.fedramp.gov/20x/notice-0009/)); this program
-   phases it assess → block → eliminate (ADR-068)."*
+   *"CCM BIR adoption is mandatory by 2027-04-01 ([FedRAMP Notice 0009](https://www.fedramp.gov/20x/notice-0009/)); this program
+   delivers the adapter by 2026-Q4 (ADR-043)."*
 
 This sharpens operating principle #1 ("every claim has exactly one canonical source"):
 for a **decision**, that source is the ADR; for an **external fact**, it is the

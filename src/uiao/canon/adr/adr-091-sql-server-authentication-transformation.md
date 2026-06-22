@@ -4,9 +4,9 @@ title: "SQL Server Engine Authentication Transformation — Windows/SQL Auth to 
 status: PROPOSED
 decided: 2026-06-02
 deciders: Michael Stratton
-updated: 2026-06-02
+updated: 2026-06-22
 next_review: 2026-12-01
-review_trigger: SQL Server vNext authentication GA; Azure extension for SQL Server feature changes; any change to the program's 2027-04-01 NTLM-elimination backstop (ADR-068); consolidation-program target-state decision
+review_trigger: SQL Server vNext authentication GA; Azure extension for SQL Server feature changes; any material change to ADR-068 NTLM-elimination phasing or vendor default milestones; consolidation-program target-state decision
 impact: UIAO_135 §3.2 (Partially Defined gap closure — SQL Server Authentication, Transformation #7); engine-layer companion to ADR-068 (protocol layer) and ADR-002 (server/OS layer)
 supersedes: null
 superseded_by: null
@@ -26,7 +26,7 @@ published_at: docs/adr/adr-091-sql-server-authentication-transformation.html
 UIAO_135 §3.2 classifies Transformation #7 (SQL Server Authentication — Service Identity) as **Partially Defined**. The destination is named in UIAO_135 §1.2: Windows Authentication and SQL Authentication are eliminated and replaced with Microsoft Entra ID authentication for SQL Server 2022 and later, enforced through OAuth 2.0 tokens, a Managed Identity for the engine process, and multi-factor authentication for all human principals. What is *partially defined* is the normative canon that governs **how the engine-layer transformation is reached**:
 
 - **Discovery is covered.** `Spec3-D1.8` (`Get-SQLServerAuthAudit.ps1`) is the discovery baseline and produces the per-instance authentication-posture record consumed by the CCM-BIR ingestion pipeline.
-- **The protocol layer is covered.** ADR-068 (Kerberos / NTLM Elimination) governs the program's elimination of NTLM on its 2027-04-01 backstop, the Cloud Kerberos trust posture, and certificate-based-auth rollout. ADR-068 explicitly scopes SQL Server as a separately-covered workload class.
+- **The protocol layer is covered.** ADR-068 (Kerberos / NTLM Elimination) governs the program's progressive elimination of NTLM (direction-not-deadline), the Cloud Kerberos trust posture, and certificate-based-auth rollout. ADR-068 explicitly scopes SQL Server as a separately-covered workload class.
 - **The server/OS layer is covered.** ADR-002 (Arc-Enabled Servers Require Non-Domain-Joined State) governs the OS-level Entra identity, Arc enablement, and the domain-unjoin sequencing.
 - **The engine layer is NOT yet covered.** No ADR governs the SQL Server *engine* authentication transformation itself — the canonical login-migration sequence, the policy on SQL Authentication and the `sa` account, the exception path for pre-2022 instances, the relationship between estate consolidation and auth migration, and the CCM-BIR evidence artifact that proves an instance has completed the transformation. Without these positions, every engagement re-litigates the same engine-layer decisions and the migration audit cannot certify Transformation #7 closure.
 
@@ -64,7 +64,7 @@ The parallel-run pattern is **required** for production instances. Non-productio
 `CREATE LOGIN ... FROM EXTERNAL PROVIDER` requires SQL Server 2022 + the Azure extension for SQL Server on an Arc-enabled host. A pre-2022 instance (Category 3) cannot accept type-E logins regardless of Arc status.
 
 - A Category 3 instance classified **retain** has two paths: **upgrade** the engine to SQL Server 2022 (then proceed through the Category 2 → Category 1 pathway), or file a **documented exception** with a sunset date. Most Category 3 instances should be consolidation **retire** or **consolidate-into-target** candidates per §1 rather than upgrade candidates.
-- The exception process requires: the inability-to-migrate reason, the compensating control, the maximum exception duration, and explicit acknowledgement that the **2027-04-01 NTLM block is network-level and does not honor engine-layer exception status**. Where a connection cannot reach Kerberos or Entra OAuth before the deadline, **Certificate-Based Authentication is the authorized interim posture per ADR-068** — which makes the certificate-authority dependency (ADCS → Cloud PKI, UIAO_135 §3.3, "Not Yet Defined") a hard dependency for the exception long-tail.
+- The exception process requires: the inability-to-migrate reason, the compensating control, the maximum exception duration, and explicit acknowledgement that Microsoft's progressive NTLM default-disable will eventually apply at the network level regardless of engine-layer exception status. Where a connection cannot reach Kerberos or Entra OAuth as vendor defaults tighten, **Certificate-Based Authentication is the authorized interim posture per ADR-068** — which makes the certificate-authority dependency (ADCS → Cloud PKI, UIAO_135 §3.3, "Not Yet Defined") a hard dependency for the exception long-tail.
 
 ### 5. The CCM-BIR per-instance record is the closure artifact for Transformation #7
 
@@ -78,7 +78,7 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 
 3. **SQL Authentication is an opaque bypass path.** A single active `sa` or type-S login defeats the entire Conditional Access perimeter (§ Access Control), because it authenticates outside the Entra ID plane. The Entra perimeter is binary — it covers all connections or none.
 
-4. **The 2027-04-01 deadline is a consequence, not a completion date.** ADR-068 Phase C applies a network-level NTLM block on that date; it does not distinguish excepted instances from compliant ones. The engine-layer migration must therefore complete *before* the deadline, with the final months reserved for continuous-audit validation.
+4. **Vendor defaults will tighten regardless of migration status.** ADR-068 Phase C applies network-level NTLM restriction when dependencies are remediated; Microsoft's progressive default-disable milestones will eventually constrain NTLM reliance regardless. The engine-layer migration must therefore maintain forward momentum, with continuous-audit validation confirming posture at each phase.
 
 5. **A defined closure artifact makes the transformation enforceable.** Without the CCM-BIR field set in §5, "done" is a subjective claim. With it, closure is a queryable, continuously-verified posture.
 
@@ -86,14 +86,14 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 
 | Phase | Deliverable | Owner | Program schedule |
 |---|---|---|---|
-| **0** | Full-estate consolidation assessment + per-instance retain/consolidate/retire classification (forthcoming `Spec3-D1.x` estate-consolidation inventory) | DBA + Infrastructure | Pre-2027-04-01 |
-| **A** | `Spec3-D1.8` Arc-eligibility + login-type inventory per **retain**/**target** instance | DBA team | Pre-2027-04-01 |
-| **A** | CCM-BIR ingestion of per-instance authentication posture | Telemetry team | Pre-2027-04-01 |
+| **0** | Full-estate consolidation assessment + per-instance retain/consolidate/retire classification (forthcoming `Spec3-D1.x` estate-consolidation inventory) | DBA + Infrastructure | Ahead of vendor defaults |
+| **A** | `Spec3-D1.8` Arc-eligibility + login-type inventory per **retain**/**target** instance | DBA team | Ahead of vendor defaults |
+| **A** | CCM-BIR ingestion of per-instance authentication posture | Telemetry team | Ahead of vendor defaults |
 | **B** | Arc enablement + Azure extension for SQL Server on Category 2 targets (per ADR-002) | Infrastructure | 2026-Q4 |
 | **B** | Phase 1–2 type-E login creation + validation (parallel-run) | DBA team | 2026-Q4 → 2027-Q1 |
 | **C** | Phase 3 cutover: disable legacy logins, 30-day observation, drop | DBA team | 2027-Q1 |
 | **C** | `sa` disable+rename across estate; type-S elimination or exception filing | DBA team | 2027-Q1 |
-| **C** | Pre-2022 exception register with CBA interim posture (per ADR-068) | DBA + App owners | **before 2027-04-01** |
+| **C** | Pre-2022 exception register with CBA interim posture (per ADR-068) | DBA + App owners | Continuous |
 | **C** | CCM-BIR closure-artifact verification per production instance | Telemetry team | 2027-Q1 → 2027-Q2 |
 
 ## Consequences
@@ -107,14 +107,14 @@ Transformation #7 is closed for an instance when its CCM-BIR record simultaneous
 **Negative:**
 - The consolidation assessment is a non-trivial prerequisite program in its own right and has no canonical discovery instrument yet (a `Spec3-D1.x` estate-consolidation inventory must be authored).
 - Pre-2022 exception long-tail depends on the ADCS → Cloud PKI transformation (UIAO_135 §3.3), which is "Not Yet Defined."
-- The 30-day observation window lengthens the per-instance cutover timeline and must be planned against the 2027-04-01 backstop.
+- The 30-day observation window lengthens the per-instance cutover timeline and must be factored into each instance's migration schedule.
 
-**Operationally accepted:** the post-migration audit must enumerate, per production instance, the CCM-BIR closure-artifact field set, and every pre-2022 exception must carry a sunset date that precedes or is explicitly reconciled against the 2027-04-01 NTLM block.
+**Operationally accepted:** the post-migration audit must enumerate, per production instance, the CCM-BIR closure-artifact field set, and every pre-2022 exception must carry a sunset date and be reviewed against Microsoft's NTLM default-disable trajectory when updated.
 
 ## References
 
 - UIAO_135 §1.2, §3.2, §3.3 — Identity & Directory Transformation Inventory (Transformation #7 destination; Partially Defined / Not Yet Defined gaps)
-- ADR-068 — Kerberos / NTLM Elimination (protocol layer; CBA interim posture; program 2027-04-01 NTLM backstop)
+- ADR-068 — Kerberos / NTLM Elimination (protocol layer; CBA interim posture; progressive NTLM elimination strategy)
 - ADR-002 — Arc-Enabled Servers Require Non-Domain-Joined State (server/OS layer; Arc Managed Identity)
 - ADR-069 — LDAP-Dependent Application Migration (upstream SQL-consuming application chain)
 - ADR-036 — Dynamic Group Provisioning (OrgPath-driven Entra security groups for SQL access)
