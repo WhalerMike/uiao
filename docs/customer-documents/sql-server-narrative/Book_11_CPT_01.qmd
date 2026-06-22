@@ -1,0 +1,73 @@
+---
+title: "The Fragmentation Cost — SQL Server Sprawl as an Anti-SSOT Pattern"
+doc-type: sql-server-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: sql-server-narrative
+book: "11"
+series-order: 1
+status: draft
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2028-01-01
+---
+
+# Chapter 1 — The Fragmentation Cost: SQL Server Sprawl as an Anti-SSOT Pattern
+
+*The authentication migration re-authenticates the silos. It does not dissolve them. Dissolving them is the platform question.*
+
+::: {.callout-note}
+## In this chapter
+Why SQL Server sprawl — dozens of independently licensed, independently administered instances each holding a fragment of agency data — is structurally incompatible with the SSOT goal that UIAO's architecture pursues. The SSOT case is not that SQL Server is a bad database; it is that having thirty of them produces thirty shadow sources of truth. The chapter closes with the decision framework for the two federal consolidation targets: PostgreSQL and Oracle.
+:::
+
+## The Authentication Transformation Reveals What It Does Not Fix
+
+Books 01 through 10 described one transformation: moving the SQL Server estate from Windows Authentication to Microsoft Entra ID. At the end of that transformation, every retained instance is re-authenticated. The Kerberos ticket is gone, the NTLM fallback is gone, the service account tied to the domain is gone, and in its place is an OAuth 2.0 token validated by the Conditional Access Engine before it reaches the engine. That transformation is real and significant.
+
+What it does not change is the topology. The estate that emerged from Windows Authentication mode with forty instances enters Entra ID authentication mode with forty instances. Each instance is an independently provisioned server, an independently administered schema, an independently held copy of data that overlaps — in ways nobody has fully mapped — with data held by the other thirty-nine. The authentication transformation made each of those forty instances more secure. It did not reduce the number. (UIAO_135 §1.2)
+
+SSOT — Single Source of Truth — is not a security posture. It is an architectural property. A system has SSOT for a given data domain when there is exactly one authoritative origin for that data, and every consumer reads from it. An estate with forty SQL Server instances almost certainly does not have SSOT for any significant data domain, because each instance is a candidate source for the data it holds, and the question of which instance is authoritative when they disagree is either unresolved or resolved informally. Informal resolution of data authority is the administrative expression of the absence of SSOT.
+
+## What Sprawl Does to Data Authority
+
+SQL Server sprawl accumulated through a mechanism that was sensible at each step and disastrous in aggregate. A new application needed a database. The application team provisioned a SQL Server instance — or shared one that was already running. They loaded their schema. They populated the data. If the data overlapped with data held by another instance, the overlap was noted and deferred, because resolving it would have required coordinating with another team, and the application needed to ship. Over two decades, that deferred coordination accumulated into an estate where the same concept — an employee, a contractor, an asset, an authorization — is represented in multiple databases, with no formally designated authority between them.
+
+The result is that data consumers who need the authoritative version of any frequently-represented concept cannot find it by reading the database topology. They must either know which instance is authoritative by institutional knowledge, or make a judgment about which version to use, or query multiple instances and reconcile. All three of these are fragile. Institutional knowledge does not survive staff turnover. Judgment introduces inconsistency. Multi-instance reconciliation is expensive and still does not resolve authority — it only surfaces the disagreement.
+
+UIAO's architecture pursues SSOT as an organizing principle because fragmented authority is the administrative precondition for the governance failures the architecture is designed to prevent. OrgPath establishes SSOT for identity and organizational relationships. HRIT establishes SSOT for workforce position records. KYC establishes SSOT for citizen verification. These SSOT constructs are meaningful only if the data they govern is actually held in one authoritative place. An OrgPath-driven access model that derives group membership from an authoritative directory loses its authority the moment a shadow copy of that directory data is held in a separate SQL Server instance that is administered independently and may diverge. (ADR-035, ADR-051)
+
+## The SSOT Case Against SQL Server Sprawl
+
+The case against SQL Server sprawl is not a case against SQL Server. SQL Server 2022 is a technically capable platform. The case is against multiplicty. Each additional SQL Server instance in the estate:
+
+First, subdivides data authority. Every instance that holds data overlapping with another instance creates a potential authority conflict. The authentication transformation identifies which instances to retain; it does not resolve which of the retained instances holds the authoritative copy of any given data element.
+
+Second, multiplies administrative surface. Each instance requires licensing, patching, backup, monitoring, and access administration. The authentication transformation reduces the per-instance credential surface by eliminating Windows logins and SQL logins. It does not reduce the instance count, and the administrative surface of a large estate remains proportional to the instance count regardless of the authentication mode.
+
+Third, resists SSOT architecture. An OrgPath-derived access model that reads group membership from Entra ID can drive SQL Server security through `FROM EXTERNAL PROVIDER` logins. But if forty SQL Server instances each independently implement access control, the governance model for all forty must be designed, deployed, and kept synchronized. One authoritative database that all forty applications read reduces that problem from a forty-instance governance problem to a one-instance governance problem.
+
+Fourth, accumulates licensing cost. SQL Server's per-core licensing model charges for each instance independently. An estate with forty instances running at low average utilization pays forty instance-worth of licensing for work that could, in many cases, be consolidated onto far fewer instances — or onto an open-source platform without per-core licensing cost.
+
+## The Consolidation Decision Framework
+
+The authentication transformation produced a classification for each SQL Server instance: retire, consolidate, or retain. The consolidation path — instances that were collapsed onto a target — was handled within the SQL Server estate. The retain path — instances that were individually migrated — produced a set of instances that are now properly authenticated but individually administered.
+
+The platform question asks a further question about the retain group: should these instances remain on SQL Server, or should they migrate to a different database platform as part of a consolidation toward a single authoritative database? This is not a question the authentication transformation resolves. It is a question that the authentication transformation makes possible to ask clearly, because for the first time the estate is inventoried, rationalized, and documented.
+
+Two federal consolidation targets have meaningful vendor support, FedRAMP-authorized paths, and relevance to the Red Hat/OpenShift environment that characterizes this agency's AWS footprint.
+
+The first is **PostgreSQL**. PostgreSQL is an open-source relational database with a feature set that closely parallels SQL Server in the areas most relevant to federal agency workloads: transactional integrity, schema-based access control, stored procedures (PL/pgSQL), replication, partitioning, and JSON document storage. It has multiple FedRAMP-authorized hosting paths — Amazon RDS for PostgreSQL, Amazon Aurora PostgreSQL, Azure Database for PostgreSQL, Crunchy Data PostgreSQL on OpenShift — and it is the primary database target for agencies operating on Red Hat OpenShift in AWS GovCloud. Microsoft, AWS, and Red Hat each publish official SQL Server-to-PostgreSQL migration documentation. Book 12 covers the PostgreSQL path in detail.
+
+The second is **Oracle Database**. Oracle is a commercially licensed relational database with the deepest federal government footprint of any enterprise database platform. Agencies that have significant PL/SQL-based application logic, multi-tier partitioning, or Oracle-specific workloads — Exadata performance profiles, Oracle Text, Spatial, or Real Application Clusters — have a different consolidation calculus than agencies whose SQL Server workloads are schema-and-procedure applications. Oracle Database 19c runs on Red Hat OpenShift Virtualization, Oracle Cloud Infrastructure has FedRAMP High JAB authorization, and Oracle's US Government Cloud provides an authorized consolidation target for agencies that choose Oracle as their single platform. Book 13 covers the Oracle path in detail.
+
+The choice between PostgreSQL and Oracle is not a universal recommendation — it is an agency-specific decision that depends on the application inventory, the existing Oracle footprint if any, the licensing position, and the operational model. What both paths share is the destination: one authoritative database platform, as close to SSOT as the agency's data governance work can bring it, rather than forty independently licensed, independently administered instances that re-authenticate cleanly but fragment authority as completely as they did before.
+
+::: {.callout-tip title="Division of labor"}
+**Microsoft and the platform vendors provide:** the SQL Server 2022 authentication plane that makes the migration possible; the rationalization tools (Azure Migrate, DMA, Defender for SQL) that classify the estate; the migration toolchains (Azure DMS, AWS DMS + SCT, Red Hat MTA) that convert schemas and data; the authorized FedRAMP hosting paths on PostgreSQL and Oracle targets.
+
+**What only you can provide:** the authority decision — which data domain is governed by which instance, and which instance is authoritative when instances disagree; the application inventory that determines whether workloads can migrate to PostgreSQL or require Oracle; the governance program that keeps one authoritative database authoritative over time rather than allowing new shadow copies to accumulate.
+:::
+
+::: {.callout-note title="What Book 11 establishes — Chapter 1"}
+SQL Server sprawl is structurally incompatible with SSOT because each instance is a candidate authority for the data it holds, and candidate authority without designation is fragmented authority. The authentication transformation re-authenticates the silos; dissolving them requires a platform decision. Two federal consolidation targets — PostgreSQL and Oracle — have FedRAMP-authorized paths, Red Hat/OpenShift relevance, and official migration toolchains from Microsoft, AWS, and Red Hat. The chapters that follow examine each in detail.
+:::

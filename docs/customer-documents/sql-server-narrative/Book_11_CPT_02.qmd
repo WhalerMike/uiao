@@ -1,0 +1,95 @@
+---
+title: "PostgreSQL in the Federal Stack — The Primary Consolidation Target"
+doc-type: sql-server-narrative-chapter
+audience: [Technical, Customer]
+family: sql-server-narrative
+book: "11"
+series-order: 2
+status: draft
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2028-01-01
+---
+
+# Chapter 2 — PostgreSQL in the Federal Stack: The Primary Consolidation Target
+
+*PostgreSQL is not the smallest database; it is the one the federal ecosystem has converged on. The FedRAMP paths, the Red Hat partnership, and three vendor migration toolchains all point the same direction.*
+
+::: {.callout-note}
+## In this chapter
+Why PostgreSQL is the primary consolidation target for federal agencies operating on Red Hat OpenShift in AWS GovCloud: the four FedRAMP-authorized hosting paths, the Crunchy Data PostgreSQL Operator certified for Red Hat OpenShift, the three official SQL Server-to-PostgreSQL migration toolchains from Microsoft (SSMA), AWS (DMS + SCT), and Red Hat (MTA), and the SSOT-relevant capabilities — logical replication, Row-Level Security, JSONB, and Foreign Data Wrappers — that PostgreSQL brings to the consolidation argument.
+:::
+
+## Why the Federal Ecosystem Converged on PostgreSQL
+
+PostgreSQL did not become the dominant federal open-source database by being the most marketed. It became the dominant choice because it is the one that solved the right set of problems for federal workloads: transactional correctness with SQL standard compliance, a privilege model that maps cleanly to schema-based access control, stored procedure support in PL/pgSQL that handles the majority of PL/T-SQL logic with manageable translation effort, and an extension architecture that has produced FedRAMP-relevant capabilities including PostGIS (geospatial), pgaudit (comprehensive audit logging), and pg\_cron (scheduled jobs without external schedulers).
+
+More relevant to this agency's environment, PostgreSQL has the strongest certified operator presence on Red Hat OpenShift of any enterprise database. The Crunchy Data PostgreSQL Operator is listed in the Red Hat Ecosystem Catalog, certified for OpenShift, and available through OperatorHub. The Crunchy PostgreSQL for OpenShift product provides a Kubernetes-native PostgreSQL deployment with high availability, point-in-time recovery, connection pooling via pgBouncer, and automated backup — all managed through Kubernetes custom resources rather than manual DBA procedures. This is the PostgreSQL deployment model for OpenShift-first agencies, and it is the one that aligns with ROSA GovCloud for federally compliant hosting.
+
+The second reason is licensing. SQL Server's per-core licensing model is among the most expensive in the enterprise database market. An agency consolidating forty SQL Server instances onto one PostgreSQL cluster eliminates per-core licensing cost across the retired and consolidated instances. PostgreSQL is open source under the PostgreSQL License, and the commercial support models from Crunchy Data, EDB (EnterpriseDB), and Amazon eliminate the common objection that open-source databases lack enterprise support in federal procurement contexts. EDB Postgres Advanced Server in particular offers Oracle compatibility extensions — a feature relevant to agencies with legacy Oracle-derived stored procedures.
+
+## The Four FedRAMP-Authorized Hosting Paths
+
+Federal agencies do not deploy software; they deploy authorized software on authorized infrastructure. PostgreSQL has four meaningful FedRAMP-authorized hosting paths for federal agencies, each with different operational models.
+
+**Amazon RDS for PostgreSQL** is the managed PostgreSQL service on AWS and is available in AWS GovCloud (US). RDS handles engine patching, automated backups, Multi-AZ high availability, and read replicas through the AWS Console or IaC tooling. For agencies whose workloads do not require Kubernetes-native database management, RDS provides the lowest administrative overhead PostgreSQL path in AWS GovCloud. Amazon RDS for PostgreSQL is included in the AWS FedRAMP-authorized boundary. (AWS GovCloud User Guide)
+
+**Amazon Aurora PostgreSQL** is AWS's cloud-native PostgreSQL-compatible database engine. Aurora is PostgreSQL-compatible at the protocol level but uses a purpose-built distributed storage layer that provides faster crash recovery, up to fifteen read replicas, and a serverless capacity mode. Aurora PostgreSQL is the target platform for the AWS SQL Server to Aurora PostgreSQL Migration Playbook — the most detailed SQL Server migration guide AWS publishes, covering the AWS Database Migration Service and AWS Schema Conversion Tool end-to-end. Aurora is FedRAMP-authorized in AWS GovCloud.
+
+**Babelfish for Aurora PostgreSQL** is a separate option worth naming. Babelfish is an AWS extension for Aurora PostgreSQL that allows Aurora to accept T-SQL queries and TDS protocol connections — the wire protocol that SQL Server clients use. This means that applications connecting to SQL Server with SQL Server connection strings can connect to Babelfish for Aurora PostgreSQL with minimal or no application code changes. Babelfish does not support every T-SQL feature, and complex stored procedures may require refactoring, but for agencies with a large inventory of T-SQL client applications, Babelfish provides a migration path that minimizes application-layer changes while moving off SQL Server licensing. AWS published official guidance for migrating SQL Server to Babelfish for Aurora PostgreSQL with minimal downtime using AWS DMS. (AWS Blog, Database category)
+
+**Crunchy Data PostgreSQL on Red Hat OpenShift / ROSA GovCloud** is the fourth path and the one most aligned with this agency's Red Hat/OpenShift footprint. ROSA — Red Hat OpenShift Service on AWS — is available in AWS GovCloud and received FedRAMP In-Process designation. The Crunchy PostgreSQL Operator deployed on ROSA GovCloud provides a Kubernetes-native PostgreSQL instance with the same operational model as all other OpenShift workloads: Helm or Operator Lifecycle Manager deployment, Kubernetes-native backup/restore through pgBackRest, and declarative configuration through custom resources. This is the consolidation target that aligns database operations with the existing OpenShift platform model rather than introducing a second operational paradigm for database management alongside the Kubernetes workload paradigm.
+
+**Azure Database for PostgreSQL** is Microsoft's managed PostgreSQL service. For agencies in a GCC Moderate Microsoft environment who are already using Azure services, Azure Database for PostgreSQL — Flexible Server provides PostgreSQL as a managed PaaS within the Microsoft boundary. This path is relevant for agencies where the database must remain co-located with other Azure workloads for data sovereignty or network topology reasons.
+
+## The Three Migration Toolchains
+
+Three vendors publish official SQL Server-to-PostgreSQL migration documentation relevant to this agency's environment. Each covers the same conceptual migration — schema conversion, data migration, and application update — with different tooling.
+
+**Microsoft's SQL Server Migration Assistant (SSMA) for PostgreSQL** is the official Microsoft tool for migrating SQL Server databases to PostgreSQL. SSMA performs schema conversion — translating SQL Server DDL (table definitions, indexes, constraints) and stored procedure logic (T-SQL to PL/pgSQL) — with an assessment report that categorizes conversion items by automated vs. manual effort. Microsoft publishes SSMA as a free download with official documentation on Microsoft Learn. SSMA is the right tool to run first in any SQL Server-to-PostgreSQL migration because it produces the assessment that scopes the manual conversion work. The SSMA assessment output is the input to the migration planning phase. (Microsoft Learn: Azure Database Migration Guide — learn.microsoft.com/en-us/data-migration/)
+
+**AWS Database Migration Service (DMS) and Schema Conversion Tool (SCT)** are the AWS tools for heterogeneous database migration. AWS SCT converts the database schema — tables, indexes, stored procedures — with an automatic conversion rating and a list of items requiring manual remediation. AWS DMS performs the data migration from the source SQL Server to the target PostgreSQL instance, supporting both one-time full-load migration and ongoing replication using Change Data Capture (CDC) for minimal-downtime migrations. AWS publishes the SQL Server to Aurora PostgreSQL Migration Playbook — a dedicated migration guide covering both tools from initial assessment through cutover — as well as a step-by-step guide for DMS Schema Conversion. The DMS CDC approach enables a parallel-run migration pattern analogous to the Book 05 login migration parallel run: the source SQL Server remains live while DMS continuously replicates changes to the PostgreSQL target, and cutover happens as a planned application-layer switch. (AWS Documentation: docs.aws.amazon.com/dms/latest/sql-server-to-aurora-postgresql-migration-playbook/)
+
+**Red Hat Migration Toolkit for Applications (MTA)** addresses the application modernization side of the migration rather than the database schema side. MTA analyzes application code to identify dependencies on platform-specific APIs — including SQL Server-specific JDBC drivers, connection strings, and T-SQL client patterns — and produces a remediation report with refactoring guidance. For agencies migrating to PostgreSQL on OpenShift, MTA is the companion to SSMA or SCT: SSMA/SCT migrates the database; MTA migrates the application code that talked to the old database. Red Hat publishes MTA documentation at docs.redhat.com. (Red Hat Documentation: Migration Toolkit for Applications 7.1)
+
+The three tools are not mutually exclusive. A full migration engagement on the OpenShift/ROSA GovCloud path would typically run SSMA (for the schema assessment), SCT (for the schema conversion targeting Aurora PostgreSQL or Crunchy PostgreSQL), DMS CDC (for the data replication), and MTA (for the application code analysis) in combination.
+
+## SSOT-Relevant PostgreSQL Capabilities
+
+PostgreSQL's value for the SSOT argument rests on specific capabilities that SQL Server also provides in some form but that PostgreSQL exposes in ways more compatible with a consolidation architecture.
+
+**Logical Replication** allows a PostgreSQL instance to publish changes to specific tables as a logical stream that other PostgreSQL instances — or Kafka, or application consumers — can subscribe to. For agencies consolidating data from multiple source databases into one authoritative PostgreSQL instance, logical replication provides the mechanism: each source database replicates its authoritative data domain to the consolidated instance without requiring the source to be taken offline. The consolidated instance accumulates the authoritative views from all contributing sources into a single schema. Logical replication is built into PostgreSQL and requires no additional licensing.
+
+**Row-Level Security (RLS)** allows PostgreSQL to enforce access policies at the row level based on session variables — the same mechanism UIAO's OrgPath model uses to drive access at the group level, but applied to individual rows within a table. An OrgPath-derived security group assigned to a database role, combined with RLS policies that filter rows based on that role's organizational scope, produces a single database table that returns different row sets to different principals based on their organizational position — without requiring separate tables or separate instances for each organizational unit. RLS eliminates one of the most common justifications for running separate database instances per organizational unit.
+
+**JSONB** is PostgreSQL's binary JSON column type with full indexing support. Agencies that have accumulated semi-structured data — configuration records, audit events, notification payloads — in separate NoSQL stores alongside their SQL Server instances can consolidate that data into PostgreSQL JSONB columns without losing query capability. A JSONB column with a GIN index supports full-text search, existence checks, and path-expression queries that compete with dedicated document stores for the semi-structured workloads most federal agencies run. JSONB reduces the argument for maintaining separate MongoDB or Elasticsearch instances alongside the primary database.
+
+**Foreign Data Wrappers (FDW)** allow a PostgreSQL instance to query external data sources — including other PostgreSQL instances, Oracle databases, SQL Server instances, and flat files — through a standard SQL interface as if those sources were local tables. FDW is not a replacement for data migration; a row read through FDW is not authoritatively held in the PostgreSQL instance. But FDW provides the mechanism to expose consolidated views of partially migrated estates — presenting data from multiple sources through one SQL endpoint while migration proceeds in phases. The postgres\_fdw extension connects PostgreSQL to PostgreSQL; oracle\_fdw connects to Oracle; tds\_fdw connects to SQL Server through the TDS protocol.
+
+**Schema-Based Tenancy** is not a single PostgreSQL feature but a pattern that PostgreSQL's role and schema model supports more naturally than SQL Server's database-per-tenant model. A single PostgreSQL instance can host hundreds of schemas, each with independent table definitions, owned by dedicated roles, accessed through connection strings that specify the schema search path. This is the architectural basis for running many logical databases through one physical PostgreSQL instance — the database consolidation that Chapter 1 described as the SSOT destination.
+
+## The Parallel Run Pattern for Platform Migration
+
+The parallel-run pattern that Book 05 described for login migration applies at the platform level too. A SQL Server instance does not need to be decommissioned before the PostgreSQL target is serving production traffic. The migration proceeds in three phases analogous to the login migration three phases.
+
+Phase 1 establishes the PostgreSQL target: schema converted via SSMA or SCT, data loaded via DMS full-load, and DMS CDC started to keep the PostgreSQL instance current with changes on the SQL Server source. The PostgreSQL instance is brought up and tested against real SQL traffic in a read-only or validation role before any application is redirected.
+
+Phase 2 runs both databases in parallel. Applications are redirected one by one to the PostgreSQL target, with the SQL Server instance remaining live as the rollback path. DMS CDC continues to replicate changes from SQL Server to PostgreSQL so the PostgreSQL instance does not lag behind. Each redirected application is observed over a defined validation period — analogous to the thirty-day validation window in the login migration — before the redirect is considered settled.
+
+Phase 3 cuts over when all applications have been redirected and the validation period has elapsed for each. The SQL Server instance's DMS CDC feed is stopped. The SQL Server instance is placed in read-only mode. After a final validation that the PostgreSQL instance is receiving all production write traffic, the SQL Server instance is decommissioned.
+
+This pattern keeps the SQL Server instance alive as a rollback path throughout the migration, which is the same discipline Book 05 applied to the login migration. The old path survives until the new path is validated, then it is removed. Never drop before you observe.
+
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** SSMA for PostgreSQL (free, schema assessment and conversion); Azure Database Migration Service (managed migration to Azure Database for PostgreSQL); official migration guide documentation at learn.microsoft.com/en-us/data-migration/.
+
+**AWS provides:** AWS Schema Conversion Tool (SCT) for SQL Server to PostgreSQL schema conversion; AWS Database Migration Service (DMS) with CDC for minimal-downtime data replication; the SQL Server to Aurora PostgreSQL Migration Playbook; Babelfish for Aurora PostgreSQL for T-SQL-compatible migration; ROSA GovCloud as the FedRAMP-aligned Red Hat OpenShift environment.
+
+**Red Hat provides:** the Crunchy Data PostgreSQL Operator certified for OpenShift; Migration Toolkit for Applications (MTA) for application code analysis; ROSA GovCloud for FedRAMP-aligned OpenShift hosting.
+
+**What only you can provide:** the data authority decision — which tables in the PostgreSQL target are the authoritative source for each data domain, and which SQL Server instances they replace; the application inventory that determines which workloads can use the DMS CDC migration path and which require manual schema remediation; the validation period design that defines what "PostgreSQL is working correctly" means for each redirected application before the SQL Server rollback path is retired.
+:::
+
+::: {.callout-note title="What Book 11 establishes — Chapter 2"}
+PostgreSQL is the primary federal consolidation target for agencies operating on Red Hat OpenShift in AWS GovCloud. Four FedRAMP-authorized paths exist: Amazon RDS for PostgreSQL, Amazon Aurora PostgreSQL (with Babelfish for T-SQL-compatible migration), Crunchy Data on ROSA GovCloud, and Azure Database for PostgreSQL. Three vendor toolchains — Microsoft SSMA, AWS DMS + SCT, and Red Hat MTA — each address different parts of the migration. PostgreSQL's logical replication, Row-Level Security, JSONB, Foreign Data Wrappers, and schema-based tenancy capabilities provide the architectural basis for a one-database SSOT consolidation. The platform migration follows the same parallel-run pattern as the login migration: establish the target, validate in parallel, cut over only after the validation period is complete.
+:::
