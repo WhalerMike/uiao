@@ -22,9 +22,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from uiao.adapters.modernization.active_directory.gpo_analytics import GpoAnalysis
 
 from uiao.governance.orgpath_runtime import (
     OrgPathGovernanceRuntime,
@@ -51,6 +55,13 @@ validate_app = typer.Typer(
     no_args_is_help=True,
 )
 orgtree_app.add_typer(validate_app, name="validate")
+
+gpo_app = typer.Typer(
+    name="gpo",
+    help="Settings-level GPO analysis: parse Backup-GPO output, triage portability, plan the Intune/OrgPath migration.",
+    no_args_is_help=True,
+)
+orgtree_app.add_typer(gpo_app, name="gpo")
 
 console = Console()
 
@@ -479,3 +490,95 @@ def inventory(
         worklist_out.parent.mkdir(parents=True, exist_ok=True)
         worklist_out.write_text(json.dumps(report.to_worklist_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
         console.print(f"[green]Worklist written to {worklist_out}[/green]")
+
+
+# ---------------------------------------------------------------------------
+# GPO settings-level analysis (`uiao orgtree gpo ...`)
+# ---------------------------------------------------------------------------
+
+_GPO_BACKUP_ARG = typer.Argument(
+    ...,
+    help="Path to a Backup-GPO output directory (walked recursively for gpreport.xml files).",
+)
+_GPO_JSON_OPT = typer.Option(False, "--json", help="Emit machine-readable JSON instead of a summary table.")
+_GPO_OUT_OPT = typer.Option(None, "--out", "-o", help="Write the full JSON result to this file.")
+
+
+def _load_gpo_analysis(backup_dir: Path) -> GpoAnalysis:
+    """Run the Phase-1 analyzer over a Backup-GPO tree, failing closed on a bad path."""
+    from uiao.adapters.modernization.active_directory.gpo_analytics import analyze_backup
+
+    if not backup_dir.exists() or not backup_dir.is_dir():
+        console.print(f"[red]GPO backup directory not found:[/red] {backup_dir}")
+        raise typer.Exit(code=1)
+    return analyze_backup(backup_dir)
+
+
+@gpo_app.command("analyze")
+def gpo_analyze(
+    backup_dir: Path = _GPO_BACKUP_ARG,
+    as_json: bool = _GPO_JSON_OPT,
+    out: Path | None = _GPO_OUT_OPT,
+) -> None:
+    """Inventory every GPO setting and triage its portability (Phase 1).
+
+    The portability classes are an *indicative* type-based heuristic; run
+    `uiao orgtree gpo plan` against a live Intune tenant for Microsoft's
+    authoritative MDM-support verdict.
+    """
+    analysis = _load_gpo_analysis(backup_dir)
+
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(analysis.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        console.print(f"[green]Analysis written to {out}[/green]")
+    if as_json:
+        console.print_json(json.dumps(analysis.to_dict(), ensure_ascii=False))
+        return
+
+    console.print(f"[bold]GPO analysis[/bold] — {analysis.gpo_count} GPO(s), {analysis.total_settings} setting(s)")
+    for cls, n in sorted(analysis.rollup_by_portability().items(), key=lambda kv: kv[0]):
+        console.print(f"  {cls:<26} {n}")
+    if analysis.findings:
+        console.print(f"  [yellow]findings            : {len(analysis.findings)}[/yellow]")
+        for f in analysis.findings:
+            console.print(f"    [yellow]{f.code}[/yellow] ({f.severity}) {f.detail}")
+
+
+@gpo_app.command("plan")
+def gpo_plan(
+    backup_dir: Path = _GPO_BACKUP_ARG,
+    as_json: bool = _GPO_JSON_OPT,
+    out: Path | None = _GPO_OUT_OPT,
+) -> None:
+    """Build a per-GPO, facet-scoped Intune migration plan (Phase 3).
+
+    Resolves each GPO's enabled OU links to an OU intent + recommended
+    OrgPath dynamic-group target, and maps each portability bucket to its
+    Intune carrier mechanism.
+    """
+    from uiao.adapters.modernization.active_directory.gpo_orgpath_plan import build_plans
+
+    analysis = _load_gpo_analysis(backup_dir)
+    plans = build_plans(analysis.reports)
+    payload = {"version": analysis.version, "plans": [p.to_dict() for p in plans]}
+
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        console.print(f"[green]Migration plan written to {out}[/green]")
+    if as_json:
+        console.print_json(json.dumps(payload, ensure_ascii=False))
+        return
+
+    console.print(f"[bold]GPO → OrgPath migration plan[/bold] — {len(plans)} GPO(s)")
+    for plan in plans:
+        console.print(
+            f"\n[bold]{plan.gpo_name or plan.gpo_guid}[/bold] — {plan.total_settings} setting(s), "
+            f"headline [yellow]{plan.headline_difficulty}[/yellow]"
+        )
+        for target in plan.scope_targets:
+            grp = target.recommended_group or "(no OU-scoped group)"
+            console.print(f"  scope {target.som_name} [{target.intent}] → {grp}")
+        for rem in plan.remediations:
+            console.print(f"    {rem.count:>3} {rem.portability_class:<26} → {rem.intune_mechanism}")
