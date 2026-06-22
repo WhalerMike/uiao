@@ -1,0 +1,91 @@
+---
+title: "Division of Labor — Microsoft vs. You"
+subtitle: "What the platform provides across all ten books, and what only the program can solve"
+description: "A single-page reference showing, for every topic in the SQL Server Identity Transformation series, which capabilities Microsoft provides and which environmental and operational problems only the implementing organization can solve. The organizing principle of the series in table form."
+doc-type: sql-server-narrative-reference
+audience: [Executive, Technical, Customer]
+family: sql-server-narrative
+series-order: 00
+status: active
+canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2027-01-01
+---
+
+# Division of Labor {.unnumbered}
+
+The organizing principle of this series is a clean separation: Microsoft has
+built an exceptional cloud identity platform, and it solves the engine problem
+precisely. What it does not — and cannot — solve is the environmental problem:
+the twenty-year estate you built on a foundation it is now asking you to
+replace.
+
+Every book in the series returns to this division. This page puts it in one
+place.
+
+::: {.callout-note}
+This matrix summarizes the division of labor documented in each book's
+**Division of labor** callout. Read alongside the books, not instead of them —
+the table names the problem; the books explain why it is a problem and how to
+solve it.
+:::
+
+## The Matrix {#the-matrix}
+
+| Book | Topic | Microsoft provides | What only you can provide |
+|------|-------|-------------------|--------------------------|
+| [01](Book_01.qmd) | **Authentication inheritance** | Entra ID as the replacement authentication plane; Arc Managed Identity for the engine; OAuth 2.0 token validation in SQL Server 2022; NTLM auditing and enforcement controls; Conditional Access. | The complete estate inventory; the per-instance SPN audit that surfaces silent NTLM fallback; the service-account-to-Managed-Identity mapping; the sequencing plan that coordinates authentication migration with domain consolidation. |
+| [01](Book_01.qmd) | **Why the inheritance must end** | NTLM deprecation and enforcement controls; Conditional Access for token-based authentication; the Arc Managed Identity that replaces AD-anchored service accounts; the platform-level NTLM elimination timeline. | The 2027-04-01 program backstop and the sequencing that satisfies it ahead of the platform deadline; the per-instance NTLM exposure measurement; the program that coordinates three interdependent drivers — NTLM elimination, zero trust, service-account re-rooting — across your specific estate. |
+| [02](Book_02.qmd) | **The shape of the estate** | Arc-based SQL Server discovery for enrolled hosts; Azure Resource Graph inventory; Defender for SQL assessments; Azure Migrate and MAP for migration assessment. | Discovery of instances Arc cannot reach — unenrolled, firewalled, cross-domain, vendor-installed, Express-edition instances on application servers; the utilization and ownership determination for every discovered instance; the retire/consolidate/retain decision that gates authentication migration. |
+| [02](Book_02.qmd) | **Estate inventory** | `Find-DbaInstance` / Azure Migrate MAP / DMA as discovery instruments; the `MSSQLSvc` SPN trail in AD as an estate-presence indicator; Azure Migrate assessment tooling. | The multi-instrument discovery coordination — no single tool covers every instance; the Spec3-D1.x estate-discovery instrument that ADR-091 §1 identifies as not yet authored; the inventory that gates the authentication audit. |
+| [02](Book_02.qmd) | **Rationalization** | Utilization telemetry via Defender for SQL and Azure Monitor; end-of-life version documentation; DMA for upgrade-path assessment; Application Discovery and Assessment for dependency mapping. | The zombie database determination — utilization data alone does not establish whether a database is still needed; the linked-server dependency map; the per-instance rationalization judgment that combines all three lenses. |
+| [02](Book_02.qmd) | **Retain / consolidate / retire** | Azure SQL Managed Instance and Azure SQL Database as cloud consolidation targets; SQL Server 2022 with Arc as the on-premises retain target; Azure Database Migration Service for the migration. | The retain/consolidate/retire classification for every instance; the target selection per consolidation group; the sequencing that collapses forest-spanning identity sprawl into Entra-backed identity before authentication migration begins. |
+| [03](Book_03.qmd) | **Authentication audit** | `sys.dm_exec_connections` with `auth_scheme`; `sys.server_principals` for login enumeration; the Windows registry `LoginMode` value; Windows event log NTLM auditing. | Spec3-D1.8 (`Get-SQLServerAuthAudit.ps1`) — the cross-estate enumeration and Arc-eligibility classification that DMVs alone do not produce; the CCM-BIR integration that makes the output a drift-aware compliance record rather than a point-in-time spreadsheet. |
+| [03](Book_03.qmd) | **Audit triage** | The Arc-eligibility prerequisites — Windows Server 2019+, SQL Server 2022, Connected Machine agent — and the capability envelope each category defines. | The per-instance triage that maps Arc-eligibility category to action sequence; the critical clarification that SQL-engine Entra authentication (Layer 1) does not depend on OS-level domain unjoin (Layer 2) and must never be blocked waiting for it. |
+| [04](Book_04.qmd) | **What Arc provides** | The Connected Machine agent; the system-assigned Managed Identity; the Azure extension for SQL Server; Defender for SQL; Azure Monitor integration; the IMDS endpoint for credential-free token acquisition. | The deployment sequence across your estate; the Layer 1 / Layer 2 distinction communicated to every stakeholder so SQL-engine Entra auth is not blocked on OS-level domain unjoin; the governance model for Managed Identities after enrollment. |
+| [04](Book_04.qmd) | **Arc deployment sequencing** | The Arc enrollment process; the Azure extension for SQL Server installation; the IMDS token endpoint; the Spec3-D1.8 Arc-eligibility classification as the prioritization input. | Outbound HTTPS connectivity verification through the GCC-Moderate egress proxy; the per-host deployment sequence that respects linked-server dependency order; the IMDS token test that serves as the gate authorizing login migration. |
+| [05](Book_05.qmd) | **Login migration — principal types** | The `FROM EXTERNAL PROVIDER` syntax in SQL Server 2022; the three principal type mappings — user, group, service principal; the `Azure.Identity` SDK `DefaultAzureCredential` chain; Conditional Access enforcement on the token before it reaches SQL Server. | The Entra-to-AD principal mapping for every Windows login being migrated; the OrgPath dynamic group design that drives SQL Server access without manual DBA action; the parallel-run sequence — create, validate, disable, observe, drop — that prevents access disruption. |
+| [05](Book_05.qmd) | **ADR-091 decisions** | The authentication mechanism — type-E logins, token validation; the continuous audit instrument (Spec3-D1.8); the CCM-BIR drift-detection infrastructure. | The five operational decisions ADR-091 records — consolidation gate, parallel-run sequence, SQL Authentication elimination, pre-2022 exception posture, and CCM-BIR closure artifact. Microsoft provides the plane; ADR-091 is the program's flight plan. |
+| [06](Book_06.qmd) | **NTLM patterns** | The LAN Manager Authentication Level policy for NTLMv1 blocking; Windows event log NTLM auditing (events 4624 and 4625); Defender for Identity NTLM signals; the product deprecation timeline. | The four connection-pattern classification across your estate — missing SPN, cross-site KDC unreachability, linked-server passthrough, ADR-002 domain-unjoin interaction; the SPN corrections, KDC routing fixes, linked-server migrations, and connection-string updates each pattern class requires. |
+| [06](Book_06.qmd) | **NTLM elimination phases** | The NTLM enforcement controls for each phase; Windows event log analysis instrumentation; the 2027/2028 platform-level network block that arrives regardless. | The discovery/restriction/elimination phase sequencing; the instance-by-instance rollout with defined rollback procedures; the login migration that must be complete before Phase C's 2027-04-01 network block is applied. |
+| [07](Book_07.qmd) | **Group migration** | Entra ID security groups; Entra Connect sync for AD group projection; the dynamic group membership engine; Conditional Access as the binary outer perimeter once every login is Entra-backed. | The ADR-067 four-type classification for every migrating AD group; the OrgPath-driven dynamic group design; the two-object split for mail-enabled security groups; compensating-control documentation for any login that cannot yet reach the Entra plane. |
+| [07](Book_07.qmd) | **AU delegation** | The Administrative Unit object and scoped role assignment mechanism; the Groups Administrator role scopable to AU; the audit log for AU-scoped administrative actions. | The AU structure design aligned to OrgPath (so the delegation boundary and the access boundary describe the same scope); the scoped delegation for DBA teams; the provisioning sequence — AU before groups — that eliminates the tenant-wide privilege window. |
+| [08](Book_08.qmd) | **Application chain** | OIDC/SAML federation (Class 3/2); Azure App Proxy (Class 1); Entra Domain Services (Class 4 last resort); Spec3-D1.9 (`Get-AppChainAudit.ps1`) as the application discovery instrument. | The per-application four-class classification across your estate; the two-track migration coordination — user authentication track plus SQL connection track — for each class; the correlation of Spec3-D1.9 application data with Spec3-D1.8 instance data to reveal the complete authentication chain. |
+| [08](Book_08.qmd) | **Connection string migration** | The `Authentication=` keyword options — Active Directory Managed Identity, Service Principal, Default; the `Azure.Identity` SDK `DefaultAzureCredential` chain; Azure Key Vault for interim credential management. | The connection-string inventory across every application that connects to SQL Server; the per-connection-string owner assignment; the migration tracking; the pre-cutover testing that validates each updated string against its target instance before the NTLM block is applied. |
+| [09](Book_09.qmd) | **Closure condition** | Spec3-D1.8 on a schedule for CCM-BIR structural monitoring; Defender for SQL behavioral monitoring; the five-condition verification capability; the Entra ID sign-in log as evidence. | The program that drives all five closure conditions to simultaneous satisfaction across every production instance; the drift-detection response process that treats every CCM-BIR event as a compliance violation; the continuous monitoring instruments in production before the migration is declared done. |
+| [09](Book_09.qmd) | **The 2027 milestone** | The six evidence artifact categories — CCM-BIR records, Entra sign-in logs, Defender for SQL telemetry, `sa`-disabled report, Conditional Access MFA report, exception registry; the 2027-04-01 network block (platform-level, fixed, non-negotiable). | Migration completion well before 2027-04-01 so the final months are reserved for continuous-audit validation; the exception registry with Certificate-Based Authentication as the authorized interim posture; the documented sunset dates for every exception that must resolve before the block. |
+| [10](Book_10.qmd) | **PKI and certificate migration** | Microsoft Cloud PKI (Intune Suite) as the ADCS replacement; certificate issuance via SCEP and EST; Intune-based trust chain deployment to enrolled endpoints; the Arc agent certificate for host authentication. | The `TrustServerCertificate=True` connection-string audit that must be resolved before certificate validation is enforced; the migration sequence from ADCS-issued to Cloud PKI–issued SQL Server certificates; the coordination of PKI migration timing with the SQL Server authentication migration — the new certificate must be in place and trusted by clients before the ADCS hierarchy is retired. |
+
+: {tbl-colwidths="[5,18,37,40]"}
+
+## The Through-Line
+
+Reading the **What only you can provide** column top to bottom produces a
+program:
+
+1. Build the true inventory — not the Arc-discovered one, the complete one.
+2. Decide what survives — retire the zombies, consolidate the stragglers,
+   only then migrate what remains.
+3. Measure the authentication posture of what survives — classify every
+   instance, classify every NTLM finding by pattern.
+4. Deploy Arc in dependency order — verify the IMDS token before declaring
+   a host ready for login migration.
+5. Map every AD principal to its Entra equivalent — users, groups, service
+   accounts, each with a different migration path.
+6. Migrate logins in parallel — create, validate, disable, observe, drop.
+   Never drop before you observe.
+7. Eliminate NTLM by pattern — SPN fixes first, connection-string updates
+   second, domain-topology fixes last (they wait on the consolidation
+   program).
+8. Classify every AD group and every application in the chain — both have
+   four types, each type has a different path.
+9. Inventory every connection string — the last mile is also the most
+   operationally intensive.
+10. Verify the closure conditions continuously — the posture is not declared,
+    it is measured. 2027-04-01 must arrive as a non-event.
+11. Migrate the PKI before you retire ADCS — the certificate dependencies
+    are invisible until they break.
+
+Microsoft provides a platform capable of all of this.
+The program is what drives the estate through it.
