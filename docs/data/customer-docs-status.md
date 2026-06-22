@@ -799,7 +799,7 @@
 | [`docs/customer-documents/whitepapers/federal-ssot-alignment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ssot-alignment.qmd) | 343 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 761 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd) | 267 | Substantial | ✅ | 4/4 | — |
-| [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 75 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 76 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 528 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd) | 243 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/modernization-journey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-journey.qmd) | 477 | Substantial | ✅ | 11/11 | — |
