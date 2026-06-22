@@ -1,0 +1,132 @@
+---
+title: "Logical Centralization and the Single Source of Truth"
+subtitle: "Why fewer authoritative copies beats more, and how hardware ate the scaling objection"
+doc-type: series-chapter
+series-id: ssot-network-physics
+chapter: 1
+audience: "Architects · platform engineers · data owners"
+canon-source: "Synthesized analysis; UIAO SSOT principle per AGENTS.md operating principle 1 and ADR-000"
+date: 2026-06-22
+aspirational: true
+lifecycle: draft
+tiers_adopted: [1]
+lifecycle_review: 2026-12-22
+---
+
+# Logical Centralization and the Single Source of Truth
+
+## The objection that no longer holds
+
+The original case for fragmenting data into many small databases rested on two
+loadbearing claims: that a single server could not scale to the workload, and
+that independent services needed independent stores to deploy and fail
+independently. Both claims have weakened to the point of reversal.
+
+**Hardware ate the scaling objection.** A single commodity server today carries
+dozens of cores, hundreds of gigabytes to multiple terabytes of RAM, and NVMe
+storage delivering millions of IOPS. A workload that demanded a sharded cluster
+a decade ago now fits comfortably on one node with headroom to spare. The
+overwhelming majority of organizations never outgrow a single well-provisioned
+database. *Vertical scaling is now the correct first move, and frequently the
+only move ever needed.*
+
+**The independence claim quietly imported a cost nobody priced.** Every
+independent store is an independent copy of some shared truth — a customer
+record, a price, an entitlement — and every copy is a liability: a place to go
+stale, to diverge, to silently disagree. The microservices era treated those
+copies as free. They are not. They are paid for later, in reconciliation jobs,
+in eventual-consistency archaeology, and in incidents that begin with the
+sentence "which system has the right number?"
+
+## What a single source of truth actually buys
+
+A single authoritative source of record is not merely tidier — it is
+*cheaper to reason about*, which is the scarcest resource in any large system.
+
+| Property | Many small stores | One logical source of truth |
+|---|---|---|
+| Cross-entity invariants | Enforced by application code and reconciliation, eventually | Enforced by the database — real foreign keys, real transactions |
+| Joins across the data | Distributed query, fan-out, or duplicated data | A local `JOIN` |
+| "Which value is correct?" | A judgment call, often an incident | Defined — there is exactly one |
+| Drift surface | One per copy, multiplied by every replication path | Minimized to the derived copies you explicitly create |
+| Mental model | N schemas and their interactions | One schema and its invariants |
+
+This is the heart of UIAO's own operating doctrine. The substrate's first
+operating principle is unambiguous: *every claim has exactly one canonical
+source; all other representations are provenance-anchored pointers* (see
+`AGENTS.md` operating principles and `ADR-000`). Drift is not an accident to be
+mopped up; it is a named, first-class failure mode the architecture is built to
+prevent. Fewer authoritative copies is the most direct lever on that goal.
+
+## Logical vs. physical: the distinction that does the work
+
+"Centralize" hides two very different decisions, and conflating them is the
+single most common architectural error in this debate.
+
+::: {.callout-note}
+## Two meanings of "centralize"
+- **Logical centralization** — *one source of truth.* One place that is
+  authoritative for a given fact; everything else derives from it. This is
+  almost always good.
+- **Physical centralization** — *one server, one location.* One machine that
+  holds and serves all the data. This is sometimes good and often constrained
+  by physics, blast radius, and law.
+:::
+
+The goal is the first. The second is an implementation choice you make *only as
+far as it is safe and cheap*, and back away from the moment physics, failure
+domains, or data-residency law push back (Chapters 3 and 7). You can have one
+logical source of truth that is physically replicated across three regions for
+durability — that is still SSOT, because exactly one of those copies is
+authoritative for writes and the others are explicitly subordinate.
+
+## Small databases are not dead — they are repurposed
+
+The provocative framing — "the era of small SQL servers is over" — is precise
+only when narrowed: it is the era of small SQL servers *as sources of truth*
+that is ending. Small databases are flourishing in two repurposed roles:
+
+1. **As disposable accelerators.** Read replicas, caches, materialized edge
+   stores. These are *derived and rebuildable* — explicitly not authoritative —
+   so they cannot drift authoritatively. You can blow one away and regenerate
+   it from the source of truth. (How to keep them current across distance is
+   exactly the SD-WAN question of Chapter 4.)
+2. **As compliance-stamped exceptions.** Where a customer's regulatory posture
+   demands hard physical isolation, a dedicated small store is provisioned for
+   that tenant. UIAO implements precisely this as the control-plane "stamp"
+   pattern (Chapter 7, ADR-096) — the exception, not the default.
+
+Meanwhile the small-database *movement* is expanding, not contracting:
+SQLite-at-the-edge patterns push SQL smaller and closer to the application than
+ever — but as **derived, near-cache copies**, which is the opposite of a
+distributed source of truth. The direction of travel confirms the thesis rather
+than refuting it: truth consolidates; convenience copies proliferate.
+
+## Where drift is actually born
+
+The deepest reason to centralize the truth is behavioral, not technical. Drift
+rarely originates in the database engine. It originates when a team, finding the
+central store too slow or too restricted to reach, creates an *unofficial local
+copy* "just for performance" — and that copy slowly diverges into a shadow
+source of truth nobody blessed.
+
+This reframes the whole problem. The way to stay near SSOT is to remove the
+*incentive* to fragment: make the central source of truth fast enough and
+frictionless enough to reach that no one is tempted to fork it. That is exactly
+what the next two forces deliver — **token-based security** removes the access
+friction (Chapter 2), and **application-aware networking** removes the latency
+friction (Chapter 4). Centralization of truth is sustained not by policy but by
+making the centered path the path of least resistance.
+
+## Summary
+
+- Hardware has removed the scaling objection for the vast majority of
+  workloads; scale up before you scale out.
+- A single source of truth is cheapest where it counts most — in the cost of
+  reasoning about the system and the absence of drift.
+- Separate *logical* centralization (one truth — almost always right) from
+  *physical* centralization (one server — sometimes constrained).
+- Small databases survive as disposable caches and compliance-stamped
+  exceptions, not as competing sources of truth.
+- Drift is born from unofficial convenience copies; the cure is to make the
+  central truth the path of least resistance — the job of Chapters 2 and 4.

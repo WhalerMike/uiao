@@ -1,0 +1,142 @@
+---
+title: "The Speed-of-Light Tax"
+subtitle: "Propagation delay vs. everything else, and why strong consistency is a latency problem"
+doc-type: series-chapter
+series-id: ssot-network-physics
+chapter: 3
+audience: "Architects · network engineers · SRE"
+canon-source: "Synthesized analysis; external networking facts cited inline"
+date: 2026-06-22
+aspirational: true
+lifecycle: draft
+tiers_adopted: [1]
+lifecycle_review: 2026-12-22
+---
+
+# The Speed-of-Light Tax
+
+## The wall that does not move
+
+Everything in the preceding chapters pushes toward consolidation, and within a
+single region the case is close to unanswerable. Stretch the same store across
+continents to keep a globally-synchronous source of truth, and you hit a wall
+that no networking technology, present or future, moves: **the speed of
+light.**
+
+This chapter establishes that floor precisely, because the rest of the paper —
+and any honest claim about what SD-WAN can do — depends on separating the part
+of latency that is negotiable from the part that is not.
+
+## Two latencies, added together
+
+Wide-area round-trip time is the sum of two components with completely
+different physics:
+
+| Component | What it is | Can engineering reduce it? |
+|---|---|---|
+| **Propagation delay** | Time for the signal to physically travel the distance, at the speed of light in fiber | **No.** Fixed by distance on the chosen path. |
+| **Everything else** | Queueing, congestion, jitter, packet loss → retransmits, and circuitous (non-geodesic) routing | **Yes — often dramatically.** This is the entire addressable surface. |
+
+The first component is a tax levied by physics. The second is the gap between
+the latency you *observe* and that physical floor — and on a congested or
+badly-routed path that gap is frequently **2× to 10× the floor itself.** The
+single most important framing in this paper is:
+
+::: {.callout-important}
+## Optimization attacks the gap, never the floor.
+Every networking technique discussed in Chapter 4 — SD-WAN path selection,
+forward error correction, jitter smoothing, clock distribution — operates on
+the *"everything else"* component. None of them reduces propagation delay by a
+single microsecond. The wins are real *because the gap is usually large*, but
+the floor stays exactly where distance puts it.
+:::
+
+## The numbers
+
+Light in optical fiber travels at roughly two-thirds of its vacuum speed —
+about **200,000 km/s**, or **≈ 5 microseconds per kilometer**, or roughly
+**1 millisecond per 200 km, one way.** That yields hard floors that no
+optimization can beat:
+
+| Path (approx. great-circle) | One-way propagation floor | Round-trip floor |
+|---|---|---|
+| Within a metro (~50 km) | ~0.25 ms | ~0.5 ms |
+| Cross-region, same continent (~1,000 km) | ~5 ms | ~10 ms |
+| New York ↔ London (~5,600 km) | ~28 ms | ~56 ms |
+| New York ↔ Singapore (~15,300 km) | ~77 ms | ~153 ms |
+
+These are *minimums assuming a perfectly straight fiber path.* Real paths are
+longer — internet routes commonly run 1.5× to 3× the great-circle distance —
+so observed propagation alone is typically well above these figures before any
+congestion is added. Optimization can claw back the routing excess (Chapter 4);
+it cannot go below the straight-line floor.
+
+## Why strong consistency is a latency problem, not a bandwidth one
+
+The crucial insight for database architecture is that **strong consistency
+spends round trips, and round trips are priced in latency, not bandwidth.**
+
+WAN bandwidth has grown enormously — moving terabytes between continents is
+routine. But a strongly-consistent, synchronous commit does not need
+bandwidth; it needs *agreement*, and agreement requires messages to travel to
+other nodes and back:
+
+- A synchronous commit that must be durable on a remote replica pays **at least
+  one round trip** before it can acknowledge — every time.
+- A consensus protocol (Paxos, Raft) committing through a quorum typically pays
+  **one to two round trips** to the quorum members, and is gated by the
+  *slowest* member it must hear from.
+
+Across New York and London, that is a floor of ~56 ms *per synchronous commit*,
+multiplied by every dependent operation in a transaction. No amount of fat pipe
+changes it, because the limiting resource is the time for light to make the
+trip, not the volume of data in flight.
+
+## Tail latency: the part that actually hurts
+
+There is a subtler reason distributed consistency suffers, and it sharpens what
+Chapter 4 must target. Because a quorum commit waits for the *slowest* response
+it needs, commit latency is governed by a **tail** statistic — the p99, not the
+average. A path can have an excellent mean and still inflict terrible commit
+latency if its tail is ugly, because every so often the one packet the quorum is
+waiting on is the one that got queued, dropped, and retransmitted.
+
+This matters because the "everything else" component — congestion, loss,
+jitter — is precisely what *inflates the tail*, while propagation delay is
+constant and therefore tail-neutral. So the addressable part of WAN latency is
+also the part that disproportionately damages distributed databases. That is the
+opening Chapter 4 exploits.
+
+## What follows for architecture
+
+Two conclusions fall directly out of the physics, and the rest of the paper
+builds on them:
+
+1. **Keep strong consistency inside a region.** At metro and intra-continental
+   distances the propagation floor is sub-millisecond to a few milliseconds —
+   synchronous consistency is effectively free there. This is why UIAO's
+   single-region writer (Chapter 7) is not a limitation but a deliberate
+   exploitation of the physics.
+2. **Across regions, stop spending round trips.** The win is not a faster
+   synchronous path — physics caps that — but an architecture that requires
+   fewer synchronous crossings: asynchronous replication, bounded staleness,
+   and merge-friendly data types (Chapter 6).
+
+SD-WAN, the subject of the next chapter, lives entirely inside the gap between
+observed latency and the floor. Understanding that it operates *there* — and
+only there — is what lets us state precisely what it can and cannot do for
+keeping large databases in sync.
+
+## Summary
+
+- WAN latency is propagation delay (fixed by distance, ~5 µs/km) plus
+  everything else (congestion, loss, jitter, routing excess).
+- Optimization addresses only the second component; the propagation floor is
+  immovable. NY↔London is ~56 ms round-trip, minimum, forever.
+- Strong consistency spends round trips, so it is a *latency* problem; fat
+  bandwidth does not help it.
+- Commit latency in a quorum is a *tail* statistic, and the tail is inflated by
+  exactly the addressable (non-propagation) component — which is why network
+  optimization can still help meaningfully.
+- The architectural response: keep strong consistency intra-region; minimize
+  synchronous crossings between regions.
