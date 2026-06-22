@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whalermike.github.io/uiao/schemas/overlay-fabric/overlay-fabric.schema.json",
+  "title": "UIAO Overlay Fabric Schema",
+  "description": "Constrains the application-aware overlay fabric configuration for the `overlay` mission class (UIAO_204, anchored by ADR-066 / ADR-123). Governs (a) the in-boundary token-issuer configuration whose fields UIAO_203 references (token_format, max_token_lifetime_seconds, signing_key_rotation_days), (b) the registry of overlay / SD-WAN / SASE / service-mesh fabric entries, each carrying a token-issuer reference and a posture-source reference, and (c) the typed OverlayTunnel runtime record. UIAO observes and reconciles overlay state; it does not route packets or terminate tunnels (ADR-066 lane discipline).",
+  "type": "object",
+  "required": ["schema-version", "updated", "issuer", "fabrics"],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "description": "Optional canonical frontmatter per src/uiao/schemas/metadata-schema.json when this schema governs a registry document.",
+      "type": "object"
+    },
+    "schema-version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of this overlay-fabric document schema."
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the most recent fabric-config update."
+    },
+    "issuer": {
+      "type": "object",
+      "description": "The in-boundary overlay token-issuer configuration. UIAO_203 §4 selects Path A: the issuer runs inside the GCC-Moderate boundary with in-boundary key custody.",
+      "required": ["token_format", "max_token_lifetime_seconds", "placement", "posture_source_ref"],
+      "additionalProperties": false,
+      "properties": {
+        "token_format": {
+          "type": "string",
+          "enum": ["spiffe-svid-x509", "spiffe-svid-jwt", "jwt", "paseto-v4-public"],
+          "description": "Wire format of issued overlay tokens (UIAO_203 §2.2). Symmetric-secret formats are intentionally absent — they are non-conforming."
+        },
+        "max_token_lifetime_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "Canon-declared maximum token lifetime (UIAO_203 §3.1). May be lowered per deployment; never above 300 without a superseding ADR. A token whose exp-iat exceeds this is a DRIFT-OVERLAY P1 finding."
+        },
+        "signing_key_rotation_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 90,
+          "description": "Issuer signing-key rotation cadence (UIAO_203 §3.3). Overlapping validity windows let in-flight tokens validate across a rotation boundary."
+        },
+        "placement": {
+          "type": "string",
+          "enum": ["in-boundary", "declared-exception"],
+          "description": "Issuer placement. `in-boundary` is Path A (preferred, no boundary exception). `declared-exception` is Path B and requires `exception_ref`."
+        },
+        "exception_ref": {
+          "type": "string",
+          "description": "Reference to the gcc-boundary-gap-registry.yaml exception entry authorizing an out-of-boundary (Path B) issuer. Required when placement == declared-exception."
+        },
+        "key_custody": {
+          "type": "string",
+          "description": "Identifier of the in-boundary key-management surface holding the issuer signing keys (HSM, in-boundary CA, verified-credential service, or in-boundary SPIFFE/SPIRE)."
+        },
+        "posture_source_ref": {
+          "type": "string",
+          "description": "Reference to the posture-telemetry conformance adapter supplying the device/application posture axis of token issuance (UIAO_203 §2.1)."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "placement": { "const": "declared-exception" } }, "required": ["placement"] },
+          "then": { "required": ["exception_ref"] }
+        }
+      ]
+    },
+    "fabrics": {
+      "type": "array",
+      "description": "Registry of overlay fabric adapter entries. Order is stable; new entries append.",
+      "items": { "$ref": "#/$defs/fabricEntry" }
+    }
+  },
+  "$defs": {
+    "fabricEntry": {
+      "type": "object",
+      "description": "A single overlay / SD-WAN / SASE / service-mesh fabric the substrate observes and reconciles.",
+      "required": ["id", "kind", "mission-class", "token_issuer_ref", "posture_source_ref", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "description": "Stable slug identifier for the fabric entry."
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Fabric vendor/product (illustrative; UIAO does not pick a vendor)."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["sd-wan", "sase", "service-mesh"],
+          "description": "Fabric category."
+        },
+        "mission-class": {
+          "type": "string",
+          "const": "overlay",
+          "description": "Always `overlay` (the sixth mission class, ADR-123). Distinct from the identity-plane `*_transport` write seams."
+        },
+        "token_issuer_ref": {
+          "type": "string",
+          "description": "Reference to the token-issuer this fabric's tunnels are authorized by (UIAO_203)."
+        },
+        "posture_source_ref": {
+          "type": "string",
+          "description": "Reference to the posture source feeding this fabric's enforcement decisions."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["reserved", "proposed", "active"],
+          "description": "Lifecycle of the fabric adapter entry."
+        }
+      }
+    },
+    "overlayTunnel": {
+      "type": "object",
+      "description": "The typed OverlayTunnel runtime record (ADR-066 §Decision #3). Tunnels are LEASED, not opened; the lease is bounded by token lifetime. The lease.expires_at <= token.exp invariant is normative in UIAO_204 §4 and enforced at reconciliation, not by JSON Schema.",
+      "required": ["identity", "application", "posture", "location", "token", "lease"],
+      "additionalProperties": false,
+      "properties": {
+        "identity": { "type": "string", "description": "Caller identity (token `sub`)." },
+        "application": { "type": "string", "description": "Target application (token `aud`)." },
+        "posture": { "type": "string", "description": "Device/application posture digest at lease time." },
+        "location": { "type": "string", "description": "orgPath + LocPath binding (token `loc`)." },
+        "token": {
+          "type": "object",
+          "required": ["jti", "exp"],
+          "additionalProperties": false,
+          "properties": {
+            "jti": { "type": "string", "description": "Unique token id (single-use)." },
+            "exp": { "type": "string", "format": "date-time", "description": "Token expiry." }
+          }
+        },
+        "lease": {
+          "type": "object",
+          "required": ["leased_at", "expires_at"],
+          "additionalProperties": false,
+          "properties": {
+            "leased_at": { "type": "string", "format": "date-time" },
+            "expires_at": { "type": "string", "format": "date-time", "description": "Must be <= token.exp (UIAO_204 §4 invariant)." }
+          }
+        },
+        "certificate_chain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional certificate chain anchoring the tunnel."
+        }
+      }
+    }
+  }
+}

@@ -219,6 +219,7 @@
 - [MS SQL Rationalization Domain Catalog Schema](reference/schemas/mssql-rationalization-domain-catalog.schema.html)
 - [MS SQL Rationalization Reference-Data Pattern Library Schema](reference/schemas/mssql-rationalization-reference-data-patterns.schema.html)
 - [UIAO OrgTree Readiness Bundle Schema](reference/schemas/orgtree-readiness.schema.html)
+- [UIAO Overlay Fabric Schema](reference/schemas/overlay-fabric.schema.html)
 - [UIAO OrgTree Policy Targeting Canon](reference/schemas/policy-targets.schema.html)
 - [UIAO Reciprocity-Record Schema](reference/schemas/reciprocity-record.schema.html)
 - [UIAO Reciprocal-Consumption Entitlement Registry Schema](reference/schemas/registry.schema.html)
