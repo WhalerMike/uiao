@@ -1,0 +1,80 @@
+---
+title: "Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_27
+series-order: 7
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+Key terms and canonical references for Book_27. Every term below is used in its precise technical sense throughout this book; the definitions here are the governing ones. Canon references point to the binding normative artifacts; this book narrates them but does not supersede them.
+:::
+
+## Key Terms
+
+**Actuation ladder (L0–L4).**
+The governance framework from ADR-092 that defines five tiers of automation autonomy. L0 is inert; L1 is observe; L2 is advise; L3 is gated action (human approval required); L4 is autonomous. Federal deployments default to an L3 ceiling. See UIAO_200 for the identity governance ladder specifically.
+
+**AGD — Automated Governance Detection.**
+The governance drift log where L1 and L2 findings are written. At L1 and L2, JML events and orphan findings are written to AGD rather than to ServiceNow. AGD is the observation layer; ServiceNow is the action layer.
+
+**Commercial exception.**
+A named carve-out from UIAO's GCC-Moderate cloud boundary that permits integration with a specific FedRAMP-authorized product that does not run on the M365 SaaS substrate. Each exception is named after the product (`commercial-exception-amazon-connect`, `commercial-exception-sailpoint-nerm`) and added in lockstep with its authorizing ADR. See ADR-059.
+
+**CIR — Customer Identity Record.**
+The UIAO_141 primitive for non-employee identity subjects. A CIR carries the non-employee's organizational affiliation, contract metadata, sponsoring official, assurance level, and lifecycle state. SailPoint NERM is the operational substrate for CIRs in the non-employee branch.
+
+**DRIFT-ORPHAN-NHAM.**
+The finding class emitted by the service identity orphan detector when a service account's `owner_employee_id` matches a known LEAVER or is absent from the HR record set. Severity: CRITICAL. Posture: DRIFT. Triggers a `GOV-ORPHAN` ticket at L3.
+
+**Entra ID Governance.**
+Microsoft's entitlement management platform for the workforce surface. Manages access packages (bundled resource assignments), eligibility policies, approval workflows, and access review cycles. Scope is the Microsoft ecosystem; non-employee and non-Microsoft surfaces require separate substrates.
+
+**FICAM — Federal Identity, Credential, and Access Management.**
+The federal framework governing identity, credentials, and access management across federal agencies. SailPoint NERM's FICAM alignment is one of the three justifications for the ADR-059 boundary exception.
+
+**HRIT — Human Resources Information Technology.**
+The canonical HR schema (Spec2-D1.1) that is the authoritative source for employee-of-record data in UIAO. HRIT records carry `employee_id`, `employment_status`, `department`, `division`, `manager_employee_id`, and other organizational fields. The JML pipeline diffs HRIT snapshots to detect lifecycle events.
+
+**JML — Joiner, Mover, Leaver.**
+The identity lifecycle event model. Joiner: a new employee or contractor entering the environment. Mover: an existing employee whose organizational position changes. Leaver: an employee who departs. Each event drives a distinct set of governance actions.
+
+**NERM — Non-Employee Risk Management.**
+SailPoint's SaaS product for non-employee identity lifecycle: contractors, vendors, business partners, sponsored external identities. FedRAMP Moderate authorized 2025-03-04 (package `FR2001938710A`, AWS GovCloud). UIAO's operational substrate for the non-employee branch of UIAO_141.
+
+**OrgPath.**
+UIAO's fifteen-facet organizational position model. Facets include Department, Division, Branch, Team, Role, Sub-Role, Tier, Security Clearance Level, and others. OrgPath is the substrate from which approval routing is computed and entitlement eligibility is derived.
+
+**Orphaned service account.**
+A service account — Entra service principal, managed identity, legacy `svc-*` account — whose `owner_employee_id` refers to a departed employee. Orphaned accounts run with valid credentials under no active custodian. Detected by `service_identity.py`, surfaced as `DRIFT-ORPHAN-NHAM`.
+
+**Routing layer.**
+The `routing.py` module that takes an OrgPath and returns the governing authority for a lifecycle action. Deterministic: the same OrgPath facets always resolve to the same authority. Pre-populates the approver field in ServiceNow tickets.
+
+**SSOT-mutation: never.**
+The adapter constraint that prevents a conformance adapter from writing to Entra ID or AD objects under UIAO SSOT. `sailpoint-nerm` carries this constraint in the adapter registry. NERM reads from UIAO-mediated sources; all writes back to Entra are UIAO-mediated.
+
+## Canon References
+
+| Canon | Title | Role in this book |
+|---|---|---|
+| ADR-059 | SailPoint NERM Boundary Exception | NERM carve-out, adapter slot, named exception schema |
+| ADR-092 | Active Governance | L0–L4 actuation ladder, control-plane/data-plane boundary |
+| ADR-051–054 | HRIT Adapter ADRs | Canonical HR schema, HRIT adapter activation |
+| ADR-055 | Customer Identity Canon Block | CIR scope for NERM, reciprocal-consumption doctrine |
+| ADR-056 | Login.gov Activation Contract | Login.gov as identity broker (cross-reference) |
+| UIAO_129 | Application Identity Model | Application binding surface (distinct from service_identity.py scope) |
+| UIAO_139 | Service Account Discovery Scan | Service account inventory baseline |
+| UIAO_141 | Customer Identity Model | Non-employee CIR target; NERM is the operational substrate |
+| UIAO_142 | Customer KYC Onboarding and Reciprocity Runbook | Onboarding contract and entitlement doctrine |
+| UIAO_200 | Identity Governance Actuation Ladder | Per-component L1/L2/L3 positions for this book's pipeline |
+
+::: {.callout-tip}
+## End of Book_27
+
+[← Chapter 6](Book_27_CPT_06.qmd) | [← Book_27 Index](Book_27.qmd)
+:::
