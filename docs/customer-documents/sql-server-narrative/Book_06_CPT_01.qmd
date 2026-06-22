@@ -80,6 +80,12 @@ This pattern becomes more prevalent as the ADR-002 server migration progresses. 
 
 An application host that has been domain-unjoined and whose connection string uses Managed Identity authentication generates no NTLM traffic and is fully compliant with both ADR-002 and ADR-068. An application host that has been domain-unjoined but whose connection string still uses Windows Integrated Security is now an NTLM source that did not exist before the domain unjoin. (ADR-002, ADR-068)
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** the LAN Manager Authentication Level policy for NTLMv1 blocking; Windows event log NTLM auditing (events 4624 and 4625); Defender for Identity NTLM signals; the product deprecation timeline.
+
+**What only you can provide:** the four connection-pattern classification across your estate — missing SPN, cross-site KDC unreachability, linked-server passthrough, ADR-002 domain-unjoin interaction; the SPN corrections, KDC routing fixes, linked-server migrations, and connection-string updates that each pattern class requires.
+:::
+
 ::: {.callout-note title="What Book 06 establishes — Chapter 1"}
 NTLM is a protocol, not a setting, so there is no single switch that removes it from SQL Server connections. NTLMv1 is blocked early — in ADR-068's Phase B, through the LAN Manager Authentication Level policy — and should never appear in a modern estate; NTLMv2 is restricted to exception groups in Phase B and fully blocked at the Phase C cutover of 2027-04-01 (ADR-068). Four connection patterns generate NTLM at the SQL layer — a missing or incorrect SPN, cross-site connections where the KDC is unreachable, linked-server passthrough authentication, and non-domain-joined application hosts created by the ADR-002 transformation — and each must be detected before it can be remediated.
 :::

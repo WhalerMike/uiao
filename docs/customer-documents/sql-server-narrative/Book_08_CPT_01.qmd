@@ -60,6 +60,12 @@ It also captures the authentication mechanism for that SQL connection (Windows I
 
 That record is the input to the ADR-069 migration triage and to the instance-level migration planning in Book 04. The two audit scripts must be correlated to produce a complete picture: `Spec3-D1.8` enumerates SQL Server instances, and `Spec3-D1.9` enumerates the upstream applications. Only when both are joined does each SQL Server instance reveal its full authentication chain — every application that depends on it, and the class each one falls into. (Spec3-D1.9, ADR-069)
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** OIDC/SAML federation (Class 3/2); Azure App Proxy (Class 1); Entra Domain Services (Class 4 last resort); Spec3-D1.9 (`Get-AppChainAudit.ps1`) as the application discovery instrument.
+
+**What only you can provide:** the per-application four-class classification across your estate; the two-track migration coordination — user authentication track plus SQL connection track — for each class; the correlation of Spec3-D1.9 application data with Spec3-D1.8 instance data to reveal the complete authentication chain.
+:::
+
 ::: {.callout-note title="What Book 08 establishes — Chapter 1"}
 SQL Server's authentication transformation is incomplete until the upstream applications that consume it are addressed as a full chain — user to application to database. ADR-069's four-class taxonomy ranks those applications by modernization capability: Class 3 (OIDC, full LDAP elimination) preferred, then Class 2 (SAML, Entra as IdP per ADR-051), then Class 1 (App Proxy, cannot modernize directly), then Class 4 (Entra Domain Services, last resort, which preserves the AD dependency and blocks the host instance from Entra-only posture). Every class carries two independent tracks — user authentication and the SQL connection — and `Spec3-D1.9` produces the per-application classification data that drives the triage.
 :::

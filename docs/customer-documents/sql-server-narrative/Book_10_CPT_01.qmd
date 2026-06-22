@@ -60,6 +60,12 @@ The three dependencies converge on a single sequencing question. TLS certificate
 
 If the ADCS decommission timeline runs earlier than the replacement-CA and CBA-deployment timeline, the program loses the interim posture ADR-068 depends on at precisely the moment it is most needed — connections that could not migrate to Entra auth in time would have no compliant fallback. The sequencing of ADCS decommission against the 2027-04-01 NTLM deadline is therefore a critical dependency, and it is one the as-yet-unwritten ADCS-migration ADR must explicitly address before any decommission date is set. (UIAO_135 §3.3, ADR-068)
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** Microsoft Cloud PKI (Intune Suite) as the ADCS replacement; certificate issuance via SCEP and EST; Intune-based trust chain deployment to enrolled endpoints; the Arc agent certificate for host authentication to the Azure control plane.
+
+**What only you can provide:** the `TrustServerCertificate=True` connection-string audit that must be resolved before certificate validation is enforced; the migration sequence from ADCS-issued to Cloud PKI–issued SQL Server certificates; the coordination of PKI migration timing with the SQL Server authentication migration — the new certificate must be in place and trusted by clients before the ADCS hierarchy is retired.
+:::
+
 ::: {.callout-note title="What Book 10 establishes — Chapter 1"}
 SQL Server touches ADCS in three places that a decommission plan rarely sees: the TLS certificate the engine presents for FedRAMP-Moderate connection encryption, type-C certificate-mapped logins, and Certificate-Based Authentication as the ADR-068 authorized NTLM-replacement interim posture. Spec3-D1.10 (`Get-CertBasedAuthAudit.ps1`) is the discovery instrument for all three. Because UIAO_135 §3.3 marks the ADCS-to-Cloud-PKI transformation "Not Yet Defined" and no normative ADR governs it, this book is analytical rather than prescriptive — its central finding is that the sequencing of ADCS decommission against the 2027-04-01 NTLM deadline is a critical dependency the as-yet-unwritten ADCS-migration ADR must resolve.
 :::

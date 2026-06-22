@@ -92,6 +92,12 @@ Arc does not move any login from the Windows type to the External Provider type.
 
 The login migration described in Book 04 is what actually changes the authentication behavior for SQL Server connections — Arc merely makes that migration possible. Understanding this distinction is essential for communicating the transformation scope to stakeholders: Arc deployment is a necessary prerequisite, but it is not the transformation itself.
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** the Connected Machine agent; the system-assigned Managed Identity; the Azure extension for SQL Server; Defender for SQL; Azure Monitor integration; the IMDS endpoint for credential-free token acquisition.
+
+**What only you can provide:** the deployment sequence across your estate; the Layer 1 / Layer 2 distinction communicated to every stakeholder so SQL-engine Entra auth is not blocked on OS-level domain unjoin; the governance model for Managed Identities after enrollment.
+:::
+
 ::: {.callout-note title="What Book 04 establishes — Chapter 1"}
 The Connected Machine agent gives a server a first-class ARM resource identity, and that identity anchors a system-assigned Managed Identity — a credential-free Entra ID service principal whose certificate is rotated automatically and never exposed to any human, served as an OAuth 2.0 token through the local IMDS endpoint. Arc enables two architecturally independent layers: Layer 1 SQL-engine Entra authentication (the subject of this series, available today on domain-joined SQL Server 2022 hosts) and Layer 2 OS-level Entra login (a separate, more disruptive transformation requiring domain unjoin). Layer 1 must never be blocked on Layer 2. Arc replaces the AD-anchored service account at the Azure plane and provides the capability for Entra authentication — but it does not itself activate it. Arc is preferred over the alternatives — a gMSA (re-anchors on the AD being retired), a vault-stored service-principal secret (reintroduces a stored bootstrap credential), or certificate-based authentication (the ADR-068 *interim* exception posture, not the steady state) — because its Managed Identity is the one credential-free, cloud-native option that survives the removal of AD.
 :::

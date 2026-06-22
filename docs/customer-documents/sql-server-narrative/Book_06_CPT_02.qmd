@@ -50,6 +50,12 @@ An instance whose connections have been migrated to Entra ID OAuth 2.0 tokens ge
 
 The sequencing imperative is clear: complete the SQL Server login migration before Phase C is applied. The 2027-04-01 backstop is the Phase C application date, and the SQL Server login migration must be complete before that date for every production instance in the estate. (ADR-068)
 
+::: {.callout-tip title="Division of labor"}
+**Microsoft provides:** the NTLM enforcement controls for each phase; Windows event log analysis instrumentation; the 2027/2028 platform-level network block that arrives regardless.
+
+**What only you can provide:** the discovery/restriction/elimination phase sequencing; the instance-by-instance rollout with defined rollback procedures; the login migration that must be complete before Phase C's 2027-04-01 network block is applied — because the block does not wait for late migrations.
+:::
+
 ::: {.callout-note title="What Book 06 establishes — Chapter 2"}
 ADR-068 elimination runs in three phases for SQL Server. Discovery uses Spec3-D1.8 plus Windows event-log analysis of NTLM events 4624 and 4625 at logon type 3 to baseline every NTLM-generating pattern. Restriction blocks NTLMv1, remediates SPNs, deploys Cloud Kerberos trust, migrates linked-server security contexts, and updates connection strings on domain-unjoined hosts. Elimination applies the domain-wide NTLM block at 2027-04-01 per ADR-068 — and any instance migrated to type-E Entra ID logins is immune, because it never generated NTLM to begin with.
 :::
