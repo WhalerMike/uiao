@@ -37,6 +37,21 @@ updated: "2026-05-23"
 # extensions; tenants declare facet semantics for those via a governed
 # PR before populating values.
 #
+# Projection subset (ADR-121): `projected: false` keeps a facet's
+# semantics (HR-SSOT / reporting / JML lifecycle) WITHOUT stamping it to
+# a scarce directory slot. Only projected facets are written per object,
+# so "attributes written per object" = the projected count, not the
+# defined count. Default is `projected: true` (omitted on projected
+# facets). Currently projected (6): region, department, division,
+# classification, clearance_level, account_type. Not projected (4): role,
+# cost_center, hire_date, term_date. The 15 extensionAttribute slots are a
+# shared, tenant-wide resource; projecting fewer leaves slots free for
+# other tooling and avoids the hybrid-synced read-only-in-cloud trap on
+# users. To go to a 4-facet projection, demote division and
+# clearance_level too — but that drops the cleared-only and
+# division-scoped policies in the shipped libraries, a capability
+# decision (see ADR-121 §Consequences).
+#
 # Facet kinds:
 #   - enumerated: a closed list of valid values, each with a
 #     description. The drift engine rejects any value not in the
@@ -102,6 +117,10 @@ facets:
 
   role:
     attribute: extensionAttribute4
+    # Not projected (ADR-121): no shipped dynamic-group / policy-target / AU
+    # rule targets role today. Kept as a defined facet (HR-SSOT / reporting);
+    # re-project via a governed PR when a rule needs it.
+    projected: false
     description: >-
       Principal's functional role. Used by Conditional Access policies
       that target role tiers (e.g., privileged action requires Director
@@ -120,6 +139,9 @@ facets:
 
   cost_center:
     attribute: extensionAttribute5
+    # Not projected (ADR-121): chargeback/reporting data, not a directory
+    # targeting key — belongs in the HR source of truth, not a scarce slot.
+    projected: false
     description: >-
       Cost center code used for chargeback reporting and license
       assignment governance. Tenant-specific prefix; the codebook ships
@@ -155,6 +177,10 @@ facets:
 
   hire_date:
     attribute: extensionAttribute7
+    # Not projected (ADR-121): a lifecycle date consumed by joiner/mover/leaver
+    # (JML) automation, not a dynamic-group equality key. Kept defined; the
+    # date lives with the JML workflow, not a directory slot.
+    projected: false
     description: >-
       ISO 8601 date the principal entered the organization. Drives
       joiner-lifecycle automation (group memberships, license grants,
@@ -165,6 +191,9 @@ facets:
 
   term_date:
     attribute: extensionAttribute8
+    # Not projected (ADR-121): leaver lifecycle date — JML automation input,
+    # not a dynamic-group key. Kept defined; lives with the JML workflow.
+    projected: false
     description: >-
       ISO 8601 date the principal will exit (or did exit) the
       organization. Empty string for active employees. Drives leaver-
