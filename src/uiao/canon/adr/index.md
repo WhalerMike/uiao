@@ -161,6 +161,7 @@ Per CR-003, accepted ADRs are immutable.
 |-----|-------|--------|------|
 | [ADR-057](adr-057-thousandeyes-networks-pillar-scope.md) | ThousandEyes — Networks-Pillar Conditional Adoption Under GCC-Moderate — Proposed | PROPOSED | 2026-04-27 |
 | [ADR-066](adr-066-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane | PROPOSED | 2026-05-05 |
+| [ADR-120](adr-120-transport-plane-reconciliation.md) | Transport-Plane Reconciliation — Rename Sixth Mission Class to `overlay`, Re-Allocate ADR-066's Squatted Spec Slots (amends ADR-066) | PROPOSED | 2026-06-22 |
 
 ### ADR-047 Numbering Collision (resolved 2026-06-15)
 
