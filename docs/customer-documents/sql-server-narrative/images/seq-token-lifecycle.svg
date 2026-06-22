@@ -1,0 +1,95 @@
+<svg viewBox="0 0 900 640" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Arial, sans-serif">
+  <rect width="900" height="640" fill="#FFFFFF"/>
+  <rect x="0" y="0" width="900" height="38" fill="#1F3A5F"/>
+  <text x="450" y="24" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">Token Session Lifecycle  —  Sequence Diagram</text>
+
+  <!-- Actor boxes -->
+  <rect x="8" y="52" width="120" height="44" rx="8" fill="#EAF4FB" stroke="#1F3A5F" stroke-width="2"/>
+  <text x="68" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="#1F3A5F">SQL Client</text>
+
+  <rect x="216" y="52" width="168" height="44" rx="8" fill="#EBF8F6" stroke="#1A9E8F" stroke-width="2"/>
+  <text x="300" y="72" text-anchor="middle" font-size="12" font-weight="700" fill="#1A9E8F">Microsoft Entra ID</text>
+  <text x="300" y="88" text-anchor="middle" font-size="11" fill="#1A9E8F">(token issuer)</text>
+
+  <rect x="472" y="52" width="168" height="44" rx="8" fill="#FFF8EE" stroke="#E67E22" stroke-width="2"/>
+  <text x="556" y="72" text-anchor="middle" font-size="12" font-weight="700" fill="#E67E22">Conditional Access</text>
+  <text x="556" y="88" text-anchor="middle" font-size="11" fill="#E67E22">(policy engine)</text>
+
+  <rect x="744" y="52" width="148" height="44" rx="8" fill="#EAF4FB" stroke="#1F3A5F" stroke-width="2"/>
+  <text x="818" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="#1F3A5F">SQL Server</text>
+
+  <!-- Lifelines -->
+  <defs>
+    <marker id="na" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#1F3A5F"/></marker>
+    <marker id="ta" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#1A9E8F"/></marker>
+    <marker id="oa" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#E67E22"/></marker>
+    <marker id="da" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#4A6080"/></marker>
+  </defs>
+  <line x1="68" y1="96" x2="68" y2="556" stroke="#1F3A5F" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <line x1="300" y1="96" x2="300" y2="556" stroke="#1A9E8F" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <line x1="556" y1="96" x2="556" y2="556" stroke="#E67E22" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <line x1="818" y1="96" x2="818" y2="556" stroke="#1F3A5F" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+  <!-- Step 1: auth + MFA -->
+  <line x1="68" y1="130" x2="290" y2="130" stroke="#1F3A5F" stroke-width="2" marker-end="url(#na)"/>
+  <rect x="84" y="112" width="150" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="159" y="125" text-anchor="middle" font-size="12" fill="#1F3A5F">① auth + MFA challenge</text>
+  <text x="159" y="148" text-anchor="middle" font-size="11" fill="#6B7E95">(OIDC / OAuth 2.0 flow)</text>
+
+  <!-- Step 2: Entra evaluates CA -->
+  <line x1="300" y1="178" x2="546" y2="178" stroke="#1A9E8F" stroke-width="2" marker-end="url(#ta)"/>
+  <rect x="330" y="160" width="156" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="408" y="173" text-anchor="middle" font-size="12" fill="#1A9E8F">② evaluate CA policies</text>
+
+  <!-- Step 3: CA result + policy badge -->
+  <line x1="556" y1="218" x2="310" y2="218" stroke="#E67E22" stroke-width="2" marker-end="url(#oa)"/>
+  <rect x="336" y="200" width="174" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="423" y="213" text-anchor="middle" font-size="12" fill="#E67E22">③ policy result: ALLOW</text>
+  <!-- CA checks badge -->
+  <rect x="370" y="224" width="270" height="52" rx="8" fill="#FFF8EE" stroke="#E67E22" stroke-width="1.5"/>
+  <text x="505" y="243" text-anchor="middle" font-size="11" fill="#E67E22">CA checks: MFA ✓  device compliant ✓</text>
+  <text x="505" y="261" text-anchor="middle" font-size="11" fill="#E67E22">location ✓  sign-in risk: low ✓</text>
+
+  <!-- Step 4: signed token issued -->
+  <line x1="300" y1="300" x2="78" y2="300" stroke="#1A9E8F" stroke-width="2.5" marker-end="url(#ta)"/>
+  <rect x="86" y="282" width="180" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="176" y="295" text-anchor="middle" font-size="12" fill="#1A9E8F">④ signed access token</text>
+  <text x="176" y="318" text-anchor="middle" font-size="11" fill="#6B7E95">(JWT: upn, groups, amr, exp…)</text>
+
+  <!-- Step 5: present token to SQL -->
+  <line x1="68" y1="348" x2="808" y2="348" stroke="#1F3A5F" stroke-width="2" marker-end="url(#na)"/>
+  <rect x="300" y="330" width="250" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="425" y="343" text-anchor="middle" font-size="12" fill="#1F3A5F">⑤ present token at SQL connect</text>
+
+  <!-- Step 6: SQL validates (activation box) -->
+  <rect x="802" y="364" width="32" height="72" rx="4" fill="#EAF4FB" stroke="#1F3A5F" stroke-width="2"/>
+  <text x="750" y="384" text-anchor="end" font-size="11" fill="#1F3A5F">SQL verifies</text>
+  <text x="750" y="400" text-anchor="end" font-size="11" fill="#1F3A5F">signature +</text>
+  <text x="750" y="416" text-anchor="end" font-size="11" fill="#1F3A5F">claims</text>
+
+  <!-- Step 7: connection open -->
+  <line x1="802" y1="446" x2="78" y2="446" stroke="#1F3A5F" stroke-width="2" marker-end="url(#na)"/>
+  <rect x="300" y="428" width="260" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="430" y="441" text-anchor="middle" font-size="12" fill="#1F3A5F">⑥ connection open — session active</text>
+
+  <!-- Step 8: silent refresh note -->
+  <line x1="68" y1="490" x2="290" y2="490" stroke="#4A6080" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#da)"/>
+  <rect x="72" y="472" width="176" height="18" rx="4" fill="#FFFFFF"/>
+  <text x="160" y="485" text-anchor="middle" font-size="11" fill="#4A6080">⑦ silent token refresh (MSAL)</text>
+  <text x="160" y="508" text-anchor="middle" font-size="10" fill="#6B7E95">before exp — no user prompt</text>
+
+  <!-- Footer -->
+  <rect x="8" y="530" width="884" height="52" rx="10" fill="#EAF4FB" stroke="#1F3A5F" stroke-width="1.5"/>
+  <text x="450" y="552" text-anchor="middle" font-size="13" font-weight="600" fill="#1F3A5F">Token expiry: default 60–75 min · Refresh token: up to 24 h · CA re-evaluated at every new token</text>
+  <text x="450" y="572" text-anchor="middle" font-size="12" fill="#4A6080">No domain controller involved at any step.  All auth events written to Entra sign-in log.</text>
+
+  <!-- Actor bottom mirrors -->
+  <rect x="8" y="556" width="120" height="36" rx="8" fill="#EAF4FB" stroke="#1F3A5F" stroke-width="2"/>
+  <text x="68" y="579" text-anchor="middle" font-size="12" font-weight="700" fill="#1F3A5F">SQL Client</text>
+  <rect x="216" y="556" width="168" height="36" rx="8" fill="#EBF8F6" stroke="#1A9E8F" stroke-width="2"/>
+  <text x="300" y="579" text-anchor="middle" font-size="12" font-weight="700" fill="#1A9E8F">Microsoft Entra ID</text>
+  <rect x="472" y="556" width="168" height="36" rx="8" fill="#FFF8EE" stroke="#E67E22" stroke-width="2"/>
+  <text x="556" y="579" text-anchor="middle" font-size="12" font-weight="700" fill="#E67E22">Conditional Access</text>
+  <rect x="744" y="556" width="148" height="36" rx="8" fill="#EAF4FB" stroke="#1F3A5F" stroke-width="2"/>
+  <text x="818" y="579" text-anchor="middle" font-size="12" font-weight="700" fill="#1F3A5F">SQL Server</text>
+</svg>

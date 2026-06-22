@@ -82,6 +82,14 @@ The series traces a single architectural journey. These three diagrams show it a
 
 ![The new world: no domain controller in the authentication path. The client authenticates to Entra ID with MFA, Conditional Access evaluates identity and device, an OAuth 2.0 token is issued, and the SQL Server validates the token signature against Entra's public key infrastructure. The token carries context — how you authenticated, which groups you belong to, whether your device is compliant — making the database application-aware.](images/wan-03-application-aware-token.svg){#fig-index-wan-03 fig-alt="WAN topology diagram on white background showing Client on the left connecting upward to Microsoft Entra ID with a Conditional Access Policy Engine box listing identity checks and device checks. Entra issues an OAuth 2.0 access token shown in an amber box with two columns of claims — standard claims (iss, sub, upn, aud, exp) and context claims (amr showing MFA method, groups from OrgPath, deviceid compliant, roles). The token flows right to Arc-enabled SQL Server which accepts only type-E logins and has eliminated type-W, type-G, type-S, Kerberos, NTLM, and domain controller dependency. A navy footer bar contrasts old world identity-only authentication with new world application-aware token authentication. Navy, teal, amber palette, white background." width="100%"}
 
+### Protocol detail
+
+The step-by-step exchange inside each authentication path.
+
+![The Kerberos session lifecycle: AS-REQ, TGT, TGS-REQ with SPN, service ticket, AP-REQ to SQL, SQL validation, AP-REP — and the NTLM silent fallback when the SPN is missing.](images/seq-kerberos-lifecycle.svg){#fig-index-seq-kerberos fig-alt="UML sequence diagram on white background. Three vertical lifelines: SQL Client (navy), Domain Controller KDC (red dashed), SQL Server (navy). Seven numbered steps trace the full Kerberos exchange. SPN badge on step 3. Bottom panel explains the NTLM silent fallback and ADR-068 2027-04-01 backstop." width="100%"}
+
+![The OAuth 2.0 token session lifecycle: auth+MFA to Entra, Conditional Access evaluation, signed token issued, token presented to SQL, SQL validation, connection open, and silent token refresh.](images/seq-token-lifecycle.svg){#fig-index-seq-token fig-alt="UML sequence diagram on white background. Four vertical lifelines: SQL Client (navy), Microsoft Entra ID (teal), Conditional Access Engine (amber), SQL Server (navy). Seven numbered steps. CA checks badge on step 3. SQL validation activation box on step 5. Silent refresh step dashed. Footer: token expiry 60-75 min, no domain controller at any step, all events in Entra sign-in log." width="100%"}
+
 ### Simplified overview
 
 The same three moments, simplified for quick orientation.
