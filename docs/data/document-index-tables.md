@@ -114,7 +114,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
 | [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Active | Executive, Customer, Technical |
 | [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](whitepapers/hybrid-join-without-governance.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
-| [Unified DNS in the Hybrid Multi-Cloud](whitepapers/infoblox-hybrid-dns-unified-ddi.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
+| [Next Generation DNS](whitepapers/infoblox-hybrid-dns-unified-ddi.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
 | [Modernization Governance — Whitepaper](whitepapers/modernization-governance-whitepaper.html) | Active | Executive, Customer, Architect |
 | [From Mainframe to Application-Aware Modernization](whitepapers/modernization-journey.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Choose Your Partners — The OrgPath Composability Matrix](whitepapers/orgpath-composability-matrix.html) | Active | Executive, Customer, Technical |
