@@ -20,6 +20,11 @@ Key differences from the AI JML module:
 
 Canon reference: UIAO_197 (pattern), Spec2-D1.1 (HR schema),
 ADRs 051-054 (HRIT adapters), governance/identity/routing.py (approver lookup).
+
+Actuation tier: L2 (Advise).  This module produces event logs and action
+lists; it changes nothing.  Actions marked ``requires_confirmation=True``
+require a human to execute them.  The L3 boundary is in
+servicenow_ticket.py when ``dry_run=False``.  See UIAO_200.
 """
 
 from __future__ import annotations
