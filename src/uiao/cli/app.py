@@ -54,6 +54,7 @@ from uiao.cli.doctor import doctor_app  # noqa: E402
 from uiao.cli.enforcement import enforcement_app  # noqa: E402
 from uiao.cli.evidence import evidence_app  # noqa: E402
 from uiao.cli.generate import generate_app  # noqa: E402
+from uiao.cli.identity import identity_app  # noqa: E402
 from uiao.cli.init import init_app  # noqa: E402
 from uiao.cli.ir import ir_app  # noqa: E402
 from uiao.cli.ksi import ksi_app  # noqa: E402
@@ -70,6 +71,7 @@ from uiao.cli.zta import zta_app  # noqa: E402
 
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(ai_inventory_app, name="ai-inventory")
+app.add_typer(identity_app, name="identity")
 app.add_typer(canon_app, name="canon")
 app.add_typer(doctor_app, name="doctor")
 app.add_typer(upgrade_app, name="upgrade")
