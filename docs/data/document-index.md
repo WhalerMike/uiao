@@ -114,6 +114,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
 | [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Active | Executive, Customer, Technical |
 | [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](whitepapers/hybrid-join-without-governance.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
+| [Unified DNS in the Hybrid Multi-Cloud](whitepapers/infoblox-hybrid-dns-unified-ddi.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
 | [Modernization Governance — Whitepaper](whitepapers/modernization-governance-whitepaper.html) | Active | Executive, Customer, Architect |
 | [From Mainframe to Application-Aware Modernization](whitepapers/modernization-journey.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Choose Your Partners — The OrgPath Composability Matrix](whitepapers/orgpath-composability-matrix.html) | Active | Executive, Customer, Technical |
@@ -143,12 +144,14 @@ Each adapter has a paired specification and validation suite. The spec describes
 | Title | Status | Audience |
 |-------|--------|----------|
 | [Active Governance](platform/active-governance.html) | Active | Platform engineers · architects · authorizing officials · integrators |
+| [UIAO AWS SaaS](platform/aws-saas.html) | Active | Platform engineers · cloud operators · identity architects |
 | [UIAO Azure SaaS](platform/azure-saas.html) | Active | Platform engineers · cloud operators · identity architects |
 | [UIAO CI / Pipeline Integration Guide](platform/ci-pipeline-integration.html) | DRAFT | Platform engineers · DevSecOps · CI/CD operators |
 | [UIAO Git Server — Windows Server 2025 with IIS](platform/git-server-implementation.html) | Active | Customer, Technical |
 | [UIAO Governance Dashboard Design](platform/governance-dashboard-design.html) | Active | Customer, Technical, Executive |
 | [OrgPath Runtime](platform/orgpath-runtime.html) | Active | Platform engineers · identity architects · governance operators |
 | [Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Intune, Azure Arc, and OrgTree](platform/platform-server-build.html) | DRAFT | Platform engineers · sysadmins |
+| [UIAO SaaS Quickstart](platform/saas-quickstart.html) | Active | Platform engineers · cloud operators · evaluators |
 | [UIAO API — Windows Server Deployment Guide](platform/windows-server-deployment.html) | DRAFT | Platform engineers · sysadmins · AD administrators |
 
 

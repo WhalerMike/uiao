@@ -54,6 +54,7 @@
 - [UIAO Adapter Segmentation Overview](canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.html)
 - [UIAO-core Value Proposition — Two-Way Governance Architecture for SCuBA and BOD 25-01](canon/UIAO_005_SCuBA_Value_Proposition_v1.0.html)
 - [OrgPath in NAC / 802.1X & Cert-Based Network Admission](canon/UIAO_012_OrgPath_in_NAC_and_8021X.html)
+- [GPO Modernization — Parse, Crosswalk, OrgPath Join](canon/UIAO_014_GPO_Modernization_Parse_Crosswalk_OrgPath_Join_v1.0.html)
 - [Identity & Directory Transformation Inventory — AD to Entra ID](canon/UIAO_135_identity-directory-transformation-inventory.html)
 - [UIAOIdentityAssessment Module Specification](canon/UIAO_181_UIAOIdentityAssessment_Module_Specification.html)
 - [UIAOImportAdapters Module Specification](canon/UIAO_182_UIAOImportAdapters_Module_Specification.html)
@@ -70,6 +71,7 @@
 - [OrgPath Multi-Cloud Binding Profiles — Vendor-Neutral Storage Contract & Zero Trust Subject](canon/UIAO_193_OrgPath_MultiCloud_Binding.html)
 - [LocPath Codebook — Canonical Physical-Location Addressing & Site Classification](canon/UIAO_194_LocPath_Codebook.html)
 - [Addressing-Plane Drift Taxonomy — DNS and Namespace Governance](canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.html)
+- [UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)](canon/UIAO_198_Risk_Assessment_Methodology.html)
 
 ## Architecture Decision Records
 
@@ -176,6 +178,18 @@
 - [FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption](adr/adr-106-fedramp-20x-integration.html)
 - [Network AAA Adapter Registration and Control-Library `implemented_by` Closure](adr/adr-107-network-aaa-adapter-registration.html)
 - [Addressing-Plane Drift Gate and Shared drift_core Primitive](adr/adr-108-addressing-plane-drift-gate.html)
+- [Active Governance Directory — Write Operations as Governed Intent, Not Store Mutation](adr/adr-109-active-governance-directory-write-as-intent.html)
+- [Active Governance Directory — AD-Compatible Schema as a Read-Only Synthesized Veneer, Not an AD Store](adr/adr-110-active-governance-directory-ad-schema-veneer.html)
+- [BOD 26-04 Risk-Based Vulnerability Remediation SLA — Superseding the Flat 72-Hour Critical Clock (ADR-043 D2)](adr/adr-111-bod-26-04-risk-based-vulnerability-sla.html)
+- [AI System JML Lifecycle — Joiner, Mover, and Leaver Events for Federal AI System Identities](adr/adr-114-ai-system-jml-lifecycle.html)
+- [SaaS production-readiness — quotas, rate limiting, audit trail, and problem+json](adr/adr-115-saas-production-readiness.html)
+- [Azure SaaS deployment hardening — passwordless Postgres and an IaC validation gate](adr/adr-116-azure-saas-deployment-hardening.html)
+- [AWS SaaS surface — multi-tenant UIAO on ECS Fargate + RDS, via AWS CDK](adr/adr-117-aws-saas-surface.html)
+- [Distributed rate limiting for the SaaS data plane — a shared-store, globally-exact limiter](adr/adr-118-distributed-rate-limiting.html)
+- [Private networking for the SaaS data tier — VNet-integrated Postgres (Azure) and VPC endpoints (AWS)](adr/adr-119-saas-private-networking.html)
+- [GPO settings-level analysis: own the parse, consume Microsoft's GPO→MDM crosswalk](adr/adr-120-gpo-settings-analyzer.html)
+- [OrgPath projection subset — stamp fewer attributes per object than the codebook defines](adr/adr-121-orgpath-projection-subset.html)
+- [GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join](adr/adr-122-gpo-modernization-parse-crosswalk-orgpath.html)
 
 ## Schema Reference
 
@@ -194,6 +208,7 @@
 - [UIAO Dynamic Group Library](reference/schemas/dynamic-groups.schema.html)
 - [SCIM 2.0 Enterprise User Extension (RFC 7643 §4.3)](reference/schemas/enterprise-user.schema.html)
 - [UIAO KSI Evidence Bundle](reference/schemas/evidence-bundle.schema.html)
+- [UIAO GPO Settings Analysis Schema](reference/schemas/gpo-analytics.schema.html)
 - [SCIM 2.0 Group Resource (RFC 7643 §4.2)](reference/schemas/group.schema.html)
 - [UIAO Image Registry Schema](reference/schemas/image-registry.schema.html)
 - [UIAO Unified Key Security Indicator (KSI) Schema](reference/schemas/ksi.schema.html)
@@ -234,6 +249,7 @@
 
 - **Operational Guides**
   - [Modernization](customer-documents/operational-guides/index.html)
+  - [Active Governance Directory — Operator & Implementation Guide](customer-documents/operational-guides/active-governance-directory/index.html)
   - [UIAO Conditional Access Policy Library](customer-documents/operational-guides/access-plane/conditional-access-library.html)
   - [UIAO Active Directory Interaction Guide](customer-documents/operational-guides/ad-interaction-guide.html)
   - [UIAO End User Training Guide](customer-documents/operational-guides/end-user-training.html)
@@ -252,6 +268,11 @@
   - [Enterprise Application Access Governance and Approval Model](customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.html)
   - [OrgPath Identity Governance Structure](customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.html)
   - [Help Desk Flow — Intake, Triage, and Routing](customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.html)
+- **Federal AI Identity Governance**
+  - [Federal AI Identity Governance](customer-documents/operational-guides/ai-identity-governance/index.html)
+  - [Federal AI Identity Governance — Manual Path](customer-documents/operational-guides/ai-identity-governance/manual-path.html)
+  - [Federal AI Identity Governance — Governed Path](customer-documents/operational-guides/ai-identity-governance/governed-path.html)
+  - [Federal AI Identity Governance — Centralized OFCIO Deployment Model](customer-documents/operational-guides/ai-identity-governance/central-deployment.html)
 - **Intune + Azure Arc Modernization (Manual & Governed)**
   - [Intune + Azure Arc Modernization](customer-documents/operational-guides/intune-arc-modernization/index.html)
   - [Intune + Azure Arc — Manual Path](customer-documents/operational-guides/intune-arc-modernization/manual-path.html)
@@ -336,6 +357,8 @@
   - [UIAO Governance Dashboard Design](customer-documents/platform/governance-dashboard-design.html)
   - [OrgPath Runtime](customer-documents/platform/orgpath-runtime.html)
   - [UIAO Azure SaaS](customer-documents/platform/azure-saas.html)
+  - [UIAO AWS SaaS](customer-documents/platform/aws-saas.html)
+  - [UIAO SaaS Quickstart](customer-documents/platform/saas-quickstart.html)
   - [Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Intune, Azure Arc, and OrgTree](customer-documents/platform/platform-server-build.html)
   - [UIAO Git Server — Windows Server 2025 with IIS](customer-documents/platform/git-server-implementation.html)
 
@@ -590,6 +613,7 @@
     - [Shadow AI — Deployed Without Inventory](customer-documents/orgpath-narrative/Book_21_CPT_06.html)
     - [OrgPath as the Authorization Spine for AI](customer-documents/orgpath-narrative/Book_21_CPT_07.html)
     - [The Machine-Identity Lifecycle for Federal AI](customer-documents/orgpath-narrative/Book_21_CPT_08.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_21_CPT_09.html)
   - [Book_22 — OrgPath and Customer Identity](customer-documents/orgpath-narrative/Book_22.html)
     - [The Identity Surface Agencies Actually Serve](customer-documents/orgpath-narrative/Book_22_CPT_01.html)
     - [NIST 800-63 and the Three Assurance Levels](customer-documents/orgpath-narrative/Book_22_CPT_02.html)
@@ -597,6 +621,7 @@
     - [Agencies as Vendors and Customers of Each Other](customer-documents/orgpath-narrative/Book_22_CPT_04.html)
     - [The KYC Protocol — Reciprocal Attribute Exchange](customer-documents/orgpath-narrative/Book_22_CPT_05.html)
     - [Closing the Customer Identity Gap](customer-documents/orgpath-narrative/Book_22_CPT_06.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_22_CPT_07.html)
   - [Book_23 — OrgPath and E911 Compliance](customer-documents/orgpath-narrative/Book_23.html)
     - [Where the Phone Call Goes](customer-documents/orgpath-narrative/Book_23_CPT_01.html)
     - [The Dispatchable Location of Record](customer-documents/orgpath-narrative/Book_23_CPT_02.html)
@@ -604,6 +629,7 @@
     - [The E911 Compliance Check — Three Codes](customer-documents/orgpath-narrative/Book_23_CPT_04.html)
     - [RTLS and the Observational Layer](customer-documents/orgpath-narrative/Book_23_CPT_05.html)
     - [From LocPath to Dispatch](customer-documents/orgpath-narrative/Book_23_CPT_06.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_23_CPT_07.html)
   - [Book_24 — OrgPath and FedRAMP 20x](customer-documents/orgpath-narrative/Book_24.html)
     - [The End of the Point-in-Time Assessment](customer-documents/orgpath-narrative/Book_24_CPT_01.html)
     - [Key Security Indicators — What Gets Measured](customer-documents/orgpath-narrative/Book_24_CPT_02.html)
@@ -611,6 +637,7 @@
     - [OrgPath as the Authorization Scope](customer-documents/orgpath-narrative/Book_24_CPT_04.html)
     - [CATO — Continuous Authorization in Practice](customer-documents/orgpath-narrative/Book_24_CPT_05.html)
     - [FedRAMP 20x and the AI Surface](customer-documents/orgpath-narrative/Book_24_CPT_06.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_24_CPT_07.html)
   - [Book_25 — OrgPath Beyond Microsoft](customer-documents/orgpath-narrative/Book_25.html)
     - [The Microsoft-Shaped Substrate](customer-documents/orgpath-narrative/Book_25_CPT_01.html)
     - [Facets vs. Locators — The Abstraction That Makes It Work](customer-documents/orgpath-narrative/Book_25_CPT_02.html)
@@ -619,6 +646,14 @@
     - [The IdP Landscape: Okta, LDAP, PingOne, Keycloak, Auth0](customer-documents/orgpath-narrative/Book_25_CPT_05.html)
     - [Zero Trust Across a Mixed Estate](customer-documents/orgpath-narrative/Book_25_CPT_06.html)
     - [Adopting Multi-Cloud OrgPath — The Binding Profile Onboarding Path](customer-documents/orgpath-narrative/Book_25_CPT_07.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_25_CPT_08.html)
+  - [Book_26 — OrgPath as a Multi-Cloud Governance SaaS](customer-documents/orgpath-narrative/Book_26.html)
+    - [One Substrate, Many Tenants](customer-documents/orgpath-narrative/Book_26_CPT_01.html)
+    - [Hardening the Plane](customer-documents/orgpath-narrative/Book_26_CPT_02.html)
+    - [Passwordless on Azure](customer-documents/orgpath-narrative/Book_26_CPT_03.html)
+    - [The Same Plane on AWS](customer-documents/orgpath-narrative/Book_26_CPT_04.html)
+    - [One Plane, Many Clouds](customer-documents/orgpath-narrative/Book_26_CPT_05.html)
+    - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_26_CPT_06.html)
 - **OrgPath for All Clouds (6-chapter series)**
   - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
   - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)
@@ -733,6 +768,8 @@
   - [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](customer-documents/whitepapers/zta-scuba-relationship.html)
   - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
   - [From Mainframe to Application-Aware Modernization](customer-documents/whitepapers/modernization-journey.html)
+  - [Choose Your Partners — The OrgPath Composability Matrix](customer-documents/whitepapers/orgpath-composability-matrix.html)
+  - [Federal AI Governance — Submission Readiness Brief](customer-documents/whitepapers/federal-ai-governance-submission-readiness.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)
   - [AODIM Architecture Document](customer-documents/architecture-series/aodim-architecture.html)

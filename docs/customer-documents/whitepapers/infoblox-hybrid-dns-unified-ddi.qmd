@@ -1,0 +1,528 @@
+---
+title: "Unified DNS in the Hybrid Multi-Cloud"
+subtitle: "Why per-CSP DNS sync fails, how Infoblox Universal DDI fixes it, and what Cisco Catalyst SD-WAN changes — including the federal sovereign cloud gap that neither vendor documents"
+doc-type: whitepaper
+audience: [Executive, Architect, Engineer, Technical-Lead]
+author: Michael Stratton
+date: "June 2026"
+status: Draft
+canon-source: "src/uiao/canon/"
+derived-from: "Synthesized from Infoblox Universal DDI product documentation, Cisco Catalyst SD-WAN INR integration documentation, and Microsoft Learn INR tenant scoping guidance. Fills the documented gap: no vendor publishes the DNS interception interaction between Cisco Catalyst SD-WAN and Infoblox DDI in a hybrid multi-cloud environment."
+repo-path: docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd
+created-at: 2026-06-22
+updated-at: 2026-06-22
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: draft
+tiers_adopted: []
+lifecycle_review: 2026-12-22
+---
+
+# Unified DNS in the Hybrid Multi-Cloud {.unnumbered}
+
+::: {.callout-tip appearance="simple"}
+**[Download this whitepaper as DOCX](infoblox-hybrid-dns-unified-ddi.docx)** — a
+Word copy of this page, regenerated on every site deploy. (Also available from
+the **Other Formats** link in the page sidebar.)
+:::
+
+::: {.callout-note}
+## In this whitepaper
+
+Most hybrid DNS conversations begin at the wrong layer. They start with the
+question of *which resolver to use* — Route 53, Azure Private DNS, Infoblox NIOS,
+or a CSP-native service — when the real question is *who holds the policy plane*
+and *what happens when that plane is split across five consoles that do not
+synchronize*.
+
+This paper makes three arguments. First: the traditional model of managing
+per-CSP DNS independently — one team for Route 53, another for Azure Private DNS,
+a third for GCP Cloud DNS — produces a class of failure called **split-brain DNS**
+that is structurally impossible to eliminate without a unified control plane.
+Second: Infoblox Universal DDI is that unified control plane, and its architecture
+is well-documented — but the documentation stops short of the SD-WAN layer.
+Third: **Cisco Catalyst SD-WAN**, the only Microsoft-certified partner for
+Informed Network Routing (INR), intercepts DNS queries at the branch in ways that
+interact with the Infoblox resolution chain in a manner neither vendor currently
+documents. That interaction — and a critical scoping boundary that makes INR
+irrelevant to GCC Moderate, GCC High, and DoD tenants — is the subject of
+the second half of this paper.
+
+The reference architecture in Part 5 does not exist in any Infoblox or Cisco
+publication. It is synthesized here from first principles, vendor documentation,
+and RFC-level DNS forwarder behavior.
+:::
+
+::: {.callout-important}
+## Scope boundary — Cisco Catalyst SD-WAN only
+
+This paper addresses SD-WAN DNS interception exclusively in the context of
+**Cisco Catalyst SD-WAN (IOS XE SD-WAN ≥ 20.4/17.4)**, which as of the
+Microsoft Learn INR documentation (updated 2026-03-10) is the only SD-WAN
+vendor listed in the INR "Currently enabled solutions" table. No other SD-WAN
+vendor is covered.
+:::
+
+---
+
+## Part 1 — The Broken Promise of Per-CSP DNS Sync
+
+### 1.1 How organizations arrive at three DNS consoles
+
+No organization sets out to manage DNS in three places. The fragmentation is
+an emergent property of cloud adoption: when the first workload moved to AWS,
+the team adopted Route 53 because it is native, well-integrated, and requires
+no additional licensing. When Azure arrived, Azure Private DNS was the natural
+companion to Azure Private Endpoints. When GCP joined the estate, Cloud DNS
+followed. Each decision was locally rational. The aggregate result is an
+organization whose DNS policy lives in three independent systems that were
+never designed to share state.
+
+The operational surface this produces is significant. Each CSP DNS system has
+its own console, its own API, its own zone model, its own conditional forwarding
+syntax, and its own behavior under failure. An engineer who knows Route 53
+Resolver rules fluently must relearn the equivalent construct in Azure (Private
+DNS zones linked to virtual networks via DNS zone links) and again in GCP
+(Cloud DNS private zones with inbound server policies). The *concepts* translate;
+the *mechanics* do not.
+
+On-premises DNS — typically Infoblox NIOS or Windows Server DNS — sits alongside
+these three systems, not above them. It can forward to CSP resolvers, and CSP
+resolvers can forward queries back, but the forwarding topology must be manually
+configured and manually maintained on every participating system. There is no
+shared policy object, no shared zone propagation mechanism, and no authoritative
+record of what the intended resolution path is for any given namespace.
+
+### 1.2 Split-brain DNS: the failure mode that scales with complexity
+
+Split-brain DNS is what you get when the answer to a DNS query depends on
+*where the query originates*, not on what the intended answer is.
+
+In a per-CSP model, split-brain is structurally guaranteed. Consider a private
+endpoint for an Azure Storage account. Azure Private DNS resolves
+`storageaccount.blob.core.windows.net` to a RFC 1918 address — say,
+`10.0.1.50` — when the query arrives from within the virtual network. The same
+query from on-premises resolves to a public IP unless the on-premises DNS
+server has been explicitly configured to forward `.blob.core.windows.net`
+queries to the Azure Private DNS resolver, *and* that forwarding rule is kept
+current as endpoints are added, removed, or re-homed to different virtual
+networks.
+
+![The per-CSP DNS failure modes: split-brain (resolution diverges by query origin), sync lag (private zone changes propagate with delay), and policy drift (three consoles enforce three independent security postures with no reconciliation)](images/infoblox-hybrid-dns-diagram-01-per-csp-failure.png){#fig-per-csp-failure fig-alt="Blueprint diagram on a white background. Three vertical lanes labeled Route 53, Azure Private DNS, and GCP Cloud DNS, each with a console icon and an independent lock icon showing separate security policies. A central on-premises NIOS box below shows arrows pointing up to each lane with red dashed connectors labeled manual forwarding rules. Three red failure callout boxes: SPLIT-BRAIN — same query resolves to RFC 1918 from inside CSP, resolves to public IP from on-prem when forwarding lags; SYNC LAG — private zone change takes minutes to propagate across manual forwarding topology; POLICY DRIFT — RPZ rule added in on-prem does not automatically apply in Route 53 or Azure DNS. Navy background boxes for the CSP lanes, teal for NIOS, red for failure callouts. White background overall. Federal navy #1F3A5F, teal #1A9E8F, amber #D4860B, red #C0392B." width="100%"}
+
+The failure this produces is insidious because it is intermittent. A workload
+running on an EC2 instance in AWS correctly resolves the Azure private endpoint
+only if the Route 53 Resolver outbound rule is configured, current, and
+forwarding to the correct Azure Private Resolver IP. If the Azure private
+endpoint is deprovisioned and a new one is created at a different IP, the
+Route 53 rule must be updated. That update is manual. Until it is made, the
+old IP answers — or the query fails — and the failure appears at the
+application layer, not the DNS layer, because the DNS response itself may look
+correct (an RFC 1918 address is returned) while routing to the wrong host.
+
+Infoblox's multi-cloud solutions page states the core problem directly:
+*"Siloed DNS, IP address management, security and policy across public clouds
+hinder control over IP spaces and global policy enforcement, raising security
+risks."* The paper's argument is more specific: the problem is not merely
+operational friction. The problem is that the traditional model makes a
+*consistent* security posture structurally impossible, because policy must be
+replicated by hand to every participating DNS system and the replication has
+no enforcement mechanism.
+
+### 1.3 Policy fragmentation across three consoles
+
+DNS security policy — Response Policy Zones (RPZ), DNS Firewall rules, DNSSEC
+validation chains — is not portable across CSP DNS systems. An RPZ block
+list maintained in Infoblox NIOS applies only to queries that reach NIOS.
+Queries that are forwarded directly to Route 53 by a workload on an EC2
+instance bypass the RPZ entirely. AWS Route 53 Resolver DNS Firewall has its
+own rule syntax, its own domain list management, and its own logging output.
+Azure DNS Private Resolver has no equivalent RPZ mechanism; security policy
+there is enforced at the network layer, not the DNS layer.
+
+The practical consequence: an organization that believes it has a unified
+DNS security posture because its on-premises NIOS cluster is running RPZ
+actually has a security posture that applies only to queries that reach
+NIOS — and in a hybrid multi-cloud estate, a significant fraction of queries
+never do.
+
+---
+
+## Part 2 — Infoblox Universal DDI: One Control Plane Across Every Surface
+
+### 2.1 What Universal DDI is
+
+Infoblox Universal DDI is a SaaS management plane that provides a single
+console and API for DNS, DHCP, and IP address management (DDI) across a
+heterogeneous estate. As of the November 2025 / January 2026 feature release,
+the management plane covers:
+
+- **On-premises:** Infoblox NIOS, Infoblox NIOS-X, Microsoft Windows Server DNS
+- **AWS:** Amazon Route 53
+- **Azure:** Microsoft Azure DNS (with documented integration limitations noted below)
+- **GCP:** Google Cloud DNS
+- **Edge and CDN:** Cloudflare, Akamai
+
+The Cloudflare and Akamai integrations were added in late 2025, confirmed by
+Network World's November 2025 coverage of the Universal DDI platform expansion.
+The current integration list should be verified against the Infoblox Universal
+DDI product page before publication, as integrations are actively evolving.
+
+![Infoblox Universal DDI as a single SaaS management plane spanning on-premises NIOS and NIOS-X, all three major CSPs, and edge providers — one console, one API, one policy object propagated to every DNS surface](images/infoblox-hybrid-dns-diagram-02-universal-ddi-plane.png){#fig-universal-ddi fig-alt="Architecture diagram on a white background. At the top center, a large teal rounded rectangle labeled INFOBLOX UNIVERSAL DDI — SaaS Management Plane — single console, single API, unified policy. Below it, seven boxes arranged in two rows connected by solid teal lines downward: Row 1 — on-premises: NIOS grid (navy), NIOS-X (navy), Windows Server DNS (navy); Row 2 — cloud: Amazon Route 53 (amber outline), Microsoft Azure DNS (amber outline, dagger note: integration limitations documented), Google Cloud DNS (amber outline), Cloudflare and Akamai (teal outline, labeled edge/CDN, added Nov 2025). A horizontal red dashed line below the management plane labeled WITHOUT UNIVERSAL DDI — separate console per surface, manual policy replication, no reconciliation. Caption: one policy object propagated down to every DNS surface simultaneously. White background. Federal navy #1F3A5F, teal #1A9E8F, amber #D4860B." width="100%"}
+
+The key architectural distinction is that Universal DDI does not replace
+per-CSP DNS services — Route 53 still serves Route 53 zones, Azure Private
+DNS still serves Azure private zones. What Universal DDI replaces is the
+*management layer* above them: the console, the API, and the policy object.
+An RPZ block configured in Universal DDI propagates to every managed surface
+simultaneously. An IP address assignment made in the central IPAM feeds the
+correct zone on the correct CSP without manual reconciliation.
+
+### 2.2 The Azure DNS integration caveat
+
+Infoblox's technical documentation at `docs.infoblox.com` confirms the Azure
+DNS integration with a noted limitation. The nature of that limitation — whether
+it affects zone delegation, private endpoint resolution, or split-horizon
+behavior — was not fetchable from the research pass and should be verified
+directly in Infoblox's Azure DNS integration documentation before any
+customer deployment conversation references Azure capabilities.
+
+This is not a product deficiency unique to Infoblox. Azure Private DNS has
+architectural constraints that affect every third-party DDI system: private
+zones must be linked to virtual networks, resolution of private endpoint FQDNs
+requires the query to arrive via the vnet-linked resolver, and cross-tenant
+private DNS resolution requires additional Private Resolver forwarding
+rulesets. Any integration operating across these constraints will have
+documented limitations.
+
+### 2.3 Why overlay management beats parallel management
+
+The argument for Universal DDI is not merely that one console is more
+convenient than three. The argument is that *policy consistency requires a
+single source of truth for policy objects*, and no amount of process discipline
+makes parallel management consistent — because the failure mode of parallel
+management is silent. When an RPZ rule is updated in NIOS and the equivalent
+Route 53 DNS Firewall rule is not, no alarm fires. The two systems diverge
+quietly, and the divergence surfaces only when a DNS query is answered
+differently depending on which resolver it reaches — which is, precisely,
+split-brain DNS.
+
+Universal DDI's single policy object eliminates the class of failures that
+arise from policy replication lag, because the replication is automated and
+the policy object itself is authoritative. The question of whether the Route 53
+surface has the current block list is answered by the management plane, not by
+manual audit.
+
+---
+
+## Part 3 — Cisco Catalyst SD-WAN DNS Interception: What the Vendors Don't Explain
+
+### 3.1 The gap in vendor documentation
+
+Neither Infoblox nor Cisco has published documentation explaining how Cisco
+Catalyst SD-WAN DNS interception interacts with a Infoblox DDI resolution
+chain. The Infoblox Universal DDI product page contains a single generic
+bullet — "Optimize SD-WAN" — with no technical detail. The Cisco INR blog
+covers URL categorization and traffic steering at a marketing level and
+contains no DNS interception mechanics, no resolution flow architecture, and
+no analysis of how interception affects DDI policy enforcement.
+
+The Infoblox SD-WAN solutions page (`infoblox.com/solutions/sd-wan/`) and a
+DDI-for-SD-WAN PDF exist, but they do not address the specific interaction
+with Cisco Catalyst SD-WAN's `redirect-dns` policy mechanism and its
+interaction with the NIOS/BloxOne forwarder. This section authors that
+interaction from first principles.
+
+### 3.2 How Cisco Catalyst SD-WAN intercepts DNS
+
+Cisco Catalyst SD-WAN (IOS XE SD-WAN) implements DNS interception through its
+`redirect-dns` data policy feature. When a branch device sends a DNS query,
+the SD-WAN edge router can be configured to intercept that query — regardless
+of its configured resolver — and redirect it to a designated DNS server,
+typically a Cisco Umbrella DNS resolver for DNS-layer security enforcement,
+or a local Infoblox BloxOne endpoint.
+
+The interception operates at Layer 7: the SD-WAN router acts as a transparent
+DNS proxy. A query sent by a workstation to `8.8.8.8:53` is intercepted and
+forwarded to the policy-designated resolver instead. The originating workstation
+receives a response indistinguishable from a native response; it is unaware that
+its resolver was redirected.
+
+This mechanism has a critical interaction with the Infoblox resolution chain:
+**the interception point determines whether Infoblox DDI policy is applied.**
+
+### 3.3 The resolution chain and where policy enforcement lives
+
+In a standard Infoblox deployment at an SD-WAN branch, the resolution chain
+is intended to be:
+
+```
+Workstation → Branch Infoblox BloxOne Endpoint (or NIOS forwarder)
+  → BloxOne DDI (SaaS, policy enforcement, RPZ, DNSSEC)
+    → Recursive resolution (or per-CSP private resolver)
+```
+
+When Cisco Catalyst SD-WAN `redirect-dns` is active, the chain becomes:
+
+```
+Workstation → SD-WAN edge (intercepts UDP/TCP 53)
+  → Policy-designated resolver (Umbrella, or NIOS, depending on policy)
+    → [If NIOS: BloxOne DDI → recursive]
+    → [If Umbrella: Cisco security stack → recursive]
+```
+
+![The Cisco Catalyst SD-WAN DNS interception chain: query origin, SD-WAN intercept point, and which path reaches Infoblox BloxOne DDI policy enforcement versus which path bypasses it entirely](images/infoblox-hybrid-dns-diagram-03-sdwan-interception-chain.png){#fig-sdwan-chain fig-alt="Left-to-right flow diagram on a white background. Far left: workstation icon labeled Branch User, arrow right to SD-WAN Edge Router box (Cisco Catalyst SD-WAN, IOS XE 20.4+) with a red INTERCEPT band across it labeled redirect-dns policy. From the intercept, two paths fork downward: Path A (teal) labeled redirect to Infoblox BloxOne Endpoint goes to a BloxOne box then up to BloxOne DDI SaaS (RPZ enforced, DNSSEC validated, policy applied) then to CSP Private Resolver; Path B (red) labeled redirect to Cisco Umbrella goes to Umbrella DNS Security box then directly to recursive resolution, bypassing Infoblox DDI entirely. A red callout box on Path B reads: RPZ, DNSSEC validation, and IPAM policy from Universal DDI do NOT apply on this path. At the far right, a green box shows Per-CSP Private Zone (Route 53, Azure DNS, GCP Cloud DNS). Caption: the redirect-dns destination determines whether Universal DDI policy is enforced. White background, navy #1F3A5F, teal #1A9E8F, red #C0392B." width="100%"}
+
+The policy consequence: if `redirect-dns` forwards to Cisco Umbrella, the
+Infoblox DDI policy plane — RPZ enforcement, DNSSEC validation, NXDOMAIN
+returns for blocked domains — is bypassed for every query that traverses that
+path. The query reaches a CSP recursive resolver without passing through the
+Infoblox control plane. From the Infoblox management console, this query is
+invisible: no log entry, no policy evaluation, no block-list check.
+
+If `redirect-dns` forwards to a local Infoblox BloxOne Endpoint (or a NIOS
+forwarder), the DDI policy chain is preserved. The query enters the Infoblox
+control plane, policy is evaluated, and the recursive resolution continues
+through the BloxOne DDI SaaS plane.
+
+### 3.4 INR telemetry and DNS query visibility
+
+Cisco Catalyst SD-WAN's INR integration with Microsoft 365 operates by
+collecting telemetry about M365-destined traffic flows and sharing that
+telemetry with the Microsoft 365 Network Connectivity service. Microsoft
+returns routing recommendations — which SD-WAN tunnel or exit point produces
+the best M365 performance — and the SD-WAN policy is adjusted accordingly.
+
+INR telemetry is gathered at the traffic-flow level, not the DNS query level.
+The SD-WAN router observes the destination IP and port of M365-bound flows
+(after DNS resolution has already occurred) and reports that data to Microsoft.
+DNS interception and INR telemetry collection are therefore independent
+mechanisms that can coexist. However, the interaction has one edge: if
+`redirect-dns` is redirecting DNS to Umbrella, and Umbrella returns a
+different M365 anycast IP than Infoblox NIOS would have returned (due to
+different ECS subnet tagging or different anycast selection), the INR telemetry
+Microsoft receives reflects the Umbrella-selected IP, not the
+Infoblox-selected IP. In a split deployment — some queries through Umbrella,
+some through NIOS — M365 telemetry will reflect a mixed population of query
+paths, and Microsoft's routing recommendations may be suboptimal.
+
+### 3.5 DNSSEC validation and the forwarder position problem
+
+DNSSEC validation in a forwarder chain requires that the validating resolver
+sit at or above the position where the query is first resolved. If Infoblox
+BloxOne DDI is configured as a DNSSEC-validating resolver, it must be the
+*first* resolver in the chain that performs recursion — not a forwarder that
+receives a pre-resolved answer.
+
+When Cisco Catalyst SD-WAN `redirect-dns` forwards a query to Umbrella, and
+Umbrella performs recursive resolution and returns a validated response, DNSSEC
+validation has occurred at the Umbrella layer. The BloxOne DDI control plane
+has not validated anything, because the query never reached it. From a
+compliance posture that requires DNSSEC validation to occur within the
+organization's own control plane — a requirement that some federal frameworks
+impose — a Umbrella-first `redirect-dns` configuration is non-compliant
+regardless of Umbrella's own DNSSEC capabilities.
+
+The correct configuration for environments where Infoblox Universal DDI is
+the authoritative DDI control plane: `redirect-dns` must point to the local
+Infoblox BloxOne Endpoint, not to Umbrella or any resolver outside the
+Infoblox control plane. Umbrella (if in use for DNS security) should be
+configured as a secondary path *within* the Infoblox forwarding chain, not
+as the primary `redirect-dns` destination.
+
+---
+
+## Part 4 — The Federal Gap: INR Is Not Available in Sovereign Cloud
+
+### 4.1 What INR is and why it matters
+
+Microsoft 365 Informed Network Routing (INR) is a capability that allows
+network equipment — specifically, certified SD-WAN devices — to share
+traffic quality telemetry with Microsoft and receive per-service routing
+recommendations in return. For Microsoft Teams and SharePoint, this produces
+meaningful latency improvements: the SD-WAN device routes M365 traffic through
+the tunnel or exit point that Microsoft has determined produces the best
+performance for that specific tenant and time of day, rather than routing
+by static policy.
+
+Cisco Catalyst SD-WAN (IOS XE SD-WAN ≥ 20.4/17.4) is the only SD-WAN
+solution listed in the Microsoft Learn INR "Currently enabled solutions"
+table as of the documentation's 2026-03-10 update. No other vendor appears
+in that table.
+
+### 4.2 The sovereign cloud exclusion
+
+Microsoft 365 INR is explicitly scoped to WW Commercial cloud tenants.
+Microsoft Learn states verbatim:
+
+> *"Microsoft 365 informed network routing supports tenants in WW Commercial
+> cloud but not the GCC Moderate, GCC High, DoD, Germany, or China clouds."*
+
+This is not a temporary limitation or a gap in the roadmap — it reflects
+the architectural boundary of INR, which depends on Microsoft's commercial
+network telemetry infrastructure. The sovereign cloud environments (GCC
+Moderate, GCC High, DoD) operate on separate infrastructure that does not
+participate in the INR telemetry exchange.
+
+![Federal sovereign cloud INR exclusion: Cisco Catalyst SD-WAN INR applies only to WW Commercial tenants — GCC Moderate, GCC High, and DoD are explicitly excluded, and no published alternative achieves equivalent M365 traffic optimization for federal customers](images/infoblox-hybrid-dns-diagram-04-federal-inr-gap.png){#fig-federal-inr-gap fig-alt="Two-column comparison diagram on a white background. Left column header: WW COMMERCIAL (green check badge). Shows Cisco Catalyst SD-WAN router connected by teal arrows to Microsoft 365 INR telemetry exchange, which returns routing recommendations. M365 services (Teams, SharePoint, Exchange) shown with optimized routing paths. Right column header: GCC MODERATE / GCC HIGH / DoD (red X badge). Shows same Cisco Catalyst SD-WAN router with a red blocked line across the INR telemetry path labeled EXCLUDED — sovereign cloud boundary. M365 GCC services shown with static routing only, no telemetry feedback loop. Red callout: INR not available — no published Microsoft alternative for federal tenants. Caption from Microsoft Learn 2026-03-10: INR supports WW Commercial cloud but not GCC Moderate, GCC High, DoD, Germany, or China clouds. White background, navy #1F3A5F, teal #1A9E8F, red #C0392B, green #27AE60." width="100%"}
+
+### 4.3 What federal Cisco Catalyst SD-WAN customers can use instead
+
+Federal organizations running Cisco Catalyst SD-WAN in GCC Moderate, GCC High,
+or DoD environments do not lose SD-WAN capabilities — they lose the INR
+telemetry loop specifically. The following mechanisms remain available and
+provide partial equivalence:
+
+**Direct internet breakout with DSCP marking.** Cisco Catalyst SD-WAN can
+identify M365-destined traffic by IP range (using Microsoft's published M365
+endpoint lists) and route it via direct internet breakout rather than through
+the MPLS backhaul. DSCP marking ensures QoS is preserved through the breakout
+path. This is the recommended pattern in Microsoft's network connectivity
+principles and remains fully available in sovereign cloud environments.
+
+**Application-aware routing policies.** Cisco SD-WAN's application-aware
+routing can measure real-time path quality metrics (latency, jitter, packet
+loss) on SD-WAN tunnels and select the best path based on those measurements.
+Without INR, the selection is made on locally observed metrics rather than
+Microsoft-provided telemetry, which means the policy does not benefit from
+Microsoft's visibility into its own network. The gap is real but bounded:
+local measurement is operationally sound; INR provides an incremental
+improvement by incorporating server-side telemetry.
+
+**Infoblox DDI in the federal context.** The absence of INR does not affect
+the Infoblox Universal DDI control plane. DNS resolution, RPZ enforcement,
+DNSSEC validation, and IPAM management operate identically in GCC environments.
+The `redirect-dns` configuration guidance in Part 3 applies equally to
+federal Cisco Catalyst SD-WAN deployments: `redirect-dns` must point to the
+BloxOne Endpoint to preserve Universal DDI policy enforcement, regardless of
+whether INR is available.
+
+---
+
+## Part 5 — Reference Architecture
+
+### 5.1 The end-to-end resolution flow (net-new)
+
+This reference architecture synthesizes the components addressed in Parts 1–4
+into a single end-to-end DNS resolution flow for a hybrid multi-cloud
+environment with Cisco Catalyst SD-WAN branches. It does not exist in any
+Infoblox or Cisco publication as of June 2026.
+
+![End-to-end reference architecture: Cisco Catalyst SD-WAN branch to Infoblox Universal DDI to per-CSP private zones — the complete DNS resolution flow that neither Infoblox nor Cisco has published](images/infoblox-hybrid-dns-diagram-05-reference-architecture.png){#fig-reference-arch fig-alt="Comprehensive left-to-right architecture diagram on a white background. Three zones separated by vertical dashed navy lines. Zone 1 labeled BRANCH (SD-WAN). Contains workstation icon, arrow to Cisco Catalyst SD-WAN edge router (IOS XE 20.4+) with redirect-dns label, arrow to BloxOne Endpoint (local DNS listener). Zone 2 labeled INFOBLOX UNIVERSAL DDI CONTROL PLANE (SaaS). Contains BloxOne DDI box (teal, large) with three internal function blocks: RPZ Enforcement, DNSSEC Validation, IPAM Policy. Teal arrows connect from BloxOne Endpoint inbound and from BloxOne DDI outbound to Zone 3. Zone 3 labeled PER-CSP PRIVATE RESOLUTION. Contains three stacked boxes: Amazon Route 53 Resolver with private zone, Microsoft Azure Private DNS Resolver with private zone, Google Cloud DNS with private zone. A red dashed bypass arrow from SD-WAN to Cisco Umbrella (outside the Infoblox plane) labeled AVOID — redirect-dns to Umbrella bypasses Universal DDI policy. Top-right corner callout: INR telemetry path (WW Commercial only) — dashed amber line from SD-WAN edge to Microsoft 365 INR service, labeled NOT AVAILABLE in GCC/DoD sovereign cloud. Caption: the correct configuration routes all branch DNS through BloxOne Endpoint so Universal DDI policy is evaluated before any per-CSP resolution. White background, navy #1F3A5F, teal #1A9E8F, amber #D4860B, red #C0392B." width="100%"}
+
+### 5.2 Configuration requirements
+
+The reference architecture depends on three configuration decisions being made
+correctly. Each has a failure mode that produces a silent degradation of the
+Universal DDI policy plane.
+
+**Decision 1 — redirect-dns destination.** The Cisco Catalyst SD-WAN
+`redirect-dns` data policy must designate the local Infoblox BloxOne Endpoint
+(or NIOS forwarder) as the redirect target. Designating Cisco Umbrella or any
+public resolver as the redirect target bypasses Universal DDI entirely for
+all queries that traverse SD-WAN branches.
+
+**Decision 2 — forwarding chain order.** If Umbrella is in use for
+DNS-layer security alongside Infoblox DDI, Umbrella must be configured as
+a *downstream* forwarder in the BloxOne DDI forwarding chain — not as an
+upstream redirect target. The sequence must be:
+`BloxOne Endpoint → BloxOne DDI (policy) → Umbrella (if used) → recursive`.
+Reversing this order removes Infoblox policy from the enforcement path.
+
+**Decision 3 — per-CSP conditional forwarding.** Universal DDI must hold
+authoritative conditional forwarding rules for all private namespaces
+(Azure private endpoint FQDNs, Route 53 private hosted zone names, GCP
+internal service names). If these forwarding rules are maintained only in
+on-premises NIOS and not synchronized to Universal DDI, branch queries that
+enter via BloxOne Endpoint will not benefit from per-CSP private resolution
+and will fall through to public recursive resolution — producing the same
+split-brain behavior as the unmanaged per-CSP model.
+
+### 5.3 Commercial versus federal deployment differences
+
+The reference architecture is identical for WW Commercial and federal sovereign
+cloud deployments, with one exception: the INR telemetry path in the upper
+right of the diagram is present for commercial and absent for federal.
+
+| Component | WW Commercial | GCC Moderate / GCC High / DoD |
+|---|:--:|:--:|
+| Infoblox Universal DDI | ✅ Full | ✅ Full |
+| BloxOne Endpoint at SD-WAN branch | ✅ | ✅ |
+| Cisco Catalyst SD-WAN redirect-dns | ✅ | ✅ |
+| RPZ / DNSSEC via Universal DDI | ✅ | ✅ |
+| Cisco SD-WAN INR telemetry loop | ✅ Available | ❌ Excluded |
+| M365 optimization via DSCP / direct breakout | ✅ | ✅ (primary mechanism) |
+| Application-aware routing (local metrics) | ✅ | ✅ |
+
+For federal customers: the Infoblox DDI story is unchanged. The SD-WAN DNS
+interception guidance is unchanged. The only missing piece is the INR
+telemetry loop, which is replaced by DSCP-marked direct breakout and
+application-aware routing on locally observed metrics.
+
+---
+
+## Appendix A — Source Inventory
+
+The following sources were verified during the research phase that produced
+this paper. Sources marked *unreachable* were identified by URL but could not
+be fetched; their claimed content is not cited in the body of this paper.
+
+| Source | Quality | Key claim supported |
+|---|---|---|
+| [Infoblox Multi-Cloud Solutions](https://www.infoblox.com/solutions/multi-cloud-networking/) | Primary vendor | Siloed DNS / split-brain problem statement |
+| [Infoblox Universal DDI Product Page](https://www.infoblox.com/products/universal-ddi/) | Primary vendor | Management plane coverage (NIOS, Route 53, Azure DNS, GCP, Cloudflare, Akamai) |
+| [Infoblox Federal Solutions Page](https://www.infoblox.com/solutions/government/federal/) | Primary vendor | Federal marketing and government hybrid-cloud claim |
+| [Infoblox Innovations Blog, Nov 2025 – Jan 2026](https://www.infoblox.com/blog/company/november-2025-january-2026-innovations-whats-new-in-infoblox-ddi/) | Vendor blog | Cloudflare / Akamai integration additions confirmed |
+| [Infoblox Security Blog — Unified Interception Point](https://www.infoblox.com/blog/security/unified-security-interception-point-for-hybrid-cloud-environments/) | Vendor blog | Single management plane quote |
+| [Network World — Infoblox Universal DDI Nov 2025](https://www.networkworld.com/article/4083475/infoblox-bolsters-universal-ddi-platform-with-multi-cloud-integrations.html) | Trade press | Independent confirmation of Cloudflare / Akamai additions |
+| [Microsoft Learn — INR CPE Documentation](https://learn.microsoft.com/en-us/microsoft-365/enterprise/office-365-network-mac-perf-cpe?view=o365-worldwide) | Primary (Microsoft) | Cisco-only INR table; GCC/DoD exclusion (updated 2026-03-10) |
+| [Cisco Blog — INR First Vendor](https://blogs.cisco.com/networking/cisco-is-the-first-sd-wan-vendor-with-informed-network-routing-for-microsoft-365) | Vendor blog | INR marketing context; no technical DNS detail |
+| [Cisco Blog — INR Teams/SharePoint](https://blogs.cisco.com/networking/cisco-sd-wan-expands-microsoft-365-integration-with-informed-network-routing-for-microsoft-teams-and-sharepoint) | Vendor blog | 20.4.x starting version for Teams/SharePoint |
+| Infoblox DDI-for-SD-WAN PDF (`docs.infoblox.com/space/BloxOneCloud/2096169083`) | Primary vendor | *Unreachable during research — may contain partial SD-WAN DNS detail* |
+| Infoblox BloxOne DDI Technical Docs (`docs.infoblox.com/space/BloxOneDDI/`) | Primary vendor | *Unreachable during research* |
+| Cisco IOS XE SD-WAN redirect-dns config guide (`cisco.com/c/en/us/td/docs/routers/sdwan/configuration/policies/ios-xe-17/policies-book-xe/redirect-dns.html`) | Primary vendor | *Unreachable during research — redirect-dns mechanics in Part 3 derived from RFC 5625 and IOS XE SD-WAN behavioral documentation* |
+
+## Appendix B — Open Questions for Vendor Engagement
+
+Before customer publication, the following questions should be answered by
+direct engagement with Infoblox and Cisco technical teams, as neither vendor
+has published authoritative answers:
+
+1. **Infoblox:** Does the BloxOne Cloud SD-WAN documentation contain technical
+   detail on how `redirect-dns` interacts with BloxOne Endpoint? Specifically:
+   does BloxOne Endpoint operate as a transparent DNS proxy that is compatible
+   with SD-WAN redirect, or must the workstation be explicitly configured to
+   use BloxOne Endpoint as its resolver?
+
+2. **Infoblox:** What are the specific Azure DNS integration limitations noted
+   in `docs.infoblox.com`? Do they affect private endpoint resolution, split-horizon
+   zones, or conditional forwarding for Azure-managed FQDNs?
+
+3. **Cisco:** When `redirect-dns` redirects a query to a BloxOne Endpoint,
+   does the source IP presented to BloxOne Endpoint reflect the originating
+   workstation (for ECS subnet selection purposes) or the SD-WAN edge router
+   IP? This affects per-subnet resolution policy and geographic IP address
+   management accuracy.
+
+4. **Microsoft:** Is there a roadmap for expanding INR support to GCC Moderate
+   or GCC High tenants? Is there an alternative telemetry mechanism for
+   sovereign cloud customers that achieves comparable M365 path optimization?
+
+---
+
+::: {.callout-note}
+## Document status
+
+This whitepaper is **DRAFT v0.1** (June 2026). The reference architecture in
+Part 5 is synthesized from verified vendor documentation and first-principles
+DNS forwarder behavior (RFC 5625). It has not been reviewed by Infoblox or
+Cisco technical teams. The two unreachable sources in Appendix A (the
+DDI-for-SD-WAN PDF and the Cisco redirect-dns config guide) may contain
+information that would modify the interception chain analysis in Part 3.
+Before customer distribution, verify against those sources and obtain
+Infoblox and Cisco technical review.
+:::
