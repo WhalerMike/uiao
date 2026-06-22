@@ -7,7 +7,7 @@ owner: "Michael Stratton"
 created_at: "2026-06-21"
 updated_at: "2026-06-21"
 canonical_adrs:
-  - ADR-120
+  - ADR-122
   - ADR-036
   - ADR-039
   - ADR-040
@@ -27,14 +27,14 @@ publication_style: include
 
 This specification is the planning artifact for the GPO→Intune modernization
 surface. Its decision record is
-[ADR-120](adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.md); its doctrinal
+[ADR-122](adr/adr-122-gpo-modernization-parse-crosswalk-orgpath.md); its doctrinal
 home is [UIAO_009 §3.3](UIAO_009_Microsoft_Coverage_And_Gap_Doctrine_v1.0.md)
-(Gap #3 — "GPO → Intune mapping with operational sequencing"). Where ADR-120
+(Gap #3 — "GPO → Intune mapping with operational sequencing"). Where ADR-122
 fixes *what UIAO builds, consumes, and differentiates on*, this document fixes
 *the schema, the phases, and the interfaces* that realize that decision.
 
 The surface is decomposed into three parts with deliberately different
-ownership, per ADR-120:
+ownership, per ADR-122:
 
 | Part | UIAO posture | Why |
 |---|---|---|
@@ -69,7 +69,7 @@ over its two structured inputs.
    spot.
 6. **De-risk the live dependency first.** The only unvalidated dependency is the
    live GPA-through-Graph read; Phase 2 validates it against a real tenant
-   before the parser build is hardened (ADR-120 §Decision 7).
+   before the parser build is hardened (ADR-122 §Decision 7).
 
 ## 1. Architecture — the three-stage pipeline
 
@@ -143,7 +143,7 @@ Schema notes:
 UIAO **consumes** the crosswalk; it does not author one. This section is the
 *contract* with Group Policy Analytics — the only thing UIAO stores about the
 mapping. The mapping rows themselves are read live and never snapshotted into
-canon (ADR-120 §Decision 3).
+canon (ADR-122 §Decision 3).
 
 | Concern | Contract |
 |---|---|
@@ -209,7 +209,7 @@ The three things that make this UIAO's leverage and not a Microsoft feature:
 | Phase | Goal | Tenant required? | Exit criterion |
 |---|---|---|---|
 | **P1 — Parser** | GPO backup XML + `registry.pol` + SYSVOL scope → GPO-IR (§2) | No | Round-trips a real GPO backup to IR; golden-file tests over a fixture corpus pass. |
-| **P2 — Consume spike (de-risk first)** | Import one real GPO, read its `groupPolicyMigrationReport` back through Graph | **Yes** | Live read succeeds; supported/unsupported ratio reported. **This is scheduled before P1 is hardened** (ADR-120 §Decision 7) — it validates the only unvalidated dependency. |
+| **P2 — Consume spike (de-risk first)** | Import one real GPO, read its `groupPolicyMigrationReport` back through Graph | **Yes** | Live read succeeds; supported/unsupported ratio reported. **This is scheduled before P1 is hardened** (ADR-122 §Decision 7) — it validates the only unvalidated dependency. |
 | **P3 — Consume adapter** | Productionize Stage 2 against the §3 contract; annotate the IR | Yes | IR annotated with `gpa_setting_ref` for a multi-GPO estate; failure postures (no license, scope, beta drift) handled as typed errors. |
 | **P4 — OrgPath join** | Cohort binding + topological sequence + drift findings (§4) | No (pure over IR + substrate) | Migration Plan emitted for an estate with overlapping cohorts; drift findings classify per ADR-040. |
 | **P5 — Adapter activation** | Promote the reserved `gpo-modernization` adapter to `active` under its own per-adapter ADR | — | Per-adapter ADR ratified; registry entry flips `reserved → active` (ADR-049 lifecycle). |
@@ -220,7 +220,7 @@ plan, so it is validated first against a real tenant.
 
 ## 6. Module interfaces (forward-looking)
 
-Implementation lands in follow-on PRs (ADR-120 §Decision 6); these are the
+Implementation lands in follow-on PRs (ADR-122 §Decision 6); these are the
 intended seams, not committed code:
 
 - `uiao.adapters.gpo.parser` — Stage 1. `parse_gpo(path) -> GpoIr`. Pure,
@@ -241,12 +241,12 @@ intended seams, not committed code:
 |---|---|---|
 | 1 | Group Policy Preferences (GPP) extension coverage in the parser (drive maps, printers, scheduled tasks) | v1.0 GPO-IR targets `registry.pol` + administrative-template + security-template settings; GPP is a v1.1 IR extension. |
 | 2 | WMI-filter → cohort-predicate translation | Captured as opaque in v1.0; expressing a WMI filter as an OrgPath predicate is its own design pass. |
-| 3 | Behavior if/when Microsoft promotes the GPA resources from Graph beta to v1.0 | The §3 contract pins `beta`; promotion is a tracked `review_trigger` on ADR-120 and a v1.1 contract update. |
-| 4 | Non-Intune MDM crosswalk | The "consume Microsoft" decision is Intune-specific; another MDM target would re-open ADR-120 §Decision 3. |
+| 3 | Behavior if/when Microsoft promotes the GPA resources from Graph beta to v1.0 | The §3 contract pins `beta`; promotion is a tracked `review_trigger` on ADR-122 and a v1.1 contract update. |
+| 4 | Non-Intune MDM crosswalk | The "consume Microsoft" decision is Intune-specific; another MDM target would re-open ADR-122 §Decision 3. |
 
 ## 8. Cross-references
 
-- Decision record: [ADR-120](adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.md).
+- Decision record: [ADR-122](adr/adr-122-gpo-modernization-parse-crosswalk-orgpath.md).
 - Doctrine: [UIAO_009 §3.3](UIAO_009_Microsoft_Coverage_And_Gap_Doctrine_v1.0.md) (the gap), [UIAO_009 §1](UIAO_009_Microsoft_Coverage_And_Gap_Doctrine_v1.0.md) (the build/consume/structure frame).
 - OrgPath substrate: [UIAO_152 Dynamic Group Library](UIAO_152_Dynamic_Group_Library.md) / [ADR-036](adr/adr-036-dynamic-group-provisioning.md) (cohorts); [UIAO_164 (policy targeting)](adr/adr-039-policy-targeting.md) / [ADR-039](adr/adr-039-policy-targeting.md) (Intune assignment binding).
 - Drift: [ADR-040](adr/adr-040-drift-engine.md) (five-class taxonomy).

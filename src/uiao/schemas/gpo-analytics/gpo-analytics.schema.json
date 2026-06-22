@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/gpo-analytics/gpo-analytics.schema.json",
+  "title": "UIAO GPO Settings Analysis Schema",
+  "description": "Schema for the Phase-1 GPO settings-level analyzer output: a structured inventory of every configured Group Policy setting parsed from Backup-GPO gpreport.xml, classified by setting class and a coarse, indicative portability heuristic. The portability_class here is type-based triage only; the authoritative per-setting MDM-support verdict comes from Intune Group Policy Analytics in Phase 2.",
+  "type": "object",
+  "required": ["version", "gpo_count", "total_settings", "reports"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+].+)?$",
+      "description": "Semantic version of the analysis output format."
+    },
+    "gpo_count": { "type": "integer", "minimum": 0 },
+    "total_settings": { "type": "integer", "minimum": 0 },
+    "rollup_by_portability": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "description": "Aggregate setting counts keyed by portability_class across all GPOs."
+    },
+    "reports": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/gpoReport" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/gpoFinding" }
+    }
+  },
+  "definitions": {
+    "portabilityClass": {
+      "type": "string",
+      "enum": [
+        "csp-mappable",
+        "partial",
+        "needs-platform-script",
+        "needs-different-mechanism",
+        "no-csp",
+        "deprecated",
+        "review-required"
+      ],
+      "description": "Coarse, INDICATIVE portability triage keyed off setting type. Not an authoritative MDM-support verdict (Phase 2 overrides per-setting)."
+    },
+    "gpoReport": {
+      "type": "object",
+      "required": ["guid", "name", "settings"],
+      "additionalProperties": true,
+      "properties": {
+        "guid": {
+          "type": "string",
+          "description": "Braced GPO GUID, e.g. {31B2F340-016D-11D2-945F-00C04FB984F9}, or empty when unparseable."
+        },
+        "name": { "type": "string" },
+        "computer_enabled": { "type": "boolean" },
+        "user_enabled": { "type": "boolean" },
+        "created_time": { "type": "string" },
+        "modified_time": { "type": "string" },
+        "wmi_filter": { "type": "string" },
+        "links": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gpoLink" }
+        },
+        "settings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gpoSetting" }
+        },
+        "findings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gpoFinding" }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "setting_count": { "type": "integer", "minimum": 0 },
+            "counts_by_class": {
+              "type": "object",
+              "additionalProperties": { "type": "integer", "minimum": 0 }
+            },
+            "counts_by_portability": {
+              "type": "object",
+              "additionalProperties": { "type": "integer", "minimum": 0 }
+            },
+            "hardest_portability": { "$ref": "#/definitions/portabilityClass" }
+          }
+        }
+      }
+    },
+    "gpoLink": {
+      "type": "object",
+      "required": ["som_name", "som_path", "enabled", "enforced"],
+      "additionalProperties": false,
+      "properties": {
+        "som_name": { "type": "string", "description": "Scope-of-Management display name (OU/site/domain)." },
+        "som_path": { "type": "string", "description": "Full SOM path the GPO is linked to." },
+        "enabled": { "type": "boolean" },
+        "enforced": { "type": "boolean", "description": "Link enforced (NoOverride) flag." }
+      }
+    },
+    "gpoSetting": {
+      "type": "object",
+      "required": ["scope", "setting_class", "setting_name", "portability_class"],
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "type": "string", "enum": ["Computer", "User"] },
+        "setting_class": {
+          "type": "string",
+          "description": "Coarse setting family, e.g. admin-template | security | security-audit | preference | script | folder-redirection | software-install | certificate | ie-maintenance | network-wired | network-wifi | unknown."
+        },
+        "extension_type": { "type": "string", "description": "Raw xsi:type local name of the client-side extension." },
+        "setting_name": { "type": "string" },
+        "portability_class": { "$ref": "#/definitions/portabilityClass" },
+        "state": { "type": "string", "description": "Enabled | Disabled | empty when not applicable." },
+        "category": { "type": "string", "description": "ADMX category path when present." },
+        "mdm_supported": {
+          "type": ["boolean", "null"],
+          "description": "Phase-2 authoritative Intune Group Policy Analytics verdict; null when only the heuristic has run."
+        },
+        "mdm_uri": { "type": "string", "description": "MDM/CSP setting URI from Intune Group Policy Analytics when supported." },
+        "verdict_source": {
+          "type": "string",
+          "enum": ["heuristic", "intune-gpa"],
+          "description": "heuristic = type-based triage only; intune-gpa = portability_class carries Microsoft's authoritative isMdmSupported verdict."
+        }
+      }
+    },
+    "gpoFinding": {
+      "type": "object",
+      "required": ["code", "severity", "detail"],
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string", "pattern": "^GOV-GPO-[0-9]{3}$" },
+        "severity": { "type": "string", "enum": ["P1", "P2", "P3", "P4"] },
+        "detail": { "type": "string" },
+        "gpo_guid": { "type": "string" }
+      }
+    }
+  }
+}

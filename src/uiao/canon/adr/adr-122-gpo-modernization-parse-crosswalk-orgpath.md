@@ -1,5 +1,5 @@
 ---
-adr_id: adr-120
+adr_id: adr-122
 title: "GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join"
 status: PROPOSED
 decided: 2026-06-21
@@ -11,11 +11,11 @@ supersedes: null
 superseded_by: null
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-120-gpo-modernization-parse-crosswalk-orgpath.html
+published_at: docs/adr/adr-122-gpo-modernization-parse-crosswalk-orgpath.html
 impact: "Records the build-vs-buy split for the GPO→Intune modernization surface — Gap #3 of UIAO_009 §3.3 — as a three-part decomposition: UIAO BUILDS a deterministic GPO parser (finite, owned), CONSUMES Microsoft's Group Policy Analytics crosswalk live through Graph rather than rebuilding the per-setting GPO→MDM mapping (perishable, Microsoft's domain), and DIFFERENTIATES on the OrgPath join — binding parsed GPO scope to OrgPath device cohorts (UIAO_152 / ADR-036) and Intune assignments (UIAO_164 / ADR-039) to produce the sequenced migration order Microsoft does not provide. Allocates UIAO_014 as the technical specification (schema, phases, interfaces). Registry-shaped, not implementation-shaped: a reserved `gpo-modernization` modernization adapter and any code land in follow-on PRs per the ADR-049 precedent."
 ---
 
-# ADR-120: GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join
+# ADR-122: GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join
 
 ## Status
 
