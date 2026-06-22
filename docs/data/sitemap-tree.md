@@ -54,6 +54,7 @@
 - [UIAO Adapter Segmentation Overview](canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.html)
 - [UIAO-core Value Proposition — Two-Way Governance Architecture for SCuBA and BOD 25-01](canon/UIAO_005_SCuBA_Value_Proposition_v1.0.html)
 - [OrgPath in NAC / 802.1X & Cert-Based Network Admission](canon/UIAO_012_OrgPath_in_NAC_and_8021X.html)
+- [GPO Modernization — Parse, Crosswalk, OrgPath Join](canon/UIAO_014_GPO_Modernization_Parse_Crosswalk_OrgPath_Join_v1.0.html)
 - [Identity & Directory Transformation Inventory — AD to Entra ID](canon/UIAO_135_identity-directory-transformation-inventory.html)
 - [UIAOIdentityAssessment Module Specification](canon/UIAO_181_UIAOIdentityAssessment_Module_Specification.html)
 - [UIAOImportAdapters Module Specification](canon/UIAO_182_UIAOImportAdapters_Module_Specification.html)
@@ -188,6 +189,7 @@
 - [Private networking for the SaaS data tier — VNet-integrated Postgres (Azure) and VPC endpoints (AWS)](adr/adr-119-saas-private-networking.html)
 - [GPO settings-level analysis: own the parse, consume Microsoft's GPO→MDM crosswalk](adr/adr-120-gpo-settings-analyzer.html)
 - [OrgPath projection subset — stamp fewer attributes per object than the codebook defines](adr/adr-121-orgpath-projection-subset.html)
+- [GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join](adr/adr-122-gpo-modernization-parse-crosswalk-orgpath.html)
 
 ## Schema Reference
 
