@@ -700,14 +700,14 @@
 
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
-| [`docs/customer-documents/ssot-network-physics/00-executive-summary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/00-executive-summary.qmd) | 116 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/01-logical-centralization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/01-logical-centralization.qmd) | 132 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/02-token-security-enabler.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/02-token-security-enabler.qmd) | 157 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/03-speed-of-light-tax.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/03-speed-of-light-tax.qmd) | 142 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/04-sdwan-differentiated-transport.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/04-sdwan-differentiated-transport.qmd) | 160 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/05-governed-path-transport.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/05-governed-path-transport.qmd) | 162 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/06-consistency-network-classes.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/06-consistency-network-classes.qmd) | 138 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/ssot-network-physics/07-reference-architecture-uiao.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/07-reference-architecture-uiao.qmd) | 194 | Authored | ✅ | — | aspirational |
+| [`docs/customer-documents/ssot-network-physics/00-executive-summary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/00-executive-summary.qmd) | 118 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/01-logical-centralization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/01-logical-centralization.qmd) | 134 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/02-token-security-enabler.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/02-token-security-enabler.qmd) | 159 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/03-speed-of-light-tax.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/03-speed-of-light-tax.qmd) | 144 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/04-sdwan-differentiated-transport.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/04-sdwan-differentiated-transport.qmd) | 162 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/05-governed-path-transport.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/05-governed-path-transport.qmd) | 164 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/06-consistency-network-classes.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/06-consistency-network-classes.qmd) | 140 | Authored | ✅ | 1/1 | aspirational |
+| [`docs/customer-documents/ssot-network-physics/07-reference-architecture-uiao.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/07-reference-architecture-uiao.qmd) | 196 | Authored | ✅ | 1/1 | aspirational |
 | [`docs/customer-documents/ssot-network-physics/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/ssot-network-physics/index.qmd) | 103 | Navigation hub | ✅ | — | aspirational |
 
 ### `substrate/`
@@ -794,22 +794,22 @@
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd) | 171 | Authored | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd) | 135 | Authored | ✅ | 4/4 | — |
-| [`docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd) | 120 | Authored | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd) | 124 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-hrit-productization.qmd) | 330 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/federal-ssot-alignment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ssot-alignment.qmd) | 343 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 761 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd) | 267 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 76 | Navigation hub | ✅ | — | — |
-| [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 1161 | Substantial | ✅ | 9/9 | — |
+| [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 1379 | Substantial | ✅ | 12/12 | — |
 | [`docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd) | 243 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/modernization-journey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-journey.qmd) | 477 | Substantial | ✅ | 11/11 | — |
-| [`docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd) | 130 | Authored | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd) | 134 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd) | 338 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd) | 439 | Substantial | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd) | 443 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd) | 251 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd) | 672 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd) | 244 | Authored | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/zta-scuba-relationship.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zta-scuba-relationship.qmd) | 140 | Authored | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/zta-scuba-relationship.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zta-scuba-relationship.qmd) | 142 | Authored | ✅ | 1/1 | — |
 
 ## Integrity
 
