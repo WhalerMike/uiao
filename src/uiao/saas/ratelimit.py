@@ -222,7 +222,7 @@ class RedisWindowStore:
 
     def _redis(self) -> Any:
         if self._client is None:
-            import redis.asyncio as aioredis  # lazy: [redis] extra
+            import redis.asyncio as aioredis  # type: ignore[import-untyped]  # lazy: [redis] extra
 
             self._client = aioredis.from_url(self._url)
         return self._client

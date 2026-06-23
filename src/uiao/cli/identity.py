@@ -142,7 +142,14 @@ def gate(
         err.print("Run [bold]uiao identity run[/bold] first.")
         raise typer.Exit(2)
 
-    report = json.loads(report_path.read_text(encoding="utf-8"))
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        err.print(f"[red]Invalid JSON in {report_path}: {exc}[/red]")
+        raise typer.Exit(2) from exc
+    except OSError as exc:
+        err.print(f"[red]Failed to read {report_path}: {exc}[/red]")
+        raise typer.Exit(2) from exc
     p1 = report.get("p1_count", 0)
     p2 = report.get("p2_count", 0)
     passed = report.get("gate_passed", True)
@@ -237,7 +244,14 @@ def scan(
 
     leaver_ids: set[str] = set()
     if leavers and leavers.exists():
-        data = json.loads(leavers.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(leavers.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            err.print(f"[red]Invalid JSON in leavers file {leavers}: {exc}[/red]")
+            raise typer.Exit(2) from exc
+        except OSError as exc:
+            err.print(f"[red]Failed to read leavers file {leavers}: {exc}[/red]")
+            raise typer.Exit(2) from exc
         leaver_ids = set(data if isinstance(data, list) else data.get("leavers", []))
 
     events = detect_service_events(svc_records, leaver_employee_ids=leaver_ids)
