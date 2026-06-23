@@ -177,7 +177,7 @@ class EntraTokenVerifier:
         )
 
 
-def jwks_verifier(cloud: str = "commercial", *, timeout: float = 5.0) -> SignatureVerifier:
+def jwks_verifier(cloud: str = "commercial", *, timeout: int = 5) -> SignatureVerifier:
     """Return a production JWKS-backed signature verifier.
 
     Lazy-imports ``PyJWT`` (the ``[saas]`` extra). Fetches the issuing

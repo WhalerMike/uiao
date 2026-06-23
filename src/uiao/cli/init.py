@@ -11,13 +11,14 @@
 This command is read-only against the user's environment: it never
 writes to ``$HOME``, never touches the user's shell config, and never
 mutates the repo. The ``--demo`` mode writes only to the directory
-passed via ``--out-dir`` (default ``/tmp/uiao-quickstart``).
+passed via ``--out-dir`` (default ``<system-temp>/uiao-quickstart``).
 """
 
 from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import typer
@@ -195,11 +196,11 @@ def init(
         "--demo",
         help="Run the bundled quickstart auditor-bundle pipeline end-to-end.",
     ),
-    out_dir: Path = typer.Option(
-        Path("/tmp/uiao-quickstart"),
+    out_dir: Path | None = typer.Option(
+        None,
         "--out-dir",
         "-o",
-        help="Output directory for --demo mode artifacts.",
+        help="Output directory for --demo mode artifacts (default: <tmpdir>/uiao-quickstart).",
     ),
 ) -> None:
     """Welcome + 10-minute new-user walkthrough. Optionally run a demo pipeline."""
@@ -209,7 +210,8 @@ def init(
         return
 
     if demo:
-        rc = _run_demo(out_dir)
+        effective_out = out_dir or Path(tempfile.gettempdir()) / "uiao-quickstart"
+        rc = _run_demo(effective_out)
         if rc != 0:
             raise typer.Exit(code=rc)
         return

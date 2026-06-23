@@ -22,13 +22,9 @@ Or via module invocation:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
-
-from uiao.generators.trestle import validate_oscal_artifacts
-from uiao.oscal.generator import generate_oscal
 
 oscal_app = typer.Typer(
     name="oscal",
@@ -55,7 +51,7 @@ def generate_command(
         help=("Destination directory for OSCAL artifacts (e.g. ./output/artifacts/tenant-a/).  Created automatically."),
         show_default=False,
     ),
-    config: Optional[str] = typer.Option(  # noqa: B008
+    config: str | None = typer.Option(  # noqa: B008
         None,
         "--config",
         help="Optional path to oscal-generate.json config file.",
@@ -94,6 +90,8 @@ def generate_command(
             --output   ./output/artifacts/tenant-a/ \\
             --config   ./config/oscal-generate.json
     """
+    from uiao.oscal.generator import generate_oscal
+
     try:
         generate_oscal(
             evidence_dir=evidence,
@@ -119,7 +117,8 @@ def validate(
         uiao oscal validate exports/oscal/uiao-ssp.json
     """
     _console.print(f"[bold]Validating {path}...[/bold]")
-    _console.print("[yellow]Validation not yet implemented (Week 3).[/yellow]")
+    _console.print("[red]OSCAL validate is not implemented yet.[/red]")
+    raise typer.Exit(code=2)
 
 
 @oscal_app.command("validate-ssp")
@@ -137,6 +136,8 @@ def validate_ssp(
 
         uiao oscal validate-ssp --oscal-dir exports/oscal
     """
+    from uiao.generators.trestle import validate_oscal_artifacts
+
     _console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
     failures = validate_oscal_artifacts(Path(oscal_dir))
     if failures:

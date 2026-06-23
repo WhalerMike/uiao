@@ -62,3 +62,8 @@ def test_ir_ssp_report_help():
     result = runner.invoke(app, ["ir", "ssp-report", "--help"])
     assert result.exit_code == 0
     assert "narrative" in result.output.lower() or "ssp" in result.output.lower()
+
+
+def test_ir_ssp_report_invalid_format_exits_nonzero(scuba_file):
+    result = runner.invoke(app, ["ir", "ssp-report", scuba_file, "--format", "xml"])
+    assert result.exit_code != 0

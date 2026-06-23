@@ -99,3 +99,11 @@ def test_run_missing_ir_path_exits_nonzero(tmp_path: Path) -> None:
     )
     assert result.exit_code == 1
     assert "not found" in result.stdout
+
+
+def test_run_invalid_json_exits_nonzero(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.json"
+    bad.write_text("{bad json", encoding="utf-8")
+    result = runner.invoke(app, ["enforcement", "run", str(bad)])
+    assert result.exit_code == 1
+    assert "invalid json" in result.stdout.lower()

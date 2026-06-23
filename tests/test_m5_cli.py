@@ -214,6 +214,13 @@ class TestCQLQuery:
         )
         assert result.exit_code != 0
 
+    def test_invalid_format_exits_nonzero(self, bundle_json: Path) -> None:
+        result = runner.invoke(
+            app,
+            ["cql", "query", "SHOW CONTROLS", "--bundle", str(bundle_json), "--format", "xml"],
+        )
+        assert result.exit_code != 0
+
 
 # ===========================================================================
 # uiao evidence graph --help / uiao evidence graph
@@ -312,5 +319,12 @@ class TestEvidenceGraph:
         result = runner.invoke(
             app,
             ["evidence", "graph", "--input", "/nonexistent/normalized.json"],
+        )
+        assert result.exit_code != 0
+
+    def test_graph_invalid_format_exits_nonzero(self, scuba_json: Path) -> None:
+        result = runner.invoke(
+            app,
+            ["evidence", "graph", "--input", str(scuba_json), "--format", "yaml"],
         )
         assert result.exit_code != 0
