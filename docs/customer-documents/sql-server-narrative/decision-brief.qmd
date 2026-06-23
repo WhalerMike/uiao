@@ -1,0 +1,170 @@
+---
+title: "The Forcing Function — Agency Choices & Recommendations"
+subtitle: "Microsoft is changing the SQL Server identity floor on a timeline you do not control. This page names the three pressures forcing the change, the three destinations available, and a profile-driven recommendation matrix — no universal winner."
+description: "A one-page decision reference for agency leadership: why the SQL Server estate must change now (version end-of-support, Extended Security Updates gated behind Azure Arc, and NTLM deprecation), the separation between what is forced and what is chosen, the three platform destinations, and a profile-to-path recommendation matrix. The skim layer over Books 01–11."
+doc-type: sql-server-narrative-reference
+audience: [Executive, Technical, Customer]
+family: sql-server-narrative
+series-order: 00
+canon-source: "src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md"
+status: draft
+lifecycle: active
+tiers_adopted: []
+lifecycle_review: 2028-01-01
+---
+
+# The Forcing Function — Agency Choices & Recommendations {.unnumbered}
+
+The question is no longer *whether* the SQL Server estate changes. Microsoft is
+moving the identity floor underneath it — retiring the protocols and versions the
+estate was built on — on a timeline the agency does not set. This page is the
+decision layer over the eleven-book series: it names the pressures forcing the
+change, separates **what is forced** from **what is a choice**, lays the three
+destinations side by side, and maps an agency profile to a recommended path.
+
+It is deliberately neutral. There is no universal winner — only a destination
+that fits a given estate, licensing position, and operating model. The reasoning
+behind each cell lives in the books; this page names the decision.
+
+::: {.callout-important appearance="default"}
+## Status — Draft
+This brief is **DRAFT v0.1**, the decision companion to **Book 11** and to
+**ADR-091** (SQL Server Engine Authentication Transformation, **PROPOSED**). The
+external facts it cites — version lifecycle dates, Extended Security Update
+terms, and the NTLM deprecation timeline — are Microsoft program facts that shift;
+**verify each against the Microsoft Lifecycle and "Extended Security Updates
+enabled by Azure Arc" documentation before committing a date to a plan.** Treat
+the recommendation matrix as analytical, not normative, until ADR-091 is accepted.
+:::
+
+## Why now — the three forcing functions
+
+Three independent pressures are converging. None of them, on its own, is a
+flag-day switch; together they make "stay fully on-premises, Active-Directory-
+anchored, never touch Arc, keep Windows Authentication" progressively untenable
+rather than impossible.
+
+| # | Forcing function | What it is | What it forces |
+|---|---|---|---|
+| **1** | **Version end-of-support** | Each SQL Server version carries roughly five years of mainstream + five years of extended support (~10 years), after which security updates stop. | A **version upgrade** — *not* Arc by itself. An out-of-support engine receives no patches and becomes an audit and ATO liability. |
+| **2** | **ESU gated behind Azure Arc** | Past end-of-support, Extended Security Updates (ESU) keep critical patches flowing. The streamlined, pay-as-you-go ESU path is **delivered and billed through Azure Arc**; ESUs are offered free for instances migrated to / enabled by Azure. | **Arc enablement** as the practical price of staying patched on an out-of-support version. A traditional volume-license ESU path still exists without Arc, but it is the harder, time-boxed option. |
+| **3** | **NTLM deprecation** | Microsoft is actively deprecating NTLM and hardening defaults toward Kerberos. SQL Server's silent NTLM fallback (Book 01) breaks when NTLM is blocked network-wide, and the block does not distinguish excepted instances from the rest. (ADR-068) | A move **off Windows Authentication's NTLM fallback** toward Kerberos and ultimately Microsoft Entra token authentication — independent of version or Arc. |
+
+::: {.callout-note}
+These three are not one decision. Version end-of-support forces a *version*
+move; ESU-via-Arc forces *Arc enablement* if you stay on an out-of-support
+version; NTLM deprecation forces an *authentication* move. An estate can be hit
+by all three at once, on different instances, on different clocks.
+:::
+
+## What is forced — and what is a choice
+
+The single most important distinction on this page. Conflating the two is what
+makes the program feel like a Microsoft mandate with no agency. It is not.
+
+::: {.callout-important title="Forced vs. chosen"}
+**Forced (the floor moves regardless of what you decide):**
+
+- Move **off NTLM** and off Windows Authentication's silent NTLM fallback.
+- Move **off end-of-support engine versions** — patch or leave the version.
+- If you stay on an out-of-support version, **Arc enablement** becomes the
+  practical path to keep receiving Extended Security Updates.
+
+**Chosen (yours to decide, and the subject of the matrix below):**
+
+- **Where you land** — stay on SQL Server, or consolidate onto PostgreSQL or
+  Oracle.
+- **How far you consolidate** — re-authenticate the silos in place, or dissolve
+  them toward a single authoritative database (the SSOT goal of Book 11).
+- **Your timeline within the forced windows** — which instances move first.
+:::
+
+The forced part is an **authentication-layer** change; the chosen part is a
+**platform-layer** change. They are sequenced, not simultaneous — and the
+authentication work comes first regardless of the destination, because it is
+what produces the rationalized estate inventory that scopes any platform move
+(Book 03, Book 11 Chapter 1).
+
+## Your three destinations
+
+Every retained instance ends up at one of three destinations. All three satisfy
+the *forced* requirement — auth that is observable and conditionable in the
+identity plane. They differ in effort, licensing, and how far they advance the
+SSOT goal.
+
+| Dimension | **A · Stay on SQL Server** | **B · Consolidate to PostgreSQL** | **C · Consolidate to Oracle** |
+|---|---|---|---|
+| **What it is** | SQL Server 2022, Arc-enabled, Windows Auth → Microsoft Entra token auth | Re-platform onto PostgreSQL (Crunchy Data on Red Hat OpenShift / ROSA GovCloud, RDS/Aurora, or Azure DB for PostgreSQL) | Re-platform onto Oracle (19c on OpenShift Virtualization, or Autonomous DB in OCI US Gov Cloud) |
+| **Auth model** | Entra OAuth 2.0 token (`FROM EXTERNAL PROVIDER`), Conditional Access | Entra-native on Azure DB for PostgreSQL; OrgPath roles + Row-Level Security elsewhere | Oracle auth integrated to the chosen identity plane |
+| **Engine effort** | **Low** — upgrade to 2022, Arc-enable, migrate logins (Books 03–06) | **High** — schema + T-SQL→PL/pgSQL conversion (SSMA / AWS SCT+DMS), app changes (Red Hat MTA) | **High** — T-SQL→PL/SQL conversion (Oracle SQL Developer), app changes (MTA) |
+| **Licensing** | Continues SQL Server per-core licensing | **Eliminates** SQL Server licensing; open-source + commercial support (Crunchy/EDB) | Oracle licensing — low incremental cost **only if** an Oracle site license already exists |
+| **FedRAMP path** | GCC-Moderate (Entra) / Arc | RDS, Aurora, **Crunchy on ROSA GovCloud**, Azure DB for PostgreSQL | **OCI US Gov Cloud (FedRAMP High)**, OpenShift Virtualization |
+| **SSOT advance** | None — re-authenticates the silos, does not dissolve them | **High** — logical replication, RLS, JSONB, FDW toward one authoritative DB | **High** — consolidation onto an existing Oracle authority |
+| **Best fit when** | Sprawl is low; timeline is tight; SQL-specific features in use | OpenShift-first; no significant Oracle estate; licensing exit is a goal | Significant existing Oracle estate; heavy PL/SQL corpus; Oracle-credentialed DBAs |
+
+::: {.callout-tip}
+Destinations B and C are not a way to *escape* the forced authentication work —
+they **relocate** it. You still do the Book 03 audit and rationalization first;
+the re-platform is what you do with the instances you choose not to retain on
+SQL Server.
+:::
+
+## The recommendation matrix
+
+There is no universal recommendation — the right destination is a function of the
+estate. Read down to the first profile that matches; the criteria are drawn from
+Book 11 Chapters 2 and 3.
+
+| If the agency profile is… | Recommended destination | Why |
+|---|---|---|
+| Low instance count, well-configured Windows Auth, **tight timeline**, SQL-specific features in use | **A · Stay on SQL Server 2022 + Entra** | The forced work (upgrade, Arc, Entra logins) is the whole job; re-platform cost is not justified by the sprawl. |
+| **OpenShift-first** footprint (ROSA GovCloud), **no significant Oracle** estate, licensing exit is a stated goal, CRUD-heavy workloads | **B · PostgreSQL** | Crunchy on ROSA aligns DB ops with the existing OpenShift model; eliminates per-core licensing; mature SSMA/SCT/DMS toolchain. |
+| **Significant existing Oracle** estate, **large/complex PL/SQL** corpus, Oracle-credentialed DBA team, Oracle site license already paid | **C · Oracle** | Consolidating onto Oracle *reduces* platform count; adding PostgreSQL alongside Oracle would *add* one. PL/SQL + DBA continuity favor Oracle. |
+| **High sprawl** (dozens of overlapping instances), SSOT consolidation is the explicit goal, mixed/uncertain Oracle position | **B · PostgreSQL (default re-platform)** | PostgreSQL's logical replication, RLS, JSONB, FDW, and schema-tenancy are the SSOT consolidation primitives; the toolchain is the most mature. Evaluate C only if an Oracle estate already exists. |
+| Database must remain **co-located with Azure** workloads (data sovereignty / network topology) | **A** or **B via Azure DB for PostgreSQL** | Keeps the data inside the Microsoft GCC-Moderate boundary while still meeting the consolidation goal. |
+
+::: {.callout-note}
+**Two estates, two answers is normal.** The matrix applies per data domain, not
+per agency. A realistic outcome is a *blend*: retain a handful of SQL Server 2022
+instances on Entra (A) for SQL-specific workloads, consolidate the long tail onto
+PostgreSQL (B), and fold Oracle-adjacent data into the existing Oracle estate (C).
+The goal is fewer authoritative platforms — not a single vendor.
+:::
+
+## Decision sequence
+
+1. **Audit & rationalize first** (Book 02–03). Inventory every instance, surface
+   silent NTLM fallback, and classify each instance retire / consolidate / retain.
+   This is forced work and it produces the inventory every later choice depends on.
+2. **Do the forced authentication move** on the retain set (Books 04–06): Arc-
+   enable, stand up Entra logins alongside Windows logins, cut over, retire the
+   old logins. The two auth modes coexist during the parallel run.
+3. **Then make the platform choice** per data domain using the matrix above.
+   Re-platform (B/C) follows the same parallel-run discipline — establish the
+   target, validate in parallel, cut over only after the validation window.
+   *Never drop before you observe.*
+
+::: {.callout-tip title="Division of labor"}
+**Microsoft and the platform vendors provide:** the Entra authentication plane and
+Arc Managed Identity that satisfy the forced requirement; the rationalization tools
+(Azure Migrate, DMA, Defender for SQL); the migration toolchains (SSMA, AWS SCT+DMS,
+Oracle SQL Developer, Red Hat MTA); and the FedRAMP-authorized hosting targets.
+
+**What only you can provide:** the data-authority decision — which instance is
+authoritative for each domain; the application and PL/SQL inventory that decides
+whether a workload can re-platform cheaply or must be retained; the licensing and
+DBA-skills assessment that picks B vs. C; and the program sequencing that stays
+ahead of Microsoft's version, ESU, and NTLM clocks.
+:::
+
+## Read next
+
+- **[Book 11 — The Platform Question](Book_11.qmd)** — the full platform analysis.
+  - [Chapter 1 — The Fragmentation Cost](Book_11_CPT_01.qmd) (the SSOT case)
+  - [Chapter 2 — PostgreSQL in the Federal Stack](Book_11_CPT_02.qmd) (destination B)
+  - [Chapter 3 — Oracle as the Enterprise Alternative](Book_11_CPT_03.qmd) (destination C)
+  - [Chapter 4 — The Decision Under a Forcing Function](Book_11_CPT_04.qmd) (the narrative form of this brief)
+- **[Division of Labor — Microsoft vs. You](responsibility-matrix.qmd)** — what the
+  platform provides vs. what only the program can solve, across all eleven books.
+- **[Series index](index.qmd)** — the full reading sequence.
+
