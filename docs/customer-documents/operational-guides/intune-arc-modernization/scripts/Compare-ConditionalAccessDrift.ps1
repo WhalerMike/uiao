@@ -30,9 +30,22 @@ Import-Module $mod.FullName -Force
 
 Connect-ModernizationGraph -ScopeSet CaRead -TenantId $TenantId
 
+function Get-ObjectSha256 {
+    param([Parameter(Mandatory)]$InputObject)
+    $json = $InputObject | ConvertTo-Json -Depth 10 -Compress
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha.ComputeHash($bytes)
+    } finally {
+        $sha.Dispose()
+    }
+    return ([System.BitConverter]::ToString($hashBytes) -replace '-', '').ToLowerInvariant()
+}
+
 $live = Get-MgIdentityConditionalAccessPolicy -All |
     Select-Object Id, DisplayName, State,
-        @{N='Hash';E={ ($_ | ConvertTo-Json -Depth 10 -Compress | Get-FileHash -Algorithm SHA256 -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($_)))).Hash }}
+        @{N='Hash';E={ Get-ObjectSha256 -InputObject $_ }}
 
 if (-not (Test-Path $BaselinePath)) {
     $live | ConvertTo-Json -Depth 6 | Set-Content -Path $BaselinePath -Encoding UTF8
