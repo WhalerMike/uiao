@@ -32,7 +32,7 @@
 # Microsoft Graph delegated scopes, grouped by the operation that needs them.
 # Request only what a given script uses (least privilege).
 $script:GraphScopeSets = @{
-    InventoryRead   = @('Application.Read.All', 'Directory.Read.All', 'AppRoleAssignment.ReadWrite.All')
+    InventoryRead   = @('Application.Read.All', 'Directory.Read.All', 'AppRoleAssignment.Read.All')
     OwnerWrite      = @('Application.ReadWrite.All', 'Directory.Read.All')
     GroupWrite      = @('Group.ReadWrite.All', 'GroupMember.Read.All', 'Application.ReadWrite.All')
     HybridUserWrite = @('User.ReadWrite.All', 'Directory.Read.All')
