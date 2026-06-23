@@ -19,6 +19,8 @@ Or via module invocation:
 
 from __future__ import annotations
 
+from enum import Enum
+
 import typer
 from rich.console import Console
 
@@ -29,6 +31,16 @@ ir_app = typer.Typer(
 )
 
 _console = Console()
+
+
+class IRMarkdownFormat(str, Enum):
+    markdown = "markdown"
+    json = "json"
+
+
+class IRTextFormat(str, Enum):
+    text = "text"
+    json = "json"
 
 
 @ir_app.command("scuba-transform")
@@ -132,8 +144,15 @@ def ir_drift_detect(
     from uiao.governance.drift import build_drift_state
     from uiao.ir.models.core import ProvenanceRecord
 
-    expected_state = _json.loads(_Path(expected).read_text(encoding="utf-8"))
-    actual_state = _json.loads(_Path(actual).read_text(encoding="utf-8"))
+    try:
+        expected_state = _json.loads(_Path(expected).read_text(encoding="utf-8"))
+        actual_state = _json.loads(_Path(actual).read_text(encoding="utf-8"))
+    except _json.JSONDecodeError as exc:
+        _console.print(f"[red]Invalid JSON in drift input: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    except OSError as exc:
+        _console.print(f"[red]Failed to read drift input file: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
     prov = ProvenanceRecord(
         source="cli:drift-detect",
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -212,7 +231,9 @@ def ir_governance_report(
 @ir_app.command("ssp-report")
 def ir_ssp_report(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
-    fmt: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown | json"),
+    fmt: IRMarkdownFormat = typer.Option(
+        IRMarkdownFormat.markdown, "--format", "-f", help="Output format: markdown | json"
+    ),
     out: str = typer.Option("", "--out", "-o", help="Write output to file."),
 ) -> None:
     """Generate SSP narrative + lineage from SCuBA -> IR -> Evidence -> Governance.
@@ -236,7 +257,7 @@ def ir_ssp_report(
     actions = build_governance_actions(bundle.evidence, bundle.drift_states)
     links = build_coverage_links(bundle.evidence)
     narratives = build_control_narratives(links, actions)
-    if fmt.lower() == "json":
+    if fmt is IRMarkdownFormat.json:
         lineage = build_lineage_index(links, actions)
         output_text = _json.dumps(lineage, indent=2)
     else:
@@ -274,7 +295,9 @@ def ir_auditor_bundle(
 def ir_diff(
     run_a: str = typer.Argument(..., help="Path to first normalized SCuBA JSON file."),
     run_b: str = typer.Argument(..., help="Path to second normalized SCuBA JSON file."),
-    fmt: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown | json"),
+    fmt: IRMarkdownFormat = typer.Option(
+        IRMarkdownFormat.markdown, "--format", "-f", help="Output format: markdown | json"
+    ),
     out: str = typer.Option("", "--out", "-o", help="Write output to file."),
 ) -> None:
     """Diff two SCuBA runs: KSI changes, evidence hash deltas, status changes.
@@ -291,7 +314,7 @@ def ir_diff(
     result_a = transform_scuba_to_ir(run_a)
     result_b = transform_scuba_to_ir(run_b)
     diff = diff_runs(result_a, result_b)
-    output_text = format_diff_json(diff) if fmt.lower() == "json" else format_diff_markdown(diff)
+    output_text = format_diff_json(diff) if fmt is IRMarkdownFormat.json else format_diff_markdown(diff)
     typer.echo(output_text)
     if out:
         _Path(out).parent.mkdir(parents=True, exist_ok=True)
@@ -756,7 +779,7 @@ def ir_orgtree_readiness_bundle(
 def ir_intune_readiness(
     survey_json: str = typer.Argument(..., help="Path to AD forest survey JSON file."),
     out: str = typer.Option("", "--out", "-o", help="Write the readiness plan as JSON to this file."),
-    fmt: str = typer.Option("text", "--format", "-f", help="Output format: text | json"),
+    fmt: IRTextFormat = typer.Option(IRTextFormat.text, "--format", "-f", help="Output format: text | json"),
 ) -> None:
     """Compute Intune device-enrollment readiness from an AD survey JSON.
 
@@ -793,7 +816,7 @@ def ir_intune_readiness(
 
     plan = build_intune_plan(survey_data)
 
-    if fmt.lower() == "json":
+    if fmt is IRTextFormat.json:
         typer.echo(_json.dumps(plan, indent=2, ensure_ascii=False))
     else:
         _console.print(f"[bold]Intune Readiness Plan: {survey_json}[/bold]")

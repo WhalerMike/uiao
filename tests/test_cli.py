@@ -48,11 +48,24 @@ class TestCLIBasics:
         result = runner.invoke(app, ["canon", "check", "--help"])
         assert result.exit_code == 0
 
+    def test_canon_check_fails_closed_until_implemented(self) -> None:
+        result = runner.invoke(app, ["canon", "check"])
+        assert result.exit_code == 2
+        assert "not implemented" in result.stdout.lower()
+
     def test_generate_docs_in_help(self) -> None:
         """generate appears in top-level --help."""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
         assert "generate" in result.stdout
+        assert "adapter-oscal" in result.stdout
+
+    def test_oscal_validate_fails_closed_until_implemented(self, tmp_path: Path) -> None:
+        path = tmp_path / "ssp.json"
+        path.write_text("{}", encoding="utf-8")
+        result = runner.invoke(app, ["oscal", "validate", str(path)])
+        assert result.exit_code == 2
+        assert "not implemented" in result.stdout.lower()
 
     def test_generate_docs_help(self) -> None:
         """generate docs --help shows subcommand help with expected options."""

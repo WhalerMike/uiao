@@ -9,11 +9,9 @@ type narrowing collisions in ``_load_adapter_claims``) that hid
 because there was no test coverage. This file locks the fixed
 behavior in.
 
-Note: ``adapter_oscal_app`` is currently **not wired** into the
-main ``uiao`` CLI surface (``src/uiao/cli/app.py`` does not import
-it). The tests invoke it directly via :class:`typer.testing.CliRunner`;
-whether to expose ``adapter-oscal`` from the parent app — or delete
-the module as dead code — is a separate design question.
+``adapter_oscal_app`` is mounted under the main CLI as
+``uiao adapter-oscal ...`` and is also invoked directly here via
+:class:`typer.testing.CliRunner` for focused command-level coverage.
 """
 
 from __future__ import annotations
