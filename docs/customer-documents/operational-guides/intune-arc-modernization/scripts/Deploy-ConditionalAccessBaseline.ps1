@@ -54,7 +54,26 @@ $policies = @(
                  grantControls = @{ operator = 'OR'; builtInControls = @('mfa') } } }
 )
 
+Write-ModernizationLog -Level INFO -Message 'Loading existing Conditional Access policies for idempotent deployment checks...'
+$existingByName = @{}
+Get-MgIdentityConditionalAccessPolicy -All -Property 'id,displayName,state' | ForEach-Object {
+    if ($_.DisplayName) { $existingByName[$_.DisplayName] = $_ }
+}
+
 foreach ($p in $policies) {
+    $existing = $existingByName[$p.Name]
+    if ($existing) {
+        if ($existing.State -ne $State) {
+            if ($PSCmdlet.ShouldProcess($p.Name, "Update existing CA policy state to $State")) {
+                Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId $existing.Id -BodyParameter @{ state = $State } | Out-Null
+                Write-ModernizationLog -Level ACTION -Message "Updated existing '$($p.Name)' to state $State"
+            }
+        } else {
+            Write-ModernizationLog -Level INFO -Message "Skipped '$($p.Name)' (already exists with state $State)"
+        }
+        continue
+    }
+
     if ($PSCmdlet.ShouldProcess($p.Name, "Create CA policy (state=$State)")) {
         $params = @{ displayName = $p.Name; state = $State } + $p.Body
         New-MgIdentityConditionalAccessPolicy -BodyParameter $params | Out-Null
