@@ -48,6 +48,11 @@ Write-HelpDeskLog -Level INFO -Message "Computed ImmutableID from objectGUID $On
 $user = Get-MgUser -UserId $Upn -Property 'id,displayName,onPremisesImmutableId,onPremisesSyncEnabled' -ErrorAction Stop
 Write-HelpDeskLog -Level INFO -Message "Target: $($user.DisplayName) | current ImmutableID='$($user.OnPremisesImmutableId)' | syncEnabled=$($user.OnPremisesSyncEnabled)"
 
+if ($user.OnPremisesImmutableId -eq $newImmutableId) {
+    Write-HelpDeskLog -Level INFO -Message 'No change needed: onPremisesImmutableId already matches target value.'
+    return
+}
+
 if ($ExpectedCurrentValue -and $user.OnPremisesImmutableId -ne $ExpectedCurrentValue) {
     throw "Current ImmutableID '$($user.OnPremisesImmutableId)' does not match expected '$ExpectedCurrentValue'. STOP and contact Identity Engineering (Doc 1 §9.4)."
 }

@@ -77,6 +77,14 @@ foreach ($upn in $TechnicianUpns) {
     $user = Get-MgUser -UserId $upn -ErrorAction SilentlyContinue
     if (-not $user) { Write-HelpDeskLog -Level ERROR -Message "User not found: $upn"; continue }
 
+    $alreadyEligible = Get-MgIdentityGovernancePrivilegedAccessGroupEligibilityScheduleInstance -All -ErrorAction SilentlyContinue `
+        | Where-Object { $_.GroupId -eq $group.Id -and $_.PrincipalId -eq $user.Id -and $_.AccessId -eq 'member' } `
+        | Select-Object -First 1
+    if ($alreadyEligible) {
+        Write-HelpDeskLog -Level INFO -Message "User already eligible in PAG: $upn"
+        continue
+    }
+
     if ($PSCmdlet.ShouldProcess($upn, "Make eligible member of $GroupName (PIM for Groups)")) {
         $params = @{
             accessId      = 'member'
