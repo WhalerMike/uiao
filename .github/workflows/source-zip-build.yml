@@ -66,6 +66,35 @@ jobs:
           fi
           echo "Release '$TAG' confirmed."
 
+      - name: Download all pip wheels (offline bundle)
+        shell: pwsh
+        run: |
+          # Download build tooling + all runtime + [api] extras into deps\.
+          # The --prefer-binary flag ensures we get pre-built wheels rather than
+          # sdists that would require a C compiler on the target machine.
+          New-Item -ItemType Directory -Force deps | Out-Null
+
+          # Build tooling (needed before pip install . can run on the target)
+          python -m pip download `
+            --dest deps `
+            --prefer-binary `
+            pip "setuptools>=61.0" wheel build
+
+          # All runtime dependencies (transitive closure of pyproject.toml)
+          python -m pip download `
+            --dest deps `
+            --prefer-binary `
+            .
+
+          # [api] extras: FastAPI, uvicorn, httpx, msal
+          python -m pip download `
+            --dest deps `
+            --prefer-binary `
+            ".[api]"
+
+          $count = (Get-ChildItem deps -Filter "*.whl" | Measure-Object).Count
+          Write-Host "Downloaded $count wheel(s) into deps\"
+
       - name: Build zip
         id: build
         shell: pwsh
@@ -74,7 +103,8 @@ jobs:
           .\scripts\Build-UIAOSourceZip.ps1 `
             -Version "${{ steps.version.outputs.version }}" `
             -OutDir  dist `
-            -ZipName "uiao.zip"
+            -ZipName "uiao.zip" `
+            -DepsDir deps
 
       - name: Compute SHA-256
         id: sha

@@ -92,6 +92,8 @@ the CLI and all companion automation.
 | Path in zip | Purpose |
 |---|---|
 | `src/`, `pyproject.toml`, `README.md`, `LICENSE` | Installable Python source (`pip install .`) |
+| `deps/` | **Pre-downloaded pip wheels** — pip, setuptools, wheel, build, and all runtime + `[api]` transitive dependencies. Install never contacts PyPI. |
+| `Install-UIAO.ps1` | **One-shot offline installer** — installs from `deps/` with `--no-index --find-links`. Use this on proxy-restricted networks (407 errors). |
 | `Install-UIAOPrerequisites.ps1` | Validates and installs all PS prerequisites (modules, RSAT, PSRemoting, execution policy) |
 | `scripts/Invoke-ZtDashboard.ps1` | Zero Trust Assessment Dashboard |
 | `scripts/Invoke-ADSurvey.ps1` | AD Forest Survey |
@@ -105,12 +107,10 @@ the CLI and all companion automation.
 | [`uiao.zip`](https://github.com/WhalerMike/uiao/releases/download/uiao-source-zip-v1.0/uiao.zip) | *(hash updated on next release build — verify via workflow artifact)* |
 
 ```powershell
-# Step 1 — validate / install prerequisites
-.\Install-UIAOPrerequisites.ps1
-
-# Step 2 — install the UIAO CLI from the extracted folder
-python -m pip install .
-python -m pip install ".[api]"
+# Proxy / air-gap install — no internet required (all wheels are in deps\):
+.\Install-UIAOPrerequisites.ps1         # Step 1 — PS modules, RSAT, PSRemoting
+.\Install-UIAO.ps1                      # Step 2 — installs from deps\, no PyPI needed
+.\Install-UIAO.ps1 -ApiExtras           # Step 2 (with FastAPI REST server)
 ```
 
 ### UIAO PowerShell Pack

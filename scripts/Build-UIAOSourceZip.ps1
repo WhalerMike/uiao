@@ -5,10 +5,7 @@
 
 .DESCRIPTION
     Produces a single zip that an operator can extract on a machine with no
-    internet access and run:
-
-      python -m pip install .
-      python -m pip install ".[api]"
+    internet access and install completely offline (no PyPI / proxy needed).
 
     The bundle includes:
 
@@ -18,9 +15,14 @@
         README.md             — project README
         LICENSE               — Apache-2.0
 
-      Prerequisites
-        Install-UIAOPrerequisites.ps1  — validates + installs all PS prerequisites
-                                         (modules, RSAT, PSRemoting, exec policy)
+      Offline pip wheels (pre-downloaded by Download-UIAODeps.ps1 / CI)
+        deps\                 — all required .whl files for pip install . and .[api]
+                                pip never contacts PyPI when installing from this bundle.
+
+      Installers
+        Install-UIAO.ps1              — one-shot offline installer (runs pip from deps\)
+        Install-UIAOPrerequisites.ps1 — validates + installs PowerShell prerequisites
+                                        (modules, RSAT, PSRemoting, execution policy)
 
       Assessment & analysis scripts
         scripts\Invoke-ZtDashboard.ps1         — Zero Trust Assessment Dashboard
@@ -43,6 +45,12 @@
     This script is invoked by .github/workflows/source-zip-build.yml but can
     also be run locally on Windows or Linux (pwsh 7 required).
 
+.PARAMETER DepsDir
+    Path to the pre-downloaded wheels folder produced by Download-UIAODeps.ps1.
+    Default: deps\ (relative to repo root).  If the folder does not exist the
+    script warns but continues — the resulting zip will not support offline
+    install without separately providing deps\.
+
 .PARAMETER Version
     Version string embedded in the zip filename.
     Default: read from src/uiao/__version__.py.
@@ -64,7 +72,8 @@
 param(
     [string]$Version = "",
     [string]$OutDir  = "dist",
-    [string]$ZipName = ""
+    [string]$ZipName = "",
+    [string]$DepsDir = ""
 )
 
 Set-StrictMode -Version Latest
@@ -121,11 +130,27 @@ Add-File (Join-Path $RepoRoot "pyproject.toml")
 Add-File (Join-Path $RepoRoot "README.md")
 Add-File (Join-Path $RepoRoot "LICENSE")    # Apache-2.0
 
-# ── Prerequisites script ─────────────────────────────────────────────────────
+# ── Pre-downloaded pip wheels (offline install) ──────────────────────────────
 
 Write-Host ""
-Write-Host "Prerequisites:" -ForegroundColor DarkCyan
+Write-Host "Offline pip wheels (deps\):" -ForegroundColor DarkCyan
 
+$ResolvedDeps = if ($DepsDir) { $DepsDir } else { Join-Path $RepoRoot "deps" }
+if (Test-Path $ResolvedDeps) {
+    $wheelCount = (Get-ChildItem $ResolvedDeps -Filter "*.whl" | Measure-Object).Count
+    Add-Dir $ResolvedDeps "deps"
+    Write-Host "  ($wheelCount wheel(s) bundled)" -ForegroundColor DarkGray
+} else {
+    Write-Warning "  ! deps\ not found at $ResolvedDeps — bundle will NOT support fully offline install."
+    Write-Warning "    Run Download-UIAODeps.ps1 first (or let the CI workflow do it), then rebuild."
+}
+
+# ── Installer scripts ─────────────────────────────────────────────────────────
+
+Write-Host ""
+Write-Host "Installer scripts:" -ForegroundColor DarkCyan
+
+Add-File (Join-Path $RepoRoot "scripts\Install-UIAO.ps1")
 Add-File (Join-Path $RepoRoot "scripts\Install-UIAOPrerequisites.ps1")
 
 # ── Assessment & analysis scripts ────────────────────────────────────────────
@@ -169,82 +194,80 @@ $ReadmePath = Join-Path $Stage "README.txt"
 [System.IO.File]::WriteAllText($ReadmePath, @"
 UIAO Source Bundle v$Version
 ==============================
-Offline install kit for the UIAO CLI and companion PowerShell scripts.
+Fully offline install kit for the UIAO CLI and companion PowerShell scripts.
+No internet access required at install time.
 Download page: https://whalermike.github.io/uiao/download/
 Full docs:     https://whalermike.github.io/uiao/
 
-INSTALLING THE UIAO CLI
------------------------
-Run from this directory (Python 3.11+ required):
+QUICK INSTALL (OFFLINE — NO INTERNET NEEDED)
+---------------------------------------------
+All pip wheels are pre-bundled in deps\.  Run from this directory:
 
-  python -m pip install .
-  python -m pip install ".[api]"      # adds the FastAPI REST server
+  Step 1 — install PowerShell prerequisites (run once, as Administrator):
+    .\Install-UIAOPrerequisites.ps1
 
-PREREQUISITES (POWERSHELL)
---------------------------
-Before running any of the companion PS scripts, validate your workstation:
+  Step 2 — install the UIAO CLI (no internet required):
+    .\Install-UIAO.ps1              # base CLI only
+    .\Install-UIAO.ps1 -ApiExtras   # base CLI + FastAPI REST server
 
-  .\Install-UIAOPrerequisites.ps1         # full check + install
-  .\Install-UIAOPrerequisites.ps1 -WhatIf # dry-run only
+If your proxy blocks PyPI you'll see a 407 error without step 2 above.
+Install-UIAO.ps1 uses --no-index --find-links deps\ so pip never contacts PyPI.
 
-The script verifies PS version, loads required modules (ActiveDirectory,
-GroupPolicy, PKI, DnsServer, DhcpServer, etc.), installs RSAT role tools,
-enables PSRemoting, and sets the execution policy.
+INSTALL MANUALLY (OPTIONAL)
+----------------------------
+If you prefer running pip directly:
 
-INCLUDED SCRIPTS
-----------------
-scripts\
-  Install-UIAOPrerequisites.ps1       -- Step 0: validate / install prerequisites
+  python -m pip install --no-index --find-links deps\ setuptools wheel build
+  python -m pip install --no-index --find-links deps\ .
+  python -m pip install --no-index --find-links deps\ ".[api]"  # optional REST server
 
-  Invoke-ZtDashboard.ps1              -- Zero Trust Assessment Dashboard
-                                         Guide: https://whalermike.github.io/uiao/
-                                           customer-documents/operational-guides/
-                                           zero-trust-assessment/
+BUNDLE CONTENTS
+---------------
+  README.txt                          This file
+  Install-UIAO.ps1                    One-shot offline CLI installer
+  Install-UIAOPrerequisites.ps1       PowerShell prerequisites installer
 
-  Invoke-ADSurvey.ps1                 -- AD Forest Survey (Phase 1 discovery)
-                                         Guide: https://whalermike.github.io/uiao/
-                                           customer-documents/substrate/
-                                           platform-tooling/invoke-ad-survey.html
+  src\                                Installable Python source tree
+  pyproject.toml                      Package metadata / dependency declarations
+  README.md                           Project README
+  LICENSE                             Apache-2.0
 
-  Invoke-GpoMigrationTriage.ps1       -- GPO → Intune / Azure Arc classification
-                                         Guide: https://whalermike.github.io/uiao/
-                                           customer-documents/substrate/
-                                           platform-tooling/invoke-gpo-migration-triage.html
+  deps\                               Pre-downloaded pip wheels (offline install)
+    pip-*.whl
+    setuptools-*.whl
+    wheel-*.whl
+    build-*.whl
+    ... (all runtime + [api] transitive dependencies)
 
-  Invoke-GpoObsoleteAudit.ps1         -- GPO obsolete-setting audit
-                                         Guide: https://whalermike.github.io/uiao/
-                                           customer-documents/substrate/
-                                           platform-tooling/invoke-gpo-obsolete-audit.html
+  scripts\
+    Invoke-ZtDashboard.ps1            Zero Trust Assessment Dashboard
+    Invoke-ADSurvey.ps1               AD Forest Survey (Phase 1 discovery)
+    Invoke-GpoMigrationTriage.ps1     GPO → Intune / Azure Arc classification
+    Invoke-GpoObsoleteAudit.ps1       GPO obsolete-setting audit
 
-  helpdesk-entra\                     -- Help Desk / Cloud Services Entra Operations
-    HelpDeskEntra.psm1                   Shared module
-    Invoke-RequestTriage.ps1             Request triage classifier
-    Get-EnterpriseAppInventory.ps1       Enterprise app inventory + risk tiering
-    New-HelpDeskPAG.ps1                  Help Desk PAG + PIM setup
-    Add-AppAccessGroup.ps1               Group-to-app assignment
-    Repair-ImmutableId.ps1               ImmutableID repair
-    Export-AccessCertification.ps1       Access-certification export
-                                         Guide: https://whalermike.github.io/uiao/
-                                           customer-documents/operational-guides/
-                                           helpdesk-entra-operations/
+    helpdesk-entra\                   Help Desk / Cloud Services Entra Operations
+      HelpDeskEntra.psm1                Shared module
+      Invoke-RequestTriage.ps1          Request triage classifier
+      Get-EnterpriseAppInventory.ps1    Enterprise app inventory + risk tiering
+      New-HelpDeskPAG.ps1               Help Desk PAG + PIM setup
+      Add-AppAccessGroup.ps1            Group-to-app assignment
+      Repair-ImmutableId.ps1            ImmutableID repair
+      Export-AccessCertification.ps1    Access-certification export
 
-  intune-arc\                         -- Intune + Azure Arc Modernization
-    IntuneArcModernization.psm1          Shared module
-    Invoke-ArcOnboarding.ps1             Arc onboarding
-    Set-ArcPolicyBaseline.ps1            Arc security baseline
-    Set-IntuneAutoEnrollment.ps1         Intune auto-enrollment
-    Get-IntuneEnrollmentStatus.ps1       Intune enrollment posture
-    Get-NtlmAudit.ps1                    NTLM audit
-    Set-NtlmRestriction.ps1              LSA / NTLM restriction
-    Repair-Spn.ps1                       SPN repair
-    Invoke-SqlHardeningAudit.ps1         SQL hardening audit
-    Deploy-ConditionalAccessBaseline.ps1 Conditional Access baseline
-    Compare-ConditionalAccessDrift.ps1   CA policy drift detection
-    Get-ModernizationDriftReport.ps1     Cross-domain status roll-up
-    Get-OrgPathSurvey.ps1                OrgPath survey helper (retrofit)
-                                         Guide: https://whalermike.github.io/uiao/
-                                           customer-documents/operational-guides/
-                                           intune-arc-modernization/
+    intune-arc\                       Intune + Azure Arc Modernization
+      IntuneArcModernization.psm1       Shared module
+      Invoke-ArcOnboarding.ps1          Arc onboarding
+      Set-ArcPolicyBaseline.ps1         Arc security baseline
+      Set-IntuneAutoEnrollment.ps1      Intune auto-enrollment
+      Get-IntuneEnrollmentStatus.ps1    Intune enrollment posture
+      Get-NtlmAudit.ps1                 NTLM audit
+      Set-NtlmRestriction.ps1           LSA / NTLM restriction
+      Repair-Spn.ps1                    SPN repair
+      Invoke-SqlHardeningAudit.ps1      SQL hardening audit
+      Deploy-ConditionalAccessBaseline.ps1  Conditional Access baseline
+      Compare-ConditionalAccessDrift.ps1    CA policy drift detection
+      Get-ModernizationDriftReport.ps1  Cross-domain status roll-up
+      Get-OrgPathSurvey.ps1             OrgPath survey helper (retrofit)
 
 OPTIONAL NEXT STEPS
 -------------------
