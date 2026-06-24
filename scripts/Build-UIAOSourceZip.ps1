@@ -123,6 +123,21 @@ function Add-Dir {
     Write-Host "  + $DstSubdir\" -ForegroundColor DarkGray
 }
 
+function Convert-ToWindowsPowerShellText {
+    param([string]$Root)
+
+    $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+    $extensions = @("*.ps1", "*.psm1", "*.psd1")
+
+    foreach ($pattern in $extensions) {
+        Get-ChildItem -Path $Root -Recurse -File -Filter $pattern | ForEach-Object {
+            $content = [System.IO.File]::ReadAllText($_.FullName)
+            $content = $content -replace "`r?`n", "`r`n"
+            [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
+        }
+    }
+}
+
 # ── Python source tree ────────────────────────────────────────────────────────
 
 Write-Host ""
@@ -306,6 +321,13 @@ Source:  https://github.com/WhalerMike/uiao
 "@, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "  + README.txt" -ForegroundColor DarkGray
+
+# ── Normalize bundled PowerShell files for Windows hosts ─────────────────────
+
+Write-Host ""
+Write-Host "Normalizing PowerShell files for Windows compatibility..." -ForegroundColor DarkCyan
+Convert-ToWindowsPowerShellText -Root $Stage
+Write-Host "  + Rewrote bundled .ps1/.psm1/.psd1 files as UTF-8 BOM + CRLF" -ForegroundColor DarkGray
 
 # ── Compress ─────────────────────────────────────────────────────────────────
 
