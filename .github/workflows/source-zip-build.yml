@@ -1,0 +1,119 @@
+name: UIAO Source ZIP Build
+
+# Builds the uiao.zip offline bundle — Python source tree, prerequisites script,
+# and all download-site PS1 scripts — and attaches it to a GitHub release.
+#
+# Run manually (workflow_dispatch) to attach the zip to an existing release tag.
+# Also fires automatically whenever a new release is published (release: published).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach the zip to (e.g. uiao-source-zip-v1.0). The release must already exist.'
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Assemble uiao.zip
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = python -c "from src.uiao.__version__ import __version__; print(__version__)" 2>$null
+          if (-not $ver) {
+            $tag = "${{ github.event.inputs.tag || github.ref_name }}"
+            $ver = $tag -replace '^uiao-source-zip-v','' -replace '^v',''
+          }
+          if (-not $ver) { $ver = "0.0.0" }
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Resolved version: $ver"
+
+      - name: Verify target release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          found=$(curl -sS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" \
+            | jq -r --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | length')
+          if [ "$found" -lt 1 ]; then
+            echo "::error::Release tag '$TAG' not found. Create the release first, then re-run."
+            exit 1
+          fi
+          echo "Release '$TAG' confirmed."
+
+      - name: Build zip
+        id: build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          .\scripts\Build-UIAOSourceZip.ps1 `
+            -Version "${{ steps.version.outputs.version }}" `
+            -OutDir  dist `
+            -ZipName "uiao.zip"
+
+      - name: Compute SHA-256
+        id: sha
+        shell: pwsh
+        run: |
+          $zip = Get-Item dist\uiao.zip
+          $hash = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLower()
+          $sizeMB = [math]::Round($zip.Length / 1MB, 2)
+          "sha256=$hash"   | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          "size_mb=$sizeMB" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          Write-Host "SHA-256: $hash  ($sizeMB MB)"
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: uiao-source-zip-${{ steps.version.outputs.version }}
+          path: dist/uiao.zip
+          retention-days: 90
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release' || github.event.inputs.tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/uiao.zip
+          fail_on_unmatched_files: true
+          make_latest: false
+
+      - name: Summary
+        run: |
+          {
+            echo "## UIAO Source ZIP built"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Version   | ${{ steps.version.outputs.version }} |"
+            echo "| Zip size  | ${{ steps.sha.outputs.size_mb }} MB |"
+            echo "| SHA-256   | \`${{ steps.sha.outputs.sha256 }}\` |"
+            echo ""
+            echo "**Next:** update \`docs/download/index.qmd\` — replace the SHA-256 for \`uiao.zip\` with \`${{ steps.sha.outputs.sha256 }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
