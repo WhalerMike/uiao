@@ -43,8 +43,9 @@ Write-Host "    WiX: $(wix --version)"
 # 2. Ensure WiX extensions are added
 # -----------------------------------------------------------------------
 Write-Step "Adding WiX extensions..."
-wix extension add --global WixToolset.UI.wixext --accept-license 2>&1 | Out-Null
-wix extension add --global WixToolset.Util.wixext --accept-license 2>&1 | Out-Null
+$env:WIX_ACCEPT_EULA = "1"
+wix extension add --global WixToolset.UI.wixext    2>&1 | Out-Null
+wix extension add --global WixToolset.Util.wixext  2>&1 | Out-Null
 Write-Host "    Extensions: UI + Util"
 
 # -----------------------------------------------------------------------
