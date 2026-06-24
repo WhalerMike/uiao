@@ -23,13 +23,11 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
-  <Package
+  <Product
     Name="UIAO Governance API"
     Manufacturer="WhalerMike"
     Version="!(bind.FileVersion.PythonExe)"
-    UpgradeCode="B4E9F3A2-7C1D-4E8B-9F2A-3D6C0E5A1B7F"
-    Scope="perMachine"
-    Summary="UIAO organizational governance API — OrgPath, AD assessment, and drift reporting.">
+    UpgradeCode="B4E9F3A2-7C1D-4E8B-9F2A-3D6C0E5A1B7F">
 
     <!-- Upgrade: remove old version before installing new -->
     <MajorUpgrade DowngradeErrorMessage="A newer version of UIAO is already installed." />
@@ -56,16 +54,14 @@
          ===================================================================== -->
     <Feature Id="ProductFeature" Title="UIAO Governance API" Level="1">
       <ComponentGroupRef Id="UIAOFiles" />
-      <ComponentGroupRef Id="UIAOEnvVars" />
       <ComponentGroupRef Id="UIAOService" />
       <ComponentGroupRef Id="UIAOIISConfig" />
     </Feature>
 
     <!-- =====================================================================
          UI: minimal dialog set — collects TENANT_ID, CLIENT_ID, SECRET
-         (WiX UI extension provides WixUI_Minimal as base)
          ===================================================================== -->
-    <ui:WixUI Id="WixUI_UIAO" />
+    <ui:WixUI Id="WixUI_Minimal" />
 
     <!-- =====================================================================
          Custom actions — PowerShell bootstrapper
@@ -84,7 +80,7 @@
     <CustomAction
       Id="PipInstall"
       Directory="INSTALLDIR"
-      ExeCommand="&quot;[INSTALLDIR].venv\Scripts\python.exe&quot; -m pip install -quiet &quot;[INSTALLDIR][api,service]&quot;"
+      ExeCommand="&quot;[INSTALLDIR].venv\Scripts\python.exe&quot; -m pip install -q &quot;uiao[api,service]&quot;"
       Execute="deferred"
       Return="check"
       Impersonate="no" />
@@ -114,13 +110,13 @@
       <Custom Action="RemoveService" Before="RemoveFiles">REMOVE="ALL"</Custom>
     </InstallExecuteSequence>
 
-  </Package>
+  </Product>
 
   <!-- =====================================================================
        Directory layout
        ===================================================================== -->
   <Fragment>
-    <StandardDirectory Id="ProgramFiles64Folder">
+    <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="INSTALLDIR" Name="uiao" />
     </StandardDirectory>
   </Fragment>
@@ -150,64 +146,6 @@
   </Fragment>
 
   <!-- =====================================================================
-       Environment variables — UIAO credentials at machine scope
-       ===================================================================== -->
-  <Fragment>
-    <ComponentGroup Id="UIAOEnvVars" Directory="INSTALLDIR">
-      <Component Id="EnvVarTenantId"
-                 Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
-        <util:Environment
-          Id="EnvTenantId"
-          Name="UIAO_ENTRA_TENANT_ID"
-          Value="[TENANT_ID]"
-          Action="set"
-          System="yes"
-          Permanent="no" />
-      </Component>
-      <Component Id="EnvVarClientId"
-                 Guid="C3D4E5F6-A7B8-9012-CDEF-012345678902">
-        <util:Environment
-          Id="EnvClientId"
-          Name="UIAO_ENTRA_CLIENT_ID"
-          Value="[CLIENT_ID]"
-          Action="set"
-          System="yes"
-          Permanent="no" />
-      </Component>
-      <Component Id="EnvVarClientSecret"
-                 Guid="D4E5F6A7-B8C9-0123-DEF0-123456789003">
-        <util:Environment
-          Id="EnvClientSecret"
-          Name="UIAO_ENTRA_CLIENT_SECRET"
-          Value="[CLIENT_SECRET]"
-          Action="set"
-          System="yes"
-          Permanent="no" />
-      </Component>
-      <Component Id="EnvVarServicePort"
-                 Guid="E5F6A7B8-C9D0-1234-EF01-234567890004">
-        <util:Environment
-          Id="EnvServicePort"
-          Name="UIAO_SERVICE_PORT"
-          Value="[SERVICE_PORT]"
-          Action="set"
-          System="yes"
-          Permanent="no" />
-      </Component>
-      <Component Id="EnvVarWorkspaceRoot"
-                 Guid="F6A7B8C9-D0E1-2345-F012-345678900005">
-        <util:Environment
-          Id="EnvWorkspaceRoot"
-          Name="UIAO_WORKSPACE_ROOT"
-          Value="[INSTALLDIR]"
-          Action="set"
-          System="yes"
-          Permanent="no" />
-      </Component>
-    </ComponentGroup>
-  </Fragment>
-
-  <!-- =====================================================================
        Windows Service registration
        (Actual install done via custom action; this entry ensures
         MSI tracks the service for clean uninstall.)
@@ -223,8 +161,7 @@
           Description="UIAO organizational governance API. Provides OrgPath web console, AD assessment, and drift reporting."
           Type="ownProcess"
           Start="auto"
-          ErrorControl="normal"
-          Account="[SERVICE_ACCOUNT]" />
+          ErrorControl="normal" />
         <ServiceControl
           Id="UIAOSvcCtrl"
           Name="UIAOService"
