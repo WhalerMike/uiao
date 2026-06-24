@@ -43,9 +43,8 @@ Write-Host "    WiX: $(wix --version)"
 # 2. Ensure WiX extensions are added
 # -----------------------------------------------------------------------
 Write-Step "Adding WiX extensions..."
-wix osmf --accept 2>&1 | Out-Null
-wix extension add --global WixToolset.UI.wixext    2>&1 | Out-Null
-wix extension add --global WixToolset.Util.wixext  2>&1 | Out-Null
+wix extension add --global WixToolset.UI.wixext -acceptEula wix7 2>&1 | Out-Null
+wix extension add --global WixToolset.Util.wixext -acceptEula wix7 2>&1 | Out-Null
 Write-Host "    Extensions: UI + Util"
 
 # -----------------------------------------------------------------------
@@ -62,6 +61,7 @@ wix build $wxs `
     -d "Version=$Version" `
     -ext WixToolset.UI.wixext `
     -ext WixToolset.Util.wixext `
+    -acceptEula wix7 `
     -o $output
 
 if (Test-Path $output) {
