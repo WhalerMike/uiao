@@ -35,6 +35,9 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
       - name: Resolve version
         id: version
         shell: pwsh
@@ -94,6 +97,14 @@ jobs:
 
           $count = (Get-ChildItem deps -Filter "*.whl" | Measure-Object).Count
           Write-Host "Downloaded $count wheel(s) into deps\"
+
+      - name: Render CLI reference to docx
+        shell: pwsh
+        run: |
+          quarto render docs/docs/cli-reference.qmd --to docx --output cli-reference.docx --output-dir docs/docs
+          if (-not (Test-Path "docs/docs/cli-reference.docx")) {
+            throw "Expected docs/docs/cli-reference.docx was not produced."
+          }
 
       - name: Build zip
         id: build

@@ -23,6 +23,9 @@
         Install-UIAO.ps1              — one-shot offline installer (runs pip from deps\)
         Install-UIAOPrerequisites.ps1 — validates + installs PowerShell prerequisites
                                         (modules, RSAT, PSRemoting, execution policy)
+      CLI command guide
+        docs\cli-reference.qmd        — canonical command reference source
+        docs\cli-reference.docx       — pre-rendered Word output (when available)
 
       Assessment & analysis scripts
         scripts\Invoke-ZtDashboard.ps1         — Zero Trust Assessment Dashboard
@@ -153,6 +156,19 @@ Write-Host "Installer scripts:" -ForegroundColor DarkCyan
 Add-File (Join-Path $RepoRoot "scripts\Install-UIAO.ps1")
 Add-File (Join-Path $RepoRoot "scripts\Install-UIAOPrerequisites.ps1")
 
+# ── CLI command guide ─────────────────────────────────────────────────────────
+
+Write-Host ""
+Write-Host "CLI command guide:" -ForegroundColor DarkCyan
+
+Add-File (Join-Path $RepoRoot "docs\docs\cli-reference.qmd") "docs"
+$CliRefDocx = Join-Path $RepoRoot "docs\docs\cli-reference.docx"
+if (Test-Path $CliRefDocx) {
+    Add-File $CliRefDocx "docs"
+} else {
+    Write-Warning "  ! cli-reference.docx not found — qmd source is included; docx can be rendered with Quarto."
+}
+
 # ── Assessment & analysis scripts ────────────────────────────────────────────
 
 Write-Host ""
@@ -226,6 +242,8 @@ BUNDLE CONTENTS
   README.txt                          This file
   Install-UIAO.ps1                    One-shot offline CLI installer
   Install-UIAOPrerequisites.ps1       PowerShell prerequisites installer
+  docs\cli-reference.qmd              Canonical CLI command reference source
+  docs\cli-reference.docx             CLI command reference (Word; included when pre-rendered)
 
   src\                                Installable Python source tree
   pyproject.toml                      Package metadata / dependency declarations
