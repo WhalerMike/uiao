@@ -59,7 +59,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 ADAPTER_ID: str = "fedramp-cr26-catalog"
-STATUS: str = "proposed"
+STATUS: str = "active"
 
 DEFAULT_SNAPSHOT_SHA: str = "c31eb04c082d6d578a26a00de9a482707ab7a00c"
 

@@ -705,6 +705,13 @@
     - [The 2027 Milestone — What Done Looks Like](customer-documents/sql-server-narrative/Book_09_CPT_02.html)
   - [Book_10 — Certificate Authority: From ADCS to Cloud PKI](customer-documents/sql-server-narrative/Book_10.html)
     - [Where SQL Server Touches ADCS](customer-documents/sql-server-narrative/Book_10_CPT_01.html)
+  - [Book_11 — The Platform Question: Database Consolidation Toward SSOT](customer-documents/sql-server-narrative/Book_11.html)
+    - [The Fragmentation Cost — SQL Server Sprawl as an Anti-SSOT Pattern](customer-documents/sql-server-narrative/Book_11_CPT_01.html)
+    - [PostgreSQL in the Federal Stack — The Primary Consolidation Target](customer-documents/sql-server-narrative/Book_11_CPT_02.html)
+    - [Oracle as the Enterprise Alternative — When the Calculus Is Different](customer-documents/sql-server-narrative/Book_11_CPT_03.html)
+    - [The Decision Under a Forcing Function — Choices and Recommendations](customer-documents/sql-server-narrative/Book_11_CPT_04.html)
+  - [The Forcing Function — Agency Choices & Recommendations](customer-documents/sql-server-narrative/decision-brief.html)
+  - [Division of Labor — Microsoft vs. You](customer-documents/sql-server-narrative/responsibility-matrix.html)
 - **SQL Server Identity Transformation — Standalone (no internal references)**
   - [SQL Server Identity Transformation](customer-documents/sql-server-narrative-standalone/index.html)
   - [OrgPath × SQL Server — The Integration Bridge](customer-documents/sql-server-narrative-standalone/bridge-orgpath-sql.html)
