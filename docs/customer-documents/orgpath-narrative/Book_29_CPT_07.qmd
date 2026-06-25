@@ -1,0 +1,99 @@
+---
+title: "Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 7
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+Key terms and canonical references for Book_29. Every term below is used in its precise technical sense throughout this book; the definitions here are the governing ones. Canon references point to the binding normative artifacts; this book narrates them but does not supersede them.
+:::
+
+## Key Terms
+
+**EDR — Endpoint Detection and Response.**
+A security tooling category that combines continuous behavioral monitoring of endpoint activity with the capability to detect, investigate, and contain threats in real time. Unlike traditional antivirus, EDR records process telemetry, network connections, file events, and registry changes, enabling retrospective investigation. CrowdStrike Falcon is UIAO's EDR platform of record.
+
+**NGAV — Next-Gen Antivirus.**
+A prevention-oriented endpoint security capability that uses machine learning and behavioral models rather than static signature databases to block malware before execution. NGAV is typically a policy component within a broader EDR platform. In Falcon, NGAV functionality is configured through the Prevention Policy; it is not a separately deployed agent.
+
+**Falcon Sensor Policy.**
+The CrowdStrike Falcon configuration object that binds a prevention policy, a detection policy, and optionally device control settings to a host group. A sensor policy is the top-level governance unit for Falcon coverage. An endpoint is governed by exactly one sensor policy at a time. Absence of a sensor policy assignment, or assignment to the default unmanaged policy, constitutes a coverage gap.
+
+**Prevention Policy (Falcon).**
+The Falcon configuration object that controls behavioral blocking — which attack techniques and malware behaviors the agent is authorized to kill on contact, versus flag for investigation. Prevention Policies map to NIST SI-3 (Malicious Code Protection) and SP 800-53 SI-4 blocking posture. A prevention policy in "detect-only" mode provides telemetry but no autonomous blocking.
+
+**Detection Policy (Falcon).**
+The Falcon configuration object that controls the sensitivity and scope of behavioral telemetry collection and alert generation. Detection Policies govern what events are forwarded to the Falcon cloud console and, via the SIEM feed, to the SOC. A detection policy in a permissive or low-sensitivity configuration can suppress alerts that SI-4 compliance requires.
+
+**Device Control Policy (Falcon).**
+The Falcon configuration object that governs removable media access — USB mass storage, external drives, and similar hardware-attach events. Device Control Policies enforce SC-8 and SI-3 compensating controls against data exfiltration via physical media. An endpoint with no device control policy is exposed to unrestricted removable media attachment regardless of other Falcon coverage.
+
+**Falcon Spotlight.**
+CrowdStrike's vulnerability assessment module, integrated into the Falcon agent, that continuously correlates observed software inventory against CVE databases and returns a prioritized list of exploitable vulnerabilities per endpoint. Spotlight satisfies RA-5 (Vulnerability Scanning) without requiring a separate scanning agent. Critical findings from Spotlight are the basis for the `DRIFT-EDR-VULN-CRITICAL` finding class.
+
+**RA-5 — NIST Vulnerability Assessment.**
+NIST SP 800-53 Rev 5 control RA-5 requires organizations to scan information systems and hosted applications for vulnerabilities at a defined frequency, analyze results, and remediate findings within risk-tolerance windows. In the UIAO endpoint governance model, Falcon Spotlight satisfies RA-5 coverage for enrolled endpoints; `DRIFT-EDR-VULN-CRITICAL` is the UIAO mechanism that surfaces RA-5 gaps to the governance layer.
+
+**SI-4 — NIST System Monitoring.**
+NIST SP 800-53 Rev 5 control SI-4 requires continuous monitoring of information systems to detect attacks, indicators of compromise, and unauthorized activity. EDR behavioral telemetry is the primary technical control satisfying SI-4 for endpoint surfaces. Endpoints missing a sensor, running a permissive detection policy, or excluded from SIEM feed forwarding represent SI-4 coverage gaps.
+
+**IR-4 — NIST Incident Handling.**
+NIST SP 800-53 Rev 5 control IR-4 requires organizations to implement an incident handling capability including preparation, detection, analysis, containment, eradication, and recovery. Falcon's real-time response capability and SIEM-integrated alerting are the technical substrate for IR-4 on the endpoint surface. The `DRIFT-EDR-ALERT` finding class surfaces Falcon alert queues that are not being consumed by an active IR-4 workflow.
+
+**SC-7 — NIST Boundary Protection (contributing).**
+NIST SP 800-53 Rev 5 control SC-7 governs boundary protection mechanisms including managed interfaces, traffic filtering, and remote access controls. Falcon Device Control Policies contribute to SC-7 by enforcing a managed interface policy for removable media at the endpoint boundary. SC-7 is not fully satisfied by EDR alone; SC-7 is listed here because Device Control Policy governance directly addresses one of its sub-requirements.
+
+**DRIFT-EDR-NOPOLICY.**
+The UIAO finding class emitted when an enrolled endpoint has no active Falcon sensor policy assignment, or is assigned only to the default unmanaged group. Severity: CRITICAL. Posture: DRIFT. Indicates the endpoint runs the Falcon agent but is ungoverned — no prevention, detection, or device control settings apply. Triggers a `GOV-EDR-NOPOLICY` ticket at L3.
+
+**DRIFT-EDR-NOSENSOR.**
+The UIAO finding class emitted when an endpoint present in the OrgPath endpoint inventory has no corresponding Falcon sensor enrollment — the CID sensor registry returns no record for the device. Severity: CRITICAL. Posture: DRIFT. Indicates the endpoint is completely outside Falcon coverage. Triggers a `GOV-EDR-NOSENSOR` ticket at L3 and escalation to the endpoint owner's authority chain.
+
+**DRIFT-EDR-WRONGPOLICY.**
+The UIAO finding class emitted when an enrolled endpoint's active sensor policy does not match the policy tier specified in its OrgPath endpoint profile. A Tier-2 endpoint running a Tier-1 (minimal) policy, or a classified-workstation profile running a standard-office policy, produces this finding. Severity: HIGH. Posture: DRIFT. Triggers a `GOV-EDR-WRONGPOLICY` ticket at L3.
+
+**DRIFT-EDR-ALERT.**
+The UIAO finding class emitted when a Falcon detection alert for a governed endpoint has remained unacknowledged in the console queue beyond the defined SLA window (default: 4 hours for HIGH/CRITICAL, 24 hours for MEDIUM). Severity depends on the alert severity. Posture: DRIFT. Surfaces IR-4 workflow gaps — a sensor generating alerts that no analyst is consuming.
+
+**DRIFT-EDR-VULN-CRITICAL.**
+The UIAO finding class emitted when Falcon Spotlight reports one or more CVSS 9.0+ (Critical) vulnerabilities on a governed endpoint with no remediation record within the defined SLA window (default: 15 days). Severity: CRITICAL. Posture: DRIFT. Maps directly to RA-5 remediation timeline requirements.
+
+**DRIFT-EDR-DEVICE-NOPOLICY.**
+The UIAO finding class emitted when an enrolled endpoint's OrgPath endpoint profile requires a device control policy but the endpoint's active sensor policy has no device control configuration applied. Severity: HIGH. Posture: DRIFT. Surfaces SC-7 / SI-3 gaps on endpoints where removable media restrictions are required by profile.
+
+**DRIFT-ORPHAN-ENDPOINT.**
+The UIAO finding class emitted when an endpoint in the OrgPath inventory has an `assigned_user` field that resolves to a known LEAVER in the HRIT record, or whose `assigned_user` is absent from the current employee-of-record set. Severity: CRITICAL. Posture: DRIFT. Indicates an endpoint running Falcon credentials under no active custodian — equivalent to an orphaned service account in the identity surface. Triggers a `GOV-ORPHAN-ENDPOINT` ticket at L3 and mandatory device isolation workflow.
+
+**OrgPath endpoint profile.**
+The UIAO governance record that binds a physical or virtual endpoint to its OrgPath position, assigned user, required Falcon sensor policy tier, device control policy requirements, Spotlight scan frequency, and SIEM forwarding scope. The endpoint profile is the normative source of truth for what Falcon configuration a given device should carry. Drift is computed by comparing the live Falcon CID state against the profile.
+
+**Provider-incorporation contract (EDR/Falcon context).**
+The ADR-092 construct that governs how UIAO incorporates Falcon as a data plane. Under the provider-incorporation contract, Falcon owns the sensor, the policy API, and the telemetry pipeline; UIAO owns the governance layer — the OrgPath endpoint profile, the drift detection logic, and the actuation ladder. UIAO does not compete with Falcon's detection algorithms; it governs enrollment, policy assignment, and lifecycle. The contract defines read interfaces (CID enrollment API, sensor policy API, Spotlight API, SIEM feed) and write interfaces (sensor policy assignment, device isolation command at L3).
+
+**L0–L4 actuation ladder (endpoint governance).**
+The ADR-092 five-tier automation autonomy model as applied to Falcon endpoint governance. L0: sensor data collected, no action. L1: drift findings written to the Automated Governance Detection log. L2: findings surfaced as advisory notifications to the device owner. L3: gated action — UIAO opens a ServiceNow ticket and, for DRIFT-ORPHAN-ENDPOINT or repeated DRIFT-EDR-NOSENSOR, may trigger device isolation pending human approval. L4: autonomous remediation (not in federal default scope; federal ceiling is L3). The endpoint governance ladder mirrors the identity governance ladder in ADR-092 and UIAO_200.
+
+**HRIT (endpoint Leaver deprovisioning).**
+The canonical HR schema (ADR-051–054, Spec2-D1.1) as it applies to the endpoint surface. When HRIT emits a LEAVER event for an employee, the UIAO endpoint governance pipeline scans the OrgPath endpoint inventory for devices with `assigned_user` matching the departing employee and emits `DRIFT-ORPHAN-ENDPOINT` findings for each. HRIT is the authoritative trigger; Falcon and UIAO do not independently detect employee departure — they consume the HRIT event and act on it.
+
+## Canon References
+
+| Canon | Title | Role in this book |
+|---|---|---|
+| ADR-092 | Active Governance | L0–L4 actuation ladder; control-plane/data-plane boundary; provider-incorporation contract for Falcon |
+| ADR-068 | Certificate-Based Authentication Mandate | Entra device registration surface that Falcon enrollment is keyed to |
+| ADR-035 | OrgPath Codebook Binding | Template for the OrgPath endpoint profile pattern |
+| ADR-051–054 | HRIT Adapter ADRs | Canonical HR schema; Leaver event detection for DRIFT-ORPHAN-ENDPOINT |
+| CrowdStrike vendor overlay | CrowdStrike Falcon Integration Spec | Sensor policy API, prevention policy API, SIEM feed integration contracts |
+
+::: {.callout-tip}
+## End of Book_29
+
+[← Chapter 6](Book_29_CPT_06.qmd) | [← Book_29 Index](Book_29.qmd)
+:::

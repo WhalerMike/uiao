@@ -1,0 +1,65 @@
+---
+title: "Falcon Sensor Policy and OrgPath-Scoped Endpoint Profiles"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 2
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+CrowdStrike Falcon sensor policies define how the endpoint agent behaves: detection sensitivity, prevention mode, exploit mitigation thresholds, and device control rules. In the Active Directory era, these settings were governed by Group Policy Objects — positional context arrived via OU membership. In UIAO they are OrgPath-derived: the Department, Division, Tier, and Security Clearance Level facets of an identity's position determine which Falcon sensor policy group the registered endpoint must be enrolled in and which prevention policy applies. This chapter maps that derivation and defines the DRIFT classes that fire when enrollment is absent or misaligned.
+:::
+
+![](../../src/uiao/canon/svg-style/book29-cpt02-diagram.png){fig-alt="Flowchart: OrgPath position box with Department plus Tier plus Clearance facets maps to endpoint profile derivation step, which branches to Falcon Sensor Policy Group and Prevention Policy assignments. DRIFT-EDR-NOPOLICY fires when no enrollment. White background, 860 by 520."}
+
+## Falcon Sensor Policies: What They Govern
+
+A Falcon sensor policy is a configuration object that tells the CrowdStrike agent on a specific device how to operate. It has three primary behavioral dimensions.
+
+The first is **detection sensitivity**. The sensor can be tuned from permissive (high-volume environments that tolerate elevated alert counts) to aggressive (environments where any anomaly warrants investigation). Federal endpoints handling Controlled Unclassified Information require aggressive sensitivity; general-purpose workstations at Tier 1 can operate at standard sensitivity without generating noise that overwhelms the SOC.
+
+The second is **prevention mode**. Prevention mode controls whether the sensor blocks detected threats automatically or only generates alerts. In monitored-only mode the sensor is an observer; in prevention mode it is an active control. The prevention mode appropriate for a device is a function of the risk the device carries — which is a function of who uses it and what they access.
+
+The third is **device control rules**. Device control governs peripheral attachment: USB storage, optical media, and external interfaces. The rules that apply to a device depend on the sensitivity of the data the device accesses, which again is a function of organizational position.
+
+In the Active Directory world these three behavioral dimensions were set through GPO inheritance: the OU an endpoint resided in determined which Group Policy objects applied, and the GPOs carried Falcon policy assignments (or registry-based configuration in environments that predated native Falcon policy management). OU membership was, imperfectly, a proxy for organizational position. An endpoint in the Finance OU got Finance GPOs; an endpoint in the Executive OU got Executive GPOs. This worked when OU placement was accurate and GPOs were current. Both conditions were often violated.
+
+## OrgPath Endpoint Policy Mapping
+
+OrgPath makes organizational position explicit and machine-readable. For endpoint policy derivation, four facets carry the decision weight.
+
+**Department** determines the high-level policy domain. Each department maps to a Falcon sensor policy group that encodes the baseline behavioral rules for that department's mission. The Department of Justice environment maps to a different baseline than the Department of Interior environment; the sensor policy group encodes that difference.
+
+**Division** refines within the department. A legal counsel division within a department requires different device control rules than an IT operations division within the same department. The division facet selects the policy variant within the departmental policy group.
+
+**Tier** is the sharpest control. Tier-3 identities — privileged administrators, security personnel, and roles with elevated access to sensitive systems — require the highest detection sensitivity and prevention mode enabled. Tier-2 identities require standard sensitivity and conditional prevention. Tier-1 identities (general workforce) receive the baseline profile appropriate to their department. The Tier facet overrides the departmental baseline upward: a Tier-3 identity in a low-sensitivity department still receives Tier-3 detection parameters.
+
+**Security Clearance Level** augments Tier for classified environments. A cleared identity at Tier 2 may warrant the same sensor profile as an uncleared Tier-3 identity. Clearance level feeds the profile derivation as an additive factor: it can elevate the required profile but cannot lower one already elevated by Tier.
+
+The derivation produces two outputs: a **Falcon sensor policy group** assignment and a **prevention policy** assignment. The sensor policy group is the CrowdStrike organizational unit that aggregates endpoints sharing a policy configuration. The prevention policy is the specific behavioral configuration — sensitivity level, prevention mode setting, device control ruleset — applied to every endpoint in the group. Both outputs are required for a governed endpoint. An endpoint that has one without the other is a configuration gap.
+
+## DRIFT Classes for EDR Enrollment
+
+Three DRIFT classes govern the Falcon enrollment surface.
+
+**DRIFT-EDR-NOPOLICY (HIGH)** fires when an Entra-registered endpoint has no assignment to any governed Falcon sensor policy group. This is the enrollment absence case. The endpoint may have a Falcon sensor installed — it may even be active and heartbeating — but it is operating outside the OrgPath-governed policy structure. Detection sensitivity and prevention behavior are undefined relative to the organizational risk model. This class is HIGH severity because an ungoverned sensor is operationally equivalent to no sensor from a compliance posture standpoint: the organization cannot assert that the endpoint meets any defined behavioral standard.
+
+**DRIFT-EDR-NOSENSOR (HIGH)** fires when an Entra-registered endpoint shows no Falcon sensor heartbeat within the expected check-in window. This is the sensor absence case. The distinction from DRIFT-EDR-NOPOLICY is meaningful: NOPOLICY indicates sensor present but ungoverned; NOSENSOR indicates sensor absent entirely. Both are HIGH severity, but the remediation path is different. NOPOLICY remediation is a policy group enrollment action. NOSENSOR remediation requires sensor deployment, which may involve imaging, Intune enrollment, or physical hands-on work depending on the endpoint state.
+
+**DRIFT-EDR-WRONGPOLICY (MEDIUM)** fires when an endpoint is enrolled in a Falcon sensor policy group, but the enrolled group does not match the group required by the endpoint's OrgPath profile. This is the misalignment case. It most commonly surfaces after mover events: an employee moves from Division A to Division B, their OrgPath updates, but the Falcon policy group assignment does not follow. The endpoint is governed — it has a sensor, it is enrolled in a group — but it is governed to the wrong standard. MEDIUM severity reflects that the endpoint has active coverage; the risk is miscalibration, not absence.
+
+## The Entra Device Registration Connection
+
+Sensor policy enrollment is keyed to Entra-registered endpoints. This is the same device registration surface governed by ADR-068, which mandates Certificate-Based Authentication for device identity assertions. Entra device registration is the authoritative record of which physical or virtual endpoint corresponds to which organizational identity. Falcon enrollment — the act of placing a device into a governed sensor policy group — reads that registration to determine who the device serves.
+
+This creates a dependency chain: if a device is not Entra-registered, it has no organizational identity, and OrgPath-derived sensor policy assignment cannot resolve. DRIFT-EDR-NOPOLICY will fire. Conversely, ensuring Entra device registration is complete and current is a prerequisite for clean Falcon policy governance. The two surfaces — Entra device registration and Falcon sensor enrollment — must be reconciled together. A device that appears in Falcon but not in Entra is an unanchored sensor. A device that appears in Entra but not in Falcon is an unprotected registered endpoint. OrgPath drift scanning checks both directions.
+
+::: {.callout-tip}
+## Continue reading
+
+[← Chapter 1](Book_29_CPT_01.qmd) | [Chapter 3 →](Book_29_CPT_03.qmd)
+:::

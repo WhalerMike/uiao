@@ -1,0 +1,68 @@
+---
+title: "Vulnerability Management and Device Control — The Posture Governance Layer"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 5
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+Falcon Spotlight surfaces CVEs against enrolled endpoints in real time. The UIAO drift engine cross-references CVE severity against the OrgPath Tier of the endpoint owner to derive a Tier-appropriate remediation SLA and fires DRIFT-EDR-VULN-CRITICAL when that window expires unfulfilled. Falcon device control governs USB and peripheral access; OrgPath Security Clearance Level facets above threshold require restrictive device control policies enforced at the sensor layer. UIAO governs the full three-layer posture stack — sensor enrollment, prevention policy, and vulnerability plus device posture — through OrgPath-derived profiles and adapter-reported drift.
+:::
+
+![](../../src/uiao/canon/svg-style/book29-cpt05-diagram.png){fig-alt="Three-layer horizontal stack. Bottom layer teal sensor enrollment. Middle layer navy detection and prevention policy. Top layer amber vulnerability and device posture. DRIFT class labels on right of each layer. OrgPath Profile arrow on left pointing into all three layers. White background, 860 by 520."}
+
+## Falcon Spotlight and the RA-5 Vulnerability Surface
+
+CrowdStrike Falcon Spotlight is a continuous vulnerability assessment capability built directly into the Falcon sensor. Because the sensor is already running on the endpoint, Spotlight does not require a separate scan schedule, a scan credential, or a maintenance window. It reads installed software versions, maps them against a CVE database that CrowdStrike maintains, and surfaces findings continuously as the CVE corpus updates. The result is a live vulnerability register keyed to each enrolled endpoint.
+
+The federal context for this capability is NIST RA-5: vulnerability monitoring and scanning. RA-5 requires that the organization scan information systems for vulnerabilities, analyze scan results, and remediate legitimate vulnerabilities within defined response times that reflect the risk they pose. Spotlight satisfies the scanning and analysis requirements mechanically. The remediation SLA is where governance must enter — because a CVSS 9.0 finding sitting unresolved on an endpoint is not a technical problem, it is a governance failure.
+
+UIAO governs the SLA boundary. The OrgPath Tier of the endpoint owner determines the remediation window. A Tier-3 identity — a privileged administrator, a system account with elevated standing access, a PAM vault holder — carries a 72-hour remediation window for any CVE at CVSS 9.0 or above. A Tier-2 identity carries a five-day window for the same severity threshold. A Tier-1 general-purpose endpoint carries a seven-day window. These thresholds are configurable per deployment, but the principle is fixed: higher organizational authority and broader access surface require faster remediation because the blast radius of exploitation is larger.
+
+## DRIFT-EDR-VULN-CRITICAL and the Remediation Clock
+
+The CrowdStrike adapter polls the Spotlight API on a defined interval. When a CVSS 9.0 or above finding appears against an enrolled endpoint, the adapter resolves the OrgPath owner of that endpoint and records the finding with a remediation deadline computed from the owner's Tier. The adapter writes this as a pending drift record — the finding is noted, the deadline is set, and no DRIFT event fires yet.
+
+The drift engine monitors the pending record against the clock. If the endpoint's vulnerability posture clears before the deadline — meaning the CVE no longer appears in Spotlight for that endpoint, indicating the package was patched or the endpoint was reimaged — the pending record closes cleanly. No drift event is raised. The SLA was met.
+
+If the deadline passes with the finding still present, the drift engine promotes the record to DRIFT-EDR-VULN-CRITICAL. The severity is CRITICAL. The drift event carries the CVE identifier, the CVSS score, the endpoint identifier, the OrgPath owner position including Tier and Department, the deadline that was missed, and the elapsed overage at the time of promotion. A ServiceNow ticket opens. The assignee is the endpoint management team, not the endpoint owner — remediation is an operational action, not a task for the identity who holds the device. The OrgPath context in the ticket tells the endpoint management team which organizational segment is exposed and whether other Tier-equivalent endpoints in the same Division warrant a proactive remediation sweep.
+
+The adapter reports; it does not patch. UIAO governs the response by creating the ticket, routing it correctly, and tracking SLA compliance. The remediation action itself belongs to the endpoint management team executing it through their patch management tooling.
+
+## Device Control and the Clearance-Level Boundary
+
+Falcon device control governs what USB and peripheral devices can connect to a Falcon-enrolled endpoint. At its simplest, device control is a policy that either allows or blocks classes of devices: mass storage, wireless adapters, Bluetooth, imaging devices, and similar categories. At its most precise, device control can be scoped to specific vendor IDs, product IDs, and serial number ranges.
+
+UIAO maps device control policy requirement to the OrgPath Security Clearance Level facet. Identities at or above a defined clearance threshold require a restrictive device control policy that blocks mass storage and wireless adapter classes. The threshold is a deployment parameter, but the enforcement model is consistent: the OrgPath profile for the identity includes a `device_control_tier` field, and the CrowdStrike adapter verifies that the active device control policy applied to the endpoint matches the required tier.
+
+When the adapter finds a mismatch — a clearance-level identity whose registered endpoint carries a permissive device control policy rather than the required restrictive one — it fires DRIFT-EDR-DEVICE-NOPOLICY at HIGH severity. The drift event identifies the endpoint, the OrgPath owner including the Security Clearance Level facet that triggered the requirement, and the policy name that is applied versus the policy name that is required. The ServiceNow ticket routes to the endpoint management team with enough context to apply the correct policy without needing to re-query the identity directory.
+
+The SC-7 contribution here is indirect but real. SC-7 covers boundary protection — controlling communications at managed interfaces. A USB mass storage device on an endpoint that handles sensitive data is an unmanaged interface. Device control policy closes that boundary. OrgPath provides the organizational signal that determines which endpoints require that boundary to be enforced.
+
+## The Three-Layer Posture Stack
+
+Book_29 has traced a layered governance model across its chapters. CPT_02 established sensor enrollment: without an enrolled sensor, none of the detection, prevention, or vulnerability capabilities function. Enrollment is the foundation. CPT_03 covered prevention policy and behavioral analysis: what the sensor does once it is running, what threats it recognizes, and how prevention policies are versioned and validated against the OrgPath profile. CPT_04 addressed the detection and containment surface: how Falcon detection events travel through the SIEM to the adapter, how OrgPath transforms a technical alert into an organizationally-scoped incident, and how the L3 actuation gate governs network containment.
+
+This chapter adds the third layer: vulnerability posture and device control. These are not reactive capabilities in the way detection is reactive. Spotlight continuously audits the enrolled endpoint against a CVE corpus whether or not a detection event has fired. Device control policy enforces a boundary condition whether or not an attacker is present. Together they constitute a standing posture — a state that the endpoint must be in at all times, not just when something goes wrong.
+
+UIAO governs all three layers through OrgPath-derived profiles. The enrollment requirement is gated on OrgPath position: an identity at Tier 2 or above must have an enrolled endpoint or the enrollment drift event fires. The prevention policy requirement is derived from OrgPath Tier: which policy bundle applies to this identity. The vulnerability SLA is derived from OrgPath Tier: how fast must CVSS 9.0 findings be remediated. The device control requirement is derived from OrgPath Security Clearance Level: which peripheral classes are permitted on this endpoint.
+
+The adapter surfaces all three layers through the same pipeline: Spotlight API and Falcon Prevention Policy Export API feeding the CrowdStrike adapter feeding the drift engine. Each layer produces a distinct DRIFT class. The drift engine holds them together as a unified posture view per enrolled endpoint, keyed to the OrgPath position of the endpoint's owner.
+
+## Integration Architecture
+
+The CrowdStrike adapter maintains two active API connections for posture governance. The Spotlight API connection provides the continuous vulnerability finding stream: adapter polls on interval, resolves each finding to an OrgPath owner, and manages the remediation deadline clock described above. The Prevention Policy Export API connection provides the current policy assignment for each enrolled endpoint: adapter polls on a slower interval — policy assignments change less frequently than vulnerability findings — and compares the active policy tier against the OrgPath-required tier.
+
+Device control policy enforcement sits inside the Prevention Policy Export API surface. A Falcon prevention policy bundle includes device control settings alongside behavioral detection and blocking settings. When the adapter reads the policy assigned to an endpoint, it extracts both the behavioral detection configuration verified in CPT_03 and the device control configuration verified here. The adapter does not need a separate device control API call; the policy export covers both.
+
+The adapter reports all findings to the drift engine. It does not write policy changes to Falcon, does not patch endpoints, and does not modify OrgPath records. L3 actuation ceiling applies here as it applies to the containment path covered in CPT_04: the drift engine can open tickets and queue actions, but execution belongs to the endpoint management team acting through their own tooling on the basis of the ServiceNow ticket.
+
+::: {.callout-note}
+## Coming up in CPT_06
+Chapter 6 closes the Book_29 arc by examining the compliance reporting surface: how DRIFT-EDR records across enrollment, prevention policy, vulnerability, and device control aggregate into FedRAMP RA-5, SC-7, and SI-3 control evidence, what the audit trail looks like across the full posture governance lifecycle, and how OrgPath-scoped endpoint data feeds the continuous monitoring posture required under FISMA.
+:::
