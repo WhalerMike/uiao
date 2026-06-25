@@ -94,7 +94,7 @@ def ksi_run(
 
     evidence_path = out / "ksi-evidence.json"
     evidence_path.write_text(json.dumps(evidence_records, indent=2, default=str))
-    typer.echo(f"  → {len(evidence_records)} KSI evidence records → {evidence_path}")
+    typer.echo(f"  -> {len(evidence_records)} KSI evidence records -> {evidence_path}")
 
     # Staleness check
     records = [KsiEvidenceRecord(**r) for r in evidence_records]
@@ -102,9 +102,9 @@ def ksi_run(
     staleness_path = out / "ksi-staleness.json"
     staleness_path.write_text(json.dumps([e.model_dump(mode="json") for e in stale_events], indent=2, default=str))
     if stale_events:
-        typer.echo(f"  ⚠ {len(stale_events)} stale KSI artifact(s) — see {staleness_path}")
+        typer.echo(f"  WARN: {len(stale_events)} stale KSI artifact(s) -- see {staleness_path}")
     else:
-        typer.echo("  ✓ All KSI artifacts fresh.")
+        typer.echo("  OK: All KSI artifacts fresh.")
 
     typer.echo(f"[fedramp ksi-run] Complete. Output in {out}/")
 
@@ -203,15 +203,15 @@ def dryrun(
     )
 
     # Pretty-print summary
-    status = "PASSED ✓" if passed else "FAILED ✗"
-    typer.echo(f"\n[fedramp dryrun] ADR-106 Gate 3 Dry-Run — {status}")
-    typer.echo(f"  Criterion 1 (all themes present):      {'✓' if criterion_1 else '✗'}")
+    status = "PASSED" if passed else "FAILED"
+    typer.echo(f"\n[fedramp dryrun] ADR-106 Gate 3 Dry-Run: {status}")
+    typer.echo(f"  Criterion 1 (all themes present):      {'OK' if criterion_1 else 'FAIL'}")
     if missing_themes:
         typer.echo(f"    Missing: {', '.join(t.value for t in missing_themes)}")
-    typer.echo(f"  Criterion 2 (no P0/P1 stale events):  {'✓' if criterion_2 else '✗'}")
+    typer.echo(f"  Criterion 2 (no P0/P1 stale events):  {'OK' if criterion_2 else 'FAIL'}")
     if not criterion_2:
         typer.echo(f"    P0 events: {len(p0_events)}, P1 events: {len(p1_events)}")
-    typer.echo(f"  Criterion 3 (cATO package present):   {'✓' if criterion_3 else '✗'}")
+    typer.echo(f"  Criterion 3 (cATO package present):   {'OK' if criterion_3 else 'FAIL'}")
 
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -309,7 +309,7 @@ def three_pao_package(
     out.write_text(json.dumps(package.compliance_summary(), indent=2, default=str))
     typer.echo(f"[fedramp 3pao-package] Package written to {out}")
     typer.echo(
-        f"  Compliant: {'YES ✓' if package.compliant else 'NO ✗'} | "
+        f"  Compliant: {'YES' if package.compliant else 'NO'} | "
         f"Artifacts: {sum(1 for e in artifact_entries if e.is_present)}/11 | "
         f"Open drift: {len(stale_events)}"
     )
@@ -339,7 +339,7 @@ def staleness_check(
         return
 
     if not events:
-        typer.echo("✓ All KSI artifacts are fresh.")
+        typer.echo("OK: All KSI artifacts are fresh.")
         return
 
     typer.echo(f"{'Row':<5} {'Component':<35} {'Severity':<5} {'Age (s)':<12} {'Themes'}")
@@ -399,7 +399,7 @@ def orgpath_scope(
         )
         return
 
-    typer.echo(f"\nOrgPath MAS Scope — {ctx.get('unit_path', '(unknown)')}")
+    typer.echo(f"\nOrgPath MAS Scope: {ctx.get('unit_path', '(unknown)')}")
     typer.echo(f"{'Scope':<28} {'Component'}")
     typer.echo("-" * 70)
     for c in classifications:

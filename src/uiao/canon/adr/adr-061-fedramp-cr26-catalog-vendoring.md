@@ -1,7 +1,7 @@
 ---
 id: ADR-061
 title: "FedRAMP CR26 Catalog Vendoring — Authority Posture, Pin Discipline, and Optional `oscal-cli` Round-Trip"
-status: proposed
+status: accepted
 date: 2026-05-10
 deciders:
   - canon-steward
@@ -30,14 +30,18 @@ published_at: docs/adr/adr-061-fedramp-cr26-catalog-vendoring.html
 
 ## Status
 
-**PROPOSED — 2026-05-10.** Records the policy that lets uiao consume
+**ACCEPTED — 2026-06-25.** Both ratification gates satisfied:
+
+- Gate a: snapshot `c31eb04c082d6d578a26a00de9a482707ab7a00c` (Palladium CR26
+  initial commit, CC0 1.0) landed in PR #360 under
+  `src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/c31eb04/`.
+- Gate b: `fedramp-cr26-catalog` conformance adapter registered in
+  `src/uiao/canon/adapter-registry.yaml` and implemented at
+  `src/uiao/adapters/fedramp_cr26_catalog/`.
+
+*Original PROPOSED text (2026-05-10):* Records the policy that lets uiao consume
 machine-readable FedRAMP CR26 OSCAL artifacts produced by an unofficial
 upstream generator without conferring canon authority on the upstream.
-Ratification to ACCEPTED is gated on (a) a snapshot landing under
-`src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/<sha>/` and
-(b) the conformance adapter described in D3 below being registered.
-Until then, the only artifact in-tree is the provenance pointer landed
-in PR #355.
 
 ## Context
 
