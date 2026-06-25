@@ -53,6 +53,7 @@ from uiao.cli.directory import directory_app  # noqa: E402
 from uiao.cli.doctor import doctor_app  # noqa: E402
 from uiao.cli.enforcement import enforcement_app  # noqa: E402
 from uiao.cli.evidence import evidence_app  # noqa: E402
+from uiao.cli.fedramp import app as fedramp_app  # noqa: E402
 from uiao.cli.generate import generate_app  # noqa: E402
 from uiao.cli.identity import identity_app  # noqa: E402
 from uiao.cli.init import init_app  # noqa: E402
@@ -92,6 +93,7 @@ app.add_typer(reciprocity_app, name="reciprocity")
 app.add_typer(scuba_app, name="scuba")
 app.add_typer(substrate_app, name="substrate")
 app.add_typer(tenant_app, name="tenant")
+app.add_typer(fedramp_app, name="fedramp")
 app.add_typer(zta_app, name="zta")
 
 
