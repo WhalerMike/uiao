@@ -551,7 +551,7 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 - `docs/customer-documents/compliance/B1-1-gcc-moderate-three-way-conflict.qmd`
 
 ### Federal mandates
-- [CISA BOD 25-01](https://www.cisa.gov/news-events/directives/bod-25-01)
+- [CISA BOD 25-01](https://cyber.dhs.gov/bod/25-01/)
 - [OMB M-22-09 Federal Zero Trust Strategy](https://www.whitehouse.gov/wp-content/uploads/2022/01/M-22-09.pdf)
 - [OMB M-21-31 Improving Investigative and Remediation Capabilities](https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Government_s-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf)
 - [NIST SP 800-207 Zero Trust Architecture](https://csrc.nist.gov/publications/detail/sp/800-207/final)
