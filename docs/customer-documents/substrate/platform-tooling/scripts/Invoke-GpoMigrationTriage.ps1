@@ -298,7 +298,7 @@ function Resolve-GpoPlane {
     param([string[]] $LinkPlanes)
 
     if (-not $LinkPlanes -or $LinkPlanes.Count -eq 0) { return 'Unknown' }
-    $set = $LinkPlanes | Where-Object { $_ -ne 'Unknown' } | Select-Object -Unique
+    $set = @($LinkPlanes | Where-Object { $_ -ne 'Unknown' } | Select-Object -Unique)
     if ($set.Count -eq 0) { return 'Unknown' }
     if ($set.Count -eq 1) { return $set[0] }
     return 'Both'
@@ -330,7 +330,9 @@ foreach ($gpo in $allGpos) {
     $byNamePlanes       = [System.Collections.Generic.List[string]]::new()
 
     if ($xml) {
-        $linkNodes = $xml.SelectNodes('/Report/GPO/LinksTo')
+        # Use PowerShell dot-notation (namespace-agnostic) instead of SelectNodes,
+        # which requires a NamespaceManager for Get-GPOReport's default namespace.
+        $linkNodes = @($xml.GPO.LinksTo)
         foreach ($link in $linkNodes) {
             $somType  = $link.SOMType
             $somPath  = $link.SOMPath
@@ -380,12 +382,21 @@ foreach ($gpo in $allGpos) {
         foreach ($section in 'Computer','User') {
             $sectionNode = $xml.GPO.$section
             if (-not $sectionNode) { continue }
-            $extNodes = $sectionNode.SelectNodes('ExtensionData/Extension')
-            foreach ($ext in $extNodes) {
-                $extName = $ext.Name
+            # Iterate ExtensionData (namespace-agnostic dot notation).
+            # The human-readable name is on <ExtensionData><Name>, NOT on the
+            # <Extension> child — $extData.Name gives "Security Settings" etc.
+            $extDataNodes = @($sectionNode.ExtensionData)
+            foreach ($extData in $extDataNodes) {
+                $extName = [string]$extData.Name
                 if ([string]::IsNullOrWhiteSpace($extName)) {
-                    $typeAttr = $ext.GetAttribute('xsi:type')
-                    if ($typeAttr) { $extName = $typeAttr }
+                    # Fall back to xsi:type on the Extension child if Name is missing.
+                    $extChild = $extData.Extension
+                    if ($extChild) {
+                        $raw = $extChild.GetAttributeNS(
+                            'http://www.w3.org/2001/XMLSchema-instance', 'type')
+                        if ($raw -match ':(.+)$') { $extName = $Matches[1] }
+                        elseif ($raw)             { $extName = $raw }
+                    }
                 }
                 $map = Resolve-MigrationTarget -ExtensionName $extName
                 $extSummary.Add([ordered]@{
@@ -444,7 +455,7 @@ foreach ($s in $summary) {
     if ($p -eq 'Unknown') { $p = $s.Classification.ByOuNameHeuristic }
     $planeRollup[$p]++
 }
-$disagreement = ($summary | Where-Object {
+$disagreement = @($summary | Where-Object {
     -not $_.Classification.Agreement -and
     $_.Classification.ByOuOSPredominance -ne 'Unknown' -and
     $_.Classification.ByOuNameHeuristic  -ne 'Unknown'

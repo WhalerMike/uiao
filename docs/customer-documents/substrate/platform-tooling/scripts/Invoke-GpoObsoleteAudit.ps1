@@ -82,10 +82,12 @@ function Test-SectionHasSetting {
 
     if (-not $Section) { return $false }
 
-    # SelectNodes handles single-node and multi-node ExtensionData uniformly.
-    # An empty section has no Extension children, so InnerXml is empty.
-    foreach ($ext in $Section.SelectNodes('ExtensionData/Extension')) {
-        if ($ext.InnerXml -and $ext.InnerXml.Trim().Length -gt 0) {
+    # Use PowerShell dot-notation (namespace-agnostic) — SelectNodes requires a
+    # NamespaceManager for Get-GPOReport's default XML namespace and would always
+    # return empty. Walk ExtensionData children; a populated Extension has content.
+    foreach ($extData in @($Section.ExtensionData)) {
+        $ext = $extData.Extension
+        if ($ext -and ([string]$ext.InnerXml).Trim().Length -gt 0) {
             return $true
         }
     }
@@ -127,14 +129,15 @@ foreach ($gpo in $allGpos) {
 
     #region --- Rule: OBSOLETE_UNLINKED / OBSOLETE_LINKED_TO_DELETED_OU --------
     #
-    # SelectNodes returns an XmlNodeList — always iterable, correctly handles
-    # zero, one, or many LinksTo elements without @() wrapping artifacts.
+    # Use PowerShell dot-notation (namespace-agnostic) instead of SelectNodes;
+    # Get-GPOReport's default namespace makes SelectNodes return empty without a
+    # NamespaceManager. @() guarantees an array so .Count is always valid.
     #
     # SOMType values from GPOReport XML: "OU", "Domain", "Site"
     # Only OU links are validated against the known-OU set.
     # Domain-root and site links are accepted without validation.
     #
-    $linkNodes = $xml.SelectNodes('/Report/GPO/LinksTo')
+    $linkNodes = @($xml.GPO.LinksTo)
 
     if ($linkNodes.Count -eq 0) {
         $gpoObject.Rules.Add([ordered]@{
@@ -253,7 +256,7 @@ $json = $results | ConvertTo-Json -Depth 10
 
 if ($OutputPath) {
     $json | Set-Content -Path $OutputPath -Encoding UTF8
-    $withFindings = ($results | Where-Object { $_.Rules.Count -gt 0 }).Count
+    $withFindings = @($results | Where-Object { $_.Rules.Count -gt 0 }).Count
     Write-Host "Audit complete. Results written to: $OutputPath"
     Write-Host "GPOs evaluated : $($results.Count)"
     Write-Host "GPOs with findings : $withFindings"
