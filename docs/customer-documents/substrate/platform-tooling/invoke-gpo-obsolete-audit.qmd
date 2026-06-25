@@ -8,7 +8,7 @@ date: "May 2026"
 status: Active
 repo-path: docs/customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd
 created-at: 2026-05-25
-updated-at: 2026-05-25
+updated-at: 2026-06-25
 format:
   html:
     toc: true
@@ -69,10 +69,39 @@ removes it in a `finally` block — even when a parse failure triggers
 |---|---|---|---|
 | `-StaleDays` | `int` (1–3650) | `365` | Threshold for `OBSOLETE_STALE`. |
 | `-OutputPath` | `string` | `''` | Optional file path. When set, JSON is written to disk with `Encoding UTF8` and a summary is printed to the host. When omitted, JSON is written to stdout — suitable for piping. |
+| `-CheckPrereqs` | `switch` | off | Run `UIAO.ConfigTools` prereq validation before the audit: checks `GroupPolicy` + `ActiveDirectory` modules, AD connectivity, and `Get-GPOReport` availability. Silently ignored when `UIAO.ConfigTools` is not installed. |
+| `-EnableLogging` | `switch` | off | Start a timestamped PowerShell transcript alongside the output directory. Requires `UIAO.ConfigTools`; silently ignored when the module is absent. |
 
 The script also honours the standard `-Verbose` common parameter and
 will log domain-context load steps, OU count, and the GPO count being
 processed.
+
+### Environment variables
+
+| Variable | Effect |
+|---|---|
+| `UIAO_OUTPUT` | Used as the log root directory when `-OutputPath` is not set and `-EnableLogging` is active |
+
+### UIAO.ConfigTools integration
+
+When the `UIAO.ConfigTools` shared module (included in `uiao-cli.zip` under
+`scripts\UIAO.ConfigTools\`) is installed, the script uses it for structured
+coloured output and optional transcript logging. If the module is absent, the
+script falls back to plain `Write-Host` — no hard dependency.
+
+Install the module:
+
+```powershell
+$dest = "$env:USERPROFILE\Documents\PowerShell\Modules\UIAO.ConfigTools"
+Copy-Item .\uiao-cli\scripts\UIAO.ConfigTools $dest -Recurse -Force
+Import-Module UIAO.ConfigTools
+```
+
+Run with prereq check and logging:
+
+```powershell
+.\Invoke-GpoObsoleteAudit.ps1 -OutputPath C:\Audit\gpo-audit.json -CheckPrereqs -EnableLogging
+```
 
 ## Usage
 
@@ -229,8 +258,9 @@ $findings.Rules |
 
 | Field | Value |
 |---|---|
-| Script version | 1.0 |
-| Script SHA256 | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` |
+| Script version | 1.1 |
+| Script SHA256 | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` (v1.0 base) |
 | Target | Windows Server with RSAT (GroupPolicy + ActiveDirectory modules) |
 | Output | JSON array; stdout by default, file via `-OutputPath` |
-| Related canon | See [UIAO PowerShell Module Reference](powershell-module-reference.qmd) for the broader assessment-output schema this tool aligns with |
+| Optional module | `UIAO.ConfigTools` v1.2.0 (prereq validation + transcript logging) |
+| Related | [`Invoke-GpoMigrationTriage.ps1`](invoke-gpo-migration-triage.qmd), [UIAO PowerShell Module Reference](powershell-module-reference.qmd) |
