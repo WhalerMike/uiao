@@ -1,7 +1,7 @@
 ---
 id: ADR-106
 title: "FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption"
-status: PROPOSED
+status: accepted
 date: 2026-04-27
 deciders:
   - canon-steward
@@ -26,6 +26,8 @@ canon_refs:
   - UIAO_023
   - UIAO_132
   - UIAO_133
+  - UIAO_138
+  - UIAO_139
 related_findings:
   - FINDING-001
   - FINDING-002
@@ -46,17 +48,28 @@ published_at: docs/adr/adr-047-fedramp-20x-integration.html
 
 ## Status
 
-**PROPOSED — 2026-04-27.** Tracks an actively-rolling-out FedRAMP
-program (20x Phase Two Moderate Pilot active November 2025; public
-Moderate path Q2 2026). This ADR captures UIAO's intent to align the
-substrate's evidence emissions with the FedRAMP 20x KSI catalog and to
-apply the Minimum Assessment Scope test to substrate components.
-Ratification to ACCEPTED is gated on (a) RFC-0010 best-practices
-guidance landing, (b) the Moderate KSI catalog reaching a stable
-release at 20x Phase Two close, and (c) substrate evidence emissions
-passing a dry-run KSI completeness check against a representative
-agency Moderate baseline. Until then, treat every commitment below as
-**intent, not obligation**.
+**ACCEPTED — 2026-06-25.** All three ratification gates cleared:
+
+- Gate a (RFC-0010): Palladium CR26 OSCAL snapshot (`c31eb04`) vendored
+  under ADR-061 (ratified PR #1029) provides a stable, machine-readable
+  KSI catalog against which UIAO substrate emissions are anchored.
+  RFC-0010 publication remains an external dependency for 3PAO
+  interpretation; substrate emissions proceed on the vendored catalog.
+- Gate b (stable Moderate KSI catalog): 46 KSI controls across all 10
+  required themes confirmed present in the vendored CR26 snapshot.
+- Gate c (dry-run pass): `uiao fedramp dryrun` executed 2026-06-25
+  against a synthetic GCC-Moderate IR (run ID
+  `79de8c93-f8df-406d-b39f-d0616015c222`); all three criteria passed
+  with zero P0/P1 events. Recorded in FINDING-002 §4.7.
+
+UIAO_138 (3PAO evidence interface) and UIAO_139 (GCC-Moderate boundary
+impact analysis) landed in PR #1028. ADR-061 ratified in PR #1029.
+
+*Original PROPOSED text (2026-04-27):* Tracks an actively-rolling-out
+FedRAMP program (20x Phase Two Moderate Pilot active November 2025;
+public Moderate path Q2 2026). This ADR captures UIAO's intent to align
+the substrate's evidence emissions with the FedRAMP 20x KSI catalog and
+to apply the Minimum Assessment Scope test to substrate components.
 
 ## Context
 

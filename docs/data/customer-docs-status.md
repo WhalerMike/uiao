@@ -25,10 +25,10 @@
 | `sql-server-narrative/` | 0 | 36 | 3 | 0 | 1 | 40 |
 | `sql-server-narrative-standalone/` | 0 | 31 | 1 | 0 | 1 | 33 |
 | `ssot-network-physics/` | 0 | 0 | 8 | 0 | 1 | 9 |
-| `substrate/` | 1 | 0 | 3 | 8 | 4 | 16 |
+| `substrate/` | 1 | 0 | 2 | 9 | 4 | 16 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
 | `whitepapers/` | 0 | 0 | 7 | 10 | 1 | 18 |
-| **Total** | **2** | **278** | **253** | **99** | **56** | **688** |
+| **Total** | **2** | **278** | **252** | **100** | **56** | **688** |
 
 ## Section detail
 
@@ -258,7 +258,7 @@
 | [`docs/customer-documents/operational-guides/uiao-modernization-program/98-diagram-generation-manifest.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/uiao-modernization-program/98-diagram-generation-manifest.qmd) | 667 | Substantial | ✅ | — | aspirational |
 | [`docs/customer-documents/operational-guides/uiao-modernization-program/99-needs-input-register.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/uiao-modernization-program/99-needs-input-register.qmd) | 131 | Authored | ✅ | — | aspirational |
 | [`docs/customer-documents/operational-guides/uiao-modernization-program/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/uiao-modernization-program/index.qmd) | 77 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/operational-guides/zero-trust-assessment/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/zero-trust-assessment/index.qmd) | 175 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/operational-guides/zero-trust-assessment/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/zero-trust-assessment/index.qmd) | 210 | Navigation hub | ✅ | — | — |
 
 ### `orgpath-multicloud/`
 
@@ -738,8 +738,8 @@
 | [`docs/customer-documents/substrate/platform-tooling/azure-arc-policy-library.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/azure-arc-policy-library.qmd) | 1104 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/substrate/platform-tooling/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/index.qmd) | 30 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/substrate/platform-tooling/invoke-ad-survey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/invoke-ad-survey.qmd) | 319 | Substantial | ✅ | — | — |
-| [`docs/customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd) | 347 | Substantial | ✅ | — | — |
-| [`docs/customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd) | 236 | Authored | ✅ | — | — |
+| [`docs/customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd) | 379 | Substantial | ✅ | — | — |
+| [`docs/customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd) | 266 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) | 1744 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/powershell-pack.qmd) | 140 | Authored | ✅ | — | — |
 | [`docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd) | 1049 | Substantial | ✅ | 2/2 | — |
