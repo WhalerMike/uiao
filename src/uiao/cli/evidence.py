@@ -26,8 +26,8 @@ Or via module invocation:
 from __future__ import annotations
 
 import json
+from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -41,6 +41,11 @@ evidence_app = typer.Typer(
 )
 
 _console = Console()
+
+
+class EvidenceFormat(str, Enum):
+    table = "table"
+    json = "json"
 
 
 @evidence_app.command("build")
@@ -61,7 +66,7 @@ def build_command(
         ),
         show_default=False,
     ),
-    config: Optional[str] = typer.Option(  # noqa: B008
+    config: str | None = typer.Option(  # noqa: B008
         None,
         "--config",
         help="Optional path to evidence-build.json config file.",
@@ -124,7 +129,7 @@ def graph_command(
         help="Path to a normalized SCuBA JSON file (Plane 1 output).",
         show_default=False,
     ),
-    trace: Optional[str] = typer.Option(  # noqa: B008
+    trace: str | None = typer.Option(  # noqa: B008
         None,
         "--trace",
         "-t",
@@ -134,14 +139,14 @@ def graph_command(
             "use the same IDs shown in ``uiao ir-scuba-transform`` output."
         ),
     ),
-    output: Optional[str] = typer.Option(  # noqa: B008
+    output: str | None = typer.Option(  # noqa: B008
         None,
         "--output",
         "-o",
         help="Write graph stats (or trace result) as JSON to this file.",
     ),
-    fmt: str = typer.Option(  # noqa: B008
-        "table",
+    fmt: EvidenceFormat = typer.Option(  # noqa: B008
+        EvidenceFormat.table,
         "--format",
         "-f",
         help="Output format: table | json",
@@ -194,7 +199,7 @@ def graph_command(
     # ── Trace or stats ────────────────────────────────────────────────────────
     if trace:
         trace_result = graph.trace_control(trace)
-        if fmt.lower() == "json":
+        if fmt is EvidenceFormat.json:
             out = json.dumps(trace_result, indent=2, ensure_ascii=False)
             if output:
                 Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -228,7 +233,7 @@ def graph_command(
                 Path(output).write_text(json.dumps(trace_result, indent=2, ensure_ascii=False), encoding="utf-8")
                 _console.print(f"[green]Trace written to {output}[/green]")
     else:
-        if fmt.lower() == "json":
+        if fmt is EvidenceFormat.json:
             out = json.dumps(stats, indent=2, ensure_ascii=False)
             if output:
                 Path(output).parent.mkdir(parents=True, exist_ok=True)

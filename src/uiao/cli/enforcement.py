@@ -141,7 +141,14 @@ def run(
         _console.print(f"[red]IR objects file not found: {ir_objects_path}[/red]")
         raise typer.Exit(code=1)
 
-    payload = json.loads(ir_objects_path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(ir_objects_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        _console.print(f"[red]Invalid JSON in IR objects file: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    except OSError as exc:
+        _console.print(f"[red]Failed to read IR objects file: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
     # Accept either a top-level list or a dict containing a known list
     # field ('ksi_results' for the quickstart fixture, 'ir_objects' for
     # custom inputs).

@@ -30,8 +30,9 @@ CQL syntax
 from __future__ import annotations
 
 import json
+from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -46,6 +47,11 @@ cql_app = typer.Typer(
 )
 
 _console = Console()
+
+
+class CQLFormat(str, Enum):
+    table = "table"
+    json = "json"
 
 
 # ---------------------------------------------------------------------------
@@ -250,14 +256,14 @@ def query_cmd(
             "detected drift will return 0 DRIFT rows."
         ),
     ),
-    output: Optional[str] = typer.Option(  # noqa: B008
+    output: str | None = typer.Option(  # noqa: B008
         None,
         "--output",
         "-o",
         help="Write JSON results to this file (default: stdout).",
     ),
-    fmt: str = typer.Option(  # noqa: B008
-        "table",
+    fmt: CQLFormat = typer.Option(  # noqa: B008
+        CQLFormat.table,
         "--format",
         "-f",
         help="Output format: table | json",
@@ -325,7 +331,7 @@ def query_cmd(
     result_dict = result.to_dict()
 
     # ── Output ─────────────────────────────────────────────────────────────────
-    if fmt.lower() == "json":
+    if fmt is CQLFormat.json:
         out_text = json.dumps(result_dict, indent=2, ensure_ascii=False)
         if output:
             Path(output).parent.mkdir(parents=True, exist_ok=True)

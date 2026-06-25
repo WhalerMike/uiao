@@ -68,6 +68,14 @@ if ($AppRoleName) {
 $roleLabel = if ($AppRoleName) { $AppRoleName } else { 'default' }   # PS 5.1-safe (no ?? )
 
 # 4. Assign ------------------------------------------------------------------
+ $existingAssignment = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue |
+    Where-Object { $_.PrincipalId -eq $group.Id -and $_.AppRoleId -eq $appRoleId } |
+    Select-Object -First 1
+if ($existingAssignment) {
+    Write-HelpDeskLog -Level INFO -Message "Skipped assignment: $GroupName already has role '$roleLabel' on $AppDisplayName."
+    return
+}
+
 if ($PSCmdlet.ShouldProcess("$GroupName -> $AppDisplayName ($roleLabel)", "Assign (ref $ApprovalRef)")) {
     New-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $sp.Id `
         -PrincipalId $group.Id -ResourceId $sp.Id -AppRoleId $appRoleId | Out-Null

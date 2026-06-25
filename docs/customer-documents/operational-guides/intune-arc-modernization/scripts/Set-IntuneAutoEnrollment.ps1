@@ -44,6 +44,12 @@ if ($PSCmdlet.ShouldProcess($GpoName, 'Create MDM auto-enrollment GPO')) {
 }
 
 if ($PSCmdlet.ShouldProcess($TargetOU, "Link GPO '$GpoName'")) {
-    New-GPLink -Name $GpoName -Target $TargetOU -LinkEnabled Yes -Enforced No -ErrorAction SilentlyContinue | Out-Null
-    Write-ModernizationLog -Level ACTION -Message "Linked '$GpoName' to $TargetOU. Verify on a client with: dsregcmd /status"
+    $inheritance = Get-GPInheritance -Target $TargetOU -ErrorAction SilentlyContinue
+    $existingLink = $inheritance.GpoLinks | Where-Object { $_.DisplayName -eq $GpoName } | Select-Object -First 1
+    if ($existingLink) {
+        Write-ModernizationLog -Level INFO -Message "Skipped link: '$GpoName' is already linked to $TargetOU."
+    } else {
+        New-GPLink -Name $GpoName -Target $TargetOU -LinkEnabled Yes -Enforced No -ErrorAction SilentlyContinue | Out-Null
+        Write-ModernizationLog -Level ACTION -Message "Linked '$GpoName' to $TargetOU. Verify on a client with: dsregcmd /status"
+    }
 }

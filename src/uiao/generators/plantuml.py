@@ -1,7 +1,7 @@
 """PlantUML diagram renderer.
 
 Primary: calls `java -jar plantuml.jar` locally (no network, fully offline).
-Fallback: if no JAR is found, falls back to plantweb (public plantuml.com server).
+Optional fallback: when explicitly enabled, may use plantweb (public plantuml.com server).
 
 Configure the JAR path via the `UIAO_PLANTUML_JAR` environment variable or
 by placing `plantuml.jar` in the repo root or `tools/` directory.
@@ -52,11 +52,13 @@ def render_plantuml_file(
     output_dir: Path,
     force: bool = False,
     fmt: str = "png",
+    allow_remote: bool = False,
 ) -> Path | None:
     """Render a single .puml file to PNG (or other format).
 
     Uses local plantuml.jar via Java subprocess when available.
-    Falls back to plantweb (public plantuml.com) if no JAR is found.
+    Remote fallback to plantweb is disabled by default and must be opted in
+    with ``allow_remote=True``.
     """
     png_path = output_dir / (puml_path.stem + f".{fmt}")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -69,12 +71,17 @@ def render_plantuml_file(
 
     if jar and _java_available():
         return _render_with_jar(puml_path, output_dir, jar, fmt)
-    else:
+    if not allow_remote:
         if jar and not _java_available():
-            logger.warning("plantuml.jar found at %s but java is not on PATH — falling back to plantweb", jar)
+            logger.error("plantuml.jar found at %s but java is not on PATH; remote fallback is disabled", jar)
         else:
-            logger.debug("plantuml.jar not found — falling back to plantweb (public server)")
-        return _render_with_plantweb(puml_path, output_dir, fmt)
+            logger.error("plantuml.jar not found and remote fallback is disabled")
+        return None
+    if jar and not _java_available():
+        logger.warning("plantuml.jar found at %s but java is not on PATH — falling back to plantweb", jar)
+    else:
+        logger.warning("plantuml.jar not found — falling back to plantweb (public server)")
+    return _render_with_plantweb(puml_path, output_dir, fmt)
 
 
 def _render_with_jar(
@@ -135,7 +142,7 @@ def _render_with_plantweb(
     content = puml_path.read_text(encoding="utf-8")
     try:
         result = render(content, engine="plantuml", format=fmt)
-        image_bytes = result[0] if isinstance(result, (tuple, list)) else result
+        image_bytes = result[0] if isinstance(result, tuple | list) else result
         png_path.write_bytes(image_bytes)
         logger.info("Rendered (plantweb): %s -> %s", puml_path.name, png_path)
         return png_path
@@ -148,11 +155,12 @@ def render_plantuml_dir(
     puml_dir: Path,
     output_dir: Path,
     force: bool = False,
+    allow_remote: bool = False,
 ) -> list[Path]:
     """Render all .puml files in a directory to PNG."""
     rendered = []
     for puml_path in sorted(puml_dir.glob("*.puml")):
-        png = render_plantuml_file(puml_path, output_dir=output_dir, force=force)
+        png = render_plantuml_file(puml_path, output_dir=output_dir, force=force, allow_remote=allow_remote)
         if png:
             rendered.append(png)
     return rendered
