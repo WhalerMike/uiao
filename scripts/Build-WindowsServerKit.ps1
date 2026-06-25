@@ -52,12 +52,13 @@ New-Item -ItemType Directory -Path $Stage | Out-Null
 
 # ── Deployment scripts ──────────────────────────────────────────────────────
 $DeployDir = Join-Path $RepoRoot "deploy\windows-server"
+$DeployScriptsDir = Join-Path $RepoRoot "scripts\deploy"
 $ScriptsDir = Join-Path $RepoRoot "scripts"
 
 $FilesToCopy = @(
     # Core deployment scripts
-    (Join-Path $DeployDir "Install-UIAOServer.ps1"),
-    (Join-Path $DeployDir "Register-ServiceAccount.ps1"),
+    (Join-Path $DeployScriptsDir "Install-UIAOServer.ps1"),
+    (Join-Path $DeployScriptsDir "Register-ServiceAccount.ps1"),
     (Join-Path $DeployDir "Install-UIAOService.ps1"),
     # web.config variants
     (Join-Path $DeployDir "web.config"),
@@ -75,8 +76,8 @@ foreach ($f in $FilesToCopy) {
     }
 }
 
-# Extract Register-UIAOAPI.ps1 from deploy-scripts.ps1 if it exists as standalone
-$RegisterAPI = Join-Path $DeployDir "Register-UIAOAPI.ps1"
+# Register-UIAOAPI.ps1 lives under scripts/deploy
+$RegisterAPI = Join-Path $DeployScriptsDir "Register-UIAOAPI.ps1"
 if (Test-Path $RegisterAPI) {
     Copy-Item $RegisterAPI -Destination $Stage
     Write-Host "  + Register-UIAOAPI.ps1" -ForegroundColor DarkGray

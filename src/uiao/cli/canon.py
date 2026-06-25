@@ -39,4 +39,5 @@ def canon_check(
         uiao canon check --dir src/uiao/canon
     """
     _console.print(f"[bold]Checking canon at {canon_dir}...[/bold]")
-    _console.print("[yellow]Canon check not yet implemented (Week 3).[/yellow]")
+    _console.print("[red]Canon check is not implemented yet.[/red]")
+    raise typer.Exit(code=2)

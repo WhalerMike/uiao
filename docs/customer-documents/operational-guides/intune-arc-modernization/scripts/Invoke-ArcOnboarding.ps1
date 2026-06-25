@@ -37,6 +37,7 @@ param(
     [Parameter(Mandatory)][string]$ResourceGroup,    # CONFIGURE
     [Parameter(Mandatory)][string]$Location,         # CONFIGURE (e.g. eastus / usgovvirginia)
     [string]$ServicePrincipalName = 'svc-arc-onboarding',
+    [string]$InstallerSha256,  # Optional: expected SHA-256 for the Arc agent MSI
     [string]$OrgPath,
     [string]$ApprovalRef,
     [string]$Cloud = 'AzureCloud'   # AzureUSGovernment for GCC High / DoD
@@ -64,9 +65,19 @@ if ($PSCmdlet.ShouldProcess($ResourceGroup, 'Ensure resource group exists')) {
 
 # 2. Least-privilege onboarding service principal (Connected Machine Onboarding only)
 $scope = "/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroup"
-if ($PSCmdlet.ShouldProcess($ServicePrincipalName, 'Create Arc onboarding service principal')) {
-    $sp = New-AzADServicePrincipal -DisplayName $ServicePrincipalName -Role 'Azure Connected Machine Onboarding' -Scope $scope
-    Write-ModernizationLog -Level ACTION -Message "Service principal AppId=$($sp.AppId). Store the secret in Key Vault NOW — it is shown once. Rotate after onboarding."
+$sp = Get-AzADServicePrincipal -DisplayName $ServicePrincipalName -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $sp) {
+    if ($PSCmdlet.ShouldProcess($ServicePrincipalName, 'Create Arc onboarding service principal')) {
+        $sp = New-AzADServicePrincipal -DisplayName $ServicePrincipalName -Role 'Azure Connected Machine Onboarding' -Scope $scope
+        Write-ModernizationLog -Level ACTION -Message "Service principal AppId=$($sp.AppId). Store the secret in Key Vault NOW — it is shown once. Rotate after onboarding."
+    }
+} else {
+    Write-ModernizationLog -Level INFO -Message "Service principal already exists: $ServicePrincipalName (AppId=$($sp.AppId))."
+    $existingRole = Get-AzRoleAssignment -ObjectId $sp.Id -Scope $scope -RoleDefinitionName 'Azure Connected Machine Onboarding' -ErrorAction SilentlyContinue
+    if (-not $existingRole -and $PSCmdlet.ShouldProcess($ServicePrincipalName, "Assign 'Azure Connected Machine Onboarding' role on $scope")) {
+        New-AzRoleAssignment -ObjectId $sp.Id -Scope $scope -RoleDefinitionName 'Azure Connected Machine Onboarding' | Out-Null
+        Write-ModernizationLog -Level ACTION -Message "Assigned onboarding role to existing service principal at scope $scope."
+    }
 }
 
 # 3. Install + connect the Connected Machine Agent
@@ -75,11 +86,29 @@ if (-not (Get-Service -Name 'himds' -ErrorAction SilentlyContinue)) {
     if ($PSCmdlet.ShouldProcess($env:COMPUTERNAME, 'Install Connected Machine Agent')) {
         $installer = Join-Path $env:TEMP 'AzureConnectedMachineAgent.msi'
         Invoke-WebRequest -Uri 'https://aka.ms/AzureConnectedMachineAgent' -OutFile $installer -UseBasicParsing
+        $sig = Get-AuthenticodeSignature -FilePath $installer
+        if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Microsoft') {
+            throw "Arc agent installer signature validation failed. Status=$($sig.Status); Subject=$($sig.SignerCertificate.Subject)"
+        }
+        if ($InstallerSha256) {
+            $expected = ($InstallerSha256 -replace '\s', '').ToUpperInvariant()
+            if ($expected -notmatch '^[0-9A-F]{64}$') {
+                throw '-InstallerSha256 must be a 64-character hexadecimal SHA-256 value.'
+            }
+            $actual = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToUpperInvariant()
+            if ($actual -ne $expected) {
+                throw "Arc agent installer hash mismatch. Expected $expected but got $actual"
+            }
+        }
         Start-Process msiexec.exe -ArgumentList "/i `"$installer`" /qn /l*v `"$env:TEMP\ArcInstall.log`"" -Wait -NoNewWindow
         Write-ModernizationLog -Level ACTION -Message 'Connected Machine Agent installed.'
     }
 } else {
     Write-ModernizationLog -Level INFO -Message 'Connected Machine Agent already present.'
+}
+
+if (-not (Test-Path $agent)) {
+    throw "Connected Machine Agent executable not found at '$agent'. Installation did not complete."
 }
 
 $tags = if ($OrgPath) { "OrgPath=$OrgPath" } else { $null }

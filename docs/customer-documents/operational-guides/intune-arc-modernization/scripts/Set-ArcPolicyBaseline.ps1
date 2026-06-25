@@ -33,9 +33,13 @@ Connect-ModernizationAzure -SubscriptionId $SubscriptionId
 if (-not (Assert-GovernanceApproval -Operation 'Arc policy baseline' -OrgPath $OrgPath -ApprovalRef $ApprovalRef -ActuationRung 'L3')) { return }
 
 $scope = "/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroup"
+$assignmentName = 'arc-win-security-baseline'
+$existingAssignment = Get-AzPolicyAssignment -Name $assignmentName -Scope $scope -ErrorAction SilentlyContinue
 
-if ($PSCmdlet.ShouldProcess($scope, 'Assign Windows security baseline initiative')) {
-    New-AzPolicyAssignment -Name 'arc-win-security-baseline' `
+if ($existingAssignment) {
+    Write-ModernizationLog -Level INFO -Message "Policy assignment '$assignmentName' already exists at $scope."
+} elseif ($PSCmdlet.ShouldProcess($scope, 'Assign Windows security baseline initiative')) {
+    New-AzPolicyAssignment -Name $assignmentName `
         -DisplayName 'Windows Security Baseline - Arc Servers' `
         -Scope $scope `
         -PolicySetDefinition (Get-AzPolicySetDefinition -Id $PolicySetDefinitionId) `
@@ -43,7 +47,10 @@ if ($PSCmdlet.ShouldProcess($scope, 'Assign Windows security baseline initiative
     Write-ModernizationLog -Level ACTION -Message 'Security baseline initiative assigned. Compliance eval may take ~30 min.'
 }
 
-if ($PSCmdlet.ShouldProcess($SubscriptionId, 'Enable Defender for Servers Plan 2')) {
+$pricing = Get-AzSecurityPricing -Name 'VirtualMachines' -ErrorAction SilentlyContinue
+if ($pricing -and $pricing.PricingTier -eq 'Standard' -and $pricing.SubPlan -eq 'P2') {
+    Write-ModernizationLog -Level INFO -Message 'Defender for Servers Plan 2 is already enabled on the subscription.'
+} elseif ($PSCmdlet.ShouldProcess($SubscriptionId, 'Enable Defender for Servers Plan 2')) {
     Set-AzSecurityPricing -Name 'VirtualMachines' -PricingTier 'Standard' -SubPlan 'P2'
     Write-ModernizationLog -Level ACTION -Message 'Defender for Servers Plan 2 enabled on the subscription.'
 }
