@@ -1,0 +1,75 @@
+---
+title: "CrowdStrike Falcon as the EDR Data Plane UIAO Governs"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 3
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+CrowdStrike Falcon is UIAO's endpoint detection and response data plane — governed under the standard ADR-092 provider-incorporation contract, not a boundary exception. This chapter explains what the provider-incorporation contract means for Falcon, how the CrowdStrike adapter reads sensor policy state and compares it against OrgPath-derived endpoint profiles, what DRIFT-EDR findings signal, and how Falcon's native telemetry becomes continuous NIST compliance evidence surfaced as Key Security Indicator data.
+:::
+
+![](../../src/uiao/canon/svg-style/book29-cpt03-diagram.png){fig-alt="Two-band architecture diagram: upper band is UIAO control plane with OrgPath endpoint profiles and crowdstrike adapter; lower band is CrowdStrike Falcon data plane with Falcon Console and sensor policy groups. ADR-092 boundary line between bands. White background, 860 by 520."}
+
+## ADR-092 and the Provider-Incorporation Contract
+
+ADR-092 established that UIAO is an active reconciliation control plane, not a competing product. The operating principle is straightforward: providers own their data planes; UIAO owns the policy layer that determines what governed state looks like, and it continuously reconciles observed state against that policy.
+
+Every provider UIAO governs operates under a provider-incorporation contract — a defined boundary that specifies what the provider governs inside its substrate and what UIAO governs above it. The contract has three obligations. First, the provider exposes a machine-readable API surface that reflects current state. Second, UIAO defines a posture profile for each governed resource type — what state is correct, given the resource's organizational context. Third, UIAO emits drift events when observed state diverges from governed posture and routes those events through the reconciliation pipeline.
+
+CrowdStrike Falcon enters UIAO's architecture under this contract. Falcon governs endpoint detection, prevention telemetry, and threat containment within the Falcon Console and backend. UIAO governs which sensor policy group a given endpoint should be assigned to, whether the endpoint is enrolled at all, and whether Falcon's observed configuration matches the posture that OrgPath warrants for that endpoint's organizational position.
+
+The distinction matters in practice. UIAO does not configure Falcon sensor policies directly. It reads Falcon's authoritative state, compares that state against OrgPath-derived profiles, and emits findings when the two diverge. The reconciliation action — moving an endpoint to the correct policy group — may be automated, routed to a technician, or escalated depending on the severity of the drift. Falcon continues to own the enforcement; UIAO owns the governed intent.
+
+## The Provider-Incorporation Contract for CrowdStrike
+
+The CrowdStrike incorporation contract scopes responsibilities across two planes. Within the Falcon data plane: sensor policy group assignments, prevention policy configuration, Real Time Response capabilities, and threat detection telemetry. These are Falcon's substrate — UIAO does not attempt to replicate or shadow them.
+
+Above the Falcon data plane: UIAO holds the authoritative mapping between OrgPath positions and the sensor policy groups those positions require. An endpoint assigned to an OrgPath position in a Tier-3 program office carries a different governed posture than an endpoint in an administrative division — a higher-prevention policy, Real Time Response enabled, and vulnerability assessment active. OrgPath drives the profile derivation; Falcon Console reflects the enforcement state.
+
+The contract also defines the mutation boundary. UIAO's CrowdStrike adapter is read-shaped in Phase 1: it reads Falcon Console state and emits drift events but does not write sensor policy assignments. This mirrors the conformance-only shape that UIAO uses for other adapters at integration Phase 1. Write-shaped reconciliation — where UIAO-mediated actions update Falcon sensor policy assignments directly via the Falcon API — is the Phase 2 boundary, planned after the drift signal is validated against real enrollment data.
+
+## The CrowdStrike Adapter: Phase 1
+
+The Phase 1 adapter has two read targets in the Falcon Console API surface. The first is the Sensor Policy API, which exposes which sensor policy group each enrolled device is assigned to, along with device identifiers that can be correlated to OrgPath-grounded endpoint profiles. The second is the Prevention Policy Export API, which exposes the prevention settings active for each policy group — enabling UIAO to assess not just whether an endpoint is in the right group but whether that group's configuration meets the governed prevention threshold.
+
+Against these reads, the adapter constructs an enrollment state per device: the observed policy group, the prevention configuration active for that group, and the device's correlation key for OrgPath resolution. It then loads the OrgPath-derived endpoint profile for each device — the governed policy group, the minimum prevention configuration, and any position-specific overrides — and computes the delta.
+
+When observed state diverges from governed posture, the adapter emits a DRIFT-EDR finding. The finding set covers three classes. DRIFT-EDR-POLICY-GROUP flags a device assigned to a policy group that does not match its OrgPath-governed assignment. DRIFT-EDR-PREVENTION-GAP flags a device whose active prevention configuration falls below the minimum threshold for its OrgPath tier. DRIFT-EDR-UNENROLLED flags an endpoint that appears in OrgPath-derived endpoint profiles but does not appear in Falcon Console enrollment at all — the absence signal that matters most for a continuous compliance posture.
+
+Findings route through UIAO's standard reconciliation pipeline: low-severity drift accumulates in the governance dashboard for periodic review, medium-severity drift triggers a ServiceNow incident, and high-severity drift — a Tier-3 endpoint unenrolled from Falcon or running a prevention configuration with all detections disabled — escalates to the Cloud Services Team for immediate remediation.
+
+## NIST Coverage as Continuous Compliance Signal
+
+Falcon's telemetry, when governed under the ADR-092 contract, becomes a NIST control family evidence stream rather than a point-in-time audit artifact. Five control areas are directly addressable from Falcon state.
+
+SI-4 (System Monitoring) maps to Falcon's endpoint detection telemetry. A device enrolled in Falcon with detection enabled provides continuous monitoring evidence for the endpoints in scope. DRIFT-EDR-UNENROLLED findings represent SI-4 gaps: endpoints that should be monitored but are not.
+
+IR-4 (Incident Handling) maps to Falcon's Real Time Response and automated containment capabilities. When the governed posture for a position tier requires Real Time Response enabled, a DRIFT-EDR-PREVENTION-GAP finding against that configuration is an IR-4 gap — the automated containment capability the control requires is not configured for that endpoint.
+
+SI-3 (Malicious Code Protection) maps to Falcon's NGAV prevention layer. The Prevention Policy Export API surfaces which NGAV components are active per policy group. UIAO's governed posture for each OrgPath tier specifies the minimum NGAV configuration; the adapter computes whether each device's active policy meets or exceeds that minimum.
+
+SC-7 (Boundary Protection) maps to Falcon's lateral movement blocking capability. When the governed posture for a tier requires lateral movement controls active, the adapter assesses whether the device's prevention policy includes those controls. A gap is a SC-7 finding scoped to the endpoint population.
+
+RA-5 (Vulnerability Scanning) maps to Falcon's Spotlight vulnerability assessment module. Enrollment in a policy group that includes Spotlight active provides continuous vulnerability assessment evidence. Devices enrolled in groups without Spotlight, where the governed posture requires it, surface as RA-5 gaps.
+
+These five control mappings transform Falcon's operational telemetry into Key Security Indicator evidence that surfaces in UIAO's compliance dashboard alongside evidence from other incorporated providers. The KSI is not a snapshot: it reflects current enrollment and configuration state as of the adapter's last read cycle, and findings remain open until the drift is resolved.
+
+## Contrast with ADR-059: Incorporation, Not Exception
+
+It is worth being explicit about what the CrowdStrike adapter is not. ADR-059 created a boundary exception for SailPoint NERM — a named carve-out from UIAO's GCC-Moderate cloud boundary, justified by NERM's FedRAMP Moderate authorization on AWS GovCloud and the narrow functional fit with UIAO_141. That exception pattern exists because NERM operates outside the GCC-Moderate perimeter and required explicit governance to bring its data into UIAO's scope without creating an ungoverned boundary expansion.
+
+CrowdStrike Falcon does not require that exception pattern. Falcon is an existing tool in the governed endpoint environment. The CrowdStrike adapter reads from Falcon Console APIs; it does not expand UIAO's cloud boundary or introduce a new infrastructure substrate. The ADR-092 provider-incorporation contract is the correct governance instrument because Falcon's operational substrate stays within Falcon and UIAO's governance layer stays within UIAO.
+
+The practical difference is in the schema registration. ADR-059 added a named Commercial exception enum and a reserved adapter registry slot specifically for NERM. The CrowdStrike adapter registers under the standard `provider-incorporation` contract type — the same instrument that governs every other incorporated provider in UIAO's architecture. No boundary exception, no special carve-out, no additional governance review. Falcon is governed under the same ADR-092 contract as every other data plane UIAO reconciles.
+
+::: {.callout-tip}
+## Continue reading
+
+[← Chapter 2](Book_29_CPT_02.qmd) | [Chapter 4 →](Book_29_CPT_04.qmd)
+:::
