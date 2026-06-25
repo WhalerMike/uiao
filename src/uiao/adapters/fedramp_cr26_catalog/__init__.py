@@ -14,10 +14,9 @@ Two drift classes are emitted (UIAO_133 §2):
 * ``DRIFT-PROVENANCE`` — a CR26 control ID or KSI theme cited by uiao
   no longer resolves in the snapshot.
 
-Status is ``proposed`` while the adapter stabilizes; once governance
-review accepts ADR-061 and the substrate begins citing CR26 control
-IDs in ``fedramp:ksi-mapping-source`` props, status advances to
-``active``.
+Status is ``active`` as of ADR-061 ratification (PR #1029, 2026-06-25);
+the substrate now cites CR26 control IDs in ``fedramp:ksi-mapping-source``
+props.
 
 Canon references:
     - ADR-061 (catalog vendoring policy)
