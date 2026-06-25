@@ -190,6 +190,9 @@
 - [GPO settings-level analysis: own the parse, consume Microsoft's GPO→MDM crosswalk](adr/adr-120-gpo-settings-analyzer.html)
 - [OrgPath projection subset — stamp fewer attributes per object than the codebook defines](adr/adr-121-orgpath-projection-subset.html)
 - [GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join](adr/adr-122-gpo-modernization-parse-crosswalk-orgpath.html)
+- [Transport-Plane Reconciliation — Rename the Sixth Mission Class to `overlay`, Re-Allocate ADR-066's Squatted Spec Slots](adr/adr-123-transport-plane-reconciliation.html)
+- [LocPath HR Duty-Station Adapter — Read-Only Conformance Adapter for Primary LocPath Assignment](adr/adr-124-locpath-hr-duty-station-adapter.html)
+- [LocPath Drift Taxonomy Extension — Location-Assignment, Location-Policy, and Location-Boundary Drift Classes](adr/adr-125-locpath-drift-taxonomy.html)
 
 ## Schema Reference
 
@@ -671,6 +674,14 @@
     - [Privileged Session Management and the Audit Chain](customer-documents/orgpath-narrative/Book_28_CPT_05.html)
     - [The DRIFT Surface for PAM — Ungoverned Privileged Accounts and the Actuation Ladder](customer-documents/orgpath-narrative/Book_28_CPT_06.html)
     - [Glossary and References](customer-documents/orgpath-narrative/Book_28_CPT_07.html)
+  - [Book 29](customer-documents/orgpath-narrative/Book_29.html)
+    - [Book 29 Cpt 01](customer-documents/orgpath-narrative/Book_29_CPT_01.html)
+    - [Book 29 Cpt 02](customer-documents/orgpath-narrative/Book_29_CPT_02.html)
+    - [Book 29 Cpt 03](customer-documents/orgpath-narrative/Book_29_CPT_03.html)
+    - [Book 29 Cpt 04](customer-documents/orgpath-narrative/Book_29_CPT_04.html)
+    - [Book 29 Cpt 05](customer-documents/orgpath-narrative/Book_29_CPT_05.html)
+    - [Book 29 Cpt 06](customer-documents/orgpath-narrative/Book_29_CPT_06.html)
+    - [Book 29 Cpt 07](customer-documents/orgpath-narrative/Book_29_CPT_07.html)
 - **OrgPath for All Clouds (6-chapter series)**
   - [OrgPath for All Clouds](customer-documents/orgpath-multicloud/index.html)
   - [The Substrate Was Never Microsoft-Shaped](customer-documents/orgpath-multicloud/01-the-substrate-was-never-microsoft-shaped.html)
