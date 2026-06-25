@@ -72,6 +72,7 @@
 - [LocPath Codebook — Canonical Physical-Location Addressing & Site Classification](canon/UIAO_194_LocPath_Codebook.html)
 - [Addressing-Plane Drift Taxonomy — DNS and Namespace Governance](canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.html)
 - [UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)](canon/UIAO_198_Risk_Assessment_Methodology.html)
+- [FedRAMP KSI Evidence Platform — Continuous Reporting Runbook](canon/UIAO_206_FedRAMP_KSI_Continuous_Reporting_Runbook.html)
 
 ## Architecture Decision Records
 
