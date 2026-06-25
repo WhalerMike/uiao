@@ -28,6 +28,7 @@ from .routes import (
     cql,
     enforcement,
     epl,
+    fedramp,
     health,
     orgpath,
     survey,
@@ -114,6 +115,11 @@ app.include_router(
 )
 app.include_router(archive.router, prefix="/api/v1/archive", tags=["Data Lake (UIAO_109)"])
 app.include_router(cql.router, prefix="/api/v1/cql", tags=["CQL (UIAO_108)"])
+app.include_router(
+    fedramp.router,
+    prefix="/api/v1/fedramp",
+    tags=["FedRAMP 20x (UIAO_138 / ADR-106)"],
+)
 
 # ------------------------------------------------------------------
 # Web console — Azure-Portal-style read-only OrgPath governance UI.

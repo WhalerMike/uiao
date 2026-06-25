@@ -8,7 +8,7 @@ date: "June 2026"
 status: Active
 repo-path: docs/customer-documents/operational-guides/zero-trust-assessment/index.qmd
 created-at: 2026-06-03
-updated-at: 2026-06-03
+updated-at: 2026-06-25
 format:
   html:
     toc: true
@@ -162,11 +162,46 @@ real gap. Confirm the SKU applies in your boundary before scoring it as one.
 | Unicode / `cp1252` errors in the console | Run `"$env:PYTHONUTF8 = 1"` before invoking, or use PowerShell 7. |
 | `could not locate an embedded reportData object` | The input isn't a Zero Trust Assessment report — point `-ReportPath` at the real `…Report.html` or a `.json` export. |
 
+## Script parameters
+
+`Invoke-ZtDashboard.ps1` accepts these parameters:
+
+| Parameter | Type | Default | Purpose |
+|---|---|---|---|
+| `-ReportPath` | `string` | *(required)* | Path to the `ZeroTrustAssessmentReport.html` or `.json` export. Falls back to the `UIAO_REPORTPATH` environment variable when the parameter is omitted. |
+| `-OutputDirectory` | `string` | `./zt-dashboard` | Where to write the dashboard, charts, and Power BI CSV. Falls back to the `UIAO_OUTPUT` environment variable when omitted. |
+| `-CheckPrereqs` | `switch` | off | Run `UIAO.ConfigTools` prereq validation before executing: checks PowerShell 7+, Python 3.11+, the `uiao` package, and Microsoft Graph context. Silently ignored when `UIAO.ConfigTools` is not installed. |
+| `-EnableLogging` | `switch` | off | Start a timestamped transcript under `<OutputDirectory>\logs\`. Requires `UIAO.ConfigTools`; silently ignored when the module is absent. |
+
+### Environment variables
+
+| Variable | Overrides |
+|---|---|
+| `UIAO_REPORTPATH` | Default value of `-ReportPath` |
+| `UIAO_OUTPUT` | Default value of `-OutputDirectory` |
+
+### UIAO.ConfigTools integration
+
+When the `UIAO.ConfigTools` shared module (included in `uiao-cli.zip` under
+`scripts\UIAO.ConfigTools\`) is installed, the script uses it for structured
+coloured output and optional transcript logging. Absent the module, it falls
+back to plain `Write-Host`.
+
+```powershell
+# Install the module from the kit
+$dest = "$env:USERPROFILE\Documents\PowerShell\Modules\UIAO.ConfigTools"
+Copy-Item .\uiao-cli\scripts\UIAO.ConfigTools $dest -Recurse -Force
+
+# Run with prereq check and logging
+.\Invoke-ZtDashboard.ps1 -ReportPath .\ZeroTrustReport\ZeroTrustAssessmentReport.html `
+    -CheckPrereqs -EnableLogging
+```
+
 ## Downloads {#downloads}
 
 | Script | Version | SHA-256 |
 |---|---|---|
-| [`Invoke-ZtDashboard.ps1`](scripts/Invoke-ZtDashboard.ps1) | 1.0 | `f30811fd01616e2960e12dd0e870a4d19cd52a7c5c79f0e3bcc592ca5d13d509` |
+| [`Invoke-ZtDashboard.ps1`](scripts/Invoke-ZtDashboard.ps1) | 1.1 | `f30811fd01616e2960e12dd0e870a4d19cd52a7c5c79f0e3bcc592ca5d13d509` (v1.0 base) |
 
 Verify the download before running it:
 
