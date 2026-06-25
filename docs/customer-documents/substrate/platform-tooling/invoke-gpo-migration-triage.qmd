@@ -8,7 +8,7 @@ date: "May 2026"
 status: Active
 repo-path: docs/customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd
 created-at: 2026-05-25
-updated-at: 2026-05-25
+updated-at: 2026-06-25
 format:
   html:
     toc: true
@@ -119,15 +119,46 @@ setting for manual review rather than guessing.
 
 | Parameter | Type | Default | Purpose |
 |---|---|---|---|
-| `-OutputDirectory` | `string` | `'.'` | Directory for the two output files. Created if missing. |
+| `-OutputDirectory` | `string` | `'.'` | Directory for the two output files. Created if missing. Falls back to the `UIAO_OUTPUT` environment variable when the parameter is omitted. |
 | `-WorkstationOSPattern` | `string[]` | `Windows 10*`, `Windows 11*`, `Windows 7*`, `Windows 8*` | Wildcard patterns matched against Computer `OperatingSystem`. |
 | `-ServerOSPattern` | `string[]` | `Windows Server*` | Wildcard patterns matched against Computer `OperatingSystem`. |
 | `-WorkstationOUNamePattern` | `string[]` | `*Workstation*`, `*Desktop*`, `*Laptop*`, `*Client*`, `*Endpoint*`, `*PC*` | Wildcard patterns matched against the OU canonical path. |
 | `-ServerOUNamePattern` | `string[]` | `*Server*`, `*DC*`, `*SQL*`, `*Domain Controllers` | Wildcard patterns matched against the OU canonical path. |
 | `-SkipComputerEnumeration` | `switch` | off | Skip OU OS predominance. The summary still emits the name-heuristic classification. Use on very large directories. |
+| `-CheckPrereqs` | `switch` | off | Run `UIAO.ConfigTools` prereq validation before the triage: checks `GroupPolicy` + `ActiveDirectory` modules, `Get-GPO` / `Get-GPOReport` availability, and AD connectivity. Silently ignored when `UIAO.ConfigTools` is not installed. |
+| `-EnableLogging` | `switch` | off | Start a timestamped PowerShell transcript under `<OutputDirectory>\logs\`. Requires `UIAO.ConfigTools`; silently ignored when the module is absent. |
 
 Standard `-Verbose` is honoured and logs OU count + GPO count during
 pre-load.
+
+### Environment variables
+
+| Variable | Overrides |
+|---|---|
+| `UIAO_OUTPUT` | Default value of `-OutputDirectory` |
+
+Set `UIAO_OUTPUT` in a profile or CI job to avoid repeating the path across multiple scripts.
+
+### UIAO.ConfigTools integration
+
+When the `UIAO.ConfigTools` shared module (included in `uiao-cli.zip` under
+`scripts\UIAO.ConfigTools\`) is installed, the script uses it for structured
+output and optional transcript logging. If the module is absent, the script
+falls back to plain coloured `Write-Host` output — no hard dependency.
+
+Install the module:
+
+```powershell
+$dest = "$env:USERPROFILE\Documents\PowerShell\Modules\UIAO.ConfigTools"
+Copy-Item .\uiao-cli\scripts\UIAO.ConfigTools $dest -Recurse -Force
+Import-Module UIAO.ConfigTools
+```
+
+Run with prereq check and logging:
+
+```powershell
+.\Invoke-GpoMigrationTriage.ps1 -OutputDirectory C:\Triage -CheckPrereqs -EnableLogging
+```
 
 ## Usage
 
@@ -340,8 +371,9 @@ keyed by `GpoId`, so a downstream Evidence-Ledger join is trivial.
 
 | Field | Value |
 |---|---|
-| Script version | 1.0 |
-| Script SHA256 | `afe88fb798e41acd61c714341420551fb7e06d0c8f80d58d31f84e98080ba603` |
+| Script version | 1.1 |
+| Script SHA256 | `afe88fb798e41acd61c714341420551fb7e06d0c8f80d58d31f84e98080ba603` (v1.0 base) |
 | Target | Windows Server with RSAT (GroupPolicy + ActiveDirectory modules) |
 | Outputs | `gpo-migration-triage-summary.json`, `gpo-migration-triage-detail.json` |
-| Related | [`Invoke-GpoObsoleteAudit.ps1`](invoke-gpo-obsolete-audit.qmd), `tools/discovery/Spec1-D1.3-Get-GPODeviceDependencyMap.ps1` |
+| Optional module | `UIAO.ConfigTools` v1.2.0 (prereq validation + transcript logging) |
+| Related | [`Invoke-GpoObsoleteAudit.ps1`](invoke-gpo-obsolete-audit.qmd), [`UIAO.ConfigTools` module reference](powershell-module-reference.qmd), `tools/discovery/Spec1-D1.3-Get-GPODeviceDependencyMap.ps1` |

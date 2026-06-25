@@ -115,6 +115,7 @@ DEFAULT_SECTIONS = [
     "substrate",
     "validation-suites",
     "whitepapers",
+    "ssot-network-physics",
 ]
 
 # Filename stems (without .docx) skipped from every bundle.
