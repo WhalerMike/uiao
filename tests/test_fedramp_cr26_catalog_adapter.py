@@ -39,8 +39,8 @@ def test_adapter_id_is_kebab_case_and_matches_registry() -> None:
     assert ADAPTER_ID == "fedramp-cr26-catalog"
 
 
-def test_status_is_proposed_while_adr_061_is_proposed() -> None:
-    assert STATUS == "proposed"
+def test_status_is_active_after_adr_061_ratified() -> None:
+    assert STATUS == "active"
 
 
 def test_expected_ksi_themes_are_the_ten_phase_two_themes() -> None:

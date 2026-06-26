@@ -8,7 +8,7 @@ date: "June 2026"
 status: Active
 repo-path: docs/download/index.qmd
 created-at: 2026-06-03
-updated-at: 2026-06-24
+updated-at: 2026-06-25
 format:
   html:
     toc: true
@@ -29,71 +29,61 @@ authorized personnel, and do not publish raw findings. Remediation guidance is
 **advisory** — apply changes only through your normal change-control process.
 :::
 
-## Assessment & analysis
+## UIAO CLI Kit
 
-### Zero Trust Assessment Dashboard
+### uiao-cli.zip
 
-Turns a Microsoft `ZeroTrustAssessmentReport.html` (or `.json`) into a
-severity-scored, remediation-prioritized **Excel dashboard** (charts + pillar ×
-risk heatmap) and a **Power BI-ready CSV**.
-[Guide →](../customer-documents/operational-guides/zero-trust-assessment/index.qmd)
+The complete UIAO CLI distribution — Python toolkit with offline installer,
+all operator PowerShell scripts, CLI reference, and the new `UIAO.ConfigTools`
+shared module. Works air-gapped; no internet access needed at install time.
 
-| Download | Prerequisites | SHA-256 |
+| Download | Contents | SHA-256 |
 |---|---|---|
-| [`Invoke-ZtDashboard.ps1`](../customer-documents/operational-guides/zero-trust-assessment/scripts/Invoke-ZtDashboard.ps1) | PowerShell 7+, Python 3.11+, UIAO toolkit (`pip install uiao`) | `f30811fd01616e2960e12dd0e870a4d19cd52a7c5c79f0e3bcc592ca5d13d509` |
+| [`uiao-cli.zip`](https://github.com/WhalerMike/uiao/releases/download/uiao-cli-v1.0/uiao-cli.zip) | Python offline wheels + installer + all PS1 scripts + `UIAO.ConfigTools` + CLI reference | `795c024d03ff59ccad0e2db6a8969cee1ccd4574625d17b3ebc90ce3c0a412dd` |
 
-### AD Forest Survey
-
-Read-only **Phase 1 discovery** for the AD → Entra ID track. Captures
-forest/tree/trust topology first (forest mode, every domain, DCs, FSMO holders,
-inter-site links, trusts with a SID-filtering risk flag), then OUs, users,
-service accounts, sites, and GPOs — as one JSON object the UIAO AD adapter
-ingests. Links to the canonical script (it is also the adapter's runtime
-artifact, so there is no second copy to drift).
-[Guide →](../customer-documents/substrate/platform-tooling/invoke-ad-survey.qmd)
-
-| Download | Prerequisites | SHA-256 |
-|---|---|---|
-| [`Invoke-ADSurvey.ps1`](https://github.com/WhalerMike/uiao/blob/main/scripts/ad-survey/Invoke-ADSurvey.ps1) | PowerShell 5.1 or 7.x, RSAT ActiveDirectory module, domain user with read access | `9b590c08158a40f8b7e0145329101580ec29e7575735985301f1d291d665701f` |
-
-## Group Policy migration
-
-### GPO Migration Triage
-
-Classifies every GPO for migration to Intune (workstations) or Azure Arc
-(servers), with side-by-side classification and per-setting sizing.
-[Guide →](../customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd)
-
-| Download | SHA-256 |
-|---|---|
-| [`Invoke-GpoMigrationTriage.ps1`](../customer-documents/substrate/platform-tooling/scripts/Invoke-GpoMigrationTriage.ps1) | `afe88fb798e41acd61c714341420551fb7e06d0c8f80d58d31f84e98080ba603` |
-
-### GPO Obsolete Audit
-
-Flags Group Policy settings that are obsolete, deprecated, or superseded on
-modern Windows so they aren't carried forward into the target estate.
-[Guide →](../customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd)
-
-| Download | SHA-256 |
-|---|---|
-| [`Invoke-GpoObsoleteAudit.ps1`](../customer-documents/substrate/platform-tooling/scripts/Invoke-GpoObsoleteAudit.ps1) | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` |
-
-## Operator workstation
-
-### UIAO Source ZIP (offline CLI install)
-
-Source bundle for offline install of the `uiao` CLI when direct `pip` access is
-restricted. Extract, then install from the extracted repo root.
-
-| Download | SHA-256 |
-|---|---|
-| [`uiao.zip`](https://github.com/WhalerMike/uiao/releases/download/uiao-source-zip-v1.0/uiao.zip) | `c0790d54154b9c9018139139ea4875f8c3068b424c3a8b3a932a66f240e526ad` |
+**Install Python toolkit (air-gapped):**
 
 ```powershell
-# from the extracted uiao\ folder
-python -m pip install .
-python -m pip install ".[api]"
+Expand-Archive .\uiao-cli.zip -DestinationPath uiao-cli
+cd uiao-cli
+.\Install-UIAOPrerequisites.ps1   # ensure Python 3.10+ is present
+.\Install-UIAO.ps1                # installs from bundled wheels — no PyPI needed
+uiao --help
 ```
+
+**Install the shared PowerShell module:**
+
+```powershell
+$dest = "$env:USERPROFILE\Documents\PowerShell\Modules\UIAO.ConfigTools"
+Copy-Item .\uiao-cli\scripts\UIAO.ConfigTools $dest -Recurse -Force
+```
+
+**What's inside:**
+
+| Path | Contents | Guide |
+|------|---------|-------|
+| `deps\` | 80+ pre-downloaded Python wheels | — |
+| `scripts\Invoke-ADSurvey.ps1` | AD forest survey | [Guide →](../customer-documents/substrate/platform-tooling/invoke-ad-survey.qmd) |
+| `scripts\Invoke-ZtDashboard.ps1` | Zero Trust dashboard | [Guide →](../customer-documents/operational-guides/zero-trust-assessment/index.qmd) |
+| `scripts\Invoke-GpoMigrationTriage.ps1` | GPO migration triage | [Guide →](../customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd) |
+| `scripts\Invoke-GpoObsoleteAudit.ps1` | GPO obsolete audit | [Guide →](../customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd) |
+| `scripts\UIAO.ConfigTools\` | Shared config + prereq-check module (v1.2.0) | [Module reference →](../customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) |
+| `scripts\helpdesk-entra\` | Help Desk / Cloud Services scripts | [Guide →](../customer-documents/operational-guides/helpdesk-entra-operations/index.qmd) |
+| `scripts\intune-arc\` | Intune + Azure Arc modernization scripts | [Guide →](../customer-documents/operational-guides/intune-arc-modernization/index.qmd) |
+| `docs\cli-reference.docx` | CLI command reference | — |
+| `Install-UIAO.ps1` | Offline Python installer | — |
+| `Install-UIAOPrerequisites.ps1` | Python prerequisites installer | — |
+
+**Individual script SHA-256:**
+
+| Script | SHA-256 |
+|--------|---------|
+| `Invoke-ADSurvey.ps1` | `9b590c08158a40f8b7e0145329101580ec29e7575735985301f1d291d665701f` |
+| `Invoke-ZtDashboard.ps1` | `f30811fd01616e2960e12dd0e870a4d19cd52a7c5c79f0e3bcc592ca5d13d509` |
+| `Invoke-GpoMigrationTriage.ps1` | `afe88fb798e41acd61c714341420551fb7e06d0c8f80d58d31f84e98080ba603` |
+| `Invoke-GpoObsoleteAudit.ps1` | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` |
+
+## Operator workstation
 
 ### UIAO PowerShell Pack
 
@@ -212,6 +202,6 @@ The three reference guides are also downloadable individually:
 ## Verifying a download
 
 ```powershell
-Get-FileHash .\Invoke-ZtDashboard.ps1 -Algorithm SHA256
+Get-FileHash .\uiao.zip -Algorithm SHA256
 # compare the output to the SHA-256 listed above before running
 ```

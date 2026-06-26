@@ -1,0 +1,57 @@
+---
+title: "The Endpoint Governance Gap"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 1
+lifecycle: draft
+tiers_adopted: []
+---
+
+## Overview
+
+For two decades, Active Directory Group Policy Objects were the invisible contract between an organization and its endpoints. Every workstation joined to the domain inherited a security posture derived from where it lived in the organizational tree. That tree — the OU hierarchy — was both a structural map and an enforcement mechanism. When endpoints began leaving the domain, that contract dissolved. What replaced it, in most organizations, was nothing. This chapter examines what was lost, why the loss compounds over time, and how UIAO resolves the gap by substituting OrgPath for OU and CrowdStrike Falcon for GPO.
+
+![](../../src/uiao/canon/svg-style/book29-cpt01-diagram.png){fig-alt="Three-column diagram: left column AD GPO era showing OU to GPO to endpoint enforcement chain; center column showing the migration gap with no domain, no OU, no GPO; right column showing UIAO resolution with OrgPath to Falcon sensor policy to endpoint. White background, navy teal amber red palette, 860 by 520 viewBox."}
+
+## What AD GPO Gave You on Endpoints
+
+Group Policy was never glamorous. Administrators set it up, it ran in the background, and when it worked nobody noticed. That invisibility was its value. Every machine in a given OU inherited a deterministic security baseline without anyone touching the endpoint directly.
+
+The mechanisms were specific and comprehensive. Windows Firewall rules were distributed centrally: inbound and outbound profiles matched the sensitivity of the organizational unit. Software restriction policies and AppLocker rules determined what could execute on a device belonging to a finance analyst versus a field technician versus a developer. Audit policy enforcement set the sensitivity of local event logging — how much noise a machine generated, what events it forwarded to SIEM, whether process creation auditing was on or off. USB and removable media restrictions, screensaver lockout intervals, BitLocker enforcement, credential guard enablement — all of these were governed by OU membership, and OU membership was governed by the identity and role of the person assigned to the machine.
+
+The underlying logic was organizational: a machine in `OU=Finance,OU=Workstations,DC=agency,DC=gov` inherited Finance workstation policy because the organization had decided Finance workstations warranted that posture. The OU was not just a container. It was an organizational assertion — this machine belongs to this team, and this team's endpoints carry this risk profile.
+
+## What Is Lost When Endpoints Leave the Domain
+
+Hybrid and cloud-first deployments break the GPO chain at its root. An Entra-joined device receives no GPO. There is no domain trust, no SYSVOL, no policy inheritance. The endpoint departs the OU hierarchy and enters a flat, unanchored space.
+
+The loss is not only technical. The organizational assertion disappears with the OU. There is no longer a durable record of which team owns a given endpoint, which role its primary user holds, or what security posture that role demands. The machine is visible in Entra ID as an object, but Entra's flat directory structure carries none of the organizational depth that the OU hierarchy encoded. Device compliance policies in Intune can enforce some baselines, but Intune policy assignment requires manual group membership or dynamic attribute queries — neither of which is automatically synchronized with organizational structure.
+
+The result is heterogeneity. Some endpoints get aggressive baselines because an administrator remembered to add them to the right Intune group. Others drift to permissive defaults because nobody noticed the assignment was missing. There is no enforcement surface that knows, without manual intervention, that a given endpoint belongs to an identity in a given organizational position and should therefore carry the security profile that position requires.
+
+## Three Headline Gaps
+
+**Organizational anchor loss.** Once domain trust is gone, there is no governed mechanism to assert which organizational unit an endpoint belongs to. Entra device objects carry owner and registered-user attributes, but those attributes are not connected to any organizational hierarchy. The OU-to-team mapping that GPO relied on has no equivalent. Endpoint inventory systems can tell you the machine exists; they cannot tell you what the organization has decided about how it should be governed.
+
+**No role-derived posture.** GPO delivered differentiated baselines because OU placement encoded role. A SCIF workstation in a sensitive compartment OU received a hardened policy. A shared kiosk in a public-access OU received a constrained policy. Without OU as the organizational signal, there is no governed mechanism to ask: what detection sensitivity does this identity's role require? What prevention posture should apply to endpoints registered to identities at this organizational position? Endpoint security tools offer policy assignment, but policy assignment without an authoritative organizational anchor is manual, error-prone, and invisible to drift detection.
+
+**No drift surface.** GPO enforcement was continuous. A machine that fell out of compliance with its OU policy was returned to compliance at the next policy refresh cycle. In the post-domain environment, there is no equivalent reconciliation loop. If an endpoint's policy assignment drifts — because a user changed roles, because a group membership lapsed, because a policy was manually overridden — no automated surface detects the divergence. The endpoint simply operates in a security posture that no longer matches what the organization requires for that identity and role.
+
+## UIAO Resolution
+
+UIAO addresses all three gaps through a single substitution: OrgPath replaces OU as the organizational anchor, and CrowdStrike Falcon replaces GPO as the enforcement data plane.
+
+OrgPath is the canonical organizational position of an identity — a structured path encoding department, division, function, and role. Because OrgPath is derived from authoritative HRIT sources and maintained as a first-class UIAO primitive, it survives domain transitions. An identity's OrgPath does not depend on AD OU membership and does not break when the endpoint leaves the domain.
+
+UIAO maps OrgPath positions to Falcon sensor policies. A sensor policy in Falcon governs prevention posture, detection sensitivity, exclusion sets, and response automation for the endpoints it covers. By governing which sensor policy applies to which OrgPath position, UIAO recreates the organizational derivation that GPO provided through OU — without requiring a domain.
+
+The enforcement relationship is: OrgPath position determines required sensor policy; UIAO registers the identity's endpoints against that policy; Falcon enforces it continuously. When an identity's OrgPath changes — promotion, transfer, role change — UIAO triggers a sensor policy reassignment. When an endpoint falls out of its required policy assignment, UIAO detects the drift and raises a remediation event. The drift surface that disappeared with GPO is restored through the reconciliation loop.
+
+The following chapters examine the Falcon sensor policy model in detail, the OrgPath-to-policy mapping schema, and the operational workflow for onboarding, role-change events, and drift remediation.
+
+::: {.callout-tip}
+## Next chapter
+[→ Chapter 2: Falcon Sensor Policy and OrgPath-Scoped Endpoint Profiles](Book_29_CPT_02.qmd)
+:::
