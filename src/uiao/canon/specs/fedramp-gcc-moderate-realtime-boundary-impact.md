@@ -5,7 +5,7 @@ version: "1.0"
 status: Current
 owner: "Michael Stratton"
 created_at: "2026-06-25"
-updated_at: "2026-06-25"
+updated_at: "2026-06-26"
 mas-scope: "in-scope"
 ---
 
@@ -100,6 +100,26 @@ blocked on the telemetry plane.
 ---
 
 ## 2. Capability Disposition Matrix
+
+> **Gap-register landscape (source-of-truth note).** Three registers describe
+> GCC-Moderate boundary gaps, by design at different altitudes:
+>
+> - [`src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml`](../data/gcc-moderate-telemetry-gaps.yaml)
+>   — the **per-signal SSOT** (26 kebab-id rows): each carries its `documented`
+>   disposition plus a `rebuild:` verdict (fixes / partial-substitute /
+>   partial-bounded / not-fixed). Rendered into B.1.3 §6.1; new per-signal facts
+>   belong here.
+> - [`src/uiao/canon/gcc-boundary-gap-registry.yaml`](../gcc-boundary-gap-registry.yaml)
+>   — the **operational probe register** (`GAP-INT-*`, `GAP-ENT-*`, `GAP-ARC-*`
+>   ids) the GCC Boundary Probe reads at runtime and that overlay-fabric
+>   exceptions reference.
+> - The `GCC-BND-NNN` register in this document (§2.2, §8) — the **KSI / POA&M
+>   view**, keyed for FedRAMP 20x evidence.
+>
+> These are intentionally separate today. Unifying their identifiers behind one
+> SSOT is tracked as a follow-on reconciliation; because it touches probe
+> runtime code and tests it is deliberately **not** folded into a documentation
+> pass.
 
 ### 2.1 Classification schema
 
@@ -467,6 +487,30 @@ with commercial becomes achievable through normal licensing and configuration.
 guidance) and Microsoft filing a 20x-aligned GCC-Moderate package.  Tracked
 in FINDING-002 §4.
 
+### 6.4 Relationship to the B.1 boundary-model leaves (CLAW, EO 14117, ceiling)
+
+Three doctrines in the B.1 customer-leaf set refine the strategy above and are
+authoritative for their topics; this spec defers to them rather than
+re-deriving:
+
+- **CISA CLAW is not a compensating control.** Sharing telemetry with CISA's
+  Cloud Log Aggregation Warehouse (TIC 3.0 / BOD 25-01) is a one-way export of
+  telemetry the agency already holds; it neither regenerates the
+  boundary-blocked Microsoft signals (§2) nor returns analytics to the agency.
+  It restores CISA's visibility, not the agency's. See
+  [`B1-1` §2.4](../../../../docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd).
+- **EO 14117 location overlay.** Precise-geolocation and government-related
+  location telemetry carry a regulatory handling ceiling (DOJ rule, effective
+  April 8 2025) independent of the boundary — re-routing or exporting it does
+  not change who may access it. See
+  [`B1-1` §2.5](../../../../docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd).
+- **The compensation ceiling.** Agency-side rebuild reaches functional coverage
+  and ZTMM Advanced, but **full compensation is not achievable**: cross-tenant
+  global threat intelligence and suppressed-at-source telemetry are irreducible,
+  and Optimal / commercial fidelity stays a MAS 2026 dependency. The detailed
+  per-signal fix-coverage and ceiling analysis is
+  [`B1-3` §6.1 and §11](../../../../docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd).
+
 ---
 
 ## 7. UIAO Substrate Response
@@ -547,8 +591,10 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 - [`UIAO_133`](./fedramp-20x-integration.md) — FedRAMP 20x operational mechanics
 - [`UIAO_137`](./fedramp-cr26-ksi-mapping.md) — KSI rule ↔ CR26 catalog mapping
 - [`UIAO_138`](./fedramp-3pao-evidence-interface.md) — 3PAO evidence interface
-- `docs/customer-documents/compliance/B1-gcc-moderate-boundary-model.qmd`
-- `docs/customer-documents/compliance/B1-1-gcc-moderate-three-way-conflict.qmd`
+- `docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`
+- `docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd`
+- `docs/customer-documents/compliance/boundary-authorization/B1-2-teams-phone-tic2-centralized-dia.qmd`
+- `docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd` — in-boundary rebuild plan, full 26-row fix-coverage matrix, and compensation-ceiling assessment
 
 ### Federal mandates
 - [CISA BOD 25-01](https://cyber.dhs.gov/bod/25-01/)
