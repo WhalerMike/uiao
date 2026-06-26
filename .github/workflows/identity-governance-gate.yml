@@ -47,19 +47,34 @@ jobs:
       - name: Run identity governance pipeline
         id: pipeline
         # The pipeline reads fixture JSON when live HRIT/service snapshots
-        # are not available.  In production, replace --hrit and --services
-        # with paths to the actual extracts from your HRIT system and
-        # service identity catalog.
+        # are not available.  In production (workflow_dispatch), replace
+        # --hrit and --services with paths to the actual extracts from your
+        # HRIT system and service identity catalog.
+        #
+        # The nightly *schedule* has no live HRIT extract, so it falls back
+        # to demonstration fixtures that intentionally contain orphaned
+        # accounts (E002 is Terminated yet owns two service principals).
+        # Those P1 findings prove detection works and are uploaded as
+        # evidence, but they must NOT fail the scheduled job — otherwise
+        # main is perpetually red on demonstration data.  We therefore pass
+        # --no-fail on schedule.  Operator runs via workflow_dispatch against
+        # real snapshots keep the hard gate so genuine P1 findings fail
+        # visibly.
         #
         # Exit code semantics:
-        #   0 — gate passed (no P1 findings)
+        #   0 — gate passed (no P1 findings, or --no-fail)
         #   1 — gate failed (P1 findings present; job fails visibly)
         #   2 — configuration error (missing input files)
+        env:
+          # UTF-8 so rich's "→" summary line does not crash on non-UTF8 locales
+          PYTHONIOENCODING: "utf-8"
+          NO_FAIL: ${{ github.event_name == 'schedule' && '--no-fail' || '' }}
         run: |
           uiao identity run \
             --hrit "${{ github.event.inputs.hrit_path || 'tests/fixtures/hrit/hrit-sample.json' }}" \
             --services "${{ github.event.inputs.services_path || 'tests/fixtures/identity/services-sample.json' }}" \
-            --out evidence/identity/
+            --out evidence/identity/ \
+            $NO_FAIL
         # Allow step to produce its exit code without masking it
         continue-on-error: false
 
@@ -76,5 +91,10 @@ jobs:
         # Explicit second gate step so the job failure message is unambiguous
         # in the GitHub Actions summary.  The pipeline step already exits 1
         # on P1; this step reinforces the message.
+        #
+        # Skipped on the nightly schedule, which runs against demonstration
+        # fixtures whose intentional P1 findings would always fail the gate.
+        # The real gate runs on workflow_dispatch against live snapshots.
+        if: github.event_name != 'schedule'
         run: |
           uiao identity gate --evidence evidence/identity/
