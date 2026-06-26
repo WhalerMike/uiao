@@ -152,7 +152,7 @@ canon (ADR-122 §Decision 3).
 | Precondition | An active Intune license on the tenant; the Graph permission scope for device-management read. A missing license is a typed precondition failure, not a parser error. |
 | Inputs UIAO sends | The `groupPolicyObjectFile` (the parsed GPO, re-serialized to the import format). |
 | Output UIAO reads | Per setting: the MDM/CSP equivalent (if any) and a support status. |
-| Support status | `supported` | `unsupported` | `deprecated` — normalized into the IR. `unsupported` routes the setting to the residual-GPO backlog (§4), a first-class outcome. |
+| Support status | `supported` \| `unsupported` \| `deprecated` — normalized into the IR. `unsupported` routes the setting to the residual-GPO backlog (§4), a first-class outcome. |
 | Persistence | **None.** The Crosswalk Result is an in-flight artifact of a migration run. Canon stores this contract, not its rows. |
 | Failure posture | Stage 2 failures (license, scope, beta-contract drift) are isolated to the consume adapter; Stages 1 and 3 are unaffected and a cached prior result can still drive a re-run of the join. |
 
