@@ -1,0 +1,93 @@
+---
+title: "The DRIFT Surface for Endpoints — Ungoverned Devices and the Actuation Ladder"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 6
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.content-visible when-format="docx"}
+::: {.callout-note}
+## Reading this document as a standalone bundle
+
+**DRIFT** is UIAO's term for a detected deviation between the governed policy baseline and the observed state of a governed system. Drift events are classified by type and severity, routed to a remediation workflow, and tracked until closure. The endpoint surface has seven DRIFT classes described in this chapter.
+
+**ADR-092** defines the L0–L4 actuation ladder: the five-level response escalation model that governs how UIAO responds to drift events. L0 observes, L1 alerts, L2 opens a ticket, L3 blocks or quarantines, and L4 remediates autonomously. L3 is the federal default ceiling; L4 requires an explicit ADR override because autonomous remediation of enrolled production endpoints carries consequences that require governance sign-off.
+
+**CrowdStrike Falcon** is the EDR platform whose sensor telemetry, policy enrollment records, vulnerability assessments, and device control configurations feed the UIAO CrowdStrike adapter. Chapter 2 (CPT_02) describes enrollment; Chapter 4 (CPT_04) describes active detection events. This chapter describes the full DRIFT taxonomy that spans both surfaces.
+
+**JML** — Joiner/Mover/Leaver — is the identity lifecycle event model from Book_27. The endpoint drift surface has a dedicated signal (DRIFT-ORPHAN-ENDPOINT) that fires in response to Leaver events detected by the JML pipeline, connecting the two books. Its PAM analogue, DRIFT-ORPHAN-PRIV, is covered in Book_28.
+:::
+:::
+
+::: {.callout-note}
+## In this chapter
+Endpoint governance is not complete when CrowdStrike Falcon is deployed, sensors are enrolled, and policies are assigned. It is complete when deviations from the governed configuration are detected, routed, and resolved. This chapter assembles the full DRIFT taxonomy for the EDR surface — seven signals covering policy enrollment, sensor health, policy correctness, active detections, vulnerability SLAs, device control, and the leaver cross-reference — maps each to the L0–L4 actuation ladder, and traces the complete device lifecycle from Joiner to Leaver to confirm that governance remains intact at every transition.
+:::
+
+![](../../src/uiao/canon/svg-style/book29-cpt06-diagram.png){fig-alt="L0 to L4 staircase on the right with EDR DRIFT class default levels labeled. Left side shows device lifecycle: Joiner to enrollment to policy in teal, Mover to recompute in amber, Leaver to revoke in navy. DRIFT-ORPHAN-ENDPOINT fires on missed revoke. White background, 860 by 520."}
+
+## The EDR DRIFT Taxonomy
+
+Seven DRIFT classes cover the endpoint surface. Each is described with its default severity, its default actuation level, and the most common root causes that produce it.
+
+**DRIFT-EDR-NOPOLICY** (HIGH, L2). An enrolled endpoint has no governed sensor policy assigned. The endpoint is running a Falcon sensor, but the sensor has not been placed under any policy group that the UIAO CrowdStrike adapter recognizes as in-scope for governance. Root causes: endpoint enrolled in a staging group that was never promoted, policy assignment removed during a Falcon console migration, new enrollment that completed before the policy assignment workflow fired. Resolution: assign the correct OrgPath-derived policy group, verify sensor heartbeat under the new policy, and confirm in the adapter audit stream that the DRIFT-EDR-NOPOLICY condition has cleared. The L2 default means a ServiceNow ticket is opened automatically; the seventy-two-hour SLA applies.
+
+**DRIFT-EDR-NOSENSOR** (HIGH, L2). A registered endpoint has not produced a sensor heartbeat within the governed threshold. The device is recorded in the UIAO asset inventory as an enrolled endpoint, but the CrowdStrike adapter sees no recent telemetry from its sensor. Root causes: sensor service stopped or disabled on the host, network path between the host and the Falcon cloud blocked, host decommissioned without the deprovisioning workflow completing, sensor tampered with. Resolution: investigate host connectivity and sensor service health. An endpoint with no sensor is a device that is enrolled in governance but not actually governed — a higher-risk state than a device that was never enrolled, because the governance record creates a false appearance of coverage. Escalates to L3 (endpoint flagged for mandatory physical review) if the ticket is unresolved within seventy-two hours.
+
+**DRIFT-EDR-WRONGPOLICY** (MEDIUM, L2). An enrolled endpoint is running under a Falcon policy group that does not match the policy group derived from the endpoint owner's current OrgPath position. Root causes: HRIT sync delay producing a stale OrgPath record after a Mover event, manual policy override applied for operational convenience that was never removed, OrgPath policy recompute completed but the Falcon adapter has not yet propagated the update. Resolution: compare the current Falcon policy group against the OrgPath-derived expected policy group, correct the assignment, and verify that the adapter no longer reports a discrepancy. DRIFT-EDR-WRONGPOLICY is lower severity than DRIFT-EDR-NOPOLICY because the endpoint is governed — just under the wrong policy — but it represents a real gap: the sensor's behavioral baselines, alerting thresholds, and prevention settings may not match what the endpoint's actual risk tier requires.
+
+**DRIFT-EDR-ALERT** (severity from Falcon, L3). An active detection event has been reported by the Falcon sensor. The severity of this drift class is not fixed; it mirrors the Falcon severity of the underlying detection — CRITICAL, HIGH, MEDIUM, or LOW — translated through the adapter. Root causes are determined by the detection content: process injection, lateral movement, credential harvesting, and similar behavioral indicators. L3 is the default actuation for detection events because DRIFT-EDR-ALERT is the class that connects the DRIFT taxonomy to the active incident response workflow described in CPT_04. The ServiceNow incident ticket is opened by the drift engine; network containment via the Falcon API requires an explicit human approval at the L3 gate before execution. CRITICAL and HIGH severity events are assigned to the Division's designated incident response approver, resolved from the OrgPath position of the endpoint owner.
+
+**DRIFT-EDR-VULN-CRITICAL** (CRITICAL, L3). An enrolled endpoint has a vulnerability with a CVSS score of 9.0 or above that has not been remediated within the governed SLA. The UIAO CrowdStrike adapter ingests Falcon Spotlight vulnerability telemetry. When a CVSS-9.0+ finding appears on a governed endpoint and the patch or mitigation SLA expires without resolution, the adapter fires DRIFT-EDR-VULN-CRITICAL. Root causes: patching workflow did not run, the endpoint was offline during the deployment window, a patch was deferred by an application owner and no compensating control was registered. Resolution: apply the patch or document the compensating control. L3 default means the endpoint is flagged as high-risk in OrgPath and the ServiceNow ticket escalates to the ISSO for SLA accountability. An endpoint with an unpatched CVSS-9.0+ vulnerability is treated as a conditionally-compromised asset until remediated.
+
+**DRIFT-EDR-DEVICE-NOPOLICY** (HIGH, L2). An enrolled endpoint requires a device control tier under its OrgPath policy but no device control policy is enforced on the sensor. CrowdStrike Falcon device control governs USB, Bluetooth, and external media access. When an endpoint's OrgPath position maps to a tier that requires device control restrictions — typically Tier 2 or above, or any position with Security Clearance Level above the baseline — and the Falcon adapter finds no matching device control policy active on that sensor, DRIFT-EDR-DEVICE-NOPOLICY fires. Root causes: device control policy group configured separately from the detection policy and not applied at enrollment, manual override for removable media access never reversed. Resolution: apply the required device control policy and verify via the adapter that the sensor reports the correct effective device control configuration.
+
+**DRIFT-ORPHAN-ENDPOINT** (CRITICAL, L3). An enrolled endpoint's owner is a Leaver — an identity whose HRIT record indicates separation from the organization — or is absent from HRIT entirely. This is the endpoint analogue of DRIFT-ORPHAN-PRIV from Book_28.
+
+## The Leaver Cross-Reference
+
+When the JML pipeline fires a Leaver event for a departing identity, UIAO must account for every governed surface that identity touches. Book_27 covers the identity lifecycle. Book_28 describes DRIFT-ORPHAN-PRIV, which fires when the vault has open surfaces linked to the departing identity. DRIFT-ORPHAN-ENDPOINT extends that logic to the physical device layer.
+
+The CrowdStrike adapter queries the enrolled endpoint inventory at Leaver event time, looking for any endpoint whose `orgpath_owner` field resolves to the departing identity. A surviving enrollment — an endpoint that is still actively registered under the leaver's identity after the Leaver event fires — is classified as DRIFT-ORPHAN-ENDPOINT.
+
+The reason this is CRITICAL is not that the departing identity is still using the device. It is that the device has lost its governance chain. The Falcon sensor is still running. The endpoint is still enrolled under a policy group. But the identity anchor — the human whose OrgPath position determined which policy group applied, which approver receives incident tickets for this device, and which team is responsible for its physical security — is gone. The device is enrolled in governance but ungoverned in any meaningful operational sense.
+
+> An endpoint that survives a Leaver event without having its enrollment revoked is a potentially-compromised device with no owner, running under a policy baseline set for an identity that no longer exists in the organization. The governance record creates a false appearance of coverage; the operational reality is that no one is responsible for this device.
+
+The disposition of a DRIFT-ORPHAN-ENDPOINT requires a physical check: is the device in the leaver's possession, returned to IT, or unaccounted for? The ServiceNow Leaver workflow carries a mandatory endpoint checklist derived from the DRIFT-ORPHAN-ENDPOINT query results. Each enrolled endpoint must be explicitly disposed — either transferred to a new owner with a fresh OrgPath enrollment, wiped and returned to the asset pool, or reported as missing and treated as a potential data loss event. A Leaver event that closes with an open DRIFT-ORPHAN-ENDPOINT is a governance exception requiring explicit documentation, identical to the rule for DRIFT-ORPHAN-PRIV in Book_28.
+
+## The L0–L4 Actuation Ladder for Endpoints
+
+ADR-092's L0–L4 actuation ladder defines five response levels, each escalating the intervention from observation to autonomous remediation. The endpoint surface applies the ladder with specific actions at each level.
+
+**L0 — Observe.** The DRIFT event is recorded in the UIAO audit stream with no automated action beyond logging. No EDR DRIFT class defaults to L0 as its steady state; L0 is the transient state between detection and the first notification delay expiring.
+
+**L1 — Alert.** Notification is sent to the endpoint owner and the device's organizational governance contact. L1 fires for DRIFT-EDR-WRONGPOLICY during its initial detection window: the owner is notified of the policy mismatch and given a resolution window before a ServiceNow ticket is auto-opened. DRIFT-EDR-VULN-CRITICAL may fire an L1 advisory alert before the SLA window expires, giving the patching team lead time before the full L3 escalation activates.
+
+**L2 — Ticket.** A ServiceNow ticket is opened automatically. A seventy-two-hour SLA applies for HIGH events. DRIFT-EDR-NOPOLICY, DRIFT-EDR-NOSENSOR, DRIFT-EDR-WRONGPOLICY, and DRIFT-EDR-DEVICE-NOPOLICY all default to L2. Unresolved L2 tickets escalate to L3 at SLA expiration.
+
+**L3 — Block / Quarantine.** Active intervention: the endpoint is flagged as high-risk in the OrgPath record, the Falcon API call to network-contain the host is prepared and queued pending human approval, or the device is placed on a restricted access list. L3 is the federal default ceiling for autonomous intervention under ADR-092. DRIFT-EDR-ALERT, DRIFT-EDR-VULN-CRITICAL, and DRIFT-ORPHAN-ENDPOINT all default to L3. The human approval gate is not advisory; the Falcon API call is blocked at the engine level until the approval token is returned.
+
+**L4 — Autonomous Remediation.** Policy groups are automatically corrected, the Falcon API is called to isolate the host without human approval, or the endpoint enrollment is force-revoked. L4 requires an explicit ADR override because autonomous remediation of enrolled endpoints carries consequences — a network isolation breaks running services; a forced enrollment revoke removes the sensor that was providing telemetry — that require governance sign-off before they can be automated. No endpoint DRIFT class defaults to L4.
+
+## The Governance-Complete Device Lifecycle
+
+The full endpoint governance arc runs from enrollment to revocation. Each transition must complete cleanly for the governance model to remain intact.
+
+**Joiner.** When a new identity joins the organization and an endpoint is assigned, the enrollment workflow registers the device in the UIAO asset inventory, assigns the CrowdStrike sensor policy group derived from the identity's OrgPath position, and records the `orgpath_owner` field linking device to identity. DRIFT-EDR-NOPOLICY and DRIFT-EDR-NOSENSOR fire if either the policy assignment or the sensor heartbeat does not materialize within the governed SLA after registration.
+
+**Mover.** When the JML pipeline fires a Mover event — an HRIT change indicating that the identity has moved to a different Department, Division, or Tier — the CrowdStrike adapter recomputes the OrgPath-derived policy group for all endpoints owned by the moving identity. If the new position maps to a different Falcon policy group, the adapter updates the assignment. DRIFT-EDR-WRONGPOLICY fires during the propagation window; it clears automatically once the adapter confirms the correct policy is active. Device control policy is recomputed in the same pass: a move to a higher-security Tier may require adding device control restrictions that were not present at the previous Tier.
+
+**Leaver.** When the JML pipeline fires a Leaver event, the CrowdStrike adapter queries the enrolled endpoint inventory, identifies all endpoints linked to the departing identity, and attaches the list to the Leaver workflow in ServiceNow. The Leaver workflow requires each endpoint to be explicitly disposed before the event can be closed. Enrollment revocation removes the `orgpath_owner` binding and places the device in the unassigned asset pool; the sensor continues running until the device is physically processed. Any endpoint that is not disposed within the governed window fires DRIFT-ORPHAN-ENDPOINT.
+
+The lifecycle is closed only when the revocation step completes. An enrolled endpoint that survives a Leaver event without disposition is the canonical failure mode that DRIFT-ORPHAN-ENDPOINT exists to detect.
+
+::: {.callout-tip}
+## Continue reading
+
+[← Chapter 5 — Compliance Reporting and Continuous Monitoring](Book_29_CPT_05.qmd) | [Chapter 7 — Glossary and References →](Book_29_CPT_07.qmd)
+:::

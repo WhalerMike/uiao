@@ -1,0 +1,113 @@
+---
+title: "Glossary and References"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_28
+series-order: 7
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+Key terms and canonical references for Book_28. Every term below is used in its precise technical sense throughout this book; the definitions here are the governing ones. Canon references point to the binding normative artifacts; this book narrates them but does not supersede them.
+:::
+
+## Key Terms
+
+**CBA — Certificate-Based Authentication.**
+A phishing-resistant authentication mechanism that validates a hardware-bound X.509 certificate rather than a password or TOTP code. ADR-068 mandates CBA as a required gate before any Entra PIM activation may proceed; the activation workflow does not issue a privileged role assignment unless CBA is verified. CBA is what makes the activation chain cryptographically auditable end-to-end.
+
+**Conjur.**
+CyberArk's machine-identity and secrets management platform. Conjur handles non-human credential consumers: CI/CD pipelines, application service accounts, infrastructure automation agents. It issues short-lived secrets scoped to a workload identity and integrates with the same CyberArk Vault backend that PSM and CPM use, so machine-identity and human-identity secrets share a unified rotation and audit surface.
+
+**Control plane / data plane boundary.**
+The architectural distinction established in ADR-092. UIAO is a governance control plane: it sets policy, resolves authority, emits actuation signals, and reconciles drift. CyberArk Privilege Cloud and Entra PIM are data planes: they enforce policy within their own substrates. UIAO incorporates both data planes rather than replacing them. The control plane never directly executes privileged sessions; it governs the conditions under which the data plane does.
+
+**CPM — Central Policy Manager.**
+The CyberArk component responsible for automated credential rotation. CPM reaches into target systems on a configured schedule and rotates the stored credential, then updates the Vault record so that subsequent PSM sessions retrieve the new credential. When CPM cannot reach a target or rotation fails, it emits a staleness signal; UIAO surfaces this as the DRIFT-CPM-STALE event class.
+
+**CyberArk Privilege Cloud.**
+CyberArk's FedRAMP-authorized SaaS PAM platform. Privilege Cloud is the operational substrate for vault-based credential storage, PSM-brokered session mediation, CPM-driven rotation, and PTA-driven behavioral analytics. It is the external data plane that UIAO incorporates under the provider-incorporation contract established in ADR-092.
+
+**DRIFT (UIAO drift event class).**
+A structured finding emitted by the UIAO drift engine when a monitored resource deviates from its governed baseline. Every DRIFT finding carries a class identifier, a severity, a posture label (DRIFT or COMPLIANT), and a reference to the OrgPath record or vault object that is out of compliance. DRIFT findings at L1 and L2 are written to AGD; at L3 they escalate to ServiceNow tickets.
+
+**DRIFT-CPM-STALE.**
+Emitted when CPM reports that a credential in a vault Safe has not been successfully rotated within its policy interval. Severity: HIGH. Indicates either a broken CPM connection to the target system or a target-side rejection of the rotation attempt. Triggers a rotation-review ticket at L3.
+
+**DRIFT-ORPHAN-PRIV.**
+Emitted when a vault Safe account's `owner_employee_id` matches a known LEAVER or is absent from the HRIT record set. A Safe account with no active custodian is an orphaned privileged credential — no one holds accountability for its use. Severity: CRITICAL. Triggers a `GOV-ORPHAN-PRIV` ticket at L3 and initiates credential quarantine.
+
+**DRIFT-PRIV-NOCBA.**
+Emitted when an Entra PIM activation is completed without a CBA-verified authentication event in the session record. ADR-068 makes CBA mandatory; an activation that bypassed CBA is a policy violation regardless of whether the underlying role was appropriate. Severity: CRITICAL.
+
+**DRIFT-PRIV-SCOPE.**
+Emitted when the role activated through PIM or the Safe ACL granted through CyberArk exceeds the scope permitted by the identity's OrgPath activation policy. An activation that is structurally valid (CBA present, PIM workflow completed) but grants access beyond the OrgPath-authorized boundary generates this finding. Severity: HIGH.
+
+**DRIFT-PRIV-STATIC.**
+Emitted when a privileged role is held as a permanent active Entra assignment rather than an eligible assignment subject to JIT activation. Persistent privileged access is the standing-privilege pattern that PAM exists to eliminate. Severity: HIGH. Triggers a remediation ticket requesting conversion to eligible assignment.
+
+**DRIFT-PSM-BYPASS.**
+Emitted when a privileged session to a PSM-governed target system is established without going through the PSM relay — for example, by using a directly-known credential rather than retrieving it from the vault. A PSM-bypass breaks the session recording chain and constitutes an audit gap. Severity: CRITICAL.
+
+**DRIFT-PTA-ALERT.**
+Emitted when CyberArk PTA generates a behavioral anomaly alert — for example, a privileged session accessing an unusual volume of resources, running at an atypical time, or exhibiting credential-sharing indicators. PTA feeds its alerts into the UIAO drift engine, which normalizes them into DRIFT findings and routes them alongside findings from other sources.
+
+**Eligible assignment vs. Active assignment (Entra PIM).**
+Two states a Privileged Identity Management role can be in for a given identity. An **eligible assignment** means the identity has the right to activate the role on demand, subject to PIM policy (CBA gate, justification, approval, time limit); the role is not active until an explicit activation request is submitted and approved. An **active assignment** means the role is permanently assigned and always exercised, with no JIT gate. ADR-092 and UIAO's OrgPath activation policy require that privileged roles be held as eligible assignments; active assignments for privileged roles generate DRIFT-PRIV-STATIC.
+
+**HRIT — Human Resources Information Technology.**
+The canonical HR schema (Spec2-D1.1) that is the authoritative source for employee-of-record data in UIAO. HRIT records carry `employee_id`, `employment_status`, `department`, `division`, `manager_employee_id`, and other organizational fields. The JML pipeline diffs HRIT snapshots to detect lifecycle events that drive PAM provisioning and deprovisioning.
+
+**JIT Access — Just-in-Time Access.**
+An access paradigm in which privileged rights are granted only for the duration of an approved need, rather than held persistently. JIT access eliminates standing privilege: between tasks, the identity holds no privileged role and presents no elevated attack surface. In UIAO, JIT access for Entra roles is implemented through PIM eligible assignments with OrgPath-scoped activation policies; JIT access for vault credentials is implemented through PSM session brokering with CPM-rotated credentials.
+
+**JML — Joiner, Mover, Leaver.**
+The identity lifecycle event model. Joiner: a new employee or contractor entering the environment. Mover: an existing employee whose organizational position changes — driving OrgPath re-evaluation and PAM scope recalculation. Leaver: an employee who departs — driving immediate PIM eligible-assignment removal, Safe ACL revocation, and orphan detection for any vault accounts the leaver owned.
+
+**L0–L4 actuation ladder.**
+The governance automation framework from ADR-092 defining five tiers of autonomy. L0: inert, governance findings are recorded but nothing is acted on. L1: observe, drift events are written to AGD. L2: advise, remediation recommendations are surfaced. L3: gated action, UIAO opens a ServiceNow ticket that requires human approval before execution. L4: autonomous, UIAO executes remediation without human approval. Federal deployments default to an L3 ceiling. PAM governance actions — rotating credentials, revoking PIM assignments, quarantining orphaned Safe accounts — execute at L3 in the baseline posture.
+
+**OrgPath.**
+UIAO's fifteen-facet organizational position model. Facets include Department, Division, Branch, Team, Role, Sub-Role, Tier, Security Clearance Level, and others. In the PAM context, OrgPath is the substrate from which activation policy is derived: which vault Safes an identity may access, which Entra roles it may activate, under what time bounds, and with what approval chain. OrgPath also determines which individuals constitute the Safe ACL for a given resource scope.
+
+**OrgPath activation policy.**
+The computed privilege profile that UIAO derives from an identity's current OrgPath position and the governing PAM policies. An activation policy specifies: which PIM-eligible roles the identity may activate; which vault Safes the identity may request credentials from through PSM; the maximum session duration; the CBA requirement (always present); and the approval chain. When an identity's OrgPath changes (Mover event), the activation policy is recomputed and any Safe ACLs or PIM eligible assignments outside the new policy boundary generate DRIFT-PRIV-SCOPE.
+
+**PAM — Privileged Access Management.**
+The discipline and tooling that governs access to high-privilege credentials and sessions. PAM controls who can access which privileged accounts, under what conditions, for how long, with what recording, and with what rotation of the underlying credentials. UIAO's PAM integration couples OrgPath-derived scope to CyberArk Privilege Cloud (vault, PSM, CPM, PTA) and Entra PIM (JIT role activation) to make privileged access deterministic, time-bounded, and auditable.
+
+**PIM — Privileged Identity Management (Entra).**
+Microsoft's Entra ID feature for just-in-time privileged role management. PIM holds Entra directory roles in an eligible state; an identity must submit an activation request that passes the configured policy gate (CBA, justification, optional approval) before the role is exercised. Activation is time-bounded; when the activation window expires the role lapses and must be re-activated. UIAO's OrgPath activation policy is the source of truth for which roles a given identity may hold as eligible assignments.
+
+**Provider-incorporation contract.**
+The architectural commitment described in ADR-092 under which UIAO incorporates an external product's data plane rather than replacing it. For CyberArk, the contract means: CyberArk governs credential storage, session brokering, rotation, and behavioral analytics within its own substrate; UIAO governs the conditions under which that substrate is used, the scope of access it may grant, and the drift reconciliation that runs across it. UIAO does not replicate vault functions; it wraps them in OrgPath-derived policy.
+
+**PSM — Privileged Session Manager.**
+The CyberArk component that brokers privileged sessions. PSM intercepts a session request, authenticates it against the OrgPath activation policy, retrieves the target credential from the vault, establishes the connection to the target on the administrator's behalf, and relays the session through an isolated recording proxy that produces keystroke logs and a video replay. The privileged user never directly receives the credential; the session recording is stored outside the target system's control.
+
+**PTA — Privileged Threat Analytics.**
+CyberArk's behavioral analytics engine for privileged sessions. PTA establishes behavioral baselines and generates alerts when session behavior deviates — unusual access volume, off-hours activity, lateral movement patterns, credential-sharing indicators. PTA alerts feed the UIAO drift engine as DRIFT-PTA-ALERT findings, integrating behavioral anomaly detection into the OrgPath-governed governance posture.
+
+**Safe ACL (CyberArk vault Safe access control).**
+The access control list that governs which accounts and users may retrieve credentials from a given vault Safe. A Safe maps to an OrgPath scope: the set of identities whose activation policies authorize access to that Safe's credential class. UIAO maintains the canonical Safe ACL as a function of current OrgPath positions; when an identity's OrgPath changes or a Leaver event fires, the Safe ACL is recalculated and any excess grants become DRIFT-PRIV-SCOPE findings.
+
+## Canon References
+
+| Canon | Title | Role in this book |
+|---|---|---|
+| ADR-059 | SailPoint NERM Boundary Exception | CyberArk vendor overlay precedent; named commercial-exception pattern |
+| ADR-068 | Certificate-Based Authentication Mandate | CBA as required gate for PIM activation; DRIFT-PRIV-NOCBA source |
+| ADR-092 | Active Governance | L0–L4 actuation ladder; control-plane/data-plane boundary; provider-incorporation contract |
+| ADR-051–054 | HRIT Adapter ADRs | Canonical HR schema; HRIT snapshot diffing for JML event detection |
+| ADR-055 | Customer Identity Canon Block | CIR scope boundary; non-employee PAM provisioning surface |
+| ADR-056 | Login.gov Activation Contract | External identity broker cross-reference |
+| CyberArk vendor overlay | CyberArk Privilege Cloud Integration Spec | PSM, CPM, PTA integration contracts; Safe ACL governance model |
+
+::: {.callout-tip}
+## End of Book_28
+
+[← Chapter 6](Book_28_CPT_06.qmd) | [← Book_28 Index](Book_28.qmd)
+:::

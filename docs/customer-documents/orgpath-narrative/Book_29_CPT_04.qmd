@@ -1,0 +1,62 @@
+---
+title: "Threat Detection, Incident Containment, and the Autonomous Response Surface"
+doc-type: orgpath-narrative-chapter
+audience: [Executive, Technical, Customer]
+family: orgpath-narrative
+book: Book_29
+series-order: 4
+lifecycle: draft
+tiers_adopted: []
+---
+
+::: {.callout-note}
+## In this chapter
+CrowdStrike Falcon surfaces detection events that travel through a SIEM feed into the UIAO drift engine. The adapter normalizes each event to a typed DRIFT-EDR-ALERT, resolves the affected endpoint to an OrgPath identity, and opens a ServiceNow ticket before any network containment executes. Federal L3 actuation ceiling per ADR-092 means human approval gates the automated response — Falcon isolates the host only after that approval lands. OrgPath context transforms an individual endpoint alert into a scoped incident with known blast radius.
+:::
+
+![](../../src/uiao/canon/svg-style/book29-cpt04-diagram.png){fig-alt="Sequence flow left to right: Falcon Detection Event to SIEM Feed to CrowdStrike Adapter to DRIFT-EDR-ALERT to L3 Drift Engine to ServiceNow Ticket to Human Approval to Falcon Network Containment. OrgPath identity lookup as a side-join at the adapter stage. White background, 860 by 520."}
+
+## From Falcon Detection to the SIEM Feed
+
+Every CrowdStrike Falcon sensor runs behavioral analysis continuously. When the sensor identifies a threat — a process injection, a lateral movement attempt, a credential harvesting pattern — it generates a detection event that includes a severity score, a MITRE ATT&CK tactic classification, and the endpoint identifier on which the activity occurred. That event moves out of the sensor and into the SIEM layer: Splunk in most federal environments, Microsoft Sentinel in M365-aligned deployments, or both operating in parallel.
+
+The SIEM does what SIEM platforms do: it correlates, deduplicates, and fires alert rules. But the SIEM does not know organizational structure. It knows IP addresses, hostnames, and user principal names. It does not know that the endpoint triggering the alert belongs to a Division Chief with privileged PAM access and six direct reports who share a network segment. That layer of context does not exist in the SIEM. It exists in OrgPath.
+
+## The CrowdStrike Adapter and DRIFT-EDR-ALERT
+
+The UIAO CrowdStrike adapter subscribes to the SIEM detection feed. When a Falcon detection event arrives, the adapter executes two operations in parallel.
+
+The first is normalization. The adapter maps the Falcon event fields to the DRIFT-EDR-ALERT schema. The resulting drift record carries the Falcon detection ID, the endpoint identifier, the Falcon severity score translated to DRIFT severity (a Falcon CRITICAL maps to DRIFT CRITICAL; HIGH maps to HIGH; MEDIUM and below map to MEDIUM), the MITRE tactic string, and a timestamp chain that preserves Falcon detection time, SIEM fire time, and adapter ingestion time separately. That temporal chain matters for post-incident review: it shows where dwell time accumulated.
+
+The second is identity resolution. The adapter queries OrgPath to resolve the endpoint identifier to an OrgPath position. The endpoint was registered in OrgPath at enrollment — covered in CPT_02 and CPT_03. That registration carries the Department, Division, Team, Tier, and Security Clearance Level facets of the identity who holds the device. The adapter joins this position into the DRIFT-EDR-ALERT as the `orgpath_owner` field. The drift event now has both a technical signature (what Falcon saw) and an organizational signature (who this endpoint belongs to and where they sit in the structure).
+
+## IR-4 Automated Containment and the L3 Gate
+
+CrowdStrike Falcon is capable of network containment: it can instruct the sensor to isolate the host from the network, severing all connectivity except the Falcon sensor channel itself. This is the right response to a confirmed lateral movement event. It is also an action with significant operational consequences — an isolated host is unreachable, and if that host runs a critical service, containment creates an outage.
+
+UIAO governs this at L3. ADR-092 establishes the active governance actuation ladder: L0 through L2 are informational and advisory; L3 is the first tier that executes changes in provider systems; L4 is reserved for autonomous enforcement actions. Federal deployments default to an L3 ceiling, meaning the drift engine can prepare and queue an action against a provider — in this case the Falcon API call to network-contain the host — but it cannot execute that action without a human approval signal.
+
+When the DRIFT-EDR-ALERT enters the drift engine at CRITICAL severity, the engine opens a ServiceNow incident ticket. The ticket carries the full drift event payload: the Falcon detection details, the OrgPath identity of the endpoint owner, the proposed response action (network containment), and the approval prompt. The assignee is derived from the OrgPath position — the Division's designated Incident Response approver receives the ticket. Until that approver acts, Falcon takes no containment action. The L3 gate is not advisory; the Falcon API call is blocked at the engine level until the approval token is returned.
+
+This is the IR-4 control surface. NIST IR-4 requires that incident handling procedures include containment, eradication, and recovery steps. The L3 gate ensures that containment does not execute faster than human judgment can run — which matters because false-positive containment of a production host carries its own incident cost.
+
+## The Temporal Sequence
+
+The full sequence from detection to containment runs in a defined order. Falcon detects an anomaly and fires a detection event. The SIEM ingests the event and fires an alert rule. The CrowdStrike adapter receives the alert, normalizes it to DRIFT-EDR-ALERT, and resolves the OrgPath owner. The drift engine receives the DRIFT-EDR-ALERT, evaluates severity, and for CRITICAL events opens a ServiceNow incident ticket. The designated approver reviews the ticket and approves or rejects network containment. On approval, the drift engine calls the Falcon API to isolate the host.
+
+Each handoff is logged with a timestamp. The temporal chain is auditable end-to-end. For compliance review — whether FedRAMP IR-4 or FISMA reporting — the chain provides evidence that human judgment was in the loop and that the containment action was authorized, not autonomous.
+
+## Why OrgPath Transforms the Incident
+
+The organizational join is not cosmetic. Knowing that the affected endpoint belongs to a specific identity at a specific OrgPath position changes what the incident means and how it should be handled.
+
+The first dimension is blast-radius scoping. An endpoint belonging to a Tier 3 administrator with broad privileged access represents a different risk than the same Falcon detection on a Tier 1 general-purpose workstation. The OrgPath Tier and Clearance Level facets let the SOC immediately classify the detection's potential impact before the first analyst action. This context arrives in the ServiceNow ticket automatically — the analyst does not need to look it up.
+
+The second dimension is lateral exposure mapping. The OrgPath Department and Division facets identify which other identities share the same organizational segment as the compromised endpoint owner. In the Active Directory era, that mapping required manually tracing OU membership and group memberships. OrgPath makes it a query: return all identities in the same Department and Division with Tier 2 or above. Those identities are potential lateral movement targets and can be flagged for enhanced monitoring without waiting for secondary detections.
+
+The third dimension is cross-reference to privileged access. Book_28 covers the PAM surface: which identities hold standing privileged access, which hold JIT-elevated sessions at the time of detection, and what vaults are in scope. When the CrowdStrike adapter resolves the OrgPath owner of the compromised endpoint, the drift engine can immediately check whether that identity holds an active PAM session or standing vault access. If it does, the incident severity escalates and the ServiceNow ticket carries that context to the approver. A containment decision made with full PAM context is a materially different decision than one made on Falcon score alone.
+
+::: {.callout-note}
+## Coming up in CPT_05
+Chapter 5 closes the Book_29 arc by examining the compliance reporting surface: how DRIFT-EDR records aggregate into FedRAMP IR-4 and SI-3 control evidence, what the audit trail looks like across the full detection-to-containment sequence, and how OrgPath-scoped incident data feeds the continuous monitoring posture required under FISMA.
+:::
