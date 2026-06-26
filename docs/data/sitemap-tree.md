@@ -50,6 +50,7 @@
 
 ### Canonical UIAO Specifications
 
+- [Canonical UIAO Specifications](canon/index.html)
 - [UIAO SCuBA Technical Specification](canon/UIAO_002_SCuBA_Technical_Specification_v1.0.html)
 - [UIAO Adapter Segmentation Overview](canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.html)
 - [UIAO-core Value Proposition — Two-Way Governance Architecture for SCuBA and BOD 25-01](canon/UIAO_005_SCuBA_Value_Proposition_v1.0.html)
