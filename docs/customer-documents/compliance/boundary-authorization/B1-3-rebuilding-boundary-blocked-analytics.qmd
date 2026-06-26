@@ -231,13 +231,73 @@ detection engineers and data engineers maintaining and re-tuning the
 rebuild — is the real cost (§10) and the real precondition for the maturity
 claim holding over time.
 
-## 6. Signal-by-Signal Rebuild Catalog
+## 6. Signal-by-Signal Rebuild Coverage
 
-This is the working core of the leaf: each boundary-blocked signal, the raw
-in-boundary inputs that feed its rebuild, the reconstruction logic, the
-honest fidelity gap versus Microsoft, and the ZTMM pillar the rebuild lifts.
-Row keys reference
+This section is the working core of the leaf in two parts: §6.1 gives the
+**complete fix-coverage verdict** for every one of the 26 gap-matrix rows;
+§6.2 gives the **rebuild mechanics** (raw inputs, reconstruction logic,
+fidelity) for the rebuildable and substitute signals. Row keys reference
 [`gcc-moderate-telemetry-gaps.yaml`]({{< meta gap-matrix-data >}}).
+
+### 6.1 Complete Fix-Coverage Matrix (all 26 gap rows)
+
+**Verdict vocabulary** (tied to the §3 buckets):
+
+- **Fixes** — fully reconstructable in-boundary (or a retention cliff closed); lifts the pillar Initial → Advanced.
+- **Partial — substitute** — product is confirmed-unavailable; a different agency-owned source approximates it, never the same product.
+- **Partial — bounded** — reconstructable only to a reduced fidelity / latency ceiling.
+- **Not fixed** — irreducible (data the agency never holds) or suppressed at source (telemetry never collected).
+
+No verdict reaches commercial-cloud parity or Optimal maturity — that is a MAS 2026 dependency (§11–§12).
+
+| # | Signal (gap-matrix id) | Disposition | Verdict | Impact of the fix / not-fix |
+|---|---|---|---|---|
+| 1 | Communication patterns — chat vs email (`communication-patterns-chat-vs-email`) | confirmed | Partial — substitute | Chat-vs-email ratios rebuilt from the unified audit log; recovers the insider digital-disengagement baseline, not the Adoption Score aggregate. |
+| 2 | Content collaboration — attachments vs cloud links (`content-collaboration-attachments-vs-cloudlinks`) | confirmed | Partial — substitute | Derived from audit + message-trace; DLP-bypass regression detectable via custom rules. |
+| 3 | Mobility — multi-platform usage (`mobility-multiplatform-usage`) | confirmed | Partial — substitute | Platform/device read from `SigninLogs` — well-rebuildable; unusual-platform takeover signal recovered. |
+| 4 | Meetings participation (`meetings-participation`) | confirmed | Partial — substitute | From Teams audit / CQD; coarser collaboration-shift baseline. |
+| 5 | Apps health — version / channel (`apps-health-version-channel`) | confirmed | Partial — substitute | From Intune + WUfB device export; outdated-app trend rebuildable. |
+| 6 | Network connectivity scores per location (`network-connectivity-scores-per-location`) | confirmed | Partial — substitute (network-plane) | Per-location quality via SD-WAN / SASE PEP + CQD (ADR-057); agency-owned, not Microsoft's score. |
+| 7 | Endpoint readiness baselines, tenant-wide (`endpoint-readiness-baselines-tenant-wide`) | confirmed | Partial — substitute | Tenant posture view from device-inventory export + Phase 3 models. |
+| 8 | INR real-time path metrics (`inr-realtime-path-metrics`) | confirmed | Partial — substitute (network-plane) | Canonical substitute: SD-WAN / SASE / ThousandEyes (ADR-057) recovers path / MITM / DNS detection via agency-owned PEP telemetry — not Microsoft's path intelligence. |
+| 9 | Device boot / GP / desktop-load performance (`device-boot-performance`) | inferred | Partial — substitute | Boot/GP/load times from Graph device export + Defender `DeviceEvents`; depends on exportable device telemetry. |
+| 10 | App reliability — crash / hang / stability (`app-reliability-crashcount-hangrate`) | inferred | Partial — substitute | Crash/hang trends from device export; exploit-attempt clusters partially recovered. |
+| 11 | Resource performance — CPU / memory (`resource-performance-cpu-memory`) | inferred | Partial — substitute | High-value: Phase 3 anomaly model recovers the grey-ware / miner / exfil signal that bypasses AV. |
+| 12 | Stop-error restarts (`stop-error-restarts`) | inferred | Partial — substitute | Restart-anomaly detection from device events; moderate value. |
+| 13 | Battery health / WFA readiness (`battery-health-wfa-readiness`) | inferred | Partial — substitute | Low-value substitute; remote-endpoint trust baseline partially recoverable. |
+| 14 | Device performance anomalies / regression (`device-performance-anomalies-regression`) | inferred | Partial — substitute | Post-config / OS-regression detection via Phase 3 model; core device-integrity signal partially recovered. |
+| 15 | Entra real-time risk / Identity Protection (`entra-identity-protection-realtime-risk`) | inferred | **Fixes** | Headline win: impossible-travel + atypical-IP + leaked-cred + spray rebuilt → Identity Advanced. Detection minutes → hours, no global TI. |
+| 16 | Cross-tenant access telemetry — B2B / Direct Connect (`cross-tenant-access-telemetry`) | inferred | **Not fixed** (mostly) | Own-tenant B2B events are in the agency's logs (visible), but cross-tenant *correlation* is irreducible — the agency never holds the other tenant's telemetry. |
+| 17 | Real-time CAE revocation, sub-second (`cae-realtime-revocation-paths`) | inferred | Partial — bounded | SOAR revocation + short token lifetimes bound the token-theft window to minutes, not sub-second; Optimal unreachable. |
+| 18 | App-protection policy-violation analytics (`app-protection-policy-violation-analytics`) | inferred | **Fixes** | Phase 2 rules over compliance-state deltas restore violation aggregation — snapshot-driven, not real-time behavioral. |
+| 19 | WUfB deployment-health trends (`wufb-deployment-health-trends`) | inferred | **Fixes** | Graph update-state export + trend queries restore fleet patch posture, with a reporting lag vs Microsoft's real-time view. |
+| 20 | EPM elevation operational analytics (`epm-elevation-operational-analytics`) | inferred | **Fixes** (if collectible) | Elevation-as-risk rebuildable *where* EPM events are exportable; insider elevation patterns scored centrally. |
+| 21 | Office "Optional" diagnostic data (`office-optional-diagnostic-data`) | restricted | **Not fixed** (mostly) | Suppressed at source — GCC defaults to Required-only, so client telemetry is never collected and cannot be rebuilt. Only a server-side substitute remains; client-side "contextual glue" stays lost. |
+| 22 | Copilot / AI prompt-response telemetry (`copilot-ai-prompt-response-telemetry`) | inferred | Partial | Purview audit gives basic incident counts only; rich AI-usage behavioral patterns largely unrecoverable. |
+| 23 | Sensitivity-label usage analytics (`sensitivity-label-usage-analytics`) | inferred | **Fixes** | Phase 2 mass-label-change / mass-decrypt detection from Purview audit; label-strip insider signal recovered → Data Advanced. |
+| 24 | DLP behavioral richness — override / near-miss (`dlp-behavioral-richness`) | inferred | **Fixes** (pattern-level) | Override-pattern / near-miss rules from Purview / Management-Activity; no content-fingerprint model — pattern rules only. |
+| 25 | Long-term CQD EUII (`cqd-euii-long-term`) | retention-limited | **Fixes** (retention) | Scheduled CQD export before the 28-day purge defeats the forensic cliff — fully fixable (retention, not analytics). |
+| 26 | Cross-product 12+ month historical pivots (`m365-usage-analytics-historical-pivots`) | retention-limited | **Fixes** (retention) | Agency long-retention store (L2) restores 12+ month historical pivots and low-and-slow visibility. |
+
+**Coverage summary** — of 26 blocked signals:
+
+| Verdict | Count | Rows |
+|---|---|---|
+| Fixes (rebuilt or retention) | 8 | 15, 18, 19, 20, 23, 24, 25, 26 |
+| Partial (substitute or bounded) | 16 | 1–14, 17, 22 |
+| Not fixed (irreducible / suppressed) | 2 | 16, 21 |
+
+The clean fixes cluster where raw telemetry is collectible and only Microsoft's
+ML layer was missing, or where the gap is a retention cliff. The partial band
+is mostly the Adoption Score and Endpoint Analytics Advanced families —
+reconstructable as agency-derived metrics, never the Microsoft product. Only
+cross-tenant correlation (irreducible) and Office Optional diagnostics
+(suppressed at source) cannot be rebuilt at all.
+
+### 6.2 Rebuild Mechanics (rebuildable & substitute signals)
+
+For the signals that can be rebuilt or substituted, the raw in-boundary
+inputs, reconstruction logic, and honest fidelity gap:
 
 | Blocked signal (gap row) | Bucket | Raw in-boundary inputs | Rebuild logic | Fidelity vs Microsoft | Pillar lifted |
 |---|---|---|---|---|---|
@@ -352,27 +412,110 @@ into a paper one:
 - **Process** — the operate-and-tune cadence (§5.7); detections that are not
   maintained silently decay into false confidence.
 
-## 11. The Irreducible Limits
+## 11. Compensation Ceiling — Can the Telemetry & Location Blocks Be Fully Compensated?
 
-No level of investment closes these, and the leaf states them so the
-maturity claim is not oversold:
+This section is the leaf's load-bearing honesty: a direct assessment of how
+far the in-boundary rebuild can go toward **fully** compensating for the
+boundary's telemetry and location blocks. The short answer is that
+substantial compensation is achievable and full compensation is not — and the
+reasons are structural, not budgetary.
 
-- **Cross-tenant global threat intelligence.** The agency sees only its own
-  tenant. It cannot reconstruct the signal that flags an IP as malicious
-  because it attacked a *different* tenant yesterday. Purchased third-party
-  TI feeds narrow this; they do not equal Microsoft's global vantage.
-- **Confirmed-unavailable computed products.** Where the inputs never reach
-  the tenant (INR), the agency substitutes a different source, not the same
-  product.
-- **Fidelity and latency.** Rebuilt detections land at "good agency-specific
-  detection," typically minutes-to-hours where Microsoft commercial is
-  minutes — acceptable for most, not equal.
+### 11.1 What "fully compensate" has to mean
 
-This leaf is therefore a **bridge to MAS 2026**, not a substitute for it.
-Where the MAS 2026 scope refinement of
-[B.1 §6](B1-gcc-moderate-boundary-model.qmd) later brings a Microsoft
-pipeline back into GCC-Moderate scope, the corresponding agency rebuild can
-be retired rather than maintained in perpetuity.
+"Compensate" is only meaningful against a defined bar. Three bars matter:
+
+- **Functional parity** — the agency can answer the same security questions
+  (is this sign-in risky? is this device degraded? is data being exfiltrated?).
+- **Fidelity / latency parity** — at the same precision and speed as commercial
+  cloud (minutes, ML-tuned, low false-negative rate).
+- **Maturity parity** — the same CISA ZTMM tier, up to Optimal.
+
+The rebuild reaches **functional parity for most signals**, *partial* fidelity
+parity, and **Advanced** maturity. It does not reach fidelity parity on the
+ML-driven signals or Optimal maturity on any pillar.
+
+### 11.2 Telemetry blocks — the aggregate verdict
+
+From the §6.1 matrix: of 26 blocked signals, **8 are fully compensated, 16
+partially, 2 not at all.** Aggregated, that is functional coverage across every
+ZTMM pillar but a hard stop below commercial fidelity. The residual that no
+agency engineering closes:
+
+- **Cross-tenant global threat intelligence** — the agency holds only its own
+  tenant; the signal's *input* is other tenants' data it never has. Third-party
+  TI feeds narrow but do not equal Microsoft's global vantage.
+- **Suppressed-at-source telemetry** — Office "Optional" diagnostics are off by
+  GCC default; you cannot rebuild from data never collected.
+- **ML fidelity and latency** — rebuilt detections land at minutes-to-hours,
+  not the continuously-tuned minutes of Microsoft's pipelines.
+- **Sub-second containment** — CAE's real-time revocation is approximated to
+  minutes via SOAR, never sub-second.
+
+### 11.3 Location blocks — a harder ceiling than telemetry in general
+
+Location is assessed separately because it is constrained on **three** axes
+where ordinary telemetry has one, so "fully compensate" is even further out of
+reach.
+
+**(a) The technical axis — partially compensable.** The location *telemetry*
+splits like the rest of the matrix:
+
+| Location signal | Compensation | Note |
+|---|---|---|
+| Entra sign-in IP geolocation / impossible travel | Partial (rebuilt) | Raw geo is in `SigninLogs`; impossible-travel rebuilt (row 15) at minutes-to-hours, no global model |
+| Teams CQD EUII (BSSID, public IP, subnet/building) | Fixes (retention) | Scheduled export before the 28-day purge (row 25) |
+| INR path / location metrics | Partial (substitute) | SD-WAN / SASE PEP (row 8, ADR-057) — agency-owned, not Microsoft's |
+| Adoption Score per-location network scores | Partial (substitute) | Row 6 |
+
+**(b) The statutory-data axis — not a telemetry rebuild at all.** E911
+dispatchable-location (RAY BAUM's Act §506; FCC 47 CFR §9.10 / §9.11) is a
+*data-model and civic-address* obligation, not an analytics gap. No amount of
+in-boundary rebuild satisfies it — it requires a Location Information Server /
+civic-address authority and identity binding (see
+[B.1.2 §4c](B1-2-teams-phone-tic2-centralized-dia.qmd)). Compensation analytics
+do not touch it.
+
+**(c) The regulatory-handling axis — a ceiling on movement, not collection.**
+EO 14117 (DOJ final rule, effective April 8 2025) regulates precise geolocation
+and government-related location data as a restricted class, naming telemetry
+logs as an exposure vector. Even where the agency *can* technically rebuild a
+location analytic in-boundary, EO 14117 caps how that data may be handled,
+moved, or exposed — independent of the boundary and of where the analytics run
+(see [B.1.1 §2.5](B1-1-gcc-moderate-three-way-conflict.qmd)).
+
+**Location verdict.** The location *telemetry* is partially compensable (one
+retention fix, the rest substitutes); the E911 *obligation* is not a telemetry
+problem and is untouched by the rebuild; and EO 14117 imposes a handling
+ceiling that compensation cannot lift. Location is therefore the **least
+fully-compensable** class in scope.
+
+### 11.4 The diminishing-returns curve
+
+Compensation is not linear. The first increment — landing telemetry in-boundary
+and writing deterministic detections (Phases 1–2) — recovers the bulk of the
+*functional* gap at modest cost. The next increment — trained models and SOAR
+(Phases 3–4) — is expensive and recovers fidelity only asymptotically. The
+final increment — global threat intelligence, sub-second containment, ML
+parity — is **unbuyable at any budget**, because its inputs or its scale are
+not the agency's to acquire. Effort spent chasing "full" past Advanced yields
+little; the rational stopping point is Advanced-plus-targeted-fidelity, then
+advocacy for MAS 2026 to close the rest.
+
+### 11.5 Verdict
+
+**Full compensation is not achievable. Substantial compensation is.** The
+rebuild delivers functional coverage across all seven ZTMM pillars and Advanced
+maturity on most, achieved by agency engineering. The gap from Advanced to full
+(Optimal / commercial fidelity) is structural — it requires Microsoft scope
+change (MAS 2026), third-party threat intelligence, and, for location,
+statutory controls (E911) and regulatory governance (EO 14117) that are not
+analytics at all.
+
+This leaf is therefore a **bridge to MAS 2026**, not a substitute for it. Where
+the MAS 2026 scope refinement of
+[B.1 §6](B1-gcc-moderate-boundary-model.qmd) later returns a Microsoft pipeline
+to GCC-Moderate scope, the corresponding agency rebuild can be retired rather
+than maintained in perpetuity.
 
 ## 12. Maturity Mapping — What Each Rebuild Buys
 
