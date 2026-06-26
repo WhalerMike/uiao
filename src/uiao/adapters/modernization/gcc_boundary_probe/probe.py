@@ -36,7 +36,6 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import httpx
 import yaml
@@ -69,6 +68,12 @@ class BoundaryFinding:
     compensating_status: str = ""
     nist_controls: list[str] = field(default_factory=list)
     ksi_ids: list[str] = field(default_factory=list)
+    # Bridge to the signal-level telemetry-gaps SSOT (B.1.3 §6.1):
+    # gap-registry features map to one-or-more telemetry-gap rows, each of
+    # which carries an in-boundary rebuild verdict.
+    telemetry_gap_refs: list[str] = field(default_factory=list)
+    rebuild_verdict: str = ""
+    rebuild_detail: str = ""
     probe_timestamp: str = ""
     probe_result: str = ""
     probe_detail: str = ""
@@ -365,6 +370,95 @@ class ARCProbe:
 
 
 # ------------------------------------------------------------------
+# Telemetry-gaps SSOT bridge
+#
+# The operational probe register (gcc-boundary-gap-registry.yaml, GAP-* ids)
+# and the signal-level telemetry-gaps SSOT (gcc-moderate-telemetry-gaps.yaml,
+# kebab ids) live at different altitudes and are intentionally separate. Where
+# a probe feature maps to telemetry-gap rows, the registry entry declares
+# ``telemetry_gap_refs`` and the probe surfaces the B.1.3 in-boundary rebuild
+# verdict (fixes / partial-substitute / partial-bounded / not-fixed) alongside
+# the operational compensating-control status.
+# ------------------------------------------------------------------
+
+DEFAULT_TELEMETRY_GAPS_PATH = (
+    Path(__file__).resolve().parents[3] / "canon" / "data" / "gcc-moderate-telemetry-gaps.yaml"
+)
+
+
+def load_rebuild_verdicts(path: Path) -> dict[str, dict[str, str]]:
+    """Load ``id -> {verdict, residual, path}`` from the telemetry-gaps SSOT.
+
+    Best-effort: returns an empty mapping if the file is absent so the probe
+    degrades gracefully rather than failing.
+    """
+    if not path.exists():
+        return {}
+    data = yaml.safe_load(path.read_text()) or {}
+    out: dict[str, dict[str, str]] = {}
+    for row in data.get("gaps", []):
+        rb = row.get("rebuild")
+        if isinstance(rb, dict):
+            out[str(row.get("id", ""))] = {
+                "verdict": str(rb.get("verdict", "")),
+                "residual": str(rb.get("residual", "")),
+                "path": str(rb.get("path", "")),
+            }
+    return out
+
+
+def _aggregate_rebuild(refs: list[str], verdicts: dict[str, dict[str, str]]) -> tuple[str, str]:
+    """Aggregate the rebuild verdict across a finding's ``telemetry_gap_refs``.
+
+    Returns ``(verdict, detail)`` — the single verdict when all referenced rows
+    agree, ``"mixed"`` when they differ, and empty strings when none resolve.
+    """
+    found = [verdicts[r] for r in refs if r in verdicts]
+    if not found:
+        return "", ""
+    distinct = sorted({f["verdict"] for f in found})
+    verdict = distinct[0] if len(distinct) == 1 else "mixed"
+    detail = f"{len(found)} telemetry-gap row(s): {', '.join(refs)}"
+    return verdict, detail
+
+
+def _build_finding(
+    *,
+    gap_id: str,
+    feature: str,
+    service: str,
+    impact: str,
+    status: str,
+    detail: str,
+    ts: str,
+    reg_gap: dict,
+    verdicts: dict[str, dict[str, str]],
+) -> BoundaryFinding:
+    """Construct a BoundaryFinding, enriching it with the rebuild verdict."""
+    gap_refs = reg_gap.get("telemetry_gap_refs", []) or []
+    rebuild_verdict, rebuild_detail = _aggregate_rebuild(gap_refs, verdicts)
+    return BoundaryFinding(
+        gap_id=gap_id,
+        feature=feature,
+        service=service,
+        impact_category=impact,
+        microsoft_status=status,
+        probe_timestamp=ts,
+        probe_result=status,
+        probe_detail=detail,
+        root_cause=reg_gap.get("root_cause", ""),
+        compensating_control=reg_gap.get("compensating_control", ""),
+        compensating_status=reg_gap.get("status", ""),
+        severity=reg_gap.get("severity", "P2"),
+        nist_controls=reg_gap.get("nist_controls", []),
+        ksi_ids=reg_gap.get("ksi_ids", []),
+        telemetry_gap_refs=gap_refs,
+        rebuild_verdict=rebuild_verdict,
+        rebuild_detail=rebuild_detail,
+    )
+
+
+# ------------------------------------------------------------------
 # Main probe runner
 # ------------------------------------------------------------------
 
@@ -372,11 +466,12 @@ class ARCProbe:
 async def run_boundary_probe(
     graph_token: str,
     tenant_id: str,
-    arm_token: Optional[str] = None,
-    subscription_id: Optional[str] = None,
-    gap_registry_path: Optional[Path] = None,
-    sentinel_token: Optional[str] = None,
-    log_analytics_workspace_id: Optional[str] = None,
+    arm_token: str | None = None,
+    subscription_id: str | None = None,
+    gap_registry_path: Path | None = None,
+    telemetry_gaps_path: Path | None = None,
+    sentinel_token: str | None = None,
+    log_analytics_workspace_id: str | None = None,
 ) -> BoundaryProbeReport:
     """
     Run the full GCC boundary probe.
@@ -410,6 +505,9 @@ async def run_boundary_probe(
     registry: dict = {}
     if gap_registry_path and gap_registry_path.exists():
         registry = yaml.safe_load(gap_registry_path.read_text()) or {}
+
+    # Load the telemetry-gaps SSOT so findings carry the B.1.3 rebuild verdict
+    verdicts = load_rebuild_verdicts(telemetry_gaps_path or DEFAULT_TELEMETRY_GAPS_PATH)
 
     # ---- Intune probes ----
     probes = [
@@ -452,22 +550,16 @@ async def run_boundary_probe(
 
         # Look up registry entry for context
         reg_gap = _find_registry_gap(registry, gap_id)
-
-        finding = BoundaryFinding(
+        finding = _build_finding(
             gap_id=gap_id,
             feature=feature,
             service=service,
-            impact_category=impact,
-            microsoft_status=status,
-            probe_timestamp=ts,
-            probe_result=status,
-            probe_detail=detail,
-            root_cause=reg_gap.get("root_cause", ""),
-            compensating_control=reg_gap.get("compensating_control", ""),
-            compensating_status=reg_gap.get("status", ""),
-            severity=reg_gap.get("severity", "P2"),
-            nist_controls=reg_gap.get("nist_controls", []),
-            ksi_ids=reg_gap.get("ksi_ids", []),
+            impact=impact,
+            status=status,
+            detail=detail,
+            ts=ts,
+            reg_gap=reg_gap,
+            verdicts=verdicts,
         )
         report.findings.append(finding)
         _tally(report, status)
@@ -491,21 +583,16 @@ async def run_boundary_probe(
                 status, detail = "PROBE_FAILED", str(e)
 
             reg_gap = _find_registry_gap(registry, gap_id)
-            finding = BoundaryFinding(
+            finding = _build_finding(
                 gap_id=gap_id,
                 feature=feature,
                 service=service,
-                impact_category=impact,
-                microsoft_status=status,
-                probe_timestamp=ts,
-                probe_result=status,
-                probe_detail=detail,
-                root_cause=reg_gap.get("root_cause", ""),
-                compensating_control=reg_gap.get("compensating_control", ""),
-                compensating_status=reg_gap.get("status", ""),
-                severity=reg_gap.get("severity", "P2"),
-                nist_controls=reg_gap.get("nist_controls", []),
-                ksi_ids=reg_gap.get("ksi_ids", []),
+                impact=impact,
+                status=status,
+                detail=detail,
+                ts=ts,
+                reg_gap=reg_gap,
+                verdicts=verdicts,
             )
             report.findings.append(finding)
             _tally(report, status)
@@ -546,11 +633,12 @@ def _tally(report: BoundaryProbeReport, status: str) -> None:
 def run_boundary_probe_sync(
     graph_token: str,
     tenant_id: str,
-    arm_token: Optional[str] = None,
-    subscription_id: Optional[str] = None,
-    gap_registry_path: Optional[Path] = None,
-    sentinel_token: Optional[str] = None,
-    log_analytics_workspace_id: Optional[str] = None,
+    arm_token: str | None = None,
+    subscription_id: str | None = None,
+    gap_registry_path: Path | None = None,
+    telemetry_gaps_path: Path | None = None,
+    sentinel_token: str | None = None,
+    log_analytics_workspace_id: str | None = None,
 ) -> BoundaryProbeReport:
     """Synchronous wrapper for run_boundary_probe."""
     return asyncio.run(
@@ -560,6 +648,7 @@ def run_boundary_probe_sync(
             arm_token=arm_token,
             subscription_id=subscription_id,
             gap_registry_path=gap_registry_path,
+            telemetry_gaps_path=telemetry_gaps_path,
             sentinel_token=sentinel_token,
             log_analytics_workspace_id=log_analytics_workspace_id,
         )
