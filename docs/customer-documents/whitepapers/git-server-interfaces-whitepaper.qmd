@@ -82,27 +82,7 @@ Anything not in this table is not authorized on the host.
 
 ### 1.1 One host, six interface families
 
-```
-                ┌──────────────────────────────────────────────────────┐
-   Operators ─▶ │  TCP/443 HTTPS  ─── IIS  ─── 127.0.0.1:3000 ─── Gitea│
-                │     (HSTS, X-Frame DENY, X-Content-Type nosniff)     │
-   Operators ─▶ │  TCP/2222 SSH (Gitea built-in SSH server)           │
-   Operators ─▶ │  TCP/5986 WinRM (Tier-0 admin subnet allowlist)     │
-                │                                                       │
-   Forest    ─▶ │  TCP/636 LDAPS (outbound — Gitea binds to dc01)     │
-   Tenant    ─▶ │  HTTPS to login.microsoftonline.com / graph.*        │
-   Arc plane ─▶ │  HTTPS to *.his.arc.azure.com / *.guestconfig.*     │
-   Backup    ─▶ │  HTTPS to *.blob.core.windows.net (RG-scoped)       │
-   ConMon    ─▶ │  HTTPS to *.ods.opinsights.azure.com (Log Analytics)│
-   GitHub    ─▶ │  HTTPS to api.github.com (pull-mirror, every 15 min)│
-                │                                                       │
-                │  D:\GitRepos\  ── bare repos (NTFS, gMSA-owned)      │
-                │  D:\Gitea\     ── binary, app.ini, lfs, hooks        │
-                │                                                       │
-                │  OrgPath:  ORG-IT-INF-PLATFORM (extensionAttribute1) │
-                │  AU:       AU-ORG-IT-INF-PLATFORM (Tier-3, restricted)│
-                └──────────────────────────────────────────────────────┘
-```
+![UIAO-GIT01 network interfaces — every inbound and outbound flow with its caller, plus storage and OrgPath/AU governance tags.](../../images/canonical/UIAO-FIG-027-git-server-interfaces.png){#fig-git-server-interfaces fig-alt="A central ice server box (UIAO-GIT01, WS2025) lists every interface in monospace — 443 HTTPS via IIS to Gitea, 2222 SSH, 5986 WinRM, 636 LDAPS outbound, HTTPS to login.microsoftonline.com and graph, Arc endpoints, blob backup, Log Analytics, and api.github.com pull-mirror. Left-side caller labels (Operators, Forest, Tenant, Arc plane, Backup, ConMon, GitHub) point in with teal arrows. A navy storage footer (D drive GitRepos and Gitea) and a teal-tint governance footer (OrgPath and Administrative Unit)." width="100%"}
 
 The host is **Tier-0** by classification — it carries the canon, every
 plan, every authorization decision, and every drift signal traces back to
