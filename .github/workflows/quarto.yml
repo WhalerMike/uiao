@@ -203,9 +203,62 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  render_docx_adr:
+    # Additive, parallel to render_docx / render_docx_canon: renders the
+    # adr/ section to DOCX so each ADR is downloadable as its own Word file
+    # and can be concatenated into adr-bundle.docx by the assemble job.
+    # Separate job (not folded into the customer-documents matrix) so that
+    # flow stays byte-for-byte unchanged. ADRs are ~124 include-style
+    # wrapper pages, rendered unsharded like the canon section.
+    name: Render DOCX — ADR section
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Quarto (resilient install)
+        # Same resilient install as the HTML / DOCX-shard jobs.
+        run: |
+          set -euo pipefail
+          resolve_latest() {
+            curl -fsSLI -o /dev/null -w '%{url_effective}' \
+              https://github.com/quarto-dev/quarto-cli/releases/latest \
+              | sed 's#.*/tag/v##'
+          }
+          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
+          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
+          echo "Quarto $ver"
+          deb="quarto-${ver}-linux-amd64.deb"
+          curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
+            -o "/tmp/${deb}" \
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+          sudo dpkg -i "/tmp/${deb}"
+          quarto --version
+
+      - name: Render ADR DOCX
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          mapfile -t all < <(find adr -name '*.qmd' | sort)
+          echo "ADR DOCX files: ${#all[@]}"
+          for f in "${all[@]}"; do
+            quarto render "$f" --to docx --no-execute-daemon
+          done
+
+      - name: Upload ADR DOCX artifact
+        uses: actions/upload-artifact@v7
+        with:
+          # Name deliberately does NOT match `site-docx-*` so the assemble
+          # job's `pattern: site-docx-*` merge does not pull ADR docx into
+          # the customer-documents tree.
+          name: adr-docx
+          path: docs/_site/adr/**/*.docx
+          retention-days: 1
+          if-no-files-found: error
+
   assemble:
     name: Assemble combined site
-    needs: [render_html, render_docx, render_docx_canon]
+    needs: [render_html, render_docx, render_docx_canon, render_docx_adr]
     runs-on: ubuntu-latest
     steps:
       - name: Download HTML site
@@ -254,6 +307,23 @@ jobs:
             cp -a _docx_canon/. _site/canon/
           fi
 
+      - name: Download ADR DOCX
+        uses: actions/download-artifact@v8
+        with:
+          name: adr-docx
+          path: _docx_adr
+
+      - name: Merge ADR DOCX into site
+        # _docx_adr mirrors `docs/_site/adr/` (the LCD of its artifact path),
+        # so copying onto `_site/adr/` lays each ADR .docx beside its
+        # companion .html. Independent of the merges above.
+        run: |
+          set -euo pipefail
+          if [ -d _docx_adr ]; then
+            mkdir -p _site/adr
+            cp -a _docx_adr/. _site/adr/
+          fi
+
       # Per-section .docx bundles: concatenate every page-level .docx in
       # each top-level customer-documents section into one downloadable
       # `<section>-bundle.docx` alongside the per-page renders. The
@@ -293,6 +363,12 @@ jobs:
               --site-root _site \
               --section canon \
             || echo "::warning::canon .docx bundle step failed (non-fatal)"
+          # ADR section bundle: concatenate every ADR page .docx into
+          # _site/adr/adr-bundle.docx. Non-fatal, same posture as canon.
+          python _repo/scripts/bundle_section_docx.py \
+              --site-root _site \
+              --section adr \
+            || echo "::warning::adr .docx bundle step failed (non-fatal)"
           find _site -maxdepth 3 -name '*-bundle.docx' \
             | wc -l \
             | xargs -I{} echo "Built {} section bundle(s)"
