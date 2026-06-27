@@ -16,7 +16,7 @@
 | `executive-governance-series/` | 0 | 0 | 0 | 1 | 10 | 11 |
 | `learning/` | 0 | 0 | 0 | 2 | 1 | 3 |
 | `modernization-specs/` | 0 | 0 | 6 | 0 | 1 | 7 |
-| `operational-guides/` | 0 | 1 | 15 | 34 | 17 | 67 |
+| `operational-guides/` | 0 | 1 | 16 | 33 | 17 | 67 |
 | `orgpath-multicloud/` | 0 | 6 | 0 | 0 | 1 | 7 |
 | `orgpath-narrative/` | 2 | 209 | 76 | 25 | 1 | 313 |
 | `platform/` | 0 | 0 | 4 | 6 | 1 | 11 |
@@ -28,7 +28,7 @@
 | `substrate/` | 1 | 0 | 2 | 9 | 4 | 16 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
 | `whitepapers/` | 0 | 0 | 7 | 10 | 1 | 18 |
-| **Total** | **3** | **292** | **253** | **101** | **56** | **705** |
+| **Total** | **3** | **292** | **254** | **100** | **56** | **705** |
 
 ## Section detail
 
@@ -98,7 +98,7 @@
 | [`docs/customer-documents/architecture-series/aodim-architecture.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/aodim-architecture.qmd) | 149 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/architecture-series/boundary-impact-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/boundary-impact-model.qmd) | 158 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/architecture-series/drift-engine.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/drift-engine.qmd) | 151 | Authored | ✅ | 4/4 | — |
-| [`docs/customer-documents/architecture-series/evidence-chain.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/evidence-chain.qmd) | 166 | Authored | ✅ | 5/5 | — |
+| [`docs/customer-documents/architecture-series/evidence-chain.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/evidence-chain.qmd) | 158 | Authored | ✅ | 6/6 | — |
 | [`docs/customer-documents/architecture-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/index.qmd) | 36 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/architecture-series/six-plane-architecture.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/six-plane-architecture.qmd) | 131 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/architecture-series/three-layer-rule-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/architecture-series/three-layer-rule-model.qmd) | 148 | Authored | ✅ | 3/3 | — |
@@ -197,7 +197,7 @@
 | [`docs/customer-documents/operational-guides/access-plane/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/access-plane/index.qmd) | 34 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/operational-guides/active-governance-directory/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/active-governance-directory/index.qmd) | 267 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/ad-interaction-guide.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ad-interaction-guide.qmd) | 865 | Substantial | ✅ | 4/4 | — |
-| [`docs/customer-documents/operational-guides/ai-identity-governance/central-deployment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/central-deployment.qmd) | 272 | Substantial | ✅ | — | — |
+| [`docs/customer-documents/operational-guides/ai-identity-governance/central-deployment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/central-deployment.qmd) | 244 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd) | 208 | Authored | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/ai-identity-governance/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/index.qmd) | 96 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd) | 242 | Authored | ✅ | — | — |
@@ -207,12 +207,12 @@
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/03-transformation-pipeline.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/03-transformation-pipeline.qmd) | 325 | Substantial | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/04-identity-transformation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/04-identity-transformation.qmd) | 379 | Substantial | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/05-policy-transformation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/05-policy-transformation.qmd) | 395 | Substantial | ✅ | 4/4 | aspirational |
-| [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/06-network-services.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/06-network-services.qmd) | 337 | Substantial | ✅ | 3/3 | aspirational |
+| [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/06-network-services.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/06-network-services.qmd) | 317 | Substantial | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/07-compute-objects.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/07-compute-objects.qmd) | 325 | Substantial | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/08-access-plane.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/08-access-plane.qmd) | 315 | Substantial | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/09-migration-roadmap.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/09-migration-roadmap.qmd) | 377 | Substantial | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/10-executive-summary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/10-executive-summary.qmd) | 240 | Authored | ✅ | 2/2 | aspirational |
-| [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/index.qmd) | 126 | Navigation hub | ✅ | 3/3 | aspirational |
+| [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/index.qmd) | 113 | Navigation hub | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/directory-migration/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/directory-migration/index.qmd) | 45 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/operational-guides/end-user-training.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/end-user-training.qmd) | 654 | Substantial | ✅ | 6/6 | — |
 | [`docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd) | 1197 | Substantial | ✅ | 3/3 | — |
@@ -280,10 +280,10 @@
 | [`docs/customer-documents/orgpath-narrative/Book_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01.qmd) | 51 | Brief | ✅ | — | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_01.qmd) | 113 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_02.qmd) | 111 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd) | 73 | Brief | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd) | 64 | Brief | ✅ | 2/2 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_04.qmd) | 65 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_05.qmd) | 72 | Brief | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/Book_01_CPT_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_06.qmd) | 58 | Brief | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_01_CPT_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_06.qmd) | 49 | Brief | ✅ | 2/2 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_07.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_07.qmd) | 49 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_08.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_08.qmd) | 53 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_09.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_09.qmd) | 54 | Brief | ✅ | 1/1 | — |
@@ -605,7 +605,7 @@
 | [`docs/customer-documents/platform/orgpath-runtime.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/orgpath-runtime.qmd) | 244 | Authored | ✅ | 1/1 | aspirational |
 | [`docs/customer-documents/platform/platform-server-build.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/platform-server-build.qmd) | 1180 | Substantial | ✅ | 11/11 | aspirational |
 | [`docs/customer-documents/platform/saas-quickstart.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/saas-quickstart.qmd) | 203 | Authored | ✅ | — | aspirational |
-| [`docs/customer-documents/platform/windows-server-deployment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/windows-server-deployment.qmd) | 687 | Substantial | ✅ | ⚠️ 0/3 | 3 missing image ref(s) |
+| [`docs/customer-documents/platform/windows-server-deployment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/platform/windows-server-deployment.qmd) | 666 | Substantial | ✅ | ⚠️ 1/4 | 3 missing image ref(s) |
 
 ### `reference-architecture/`
 
@@ -828,7 +828,7 @@
 | [`docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd) | 124 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-hrit-productization.qmd) | 330 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/federal-ssot-alignment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ssot-alignment.qmd) | 343 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 761 | Substantial | ✅ | 3/3 | — |
+| [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 741 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd) | 267 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 76 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 1699 | Substantial | ✅ | 12/12 | — |
