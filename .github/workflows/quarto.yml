@@ -256,9 +256,62 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  render_docx_schemas:
+    # Additive, parallel to the other render_docx_* jobs: renders the
+    # reference/schemas/ section to DOCX so each JSON Schema reference page
+    # is downloadable as its own Word file and can be concatenated into
+    # schemas-bundle.docx by the assemble job. Separate job so the
+    # customer-documents flow stays byte-for-byte unchanged. ~37 generated
+    # wrapper pages, rendered unsharded like canon and adr.
+    name: Render DOCX — schemas section
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Quarto (resilient install)
+        # Same resilient install as the HTML / DOCX-shard jobs.
+        run: |
+          set -euo pipefail
+          resolve_latest() {
+            curl -fsSLI -o /dev/null -w '%{url_effective}' \
+              https://github.com/quarto-dev/quarto-cli/releases/latest \
+              | sed 's#.*/tag/v##'
+          }
+          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
+          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
+          echo "Quarto $ver"
+          deb="quarto-${ver}-linux-amd64.deb"
+          curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
+            -o "/tmp/${deb}" \
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+          sudo dpkg -i "/tmp/${deb}"
+          quarto --version
+
+      - name: Render schemas DOCX
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          mapfile -t all < <(find reference/schemas -name '*.qmd' | sort)
+          echo "Schema DOCX files: ${#all[@]}"
+          for f in "${all[@]}"; do
+            quarto render "$f" --to docx --no-execute-daemon
+          done
+
+      - name: Upload schemas DOCX artifact
+        uses: actions/upload-artifact@v7
+        with:
+          # Name deliberately does NOT match `site-docx-*` so the assemble
+          # job's `pattern: site-docx-*` merge does not pull schema docx into
+          # the customer-documents tree.
+          name: schemas-docx
+          path: docs/_site/reference/schemas/**/*.docx
+          retention-days: 1
+          if-no-files-found: error
+
   assemble:
     name: Assemble combined site
-    needs: [render_html, render_docx, render_docx_canon, render_docx_adr]
+    needs: [render_html, render_docx, render_docx_canon, render_docx_adr, render_docx_schemas]
     runs-on: ubuntu-latest
     steps:
       - name: Download HTML site
@@ -324,6 +377,24 @@ jobs:
             cp -a _docx_adr/. _site/adr/
           fi
 
+      - name: Download schemas DOCX
+        uses: actions/download-artifact@v8
+        with:
+          name: schemas-docx
+          path: _docx_schemas
+
+      - name: Merge schemas DOCX into site
+        # _docx_schemas mirrors `docs/_site/reference/schemas/` (the LCD of
+        # its artifact path), so copying onto `_site/reference/schemas/` lays
+        # each schema .docx beside its companion .html. Independent of the
+        # merges above.
+        run: |
+          set -euo pipefail
+          if [ -d _docx_schemas ]; then
+            mkdir -p _site/reference/schemas
+            cp -a _docx_schemas/. _site/reference/schemas/
+          fi
+
       # Per-section .docx bundles: concatenate every page-level .docx in
       # each top-level customer-documents section into one downloadable
       # `<section>-bundle.docx` alongside the per-page renders. The
@@ -369,7 +440,13 @@ jobs:
               --site-root _site \
               --section adr \
             || echo "::warning::adr .docx bundle step failed (non-fatal)"
-          find _site -maxdepth 3 -name '*-bundle.docx' \
+          # Schemas section bundle: concatenate every schema page .docx into
+          # _site/reference/schemas/schemas-bundle.docx. Non-fatal, same posture.
+          python _repo/scripts/bundle_section_docx.py \
+              --site-root _site \
+              --section reference/schemas \
+            || echo "::warning::schemas .docx bundle step failed (non-fatal)"
+          find _site -maxdepth 4 -name '*-bundle.docx' \
             | wc -l \
             | xargs -I{} echo "Built {} section bundle(s)"
 
