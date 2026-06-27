@@ -218,6 +218,26 @@ jobs:
             | wc -l \
             | xargs -I{} echo "Built {} section bundle(s)"
 
+      - name: Pack all section bundles into one downloadable zip
+        # One-click "Download all DOCX bundles" for the Download page: collect
+        # every <section>-bundle.docx just produced (anywhere under _site) and
+        # archive them into _site/download/uiao-all-docx-bundles.zip. Paths are
+        # kept relative to _site so same-named Book bundles in different sections
+        # (e.g. orgpath-narrative/Book_01 vs sql-server-narrative-standalone/
+        # Book_01) don't collide. Regenerated on every deploy, so the zip always
+        # mirrors the current set of section bundles.
+        run: |
+          set -euo pipefail
+          mkdir -p _site/download
+          mapfile -t bundles < <(cd _site && find . -name '*-bundle.docx' | sort)
+          if [ "${#bundles[@]}" -eq 0 ]; then
+            echo "No section bundles found — skipping all-bundles zip."
+          else
+            ( cd _site && zip -q -X download/uiao-all-docx-bundles.zip "${bundles[@]}" )
+            size=$(du -h _site/download/uiao-all-docx-bundles.zip | cut -f1)
+            echo "Packed ${#bundles[@]} section bundle(s) into uiao-all-docx-bundles.zip ($size)"
+          fi
+
       - name: Upload Pages artifact
         # Deploy on push to main (normal) OR workflow_dispatch on main
         # (manual redeploy lever — needed e.g. when a CI-only fix lands
