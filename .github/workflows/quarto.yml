@@ -18,6 +18,17 @@ concurrency:
   group: quarto-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # MAINTENANCE SWITCH — single point of control for the public site.
+  # When "true", the deploy publishes a single "Under development"
+  # placeholder (`.github/maintenance/index.html` + `404.html`) instead of
+  # the rendered Quarto site, so every URL under /uiao/ shows the placeholder.
+  # The full render still runs (CI validation is preserved); only the
+  # published `_site` is swapped — see the "Override site with maintenance
+  # page" step in the `assemble` job.
+  # To restore normal publishing of the real docs site: set this to "false".
+  MAINTENANCE_MODE: "true"
+
 # Pipeline shape:
 #   render_html  ─┐
 #                 ├─► assemble ─► deploy (main only)
@@ -539,10 +550,12 @@ jobs:
       # bundler runs from the assemble job because that's where the
       # rendered .docx files are available; doing it earlier would race
       # the render_docx matrix.
-      - name: Checkout (bundler script only)
+      - name: Checkout (bundler script + maintenance page)
         uses: actions/checkout@v7
         with:
-          sparse-checkout: scripts/bundle_section_docx.py
+          sparse-checkout: |
+            scripts/bundle_section_docx.py
+            .github/maintenance
           sparse-checkout-cone-mode: false
           path: _repo
 
@@ -619,6 +632,24 @@ jobs:
             size=$(du -h _site/download/uiao-all-docx-bundles.zip | cut -f1)
             echo "Packed ${#bundles[@]} section bundle(s) into uiao-all-docx-bundles.zip ($size)"
           fi
+
+      - name: Override site with maintenance page
+        # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
+        # When ON, discard the freshly rendered `_site` and replace it with the
+        # single "Under development" placeholder. index.html and 404.html are
+        # byte-identical, so GitHub Pages serves the same page for the site root
+        # (/uiao/) AND for every other now-nonexistent URL under /uiao/ via the
+        # catch-all 404 — effectively taking the whole site to a placeholder.
+        # To restore the real site: set MAINTENANCE_MODE to "false" (or delete
+        # this step). Nothing else in the pipeline changes.
+        if: env.MAINTENANCE_MODE == 'true'
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp _repo/.github/maintenance/index.html _site/index.html
+          cp _repo/.github/maintenance/404.html _site/404.html
+          echo "Maintenance mode ON — published site replaced with Under-development placeholder."
 
       - name: Upload Pages artifact
         # Deploy on push to main (normal) OR workflow_dispatch on main
