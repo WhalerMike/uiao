@@ -280,7 +280,7 @@
 | [`docs/customer-documents/orgpath-narrative/Book_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01.qmd) | 51 | Brief | ✅ | — | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_01.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_01.qmd) | 113 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_02.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_02.qmd) | 111 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd) | 64 | Brief | ✅ | 2/2 | — |
+| [`docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_03.qmd) | 61 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_04.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_04.qmd) | 65 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_05.qmd) | 72 | Brief | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgpath-narrative/Book_01_CPT_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_01_CPT_06.qmd) | 49 | Brief | ✅ | 2/2 | — |
