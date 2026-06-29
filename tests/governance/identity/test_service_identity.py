@@ -43,15 +43,19 @@ def _make_svc(**kwargs) -> ServiceIdentityRecord:
     return ServiceIdentityRecord(**defaults)
 
 
+# Fixed reference date for all expiry math. Anchoring the relative helpers to
+# REF_DATE (rather than date.today()) keeps these tests deterministic: a
+# today-relative expiry date paired with a fixed reference_date is a time bomb
+# that flips P1<->P2 as the wall clock advances past REF_DATE.
+REF_DATE = date(2026, 6, 22)
+
+
 def _future(days: int) -> str:
-    return (date.today() + timedelta(days=days)).isoformat()
+    return (REF_DATE + timedelta(days=days)).isoformat()
 
 
 def _past(days: int) -> str:
-    return (date.today() - timedelta(days=days)).isoformat()
-
-
-REF_DATE = date(2026, 6, 22)
+    return (REF_DATE - timedelta(days=days)).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -196,13 +200,13 @@ class TestCredentialExpiry:
 
     def test_near_expiry_is_p2(self):
         current = [_make_svc(credential_expiry_date=_future(CREDENTIAL_EXPIRY_WARNING_DAYS - 1))]
-        es = detect_service_events(current, reference_date=date.today())
+        es = detect_service_events(current, reference_date=REF_DATE)
         assert len(es.expiring) == 1
         assert es.expiring[0].findings[0].severity.value == "P2"
 
     def test_far_future_expiry_no_event(self):
         current = [_make_svc(credential_expiry_date=_future(CREDENTIAL_EXPIRY_WARNING_DAYS + 1))]
-        es = detect_service_events(current, reference_date=date.today())
+        es = detect_service_events(current, reference_date=REF_DATE)
         assert len(es.expiring) == 0
 
     def test_no_expiry_date_no_event(self):
