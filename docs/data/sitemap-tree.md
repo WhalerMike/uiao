@@ -195,6 +195,7 @@
 - [Transport-Plane Reconciliation — Rename the Sixth Mission Class to `overlay`, Re-Allocate ADR-066's Squatted Spec Slots](adr/adr-123-transport-plane-reconciliation.html)
 - [LocPath HR Duty-Station Adapter — Read-Only Conformance Adapter for Primary LocPath Assignment](adr/adr-124-locpath-hr-duty-station-adapter.html)
 - [LocPath Drift Taxonomy Extension — Location-Assignment, Location-Policy, and Location-Boundary Drift Classes](adr/adr-125-locpath-drift-taxonomy.html)
+- [FedRAMP CR26 Official Rules Adoption — Authority Upgrade and Coexistence with Palladium OSCAL Snapshot](adr/adr-126-fedramp-cr26-official-rules-adoption.html)
 
 ## Schema Reference
 
