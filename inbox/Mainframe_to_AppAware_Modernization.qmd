@@ -45,6 +45,8 @@ This document tells the story of how your agency's IT architecture evolved acros
 
 # Prologue — The Mainframe Era (1940s–1990s)
 
+![The Mainframe Era: Brutal Elegance of Centralized Truth](figs/mf-fig-07-mainframe-scene.png){fig-alt="Large IBM-style mainframe computer center-left with glowing SSOT database cylinder inside. Multiple green-screen terminal icons connected via lines. Label 1940s-1990s One Source of Truth. Right side shows what this provided: one version of every record, no regional discrepancies, physical security equals network security, truth and enforcement in one box. Arrow pointing right to the architecture that worked until it did not." width="100%"}
+
 Your agency's entire operation ran on mainframes. IBM systems, mostly. One massive computer in a locked room. Everything happened there: all the data, all the logic, all the state.
 
 Users didn't have computers. They had **terminals** — green screens, keyboards. A terminal was a dumb device that sent keystrokes to the mainframe and received screen refreshes back. Text-based, synchronous, simple.
@@ -56,6 +58,8 @@ Security was implicit. If you weren't sitting at a terminal physically connected
 And crucially: the machine that *held* the truth was the same machine that *enforced* access to it. Truth and enforcement lived in one box. Remember that; it is the seed of everything that follows.
 
 # Act 1 — The Great Decentralization (Late 1980s–2000)
+
+![Act 1 — The Great Decentralization: One Became Twelve](figs/mf-fig-08-decentralization.png){fig-alt="Before and after comparison. Left 1940s-1988: single mainframe with one glowing database, all terminals connected to it, green glow of unity. Arrow Late 1980s PC Revolution. Right 1988-2000: same mainframe broken into 12 small server boxes scattered in circular arrangement labeled California, New York, Texas, Florida, Illinois and others. Each has own database icon. Dashed arrows between servers showing inconsistent sync with question marks. Red Schema drift callout. Label The Original Sin: Distributed Truth." width="100%"}
 
 By the late 1980s, the entire world was rejecting the mainframe model — not because mainframes stopped working, but because the economics broke and the technology changed.
 
@@ -72,6 +76,8 @@ The vision of distributed intelligence was real and good. But it came at a cost:
 That became the original sin — the moment the architecture started to drift. The regional variations that seemed like flexibility in 1993 would calcify into incompatible silos by 2020.
 
 # Act 2 — When Security Ate the Architecture (2010–2020)
+
+![Act 2 — When Security Ate the Architecture: Stacked Defense Broke Sessions](figs/mf-fig-09-security-stacking.png){fig-alt="Visual of a request trying to flow from branch office laptop to data center server, passing through five inline security devices each adding delay: Firewall adding 15ms, NAT adding 8ms, IDS inline probe adding 12ms, Proxy and DLP scanner adding 20ms, Compliance scanner adding 25ms. Total clock at right shows 80ms added versus Kerberos 5ms timeout limit. Kerberos ticket shown breaking as cracked icon. Request arrow enters at left, Session broken with red X at bottom. Note: latency kills sessions by exceeding timeouts, security devices designed to break sessions do exactly that." width="100%"}
 
 Around 2010, your agency started consolidating compute. Simultaneously — and this is the critical inflection — **cybersecurity became a board-level imperative.** Not just "have a firewall." Defense-in-depth. Layered security. Multiple inspection points.
 
@@ -94,6 +100,8 @@ Asymmetric routing occurs when the outbound path of a session and the return pat
 **How SD-WAN overlay eliminates asymmetric routing:** The SD-WAN overlay tunnel is established between two edge devices as a single logical connection. Inside the tunnel, individual packets may physically traverse any available path. But at the application layer, both directions of every session enter and exit the same SD-WAN edge device. The stateful inspection happens at the tunnel endpoint, which sees both directions. Asymmetric physical routing below the tunnel is structurally removed.
 
 # Act 3 — The Breaking Point (2020–2026)
+
+![Act 3 — Four Environments, No Single Identity: The Breaking Point](figs/mf-fig-11-four-environments.png){fig-alt="Four overlapping environments shown as quadrants: VMware on-premises at left, AWS GovCloud at upper right, Azure and M365 at lower right, Oracle OCI with OPM HRIT at bottom. Identity siloed in twelve Regional AD Domains at center with arrows pointing to all four environments but failing to cross boundaries with red X marks. Field office laptop at lower left shows user stuck between environments. Label: Identity was here, Compute went there. Arrow: The twelve AD domains cannot follow. Color: navy, teal, amber." width="100%"}
 
 Then M365 happened. Microsoft forced the issue. Your agency migrated to Microsoft 365 — Exchange Online, Teams, SharePoint. Suddenly your email and collaboration lived in Azure, managed by Microsoft, unreachable by your session-based authentication model.
 
@@ -169,6 +177,8 @@ Traditional WAN design is **active-passive**: MPLS is the primary circuit, DIA b
 
 **Active-active multipath** carries traffic on all available paths simultaneously, all the time. When a path fails or degrades, the remaining paths absorb its load within milliseconds. The voice session continues from the RTP sequence number where the failed path left off. **The Teams call did not drop. The authentication session did not timeout.**
 
+![How Kerberos Breaks Under Modern Network Paths: Multi-Path Failover Versus Session-Bound Tickets](figs/mf-fig-10-kerberos-breaks.png){fig-alt="Diagram showing a Kerberos ticket bound to a session. Left path MPLS direct shows ticket valid because path is single consistent route. Right path SD-WAN multi-path shows same packet crossing three different physical paths: primary fiber, backup LTE, and peer DIA. At right the session loses continuity across path switch and Kerberos ticket becomes invalid showing cracked padlock icon. Bottom comparison: MPLS stateful session survives until path failure then breaks hard. SD-WAN active-active retries within 50ms but existing session token is invalidated. Token-based auth survives both. Navy, teal, amber, white background." width="100%"}
+
 > **Why this matters specifically for Kerberos and session-based authentication:** A Kerberos ticket exchange that is mid-flight when a path fails is retransmitted automatically. Under active-passive failover, the client times out after several seconds — this is the "logon takes 45 seconds" symptom field offices report. Under active-active multipath, the request was already distributed across multiple paths. The user experiences a 50 ms pause rather than a 30-second timeout.
 
 ## Why "DIA to M365 Will Solve It" Is Half the Answer
@@ -227,6 +237,8 @@ The structural move is the one sentence this whole story turns on. Active Direct
 
 ## Principle 1 — Restore a Single Source of Truth
 
+![Principle 1 — SSOT Restoration: Collapsing Twelve Regional Silos Into One Authoritative Model](figs/mf-fig-14-ssot-restoration.png){fig-alt="Before panel on left shows twelve siloed regional database cylinders, each with slightly different schema, connected to each other with dotted conflict arrows and question marks. After panel on right shows a single SSOT hub cylinder at center labeled authoritative source, with clean solid arrows to twelve regional endpoints labeled derived and auditable. Evidence Act 2018 badge and Federal Data Strategy badge shown below. Bottom note: regional variation is transparent and traceable to policy, not hidden in schema drift. Navy, teal, amber palette, white background." width="100%"}
+
 Every data type the federal government manages must have **one authoritative source.** Not twelve regional databases with eventual consistency. Not caches that drift. One source, cryptographically verifiable, auditable: you must know where every piece of data came from, who accessed it, when, and why.
 
 For your agency, that means collapsing the twelve regional silos into a unified model — not by erasing regional autonomy, but by making it **transparent.** If California's benefit calculation differs from Massachusetts's, that difference is documented, auditable, and traceable back to policy, not hidden in schema variation.
@@ -247,6 +259,8 @@ That is application-aware networking. **NIST SP 800-207's** seven zero trust ten
 
 ## Principle 3 — Move From Session-Based to Token-Based Identity
 
+![Principle 3 — Token vs Session: How Modern Identity Works Across Networks](figs/mf-fig-12-token-vs-session.png){fig-alt="Split comparison diagram. Left panel Session-Based AD Kerberos shows field office laptop sending Kerberos ticket to domain controller in regional DC, DC calling back to validate, session maintained as stateful link, red X when VPN or network drops. Right panel Token-Based Entra ID shows laptop requesting JWT access token from Entra ID cloud, receiving signed token, presenting token directly to app server at AWS GovCloud; server verifies signature without calling back, green checkmark. Badges: BOD 25-01 SCuBA, OMB M-22-09, CISA ZTMM Identity Optimal. Caption: the token carries proof; the session assumed trust." width="100%"}
+
 Active Directory Kerberos assumes clients and servers are in the same room. Tokens assume they are strangers on the Internet.
 
 A token is a cryptographically signed assertion: *this user is who they claim to be; this device is compliant; this request is authorized; timestamp now; signature here.* The server doesn't need to trust the network or call back to a domain controller — it just verifies the signature.
@@ -254,6 +268,38 @@ A token is a cryptographically signed assertion: *this user is who they claim to
 Entra ID, Conditional Access, and device-compliance policies are the token-based equivalents of what AD used to do. **BOD 25-01** mandates SCuBA secure configuration baselines for Microsoft 365 that require modern authentication throughout. **OMB M-22-09** requires phishing-resistant MFA government-wide. The **CISA Zero Trust Maturity Model v2.0** Identity pillar at Advanced and Optimal levels requires Certificate-Based Authentication (CBA) as the primary mechanism. NTLM has no zero-trust story: every NTLM event is opaque to telemetry, invisible to audit logs, and must be eliminated.
 
 > **Tokens only work if the authoritative identity model is correct.** If you don't know what a user is actually authorized to do — if that is still encoded in twelve regional OU trees with no authoritative HR-derived source — tokens won't save you. You will just be signing broken authorizations very efficiently. **That is why Principle 3 depends on Principle 1: the token must assert an authorization that is *true* rather than merely *well-formed.***
+
+![FedRAMP 20x — From Periodic Assessment to Continuous Machine-Readable Evidence](figs/mf-fig-13-fedramp-20x-mainframe.png){fig-alt="Timeline with two eras separated by a vertical line labeled Jan 1 2027. Left era labeled FedRAMP Rev 5 shows stack: Annual Assessment binder, manual evidence assembly, auditor review meeting, ATO letter at end of 12 months. Right era labeled FedRAMP 20x shows stack: KSI JSON records emitted continuously, automated drift detection, machine-readable compliance report, no manual assembly. Key dates shown as milestones along top rail: Jun 25 2026 Consolidated Rules published, Aug 3 2026 Class A opens, Aug 31 2026 Class B plus C open, Jul 28 2026 FedRAMP Ready ceases, Jun 11 2027 new Rev5 certs cease. Active Governance control plane icon shown feeding KSI records to FedRAMP 20x pipeline. Navy, teal, amber, white background." width="100%"}
+
+## FedRAMP 20x Consolidated Rules — What Modernization Must Achieve {#sec-fedramp-20x-mainframe}
+
+FedRAMP published its **Consolidated Rules for 2026** on June 25, 2026, establishing the most significant shift in federal cloud authorization since FedRAMP's inception. The core change: **periodic evidence assembly is replaced by continuously-verified, machine-readable Key Security Indicators (KSIs) enforced by infrastructure-as-code.**
+
+For agencies on the mainframe-to-AAN modernization path, this is not a compliance burden — it is the confirmation that the architectural direction is correct.
+
+| FedRAMP 20x Requirement | What the Modern Architecture Provides |
+|---|---|
+| Continuous, automated KSI verification | SD-WAN probes every transport every second; SASE logs every session; DDI logs every DNS query |
+| Machine-readable evidence format (JSON) | SD-WAN telemetry APIs, SIEM structured exports, InfoBlox WAPI — all native JSON |
+| Infrastructure-as-code guardrails | Terraform for DDI, IaC for SASE policy, GitOps for network config — guardrails enforced at commit |
+| No manual evidence assembly for assessments | The control plane's continuous observation IS the evidence — not a report prepared for an assessor |
+| Automated KSI: all DNS encrypted or integrity-protected | DNSSEC on all zones; DoH/DoT on Grid Members |
+| Automated KSI: no CIDR overlap between environments | Terraform InfoBlox provider blocks overlapping allocation at request time |
+| Automated KSI: every workload has machine identity | SCEP/EST auto-enrollment triggered at IP provisioning |
+
+: FedRAMP 20x Consolidated Rules Alignment {.striped .hover}
+
+**Key dates all agencies must track:**
+
+- **July 28, 2026:** FedRAMP Ready submissions cease — no new Ready pathway submissions accepted
+- **August 3, 2026:** Class A pipeline opens
+- **August 31, 2026:** Class B and C pipelines open
+- **January 1, 2027:** Consolidated Rules mandatory for all certified systems — all ConMon evidence must meet machine-readable KSI format
+- **June 11, 2027:** No new Rev5 certifications accepted
+
+::: {.callout-important}
+**The precise alignment:** FedRAMP 20x's demand for "continuous, automated, machine-readable evidence" maps exactly to what the Active Governance control plane produces. A governance substrate that holds desired state, observes actual state, classifies drift, and reconciles toward intent — while generating structured JSON records of every observation and action — IS a FedRAMP 20x-compliant ConMon implementation. The architectural transition IS the compliance posture.
+:::
 
 ## Principle 4 — Govern Actively: The Control Plane Over the Data Plane
 
@@ -288,5 +334,6 @@ The following table maps each concept in this narrative to the federal mandate, 
 | Unified DNS as security control (DNSSEC, RPZ, threat blocking) | FedRAMP Moderate SC-20/21 | NIST SP 800-53 Rev 5 SC-20, SC-21 |
 | IP address inventory as compliance evidence (CM-8) | FedRAMP Moderate | NIST SP 800-53 Rev 5 CM-8 |
 | Audit provenance: every transaction traceable to authorized source | FedRAMP Moderate AU-2/12 | NIST SP 800-53 Rev 5 AU-2, AU-12 |
-| Continuous monitoring; automated KSI enforcement | FedRAMP 20x, OMB Circular A-130 | NIST SP 800-37 Rev 2 CA-7, FedRAMP 20x KSIs |
+| Continuous monitoring; automated KSI enforcement | FedRAMP 20x Consolidated Rules (Jun 25, 2026); OMB Circular A-130 | NIST SP 800-37 Rev 2 CA-7; FedRAMP 20x KSIs; mandatory Jan 1, 2027 |
 | Gated actuation as standard governance posture (Advanced maturity) | FedRAMP ConMon, OMB M-22-09 | CISA ZTMM v2.0 Automation and Orchestration pillar |
+| Machine-readable KSI evidence; no manual evidence assembly | FedRAMP 20x Consolidated Rules — Class A/B/C pipelines open Aug 3/31, 2026 | FedRAMP 20x JSON evidence format; GitHub-published structured rules |

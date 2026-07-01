@@ -37,6 +37,8 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 
 # The N8NN: The Front Door to the Agency
 
+![The N8NN Call Journey: From Citizen to Agent](figs/tc-fig-07-citizen-journey.png){fig-alt="Left-to-right journey showing citizen with phone dialing the N8NN number, call traveling through PSTN to Amazon Connect cloud, entering IVR routing, waiting in queue with three person icons, then connecting to agent at desk with headset. Steps numbered 1 through 5. Note: steps 1 through 3 happen inside AWS and are unaffected by agency network. Step 5 agent-to-cloud path is determined by agency network architecture and is where G.114 compliance is won or lost." width="100%"}
+
 The N8NN is not a telephone feature. It is the primary channel through which citizens reach the agency. Every call that fails to connect, every conversation degraded by choppy audio, every dropped session during a complex transaction represents a citizen who did not receive the service the agency exists to provide.
 
 Behind the N8NN sits Amazon Connect processing calls on AWS commercial infrastructure, a network carrying voice from the platform to agents at field offices across fifty states, and agents whose ability to hear and be heard clearly is determined entirely by the network segment between their desk and the cloud. That segment — the agency's own network — is where the problem lives and where the solution must be built.
@@ -71,6 +73,8 @@ The N8NN contact center must sustain MOS above 4.0 consistently across all agent
 
 ## Jitter and Packet Loss
 
+![Voice Packet Arrival: What Network Conditions Sound Like](figs/tc-fig-08-packet-jitter.png){fig-alt="Three horizontal rows of packet squares. Row 1 GOOD: ten evenly spaced green squares, less than 30ms jitter, MOS 4.3 Excellent. Row 2 JITTER: ten amber squares with uneven spacing bunched and gapped, 80ms variance, MOS 3.2 Annoying. Row 3 PACKET LOSS: ten squares with two shown as red dashed outlines indicating lost packets, 2 percent loss, audible gaps every few seconds. Time axis arrow below. Note: Opus codec conceals single lost packet; consecutive losses are unintelligible." width="100%"}
+
 **Jitter** — the variance in packet arrival time — must stay below 30 ms. Jitter buffers compensate by holding packets briefly, but a buffer large enough to absorb 80 ms of variance adds 80 ms of delay, breaching the G.114 ceiling. You can absorb jitter or meet the delay budget; a jittery network forces the choice.
 
 **Packet loss** above 1% produces audible dropouts. Voice RTP does not retransmit lost packets — they are concealed or skipped. The Opus codec handles occasional single-packet loss gracefully; consecutive losses or rates above 3% produce gaps no concealment algorithm can hide.
@@ -80,6 +84,8 @@ The N8NN contact center must sustain MOS above 4.0 consistently across all agent
 ## Platform Overview
 
 Amazon Connect is AWS's cloud-native contact center platform, providing inbound and outbound call handling, IVR via contact flows, skills-based routing, real-time and historical analytics, call recording, and the agent desktop (Contact Control Panel) as a managed SaaS service. Agents access all contact center functionality through a browser-based WebRTC softphone. There is no proprietary hardware at the agent's desk, no on-premises call processing equipment, and no PBX to maintain.
+
+![Amazon Connect: AWS GovCloud .us vs. AWS Commercial .com — The Authorized Exception](figs/tc-fig-09-aws-exception.png){fig-alt="Two cloud panels side by side. Left AWS GovCloud .us: navy background with lock icon, GovCloud badge, physical separation, screened personnel, GovCloud controls, but capability gaps at evaluation time. Right AWS Commercial .com: teal background with FedRAMP Moderate badge, Contact Lens real-time transcription with eye icon, Amazon Q agent assist with brain icon, full integration ecosystem. AUTHORIZED EXCEPTION amber banner. Center decision diamond showing which platform to choose. Note: current evaluation required before any new deployment as capability gaps may have closed." width="100%"}
 
 ## The .us vs. .com Decision and the Authorized Exception
 
@@ -131,6 +137,8 @@ The same agent with local internet breakout:
 
 One-way network latency: 5–15 ms. Portland and us-west-2 are geographically adjacent. This is the physics minimum for this path, and it is far within budget.
 
+![WebRTC Voice Path: DSCP EF from Agent Desktop to Amazon Connect](figs/tc-fig-10-webrtc-path.png){fig-alt="Left to right data flow showing agent desktop browser with headset generating UDP RTP SRTP stream marked DSCP EF 46 with shield icon. Stream passes through SD-WAN edge device with Priority Lowest Latency Path label. Continues via DIA to AWS cloud with Connect logo. Below main flow: horizontal 75ms budget gauge showing 20ms codec in teal, 30ms jitter buffer in amber, 25ms remaining in green. Note: TCP fallback degrades quality, maintain direct UDP 3478 and 443 outbound." width="100%"}
+
 ## WebRTC Network Requirements
 
 | Parameter | Requirement | Notes |
@@ -145,6 +153,8 @@ One-way network latency: 5–15 ms. Portland and us-west-2 are geographically ad
 | Firewall | UDP 3478, 443 outbound | Must reach AWS .com endpoints without hairpin inspection delay |
 
 ## Asymmetric Routing: The Session Killer Latency Does Not Explain
+
+![Asymmetric Routing: The Session Killer That Looks Like Configuration Error](figs/tc-fig-11-asymmetric-routing.png){fig-alt="Two panels. PROBLEM left with red border: agent laptop SYN arrow goes through Firewall A which creates session table entry. SYN-ACK returns from AWS via different Firewall B which has no session entry and drops the packet. Red X showing TCP fails call never connects. SOLUTION right with green border: both SYN and SYN-ACK pass through single SD-WAN tunnel endpoint which sees both directions. Green checkmark showing session completes call connects. Note: SD-WAN overlay eliminates asymmetric routing structurally." width="100%"}
 
 Asymmetric routing occurs when the outbound path of a session (client to server) and the return path (server to client) traverse different physical or logical routes through stateful network devices. A stateful firewall maintains a session table. When the SYN for a TCP connection passes through Firewall A, Firewall A creates an entry expecting the SYN-ACK to return through it. If the SYN-ACK returns via a different path through Firewall B, Firewall B drops it as unsolicited.
 
@@ -183,6 +193,8 @@ Two federal laws impose specific requirements on any multi-line telephone system
 **Ray Baum's Act (2018):** The "dispatchable location" — not just a building address but the specific floor, room, or workstation — must be transmitted with the 911 call to the PSAP. Teams Phone supports dispatchable location via the Location Information Service (LIS) and Emergency Location Identification Number (ELIN) configuration.
 
 > **E911 is not optional and must be validated before go-live.** E911 compliance is a federal legal requirement under 47 CFR Part 9. For each location where Teams Phone will be activated, the agency must: (1) configure a Location Information Service entry with dispatchable location, (2) configure an emergency calling policy that routes to the correct PSAP, (3) test 911 dialing and callback from a representative device at that location, and (4) document the test in the deployment record. Remote workers present an additional challenge — location awareness policy must capture the remote worker's current location at sign-in.
+
+![Legacy PBX to Teams Phone GCC: Platform Modernization](figs/tc-fig-12-pbx-migration.png){fig-alt="Left panel shows old grey PBX Call Manager server hardware with wires going to multiple desk phones below. On-premises hardware licensed per seat with manual provisioning. Large right arrow labeled Teams Phone Migration. Right panel shows cloud with Teams logo and GCC badge, modern icon. Features gained: voicemail transcription, auto attendants, call queues, mobile calling, FedRAMP Moderate GCC, no proprietary hardware. Feature comparison row below: extension dialing check both, voicemail check plus, call recording GCC compliant, direct dial 911 Karis Law both check. Note: number porting in geographic tranches not nationwide cutover." width="100%"}
 
 ## Legacy PBX Migration: Number Porting and Transition
 
@@ -246,6 +258,35 @@ When telecommunications modernization proposals include "we will add DIA at fiel
 
 # FedRAMP Boundary Considerations for Telecommunications
 
+![FedRAMP 20x Consolidated Rules: Telecommunications Implications](figs/tc-fig-13-fedramp-20x-telecom.png){fig-alt="Timeline showing FedRAMP 20x Consolidated Rules key dates with telecom implications: June 25 2026 rules published machine-readable JSON KSIs, July 28 FedRAMP Ready ceases, August 3 Class A opens, August 31 Class B plus C opens Amazon Connect pathway, January 1 2027 mandatory ConMon KSIs enforced. Two callout boxes: Amazon Connect .com exception review under 20x framework with call audit logs and authentication events as KSI evidence. Teams Phone GCC continuous monitoring with MOS floor 4.0 per location and SD-WAN path decisions as AU-12 machine-readable evidence. Note: DIA plus SASE stack generates the machine-readable KSI evidence 20x requires." width="100%"}
+
+## FedRAMP 20x Consolidated Rules — June 2026 Update {#sec-fedramp-20x-telecom}
+
+FedRAMP published its **Consolidated Rules for 2026** on June 25, 2026. Three key implications for agencies operating Amazon Connect and Teams Phone:
+
+**Timeline agencies must track:**
+
+| Date | Event | Telecommunications Implication |
+|------|-------|-------------------------------|
+| July 28, 2026 | FedRAMP Ready submissions cease | No new Ready pathway for Connect or SBC vendors |
+| August 3, 2026 | Class A pipeline opens | Evaluate whether Connect .com falls under Class A |
+| August 31, 2026 | Class B and C open | Multi-platform unified comms likely Class B or C |
+| January 1, 2027 | Consolidated Rules mandatory | All ConMon evidence must align to 20x KSI format |
+| June 11, 2027 | No new Rev5 certifications | Plan for 20x pathway on next ATO cycle |
+
+**What 20x means for Amazon Connect continuous monitoring:** FedRAMP 20x replaces periodic evidence assembly with continuously-verified Key Security Indicators (KSIs) in machine-readable format. For Amazon Connect, this means:
+
+- **Call audit logs** (AU-12): every agent session, call recording access, and contact flow execution must generate structured, queryable records — not just archived log files
+- **Federated authentication events** (IA-8): Entra ID → Amazon Connect SAML assertions must produce KSI-verifiable authentication telemetry
+- **Boundary traffic logs** (SA-9): API calls crossing the .com boundary (CRM integration, recording access, contact flow analytics) must be captured in machine-readable format
+- **ATO exception documentation**: The .com exception itself must be maintained in a format compatible with 20x continuous review rather than point-in-time SSP snapshots
+
+**What 20x means for Teams Phone GCC Moderate:** Teams Phone in GCC Moderate inherits Microsoft's existing FedRAMP authorization. The 20x transition requires that the *agency's* continuous monitoring evidence — voice quality monitoring, E911 testing records, SBC boundary documentation — align to machine-readable KSI format.
+
+::: {.callout-tip}
+**SD-WAN as 20x Evidence Generator:** The SD-WAN overlay that solves the G.114 latency problem also generates the machine-readable evidence 20x requires. Every path decision, every jitter measurement, every FEC activation is a logged, queryable event. **The network investment that enables Amazon Connect to meet G.114 is simultaneously the compliance evidence generator for FedRAMP 20x continuous monitoring.** These are not separate investments.
+:::
+
 ## Amazon Connect: .com Boundary Documentation Requirements
 
 The agency's use of Amazon Connect on AWS commercial (.com) requires specific boundary documentation:
@@ -279,6 +320,8 @@ Teams Phone in GCC Moderate operates within the GCC boundary for all call signal
 
 The shared network requirement row is the most operationally significant in this table. The SD-WAN investment that enables Amazon Connect to meet G.114 from all field office locations is the same investment that enables Teams Phone to deliver acceptable call quality. These are not separate network projects. They are **one network modernization that enables both platforms.**
 
+![Implementation Roadmap: Network First, Platforms Second](figs/tc-fig-14-implementation-gantt.png){fig-alt="Four-phase Gantt chart across 8 plus months. Phase 1 Months 1-3 Network Foundation in teal: SD-WAN, DIA, DSCP EF steering, G.114 validation. Milestone G.114 Compliance Verified at Month 3. Phase 2 Months 2-5 Amazon Connect in navy: contact flows, agent auth federation, call recording pipeline. Milestone N8NN Live at Month 5. Phase 3 Months 4-8 Teams Phone in teal: SBC config, E911 testing, number porting tranches, parallel PBX operation. Milestone PBX Decommission at Month 8. Phase 4 Month 6 plus Continuous Monitoring in amber: MOS alerting, ConMon dashboards, ATO renewal review, 20x KSI alignment. Prerequisites bar at Month 1: No migration before G.114 validation. Note: voice quality failures post-migration cost dramatically more than pre-migration network investment." width="100%"}
+
 # Implementation Roadmap
 
 > **Prerequisite: no telecommunications migration before network validation.** Voice quality failures discovered after contact center or PBX migration are dramatically more expensive to remediate than network infrastructure investments made before migration. No field office should go live on Amazon Connect or Teams Phone until the network foundation for that office is validated against G.114 requirements. Validation means measuring actual one-way latency, jitter, and packet loss from each agent workstation to AWS us-west-2 and to the Microsoft GCC edge, with local breakout active, and confirming all three parameters are within specification.
@@ -311,12 +354,13 @@ The shared network requirement row is the most operationally significant in this
 - Build Teams Call Queues and Auto Attendants replicating legacy PBX hunt groups and menus
 - Port numbers in geographic tranches; maintain parallel PBX operation through each tranche
 
-## Phase 4 — Continuous Monitoring (Months 6+)
+## Phase 4 — Continuous Monitoring and FedRAMP 20x Alignment (Months 6+)
 
 - Instrument SD-WAN dashboards to surface G.114 violations by location before they become citizen complaints
 - Integrate Amazon Connect Call Analytics with agency SIEM for AU-12 continuous monitoring
 - Establish MOS floor SLA (≥4.0) per agent location; alert when sustained MOS drops below threshold
 - Review Amazon Connect .com exception at each ATO renewal; evaluate whether .us capability gaps have been resolved
+- **FedRAMP 20x alignment (mandatory January 1, 2027):** Configure SD-WAN telemetry exports in machine-readable JSON format; ensure Connect audit logs, authentication events, and boundary crossing records meet structured KSI format requirements; validate SBC event logs feed SIEM in queryable format
 
 # Federal Framework Alignment
 

@@ -65,13 +65,21 @@ For SSA operating under FedRAMP Moderate, the landing zone must satisfy four ove
 - **NIST SP 800-53 Rev 5** — the control catalog from which FedRAMP Moderate baselines are drawn
 - **CISA Zero Trust Maturity Model v2.0** — five pillars with three cross-cutting capabilities
 - **FedRAMP Moderate** — boundary definition, continuous monitoring, evidence packaging
-- **FedRAMP 20x** (emerging) — automated, machine-readable compliance evidence enforced by infrastructure-as-code
+- **FedRAMP 20x Consolidated Rules (2026)** — automated, machine-readable compliance evidence enforced by infrastructure-as-code; Class A/B/C certification pipelines; mandatory January 1, 2027
+
+::: {.callout-important}
+**FedRAMP 20x Consolidated Rules — June 25, 2026:** FedRAMP published its Consolidated Rules for 2026 on June 25, 2026, transitioning 20x from pilot status to a fully available certification path with three classification tiers: Class A (opens August 3, 2026), Class B and C (open August 31, 2026). FedRAMP Ready submissions cease July 28, 2026. The Consolidated Rules become mandatory for all certified systems on **January 1, 2027**. Machine-readable structured rules are available in JSON format via GitHub for AI agent integration. InfoBlox DDI's WAPI REST interface delivers machine-readable KSI evidence — the exact format the 20x framework requires — without manual assembly.
+:::
+
+![FedRAMP 20x Consolidated Rules for 2026 — Class Timelines and Key Dates](figs/lz-fig-10-fedramp-20x.png){fig-alt="Timeline showing FedRAMP 20x Consolidated Rules key dates: June 25 2026 rules published, July 6 marketplace opens, July 28 FedRAMP Ready ceases, August 3 Class A opens, August 31 Class B and C open, January 1 2027 rules mandatory, June 11 2027 no new Rev5 certifications. Three class description boxes: Class A lowest complexity, Class B mid-tier with InfoBlox DDI pathway, Class C highest complexity multi-cloud." width="100%"}
 
 ::: {.callout-important}
 **The Core Insight:** DNS, DHCP, and IP address management (DDI) are not optional infrastructure services — they are foundational security controls. Every device that joins a network, every cloud workload that provisions, every certificate that authenticates a service depends on DNS and IP assignment working correctly. A landing zone without unified DDI has a structural security gap at its foundation.
 :::
 
 ### SSA's Multi-Cloud Landing Zone Scope {#sec-scope}
+
+![Four Environments — Blind Islands vs. Unified InfoBlox Visibility](figs/lz-fig-12-four-env.png){fig-alt="Split comparison showing WITHOUT InfoBlox: four separate opaque environments (VMware VCF, Azure Gov, AWS GovCloud, Oracle OCI) with question marks and no cross-environment visibility. WITH InfoBlox: same four environments connected to a central InfoBlox DDI control plane with bridges providing unified CM-8 inventory, DNS policy, certificate lifecycle, and single SIEM syslog stream." width="100%"}
 
 ![InfoBlox DDI as the Unified Control Plane for SSA's Four-Environment Landing Zone](figs/lz-fig-01-control-hub.png){fig-alt="Hub-and-spoke diagram showing InfoBlox DDI at center connected to VMware VCF on-premises, Azure Government GCC, AWS GovCloud, and Oracle OCI" width="100%"}
 
@@ -91,6 +99,8 @@ The critical observation: **none of these four environments uses traditional bro
 ---
 
 ## SDN and the End of Traditional DHCP {#sec-sdn}
+
+![DNS Query Journey: InfoBlox RPZ Enforcement Gate](figs/lz-fig-08-dns-journey.png){fig-alt="Flow diagram showing an agency workload sending a DNS query to InfoBlox Grid Member which runs RPZ policy check, DNSSEC validation, threat intel lookup, and audit logging. GCC endpoint queries are allowed through to M365 GCC cloud. Non-GCC and threat domains are blocked with NXDOMAIN and Sentinel alert. FedRAMP 20x note: WAPI exports RPZ hit logs as structured JSON satisfying machine-readable KSI requirement." width="100%"}
 
 ![SDN Replaces Broadcast DHCP — InfoBlox Restores Enterprise Visibility](figs/lz-fig-02-sdn-dhcp.png){fig-alt="Before/after comparison: traditional DHCP broadcast on left versus SDN fabric-native IP assignment with InfoBlox bridge on right" width="100%"}
 
@@ -172,6 +182,8 @@ InfoBlox and Microsoft have a formal **Azure Technology Alliance Partnership** w
 
 #### M365 GCC Boundary Enforcement
 
+![M365 GCC Boundary Gap: Manual vs. Automated Enforcement](figs/lz-fig-13-boundary-gap.png){fig-alt="Timeline comparison showing WITHOUT InfoBlox: Microsoft publishes endpoint change on Day 0, four separate change tickets take 7 or more days to close the boundary gap. WITH InfoBlox: same Day 0 change triggers InfoBlox API poll and all four enforcement layers (RPZ, Azure NSG, AWS Security Groups, VPN split-tunnel) update simultaneously within minutes. FedRAMP 20x KSI: automated boundary enforcement." width="100%"}
+
 ![M365 GCC Endpoint Lifecycle Automation — One Poll, Four Enforcement Updates](figs/lz-fig-04-m365-pipeline.png){fig-alt="Pipeline diagram showing Microsoft 365 endpoint API on left flowing through InfoBlox processing center to four simultaneous enforcement outputs: RPZ passthrough, Azure NSG, AWS Security Groups, and VPN split-tunnel" width="100%"}
 
 Microsoft publishes M365 endpoint changes (IP ranges + FQDNs) via the Office 365 IP and URL Web Service API. For GCC Moderate specifically, Microsoft publishes a separate GCC endpoint list — the commercial and GCC IP ranges are different and must not be mixed. A workstation accidentally reaching a commercial Microsoft 365 endpoint instead of the GCC endpoint is a **FedRAMP boundary violation**.
@@ -242,6 +254,8 @@ OPM is migrating HRIT (federal HR and benefits processing) to Oracle HCM Cloud o
 
 Software Defined Networking eliminates IP address broadcasts but creates a new requirement: in an SDN environment where workloads are ephemeral and IPs change frequently, every service-to-service call must be mutually authenticated with certificates. Certificate subject names (CN and SAN fields) must match DNS names registered in the DNS system — which InfoBlox manages. InfoBlox is therefore the natural integration point for certificate lifecycle management.
 
+![Certificate Lifecycle: Automated from IP Allocation to mTLS](figs/lz-fig-09-cert-lifecycle.png){fig-alt="Circular lifecycle wheel showing six stages: 1 Provision IP with cross-cloud conflict check, 2 Create DNS A Record automatically, 3 SCEP Enrollment to CA, 4 CA Signs Cert binding SAN to DNS name, 5 mTLS Active establishing workload identity, 6 90/30/7-day alert triggering timely renewal. FedRAMP 20x KSI: every workload has machine identity enforced automatically at IP provisioning." width="100%"}
+
 ### The Certificate Lifecycle in a Multi-Cloud SDN Environment {#sec-cert-lifecycle}
 
 The complete certificate lifecycle for a cloud workload follows this sequence:
@@ -303,6 +317,8 @@ The following table maps InfoBlox DDI landing zone capabilities to specific NIST
 
 CISA's Zero Trust Maturity Model v2.0 (April 2023) defines five pillars and three cross-cutting capabilities across four maturity stages: Traditional → Initial → Advanced → Optimal.
 
+![CISA Zero Trust Maturity — Networks Pillar Progression](figs/lz-fig-11-zt-staircase.png){fig-alt="Staircase diagram showing four maturity levels. Traditional: IP and port firewall rules only, no DNS visibility, manual inventory. Initial: Basic app identification, RPZ active for threat blocking, DNS events to SIEM. Advanced: DNSSEC plus DoH/DoT, cert-to-IP binding, IaC-driven provisioning, FedRAMP ConMon standard — marked with Federal ConMon Standard Posture star. Optimal: Fully dynamic identity-driven, automated cert renewal, behavioral anomaly detection, autonomous guardrails. InfoBlox DDI lands SSA at Advanced maturity through DNSSEC, certificate-to-IP binding, IaC automation, and unified syslog. FedRAMP 20x: Advanced equals AO-signable posture, mandatory January 1 2027." width="100%"}
+
 ### Networks Pillar (Deepest Alignment) {#sec-zt-networks}
 
 | CISA ZT Network Requirement | InfoBlox DDI Implementation | ZT Maturity Level |
@@ -346,6 +362,8 @@ InfoBlox's IaC integrations directly enable the CISA Automation and Orchestratio
 
 ## FedRAMP Boundary Enforcement {#sec-boundary}
 
+![InfoBlox RPZ: The DNS-Layer FedRAMP Boundary Gate](figs/lz-fig-15-rpz-gate.png){fig-alt="Traffic checkpoint diagram showing DNS queries entering from left (teams.microsoft.com GCC allowed, sharepoint.com GCC allowed, commercial M365 blocked, malware C2 domain blocked, DNS tunnel blocked, approved vendor allowed). InfoBlox RPZ gate in center checks against GCC allowlist, blocklist, CISA Protective DNS feed, TIDE threat intelligence, and DNS tunnel detection. Allowed queries reach authorized services. Blocked queries receive NXDOMAIN and trigger Sentinel alerts and IR tickets. NIST controls covered: SC-7, SC-21, SI-3, AU-12, IR-4, CA-7. FedRAMP 20x: RPZ hit logs exported as machine-readable JSON via WAPI." width="100%"}
+
 ![InfoBlox DDI as the FedRAMP Authorization Boundary Enforcement Layer](figs/lz-fig-05-boundary.png){fig-alt="Fortress-wall style diagram with FedRAMP-authorized services inside the boundary on the left and unauthorized services on the right; InfoBlox DNS/RPZ acts as the enforcement gate between them" width="100%"}
 
 InfoBlox DDI enforces the FedRAMP authorization boundary at three layers simultaneously:
@@ -383,6 +401,10 @@ InfoBlox DDI produces a complete evidence package for FedRAMP Moderate annual as
 : FedRAMP Moderate Evidence Package {.striped .hover}
 
 ### FedRAMP 20x: Automated KSI Enforcement {#sec-fedramp-20x}
+
+FedRAMP published its **Consolidated Rules for 2026** on June 25, 2026, establishing a single stable ruleset that supersedes the 20x pilot framework. Three classification tiers replace the single 20x path: **Class A** (simplest CSPs, opens August 3, 2026), **Class B** and **Class C** (open August 31, 2026). The Consolidated Rules become **mandatory for all certified systems on January 1, 2027**. New Rev5 certifications will no longer be accepted after June 11, 2027. Machine-readable rules are published in JSON format via GitHub, enabling AI agent integration and automated compliance verification.
+
+For SSA's multi-environment landing zone, InfoBlox DDI is well-positioned for the **Class B or Class C pathway** given its multi-cloud scope. The WAPI REST interface delivers structured JSON evidence for every KSI — no manual assembly required.
 
 FedRAMP 20x replaces periodic evidence collection with continuously-verified Key Security Indicators enforced by infrastructure-as-code guardrails:
 
@@ -444,6 +466,8 @@ OPM HRIT on OCI is the **first of many** federal inter-agency SaaS integrations.
 ## Recommended Buildout Roadmap {#sec-roadmap}
 
 Each phase produces immediately usable compliance evidence and security value — there is no 'big bang' dependency before the first phase delivers results.
+
+![InfoBlox DDI Landing Zone — Six-Phase Buildout Roadmap](figs/lz-fig-14-roadmap.png){fig-alt="Gantt-style roadmap showing six phases across 12 months. Phase 0 Month 1 Procurement and Architecture in Navy. Phase 1 Months 1-3 On-Premises Foundation in Teal. Phase 2 Months 2-4 VMware VCF 9.1 Integration in Teal. Phase 3 Months 3-5 Azure Government Integration in Teal. Phase 4 Months 5-7 AWS GovCloud Integration in Teal. Phase 5 Months 7-9 OCI OPM HRIT Integration in Amber. Phase 6 Months 9-12 FedRAMP ConMon and 20x Alignment in Green. Phase 6 configures KSI automation checks as CI/CD pipeline tests satisfying machine-readable evidence requirement mandatory January 1 2027." width="100%"}
 
 ### Phase 0 — Procurement and Architecture (Month 1) {.unnumbered}
 
