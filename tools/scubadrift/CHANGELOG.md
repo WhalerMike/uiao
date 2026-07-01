@@ -4,7 +4,7 @@ All notable changes to ScubaDrift are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] — 2026-07-01
+## 0.1.0 — 2026-07-01
 
 Initial release.
 
@@ -37,5 +37,3 @@ Initial release.
   the API shape.
 - 34-test offline suite, `ruff`-clean, zero runtime dependencies.
 - Full documentation set under `docs/`, plus example register and CI workflow.
-
-[0.1.0]: https://example.invalid/scubadrift/releases/0.1.0
