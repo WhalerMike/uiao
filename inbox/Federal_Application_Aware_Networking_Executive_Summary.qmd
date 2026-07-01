@@ -1,6 +1,6 @@
 ---
 title: "Federal Application-Aware Networking Series"
-subtitle: "Executive Summary — NIST SP 800-53 Rev 5 Control Closure Across Three Implementation Tracks"
+subtitle: "Executive Summary — NIST SP 800-53 Rev 5 Control Closure Across Six Implementation Tracks"
 author: "SSA Cloud Services Team"
 date: "July 1, 2026"
 format:
@@ -29,30 +29,59 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ::: {.exec-summary}
 **For authorizing officials, program executives, and budget decision makers.**
 
-This document summarizes three companion implementation guides that together constitute the Federal Application-Aware Networking program. Each guide addresses a distinct technical domain — DDI/DNS infrastructure, telecommunications modernization, and network/identity architecture modernization. Together they close **27 distinct NIST SP 800-53 Rev 5 controls** that remain open under current agency architecture.
+This document summarizes six companion implementation guides that together constitute the Federal Application-Aware Networking program. The guides address DDI/DNS infrastructure, telecommunications modernization, network and identity architecture, SQL Server authentication, database implementation, and database architecture and network physics. Together they close **34 distinct NIST SP 800-53 Rev 5 controls** that remain open under current agency architecture.
 
-The central finding across all three documents is the same: **the compliance debt is not a resource shortage — it is an architectural pattern mismatch.** The existing infrastructure was designed for a world where compute, identity, and communication were co-located inside a perimeter. That world ended between 2015 and 2020. The controls that federal agencies are now required to satisfy under Zero Trust Executive Order 14028, OMB M-22-09, TIC 3.0, and FedRAMP 20x Consolidated Rules (June 25, 2026) cannot be satisfied by the perimeter architecture. They require a different structural foundation.
+The central finding across all six documents is the same: **the compliance debt is not a resource shortage — it is an architectural pattern mismatch.** The existing infrastructure was designed for a world where compute, identity, and communication were co-located inside a perimeter. That world ended between 2015 and 2020. The controls that federal agencies are now required to satisfy under Zero Trust Executive Order 14028, OMB M-22-09, TIC 3.0, and FedRAMP 20x Consolidated Rules (June 25, 2026) cannot be satisfied by the perimeter architecture. They require a different structural foundation.
 
-**The three implementations described in this series are not optional modernization projects.** They are the structural prerequisites for operating at FedRAMP Moderate authorization under FedRAMP 20x rules, which are mandatory for all certified systems effective January 1, 2027.
+**The six implementations described in this series are not optional modernization projects.** They are the structural prerequisites for operating at FedRAMP Moderate authorization under FedRAMP 20x rules, which are mandatory for all certified systems effective January 1, 2027.
 :::
 
 ---
 
 ## Series Overview {.unnumbered}
 
-![Federal Application-Aware Networking Series — Three Tracks, One Compliance Architecture](figs/es-fig-01-series-overview.png){fig-alt="Three navy, teal, and amber pillars labeled Part 1 Landing Zone IPAM DDI PKI using InfoBlox DDI closing 16 NIST controls, Part 2 Telecommunications Modernization using SD-WAN plus SASE closing 7 NIST controls, and Part 3 Network and Identity Modernization using Entra ID plus ZTNA plus Active Governance closing 12 NIST controls. Connected by arrows. Combined badge at bottom: 27 distinct NIST SP 800-53 Rev 5 controls closed, all generating machine-readable KSI evidence FedRAMP 20x compliant. White background, navy teal amber palette." width="100%"}
-
-This executive summary covers three documents in the Federal Application-Aware Networking series:
+![Federal Application-Aware Networking Series — Six Implementation Tracks, One Compliance Architecture](figs/es-fig-01-series-overview.png){fig-alt="Four columns labeled Part 1 Landing Zone IPAM DDI PKI using InfoBlox DDI closing 16 NIST controls, Part 2 Telecommunications Modernization using SD-WAN plus SASE closing 7 NIST controls, Part 3 Network and Identity Modernization using Entra ID plus ZTNA plus Active Governance closing 12 NIST controls, and Parts 4-6 SQL Server plus Database Architecture using Azure Arc plus Entra ID plus Network Physics closing 7 additional controls. Combined badge: 34 distinct NIST SP 800-53 Rev 5 controls closed. White background, navy teal amber green palette." width="100%"}
 
 | Part | Document | Domain | Core Technology |
 |------|----------|--------|-----------------|
-| Part 1 | Federal Application-Aware Networking — SSA Landing Zone IPAM / FedRAMP | DNS · DHCP · IPAM · PKI · Zero Trust | InfoBlox DDI |
-| Part 2 | Federal Application-Aware Networking — Federal Telecommunications Modernization | Amazon Connect · Teams Phone · SD-WAN · SASE | SD-WAN / SASE stack |
-| Part 3 | Federal Application-Aware Networking — Network Modernization | Identity · Governance · Active Directory modernization | Entra ID · ZTNA · Active Governance |
+| Part 1 | Federal AAN — SSA Landing Zone IPAM / FedRAMP | DNS · DHCP · IPAM · PKI · Zero Trust | InfoBlox DDI |
+| Part 2 | Federal AAN — Federal Telecommunications Modernization | Amazon Connect · Teams Phone · SD-WAN · SASE | SD-WAN / SASE stack |
+| Part 3 | Federal AAN — Network Modernization | Identity · Governance · Active Directory modernization | Entra ID · ZTNA · Active Governance |
+| Part 4 | Federal AAN — SQL Server Authentication Modernization | SQL credential elimination · Arc Managed Identity · NTLM elimination | Azure Arc + Entra ID for SQL |
+| Part 5 | Federal AAN — SQL Server Implementation Guide | 10-book runbook: estate audit, Arc deployment, login migration, monitoring | Azure Arc + Entra ID (implementation) |
+| Part 6 | Federal AAN — Database Consolidation and Network Physics | SSOT architecture · SD-WAN for database traffic · consistency class alignment | SQL + Network Physics |
 
 : Federal Application-Aware Networking Series {.striped .hover}
 
-Each document contains a detailed technical narrative, compliance mapping tables, implementation roadmap, and FedRAMP 20x alignment. This summary distills the control-closure impact of each implementation track and presents the combined picture for executive decision making.
+---
+
+# Residual Compliance Risk Under Current Architecture
+
+The table below identifies the specific NIST SP 800-53 Rev 5 findings a FedRAMP assessor would document under current SSA architecture. Each row represents an expected POA&M item — an open finding that requires a Plan of Action and Milestones and must be tracked through closure at every assessment cycle. The final column identifies the architectural element that closes the finding.
+
+This is not a complete audit finding list. It presents the findings most directly attributable to the specific architectural gaps this series addresses.
+
+| Expected Finding | Assessment Condition | Root Cause | Closed By |
+|---|---|---|---|
+| **CM-8: Component inventory incomplete** | IP inventory assembled manually per environment; no continuous discovery; VM additions not captured at provisioning; four separate CMDB feeds with inconsistent update cycles | No unified IP Address Management system; inventory diverges from actual state between scans | InfoBlox IPAM — atomic provisioning creates IP, DNS, and inventory record simultaneously at workload creation |
+| **SC-20 / SC-21: DNSSEC not implemented** | AWS Route 53 private zones cannot be DNSSEC-signed (documented platform gap); SDN segments not covered by any signed zone; no recursive DNSSEC validation on client-side resolvers | No authoritative DNSSEC-capable resolver spanning all four environments | InfoBlox DNSSEC Grid — signs all zones including internal SDN segments; provides recursive DNSSEC validation across all environments |
+| **SC-7: DNS-layer boundary control absent** | C2 callback domains resolvable via standard resolver; DNS exfiltration undetected; no enforcement of GCC-only Microsoft 365 endpoint resolution | No DNS Response Policy Zone (RPZ) enforcement | InfoBlox RPZ + CISA Protective DNS feed — blocks C2 domains, exfiltration patterns, and non-GCC M365 endpoints at the resolver |
+| **AU-2 / AU-12: DNS and DHCP events not in SIEM** | Four separate DNS log formats; DHCP lease events not captured; no unified audit trail for IP allocation and resolution events; correlation across environments impossible | Per-environment logging without unified syslog pipeline | InfoBlox unified syslog — single RFC 5424 stream across all Grid Members to agency SIEM |
+| **IA-9 / SC-8: Certificate-to-IP binding undocumented** | mTLS enrollment is manual and untracked; certificate inventory not linked to IP host records; SCEP/EST enrollment not enforced at provisioning | No PKI integration with IP management | InfoBlox PKI / SCEP/EST — certificate issued at provisioning, revoked at decommission, linked to IP host record |
+| **SC-8: Network-layer encryption absent on DIA circuits** | DIA circuits carry traffic at the network layer without encryption; application-layer TLS is the only confidentiality control; no network-layer integrity guarantee on the access path | No IPsec overlay on DIA circuits | SD-WAN IPsec overlay — encrypts all traffic at the network layer regardless of application-layer TLS state |
+| **AC-4: Application-layer information flow not enforced** | Traffic inspected at IP/port layer only; GCC-tenant and commercial-tenant Microsoft 365 are indistinguishable at the network layer; data type and destination classification absent from enforcement decision | No application-layer inspection on DIA path | SASE CASB — identifies application, tenant, data type, and user action at each session; enforces information flow policy |
+| **SC-7: Application-layer boundary protection absent on DIA path** | Port 443 traffic opaque to network controls; C2 on standard HTTPS port undetectable; data loss patterns invisible to IP/port firewall | No Secure Web Gateway on DIA path | SASE SWG / FWaaS — inline SSL inspection and application-layer boundary enforcement at every DIA egress point |
+| **SI-3: Inline malware inspection absent on DIA path** | Malware delivered over HTTPS reaches endpoints before SIEM detection; no inspection point on DIA path between field office and internet | No inline scanning on DIA circuit | SASE SWG with SSL inspection — malware scanning inline at the nearest SASE Point of Presence |
+| **AU-12: Session records incomplete** | IP flow logs contain source IP, destination IP, port, and byte count; user identity, device posture, application, action, and data type absent; non-repudiation requirements cannot be met | No application-layer session logging on DIA path | SASE per-session telemetry — structured record per session including user, device, application, action, data type, timestamp |
+| **IA-2: NTLM authentication events are audit-opaque** | NTLM authentication does not produce token-level event records; SIEM cannot correlate authentication events with user identity, device, or session; pass-the-hash exposure undetectable | Kerberos/NTLM in use; Entra ID not deployed; NTLM fallback silent and unmonitored | Entra ID token-based authentication — every authentication produces a structured, queryable token-level event record |
+| **IA-5: SQL Server credential inventory undocumented** | SQL logins store password hashes in SQL Server; no centralized rotation; service account passwords not managed by any credential management system; orphaned SQL logins not detected | Mixed-mode SQL authentication with stored credential hashes | Entra ID for SQL — SQL logins eliminated; Managed Identity connections require no stored credential; credential inventory becomes an Entra audit report |
+| **CM-8: SQL Server estate undocumented** | SQL Server instances not fully enumerated; version and end-of-life posture unknown for some instances; login inventory stale; linked server dependencies not mapped | No SQL estate discovery or continuous inventory process | SQL estate discovery + continuous monitoring record — every instance inventoried, every login typed and tracked, every dependency mapped |
+
+: Expected POA&M Items Under Current Architecture and the Technology That Closes Each {.striped .hover}
+
+::: {.callout-note}
+**FedRAMP 20x implication:** Under FedRAMP 20x rules (mandatory January 1, 2027), POA&M items no longer trigger periodic remediation deadlines — they trigger continuous evidence collection requirements. An open CM-8 finding under FedRAMP 20x requires the agency to demonstrate a continuous, machine-readable inventory update process, not a one-time scan. Findings that require manual evidence assembly cannot satisfy FedRAMP 20x Key Security Indicator (KSI) requirements.
+:::
 
 ---
 
@@ -172,27 +201,75 @@ The four principles this document establishes are:
 
 ---
 
+# Parts 4–6 — SQL Server and Database Architecture
+
+## What These Documents Address
+
+Parts 4 through 6 address the authentication surface, implementation runbooks, and infrastructure architecture for SQL Server — the database tier that underlies most SSA business systems. The database layer carries the same credential vulnerabilities as the identity and network layers addressed in Parts 1–3: stored passwords in SQL logins, NTLM fallback in database authentication, manual credential rotation, and no continuous compliance evidence.
+
+**Part 4 (SQL Server Authentication Modernization)** is the conceptual guide: Arc Managed Identity replaces stored credentials, NTLM is eliminated in three phases, logins are migrated using a parallel-run pattern, and Entra Conditional Access becomes the outer authentication perimeter for SQL.
+
+**Part 5 (SQL Server Implementation Guide)** is the operational runbook: ten sequential books covering estate discovery, authentication audit, Arc deployment, login migration, NTLM detection and remediation, Entra group structure, application chain migration, continuous monitoring, and certificate lifecycle.
+
+**Part 6 (Database Consolidation and Network Physics)** addresses the architectural substrate: logical vs. physical centralization, the speed-of-light propagation floor that constrains cross-region consistency, SD-WAN traffic class separation for database replication traffic, token-based security as a database consolidation enabler, and the consistency class to transport class alignment rule.
+
+## NIST Control Closure — Parts 4 and 5 (SQL Server Authentication)
+
+| NIST Control | Control Title | Technology | Without SQL Modernization | With Arc + Entra for SQL | Authority |
+|---|---|---|---|---|---|
+| **IA-2** | Identification and Authentication | Entra ID for SQL | SQL logins and Windows Integrated Auth (NTLM) in use; NTLM events audit-opaque | Entra token-based auth for all connections; every authentication produces a structured, token-level event | OMB M-22-09; BOD 25-01 |
+| **IA-3** | Device Identification and Authentication | Azure Arc | SQL Server host identity derived from AD computer object; cloud workloads have no verifiable device identity | Arc Managed Identity cryptographically binds server identity to Arc enrollment; identity verifiable at any Entra endpoint | EO 14028; NIST SP 800-207 |
+| **IA-5** | Authenticator Management | Entra ID + Managed Identity | SQL logins store password hashes in SQL Server; no centralized rotation; orphaned credentials persist | All stored SQL credentials eliminated; Managed Identity connections require no credential; Entra manages all credential lifecycle | NIST SP 800-63; BOD 25-01 |
+| **AC-2** | Account Management | Entra dynamic groups | SQL access provisioned manually by DBA on ticket; no HR-derived lifecycle; orphaned access not detected at offboarding | SQL access derived from Entra dynamic group membership driven by HR attributes; access lifecycle tracks employment status automatically | FICAM Architecture |
+| **AC-3** | Access Enforcement | Database roles + Entra groups | Static database role grants; no real-time lifecycle; access persists after role change | Database roles mapped to Entra groups; group membership continuously reconciled with HR system; access current with actual role | NIST SP 800-207 |
+| **AC-17** | Remote Access | Entra Conditional Access | SQL connections from remote/contractor systems use same auth as on-site; no device compliance check | Conditional Access enforces device compliance and MFA for all Entra-authenticated SQL connections from any location | OMB M-22-09 §4 |
+| **AU-2 / AU-12** | Audit Events / Audit Record Generation | Entra sign-in logs | NTLM auth events not token-level; no user-to-action-to-data correlation; pass-the-hash invisible to SIEM | Token-level audit event for every Entra-authenticated connection; structured, queryable, correlated to user, device, application | FedRAMP 20x KSIs; NIST SP 800-53 |
+| **CA-7** | Continuous Monitoring | Continuous compliance record | No continuous monitoring of SQL auth posture; point-in-time audit only | Daily machine-readable compliance export: login type inventory, NTLM event count, Managed Identity coverage, sa status | FedRAMP 20x Consolidated Rules |
+| **CM-2 / CM-8** | Baseline Configuration / Component Inventory | SQL estate inventory | SQL Server instances not fully enumerated; login inventory stale; version and EoL posture undocumented | Complete instance inventory with version, auth type, login count, and dependency map; updated continuously | NIST SP 800-53 Rev 5 CM-8 |
+| **SC-8** | Transmission Confidentiality | TLS + Arc certificate | SQL TLS certificate inventory undocumented; renewal not tracked; ADCS dependency unknown | TLS certificate inventory linked to IP host record; Arc manages server certificate; renewal tracked against CA | NIST SP 800-53 Rev 5 SC-8 |
+| **SI-4** | System Monitoring | Zero-NTLM monitoring | NTLM authentication invisible to monitoring; pass-the-hash not detectable | Post-Phase C monitoring for NTLM recurrence; any NTLM event generates SIEM alert; zero-count assertion in compliance record | NIST SP 800-53 Rev 5 SI-4 |
+
+: Parts 4-5 — NIST SP 800-53 Rev 5 Control Closure: SQL Server Authentication Modernization {.striped .hover}
+
+**Controls closed (Parts 4-5):** IA-2, IA-3, IA-5, AC-2, AC-3, AC-17, AU-2/AU-12, CA-7, CM-2/CM-8, SC-8, SI-4 — all are deepened closures of controls addressed in Parts 1–3 at the identity and network layers, now extended to the database authentication layer.
+
+## NIST Control Closure — Part 6 (Database Architecture and Network Physics)
+
+| NIST Control | Control Title | Technology | Architectural Gap | With Correct Architecture | How Closed |
+|---|---|---|---|---|---|
+| **SC-28** | Protection of Information at Rest | SQL Server TDE | Data files on disk unencrypted unless separately configured; TDE not consistently applied | TDE with AES-256 enforced on all retained databases; key stored in Arc-managed certificate store | Database-level TDE configuration in deployment baseline |
+| **SC-5** | Denial of Service Protection | SD-WAN QoS + lean/fat separation | Backup and replication traffic competes with consensus quorum ACKs on the same network path; bulk transfer can delay leader election | Lean lane carries heartbeats and quorum ACKs; fat lane carries backups and async replication; class separation enforced by SD-WAN QoS marking | SD-WAN traffic classification and per-class path policy |
+| **SC-8** | Transmission Confidentiality | SD-WAN IPsec on replication paths | Async replication streams may traverse unencrypted segments; no network-layer guarantee on replication traffic | SD-WAN IPsec overlay encrypts all inter-site database replication traffic at the network layer | SD-WAN IPsec on all database replication traffic paths |
+| **CA-3** | Information Exchange | Token-scoped cross-system access | Cross-database access (linked servers, federated queries) authenticated via passthrough or stored credential | Entra tokens scope every cross-system database access to the specific resource and consumer; passthrough credentials eliminated | Linked server migration to service principal; Entra-scoped federated access |
+| **SA-8** | Security and Privacy Engineering | Consistency class alignment | Strong consistency requirements applied implicitly to all reads regardless of geographic position; cross-region strong consistency imposes round-trip latency on every read with no explicit design decision | Workloads explicitly classified by consistency requirement; strong consistency routed intra-region; cross-region reads use async replica with documented staleness bound | Consistency class to transport class design rule applied at architecture review |
+| **AU-9** | Protection of Audit Information | Geo-replicated immutable audit log | Audit logs may reside only in the region where the database is hosted; single-region loss event could destroy audit trail | Audit logs replicated asynchronously to write-once storage in a second region; loss of primary region does not destroy audit record | Async replication of audit logs to immutable secondary-region store |
+| **CP-9** | System Backup | Async DR replica + backup | Backup policy exists but DR replica synchronization not monitored; backup-to-restore time not measured against RTO | Async replication to DR replica with continuous lag monitoring; periodic backup to immutable store; RTO and RPO validated by documented test | DR replica lag monitoring; backup-to-restore time test record |
+| **CP-10** | System Recovery and Reconstitution | DR failover runbook | No documented failover procedure with measured recovery time; DR readiness not continuously tested | Documented DR failover runbook with measured RTO and RPO from last test; annual DR test documented and reviewed | DR test record with measured recovery time; runbook maintained in configuration management |
+
+: Part 6 — NIST SP 800-53 Rev 5 Control Closure: Database Consolidation and Network Physics {.striped .hover}
+
+**Net new controls from Part 6** (not addressed in Parts 1–5): SC-28, SC-5, CA-3, SA-8, AU-9, CP-9, CP-10 — **7 additional controls**, bringing the series total to **34 distinct controls**.
+
+---
+
 # Combined Control Closure Summary
 
-![NIST SP 800-53 Control Closure by Family and Track — Parts 1, 2, and 3](figs/es-fig-02-control-closure-chart.png){fig-alt="Horizontal stacked bar chart showing NIST control families on the Y axis and count of controls closed on the X axis. Control families: SC System Communications Protection 12 total, IA Identification Authentication 6 total, CM Configuration Management 4 total, AU Audit Accountability 3 total, AC Access Control 5 total, CA Continuous Monitoring 2 total, SI System Integrity 5 total, IR Incident Response 2 total, SA System Services 2 total, PL Planning 1 total. Bars stacked by Part 1 navy, Part 2 teal, Part 3 amber. Legend at top. White background." width="100%"}
+![NIST SP 800-53 Control Closure by Family and Track — All Six Parts](figs/es-fig-02-control-closure-chart.png){fig-alt="Horizontal stacked bar chart showing NIST control families on the Y axis and count of controls closed on the X axis, stacked by Part 1 navy, Part 2 teal, Part 3 amber, Parts 4-6 SQL green. Families include SC, IA, CM, AU, AC, CA, SI, CP, IR, SA, PL. White background." width="100%"}
 
-## Technology to Control Mapping
-
-![Which Technology Closes Which NIST Control Family](figs/es-fig-03-tech-control-map.png){fig-alt="Grid of 13 colored tiles organized by technology group. InfoBlox tiles navy: DNSSEC closes SC-20/21/22; RPZ and Boundary closes SC-7 and SI-3; IPAM and CM-8 closes CM-8 CM-2/6 SA-9 PL-8; PKI and Certs closes SC-8 IA-5(2) IA-9; Syslog and SIEM closes AU-2/12 IR-4/5. SD-WAN tiles teal: IPsec Tunnel closes SC-8; SWG and FWaaS closes SC-7 SI-3 SI-4; CASB closes AC-4; Per-session logs closes AU-2/12 CA-7. Entra ID and ZTNA tiles amber: Conditional Access closes IA-2 IA-3 IA-5; HRIT and SSOT closes AC-2 CM-8 SI-12; Per-app micro-tunnel closes AC-3 AC-4 AC-17; Active Governance Control Plane closes CA-7 AU-2/12. White background, navy teal amber palette." width="100%"}
-
-## Total Controls Closed Across All Three Implementations
+## Total Controls Closed Across All Six Implementations
 
 | Control Family | Technology | Controls Closed | Implementing Track |
 |---|---|---|---|
-| **SC** — System and Communications Protection | InfoBlox DNSSEC, RPZ, PKI; SD-WAN IPsec; SASE SWG | SC-7, SC-7(7), SC-8, SC-8(1), SC-20, SC-20(1), SC-21, SC-22 | Parts 1, 2, 3 |
-| **CM** — Configuration Management | InfoBlox IPAM; Active Governance Control Plane | CM-2, CM-6, CM-8, CM-8(1) | Parts 1, 3 |
-| **AU** — Audit and Accountability | InfoBlox Syslog; SASE Session Logs; Entra ID Logs | AU-2, AU-9, AU-12 | Parts 1, 2, 3 |
-| **IA** — Identification and Authentication | InfoBlox PKI / SCEP; Entra ID Conditional Access; Intune MDM | IA-2, IA-2(1), IA-3, IA-5, IA-5(2), IA-8, IA-9 | Parts 1, 3 |
-| **AC** — Access Control | SASE CASB; ZTNA; Entra ID HRIT | AC-2, AC-3, AC-4, AC-17 | Parts 2, 3 |
-| **CA** — Assessment, Authorization, and Monitoring | SASE Per-session Records; Active Governance Control Plane | CA-7 | Parts 2, 3 |
+| **SC** — System and Communications Protection | InfoBlox DNSSEC, RPZ, PKI; SD-WAN IPsec; SASE SWG; TDE; QoS | SC-5, SC-7, SC-7(7), SC-8, SC-8(1), SC-20, SC-20(1), SC-21, SC-22, SC-28 | Parts 1, 2, 3, 6 |
+| **CM** — Configuration Management | InfoBlox IPAM; Active Governance; SQL estate inventory | CM-2, CM-6, CM-8, CM-8(1) | Parts 1, 3, 4-5 |
+| **AU** — Audit and Accountability | InfoBlox Syslog; SASE Session Logs; Entra ID Logs; Geo-replicated audit | AU-2, AU-9, AU-12 | Parts 1, 2, 3, 4-5, 6 |
+| **IA** — Identification and Authentication | InfoBlox PKI / SCEP; Entra ID Conditional Access; Intune MDM; Arc + Entra for SQL | IA-2, IA-2(1), IA-3, IA-5, IA-5(2), IA-8, IA-9 | Parts 1, 3, 4-5 |
+| **AC** — Access Control | SASE CASB; ZTNA; Entra ID HRIT; SQL Entra groups | AC-2, AC-3, AC-4, AC-17 | Parts 2, 3, 4-5 |
+| **CA** — Assessment, Authorization, and Monitoring | SASE; Active Governance; SQL compliance record; Entra cross-system token | CA-3, CA-7 | Parts 2, 3, 4-5, 6 |
+| **CP** — Contingency Planning | DR replica + backup; DR runbook | CP-9, CP-10 | Part 6 |
 | **IR** — Incident Response | InfoBlox RPZ + SIEM Integration | IR-4, IR-5 | Part 1 |
-| **SI** — System and Information Integrity | InfoBlox RPZ + TIDE; SASE SWG; Entra ID HRIT | SI-3, SI-3(1), SI-4, SI-12 | Parts 1, 2, 3 |
-| **SA** — System and Services Acquisition | InfoBlox DNS Forwarders; SSP Documentation | SA-9 | Parts 1, 2 |
+| **SA** — System and Services Acquisition | InfoBlox DNS Forwarders; SSP Documentation; Consistency class design | SA-8, SA-9 | Parts 1, 2, 6 |
+| **SI** — System and Information Integrity | InfoBlox RPZ + TIDE; SASE SWG; Entra ID HRIT; NTLM monitoring | SI-3, SI-3(1), SI-4, SI-12 | Parts 1, 2, 3, 4-5 |
 | **PL** — Planning | InfoBlox Inherited FedRAMP ATO | PL-8 | Part 1 |
 
 : Combined Control Coverage by Family and Technology {.striped .hover}
@@ -204,11 +281,13 @@ The four principles this document establishes are:
 | Part 1 — InfoBlox DDI Landing Zone | InfoBlox DDI (DNSSEC, RPZ, IPAM, PKI, Syslog) | 16 open with manual/no evidence | 16 closed with automated evidence | 16 controls automated |
 | Part 2 — SD-WAN + SASE (Telecom) | SD-WAN IPsec + SASE (SWG, CASB, FWaaS, ZTNA) | 7 open; DIA alone satisfies none | 7 closed by SASE stack | 7 controls automated |
 | Part 3 — Entra ID + ZTNA + Active Governance | Entra ID, Intune MDM, ZTNA, Active Governance | 12 open or partially satisfied | 12 closed with machine-readable evidence | 12 controls automated |
-| **Total** | **InfoBlox + SD-WAN/SASE + Entra ID/ZTNA** | **35 open / partially satisfied** | **27 distinct controls closed** | **27 controls with KSI-ready evidence** |
+| Parts 4–5 — SQL Server Authentication | Azure Arc + Entra ID for SQL; NTLM elimination | Authentication layer open across all SQL instances | Controls deepened to database tier; continuous SQL compliance record | SQL auth surface closed |
+| Part 6 — Database Architecture + Network Physics | TDE; SD-WAN QoS; DR architecture; consistency alignment | 7 distinct controls open | 7 net new controls closed | 7 controls added to series |
+| **Total** | **InfoBlox + SD-WAN/SASE + Entra/ZTNA + Arc/SQL** | **Substantial open / partially satisfied** | **34 distinct controls closed** | **34 controls with KSI-ready evidence** |
 
 : Control Closure Summary {.striped .hover}
 
-> **Why 27 distinct controls from 35 entries:** Several controls appear in more than one track (SC-7, SC-20/21, AU-2/AU-12, CM-8, CA-7). Where tracks address the same control at different layers (e.g., DNS-layer SC-7 in Part 1 and network-layer SC-7 in Part 2), both implementations contribute to the same control and together provide more complete evidence than either alone.
+> **Why 34 distinct controls:** Several controls appear across multiple tracks (SC-7, SC-8, SC-20/21, AU-2/AU-12, CM-8, CA-7). Where multiple tracks address the same control at different layers (e.g., DNS-layer SC-7 in Part 1, network-layer SC-7 in Part 2, database-layer authentication in Parts 4–5), both implementations contribute. The 34 count is of distinct control numbers — the total implementation coverage across all layers of each control is broader.
 
 ## What "Closed" Means Under FedRAMP 20x
 
@@ -219,31 +298,33 @@ FedRAMP 20x Consolidated Rules (June 25, 2026) replace periodic evidence assembl
 3. Evidence is **continuously updated** — not point-in-time
 4. Evidence can be **validated programmatically** against the published KSI schema on GitHub
 
-All three implementation tracks produce machine-readable evidence natively:
+All six implementation tracks produce machine-readable evidence natively:
 
 - **InfoBlox WAPI** exports all DDI evidence as structured JSON
 - **SASE stack** exports per-session telemetry in structured log format
 - **Active Governance control plane** generates desired-vs-actual JSON records as its primary output
+- **SQL continuous monitoring record** exports login type, NTLM event count, and Managed Identity coverage as daily structured JSON
+- **DR and backup records** export RTO, RPO, and test result timestamps as structured audit records
 
-The architectural transition described in all three documents **IS the FedRAMP 20x compliance posture** — not a compliance project layered on top of operations. Agencies that implement these architectures do not need separate ConMon tooling.
+The architectural transition described in all six documents **IS the FedRAMP 20x compliance posture** — not a compliance project layered on top of operations.
 
 ---
 
 # Implementation Priority and Sequencing
 
-![Implementation Sequencing — Path to FedRAMP 20x Mandatory Compliance by January 1 2027](figs/es-fig-04-sequencing-roadmap.png){fig-alt="Horizontal timeline from July 2026 to June 2027 with milestone circles. Milestones: Now July 2026 start; August 3 2026 Class A opens; August 31 2026 Class B and C open; July 28 2026 FedRAMP Ready ceases shown in red; January 1 2027 FedRAMP 20x mandatory shown in red bold; June 11 2027 new Rev5 certs cease shown in red. Three track bars below the timeline: Part 1 InfoBlox DDI navy bar spans full timeline labeled begin immediately DDI is foundational; Part 2 SD-WAN plus SASE teal bar spans to July 2026 milestone labeled concurrent with Part 1 fixes active latency failures; Part 3 Entra ID plus ZTNA plus Active Governance amber bar spans to January 2027 labeled multi-phase SSOT first token rollout second. White background navy teal amber red palette." width="100%"}
-
-The three tracks are independent enough to be procured and initiated in parallel, but there is a natural sequencing based on dependencies and risk:
+![Implementation Sequencing — Path to FedRAMP 20x Mandatory Compliance by January 1 2027](figs/es-fig-04-sequencing-roadmap.png){fig-alt="Horizontal timeline from July 2026 to June 2027 with milestone circles showing Class A opens August 3 2026, Class B and C open August 31 2026, FedRAMP Ready ceases July 28 2026 in red, FedRAMP 20x mandatory January 1 2027 in red, new Rev5 certs cease June 11 2027 in red. Three track bars: Part 1 InfoBlox DDI spans full timeline, Part 2 SD-WAN plus SASE concurrent, Part 3 Entra ID plus ZTNA multi-phase. White background." width="100%"}
 
 | Priority | Track | Technology | Rationale |
 |---|---|---|---|
-| **1 — Immediate** | Part 1: InfoBlox DDI Landing Zone | InfoBlox DDI (DNSSEC, RPZ, IPAM, PKI, Syslog) | Blocks every other implementation: DNS is the foundational naming layer. Zero Trust policy, ZTNA micro-tunnels, RPZ boundary enforcement, and certificate lifecycle all depend on a functioning DDI layer. The FedRAMP 20x evidence gap is largest here — 16 controls with no automated evidence. |
-| **2 — Concurrent** | Part 2: SD-WAN + SASE | SD-WAN (Cisco/VMware/Palo Alto) + SASE (Zscaler/Netskope/Prisma) | The G.114 compliance failure (Amazon Connect latency) is an active operational problem generating citizen-facing quality failures today. DIA + SASE deployment is the fastest path to a measurable operational improvement. Can begin while DDI is in progress. |
-| **3 — Structured program** | Part 3: Entra ID + ZTNA + Active Governance | Entra ID, Intune MDM, ZTNA overlay, Active Governance control plane | The largest structural change — replacing session-based with token-based identity and consolidating twelve regional AD domains. Requires SSOT restoration (Principle 1) before token-based identity (Principle 3) can function correctly. Plan as a multi-phase program; do not attempt as a single cutover. |
+| **1 — Immediate** | Part 1: InfoBlox DDI Landing Zone | InfoBlox DDI (DNSSEC, RPZ, IPAM, PKI, Syslog) | Blocks every other implementation: DNS is the foundational naming layer. Zero Trust policy, ZTNA micro-tunnels, RPZ boundary enforcement, and certificate lifecycle all depend on a functioning DDI layer. Largest evidence gap — 16 controls with no automated evidence today. |
+| **2 — Concurrent with Part 1** | Part 2: SD-WAN + SASE | SD-WAN (Cisco/VMware/Palo Alto) + SASE (Zscaler/Netskope/Prisma) | The G.114 compliance failure (Amazon Connect latency) is an active operational problem generating citizen-facing quality failures today. DIA + SASE deployment is the fastest path to a measurable operational improvement and closes 7 NIST controls simultaneously. |
+| **3 — Structured program** | Part 3: Entra ID + ZTNA + Active Governance | Entra ID, Intune MDM, ZTNA overlay, Active Governance control plane | The largest structural change — replacing session-based with token-based identity. Plan as a multi-phase program; SSOT restoration (Principle 1) must precede token rollout (Principle 3). |
+| **4 — In parallel with Part 3** | Parts 4–5: SQL Server Authentication | Azure Arc + Entra ID for SQL; NTLM elimination program | Arc enrollment enables SQL Entra auth independently of the full AD-to-Entra migration. Can begin on SQL instances before the broader Entra migration completes. NTLM Phase A (discovery) can begin immediately. |
+| **5 — Concurrent with Parts 4–5** | Part 6: Database Architecture | TDE; SD-WAN QoS for DB traffic; DR architecture; consistency alignment | TDE can be applied immediately; SD-WAN QoS for database traffic is a configuration change if SD-WAN is deployed; DR architecture is an ongoing program. |
 
 : Implementation Priority, Technology, and Sequencing {.striped .hover}
 
-**The January 1, 2027 hard date:** FedRAMP 20x Consolidated Rules are mandatory for all certified systems on January 1, 2027. New Rev 5 certifications cease June 11, 2027. Agencies that have not begun the transition to machine-readable KSI evidence by Q3 2026 will face authorization gaps at renewal. All three tracks must be in active implementation — not in planning — by Q4 2026.
+**The January 1, 2027 hard date:** FedRAMP 20x Consolidated Rules are mandatory for all certified systems on January 1, 2027. New Rev 5 certifications cease June 11, 2027. Agencies that have not begun the transition to machine-readable KSI evidence by Q3 2026 will face authorization gaps at renewal. All tracks must be in active implementation — not in planning — by Q4 2026.
 
 ---
 
@@ -251,14 +332,18 @@ The three tracks are independent enough to be procured and initiated in parallel
 
 | Document | Description |
 |---|---|
-| [Federal Application-Aware Networking — SSA Landing Zone IPAM / FedRAMP](Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd) | Full technical guide: InfoBlox DDI, four-environment landing zone, NIST control mapping, FedRAMP 20x KSI evidence |
-| [Federal Application-Aware Networking — Federal Telecommunications Modernization](Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd) | Full technical guide: Amazon Connect N8NN, Teams Phone, SD-WAN/SASE, G.114 compliance, DIA vs. SASE distinction |
-| [Federal Application-Aware Networking — Network Modernization](Federal_Application_Aware_Networking_Network_Modernization.qmd) | Full technical guide: AD-to-Entra migration, ZTNA, Active Governance control plane, FedRAMP 20x alignment |
+| [Federal AAN — SSA Landing Zone IPAM / FedRAMP](Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd) | Part 1: InfoBlox DDI, four-environment landing zone, NIST control mapping, FedRAMP 20x KSI evidence |
+| [Federal AAN — Federal Telecommunications Modernization](Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd) | Part 2: Amazon Connect N8NN, Teams Phone, SD-WAN/SASE, G.114 compliance, DIA vs. SASE distinction |
+| [Federal AAN — Network Modernization](Federal_Application_Aware_Networking_Network_Modernization.qmd) | Part 3: AD-to-Entra migration, ZTNA, Active Governance control plane, FedRAMP 20x alignment |
+| [Federal AAN — SQL Server Authentication Modernization](Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) | Part 4: Arc Managed Identity, Kerberos/NTLM breakdown, login migration, application chain, NIST closure |
+| [Federal AAN — SQL Server Implementation Guide](Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) | Part 5: 10-book runbook — estate discovery, Arc deployment, login migration, NTLM elimination, monitoring |
+| [Federal AAN — Database Consolidation and Network Physics](Federal_Application_Aware_Networking_Database_Consolidation_Network_Physics.qmd) | Part 6: SSOT architecture, speed-of-light floor, SD-WAN for database traffic, consistency class alignment |
 | NIST SP 800-53 Rev 5 | Security and Privacy Controls for Information Systems and Organizations |
 | NIST SP 800-207 | Zero Trust Architecture |
 | OMB M-22-09 | Moving the U.S. Government Toward Zero Trust Cybersecurity Principles |
 | FedRAMP 20x Consolidated Rules (June 25, 2026) | Machine-readable KSI framework; Class A opens August 3, 2026; Class B/C opens August 31, 2026 |
 | CISA Zero Trust Maturity Model v2.0 | Identity, Devices, Networks, Applications, Data pillar maturity progression |
 | EO 14028 | Improving the Nation's Cybersecurity (May 12, 2021) |
+| ITU-T G.114 | One-Way Transmission Time — 150ms maximum one-way voice delay |
 
 : Reference Documents {.striped .hover}
