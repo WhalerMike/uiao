@@ -1,0 +1,292 @@
+---
+title: "From Mainframe to Application-Aware Modernization"
+subtitle: "How Federal Agencies Lost Their Single Source of Truth Across Forty Years — and What Zero Trust, CISA, NIST, and FedRAMP 20x Require to Restore It"
+author: "Michael Stratton"
+date: "2026-06-29"
+format:
+  html:
+    embed-resources: true
+    css: lz-style.css
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+---
+
+::: {.exec-summary}
+**For decision makers: read this page first.**
+
+This document tells the story of how your agency's IT architecture evolved across forty years — and why the architecture that served you well through 2010 is now working against your mission. The first three acts are history. The fourth act is the path forward.
+
+**The core problem is not a technology shortage.** Your agency has invested heavily in security tools, network capacity, and cloud migration. The problem is that the foundational services beneath those investments — the network, the directory, the address management, the access control model — were designed for a world that no longer exists.
+
+**Five things every decision maker needs to understand:**
+
+1. **High bandwidth does not mean low latency.** Your agency has invested in large private circuits connecting field offices to regional data centers. Those circuits provide guaranteed bandwidth. They do not change the physics of distance.
+
+2. **The federal government is five to ten years behind the commercial sector on this transition.** Major banks, healthcare networks, and manufacturers hit these same breaking points between 2015 and 2020 and modernized. The path is known. The delay has a cost measured in program integrity, not just performance.
+
+3. **Your DNS, DHCP, and IP address management were not designed to be security controls — but they now are.** Every Zero Trust policy references services by name. Every FedRAMP boundary enforcement decision depends on DNS resolution. Every device inventory required by federal compliance mandates depends on IP address management.
+
+4. **VPN is not Zero Trust.** A VPN tunnel extends trust to everyone inside it. A compromised endpoint inside the tunnel has the same access as a trusted administrator. You cannot fully implement Zero Trust while VPN is the primary access mechanism.
+
+5. **The cost of not modernizing is not abstract.** Duplicate payments, records that cannot be reconciled, benefits issued against data that cannot be traced to an authoritative source — these are the downstream consequences of accumulated architectural debt.
+:::
+
+::: {.callout-note}
+**The one sentence the whole story turns on:** Active Directory conflated **the directory (truth)** with **the domain controller (the in-path enforcer)**. Every act of this story is a consequence of that conflation. NIST SP 800-207 and OMB M-22-09 require agencies to separate these roles: a governance layer holds and reconciles authoritative state; identity providers, network enforcement points, and data platforms remain the runtime data planes beneath it.
+:::
+
+![Forty Years of Federal IT Architecture — Four Acts](figs/mf-fig-01-four-acts.png){fig-alt="Timeline showing four acts of federal IT architecture evolution. Prologue 1940s-1990: Mainframe, one source of truth, truth enforcer in one box. Act 1 1988-2000: Decentralization, 12 regional offices, original sin of distributed truth. Act 2 2010-2020: Security Era, firewalls stacked, proxies inline, Kerberos breaks, compliance scans not truth. Act 3 2020-2026: Breaking Point, M365 cloud forced, 4 environments now, 12 AD domains linger, duplicate payments. Act 4 Now: Way Forward with NIST SP 800-207 and OMB M-22-09. The one sentence shown: AD conflated directory with domain controller." width="100%"}
+
+# Prologue — The Mainframe Era (1940s–1990s)
+
+Your agency's entire operation ran on mainframes. IBM systems, mostly. One massive computer in a locked room. Everything happened there: all the data, all the logic, all the state.
+
+Users didn't have computers. They had **terminals** — green screens, keyboards. A terminal was a dumb device that sent keystrokes to the mainframe and received screen refreshes back. Text-based, synchronous, simple.
+
+The model was brutally elegant: **one source of truth.** The mainframe *was* the truth. When you asked "how many people received benefits this month," there was one answer, and it came from one place. No ambiguity. No regional variations. No hidden discrepancies.
+
+Security was implicit. If you weren't sitting at a terminal physically connected to that mainframe room, you couldn't access anything. **The network was the security perimeter.** Control physical access, and you controlled everything.
+
+And crucially: the machine that *held* the truth was the same machine that *enforced* access to it. Truth and enforcement lived in one box. Remember that; it is the seed of everything that follows.
+
+# Act 1 — The Great Decentralization (Late 1980s–2000)
+
+By the late 1980s, the entire world was rejecting the mainframe model — not because mainframes stopped working, but because the economics broke and the technology changed.
+
+Minicomputers had already proven you didn't need one godlike machine. Then PCs arrived. Networks got faster. The vision became irresistible: put a SQL Server in every region. Put applications in every office. Spread programming expertise to the edges. Let local teams build solutions for their local problems — because they understood those problems better than Washington ever could.
+
+For your agency, this was revolutionary. Twelve regional offices could each have their own database administrators, their own application developers, their own tools tailored to how their states and territories worked.
+
+**But here is where the architecture broke.**
+
+With the mainframe, there was one source of truth. One database. One version of the record. The moment you put SQL Servers in twelve regions, you lost that. Now California had its own database. Massachusetts had its own. New York had its own. And they didn't always talk to each other — or they did, but inconsistently. Regional systems evolved their own schemas, their own business logic, their own definitions of what a "benefit" even meant.
+
+The vision of distributed intelligence was real and good. But it came at a cost: **distributed truth.** And nobody replaced the single source of truth that the mainframe had given you.
+
+That became the original sin — the moment the architecture started to drift. The regional variations that seemed like flexibility in 1993 would calcify into incompatible silos by 2020.
+
+# Act 2 — When Security Ate the Architecture (2010–2020)
+
+Around 2010, your agency started consolidating compute. Simultaneously — and this is the critical inflection — **cybersecurity became a board-level imperative.** Not just "have a firewall." Defense-in-depth. Layered security. Multiple inspection points.
+
+**But here is the problem:** the tools chosen to enforce security were fundamentally incompatible with the session-based client-server model your entire infrastructure depended on.
+
+Load balancers became inline proxies. Intrusion detection systems were inserted into the traffic path. Multiple NAT sessions. Firewalls stacked on firewalls. Every packet from a field office to a regional data center had to traverse security devices designed to *break* sessions — to inspect, decrypt, re-encrypt, verify, block.
+
+Active Directory Kerberos tickets have a lifespan. They are bound to a specific session. When a packet gets intercepted, decrypted, re-encrypted, and NATted three times, the session breaks. The Kerberos ticket becomes invalid. The application loses trust in where the request came from.
+
+> **The physics that cannot be negotiated:** Portland to Washington is approximately 4,500 km in a straight line. Actual fiber routing adds roughly 20%, bringing the real fiber distance to approximately 5,400 km. At 200,000 km/second — the speed of light through glass fiber — that distance sets an unavoidable propagation floor of 27 ms one-way, 54 ms round-trip minimum, before any queue delay, security inspection, or application processing. Active Directory authentication expects sub-5 ms round-trip to a domain controller. **No amount of bandwidth changes this. Bandwidth is volume. Latency is distance. You cannot buy your way out of geography.**
+
+## Asymmetric Routing: The Second Session Killer
+
+Latency kills sessions by exceeding protocol timeouts. A second mechanism, equally destructive and entirely independent of latency, operated simultaneously: **asymmetric routing.**
+
+Asymmetric routing occurs when the outbound path of a session and the return path traverse different physical or logical routes through stateful network devices. A stateful firewall maintains a session table keyed on the five-tuple. When a SYN packet arrives, the device creates an entry expecting the SYN-ACK to return through it. When the SYN-ACK returns via a different path, that second device sees a SYN-ACK with no corresponding session entry — it drops it as unsolicited. The TCP three-way handshake never completes.
+
+> **Asymmetric routing vs. latency: independent killers that compound.** Latency kills sessions by exceeding protocol timeouts. Asymmetric routing kills sessions by preventing TCP from completing its three-way handshake at all — even with perfect, sub-millisecond latency on both paths. In environments where both conditions exist simultaneously — the federal standard — they compound.
+
+**How SD-WAN overlay eliminates asymmetric routing:** The SD-WAN overlay tunnel is established between two edge devices as a single logical connection. Inside the tunnel, individual packets may physically traverse any available path. But at the application layer, both directions of every session enter and exit the same SD-WAN edge device. The stateful inspection happens at the tunnel endpoint, which sees both directions. Asymmetric physical routing below the tunnel is structurally removed.
+
+# Act 3 — The Breaking Point (2020–2026)
+
+Then M365 happened. Microsoft forced the issue. Your agency migrated to Microsoft 365 — Exchange Online, Teams, SharePoint. Suddenly your email and collaboration lived in Azure, managed by Microsoft, unreachable by your session-based authentication model.
+
+And here is the critical moment: the agency still had **twelve regional Active Directory domains.** Still had the OU tree structure designed for when compute lived regionally. Still had MPLS circuits connecting field offices to regional data centers that were increasingly just logical boundaries, not physical anchors.
+
+Now a field office in Portland authenticates to a regional DC physically in Washington. An application running on VMware queries a service in AWS. Email lives in Azure. The session-based contract — the assumption that client and server are talking synchronously over a trusted link — is fracturing across three environments and an upcoming fourth.
+
+> **The hard realization.** The bulk of mission compute still runs on VMware on-premises. Red Hat workloads are moving to AWS GovCloud. Email and collaboration are in Azure. OPM HRIT on Oracle OCI is the next boundary arriving. Identity is still in twelve regional AD domains designed for a world where all four of those environments were the same room. The infrastructure could *do* things but could not *verify* them across that boundary. With program integrity now a national imperative, that is no longer acceptable.
+
+Meanwhile, the regional variations that started in Act 1 had calcified into institutional silos. California's benefit calculation differed from Massachusetts's. Regional databases had evolved incompatible schemas. And because single source of truth had never been restored, **nobody could see the discrepancies.** The fragmentation that made the system agile in 1995 had become the hiding place for systemic error — duplicate payments across states, records that should have been closed years ago, reconciliations nobody could complete.
+
+# The Physics Argument Decision Makers Have Not Heard
+
+![Physics Floor: Fiber vs. LEO Satellite vs. 5G](figs/mf-fig-02-physics-floor.png){fig-alt="Two panels comparing terrestrial fiber at 200,000 km/s with squiggly path routing, versus LEO satellite at 299,792 km/s in vacuum with direct arc path at 550km altitude. Bar chart shows: Portland via MPLS through DC at 100-130ms one-way, Portland DIA to AWS us-west-2 at 5-15ms, 5G MEC at 5-10ms, Starlink LEO for long haul at 20-35ms. 5G architecture note explains CUPS and MEC local breakout advantage for rural field offices." width="100%"}
+
+When a decision maker hears "the MPLS hairpin is causing latency problems," the response is almost always: "add a Direct Internet Access circuit at the branch." DIA eliminates the geographic hairpin. That improvement is real.
+
+And then leadership will conclude that the network problem is solved. **It is not.**
+
+DIA is a pipe. It is a better-positioned pipe than the MPLS circuit it supplements, but it is still a single, unintelligent pipe with no visibility into what is happening on it, no ability to respond when it degrades, and no way to know whether it is actually the best available path to your destination.
+
+## Why Satellite Latency Is No Longer What You Remember
+
+The satellite internet that federal IT professionals evaluated and rejected for decades was geostationary (GEO) — satellites parked at 35,786 km altitude. The physics are unforgiving: approximately 238 ms of one-way propagation delay. No enterprise application tolerates this gracefully. That ruling does not apply to LEO.
+
+Starlink and similar Low Earth Orbit constellations operate at approximately 550 km altitude. Current practical end-to-end latency: **20–40 ms and improving.** That places LEO satellite in the same competitive range as broadband DIA circuits.
+
+> **The vacuum advantage:** Light travels through optical fiber at approximately 200,000 km/second — two-thirds the speed of light in vacuum, due to the refractive index of glass. Light travels through the vacuum of space at 299,792 km/second. For the same physical path length, a signal through space arrives **50% sooner** than a signal through fiber. This is not a technology gap that better fiber will close. It is physics.
+
+For the longest domestic paths — Pacific Northwest to mid-Atlantic — the terrestrial fiber route may traverse 4,000 km or more of physical cable. The LEO vacuum path traverses 550 km up, geometrically direct inter-satellite laser link hops through space, and 550 km down at propagation speed 50% higher than fiber. **Under the right conditions the satellite path is not a compromise — it is the physics-optimal path.**
+
+## 5G: Lower Latency Through Architecture, Not Just Physics
+
+5G reduces latency through two distinct mechanisms:
+
+**The radio mechanism:** 5G's shorter radio frame duration (0.125 ms slot time versus 1 ms in LTE) reduces the fundamental waiting time. Practical mid-band sub-6 GHz 5G achieves 5–10 ms across the air interface.
+
+**The architectural mechanism:** 5G's Control and User Plane Separation (CUPS) and Multi-access Edge Computing (MEC) allow traffic to break out of the carrier's network locally — at the cell tower or a nearby edge node — rather than backhauling to a central core. This is particularly significant for federal field offices in locations where broadband ISP options are limited.
+
+# What Application-Aware Networking Actually Means
+
+![Packet-Layer Network vs. Application-Aware Network](figs/mf-fig-03-packet-vs-aan.png){fig-alt="Split comparison. Left panel: Packet-Layer Network shows firewall seeing only Source IP 10.2.0.47, Destination 52.108.8.0, Port 443 TCP. Policy question: should this IP reach this port? Cannot answer who the user is, device compliance, which application, whether authorized by role, behavioral patterns, or what data is accessed. Cannot satisfy AC-4, SC-7, SI-4, AU-12, CA-7. Right panel: Application-Aware Network sees full transaction: user John Doe Entra verified, managed gov laptop compliant, Microsoft Teams not personal cloud storage, SharePoint Internal classification, normal work hours. Policy question: should this user on this device from this location using this app access this data right now? Can satisfy all NIST controls." width="100%"}
+
+The phrase "application-aware networking" appears in policy documents and vendor briefings without ever being explained in plain terms. Here is the plain version.
+
+**Your current network sees a packet.** Specifically, it sees: source IP address, destination IP address, source port, destination port, protocol. It has no idea who sent the packet, what application it belongs to, whether the user is who they claim to be, whether the device is managed and compliant, or whether the data being accessed is the data policy says they should access. It sees a packet. It checks a rule. It allows or denies.
+
+**Application-aware networking sees a transaction.** Specifically, it sees: a specific employee, on a managed government laptop that passed compliance check this morning, running Microsoft Teams, requesting a SharePoint document classified as internal, from an office location that is consistent with their normal work pattern, at a time of day that is expected, to access a file that their role and organizational attributes authorize them to access. The network enforces policy against the full context of the transaction — not against a packet.
+
+> **The policy question that changes everything:** Packet-level enforcement asks: *should this IP address be allowed to reach this port?* Application-aware enforcement asks: *should this user, on this device, from this location, using this application, be allowed to access this specific data right now?* The second question is the one that maps to your mission, your compliance requirements, and your program integrity mandate.
+
+## What SD-WAN Overlay Does With New Transports
+
+The overlay treats 5G and LEO satellite exactly the same way it treats MPLS and broadband DIA: as transports to probe continuously, measure precisely, and steer traffic across based on what is performing best for each application class at each moment.
+
+The agency does not need to decide in advance that Starlink is better than DIA for Teams calls. The overlay makes that determination empirically, in real time, and changes it when conditions change.
+
+# SD-WAN Active-Active Multipath
+
+![SD-WAN Active-Active Multipath: Four Transports, One Application View](figs/mf-fig-04-multipath.png){fig-alt="Flow diagram showing Branch SD-WAN Edge distributing packets across four simultaneous paths: MPLS at 22ms 0% loss, DIA Broadband at 21ms 0.1% loss, 5G MEC at 8ms 0.3% loss, Starlink LEO at 28ms 0.4% loss. Packets are distributed with sequence numbers. Resequencing Buffer holds early arrivals and delivers in-order using FEC to fill lost packets. Application sees one ordered byte stream with no awareness of four physical paths. Effective aggregate bandwidth 160-190 Mbps from four paths." width="100%"}
+
+An SD-WAN overlay runs continuous, simultaneous probes on every available transport using sub-second probe intervals. The probes measure three things on each path independently: **latency**, **jitter**, and **packet loss**. When a path degrades, the overlay knows within seconds.
+
+## Forward Error Correction: Recovering Toward the Physics Floor
+
+**Forward Error Correction (FEC)** sends redundant data alongside the primary transmission. The receiver can reconstruct a lost packet from the redundant data without any retransmission. The application experiences only the propagation delay — the physics floor — with no retransmission penalty.
+
+FEC does not make the signal travel faster. It removes the latency tax that lossy paths impose on top of the physics minimum. On a path with consistent packet loss, the benefit scales with loss rate and round-trip time.
+
+## Active-Active vs. Active-Passive: The Failover That Is Not a Failover
+
+Traditional WAN design is **active-passive**: MPLS is the primary circuit, DIA broadband is the standby. During switchover — typically 30–90 seconds — authentication sessions time out. VPN tunnels drop. Users re-authenticate.
+
+**Active-active multipath** carries traffic on all available paths simultaneously, all the time. When a path fails or degrades, the remaining paths absorb its load within milliseconds. The voice session continues from the RTP sequence number where the failed path left off. **The Teams call did not drop. The authentication session did not timeout.**
+
+> **Why this matters specifically for Kerberos and session-based authentication:** A Kerberos ticket exchange that is mid-flight when a path fails is retransmitted automatically. Under active-passive failover, the client times out after several seconds — this is the "logon takes 45 seconds" symptom field offices report. Under active-active multipath, the request was already distributed across multiple paths. The user experiences a 50 ms pause rather than a 30-second timeout.
+
+## Why "DIA to M365 Will Solve It" Is Half the Answer
+
+| Capability | DIA Circuit Only | SD-WAN Intelligent Overlay |
+|---|---|---|
+| Eliminates MPLS geographic hairpin to cloud | ✔ Yes | ✔ Yes |
+| Visibility into path quality (latency, jitter, loss) | ✘ None | ✔ Continuous, per-transport |
+| Responds to path degradation before users notice | ✘ None | ✔ Sub-second reweighting |
+| Splits a single conversation across multiple paths simultaneously | ✘ One path only | ✔ Active-active multipath with resequencing |
+| Aggregates bandwidth from all transports | ✘ One path only | ✔ Bonded capacity = sum of all paths |
+| Routes audio, video, and data streams of one call to different paths | ✘ None | ✔ Per-stream application steering |
+| Fails over within milliseconds without dropping sessions | ✘ 30–90 second switchover | ✔ Seamless — all paths already active |
+| Uses 5G local breakout when faster than wireline | ✘ None | ✔ Measured and included in multipath pool |
+| Uses LEO satellite vacuum path when faster than fiber | ✘ None | ✔ Measured and included in multipath pool |
+| Applies FEC to recover toward physics minimum on lossy paths | ✘ None | ✔ Per-transport FEC |
+| Provides audit trail of path decisions (TIC 3.0 / AU-12) | ✘ None | ✔ Every decision is a logged event |
+
+## What the Commercial World Figured Out — and When
+
+| Current Federal Practice | When Commercial Moved On | What Replaced It | Why |
+|---|---|---|---|
+| MPLS for all branch connectivity | 2014–2018 | SD-WAN on broadband + LTE | Cost, flexibility, local breakout |
+| Central internet breakout through DC | 2016–2019 | Local internet breakout at branch | Cloud apps do not need to go through DC |
+| VPN as primary remote access | 2019–2021 | ZTNA / SASE overlay | Per-app access replaces per-network trust |
+| Windows DNS / per-site DNS servers | 2017–2020 | Unified DDI (InfoBlox, BlueCat) | DNS became a security control surface |
+| DHCP as invisible per-site utility | 2017–2020 | IPAM as inventory and compliance evidence | Zero Trust requires authoritative device inventory |
+| Network-layer firewall as primary security | 2018–2022 | Application-layer enforcement (SASE, ZTNA) | Packets carry no useful identity or intent |
+| Session-based application authentication | 2015–2019 | Token-based (OAuth 2.0 / OIDC) | Sessions break across WAN; tokens are stateless |
+
+> **This is not a forecast.** Every item in this table is a completed transition in the commercial sector. The federal government is executing these transitions now, under compliance mandates — Zero Trust Executive Order, TIC 3.0, FedRAMP 20x — that commercial enterprises were not subject to. That makes the federal transition harder, not easier. The path is known. The delay has a cost.
+
+# Why Direct Internet Access Alone Does Not Satisfy NIST Controls
+
+When agencies present DIA as a modernization achievement, they have solved a connectivity problem. They have not solved a compliance problem. DIA is a transit service — a pipe to the internet. It satisfies exactly one federal requirement: it provides network connectivity to internet-hosted services. Every security control governing what traverses that connectivity must be applied by a separate control stack. The pipe itself contributes nothing to compliance.
+
+| NIST Control | What It Requires | What Provides It |
+|---|---|---|
+| AC-4 Information Flow Enforcement | Application-layer enforcement identifying the destination application, not just the destination IP | CASB in SASE stack |
+| SC-7 Boundary Protection | Application-layer inspection; detect C2 on port 443, exfiltration in DNS | SWG / FWaaS in SASE stack |
+| SC-8 Transmission Confidentiality and Integrity | Network-layer encryption | SD-WAN IPsec tunnel — DIA alone encrypts nothing |
+| SI-3 Malware Protection | Inline malware inspection at appropriate locations | SWG with SSL inspection in SASE stack |
+| SI-4 System Monitoring | Application-layer telemetry — user, device, app, data, behavioral pattern | AAN application telemetry |
+| AU-2 / AU-12 Audit Events / Audit Record Generation | User Z on device D accessed application A, performed action V on data type C — not just IP flows | Application-layer logging via AAN |
+| CA-7 Continuous Monitoring | Per-session: identity verified, device posture, access consistent with policy — machine-readable | AAN and SASE stack |
+
+> **The precise relationship: DIA enables compliance; AAN and SASE achieve it.** DIA provides the connectivity that makes cloud-hosted services reachable without the MPLS hairpin. It is necessary. It is not sufficient. When an agency presents "we have DIA" as a compliance achievement, the correct technical response is: **you have the pipe. Where is the control stack?**
+
+# Act 4 — The Way Forward: Application-Aware Modernization
+
+![The Four Principles of Application-Aware Modernization](figs/mf-fig-05-four-principles.png){fig-alt="Hub diagram with Separated Truth from Enforcement center (NIST SP 800-207, OMB M-22-09). Four principle boxes: Principle 1 Single Source of Truth showing collapse 12 regional silos, one authoritative record, FICAM and Evidence Act 2018. Principle 2 Application-Aware Networking showing SD-WAN and SASE, OMB M-22-09 and TIC 3.0. Principle 3 Token-Based Identity showing OAuth 2.0 OIDC, CBA, eliminate NTLM, BOD 25-01. Principle 4 Active Governance showing control plane over data planes, gated actuation, FedRAMP ConMon. Arrow shows P3 depends on P1: tokens must assert authorizations that are true." width="100%"}
+
+You can't fix this by patching the old model. You can't bolt Zero Trust onto a Kerberos-in-MPLS architecture. You can't add more proxies. The only way forward is to rebuild the foundation around one structural move and four principles that follow from it.
+
+The structural move is the one sentence this whole story turns on. Active Directory conflated **the directory (truth)** with **the domain controller (the in-path enforcer)**. NIST SP 800-207 and OMB M-22-09 require the modern architecture to keep these separate: the governance layer holds and reconciles authoritative state, while identity providers, enforcement points, and data platforms remain the runtime data planes.
+
+## Principle 1 — Restore a Single Source of Truth
+
+Every data type the federal government manages must have **one authoritative source.** Not twelve regional databases with eventual consistency. Not caches that drift. One source, cryptographically verifiable, auditable: you must know where every piece of data came from, who accessed it, when, and why.
+
+For your agency, that means collapsing the twelve regional silos into a unified model — not by erasing regional autonomy, but by making it **transparent.** If California's benefit calculation differs from Massachusetts's, that difference is documented, auditable, and traceable back to policy, not hidden in schema variation.
+
+The **Federal Identity, Credential, and Access Management (FICAM) Architecture** and NIST SP 800-63 require that every governed object carry a complete, authoritative set of identity attributes derived from authoritative sources such as HR systems and device management platforms. The **Evidence Act (2018)** and the **Federal Data Strategy** mandate that those attributes trace back to a single authoritative system of record for each data type, with a documented data lineage from source to decision.
+
+## Principle 2 — Application-Aware Networking and Cybersecurity
+
+You can't enforce security at the network layer anymore. The network is the Internet now. The only way to know whether a transaction is legitimate is to understand what the application is doing: *Is this user authorized to access this data? Is the data being accessed the data policy says they should access? Is the request from a compliant device, from a location that makes sense?*
+
+That is application-aware networking. **NIST SP 800-207's** seven zero trust tenets require exactly this: all communication secured regardless of network location; access determined per-session with least privilege; integrity and behavior monitored continuously. **OMB M-22-09** §4 requires agencies to implement network visibility and traffic inspection that operates at the application layer, not the IP/port layer. **TIC 3.0** Use Cases E and F mandate application-layer visibility as a condition of compliant remote and branch connectivity.
+
+**Application-Aware Networking framework alignment:**
+
+- **SD-WAN is AAN at the transport layer.** SD-WAN achieves application awareness through DPI or FQDN/signature-based identification, then applies per-application path selection dynamically based on real-time path quality measurement. SD-WAN alone does not enforce access control based on user identity or device posture. That requires SASE.
+- **SASE is the delivery architecture that completes AAN.** SASE converges SD-WAN with cloud-delivered security services — CASB, FWaaS, ZTNA, SWG — at the network edge. It brings user identity (from the IdP via SAML/OIDC), device posture (from MDM/EDR), application identity (from DPI), and data classification (from CASB) into a single enforcement point distributed geographically near the user.
+- **CISA ZTMM maps AAN to the Networks pillar maturity progression.** Traditional: all decisions at IP/port layer, no application visibility. Initial: basic application identification. Advanced: application-aware routing and enforcement — the FedRAMP ConMon standard posture. Optimal: fully dynamic, identity-driven, application-aware policy with continuous behavioral monitoring.
+
+## Principle 3 — Move From Session-Based to Token-Based Identity
+
+Active Directory Kerberos assumes clients and servers are in the same room. Tokens assume they are strangers on the Internet.
+
+A token is a cryptographically signed assertion: *this user is who they claim to be; this device is compliant; this request is authorized; timestamp now; signature here.* The server doesn't need to trust the network or call back to a domain controller — it just verifies the signature.
+
+Entra ID, Conditional Access, and device-compliance policies are the token-based equivalents of what AD used to do. **BOD 25-01** mandates SCuBA secure configuration baselines for Microsoft 365 that require modern authentication throughout. **OMB M-22-09** requires phishing-resistant MFA government-wide. The **CISA Zero Trust Maturity Model v2.0** Identity pillar at Advanced and Optimal levels requires Certificate-Based Authentication (CBA) as the primary mechanism. NTLM has no zero-trust story: every NTLM event is opaque to telemetry, invisible to audit logs, and must be eliminated.
+
+> **Tokens only work if the authoritative identity model is correct.** If you don't know what a user is actually authorized to do — if that is still encoded in twelve regional OU trees with no authoritative HR-derived source — tokens won't save you. You will just be signing broken authorizations very efficiently. **That is why Principle 3 depends on Principle 1: the token must assert an authorization that is *true* rather than merely *well-formed.***
+
+## Principle 4 — Govern Actively: The Control Plane Over the Data Plane
+
+![Active Governance: Control Plane and Actuation Ladder](figs/mf-fig-06-active-governance.png){fig-alt="Governance Control Plane at top showing it holds desired state, observes actual state, classifies drift, reconciles toward intent, and NEVER becomes the in-path enforcer. Five data planes below: Entra ID, SD-WAN/SASE, InfoBlox DDI, MDM/EDR, SIEM. Actuation ladder shows four levels: Traditional record and observe only, Initial observe and advise, Advanced gated actuation marked as federal ceiling and AO-signable with star, Optimal autonomous within guardrails. FedRAMP 20x requirement: continuous automated machine-readable evidence." width="100%"}
+
+A governance substrate that embodies these principles is not a passive registry that records desired state and reports divergence. It is an **active reconciliation control plane**: it holds desired state, observes actual state, classifies drift, and reconciles toward intent — while identity providers, network fabrics, endpoint management platforms, DDI systems, and SIEM platforms remain the **data planes** that authenticate, route, resolve, and store at runtime.
+
+| CISA ZT Stage | Governance Posture | What This Means in Practice |
+|---|---|---|
+| Traditional | Record and observe only | Desired state documented; actual state collected manually. No automated detection or correction. |
+| Initial | Observe and advise | Automated detection of drift from policy. Corrective actions generated and surfaced to operators. No automated writes. |
+| **Advanced** | **Gated actuation** | **Governance framework generates a corrective action; a human approves before it executes. Dry-run required before production. Federal ConMon standard posture.** |
+| Optimal | Autonomous within guardrails | Governance framework closes the loop without human intervention for enumerated low-blast-radius operation classes. High-blast-radius operations remain gated permanently. |
+
+> **What this means for authorizing officials:** FedRAMP continuous monitoring and OMB M-22-09 expect agencies to operate at Advanced maturity as the production standard. Advanced maturity — gated actuation, where the governance framework generates a corrective action and a human approves before it executes — is the posture an Authorizing Official can sign. High-blast-radius operations — tenant-wide role changes, network policy updates that touch thousands of endpoints — remain gated permanently regardless of overall maturity level.
+
+# Federal Framework Alignment
+
+The following table maps each concept in this narrative to the federal mandate, standard, or policy that requires or validates it.
+
+| Concept / Narrative Claim | Federal Mandate | Standard / Reference |
+|---|---|---|
+| Separate truth from runtime enforcement | EO 14028 (May 2021), OMB M-22-09 | NIST SP 800-207 §2 (Zero Trust tenets) |
+| Single source of truth for identity and data | Evidence Act (2018), Federal Data Strategy | NIST SP 800-53 Rev 5 CM-8, SI-12 |
+| Authoritative identity attributes from HR / authoritative sources | FICAM Architecture, OMB M-22-09 | NIST SP 800-63 Digital Identity Guidelines |
+| Application-aware networking; per-transaction policy enforcement | OMB M-22-09 §4, EO 14028 | NIST SP 800-207, TIC 3.0 Use Cases E and F |
+| Phishing-resistant MFA / Certificate-Based Authentication | BOD 25-01, OMB M-22-09 | CISA ZTMM v2.0 Identity pillar (Advanced/Optimal) |
+| Eliminate NTLM; move to token-based identity | BOD 25-01 (M365 SCuBA baselines) | CISA ZTMM v2.0 Identity pillar |
+| Device compliance as input to access decisions | OMB M-22-09 §3 | CISA ZTMM v2.0 Devices pillar |
+| SD-WAN local internet breakout; eliminate MPLS hairpin | TIC 3.0 (Trusted Internet Connections) | CISA ZTMM v2.0 Networks pillar |
+| SASE / ZTNA as access model replacing VPN | OMB M-22-09 §4, TIC 3.0 | NIST SP 800-207, CISA ZTMM Networks pillar |
+| Unified DNS as security control (DNSSEC, RPZ, threat blocking) | FedRAMP Moderate SC-20/21 | NIST SP 800-53 Rev 5 SC-20, SC-21 |
+| IP address inventory as compliance evidence (CM-8) | FedRAMP Moderate | NIST SP 800-53 Rev 5 CM-8 |
+| Audit provenance: every transaction traceable to authorized source | FedRAMP Moderate AU-2/12 | NIST SP 800-53 Rev 5 AU-2, AU-12 |
+| Continuous monitoring; automated KSI enforcement | FedRAMP 20x, OMB Circular A-130 | NIST SP 800-37 Rev 2 CA-7, FedRAMP 20x KSIs |
+| Gated actuation as standard governance posture (Advanced maturity) | FedRAMP ConMon, OMB M-22-09 | CISA ZTMM v2.0 Automation and Orchestration pillar |
