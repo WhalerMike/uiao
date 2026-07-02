@@ -1,14 +1,14 @@
 ---
 title: "Downloads"
-subtitle: "Downloadable UIAO kits — assessment analytics, Group Policy migration, and the operator PowerShell pack"
+subtitle: "Standalone download sets"
 doc-type: operational-guide
 audience: [Customer, Operator, Technical]
 author: Michael Stratton
-date: "June 2026"
+date: "July 2026"
 status: Active
 repo-path: docs/download/index.qmd
 created-at: 2026-06-03
-updated-at: 2026-06-25
+updated-at: 2026-07-01
 format:
   html:
     toc: true
@@ -18,206 +18,47 @@ tiers_adopted: [1]
 lifecycle_review: 2026-12-03
 ---
 
-Self-service kits you can download and run. Each links to its full guide; verify
-the SHA-256 before running, and keep input and output inside your authorization
-boundary.
+Self-service, standalone download sets you can download and run.
 
 ::: {.callout-important}
-Several kits ingest or produce assessment data — a map of where your tenant is
-weak. Treat that data as **Controlled**: keep it in-boundary, share only with
+Tools here ingest or produce assessment data — a map of where a tenant is weak.
+Treat that data as **Controlled**: keep it in-boundary, share only with
 authorized personnel, and do not publish raw findings. Remediation guidance is
 **advisory** — apply changes only through your normal change-control process.
 :::
 
-## Download all DOCX bundles
+## ScubaDrift
 
-Every section's **full-section Word bundle** in one archive. Each
-`<section>-bundle.docx` concatenates all pages in that section into a single
-document; this zip gathers every one of them across the whole site — Customer
-Documents, Schemas, Reference Architecture, and the rest. The archive is rebuilt
-on **every site deploy**, so it always reflects the current set of section
-bundles.
+**Drift, exception-lifecycle, and continuous-monitoring gating on top of CISA
+ScubaGear.** ScubaGear assesses a Microsoft 365 tenant against the CISA SCuBA
+baselines; ScubaDrift adds the operational layer it leaves out — run-to-run
+drift, risk-acceptance lifecycle, a continuous-monitoring gate, and remediation
+**SLA aging** mapped to CISA BOD 25-01, NIST SP 800-137 (ISCM), NIST 800-53
+CA-7, and FedRAMP ConMon. It stands on the sanctioned tool and never touches a
+tenant — it reads ScubaGear's JSON output. Python 3.10+, zero runtime
+dependencies.
 
-[**Download all DOCX bundles (`.zip`)**](uiao-all-docx-bundles.zip)
+| Download | Contents |
+|---|---|
+| [`scubadrift-latest.zip`](scubadrift-latest.zip) | Runnable package — source, 47-test suite, examples, figure sources, and `ScubaDrift-Documentation.docx` |
+| [`ScubaDrift-Documentation.docx`](ScubaDrift-Documentation.docx) | The full documentation as a single Word document (also inside the zip) |
 
-No fixed SHA-256 is listed here because this archive is regenerated on every
-deploy. Prefer just one section? Each section landing page carries its own
-*Download the full section* tip, and every individual page offers an MS Word
-download under **Other Formats** in the right-hand margin.
+Quick start:
 
-## UIAO CLI Kit
-
-### uiao-cli.zip
-
-The complete UIAO CLI distribution — Python toolkit with offline installer,
-all operator PowerShell scripts, CLI reference, and the new `UIAO.ConfigTools`
-shared module. Works air-gapped; no internet access needed at install time.
-
-| Download | Contents | SHA-256 |
-|---|---|---|
-| [`uiao-cli.zip`](https://github.com/WhalerMike/uiao/releases/download/uiao-cli-v1.0/uiao-cli.zip) | Python offline wheels + installer + all PS1 scripts + `UIAO.ConfigTools` + CLI reference | `795c024d03ff59ccad0e2db6a8969cee1ccd4574625d17b3ebc90ce3c0a412dd` |
-
-**Install Python toolkit (air-gapped):**
-
-```powershell
-Expand-Archive .\uiao-cli.zip -DestinationPath uiao-cli
-cd uiao-cli
-.\Install-UIAOPrerequisites.ps1   # ensure Python 3.10+ is present
-.\Install-UIAO.ps1                # installs from bundled wheels — no PyPI needed
-uiao --help
+```bash
+unzip scubadrift-latest.zip && cd scubadrift
+pip install .            # or: pip install '.[yaml]'
+scubadrift gate --results ScubaResults.json --exceptions exceptions.yaml
 ```
 
-**Install the shared PowerShell module:**
-
-```powershell
-$dest = "$env:USERPROFILE\Documents\PowerShell\Modules\UIAO.ConfigTools"
-Copy-Item .\uiao-cli\scripts\UIAO.ConfigTools $dest -Recurse -Force
-```
-
-**What's inside:**
-
-| Path | Contents | Guide |
-|------|---------|-------|
-| `deps\` | 80+ pre-downloaded Python wheels | — |
-| `scripts\Invoke-ADSurvey.ps1` | AD forest survey | [Guide →](../customer-documents/substrate/platform-tooling/invoke-ad-survey.qmd) |
-| `scripts\Invoke-ZtDashboard.ps1` | Zero Trust dashboard | [Guide →](../customer-documents/operational-guides/zero-trust-assessment/index.qmd) |
-| `scripts\Invoke-GpoMigrationTriage.ps1` | GPO migration triage | [Guide →](../customer-documents/substrate/platform-tooling/invoke-gpo-migration-triage.qmd) |
-| `scripts\Invoke-GpoObsoleteAudit.ps1` | GPO obsolete audit | [Guide →](../customer-documents/substrate/platform-tooling/invoke-gpo-obsolete-audit.qmd) |
-| `scripts\UIAO.ConfigTools\` | Shared config + prereq-check module (v1.2.0) | [Module reference →](../customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) |
-| `scripts\helpdesk-entra\` | Help Desk / Cloud Services scripts | [Guide →](../customer-documents/operational-guides/helpdesk-entra-operations/index.qmd) |
-| `scripts\intune-arc\` | Intune + Azure Arc modernization scripts | [Guide →](../customer-documents/operational-guides/intune-arc-modernization/index.qmd) |
-| `docs\cli-reference.docx` | CLI command reference | — |
-| `Install-UIAO.ps1` | Offline Python installer | — |
-| `Install-UIAOPrerequisites.ps1` | Python prerequisites installer | — |
-
-**Individual script SHA-256:**
-
-| Script | SHA-256 |
-|--------|---------|
-| `Invoke-ADSurvey.ps1` | `9b590c08158a40f8b7e0145329101580ec29e7575735985301f1d291d665701f` |
-| `Invoke-ZtDashboard.ps1` | `f30811fd01616e2960e12dd0e870a4d19cd52a7c5c79f0e3bcc592ca5d13d509` |
-| `Invoke-GpoMigrationTriage.ps1` | `afe88fb798e41acd61c714341420551fb7e06d0c8f80d58d31f84e98080ba603` |
-| `Invoke-GpoObsoleteAudit.ps1` | `958010c1f2f13da203074df76b0cca5c04f6b308abceffc4e2ca95ef6245342f` |
-
-## Operator workstation
-
-### UIAO PowerShell Pack
-
-A single offline-installer zip that brings an operator workstation from bare
-Windows to fully tooled for UIAO work without internet access at install time —
-the PowerShell 7 runtime, curated modules, git/GitHub CLI, and a SHA-256-verified
-silent installer. The zip and its integrity hash are on the pack page.
-[Guide & download →](../customer-documents/substrate/platform-tooling/powershell-pack.qmd)
-
-## Help Desk / Cloud Services
-
-A vendor-neutral kit for moving routine identity tasks to the Help Desk on an
-existing Hybrid AD → Entra ID estate. It pairs an implementation-path guide with
-a request-triage classifier that routes each incoming request to ServiceNow or
-SAM by the authority the task actually requires — so the operations team executes
-approved work rather than gatekeeping it. No real tenant data; adapt to your
-environment. Every state-changing script honors `-WhatIf` — dry-run before
-touching a live tenant.
-
-### Help Desk / Cloud Services Operations Kit
-
-One zip: the implementation-path guide, a shared PowerShell module, and six
-Microsoft Graph scripts — request triage, Enterprise App inventory with risk
-tiering and orphaned-app detection, Help Desk PAG + PIM setup, group-to-app
-assignment (with nested-group guard), ImmutableID repair, and access-certification
-export — plus the four reference documents (Help Desk Flow + three governance docs), now with embedded blueprint
-diagrams. The same documents are browsable on the site under
-[Help Desk / Cloud Services (Entra Operations)](../customer-documents/operational-guides/helpdesk-entra-operations/index.qmd).
-
-| Download | Contents | SHA-256 |
-|---|---|---|
-| [`helpdesk-entra-operations-kit.zip`](https://github.com/WhalerMike/uiao/releases/download/helpdesk-entra-kit-v1.5/helpdesk-entra-operations-kit.zip) | Module + 6 scripts + four documents (with diagrams) | `bfac7b27eda0426a800916cc5a6a6b1dd50e1e88a371ff723efc42b68e9c3ac5` |
-
-The four reference documents are also downloadable individually:
-
-| Document | SHA-256 |
-|---|---|
-| [Help Desk Flow â Intake, Triage, and Routing (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/helpdesk-entra-kit-v1.5/Helpdesk-Flow.docx) | `74b9e4d774e605d5fa19df975a6eaac00031cbd5d6130d71b13bc58fd4935d1f` |
-| [Help Desk Administrative Responsibilities Guide (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/helpdesk-entra-kit-v1.5/Help-Desk-Administrative-Responsibilities-Guide.docx) | `21d6f6c73688f3a65c7b019774750120e442ed08b9ec5adbca3e3fb460f28a78` |
-| [Enterprise Application Access Governance and Approval Model (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/helpdesk-entra-kit-v1.5/Enterprise-Application-Access-Governance-and-Approval-Model.docx) | `378718f21a645585dd457c6b1aa04428833c82391b97e21712c2fc041b06e86f` |
-| [OrgPath Identity Governance Structure (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/helpdesk-entra-kit-v1.5/Governance-Structure-Brief.docx) | `1a67005bd3a1851d18bfa7dc935c76d06d3e87c267ef582a8832220654894464` |
-
-## Windows Server deployment
-
-Deployment scripts, the PowerShell management module, and the standalone health
-check for the UIAO governance API on Windows Server / IIS.
-[Guide →](../customer-documents/platform/windows-server-deployment.qmd)
-
-### Windows Server Deployment Kit
-
-One zip: three PowerShell deployment scripts (server install, service-account
-registration, IIS site registration), two `web.config` variants (HttpPlatformHandler
-and Windows Service / ARR reverse-proxy modes), the standalone
-`Test-UIAOHealth.ps1` health check, and the full `UIAO` PowerShell management
-module (`UIAO.psm1` + `UIAO.psd1`). Runs on Windows Server 2022 / 2025 / 2026.
-Every state-changing script is idempotent and documented in the deployment guide.
-
-| Download | Contents | SHA-256 |
-|---|---|---|
-| [`windows-server-kit-v1.0.zip`](https://github.com/WhalerMike/uiao/releases/download/windows-server-kit-v1.0/windows-server-kit-1.0.0.zip) | 3 deploy scripts + 2 web.configs + health check + PS module | `dffe0a9de793da4513eec45bb0aac2d2421a199a37f8283b22aaa6ea07ec6a16` |
-
-## Cloud SaaS deployment
-
-Infrastructure-as-code to deploy the multi-tenant UIAO SaaS governance plane on
-Azure or AWS — the same application, either cloud, passwordless at the data tier.
-[Azure guide →](../customer-documents/platform/azure-saas.qmd) ·
-[AWS guide →](../customer-documents/platform/aws-saas.qmd)
-
-### Cloud SaaS IaC Kit
-
-One zip: the **Azure Bicep** templates (`main.bicep` + modules, Dockerfile,
-bicepparam — Container Apps + PostgreSQL Flexible Server with passwordless Entra
-auth + Key Vault + Storage + managed identity), the **AWS CDK** app (`app.py`,
-`uiao_saas_stack.py`, `cdk.json`, `requirements.txt` — ECS Fargate + ALB + RDS
-PostgreSQL with passwordless IAM auth + S3 + IAM task role), and a cross-cloud
-`DEPLOY.md` runbook. Governed by ADR-096 / ADR-115 / ADR-116 / ADR-117.
-
-| Download | Contents | SHA-256 |
-|---|---|---|
-| [`uiao-iac-kit-v1.0.zip`](https://github.com/WhalerMike/uiao/releases/download/iac-kit-v1.0/uiao-iac-kit-1.0.0.zip) | Azure Bicep + AWS CDK + cross-cloud deploy runbook | *(hash generated on first release build — verify via workflow artifact)* |
-
-## Intune + Azure Arc modernization
-
-Endpoint and server modernization on a Hybrid AD → Entra ID estate, runnable two
-ways from the same scripts: a manual path and a UIAO/OrgPath-governed path. The
-pages are browsable on the site under
-[Intune + Azure Arc Modernization](../customer-documents/operational-guides/intune-arc-modernization/index.qmd);
-if you build manual first, the
-[retrofit guide](../customer-documents/operational-guides/intune-arc-modernization/retrofit-path.qmd)
-adds governance later without redoing the work.
-
-### Intune + Azure Arc Modernization Kit
-
-One zip: the implementation-path guide, a shared PowerShell module, and twelve
-Microsoft Graph / Az scripts — Arc onboarding + security baseline, Intune
-auto-enrollment + posture, NTLM audit + LSA restriction, SPN repair, SQL
-hardening audit, Conditional Access baseline + drift, a cross-domain status
-roll-up, and an OrgPath survey helper for the retrofit — plus the three
-modernization reference guides (manual, governed, retrofit). Every
-state-changing script honors `-WhatIf`;
-the same scripts serve both the manual and the governed path via the
-`-OrgPath` / `-ApprovalRef` seam.
-
-| Download | Contents | SHA-256 |
-|---|---|---|
-| [`intune-arc-modernization-kit.zip`](https://github.com/WhalerMike/uiao/releases/download/intune-arc-kit-v1.0/intune-arc-modernization-kit.zip) | Guide + module + 12 scripts + three guides | `8a7d01e83c2815d8503947f3e4dadd7321c6e130f9dd4723458b4c05f19f8cbc` |
-
-The three reference guides are also downloadable individually:
-
-| Document | SHA-256 |
-|---|---|
-| [Intune + Azure Arc — Manual Path (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/intune-arc-kit-v1.0/Intune-Azure-Arc-Manual-Path.docx) | `888fff5f1282fef169d670b106e07ac896ab41eeb75d6d6a282124e21df36f2c` |
-| [Intune + Azure Arc — Governed Path (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/intune-arc-kit-v1.0/Intune-Azure-Arc-Governed-Path.docx) | `3e6cd7d261feb4d3b366ad0a97db0a73487fb941b74c82ff39cb9a6e24e3a87d` |
-| [Intune + Azure Arc — Retrofit Path (`.docx`)](https://github.com/WhalerMike/uiao/releases/download/intune-arc-kit-v1.0/Intune-Azure-Arc-Retrofit-Path.docx) | `de21546e75e0fb014a40728def9d1a3a356fde14e94a5e05de933d2dab12861a` |
+Both artifacts are **rebuilt on every deploy** from source (`tools/scubadrift/`),
+so no fixed SHA-256 is published here. A versioned archive
+(`scubadrift-<version>.zip`) is published alongside the `-latest` alias.
 
 ## Verifying a download
 
 ```powershell
-Get-FileHash .\uiao.zip -Algorithm SHA256
-# compare the output to the SHA-256 listed above before running
+Get-FileHash .\scubadrift-latest.zip -Algorithm SHA256
+# then run the bundled test suite to confirm the package is intact:
+#   pip install '.[dev]' ; pytest -q
 ```

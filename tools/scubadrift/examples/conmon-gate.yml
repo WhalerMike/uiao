@@ -1,0 +1,36 @@
+# Example: gate a continuous-monitoring pipeline on ScubaDrift.
+#
+# ScubaGear runs (elsewhere / on a schedule) and drops ScubaResults into an
+# artifact. This job triages that output against the risk-acceptance register
+# and FAILS the pipeline only when there is new drift or a lapsed acceptance —
+# governed, in-date exceptions do not break the build.
+name: conmon-scuba-gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * 1" # weekly, Mondays 12:00 UTC
+
+jobs:
+  scuba-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ScubaDrift
+        run: pip install ./scubadrift        # or: pip install scubadrift
+
+      # In a real pipeline, fetch the latest ScubaGear output here instead.
+      # - uses: actions/download-artifact@v4
+      #   with: { name: scubagear-results, path: ./scuba-out }
+
+      - name: Gate on actionable drift
+        run: |
+          scubadrift gate \
+            --results ./scuba-out/ScubaResults.json \
+            --exceptions ./governance/exceptions.yaml \
+            --json
