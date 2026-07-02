@@ -326,6 +326,8 @@ ssa.gov                           (root — public, DNSSEC-signed, minimal recor
 └── mon.ssa.gov                   (monitoring — ThousandEyes, Azure Monitor)
 ```
 
+![SSA Subdomain Namespace Hierarchy — ssa.gov Zone Architecture](figs/lz-fig-16-subdomain-hierarchy.svg){fig-alt="Tree diagram showing ssa.gov as root with five functional first-level subdomains: internal (split-view, green), api, auth, vc (blue), and mgmt (orange, admin-only). Each L1 zone shows its wildcard cert scope, DNS view assignment, and RPZ policy. Sub-zone pills under internal show cloud platforms vmw/azure/aws/oci; under api show env tiers prod/staging; under vc show geographic nodes us-east and teamsconn." width="100%"}
+
 **Depth guideline:** Prefer three labels or fewer. `prod.api.ssa.gov` is preferable to `us-east.prod.api.ssa.gov` unless geography carries an independent operational meaning (separate certificate, separate RPZ policy, separate routing). Each additional label multiplies certificate scope complexity and diagnostic friction.
 
 ### Wildcard Certificate Alignment {#sec-subdomain-certs}
@@ -362,6 +364,8 @@ The `internal.ssa.gov` zone exists **only** in the `internal-view`. A request fr
 **Integration with cloud-native DNS:** Azure Private DNS Zones (e.g., `privatelink.database.windows.net` for SQL managed instances) are reachable from on-premises via conditional forwarders in InfoBlox — queries for `*.privatelink.database.windows.net` are forwarded to the Azure Private DNS Resolver inbound endpoint in SSA's Azure VNet. AWS Route 53 Resolver inbound endpoints serve the same function for GovCloud VPC private zones. Legacy Active Directory DNS servers forward queries for modern subdomains (`api.ssa.gov`, `vc.ssa.gov`) to InfoBlox via stub zones — AD DNS remains authoritative only for Kerberos and LDAP SRV records.
 
 **M365 GCC boundary enforcement via split-horizon:** The `external-view` resolves M365 endpoints to public Microsoft IPs. The `internal-view` enforces the M365 GCC allow-list via RPZ — clients inside SSA's network that resolve a Microsoft endpoint not on the current GCC allow-list receive an RPZ block response before any TCP connection is attempted. The split-horizon view is the enforcement boundary; the allow-list is the policy.
+
+![InfoBlox Split-Horizon DNS — Three-View Configuration for SSA](figs/lz-fig-17-split-horizon.svg){fig-alt="Three-column flow diagram. Left column shows three requestor types: on-premises/VPN (10.0.0.0/8 source), cloud VNets (Azure/AWS/OCI RFC 1918), and internet browsers (0.0.0.0/0). Center InfoBlox DDI box contains three stacked view boxes: internal-view (green, matches private CIDRs, returns RFC 1918 private IP), cloud-internal-view (blue, matches cloud VNet CIDRs, returns cloud private endpoint IP), and external-view (gray, catch-all, returns public IP or NXDOMAIN for private zones). Right column shows three answer boxes with corresponding responses. Footer lists NIST controls SC-20, SC-21, SC-22, AC-4, SC-7." width="100%"}
 
 ### IaC and Automation Integration {#sec-subdomain-iac}
 
