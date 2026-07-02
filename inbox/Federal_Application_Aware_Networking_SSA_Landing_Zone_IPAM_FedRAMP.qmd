@@ -290,6 +290,144 @@ The complete certificate lifecycle for a cloud workload follows this sequence:
 
 ---
 
+## Subdomain Strategy and Namespace Design {#sec-subdomain}
+
+A unified DDI control plane governs DNS only as well as the namespace it manages. InfoBlox can enforce policy, automate lifecycle, and generate compliance evidence across every zone it is authoritative for — but the structure of those zones determines whether the platform scales cleanly or accumulates the same sprawl it was deployed to fix. Subdomain strategy is the architectural decision that makes the DDI investment operationally sustainable.
+
+In modern hybrid multi-cloud environments, DNS is a **control plane** — not merely a name-to-IP directory. The namespace structure determines security policy scope (which RPZ rules apply to which services), certificate coverage (what wildcards are valid and at what depth), split-horizon resolution boundaries (which records are private vs. public), and the granularity of observability (whether a DNS query log entry identifies a cloud, environment, and service from the FQDN alone). Without deliberate namespace design, the outcome is DNS sprawl, certificate chaos, and opaque logs.
+
+### Why Legacy DNS Fails in Multi-Cloud {#sec-subdomain-why}
+
+Legacy DNS was designed for a flat environment: one zone, manual A records, a single trust boundary. SSA now operates across four cloud environments with dynamic workloads, ephemeral IPs, and a security model where every service-to-service call is mutually authenticated by certificate. Three failure modes emerge without namespace governance:
+
+**Certificate chaos.** Wildcard certificates (`*.ssa.gov`) match one label to the left of the wildcard per RFC 6125 — they cover `api.ssa.gov` but not `prod.api.ssa.gov`. Without consistent subdomain depth, every new workload either requires a dedicated SAN certificate or causes a multi-SAN certificate to be manually updated. Structured subdomains enable structured wildcards: `*.api.ssa.gov` covers all API workloads at one wildcard.
+
+**Uncontrolled split-brain.** When internal and external DNS are not deliberately separated, the same FQDN resolves to different addresses by accident. Controlled split-horizon DNS is the same mechanism — intentional. Internal users get private resolution; external users get public resolution; InfoBlox view policy enforces both. Accidental split-brain is a misconfiguration; deliberate split-horizon is a security boundary.
+
+**Opaque observability.** When all workloads resolve through undifferentiated names, a DNS query log cannot identify the cloud, environment, or service from the FQDN. `prod.api.azure.ssa.gov` is self-documenting. `svc-443-node7.ssa.gov` is not.
+
+### SSA Namespace Structure {#sec-subdomain-structure}
+
+The following hierarchy applies five patterns — functional, geographic, environment, cloud-provider, and hybrid split-horizon — to SSA's four-environment topology. Each leaf is a separately delegated zone in InfoBlox with its own DNSSEC signing policy, RBAC delegation, and RPZ attachment.
+
+```
+ssa.gov                           (root — public, DNSSEC-signed, minimal records)
+├── internal.ssa.gov              (split-view — private resolution only, never public)
+│   ├── vmw.internal.ssa.gov     (VMware VCF on-premises workloads)
+│   ├── azure.internal.ssa.gov   (Azure Government private endpoints, Arc-enrolled servers)
+│   ├── aws.internal.ssa.gov     (AWS GovCloud VPC workloads)
+│   └── oci.internal.ssa.gov     (Oracle OCI / OPM HRIT resources)
+├── api.ssa.gov                   (backend services — split-view or public)
+│   ├── prod.api.ssa.gov
+│   └── staging.api.ssa.gov
+├── auth.ssa.gov                  (Entra ID, SAML, OIDC endpoints)
+├── vc.ssa.gov                    (video conferencing — Pexip, Teams Connector)
+├── mgmt.ssa.gov                  (Azure Arc, Intune enrollment, management plane)
+└── mon.ssa.gov                   (monitoring — ThousandEyes, Azure Monitor)
+```
+
+**Depth guideline:** Prefer three labels or fewer. `prod.api.ssa.gov` is preferable to `us-east.prod.api.ssa.gov` unless geography carries an independent operational meaning (separate certificate, separate RPZ policy, separate routing). Each additional label multiplies certificate scope complexity and diagnostic friction.
+
+### Wildcard Certificate Alignment {#sec-subdomain-certs}
+
+The namespace structure directly determines certificate coverage. Each functional subdomain enables one wildcard covering all workloads in that function:
+
+| Wildcard | Covers | Does Not Cover |
+|---|---|---|
+| `*.ssa.gov` | `api.ssa.gov`, `vc.ssa.gov`, `auth.ssa.gov` | `prod.api.ssa.gov`, `us-east.vc.ssa.gov` |
+| `*.api.ssa.gov` | `prod.api.ssa.gov`, `staging.api.ssa.gov` | deeper labels |
+| `*.internal.ssa.gov` | `vmw.internal.ssa.gov`, `azure.internal.ssa.gov` | deeper labels |
+| `*.vc.ssa.gov` | all video conferencing endpoints | deeper labels |
+
+: Wildcard certificate scope by namespace level {.striped .hover}
+
+The certificate lifecycle described in [Section -@sec-certs] — SCEP enrollment triggered by InfoBlox IP host record creation — follows this wildcard boundary. When a new workload provisions in `azure.internal.ssa.gov`, InfoBlox creates the DNS record and triggers SCEP enrollment against the Azure GCC private CA, issuing a certificate with a SAN valid under `*.azure.internal.ssa.gov`. The namespace zone determines the CA path; no per-workload certificate configuration is required.
+
+### Split-Horizon DNS — InfoBlox View Configuration {#sec-subdomain-split}
+
+Split-horizon DNS configures InfoBlox to return different answers to the same query depending on the requestor's source network. Internal SSA users receive private IP addresses; external internet requestors receive public IPs or NXDOMAIN for private-only zones. The application FQDN is identical in both cases — the split is enforced at the InfoBlox view layer, transparent to clients.
+
+InfoBlox DNS views for SSA's four-environment topology:
+
+| View | Source Networks | Zones Served | Private IPs Exposed |
+|---|---|---|---|
+| `internal-view` | 10.0.0.0/8, VPN pool CIDRs | `internal.ssa.gov`, `ssa.gov` (private records) | Yes |
+| `cloud-internal-view` | Azure VNet CIDRs, AWS VPC CIDRs, OCI VCN CIDRs | `*.internal.ssa.gov`, conditional forwarders to cloud-native DNS | Yes |
+| `external-view` | All other sources (internet) | `ssa.gov` public records only, DNSSEC-signed | No |
+
+: InfoBlox DNS view configuration for SSA {.striped .hover}
+
+The `internal.ssa.gov` zone exists **only** in the `internal-view`. A request from an internet source hits the `external-view`, which has no `internal.ssa.gov` zone — the response is NXDOMAIN. Private IP space never appears in the external view.
+
+**Integration with cloud-native DNS:** Azure Private DNS Zones (e.g., `privatelink.database.windows.net` for SQL managed instances) are reachable from on-premises via conditional forwarders in InfoBlox — queries for `*.privatelink.database.windows.net` are forwarded to the Azure Private DNS Resolver inbound endpoint in SSA's Azure VNet. AWS Route 53 Resolver inbound endpoints serve the same function for GovCloud VPC private zones. Legacy Active Directory DNS servers forward queries for modern subdomains (`api.ssa.gov`, `vc.ssa.gov`) to InfoBlox via stub zones — AD DNS remains authoritative only for Kerberos and LDAP SRV records.
+
+**M365 GCC boundary enforcement via split-horizon:** The `external-view` resolves M365 endpoints to public Microsoft IPs. The `internal-view` enforces the M365 GCC allow-list via RPZ — clients inside SSA's network that resolve a Microsoft endpoint not on the current GCC allow-list receive an RPZ block response before any TCP connection is attempted. The split-horizon view is the enforcement boundary; the allow-list is the policy.
+
+### IaC and Automation Integration {#sec-subdomain-iac}
+
+The InfoBlox Terraform provider (`infoblox/infoblox`) manages zones, records, and views as infrastructure-as-code. All zone creation and delegation follows the same GitOps pipeline as SSA's cloud infrastructure.
+
+```hcl
+# Functional zone for video conferencing — delegated with RBAC to AV team
+resource "infoblox_zone_auth" "vc_zone" {
+  fqdn    = "vc.ssa.gov"
+  view    = "external"
+  comment = "Pexip and Teams Connector endpoints"
+}
+
+# Blue/green Teams Connector — low TTL for fast cutover
+resource "infoblox_cname_record" "teamsconn_active" {
+  alias     = "teamsconn.vc.ssa.gov"
+  canonical = "blue.teamsconn.vc.ssa.gov"  # swap to green.teamsconn.vc.ssa.gov for cutover
+  view      = "internal-view"
+  ttl       = 60
+}
+```
+
+**vDiscovery naming templates:** InfoBlox vDiscovery continuously scans all four cloud environments and auto-populates DNS records and IPAM entries. The naming template determines which zone receives the auto-populated record:
+
+| Platform | vDiscovery Template | Zone |
+|---|---|---|
+| VMware vSphere | `{vm_name}.vmw.internal.ssa.gov` | `vmw.internal.ssa.gov` |
+| Azure Government | `{resource_name}.azure.internal.ssa.gov` | `azure.internal.ssa.gov` |
+| AWS GovCloud | `{instance_name}.aws.internal.ssa.gov` | `aws.internal.ssa.gov` |
+| Oracle OCI | `{instance_name}.oci.internal.ssa.gov` | `oci.internal.ssa.gov` |
+
+: vDiscovery naming templates by cloud platform {.striped .hover}
+
+When a new VM provisions in any environment, InfoBlox creates the DNS record in the correct zone, allocates the IPAM entry in the correct Network View, and triggers SCEP enrollment in the correct CA — all from the zone the record belongs to. The namespace is the configuration.
+
+**Kubernetes `external-dns`:** For Kubernetes workloads on any platform, the `external-dns` controller creates and removes InfoBlox DNS records as services come and go. A Service annotated with `external-dns.alpha.kubernetes.io/hostname: payments.api.ssa.gov` results in an A record in `prod.api.ssa.gov` pointing to the load balancer IP — created on Service creation, removed on Service deletion, with no manual DNS management required.
+
+### RPZ Policy Scoping by Subdomain {#sec-subdomain-rpz}
+
+DNS Firewall RPZ policies in InfoBlox attach at the zone level. The subdomain structure determines the security policy granularity:
+
+| Zone | RPZ Policy |
+|---|---|
+| `ssa.gov` external view | CISA threat intelligence feed + M365 GCC allow-list |
+| `vc.ssa.gov` | SIP/H.323 federation allow-list; block unapproved conferencing endpoints |
+| `internal.ssa.gov` | Internal-only flag — NXDOMAIN for any external resolution attempt |
+| `mgmt.ssa.gov` | Strict: allow-list of management-plane destinations only; block all others |
+
+: RPZ policy attachment by subdomain zone {.striped .hover}
+
+A query resolving through `mgmt.ssa.gov` that does not match the management-plane allow-list returns an RPZ NXDOMAIN before any TCP connection is attempted. The subdomain boundary is the security boundary — without it, RPZ policy must be applied at the individual record level, which is operationally unmanageable at scale.
+
+### Additional NIST Controls from Namespace Design {#sec-subdomain-nist}
+
+The subdomain strategy adds three controls to the NIST mapping in [Section -@sec-nist]:
+
+| Control | Title | Contribution |
+|---|---|---|
+| SC-22 | Architecture and Provisioning for Name/Address Resolution | Zone hierarchy with delegated authority and view separation enforcing internal/external boundary |
+| AC-4 | Information Flow Enforcement | Internal views prevent DNS resolution from cloud environments to unapproved external destinations; RPZ at zone level enforces M365 GCC allow-list |
+| SA-9 | External System Services | Conditional forwarders to Azure Private DNS Resolver and AWS Route 53 Resolver are documented zone-level dependencies with per-forwarder audit trail |
+
+: Additional controls from subdomain namespace design {.striped .hover}
+
+---
+
 ## NIST SP 800-53 Rev 5 Control Mapping {#sec-nist}
 
 The following table maps InfoBlox DDI landing zone capabilities to specific NIST SP 800-53 Rev 5 controls. A single InfoBlox deployment provides evidence for 16 controls that would otherwise require separate evidence collection from four separate platforms.
