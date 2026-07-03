@@ -1,0 +1,123 @@
+# AAN Evidence Binding — Surface Slot 3: Network Control Plane
+#
+# Maps Federal AAN Parts 2 and 6 artifacts to NIST SP 800-53 Rev 5
+# controls and FedRAMP 20x KSI-CNA rules.
+#
+# Slot 3 canonical definition: src/uiao/canon/data/control-planes.yml
+#   nist_rev5_control: "SC-8 / CA-7"
+#   ksi_category: "KSI-CNA"
+#   evidence_source: "SD-WAN Platform telemetry + Network Routing telemetry"
+#
+# Governing roadmap: inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md
+# Phase 0 target: Conformance Adapter surface slots 1–4 bound to AAN evidence
+
+version: "0.1.0"
+status: active
+slot: network
+slot_id: 3
+generated_at: "2026-07-03"
+ksi_category: KSI-CNA
+nist_anchor: "SC-8 / CA-7"
+
+# -----------------------------------------------------------------------
+# AAN artifact references for this slot
+# -----------------------------------------------------------------------
+
+artifacts:
+  - id: aan-part-02
+    title: "SD-WAN, SASE, and Unified Communications Modernization"
+    path: "inbox/Application Aware Networking/Federal_Application_Aware_Networking_Network_Modernization.qmd"
+    aan_part: 2
+    series: Federal AAN
+    controls_closed:
+      - SC-7
+      - SC-8
+      - "SC-8(1)"
+      - CA-7
+      - AC-4
+      - CM-6
+      - CM-7
+      - SI-4
+
+  - id: aan-part-06
+    title: "Database Consolidation and Network Physics"
+    path: "inbox/Application Aware Networking/Federal_Application_Aware_Networking_Database_Consolidation_Network_Physics.qmd"
+    aan_part: 6
+    series: Federal AAN
+    controls_closed:
+      - SC-7
+      - SC-8
+      - AC-4
+      - "SI-7(1)"
+      - CM-8
+
+# -----------------------------------------------------------------------
+# Evidence bindings: KSI rule → artifact(s) that satisfy it
+# -----------------------------------------------------------------------
+
+bindings:
+
+  - ksi_rule: KSI-004
+    ksi_title: "External Forwarding Restrictions"
+    cr26_ksi_theme: KSI-SVC
+    cr26_controls: [KSI-SVC-SNT, KSI-SVC-RUD]
+    nist_controls: [SC-7, SC-8]
+    artifact_refs: [aan-part-02, aan-part-06]
+    confidence: high
+    rationale: >-
+      Part 2 documents SD-WAN policy-engine enforcement of network segmentation
+      and SASE-based inspection for all outbound traffic, satisfying SC-7
+      boundary protection and SC-8 transmission confidentiality via mTLS overlays.
+      Part 6 reinforces the SC-7 boundary through database network isolation
+      and VLAN/micro-segmentation for the data tier. SNT (Securing Network
+      Traffic) and RUD (Removing Unwanted Data) are both addressed.
+
+  # KSI-CNA theme: the primary theme for this slot.
+  # SC-8/SC-7 mTLS + SD-WAN segmentation are the core CNA evidence.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CNA
+    cr26_controls: [KSI-CNA-DFP, KSI-CNA-IBP, KSI-CNA-RNT]
+    nist_controls: [SC-7, SC-8, "SC-8(1)", AC-4]
+    artifact_refs: [aan-part-02, aan-part-06]
+    confidence: high
+    rationale: >-
+      Part 2 implements Identity-Aware Routing (INR) over the SD-WAN fabric —
+      routing and segmentation decisions driven by user identity, device identity,
+      application identity, and Conditional Access posture signals from Entra ID.
+      IPSEC/GRE overlay tunnels with mTLS (SC-8(1)) between WAN edge devices
+      enforce confidentiality in transit. CNA-DFP (Defined-Flow Policy) is
+      satisfied by SD-WAN OMP route distribution and SASE inline inspection.
+      CNA-IBP (Identity-Based Policy) is the INR architecture itself. CNA-RNT
+      (Restricting Network Traffic) is satisfied by SASE egress filtering and
+      RPZ enforcement from the addressing plane.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CNA
+    cr26_controls: [KSI-CNA-MAT, KSI-CNA-EIS]
+    nist_controls: [CM-6, CM-7, SC-7]
+    artifact_refs: [aan-part-02, aan-part-06]
+    confidence: medium
+    rationale: >-
+      Part 2 establishes SD-WAN least-functionality baselines (CM-7) by disabling
+      unnecessary WAN edge services and enforcing configuration baselines (CM-6)
+      via centralized SD-WAN Policy Engine push. Part 6 extends this to the
+      database network tier with VLAN isolation and micro-segmentation.
+      CNA-MAT (Minimizing Attack Surface) is addressed via SD-WAN policy-enforced
+      service lockdown. CNA-EIS (Enforcing Isolated Segments) is addressed by
+      OMP-based VPN segmentation across the SD-WAN fabric. Confidence medium
+      because CNA-EIS requires a formal segment inventory audit not yet authored.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-LET]
+    nist_controls: [CA-7, SI-4]
+    artifact_refs: [aan-part-02]
+    confidence: high
+    rationale: >-
+      Part 2 documents SD-WAN telemetry emission (flow logs, routing decisions,
+      tunnel health, path performance) to the SIEM platform. CA-7 continuous
+      monitoring is satisfied by the always-on SD-WAN + SASE telemetry stream.
+      SI-4 (information system monitoring) is satisfied by the SD-WAN platform's
+      WAN path anomaly detection and ThousandEyes integration. MLA-LET (Logging
+      Event Types) is the governing CR26 control.

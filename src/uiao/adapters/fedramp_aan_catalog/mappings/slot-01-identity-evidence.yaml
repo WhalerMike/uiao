@@ -1,0 +1,147 @@
+# AAN Evidence Binding — Surface Slot 1: Identity Control Plane
+#
+# Maps Federal AAN Parts 3, 4, 7 artifacts to NIST SP 800-53 Rev 5
+# controls and FedRAMP 20x KSI-IAM rules.
+#
+# Slot 1 canonical definition: src/uiao/canon/data/control-planes.yml
+#   nist_rev5_control: "IA-2 / AC-2"
+#   ksi_category: "KSI-IAM"
+#   evidence_source: "Identity Provider sign-in and risk logs"
+#
+# Governing roadmap: inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md
+# Phase 0 target: Conformance Adapter surface slots 1–4 bound to AAN evidence
+
+version: "0.1.0"
+status: active
+slot: identity
+slot_id: 1
+generated_at: "2026-07-03"
+ksi_category: KSI-IAM
+nist_anchor: "IA-2 / AC-2"
+
+# -----------------------------------------------------------------------
+# AAN artifact references for this slot
+# -----------------------------------------------------------------------
+
+artifacts:
+  - id: aan-part-03
+    title: "Entra ID, ZTNA, and Active Governance"
+    path: "inbox/Application Aware Networking/Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd"
+    aan_part: 3
+    series: Federal AAN
+    controls_closed:
+      - IA-2
+      - "IA-2(1)"
+      - "IA-2(11)"
+      - AC-2
+      - "AC-2(1)"
+      - AC-3
+      - AC-17
+      - CA-7
+
+  - id: aan-part-04
+    title: "SQL Server Authentication Modernization"
+    path: "inbox/Application Aware Networking/Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd"
+    aan_part: 4
+    series: Federal AAN
+    controls_closed:
+      - IA-2
+      - "IA-2(1)"
+      - "IA-2(2)"
+      - AC-2
+      - "AC-2(1)"
+      - IA-5
+
+  - id: aan-part-07
+    title: "Privileged Access Management (Entra PIM + PAW)"
+    path: "inbox/Application Aware Networking/Federal_Application_Aware_Networking_Privileged_Access_Management.qmd"
+    aan_part: 7
+    series: Federal AAN
+    controls_closed:
+      - AC-5
+      - AC-6
+      - "AC-6(1)"
+      - "AC-6(2)"
+      - "AC-6(5)"
+      - "AC-6(7)"
+      - "AC-6(9)"
+      - "AC-6(10)"
+      - AC-11
+      - AC-12
+      - IA-11
+
+# -----------------------------------------------------------------------
+# Evidence bindings: KSI rule → artifact(s) that satisfy it
+# -----------------------------------------------------------------------
+
+bindings:
+
+  - ksi_rule: KSI-001
+    ksi_title: "Multi-Factor Authentication Enforcement"
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-APM, KSI-IAM-SNU]
+    nist_controls: [IA-2, "IA-2(1)", "IA-2(11)"]
+    artifact_refs: [aan-part-03, aan-part-04]
+    confidence: high
+    rationale: >-
+      Part 3 (Entra ID/ZTNA) establishes phishing-resistant MFA via FIDO2/PIV
+      per M-24-15 requirements; Part 4 extends MFA to SQL Server authentication
+      paths via Entra-integrated modern auth. Together they satisfy APM
+      (passwordless/modern auth) and SNU (non-user service account auth).
+
+  - ksi_rule: KSI-002
+    ksi_title: "Legacy Authentication Disabled"
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-APM]
+    nist_controls: [AC-17, IA-5]
+    artifact_refs: [aan-part-03, aan-part-04]
+    confidence: high
+    rationale: >-
+      Part 3 documents Conditional Access policies blocking legacy auth protocols
+      (Basic Auth, NTLM) across Entra ID. Part 4 disables SQL Server mixed-mode
+      auth in favor of Entra-only Windows Auth. Both close the negative side of
+      APM (eliminating the legacy-auth attack surface).
+
+  - ksi_rule: KSI-003
+    ksi_title: "Global Administrator Count"
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-ELP, KSI-IAM-AAM]
+    nist_controls: ["AC-2(1)", AC-6]
+    artifact_refs: [aan-part-03, aan-part-07]
+    confidence: high
+    rationale: >-
+      Part 3 establishes Entra PIM just-in-time activation for Global Admin roles,
+      bounding the persistent GA count to near-zero. Part 7 extends this to all
+      privileged roles via PAW architecture and Entra PIM role-activation policies.
+      ELP (Least Privilege) is directly satisfied; AAM (Account Management) is
+      satisfied through lifecycle evidence in Entra audit logs.
+
+  - ksi_rule: KSI-009
+    ksi_title: "Conditional Access Enforcement"
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-ELP, KSI-IAM-JIT, KSI-IAM-SUS]
+    nist_controls: [AC-3, AC-17]
+    artifact_refs: [aan-part-03, aan-part-07]
+    confidence: high
+    rationale: >-
+      Part 3 architects Conditional Access policies enforcing Zero Trust across
+      identity, device, location, and risk signals per TIC 3.0 / M-24-15.
+      Part 7 adds JIT access activation via PIM as the just-in-time CA layer.
+      ELP, JIT, and SUS (suspicious-activity response) are all exercised.
+
+  # Direct KSI-IAM theme contributions where no local KSI-NNN rule exists yet.
+  # Bound at theme level per the Phase 0 blocker resolution requirement.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-AAM]
+    nist_controls: [AC-2, "AC-2(1)", AC-5, AC-11, AC-12, IA-11]
+    artifact_refs: [aan-part-03, aan-part-07]
+    confidence: high
+    rationale: >-
+      Part 3 Joiner/Mover/Leaver automation via Entra ID Governance and lifecycle
+      workflows closes AC-2 account management. Part 7 PAW architecture closes
+      AC-5 (separation of duties) and AC-11/12 (session lock/termination).
+      IA-11 (re-authentication) is addressed through CAE (Continuous Access
+      Evaluation) documented in Part 3. AAM (Automating Account Management) is
+      the governing CR26 control.
