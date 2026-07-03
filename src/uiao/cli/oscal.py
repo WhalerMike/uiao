@@ -106,6 +106,78 @@ def generate_command(
         raise typer.Exit(code=1) from exc
 
 
+@oscal_app.command("ksi-ar")
+def ksi_ar_command(
+    output: str = typer.Option(  # noqa: B008
+        "output/artifacts/ksi-ar.json",
+        "--output",
+        "-o",
+        help="Destination path for the KSI OSCAL Assessment Results JSON.",
+    ),
+    system_name: str = typer.Option(  # noqa: B008
+        "UIAO Federal AAN Assessment System",
+        "--system-name",
+        help="Human-readable name for the assessed system.",
+    ),
+    ap_href: str = typer.Option(  # noqa: B008
+        "",
+        "--ap-href",
+        help="Optional href to an existing Assessment Plan (OSCAL import-ap).",
+    ),
+    slots_dir: str | None = typer.Option(  # noqa: B008
+        None,
+        "--slots-dir",
+        help=("Path to the AAN slot evidence YAML directory. Defaults to the bundled fedramp_aan_catalog/mappings/."),
+    ),
+) -> None:
+    """Generate an OSCAL Assessment Results document from KSI slot evidence.
+
+    Reads ksi-mapping.yaml and all AAN slot evidence YAML files (slot-01..06)
+    and emits an OSCAL AR with per-KSI satisfied / not-satisfied / not-evaluated
+    verdicts based on mapping confidence and slot binding coverage.
+
+    \\b
+    Output
+    ------
+    A single OSCAL 1.0.4 Assessment Results JSON file at --output.
+
+    \\b
+    Examples
+    --------
+        uiao oscal ksi-ar
+
+        uiao oscal ksi-ar --output exports/oscal/ksi-ar.json
+
+        uiao oscal ksi-ar \\
+            --output exports/oscal/ksi-ar.json \\
+            --system-name "SSA GCC Moderate" \\
+            --ap-href "#assessment-plan-uuid"
+    """
+    from pathlib import Path as _Path
+
+    from uiao.oscal.ksi_ar import build_ksi_ar_summary, export_ksi_ar
+
+    try:
+        resolved_slots = _Path(slots_dir) if slots_dir else None
+        path = export_ksi_ar(
+            output_path=output,
+            system_name=system_name,
+            ap_href=ap_href,
+            slots_dir=resolved_slots,
+        )
+        import json
+
+        ar_doc = json.loads(_Path(path).read_text(encoding="utf-8"))
+        _console.print(f"[green]Wrote KSI Assessment Results to {path}[/green]")
+        _console.print(build_ksi_ar_summary(ar_doc))
+    except FileNotFoundError as exc:
+        _console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        _console.print(f"[red]Validation error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
 @oscal_app.command("validate")
 def validate(
     path: str = typer.Argument(..., help="Path to OSCAL JSON file."),
