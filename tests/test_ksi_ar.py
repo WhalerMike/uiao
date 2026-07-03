@@ -15,8 +15,6 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from uiao.oscal.ksi_ar import (
     build_cr26_binding_index,
     build_ksi_ar,
