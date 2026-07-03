@@ -7,10 +7,18 @@ tests assert the scaffolds are well-formed, map to real snapshot
 controls, and stay in lockstep with the UIAO_137 mapping companion —
 without asserting any evaluation behavior that does not exist yet.
 
+Phase 1 update (2026-07-03): ksi-mapping.yaml confidence for all four
+KSI-CMT scaffold rules upgraded from ``low`` to ``high`` after the VER
+evidence contract was fulfilled by the Part 12 (SBOM/VDR/VEX pipeline)
+bound to Conformance Adapter slot-06-security-evidence.yaml. The rule
+files themselves retain ``Status: scaffold`` because the local evaluation
+engine logic is still pending — confidence and evaluability are orthogonal.
+
 Companion:
 - src/uiao/ksi/rules/KSI-011.yaml … KSI-014.yaml
 - src/uiao/adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml
 - src/uiao/canon/specs/fedramp-cr26-ksi-mapping.md (UIAO_137)
+- src/uiao/adapters/fedramp_aan_catalog/mappings/slot-06-security-evidence.yaml
 """
 
 from __future__ import annotations
@@ -87,7 +95,9 @@ def test_mapping_companion_includes_every_scaffold() -> None:
     for rule_id, cr26 in _SCAFFOLD_TO_CR26.items():
         assert rule_id in rows, f"{rule_id} missing from ksi-mapping.yaml"
         assert rows[rule_id]["cr26_controls"] == [cr26]
-        assert rows[rule_id]["confidence"] == "low"
+        # Phase 1 (2026-07-03): confidence upgraded low → high after Part 12
+        # VER evidence contract bound to slot-06-security-evidence.yaml.
+        assert rows[rule_id]["confidence"] == "high"
 
 
 def test_ksi_cmt_is_no_longer_listed_as_a_zero_coverage_gap() -> None:

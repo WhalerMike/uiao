@@ -1,0 +1,196 @@
+# AAN Evidence Binding — Surface Slot 6: Security Control Plane
+#
+# Maps Federal AAN Parts 8, 10, and 12 artifacts to NIST SP 800-53 Rev 5
+# controls and FedRAMP 20x KSI-CMT / KSI-SCR rules.
+#
+# Slot 6 canonical definition: src/uiao/canon/data/control-planes.yml
+#   nist_rev5_control: "CM-2 / AC-4"
+#   ksi_category: "KSI-CMT"
+#   evidence_source: "GitHub YAML baseline + Zero Trust policy enforcement logs"
+#
+# Governing roadmap: inbox/Application Aware Networking/Book_00_Federal_Application_Aware_Networking_Executive_Summary.qmd
+# Phase 1 target: Conformance Adapter surface slots 5–6 bound to AAN evidence
+#
+# NOTE: This slot provides the VER evidence contract required to upgrade
+# KSI-011–014 (KSI-CMT) from confidence:low (scaffold) to confidence:high.
+# The upgrade is applied in ksi-mapping.yaml when Part 12 is bound here.
+
+version: "0.1.0"
+status: active
+slot: security
+slot_id: 6
+generated_at: "2026-07-03"
+ksi_category: KSI-CMT
+nist_anchor: "CM-2 / AC-4"
+
+# -----------------------------------------------------------------------
+# AAN artifact references for this slot
+# -----------------------------------------------------------------------
+
+artifacts:
+  - id: aan-part-08
+    title: "Vulnerability Management (Defender VM + KEV)"
+    path: "inbox/Application Aware Networking/Book_08_Federal_Application_Aware_Networking_Vulnerability_Management.qmd"
+    aan_part: 8
+    series: Federal AAN
+    controls_closed:
+      - "RA-5"
+      - "RA-5(2)"
+      - "RA-5(5)"
+      - "SI-2"
+      - "SI-2(2)"
+      - SI-5
+      - CM-7
+      - "CM-7(1)"
+
+  - id: aan-part-10
+    title: "SIEM / XDR / Detection Engineering (Microsoft Sentinel)"
+    path: "inbox/Application Aware Networking/Book_10_Federal_Application_Aware_Networking_SIEM_XDR_Detection.qmd"
+    aan_part: 10
+    series: Federal AAN
+    controls_closed:
+      - "AU-6"
+      - "AU-6(1)"
+      - "AU-6(3)"
+      - AU-7
+      - AU-8
+      - AU-11
+      - "SI-4"
+      - "SI-4(2)"
+      - "SI-4(4)"
+      - "SI-4(5)"
+      - IR-4
+      - IR-6
+      - IR-8
+
+  - id: aan-part-12
+    title: "Supply Chain Risk Management (SBOM + VDR + VEX Framework)"
+    path: "inbox/Application Aware Networking/Book_12_Federal_Application_Aware_Networking_Supply_Chain_Risk_Management.qmd"
+    aan_part: 12
+    series: Federal AAN
+    controls_closed:
+      - SR-1
+      - SR-2
+      - SR-3
+      - SR-5
+      - SR-6
+      - SR-8
+      - SR-10
+      - SR-11
+      - "CM-3"
+      - "CM-3(2)"
+      - "SA-10"
+      - "SA-11"
+
+# -----------------------------------------------------------------------
+# Evidence bindings: KSI rule → artifact(s) that satisfy it
+# -----------------------------------------------------------------------
+
+bindings:
+
+  # KSI-CMT theme: the primary theme for this slot.
+  # Part 12 provides the VER evidence contract that enables KSI-011–014.
+  # Parts 8 and 10 provide the continuous monitoring substrate.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CMT
+    cr26_controls: [KSI-CMT-LMC]
+    nist_controls: [CM-3, AU-6, "AU-6(1)", "AU-6(3)"]
+    artifact_refs: [aan-part-12, aan-part-10]
+    confidence: high
+    rationale: >-
+      Part 12 (SBOM pipeline) produces structured SBOM diff artifacts on every
+      commit — every dependency change is logged with author, timestamp, and
+      before/after SHA256 hash. These diffs are ingested into Microsoft Sentinel
+      (Part 10) as structured change events via the SBOM custom data connector.
+      CM-3 (configuration change control) is satisfied by the SBOM manifest as
+      a machine-readable change log. AU-6 audit review is satisfied by Sentinel
+      KQL analytic rules that alert on unexpected dependency additions.
+      KSI-CMT-LMC (Logging and Monitoring Changes) is the governing CR26 control.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CMT
+    cr26_controls: [KSI-CMT-RMV]
+    nist_controls: [CM-2, SA-10]
+    artifact_refs: [aan-part-12]
+    confidence: high
+    rationale: >-
+      Part 12 implements SLSA Level 2 provenance attestation for all production
+      artifacts. Every deployed artifact is built from a versioned, signed source —
+      in-place modification of production components is architecturally prevented
+      by the immutable container image model. SA-10 (developer security testing)
+      is satisfied by Grype scan gates that block promotion of artifacts with new
+      critical CVEs. CM-2 (baseline configuration) is satisfied by the SBOM
+      manifest as the machine-readable software baseline. KSI-CMT-RMV
+      (Redeploying vs Modifying) is directly satisfied: redeploy from known-good
+      SBOM is the only permitted change mechanism.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CMT
+    cr26_controls: [KSI-CMT-RVP]
+    nist_controls: [CM-3, CA-7]
+    artifact_refs: [aan-part-12, aan-part-10]
+    confidence: high
+    rationale: >-
+      Part 12 establishes a 90-day VEX assertion review cycle — all VEX
+      statements must be reviewed or reaffirmed every quarter, with a signed
+      dated review record. This review is the change-procedure effectiveness
+      audit. Part 10 (Sentinel) provides CA-7 continuous monitoring: the Sentinel
+      SBOM dashboard tracks VEX assertion age and alerts when assertions exceed
+      the 90-day review window. KSI-CMT-RVP (Reviewing Change Procedures) is
+      satisfied by the VEX review cycle and Sentinel age-tracking analytic.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CMT
+    cr26_controls: [KSI-CMT-VTD]
+    nist_controls: ["CM-3(2)", SA-11]
+    artifact_refs: [aan-part-12]
+    confidence: high
+    rationale: >-
+      Part 12 integrates Grype vulnerability scanning as a blocking CI gate —
+      every pull request is scanned and merge is blocked if a new critical CVE
+      appears in the SBOM diff. CM-3(2) (automated testing of security
+      configurations) is satisfied by the automated Grype scan gate. SA-11
+      (developer security testing) is satisfied by the pre-merge SBOM/VDR
+      validation pipeline. KSI-CMT-VTD (Validating Throughout Deployment)
+      is the governing CR26 control: validation runs at every stage of the
+      deployment pipeline, not just at release.
+
+  # KSI-SCR (Supply Chain Risk) theme contributions from Part 12
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-SVC
+    cr26_controls: [KSI-SVC-VRI]
+    nist_controls: [SR-1, SR-2, SR-3, SR-5, SR-6, SR-8, SR-10, SR-11]
+    artifact_refs: [aan-part-12]
+    confidence: high
+    rationale: >-
+      Part 12 (SBOM/VDR/VEX) closes the full SR family: SR-1 (policy) via the
+      SCRM governance charter; SR-2 (plan) via the SBOM pipeline + vendor matrix;
+      SR-3 (controls/processes) via acquisition policy requiring supplier SBOMs;
+      SR-5 (acquisition tools) via Syft/Grype integration; SR-6 (supplier
+      assessments) via the vendor disclosure matrix + PSIRT subscriptions;
+      SR-8 (notification agreements) via MSRC/PSIRT/Infoblox security portal
+      registrations; SR-10 (inspection) via SLSA provenance + container signing;
+      SR-11 (authenticity) via Cosign GPG-signed SBOM manifests. KSI-SVC-VRI
+      (Validating Risk Information) is the governing CR26 control satisfied by
+      the machine-readable VDR/VEX evidence chain.
+
+  # KSI-MLA contributions from detection engineering (change-monitoring layer)
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-EVC, KSI-MLA-OSM]
+    nist_controls: ["SI-4", "SI-4(2)", "SI-4(4)", IR-4, IR-8]
+    artifact_refs: [aan-part-10, aan-part-08]
+    confidence: high
+    rationale: >-
+      Part 10 (Sentinel + Defender XDR) provides the security monitoring
+      substrate: SI-4 information system monitoring with real-time alert
+      correlation; SI-4(2) automated analysis of inbound/outbound traffic;
+      SI-4(4) network communications monitoring. Part 8 extends this to the
+      vulnerability plane via Defender VM → Sentinel alert pipeline. IR-4
+      (incident handling) and IR-8 (incident response plan) are satisfied by
+      the Sentinel SOAR playbook library. KSI-MLA-EVC (Evaluating via
+      Correlation) and KSI-MLA-OSM (Observing System Monitoring) are the
+      governing CR26 controls.

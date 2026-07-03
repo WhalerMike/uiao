@@ -124,49 +124,59 @@ mappings:
     rationale: >-
       RUD (Removing Unwanted Data) is the direct CR26 expression of DLP.
 
-  # KSI-CMT (Change Management) scaffolds — ADR-111 / FINDING-004 §4.
-  # The rule files carry `Status: scaffold`; mapping confidence is `low`
-  # until the CR26 VDR/VER evidence contract finalizes the binding.
+  # KSI-CMT (Change Management) — ADR-111 / FINDING-004 §4.
+  # VER evidence contract fulfilled by Part 12 (SBOM/VDR/VEX pipeline)
+  # bound to Conformance Adapter slot-06-security-evidence.yaml (2026-07-03).
+  # Confidence upgraded from low → high on all four rules.
   - local_rule: KSI-011
     local_title: "Change Logging and Monitoring"
     local_nist: [CM-3, AU-6]
     cr26_controls: [KSI-CMT-LMC]
-    confidence: low
+    confidence: high
     rationale: >-
-      LMC (Logging Changes) requires modifications to be logged and
-      monitored; the scaffold targets substrate change-log completeness.
-      Confidence low pending the VER evidence contract.
+      LMC (Logging Changes) requires modifications to be logged and monitored.
+      Part 12 SBOM pipeline produces structured SBOM diffs on every commit —
+      every dependency change logged with author, timestamp, and before/after
+      SHA256 hash. Diffs ingested into Sentinel (Part 10) as change events.
+      VER evidence contract satisfied by slot-06-security-evidence.yaml.
 
   - local_rule: KSI-012
     local_title: "Immutable Redeployment over Direct Modification"
     local_nist: [CM-2, SA-10]
     cr26_controls: [KSI-CMT-RMV]
-    confidence: low
+    confidence: high
     rationale: >-
-      RMV (Redeploying vs Modifying) favors version-controlled redeploy
-      over in-place mutation; the scaffold targets deployment provenance.
-      Confidence low pending the VER evidence contract.
+      RMV (Redeploying vs Modifying) favors version-controlled redeploy over
+      in-place mutation. Part 12 implements SLSA Level 2 provenance attestation:
+      every production artifact built from versioned, signed source; in-place
+      modification architecturally prevented by immutable container model.
+      VER evidence contract satisfied by slot-06-security-evidence.yaml.
 
   - local_rule: KSI-013
     local_title: "Change-Procedure Effectiveness Review"
     local_nist: [CM-3, CA-7]
     cr26_controls: [KSI-CMT-RVP]
-    confidence: low
+    confidence: high
     rationale: >-
       RVP (Reviewing Change Procedures) requires persistent review of
-      change-management effectiveness; the scaffold targets the ConMon
-      review cadence. Confidence low pending the VER evidence contract.
+      change-management effectiveness. Part 12 establishes a 90-day VEX
+      assertion review cycle with signed dated review records as the
+      change-procedure effectiveness audit. Sentinel SBOM dashboard (Part 10)
+      tracks VEX assertion age and alerts when reviews exceed the 90-day window.
+      VER evidence contract satisfied by slot-06-security-evidence.yaml.
 
   - local_rule: KSI-014
     local_title: "Automated Validation Throughout Deployment"
     local_nist: ["CM-3(2)", SA-11]
     cr26_controls: [KSI-CMT-VTD]
-    confidence: low
+    confidence: high
     rationale: >-
-      VTD (Validating Throughout Deployment) requires automated testing
-      and validation across deployment; the scaffold targets deployment-
-      validation telemetry. Confidence low pending the VER evidence
-      contract.
+      VTD (Validating Throughout Deployment) requires automated testing and
+      validation across deployment. Part 12 integrates Grype vulnerability
+      scanning as a blocking CI gate on every pull request — merge blocked
+      if a new critical CVE appears in the SBOM diff. Validation runs at
+      every stage of the deployment pipeline, not just at release.
+      VER evidence contract satisfied by slot-06-security-evidence.yaml.
 
 # ---------------------------------------------------------------------
 # Themes with no local rule coverage. Adapter does NOT emit drift for
