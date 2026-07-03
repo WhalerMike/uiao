@@ -178,6 +178,278 @@ def ksi_ar_command(
         raise typer.Exit(code=1) from exc
 
 
+@oscal_app.command("ksi-ap")
+def ksi_ap_command(
+    output: str = typer.Option(  # noqa: B008
+        "output/artifacts/ksi-ap.json",
+        "--output",
+        "-o",
+        help="Destination path for the KSI OSCAL Assessment Plan JSON.",
+    ),
+    system_name: str = typer.Option(  # noqa: B008
+        "UIAO Federal AAN Assessment System",
+        "--system-name",
+        help="Human-readable name for the assessed system.",
+    ),
+    ssp_href: str = typer.Option(  # noqa: B008
+        "",
+        "--ssp-href",
+        help="Optional href to an existing System Security Plan (OSCAL import-ssp).",
+    ),
+) -> None:
+    """Generate an OSCAL Assessment Plan document for the KSI corpus.
+
+    Reads ksi-mapping.yaml and produces an OSCAL AP describing what will be
+    assessed, how, and when for all KSI themes.  The AP UUID in the output
+    file can be passed as --ap-href to uiao oscal ksi-ar.
+
+    \\b
+    Output
+    ------
+    A single OSCAL 1.0.4 Assessment Plan JSON file at --output.
+
+    \\b
+    Examples
+    --------
+        uiao oscal ksi-ap
+
+        uiao oscal ksi-ap --output exports/oscal/ksi-ap.json
+    """
+    from uiao.oscal.ksi_ap import build_ksi_ap_summary, export_ksi_ap
+
+    try:
+        path = export_ksi_ap(
+            output_path=output,
+            system_name=system_name,
+            ssp_href=ssp_href,
+        )
+        import json
+
+        ap_doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        _console.print(f"[green]Wrote KSI Assessment Plan to {path}[/green]")
+        _console.print(build_ksi_ap_summary(ap_doc))
+    except FileNotFoundError as exc:
+        _console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        _console.print(f"[red]Validation error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
+@oscal_app.command("ksi-poam")
+def ksi_poam_command(
+    output: str = typer.Option(  # noqa: B008
+        "output/artifacts/ksi-poam.json",
+        "--output",
+        "-o",
+        help="Destination path for the KSI OSCAL POA&M JSON.",
+    ),
+    system_name: str = typer.Option(  # noqa: B008
+        "UIAO Federal AAN Assessment System",
+        "--system-name",
+        help="Human-readable name for the assessed system.",
+    ),
+    ap_href: str = typer.Option(  # noqa: B008
+        "",
+        "--ap-href",
+        help="Optional href to an existing Assessment Plan (OSCAL import-ap).",
+    ),
+    ar_href: str = typer.Option(  # noqa: B008
+        "",
+        "--ar-href",
+        help="Optional href to the Assessment Results document (back-matter reference).",
+    ),
+    ar_path: str | None = typer.Option(  # noqa: B008
+        None,
+        "--ar-path",
+        help="Path to an existing KSI AR JSON file to read gaps from. Defaults to regenerating the AR from bundled data.",
+    ),
+    slots_dir: str | None = typer.Option(  # noqa: B008
+        None,
+        "--slots-dir",
+        help="Path to the AAN slot evidence YAML directory.",
+    ),
+) -> None:
+    """Generate an OSCAL POA&M from KSI Assessment Results gap findings.
+
+    Reads the AR (either from --ar-path or regenerated from bundled data) and
+    produces an OSCAL POA&M with one item per not-satisfied or not-evaluated
+    KSI finding.  BOD 26-04 deadline (2026-12-07) is set as the milestone for
+    KSI-CMT and KSI-SCR items.
+
+    \\b
+    Output
+    ------
+    A single OSCAL 1.0.4 POA&M JSON file at --output.
+
+    \\b
+    Examples
+    --------
+        uiao oscal ksi-poam
+
+        uiao oscal ksi-poam --ar-path exports/oscal/ksi-ar.json \\
+            --output exports/oscal/ksi-poam.json
+    """
+    from uiao.oscal.ksi_poam import build_ksi_poam_summary, export_ksi_poam
+
+    try:
+        ar_doc = None
+        if ar_path:
+            import json
+
+            ar_doc = json.loads(Path(ar_path).read_text(encoding="utf-8"))
+        resolved_slots = Path(slots_dir) if slots_dir else None
+        path = export_ksi_poam(
+            output_path=output,
+            system_name=system_name,
+            ap_href=ap_href,
+            ar_href=ar_href,
+            ar_doc=ar_doc,
+            slots_dir=resolved_slots,
+        )
+        import json
+
+        poam_doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        _console.print(f"[green]Wrote KSI POA&M to {path}[/green]")
+        _console.print(build_ksi_poam_summary(poam_doc))
+    except FileNotFoundError as exc:
+        _console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        _console.print(f"[red]Validation error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
+@oscal_app.command("bundle")
+def bundle_command(
+    output_dir: str = typer.Option(  # noqa: B008
+        "output/artifacts/ksi-bundle",
+        "--output-dir",
+        "-o",
+        help="Directory to write the AP, AR, POA&M, and artifact index.",
+    ),
+    system_name: str = typer.Option(  # noqa: B008
+        "UIAO Federal AAN Assessment System",
+        "--system-name",
+        help="Human-readable name for the assessed system.",
+    ),
+    ssp_href: str = typer.Option(  # noqa: B008
+        "",
+        "--ssp-href",
+        help="Optional href to an existing System Security Plan.",
+    ),
+    slots_dir: str | None = typer.Option(  # noqa: B008
+        None,
+        "--slots-dir",
+        help="Path to the AAN slot evidence YAML directory.",
+    ),
+) -> None:
+    """Generate the full OSCAL AP+AR+POA&M bundle in one command.
+
+    Produces an OSCAL Assessment Plan, Assessment Results, and POA&M as a
+    linked package, plus an artifact-index.json manifest.  The AP href is
+    wired into the AR import-ap; the AR href is wired into the POA&M
+    back-matter.
+
+    \\b
+    Output layout
+    -------------
+    <output-dir>/
+        ksi-ap.json          — OSCAL Assessment Plan
+        ksi-ar.json          — OSCAL Assessment Results
+        ksi-poam.json        — OSCAL Plan of Action & Milestones
+        artifact-index.json  — machine-readable manifest
+
+    \\b
+    Examples
+    --------
+        uiao oscal bundle
+
+        uiao oscal bundle \\
+            --output-dir exports/oscal \\
+            --system-name "SSA GCC Moderate"
+    """
+    import hashlib
+    import json
+    from datetime import datetime, timezone
+
+    from uiao.oscal.ksi_ap import build_ksi_ap, build_ksi_ap_summary
+    from uiao.oscal.ksi_ar import build_ksi_ar, build_ksi_ar_summary
+    from uiao.oscal.ksi_poam import build_ksi_poam, build_ksi_poam_summary
+
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    now = datetime.now(timezone.utc).isoformat()
+    resolved_slots = Path(slots_dir) if slots_dir else None
+
+    # 1. Build AP.
+    _console.print("[bold]Step 1/4:[/bold] Generating Assessment Plan…")
+    ap_path = out / "ksi-ap.json"
+    ap_doc = build_ksi_ap(system_name=system_name, ssp_href=ssp_href, now=now)
+    ap_path.write_text(json.dumps(ap_doc, indent=2), encoding="utf-8")
+    ap_uuid = ap_doc["assessment-plan"]["uuid"]
+    _console.print(f"  [green]✓[/green] {ap_path}")
+    _console.print(f"  {build_ksi_ap_summary(ap_doc)}")
+
+    # 2. Build AR, linking import-ap to the AP UUID.
+    _console.print("[bold]Step 2/4:[/bold] Generating Assessment Results…")
+    ar_path = out / "ksi-ar.json"
+    ar_doc = build_ksi_ar(
+        system_name=system_name,
+        ap_href=f"#{ap_uuid}",
+        now=now,
+        slots_dir=resolved_slots,
+    )
+    ar_path.write_text(json.dumps(ar_doc, indent=2), encoding="utf-8")
+    _console.print(f"  [green]✓[/green] {ar_path}")
+    _console.print(f"  {build_ksi_ar_summary(ar_doc)}")
+
+    # 3. Build POA&M from the AR.
+    _console.print("[bold]Step 3/4:[/bold] Generating POA&M…")
+    poam_path = out / "ksi-poam.json"
+    poam_doc = build_ksi_poam(
+        ar_doc=ar_doc,
+        system_name=system_name,
+        ap_href=f"#{ap_uuid}",
+        ar_href=str(ar_path),
+        now=now,
+    )
+    poam_path.write_text(json.dumps(poam_doc, indent=2), encoding="utf-8")
+    _console.print(f"  [green]✓[/green] {poam_path}")
+    _console.print(f"  {build_ksi_poam_summary(poam_doc)}")
+
+    # 4. Write artifact index.
+    _console.print("[bold]Step 4/4:[/bold] Writing artifact index…")
+    index_path = out / "artifact-index.json"
+    artifacts = []
+    for artifact_path, doc_type in [
+        (ap_path, "assessment-plan"),
+        (ar_path, "assessment-results"),
+        (poam_path, "plan-of-action-and-milestones"),
+    ]:
+        content = artifact_path.read_bytes()
+        artifacts.append(
+            {
+                "path": str(artifact_path),
+                "type": doc_type,
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "size_bytes": len(content),
+                "generated_at": now,
+            }
+        )
+    index = {
+        "bundle_version": "0.1.0",
+        "system_name": system_name,
+        "generated_at": now,
+        "artifacts": artifacts,
+    }
+    index_path.write_text(json.dumps(index, indent=2), encoding="utf-8")
+    _console.print(f"  [green]✓[/green] {index_path}")
+
+    _console.print(f"[green bold]Bundle complete:[/green bold] {output_dir} ({len(artifacts)} artifacts)")
+
+
 @oscal_app.command("validate")
 def validate(
     path: str = typer.Argument(..., help="Path to OSCAL JSON file."),
