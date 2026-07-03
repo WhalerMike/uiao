@@ -124,6 +124,74 @@ mappings:
     rationale: >-
       RUD (Removing Unwanted Data) is the direct CR26 expression of DLP.
 
+  # KSI-PIY (Inventory) — ADR-111 / UIAO_137 §6.
+  # Scaffold rules KSI-017..021 seed KSI-PIY coverage (2026-07-03).
+  # KSI-017..019, 021: confidence high — slot-05 bindings (Parts 7, 8) already high.
+  # KSI-020 (RSD): confidence low — no slot binding yet; Part 14 PII data flow map pending.
+  - local_rule: KSI-017
+    local_title: "Endpoint Inventory Visibility"
+    local_nist: [CM-8, RA-5, "RA-5(5)"]
+    cr26_controls: [KSI-PIY-GIV]
+    confidence: high
+    rationale: >-
+      GIV (Getting Inventory Visibility) requires continuous, authoritative
+      visibility into all managed endpoint devices. Part 8 (Defender VM)
+      provides RA-5(5) authenticated scanning across all managed devices,
+      continuously populating the endpoint component inventory. Evidence
+      contract satisfied by slot-05-endpoint-evidence.yaml (confidence: high).
+
+  - local_rule: KSI-018
+    local_title: "Endpoint Entity State Resolution"
+    local_nist: [CM-7, "CM-7(1)", CM-8]
+    cr26_controls: [KSI-PIY-RES]
+    confidence: high
+    rationale: >-
+      RES (Resolving Entity State) requires on-demand determination of any
+      endpoint's current configuration and compliance posture. Part 8 (Defender
+      VM) provides continuous endpoint posture via CM-7(1) automated policy
+      enforcement — patch level, software inventory, and vulnerability state.
+      Evidence contract satisfied by slot-05-endpoint-evidence.yaml (confidence: high).
+
+  - local_rule: KSI-019
+    local_title: "Endpoint Inventory State Recording"
+    local_nist: [CM-8, RA-5, "RA-5(2)"]
+    cr26_controls: [KSI-PIY-RIS]
+    confidence: high
+    rationale: >-
+      RIS (Recording Inventory State) requires all changes to the managed
+      endpoint inventory be logged with author, timestamp, and before/after
+      state in a tamper-resistant record store. Part 8 (Defender VM) provides
+      RA-5 continuous scanning with device onboard/offboard/reconfigure change
+      tracking. Evidence contract satisfied by slot-05-endpoint-evidence.yaml
+      (confidence: high).
+
+  - local_rule: KSI-020
+    local_title: "Privileged Path Definition and Enforcement"
+    local_nist: [AC-4, SC-8, CM-7]
+    cr26_controls: [KSI-PIY-RSD]
+    confidence: low
+    rationale: >-
+      RSD (Resolving via Software-Defined paths) requires all privileged
+      access routes through defined, software-configured paths with no out-of-band
+      access. No high-confidence AAN slot binding currently exists for RSD —
+      Part 14 (PII processing) will provide the data-residency path-definition
+      evidence for PII data flows. Confidence low pending Part 14 evidence
+      contract.
+
+  - local_rule: KSI-021
+    local_title: "Privileged Access via Defined Paths"
+    local_nist: [IA-11, AC-11, AC-12, "AC-6(5)"]
+    cr26_controls: [KSI-PIY-RVD]
+    confidence: high
+    rationale: >-
+      RVD (Resolving via Defined paths) requires all privileged access to
+      route through a defined, monitored, identity-anchored path. Part 7 (PAM)
+      establishes Entra PIM just-in-time activation + PAW architecture as the
+      only authorized privileged access path. IA-11 re-authentication enforced
+      by PIM activation timeouts; AC-11/AC-12 enforced by PAW Group Policy and
+      CAE. Evidence contract satisfied by slot-05-endpoint-evidence.yaml
+      (confidence: high).
+
   # KSI-SCR (Supply Chain Risk) — ADR-111 / UIAO_137 §5.
   # Scaffold rules KSI-015..016 seed KSI-SCR coverage (2026-07-03).
   # Confidence low: evidence contract pending Part 13 PM-30 artifact binding
@@ -219,13 +287,14 @@ gaps:
   themes_with_zero_local_rules:
     # KSI-CMT removed 2026-06-18: scaffold rules KSI-011..014 now cover it.
     # KSI-SCR removed 2026-07-03: scaffold rules KSI-015..016 now cover it.
+    # KSI-PIY removed 2026-07-03: scaffold rules KSI-017..021 now cover it.
     - KSI-CED
     - KSI-INR
-    - KSI-PIY
     - KSI-RPL
   controls_with_zero_local_rules:
     # KSI-CMT-{LMC,RMV,RVP,VTD} removed 2026-06-18 — covered by KSI-011..014.
     # KSI-SCR-{MIT,MON} removed 2026-07-03 — covered by KSI-015..016.
+    # KSI-PIY-{GIV,RES,RIS,RSD,RVD} removed 2026-07-03 — covered by KSI-017..021.
     - KSI-CNA-DFP
     - KSI-CNA-EIS
     - KSI-CNA-IBP
@@ -239,11 +308,6 @@ gaps:
     - KSI-MLA-ALA
     - KSI-MLA-EVC
     - KSI-MLA-OSM
-    - KSI-PIY-GIV
-    - KSI-PIY-RES
-    - KSI-PIY-RIS
-    - KSI-PIY-RSD
-    - KSI-PIY-RVD
     - KSI-RPL-ABO
     - KSI-RPL-ARP
     - KSI-RPL-RRO
