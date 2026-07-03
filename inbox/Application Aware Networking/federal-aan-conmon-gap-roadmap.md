@@ -121,16 +121,18 @@ The AAN series generates evidence. The Conformance Adapter framework is the
 governance layer that maps evidence → control → KSI and produces the OSCAL
 AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 
-**Current state:**
-- Conformance Adapter: schema defined, 4 of 6 surface slots in progress
-- OSCAL Emitter: `Status: scaffold` — produces partial AP, no AR or POAM yet
-- Evidence-to-KSI mapping table: partially authored in `KSI-*.qmd` files
+**Current state (updated 2026-07-03):**
+- Conformance Adapter: all 6 surface slots bound to AAN evidence (slots 1–6 active)
+- OSCAL Emitter: `src/uiao/oscal/ksi_ar.py` delivers OSCAL AR with per-KSI
+  `satisfied`/`not-satisfied`/`other` verdicts; accessible via `uiao oscal ksi-ar`
+- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–014; KSI-011–014
+  confidence upgraded to `high` after Part 12 VER contract bound to slot-06
 
-**Blockers before OSCAL output is evaluable:**
-1. All 6 surface slots must have at least one bound rule per KSI they contribute to
-2. KSI-011–014 require SR artifacts (VDR/VER) before they can have bound rules
-3. The OSCAL Emitter must be extended to produce AR (Assessment Results) with
-   `satisfied`/`not-satisfied` status per KSI, not just AP (Plan)
+**Remaining blockers before fully automated OSCAL output:**
+1. KSI-011–014 `Status: scaffold` → `active` requires evaluation-engine wiring
+   (automated eval logic, not just mapping confidence — ADR-111)
+2. AP (Assessment Plan) generator not yet built; `import-ap` references `#`
+3. CR26 breadth gaps (CED/INR/RPL/SCR/PIY themes) still have zero local rules
 
 ---
 
@@ -138,16 +140,18 @@ AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 
 ### Phase 0 — Immediate (July 2026)
 - [x] Parts 1–6 delivered (34 controls)
-- [ ] Parts 7–11 delivered (est. July 2026, ~55 controls)
-- [ ] Conformance Adapter surface slots 1–4 bound to AAN evidence
+- [x] Parts 7–11 delivered (~55 controls)
+- [x] Conformance Adapter surface slots 1–4 bound to AAN evidence
 
-### Phase 1 — August 2026 (Class A / B+C opens)
-- [ ] Part 12: SR / SBOM / VDR framework
-- [ ] Conformance Adapter SR slot bound to Part 12 artifacts
-- [ ] KSI-011–014 status upgraded from scaffold to active
+### Phase 1 — Completed 2026-07-03 (ahead of Class A / B+C schedule)
+- [x] Part 12: SR / SBOM / VDR framework (Book_12 — BOD 26-04 tiers, Syft, Grype, OpenVEX)
+- [x] Conformance Adapter SR/security slots bound (slot-05 endpoint, slot-06 security)
+- [x] KSI-011–014 mapping confidence upgraded low → high (VER contract via Part 12 + slot-06)
+- [ ] KSI-011–014 Status: scaffold → active (evaluation engine wiring pending — ADR-111)
 
 ### Phase 2 — September–October 2026
-- [ ] OSCAL Emitter extended to produce AR with KSI verdicts
+- [x] OSCAL Emitter extended to produce AR with KSI verdicts
+      (`src/uiao/oscal/ksi_ar.py` + `uiao oscal ksi-ar` CLI, 22 tests — 2026-07-03)
 - [ ] Part 13: PM governance artifact templates
 - [ ] CR26 rules for SR/PM families
 
