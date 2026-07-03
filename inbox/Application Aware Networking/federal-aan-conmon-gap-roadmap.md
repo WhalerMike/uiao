@@ -5,13 +5,13 @@
 
 ## Executive Finding
 
-The Federal Application-Aware Networking (AAN) series (Parts 1–6, and Parts 7–11
-in production) provides the **evidence generation layer** for FedRAMP 20x
-continuous monitoring. It does not close every required NIST SP 800-53 control
-family. Three families are structurally absent: **PM** (Program Management),
-**PT** (Personally Identifiable Information Processing and Transparency), and
-**SR** (Supply Chain Risk Management). SR is the most urgent due to the
-BOD 26-04 VDR/VER deadline of **December 7, 2026**.
+The Federal Application-Aware Networking (AAN) series (Parts 1–13, delivered
+through July 2026) provides the **evidence generation layer** for FedRAMP 20x
+continuous monitoring. Two control families remain structurally absent:
+**PT** (Personally Identifiable Information Processing and Transparency) and
+residual **SR/PM breadth** gaps. The most urgent remaining deadline is the
+BOD 26-04 VDR/VER submission on **December 7, 2026** — SR and PM governance
+artifacts are in place; the SBOM telemetry evaluation pipeline wiring is pending.
 
 The Conformance Adapter / OSCAL Emitter framework provides the
 **evidence governance layer** — tracking which evidence closes which control,
@@ -122,17 +122,21 @@ governance layer that maps evidence → control → KSI and produces the OSCAL
 AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 
 **Current state (updated 2026-07-03):**
-- Conformance Adapter: all 6 surface slots bound to AAN evidence (slots 1–6 active)
+- Conformance Adapter: all 6 surface slots bound to AAN evidence (slots 1–6 active;
+  slot-06 now covers Parts 8, 10, 12, 13 — KSI-CMT / KSI-SCR)
 - OSCAL Emitter: `src/uiao/oscal/ksi_ar.py` delivers OSCAL AR with per-KSI
   `satisfied`/`not-satisfied`/`other` verdicts; accessible via `uiao oscal ksi-ar`
-- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–014; KSI-011–014
-  confidence upgraded to `high` after Part 12 VER contract bound to slot-06
+- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–016;
+  KSI-011–014 confidence `high` (Part 12 VER contract); KSI-015–016 confidence `low`
+  (KSI-SCR scaffolds — SBOM telemetry pipeline wiring pending)
+- Part 13 PM Governance Charter (Book_13): covers PM-1/2/5/7/9/11/14/15/30;
+  SCRM governance charter satisfies PM-30 (BOD 26-04 organizational evidence)
 
 **Remaining blockers before fully automated OSCAL output:**
-1. KSI-011–014 `Status: scaffold` → `active` requires evaluation-engine wiring
+1. KSI-011–016 `Status: scaffold` → `active` requires evaluation-engine wiring
    (automated eval logic, not just mapping confidence — ADR-111)
 2. AP (Assessment Plan) generator not yet built; `import-ap` references `#`
-3. CR26 breadth gaps (CED/INR/RPL/SCR/PIY themes) still have zero local rules
+3. CR26 breadth gaps (CED/INR/RPL/PIY themes) still have zero local rules
 
 ---
 
@@ -152,8 +156,10 @@ AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 ### Phase 2 — September–October 2026
 - [x] OSCAL Emitter extended to produce AR with KSI verdicts
       (`src/uiao/oscal/ksi_ar.py` + `uiao oscal ksi-ar` CLI, 22 tests — 2026-07-03)
-- [ ] Part 13: PM governance artifact templates
-- [ ] CR26 rules for SR/PM families
+- [x] Part 13: PM governance artifact templates (Book_13 — PM-1/2/5/7/9/11/14/15/30,
+      SCRM charter satisfying PM-30 — 2026-07-03)
+- [x] CR26 rules for SR/PM families (KSI-015 KSI-SCR-MIT + KSI-016 KSI-SCR-MON,
+      scaffold confidence:low — 2026-07-03)
 
 ### Phase 3 — November 2026 (BOD 26-04 runway)
 - [ ] Part 14: PT / PII processing templates
