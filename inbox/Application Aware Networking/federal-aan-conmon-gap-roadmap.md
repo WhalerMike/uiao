@@ -1,5 +1,5 @@
 # Federal AAN / ConMon Compliance Gap Roadmap
-**As of July 1, 2026 — Internal UIAO Working Document**
+**As of July 3, 2026 — Internal UIAO Working Document**
 
 ---
 
@@ -106,12 +106,15 @@ and any HR/workforce system.
 
 ### Priority 4: CR26 Breadth Gaps (FedRAMP 20x KSI Rules)
 
-CR26 currently has rules for 21 of 46 controls (46%). Five themes have zero
-rules: CED, INR, RPL, SCR, PIY. These map to the same PM/PT/SR gap areas.
+CR26 currently has rules for 26 of 46 controls (57%). Three themes still have
+zero rules: CED, INR, RPL. KSI-SCR and KSI-PIY are now covered by scaffold rules.
+
+- **KSI-SCR** (SCR-MIT / SCR-MON): covered by KSI-015 / KSI-016 scaffold rules (Phase 2B)
+- **KSI-PIY** (GIV / RES / RIS / RSD / RVD): covered by KSI-017..021 scaffold rules (Phase 3)
 
 **Recommended approach:**
-- CR26 rules for CED/INR/RPL/SCR/PIY should be drafted as ADR-0xx (placeholder)
-  after SR and PM artifacts are completed, so the rules reference real evidence.
+- CR26 rules for CED/INR/RPL should be drafted after authorization package
+  baseline is established, so the rules reference real evidence.
 
 ---
 
@@ -121,22 +124,28 @@ The AAN series generates evidence. The Conformance Adapter framework is the
 governance layer that maps evidence → control → KSI and produces the OSCAL
 AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 
-**Current state (updated 2026-07-03):**
+**Current state (updated 2026-07-03, Phase 3 complete):**
 - Conformance Adapter: all 6 surface slots bound to AAN evidence (slots 1–6 active;
-  slot-06 now covers Parts 8, 10, 12, 13 — KSI-CMT / KSI-SCR)
-- OSCAL Emitter: `src/uiao/oscal/ksi_ar.py` delivers OSCAL AR with per-KSI
-  `satisfied`/`not-satisfied`/`other` verdicts; accessible via `uiao oscal ksi-ar`
-- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–016;
-  KSI-011–014 confidence `high` (Part 12 VER contract); KSI-015–016 confidence `low`
-  (KSI-SCR scaffolds — SBOM telemetry pipeline wiring pending)
+  slot-05 endpoint now covers Parts 7, 8, 14 — KSI-PIY / PT;
+  slot-06 security covers Parts 8, 10, 12, 13 — KSI-CMT / KSI-SCR)
+- OSCAL Emitter: full AP+AR+POAM bundle via `uiao oscal bundle`
+  - `ksi_ar.py` — AR with per-KSI verdicts
+  - `ksi_ap.py` — Assessment Plan wired to AR via `import-ap` href
+  - `ksi_poam.py` — POA&M with BOD 26-04 milestones for KSI-CMT / KSI-SCR items
+- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–021;
+  KSI-011–014 confidence `high` (Part 12 VER contract);
+  KSI-015–016 confidence `low` (KSI-SCR scaffolds);
+  KSI-017–019, 021 confidence `high` (slot-05 Parts 7/8);
+  KSI-020 confidence `low` (KSI-PIY-RSD — Part 14 pending slot binding)
 - Part 13 PM Governance Charter (Book_13): covers PM-1/2/5/7/9/11/14/15/30;
   SCRM governance charter satisfies PM-30 (BOD 26-04 organizational evidence)
+- Part 14 PII Processing and Transparency (Book_14): covers PT-1/2/3/4/5/7;
+  PII data flow map template with DFL-001..006 scenarios; Purview Data Map integration
 
 **Remaining blockers before fully automated OSCAL output:**
-1. KSI-011–016 `Status: scaffold` → `active` requires evaluation-engine wiring
+1. KSI-011–021 `Status: scaffold` → `active` requires evaluation-engine wiring
    (automated eval logic, not just mapping confidence — ADR-111)
-2. AP (Assessment Plan) generator not yet built; `import-ap` references `#`
-3. CR26 breadth gaps (CED/INR/RPL/PIY themes) still have zero local rules
+2. CR26 breadth gaps (CED/INR/RPL themes) still have zero local rules
 
 ---
 
@@ -161,15 +170,20 @@ AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 - [x] CR26 rules for SR/PM families (KSI-015 KSI-SCR-MIT + KSI-016 KSI-SCR-MON,
       scaffold confidence:low — 2026-07-03)
 
-### Phase 3 — November 2026 (BOD 26-04 runway)
-- [ ] Part 14: PT / PII processing templates
-- [ ] First complete OSCAL AP+AR+POAM bundle generated
+### Phase 3 — Completed 2026-07-03
+- [x] Part 14: PT / PII processing templates (Book_14 — PT-1/2/3/4/5/7,
+      PII data flow map DFL-001..006, Purview Data Map integration)
+- [x] KSI-PIY scaffold rules (KSI-017..021 → KSI-PIY-GIV/RES/RIS/RSD/RVD;
+      high confidence for slot-05-backed rules, low for RSD; ADR-111)
+- [x] First complete OSCAL AP+AR+POAM bundle generated
+      (`ksi_ap.py` + `ksi_poam.py` + `uiao oscal bundle`; BOD 26-04 milestones wired)
 - [ ] Pre-submission package review against FedRAMP 20x KSI checklist
 
 ### Phase 4 — December 2026 (pre-mandatory)
 - [ ] BOD 26-04 VDR/VER submission (Dec 7)
 - [ ] Authorization package submitted (Class B+C window)
-- [ ] CR26 breadth gaps (CED/INR/RPL/SCR/PIY) filled
+- [ ] CR26 breadth gaps (CED/INR/RPL) filled
+- [ ] KSI-011..021 Status: scaffold → active (evaluation engine wiring — ADR-111)
 
 ---
 
