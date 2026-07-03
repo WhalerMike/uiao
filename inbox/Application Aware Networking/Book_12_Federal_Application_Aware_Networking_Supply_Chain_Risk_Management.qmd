@@ -1,0 +1,508 @@
+---
+title: "Book 12 — Federal Application-Aware Networking — Part 12"
+subtitle: "Supply Chain Risk Management: SBOM, VDR, and VER Framework for FedRAMP 20x and BOD 26-04"
+author: "SSA Cloud Services Team"
+date: "July 3, 2026"
+format:
+  html:
+    embed-resources: true
+    css: lz-style.css
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 6.5
+fig-align: center
+out-width: "100%"
+execute:
+  echo: false
+---
+
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+
+## What This Document Addresses
+
+Supply chain risk is the fastest-growing attack vector in the federal technology
+landscape. Executive Order 14028 (May 2021), NIST SP 800-161r1, and CISA
+Binding Operational Directive 26-04 together establish a mandatory framework:
+agencies must be able to enumerate every software component in their production
+systems, disclose vulnerability status for those components, and demonstrate
+that exploitable vulnerabilities are tracked, triaged, and remediated.
+
+The **December 7, 2026 BOD 26-04 VDR/VER deadline** is the hardest date in the
+FedRAMP 20x compliance calendar for SSA. It requires:
+
+1. A **Software Bill of Materials (SBOM)** for every system — a machine-readable
+   inventory of every software component, version, and supplier in production
+2. A **Vulnerability Disclosure Report (VDR)** — a structured enumeration of
+   known vulnerabilities in SBOM components
+3. A **Vulnerability Exploitability eXchange (VEX)** document — a machine-readable
+   assertion for each CVE: is this vulnerability exploitable in this product, in
+   this deployment context?
+
+This document establishes the technical architecture, pipeline, and governance
+process for all three. It closes eight NIST SP 800-53 Rev 5 SR family controls
+and provides the VER evidence contract required to upgrade KSI-CMT rules
+KSI-011 through KSI-014 from scaffold to evaluable status.
+
+---
+
+# The BOD 26-04 Compliance Requirement
+
+CISA Binding Operational Directive 26-04 activates the SBOM/VDR/VER requirement
+for all federal civilian executive branch (FCEB) agencies effective
+**December 7, 2026**. The directive defines three tiers:
+
+| Tier | Requirement | Deadline |
+|------|-------------|----------|
+| **Tier 1** | SBOM present for all production systems | December 7, 2026 |
+| **Tier 2** | VDR present — vulnerability disclosure for all SBOM components | December 7, 2026 |
+| **Tier 3** | VEX present — exploitability assertions for all CVEs in VDR | December 7, 2026 |
+
+: BOD 26-04 Compliance Tiers {.striped .hover}
+
+Under FedRAMP 20x Consolidated Rules, the same data serves as the machine-readable
+evidence package for KSI-SCR (Supply Chain Risk), KSI-CMT-VTD (Validation
+Throughout Deployment), and the SR control family assessment.
+
+---
+
+# Architecture: The SBOM/VDR/VEX Pipeline
+
+## Pipeline Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Source Code + Dependencies                                          │
+│  (GitHub repos, container images, IaC artifacts)                    │
+└───────────────────┬─────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  SBOM Generation (GitHub Actions CI)                                 │
+│  Tool: Syft (Anchore) — outputs CycloneDX 1.6 XML                  │
+│  Triggered: every push to main, every release tag                   │
+└───────────────────┬─────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  Vulnerability Scan (VDR Generation)                                 │
+│  Tool: Grype (Anchore) or Trivy — matches SBOM components to NVD   │
+│  Input: CycloneDX SBOM  Output: CycloneDX VDR (CVE list + scores)  │
+└───────────────────┬─────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  VEX Authoring (Exploitability Assertion)                            │
+│  Tool: OpenVEX CLI or CycloneDX VEX tooling                        │
+│  Output: VEX document asserting not_affected / affected / fixed     │
+│  per CVE per product component                                       │
+└───────────────────┬─────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  Artifact Storage (GitHub Releases + Azure Blob immutable tier)     │
+│  Retention: 7 years (NARA standard)                                  │
+│  Access: Signed URLs for CISA VEX Portal submission                  │
+└───────────────────┬─────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  CISA VEX Portal Submission + Sentinel KSI Dashboard Ingestion      │
+│  Feedback loop: new CVEs trigger Defender VM alert (Part 8 chain)   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## SBOM Generation with Syft
+
+Syft (Anchore) is the CISA-recommended SBOM generator for federal systems. It
+produces CycloneDX 1.6 XML natively, the format required by the CISA VEX Portal.
+
+### GitHub Actions Integration
+
+```yaml
+# .github/workflows/sbom.yml
+name: SBOM + VDR Generation
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOM (CycloneDX 1.6)
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-xml
+          output-file: sbom-${{ github.sha }}.xml
+
+      - name: Scan SBOM for Vulnerabilities (VDR)
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom-${{ github.sha }}.xml
+          output-format: cyclonedx-xml
+          fail-build: false
+        id: scan
+
+      - name: Upload SBOM + VDR as release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom-${{ github.sha }}.xml
+            ${{ steps.scan.outputs.sarif }}
+
+      - name: Store to Azure Blob immutable tier
+        env:
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.SBOM_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_SAS: ${{ secrets.SBOM_STORAGE_SAS }}
+        run: |
+          az storage blob upload \
+            --account-name "$AZURE_STORAGE_ACCOUNT" \
+            --sas-token "$AZURE_STORAGE_SAS" \
+            --container-name sbom-archive \
+            --name "$(date +%Y/%m/%d)/sbom-${{ github.sha }}.xml" \
+            --file sbom-${{ github.sha }}.xml \
+            --tier Archive
+```
+
+### SBOM Content Requirements (NTIA Minimum Elements)
+
+The National Telecommunications and Information Administration (NTIA) defines
+minimum SBOM elements. Syft satisfies all of them automatically:
+
+| NTIA Element | CycloneDX Field | Syft Output |
+|---|---|---|
+| Supplier name | `supplier.name` | Extracted from package metadata |
+| Component name | `component.name` | Package name |
+| Version | `component.version` | Exact version string |
+| Other unique identifiers | `component.purl` | Package URL (PURL) — unique per version |
+| Dependency relationships | `dependencies` | Full dependency graph |
+| SBOM author | `metadata.author` | Set from CI environment |
+| Timestamp | `metadata.timestamp` | UTC build timestamp |
+
+: NTIA Minimum SBOM Elements — Syft CycloneDX Coverage {.striped .hover}
+
+---
+
+# Vulnerability Disclosure Report (VDR)
+
+The VDR is a machine-readable enumeration of all CVEs affecting components in
+the SBOM. Grype (Anchore) takes the CycloneDX SBOM as input and produces a
+CycloneDX VDR with NVD-sourced CVE data.
+
+## VDR Fields
+
+```xml
+<!-- Example CycloneDX 1.6 VDR entry -->
+<vulnerability>
+  <id>CVE-2024-12345</id>
+  <source>
+    <name>NVD</name>
+    <url>https://nvd.nist.gov/vuln/detail/CVE-2024-12345</url>
+  </source>
+  <ratings>
+    <rating>
+      <score>
+        <base>9.8</base>
+        <vector>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</vector>
+      </score>
+      <severity>critical</severity>
+      <method>CVSSv31</method>
+    </rating>
+  </ratings>
+  <affects>
+    <target>
+      <ref>urn:cdx:package-purl/pkg:pypi/requests@2.28.0</ref>
+    </target>
+  </affects>
+  <analysis>
+    <state>exploitable</state>
+    <detail>Network-accessible API endpoint uses this version</detail>
+    <response>patch_available</response>
+  </analysis>
+</vulnerability>
+```
+
+## CISA KEV Integration
+
+The VDR pipeline integrates with the CISA Known Exploited Vulnerabilities (KEV)
+catalog. Any CVE in the SBOM that appears in the KEV catalog is automatically
+escalated to P0 — 14-day remediation SLA per BOD 22-01.
+
+```python
+# scripts/kev_triage.py — CI step after VDR generation
+import json, requests
+
+KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
+def triage_against_kev(vdr_path: str) -> list[dict]:
+    kev = {e["cveID"] for e in requests.get(KEV_URL).json()["vulnerabilities"]}
+    vdr = json.loads(open(vdr_path).read())
+    escalations = []
+    for vuln in vdr.get("vulnerabilities", []):
+        cve_id = vuln.get("id", "")
+        if cve_id in kev:
+            escalations.append({
+                "cve": cve_id,
+                "severity": vuln.get("ratings", [{}])[0].get("severity", "unknown"),
+                "kev_escalated": True,
+                "sla_days": 14,
+            })
+    return escalations
+```
+
+---
+
+# Vulnerability Exploitability eXchange (VEX)
+
+VEX is the assertion layer — for every CVE in the VDR, the agency asserts
+whether it is exploitable in the specific deployment context.
+
+## VEX Status Values
+
+| Status | Meaning | Example |
+|--------|---------|---------|
+| `not_affected` | Vulnerability exists in component but cannot be exploited | Library function not called; OS feature not enabled |
+| `affected` | Vulnerability is exploitable — remediation underway | Production system uses the affected code path |
+| `fixed` | Component has been patched to a non-vulnerable version | CVE remediated in current deployment |
+| `under_investigation` | Exploitability being analyzed | New CVE, analysis in progress (max 7-day window) |
+
+: VEX Status Values {.striped .hover}
+
+## VEX Document Structure (OpenVEX)
+
+```json
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://sbom.ssa.gov/vex/2026-Q3/vex-20260703.json",
+  "author": "SSA Cloud Services Team",
+  "timestamp": "2026-07-03T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "@id": "https://nvd.nist.gov/vuln/detail/CVE-2024-12345",
+        "name": "CVE-2024-12345"
+      },
+      "products": [
+        {
+          "@id": "pkg:pypi/requests@2.28.0",
+          "subcomponents": []
+        }
+      ],
+      "status": "not_affected",
+      "justification": "protected_by_mitigating_control",
+      "impact_statement": "SSA API gateway enforces input validation upstream of the affected code path. The vulnerable deserialization function is never called in production configuration.",
+      "action_statement": "No action required. Controlled via API gateway policy.",
+      "action_statement_timestamp": "2026-07-03T00:00:00Z"
+    }
+  ]
+}
+```
+
+## VEX Authoring Process
+
+VEX assertions require human judgment — automated tools can identify whether
+a code path is reachable but cannot assert deployment-context exploitability.
+The authoring process:
+
+1. **Automated**: Grype + SBOM produce the VDR (all CVEs)
+2. **Triage**: KEV check escalates P0 CVEs for immediate human review
+3. **Analysis**: Security team reviews each CVE for deployment-context exploitability
+4. **Assertion**: Security team authors VEX assertion with justification
+5. **Sign + Submit**: VEX signed with GPG key; submitted to CISA VEX Portal
+6. **Ingest**: Signed VEX stored in Azure Blob immutable tier; hash published to SBOM manifest
+
+---
+
+# Vendor Disclosure Matrix
+
+SR-6 requires documented supplier assessments. The vendor disclosure matrix
+maps each third-party component supplier to their security disclosure program
+and FedRAMP authorization status.
+
+| Supplier | Products in SBOM | FedRAMP Authorization | SBOM Program | VEX Accepted |
+|---|---|---|---|---|
+| Anchore | Syft, Grype | N/A (tooling) | Native CycloneDX | Yes |
+| Microsoft | Defender VM, Sentinel, Purview, Key Vault | Yes — GCC High | MSRC Security Update Guide | Yes (MSRC VEX) |
+| Cisco | SD-WAN (IOS XE, vManage) | Yes — GCC Moderate | Cisco PSIRT | Yes (OpenVEX) |
+| Infoblox | NIOS Grid, BloxOne DDI | Yes — FR2017257053 | Infoblox Security Portal | Yes |
+| Anchore/CISA | NVD data feed | N/A (data source) | NVD JSON feed | N/A |
+
+: Vendor Disclosure Matrix — SR-6 Evidence {.striped .hover}
+
+---
+
+# NIST SP 800-53 Rev 5 Control Closure
+
+## SR Family Controls
+
+| NIST Control | Control Title | Gap Under Current State | Closed By | Evidence |
+|---|---|---|---|---|
+| **SR-1** | Supply Chain Risk Management Policy and Procedures | No documented SCRM policy; procurement decisions lack security evaluation criteria | SCRM Policy document + SBOM pipeline governance charter | Pipeline run log; policy document in SSP |
+| **SR-2** | Supply Chain Risk Management Plan | No SCRM plan; supplier risk not assessed systematically | SBOM pipeline + vendor disclosure matrix + KEV integration | SBOM manifest; vendor matrix; KEV triage log |
+| **SR-3** | Supply Chain Controls and Processes | Software acquisition lacks SBOM requirements; no contractual SBOM delivery clause | Acquisition policy update requiring CycloneDX SBOM delivery from suppliers; SBOM ingest pipeline | Acquisition policy; SBOM pipeline job log |
+| **SR-5** | Acquisition Strategies, Tools, and Methods | No software composition analysis in procurement evaluation | SCA tooling (Syft + Grype) integrated into CI/CD before production promotion | Pipeline artifact; pre-approval gate log |
+| **SR-6** | Supplier Assessments and Reviews | No structured supplier security review; FedRAMP authorization status not tracked per supplier | Vendor disclosure matrix; annual supplier assessment schedule; MSRC/PSIRT feed subscriptions | Vendor matrix; assessment calendar; feed subscription records |
+| **SR-8** | Notification Agreements | No documented process for receiving and responding to supplier vulnerability notifications | MSRC Security Update Guide subscription; Cisco PSIRT subscription; Infoblox security portal registration | Notification feed subscriptions; incident response playbook for supplier CVEs |
+| **SR-10** | Inspection of Systems or Components | No component integrity verification at build or deployment | Syft SBOM hash verification at container pull; GPG-signed SBOM manifest; supply chain attestation in SLSA Level 2 | SLSA provenance records; container image hash verification log |
+| **SR-11** | Component Authenticity | No cryptographic verification of component authenticity; no process for detecting counterfeit components | GPG-signed SBOMs; SLSA provenance attestation; sigstore (Cosign) for container image signing | Cosign signature verification log; SLSA provenance; SBOM manifest with component hashes |
+
+: Part 12 — NIST SP 800-53 Rev 5 Control Closure: SR Family {.striped .hover}
+
+**Controls closed: 8** (SR-1, SR-2, SR-3, SR-5, SR-6, SR-8, SR-10, SR-11)
+
+## KSI-CMT Evidence Contract (KSI-011–014)
+
+The SBOM/VDR/VEX pipeline provides the VER (Vulnerability Exploitability
+Report) evidence contract required to upgrade KSI-CMT rules from scaffold
+to evaluable. The pipeline produces machine-readable artifacts that satisfy
+the KSI-CMT sub-control requirements:
+
+| KSI Rule | KSI Title | NIST Controls | Evidence from Part 12 Pipeline |
+|---|---|---|---|
+| **KSI-011** | Change Logging and Monitoring | CM-3, AU-6 | SBOM diff between releases: every dependency change is logged as a structured artifact with author, timestamp, and before/after hash. Ingested by Sentinel (Part 10) as a structured change event. |
+| **KSI-012** | Immutable Redeployment over Direct Modification | CM-2, SA-10 | SLSA provenance attestation: every production artifact is built from a versioned source, not modified in-place. The SBOM manifest + SLSA Level 2 record proves the deployed artifact matches the build artifact. |
+| **KSI-013** | Change-Procedure Effectiveness Review | CM-3, CA-7 | VEX quarterly review cycle: VEX assertions must be reviewed every 90 days or upon new CVE disclosure. Review completion is a dated, signed record — the change-procedure effectiveness evidence. |
+| **KSI-014** | Automated Validation Throughout Deployment | CM-3(2), SA-11 | Grype scan runs on every PR and blocks merge if a new critical CVE appears in the SBOM. Scan result = machine-readable validation artifact per deployment. |
+
+: KSI-CMT Evidence Contract — Part 12 Provides VER Evidence for KSI-011–014 {.striped .hover}
+
+---
+
+# SLSA Supply Chain Levels for Software Artifacts
+
+SLSA (Supply Chain Levels for Software Artifacts) is the NIST-endorsed framework
+for measuring build integrity. The pipeline targets **SLSA Level 2** for initial
+compliance, progressing to Level 3 before the authorization deadline.
+
+| SLSA Level | Requirements | SSA Implementation |
+|---|---|---|
+| **Level 1** | Provenance document exists | GitHub Actions SBOM workflow produces attestation automatically |
+| **Level 2** | Hosted build, signed provenance | GitHub Actions runs on GitHub-hosted runners; provenance signed by OIDC token |
+| **Level 3** | Hardened build, two-party review | Level 3 target — requires branch protection + required reviewers for release workflow |
+
+: SLSA Levels and SSA Implementation Path {.striped .hover}
+
+---
+
+# Continuous Monitoring Integration
+
+## Sentinel Dashboard (KSI-MLA Integration)
+
+The SBOM/VDR/VEX pipeline integrates with Microsoft Sentinel (Part 10) via a
+custom data connector that ingests:
+
+- Daily SBOM diff (new/removed/updated components)
+- VDR CVE count by severity (critical/high/medium/low)
+- VEX assertion status distribution (not_affected / affected / fixed / under_investigation)
+- KEV hit count (number of SBOM components with active KEV entries)
+- Days-since-last-VEX-review per product
+
+KQL analytic rule for KEV breach:
+
+```kql
+SBOMVulnerabilities_CL
+| where TimeGenerated > ago(1d)
+| where kev_listed_b == true
+| where vex_status_s in ("affected", "under_investigation")
+| where days_since_disclosure_d > 14
+| project CVE = cve_id_s, Component = component_name_s,
+          CVSS = cvss_score_d, KEVDate = kev_date_added_t,
+          DaysOverdue = days_since_disclosure_d - 14
+| order by DaysOverdue desc
+```
+
+## Evidence Manifest
+
+Every SBOM generation run produces a signed manifest:
+
+```json
+{
+  "manifest_version": "1.0",
+  "generated_at": "2026-07-03T00:00:00Z",
+  "commit_sha": "abc123...",
+  "sbom_hash_sha256": "e3b0c44298fc1c149...",
+  "vdr_hash_sha256": "a87ff679a2f3e71d9...",
+  "vex_hash_sha256": "1679091c5a880faf6...",
+  "component_count": 312,
+  "cve_count_critical": 0,
+  "cve_count_high": 3,
+  "kev_hits": 0,
+  "slsa_level": 2,
+  "slsa_provenance_url": "https://github.com/WhalerMike/uiao/attestations/...",
+  "storage_uri": "https://sbomarchive.blob.core.windows.net/sbom-archive/2026/07/03/sbom-abc123.xml"
+}
+```
+
+---
+
+# Implementation Checklist
+
+| Phase | Action | Owner | Target |
+|---|---|---|---|
+| **Immediate** | Install Syft and Grype in GitHub Actions CI | DevOps | Jul 2026 |
+| **Immediate** | Generate initial SBOM for all production repos | DevOps | Jul 2026 |
+| **Immediate** | Register with MSRC, Cisco PSIRT, Infoblox security portals | ISSO | Jul 2026 |
+| **Phase 1** | Author initial VEX for all critical/high CVEs | Security Team | Aug 2026 |
+| **Phase 1** | Submit SBOM + VDR to CISA VEX Portal (test submission) | ISSO | Aug 2026 |
+| **Phase 1** | Update acquisition policy to require SBOM from suppliers | Contracting | Sep 2026 |
+| **Phase 2** | Achieve SLSA Level 2 for all production release workflows | DevOps | Oct 2026 |
+| **Phase 3** | Complete VEX quarterly review cycle | Security Team | Nov 2026 |
+| **Phase 4** | Final BOD 26-04 VDR/VER submission | ISSO | Dec 7, 2026 |
+
+: Part 12 — Implementation Checklist {.striped .hover}
+
+---
+
+# Technology Stack Summary
+
+| Component | Tool | Format | Standard |
+|---|---|---|---|
+| SBOM Generation | Syft (Anchore) | CycloneDX 1.6 XML | NTIA minimum elements; CISA preferred |
+| Vulnerability Scan | Grype (Anchore) | CycloneDX VDR | NVD CVE data; CVSS 3.1 |
+| VEX Authoring | OpenVEX CLI | OpenVEX JSON | CISA VEX format; submitted via VEX Portal |
+| Container Signing | Cosign (sigstore) | OCI attestation | SLSA provenance |
+| CI Integration | GitHub Actions | YAML workflow | SLSA Level 2 build |
+| Archive Storage | Azure Blob immutable tier | Archive tier | 7-year NARA retention |
+| Monitoring | Microsoft Sentinel (Part 10) | KQL analytics | KSI-MLA evidence chain |
+| KEV Integration | CISA KEV JSON feed | JSON | BOD 22-01 14-day SLA |
+
+: Part 12 — Technology Stack {.striped .hover}
+
+---
+
+# References
+
+| Document | Relevance |
+|---|---|
+| EO 14028 — Improving the Nation's Cybersecurity (May 2021) | Mandates SBOM for software sold to the federal government |
+| NIST SP 800-161r1 — Supply Chain Risk Management | Normative reference for SR family controls |
+| CISA BOD 26-04 | VDR/VER deadline Dec 7, 2026; SBOM submission requirements |
+| CISA Minimum SBOM Elements (July 2021) | NTIA-aligned minimum content requirements |
+| CycloneDX 1.6 Specification | SBOM, VDR, and VEX document format |
+| OpenVEX v0.2.0 | VEX statement format and submission protocol |
+| SLSA v1.0 Framework | Build integrity levels and provenance requirements |
+| NIST SP 800-53 Rev 5 — SR Family | SR-1 through SR-11 control requirements |
+| FedRAMP 20x Consolidated Rules (Jun 25, 2026) | KSI-SCR and KSI-CMT requirements |
+| [Book 08 — Vulnerability Management](Book_08_Federal_Application_Aware_Networking_Vulnerability_Management.qmd) | Defender VM + KEV integration; extends to SBOM-sourced CVE triage |
+| [Book 10 — SIEM / XDR / Detection Engineering](Book_10_Federal_Application_Aware_Networking_SIEM_XDR_Detection.qmd) | Sentinel ingestion of SBOM/VDR telemetry; KQL analytic rules |
+
+: Reference Documents {.striped .hover}
