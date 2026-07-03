@@ -1,0 +1,115 @@
+# AAN Evidence Binding — Surface Slot 2: Addressing Control Plane
+#
+# Maps Federal AAN Part 1 (InfoBlox DDI / IPAM / DNS / DHCP / PKI) artifacts
+# to NIST SP 800-53 Rev 5 controls and FedRAMP 20x KSI-PIY / KSI-CNA rules.
+#
+# Slot 2 canonical definition: src/uiao/canon/data/control-planes.yml
+#   nist_rev5_control: "CM-8 / AC-4"
+#   ksi_category: "KSI-PIY"
+#   evidence_source: "IPAM Platform API - deterministic IP inventory"
+#
+# Governing roadmap: inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md
+# Phase 0 target: Conformance Adapter surface slots 1–4 bound to AAN evidence
+
+version: "0.1.0"
+status: active
+slot: addressing
+slot_id: 2
+generated_at: "2026-07-03"
+ksi_category: KSI-PIY
+nist_anchor: "CM-8 / AC-4"
+
+# -----------------------------------------------------------------------
+# AAN artifact references for this slot
+# -----------------------------------------------------------------------
+
+artifacts:
+  - id: aan-part-01
+    title: "InfoBlox DDI — IPAM / DNS / DHCP / PKI for SSA Landing Zone"
+    path: "inbox/Application Aware Networking/Book_01_Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd"
+    aan_part: 1
+    series: Federal AAN
+    controls_closed:
+      - CM-8
+      - "CM-8(1)"
+      - AC-4
+      - SC-7
+      - SC-20
+      - SC-21
+      - SC-22
+      - IA-5
+      - SC-12
+      - SC-13
+
+# -----------------------------------------------------------------------
+# Evidence bindings: KSI rule → artifact(s) that satisfy it
+# -----------------------------------------------------------------------
+
+bindings:
+
+  # KSI-PIY theme: inventory / physical-device assurance
+  # The AAN Part 1 InfoBlox IPAM provides the deterministic IP-to-device
+  # inventory that KSI-PIY requires. No local KSI-NNN rule covers this theme
+  # yet (listed in ksi-mapping.yaml gaps.themes_with_zero_local_rules).
+  # Bound at theme and control level per Phase 0 slot-activation requirement.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-PIY
+    cr26_controls: [KSI-PIY-RIS, KSI-PIY-GIV, KSI-PIY-RES]
+    nist_controls: [CM-8, "CM-8(1)"]
+    artifact_refs: [aan-part-01]
+    confidence: high
+    rationale: >-
+      Part 1 establishes InfoBlox IPAM as the single source of truth for all
+      IP address assignments across VMware VCF, Azure Government GCC, AWS
+      GovCloud, and Oracle OCI. IPAM API exports provide deterministic,
+      identity-anchored IP inventory satisfying CM-8 (component inventory) and
+      its first enhancement (updates during component installations/removals).
+      RIS (Recording Inventory State), GIV (Getting Inventory Visibility), and
+      RES (Resolving Entity State) are all satisfied by IPAM API telemetry.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-PIY
+    cr26_controls: [KSI-PIY-RVD]
+    nist_controls: [AC-4]
+    artifact_refs: [aan-part-01]
+    confidence: high
+    rationale: >-
+      Part 1 implements InfoBlox split-horizon DNS with three view configuration
+      (internal-view, cloud-internal-view, external-view), enforcing information
+      flow policy at the DNS resolution layer. This satisfies AC-4 (information
+      flow enforcement) and KSI-PIY-RVD (Resolving via Defined paths).
+
+  # KSI-CNA theme contributions (Cryptographic Network Architecture)
+  # SC-20/21/22 DNS security controls map to CNA-IBP (Identity-Based Policy)
+  # and CNA-DFP (Defined-Flow Policy) via DNSSEC and split-horizon enforcement.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-CNA
+    cr26_controls: [KSI-CNA-DFP, KSI-CNA-IBP]
+    nist_controls: [SC-7, SC-20, SC-21, SC-22]
+    artifact_refs: [aan-part-01]
+    confidence: high
+    rationale: >-
+      Part 1 documents DNSSEC configuration (SC-20: secure name/address
+      resolution), InfoBlox recursive resolver hardening (SC-21: recursive
+      name resolution), and split-horizon zone architecture (SC-22: architecture
+      and provisioning for name/address resolution). SC-7 boundary protection
+      is satisfied by RPZ (Response Policy Zones) preventing DNS exfiltration.
+      CNA-DFP (Defined-Flow Policy) and CNA-IBP (Identity-Based Policy) are
+      both addressed through identity-anchored DNS zones tied to subnet
+      ownership in IPAM.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-APM]
+    nist_controls: [IA-5, SC-12, SC-13]
+    artifact_refs: [aan-part-01]
+    confidence: high
+    rationale: >-
+      Part 1 integrates InfoBlox PKI services for wildcard certificate issuance
+      per subdomain zone (*.internal.ssa.gov, *.api.ssa.gov, etc.) satisfying
+      IA-5 (authenticator management), SC-12 (cryptographic key establishment),
+      and SC-13 (cryptographic protection). APM (passwordless/modern auth)
+      benefits from the PKI anchor for mutual TLS and certificate-based
+      authentication across the addressing plane.

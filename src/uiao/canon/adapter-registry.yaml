@@ -36,7 +36,7 @@
 
 schema-version: "1.0.0"
 registry-class: conformance
-updated: "2026-06-21"
+updated: "2026-07-03"
 
 adapters:
 
@@ -699,6 +699,113 @@ adapters:
         notice-0009-mandatory-by: "2027-04-01"
         readiness-lead-days: 90
         adr: ADR-043
+
+  # ──────────────────────────────────────────────────────────────────
+  # FedRAMP AAN Evidence Catalog — Phase 0 slot binding (2026-07-03)
+  # Binds AAN Parts 1–11 evidence artifacts to NIST SP 800-53 Rev 5
+  # controls and FedRAMP 20x KSI categories across surface slots 1–4.
+  # Roadmap: inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: fedramp-aan-catalog
+    name: FedRAMP AAN Evidence Catalog (Surface Slots 1–4)
+    class: conformance
+    mission-class: policy
+    status: active
+    phase: phase-planning
+    vendor: UIAO (native)
+    license: per-repo
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    policy-engine: none
+    scope:
+      - aan-identity-slot-1
+      - aan-addressing-slot-2
+      - aan-network-slot-3
+      - aan-telemetry-slot-4
+    outputs:
+      - aan-evidence-bindings.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: point-in-time
+    retention-years: 3
+    freshness-window-hours: 8760
+    controls:
+      - IA-2
+      - "IA-2(1)"
+      - AC-2
+      - AC-3
+      - AC-5
+      - AC-6
+      - AC-17
+      - CM-8
+      - AC-4
+      - SC-7
+      - SC-8
+      - SC-12
+      - SC-13
+      - SC-20
+      - SC-21
+      - SC-22
+      - CA-7
+      - SI-4
+      - AU-6
+      - AU-7
+      - AU-11
+      - RA-5
+      - SI-2
+      - MP-2
+      - MP-3
+      - MP-4
+      - MP-5
+      - SC-17
+      - SC-28
+    automation-domain:
+      - configuration-management
+      - event-management
+      - vulnerability-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - networks
+      - applications-and-workloads
+      - data
+    references:
+      - inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md
+      - src/uiao/canon/data/control-planes.yml
+    notes: >-
+      Phase 0 evidence binding adapter. Maps the Federal Application-Aware
+      Networking (AAN) document series (Parts 1–11) to their governing NIST
+      SP 800-53 Rev 5 controls and FedRAMP 20x KSI categories, closing the
+      "evidence exists but is not machine-readable" gap identified in the
+      ConMon roadmap (July 2026).
+
+
+      Surface slots bound (control-planes.yml IDs):
+        1  identity   Parts 3, 4, 7  KSI-IAM  (IA-2/AC-2 anchor)
+        2  addressing Part 1         KSI-PIY  (CM-8/AC-4 anchor)
+        3  network    Parts 2, 6     KSI-CNA  (SC-8/CA-7 anchor)
+        4  telemetry  Parts 8, 9, 10 KSI-MLA  (CA-7/SI-4 anchor)
+
+
+      Binding files: src/uiao/adapters/fedramp_aan_catalog/mappings/
+        slot-01-identity-evidence.yaml
+        slot-02-addressing-evidence.yaml
+        slot-03-network-evidence.yaml
+        slot-04-telemetry-evidence.yaml
+
+
+      Status advances to `active` from Phase 0 inception; KSI-011–014
+      (KSI-CMT/SR scaffold) remain blocked pending Part 12 VDR/VER
+      artifacts (BOD 26-04, Dec 7 2026). Slots 5–6 (endpoint/security)
+      are not yet bound — planned Phase 1 (Aug 2026).
+    implementation:
+      python_module: src/uiao/adapters/fedramp_aan_catalog
+
 
   # ──────────────────────────────────────────────────────────────────
   # FedRAMP CR26 catalog reconciler — allocated by ADR-061 (2026-05-10)

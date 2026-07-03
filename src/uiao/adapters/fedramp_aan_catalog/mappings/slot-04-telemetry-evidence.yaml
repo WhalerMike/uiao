@@ -1,0 +1,182 @@
+# AAN Evidence Binding — Surface Slot 4: Telemetry Control Plane
+#
+# Maps Federal AAN Parts 8, 9, and 10 artifacts to NIST SP 800-53 Rev 5
+# controls and FedRAMP 20x KSI-MLA rules.
+#
+# Slot 4 canonical definition: src/uiao/canon/data/control-planes.yml
+#   nist_rev5_control: "CA-7 / SI-4"
+#   ksi_category: "KSI-MLA"
+#   evidence_source: "SIEM correlated feeds (SD-WAN + Identity Provider)"
+#
+# Governing roadmap: inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md
+# Phase 0 target: Conformance Adapter surface slots 1–4 bound to AAN evidence
+
+version: "0.1.0"
+status: active
+slot: telemetry
+slot_id: 4
+generated_at: "2026-07-03"
+ksi_category: KSI-MLA
+nist_anchor: "CA-7 / SI-4"
+
+# -----------------------------------------------------------------------
+# AAN artifact references for this slot
+# -----------------------------------------------------------------------
+
+artifacts:
+  - id: aan-part-08
+    title: "Vulnerability Management (Defender VM + KEV)"
+    path: "inbox/Application Aware Networking/Book_08_Federal_Application_Aware_Networking_Vulnerability_Management.qmd"
+    aan_part: 8
+    series: Federal AAN
+    controls_closed:
+      - "RA-5"
+      - "RA-5(2)"
+      - "RA-5(5)"
+      - "SI-2"
+      - "SI-2(2)"
+      - SI-5
+      - CM-7
+      - "CM-7(1)"
+
+  - id: aan-part-09
+    title: "Data Protection (Purview + Key Vault CMK)"
+    path: "inbox/Application Aware Networking/Book_09_Federal_Application_Aware_Networking_Data_Protection_Purview.qmd"
+    aan_part: 9
+    series: Federal AAN
+    controls_closed:
+      - MP-2
+      - MP-3
+      - MP-4
+      - MP-5
+      - SC-12
+      - SC-13
+      - SC-17
+      - SC-28
+      - AU-10
+
+  - id: aan-part-10
+    title: "SIEM / XDR / Detection Engineering (Microsoft Sentinel)"
+    path: "inbox/Application Aware Networking/Book_10_Federal_Application_Aware_Networking_SIEM_XDR_Detection.qmd"
+    aan_part: 10
+    series: Federal AAN
+    controls_closed:
+      - "AU-6"
+      - "AU-6(1)"
+      - "AU-6(3)"
+      - AU-7
+      - AU-8
+      - AU-11
+      - "SI-4"
+      - "SI-4(2)"
+      - "SI-4(4)"
+      - "SI-4(5)"
+      - IR-4
+      - IR-6
+      - IR-8
+
+# -----------------------------------------------------------------------
+# Evidence bindings: KSI rule → artifact(s) that satisfy it
+# -----------------------------------------------------------------------
+
+bindings:
+
+  - ksi_rule: KSI-005
+    ksi_title: "Mailbox Auditing Enabled"
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-LET, KSI-MLA-RVL]
+    nist_controls: [AU-2, AU-12]
+    artifact_refs: [aan-part-10]
+    confidence: high
+    rationale: >-
+      Part 10 (Sentinel SIEM) establishes mailbox audit log ingestion into
+      Microsoft Sentinel with automated KQL analytic rules. AU-2 (audit events)
+      and AU-12 (audit record generation) are satisfied by Sentinel's unified
+      audit pipeline. MLA-LET (Logging Event Types) and MLA-RVL (Reviewing
+      Logs) are both addressed.
+
+  - ksi_rule: KSI-010
+    ksi_title: "Data Loss Prevention Enforcement"
+    cr26_ksi_theme: KSI-SVC
+    cr26_controls: [KSI-SVC-RUD]
+    nist_controls: [MP-4, SC-28]
+    artifact_refs: [aan-part-09]
+    confidence: high
+    rationale: >-
+      Part 9 (Purview) establishes DLP policies with sensitivity labels and
+      automatic classification enforcing MP-4 (media access restriction) and
+      SC-28 (protection of information at rest via CMK via Key Vault). SVC-RUD
+      (Removing Unwanted Data) is satisfied by Purview DLP policy enforcement
+      blocking unauthorized exfiltration paths.
+
+  # KSI-MLA theme: the primary theme for this slot.
+  # Parts 8–10 together provide the full telemetry evidence fabric.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-LET, KSI-MLA-RVL]
+    nist_controls: ["AU-6", "AU-6(1)", "AU-6(3)", AU-7, AU-8, AU-11, AU-10]
+    artifact_refs: [aan-part-10, aan-part-09]
+    confidence: high
+    rationale: >-
+      Part 10 (Sentinel) provides the full audit review capability: AU-6 audit
+      review via Sentinel workbooks and scheduled analytics, AU-7 audit
+      reduction/reporting via Sentinel summarization rules, AU-8 timestamp
+      protection via Sentinel's immutable log ingestion, and AU-11 audit
+      retention enforced at 7-year NARA standard via Log Analytics workspace
+      retention + archive tiers. Part 9 adds AU-10 (non-repudiation) through
+      Key Vault-backed audit signing. MLA-LET and MLA-RVL are both satisfied.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-EVC, KSI-MLA-OSM]
+    nist_controls: ["SI-4", "SI-4(2)", "SI-4(4)", "SI-4(5)", IR-4, IR-6, IR-8]
+    artifact_refs: [aan-part-10]
+    confidence: high
+    rationale: >-
+      Part 10 establishes the XDR / Detection Engineering layer: Sentinel SIEM
+      with Defender XDR integration providing SI-4 information system monitoring
+      with automated response playbooks. SI-4(2) (automated tools for real-time
+      analysis), SI-4(4) (inbound/outbound communications traffic monitoring),
+      and SI-4(5) (system-generated alerts) are all documented. IR-4 (incident
+      handling), IR-6 (incident reporting), and IR-8 (incident response plan)
+      are satisfied by the Sentinel SOAR playbook library. MLA-EVC (Evaluating
+      via Correlation) and MLA-OSM (Observing System Monitoring) are the
+      governing CR26 controls.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-ALA]
+    nist_controls: ["RA-5", "RA-5(2)", "RA-5(5)", "SI-2", "SI-2(2)", SI-5, CM-7, "CM-7(1)"]
+    artifact_refs: [aan-part-08]
+    confidence: high
+    rationale: >-
+      Part 8 (Defender Vulnerability Management + KEV) provides RA-5 continuous
+      vulnerability scanning with RA-5(2) scheduled updates and RA-5(5)
+      privileged-access authenticated scanning. SI-2 flaw remediation is driven
+      by the CISA Known Exploited Vulnerabilities (KEV) catalog integration,
+      with SI-2(2) automated flaw remediation for critical KEV entries. SI-5
+      security alerts via Defender vulnerability notifications. CM-7 and
+      CM-7(1) least functionality enforcement via software inventory and
+      prohibited software scanning. MLA-ALA (Analyzing and Acting on Alerts)
+      is the governing CR26 control, satisfied by the Defender VM → Sentinel
+      → Teams notification → ticket integration pipeline.
+
+  # KSI-SVC contributions from vulnerability and data protection planes
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-SVC
+    cr26_controls: [KSI-SVC-VCM, KSI-SVC-VRI]
+    nist_controls: [SC-12, SC-13, SC-17, SC-28, MP-2, MP-3, MP-5]
+    artifact_refs: [aan-part-09]
+    confidence: high
+    rationale: >-
+      Part 9 (Purview + Key Vault CMK) addresses cryptographic service integrity
+      via Azure Key Vault customer-managed keys for all at-rest encryption,
+      satisfying SC-12 (cryptographic key establishment), SC-13 (cryptographic
+      protection), SC-17 (PKI certificates), and SC-28 (protection of information
+      at rest). MP-2, MP-3, and MP-5 (media access, marking, and sanitization)
+      are addressed through Purview sensitivity labels and information protection
+      policies. SVC-VCM (Validating Communications) is satisfied by TLS
+      enforcement on all Purview endpoints; SVC-VRI (Validating Risk Information)
+      is satisfied by Purview Insider Risk Management integration.
