@@ -32,11 +32,11 @@ _KSI_THEMES = ["KSI-CMT", "KSI-CNA", "KSI-IAM", "KSI-MLA", "KSI-PIY", "KSI-RPL",
 
 def _load_mapping(mapping_path: Path | None = None) -> dict[str, Any]:
     if mapping_path is not None:
-        return yaml.safe_load(mapping_path.read_text(encoding="utf-8"))
+        return dict(yaml.safe_load(mapping_path.read_text(encoding="utf-8")))
     from importlib import resources
 
     candidate = resources.files(_MAPPING_PACKAGE).joinpath(_MAPPING_FILE)
-    return yaml.safe_load(Path(str(candidate)).read_text(encoding="utf-8"))
+    return dict(yaml.safe_load(Path(str(candidate)).read_text(encoding="utf-8")))
 
 
 def build_ksi_ap(
