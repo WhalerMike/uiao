@@ -1,0 +1,133 @@
+# AAN Evidence Binding — Surface Slot 5: Endpoint Control Plane
+#
+# Maps Federal AAN Parts 7 and 8 artifacts to NIST SP 800-53 Rev 5
+# controls and FedRAMP 20x KSI-PIY rules.
+#
+# Slot 5 canonical definition: src/uiao/canon/data/control-planes.yml
+#   nist_rev5_control: "CM-8 / IA-3"
+#   ksi_category: "KSI-PIY"
+#   evidence_source: "Endpoint management compliance state + Endpoint detection posture signals"
+#
+# Governing roadmap: inbox/Application Aware Networking/Book_00_Federal_Application_Aware_Networking_Executive_Summary.qmd
+# Phase 1 target: Conformance Adapter surface slots 5–6 bound to AAN evidence
+
+version: "0.1.0"
+status: active
+slot: endpoint
+slot_id: 5
+generated_at: "2026-07-03"
+ksi_category: KSI-PIY
+nist_anchor: "CM-8 / IA-3"
+
+# -----------------------------------------------------------------------
+# AAN artifact references for this slot
+# -----------------------------------------------------------------------
+
+artifacts:
+  - id: aan-part-07
+    title: "Privileged Access Management (Entra PIM + PAW)"
+    path: "inbox/Application Aware Networking/Book_07_Federal_Application_Aware_Networking_Privileged_Access_Management.qmd"
+    aan_part: 7
+    series: Federal AAN
+    controls_closed:
+      - AC-5
+      - AC-6
+      - "AC-6(1)"
+      - "AC-6(2)"
+      - "AC-6(5)"
+      - "AC-6(7)"
+      - "AC-6(9)"
+      - "AC-6(10)"
+      - AC-11
+      - AC-12
+      - IA-11
+
+  - id: aan-part-08
+    title: "Vulnerability Management (Defender VM + KEV)"
+    path: "inbox/Application Aware Networking/Book_08_Federal_Application_Aware_Networking_Vulnerability_Management.qmd"
+    aan_part: 8
+    series: Federal AAN
+    controls_closed:
+      - "RA-5"
+      - "RA-5(2)"
+      - "RA-5(5)"
+      - "SI-2"
+      - "SI-2(2)"
+      - SI-5
+      - CM-7
+      - "CM-7(1)"
+
+# -----------------------------------------------------------------------
+# Evidence bindings: KSI rule → artifact(s) that satisfy it
+# -----------------------------------------------------------------------
+
+bindings:
+
+  # KSI-PIY theme: endpoint device inventory and compliance posture.
+  # Part 7 provides privileged-access identity evidence (IA-3 device identity
+  # at the PAW level); Part 8 provides endpoint vulnerability posture (CM-7
+  # least-functionality and RA-5 continuous scanning).
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-PIY
+    cr26_controls: [KSI-PIY-RIS, KSI-PIY-GIV, KSI-PIY-RES]
+    nist_controls: [CM-7, "CM-7(1)", "RA-5", "RA-5(2)", "RA-5(5)"]
+    artifact_refs: [aan-part-08]
+    confidence: high
+    rationale: >-
+      Part 8 (Defender Vulnerability Management) provides continuous endpoint
+      inventory visibility via authenticated scanning (RA-5(5)) across all
+      managed devices. CM-7 least-functionality enforcement via software
+      inventory and prohibited-software scanning directly populates the
+      endpoint component inventory. CM-7(1) automated policy enforcement
+      closes the configuration baseline gap. RIS (Recording Inventory State),
+      GIV (Getting Inventory Visibility), and RES (Resolving Entity State)
+      are satisfied by Defender VM's continuous device posture telemetry.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-PIY
+    cr26_controls: [KSI-PIY-RVD]
+    nist_controls: [IA-11, AC-11, AC-12]
+    artifact_refs: [aan-part-07]
+    confidence: high
+    rationale: >-
+      Part 7 (PAW architecture) establishes Privileged Access Workstations as
+      the only authorized path for administrative access to production systems.
+      IA-11 (re-authentication) is enforced by Entra PIM activation timeouts
+      on PAW sessions. AC-11 (session lock) and AC-12 (session termination)
+      are enforced by PAW Group Policy and CAE (Continuous Access Evaluation).
+      KSI-PIY-RVD (Resolving via Defined paths) is satisfied because all
+      privileged access routes through a defined, monitored, identity-anchored
+      PAW path — no out-of-band access paths exist after PAW deployment.
+
+  # KSI-IAM theme contributions from privileged-access plane
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-IAM
+    cr26_controls: [KSI-IAM-ELP, KSI-IAM-JIT]
+    nist_controls: [AC-5, AC-6, "AC-6(1)", "AC-6(2)", "AC-6(5)", "AC-6(7)", "AC-6(9)", "AC-6(10)"]
+    artifact_refs: [aan-part-07]
+    confidence: high
+    rationale: >-
+      Part 7 establishes Entra PIM just-in-time role activation for all
+      privileged roles — no standing privileged access. AC-6 (least privilege)
+      is enforced through PIM time-bounded activations with justification
+      required. AC-5 (separation of duties) is enforced by PAW architecture
+      separating privileged from standard user sessions on dedicated hardware.
+      KSI-IAM-ELP (Enforcing Least Privilege) and KSI-IAM-JIT (Just-in-Time
+      access) are both directly satisfied by Entra PIM + PAW controls.
+
+  - cr26_theme_binding: true
+    cr26_ksi_theme: KSI-MLA
+    cr26_controls: [KSI-MLA-ALA]
+    nist_controls: ["RA-5", "RA-5(2)", "SI-2", "SI-2(2)", SI-5]
+    artifact_refs: [aan-part-08]
+    confidence: high
+    rationale: >-
+      Part 8 establishes the Defender VM → Sentinel → Teams notification
+      pipeline. RA-5 continuous vulnerability scanning feeds SIEM alerts;
+      SI-2 flaw remediation is tracked against CISA KEV 14-day SLAs; SI-5
+      security alerts are routed through the Sentinel SOAR playbook library.
+      KSI-MLA-ALA (Analyzing and Acting on Alerts) is satisfied by the
+      automated triage and ticket-creation pipeline from Defender VM
+      vulnerability findings.
