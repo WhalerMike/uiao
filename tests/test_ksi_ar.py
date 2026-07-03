@@ -126,17 +126,13 @@ def test_binding_index_multiple_slots_merged() -> None:
         "slot_id": 1,
         "slot": "identity",
         "artifacts": [],
-        "bindings": [
-            {"cr26_controls": ["KSI-IAM-APM"], "artifact_refs": ["aan-part-03"], "confidence": "high"}
-        ],
+        "bindings": [{"cr26_controls": ["KSI-IAM-APM"], "artifact_refs": ["aan-part-03"], "confidence": "high"}],
     }
     slot_b = {
         "slot_id": 2,
         "slot": "addressing",
         "artifacts": [],
-        "bindings": [
-            {"cr26_controls": ["KSI-IAM-APM"], "artifact_refs": ["aan-part-01"], "confidence": "medium"}
-        ],
+        "bindings": [{"cr26_controls": ["KSI-IAM-APM"], "artifact_refs": ["aan-part-01"], "confidence": "medium"}],
     }
     index = build_cr26_binding_index([slot_a, slot_b])
     entries = index.get("KSI-IAM-APM", [])
@@ -178,9 +174,7 @@ def _build_mini_ar(
             import yaml
 
             for i, slot in enumerate(slots, start=1):
-                (tmp / f"slot-{i:02d}-test.yaml").write_text(
-                    yaml.dump(slot), encoding="utf-8"
-                )
+                (tmp / f"slot-{i:02d}-test.yaml").write_text(yaml.dump(slot), encoding="utf-8")
             slots_dir = tmp
 
         # Write rule file if provided.
@@ -190,9 +184,7 @@ def _build_mini_ar(
             rules_tmp = tmp / "rules"
             rules_tmp.mkdir(exist_ok=True)
             ksi_id = rule_doc.get("KSI_ID", "KSI-999")
-            (rules_tmp / f"{ksi_id}.yaml").write_text(
-                yaml.dump(rule_doc), encoding="utf-8"
-            )
+            (rules_tmp / f"{ksi_id}.yaml").write_text(yaml.dump(rule_doc), encoding="utf-8")
             rules_dir = rules_tmp
 
         return build_ksi_ar(
@@ -389,9 +381,7 @@ def test_build_ksi_ar_with_real_bundled_data() -> None:
             id_to_state[ksi_id] = finding["target"]["status"]["state"]
 
     for ksi_id in scaffold_ids:
-        assert id_to_state.get(ksi_id) == "satisfied", (
-            f"{ksi_id} expected satisfied, got {id_to_state.get(ksi_id)}"
-        )
+        assert id_to_state.get(ksi_id) == "satisfied", f"{ksi_id} expected satisfied, got {id_to_state.get(ksi_id)}"
 
     # Summary must not raise.
     summary = build_ksi_ar_summary(ar)

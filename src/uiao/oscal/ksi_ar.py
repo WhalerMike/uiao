@@ -164,26 +164,20 @@ def _ksi_verdict(
     if not all_bindings:
         desc = (
             f"No AAN slot evidence binding found for CR26 controls {cr26_controls}. "
-            "Evidence not yet bound to this rule in any slot evidence YAML."
-            + scaffold_note
+            "Evidence not yet bound to this rule in any slot evidence YAML." + scaffold_note
         )
         return ("other", desc, [])
 
     high_bindings = [b for b in all_bindings if b.get("confidence") == "high"]
-    all_artifact_refs: list[str] = sorted(
-        {ref for b in all_bindings for ref in b.get("artifact_refs", [])}
-    )
-    high_artifact_refs: list[str] = sorted(
-        {ref for b in high_bindings for ref in b.get("artifact_refs", [])}
-    )
+    all_artifact_refs: list[str] = sorted({ref for b in all_bindings for ref in b.get("artifact_refs", [])})
+    high_artifact_refs: list[str] = sorted({ref for b in high_bindings for ref in b.get("artifact_refs", [])})
     covered_slots = sorted({b["slot_id"] for b in all_bindings})
 
     if mapping_confidence == "high" and high_bindings:
         desc = (
             f"CR26 controls {cr26_controls} are covered by AAN artifacts "
             f"{high_artifact_refs} via slot(s) {covered_slots}. "
-            f"Mapping confidence: {mapping_confidence}; slot binding confidence: high."
-            + scaffold_note
+            f"Mapping confidence: {mapping_confidence}; slot binding confidence: high." + scaffold_note
         )
         return ("satisfied", desc, high_artifact_refs)
 
@@ -191,15 +185,13 @@ def _ksi_verdict(
         desc = (
             f"Partial coverage: CR26 controls {cr26_controls} are bound with "
             f"mapping confidence {mapping_confidence}. AAN artifacts: {all_artifact_refs}; "
-            f"slot(s): {covered_slots}. High-confidence slot bindings: {len(high_bindings)}."
-            + scaffold_note
+            f"slot(s): {covered_slots}. High-confidence slot bindings: {len(high_bindings)}." + scaffold_note
         )
         return ("not-satisfied", desc, all_artifact_refs)
 
     desc = (
         f"Low-confidence mapping: CR26 controls {cr26_controls}; "
-        f"mapping confidence: {mapping_confidence}. AAN artifacts: {all_artifact_refs}."
-        + scaffold_note
+        f"mapping confidence: {mapping_confidence}. AAN artifacts: {all_artifact_refs}." + scaffold_note
     )
     return ("other", desc, all_artifact_refs)
 
@@ -418,9 +410,7 @@ def build_ksi_ar(
             not_evaluated_count += 1
 
     # Collect all CR26 control IDs for reviewed-controls.
-    all_cr26: list[str] = sorted(
-        {ctl for row in mapping_rows for ctl in (row.get("cr26_controls") or [])}
-    )
+    all_cr26: list[str] = sorted({ctl for row in mapping_rows for ctl in (row.get("cr26_controls") or [])})
     reviewed_controls: dict[str, Any] = {
         "control-selections": [
             {
@@ -485,11 +475,7 @@ def build_ksi_ar(
         },
         "import-ap": {
             "href": ap_href or "#",
-            "remarks": (
-                "Assessment Plan not yet generated. Use uiao generate-sap."
-                if not ap_href
-                else ""
-            ),
+            "remarks": ("Assessment Plan not yet generated. Use uiao generate-sap." if not ap_href else ""),
         },
         "results": [
             {

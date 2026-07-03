@@ -127,10 +127,7 @@ def ksi_ar_command(
     slots_dir: str | None = typer.Option(  # noqa: B008
         None,
         "--slots-dir",
-        help=(
-            "Path to the AAN slot evidence YAML directory. "
-            "Defaults to the bundled fedramp_aan_catalog/mappings/."
-        ),
+        help=("Path to the AAN slot evidence YAML directory. Defaults to the bundled fedramp_aan_catalog/mappings/."),
     ),
 ) -> None:
     """Generate an OSCAL Assessment Results document from KSI slot evidence.
