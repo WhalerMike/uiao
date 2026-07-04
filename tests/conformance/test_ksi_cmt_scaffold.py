@@ -1,18 +1,14 @@
-"""Conformance tests for the KSI-CMT scaffold rules (ADR-111 / FINDING-004 §4).
+"""Conformance tests for the KSI-CMT rules (ADR-111 / FINDING-004 §4).
 
-KSI-011..014 are scaffold rules that seed the CR26 KSI-CMT (Change
-Management) theme — the first non-ScubaGear theme in the local corpus.
-They are intentionally *not yet evaluable* (``Status: scaffold``); these
-tests assert the scaffolds are well-formed, map to real snapshot
-controls, and stay in lockstep with the UIAO_137 mapping companion —
-without asserting any evaluation behavior that does not exist yet.
+KSI-011..014 seed the CR26 KSI-CMT (Change Management) theme and are now
+``Status: active`` — the evaluation engine was wired in ADR-111 phase 5
+once the VER evidence contract was fulfilled by the Part 12
+(SBOM/VDR/VEX pipeline) bound to slot-06-security-evidence.yaml and
+confidence upgraded from low to high.
 
-Phase 1 update (2026-07-03): ksi-mapping.yaml confidence for all four
-KSI-CMT scaffold rules upgraded from ``low`` to ``high`` after the VER
-evidence contract was fulfilled by the Part 12 (SBOM/VDR/VEX pipeline)
-bound to Conformance Adapter slot-06-security-evidence.yaml. The rule
-files themselves retain ``Status: scaffold`` because the local evaluation
-engine logic is still pending — confidence and evaluability are orthogonal.
+These tests assert the rules are well-formed, map to real snapshot
+controls, carry concrete slot-binding Logic expressions, and stay in
+lockstep with the UIAO_137 mapping companion.
 
 Companion:
 - src/uiao/ksi/rules/KSI-011.yaml … KSI-014.yaml
@@ -37,8 +33,7 @@ from uiao.adapters.fedramp_cr26_catalog import (
     validate_mapping,
 )
 
-# The four CR26 KSI-CMT controls the scaffolds cover, and the rule that
-# claims each. This is the contract the scaffolds must satisfy.
+# The four CR26 KSI-CMT controls and the active rule that claims each.
 _SCAFFOLD_TO_CR26 = {
     "KSI-011": "KSI-CMT-LMC",
     "KSI-012": "KSI-CMT-RMV",
@@ -64,10 +59,9 @@ def _load_rule(rule_id: str) -> dict:
 def test_scaffold_file_parses_and_has_required_shape(rule_id: str) -> None:
     rule = _load_rule(rule_id)
     assert rule["KSI_ID"] == rule_id
-    assert rule["Status"] == "scaffold"
+    assert rule["Status"] == "active"
     assert rule["Theme"] == "KSI-CMT"
     assert rule["Mappings"]["CR26"] == _SCAFFOLD_TO_CR26[rule_id]
-    # Every scaffold still declares a NIST anchor and a non-empty title.
     assert rule["Mappings"]["NIST_800-53"]
     assert rule["Title"].strip()
 
@@ -142,8 +136,10 @@ def test_fabricated_cr26_id_does_not_resolve_in_snapshot() -> None:
 
 
 @pytest.mark.parametrize("rule_id", sorted(_SCAFFOLD_TO_CR26))
-def test_scaffold_logic_is_marked_pending_not_evaluable(rule_id: str) -> None:
-    # Until the CR26 VER evidence contract lands, the scaffolds must not
-    # masquerade as evaluable rules.
+def test_active_rule_logic_uses_slot_binding_expression(rule_id: str) -> None:
+    # Active rules must carry a concrete slot-binding Logic expression,
+    # not the PENDING placeholder.
     rule = _load_rule(rule_id)
-    assert "PENDING" in rule["Evaluation"]["Logic"]
+    logic = rule["Evaluation"]["Logic"]
+    assert "PENDING" not in logic
+    assert "slot_binding" in logic
