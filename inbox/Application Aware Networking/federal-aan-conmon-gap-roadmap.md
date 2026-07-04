@@ -124,28 +124,31 @@ The AAN series generates evidence. The Conformance Adapter framework is the
 governance layer that maps evidence → control → KSI and produces the OSCAL
 AP/AR/POAM artifact bundle FedRAMP 20x evaluators ingest.
 
-**Current state (updated 2026-07-03, Phase 3 complete):**
-- Conformance Adapter: all 6 surface slots bound to AAN evidence (slots 1–6 active;
-  slot-05 endpoint now covers Parts 7, 8, 14 — KSI-PIY / PT;
-  slot-06 security covers Parts 8, 10, 12, 13 — KSI-CMT / KSI-SCR)
+**Current state (updated 2026-07-04, Phase 4 in progress):**
+- Conformance Adapter: all 7 surface slots bound to AAN evidence
+  - slot-04 telemetry: Parts 8, 9, 10 — KSI-MLA / KSI-INR
+  - slot-05 endpoint: Parts 7, 8, 14 — KSI-PIY / PT
+  - slot-06 security: Parts 8, 10, 12, 13 — KSI-CMT / KSI-SCR
+  - slot-07 continuity: Part 11 (NEWLY BOUND) — KSI-RPL / KSI-INR / KSI-CED
 - OSCAL Emitter: full AP+AR+POAM bundle via `uiao oscal bundle`
+  - `ksi_ap.py` — Assessment Plan covering all 10 KSI themes (including CED/INR)
   - `ksi_ar.py` — AR with per-KSI verdicts
-  - `ksi_ap.py` — Assessment Plan wired to AR via `import-ap` href
   - `ksi_poam.py` — POA&M with BOD 26-04 milestones for KSI-CMT / KSI-SCR items
-- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–021;
+- Evidence-to-KSI mapping table: `ksi-mapping.yaml` covers KSI-001–029;
   KSI-011–014 confidence `high` (Part 12 VER contract);
   KSI-015–016 confidence `low` (KSI-SCR scaffolds);
   KSI-017–019, 021 confidence `high` (slot-05 Parts 7/8);
-  KSI-020 confidence `low` (KSI-PIY-RSD — Part 14 pending slot binding)
-- Part 13 PM Governance Charter (Book_13): covers PM-1/2/5/7/9/11/14/15/30;
-  SCRM governance charter satisfies PM-30 (BOD 26-04 organizational evidence)
-- Part 14 PII Processing and Transparency (Book_14): covers PT-1/2/3/4/5/7;
-  PII data flow map template with DFL-001..006 scenarios; Purview Data Map integration
+  KSI-020 confidence `low` (KSI-PIY-RSD — Part 14 pending slot binding);
+  KSI-022 confidence `low` (KSI-CED-RAT — AT family LMS pending);
+  KSI-023..025 confidence `high` (KSI-INR — slot-04 Parts 8/10 + slot-07 CP-4);
+  KSI-026..029 confidence `high` (KSI-RPL — slot-07 Part 11 full CP family)
+- All 8 KSI themes with local-rule coverage: CMT, CED, CNA, IAM, INR, MLA, PIY, RPL, SCR, SVC
+- Themes with zero local rules: NONE (all 10 KSI themes now covered)
 
 **Remaining blockers before fully automated OSCAL output:**
-1. KSI-011–021 `Status: scaffold` → `active` requires evaluation-engine wiring
+1. KSI-011–029 `Status: scaffold` → `active` requires evaluation-engine wiring
    (automated eval logic, not just mapping confidence — ADR-111)
-2. CR26 breadth gaps (CED/INR/RPL themes) still have zero local rules
+2. CED-RAT: AT-2/AT-3/AT-4 LMS completion evidence not yet machine-readable (confidence remains low)
 
 ---
 

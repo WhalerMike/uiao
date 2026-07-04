@@ -388,18 +388,18 @@ def test_build_ksi_ar_with_real_bundled_data() -> None:
     assert "Satisfied" in summary
 
 
-def test_build_ksi_ar_real_data_back_matter_has_six_slots() -> None:
+def test_build_ksi_ar_real_data_back_matter_has_seven_slots() -> None:
     ar = build_ksi_ar()
     resources = ar["assessment-results"]["back-matter"]["resources"]
-    # One resource per slot file (slots 1–6).
-    assert len(resources) == 6
+    # One resource per slot file (slots 1–7).
+    assert len(resources) == 7
 
 
-def test_load_slot_files_returns_six_slots() -> None:
+def test_load_slot_files_returns_seven_slots() -> None:
     slots = load_slot_files()
-    assert len(slots) == 6
+    assert len(slots) == 7
     slot_ids = sorted(s.get("slot_id") for s in slots)
-    assert slot_ids == [1, 2, 3, 4, 5, 6]
+    assert slot_ids == [1, 2, 3, 4, 5, 6, 7]
 
 
 def test_load_ksi_rules_includes_scaffold_rules() -> None:
