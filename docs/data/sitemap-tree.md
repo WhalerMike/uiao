@@ -23,6 +23,13 @@
 
 - [UIAO Academy](academy/index.html)
 
+### AAN Training Program
+
+- [AAN Training Program](academy/aan-training-program/index.html)
+- [AAN Track A — Compliance](academy/aan-training-program/compliance-track.html)
+- [AAN Track B — Implementation](academy/aan-training-program/implementation-track.html)
+- [AAN Vendor Training Catalog](academy/aan-training-program/vendor-training-catalog.html)
+
 ## Reference Architecture
 
 ### Reference Architecture — Modernization Canon
