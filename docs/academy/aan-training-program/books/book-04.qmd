@@ -1,0 +1,101 @@
+---
+title: "Book 04 — SQL Server Authentication Modernization"
+subtitle: "AAN module: replacing Kerberos/NTLM and SQL logins with Arc Managed Identity and Entra tokens"
+date: today
+date-format: "MMMM D, YYYY"
+description: "Module page for AAN Book 04: NTLM elimination, Arc Managed Identity, Entra token authentication for SQL Server, Conditional Access as the database perimeter."
+---
+
+**Source:** [Book_04 SQL Server Authentication Modernization](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_04_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd)
+· **Evidence slot:** 1 — identity (KSI-IAM, IA-2 / AC-2) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B3](../implementation-track.html#module-b3-data-platform-modernization-books-0406)
+
+## Scope
+
+The authentication layer that persists after network controls: replacing
+Kerberos/NTLM domain credentials and SQL logins across the federal SQL
+Server estate with Azure Arc Managed Identity, Entra ID token
+authentication, and Conditional Access. **NTLM elimination (BOD 25-01, OMB
+M-22-09) is the goal; Entra token authentication via Arc is the mechanism**
+— and the only credential-free option.
+
+## Learning objectives
+
+- Explain Kerberos's three requirements (reachable KDC, correct SPN, clock
+  sync), why hybrid cloud breaks them, and the resulting silent NTLM
+  fallback.
+- Articulate NTLM's compliance gaps: audit opacity, pass-the-hash,
+  Conditional Access bypass.
+- Run estate discovery across four dimensions (version/EOL, auth methods,
+  SPN registration, dependency mapping) and apply the consolidation gate.
+- Distinguish Layer 1 (SQL Engine Entra auth on SQL Server 2022 + Arc) from
+  Layer 2 (OS-level Entra login on Windows Server 2025, domain-unjoined).
+- Justify Arc Managed Identity over gMSA, vault-managed service principals,
+  and certificate-based authentication.
+- Execute the four-phase parallel-run login migration (Create → Validate →
+  Disable → Drop after 30-day observation).
+- Classify applications into the four authentication classes and transform
+  connection strings (`Integrated Security=SSPI` →
+  `Authentication=Active Directory Default`).
+
+## Key concepts
+
+- Arc system-assigned Managed Identity: certificate-backed, auto-rotated
+  every 90 days, no human-visible credential.
+- Three-phase NTLM elimination (Discovery → Remediation → Domain-wide
+  block) and the four NTLM-generating patterns (missing SPN, cross-site,
+  linked-server passthrough, non-domain host).
+- `CREATE LOGIN … FROM EXTERNAL PROVIDER`; `sa` disable-and-rename.
+- Entra dynamic groups as HR-attribute-driven SQL authorization;
+  Conditional Access as a perimeter SQL Server cannot express.
+- Application classes: Class 3 OIDC/token (preferred) → Class 2 SAML →
+  Class 1 App Proxy → Class 4 Domain Services (last resort).
+
+## Implementation sequence
+
+1. Estate discovery and consolidation gate (retain / consolidate / retire;
+   zombie detection at 90 days idle).
+2. Arc enrollment and Layer 1 Entra authentication on retained instances.
+3. NTLM elimination Phases A–C, ending in a domain-wide block after a
+   30-day zero-NTLM observation window.
+4. Four-phase login migration per instance, including `sa` handling.
+5. Application chain migration (connection strings, linked servers, ODBC).
+6. Continuous-monitoring baseline and FedRAMP 20x KSI artifacts.
+
+## Compliance hooks
+
+IA-2, IA-3, IA-5, IA-5(1), AC-2, AC-3, AC-17, AU-2, AU-12, CA-7, CM-2,
+CM-8, SC-8, SI-4. FedRAMP 20x KSIs: auth posture report, zero-NTLM count,
+Managed Identity coverage, Conditional Access compliance, `sa` status.
+BOD 25-01; OMB M-22-09.
+
+## Prerequisites
+
+Book 01 (CA decisions for TLS migration), Books 02–03 (segmentation,
+SD-WAN traffic classes). AD, SQL Server administration, and Entra ID
+fundamentals.
+
+## Labs
+
+1. Audit a lab instance with Event IDs 4624/4625 and `setspn`; classify
+   NTLM sources into the four patterns; fix a missing SPN and verify
+   Kerberos with `klist`.
+2. Full parallel-run login migration on a test instance, including
+   disable/re-enable rollback and the migration log.
+3. Configure an Entra dynamic group plus a Conditional Access MFA policy;
+   demonstrate blocked access from a non-compliant device.
+
+## Pitfalls the book calls out
+
+- Dropping a login before the 30-day observation — dependencies surface
+  against production traffic, not documentation.
+- gMSA or vault-managed service principals as "modernization" — both
+  re-anchor to AD or preserve a bootstrap credential.
+- Linked servers with `SELF` passthrough silently propagating NTLM.
+- Leaving `sa` enabled, or assigning new applications to Class 4.
+
+## Vendor training
+
+[SC-300](../vendor-training-catalog.html#microsoft),
+[DP-300](../vendor-training-catalog.html#microsoft).
+
+**Previous:** [Book 03](book-03.html) · **Next:** [Book 05 — SQL Server Implementation Guide](book-05.html)

@@ -29,6 +29,22 @@
 - [AAN Track A — Compliance](academy/aan-training-program/compliance-track.html)
 - [AAN Track B — Implementation](academy/aan-training-program/implementation-track.html)
 - [AAN Vendor Training Catalog](academy/aan-training-program/vendor-training-catalog.html)
+- **Book modules**
+  - [Book 00 — Executive Summary](academy/aan-training-program/books/book-00.html)
+  - [Book 01 — SSA Landing Zone, IPAM & FedRAMP](academy/aan-training-program/books/book-01.html)
+  - [Book 02 — Network Modernization](academy/aan-training-program/books/book-02.html)
+  - [Book 03 — Federal Telecommunications Modernization](academy/aan-training-program/books/book-03.html)
+  - [Book 04 — SQL Server Authentication Modernization](academy/aan-training-program/books/book-04.html)
+  - [Book 05 — SQL Server Implementation Guide](academy/aan-training-program/books/book-05.html)
+  - [Book 06 — Database Consolidation & Network Physics](academy/aan-training-program/books/book-06.html)
+  - [Book 07 — Privileged Access Management](academy/aan-training-program/books/book-07.html)
+  - [Book 08 — Vulnerability Management](academy/aan-training-program/books/book-08.html)
+  - [Book 09 — Data Protection (Purview)](academy/aan-training-program/books/book-09.html)
+  - [Book 10 — SIEM / XDR Detection](academy/aan-training-program/books/book-10.html)
+  - [Book 11 — Business Continuity](academy/aan-training-program/books/book-11.html)
+  - [Book 12 — Supply Chain Risk Management](academy/aan-training-program/books/book-12.html)
+  - [Book 13 — Program Management & Governance](academy/aan-training-program/books/book-13.html)
+  - [Book 14 — PII Processing & Transparency](academy/aan-training-program/books/book-14.html)
 
 ## Reference Architecture
 
