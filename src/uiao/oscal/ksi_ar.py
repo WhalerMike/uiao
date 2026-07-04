@@ -155,9 +155,7 @@ def _ksi_verdict(
     is_scaffold = rule_doc.get("Status") == "scaffold"
 
     # Common binding data used by both paths.
-    all_bindings: list[dict[str, Any]] = [
-        b for cr26 in cr26_controls for b in binding_index.get(cr26, [])
-    ]
+    all_bindings: list[dict[str, Any]] = [b for cr26 in cr26_controls for b in binding_index.get(cr26, [])]
     high_bindings = [b for b in all_bindings if b.get("confidence") == "high"]
     all_artifact_refs: list[str] = sorted({ref for b in all_bindings for ref in b.get("artifact_refs", [])})
     high_artifact_refs: list[str] = sorted({ref for b in high_bindings for ref in b.get("artifact_refs", [])})
