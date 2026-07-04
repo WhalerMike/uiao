@@ -119,6 +119,8 @@ Throughout Deployment), and the SR control family assessment.
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+![SBOM / VDR / VEX Pipeline — BOD 26-04 Compliance Stages](figs/scrm-fig-01-sbom-pipeline.png){fig-alt="Seven-stage pipeline diagram for SBOM/VDR/VEX compliance. Stage 1: Source Code Repository (GitHub with branch protection). Stage 2: GitHub Actions CI Trigger (push, PR, or weekly scheduled). Stage 3: Syft SBOM Generation (CycloneDX 1.6 XML). Stage 4: Grype VDR Scan (NVD/GHSA/KEV lookup, CVSS scores). Stage 5: VEX Authoring (OpenVEX CLI, exploitability assertions). Stage 6: Signed Artifact Store (S3 + KMS, SHA-256 integrity, immutable). Stage 7: CISA VEX Portal + Sentinel (BOD 26-04 submission, KSI evidence). Bottom shows three BOD 26-04 tiers: Tier 1 SBOM (stages 1-3), Tier 2 VDR (stages 1-4), Tier 3 VEX (stages 1-7). All required by December 7, 2026." width="100%"}
+
 ## SBOM Generation with Syft
 
 Syft (Anchore) is the CISA-recommended SBOM generator for federal systems. It
@@ -274,6 +276,8 @@ def triage_against_kev(vdr_path: str) -> list[dict]:
 
 VEX is the assertion layer — for every CVE in the VDR, the agency asserts
 whether it is exploitable in the specific deployment context.
+
+![VEX Exploitability Assessment — Decision Flow for Each CVE in VDR](figs/scrm-fig-02-vex-flow.png){fig-alt="Decision flow diagram for VEX exploitability assessment. Starting from CVE Identified in VDR Scan, first decision: Is the vulnerable component present in this build? If NO: not_affected (component absent). If YES: Is the vulnerable code path reachable at runtime? If NO: not_affected (code path not reachable, justify with call graph). If YES: affected (exploitable, create POA&M, CVSS 9+ requires 15-day remediation). Parallel check: Was a fix applied (patch/version bump)? If YES: fixed (include remediation commit SHA). If NO: under_investigation (30-day triage SLA). VEX format: CycloneDX 1.6 VEX or OpenVEX. Satisfies SR-6, SR-8, SA-11, BOD 26-04 Tier 3." width="100%"}
 
 ## VEX Status Values
 
