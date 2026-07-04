@@ -344,7 +344,7 @@ The following table maps each concept in this narrative to the federal mandate, 
 # Appendix A — Cisco Catalyst SD-WAN and Microsoft Intelligent Network Routing: Federal Implementation Reference {#appendix-cisco-inr}
 
 ::: {.callout-note}
-**What this appendix is for.** Book 02's main narrative describes SD-WAN in platform-neutral terms. This appendix addresses the specific combination that most federal Microsoft 365 agencies encounter in practice: **Cisco Catalyst SD-WAN** as the branch transport platform and **Microsoft Intelligent Network Routing (INR)** as the M365 traffic optimization layer. It covers what each does, how they interact, and what a FedRAMP-compliant implementation of the combination requires.
+**Scope: FedRAMP Moderate civilian agencies using Microsoft 365 GCC.** This appendix is scoped to **FedRAMP Moderate** — civilian federal agencies operating M365 GCC tenants. GCC High, DoD IL4/IL5, and FedRAMP High authorizations are out of scope. Book 02's main narrative describes SD-WAN in platform-neutral terms. This appendix addresses the specific combination that most FedRAMP Moderate agencies encounter: **Cisco Catalyst SD-WAN** as the branch transport platform and **Microsoft Intelligent Network Routing (INR)** as the M365 traffic optimization layer.
 :::
 
 ## A.1 — Cisco Catalyst SD-WAN: What It Is and What It Is Not
@@ -408,10 +408,10 @@ The integration is implemented through **Cisco SD-WAN Cloud OnRamp for SaaS**, a
 | Cloud OnRamp + 5G local breakout | 5G radio at branch | Good to excellent — low latency to local cell tower; ISP hand-off to Microsoft |
 | Cloud OnRamp + MPLS (non-MAPS carrier) | MPLS circuit; carrier not MAPS-enrolled | Moderate — MPLS reach may introduce geographic suboptimality |
 | Cloud OnRamp + MAPS carrier | MPLS circuit; MAPS-enrolled carrier | Excellent — private BGP hand-off to Microsoft backbone |
-| Cisco SD-WAN + Azure Virtual WAN | Azure gov or GCC High presence | Excellent — traffic on Microsoft backbone from Azure VWan hub |
+| Cisco SD-WAN + Azure Virtual WAN (commercial) | Azure commercial presence; FedRAMP Moderate | Excellent — traffic on Microsoft backbone from Azure VWan hub |
 | Cisco SD-WAN + Azure Virtual WAN + MAPS | Both Azure presence and MAPS carrier | Optimal — dual private backbone integration; maximum redundancy |
 
-: Cisco Catalyst SD-WAN + Microsoft INR Integration Paths {.striped .hover}
+: Cisco Catalyst SD-WAN + Microsoft INR Integration Paths — FedRAMP Moderate {.striped .hover}
 
 ## A.4 — FedRAMP-Specific Considerations
 
@@ -429,8 +429,8 @@ In a Cisco Catalyst SD-WAN + Microsoft INR deployment, the boundary documentatio
 | SD-WAN Manager (self-hosted GovCloud) | **Inside** | Full FedRAMP control inheritance |
 | SD-WAN Manager (Cisco cloud SaaS) | **Outside** — external service | Interconnection Security Agreement (ISA); verify Cisco SD-WAN Manager FedRAMP authorization status |
 | SD-WAN Controller (vSmart) | **Inside** | Component inventory |
-| Microsoft M365 GCC / GCC High | **Outside** — FedRAMP-authorized external service | Microsoft CSP ISA; FedRAMP package reference |
-| Azure Virtual WAN hub | **Outside** — FedRAMP-authorized external service | Azure Government FedRAMP package reference; data flow to/from |
+| Microsoft M365 GCC | **Outside** — FedRAMP-authorized external service | Microsoft CSP ISA; FedRAMP Moderate package reference (M365 GCC) |
+| Azure Virtual WAN hub (commercial) | **Outside** — FedRAMP-authorized external service | Azure FedRAMP Moderate package reference; data flow to/from |
 | MAPS carrier hand-off point | **Outside** — carrier service | Service agreement; no federal data at rest at carrier POP |
 | Cloud OnRamp probes to M365 | Telemetry only; no federal data in probe | Document as monitoring telemetry; not a data flow |
 
@@ -485,29 +485,11 @@ The following table maps the AAN evidence layer to FedRAMP 20x KSI themes for th
 **The AAN slot binding for this appendix.** The evidence contracts in the table above are satisfied by AAN slot 03 (network control plane), which binds to Book 02 (SD-WAN/SASE/UC) in the Conformance Adapter. The Cisco Catalyst SD-WAN + Microsoft INR configuration is a specific implementation of the generic SD-WAN evidence described in slot 03. No additional slot binding is required — the slot-03 controls (KSI-CNA, KSI-MLA, KSI-SVC, KSI-CMT) are already satisfied when the platform-specific configuration in this appendix is in place.
 :::
 
-## A.6 — GCC vs. GCC High: What Changes for Microsoft INR
+## A.6 — Implementation Sequence for a Greenfield FedRAMP Moderate Deployment
 
-Federal agencies operating under **GCC High** (handling CUI or DoD data) face one additional routing constraint that commercial and GCC deployments do not.
+The following sequence reflects what a Cisco Catalyst SD-WAN + Microsoft INR deployment looks like in a FedRAMP Moderate civilian environment, from authorization to production.
 
-**M365 GCC High uses dedicated Microsoft endpoints.** GCC High Microsoft 365 services are hosted on Microsoft's sovereign cloud infrastructure, with dedicated endpoints distinct from the commercial M365 service. The Microsoft-published IP/domain prefix lists for GCC High are different from the commercial lists. Cisco Catalyst SD-WAN Cloud OnRamp policies must reference the GCC High endpoint lists — not the commercial lists. Using the wrong list is the most common GCC High SD-WAN misconfiguration and results in M365 traffic not being steered as Optimize-category traffic.
-
-**INR backbone optimization is available in GCC High.** Microsoft's private backbone routing intelligence applies to GCC High traffic. The local breakout + nearest-front-door approach is equally valid and equally beneficial. The Azure Virtual WAN integration path — where Cisco Catalyst SD-WAN tunnels to Azure Government regions and then onto the Microsoft sovereign backbone — is the architecturally preferred path for GCC High agencies, as it eliminates any public internet segment after the branch WAN Edge.
-
-**Azure Virtual WAN in Azure Government.** For GCC High agencies, the Azure Virtual WAN hub should be deployed in **Azure Government** (not commercial Azure). Cisco Catalyst SD-WAN IPsec tunnels terminate at the Azure Government VWan hub; traffic then traverses Microsoft's sovereign backbone to GCC High M365 endpoints. This is the configuration that satisfies the DoD IL2/IL4 data-handling requirements for in-transit traffic and produces the cleanest FedRAMP boundary diagram.
-
-| Deployment | M365 Tenant | INR Architecture | Cisco SD-WAN Target |
-|---|---|---|---|
-| Civilian agency, general federal use | GCC | Cloud OnRamp + DIA/MAPS | Microsoft commercial front door endpoints |
-| Agency handling CUI or DoD data | GCC High | Cloud OnRamp + Azure VWan (Azure Government) | GCC High dedicated endpoints; Azure Government region |
-| DoD component | IL4/IL5 (GCC High or DoD 365) | Cloud OnRamp + Azure VWan (Azure Government DoD) | DoD-specific endpoints; Azure Government DoD region |
-
-: M365 Government Tier vs. Cisco Catalyst SD-WAN INR Architecture {.striped .hover}
-
-## A.7 — Implementation Sequence for a Greenfield FedRAMP Deployment
-
-The following sequence reflects what a Cisco Catalyst SD-WAN + Microsoft INR deployment looks like in a FedRAMP-governed environment, from authorization to production.
-
-**Step 1 — Boundary documentation.** Classify every SD-WAN component against the FedRAMP boundary table in §A.4.1. Determine whether SD-WAN Manager will be self-hosted (GovCloud) or cloud-delivered (Cisco SaaS); verify FedRAMP authorization status of the cloud-delivered option if chosen. Draft ISAs for all external service connections.
+**Step 1 — Boundary documentation.** Classify every SD-WAN component against the FedRAMP Moderate boundary table in §A.4.1. Determine whether SD-WAN Manager will be self-hosted or cloud-delivered (Cisco SaaS); verify that the cloud-delivered option holds a current FedRAMP Moderate authorization on the FedRAMP Marketplace before including it in the authorization boundary. Draft ISAs for all external service connections (Microsoft M365 GCC, Azure VWan if used).
 
 **Step 2 — Baseline template development.** Build cEdge configuration templates in SD-WAN Manager for each branch archetype (small office, large office, high-availability site). Templates should enforce: FIPS mode, no local management plane, Umbrella DNS integration, minimum cipher suite (AES-256-GCM), NTP synchronized to agency time sources, SNMP disabled in favor of streaming telemetry.
 
@@ -517,9 +499,7 @@ The following sequence reflects what a Cisco Catalyst SD-WAN + Microsoft INR dep
 
 **Step 5 — SIEM telemetry wiring.** Configure SD-WAN Manager streaming telemetry export to the agency SIEM (Sentinel or equivalent). Verify receipt of: flow event records, policy change audit log, path quality metrics, device compliance state. Confirm AU-12 evidence is being generated for every flow.
 
-**Step 6 — Azure Virtual WAN integration (if GCC High).** Deploy Azure Government Virtual WAN hub in the appropriate region. Create Cisco Catalyst SD-WAN site configurations targeting the VWan hub. Validate that M365 GCC High traffic exits via the Azure Government backbone rather than public internet.
-
-**Step 7 — FedRAMP 20x KSI evidence validation.** Using the evidence contracts in §A.5, verify that SIEM receives the required structured events for each KSI. Confirm the evidence passes the format and completeness requirements of the `uiao oscal bundle` assessment results generator.
+**Step 6 — FedRAMP 20x KSI evidence validation.** Using the evidence contracts in §A.5, verify that SIEM receives the required structured events for each KSI. Confirm the evidence passes the format and completeness requirements of the `uiao oscal bundle` assessment results generator.
 
 ::: {.callout-note}
 **This appendix does not substitute for Cisco professional services or a system integrator.** The implementation sequence above is a decision-maker-level orientation, not an engineering runbook. Every agency deployment requires site surveys, carrier qualification (MAPS enrollment), and Cisco SD-WAN Manager template development that must be executed by certified Cisco Catalyst SD-WAN engineers. What this appendix provides is the compliance framing and boundary documentation structure that should govern that engagement from the start — not the configuration commands.
