@@ -27,7 +27,18 @@ _AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
 _MAPPING_PACKAGE = "uiao.adapters.fedramp_cr26_catalog"
 _MAPPING_FILE = "mappings/ksi-mapping.yaml"
 
-_KSI_THEMES = ["KSI-CMT", "KSI-CNA", "KSI-IAM", "KSI-MLA", "KSI-PIY", "KSI-RPL", "KSI-SCR", "KSI-SVC"]
+_KSI_THEMES = [
+    "KSI-CED",
+    "KSI-CMT",
+    "KSI-CNA",
+    "KSI-IAM",
+    "KSI-INR",
+    "KSI-MLA",
+    "KSI-PIY",
+    "KSI-RPL",
+    "KSI-SCR",
+    "KSI-SVC",
+]
 
 
 def _load_mapping(mapping_path: Path | None = None) -> dict[str, Any]:
