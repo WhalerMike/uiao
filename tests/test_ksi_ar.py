@@ -368,19 +368,19 @@ def test_build_ksi_ar_with_real_bundled_data() -> None:
     assert len(findings) == len(observations)
     assert len(findings) > 0
 
-    # All KSI-CMT scaffold rules (KSI-011..014) should be satisfied
-    # (high mapping confidence + slot-06 high-confidence binding).
-    scaffold_ids = {"KSI-011", "KSI-012", "KSI-013", "KSI-014"}
+    # All KSI-CMT active rules (KSI-011..014) should be satisfied
+    # (slot-06 high-confidence binding confirmed via slot evaluator).
+    active_ids = {"KSI-011", "KSI-012", "KSI-013", "KSI-014"}
     id_to_state = {}
     for finding in findings:
         ksi_id = next(
             (p["value"] for p in finding["target"]["props"] if p["name"] == "ksi-id"),
             None,
         )
-        if ksi_id in scaffold_ids:
+        if ksi_id in active_ids:
             id_to_state[ksi_id] = finding["target"]["status"]["state"]
 
-    for ksi_id in scaffold_ids:
+    for ksi_id in active_ids:
         assert id_to_state.get(ksi_id) == "satisfied", f"{ksi_id} expected satisfied, got {id_to_state.get(ksi_id)}"
 
     # Summary must not raise.
@@ -402,8 +402,8 @@ def test_load_slot_files_returns_seven_slots() -> None:
     assert slot_ids == [1, 2, 3, 4, 5, 6, 7]
 
 
-def test_load_ksi_rules_includes_scaffold_rules() -> None:
+def test_load_ksi_rules_includes_active_cmt_rules() -> None:
     rules = load_ksi_rules()
     for ksi_id in ("KSI-011", "KSI-012", "KSI-013", "KSI-014"):
         assert ksi_id in rules, f"{ksi_id} missing from loaded rules"
-        assert rules[ksi_id]["Status"] == "scaffold"
+        assert rules[ksi_id]["Status"] == "active"

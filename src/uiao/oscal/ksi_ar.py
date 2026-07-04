@@ -1,25 +1,28 @@
 """OSCAL Assessment Results generator for FedRAMP AAN KSI slot evidence.
 
 Reads the KSI mapping (ksi-mapping.yaml) and the FedRAMP AAN conformance
-adapter slot evidence files (slot-01..06) and produces an OSCAL
+adapter slot evidence files (slot-01..07) and produces an OSCAL
 Assessment Results document with per-KSI satisfied / not-satisfied /
 other (not-evaluated) verdicts.
 
 Closes the Phase 2 gap from the Federal AAN ConMon gap roadmap:
   "OSCAL Emitter extended to produce AR with KSI verdicts"
 
-The assessment is mapping-confidence-based (not live automated evaluation):
-  - satisfied     : mapping confidence == "high" AND high-confidence AAN
-                    slot binding covers the CR26 control(s)
-  - not-satisfied : mapping confidence == "medium" OR only medium-confidence
-                    slot bindings exist
-  - other         : no AAN slot binding found for any of the CR26 controls,
-                    or mapping confidence == "low"
+Verdict logic
+-------------
+Active rules (Status: active):
+  Evaluated by ``uiao.ksi.slot_evaluator.evaluate_rule()`` against the AAN
+  slot binding index (ADR-111 evaluation engine wiring):
+  - satisfied     : every CR26 control has a high-confidence slot binding
+  - not-satisfied : slot bindings exist but no high-confidence one found
+  - other         : no slot binding for any of the CR26 controls
 
-Scaffold rules (Status: scaffold in the rule file) are handled identically
-to active rules — evaluability and mapping confidence are orthogonal per
-ADR-111 / FINDING-004 §4.  The remark on every scaffold finding records the
-pending evaluation-engine state so auditors are not misled.
+Scaffold rules (Status: scaffold):
+  Mapping-confidence-based (evidence exists but evaluation engine not yet wired
+  for this rule; the remark records the pending state so auditors are not misled):
+  - satisfied     : mapping confidence == "high" AND high-confidence AAN binding
+  - not-satisfied : mapping confidence == "medium" OR only medium-confidence bindings
+  - other         : no AAN binding found, or mapping confidence == "low"
 
 Companion files:
   src/uiao/adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml
@@ -138,28 +141,59 @@ def _ksi_verdict(
     """Return ``(state, description, artifact_refs)`` for one KSI mapping row.
 
     ``state`` is an OSCAL finding target status:
-        "satisfied"     — high-confidence mapping + high-confidence AAN binding
-        "not-satisfied" — medium confidence on either side
-        "other"         — no AAN binding found (gap) or mapping confidence low
+        "satisfied"     — slot-evidence pass (active) or high-confidence mapping + binding (scaffold)
+        "not-satisfied" — slot-evidence fail or medium-confidence mismatch
+        "other"         — no slot binding found, or mapping confidence low (scaffold)
 
     ``artifact_refs`` is the sorted deduplicated list of AAN Part IDs that
     back the verdict (empty when state is "other").
     """
+    from uiao.ksi.slot_evaluator import evaluate_rule as _eval_slot
+
     rule_id = str(row.get("local_rule", ""))
-    mapping_confidence = str(row.get("confidence", "low"))
     cr26_controls: list[str] = list(row.get("cr26_controls", []) or [])
     is_scaffold = rule_doc.get("Status") == "scaffold"
+
+    # Common binding data used by both paths.
+    all_bindings: list[dict[str, Any]] = [b for cr26 in cr26_controls for b in binding_index.get(cr26, [])]
+    high_bindings = [b for b in all_bindings if b.get("confidence") == "high"]
+    all_artifact_refs: list[str] = sorted({ref for b in all_bindings for ref in b.get("artifact_refs", [])})
+    high_artifact_refs: list[str] = sorted({ref for b in high_bindings for ref in b.get("artifact_refs", [])})
+    covered_slots = sorted({b["slot_id"] for b in all_bindings})
+
+    if not is_scaffold:
+        # Active rule: delegate to the slot evaluator (ADR-111 wiring).
+        slot_verdict = _eval_slot(rule_doc, row, binding_index)
+
+        if slot_verdict == "pass":
+            desc = (
+                f"CR26 controls {cr26_controls} evaluated via AAN slot evidence: "
+                f"artifacts {high_artifact_refs}, slot(s) {covered_slots}. "
+                "Slot-evidence verdict: pass (high-confidence binding confirmed)."
+            )
+            return ("satisfied", desc, high_artifact_refs)
+
+        if slot_verdict == "fail":
+            desc = (
+                f"CR26 controls {cr26_controls} have slot bindings "
+                f"(artifacts: {all_artifact_refs}, slot(s): {covered_slots}) "
+                "but no high-confidence binding confirmed. Slot-evidence verdict: fail."
+            )
+            return ("not-satisfied", desc, all_artifact_refs)
+
+        # inconclusive — no slot binding for any CR26 control.
+        desc = (
+            f"No AAN slot evidence binding found for CR26 controls {cr26_controls}. "
+            "Evidence not yet bound to this rule in any slot evidence YAML."
+        )
+        return ("other", desc, [])
+
+    # Scaffold rule: mapping-confidence path (evaluation engine not yet wired).
+    mapping_confidence = str(row.get("confidence", "low"))
     scaffold_note = (
         f" Rule {rule_id} carries Status: scaffold — automated evaluation engine"
         " pending; this verdict is mapping-confidence-based (ADR-111)."
-        if is_scaffold
-        else ""
     )
-
-    # Gather all slot bindings for every CR26 control claimed by this row.
-    all_bindings: list[dict[str, Any]] = []
-    for cr26_ctl in cr26_controls:
-        all_bindings.extend(binding_index.get(cr26_ctl, []))
 
     if not all_bindings:
         desc = (
@@ -167,11 +201,6 @@ def _ksi_verdict(
             "Evidence not yet bound to this rule in any slot evidence YAML." + scaffold_note
         )
         return ("other", desc, [])
-
-    high_bindings = [b for b in all_bindings if b.get("confidence") == "high"]
-    all_artifact_refs: list[str] = sorted({ref for b in all_bindings for ref in b.get("artifact_refs", [])})
-    high_artifact_refs: list[str] = sorted({ref for b in high_bindings for ref in b.get("artifact_refs", [])})
-    covered_slots = sorted({b["slot_id"] for b in all_bindings})
 
     if mapping_confidence == "high" and high_bindings:
         desc = (

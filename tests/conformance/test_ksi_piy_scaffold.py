@@ -1,18 +1,16 @@
-"""Conformance tests for the KSI-PIY scaffold rules (ADR-111 / UIAO_137 §6).
+"""Conformance tests for the KSI-PIY rules (ADR-111 / UIAO_137 §6).
 
-KSI-017 through KSI-021 seed the CR26 KSI-PIY (Inventory) theme — the last
-remaining theme with zero local-rule coverage after KSI-SCR was closed in
-Phase 2B.
+KSI-017 through KSI-021 seed the CR26 KSI-PIY (Inventory) theme. After
+ADR-111 phase 5 wiring, four are ``Status: active`` (high-confidence slot
+bindings confirmed); KSI-020 remains ``Status: scaffold`` (no slot binding
+yet; Part 14 pending).
 
 KSI-PIY coverage:
-  KSI-017 → KSI-PIY-GIV   confidence: high  (slot-05, Part 8)
-  KSI-018 → KSI-PIY-RES   confidence: high  (slot-05, Part 8)
-  KSI-019 → KSI-PIY-RIS   confidence: high  (slot-05, Part 8)
-  KSI-020 → KSI-PIY-RSD   confidence: low   (no slot binding yet; Part 14 pending)
-  KSI-021 → KSI-PIY-RVD   confidence: high  (slot-05, Part 7)
-
-All five rules carry ``Status: scaffold`` — evaluability and mapping
-confidence are orthogonal per ADR-111 / FINDING-004 §4.
+  KSI-017 → KSI-PIY-GIV   active    confidence: high  (slot-05, Part 8)
+  KSI-018 → KSI-PIY-RES   active    confidence: high  (slot-05, Part 8)
+  KSI-019 → KSI-PIY-RIS   active    confidence: high  (slot-05, Part 8)
+  KSI-020 → KSI-PIY-RSD   scaffold  confidence: low   (no slot binding yet)
+  KSI-021 → KSI-PIY-RVD   active    confidence: high  (slot-05, Part 7)
 
 Companion:
 - src/uiao/ksi/rules/KSI-017.yaml … KSI-021.yaml
@@ -37,13 +35,18 @@ from uiao.adapters.fedramp_cr26_catalog import (
     validate_mapping,
 )
 
-_SCAFFOLD_TO_CR26 = {
+_ACTIVE_TO_CR26 = {
     "KSI-017": "KSI-PIY-GIV",
     "KSI-018": "KSI-PIY-RES",
     "KSI-019": "KSI-PIY-RIS",
-    "KSI-020": "KSI-PIY-RSD",
     "KSI-021": "KSI-PIY-RVD",
 }
+
+_SCAFFOLD_TO_CR26 = {
+    "KSI-020": "KSI-PIY-RSD",
+}
+
+_ALL_RULES_TO_CR26 = {**_ACTIVE_TO_CR26, **_SCAFFOLD_TO_CR26}
 
 _HIGH_CONFIDENCE_RULES = {"KSI-017", "KSI-018", "KSI-019", "KSI-021"}
 _LOW_CONFIDENCE_RULES = {"KSI-020"}
@@ -62,6 +65,17 @@ def _load_rule(rule_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("rule_id", sorted(_ACTIVE_TO_CR26))
+def test_active_rule_file_parses_and_has_required_shape(rule_id: str) -> None:
+    rule = _load_rule(rule_id)
+    assert rule["KSI_ID"] == rule_id
+    assert rule["Status"] == "active"
+    assert rule["Theme"] == "KSI-PIY"
+    assert rule["Mappings"]["CR26"] == _ACTIVE_TO_CR26[rule_id]
+    assert rule["Mappings"]["NIST_800-53"]
+    assert rule["Title"].strip()
+
+
 @pytest.mark.parametrize("rule_id", sorted(_SCAFFOLD_TO_CR26))
 def test_scaffold_file_parses_and_has_required_shape(rule_id: str) -> None:
     rule = _load_rule(rule_id)
@@ -73,16 +87,16 @@ def test_scaffold_file_parses_and_has_required_shape(rule_id: str) -> None:
     assert rule["Title"].strip()
 
 
-def test_scaffolds_cover_exactly_the_five_ksi_piy_controls() -> None:
-    covered = {_load_rule(r)["Mappings"]["CR26"] for r in _SCAFFOLD_TO_CR26}
+def test_rules_cover_exactly_the_five_ksi_piy_controls() -> None:
+    covered = {_load_rule(r)["Mappings"]["CR26"] for r in _ALL_RULES_TO_CR26}
     assert covered == {"KSI-PIY-GIV", "KSI-PIY-RES", "KSI-PIY-RIS", "KSI-PIY-RSD", "KSI-PIY-RVD"}
 
 
-@pytest.mark.parametrize("rule_id", sorted(_SCAFFOLD_TO_CR26))
+@pytest.mark.parametrize("rule_id", sorted(_ALL_RULES_TO_CR26))
 def test_scaffold_cr26_id_resolves_in_pinned_snapshot(rule_id: str) -> None:
     catalog = load_catalog(default_snapshot_dir())
     snapshot_ids = {c["id"] for ctls in enumerate_ksi_controls(catalog).values() for c in ctls}
-    assert _SCAFFOLD_TO_CR26[rule_id] in snapshot_ids
+    assert _ALL_RULES_TO_CR26[rule_id] in snapshot_ids
 
 
 # ---------------------------------------------------------------------------
@@ -115,10 +129,10 @@ def test_low_confidence_piy_rules_in_mapping(rule_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_mapping_companion_includes_every_piy_scaffold() -> None:
+def test_mapping_companion_includes_every_piy_rule() -> None:
     mapping = load_mapping()
     rows = {row["local_rule"]: row for row in mapping["mappings"]}
-    for rule_id, cr26 in _SCAFFOLD_TO_CR26.items():
+    for rule_id, cr26 in _ALL_RULES_TO_CR26.items():
         assert rule_id in rows, f"{rule_id} missing from ksi-mapping.yaml"
         assert rows[rule_id]["cr26_controls"] == [cr26]
 
@@ -128,7 +142,7 @@ def test_ksi_piy_is_no_longer_listed_as_a_zero_coverage_gap() -> None:
     gaps = mapping.get("gaps", {})
     assert "KSI-PIY" not in gaps.get("themes_with_zero_local_rules", [])
     zero_controls = set(gaps.get("controls_with_zero_local_rules", []))
-    assert not (zero_controls & set(_SCAFFOLD_TO_CR26.values()))
+    assert not (zero_controls & set(_ALL_RULES_TO_CR26.values()))
 
 
 # ---------------------------------------------------------------------------
@@ -136,9 +150,9 @@ def test_ksi_piy_is_no_longer_listed_as_a_zero_coverage_gap() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_validate_mapping_stays_clean_with_piy_scaffold_rows() -> None:
+def test_validate_mapping_stays_clean_with_piy_rows() -> None:
     findings = validate_mapping()
-    assert findings == [], "Scaffold CR26 IDs must resolve in the snapshot; got: " + ", ".join(
+    assert findings == [], "KSI-PIY CR26 IDs must resolve in the snapshot; got: " + ", ".join(
         f.summary for f in findings
     )
 
@@ -159,6 +173,14 @@ def test_fabricated_ksi_piy_id_does_not_resolve_in_snapshot() -> None:
     catalog = load_catalog(default_snapshot_dir())
     snapshot_ids = {c["id"] for ctls in enumerate_ksi_controls(catalog).values() for c in ctls}
     assert "KSI-PIY-ZZZ" not in snapshot_ids
+
+
+@pytest.mark.parametrize("rule_id", sorted(_ACTIVE_TO_CR26))
+def test_active_rule_logic_uses_slot_binding_expression(rule_id: str) -> None:
+    rule = _load_rule(rule_id)
+    logic = rule["Evaluation"]["Logic"]
+    assert "PENDING" not in logic
+    assert "slot_binding" in logic
 
 
 @pytest.mark.parametrize("rule_id", sorted(_SCAFFOLD_TO_CR26))

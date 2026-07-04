@@ -61,7 +61,7 @@ _MINIMAL_MAPPING: dict = {
             "local_rule": "KSI-004",
             "local_title": "External Forwarding",
             "local_nist": ["SC-7"],
-            "cr26_controls": ["KSI-SVC-SNT"],
+            "cr26_controls": ["KSI-CED-RAT"],
             "confidence": "medium",
         },
     ],
@@ -107,7 +107,7 @@ def test_build_ksi_ap_reviewed_controls_match_mapping() -> None:
     included = {c["control-id"] for sel in selections for c in sel.get("include-controls", [])}
     assert "KSI-CMT-LMC" in included
     assert "KSI-SCR-MIT" in included
-    assert "KSI-SVC-SNT" in included
+    assert "KSI-CED-RAT" in included
 
 
 def test_build_ksi_ap_tasks_cover_themes() -> None:
@@ -116,7 +116,7 @@ def test_build_ksi_ap_tasks_cover_themes() -> None:
     task_themes = {p["value"] for task in ap["tasks"] for p in task.get("props", []) if p["name"] == "ksi-theme"}
     assert "KSI-CMT" in task_themes
     assert "KSI-SCR" in task_themes
-    assert "KSI-SVC" in task_themes
+    assert "KSI-CED" in task_themes
 
 
 def test_build_ksi_ap_metadata_has_oscal_version() -> None:
@@ -164,7 +164,7 @@ def test_extract_ar_gaps_returns_non_satisfied() -> None:
         now="2026-07-03T00:00:00+00:00",
     )
     gaps = _extract_ar_gaps(ar_doc)
-    # KSI-011 satisfied (high+high), KSI-015 other (low), KSI-004 not-satisfied (medium)
+    # KSI-011 satisfied (slot-06 high binding), KSI-015 other (scaffold+low), KSI-004 not-satisfied (slot-07 low binding only)
     states = {g["rule_id"]: g["state"] for g in gaps}
     assert "KSI-011" not in states, "satisfied findings must not appear as gaps"
     assert states.get("KSI-015") == "other"
