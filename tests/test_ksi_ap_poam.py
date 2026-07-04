@@ -54,13 +54,13 @@ _MINIMAL_MAPPING: dict = {
             "local_title": "Cybersecurity Training Effectiveness Review",
             "local_nist": ["AT-2", "AT-3", "AT-4"],
             "cr26_controls": ["KSI-CED-RAT"],
-            "confidence": "low",
+            "confidence": "high",
         },
         {
             "local_rule": "KSI-004",
             "local_title": "External Forwarding",
             "local_nist": ["SC-7"],
-            "cr26_controls": ["KSI-CED-RAT"],
+            "cr26_controls": ["KSI-ZZZ-ZZZ"],
             "confidence": "medium",
         },
     ],
@@ -161,11 +161,12 @@ def test_extract_ar_gaps_returns_non_satisfied() -> None:
         now="2026-07-03T00:00:00+00:00",
     )
     gaps = _extract_ar_gaps(ar_doc)
-    # KSI-011 satisfied (slot-06 high binding), KSI-022 other (scaffold+low), KSI-004 not-satisfied (slot-07 low binding only)
+    # KSI-011 satisfied (slot-06 high), KSI-022 satisfied (slot-08 high via Book_15),
+    # KSI-004 other (KSI-ZZZ-ZZZ has no slot binding → inconclusive)
     states = {g["rule_id"]: g["state"] for g in gaps}
     assert "KSI-011" not in states, "satisfied findings must not appear as gaps"
-    assert states.get("KSI-022") == "other"
-    assert states.get("KSI-004") == "not-satisfied"
+    assert "KSI-022" not in states, "KSI-022 is now satisfied via slot-08 Book_15 AT evidence"
+    assert states.get("KSI-004") == "other"
 
 
 def test_extract_ar_gaps_satisfied_excluded() -> None:
@@ -196,19 +197,19 @@ def test_build_ksi_poam_items_not_empty() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    assert len(items) >= 2, "Should have at least KSI-022 (other) and KSI-004 (not-satisfied)"
+    assert len(items) >= 1, "Should have at least KSI-004 (other, no slot binding for KSI-ZZZ-ZZZ)"
 
 
-def test_build_ksi_poam_ced_item_has_deadline() -> None:
+def test_build_ksi_poam_satisfied_ksi_not_in_poam() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    ced_items = [
-        i for i in items if any(p["name"] == "ksi-theme" and p["value"] == "KSI-CED" for p in (i.get("props") or []))
+    # KSI-022 is satisfied (slot-08 high-confidence CED-RAT binding) — must not appear in POA&M
+    satisfied_rule_ids = [
+        next((p["value"] for p in (i.get("props") or []) if p["name"] == "ksi-id"), None) for i in items
     ]
-    assert ced_items, "KSI-CED (KSI-022) must appear as a POA&M item"
-    for item in ced_items:
-        assert item["scheduled-completion"], "every CED POA&M item must have a scheduled completion date"
+    assert "KSI-022" not in satisfied_rule_ids, "KSI-022 is satisfied — must not appear in POA&M"
+    assert "KSI-011" not in satisfied_rule_ids, "KSI-011 is satisfied — must not appear in POA&M"
 
 
 def test_build_ksi_poam_item_has_milestone() -> None:

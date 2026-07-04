@@ -194,9 +194,8 @@ def test_active_rules_pass_with_real_slot_data(rule_id: str, cr26: str, slot: st
 
 
 def test_scaffold_rule_raises_with_real_slot_data() -> None:
-    # KSI-022 (KSI-CED-RAT) remains scaffold — AT-family LMS evidence not yet machine-readable.
-    rule = yaml.safe_load((_RULES_DIR / "KSI-022.yaml").read_text(encoding="utf-8"))
-    row = {"local_rule": "KSI-022", "cr26_controls": ["KSI-CED-RAT"]}
+    # KSI-022 is now active (Book_15 activated it). Use the inline _SCAFFOLD_RULE fixture
+    # to verify that the evaluator still rejects scaffold rules regardless of slot data.
     index = _build_binding_index()
     with pytest.raises(ValueError, match="scaffold"):
-        evaluate_rule(rule, row, index)
+        evaluate_rule(_SCAFFOLD_RULE, {"local_rule": "KSI-020", "cr26_controls": ["KSI-CMT-LMC"]}, index)
