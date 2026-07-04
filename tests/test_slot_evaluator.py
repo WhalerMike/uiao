@@ -171,28 +171,32 @@ def _build_binding_index() -> dict:
 
 
 @pytest.mark.parametrize(
-    "rule_id,cr26",
+    "rule_id,cr26,slot",
     [
-        ("KSI-011", "KSI-CMT-LMC"),
-        ("KSI-012", "KSI-CMT-RMV"),
-        ("KSI-013", "KSI-CMT-RVP"),
-        ("KSI-014", "KSI-CMT-VTD"),
+        ("KSI-011", "KSI-CMT-LMC", "slot-06"),
+        ("KSI-012", "KSI-CMT-RMV", "slot-06"),
+        ("KSI-013", "KSI-CMT-RVP", "slot-06"),
+        ("KSI-014", "KSI-CMT-VTD", "slot-06"),
+        ("KSI-015", "KSI-SCR-MIT", "slot-06"),
+        ("KSI-016", "KSI-SCR-MON", "slot-06"),
+        ("KSI-020", "KSI-PIY-RSD", "slot-05"),
     ],
 )
-def test_cmt_active_rules_pass_with_real_slot_data(rule_id: str, cr26: str) -> None:
+def test_active_rules_pass_with_real_slot_data(rule_id: str, cr26: str, slot: str) -> None:
     rule = yaml.safe_load((_RULES_DIR / f"{rule_id}.yaml").read_text(encoding="utf-8"))
     row = {"local_rule": rule_id, "cr26_controls": [cr26]}
     index = _build_binding_index()
     result = evaluate_rule(rule, row, index)
     assert result == "pass", (
         f"{rule_id} expected pass with real slot data; got {result!r}. "
-        f"Check slot-06-security-evidence.yaml bindings for {cr26}."
+        f"Check {slot}-*-evidence.yaml bindings for {cr26}."
     )
 
 
 def test_scaffold_rule_raises_with_real_slot_data() -> None:
-    rule = yaml.safe_load((_RULES_DIR / "KSI-020.yaml").read_text(encoding="utf-8"))
-    row = {"local_rule": "KSI-020", "cr26_controls": ["KSI-PIY-RSD"]}
+    # KSI-022 (KSI-CED-RAT) remains scaffold — AT-family LMS evidence not yet machine-readable.
+    rule = yaml.safe_load((_RULES_DIR / "KSI-022.yaml").read_text(encoding="utf-8"))
+    row = {"local_rule": "KSI-022", "cr26_controls": ["KSI-CED-RAT"]}
     index = _build_binding_index()
     with pytest.raises(ValueError, match="scaffold"):
         evaluate_rule(rule, row, index)

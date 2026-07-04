@@ -23,7 +23,6 @@ from uiao.oscal.ksi_ap import (
 )
 from uiao.oscal.ksi_ar import build_ksi_ar
 from uiao.oscal.ksi_poam import (
-    _BOD_2604_DEADLINE,
     _extract_ar_gaps,
     build_ksi_poam,
     build_ksi_poam_summary,
@@ -51,10 +50,10 @@ _MINIMAL_MAPPING: dict = {
             "confidence": "high",
         },
         {
-            "local_rule": "KSI-015",
-            "local_title": "Supply Chain Risk Mitigation",
-            "local_nist": ["SR-2"],
-            "cr26_controls": ["KSI-SCR-MIT"],
+            "local_rule": "KSI-022",
+            "local_title": "Cybersecurity Training Effectiveness Review",
+            "local_nist": ["AT-2", "AT-3", "AT-4"],
+            "cr26_controls": ["KSI-CED-RAT"],
             "confidence": "low",
         },
         {
@@ -106,7 +105,6 @@ def test_build_ksi_ap_reviewed_controls_match_mapping() -> None:
     selections = ap["reviewed-controls"]["control-selections"]
     included = {c["control-id"] for sel in selections for c in sel.get("include-controls", [])}
     assert "KSI-CMT-LMC" in included
-    assert "KSI-SCR-MIT" in included
     assert "KSI-CED-RAT" in included
 
 
@@ -115,7 +113,6 @@ def test_build_ksi_ap_tasks_cover_themes() -> None:
     ap = doc["assessment-plan"]
     task_themes = {p["value"] for task in ap["tasks"] for p in task.get("props", []) if p["name"] == "ksi-theme"}
     assert "KSI-CMT" in task_themes
-    assert "KSI-SCR" in task_themes
     assert "KSI-CED" in task_themes
 
 
@@ -164,10 +161,10 @@ def test_extract_ar_gaps_returns_non_satisfied() -> None:
         now="2026-07-03T00:00:00+00:00",
     )
     gaps = _extract_ar_gaps(ar_doc)
-    # KSI-011 satisfied (slot-06 high binding), KSI-015 other (scaffold+low), KSI-004 not-satisfied (slot-07 low binding only)
+    # KSI-011 satisfied (slot-06 high binding), KSI-022 other (scaffold+low), KSI-004 not-satisfied (slot-07 low binding only)
     states = {g["rule_id"]: g["state"] for g in gaps}
     assert "KSI-011" not in states, "satisfied findings must not appear as gaps"
-    assert states.get("KSI-015") == "other"
+    assert states.get("KSI-022") == "other"
     assert states.get("KSI-004") == "not-satisfied"
 
 
@@ -199,19 +196,19 @@ def test_build_ksi_poam_items_not_empty() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    assert len(items) >= 2, "Should have at least KSI-015 (other) and KSI-004 (not-satisfied)"
+    assert len(items) >= 2, "Should have at least KSI-022 (other) and KSI-004 (not-satisfied)"
 
 
-def test_build_ksi_poam_scr_item_has_bod_deadline() -> None:
+def test_build_ksi_poam_ced_item_has_deadline() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    scr_items = [
-        i for i in items if any(p["name"] == "ksi-theme" and p["value"] == "KSI-SCR" for p in (i.get("props") or []))
+    ced_items = [
+        i for i in items if any(p["name"] == "ksi-theme" and p["value"] == "KSI-CED" for p in (i.get("props") or []))
     ]
-    assert scr_items, "KSI-SCR (KSI-015) must appear as a POA&M item"
-    for item in scr_items:
-        assert item["scheduled-completion"] == _BOD_2604_DEADLINE
+    assert ced_items, "KSI-CED (KSI-022) must appear as a POA&M item"
+    for item in ced_items:
+        assert item["scheduled-completion"], "every CED POA&M item must have a scheduled completion date"
 
 
 def test_build_ksi_poam_item_has_milestone() -> None:
