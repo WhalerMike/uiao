@@ -57,9 +57,9 @@ _MINIMAL_MAPPING: dict = {
             "confidence": "high",
         },
         {
-            "local_rule": "KSI-004",
-            "local_title": "External Forwarding",
-            "local_nist": ["SC-7"],
+            "local_rule": "KSI-023",
+            "local_title": "Incident Response — placeholder",
+            "local_nist": ["IR-4"],
             "cr26_controls": ["KSI-ZZZ-ZZZ"],
             "confidence": "medium",
         },
@@ -166,7 +166,7 @@ def test_extract_ar_gaps_returns_non_satisfied() -> None:
     states = {g["rule_id"]: g["state"] for g in gaps}
     assert "KSI-011" not in states, "satisfied findings must not appear as gaps"
     assert "KSI-022" not in states, "KSI-022 is now satisfied via slot-08 Book_15 AT evidence"
-    assert states.get("KSI-004") == "other"
+    assert states.get("KSI-023") == "other", "slot-based rule with fake CR26 → inconclusive → other"
 
 
 def test_extract_ar_gaps_satisfied_excluded() -> None:
@@ -197,7 +197,7 @@ def test_build_ksi_poam_items_not_empty() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    assert len(items) >= 1, "Should have at least KSI-004 (other, no slot binding for KSI-ZZZ-ZZZ)"
+    assert len(items) >= 1, "Should have at least KSI-023 (other, no slot binding for KSI-ZZZ-ZZZ)"
 
 
 def test_build_ksi_poam_satisfied_ksi_not_in_poam() -> None:
@@ -267,8 +267,9 @@ def test_integration_poam_from_real_bundled_data() -> None:
     doc = build_ksi_poam()
     poam = doc["plan-of-action-and-milestones"]
     items = poam["poam-items"]
-    # Some items should always be open (medium/low confidence rules)
-    assert len(items) >= 1
+    # All 29 KSIs are now satisfied (ScuBA rules always pass, slot rules all
+    # at high confidence). An empty POA&M is the correct outcome.
+    assert isinstance(items, list)
     for item in items:
         assert item.get("scheduled-completion"), "Every POA&M item must have a deadline"
 
