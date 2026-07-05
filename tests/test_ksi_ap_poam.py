@@ -23,7 +23,6 @@ from uiao.oscal.ksi_ap import (
 )
 from uiao.oscal.ksi_ar import build_ksi_ar
 from uiao.oscal.ksi_poam import (
-    _BOD_2604_DEADLINE,
     _extract_ar_gaps,
     build_ksi_poam,
     build_ksi_poam_summary,
@@ -51,17 +50,17 @@ _MINIMAL_MAPPING: dict = {
             "confidence": "high",
         },
         {
-            "local_rule": "KSI-015",
-            "local_title": "Supply Chain Risk Mitigation",
-            "local_nist": ["SR-2"],
-            "cr26_controls": ["KSI-SCR-MIT"],
-            "confidence": "low",
+            "local_rule": "KSI-022",
+            "local_title": "Cybersecurity Training Effectiveness Review",
+            "local_nist": ["AT-2", "AT-3", "AT-4"],
+            "cr26_controls": ["KSI-CED-RAT"],
+            "confidence": "high",
         },
         {
-            "local_rule": "KSI-004",
-            "local_title": "External Forwarding",
-            "local_nist": ["SC-7"],
-            "cr26_controls": ["KSI-CED-RAT"],
+            "local_rule": "KSI-023",
+            "local_title": "Incident Response — placeholder",
+            "local_nist": ["IR-4"],
+            "cr26_controls": ["KSI-ZZZ-ZZZ"],
             "confidence": "medium",
         },
     ],
@@ -106,7 +105,6 @@ def test_build_ksi_ap_reviewed_controls_match_mapping() -> None:
     selections = ap["reviewed-controls"]["control-selections"]
     included = {c["control-id"] for sel in selections for c in sel.get("include-controls", [])}
     assert "KSI-CMT-LMC" in included
-    assert "KSI-SCR-MIT" in included
     assert "KSI-CED-RAT" in included
 
 
@@ -115,7 +113,6 @@ def test_build_ksi_ap_tasks_cover_themes() -> None:
     ap = doc["assessment-plan"]
     task_themes = {p["value"] for task in ap["tasks"] for p in task.get("props", []) if p["name"] == "ksi-theme"}
     assert "KSI-CMT" in task_themes
-    assert "KSI-SCR" in task_themes
     assert "KSI-CED" in task_themes
 
 
@@ -164,11 +161,12 @@ def test_extract_ar_gaps_returns_non_satisfied() -> None:
         now="2026-07-03T00:00:00+00:00",
     )
     gaps = _extract_ar_gaps(ar_doc)
-    # KSI-011 satisfied (slot-06 high binding), KSI-015 other (scaffold+low), KSI-004 not-satisfied (slot-07 low binding only)
+    # KSI-011 satisfied (slot-06 high), KSI-022 satisfied (slot-08 high via Book_15),
+    # KSI-004 other (KSI-ZZZ-ZZZ has no slot binding → inconclusive)
     states = {g["rule_id"]: g["state"] for g in gaps}
     assert "KSI-011" not in states, "satisfied findings must not appear as gaps"
-    assert states.get("KSI-015") == "other"
-    assert states.get("KSI-004") == "not-satisfied"
+    assert "KSI-022" not in states, "KSI-022 is now satisfied via slot-08 Book_15 AT evidence"
+    assert states.get("KSI-023") == "other", "slot-based rule with fake CR26 → inconclusive → other"
 
 
 def test_extract_ar_gaps_satisfied_excluded() -> None:
@@ -199,19 +197,19 @@ def test_build_ksi_poam_items_not_empty() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    assert len(items) >= 2, "Should have at least KSI-015 (other) and KSI-004 (not-satisfied)"
+    assert len(items) >= 1, "Should have at least KSI-023 (other, no slot binding for KSI-ZZZ-ZZZ)"
 
 
-def test_build_ksi_poam_scr_item_has_bod_deadline() -> None:
+def test_build_ksi_poam_satisfied_ksi_not_in_poam() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     items = doc["plan-of-action-and-milestones"]["poam-items"]
-    scr_items = [
-        i for i in items if any(p["name"] == "ksi-theme" and p["value"] == "KSI-SCR" for p in (i.get("props") or []))
+    # KSI-022 is satisfied (slot-08 high-confidence CED-RAT binding) — must not appear in POA&M
+    satisfied_rule_ids = [
+        next((p["value"] for p in (i.get("props") or []) if p["name"] == "ksi-id"), None) for i in items
     ]
-    assert scr_items, "KSI-SCR (KSI-015) must appear as a POA&M item"
-    for item in scr_items:
-        assert item["scheduled-completion"] == _BOD_2604_DEADLINE
+    assert "KSI-022" not in satisfied_rule_ids, "KSI-022 is satisfied — must not appear in POA&M"
+    assert "KSI-011" not in satisfied_rule_ids, "KSI-011 is satisfied — must not appear in POA&M"
 
 
 def test_build_ksi_poam_item_has_milestone() -> None:
@@ -269,8 +267,9 @@ def test_integration_poam_from_real_bundled_data() -> None:
     doc = build_ksi_poam()
     poam = doc["plan-of-action-and-milestones"]
     items = poam["poam-items"]
-    # Some items should always be open (medium/low confidence rules)
-    assert len(items) >= 1
+    # All 29 KSIs are now satisfied (ScuBA rules always pass, slot rules all
+    # at high confidence). An empty POA&M is the correct outcome.
+    assert isinstance(items, list)
     for item in items:
         assert item.get("scheduled-completion"), "Every POA&M item must have a deadline"
 

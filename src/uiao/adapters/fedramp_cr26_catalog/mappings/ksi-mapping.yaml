@@ -125,9 +125,9 @@ mappings:
       RUD (Removing Unwanted Data) is the direct CR26 expression of DLP.
 
   # KSI-PIY (Inventory) — ADR-111 / UIAO_137 §6.
-  # Scaffold rules KSI-017..021 seed KSI-PIY coverage (2026-07-03).
-  # KSI-017..019, 021: confidence high — slot-05 bindings (Parts 7, 8) already high.
-  # KSI-020 (RSD): confidence low — no slot binding yet; Part 14 PII data flow map pending.
+  # Rules KSI-017..021 cover KSI-PIY (2026-07-03); all five active (2026-07-04).
+  # KSI-017..019, 021: confidence high — slot-05 bindings (Parts 7, 8).
+  # KSI-020 (RSD): confidence high — slot-05 binding (Parts 12, 8) active (2026-07-04).
   - local_rule: KSI-017
     local_title: "Endpoint Inventory Visibility"
     local_nist: [CM-8, RA-5, "RA-5(5)"]
@@ -166,17 +166,18 @@ mappings:
       (confidence: high).
 
   - local_rule: KSI-020
-    local_title: "Privileged Path Definition and Enforcement"
-    local_nist: [AC-4, SC-8, CM-7]
+    local_title: "SDLC Security Review"
+    local_nist: [SA-11, SA-15, SA-8, SR-3]
     cr26_controls: [KSI-PIY-RSD]
-    confidence: low
+    confidence: high
     rationale: >-
-      RSD (Resolving via Software-Defined paths) requires all privileged
-      access routes through defined, software-configured paths with no out-of-band
-      access. No high-confidence AAN slot binding currently exists for RSD —
-      Part 14 (PII processing) will provide the data-residency path-definition
-      evidence for PII data flows. Confidence low pending Part 14 evidence
-      contract.
+      RSD (Reviewing Security in the SDLC) requires security and privacy built
+      into the SDLC aligned with CISA Secure By Design and persistently reviewed.
+      Part 12 SBOM/VDR/VEX satisfies SA-15 (Grype CI gate), SA-11 (automated
+      SBOM scanning), SA-8 (SLSA provenance + container signing), SR-3 (Syft at
+      build time). Part 8 (Defender VM) extends SDLC review to the endpoint
+      plane. Evidence contract satisfied by slot-05-endpoint-evidence.yaml
+      (confidence: high, Parts 12 + 8, 2026-07-04).
 
   - local_rule: KSI-021
     local_title: "Privileged Access via Defined Paths"
@@ -193,20 +194,23 @@ mappings:
       (confidence: high).
 
   # KSI-CED (Cybersecurity Education) — ADR-111 / UIAO_137 §6.
-  # Scaffold rule KSI-022 seeds KSI-CED coverage (2026-07-04).
-  # Confidence low: AT-2/AT-3/AT-4 LMS evidence not yet machine-readable.
+  # Active rule KSI-022 activates KSI-CED-RAT coverage (2026-07-04).
+  # Confidence high: Book_15 AT family LMS evidence bound in slot-08-training-evidence.yaml.
   - local_rule: KSI-022
     local_title: "Cybersecurity Training Effectiveness Review"
-    local_nist: [AT-2, AT-3, AT-4, CP-3, IR-2]
+    local_nist: [AT-2, "AT-2(1)", "AT-2(2)", AT-3, "AT-3(3)", "AT-3(5)", AT-4, CP-3, IR-2]
     cr26_controls: [KSI-CED-RAT]
-    confidence: low
+    confidence: high
     rationale: >-
-      RAT (Reviewing All Training) requires persistent review across four
-      training dimensions. Part 11 (CP-3) provides IR/DR staff training
-      evidence via annual tabletop exercise attendance; Part 13 (PM-14)
-      provides the organizational T&T&M framework. Confidence low — AT-2/AT-3/AT-4
-      LMS completion evidence for general all-employee and role-specific training
-      is not yet machine-readable. Evidence contract pending AT-family binding.
+      RAT (Reviewing All Training) requires persistent review across four training
+      dimensions. Book_15 (Part 15) delivers: role-based training matrices for six
+      high-risk tiers (AT-3/AT-3(3)/AT-3(5)), general all-employee awareness
+      (AT-2/AT-2(1)/AT-2(2)), secure-delivery training (SA-16), and IR/DR training
+      (IR-2/CP-3). Machine-readable evidence is the LMS training-effectiveness-record
+      JSON schema (governance.training-effectiveness-record) with >=95% completion
+      threshold across all role tiers. AT-4 retention records and CP-3 tabletop
+      attendance (Part 11) provide corroborating evidence. Confidence high —
+      AT-family evidence contract bound in slot-08-training-evidence.yaml.
 
   # KSI-INR (Incident Response) — ADR-111 / UIAO_137 §6.
   # Scaffold rules KSI-023..025 seed KSI-INR coverage (2026-07-04).
@@ -302,35 +306,42 @@ mappings:
       slot-07 (Part 11 CP-4/CP-9(1)).
 
   # KSI-SCR (Supply Chain Risk) — ADR-111 / UIAO_137 §5.
-  # Scaffold rules KSI-015..016 seed KSI-SCR coverage (2026-07-03).
-  # Confidence low: evidence contract pending Part 13 PM-30 artifact binding
-  # and continuous SBOM telemetry pipeline wiring.
+  # Active rules KSI-015..016 cover KSI-SCR (2026-07-04).
+  # Confidence high: evidence contracts satisfied by slot-06-security-evidence.yaml
+  # (Parts 12+13 for MIT; Parts 12+10 for MON; ADR-111 phase 5).
   - local_rule: KSI-015
     local_title: "Supply Chain Risk Mitigation"
     local_nist: [SR-2, SR-3, PM-30]
     cr26_controls: [KSI-SCR-MIT]
-    confidence: low
+    confidence: high
     rationale: >-
-      MIT (Mitigating Supply Chain Risk) requires an organizational SCRM plan
-      that identifies and mitigates risks from suppliers, third-party developers,
-      and system integrators. Part 12 SBOM/VDR/VEX provides the technical
-      mitigation evidence (SR-2 acquisition strategy, SR-3 supply chain controls,
-      Grype CI gate). Part 13 SCRM Governance Charter provides the organizational
-      PM-30 framework. Confidence low — Part 13 machine-readable artifact binding
-      and evidence-engine wiring are pending.
+      MIT (Mitigating Supply Chain Risk) requires persistently identifying,
+      reviewing, and mitigating supply chain risks. Part 12 SBOM/VDR/VEX
+      covers all three verbs: SR-2 acquisition strategy (SBOM procurement
+      requirement = identify); SR-3 supply chain controls (SLSA provenance +
+      Grype CI blocking gate = review + mitigate); BOD 26-04 D1–D5 SLAs
+      (structured mitigation timelines). Part 13 SCRM Governance Charter
+      provides PM-30 organizational evidence (risk appetite + board-level
+      commitment). Evidence contract satisfied by slot-06-security-evidence.yaml
+      (confidence: high, Parts 12 + 13, 2026-07-04).
 
   - local_rule: KSI-016
     local_title: "Supply Chain Monitoring"
     local_nist: [SR-6, SR-8, CA-7]
     cr26_controls: [KSI-SCR-MON]
-    confidence: low
+    confidence: high
     rationale: >-
-      MON (Monitoring Supply Chain) requires continuous monitoring of supply
-      chain risks including supplier security posture and new SBOM vulnerabilities.
-      Part 12 provides SBOM diff monitoring via Grype CI gate and PSIRT
-      subscription for SR-6/SR-8. Part 10 Sentinel provides CA-7 continuous
-      monitoring of the SBOM dashboard. Confidence low — SBOM telemetry pipeline
-      not yet ingested into the KSI evaluation engine.
+      MON (Monitoring Supply Chain) requires automatic monitoring using
+      "mechanisms that may include contractual notification requirements or
+      active monitoring services." Part 12 provides both: PSIRT/MSRC/Infoblox
+      portal subscriptions (SR-8 contractual notification) and Grype CI gate
+      scanning SBOM diffs on every pull request (SR-6 active monitoring).
+      Part 10 Sentinel provides CA-7 continuous monitoring overlay via SBOM
+      custom data connector. CR26 explicitly names contractual notification
+      as qualifying — PSIRT subscriptions directly satisfy without requiring
+      a full telemetry pipeline. Evidence contract satisfied by
+      slot-06-security-evidence.yaml (confidence: high, Parts 12 + 10,
+      2026-07-04).
 
   # KSI-CMT (Change Management) — ADR-111 / FINDING-004 §4.
   # VER evidence contract fulfilled by Part 12 (SBOM/VDR/VEX pipeline)

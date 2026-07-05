@@ -1,15 +1,14 @@
 """Conformance tests for the KSI-PIY rules (ADR-111 / UIAO_137 §6).
 
 KSI-017 through KSI-021 seed the CR26 KSI-PIY (Inventory) theme. After
-ADR-111 phase 5 wiring, four are ``Status: active`` (high-confidence slot
-bindings confirmed); KSI-020 remains ``Status: scaffold`` (no slot binding
-yet; Part 14 pending).
+ADR-111 phase 5 wiring (2026-07-04), all five are ``Status: active`` with
+high-confidence slot bindings.
 
 KSI-PIY coverage:
   KSI-017 → KSI-PIY-GIV   active    confidence: high  (slot-05, Part 8)
   KSI-018 → KSI-PIY-RES   active    confidence: high  (slot-05, Part 8)
   KSI-019 → KSI-PIY-RIS   active    confidence: high  (slot-05, Part 8)
-  KSI-020 → KSI-PIY-RSD   scaffold  confidence: low   (no slot binding yet)
+  KSI-020 → KSI-PIY-RSD   active    confidence: high  (slot-05, Parts 12+8)
   KSI-021 → KSI-PIY-RVD   active    confidence: high  (slot-05, Part 7)
 
 Companion:
@@ -39,17 +38,16 @@ _ACTIVE_TO_CR26 = {
     "KSI-017": "KSI-PIY-GIV",
     "KSI-018": "KSI-PIY-RES",
     "KSI-019": "KSI-PIY-RIS",
+    "KSI-020": "KSI-PIY-RSD",
     "KSI-021": "KSI-PIY-RVD",
 }
 
-_SCAFFOLD_TO_CR26 = {
-    "KSI-020": "KSI-PIY-RSD",
-}
+_SCAFFOLD_TO_CR26: dict = {}
 
 _ALL_RULES_TO_CR26 = {**_ACTIVE_TO_CR26, **_SCAFFOLD_TO_CR26}
 
-_HIGH_CONFIDENCE_RULES = {"KSI-017", "KSI-018", "KSI-019", "KSI-021"}
-_LOW_CONFIDENCE_RULES = {"KSI-020"}
+_HIGH_CONFIDENCE_RULES = {"KSI-017", "KSI-018", "KSI-019", "KSI-020", "KSI-021"}
+_LOW_CONFIDENCE_RULES: set = set()
 
 _RULES_DIR = Path(__file__).resolve().parents[2] / "src" / "uiao" / "ksi" / "rules"
 
