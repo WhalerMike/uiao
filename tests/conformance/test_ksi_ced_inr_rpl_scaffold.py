@@ -1,11 +1,13 @@
 """Conformance tests for the KSI-CED, KSI-INR, and KSI-RPL rules
 (ADR-111 / UIAO_137 §6). Phase 4 of the Federal AAN ConMon gap roadmap.
 
-After ADR-111 phase 5 evaluation engine wiring, KSI-023..029 are
-``Status: active``; KSI-022 remains ``Status: scaffold`` (AT family pending).
+After ADR-111 phase 5 + Book_15 activation, all eight CED/INR/RPL rules are
+``Status: active``. KSI-022 was promoted from scaffold on 2026-07-04 when
+Book_15 (Part 15) delivered the AT-family training program and LMS evidence
+schema (slot-08-training-evidence.yaml). All 29 CR26 KSIs are now evaluable.
 
 Coverage:
-  KSI-022 → KSI-CED-RAT   scaffold  confidence: low   (CP-3/PM-14 partial)
+  KSI-022 → KSI-CED-RAT   active    confidence: high  (slot-08 AT-2/3/4, Book_15)
   KSI-023 → KSI-INR-AAR   active    confidence: high  (slot-04 IR-4/8, slot-07 CP-4)
   KSI-024 → KSI-INR-RIR   active    confidence: high  (slot-04 IR-4/6/8)
   KSI-025 → KSI-INR-RPI   active    confidence: high  (slot-04 IR-4/5/8)
@@ -38,6 +40,7 @@ from uiao.adapters.fedramp_cr26_catalog import (
 )
 
 _ACTIVE_TO_CR26 = {
+    "KSI-022": "KSI-CED-RAT",
     "KSI-023": "KSI-INR-AAR",
     "KSI-024": "KSI-INR-RIR",
     "KSI-025": "KSI-INR-RPI",
@@ -47,9 +50,7 @@ _ACTIVE_TO_CR26 = {
     "KSI-029": "KSI-RPL-TRC",
 }
 
-_SCAFFOLD_TO_CR26 = {
-    "KSI-022": "KSI-CED-RAT",
-}
+_SCAFFOLD_TO_CR26: dict[str, str] = {}  # all CED/INR/RPL rules now active
 
 _ALL_RULES_TO_CR26 = {**_SCAFFOLD_TO_CR26, **_ACTIVE_TO_CR26}
 
@@ -65,7 +66,7 @@ _THEME_FOR = {
 }
 
 _HIGH_CONFIDENCE_RULES = set(_ACTIVE_TO_CR26)
-_LOW_CONFIDENCE_RULES = {"KSI-022"}
+_LOW_CONFIDENCE_RULES: set[str] = {}  # type: ignore[assignment]  # no scaffold rules remain
 
 _RULES_DIR = Path(__file__).resolve().parents[2] / "src" / "uiao" / "ksi" / "rules"
 _SLOT04 = (
@@ -85,6 +86,15 @@ _SLOT07 = (
     / "fedramp_aan_catalog"
     / "mappings"
     / "slot-07-continuity-evidence.yaml"
+)
+_SLOT08 = (
+    Path(__file__).resolve().parents[2]
+    / "src"
+    / "uiao"
+    / "adapters"
+    / "fedramp_aan_catalog"
+    / "mappings"
+    / "slot-08-training-evidence.yaml"
 )
 
 
@@ -260,7 +270,48 @@ def test_slot07_ced_binding_is_low_confidence() -> None:
     ced_bindings = [b for b in slot.get("bindings", []) if b.get("cr26_ksi_theme") == "KSI-CED"]
     assert ced_bindings, "slot-07 must have a KSI-CED binding (CP-3 training)"
     for b in ced_bindings:
-        assert b["confidence"] == "low", "KSI-CED-RAT via CP-3 only is confidence:low"
+        assert b["confidence"] == "low", (
+            "KSI-CED-RAT via CP-3 only is confidence:low (slot-07 is partial; slot-08 carries the high-confidence AT binding)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Slot-08 training slot binds Part 15 and covers KSI-CED
+# ---------------------------------------------------------------------------
+
+
+def test_slot08_exists_and_has_part15_artifact() -> None:
+    assert _SLOT08.is_file(), "slot-08-training-evidence.yaml is missing"
+    slot = yaml.safe_load(_SLOT08.read_text(encoding="utf-8"))
+    assert slot["slot_id"] == 8
+    artifact_ids = {a["id"] for a in slot.get("artifacts", [])}
+    assert "aan-part-15" in artifact_ids, "slot-08 must bind aan-part-15"
+
+
+def test_slot08_ced_binding_is_high_confidence() -> None:
+    slot = yaml.safe_load(_SLOT08.read_text(encoding="utf-8"))
+    ced_bindings = [b for b in slot.get("bindings", []) if b.get("cr26_ksi_theme") == "KSI-CED"]
+    assert ced_bindings, "slot-08 must have a KSI-CED binding (AT-2/3/4 from Book_15)"
+    for b in ced_bindings:
+        assert b["confidence"] == "high", "KSI-CED-RAT via Book_15 AT family is confidence:high"
+
+
+def test_slot08_ced_covers_ksi_ced_rat() -> None:
+    slot = yaml.safe_load(_SLOT08.read_text(encoding="utf-8"))
+    ced_controls: set[str] = set()
+    for binding in slot.get("bindings", []):
+        if binding.get("cr26_ksi_theme") == "KSI-CED":
+            ced_controls.update(binding.get("cr26_controls", []))
+    assert "KSI-CED-RAT" in ced_controls, "slot-08 must bind KSI-CED-RAT"
+
+
+def test_slot08_nist_covers_at_family() -> None:
+    slot = yaml.safe_load(_SLOT08.read_text(encoding="utf-8"))
+    all_nist: set[str] = set()
+    for binding in slot.get("bindings", []):
+        all_nist.update(binding.get("nist_controls", []))
+    for required in ("AT-2", "AT-3", "AT-4", "CP-3", "IR-2"):
+        assert required in all_nist, f"slot-08 must cover NIST {required}"
 
 
 # ---------------------------------------------------------------------------

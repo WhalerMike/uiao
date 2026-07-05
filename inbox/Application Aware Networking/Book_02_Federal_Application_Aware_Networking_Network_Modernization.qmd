@@ -340,3 +340,171 @@ The following table maps each concept in this narrative to the federal mandate, 
 | Continuous monitoring; automated KSI enforcement | FedRAMP 20x Consolidated Rules (Jun 25, 2026); OMB Circular A-130 | NIST SP 800-37 Rev 2 CA-7; FedRAMP 20x KSIs; mandatory Jan 1, 2027 |
 | Gated actuation as standard governance posture (Advanced maturity) | FedRAMP ConMon, OMB M-22-09 | CISA ZTMM v2.0 Automation and Orchestration pillar |
 | Machine-readable KSI evidence; no manual evidence assembly | FedRAMP 20x Consolidated Rules — Class A/B/C pipelines open Aug 3/31, 2026 | FedRAMP 20x JSON evidence format; GitHub-published structured rules |
+
+# Appendix A — Cisco Catalyst SD-WAN and Microsoft Intelligent Network Routing: Federal Implementation Reference {#appendix-cisco-inr}
+
+::: {.callout-note}
+**Scope: FedRAMP Moderate civilian agencies using Microsoft 365 GCC.** This appendix is scoped to **FedRAMP Moderate** — civilian federal agencies operating M365 GCC tenants. GCC High, DoD IL4/IL5, and FedRAMP High authorizations are out of scope. Book 02's main narrative describes SD-WAN in platform-neutral terms. This appendix addresses the specific combination that most FedRAMP Moderate agencies encounter: **Cisco Catalyst SD-WAN** as the branch transport platform and **Microsoft Intelligent Network Routing (INR)** as the M365 traffic optimization layer.
+:::
+
+## A.1 — Cisco Catalyst SD-WAN: What It Is and What It Is Not
+
+Cisco Catalyst SD-WAN (formerly the Viptela platform, acquired 2017 and rebranded 2023) is Cisco's enterprise SD-WAN solution. In federal contexts it is typically deployed as one of two configurations: **on-premises managed** (SD-WAN Manager self-hosted in agency data center or GovCloud) or **cloud-delivered** (Cisco SD-WAN Cloud SaaS, which carries its own FedRAMP authorization surface).
+
+The platform has four functional planes:
+
+| Plane | Component | What It Does |
+|---|---|---|
+| **Management** | SD-WAN Manager (vManage) | Policy authoring, template deployment, telemetry aggregation, audit logging — the authoritative governance surface for all WAN configuration |
+| **Control** | SD-WAN Controller (vSmart) | Distributes routing policy and reachability information to all WAN Edge devices; OMP (Overlay Management Protocol) equivalent of BGP for the SD-WAN fabric |
+| **Orchestration** | SD-WAN Validator (vBond) | Zero-touch provisioning; authenticates WAN Edge devices before they join the fabric; single network-facing IP that field offices reach to onboard |
+| **Data** | WAN Edge (cEdge / ISR / ASR) | The physical or virtual device at the branch; applies policy, measures paths, performs DPI, steers traffic — the only plane users' packets traverse |
+
+: Cisco Catalyst SD-WAN Functional Planes {.striped .hover}
+
+![Cisco Catalyst SD-WAN — Four Functional Planes](figs/mf-fig-15-cisco-sdwan-planes.png){fig-alt="Architecture diagram showing Cisco Catalyst SD-WAN's four functional planes side by side: Management (SD-WAN Manager/vManage) for policy authoring and telemetry; Control (vSmart Controller) distributing routing policy via OMP; Orchestration (vBond Validator) for zero-touch provisioning; Data (WAN Edge cEdge/ISR/ASR) carrying all agency traffic. FedRAMP boundary note at bottom: only SD-WAN Manager is cloud-hosted in the cloud-delivered model; data plane stays inside the agency boundary." width="100%"}
+
+**The FedRAMP boundary implication:** Only SD-WAN Manager (the management plane) is a cloud-hosted SaaS component when using the cloud-delivered model. The data plane (cEdge at the branch) is hardware deployed within the agency boundary. The control and orchestration planes operate at the agency-managed FedRAMP boundary or in GovCloud. This boundary partitioning is the first question an Authorizing Official must document.
+
+::: {.callout-important}
+**What Cisco Catalyst SD-WAN does not provide by itself.** Like all SD-WAN platforms, Cisco Catalyst SD-WAN does not provide user identity awareness, device posture enforcement, or data classification. It provides application identification (via DPI signatures and FQDN matching), path quality measurement, and application-steered routing. The SASE layer — Cisco Umbrella, or a third-party CASB/SWG — provides the identity and data planes. The two must be present together for the full AAN control stack.
+:::
+
+## A.2 — Microsoft Intelligent Network Routing: What It Is
+
+**Microsoft Intelligent Network Routing (INR)** is not a product name — it is the operational model through which Microsoft routes M365 traffic across its global private backbone. Understanding it matters for Cisco Catalyst SD-WAN deployments because it changes the answer to a specific question federal IT architects regularly get wrong: *where should agency SD-WAN terminate M365 traffic?*
+
+The model works as follows:
+
+**Microsoft's global private backbone.** Microsoft operates one of the largest private wide-area networks on Earth — approximately 200,000 km of dedicated fiber connecting Azure regions, edge PoPs, and peering sites globally. When an agency user's Teams call reaches a Microsoft network edge node, it travels the remainder of its journey entirely on Microsoft's private backbone — not the public internet. Microsoft's backbone applies active routing intelligence: if the usual path experiences congestion or latency, traffic is rerouted on the private backbone automatically, in real time, without any action from the agency.
+
+**The front door matters more than the destination.** The single most important routing decision in a Cisco Catalyst SD-WAN + M365 deployment is: *which Microsoft edge node does agency traffic enter through?* Traffic that enters the Microsoft network at the nearest geographically optimal PoP travels the rest of its path on Microsoft's private backbone. Traffic that backhauled to a central agency DC first — and then exits from that DC's internet connection — enters a geographically suboptimal PoP and forfeits the backbone optimization.
+
+> **The physics in one sentence:** A Teams call from a Portland field office that breaks out to the internet locally and reaches Microsoft's Seattle edge PoP will have lower latency than the same call backhauled to a DC-area internet connection and entering Microsoft's Ashburn PoP — even though the Ashburn PoP is geographically closer to Microsoft's Teams infrastructure.
+
+**Microsoft 365 Network Connectivity Principles.** Microsoft has published formal connectivity principles for M365 that SD-WAN deployments must follow to activate INR optimization. The three that drive Cisco Catalyst SD-WAN configuration are:
+
+1. **Local network egress for M365 traffic.** Branch offices must break out M365 traffic directly to the internet — not haul it to the agency DC first. In Cisco Catalyst SD-WAN, this is implemented as a **Cloud OnRamp for SaaS** policy that matches M365 IP/domain prefixes and steers them to a DIA or 5G path with direct internet access.
+
+2. **Avoid network hairpins.** Traffic must not flow through an agency proxy or security stack that introduces geographic detours. FedRAMP-compliant proxy inspection must occur at or very near the local breakout point, not at a central scrubbing center. In Cisco Catalyst SD-WAN, this is typically handled by integrating Cisco Umbrella at the branch or in the SASE PoP geographically nearest the breakout point.
+
+3. **Differentiate M365 traffic categories.** Microsoft publishes three endpoint categories — **Optimize** (Teams media, SharePoint Online), **Allow** (general M365), and **Default** (non-M365). The **Optimize** category carries the strictest routing requirements: no inspection, no proxy, no detour. Cisco Catalyst SD-WAN DPI signatures for the Optimize category steer that traffic directly to the best available local path with maximum priority.
+
+![Microsoft Intelligent Network Routing — Local Breakout vs. Backhaul](figs/mf-fig-16-inr-routing.png){fig-alt="Side-by-side comparison of two routing paths for M365 traffic. Left panel (Legacy Backhaul): Portland field office sends traffic via MPLS to Agency DC in Washington DC, then to internet, entering Microsoft network at suboptimal Ashburn PoP — 80ms+ total latency. Right panel (AAN Local Breakout): Portland field office sends traffic directly via DIA or 5G to Microsoft's nearest Seattle front door PoP — 18ms total latency. Bottom section shows M365 endpoint categories: Optimize (Teams media, no proxy, maximum priority), Allow (general M365, proxy OK), Default (standard inspection). Satisfies SC-8, AC-4, TIC 3.0 Use Case E." width="100%"}
+
+## A.3 — The Integration: How Cisco Catalyst SD-WAN Activates Microsoft INR
+
+The integration is implemented through **Cisco SD-WAN Cloud OnRamp for SaaS**, a native feature of Cisco Catalyst SD-WAN that monitors the quality of multiple paths to SaaS destinations and routes each application to its best-performing path in real time.
+
+**How it works in practice:**
+
+1. **Cloud OnRamp probe architecture.** From each branch WAN Edge, Cloud OnRamp sends periodic HTTP probes to Microsoft's M365 service endpoints using each available transport simultaneously — MPLS, DIA broadband, 5G, LEO satellite. The probes measure round-trip latency and loss to the Microsoft front door specifically (not a synthetic endpoint).
+
+2. **Real-time gateway selection.** For each branch, Cloud OnRamp maintains a per-transport quality score for each M365 service. When a Teams call begins, the WAN Edge steers it to whichever transport is currently delivering the lowest latency to the Microsoft Optimize endpoint — this path selection is re-evaluated continuously, not at session start only.
+
+3. **Microsoft Peering Service (MAPS).** For agencies with MPLS circuits from carriers that participate in **Microsoft Azure Peering Service (MAPS)**, Cisco Catalyst SD-WAN can route M365-bound traffic to the carrier's MAPS hand-off point. The carrier then delivers the traffic directly to the nearest Microsoft edge over a private BGP-peered connection — bypassing the public internet entirely while maintaining the local breakout benefit. This is the highest-fidelity INR activation path for agencies with qualified MPLS carriers.
+
+4. **Azure Virtual WAN integration.** For agencies using Azure for other workloads, Cisco Catalyst SD-WAN can peer directly with **Azure Virtual WAN hubs**. In this architecture, M365 traffic flows from the branch WAN Edge through an IPsec tunnel to the Azure Virtual WAN hub in the geographically nearest Azure region, then onto Microsoft's backbone to the M365 service. This is the preferred architecture for agencies already using Azure Government or GCC High — it unifies the WAN topology.
+
+| Integration Path | What Agency Has | What INR Quality Level It Achieves |
+|---|---|---|
+| Cloud OnRamp + DIA local breakout | DIA circuit at branch; any ISP | Good — reaches nearest Microsoft front door; public internet hand-off |
+| Cloud OnRamp + 5G local breakout | 5G radio at branch | Good to excellent — low latency to local cell tower; ISP hand-off to Microsoft |
+| Cloud OnRamp + MPLS (non-MAPS carrier) | MPLS circuit; carrier not MAPS-enrolled | Moderate — MPLS reach may introduce geographic suboptimality |
+| Cloud OnRamp + MAPS carrier | MPLS circuit; MAPS-enrolled carrier | Excellent — private BGP hand-off to Microsoft backbone |
+| Cisco SD-WAN + Azure Virtual WAN (commercial) | Azure commercial presence; FedRAMP Moderate | Excellent — traffic on Microsoft backbone from Azure VWan hub |
+| Cisco SD-WAN + Azure Virtual WAN + MAPS | Both Azure presence and MAPS carrier | Optimal — dual private backbone integration; maximum redundancy |
+
+: Cisco Catalyst SD-WAN + Microsoft INR Integration Paths — FedRAMP Moderate {.striped .hover}
+
+## A.4 — FedRAMP-Specific Considerations
+
+The Cisco Catalyst SD-WAN + Microsoft INR architecture introduces three categories of FedRAMP-specific compliance questions that do not arise in the platform-neutral SD-WAN narrative.
+
+### A.4.1 — Boundary Documentation
+
+FedRAMP requires that the **authorization boundary** be precisely documented: every component that processes, transmits, or stores federal data must be identified, and components outside the boundary must be documented as external services with appropriate data flow diagrams.
+
+In a Cisco Catalyst SD-WAN + Microsoft INR deployment, the boundary documentation must account for:
+
+| Component | Inside or Outside FedRAMP Boundary | Documentation Required |
+|---|---|---|
+| Branch WAN Edge (cEdge) | **Inside** | Component inventory; CM-8 entry |
+| SD-WAN Manager (self-hosted GovCloud) | **Inside** | Full FedRAMP control inheritance |
+| SD-WAN Manager (Cisco cloud SaaS) | **Outside** — external service | Interconnection Security Agreement (ISA); verify Cisco SD-WAN Manager FedRAMP authorization status |
+| SD-WAN Controller (vSmart) | **Inside** | Component inventory |
+| Microsoft M365 GCC | **Outside** — FedRAMP-authorized external service | Microsoft CSP ISA; FedRAMP Moderate package reference (M365 GCC) |
+| Azure Virtual WAN hub (commercial) | **Outside** — FedRAMP-authorized external service | Azure FedRAMP Moderate package reference; data flow to/from |
+| MAPS carrier hand-off point | **Outside** — carrier service | Service agreement; no federal data at rest at carrier POP |
+| Cloud OnRamp probes to M365 | Telemetry only; no federal data in probe | Document as monitoring telemetry; not a data flow |
+
+: Cisco Catalyst SD-WAN + INR — FedRAMP Boundary Component Classification {.striped .hover}
+
+::: {.callout-important}
+**The most common boundary documentation error.** Agencies document the WAN Edge hardware and stop. They do not document the SD-WAN management plane (SD-WAN Manager) as a separate component with its own authorization surface. If SD-WAN Manager is cloud-hosted by Cisco, it must either be covered by a FedRAMP-authorized Cisco offering or excluded from the boundary with an ISA documenting what data crosses to it — typically configuration and telemetry, not federal mission data. Check Cisco's current FedRAMP authorization status with the FedRAMP Marketplace before designing the boundary.
+:::
+
+### A.4.2 — TIC 3.0 Alignment
+
+TIC 3.0 Use Cases E (Branch/Remote Office Internet Access) and F (Remote Users) govern how SD-WAN local breakout interacts with federal security requirements. The Cisco Catalyst SD-WAN + Microsoft INR local breakout architecture is **aligned with TIC 3.0 Use Case E** — but only if the following conditions are met:
+
+1. **TICAP or MSSP security stack is present at or near the local breakout point.** TIC 3.0 allows local breakout (eliminating the backhaul through a TICAP) for agencies that implement a **branch-based security stack** that provides equivalent inspection — typically Cisco Umbrella (DNS security, CASB) collocated with the branch SD-WAN Edge or via a nearby SASE PoP. Cisco Catalyst SD-WAN natively integrates with Umbrella via the SD-WAN Manager Umbrella connector; this integration must be in the architecture or TIC 3.0 compliance is not met.
+
+2. **Optimize-category M365 traffic is the only traffic exempted from proxy inspection.** Microsoft's INR guidance for the Optimize category states that proxy inspection degrades Teams media quality and is not required — Microsoft's own TLS encryption is the transmission confidentiality control. TIC 3.0 permits this exemption **only for the Optimize category** and only when the traffic goes exclusively to Microsoft-published IP/domain prefixes. All other traffic must pass through the inspection stack.
+
+3. **Audit telemetry from the local breakout is forwarded to the agency SIEM.** TIC 3.0 requires that the security posture of local breakout paths be continuously observable. In Cisco Catalyst SD-WAN, the path decision log (which transport was selected for which flow, at what quality) and the Umbrella DNS log must be exported to Sentinel or equivalent. This is the AU-12 evidence contract for the SD-WAN layer.
+
+### A.4.3 — NIST Control Satisfaction
+
+| NIST SP 800-53 Rev 5 Control | What It Requires | How Cisco Catalyst SD-WAN + INR Satisfies It |
+|---|---|---|
+| **SC-8** Transmission Confidentiality and Integrity | Encrypt all WAN traffic | IPsec BFD tunnels between all cEdge WAN Edges — including DIA and 5G paths; Cisco's DTLS-over-UDP for data-plane encryption; cipher suite is configurable to FIPS 140-3 validated AES-256-GCM |
+| **SC-20 / SC-21** Secure DNS | DNS responses integrity-protected | Cisco Umbrella (DNS-over-HTTPS / DNS-over-TLS) on branch; SD-WAN Manager integrates Umbrella DNS policy — all branch DNS queries resolve through Umbrella, not local recursive resolvers |
+| **AC-4** Information Flow Enforcement | Application-layer flow control | DPI-based application identification classifies each flow by application ID (Teams, SharePoint, O365, etc.); Cloud OnRamp policy applies per-application path selection; CASB in Umbrella applies per-application data classification and DLP |
+| **AU-2 / AU-12** Audit Events / Audit Record Generation | Every flow traceable to source, destination, application, policy decision | SD-WAN Manager retains full flow telemetry: WAN Edge ID, source/destination IP, application ID, path selected, policy applied, timestamp; exported via syslog or streaming telemetry to SIEM |
+| **CA-7** Continuous Monitoring | Real-time observation of security posture | Cloud OnRamp path-quality metrics (per-transport latency, jitter, loss) exported continuously; Umbrella DNS security events; deviation from desired path policy triggers alert in SD-WAN Manager |
+| **SI-4** System Monitoring | Detect anomalies in communications | Cisco SD-WAN integrates with Cisco Cyber Vision and Cisco XDR for behavioral anomaly detection; Umbrella cloud-delivered security provides CASB and threat intelligence integration |
+| **CM-7** Least Functionality | Disable unused services on branch devices | cEdge configuration templates in SD-WAN Manager enforce device hardening baseline (no unused services, no local management plane access); template drift is detected and alerted by SD-WAN Manager |
+| **CM-2** Baseline Configuration | Maintain authorized baseline | SD-WAN Manager configuration templates ARE the authoritative baseline — every device must conform to the template; configuration drift triggers an automated alert and corrective action |
+| **IR-4** Incident Handling | Contain and isolate during incident | SD-WAN Manager policy can be pushed to isolate a branch or device within seconds — change the data-plane policy to block all traffic except OOB management; no physical access to branch required |
+
+: Cisco Catalyst SD-WAN + Microsoft INR — NIST SP 800-53 Rev 5 Control Satisfaction {.striped .hover}
+
+## A.5 — FedRAMP 20x KSI Evidence Contracts
+
+The following table maps the AAN evidence layer to FedRAMP 20x KSI themes for the Cisco Catalyst SD-WAN + Microsoft INR configuration.
+
+| FedRAMP 20x KSI Theme | CR26 Control | What Cisco Catalyst SD-WAN Produces | Evidence Format |
+|---|---|---|---|
+| **KSI-CNA** (Cloud Native Architecture) | KSI-CNA-EIS | Cloud OnRamp SaaS policy defines authorized M365 egress paths; deviation from policy is a logged event | SD-WAN Manager audit log (JSON) |
+| **KSI-MLA** (Monitoring, Logging, Alerting) | KSI-MLA-OSM | Per-flow telemetry: every WAN Edge flow with application ID, path selected, policy applied, timestamp | Streaming telemetry to SIEM (structured JSON or syslog) |
+| **KSI-MLA** | KSI-MLA-EVC | SD-WAN Manager alert correlation: path quality degradation + flow reroute event = correlated security event | Cisco XDR or SIEM correlation rule |
+| **KSI-SVC** (Service Configuration) | KSI-SVC-VRI | cEdge device configuration must match SD-WAN Manager template; any drift is detected and logged | Configuration compliance report (SD-WAN Manager REST API export) |
+| **KSI-CMT** (Change Management) | KSI-CMT-LMC | Every policy change in SD-WAN Manager is a timestamped audit log entry: who changed what, when, from what prior state | SD-WAN Manager change audit log (JSON) |
+| **KSI-CMT** | KSI-CMT-VTD | Policy template validation runs in dry-run mode before commit; template is version-controlled in Git | SD-WAN Manager template commit log + Git SHA reference |
+
+: Cisco Catalyst SD-WAN + Microsoft INR — FedRAMP 20x KSI Evidence Contracts {.striped .hover}
+
+::: {.callout-note}
+**The AAN slot binding for this appendix.** The evidence contracts in the table above are satisfied by AAN slot 03 (network control plane), which binds to Book 02 (SD-WAN/SASE/UC) in the Conformance Adapter. The Cisco Catalyst SD-WAN + Microsoft INR configuration is a specific implementation of the generic SD-WAN evidence described in slot 03. No additional slot binding is required — the slot-03 controls (KSI-CNA, KSI-MLA, KSI-SVC, KSI-CMT) are already satisfied when the platform-specific configuration in this appendix is in place.
+:::
+
+## A.6 — Implementation Sequence for a Greenfield FedRAMP Moderate Deployment
+
+The following sequence reflects what a Cisco Catalyst SD-WAN + Microsoft INR deployment looks like in a FedRAMP Moderate civilian environment, from authorization to production.
+
+**Step 1 — Boundary documentation.** Classify every SD-WAN component against the FedRAMP Moderate boundary table in §A.4.1. Determine whether SD-WAN Manager will be self-hosted or cloud-delivered (Cisco SaaS); verify that the cloud-delivered option holds a current FedRAMP Moderate authorization on the FedRAMP Marketplace before including it in the authorization boundary. Draft ISAs for all external service connections (Microsoft M365 GCC, Azure VWan if used).
+
+**Step 2 — Baseline template development.** Build cEdge configuration templates in SD-WAN Manager for each branch archetype (small office, large office, high-availability site). Templates should enforce: FIPS mode, no local management plane, Umbrella DNS integration, minimum cipher suite (AES-256-GCM), NTP synchronized to agency time sources, SNMP disabled in favor of streaming telemetry.
+
+**Step 3 — Cloud OnRamp policy for M365.** Configure Cloud OnRamp for SaaS using Microsoft's published Optimize and Allow category endpoint lists (GCC or GCC High). Validate that Teams media (Optimize category) is steered to the best-measured DIA/5G path, not through a proxy. Configure the fallback policy for when all local paths degrade below threshold — fail to the MPLS circuit with minimal additional latency rather than dropping sessions.
+
+**Step 4 — Umbrella DNS integration.** Activate the SD-WAN Manager + Umbrella integration. Verify all branch DNS queries resolve through Umbrella and do not fall back to local resolvers. Configure Umbrella DNS policy to block known-malicious domains, apply CASB policy for M365 tenant restriction (preventing personal tenant use on government devices).
+
+**Step 5 — SIEM telemetry wiring.** Configure SD-WAN Manager streaming telemetry export to the agency SIEM (Sentinel or equivalent). Verify receipt of: flow event records, policy change audit log, path quality metrics, device compliance state. Confirm AU-12 evidence is being generated for every flow.
+
+**Step 6 — FedRAMP 20x KSI evidence validation.** Using the evidence contracts in §A.5, verify that SIEM receives the required structured events for each KSI. Confirm the evidence passes the format and completeness requirements of the `uiao oscal bundle` assessment results generator.
+
+::: {.callout-note}
+**This appendix does not substitute for Cisco professional services or a system integrator.** The implementation sequence above is a decision-maker-level orientation, not an engineering runbook. Every agency deployment requires site surveys, carrier qualification (MAPS enrollment), and Cisco SD-WAN Manager template development that must be executed by certified Cisco Catalyst SD-WAN engineers. What this appendix provides is the compliance framing and boundary documentation structure that should govern that engagement from the start — not the configuration commands.
+:::
