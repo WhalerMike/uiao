@@ -641,41 +641,32 @@ jobs:
       - name: Build ScubaDrift standalone download set
         # 2b (no committed binary): generate the ScubaDrift standalone zip + the
         # rendered ScubaDrift-Documentation.docx from committed source
-        # (tools/scubadrift) into _site/download/ for the Downloads page. Runs
-        # regardless of maintenance mode; the maintenance step below preserves
-        # these files so the Download stays live while the rest is Under
-        # Construction. Non-fatal, mirroring the section-bundle steps.
+        # (tools/scubadrift) into _site/download/ for the Downloads page. Skipped
+        # while the site is in maintenance mode — nothing is served then, so there
+        # is nothing to build. Runs only when the full site is live. Non-fatal.
+        if: env.MAINTENANCE_MODE != 'true'
         run: |
           python _repo/scripts/build_scubadrift_download.py --out _site/download \
             || echo "::warning::ScubaDrift download build failed (non-fatal)"
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
-        # When ON, discard the freshly rendered `_site` and replace it with the
-        # "Under construction" placeholder — EXCEPT the standalone ScubaDrift
-        # Download set, which is preserved so it stays live at /uiao/download/.
-        # The placeholder index.html links to that download; 404.html is the
-        # plain notice served (via the Pages catch-all) for every other URL, so
-        # the rest of the site reads as Under Construction.
+        # When ON, discard the freshly rendered `_site` and replace the WHOLE
+        # site with the "Under construction" placeholder. index.html and 404.html
+        # are byte-identical, so GitHub Pages serves the placeholder for the site
+        # root (/uiao/) AND every other URL via the catch-all 404 — nothing,
+        # including /download/, is served publicly. Downloads are distributed via
+        # the GitHub repo (Releases + tools/scubadrift source) instead.
         # To restore the full site: set MAINTENANCE_MODE to "false" (or delete
         # this step). Nothing else in the pipeline changes.
         if: env.MAINTENANCE_MODE == 'true'
         run: |
           set -euo pipefail
-          # Carve out only the standalone ScubaDrift artifacts before the wipe.
-          tmp="$(mktemp -d)"
-          mkdir -p "$tmp/download"
-          if [ -d _site/download ]; then
-            cp _site/download/scubadrift-*.zip "$tmp/download/" 2>/dev/null || true
-            cp _site/download/ScubaDrift-Documentation.docx "$tmp/download/" 2>/dev/null || true
-          fi
           rm -rf _site
-          mkdir -p _site/download
+          mkdir -p _site
           cp _repo/.github/maintenance/index.html _site/index.html
           cp _repo/.github/maintenance/404.html _site/404.html
-          cp -a "$tmp/download/." _site/download/ 2>/dev/null || true
-          echo "Maintenance mode ON — site Under Construction; standalone Download set preserved:"
-          ls -1 _site/download || true
+          echo "Maintenance mode ON — full site replaced with the Under-construction placeholder."
 
       - name: Upload Pages artifact
         # Deploy on push to main (normal) OR workflow_dispatch on main
