@@ -129,6 +129,15 @@ def ksi_ar_command(
         "--slots-dir",
         help=("Path to the AAN slot evidence YAML directory. Defaults to the bundled fedramp_aan_catalog/mappings/."),
     ),
+    scuba_verdicts: str | None = typer.Option(  # noqa: B008
+        None,
+        "--scuba-verdicts",
+        help=(
+            "Path to the ScubaDrift verdicts artifact backing ScuBA-sourced rules "
+            "(KSI-001..010). Defaults to output/artifacts/ksi-bundle/scubadrift-verdicts.json; "
+            "when absent those rules are reported not-evaluated."
+        ),
+    ),
 ) -> None:
     """Generate an OSCAL Assessment Results document from KSI slot evidence.
 
@@ -164,6 +173,7 @@ def ksi_ar_command(
             system_name=system_name,
             ap_href=ap_href,
             slots_dir=resolved_slots,
+            scuba_verdicts_path=_Path(scuba_verdicts) if scuba_verdicts else None,
         )
         import json
 
@@ -320,6 +330,78 @@ def ksi_poam_command(
         raise typer.Exit(code=1) from exc
 
 
+@oscal_app.command("scuba-verdicts")
+def scuba_verdicts_command(
+    results: str = typer.Option(  # noqa: B008
+        ...,
+        "--results",
+        help="ScubaGear results JSON (flat or full ScubaResults.json shape).",
+    ),
+    triage: str = typer.Option(  # noqa: B008
+        ...,
+        "--triage",
+        help="Output of 'scubadrift triage --json' for the same ScubaGear run.",
+    ),
+    output: str = typer.Option(  # noqa: B008
+        "output/artifacts/ksi-bundle/scubadrift-verdicts.json",
+        "--output",
+        "-o",
+        help="Destination path for the verdicts artifact.",
+    ),
+    provenance_source: str = typer.Option(  # noqa: B008
+        "tenant",
+        "--provenance-source",
+        help="'tenant' for a real ScubaGear run, 'sample-fixture' for demonstration data.",
+    ),
+    provenance_note: str = typer.Option(  # noqa: B008
+        "",
+        "--provenance-note",
+        help="Free-text provenance detail recorded in the artifact.",
+    ),
+) -> None:
+    """Build the ScubaDrift verdicts artifact backing KSI-001..010.
+
+    Merges a ScubaGear results file with the ScubaDrift triage report for the
+    same run into a single per-policy verdict artifact. The KSI OSCAL AR
+    (ksi-ar / bundle) consumes it to evaluate the ScuBA-sourced rules:
+    pass or governed exception -> satisfied; new drift or lapsed
+    risk-acceptance -> not-satisfied.
+
+    \\b
+    Examples
+    --------
+        scubadrift triage --results ScubaResults.json \\
+            --exceptions exceptions.yaml --json > triage.json
+
+        uiao oscal scuba-verdicts \\
+            --results ScubaResults.json --triage triage.json
+    """
+    import json
+
+    from uiao.ksi.scuba_verdicts import export_scuba_verdicts
+
+    try:
+        path = export_scuba_verdicts(
+            output_path=output,
+            results_path=results,
+            triage_path=triage,
+            provenance_source=provenance_source,
+            provenance_note=provenance_note,
+        )
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        _console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    policies = doc.get("policies", {})
+    failing = {p: r for p, r in policies.items() if r.get("result") != "pass"}
+    _console.print(f"[green]Wrote ScubaDrift verdicts artifact to {path}[/green]")
+    _console.print(
+        f"  policies: {len(policies)} | failing: {len(failing)} | "
+        f"as-of: {doc.get('as_of', '?')} | provenance: {doc.get('provenance', {}).get('source', '?')}"
+    )
+
+
 @oscal_app.command("bundle")
 def bundle_command(
     output_dir: str = typer.Option(  # noqa: B008
@@ -392,14 +474,17 @@ def bundle_command(
     _console.print(f"  [green]✓[/green] {ap_path}")
     _console.print(f"  {build_ksi_ap_summary(ap_doc)}")
 
-    # 2. Build AR, linking import-ap to the AP UUID.
+    # 2. Build AR, linking import-ap to the AP UUID. The ScubaDrift verdicts
+    # artifact (if present in the bundle dir) backs the ScuBA-sourced rules.
     _console.print("[bold]Step 2/4:[/bold] Generating Assessment Results…")
     ar_path = out / "ksi-ar.json"
+    scuba_verdicts_path = out / "scubadrift-verdicts.json"
     ar_doc = build_ksi_ar(
         system_name=system_name,
         ap_href=f"#{ap_uuid}",
         now=now,
         slots_dir=resolved_slots,
+        scuba_verdicts_path=scuba_verdicts_path,
     )
     ar_path.write_text(json.dumps(ar_doc, indent=2), encoding="utf-8")
     _console.print(f"  [green]✓[/green] {ar_path}")
@@ -412,7 +497,7 @@ def bundle_command(
         ar_doc=ar_doc,
         system_name=system_name,
         ap_href=f"#{ap_uuid}",
-        ar_href=str(ar_path),
+        ar_href=ar_path.as_posix(),
         now=now,
     )
     poam_path.write_text(json.dumps(poam_doc, indent=2), encoding="utf-8")
@@ -423,15 +508,18 @@ def bundle_command(
     _console.print("[bold]Step 4/4:[/bold] Writing artifact index…")
     index_path = out / "artifact-index.json"
     artifacts = []
-    for artifact_path, doc_type in [
+    indexed: list[tuple[Path, str]] = [
         (ap_path, "assessment-plan"),
         (ar_path, "assessment-results"),
         (poam_path, "plan-of-action-and-milestones"),
-    ]:
+    ]
+    if scuba_verdicts_path.is_file():
+        indexed.append((scuba_verdicts_path, "scuba-verdicts"))
+    for artifact_path, doc_type in indexed:
         content = artifact_path.read_bytes()
         artifacts.append(
             {
-                "path": str(artifact_path),
+                "path": artifact_path.as_posix(),
                 "type": doc_type,
                 "sha256": hashlib.sha256(content).hexdigest(),
                 "size_bytes": len(content),

@@ -10,6 +10,17 @@ Closes the Phase 2 gap from the Federal AAN ConMon gap roadmap:
 
 Verdict logic
 -------------
+ScuBA-sourced rules (Source.SCuBA_Field, KSI-001..010):
+  Evaluated by ``uiao.ksi.scuba_verdicts.evaluate_scuba_rule()`` against the
+  ScubaDrift verdicts artifact (a ScubaGear run merged with
+  ``scubadrift triage --json`` dispositions):
+  - satisfied     : every mapped SCuBA policy passes or is a governed
+                    (in-date, approved, ticketed) exception
+  - not-satisfied : any mapped policy is actionable (new drift or lapsed
+                    risk-acceptance)
+  - other         : verdicts artifact missing, or a mapped policy was not
+                    assessed in the run
+
 Active rules (Status: active):
   Evaluated by ``uiao.ksi.slot_evaluator.evaluate_rule()`` against the AAN
   slot binding index (ADR-111 evaluation engine wiring):
@@ -28,6 +39,7 @@ Companion files:
   src/uiao/adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml
   src/uiao/adapters/fedramp_aan_catalog/mappings/slot-*.yaml
   src/uiao/ksi/rules/KSI-*.yaml
+  output/artifacts/ksi-bundle/scubadrift-verdicts.json
 """
 
 from __future__ import annotations
@@ -137,17 +149,21 @@ def _ksi_verdict(
     row: dict[str, Any],
     rule_doc: dict[str, Any],
     binding_index: dict[str, list[dict[str, Any]]],
+    scuba_verdicts: dict[str, Any] | None = None,
+    scuba_verdicts_ref: str = "",
 ) -> tuple[str, str, list[str]]:
     """Return ``(state, description, artifact_refs)`` for one KSI mapping row.
 
     ``state`` is an OSCAL finding target status:
-        "satisfied"     — slot-evidence pass (active) or high-confidence mapping + binding (scaffold)
-        "not-satisfied" — slot-evidence fail or medium-confidence mismatch
-        "other"         — no slot binding found, or mapping confidence low (scaffold)
+        "satisfied"     — ScubaDrift/slot-evidence pass (active) or high-confidence mapping + binding (scaffold)
+        "not-satisfied" — actionable ScuBA failure, slot-evidence fail, or medium-confidence mismatch
+        "other"         — no evidence artifact / slot binding found, or mapping confidence low (scaffold)
 
-    ``artifact_refs`` is the sorted deduplicated list of AAN Part IDs that
-    back the verdict (empty when state is "other").
+    ``artifact_refs`` is the sorted deduplicated list of AAN Part IDs (or the
+    ScubaDrift verdicts artifact path for ScuBA-sourced rules) that back the
+    verdict (empty when state is "other").
     """
+    from uiao.ksi.scuba_verdicts import evaluate_scuba_rule as _eval_scuba
     from uiao.ksi.slot_evaluator import evaluate_rule as _eval_slot
 
     rule_id = str(row.get("local_rule", ""))
@@ -162,18 +178,17 @@ def _ksi_verdict(
     covered_slots = sorted({b["slot_id"] for b in all_bindings})
 
     if not is_scaffold:
-        # ScuBA-sourced rules (KSI-001..010) are evaluated by the CISA ScuBA
-        # adapter against live M365 configuration — not AAN slot evidence.
-        # They are always "satisfied" in the OSCAL AR; the ScuBA tool is the
-        # authoritative evaluator for Source.SCuBA_Field rules.
+        # ScuBA-sourced rules (KSI-001..010) are evaluated against live M365
+        # configuration — not AAN slot evidence. CISA ScubaGear is the
+        # authoritative assessor; the ScubaDrift verdicts artifact carries its
+        # per-policy results plus failure dispositions (new drift vs lapsed vs
+        # governed exception) so the AR verdict is evidence-backed.
         scuba_id = rule_doc.get("Mappings", {}).get("CISA_SCUBA") or rule_doc.get("Source", {}).get("SCuBA_Field")
         if scuba_id:
-            desc = (
-                f"Rule {rule_id} evaluated by CISA ScuBA adapter ({scuba_id}). "
-                f"CR26 controls {cr26_controls} are satisfied via continuous M365 "
-                "configuration assessment. ScuBA adapter verdict: pass."
-            )
-            return ("satisfied", desc, [])
+            state, detail = _eval_scuba(rule_id, scuba_verdicts)
+            desc = f"Rule {rule_id} ({scuba_id}) mapped to CR26 controls {cr26_controls}. {detail}"
+            refs = [scuba_verdicts_ref] if scuba_verdicts_ref and state != "other" else []
+            return (state, desc, refs)
 
         # Active slot-based rule: delegate to the slot evaluator (ADR-111 wiring).
         slot_verdict = _eval_slot(rule_doc, row, binding_index)
@@ -266,7 +281,8 @@ def _build_ksi_observation(
     for nist in nist_controls:
         subject_props.append({"name": "nist-control", "value": nist, "ns": _FEDRAMP_NS})
     for art in artifact_refs:
-        subject_props.append({"name": "aan-artifact", "value": art, "ns": _AAN_NS})
+        prop_name = "aan-artifact" if art.startswith("aan-") else "evidence-artifact"
+        subject_props.append({"name": prop_name, "value": art, "ns": _AAN_NS})
 
     return {
         "uuid": str(uuid.uuid4()),
@@ -390,6 +406,7 @@ def build_ksi_ar(
     slots_dir: Path | None = None,
     rules_dir: Path | None = None,
     mapping: dict[str, Any] | None = None,
+    scuba_verdicts_path: Path | None = None,
 ) -> dict[str, Any]:
     """Build a full OSCAL Assessment Results document for all KSI mapping rows.
 
@@ -403,11 +420,16 @@ def build_ksi_ar(
                      Defaults to the bundled ``uiao/ksi/rules/``.
         mapping:     Pre-loaded ksi-mapping.yaml dict (for testing).
                      Defaults to the bundled mapping via ``load_mapping()``.
+        scuba_verdicts_path: Path to the ScubaDrift verdicts artifact backing
+                     ScuBA-sourced rules (KSI-001..010). Defaults to the
+                     committed bundle artifact; when absent those rules are
+                     reported "other" (not evaluated), never asserted pass.
 
     Returns:
         Dict with top-level key ``"assessment-results"``.
     """
     from uiao.adapters.fedramp_cr26_catalog import load_mapping as _load_mapping
+    from uiao.ksi.scuba_verdicts import DEFAULT_VERDICTS_PATH, load_scuba_verdicts
 
     if now is None:
         now = datetime.now(timezone.utc).isoformat()
@@ -418,6 +440,10 @@ def build_ksi_ar(
     slots = load_slot_files(slots_dir)
     rules = load_ksi_rules(rules_dir)
     binding_index = build_cr26_binding_index(slots)
+
+    resolved_verdicts_path = scuba_verdicts_path or DEFAULT_VERDICTS_PATH
+    scuba_verdicts = load_scuba_verdicts(resolved_verdicts_path)
+    scuba_verdicts_ref = str(resolved_verdicts_path).replace("\\", "/")
 
     mapping_rows: list[dict[str, Any]] = mapping.get("mappings", []) or []
 
@@ -432,7 +458,9 @@ def build_ksi_ar(
     for row in mapping_rows:
         rule_id = str(row.get("local_rule", ""))
         rule_doc = rules.get(rule_id, {})
-        state, description, artifact_refs = _ksi_verdict(row, rule_doc, binding_index)
+        state, description, artifact_refs = _ksi_verdict(
+            row, rule_doc, binding_index, scuba_verdicts, scuba_verdicts_ref
+        )
 
         obs = _build_ksi_observation(row, state, description, artifact_refs, now)
         observations.append(obs)
@@ -578,6 +606,7 @@ def export_ksi_ar(
     ap_href: str = "",
     slots_dir: Path | None = None,
     rules_dir: Path | None = None,
+    scuba_verdicts_path: Path | None = None,
 ) -> str:
     """Build and write the KSI OSCAL AR JSON to *output_path*. Returns the path."""
     ar_doc = build_ksi_ar(
@@ -585,6 +614,7 @@ def export_ksi_ar(
         ap_href=ap_href,
         slots_dir=slots_dir,
         rules_dir=rules_dir,
+        scuba_verdicts_path=scuba_verdicts_path,
     )
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
