@@ -29,6 +29,13 @@
 - [AAN Track A — Compliance](academy/aan-training-program/compliance-track.html)
 - [AAN Track B — Implementation](academy/aan-training-program/implementation-track.html)
 - [AAN Vendor Training Catalog](academy/aan-training-program/vendor-training-catalog.html)
+- [AAN Track A — Assessment Rubrics](academy/aan-training-program/assessment-rubrics.html)
+- **Lab environments**
+  - [AAN Lab Environments](academy/aan-training-program/labs/index.html)
+  - [Lab environment — DDI (Module B1)](academy/aan-training-program/labs/lab-b1-ddi.html)
+  - [Lab environment — PIM & privileged access (Module B4)](academy/aan-training-program/labs/lab-b4-pim.html)
+  - [Lab environment — Sentinel detection (Module B5)](academy/aan-training-program/labs/lab-b5-sentinel.html)
+  - [Lab environment — Purview data protection (Module B5)](academy/aan-training-program/labs/lab-b5-purview.html)
 - **Book modules**
   - [Book 00 — Executive Summary](academy/aan-training-program/books/book-00.html)
   - [Book 01 — SSA Landing Zone, IPAM & FedRAMP](academy/aan-training-program/books/book-01.html)
