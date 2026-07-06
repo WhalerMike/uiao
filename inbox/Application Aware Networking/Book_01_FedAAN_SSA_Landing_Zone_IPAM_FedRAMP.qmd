@@ -29,6 +29,12 @@ execute:
 <div class="fouo-banner">UNCLASSIFIED // FOR OFFICIAL USE ONLY — SSA Cloud Services Team</div>
 ```
 
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+
+This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+:::
+
 ---
 
 ## Executive Summary {.unnumbered}
@@ -45,13 +51,23 @@ The Social Security Administration operates four distinct cloud environments —
 
 **1. Operational Risk Elimination.** A single Infoblox deployment replaces four separate DNS systems, four separate IP inventory processes, and four separate certificate-tracking tools. When a new cloud workload spins up in any environment, Infoblox automatically allocates an IP (cross-cloud conflict checked), creates DNS A and PTR records, and enrolls a machine certificate via SCEP — in seconds, without a change ticket. When a workload decommissions, all three are revoked atomically.
 
-**2. Continuous FedRAMP Compliance.** Infoblox is the only DDI platform with its own FedRAMP Moderate CSO authorization, meaning SSA inherits the DDI layer controls rather than re-proving them. Evidence for SC-20/21 (DNSSEC), CM-8 (inventory), IA-5(2) (certificates), AU-12 (audit), and IR-4 (incident response) is generated continuously and automatically — not assembled manually for annual assessments.
+**2. Continuous FedRAMP Compliance.** Infoblox is one of a small number of DDI platforms with its own FedRAMP Moderate CSO authorization; verify current authorization on the FedRAMP Marketplace at time of procurement, meaning SSA inherits the DDI layer controls rather than re-proving them. Evidence for SC-20/21 (DNSSEC), CM-8 (inventory), IA-5(2) (certificates), AU-12 (audit), and IR-4 (incident response) is generated continuously and automatically — not assembled manually for annual assessments.
 
 **3. M365 GCC Boundary Enforcement.** Microsoft publishes M365 GCC endpoint changes up to 12 times per year. Without automation, each change requires four manual updates across NSG rules, VPC security groups, RPZ policies, and VPN split-tunnel configurations — during which a gap exists between when Microsoft changes an endpoint and when SSA's controls reflect it. Infoblox polls the Microsoft 365 IP & URL Web Service API daily and pushes all four enforcement updates simultaneously, closing the boundary gap window to minutes.
 
 **Vendor relationships:** InfoBlox has formal technology partnerships with all three of SSA's primary cloud vendors. InfoBlox BloxOne's own FedRAMP-authorized service runs *on* AWS GovCloud, making AWS the infrastructure foundation. InfoBlox is a Microsoft Azure Technology Alliance Partner with native Microsoft Sentinel, Defender Threat Intelligence, and Entra ID integrations. InfoBlox is available on the Oracle Cloud Marketplace with OCI connector support for the OPM HRIT integration path.
 
-**The recommendation is clear: procure InfoBlox DDI via the AWS GovCloud Marketplace** (no separate IDIQ required), deploy Grid Members in each environment, and build the landing zone DNS and IPAM layer on InfoBlox from day one. Every workload deployed after that point inherits FedRAMP-compliant DNS, IP management, and certificate lifecycle automatically.
+InfoBlox DDI can be deployed via two architecturally distinct paths; the choice determines the FedRAMP authorization inheritance model:
+
+**Path A — BloxOne DDI (Cloud-Managed, FedRAMP ATO Inherited)**
+
+InfoBlox operates the management control plane on AWS GovCloud (CSO FR2017257053, authorized January 2023). The agency deploys BloxOne On-Prem Hosts in each environment; they connect to the InfoBlox-hosted management plane. FedRAMP authorization is inherited from InfoBlox's ATO — the agency does not carry this component independently. Procurement via AWS GovCloud Marketplace (no separate IDIQ required). Best fit if the agency prefers a managed control plane and the simplest FedRAMP inheritance path.
+
+**Path B — NIOS Grid (Agency-Operated, On-Premises Hub)**
+
+The agency deploys an InfoBlox NIOS virtual appliance as the Grid Master on-premises (VMware ESXi or physical InfoBlox appliance). Grid Members are deployed in each environment (AWS GovCloud, Azure Government, Oracle OCI, additional on-premises sites) as spokes. The on-premises Grid Master is the authoritative hub; all Grid Members replicate configuration from it and handle local DNS/DHCP/IPAM for their environment. The agency documents NIOS within its own FedRAMP boundary — no ATO inheritance from InfoBlox's CSO. Procurement via GSA Schedule (GS-35F) or agency IDIQ contract vehicle.
+
+> **SSA topology note:** For SSA's multi-cloud architecture spanning AWS GovCloud, Azure Government, Oracle OCI, and on-premises VMware, Path B — NIOS Grid with an on-premises Grid Master — more closely matches SSA's topology. No single cloud provider is the hub; all four environments are equal spokes of the on-premises control plane. The decision between Path A and Path B should involve OIS and the CIO Office, as it determines whether InfoBlox is a shared-responsibility SaaS or an agency-operated infrastructure component. Agency selection pending.
 
 ```{=html}
 </div>
@@ -152,6 +168,8 @@ For OPM HRIT, SSA cannot control OCI DHCP Options because OPM manages the tenanc
 
 InfoBlox DDI operates as a **control plane over SDN environments** — not replacing the SDN fabric's internal IP assignment mechanisms, but serving as the authoritative record and policy engine above them.
 
+![From Manual Address Management to a Policy-Driven DDI Control Plane](figs/lz-fig-19-legacy-modern-ipam.png){fig-alt="Side-by-side comparison showing Legacy State (manual IPAM spreadsheet, siloed DNS, no audit trail, no multi-cloud visibility, FedRAMP gaps) versus FedRAMP 20x Target State (InfoBlox NIOS Grid Master on-premises VMware as hub, automated A/PTR creation, DNSSEC, IaC/Terraform, Grid Members in each cloud environment, SCEP cert binding, least-privilege zone delegation)" width="100%"}
+
 ### What InfoBlox Provides That SDN Cannot {#sec-value}
 
 | Capability | What SDN Platforms Provide | What InfoBlox Adds |
@@ -165,6 +183,47 @@ InfoBlox DDI operates as a **control plane over SDN environments** — not repla
 | IaC integration | Per-cloud provider only | Terraform InfoBlox provider works across all environments |
 
 : InfoBlox Value-Add Over Native SDN {.striped .hover}
+
+### Grid Master Deployment — On-Premises VMware and the Trust Case {#sec-gridmaster-trust}
+
+For SSA, the InfoBlox NIOS Grid Master should be deployed as a **virtual machine on on-premises VMware infrastructure** (Path B from the Executive Summary). This is not only a technical topology choice — it is a trust architecture decision. DNS, DHCP, and IPAM together constitute the network naming and addressing control plane: every device's address, every workload's hostname, and every certificate's subject name flows through them. Placing the Grid Master on-premises means SSA retains:
+
+- **Hypervisor-layer control** — the Grid Master VM runs under SSA infrastructure team governance, not a cloud provider's control plane
+- **Physical network isolation** — the master is reachable from all four environments via dedicated management interfaces, not via public internet or cloud-provider backbone
+- **No single-cloud dependency** — if any one cloud environment (AWS GovCloud, Azure Government, OCI) experiences an outage or a control-plane incident, the Grid Master continues to function from on-premises
+- **Boundary clarity** — the NIOS Grid falls within SSA's own FedRAMP authorization boundary; the agency controls the ATO evidence rather than inheriting it from a vendor CSO
+
+::: {.callout-important}
+**Trust rationale:** DNS poisoning, DHCP scope hijacking, and IPAM record manipulation are among the highest-impact attack vectors against network infrastructure. An adversary who controls the Grid Master can redirect any FQDN, drain any IP subnet, or suppress any workload's DNS record — effectively owning the naming plane for all four SSA environments simultaneously. On-premises VMware deployment keeps this function under SSA's direct institutional control.
+
+**OIS and the CIO Office must validate the trust boundary decision and define the Grid Admin role-holder accountability model before the Grid is deployed.**
+:::
+
+![InfoBlox NIOS Grid Master — Least-Privilege Delegation Model](figs/lz-fig-20-ipam-delegation.png){fig-alt="Hub-and-spoke diagram showing InfoBlox NIOS Grid Master on-premises VMware at center, with four delegated function branches: DNS Zone Management (Network/DNS Team), DHCP Scope Management (Network Infrastructure), SCEP/Cert Binding (OIS/PKI Team), and Cloud Grid Members (per-environment Cloud Infra Teams). Each branch shows the NIST control closures and least-privilege boundaries." width="100%"}
+
+### Least-Privilege Role Delegation {#sec-ipam-delegation}
+
+The Grid Master holds total administrative authority over DNS, DHCP, and IPAM. That authority **must not reside in a single operational role**. SSA should structure InfoBlox administrative access as four delegated function areas, each assigned to the owning CIO Component with read/write access scoped only to their area:
+
+| Function | Delegated To | Scope | Cannot Access |
+|---|---|---|---|
+| **DNS zone management** | Network / DNS Team | Read/write on assigned DNS zones; DNSSEC key custody shared with OIS | Other CIO Component zones; DHCP config; SCEP triggers |
+| **DHCP scope management** | Network Infrastructure Team | Read/write on assigned IP subnets and DHCP scopes | DNS zone records; other teams' subnets; SCEP policy |
+| **SCEP / cert binding** | OIS / PKI Team | Trigger SCEP enrollment at A-record creation; bind cert CN to DNS FQDN | Zone configuration; DHCP scopes; other teams' cert policies |
+| **Cloud Grid Member management** | Per-environment Cloud Infra Teams (AWS GovCloud, Azure Government, OCI) | Configure local Grid Member for assigned cloud environment | Grid Master policy; other environments' Grid Members |
+| **Grid Admin (full authority)** | CIO/OIS-designated Grid Administrator | Full DDI policy control | — (must be protected with MFA + privileged access workstation) |
+
+: InfoBlox Least-Privilege Role Delegation {.striped .hover}
+
+**DNS function separation applies to sub-functions as well.** Within DNS zone management, component-level zone delegation allows different CIO Components to own their sub-namespaces:
+
+- `aws.ssa.gov` sub-zone — delegated to Cloud Infrastructure team (AWS)
+- `azure.ssa.gov` sub-zone — delegated to Cloud Infrastructure team (Azure)
+- `oci.ssa.gov` sub-zone — delegated to Cloud Infrastructure team (OCI)
+- `onprem.ssa.gov` sub-zone — delegated to on-premises Network Infrastructure team
+- `apps.ssa.gov` sub-zone — delegated to Application Development / DevOps
+
+Each delegated zone owner can create, modify, and delete records within their zone without touching any other component's DNS namespace. The Grid Master enforces zone-level access control; cross-zone queries still resolve via Grid Member forwarding, but record modification rights are strictly scoped.
 
 ### Microsoft Partnership: M365 GCC Endpoint Lifecycle {#sec-microsoft}
 
@@ -286,6 +345,17 @@ The complete certificate lifecycle for a cloud workload follows this sequence:
 
 ::: {.callout-tip}
 **Zero Trust Enabler:** Certificate-to-IP binding in InfoBlox is the technical foundation of 'never trust, always verify' at the network layer. When every IP host record carries a certificate thumbprint and expiry date, the network infrastructure itself becomes identity-aware — a core requirement of CISA's Zero Trust Maturity Model Networks pillar at Advanced/Optimal level.
+:::
+
+::: {.callout-note}
+**Cross-Book Link — NAC Endpoints and DNS/Certificate Binding (Books 02 and 03):**
+The DNS A-record + SCEP certificate compound provisioning described above applies to **cloud workloads** (VMs and containers). For **NAC-enrolled endpoint devices** — laptops, workstations, and managed endpoints that authenticate via 802.1X EAP-TLS — the same compound pattern applies but is triggered differently:
+
+1. **Intune/SCEP enrollment** (covered in [Book 02](Book_02_FedAAN_Network_Access_Control_802_1X.qmd)) issues the machine certificate with `CN={{DeviceName}}` and SAN bound to the device's Entra ID FQDN.
+2. **DNS A/PTR record** for the endpoint should be confirmed or created in InfoBlox at DHCP lease assignment — binding the device's DNS hostname (from Entra ID) to the DHCP-assigned IP address in the IPAM record.
+3. Together, steps 1 and 2 produce a device where **name, address, and key are bound at admission** — the same compound guarantee that workload provisioning achieves, extended to the endpoint population.
+
+This linkage — that every NAC-admitted device carries both a DNS hostname and a machine certificate, and that InfoBlox holds the authoritative binding record — is the shared foundation of [Book 02](Book_02_FedAAN_Network_Access_Control_802_1X.qmd) (NAC/802.1X) and [Book 03](Book_03_FedAAN_Certificates_Tokens_Cryptographic_Identity.qmd) (Cryptographic Identity). The design decision for this binding must be validated with OIS.
 :::
 
 ---
@@ -435,6 +505,8 @@ The subdomain strategy adds three controls to the NIST mapping in [Section -@sec
 ## DNS-Based Traffic Steering as a DDI Function {#sec-dns-steering}
 
 Global server load balancing has always been a DNS function wearing an appliance badge. When a hardware GSLB appliance decides which data center or cloud region answers a user's request, the mechanism it uses is a DNS response: the appliance acts as an authoritative name server that answers the same query differently depending on endpoint health, requestor topology, and policy weight. Strip away the chassis, and what remains is health-checked, policy-driven authoritative DNS — a control-plane function of the naming and addressing layer, not a data-plane function of any appliance tier.
+
+![InfoBlox DTC — DNS-Based Traffic Steering Across On-Premises and Multi-Cloud Endpoints](figs/lz-fig-18-dns-traffic-steering.png){fig-alt="Flow diagram showing a DNS client on the left querying api.ssa.gov; InfoBlox DTC at center checking ICMP/TCP/HTTPS health monitors against three endpoint pools on the right: On-Premises (healthy, priority 1), AWS GovCloud (healthy, priority 2), and Azure Government (unhealthy, excluded from answer set). The DNS response returns the IP of the highest-priority healthy pool member." width="100%"}
 
 Modern DDI platforms implement this function natively. InfoBlox DNS Traffic Control (DTC) attaches health monitors (ICMP, TCP, HTTP/S) to pools of service endpoints and computes each A/AAAA response at query time from pool member health, topology rules, and weighted ratios — a degraded endpoint simply stops appearing in answers, within one TTL, with no traffic ever passing through the Grid Member. The cloud providers expose the same function as DNS routing policy: Route 53 weighted, latency-based, geolocation, and failover routing policies; Azure Traffic Manager profiles; OCI Traffic Management steering policies. In every case the steering decision executes in the resolution path, and the "load balancer" is the answer itself.
 
