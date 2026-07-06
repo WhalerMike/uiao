@@ -27,7 +27,7 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
 ::: {.callout-important}
-**Series Context** — This document is Part 3 of the 18-part Federal Application-Aware Networking series. [Book 01](Book_01_Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — authoritative DNS, DHCP, and IPAM as the landing-zone source of truth. [Book 02](Book_02_Federal_Application_Aware_Networking_Network_Access_Control_802_1X.qmd) established device identity at the network port — 802.1X, EAP-TLS, and the machine certificate as the admission credential. This part completes the identity plane's cryptographic foundation: how certificates are issued, revoked, and automated as a function of the naming plane, and how tokens replace network sessions as the carrier of identity. [Books 06](Book_06_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) and [07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) — SQL Server authentication modernization — are direct applications of the doctrine this part establishes.
+**Series Context** — This document is Part 3 of the 19-part Federal Application-Aware Networking series. [Book 01](Book_01_Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — authoritative DNS, DHCP, and IPAM as the landing-zone source of truth. [Book 02](Book_02_Federal_Application_Aware_Networking_Network_Access_Control_802_1X.qmd) established device identity at the network port — 802.1X, EAP-TLS, and the machine certificate as the admission credential. This part completes the identity plane's cryptographic foundation: how certificates are issued, revoked, and automated as a function of the naming plane, and how tokens replace network sessions as the carrier of identity. [Books 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) and [08](Book_08_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) — SQL Server authentication modernization — are direct applications of the doctrine this part establishes.
 :::
 
 ::: {.exec-summary}
@@ -65,7 +65,7 @@ The argument proceeds in five movements:
 :::
 
 ::: {.callout-note}
-**What this document does not cover** — Directory rationalization and the authorization data model (which attributes a token should assert) are Book 04's Principle 1 territory; privileged session management built *on* these credentials is Book 09; the SIEM content that consumes identity telemetry is Book 12. This document is the credential layer those parts assume: where keys come from, how they are governed, and how identity travels once it no longer rides the network session.
+**What this document does not cover** — Directory rationalization and the authorization data model (which attributes a token should assert) are Book 05's Principle 1 territory; privileged session management built *on* these credentials is Book 10; the SIEM content that consumes identity telemetry is Book 13. This document is the credential layer those parts assume: where keys come from, how they are governed, and how identity travels once it no longer rides the network session.
 :::
 
 # The Death of Session-Based, Location-Bound Authentication
@@ -82,11 +82,11 @@ Kerberos (RFC 4120) was engineered for a network that no longer exists, and its 
 
 : The three bindings of session-based authentication and their fate on modern transport {.striped .hover}
 
-Two of the three bindings are broken by the very technologies the rest of this series requires. That is the structural point: **the transport modernization mandated by TIC 3.0 and demonstrated in [Book 04](Book_04_Federal_Application_Aware_Networking_Network_Modernization.qmd) is incompatible with the authentication model most federal application estates still run.** You cannot keep both.
+Two of the three bindings are broken by the very technologies the rest of this series requires. That is the structural point: **the transport modernization mandated by TIC 3.0 and demonstrated in [Book 05](Book_05_Federal_Application_Aware_Networking_Network_Modernization.qmd) is incompatible with the authentication model most federal application estates still run.** You cannot keep both.
 
 ## What Multipath Does to a Session-Bound Ticket
 
-[Book 04](Book_04_Federal_Application_Aware_Networking_Network_Modernization.qmd) develops this argument in full — the security-stacking history in which inline proxies, NAT tiers, and stacked firewalls broke Kerberos sessions across the 2010s, and the multipath analysis showing why SD-WAN finishes the job. The load-bearing facts, restated:
+[Book 05](Book_05_Federal_Application_Aware_Networking_Network_Modernization.qmd) develops this argument in full — the security-stacking history in which inline proxies, NAT tiers, and stacked firewalls broke Kerberos sessions across the 2010s, and the multipath analysis showing why SD-WAN finishes the job. The load-bearing facts, restated:
 
 - Under **active-passive failover**, a Kerberos exchange that is mid-flight when a path fails times out over several seconds — the "logon takes 45 seconds" symptom field offices report.
 - Under **active-active multipath**, packets of one conversation traverse multiple physical paths simultaneously by design. The overlay resequences them into one ordered stream, and a transport-layer path switch costs roughly 50 ms. The *transport* problem is solved.
@@ -96,7 +96,7 @@ Two of the three bindings are broken by the very technologies the rest of this s
 
 ## The Fallback Nobody Chose
 
-When Kerberos cannot complete — unreachable KDC, missing SPN, clock skew — Windows does not fail closed. It falls back to NTLM. [Book 06](Book_06_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) documents what that means for the database estate: authentication that cannot be audited at the token level, cannot be gated by conditional access, and is replayable via pass-the-hash. The fallback is silent, which means **an agency that modernizes its WAN without modernizing its credential architecture does not keep Kerberos — it converts an unknown fraction of its authentication traffic to NTLM without anyone deciding to.**
+When Kerberos cannot complete — unreachable KDC, missing SPN, clock skew — Windows does not fail closed. It falls back to NTLM. [Book 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) documents what that means for the database estate: authentication that cannot be audited at the token level, cannot be gated by conditional access, and is replayable via pass-the-hash. The fallback is silent, which means **an agency that modernizes its WAN without modernizing its credential architecture does not keep Kerberos — it converts an unknown fraction of its authentication traffic to NTLM without anyone deciding to.**
 
 BOD 25-01's secure configuration baselines and OMB M-22-09 both point the same direction: legacy authentication off, modern token-based authentication on, phishing-resistant MFA underneath it. The remainder of this book is the architecture that makes those directives implementable rather than aspirational.
 
@@ -126,7 +126,7 @@ Three remediation strategies are regularly proposed to keep session-based authen
 
 - **"Pin authentication traffic to a single path."** SD-WAN overlays can steer an application class onto one transport. But pinning authentication to a single path re-creates the active-passive failure mode for exactly the traffic least able to tolerate it, forfeits the multipath resilience the agency bought, and does nothing about the inline inspection and NAT that broke sessions before multipath existed. The remedy un-modernizes the WAN for the benefit of a 1999 protocol.
 - **"Deploy read-only domain controllers everywhere."** Replicating KDCs to every branch and cloud region restores the location binding by copying the location everywhere. It multiplies the credential estate's attack surface (every KDC replica is a Tier-0 asset), does not fix session binding at all, and is impossible in environments the agency does not control — the externally managed tenancy has no domain controller and never will.
-- **"Extend the domain into the cloud."** Site-to-site tunnels carrying domain traffic to cloud regions recreate the hairpin that [Book 04](Book_04_Federal_Application_Aware_Networking_Network_Modernization.qmd)'s physics argument closed: authentication round-trips ride the tunnel back to wherever the domain controllers live, re-importing the latency floor into every logon. The tunnel moves the problem; it cannot shorten the distance.
+- **"Extend the domain into the cloud."** Site-to-site tunnels carrying domain traffic to cloud regions recreate the hairpin that [Book 05](Book_05_Federal_Application_Aware_Networking_Network_Modernization.qmd)'s physics argument closed: authentication round-trips ride the tunnel back to wherever the domain controllers live, re-importing the latency floor into every logon. The tunnel moves the problem; it cannot shorten the distance.
 
 Every patch preserves the premise — that identity is proven by network relationship — and the premise is what died. The remediation is not a better session; it is a credential that does not need one.
 
@@ -152,7 +152,7 @@ This framing is not aesthetic — it dictates ownership of function. Because iss
 |---|---|---|
 | Device identity at the port | Machine certificates enrolled via SCEP at device provisioning, validated by RADIUS/EAP-TLS | [Book 02](Book_02_Federal_Application_Aware_Networking_Network_Access_Control_802_1X.qmd) |
 | Workload transport identity | Server and service certificates issued at IP allocation time, revoked atomically at decommission | [Book 01](Book_01_Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd) |
-| User and application authentication | Certificate-based authentication and token signing keys | This book, applied in [Books 06](Book_06_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd)–[07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) |
+| User and application authentication | Certificate-based authentication and token signing keys | This book, applied in [Books 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd)–[08](Book_08_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) |
 
 : Certificate consumers across the series {.striped .hover}
 
@@ -225,10 +225,10 @@ Short lifetimes change what revocation is *for*. With multi-year certificates, r
 
 ## Certificate Telemetry as Evidence
 
-Every lifecycle event — enrollment, renewal, revocation, failed challenge, expiry-without-renewal — is a structured log record streamed to the evidence plane (the SIEM/XDR architecture of Book 12). Three analytics matter operationally:
+Every lifecycle event — enrollment, renewal, revocation, failed challenge, expiry-without-renewal — is a structured log record streamed to the evidence plane (the SIEM/XDR architecture of Book 13). Three analytics matter operationally:
 
 1. **Expiry horizon without renewal automation.** Any certificate inside two renewal windows of expiry with no bound renewal job is an incident *now*, not on expiry day.
-2. **Issuance outside the pipeline.** A certificate observed on a listener (via the scanning estate of Book 10) that has no corresponding enrollment record and no IPAM binding is unauthorized issuance or shadow infrastructure — either way, a finding.
+2. **Issuance outside the pipeline.** A certificate observed on a listener (via the scanning estate of Book 11) that has no corresponding enrollment record and no IPAM binding is unauthorized issuance or shadow infrastructure — either way, a finding.
 3. **Challenge-failure clustering.** Repeated DNS-01 failures against one zone indicate either DDI API breakage (an availability problem) or an attempt to obtain certificates for names the requester does not control (a security problem). The same signal, triaged by source.
 
 ::: {.callout-tip}
@@ -239,14 +239,14 @@ Every lifecycle event — enrollment, renewal, revocation, failed challenge, exp
 
 ## The Token Inverts the Trust Model
 
-Session-based authentication asks the *network* to vouch for continuity: the service trusts that the connection it authenticated is the connection still talking. Token-based authentication asks *mathematics* to vouch for the claim itself. An OAuth 2.0 / OpenID Connect token is a signed assertion — this user, this device posture, these authorizations, this time window, this signature — that any service can verify offline against the issuer's published signing keys. As [Book 04](Book_04_Federal_Application_Aware_Networking_Network_Modernization.qmd) states: Kerberos assumes client and server are in the same room; tokens assume they are strangers on the Internet.
+Session-based authentication asks the *network* to vouch for continuity: the service trusts that the connection it authenticated is the connection still talking. Token-based authentication asks *mathematics* to vouch for the claim itself. An OAuth 2.0 / OpenID Connect token is a signed assertion — this user, this device posture, these authorizations, this time window, this signature — that any service can verify offline against the issuer's published signing keys. As [Book 05](Book_05_Federal_Application_Aware_Networking_Network_Modernization.qmd) states: Kerberos assumes client and server are in the same room; tokens assume they are strangers on the Internet.
 
 The properties that follow are exactly the ones the multipath analysis demanded:
 
 - **Path independence.** The token is valid on any path, across any number of path switches, through any NAT. Nothing about its validity references the network.
 - **Verification without callback.** The service validates a signature; it does not open a connection to a domain controller. The sub-5 ms location binding is gone.
 - **Policy at issuance.** Every token issuance is a policy decision point: the identity provider evaluates user credential strength, device compliance (the Book 02 machine identity, surfaced as a device claim), location plausibility, and session risk *before* signing. Conditional access is the policy-enforcement plane consuming identity-plane truth — the plane separation the series hierarchy requires.
-- **Audit at the token level.** Every issuance, refresh, and revocation is a structured event. This is the telemetry NTLM structurally cannot produce and that the evidence plane (Book 12, Book 18) requires.
+- **Audit at the token level.** Every issuance, refresh, and revocation is a structured event. This is the telemetry NTLM structurally cannot produce and that the evidence plane (Book 13, Book 19) requires.
 
 ## The Anatomy of the Token Layer
 
@@ -286,11 +286,11 @@ Moving identity into tokens does not end credential attacks; it relocates them. 
 
 - **The exposure is real.** A bearer token is usable by whoever bears it. Stolen access tokens work until expiry; stolen refresh tokens work until revoked or rejected by policy.
 - **The exposure is structurally smaller than what it replaced.** A stolen password is durable, reusable everywhere it was reused, and invisible in use. A stolen access token is scoped to one resource, dead within the hour, and every use is a logged, attributable event. A stolen refresh token must survive the policy gate at every redemption — device compliance claims it cannot fake (the Book 02 machine identity surfacing as a token claim), location and risk evaluation, and revocation that takes effect at the next redemption rather than at the next password reset campaign.
-- **The countermeasures are the rest of this series.** Endpoint protection and posture (Books 02, 10) shrink the theft surface; token-level telemetry (Book 12) makes anomalous use detectable — a token minted to one device presenting from another is a high-fidelity signal that password architectures could never emit; proof-of-possession binding, where supported, ties the token to a key the bearer must hold, converting the bearer artifact back into a cryptographic one.
+- **The countermeasures are the rest of this series.** Endpoint protection and posture (Books 02, 10) shrink the theft surface; token-level telemetry (Book 13) makes anomalous use detectable — a token minted to one device presenting from another is a high-fidelity signal that password architectures could never emit; proof-of-possession binding, where supported, ties the token to a key the bearer must hold, converting the bearer artifact back into a cryptographic one.
 
 The correct summary is not "tokens cannot be stolen." It is: **the token architecture bounds what theft buys — in scope, in time, and in silence — and each bound is a protocol property, not a promise.**
 
-> **The dependency that makes this a series, not a shopping list:** the token asserts authorizations; the authorizations must be *true*. Book 04's Principle 1 — restore a single source of truth — is a precondition, not a preference: an identity provider signing group memberships inherited from twelve drifted regional directory trees produces well-formed tokens asserting broken facts. Cryptography transports truth; it does not manufacture it.
+> **The dependency that makes this a series, not a shopping list:** the token asserts authorizations; the authorizations must be *true*. Book 05's Principle 1 — restore a single source of truth — is a precondition, not a preference: an identity provider signing group memberships inherited from twelve drifted regional directory trees produces well-formed tokens asserting broken facts. Cryptography transports truth; it does not manufacture it.
 
 # Federal Policy Alignment
 
@@ -347,9 +347,9 @@ The pattern repeats the trust-hierarchy rule from the PKI section: **the longer 
 
 ## What This Sets Up
 
-This is the hinge to the application books. [Book 06](Book_06_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) replaces domain credentials in the SQL Server estate with managed identities and token-based authentication; [Book 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) is its implementation runbook. Read them as **applications of this chapter** — the database is simply the first large estate where the workload-identity progression is executed end-to-end:
+This is the hinge to the application books. [Book 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) replaces domain credentials in the SQL Server estate with managed identities and token-based authentication; [Book 08](Book_08_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) is its implementation runbook. Read them as **applications of this chapter** — the database is simply the first large estate where the workload-identity progression is executed end-to-end:
 
-| Books 06–07 Mechanism | The Book 03 Doctrine It Applies |
+| Books 07–08 Mechanism | The Book 03 Doctrine It Applies |
 |---|---|
 | Domain credential replaced by a platform-attested identity on each database host | The workload identity progression, stage three: secret nowhere |
 | Connection strings stripped of passwords; the application requests a token at connect time | Token-based identity: the proof travels in the credential, verified without a callback to a domain controller |
@@ -357,9 +357,9 @@ This is the hinge to the application books. [Book 06](Book_06_Federal_Applicatio
 | Every database authentication becomes a policy-gated, logged token issuance | Token issuance as the policy decision point; audit at the token level |
 | Migration sequenced by estate inventory and dependency mapping before any login is disabled | Phase 1's rule: establish truth before demanding it |
 
-: Books 06–07 as applications of this book's doctrine {.striped .hover}
+: Books 07–08 as applications of this book's doctrine {.striped .hover}
 
-Later parts repeat the same move against other estates — privileged sessions (Book 09), data-plane access (Book 11), detection surfaces (Book 12) — and none of them introduces new identity doctrine, because after this part there is none left to introduce.
+Later parts repeat the same move against other estates — privileged sessions (Book 10), data-plane access (Book 12), detection surfaces (Book 13) — and none of them introduces new identity doctrine, because after this part there is none left to introduce.
 
 # Phased Implementation
 
@@ -367,7 +367,7 @@ The sequencing principle: **establish truth before demanding it.** Each phase cr
 
 ## Phase 1 — Certificate Estate Discovery (Weeks 1–4)
 
-Enumerate before automating. Network scanning of every listener, CA database exports from every issuing authority (including the departmental ones nobody admits to), trust-store audits on representative endpoint and server populations, and correlation of all of it against the IPAM inventory. The outputs: a certificate inventory keyed to DDI records, a list of unknown-issuer certificates for investigation, and a trust-anchor census against which SC-17(b) cleanup is scoped. In parallel, enable authentication-protocol auditing across the estate — the Kerberos/NTLM fallback measurement that [Book 06](Book_06_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) requires begins here.
+Enumerate before automating. Network scanning of every listener, CA database exports from every issuing authority (including the departmental ones nobody admits to), trust-store audits on representative endpoint and server populations, and correlation of all of it against the IPAM inventory. The outputs: a certificate inventory keyed to DDI records, a list of unknown-issuer certificates for investigation, and a trust-anchor census against which SC-17(b) cleanup is scoped. In parallel, enable authentication-protocol auditing across the estate — the Kerberos/NTLM fallback measurement that [Book 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd) requires begins here.
 
 **Gate:** every production certificate has an owner, an issuer, and an IPAM binding — or an investigation ticket.
 
@@ -385,7 +385,7 @@ Register applications against the identity provider; enforce phishing-resistant 
 
 ## Phase 4 — Workload Identity Conversion (Weeks 25–40)
 
-Execute the progression of the workload identity table against the service estate: inventory every stored secret (connection strings, pipeline variables, configuration files), convert platform-resident workloads to managed identities, establish federation for cross-platform workloads, and expire the vacated secrets rather than merely abandoning them. [Book 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) is the worked example of this phase for the database estate; its runbook structure generalizes.
+Execute the progression of the workload identity table against the service estate: inventory every stored secret (connection strings, pipeline variables, configuration files), convert platform-resident workloads to managed identities, establish federation for cross-platform workloads, and expire the vacated secrets rather than merely abandoning them. [Book 08](Book_08_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) is the worked example of this phase for the database estate; its runbook structure generalizes.
 
 **Gate:** the secret inventory trends monotonically to zero for covered workload classes, and every remaining entry has a named exception with an expiry date.
 
@@ -412,12 +412,12 @@ The table maps each control this document closes to its state without the archit
 ::: {.callout-note}
 **FedRAMP 20x KSI Alignment — slot-01 identity**
 
-In the series' continuous-monitoring architecture, this book's evidence binds to the **slot-01 identity** evidence slot, which carries the **KSI-IAM** theme rules in the evaluation engine. Slot-01 was previously fed by the identity-plane and privileged-access parts of the original series; under the 18-part restructure it additionally binds this book's certificate-lifecycle and token-issuance evidence — enrollment and renewal logs from the automated CA pipeline, token issuance and conditional-access evaluation records, and the authenticator-strength posture for privileged and non-privileged accounts.
+In the series' continuous-monitoring architecture, this book's evidence binds to the **slot-01 identity** evidence slot, which carries the **KSI-IAM** theme rules in the evaluation engine. Slot-01 was previously fed by the identity-plane and privileged-access parts of the original series; under the 19-part restructure it additionally binds this book's certificate-lifecycle and token-issuance evidence — enrollment and renewal logs from the automated CA pipeline, token issuance and conditional-access evaluation records, and the authenticator-strength posture for privileged and non-privileged accounts.
 
-Per the series' conformance-tooling doctrine (Theme E): the ScuBA-based configuration rules attest that identity *settings* match the baseline. They measure drift from an intended state — they cannot author one. The intended state — which CA may issue for which names, which authenticators count as phishing-resistant, which workloads hold which identities — is authored by the architecture in this book, and the slot-01 evidence stream is what makes that authored state continuously attestable. The authoritative KSI Closure Necessity Matrix lives in [Book 00](Book_00_Federal_Application_Aware_Networking_Executive_Summary.qmd); [Book 18](Book_18_Federal_Application_Aware_Networking_Authorization_Package_ConMon.qmd) carries the evidence procedures behind it.
+Per the series' conformance-tooling doctrine (Theme E): the ScuBA-based configuration rules attest that identity *settings* match the baseline. They measure drift from an intended state — they cannot author one. The intended state — which CA may issue for which names, which authenticators count as phishing-resistant, which workloads hold which identities — is authored by the architecture in this book, and the slot-01 evidence stream is what makes that authored state continuously attestable. The authoritative KSI Closure Necessity Matrix lives in [Book 00](Book_00_Federal_Application_Aware_Networking_Executive_Summary.qmd); [Book 19](Book_19_Federal_Application_Aware_Networking_Authorization_Package_ConMon.qmd) carries the evidence procedures behind it.
 :::
 
-# Series Context — Part 3 of 18
+# Series Context — Part 3 of 19
 
 This part completes the foundation trilogy:
 
@@ -425,7 +425,7 @@ This part completes the foundation trilogy:
 - **[Book 02](Book_02_Federal_Application_Aware_Networking_Network_Access_Control_802_1X.qmd)** — device identity at the port: the machine certificate as the admission credential, quarantine as the default.
 - **Book 03 (this document)** — cryptographic identity as a whole: certificates as naming-plane artifacts, lifecycle automation as the only sustainable operating model, tokens as the path-independent carrier of user and workload identity.
 
-Everything after this point is application and evidence. [Book 04](Book_04_Federal_Application_Aware_Networking_Network_Modernization.qmd) and [Book 05](Book_05_Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd) modernize the transport that made this identity model mandatory. [Books 06](Book_06_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd)–[07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) execute this book's doctrine against the database estate — the first proof that session-bound authentication can be *removed*, not merely deprecated. The privileged access, detection, and continuity parts consume the token-level telemetry this architecture emits, and [Book 18](Book_18_Federal_Application_Aware_Networking_Authorization_Package_ConMon.qmd) assembles it into the authorization package.
+Everything after this point is application and evidence. [Book 05](Book_05_Federal_Application_Aware_Networking_Network_Modernization.qmd) and [Book 06](Book_06_Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd) modernize the transport that made this identity model mandatory. [Books 07](Book_07_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd)–[08](Book_08_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd) execute this book's doctrine against the database estate — the first proof that session-bound authentication can be *removed*, not merely deprecated. The privileged access, detection, and continuity parts consume the token-level telemetry this architecture emits, and [Book 19](Book_19_Federal_Application_Aware_Networking_Authorization_Package_ConMon.qmd) assembles it into the authorization package.
 
 ## How the Series Doctrine Lands in This Part
 
@@ -445,4 +445,4 @@ The doctrine in one paragraph: **names are authoritative (Book 01), devices prov
 
 ---
 
-*Federal Application-Aware Networking — Part 3 of 18. Parts 1–2 established the naming plane and device identity; Part 3 establishes cryptographic identity for users, devices, and workloads. Parts 4–18 apply this foundation to transport, applications, operations, and the authorization package.*
+*Federal Application-Aware Networking — Part 3 of 19. Parts 1–2 established the naming plane and device identity; Part 3 establishes cryptographic identity for users, devices, and workloads; Part 4 anchors those identities in the authoritative HR and organizational source of truth. Parts 5–19 apply this foundation to transport, applications, operations, and the authorization package.*
