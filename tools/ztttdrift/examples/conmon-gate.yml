@@ -1,0 +1,39 @@
+# Example: gate a continuous-monitoring pipeline on ZTTTdrift.
+#
+# The maturity assessment runs (elsewhere / on a schedule) and its export is
+# converted to ztttdrift-input/1.0 and dropped into an artifact. This job
+# triages that run against the risk-acceptance register and FAILS the pipeline
+# only when there is new drift, a lapsed acceptance, or a regression below
+# target — governed, in-date exceptions do not break the build.
+name: conmon-zt-maturity-gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 1 * *" # monthly, 1st at 12:00 UTC — maturity moves slower than config
+
+jobs:
+  zt-maturity-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ZTTTdrift
+        run: pip install ./ztttdrift        # or: pip install ztttdrift
+
+      # In a real pipeline, fetch the latest converted assessment here instead.
+      # - uses: actions/download-artifact@v4
+      #   with: { name: zt-assessment, path: ./zt-out }
+
+      - name: Gate on actionable maturity drift
+        run: |
+          ztttdrift gate \
+            --results ./zt-out/assessment.json \
+            --baseline ./zt-out/assessment-previous.json \
+            --exceptions ./governance/exceptions.yaml \
+            --target advanced \
+            --json
