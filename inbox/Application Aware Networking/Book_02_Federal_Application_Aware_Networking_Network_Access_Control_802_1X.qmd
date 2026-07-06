@@ -1,6 +1,6 @@
 ---
-title: "Book 17 — Federal Application-Aware Networking — Part 17"
-subtitle: "Network Access Control: 802.1X, EAP-TLS, and Device Identity Enforcement"
+title: "Book 02 — Federal Application-Aware Networking — Network Access Control: 802.1X and Device Identity"
+subtitle: "802.1X, EAP-TLS, and Device Identity Enforcement at the Port — Part 2"
 author: "SSA Cloud Services Team"
 date: "July 5, 2026"
 format:
@@ -27,20 +27,20 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
 ::: {.callout-important}
-**Series Context** — This document is Part 17 of the Federal Application-Aware Networking series. Parts 1–16 establish the DDI/PKI landing zone, network modernization, telecommunications, SQL Server authentication, database architecture, privileged access, vulnerability management, data protection, SIEM/XDR, business continuity, supply chain risk, program governance, PII transparency, cybersecurity training, and the authorization package. This part addresses the device identity layer — the only attack surface that remains exploitable after all prior token-based and user-identity controls are in place: unauthenticated physical network access by unknown or non-compliant devices.
+**Series Context** — This document is Part 2 of the Federal Application-Aware Networking series. Part 1 establishes the cloud landing zone and the authoritative naming and addressing plane — IPAM, DHCP, DNS, and certificate issuance (DDI/PKI). This part lays the device identity substrate directly on top of that plane: before any certificate is trusted, any token is minted, or any application flow is authorized, the network must be able to answer the question *what is physically connected to this port?* Part 3 (Certificates and Tokens) builds the cryptographic identity plane on this substrate, and every subsequent part — network modernization, telecommunications, database consolidation, privileged access, telemetry, and the authorization package — depends on the answer being enforced at the wire.
 :::
 
 # What This Document Addresses
 
-Parts 1 through 16 of this series secured the *user* identity plane comprehensively. Entra ID Conditional Access requires phishing-resistant MFA. PIM eliminates standing privilege. PAW workstations scope administrative sessions to compliant devices. Managed Identity tokens eliminate service account passwords from application connection strings. Every user authentication event is now cryptographically bound, auditable, and policy-gated.
+Part 1 of this series established the naming and addressing plane: every device that joins the network receives an address from an authoritative DHCP service, a name in an authoritative DNS zone, and a record in an authoritative IPAM database. That plane can *observe* and *record* every device — but observation is not authentication. The naming and addressing plane, by itself, cannot decide whether the device should have been admitted at all.
 
-None of those controls answer a simpler question: *what is physically plugged into this network port?*
+No control laid above it answers the simpler question either: *what is physically plugged into this network port?*
 
-A threat actor with physical access to a conference room, a decommissioned office wing, or an unmonitored wiring closet can connect an unauthorized device to the SSA network and begin reconnaissance, lateral movement, or data exfiltration without presenting any user identity at all. The user identity controls that Parts 1–16 establish are downstream of network admission — they are effective only after a device has already been granted connectivity.
+A threat actor with physical access to a conference room, a decommissioned office wing, or an unmonitored wiring closet can connect an unauthorized device to the SSA network and begin reconnaissance, lateral movement, or data exfiltration without presenting any user identity at all. Every identity control the rest of this series builds — the certificate and token plane of Part 3, the application authentication modernization of Parts 6–7, the privileged access controls of Part 9 — is downstream of network admission. Those controls are effective only after a device has already been granted connectivity; built on unauthenticated ports, they are built on an unverified floor.
 
 Network Access Control (NAC) with 802.1X port-based authentication addresses this at the wire. Before a device receives an IP address and network routing, it must present a cryptographically valid machine certificate to a RADIUS server that can verify the device's identity against the Entra ID device inventory. If the certificate is absent, expired, or does not correspond to an enrolled managed device, the port is placed into a quarantine VLAN with no access to SSA resources.
 
-This document covers the architecture, certificate provisioning pipeline, RADIUS design, policy tier structure, InfoBlox integration, Sentinel logging, and phased implementation for 802.1X NAC across the SSA GCC Moderate boundary. It closes the **IA-3** (Device Identification and Authentication) control family — the most significant remaining gap in the IA control set after Parts 1–7 — and extends the **SC-7** (Boundary Protection) and **CM-8** (System Component Inventory) postures established in earlier parts.
+This document covers the architecture, certificate provisioning pipeline, RADIUS design, policy tier structure, InfoBlox integration, Sentinel logging, and phased implementation for 802.1X NAC across the SSA GCC Moderate boundary. It closes the **IA-3** (Device Identification and Authentication) control family at the only layer where it can be closed — the point of network admission — and lays the **SC-7** (Boundary Protection) and **CM-8** (System Component Inventory) foundations that Parts 3 through 18 extend upward through certificates, applications, telemetry, and the authorization package.
 
 ::: {.callout-note}
 **Device Identity vs. User Identity** — NAC and 802.1X operate at the *device* layer, prior to any user authentication event. A device that fails 802.1X admission is quarantined regardless of the user credential that would subsequently be presented. This is a complementary, not redundant, control: Zero Trust requires verifying both *who is the user* and *what is the device*, independently.
@@ -50,9 +50,9 @@ This document covers the architecture, certificate provisioning pipeline, RADIUS
 
 ## Why User Identity Alone Is Insufficient
 
-The AAN series thesis is: *Physics constrains, token liberates.* Parts 1–16 implement the token side — every user and service identity assertion is now backed by a cryptographic token. But a token is presented by a device, and the integrity of the token depends on the integrity of the device presenting it.
+The AAN series thesis is: *Physics constrains, token liberates.* The parts that follow this one implement the token side — Part 3 mints the cryptographic identities, and Parts 4 through 9 bind transport, applications, and privileged access to them, until every user and service identity assertion is backed by a cryptographic token. But a token is presented by a device, and the integrity of the token depends on the integrity of the device presenting it. That is why the device identity substrate is laid *now*, immediately after the naming and addressing plane, rather than at the end.
 
-Consider the following two post–Parts 1–16 scenarios:
+Consider the following two scenarios in the completed architecture this series builds:
 
 **Scenario A — Credential theft on a managed device.** An attacker phishes a user's FIDO2 hardware key and clones the credential. The attacker can now present a valid Entra ID token. Conditional Access evaluates device compliance — the token is presented from the attacker's unmanaged laptop, which fails the `compliant` device filter. Access is denied. The user identity control and the device compliance check together stop the attack.
 
@@ -79,6 +79,16 @@ Each of these is a live network connection with no authentication gate. NAC with
 **Before this document** — a device connecting to any SSA switch port in a managed facility receives network access determined solely by VLAN configuration on the port. No device identity assertion is required. Physical access to the facility is the only gate.
 
 **After this document** — every switch port and wireless access point requires a valid machine certificate issued to an Entra-enrolled device. Devices that cannot present a valid certificate are placed in a quarantine VLAN. Devices that present a valid certificate from a non-compliant device (patch compliance failure, AV disabled) are placed in a remediation VLAN. Only devices that are enrolled, compliant, and certificate-valid receive access to the production VLAN.
+
+# The Voice VLAN Precedent
+
+Network Access Control did not begin with 802.1X. It began, in production networks, with a telephone.
+
+When IP telephony arrived in the late 1990s — before IEEE 802.1X-2001 was ratified, and years before supplicant software was broadly deployable — every desk deployment faced the same problem NAC solves today: two very different device classes, a phone and a workstation, sharing the same wall jack, requiring different network segments, different QoS treatment, and different access scope. The mechanism that solved it was not an authentication protocol. It was DHCP. A phone booting on the data VLAN sent a DHCP request that declared its device class — the vendor class identifier in option 60, and a characteristic pattern of requested options. The DHCP server recognized the class and answered with vendor-specific options carrying the voice VLAN ID and the address of the configuration server. The phone released its data-VLAN lease, re-tagged its traffic onto the voice VLAN, and requested a new address there. The switch never authenticated anything; the *naming and addressing plane* identified the device and the network differentiated its admission accordingly.
+
+This is the structural precedent for everything in this document. Voice VLAN steering was the earliest production case of the pattern NAC generalizes: a device asserts an identity, an authoritative service classifies it, and the network assigns it a segment scoped to its function — before the device touches any production resource. Every element of the modern NAC policy tier structure is visible in embryo: device classification (option 60 fingerprint), differentiated VLAN assignment (voice vs. data), and function-scoped access (the phone reaches call control, not file shares). The DHCP server was acting as a policy decision point a decade before that term entered the architecture vocabulary.
+
+The precedent also carried a structural weakness, and naming it precisely is what motivates the rest of this document: **DHCP option-based steering is identity by assertion, not by proof.** Any device can transmit a phone's vendor class identifier; nothing in the exchange is cryptographically verified. That is acceptable for QoS steering, where the worst case of a false claim is mis-prioritized traffic. It is not acceptable for access control, where the worst case is an unauthorized device in a production segment. 802.1X with EAP-TLS replaces the assertion with a proof — a machine certificate whose private key never leaves the device — while the assertion-based lineage survives, deliberately and in a constrained role, in two places later in this document: MAC Authentication Bypass for devices that cannot run a supplicant, and DHCP fingerprinting as the classification and anomaly-detection signal that the IPAM layer feeds back into the NAC decision. The naming and addressing plane asserted device identity first; the identity plane this book builds makes the assertion provable.
 
 # NAC Architecture — RADIUS, 802.1X, and EAP-TLS
 
@@ -150,7 +160,7 @@ interface GigabitEthernet1/0/1
  ip dhcp snooping limit rate 15
 ```
 
-The `authentication order dot1x mab` line implements the fallback sequence: the port attempts 802.1X first (30-second window for a supplicant to respond). If no 802.1X supplicant responds, the port falls back to MAC Authentication Bypass (MAB) for devices that cannot participate in 802.1X (printers, IP phones, badge readers). MAB is covered in Section 5.
+The `authentication order dot1x mab` line implements the fallback sequence: the port attempts 802.1X first (30-second window for a supplicant to respond). If no 802.1X supplicant responds, the port falls back to MAC Authentication Bypass (MAB) for devices that cannot participate in 802.1X (printers, IP phones, badge readers). MAB is covered in Section 6.
 
 # Certificate Infrastructure and Device Enrollment
 
@@ -482,7 +492,7 @@ Refine the MAB policy based on operational experience from Phases 2–3:
 
 The following table maps each NIST control addressed by this document to its state before and after implementation.
 
-![NIST control closure for Part 17 NAC showing before and after state for IA, AC, SC, and CM controls](figs/nac-fig-07-nist-closure.png){#fig-nac07 fig-alt="Table-style diagram with five columns: Control ID, Control Title, State Without NAC, State With NAC, and Primary Authority. Rows cover IA-3, IA-3(1), AC-3, AC-17, AC-19, AC-20, SC-7(3), SC-7(5), CM-6, CM-7, CM-8. Color coding: red rows indicate non-compliant or uncontrolled state without NAC, green rows indicate controlled state with NAC." width="100%"}
+![NIST control closure for Part 2 NAC showing before and after state for IA, AC, SC, and CM controls](figs/nac-fig-07-nist-closure.png){#fig-nac07 fig-alt="Table-style diagram with five columns: Control ID, Control Title, State Without NAC, State With NAC, and Primary Authority. Rows cover IA-3, IA-3(1), AC-3, AC-17, AC-19, AC-20, SC-7(3), SC-7(5), CM-6, CM-7, CM-8. Color coding: red rows indicate non-compliant or uncontrolled state without NAC, green rows indicate controlled state with NAC." width="100%"}
 
 | Control | Title | Without This Document | With This Document | Authority |
 |---------|-------|----------------------|-------------------|-----------|
@@ -498,20 +508,32 @@ The following table maps each NIST control addressed by this document to its sta
 | **CM-7** | Least Functionality | Any device that obtains physical network connectivity receives production VLAN routing; IoT devices and printers have unrestricted lateral movement potential within the VLAN | IoT and OT devices receive VLAN 300 with ACLs restricting them to only the management ports and protocols their function requires; a printer can reach the print server port only, not the file server or Active Directory | NIST SP 800-53 Rev 5 CM-7 |
 | **CM-8** | System Component Inventory | Device inventory is maintained in Intune (enrolled managed devices) and SCCM/MEM, but unmanaged devices that connect to the network are not captured in any authoritative inventory | Every device that connects to a NAC-controlled port generates a RADIUS accounting record linked to an InfoBlox DHCP record; managed and unmanaged devices alike are recorded with MAC address, port, VLAN, authentication result, and timestamp; this is the authoritative network device inventory | NIST SP 800-53 Rev 5 CM-8 |
 
-: NIST SP 800-53 Rev 5 control closure for Part 17 — Network Access Control {.striped .hover}
+: NIST SP 800-53 Rev 5 control closure for Part 2 — Network Access Control {.striped .hover}
+
+> **Closure Necessity — IA-3 at the point of admission.** IA-3 requires the system to uniquely identify and authenticate devices *before establishing a network connection*. The connection is established at exactly one place — the switch port or the wireless association — so the authentication must interpose at that place, before an address is issued and routing begins. Only a port-based authentication protocol carrying a verifiable device credential (802.1X with EAP-TLS, backed by the device identity substrate this document builds) can do that: a vulnerability scanner discovers a device only after it is already connected, an MDM agent reports only from devices already enrolled, and a firewall evaluates packets from devices already admitted. There is no configuration setting, scanner finding, or policy document that authenticates a port.
+
+> **Closure Necessity — CM-8 and the enumeration problem.** CM-8 requires a component inventory that *accurately reflects the system* and *includes all components within the system* — including the components nobody enrolled. An MDM inventory contains only devices that completed enrollment; a scanner sees only the address ranges and time windows it is pointed at. The one plane every device must touch in order to function at all — managed or rogue — is the addressing plane: to communicate, it must obtain an address. IPAM with DHCP fingerprinting, annotated by the NAC authentication result, is therefore the only mechanism that enumerates *every* component and is thus the authoritative CM-8 inventory. You cannot inventory what you cannot enumerate, and no scanner creates a source of truth; it can only measure drift from one.
 
 ::: {.callout-note}
 **FedRAMP 20x Key Security Indicator Alignment**
 
-**KSI-CMT-LMC (KSI-011) — Least Functionality / Configuration Management**: NAC posture enforcement via Intune compliance provides a network-layer gate that prevents non-compliant devices from accessing production resources. This strengthens the KSI-011 evidence depth established in Parts 12 and 13 by adding an enforcement point at the network admission layer, not just at the policy reporting layer.
+**KSI-CMT-LMC (KSI-011) — Least Functionality / Configuration Management**: NAC posture enforcement via Intune compliance provides a network-layer gate that prevents non-compliant devices from accessing production resources. This lays a network-admission enforcement point beneath the KSI-011 evidence depth that Parts 14 and 15 later establish at the policy and governance layer.
 
-**KSI-CMT-VTD (KSI-014) — Vulnerability and Threat Detection**: The NAC posture check evaluates Defender AV definition currency and OS patch level at network admission — the same indicators used for KSI-014 vulnerability management evidence in Part 8. A device with an overdue patch that passes vulnerability scanner thresholds on its scheduled scan date but falls out of compliance between scans is caught by NAC posture at the next re-authentication. NAC provides continuous enforcement between point-in-time scan windows.
+**KSI-CMT-VTD (KSI-014) — Vulnerability and Threat Detection**: The NAC posture check evaluates Defender AV definition currency and OS patch level at network admission — the same indicators Part 10 later uses for KSI-014 vulnerability management evidence. A device with an overdue patch that passes vulnerability scanner thresholds on its scheduled scan date but falls out of compliance between scans is caught by NAC posture at the next re-authentication. NAC provides continuous enforcement between point-in-time scan windows.
 
 **KSI-IAM-MFA (KSI-001) — Multi-Factor Authentication**: EAP-TLS machine certificate authentication is a hardware-bound device credential (certificate key in TPM) that constitutes a device MFA factor — something the device *has* (the certificate) combined with hardware attestation (TPM key non-exportability). This deepens the KSI-001 evidence narrative by extending phishing-resistant authentication from the user identity layer to the device identity layer.
 
 Agencies implementing this document should capture the following as OSCAL AR evidence artifacts: NPS RADIUS accounting log export (90-day retention, per AU-11); Intune compliance report export showing NAC-enrolled devices; InfoBlox DHCP audit log for the NAC-controlled VLAN scopes; and the Phase 1 monitor-mode baseline report.
 :::
 
+# From Port to Token: the NAC → ZTNA Continuum
+
+Every admission decision in this document answers the same three questions: *is this device known, is its identity proven, and is its posture current?* What varies across the rest of the series is not the questions — it is where the answer is enforced.
+
+At the port, the answer is enforced by VLAN assignment: a switch consults a RADIUS server, and the device lands in a segment scoped to its trust level. That enforcement is location-bound by construction — it protects the wire, and only the wire. The moment the same device reaches an application through a cloud front door, a ZTNA broker, or a conditional access gateway, the port's verdict is out of scope. Zero Trust Network Access re-asks the three questions at every access request, and it enforces the answer not in a VLAN but in a **token**: the device certificate minted here becomes a claim, the Intune compliance state evaluated here becomes a claim, and the access token carries both to whatever policy enforcement point sits in front of the resource.
+
+This is a continuum, not a replacement. Part 3 (Certificates and Tokens) takes the machine certificate this document provisions for the RADIUS exchange and generalizes it into the series' cryptographic identity plane — the same SCEP pipeline, the same TPM-bound keys, the same revocation infrastructure, now issuing identities for users, services, and workloads as well as switch-port admission. Part 4 (application-aware modernization) then rebuilds the network itself around those identities, so that transport policy, not just admission policy, is decided per-application and per-identity. Posture asserted at the port evolves into posture asserted in the token; the port remains the enforcement point for the one layer no token can reach — the physical wire — while the token carries the identical device identity everywhere the wire does not go.
+
 ---
 
-*Federal Application-Aware Networking — Part 17 of the series. Parts 1–16 secured the user identity and application access plane. Part 17 closes the device identity gap at the network port, completing the Zero Trust device pillar for the SSA GCC Moderate boundary. Together the seventeen parts provide self-assessed evidence for all 29 FedRAMP 20x CR26 KSIs and 106+ NIST SP 800-53 Rev 5 controls pending independent 3PAO validation.*
+*Federal Application-Aware Networking — Part 2 of the series. Part 1 established the authoritative naming and addressing plane; Part 2 lays the device identity substrate on top of it, closing the device identity gap at the network port before any higher-layer identity assertion is made. Part 3 builds the certificate and token identity plane on this substrate, and Parts 4 through 18 carry those identities through transport, applications, operations, and the authorization package. Together the eighteen parts provide self-assessed evidence for all 29 FedRAMP 20x CR26 KSIs and 106+ NIST SP 800-53 Rev 5 controls pending independent 3PAO validation.*
