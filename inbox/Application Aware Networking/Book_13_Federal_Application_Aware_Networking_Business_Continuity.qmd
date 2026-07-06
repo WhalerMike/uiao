@@ -1,5 +1,5 @@
 ---
-title: "Book 11 — Federal Application-Aware Networking — Part 11"
+title: "Book 13 — Federal Application-Aware Networking — Part 13"
 subtitle: "Federal Business Continuity: Contingency Planning, DR Architecture, and Recovery Validation"
 author: "SSA Cloud Services Team"
 date: "July 2, 2026"
@@ -28,11 +28,11 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 
 ## What This Document Addresses
 
-Parts 1 through 10 of this series built the infrastructure substrate for a resilient federal network: DNS with Grid replication (Part 1), SD-WAN with dual underlay circuits and automatic path failover (Part 2), identity with break-glass access procedures (Part 3 and Part 7), SQL Server Always On Availability Groups with geo-replicated disaster recovery replicas (Parts 5 and 6), and a centralized logging and alerting fabric (Part 10). Each part produced runbooks, configuration templates, and tested recovery procedures. A FedRAMP assessor reviewing all ten parts would find a technically impressive architecture. They would also find that the agency cannot demonstrate compliance with CP-2.
+Parts 1 through 12 of this series built the infrastructure substrate for a resilient federal network: DNS with Grid replication (Part 1), SD-WAN with dual underlay circuits and automatic path failover (Part 4), identity with break-glass access procedures (Parts 3 and 9), SQL Server Always On Availability Groups with geo-replicated disaster recovery replicas (Parts 7 and 8), and a centralized logging and alerting fabric (Part 12). Each part produced runbooks, configuration templates, and tested recovery procedures. A FedRAMP assessor reviewing all twelve parts would find a technically impressive architecture. They would also find that the agency cannot demonstrate compliance with CP-2.
 
-The reason is structural. CP-2 is not satisfied by capable infrastructure. CP-2 is satisfied by a document: a Contingency Plan that has been approved by a designated official, distributed to all recovery personnel, tested on a defined cycle, and updated when the system changes or after every test. The runbook in Part 5 that walks a DBA through failing over an Availability Group is a recovery procedure. It is not a Contingency Plan. The SD-WAN configuration in Part 2 that automatically selects the backup DIA circuit when MPLS degrades is a resilience capability. It is not a Contingency Plan. An assessor who opens the Plan of Action and Milestones and sees CP-2 open can turn off the screens showing a perfectly functioning DR failover and write a High finding, because the artifact does not exist.
+The reason is structural. CP-2 is not satisfied by capable infrastructure. CP-2 is satisfied by a document: a Contingency Plan that has been approved by a designated official, distributed to all recovery personnel, tested on a defined cycle, and updated when the system changes or after every test. The runbook in Part 7 that walks a DBA through failing over an Availability Group is a recovery procedure. It is not a Contingency Plan. The SD-WAN configuration in Part 4 that automatically steers traffic onto the backup DIA circuit when MPLS degrades is a resilience capability — one that lives in the overlay's probe-driven path selection, not in the circuit. It is not a Contingency Plan either. An assessor who opens the Plan of Action and Milestones and sees CP-2 open can turn off the screens showing a perfectly functioning DR failover and write a High finding, because the artifact does not exist.
 
-This document closes that gap. It assembles the infrastructure components from Parts 1 through 10 into a formal CP-2 Contingency Plan structure aligned to NIST SP 800-34 Rev 1, adds the organizational and testing layers that infrastructure alone cannot provide, and closes the full CP control family through CP-10. Agencies can use this document as a direct template: the section outlines are populated with enough specificity to guide authors, the Business Impact Analysis methodology produces the RTO/RPO values that anchor the plan, and the testing framework produces the artifacts an assessor expects to see.
+This document closes that gap. It assembles the infrastructure components from Parts 1 through 12 into a formal CP-2 Contingency Plan structure aligned to NIST SP 800-34 Rev 1, adds the organizational and testing layers that infrastructure alone cannot provide, and closes the full CP control family through CP-10. Agencies can use this document as a direct template: the section outlines are populated with enough specificity to guide authors, the Business Impact Analysis methodology produces the RTO/RPO values that anchor the plan, and the testing framework produces the artifacts an assessor expects to see.
 
 ## Technology Without a Plan Fails CP-2
 
@@ -46,7 +46,7 @@ The distinction matters operationally as well. During an actual contingency, rec
 
 ### What a DR Runbook Is and Is Not
 
-The DR runbooks in Parts 5 and 6 are Section 5 content for the Contingency Plan. They are not the Contingency Plan itself. The difference is visible in what each artifact contains.
+The DR runbooks in Parts 7 and 8 are Section 5 content for the Contingency Plan. They are not the Contingency Plan itself. The difference is visible in what each artifact contains.
 
 A DR runbook answers: given that a decision to fail over has already been made, here are the technical steps to execute it, in order, with expected outputs at each step. It assumes someone has already declared an outage, notified affected parties, assembled the recovery team, and authorized the failover. It picks up at the moment a DBA sits down at a console.
 
@@ -69,7 +69,7 @@ The BIA produces four values for each mission-critical system:
 
 ### Conducting the BIA
 
-**Step 1: System inventory and scoping.** Begin with the asset inventory. The SQL estate inventory from Part 5 provides the structured data layer; the DDI dependency map from Part 1 provides the network dependency topology. Every system that appears in either inventory is a BIA candidate. Systems that are not in the inventory are not in scope for the contingency plan, which is an additional reason to maintain accurate asset inventories.
+**Step 1: System inventory and scoping.** Begin with the asset inventory. The SQL estate inventory from Part 7 provides the structured data layer; the DDI dependency map from Part 1 provides the network dependency topology. Every system that appears in either inventory is a BIA candidate. Systems that are not in the inventory are not in scope for the contingency plan, which is an additional reason to maintain accurate asset inventories.
 
 **Step 2: Stakeholder interviews.** For each candidate system, interview the mission owner (the senior official responsible for the business function the system supports), the system owner (the technical lead), and one or more power users who perform high-volume transactions. The mission owner determines the MTD. The system owner determines the RTO and whether it is technically achievable. The power users identify WRT requirements by describing the manual reconciliation or catchup procedures they perform after a system disruption.
 
@@ -80,9 +80,9 @@ Interview questions for mission owners:
 3. Are there specific time windows — end-of-day processing, scheduled batch jobs, federal reporting deadlines — during which an outage would be more severe?
 4. What manual workaround procedures exist, and how long can staff sustain them?
 
-**Step 3: Transaction rate analysis.** Pull peak transaction rates from monitoring (the Sentinel dashboards from Part 10 are the source for this). For a federal contact center such as an emergency services coordination system: record the peak call volume by hour for the past 90 days, identify the top five business days by call volume, and calculate the volume of call records that accumulate during a 15-minute window at peak load. That number is the RPO's concrete meaning: it is the number of call records the agency accepts losing if a failure occurs at peak time.
+**Step 3: Transaction rate analysis.** Pull peak transaction rates from monitoring (the Sentinel dashboards from Part 12 are the source for this). For a federal contact center such as an emergency services coordination system: record the peak call volume by hour for the past 90 days, identify the top five business days by call volume, and calculate the volume of call records that accumulate during a 15-minute window at peak load. That number is the RPO's concrete meaning: it is the number of call records the agency accepts losing if a failure occurs at peak time.
 
-**Step 4: Dependency mapping.** For each system, enumerate upstream and downstream dependencies using the IPAM dependency map from Part 1 and the SQL replication topology from Part 6. A dependency that has a longer RTO than the dependent system creates a recovery constraint: the dependent system cannot be recovered before the dependency is available, regardless of what its own RTO says. These constraints must be resolved by either adjusting RTO values or architecting away the hard dependency.
+**Step 4: Dependency mapping.** For each system, enumerate upstream and downstream dependencies using the IPAM dependency map from Part 1 and the SQL replication topology from Part 8. A dependency that has a longer RTO than the dependent system creates a recovery constraint: the dependent system cannot be recovered before the dependency is available, regardless of what its own RTO says. These constraints must be resolved by either adjusting RTO values or architecting away the hard dependency.
 
 **Step 5: BIA table.** Compile results into a formal table for mission owner and ISSO review and sign-off.
 
@@ -109,7 +109,7 @@ The MTD value in each BIA row is a mission decision, not a technical estimate. B
 
 ## CP-2 Contingency Plan Document Structure
 
-NIST SP 800-34 Rev 1 defines seven sections for a federal Contingency Plan. This section provides the structural outline for each section with sufficient detail for agency authors to populate it. The runbooks from Parts 5 and 6 are explicitly referenced as appendix content that satisfies Section 5 recovery procedure requirements.
+NIST SP 800-34 Rev 1 defines seven sections for a federal Contingency Plan. This section provides the structural outline for each section with sufficient detail for agency authors to populate it. The runbooks from Parts 7 and 8 are explicitly referenced as appendix content that satisfies Section 5 recovery procedure requirements.
 
 ![CP-2 document structure: 7 sections with NIST SP 800-34 mapping](figs/bc-fig-02-cp2-structure.png){fig-alt="Flowchart showing the seven sections of a NIST SP 800-34 Rev 1 Contingency Plan arranged vertically with left-side annotations mapping each section to its corresponding NIST control. Section 1 Introduction maps to CP-2 system identification. Section 2 Concept of Operations maps to CP-2 recovery priorities. Section 3 Roles and Responsibilities maps to CP-2 personnel and CP-3 training. Section 4 Activation and Notification maps to CP-2 activation criteria. Section 5 Recovery Procedures maps to CP-2 recovery steps, CP-6 alternate storage, and CP-7 alternate processing. Section 6 Reconstitution maps to CP-2 reconstitution. Section 7 Plan Maintenance maps to CP-2 review cycle. Arrows indicate sequential dependency from declaration through reconstitution." width="100%"}
 
@@ -254,15 +254,15 @@ Step 5 (as applicable): If the outage affects public-facing services or partner 
 ::: {.callout-note}
 ## Appendix Cross-References
 
-Appendix A — Network Recovery Procedures (SD-WAN failover and DDI Grid failover; derived from the runbooks in Parts 1 and 2 of this series)
+Appendix A — Network Recovery Procedures (SD-WAN failover and DDI Grid failover; derived from the runbooks in Parts 1 and 4 of this series)
 
-Appendix B — Database Recovery Procedures (SQL AG failover and point-in-time restore; derived from the runbooks in Parts 5 and 6 of this series)
+Appendix B — Database Recovery Procedures (SQL AG failover and point-in-time restore; derived from the runbooks in Parts 7 and 8 of this series)
 
-Appendix C — Identity Recovery Procedures (break-glass account activation and Conditional Access adjustment; derived from Parts 3 and 7 of this series)
+Appendix C — Identity Recovery Procedures (break-glass account activation and Conditional Access adjustment; derived from Parts 3 and 9 of this series)
 
 Appendix D — Application and Cloud Service Recovery Procedures (application tier failover to secondary region)
 
-Appendix E — Audit Logging Recovery Procedures (Sentinel workspace validation and log analytics continuity; derived from Part 10 of this series)
+Appendix E — Audit Logging Recovery Procedures (Sentinel workspace validation and log analytics continuity; derived from Part 12 of this series)
 
 Appendix F — Notification Templates and External Stakeholder Contact Roster
 :::
@@ -321,11 +321,11 @@ Appendix F — Notification Templates and External Stakeholder Contact Roster
 
 CP-6 requires the organization to establish an alternate storage site that includes backup copies of information sufficient to support recovery operations, and that is geographically separated from the primary site to reduce the likelihood that a single event (natural disaster, regional power failure, physical attack) affects both simultaneously.
 
-The geo-replicated database architecture from Part 6 addresses the structured data component of CP-6. The async replica in the secondary cloud region receives continuous transaction log shipping and can be promoted to primary within 30–60 minutes. For CP-6 purposes, this constitutes an alternate storage site for the database tier. However, CP-6 covers more than the database.
+The geo-replicated database architecture from Part 8 addresses the structured data component of CP-6. The async replica in the secondary cloud region receives continuous transaction log shipping and can be promoted to primary within 30–60 minutes. For CP-6 purposes, this constitutes an alternate storage site for the database tier. However, CP-6 covers more than the database.
 
 ### Structured Data (Database Tier)
 
-The SQL Server Always On Availability Group architecture from Parts 5 and 6 provides continuous replication of database content to the DR replica in the secondary region. The RPO for structured data is bounded by the replication lag: for synchronous replicas (same metropolitan region), RPO approaches zero; for async replicas (cross-region), RPO reflects replication lag, which in normal network conditions is under 60 seconds and bounded by the configurable maximum replication lag setting.
+The SQL Server Always On Availability Group architecture from Parts 7 and 8 provides continuous replication of database content to the DR replica in the secondary region. The RPO for structured data is bounded by the replication lag: for synchronous replicas (same metropolitan region), RPO approaches zero; for async replicas (cross-region), RPO reflects replication lag, which in normal network conditions is under 60 seconds and bounded by the configurable maximum replication lag setting.
 
 CP-6(1) requires separation from the primary site. The async DR replica must be in a different geographic region, not merely a different availability zone within the same region. Verify the region separation in the cloud console and document the physical distance and administrative separation in the CP-2.
 
@@ -418,7 +418,7 @@ Document in the CP-2:
 
 ### Network and SD-WAN Alternate Processing
 
-The SD-WAN dual-underlay architecture from Part 2 provides automatic alternate path selection that satisfies CP-7 for WAN connectivity. The critical documentation requirements:
+The SD-WAN dual-underlay architecture from Part 4 provides automatic alternate path selection that satisfies CP-7 for WAN connectivity. The alternate path is a capability of the overlay — the fabric probes both underlays continuously and steers traffic per class — not of the circuits underneath it. The critical documentation requirements:
 
 ```powershell
 # Retrieve SD-WAN circuit status for CP-7 documentation
@@ -448,7 +448,7 @@ The output of this command, run at the time of the annual test, becomes the CP-7
 
 ### Amazon Connect Multi-Region Failover
 
-For cloud contact center platforms (such as the Amazon Connect deployment referenced in Part 2), CP-7 requires documented multi-region failover. The failover mechanism uses DNS-based health checks with automatic routing policy changes.
+For cloud contact center platforms (such as the Amazon Connect deployment referenced in Part 4), CP-7 requires documented multi-region failover. The failover mechanism uses DNS-based health checks with automatic routing policy changes.
 
 ```powershell
 # Validate Route 53 health check configuration for contact center failover
@@ -483,7 +483,7 @@ CP-8 requires the organization to establish alternate telecommunications service
 
 ### SD-WAN Dual Underlay as CP-8 Implementation
 
-The SD-WAN architecture from Part 2 directly implements CP-8. The dual underlay consists of:
+The SD-WAN architecture from Part 4 directly implements CP-8. The distinction that matters for the CP-2 documentation: the circuits supply capacity and physically separate paths; the *service redundancy* CP-8 asks for — detection, failover, and resumption of operations — is supplied by the overlay that governs them. The dual underlay consists of:
 
 **Primary path (MPLS):** Carrier-grade MPLS circuit providing deterministic latency for voice and video traffic. Characteristics to document:
 - Primary carrier name and circuit ID
@@ -492,14 +492,16 @@ The SD-WAN architecture from Part 2 directly implements CP-8. The dual underlay 
 - Contracted uptime SLA and MTTR
 - NOC contact and escalation path
 
-**Backup path (DIA — Direct Internet Access):** Broadband Internet circuit from a different provider, providing backup connectivity when MPLS is degraded or unavailable. Characteristics to document:
+**Backup path (DIA — Direct Internet Access):** Broadband Internet circuit from a different provider. The circuit contributes exactly two things: bandwidth and a physically separate path. It becomes an alternate telecommunications *service* in the CP-8 sense only because the SD-WAN overlay probes it continuously, encrypts it, and can steer per-class traffic onto it when MPLS degrades — a second circuit without the overlay is added bandwidth, not added resilience. Characteristics to document:
 - Backup carrier name and circuit ID
 - Committed bandwidth
 - Best-effort latency characteristics
 - NOC contact and escalation path
 - Physical path separation from primary circuit (verify that backup circuit does not share physical infrastructure at the building entry point or regional exchange)
 
-**Automatic failover.** The SD-WAN fabric monitors both paths continuously via BFD (Bidirectional Forwarding Detection) or equivalent liveness detection. When the primary path degrades below configured thresholds (packet loss, latency, jitter), traffic is automatically shifted to the backup path without manual intervention. The failover detection and cutover time is configurable and must be documented.
+**Automatic failover.** The SD-WAN fabric runs both underlays active-active and measures each continuously — BFD (Bidirectional Forwarding Detection) or equivalent liveness detection, plus per-path probes for packet loss, latency, and jitter. When the primary path degrades below configured thresholds, the overlay steers traffic to the backup path without manual intervention; for brownout conditions caught by the probes, per-class steering completes in under a second, with the overlay resequencing packets and moving voice and transaction classes first. The failover detection and cutover time is configurable and must be documented from observation, not from the datasheet. This paragraph is where the CP-8 capability actually lives: failover, resequencing, and per-class path policy are overlay functions. The circuits beneath them are interchangeable capacity.
+
+> **Closure Necessity — CP-8 on the dual underlay.** Most of the CP family closes with authored artifacts, not technology: CP-2 is a signed plan, CP-3 is a training record, CP-4 is a documented test. No network purchase produces any of those, and this document exists precisely because infrastructure alone cannot. CP-8 is the one place in the family where the mechanism matters. The control requires alternate telecommunications services that support *resumption of operations* within the RTO. Two circuits from two carriers satisfy the "alternate services" clause on paper; by themselves they resume nothing. Traditional dual-homing fails over on routing-protocol reconvergence — tens of seconds to minutes, all-or-nothing, with no per-class policy and no recorded evidence of path health — against a 15-minute RTO and a 30-minute MTD for the network layer. The mechanism that makes the alternate service resume operations inside that budget is SD-WAN active-active multipath: probe-driven path selection, sub-second steering on brownout, and per-class path policy. A second DIA circuit without the overlay adds bandwidth, not resilience.
 
 ```powershell
 # Query SD-WAN path quality metrics for CP-8 documentation
@@ -539,7 +541,7 @@ Include the following table in Section 2 or as a dedicated subsection of Section
 | Circuit | Provider | Type | Bandwidth | SLA Uptime | CP-8 Role |
 |---|---|---|---|---|---|
 | MPLS-PRIMARY-01 | [Carrier A] | MPLS | [N] Mbps symmetrical | 99.9% | Primary |
-| DIA-BACKUP-01 | [Carrier B] | Broadband Internet | [N] Mbps / [N] Mbps | 99.5% | Backup (automatic failover) |
+| DIA-BACKUP-01 | [Carrier B] | Broadband Internet | [N] Mbps / [N] Mbps | 99.5% | Backup (overlay-steered automatic failover) |
 | OOB-MGMT | [Carrier C] | LTE/cellular | [N] Mbps / [N] Mbps | Best effort | Out-of-band management only |
 
 : CP-8 Telecommunications Circuit Inventory {.striped .hover}
@@ -631,34 +633,33 @@ The AAR is the artifact that ties the test evidence together and demonstrates to
 
 **Section 5 — Approvals.** CPC signature, ISSO signature, date. This signed AAR is the CP-4 evidence artifact.
 
-## Integration with Parts 1 Through 10
+## Integration with Parts 1 Through 12
 
 Each prior part of this series contributes a specific capability to the CP framework. This section maps those contributions to their corresponding CP control satisfaction, enabling the Contingency Plan to reference existing technical documentation rather than re-documenting architecture.
 
 | Series Part | Capability | CP Control Contribution |
 |---|---|---|
 | Part 1 (DDI — DNS/DHCP/IPAM) | Grid replication with alternate Grid member in DR region | CP-6: alternate storage for DNS zone data; CP-7: alternate processing for name resolution; CP-8: DNS continuity supports all other failover dependencies |
-| Part 2 (SD-WAN) | Dual underlay (MPLS + DIA) with automatic path failover | CP-8: primary and alternate telecommunications services; CP-7: alternate network path to cloud processing site |
-| Part 3 (Identity — Entra ID) | Cloud-hosted globally redundant identity; Conditional Access | CP-7: identity is inherently multi-region; CP-2: break-glass accounts ensure identity access independent of Conditional Access availability |
-| Part 4 (PKI and Certificate Services) | Certificate revocation and issuance continuity | CP-7: certificate authority failover documentation; ensures TLS-dependent services can be restored at alternate site |
-| Part 5 (SQL — on-premises) | AG synchronous replica for RPO near zero | CP-6: synchronous replica as alternate storage; CP-7: synchronous failover for minimal RTO SQL recovery |
-| Part 6 (SQL — cloud DR) | AG async replica in secondary region | CP-6(1): geographically separated alternate storage; CP-7(1): geographically separated alternate processing; CP-9: backup of structured data |
-| Part 7 (Zero Trust and MFA) | Break-glass accounts for emergency access | CP-2: ensures recovery teams can authenticate during Conditional Access disruption or MFA outage |
-| Part 8 (Network Segmentation) | Firewall and micro-segmentation policy backup | CP-6: configuration baseline for firewall rules stored in alternate region; CP-7: network policy can be restored at alternate site |
-| Part 9 (Compliance Automation) | Configuration state and compliance baseline exports | CP-6: configuration baselines (device management policy exports, compliance rules) stored in alternate Key Vault |
-| Part 10 (Sentinel/SIEM) | Geo-redundant Log Analytics workspace | CP-9: audit logs replicated to alternate region; AU-9: integrity of audit records maintained during primary site outage |
+| Part 3 (Certificates and Tokens — cryptographic identity) | Cloud-hosted globally redundant identity; Conditional Access; certificate issuance and revocation continuity | CP-7: identity is inherently multi-region, and certificate authority continuity ensures TLS-dependent services can be restored at the alternate site; CP-2: break-glass accounts ensure identity access independent of Conditional Access availability |
+| Part 4 (SD-WAN) | Dual underlay (MPLS + DIA) governed by active-active overlay multipath with automatic path failover | CP-8: primary and alternate telecommunications services — failover, resequencing, and per-class path policy live in the overlay; CP-7: alternate network path to cloud processing site |
+| Part 7 (SQL — on-premises) | AG synchronous replica for RPO near zero | CP-6: synchronous replica as alternate storage; CP-7: synchronous failover for minimal RTO SQL recovery |
+| Part 8 (SQL — cloud DR) | AG async replica in secondary region | CP-6(1): geographically separated alternate storage; CP-7(1): geographically separated alternate processing; CP-9: backup of structured data |
+| Part 9 (Privileged Access and MFA) | Break-glass accounts for emergency access | CP-2: ensures recovery teams can authenticate during Conditional Access disruption or MFA outage |
+| Part 10 (Network Segmentation) | Firewall and micro-segmentation policy backup | CP-6: configuration baseline for firewall rules stored in alternate region; CP-7: network policy can be restored at alternate site |
+| Part 11 (Compliance Automation) | Configuration state and compliance baseline exports | CP-6: configuration baselines (device management policy exports, compliance rules) stored in alternate Key Vault |
+| Part 12 (Sentinel/SIEM) | Geo-redundant Log Analytics workspace | CP-9: audit logs replicated to alternate region; AU-9: integrity of audit records maintained during primary site outage |
 
 : Series Integration with CP Control Family {.striped .hover}
 
 ::: {.callout-note}
 ## Referencing Series Parts in the CP-2
 
-When populating the CP-2 appendices, reference the series documentation directly rather than duplicating technical content. Example reference text for Appendix A: "SD-WAN circuit failover is executed automatically by the SD-WAN fabric when primary path quality degrades below configured thresholds. Manual procedure for validating automatic failover and restoring traffic balance after the primary circuit recovers is documented in the SD-WAN operational guide [reference to Part 2 implementation document, maintained in the document management system at (URL)]." The CP-2 owns the activation, notification, sequencing, and acceptance criteria; the technical guides own the step-by-step execution details.
+When populating the CP-2 appendices, reference the series documentation directly rather than duplicating technical content. Example reference text for Appendix A: "SD-WAN circuit failover is executed automatically by the SD-WAN fabric when primary path quality degrades below configured thresholds. Manual procedure for validating automatic failover and restoring traffic balance after the primary circuit recovers is documented in the SD-WAN operational guide [reference to Part 4 implementation document, maintained in the document management system at (URL)]." The CP-2 owns the activation, notification, sequencing, and acceptance criteria; the technical guides own the step-by-step execution details.
 :::
 
 ## NIST SP 800-53 Rev 5 Control Closure
 
-![NIST control closure for Part 11 Business Continuity](figs/bc-fig-04-nist-closure.png){fig-alt="Heat map grid on a white background showing CP control family coverage. Rows represent controls CP-2 through CP-10. Columns represent coverage dimensions: Document Artifact, Tested Evidence, Technical Architecture, and Training Record. Cells are colored: green for fully satisfied, amber for partially satisfied or satisfied with conditions, and grey for not applicable or addressed in prior parts. CP-2 shows all four cells green. CP-4 shows Document Artifact and Tested Evidence green, Technical Architecture grey. CP-6 and CP-7 show Document Artifact amber and Technical Architecture green, indicating the architecture exists but documentation must reference it. CP-8 shows all four cells green via the SD-WAN dual underlay." width="100%"}
+![NIST control closure for Part 13 Business Continuity](figs/bc-fig-04-nist-closure.png){fig-alt="Heat map grid on a white background showing CP control family coverage. Rows represent controls CP-2 through CP-10. Columns represent coverage dimensions: Document Artifact, Tested Evidence, Technical Architecture, and Training Record. Cells are colored: green for fully satisfied, amber for partially satisfied or satisfied with conditions, and grey for not applicable or addressed in prior parts. CP-2 shows all four cells green. CP-4 shows Document Artifact and Tested Evidence green, Technical Architecture grey. CP-6 and CP-7 show Document Artifact amber and Technical Architecture green, indicating the architecture exists but documentation must reference it. CP-8 shows all four cells green via the SD-WAN dual underlay." width="100%"}
 
 | Control | Title | Without This Framework | With This Framework | Authority |
 |---|---|---|---|---|
@@ -673,12 +674,12 @@ When populating the CP-2 appendices, reference the series documentation directly
 | CP-7 | Alternate Processing Site | No formal alternate processing site; failover capability exists but not documented in CP | Secondary cloud region documented as alternate processing site; application failover procedures in Appendix D; SQL AG failover in Appendix B; tested RTO values from last DR test recorded in CP-2 | NIST SP 800-53 Rev 5 CP-7 |
 | CP-7(1) | Separation from Primary Site | Secondary region in same metro area; single disaster could affect both | Secondary region confirmed geographically separated; CSP region pair documentation referenced; separation requirement stated in CP-2 alternate site section | NIST SP 800-53 Rev 5 CP-7(1) |
 | CP-7(3) | Priority of Service | No priority-of-service agreements with CSP or telecom carriers | Tier N CSP support agreement documented; carrier priority restoration agreements referenced in CP-8 documentation block; out-of-band cellular circuit for command-and-control | NIST SP 800-53 Rev 5 CP-7(3) |
-| CP-8 | Telecommunications Services | Single-carrier WAN; no documented alternate; SD-WAN dual underlay not formally tied to CP | SD-WAN dual underlay (MPLS + DIA, separate carriers) documented as primary and alternate telecommunications in CP-2; automatic failover configuration documented; annual path failover test | NIST SP 800-53 Rev 5 CP-8 |
+| CP-8 | Telecommunications Services | Single-carrier WAN; no documented alternate; SD-WAN dual underlay not formally tied to CP | SD-WAN dual underlay (MPLS + DIA, separate carriers) documented as primary and alternate telecommunications in CP-2; overlay probe-driven automatic failover configuration documented; annual path failover test | NIST SP 800-53 Rev 5 CP-8 |
 | CP-8(1) | Priority of Service Provisions | No priority restoration agreement with telecom carriers | Primary carrier priority restoration SLA documented; backup carrier commercial SLA documented; cellular OOB management for command-and-control when both fail | NIST SP 800-53 Rev 5 CP-8(1) |
-| CP-9 | System Backup | Addressed in Parts 5 and 6; extended here to audit logs and config baselines | Audit log backup via geo-redundant Log Analytics (Part 10) explicitly referenced in CP-2 as CP-9 evidence; config baseline exports in secondary Key Vault documented | NIST SP 800-53 Rev 5 CP-9 |
+| CP-9 | System Backup | Addressed in Parts 7 and 8; extended here to audit logs and config baselines | Audit log backup via geo-redundant Log Analytics (Part 12) explicitly referenced in CP-2 as CP-9 evidence; config baseline exports in secondary Key Vault documented | NIST SP 800-53 Rev 5 CP-9 |
 | CP-10 | System Recovery and Reconstitution | Recovery procedures exist but reconstitution back to primary site not documented | Section 6 of CP-2 documents reconstitution: data sync before failback, per-component failback procedures in appendices (-R sections), validation checklist, and formal deactivation declaration | NIST SP 800-53 Rev 5 CP-10 |
 
-: NIST SP 800-53 Rev 5 Control Closure — Part 11 Business Continuity {.striped .hover}
+: NIST SP 800-53 Rev 5 Control Closure — Part 13 Business Continuity {.striped .hover}
 
 ---
 
@@ -689,7 +690,7 @@ FedRAMP 20x shifts the authorization model toward continuous, evidence-based ass
 
 **KSI: Backup and Recovery (maps to CP-6, CP-7, CP-9).** A FedRAMP 20x-ready implementation provides machine-readable evidence of backup recency and integrity, not just a policy document claiming backups occur. The SQL AG replication lag metric, the Log Analytics geo-redundancy configuration, and the secondary Key Vault contents are all query-able via API. Agencies preparing for 20x assessment should expose these metrics through a compliance dashboard that answers: "What is the current RPO for each critical system, and when was the last successful recovery test?"
 
-**KSI: Incident Response and Continuity (maps to CP-2, CP-4, IR-4).** FedRAMP 20x assessors will look for evidence that contingency plans are living documents connected to operational telemetry, not static PDFs filed at authorization time. The connection points in this framework are the Sentinel alerts (Part 10) that trigger the activation threshold evaluation, the SD-WAN monitoring dashboards that evidence CP-8 circuit health, and the AAR tracking table that shows findings from prior tests are being resolved. Automate the evidence collection: a scheduled export of circuit uptime, replication lag, and backup age to the ISCM continuous monitoring system satisfies KSI evidence requirements without manual artifact assembly at assessment time.
+**KSI: Incident Response and Continuity (maps to CP-2, CP-4, IR-4).** FedRAMP 20x assessors will look for evidence that contingency plans are living documents connected to operational telemetry, not static PDFs filed at authorization time. The connection points in this framework are the Sentinel alerts (Part 12) that trigger the activation threshold evaluation, the SD-WAN monitoring dashboards that evidence CP-8 path health, and the AAR tracking table that shows findings from prior tests are being resolved. Automate the evidence collection: a scheduled export of circuit uptime, replication lag, and backup age to the ISCM continuous monitoring system satisfies KSI evidence requirements without manual artifact assembly at assessment time.
 
-The Contingency Plan document is the assessor-facing artifact. The monitoring, replication, and failover capabilities from Parts 1 through 10 are the automated evidence substrate. Part 11 closes the gap between having the capability and being able to demonstrate it.
+The Contingency Plan document is the assessor-facing artifact. The monitoring, replication, and failover capabilities from Parts 1 through 12 are the automated evidence substrate. Part 13 closes the gap between having the capability and being able to demonstrate it.
 :::
