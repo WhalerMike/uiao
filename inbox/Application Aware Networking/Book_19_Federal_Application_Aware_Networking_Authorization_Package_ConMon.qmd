@@ -217,12 +217,62 @@ program operationalizes it on a recurring cadence.
 |----------|-------|------|---------|
 | OSCAL AR refresh | ISSO | `uiao oscal bundle` | Updated `ksi-ar.json` |
 | ScuBA assessment | ISSO | ScuBAGear | M365 baseline assessment report |
+| ScuBA drift triage + gate | ISSO | ScubaDrift | `scubadrift-verdicts.json` (dispositions + POA&M linkage) |
 | Sentinel ConMon dashboard review | SOC Lead | Microsoft Sentinel | ConMon dashboard export |
 | POA&M status review | ISSO + ISSM | `uiao oscal bundle` | `ksi-poam.json` (zero-item target) |
 | Vulnerability scan | Defender VM team | Defender for Endpoint | RA-5 scan record |
 | SBOM delta check | SR team | Syft + Grype | CycloneDX BOM diff |
 
 : Monthly ConMon Activity Matrix {.striped .hover}
+
+### The ScubaDrift Disposition Pipeline — Evidence Behind KSI-001..010
+
+A point-in-time ScuBAGear report answers *"what passes today?"* It does not
+answer the three questions an assessor asks next: *what changed since last
+month, which failures are already governed by a documented risk acceptance,
+and when does that acceptance lapse?* **ScubaDrift** is the lifecycle layer
+that answers them. It never touches the tenant — it consumes ScuBAGear's JSON
+output and the risk-acceptance register, and splits every failing policy into
+exactly three dispositions:
+
+| Disposition | Meaning | Gate behavior |
+|---|---|---|
+| `actionable_new_drift` | Failing, no risk acceptance on file | **Act** — gate fails |
+| `lapsed_acceptance` | Failing, acceptance exists but expired | **Act** — gate fails |
+| `governed_exception` | Failing, covered by an in-date acceptance | Governed — gate passes, POA&M-linked |
+
+: ScubaDrift Dispositions {.striped .hover}
+
+The monthly loop: ScuBAGear assesses the tenant → `scubadrift triage --json`
+produces dispositions → `scubadrift gate` runs in the pipeline (exit non-zero
+*only* on new drift or a lapsed acceptance — governed exceptions never break
+the build) → `uiao oscal scuba-verdicts` writes
+`output/artifacts/ksi-bundle/scubadrift-verdicts.json` with full provenance →
+the AR refresh consumes it. `scubadrift conmon-record` appends each run to the
+history ledger, and `scubadrift conmon-report` emits the posture trend and
+remediation SLA aging that CA-7, NIST SP 800-137 (ISCM), and BOD 25-01 expect.
+
+A verdict entry looks like this (from the committed demonstration fixture):
+
+```json
+"MS.AAD.3.1v1": {
+  "result": "fail",
+  "disposition": "governed_exception",
+  "reason": "accepted until 2026-12-31 (POAM-SAMPLE-1042)",
+  "ticket": "POAM-SAMPLE-1042",
+  "expiry_date": "2026-12-31"
+}
+```
+
+This is what "evidence-backed" means for the ten configuration-surface KSI
+rules: the OSCAL AR no longer asserts KSI-001..010 as satisfied because a
+scanner ran — each verdict carries its result, its disposition, its governing
+ticket, and its expiry, and a governed exception surfaces as a POA&M-linked
+entry rather than a silent pass. Retirable acceptances (exceptions whose
+policy now passes) are flagged for removal from the register, so the
+acceptance file cannot silently accumulate dead weight. All expiry math is
+`--as-of`-injected, so verdict runs are deterministic and reproducible for
+the assessor.
 
 ## 3.3 Quarterly Activities
 

@@ -110,7 +110,7 @@ Matrix."
 | Status | Count | Rules |
 |--------|-------|-------|
 | Active (slot evaluator, high confidence) | 19 | KSI-011..016, KSI-017..022, KSI-023..029 |
-| Active (ScuBA-based, no slot binding) | 10 | KSI-001..010 |
+| Active (ScuBA-based; ScubaDrift-verdict-backed, no slot binding) | 10 | KSI-001..010 |
 | Scaffold (evidence contract incomplete) | **0** | **None** |
 
 ---
@@ -166,6 +166,13 @@ Matrix."
       29/29 KSIs satisfied, 0 open risks, 0 POA&M items, 8 evidence slots bound
 - [x] ScuBA guard wired in `ksi_ar.py`: KSI-001..010 always satisfied via CISA
       ScuBAGear adapter without entering slot evaluator
+      — **superseded 2026-07-05 by ScubaDrift evidence-backed verdicts**:
+      `scubadrift triage --json` dispositions → `uiao oscal scuba-verdicts` →
+      `output/artifacts/ksi-bundle/scubadrift-verdicts.json` → `ksi_ar.py`;
+      each of KSI-001..010 now carries per-policy result, disposition
+      (actionable_new_drift / lapsed_acceptance / governed_exception),
+      POA&M ticket, and expiry — no rule is "always satisfied" (see
+      Book_19 §3.2, "The ScubaDrift Disposition Pipeline")
 - [x] Authorization package structure documented: SSP, SAR, POA&M, OSCAL bundle
 - [x] BOD 26-04 VDR/VER submission procedure documented (December 7, 2026 deadline)
       — machine-readable SBOM from Syft + Grype + OpenVEX (Part 15 pipeline)
