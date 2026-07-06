@@ -1,100 +1,99 @@
 ---
-title: "Book 05 — SQL Server Implementation Guide"
-subtitle: "AAN module: the ten-runbook operational companion to Book 04"
+title: "Book 05 — Network Modernization"
+subtitle: "AAN module: from mainframe to application-aware modernization (SD-WAN · SASE · the four principles)"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 05: sequential runbooks with T-SQL and PowerShell for Arc enrollment, login migration, NTLM elimination, Conditional Access, and drift monitoring — every destructive action with an undo path."
+description: "Module page for AAN Book 05: the narrative history of how federal IT lost its single source of truth, the physics of latency, and the four principles of application-aware modernization."
 ---
 
-**Source:** [Book_05 SQL Server Implementation Guide](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_05_Federal_Application_Aware_Networking_SQL_Server_Implementation_Guide.qmd)
-· **Evidence slot:** procedural evidence for slot 1 (Book 04) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B3](../implementation-track.html#module-b3-data-platform-modernization-books-0406)
+**Source:** [Book_05 Network Modernization](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_05_FedAAN_Network_Modernization.qmd)
+· **Evidence slot:** 3 — network (KSI-CNA, SC-8 / CA-7) · **Track modules:** [A3](../compliance-track.html#module-a3-network-control-plane-slot-3), [B3](../implementation-track.html#module-b3-network-telecommunications-modernization-books-0506)
 
 ## Scope
 
-The operational companion to Book 04: ten sequential runbooks with
-commands, T-SQL/PowerShell scripts, and configuration templates for Arc
-enrollment, login migration, NTLM elimination, Conditional Access,
-application chain updates, monitoring, and certificate discovery. Thesis:
-the migration is executable safely because **every destructive action has a
-documented undo path, gated by hard checkpoints** — the first irreversible
-action (`DROP LOGIN`) sits behind a 30-day observation gate.
+A narrative history in four acts of how federal IT lost its single source
+of truth — mainframe centralization, 1990s decentralization into regional
+silos, security stacking that broke session-based Kerberos, and the
+multi-cloud breaking point — pivoting on one sentence: **Active Directory
+conflated the directory (truth) with the domain controller (in-path
+enforcer)**. Thesis: restore SSOT, adopt application-aware networking, move
+to token-based identity, and govern actively — physics and zero-trust
+mandates make the perimeter/session model unrecoverable.
 
 ## Learning objectives
 
-- Verify prerequisites: Azure endpoints, Arc onboarding role, toolchain
-  (Azure CLI ≥2.50, SSMS 19+, sqlcmd, setspn), dedicated service accounts.
-- Discover the estate via SPN inventory, audit auth schemes with
-  `sys.dm_exec_sessions`, and assign retain/consolidate/retire dispositions.
-- Enroll a server in Arc, install the `WindowsAgent.SqlServer` extension,
-  validate the Managed Identity token endpoint (localhost:40342), and
-  enable the external authentication provider.
-- Execute the four-phase login migration in T-SQL with a tracking table and
-  satisfy the five closure conditions of the authentication audit.
-- Remediate NTLM: register all four SPN variants, fix
-  `uses_self_credential` linked servers, set `LmCompatibilityLevel = 5`.
-- Build the Entra group naming convention, dynamic membership rules, and
-  the two Conditional Access policies (compliant device; admin MFA).
-- Schedule drift-detection queries and produce the daily JSON compliance
-  record.
+- Compute the speed-of-light propagation floor (e.g., Portland–Washington
+  ≈ 5,400 km fiber ≈ 27 ms one-way) and explain why bandwidth cannot fix
+  latency.
+- Explain the two independent session killers — latency exceeding protocol
+  timeouts, and asymmetric routing breaking stateful inspection — and how
+  SD-WAN overlay tunnels remove asymmetry.
+- Contrast packet-level (five-tuple) with application-aware enforcement
+  (user, device posture, app, data, context) and name the NIST controls
+  only the latter satisfies.
+- Articulate why DIA alone satisfies zero NIST controls and which
+  SASE/SD-WAN components close AC-4, SC-7, SC-8, SI-3, SI-4, AU-2/12, CA-7.
+- Compare transports (MPLS hairpin, DIA, 5G MEC/CUPS, LEO satellite) and
+  explain active-active multipath, FEC, and resequencing.
+- Place governance postures on the CISA ZTMM actuation ladder and identify
+  gated actuation as the AO-signable federal standard.
 
 ## Key concepts
 
-- Ten-runbook run order with the consolidation gate as a **real gate**.
-- Safety model: everything before `DROP LOGIN` is reversible.
-- Arc enrollment is per-server, not per-instance; SQL 2019 ESU free via
-  Arc; SQL 2022 as target.
-- Group naming convention (`SQL-{database}-ReadWrite`,
-  `SQL-SVC-{application}`); Azure SQL App ID for Conditional Access
-  targeting.
-- Certificate discovery (TLS thumbprint, ADCS-issuer detection, pinning
-  search) **before** any domain unjoin.
+- Truth/enforcer conflation in Active Directory (the "one sentence").
+- The physics floor: fiber at ~200,000 km/s; LEO at ~550 km altitude
+  (20–40 ms) vs. the old GEO 238 ms ruling.
+- "DIA is a pipe" — DIA enables compliance; AAN/SASE achieve it.
+- The Four Principles of Application-Aware Modernization: SSOT, AAN,
+  token identity, active governance.
+- Active Governance actuation ladder: Traditional → Initial →
+  Advanced (gated) → Optimal.
+- FedRAMP 20x continuous machine-readable KSI evidence replacing periodic
+  assessment.
 
-## Implementation sequence (the run order)
+## Reading sequence
 
-1. Runbook 01: prerequisites, toolchain, service-account baseline.
-2. Runbook 02: estate discovery and consolidation gate.
-3. Runbook 03: authentication audit — inventories, NTLM event export, five
-   closure conditions.
-4. Runbook 04: Arc enrollment, SQL extension, Managed Identity validation.
-5. Runbook 05: login migration parallel run and `sa` handling.
-6. Runbook 06: SPN fixes, linked-server remediation, NTLMv1 block.
-7. Runbooks 07–08: Entra groups / Conditional Access; connection strings
-   and ODBC.
-8. Runbooks 09–10: monitoring queries and JSON compliance export; TLS
-   certificate and ADCS/pinning inventory.
+Argument-shaped, not implementation-shaped: prologue (mainframe = truth +
+enforcement in one box) → Act 1 (decentralization distributes truth) →
+Act 2 (security stacking + physics break sessions) → Act 3 (multi-cloud
+fractures identity) → physics interlude (DIA, LEO, 5G, SD-WAN multipath) →
+Act 4 (the four principles mapped to federal mandates and FedRAMP 20x).
 
 ## Compliance hooks
 
-Inherits Book 04's framework (IA-2, IA-5, AU-2, AU-12, CA-7, CM-8 KSIs
-under FedRAMP 20x); the runbook-09 compliance record and checklist are the
-operational evidence stream.
-
-## Prerequisites
-
-Book 04 first, for the conceptual framework. An Arc-enrolled SQL Server
-2022 test environment (2019 + Entra extension acceptable only for runbooks
-03–04).
+AC-4, SC-7, SC-8, SI-3, SI-4, AU-2/AU-12, CA-7, CM-8, SI-12, SC-20/SC-21.
+Frameworks: NIST SP 800-207, SP 800-63, SP 800-37 Rev 2; EO 14028; OMB
+M-22-09 §3/§4; BOD 25-01 (SCuBA); TIC 3.0 Use Cases E/F; CISA ZTMM v2.0;
+FedRAMP 20x Consolidated Rules.
 
 ## Labs
 
-1. Run runbooks 02–03 end-to-end in a lab domain: SPN-based instance
-   discovery, auth-scheme audit, NTLM event export.
-2. Arc-enroll a test server, install the SQL extension, validate the token
-   endpoint, create the first Entra admin login.
-3. Implement the monitoring queries and daily JSON compliance export;
-   trigger an alert by creating a rogue SQL login.
+1. Physics calculator: compute propagation floors for agency city pairs
+   over fiber vs. LEO and compare against measured MPLS-hairpin latency.
+2. Asymmetric-routing demo: two-path lab with a stateful firewall on one
+   path; observe SYN-ACK drops, then tunnel both directions through one
+   overlay endpoint.
+3. Policy translation: rewrite five-tuple firewall rules as
+   application-aware policies and map each to the NIST control it newly
+   satisfies.
 
 ## Pitfalls the book calls out
 
-- Running runbooks out of order — later ones depend on earlier state; the
-  consolidation gate must not be skipped.
-- Executing against production without test-environment validation.
-- SQL services running as `NETWORK SERVICE`/`LOCAL SYSTEM` — blocks SPN
-  registration and Arc work until dedicated accounts exist.
-- Domain-unjoining before ADCS certificate replacement and pin-clearing.
+- Concluding "DIA solved the network problem" — connectivity without the
+  control stack is not compliance.
+- Treating VPN as zero trust — a tunnel extends network-wide trust to any
+  compromised endpoint inside it.
+- Deploying tokens atop fragmented directory trees without SSOT.
+- Letting the governance plane become an in-path enforcer, or automating
+  high-blast-radius actions that must remain human-gated.
 
 ## Vendor training
 
-[DP-300](../vendor-training-catalog.html#microsoft).
+[Cisco U. / NetAcad](../vendor-training-catalog.html#networking-ddi),
+[Zscaler](../vendor-training-catalog.html#identity-zero-trust),
+[Netskope](../vendor-training-catalog.html#identity-zero-trust),
+[Fortinet / Palo Alto](../vendor-training-catalog.html#identity-zero-trust),
+[AZ-700](../vendor-training-catalog.html#microsoft),
+[AWS Skill Builder](../vendor-training-catalog.html#federal-compliance).
 
-**Previous:** [Book 04](book-04.html) · **Next:** [Book 06 — Database Consolidation & Network Physics](book-06.html)
+**Previous:** [Book 04](book-04.html) · **Next:** [Book 06 — Federal Telecommunications Modernization](book-06.html)

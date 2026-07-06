@@ -1,107 +1,100 @@
 ---
-title: "Book 08 — Vulnerability Management"
-subtitle: "AAN module: Defender VM scanning, KEV-driven prioritization, and the daily machine-readable evidence stream"
+title: "Book 08 — SQL Server Implementation Guide"
+subtitle: "AAN module: the ten-runbook operational companion to Book 07"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 08: MDVM over the Arc agent channel, CISA KEV cross-reference with BOD 22-01 SLAs, Intune update rings, and the daily RA-5/SI-2 compliance record."
+description: "Module page for AAN Book 08: sequential runbooks with T-SQL and PowerShell for Arc enrollment, login migration, NTLM elimination, Conditional Access, and drift monitoring — every destructive action with an undo path."
 ---
 
-**Source:** [Book_08 Vulnerability Management](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_08_Federal_Application_Aware_Networking_Vulnerability_Management.qmd)
-· **Evidence slots:** 4 — telemetry (KSI-MLA); 5 — endpoint (KSI-PIY); 6 — security (KSI-CMT) · **Track modules:** [A4](../compliance-track.html#module-a4-telemetry-control-plane-slot-4), [A5](../compliance-track.html#module-a5-endpoint-control-plane-slot-5), [A6](../compliance-track.html#module-a6-security-configuration-change-control-plane-slot-6), [B5](../implementation-track.html#module-b5-detect-protect-books-0810)
+**Source:** [Book_08 SQL Server Implementation Guide](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_08_FedAAN_SQL_Server_Implementation_Guide.qmd)
+· **Evidence slot:** procedural evidence for slot 1 (Book 07) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B4](../implementation-track.html#module-b4-data-platform-modernization-books-0709)
 
 ## Scope
 
-Turns the Arc-enrolled asset inventory into continuous vulnerability
-posture management: Microsoft Defender Vulnerability Management (MDVM)
-scanning over the existing Azure Monitor Agent channel, daily CISA KEV
-catalog cross-reference, BOD 22-01 SLA-prioritized patch queues, Intune
-Windows Update for Business rings, and a daily machine-readable compliance
-record. Thesis: federal vulnerability management fails at **enumeration,
-prioritization, and evidence** — earlier books fixed enumeration; this book
-fixes prioritization (KEV, not just CVSS) and evidence (continuous RA-5
-KSI artifacts).
+The operational companion to Book 07: ten sequential runbooks with
+commands, T-SQL/PowerShell scripts, and configuration templates for Arc
+enrollment, login migration, NTLM elimination, Conditional Access,
+application chain updates, monitoring, and certificate discovery. Thesis:
+the migration is executable safely because **every destructive action has a
+documented undo path, gated by hard checkpoints** — the first irreversible
+action (`DROP LOGIN`) sits behind a 30-day observation gate.
 
 ## Learning objectives
 
-- Explain the three FedRAMP assessor probes (scanner existence, documented
-  SLA, machine-readable proof of SLA adherence per CVE/machine) and why
-  evidence is the usual failure.
-- Apply BOD 22-01 timelines (KEV internet-facing 14 days, internal 28
-  days) and explain why CVSS-only prioritization under-prioritizes
-  exploited vulnerabilities.
-- Describe how MDVM piggybacks on the Arc AMA channel so scan scope always
-  equals inventory — no new agents.
-- Script the daily KEV JSON pull, Defender VM API cross-reference, and
-  P0–P5 SLA-assigned patch queue.
-- Configure Intune WUfB rings (pilot/broad/production) with a KEV
-  expedited-update bypass and a patch-currency compliance policy tied to
-  Conditional Access.
-- Produce and archive the daily compliance-summary JSON as the RA-5/SI-2
-  evidence stream (Blob Storage, 90-day trend, Log Analytics workbook).
+- Verify prerequisites: Azure endpoints, Arc onboarding role, toolchain
+  (Azure CLI ≥2.50, SSMS 19+, sqlcmd, setspn), dedicated service accounts.
+- Discover the estate via SPN inventory, audit auth schemes with
+  `sys.dm_exec_sessions`, and assign retain/consolidate/retire dispositions.
+- Enroll a server in Arc, install the `WindowsAgent.SqlServer` extension,
+  validate the Managed Identity token endpoint (localhost:40342), and
+  enable the external authentication provider.
+- Execute the four-phase login migration in T-SQL with a tracking table and
+  satisfy the five closure conditions of the authentication audit.
+- Remediate NTLM: register all four SPN variants, fix
+  `uses_self_credential` linked servers, set `LmCompatibilityLevel = 5`.
+- Build the Entra group naming convention, dynamic membership rules, and
+  the two Conditional Access policies (compliant device; admin MFA).
+- Schedule drift-detection queries and produce the daily JSON compliance
+  record.
 
 ## Key concepts
 
-- CISA KEV catalog JSON feed; BOD 22-01 mandatory timelines.
-- P0–P5 patch SLA tier table (BOD 22-01, NIST SP 800-40 Rev 4).
-- MDVM over Arc AMA; MMA fallback for Windows Server 2012 R2 (ESU via
-  Arc).
-- WUfB ring model plus expedited updates; WSUS coexistence.
-- SQL Server CU vs. GDR lifecycle; Arc `WindowsAgent.SqlServer`
-  auto-patching in maintenance windows.
-- Daily compliance JSON: `SLABreachedKEV` must be zero;
-  `PatchComplianceRate` ≥ 95%.
+- Ten-runbook run order with the consolidation gate as a **real gate**.
+- Safety model: everything before `DROP LOGIN` is reversible.
+- Arc enrollment is per-server, not per-instance; SQL 2019 ESU free via
+  Arc; SQL 2022 as target.
+- Group naming convention (`SQL-{database}-ReadWrite`,
+  `SQL-SVC-{application}`); Azure SQL App ID for Conditional Access
+  targeting.
+- Certificate discovery (TLS thumbprint, ADCS-issuer detection, pinning
+  search) **before** any domain unjoin.
 
-## Implementation sequence
+## Implementation sequence (the run order)
 
-1. Verify MDE onboarding for all Arc-enrolled machines (allow 24–48 hours
-   after enrollment).
-2. Stand up the daily KEV pull + Defender VM cross-reference producing the
-   prioritized patch queue and compliance summary.
-3. Configure three WUfB rings via Graph; define the KEV expedited path.
-4. Deploy the patch-currency compliance policy linked to Conditional
-   Access (30-day grace period).
-5. Inventory SQL Server versions/CUs; enable Arc auto-patching.
-6. Archive daily summaries to Blob Storage; 90-day trends; Log Analytics
-   workbook.
+1. Runbook 01: prerequisites, toolchain, service-account baseline.
+2. Runbook 02: estate discovery and consolidation gate.
+3. Runbook 03: authentication audit — inventories, NTLM event export, five
+   closure conditions.
+4. Runbook 04: Arc enrollment, SQL extension, Managed Identity validation.
+5. Runbook 05: login migration parallel run and `sa` handling.
+6. Runbook 06: SPN fixes, linked-server remediation, NTLMv1 block.
+7. Runbooks 07–08: Entra groups / Conditional Access; connection strings
+   and ODBC.
+8. Runbooks 09–10: monitoring queries and JSON compliance export; TLS
+   certificate and ADCS/pinning inventory.
 
 ## Compliance hooks
 
-RA-5, RA-5(2), RA-5(5), SI-2, SI-2(2), SI-5, CM-7, CM-7(1). CISA
-BOD 22-01; NIST SP 800-40 Rev 4. FedRAMP 20x KSIs: scan currency (24-hour
-scan, 72-hour coverage-gap alert), patch SLA compliance ≥95%, KEV
-remediation timeliness.
+Inherits Book 07's framework (IA-2, IA-5, AU-2, AU-12, CA-7, CM-8 KSIs
+under FedRAMP 20x); the runbook-12 compliance record and checklist are the
+operational evidence stream.
 
 ## Prerequisites
 
-Book 01 (IPAM inventory), Books 03–05 (Arc enrollment/AMA, SQL
-inventory), Book 07's Sentinel/Log Analytics context. PowerShell, Graph
-API, Azure Automation.
+Book 07 first, for the conceptual framework. An Arc-enrolled SQL Server
+2022 test environment (2019 + Entra extension acceptable only for runbooks
+03–04).
 
 ## Labs
 
-1. Download the live KEV JSON feed; cross-reference against a sample
-   finding set; assign P0–P5 priorities; verify a CVSS 7.5 KEV outranks a
-   CVSS 9.0 non-KEV.
-2. Build the three WUfB rings in a test Intune tenant; simulate an
-   expedited KEV update bypassing the ring schedule.
-3. Run the SQL version-inventory script; flag behind-CU and
-   end-of-support instances.
+1. Run runbooks 02–03 end-to-end in a lab domain: SPN-based instance
+   discovery, auth-scheme audit, NTLM event export.
+2. Arc-enroll a test server, install the SQL extension, validate the token
+   endpoint, create the first Entra admin login.
+3. Implement the monitoring queries and daily JSON compliance export;
+   trigger an alert by creating a rogue SQL login.
 
 ## Pitfalls the book calls out
 
-- Assuming scanners flag KEV status automatically — NVD/CVSS and KEV are
-  unlinked; the cross-reference must be explicit.
-- Prioritizing solely by CVSS.
-- Enabling the Conditional Access non-compliance block on day one against
-  accumulated patch debt.
-- Declaring Arc enrollment complete without verifying MDE onboarding 48
-  hours later.
+- Running runbooks out of order — later ones depend on earlier state; the
+  consolidation gate must not be skipped.
+- Executing against production without test-environment validation.
+- SQL services running as `NETWORK SERVICE`/`LOCAL SYSTEM` — blocks SPN
+  registration and Arc work until dedicated accounts exist.
+- Domain-unjoining before ADCS certificate replacement and pin-clearing.
 
 ## Vendor training
 
-[SC-200](../vendor-training-catalog.html#microsoft),
-[Tenable / Qualys](../vendor-training-catalog.html#security-operations)
-(alternative stacks),
-[CISA training](../vendor-training-catalog.html#federal-compliance).
+[DP-300](../vendor-training-catalog.html#microsoft).
 
-**Previous:** [Book 07](book-07.html) · **Next:** [Book 09 — Data Protection (Purview)](book-09.html)
+**Previous:** [Book 07](book-07.html) · **Next:** [Book 09 — Database Consolidation & Network Physics](book-09.html)

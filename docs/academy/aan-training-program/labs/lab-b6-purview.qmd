@@ -1,9 +1,9 @@
 ---
-title: "Lab environment — Purview data protection (Module B5)"
+title: "Lab environment — Purview data protection (Module B6)"
 subtitle: "Label taxonomy, simulation-first auto-labeling and DLP, and a CMK in Key Vault Premium"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Lab setup for Book 09: the four-tier CUI label taxonomy via Security & Compliance PowerShell, a custom SIT + DLP policy in simulation, Key Vault Premium with a rotating CMK, and slot-04 evidence."
+description: "Lab setup for Book 12: the four-tier CUI label taxonomy via Security & Compliance PowerShell, a custom SIT + DLP policy in simulation, Key Vault Premium with a rotating CMK, and slot-04 evidence."
 ---
 
 > Part of the [AAN Training Program](../index.html) — companion material for
@@ -12,8 +12,8 @@ description: "Lab setup for Book 09: the four-tier CUI label taxonomy via Securi
 > **Tier T: trial M365 E5 tenant + trial Azure subscription. Never production —
 > DLP enforcement and label publishing are tenant-wide behaviors.**
 
-**Supports:** [Book 09 labs](../books/book-09.html#labs) ·
-[Module B5](../implementation-track.html#module-b5-detect-protect-books-0810) ·
+**Supports:** [Book 12 labs](../books/book-12.html#labs) ·
+[Module B6](../implementation-track.html#module-b6-detect-protect-books-1113) ·
 slot 4 — telemetry (KSI-MLA)
 
 ## Prerequisites
@@ -23,7 +23,7 @@ Install-Module ExchangeOnlineManagement -Scope CurrentUser
 Connect-IPPSSession   # Security & Compliance PowerShell
 ```
 
-## Step 1 — the four-tier label taxonomy (Book 09's CUI mapping)
+## Step 1 — the four-tier label taxonomy (Book 12's CUI mapping)
 
 ```powershell
 New-Label -Name "Public"        -DisplayName "Public"        -Tooltip "Approved for release"
@@ -33,7 +33,7 @@ New-Label -Name "CUI-Basic"     -DisplayName "CUI Basic"     -Tooltip "NARA CUI 
 New-Label -Name "CUI-Specified" -DisplayName "CUI Specified" -Tooltip "NARA CUI Registry - specified" `
           -EncryptionEnabled $true -EncryptionProtectionType Template
 
-# Publish EVERYWHERE from day one — Book 09's first pitfall is single-location publishing
+# Publish EVERYWHERE from day one — Book 12's first pitfall is single-location publishing
 New-LabelPolicy -Name "AAN-Lab-Labels" -Labels "Public","Internal","CUI-Basic","CUI-Specified" `
                 -ExchangeLocation All -SharePointLocation All -OneDriveLocation All
 ```
@@ -41,7 +41,7 @@ New-LabelPolicy -Name "AAN-Lab-Labels" -Labels "Public","Internal","CUI-Basic","
 ## Step 2 — custom SIT + DLP in simulation mode
 
 A corroborated custom SIT (pattern + keyword) and a DLP policy that starts
-in **simulation**, per Book 09's discipline:
+in **simulation**, per Book 12's discipline:
 
 ```powershell
 # Custom SIT: employee ID "EMP" + 9 digits, corroborated by a keyword
@@ -57,7 +57,7 @@ New-DlpComplianceRule -Name "Block external CUI share" -Policy "AAN-Lab-CUI-DLP"
 Seed SharePoint with test documents containing fake SSNs (`078-05-1120`
 style test values), wait for the simulation report, and review false
 positives **before** switching `-Mode` to `Enforce` — mislabeling at scale
-is the pitfall Book 09 calls out.
+is the pitfall Book 12 calls out.
 
 ## Step 3 — Key Vault Premium + rotating CMK
 
@@ -74,7 +74,7 @@ az keyvault key rotation-policy update --vault-name <vault> -n cmk-sql-tde --val
 
 Optional extension: point an Azure SQL test server's TDE protector at the
 key (`az sql server tde-key set --server-key-type AzureKeyVault`) and
-confirm key operations land in the vault's diagnostic logs — Book 09's
+confirm key operations land in the vault's diagnostic logs — Book 12's
 AU-12-vs-AU-10 distinction made concrete.
 
 ## Bind the evidence
@@ -82,7 +82,7 @@ AU-12-vs-AU-10 distinction made concrete.
 Three artifacts: the label policy export
 (`Get-LabelPolicy | ConvertTo-Json`), the DLP simulation report, and the
 vault's key-rotation policy JSON. Together they evidence the MP/SC-12/28
-closures Book 09 claims; score against the
+closures Book 12 claims; score against the
 [slot 4 rubric](../assessment-rubrics.html#slot-4).
 
 ## Teardown

@@ -1,101 +1,123 @@
 ---
-title: "Book 04 — SQL Server Authentication Modernization"
-subtitle: "AAN module: replacing Kerberos/NTLM and SQL logins with Arc Managed Identity and Entra tokens"
+title: "Book 04 — HRIT Identity & Organizational SSOT"
+subtitle: "AAN module: HR as the single source of truth — effective-dated records, event-driven provisioning, and the measured lifecycle"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 04: NTLM elimination, Arc Managed Identity, Entra token authentication for SQL Server, Conditional Access as the database perimeter."
+description: "Module page for AAN Book 04: OPM HRIT (Oracle HCM class) as system of record, authoritative vs. derived attributes, SCIM/Graph bulkUpload inbound provisioning, the six-step leaver sequence, and organizational-SSOT-derived access."
 ---
 
-**Source:** [Book_04 SQL Server Authentication Modernization](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_04_Federal_Application_Aware_Networking_SQL_Server_Authentication_Modernization.qmd)
-· **Evidence slot:** 1 — identity (KSI-IAM, IA-2 / AC-2) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B3](../implementation-track.html#module-b3-data-platform-modernization-books-0406)
+**Source:** [Book_04 HRIT Identity Org SSOT](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_04_FedAAN_HRIT_Identity_Org_SSOT.qmd)
+· **Evidence slot:** 1 — identity (KSI-IAM, AC-2 / IA-4) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B2](../implementation-track.html#module-b2-access-identity-foundations-books-0204)
 
 ## Scope
 
-The authentication layer that persists after network controls: replacing
-Kerberos/NTLM domain credentials and SQL logins across the federal SQL
-Server estate with Azure Arc Managed Identity, Entra ID token
-authentication, and Conditional Access. **NTLM elimination (BOD 25-01, OMB
-M-22-09) is the goal; Entra token authentication via Arc is the mechanism**
-— and the only credential-free option.
+Solves the **fragmented truth problem**: identity attributes scattered
+across HR, the directory, and per-app databases, with orphaned accounts
+as the visible symptom. The book installs the HR information technology
+system (Oracle HCM class) as the **system of record** and the identity
+provider as its downstream consumer: effective-dated records, a strict
+authoritative-vs-derived attribute contract, an event-stream lifecycle
+(joiner, mover, converter, suspender, leaver), SCIM / Graph `bulkUpload`
+inbound provisioning, and deprovisioning as an HR event — never a ticket.
+The organizational hierarchy becomes queryable truth from which access is
+derived and attested.
 
 ## Learning objectives
 
-- Explain Kerberos's three requirements (reachable KDC, correct SPN, clock
-  sync), why hybrid cloud breaks them, and the resulting silent NTLM
-  fallback.
-- Articulate NTLM's compliance gaps: audit opacity, pass-the-hash,
-  Conditional Access bypass.
-- Run estate discovery across four dimensions (version/EOL, auth methods,
-  SPN registration, dependency mapping) and apply the consolidation gate.
-- Distinguish Layer 1 (SQL Engine Entra auth on SQL Server 2022 + Arc) from
-  Layer 2 (OS-level Entra login on Windows Server 2025, domain-unjoined).
-- Justify Arc Managed Identity over gMSA, vault-managed service principals,
-  and certificate-based authentication.
-- Execute the four-phase parallel-run login migration (Create → Validate →
-  Disable → Drop after 30-day observation).
-- Classify applications into the four authentication classes and transform
-  connection strings (`Integrated Security=SSPI` →
-  `Authentication=Active Directory Default`).
+- Diagnose where identity truth lives today, and connect orphaned
+  accounts to the absence of an authoritative lifecycle source.
+- Draw the division of labor: system of record (HRIT) vs. identity
+  provider (Entra) — who owns which attributes, who merely consumes.
+- Use effective dating to represent truth with a timeline (future-dated
+  hires, transfers, separations) and explain the four record families
+  the HR system actually owns.
+- Enumerate the five lifecycle events and map each to its provisioning
+  consequence in the identity plane.
+- Implement inbound provisioning via the SCIM / Microsoft Graph
+  `bulkUpload` pipeline (the Spec2-D3.1 pattern) with one-person /
+  one-identifier discipline across worker types.
+- Execute the six-step leaver sequence and defend "deprovisioning is an
+  HR event, not a ticket."
+- Derive access from organizational-SSOT attributes (the derivation
+  chain) and land attestation/recertification on the same rail.
+- Instrument the measured lifecycle: provisioning latency, orphan count,
+  attribute-drift metrics as ongoing evidence.
 
 ## Key concepts
 
-- Arc system-assigned Managed Identity: certificate-backed, auto-rotated
-  every 90 days, no human-visible credential.
-- Three-phase NTLM elimination (Discovery → Remediation → Domain-wide
-  block) and the four NTLM-generating patterns (missing SPN, cross-site,
-  linked-server passthrough, non-domain host).
-- `CREATE LOGIN … FROM EXTERNAL PROVIDER`; `sa` disable-and-rename.
-- Entra dynamic groups as HR-attribute-driven SQL authorization;
-  Conditional Access as a perimeter SQL Server cannot express.
-- Application classes: Class 3 OIDC/token (preferred) → Class 2 SAML →
-  Class 1 App Proxy → Class 4 Domain Services (last resort).
+- Fragmented truth → statutory frame → "why this cannot be patched."
+- Four record families of the human-capital system; authoritative vs.
+  derived attributes.
+- The lifecycle as an event stream: joiner / mover / converter /
+  suspender / leaver.
+- One person, one identifier; the worker-type boundary (employee,
+  contractor, seasonal) as an attribute, not a second identity.
+- SCIM 2.0 and Graph `bulkUpload` as the inbound provisioning rail.
+- The six-step leaver: HR event → sessions revoked → credentials
+  disabled → access removed → data disposition → record retained.
+- Organizational SSOT: reporting structure as queryable data; the
+  HR-attribute → entitlement derivation chain; attestation on the same
+  rail.
+- A SaaS integration surface is an identity-plane surface (governs every
+  later book's SaaS additions).
 
-## Implementation sequence
+## Implementation sequence (phased, per the book)
 
-1. Estate discovery and consolidation gate (retain / consolidate / retire;
-   zombie detection at 90 days idle).
-2. Arc enrollment and Layer 1 Entra authentication on retained instances.
-3. NTLM elimination Phases A–C, ending in a domain-wide block after a
-   30-day zero-NTLM observation window.
-4. Four-phase login migration per instance, including `sa` handling.
-5. Application chain migration (connection strings, linked servers, ODBC).
-6. Continuous-monitoring baseline and FedRAMP 20x KSI artifacts.
+1. **Phase 1 — attribute authority agreement (weeks 1–6):** the signed
+   contract of which system owns which attribute; no engineering until
+   this exists.
+2. **Phase 2 — inbound provisioning pilot (weeks 7–14):** SCIM/Graph
+   `bulkUpload` from HRIT to Entra for one population, shadow mode
+   first.
+3. **Phase 3 — lifecycle automation (weeks 15–26):** all five events
+   driving provisioning; six-step leaver live; orphan-account burn-down.
+4. **Phase 4 — organizational-SSOT-derived access (weeks 27–40):**
+   entitlements derived from org attributes; attestation cycles running
+   on the same data.
 
 ## Compliance hooks
 
-IA-2, IA-3, IA-5, IA-5(1), AC-2, AC-3, AC-17, AU-2, AU-12, CA-7, CM-2,
-CM-8, SC-8, SI-4. FedRAMP 20x KSIs: auth posture report, zero-NTLM count,
-Managed Identity coverage, Conditional Access compliance, `sa` status.
-BOD 25-01; OMB M-22-09.
+AC-2 (+1 automated account management), PS-4 (+2 automated termination
+actions), PS-5 personnel transfer, IA-4 (+4 identifier management with
+user status), SI-12 information management/retention. FedRAMP 20x:
+**binds evidence slot 1 — identity (KSI-IAM)** — provisioning event
+records and leaver-sequence evidence are the artifacts.
 
 ## Prerequisites
 
-Book 01 (CA decisions for TLS migration), Books 02–03 (segmentation,
-SD-WAN traffic classes). AD, SQL Server administration, and Entra ID
-fundamentals.
+Book 03 (the credential plane these accounts receive); familiarity with
+Entra provisioning concepts helps. No Oracle HCM depth required — the
+book treats HRIT behaviorally, as the class of system of record.
 
 ## Labs
 
-1. Audit a lab instance with Event IDs 4624/4625 and `setspn`; classify
-   NTLM sources into the four patterns; fix a missing SPN and verify
-   Kerberos with `klist`.
-2. Full parallel-run login migration on a test instance, including
-   disable/re-enable rollback and the migration log.
-3. Configure an Entra dynamic group plus a Conditional Access MFA policy;
-   demonstrate blocked access from a non-compliant device.
+1. Draft the attribute-authority matrix for a sample org: for ten
+   attributes, name the owning system, the consumers, and the drift
+   detection for each.
+2. Run a SCIM/Graph `bulkUpload` provisioning cycle in shadow mode
+   against a test tenant; diff the would-be changes and promote one
+   population to live.
+3. Fire a leaver event and trace all six steps, capturing timestamps for
+   each as the PS-4(2) evidence record; verify the orphan count returns
+   to zero.
 
 ## Pitfalls the book calls out
 
-- Dropping a login before the 30-day observation — dependencies surface
-  against production traffic, not documentation.
-- gMSA or vault-managed service principals as "modernization" — both
-  re-anchor to AD or preserve a bootstrap credential.
-- Linked servers with `SELF` passthrough silently propagating NTLM.
-- Leaving `sa` enabled, or assigning new applications to Class 4.
+- Building provisioning before the attribute-authority agreement —
+  engineering cements the fragmentation instead of fixing it.
+- Ticket-driven deprovisioning surviving alongside the automated path:
+  the ticket queue becomes the orphan-account factory.
+- Second identities per worker type instead of one identifier with a
+  worker-type attribute.
+- Treating the org hierarchy as an HR reporting artifact rather than
+  the access-derivation source — the derivation chain then decays into
+  hand-maintained groups.
 
 ## Vendor training
 
-[SC-300](../vendor-training-catalog.html#microsoft),
-[DP-300](../vendor-training-catalog.html#microsoft).
+[SC-300](../vendor-training-catalog.html#microsoft) (lifecycle workflows,
+entitlement management),
+[SailPoint Identity University](../vendor-training-catalog.html#identity-zero-trust)
+(joiner-mover-leaver governance).
 
-**Previous:** [Book 03](book-03.html) · **Next:** [Book 05 — SQL Server Implementation Guide](book-05.html)
+**Previous:** [Book 03](book-03.html) · **Next:** [Book 05 — Network Modernization](book-05.html)

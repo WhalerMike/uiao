@@ -1,99 +1,114 @@
 ---
-title: "Book 13 — Program Management & Governance"
-subtitle: "AAN module: ISPP, RACI, risk register, and the signed SCRM charter that closes the PM family"
+title: "Book 13 — SIEM / XDR Detection"
+subtitle: "AAN module: Sentinel detection engineering — from log warehouse to firing rules"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 13: the organizational governance artifacts — templates, RACIs, registers, and a PM-30 SCRM charter — that contextualize all technical evidence."
+description: "Module page for AAN Book 13: Sentinel connectors, the 20-rule KQL detection library, UEBA, automation playbooks, IR-8 artifacts, and three-tier AU-11 retention."
 ---
 
-**Source:** [Book_13 Program Management Governance](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_13_Federal_Application_Aware_Networking_Program_Management_Governance.qmd)
-· **Evidence slot:** 6 — security (KSI-CMT, CM-2 / AC-4) · **Track modules:** [A6](../compliance-track.html#module-a6-security-configuration-change-control-plane-slot-6), [B6](../implementation-track.html#module-b6-resilience-governance-books-1114)
+**Source:** [Book_13 SIEM XDR Detection](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_13_FedAAN_SIEM_XDR_Detection.qmd)
+· **Evidence slots:** 4 — telemetry (KSI-MLA); 6 — security (KSI-CMT) · **Track modules:** [A4](../compliance-track.html#module-a4-telemetry-control-plane-slot-4), [A6](../compliance-track.html#module-a6-security-configuration-change-control-plane-slot-6), [B6](../implementation-track.html#module-b6-detect-protect-books-1113)
 
 ## Scope
 
-The organizational governance artifacts — templates, RACIs, registers, and
-a signed SCRM charter — that close nine NIST PM-family controls for
-FedRAMP 20x. Thesis: **PM controls are the organizational preconditions
-that contextualize all technical evidence**; without them (especially
-PM-30), the Book 12 SBOM pipeline is "a technical experiment rather than a
-governance artifact."
+Converts the deep log pipeline built in Books 01–12 into an active
+detection and response capability. Thesis: **a log warehouse with no firing
+rules fails AU-6** — "a SIEM with zero configured analytics rules does not
+pass." Covers Sentinel connectors, a 20-rule KQL detection library, UEBA,
+automation playbooks, the IR-8 documentation set, and three-tier AU-11
+retention.
 
 ## Learning objectives
 
-- Draft an Information Security Program Plan (ISPP) covering
-  purpose/scope, legal authority, objectives, and budget per
-  PM-1/PM-7/PM-11.
-- Construct a security leadership RACI assigning AO, CISO, ISSO,
-  DevSecOps, SOC, and Privacy roles across ATO, POA&M, incident response,
-  and BOD 26-04 activities.
-- Implement the three-layer system inventory (Azure Resource Graph, SBOM,
-  Entra ID) with monthly reconciliation.
-- Apply the NIST SP 800-39 three-tier risk framework and the 5×5
-  likelihood-impact matrix with its escalation thresholds.
-- Build a testing/training/monitoring plan mapped to KSI themes.
-- Draft a PM-30 SCRM Governance Charter with the five NIST SP 800-161r1
-  risk categories and supplier requirements.
-- Maintain a PM-15 security contact registry (CISA, FedRAMP PMO, MS-ISAC,
-  MSRC).
+- Articulate the FedRAMP AU-6 evidence standard (fired alert → incident
+  ticket → response documentation → closure) and the
+  log-aggregator-vs-SIEM distinction.
+- Connect Infoblox NIOS (CEF/syslog), Entra ID, Microsoft 365 Defender,
+  Zscaler/Netskope SASE, SQL/Defender for SQL, and Infoblox TIDE TAXII
+  threat intel to Sentinel, with EPS sizing.
+- Author and tune KQL analytics rules (DNS C2 beaconing, impossible
+  travel, off-hours PIM activation, MFA fatigue, post-block NTLM) through
+  the four-phase detection lifecycle.
+- Explain Sentinel UEBA: investigation priority scores, peer-group
+  deviation, entity pages, Identity Protection integration.
+- Build automation rules and Logic App playbooks for suppression,
+  enrichment, KEV-triggered device isolation, and compound-signal account
+  disable.
+- Assemble the seven IR artifacts assessors require and map Sentinel
+  workflow to NIST SP 800-61 Rev 2 phases.
+- Configure three-tier retention (90-day hot, archive to 3 years, WORM
+  blob with legal hold) and reason about commitment-tier pricing.
 
 ## Key concepts
 
-- ISPP fillable template with FISMA/A-130/EO 14028 authority citations;
-  named-individual requirement for AO/CISO.
-- Three-layer inventory: Resource Graph export, Syft SBOM manifest, Entra
-  identity plane.
-- Risk scoring: Score = Likelihood × Impact; 1–4 accept, 5–9 90-day
-  POA&M, 10–15 30-day, 16–25 AO escalation in 15 days.
-- SCRM organizational chart and the five supplier requirements (SBOM in
-  30 days, PSIRT/24h contact, 72h incident notice, VEX in 30 days, audit
-  rights).
-- Application lifecycle gates: Concept → Design → Build → Deploy →
-  Operate.
+- Log warehouse vs. detection engine; the MTTD comparison
+  (days-to-never → minutes).
+- Detection lifecycle: author → historical test → deploy with
+  `createIncident:false` tuning window → steady-state review.
+- The 20-rule priority detection library keyed to series log sources.
+- UEBA investigation priority score; Defender for Identity during hybrid
+  AD transition.
+- Two-level automation: Sentinel automation rules + Logic App playbooks
+  (enrich → notify → contain).
+- TIDE TAXII IOC auto-correlation every 15 minutes; NARA GRS 3.2
+  three-year floor; OMB M-20-04 1-hour US-CERT reporting.
 
-## Artifact sequence
+## Implementation sequence
 
-Artifact-shaped rather than phase-dated: why PM controls gate
-authorization → ISPP + EA integration → leadership RACI → inventory
-framework → risk management strategy → T&T&M plan → contact registry →
-SCRM charter with signature block.
+1. Deploy Sentinel connectors for all Books 01–12 sources; verify
+   ingestion health per table.
+2. Configure per-table retention plus WORM blob export.
+3. Deploy the KQL-included priority rules in tuning mode; promote after
+   two weeks of false-positive review.
+4. Roll out the remaining detections once the first set is stable.
+5. Enable UEBA (plus Defender for Identity if hybrid AD remains) and TIDE
+   TAXII intel.
+6. Build automation: suppression watchlists, enrichment playbook,
+   ServiceNow/Teams notification, gated isolation and account-disable
+   playbooks.
+7. Author the IR plan and seven artifacts; run the annual tabletop.
 
 ## Compliance hooks
 
-PM-1, PM-2, PM-5, PM-7, PM-9, PM-11, PM-14, PM-15, PM-30 (9 controls);
-references SR-2/3/5/6/8/10/11, SA-10, SA-11, AC-21, CM-8(1), CP-4,
-FIPS 199. FedRAMP 20x: KSI-SCR (KSI-015, KSI-016), KSI-003, and the
-per-theme monitoring dimensions.
+AU-6, AU-6(1), AU-6(4), AU-7, AU-8, AU-11, SI-4, SI-4(2)(4)(7), IR-4,
+IR-6, IR-8. NIST SP 800-61 Rev 2; NARA GRS 3.2; OMB M-20-04. FedRAMP 20x
+KSI families: KSI-AU, KSI-SI, KSI-IR.
 
 ## Prerequisites
 
-Book 12 (the SBOM pipeline is PM-30's technical backbone); references
-Books 03, 08, 09, 10, 11 per its integration appendix.
+The full log pipeline from Books 01–12 (Infoblox syslog/RPZ/DNSSEC, SASE
+flow telemetry, Entra sign-in/audit, SQL continuous audit, Defender for
+Endpoint, PAM, vulnerability posture). Working KQL and Logic Apps
+knowledge.
 
 ## Labs
 
-1. Complete the ISPP and RACI templates for a fictional system, replacing
-   all fillable fields with named roles.
-2. Write the Azure Resource Graph inventory query and reconcile its output
-   against a sample SBOM manifest, logging discrepancies as POA&M items.
-3. Score five sample risks on the 5×5 matrix and assign responses and
-   POA&M deadlines per the thresholds.
+1. Build the CEF forwarder path for Infoblox, validate `CommonSecurityLog`
+   ingestion, deploy the DNS C2 beacon rule, and tune its threshold
+   against a simulated beaconing script.
+2. Implement the MFA-fatigue KQL rule and an enrichment playbook that
+   appends Entra risk level and device compliance as incident comments.
+3. Configure the three-tier retention architecture including a WORM
+   container with a 1,095-day immutability policy; produce the AU-11
+   evidence export.
 
 ## Pitfalls the book calls out
 
-- Technical evidence without PM artifacts "cannot be contextualized" —
-  governance is not optional paperwork.
-- Inventory discrepancies unresolved within 30 days become POA&M items;
-  reconciliation must actually run monthly.
-- Risk acceptance above score 4 must be time-bounded with AO concurrence.
-- The SCRM charter is only PM-30 evidence when signed, dated, and
-  version-controlled with supersession notes.
+- Trusting every incident immediately (SOC overload) or ignoring the
+  tuning window — use the two-week `createIncident:false` pattern.
+- Triggering automated isolation on vulnerability presence rather than
+  confirmed exploit status; gate non-workstation classes behind approval.
+- A SIEM where every rule is disabled "pending tuning" is still an AU-6
+  finding.
+- Ignoring commitment-tier pricing past 100 GB/day leaves 15–65% savings
+  on the table.
 
 ## Vendor training
 
-[SC-100](../vendor-training-catalog.html#microsoft),
-[ISACA (CISM / CRISC)](../vendor-training-catalog.html#federal-compliance),
-[ISC2](../vendor-training-catalog.html#security-operations),
-[NIST NICE framework](../vendor-training-catalog.html#federal-compliance),
+[SC-200](../vendor-training-catalog.html#microsoft),
+[Splunk / Elastic](../vendor-training-catalog.html#security-operations),
+[SANS](../vendor-training-catalog.html#security-operations),
+[CISA Learning](../vendor-training-catalog.html#federal-compliance),
 [ServiceNow University](../vendor-training-catalog.html#federal-compliance).
 
-**Previous:** [Book 12](book-12.html) · **Next:** [Book 14 — PII Processing & Transparency](book-14.html)
+**Previous:** [Book 12](book-12.html) · **Next:** [Book 14 — Business Continuity](book-14.html)

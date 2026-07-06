@@ -1,100 +1,107 @@
 ---
-title: "Book 12 — Supply Chain Risk Management"
-subtitle: "AAN module: the SBOM / VDR / VEX pipeline for the BOD 26-04 gate"
+title: "Book 12 — Data Protection (Purview)"
+subtitle: "AAN module: closing the payload gap — CUI labeling, three-surface DLP, and agency-controlled keys"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 12: Syft→Grype→OpenVEX pipeline, CycloneDX SBOMs, KEV triage, SLSA progression, and the evidence contract that activates KSI-011–014."
+description: "Module page for AAN Book 12: federal CUI taxonomy in Purview sensitivity labels, DLP across service/endpoint/CASB surfaces, Key Vault Premium CMK, and Audit Premium non-repudiation."
 ---
 
-**Source:** [Book_12 Supply Chain Risk Management](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_12_Federal_Application_Aware_Networking_Supply_Chain_Risk_Management.qmd)
-· **Evidence slot:** 6 — security (KSI-CMT, CM-2 / AC-4) · **Track modules:** [A6](../compliance-track.html#module-a6-security-configuration-change-control-plane-slot-6), [B6](../implementation-track.html#module-b6-resilience-governance-books-1114)
+**Source:** [Book_12 Data Protection Purview](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_12_FedAAN_Data_Protection_Purview.qmd)
+· **Evidence slot:** 4 — telemetry (KSI-MLA, CA-7 / SI-4) · **Track modules:** [A4](../compliance-track.html#module-a4-telemetry-control-plane-slot-4), [B6](../implementation-track.html#module-b6-detect-protect-books-1113)
 
 ## Scope
 
-The technical architecture, CI/CD pipeline, and governance process for
-CISA BOD 26-04's **December 7, 2026** SBOM/VDR/VER deadline under FedRAMP
-20x. Thesis: a single automated **Syft → Grype → OpenVEX** pipeline can
-simultaneously satisfy BOD 26-04's three tiers, close eight NIST SR-family
-controls, and provide the VER evidence contract that upgrades KSI-011–014
-from scaffold to evaluable.
+Closes the "payload gap" left after network/identity hardening: the pipe is
+regulated but the content is opaque. A federal CUI classification taxonomy
+enforced via Purview sensitivity labels, DLP across three enforcement
+surfaces, and agency-controlled cryptographic key management in Azure Key
+Vault. **Both pipe and payload controls are required for FedRAMP
+Moderate.**
 
 ## Learning objectives
 
-- Explain BOD 26-04's three compliance tiers (SBOM, VDR, VEX) and their
-  shared deadline.
-- Build a GitHub Actions workflow that generates a CycloneDX 1.6 SBOM with
-  Syft and a VDR with Grype on every push and release.
-- Verify an SBOM against the NTIA minimum elements using CycloneDX fields
-  (supplier, name, version, PURL, dependencies, author, timestamp).
-- Author an OpenVEX statement with correct status, justification, impact
-  statement, and action statement for a given CVE and deployment context.
-- Implement KEV-catalog triage that escalates matching CVEs to P0 with the
-  14-day BOD 22-01 SLA.
-- Map pipeline artifacts to SR-1 through SR-11 evidence and to
-  KSI-011–014.
-- Describe the SLSA Level 1→3 progression and what is implemented at each
-  level.
+- Explain why CASB/network controls alone cannot prevent exfiltration of
+  unclassified-but-sensitive content.
+- Map the federal CUI framework (EO 13556, NARA CUI Registry) — Public,
+  Internal, CUI-Basic, CUI-Specified — to a parent/child Purview label
+  taxonomy created via Security & Compliance PowerShell.
+- Build automatic labeling with pre-built and custom Sensitive Information
+  Types and trainable classifiers, deployed in simulation mode first.
+- Implement the DLP baseline across service-layer
+  (SharePoint/OneDrive/Exchange/Teams), Endpoint DLP (print/USB/clipboard/
+  upload), and CASB network-layer surfaces.
+- Deploy Key Vault Premium (HSM, FIPS 140-2 Level 2) with CMK for SQL TDE
+  and SharePoint BYOK, Managed Identity RBAC, and a 12-month rotation
+  policy.
+- Distinguish AU-12 (audit generation) from AU-10 (non-repudiation) and
+  configure Purview Audit Premium tiered retention.
+- Structure a Certificate Practice Statement per RFC 3647 (SC-17).
 
 ## Key concepts
 
-- Six-stage pipeline: source → Syft → Grype → VEX → immutable archive →
-  CISA VEX Portal / Sentinel.
-- CycloneDX 1.6 XML as the CISA-preferred format; OpenVEX v0.2.0 JSON.
-- Four VEX status values (not_affected / affected / fixed /
-  under_investigation; 7-day analysis window).
-- Vendor disclosure matrix as SR-6 evidence.
-- SLSA Level 2 target with Cosign/sigstore signing and GPG-signed
-  manifests.
-- Azure Blob immutable-tier storage, 7-year NARA retention; Sentinel KQL
-  rule for KEV-overdue breaches.
+- Four-tier CUI label taxonomy with escalating protections.
+- The Purview-labels-feed-the-CASB integration pattern (payload signal for
+  network enforcement).
+- Three DLP enforcement surfaces; custom SITs; trainable classifiers
+  (50–500 samples).
+- Four-level key hierarchy: offline root CA HSM → issuing CA in Key Vault
+  → CMK → wrapped DEKs.
+- Audit Premium events: MailItemsAccessed, SearchQueryInitiated,
+  SensitivityLabel* (downgrade detection).
+- Infoblox IPAM/DNS underpinning CRL/OCSP reliability.
 
 ## Implementation sequence
 
-1. Immediate (July 2026): install Syft/Grype in CI; generate initial
-   SBOMs; register with vendor disclosure portals (MSRC, PSIRT, Infoblox).
-2. Phase 1 (Aug–Sep 2026): author initial VEX for critical/high CVEs;
-   test CISA VEX Portal submission; require supplier SBOMs in acquisition
-   policy.
-3. Phase 2 (Oct 2026): achieve SLSA Level 2 on release workflows.
-4. Phase 3 (Nov 2026): complete the VEX quarterly review cycle.
-5. Phase 4 (Dec 7, 2026): final BOD 26-04 VDR/VER submission.
+1. Create and publish the four-tier label taxonomy to all locations.
+2. Build custom SITs and trainable classifiers; auto-labeling in
+   simulation → review → enforce.
+3. Deploy service-layer DLP baseline (block external share/send of CUI).
+4. Verify Defender for Endpoint onboarding, then deploy Endpoint DLP.
+5. Create Key Vault Premium (soft-delete, purge protection, RBAC); mint
+   HSM CMKs.
+6. Migrate SQL TDE protector to CMK; automatic rotation (P12M).
+7. Enable Audit Premium with tiered retention (10-year privileged /
+   1-year default).
+8. Author the CPS per RFC 3647; verify CRL/OCSP reachability.
 
 ## Compliance hooks
 
-SR-1, SR-2, SR-3, SR-5, SR-6, SR-8, SR-10, SR-11 (8 controls); CM-3,
-AU-6, CM-2, SA-10, CA-7, SA-11 via KSI mappings. FedRAMP 20x: KSI-SCR,
-KSI-CMT-VTD, KSI-011–014, KSI-MLA. EO 14028, NIST SP 800-161r1,
-BOD 26-04, BOD 22-01.
+AC-4, AU-10, MP-2, MP-3, MP-4, MP-5, SC-12, SC-12(1), SC-13, SC-17,
+SC-28. NIST SP 800-171, SP 800-57 Part 1, FIPS 140-2 Level 2, NARA CUI
+Marking Handbook, RFC 3647. FedRAMP 20x KSIs: data protection, key
+management, non-repudiation, boundary protection.
 
 ## Prerequisites
 
-Book 08 (Defender VM + KEV chain) and Book 10 (Sentinel ingestion, KQL).
-GitHub Actions CI/CD and Azure storage familiarity.
+Books 01–11: PKI (01), SASE/CASB (02), Conditional Access (01–03), SQL
+TDE (04–05), PAM (07), SIEM context (08/10). Security & Compliance
+PowerShell and Az modules.
 
 ## Labs
 
-1. Build the `sbom.yml` workflow on a sample repo; validate Syft output
-   against the NTIA element table.
-2. Run KEV triage against a Grype VDR containing a seeded KEV CVE and
-   produce the escalation record.
-3. Author and GPG-sign an OpenVEX document asserting `not_affected` with a
-   `protected_by_mitigating_control` justification.
+1. Build the label taxonomy and an auto-labeling policy in simulation
+   mode; seed SharePoint with SSN-containing test docs; review the
+   simulation report for false positives before enforcing.
+2. Create a custom SIT with keyword corroboration and a DLP rule blocking
+   external email of matching content; verify the policy tip.
+3. Stand up Key Vault Premium, migrate an Azure SQL TDE protector to CMK,
+   apply a rotation policy, and confirm key operations in Log Analytics.
 
 ## Pitfalls the book calls out
 
-- VEX assertions require human judgment — automated reachability tools
-  cannot assert deployment-context exploitability.
-- `under_investigation` has a hard 7-day window; don't let it become a
-  parking state.
-- KEV-listed CVEs left unresolved past 14 days breach BOD 22-01 (the KQL
-  rule exists to catch this).
-- SLSA Level 2 is only the initial target; Level 3 (branch protection +
-  required reviewers) is needed before the authorization deadline.
+- Publishing labels to only one location causes inconsistent
+  classification — publish everywhere from day one.
+- Enforcing auto-labeling without a simulation review can mislabel at
+  scale and flood the help desk.
+- Trainable classifiers trained on unrepresentative samples underperform
+  (budget 3–4 weeks).
+- Endpoint DLP silently misses devices not onboarded to Defender for
+  Endpoint; never delete a compromised key version until data is
+  re-encrypted.
 
 ## Vendor training
 
-[Linux Foundation LFEL1007](../vendor-training-catalog.html#federal-compliance),
-[OpenSSF free courses](../vendor-training-catalog.html#federal-compliance),
-[FedRAMP PMO materials](../vendor-training-catalog.html#federal-compliance).
+[SC-401](../vendor-training-catalog.html#microsoft),
+[AZ-500](../vendor-training-catalog.html#microsoft).
 
-**Previous:** [Book 11](book-11.html) · **Next:** [Book 13 — Program Management & Governance](book-13.html)
+**Previous:** [Book 11](book-11.html) · **Next:** [Book 13 — SIEM / XDR Detection](book-13.html)

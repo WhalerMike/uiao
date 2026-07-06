@@ -1,92 +1,116 @@
 ---
-title: "Book 03 — Federal Telecommunications Modernization"
-subtitle: "AAN module: cloud voice on Amazon Connect and Teams Phone over one SD-WAN investment"
+title: "Book 03 — Certificates, Tokens & Cryptographic Identity"
+subtitle: "AAN module: retiring session-bound authentication — the PKI naming plane, 47-day certificates, and token-based identity"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 03: G.114 latency budgets, the N8NN contact center on Amazon Connect, Teams Phone Direct Routing and E911, and voice as the network canary."
+description: "Module page for AAN Book 03: why Kerberos-style session binding fails on multipath networks, the offline-root/name-constrained PKI hierarchy, ACME/CAA lifecycle automation at 47-day lifetimes, OAuth 2.0/OIDC tokens, phishing-resistant MFA, and workload identity."
 ---
 
-**Source:** [Book_03 Federal Telecommunications Modernization](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_03_Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd)
-· **Evidence slot:** 1 — identity (KSI-IAM, IA-2 / AC-2) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B2](../implementation-track.html#module-b2-network-telecommunications-modernization-books-0203)
+**Source:** [Book_03 Certificates Tokens Cryptographic Identity](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_03_FedAAN_Certificates_Tokens_Cryptographic_Identity.qmd)
+· **Evidence slot:** 1 — identity (KSI-IAM, IA-2 / IA-5) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B2](../implementation-track.html#module-b2-access-identity-foundations-books-0204)
 
 ## Scope
 
-The agency's two cloud voice platforms — the N8NN citizen contact center on
-Amazon Connect (AWS commercial `.com`, by authorized exception) and internal
-telephony on Microsoft Teams Phone in GCC Moderate — share identical network
-requirements (<75 ms one-way, <30 ms jitter, <1% loss, DSCP EF). One
-SD-WAN/AAN modernization investment therefore enables both; **voice is the
-canary** that exposes network problems other applications hide.
+The doctrinal core of the early series: **session-bound, location-bound
+authentication (Kerberos's three bindings) cannot survive an
+application-aware, multipath network — identity must be credential-bound
+and cryptographic.** The book rebuilds the credential plane: PKI as a
+naming-plane function with an offline HSM-backed root and name-constrained
+issuing CAs; certificate lifecycle automation (ACME, CAA) sized for the
+industry's 47-day maximum lifetimes; OAuth 2.0 / OIDC token identity with
+deliberate lifetime design; certificate-based authentication and
+phishing-resistant MFA; and machine/workload identity federation to
+retire long-lived secrets.
 
 ## Learning objectives
 
-- State the ITU-T G.114 150 ms one-way delay ceiling and derive the ~75 ms
-  network budget after codec and jitter-buffer overhead.
-- Map network conditions to MOS via the ITU-T G.107 E-model and defend the
-  ≥4.0 MOS floor.
-- Explain the Amazon Connect `.com` authorized exception, its SSP SA-9
-  boundary documentation, and ATO-renewal maintenance obligations.
-- Diagnose asymmetric routing as a stateful-firewall session killer and
-  explain why SD-WAN overlay eliminates it structurally.
-- Plan Teams Phone Direct Routing (SBC selection, FedRAMP-authorized cloud
-  SBC) and E911 compliance under Kari's Law and Ray Baum's Act.
-- Size DSCP EF capacity for hybrid agents (max concurrent hybrid agents ×
-  200 Kbps).
+- State the three bindings a Kerberos ticket makes and demonstrate why
+  multipath transport breaks them structurally (not fixably).
+- Explain a certificate as a naming claim, and the one-substrate /
+  three-consumers model (users, devices, workloads).
+- Design the internal trust hierarchy: offline HSM root, name-constrained
+  issuing CAs, and the blast-radius argument for the constraints.
+- Operate lifecycle automation: ACME issuance, CAA records restricting
+  who may issue, and why 47-day lifetimes make manual renewal
+  arithmetically impossible — automation is the control.
+- Contrast revocation in a short-lived-certificate world with CRL/OCSP
+  dependence, and use certificate telemetry as compliance evidence.
+- Describe the token layer's anatomy (authorization server, access/
+  refresh/ID tokens, lifetimes) and why the token inverts the trust
+  model relative to the session.
+- Implement certificate-based authentication and phishing-resistant MFA,
+  and argue why token theft is a smaller problem than credential theft.
+- Convert workload secrets to federated workload identity (no stored
+  keys), and state where keys are allowed to live.
 
 ## Key concepts
 
-- MPLS hairpin vs. local breakout (DIA), with the Portland → Washington →
-  AWS us-west-2 worked example.
-- AWS `.us` vs. `.com` vs. GovCloud federal delivery models.
-- WebRTC/RTP/SRTP requirements; DSCP EF (46) steering; FEC at ≥0.5% loss.
-- Hybrid agent = two simultaneous DSCP EF streams (Connect + Teams Phone).
-- "DIA enables; SASE achieves" — the pipe vs. the control stack.
-- Direct Routing SBC options (on-prem vs. cloud) and E911 LIS/ELIN.
+- Session-bound vs. credential-bound identity; "the fallback nobody
+  chose" (NTLM) as the cost of un-retired session auth.
+- PKI as naming plane — the certificate substrate underneath Books 01
+  (DDI/PKI issuance), 02 (device certs), and 06 (Entra CBA).
+- The spreadsheet-CA failure mode and its retirement.
+- 47-day certificate lifetimes; issuance telemetry as evidence.
+- Access-token/refresh-token lifetime design; Conditional Access as the
+  token-issuance policy point.
+- Phishing-resistant MFA (FIDO2 / certificate-based) as the IA-2
+  enhancement surface.
+- The non-human majority: workload identities outnumber humans; workload
+  identity federation replaces stored secrets.
 
-## Implementation sequence
+## Implementation sequence (phased, per the book)
 
-1. Phase 1 (months 1–3): SD-WAN, local breakout, DSCP EF steering, FEC;
-   measure and document G.114 compliance per location — **a hard gate
-   before any migration**.
-2. Phase 2 (months 2–5): Amazon Connect — exception confirmation, contact
-   flows, Entra ID federation, pilot with MOS measurement, S3 recording
-   pipeline validation.
-3. Phase 3 (months 4–8): Teams Phone — SBC deployment, per-location E911
-   testing, PBX number inventory, geographic porting tranches with parallel
-   PBX operation.
-4. Phase 4 (months 6+): continuous monitoring — MOS ≥4.0 SLA alerting,
-   SIEM integration, ATO exception review, 20x KSI alignment.
+1. **Phase 1 — certificate estate discovery (weeks 1–4):** find every
+   certificate and its issuer; build the inventory the automation will
+   own.
+2. **Phase 2 — issuance automation (weeks 5–12):** ACME/SCEP pipelines,
+   CAA records, offline-root + name-constrained issuing hierarchy.
+3. **Phase 3 — token migration and phishing-resistant enforcement
+   (weeks 13–24):** OIDC/OAuth conversion, CBA/FIDO2 rollout,
+   Conditional Access enforcement.
+4. **Phase 4 — workload identity conversion (weeks 25–40):** federate
+   service credentials; eliminate long-lived stored keys.
 
 ## Compliance hooks
 
-AC-4, SC-7, SC-8, SI-3, SI-4, AU-12, CA-7, SA-9, AU-9, SC-28, IA-8. Also
-ITU-T G.114/G.107, RFC 3246/3550/4594, TIC 3.0 Use Case E, OMB M-22-09,
-CISA ZTMM v2.0, Kari's Law and Ray Baum's Act (47 CFR Part 9), Privacy Act.
+IA-5 (+2 PKI-based authentication), SC-12 key establishment/management,
+SC-17 PKI certificates, IA-2 (+1)(+2) MFA for privileged and
+non-privileged accounts. FedRAMP 20x: **binds evidence slot 1 — identity
+(KSI-IAM)** — certificate issuance telemetry and token policy state are
+the evidence artifacts.
+
+## Prerequisites
+
+Book 01 (the PKI issuance point lives in the DDI layer); Book 02 shows
+the port-level consumer of this hierarchy. No prior PKI depth assumed —
+the book builds the trust-chain argument from first principles.
 
 ## Labs
 
-1. Measure one-way latency, jitter, and loss to AWS us-west-2 and
-   Microsoft 365 endpoints; compute the G.114 verdict for hairpin vs.
-   direct paths.
-2. SD-WAN policy lab: DSCP EF → lowest-latency path, HTTPS →
-   highest-throughput path; verify EF markings are honored, not remarked.
-3. Configure and test a Teams emergency-calling policy with LIS
-   dispatchable location, documenting the 911 test.
+1. Stand up a lab two-tier hierarchy (offline root simulated, one
+   name-constrained issuing CA); publish CAA records and demonstrate an
+   out-of-policy issuance being refused.
+2. Automate one certificate through ACME DNS-01 at a short lifetime;
+   capture the issuance/renewal telemetry as slot-01 evidence.
+3. Register an OIDC application, inspect access/refresh token lifetimes,
+   then enforce phishing-resistant MFA via Conditional Access and verify
+   the token-issuance policy change in the sign-in log.
 
 ## Pitfalls the book calls out
 
-- Migrating any office before G.114 validation — post-migration voice
-  failures cost dramatically more.
-- Treating DIA alone as compliance: it fixes latency but satisfies zero
-  NIST controls without the SASE stack.
-- Asymmetric routing misdiagnosed as "SBC misconfiguration."
-- Assuming the `.com` exception is permanent — it requires re-evaluation
-  each cycle; cloud SBCs need their own FedRAMP authorization.
+- Treating 47-day lifetimes as a burden to negotiate down rather than
+  the forcing function for automation.
+- Standing up issuing CAs without name constraints — one compromised
+  issuer then speaks for the whole namespace.
+- Migrating to tokens while leaving Kerberos/NTLM fallback enabled: the
+  attacker uses the fallback, not the upgrade.
+- Storing workload secrets in code/config after the human credential
+  plane is modernized — the non-human majority is the larger surface.
 
 ## Vendor training
 
-[SC-300](../vendor-training-catalog.html#microsoft),
-[AWS Skill Builder (Amazon Connect)](../vendor-training-catalog.html#federal-compliance),
-[Zscaler / Netskope](../vendor-training-catalog.html#identity-zero-trust).
+[SC-300, AZ-500](../vendor-training-catalog.html#microsoft) (Entra CBA,
+Conditional Access, workload identity),
+[identity & zero trust](../vendor-training-catalog.html#identity-zero-trust).
 
-**Previous:** [Book 02](book-02.html) · **Next:** [Book 04 — SQL Server Authentication Modernization](book-04.html)
+**Previous:** [Book 02](book-02.html) · **Next:** [Book 04 — HRIT Identity & Organizational SSOT](book-04.html)

@@ -1,9 +1,9 @@
 ---
 title: "AAN Track B — Implementation"
-subtitle: "Building the architectures the 17 AAN books describe, and producing the evidence Track A consumes"
+subtitle: "Building the architectures the 20 AAN books describe, and producing the evidence Track A consumes"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Implementation track of the AAN Training Program: seven engineering modules grouped by book cluster (landing zone/DDI, network & telecom, data platform, privileged access, detect & protect, resilience & governance, authorize & operate), each with objectives, labs, and pointers into vendor training."
+description: "Implementation track of the AAN Training Program: eight engineering modules grouped by book cluster (landing zone/DDI, access & identity foundations, network & telecom, data platform, privileged access, detect & protect, resilience & governance, authorize & operate), each with objectives, labs, and pointers into vendor training."
 ---
 
 > Part of the [AAN Training Program](index.html) — **companion material for
@@ -27,7 +27,7 @@ trial-tenant, and product-eval tiers) for the labs below.
 > [`fedramp_aan_catalog`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/adapters/fedramp_aan_catalog)
 > slot mappings can bind.
 
-![Figure 1 — Track B sequencing: B1 → B2 → B3 is a real dependency chain; B4–B6 run in parallel after B2; B7 (authorize & operate, Books 15–16) caps the track.](figs/tp-fig-03-module-chain.png){fig-alt="Track B module dependency chain: B1 to B2 to B3 in sequence, B4 through B6 parallel after B2, B7 capping the track"}
+![Figure 1 — Track B sequencing: B1 → B2 → B3 → B4 is a real dependency chain; B5–B7 run in parallel after B2; B8 (authorize & operate, Books 18–19) caps the track.](figs/tp-fig-03-module-chain.png){fig-alt="Track B module dependency chain: B1 to B2 to B3 to B4 in sequence, B5 through B7 parallel after B2, B8 capping the track"}
 
 ## Module B1 — Landing zone, IPAM & DDI (Book 01) {#module-b1-landing-zone-ipam-ddi-book-01}
 
@@ -44,10 +44,40 @@ trial-tenant, and product-eval tiers) for the labs below.
   AZ-700 (Azure networking for the landing-zone side) — see
   [catalog §Networking & DDI](vendor-training-catalog.html#networking-ddi).
 
-## Module B2 — Network & telecommunications modernization (Books 02–03) {#module-b2-network-telecommunications-modernization-books-0203}
+## Module B2 — Access & identity foundations (Books 02–04) {#module-b2-access-identity-foundations-books-0204}
 
-- **Read:** Book 02 (SD-WAN, SASE, unified communications — Teams Phone,
-  Amazon Connect) and Book 03 (Entra ID, ZTNA, active governance).
+- **Read:** Book 02 (Network Access Control — 802.1X), Book 03
+  (Certificates, Tokens & Cryptographic Identity), Book 04 (HRIT Identity
+  & Organizational SSOT).
+- **Build:** the admission-and-identity layer everything after B1 assumes —
+  802.1X EAP-TLS port/wireless authentication against NPS with the
+  five-tier VLAN model, MAB only as a documented exception, and CoA for
+  live re-evaluation (Book 02); the cryptographic credential plane — an
+  offline HSM-backed root with name-constrained issuing CAs, ACME/SCEP
+  issuance sized for 47-day certificate lifetimes, CAA records, and
+  phishing-resistant MFA plus workload identity federation to retire
+  long-lived secrets (Book 03); and the HR-driven SSOT pipeline — Oracle
+  HCM as the authoritative source, effective-dated records, and the
+  SCIM/Graph `bulkUpload` provisioning flow with the six-step leaver
+  sequence (Book 04).
+- **Lab:** three exercises, one per book: deploy EAP-TLS **in monitor mode
+  first** with an Intune SCEP profile, review the would-have-failed log,
+  then promote one switch/SSID to enforce; stand up the CAA + ACME DNS-01
+  issuance chain and rotate a certificate inside the 47-day window; run
+  the six-step leaver sequence in shadow mode and capture the
+  deprovisioning evidence. The Book 03/04 artifacts bind as slot-01
+  identity evidence; Book 02's port-authentication evidence is held
+  pending the adapter mapping refresh.
+- **Vendor training:** Cisco U / Networking Academy (ISE, NAC), Microsoft
+  SC-300 (Entra identity & lifecycle), AZ-500, SailPoint Identity
+  University (joiner-mover-leaver) — see
+  [catalog §Identity & zero trust](vendor-training-catalog.html#identity-zero-trust)
+  and [§Networking & DDI](vendor-training-catalog.html#networking-ddi).
+
+## Module B3 — Network & telecommunications modernization (Books 05–06) {#module-b3-network-telecommunications-modernization-books-0506}
+
+- **Read:** Book 05 (SD-WAN, SASE, unified communications — Teams Phone,
+  Amazon Connect) and Book 06 (Entra ID, ZTNA, active governance).
 - **Build:** application-aware transport — SD-WAN path policy keyed to
   application identity, SASE enforcement, ZTNA in front of legacy telecom
   patterns.
@@ -58,34 +88,34 @@ trial-tenant, and product-eval tiers) for the labs below.
   (SASE) — see [catalog §Networking & DDI](vendor-training-catalog.html#networking-ddi)
   and [§Identity & zero trust](vendor-training-catalog.html#identity-zero-trust).
 
-## Module B3 — Data platform modernization (Books 04–06) {#module-b3-data-platform-modernization-books-0406}
+## Module B4 — Data platform modernization (Books 07–09) {#module-b4-data-platform-modernization-books-0709}
 
-- **Read:** Book 04 (SQL Server Authentication Modernization), Book 05
-  (SQL Server Implementation Guide — the runbook), Book 06 (Database
+- **Read:** Book 07 (SQL Server Authentication Modernization), Book 08
+  (SQL Server Implementation Guide — the runbook), Book 09 (Database
   Consolidation & Network Physics).
 - **Build:** Entra-integrated SQL Server authentication (no SQL logins),
-  then the consolidation architecture Book 06 derives from network physics
+  then the consolidation architecture Book 09 derives from network physics
   (latency budgets, placement, failure domains).
-- **Lab:** execute the Book 05 runbook against a lab instance; capture the
+- **Lab:** execute the Book 08 runbook against a lab instance; capture the
   authentication-mode evidence and bind it as slot-01 identity evidence.
 - **Vendor training:** Microsoft DP-300, SQL Server security learning paths
   — see [catalog §Data platform](vendor-training-catalog.html#data-platform).
 
-## Module B4 — Privileged access (Book 07) {#module-b4-privileged-access-book-07}
+## Module B5 — Privileged access (Book 10) {#module-b5-privileged-access-book-10}
 
-- **Read:** Book 07 (Privileged Access Management — Entra PIM + PAW).
+- **Read:** Book 10 (Privileged Access Management — Entra PIM + PAW).
 - **Build:** role-activation workflows in PIM (eligibility, activation,
   approval, review) and the privileged-access-workstation tier model.
 - **Lab:** configure one eligible role with activation approval + access
   review; export the PIM audit trail and bind it as slot-01/slot-05
-  evidence — setup: [PIM lab environment](labs/lab-b4-pim.html).
+  evidence — setup: [PIM lab environment](labs/lab-b5-pim.html).
 - **Vendor training:** Microsoft SC-300, AZ-500; SANS privileged-access
   coursework — see [catalog §Identity & zero trust](vendor-training-catalog.html#identity-zero-trust).
 
-## Module B5 — Detect & protect (Books 08–10) {#module-b5-detect-protect-books-0810}
+## Module B6 — Detect & protect (Books 11–13) {#module-b6-detect-protect-books-1113}
 
-- **Read:** Book 08 (Vulnerability Management — Defender VM + KEV), Book 09
-  (Data Protection — Purview + Key Vault CMK), Book 10 (SIEM / XDR
+- **Read:** Book 11 (Vulnerability Management — Defender VM + KEV), Book 12
+  (Data Protection — Purview + Key Vault CMK), Book 13 (SIEM / XDR
   Detection — Sentinel).
 - **Build:** the telemetry spine — Defender VM assessment with KEV
   prioritization; Purview sensitivity labeling + customer-managed keys;
@@ -94,16 +124,16 @@ trial-tenant, and product-eval tiers) for the labs below.
   watch it surface in Defender VM, alert in Sentinel, and close with an
   evidence export bound to slot-04 telemetry (and slot-06 for the
   configuration-drift angle) — setups:
-  [Sentinel lab](labs/lab-b5-sentinel.html) and
-  [Purview lab](labs/lab-b5-purview.html).
+  [Sentinel lab](labs/lab-b6-sentinel.html) and
+  [Purview lab](labs/lab-b6-purview.html).
 - **Vendor training:** Microsoft SC-200 (Sentinel/Defender), SC-401
   (Purview/information security), Splunk & Elastic for portable SIEM
   fundamentals — see [catalog §Security operations](vendor-training-catalog.html#security-operations).
 
-## Module B6 — Resilience & governance (Books 11–14) {#module-b6-resilience-governance-books-1114}
+## Module B7 — Resilience & governance (Books 14–17) {#module-b7-resilience-governance-books-1417}
 
-- **Read:** Book 11 (Business Continuity), Book 12 (Supply Chain Risk
-  Management), Book 13 (Program Management & Governance), Book 14 (PII
+- **Read:** Book 14 (Business Continuity), Book 15 (Supply Chain Risk
+  Management), Book 16 (Program Management & Governance), Book 17 (PII
   Processing & Transparency).
 - **Build:** the contingency architecture (alternate processing/storage,
   CP-4 test harness); the SBOM pipeline (Syft/Trivy-class generation,
@@ -116,9 +146,9 @@ trial-tenant, and product-eval tiers) for the labs below.
   materials (20x submission), OWASP/Linux Foundation SBOM resources — see
   [catalog §Federal & compliance](vendor-training-catalog.html#federal-compliance).
 
-## Module B7 — Authorize & operate (Books 15–16) {#module-b7-authorize-operate-books-1516}
+## Module B8 — Authorize & operate (Books 18–19) {#module-b8-authorize-operate-books-1819}
 
-- **Read:** Book 15 (Cybersecurity Training & Awareness) and Book 16
+- **Read:** Book 18 (Cybersecurity Training & Awareness) and Book 19
   (Authorization Package & ConMon).
 - **Build:** the four-dimension training program with its monthly LMS
   export (Viva Learning Graph API → `training-effectiveness-record` JSON),
@@ -136,7 +166,7 @@ trial-tenant, and product-eval tiers) for the labs below.
 
 ## Capstone — one module, evidence-complete
 
-Pick one module (B1–B7). Implement or lab-simulate it end-to-end, land the
+Pick one module (B1–B8). Implement or lab-simulate it end-to-end, land the
 evidence where the slot mapping binds it, then regenerate the verdicts:
 
 ```bash
@@ -150,8 +180,9 @@ walker/drift run"), applied to the AAN vertical.
 
 ## Sequencing note
 
-B1 → B2 → B3 is a real dependency chain (addressing before transport before
-data placement). B4–B6 can run in parallel after B2; B7 runs last — it
-assembles what every other module produced. Track A modules can be
-interleaved freely; many teams pair each B-module with its A-module
-(B1↔A2, B2↔A1/A3, B3↔A1, B4↔A1/A5, B5↔A4/A6, B6↔A6/A7, B7↔A8).
+B1 → B2 → B3 → B4 is a real dependency chain (addressing before admission
+and identity, identity before transport policy, transport before data
+placement). B5–B7 can run in parallel once B2's identity layer exists; B8
+runs last — it assembles what every other module produced. Track A modules
+can be interleaved freely; many teams pair each B-module with its A-module
+(B1↔A2, B2↔A1/A5, B3↔A1/A3, B4↔A1, B5↔A1/A5, B6↔A4/A6, B7↔A6/A7, B8↔A8).

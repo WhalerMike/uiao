@@ -1,105 +1,101 @@
 ---
-title: "Book 07 — Privileged Access Management"
-subtitle: "AAN module: eliminating standing privilege with PIM, Arc JIT, PAWs, and break-glass design"
+title: "Book 07 — SQL Server Authentication Modernization"
+subtitle: "AAN module: replacing Kerberos/NTLM and SQL logins with Arc Managed Identity and Entra tokens"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Module page for AAN Book 07: Entra PIM just-in-time activation, Arc JIT server access, privileged access workstations, break-glass accounts, and AC-11/AC-12/IA-11 session controls."
+description: "Module page for AAN Book 07: NTLM elimination, Arc Managed Identity, Entra token authentication for SQL Server, Conditional Access as the database perimeter."
 ---
 
-**Source:** [Book_07 Privileged Access Management](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_07_Federal_Application_Aware_Networking_Privileged_Access_Management.qmd)
-· **Evidence slots:** 1 — identity (KSI-IAM); 5 — endpoint (KSI-PIY) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [A5](../compliance-track.html#module-a5-endpoint-control-plane-slot-5), [B4](../implementation-track.html#module-b4-privileged-access-book-07)
+**Source:** [Book_07 SQL Server Authentication Modernization](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_07_FedAAN_SQL_Server_Authentication_Modernization.qmd)
+· **Evidence slot:** 1 — identity (KSI-IAM, IA-2 / AC-2) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B4](../implementation-track.html#module-b4-data-platform-modernization-books-0709)
 
 ## Scope
 
-Closes the residual attack surface left after Books 01–06: **standing
-administrative privilege**. Even with token-based authentication
-everywhere, a standing Global Administrator is a strongly-authenticated
-standing target. The book implements Entra PIM just-in-time activation,
-Arc JIT server access, privileged access workstations (PAW), break-glass
-accounts, and session policy controls — reducing admin exposure from
-continuous to bounded and auditable.
+The authentication layer that persists after network controls: replacing
+Kerberos/NTLM domain credentials and SQL logins across the federal SQL
+Server estate with Azure Arc Managed Identity, Entra ID token
+authentication, and Conditional Access. **NTLM elimination (BOD 25-01, OMB
+M-22-09) is the goal; Entra token authentication via Arc is the mechanism**
+— and the only credential-free option.
 
 ## Learning objectives
 
-- Explain the distinction between authentication quality (Books 01–06) and
-  authorization scope, and why Entra migration alone does not reduce
-  standing privilege.
-- Differentiate PIM eligible vs. active assignments and describe the
-  five-stage activation flow (request, MFA, approval, time-limited
-  activation, automatic deactivation).
-- Enumerate standing role assignments via Microsoft Graph PowerShell and
-  convert human accounts to eligible-only.
-- Configure Arc JIT SSH/RDP (Virtual Machine Administrator Login role, no
-  public ports) and disable local Administrator via Arc Run Command.
-- Build a PAW baseline: Entra-joined dedicated hardware, Intune compliance
-  policy (BitLocker, Secure Boot, TPM 2.0, WDAC, Credential Guard), and
-  Conditional Access gating PIM activation on device compliance.
-- Design break-glass accounts (two cloud-only standing Global Admins, FIDO2
-  keys, physical safe, CA exclusion, Sentinel alerting, quarterly testing).
-- Implement AC-11/AC-12/IA-11 session controls: 15-minute lock, sign-in
-  frequency, Authentication Context step-up MFA.
+- Explain Kerberos's three requirements (reachable KDC, correct SPN, clock
+  sync), why hybrid cloud breaks them, and the resulting silent NTLM
+  fallback.
+- Articulate NTLM's compliance gaps: audit opacity, pass-the-hash,
+  Conditional Access bypass.
+- Run estate discovery across four dimensions (version/EOL, auth methods,
+  SPN registration, dependency mapping) and apply the consolidation gate.
+- Distinguish Layer 1 (SQL Engine Entra auth on SQL Server 2022 + Arc) from
+  Layer 2 (OS-level Entra login on Windows Server 2025, domain-unjoined).
+- Justify Arc Managed Identity over gMSA, vault-managed service principals,
+  and certificate-based authentication.
+- Execute the four-phase parallel-run login migration (Create → Validate →
+  Disable → Drop after 30-day observation).
+- Classify applications into the four authentication classes and transform
+  connection strings (`Integrated Security=SSPI` →
+  `Authentication=Active Directory Default`).
 
 ## Key concepts
 
-- The standing-privilege problem (with the Scattered Spider AA23-278A and
-  Storm-0558 case studies).
-- Role protection table: Global Admin, Privileged Role Admin, Security
-  Admin, Exchange/SharePoint/Intune Admin, Azure Owner/Contributor.
-- Arc JIT SSH/RDP through the Arc connectivity layer (`az ssh arc`).
-- PAW trust model — device identity as an authentication factor; WDAC
-  allowlisting.
-- Entra Authentication Context (`c1`) for IA-11 step-up MFA.
+- Arc system-assigned Managed Identity: certificate-backed, auto-rotated
+  every 90 days, no human-visible credential.
+- Three-phase NTLM elimination (Discovery → Remediation → Domain-wide
+  block) and the four NTLM-generating patterns (missing SPN, cross-site,
+  linked-server passthrough, non-domain host).
+- `CREATE LOGIN … FROM EXTERNAL PROVIDER`; `sa` disable-and-rename.
+- Entra dynamic groups as HR-attribute-driven SQL authorization;
+  Conditional Access as a perimeter SQL Server cannot express.
+- Application classes: Class 3 OIDC/token (preferred) → Class 2 SAML →
+  Class 1 App Proxy → Class 4 Domain Services (last resort).
 
 ## Implementation sequence
 
-1. **Create break-glass accounts first** (before removing standing access);
-   FIDO2 keys, CA exclusion, Sentinel sign-in alert.
-2. Enumerate standing active assignments for privileged roles via Graph.
-3. Convert human accounts to PIM eligible; per-role policies (4-hour max
-   for Global Admin, MFA, justification, approver).
-4. Configure Arc JIT server access; disable local Administrator accounts.
-5. Deploy PAW hardware, Intune compliance policy, WDAC.
-6. Deploy Conditional Access policies in report-only mode for 14+ days,
-   then enforce.
-7. Bind Authentication Context to PIM activation; quarterly break-glass
-   tests.
+1. Estate discovery and consolidation gate (retain / consolidate / retire;
+   zombie detection at 90 days idle).
+2. Arc enrollment and Layer 1 Entra authentication on retained instances.
+3. NTLM elimination Phases A–C, ending in a domain-wide block after a
+   30-day zero-NTLM observation window.
+4. Four-phase login migration per instance, including `sa` handling.
+5. Application chain migration (connection strings, linked servers, ODBC).
+6. Continuous-monitoring baseline and FedRAMP 20x KSI artifacts.
 
 ## Compliance hooks
 
-AC-5, AC-6, AC-6(1)(2)(5)(9)(10), AC-11, AC-12, IA-11 (full before/after
-closure table). FedRAMP 20x: KSI-IAM-02, KSI-IAM-03
-(phishing-resistant MFA), KSI-EDR-01. OMB M-22-09, NIST SP 800-207,
-CMMC 2.0 Level 2.
+IA-2, IA-3, IA-5, IA-5(1), AC-2, AC-3, AC-17, AU-2, AU-12, CA-7, CM-2,
+CM-8, SC-8, SI-4. FedRAMP 20x KSIs: auth posture report, zero-NTLM count,
+Managed Identity coverage, Conditional Access compliance, `sa` status.
+BOD 25-01; OMB M-22-09.
 
 ## Prerequisites
 
-Books 01–06, specifically Arc as identity bridge (Books 04–05) and
-Entra/Conditional Access foundations (Books 01–03). PowerShell/Graph
-skills.
+Book 01 (CA decisions for TLS migration), Books 05–06 (segmentation,
+SD-WAN traffic classes). AD, SQL Server administration, and Entra ID
+fundamentals.
 
 ## Labs
 
-1. Enumerate standing admin assignments in a test tenant, convert one to
-   PIM eligible, walk the full activation ceremony, inspect the PIM audit
-   log.
-2. Configure Arc JIT SSH to a test server; disable local Administrator via
-   Run Command; verify no inbound 22/3389.
-3. Create a break-glass account with a Sentinel alert rule; validate the
-   alert fires within 5 minutes of a test sign-in.
+1. Audit a lab instance with Event IDs 4624/4625 and `setspn`; classify
+   NTLM sources into the four patterns; fix a missing SPN and verify
+   Kerberos with `klist`.
+2. Full parallel-run login migration on a test instance, including
+   disable/re-enable rollback and the migration log.
+3. Configure an Entra dynamic group plus a Conditional Access MFA policy;
+   demonstrate blocked access from a non-compliant device.
 
 ## Pitfalls the book calls out
 
-- Treating credential migration as the security outcome — stronger
-  authentication with unchanged standing authorization scope.
-- Enforcing PAW Conditional Access immediately instead of 14+ days
-  report-only (admin lockout risk).
-- Building a PAW as a VM on a shared hypervisor.
-- Removing standing access without break-glass accounts, or leaving
-  break-glass untested.
+- Dropping a login before the 30-day observation — dependencies surface
+  against production traffic, not documentation.
+- gMSA or vault-managed service principals as "modernization" — both
+  re-anchor to AD or preserve a bootstrap credential.
+- Linked servers with `SELF` passthrough silently propagating NTLM.
+- Leaving `sa` enabled, or assigning new applications to Class 4.
 
 ## Vendor training
 
-[SC-300, AZ-500](../vendor-training-catalog.html#microsoft),
-[SANS](../vendor-training-catalog.html#security-operations).
+[SC-300](../vendor-training-catalog.html#microsoft),
+[DP-300](../vendor-training-catalog.html#microsoft).
 
-**Previous:** [Book 06](book-06.html) · **Next:** [Book 08 — Vulnerability Management](book-08.html)
+**Previous:** [Book 06](book-06.html) · **Next:** [Book 08 — SQL Server Implementation Guide](book-08.html)
