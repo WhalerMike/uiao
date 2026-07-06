@@ -29,7 +29,41 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ::: {.exec-summary}
 **For authorizing officials, program executives, and budget decision makers.**
 
-This document summarizes nineteen companion implementation guides that together constitute the Federal Application-Aware Networking program. Books 01–04 lay the substrate: the DDI/IPAM naming-and-addressing plane (16 controls), 802.1X network access control closing the device-identity gap at the network port, the certificate-and-token cryptographic identity layer that every session-less architecture depends on, and the HRIT identity and organizational single source of truth — the SaaS-delivered HR system of record whose worker and organizational records are what every token, account, and access decision ultimately asserts. Books 05–09 deliver the modernization tracks — network and identity architecture (Entra ID + ZTNA + Active Governance), telecommunications (SD-WAN + SASE), SQL Server authentication, and database architecture and network physics — closing **34 distinct NIST SP 800-53 Rev 5 controls** across the original six tracks. Books 10–14 extend coverage to privileged access management, vulnerability management, data protection, SIEM/XDR detection engineering, and business continuity — adding approximately **55 additional controls** across the AC, RA, MP, SC, AU, SI, IR, and CP families. Books 15–17 close the remaining SR, PM, and PT control families — supply chain risk management (SBOM/VDR/VEX pipeline), program management governance (POA&M/SCRM/ISPP), and PII processing transparency (PT family templates and Purview enforcement). Book 18 delivers the AT family cybersecurity training program — activating KSI-022 (KSI-CED-RAT) and making all 29 FedRAMP 20x CR26 KSIs evaluable at high confidence. Book 19 assembles the complete FedRAMP 20x authorization package — OSCAL AP+AR+POA&M bundle (29/29 KSIs self-assessed as satisfied, 0 open risks, pending independent 3PAO validation), continuous monitoring program, and BOD 26-04 VDR/VER submission procedure — closing CA-2, CA-5, CA-6, CA-7, RA-3, and SA-15. Together the series constitutes the complete evidence generation and authorization layer required for FedRAMP 20x continuous monitoring authorization.
+This series comprises nineteen companion implementation guides for the Federal Application-Aware Networking program, organized in four bands:
+
+**Books 01–04 — Substrate** (naming, identity, and trust foundations):
+
+- **Book 01** — DDI/IPAM naming-and-addressing plane — 16 NIST SP 800-53 Rev 5 controls
+- **Book 02** — Network Access Control (802.1X EAP-TLS, RADIUS, device identity at the port)
+- **Book 03** — Certificates & Tokens — the cryptographic identity layer every session-less architecture depends on
+- **Book 04** — HRIT Identity & Org SSOT — the HR system of record whose worker records underpin every token, account, and access decision
+
+**Books 05–09 — Modernization Tracks** — closing **34 distinct NIST SP 800-53 Rev 5 controls** across the original six tracks:
+
+- **Book 05** — Network and Identity Modernization (Entra ID, ZTNA, Active Governance)
+- **Book 06** — Federal Telecommunications Modernization (SD-WAN, SASE)
+- **Books 07–08** — SQL Server Authentication Modernization and Implementation Guide
+- **Book 09** — Database Consolidation and Network Physics
+
+**Books 10–14 — Security Operations** — approximately **55 additional controls** across the AC, RA, MP, SC, AU, SI, IR, and CP families:
+
+- **Book 10** — Privileged Access Management
+- **Book 11** — Vulnerability Management
+- **Book 12** — Data Protection and Purview
+- **Book 13** — SIEM/XDR Detection Engineering
+- **Book 14** — Business Continuity
+
+**Books 15–17 — Risk and Program Governance** (SR, PM, and PT control families):
+
+- **Book 15** — Supply Chain Risk Management (SBOM/VDR/VEX pipeline)
+- **Book 16** — Program Management and Governance (POA&M/SCRM/ISPP)
+- **Book 17** — PII Processing and Transparency (PT family templates, Purview enforcement)
+
+**Book 18 — Training and Awareness** — AT family cybersecurity training program — activates KSI-022 (KSI-CED-RAT), making all 29 FedRAMP 20x CR26 KSIs evaluable at high confidence.
+
+**Book 19 — Authorization Package and ConMon** — OSCAL AP+AR+POA&M bundle (29/29 KSIs self-assessed, pending 3PAO validation), continuous monitoring program, and BOD 26-04 VDR/VER submission — closing CA-2, CA-5, CA-6, CA-7, RA-3, and SA-15.
+
+Together the series constitutes the complete evidence-generation and authorization layer required for FedRAMP 20x continuous monitoring authorization.
 
 Three technologies recur throughout the series as the **only** closure mechanisms for their control sets — not the preferred options among several: **IPAM/DDI** (the authoritative naming-and-addressing plane), **SD-WAN** (the encrypted, application-aware transport overlay), and **TIC 3.0** (the distributed policy enforcement that makes direct internet access lawful). The Closure Necessity Doctrine below states the claim; the KSI Closure Necessity Matrix quantifies it against all 29 FedRAMP 20x KSI rules.
 
@@ -412,15 +446,16 @@ Every federal cloud landing zone — whether on AWS GovCloud, Azure Government, 
 ## What This Document Addresses
 
 Every control in this series that evaluates *who* is requesting assumes the
-network already knows *what* is requesting. Part 2 closes that assumption:
-802.1X EAP-TLS port authentication, RADIUS with real-time change of
-authorization, certificate enrollment via Intune SCEP to TPM-backed machine
-certificates, NAC policy tiers (production, remediation, quarantine, guest,
-IoT), and DHCP fingerprinting that feeds IPAM as the authoritative device
-inventory. The book opens with the Voice VLAN precedent — DHCP option-based
-device steering as the earliest production proto-NAC — and closes with the
-NAC → ZTNA continuum: posture asserted at the port evolving into posture
-asserted in the token (Part 3).
+network already knows *what* is requesting. Part 2 closes that assumption
+with five interlocking mechanisms:
+
+- **802.1X EAP-TLS** — port authentication with TPM-backed machine certificates issued via Intune SCEP
+- **RADIUS with Change of Authorization (CoA)** — real-time policy enforcement; non-compliant devices moved to the remediation VLAN without requiring re-authentication
+- **NAC policy tiers** — production, remediation, quarantine, guest, and IoT lanes with distinct access rights
+- **DHCP fingerprinting** — device classification feeding IPAM as the authoritative device inventory
+- **NAC → ZTNA continuum** — posture asserted at the port evolves into posture asserted in the token (Part 3)
+
+The book opens with the Voice VLAN precedent — DHCP option-based device steering as the earliest production proto-NAC — to ground the architecture in operational history before extending to the full EAP-TLS model.
 
 **Controls closed:** IA-3, IA-3(1), AC-3, AC-17, AC-19, AC-20, SC-7(3),
 SC-7(5), CM-6, CM-7, CM-8 — the IA-3 and CM-8 closures are necessity closures
@@ -435,12 +470,14 @@ and 5.
 Session-based, location-bound authentication died with the perimeter: a
 Kerberos ticket bound to a network session breaks structurally under SD-WAN
 multipath (Part 6 documents the mechanism). Part 3 establishes what replaces
-it — PKI as a naming-plane function (issuance, revocation, CAA, and ACME
-DNS-01 live in the same substrate as Part 1's DDI), certificate lifecycle
-automation with short-lived certificates, token-based identity (OAuth
-2.0/OIDC, certificate-based authentication, phishing-resistant MFA per BOD
-25-01), and machine/workload identity. Parts 7–8's SQL Server authentication
-modernization is an application of this book's doctrine to the database tier.
+it:
+
+- **PKI as a naming-plane function** — certificate issuance, revocation, CAA, and ACME DNS-01 live in the same substrate as Part 1's DDI
+- **Certificate lifecycle automation** — short-lived certificates with automated ACME renewal; expiry linked to IP host records
+- **Token-based identity** — OAuth 2.0/OIDC, certificate-based authentication (CBA), and phishing-resistant MFA per BOD 25-01
+- **Machine and workload identity** — managed identity for non-human principals that cannot hold passwords
+
+Parts 7–8's SQL Server authentication modernization is a direct application of this book's cryptographic identity doctrine to the database tier.
 
 **Controls closed:** IA-5(2), SC-12, SC-17, IA-2(1), IA-2(2) — with the
 cryptographic-identity substrate on which the Part 5 identity modernization
@@ -453,16 +490,13 @@ and Parts 7–8 database closures stand.
 Every account, token, and access decision in this architecture asserts
 something about a person: who they are, whether they still work here, what
 position they hold, and where they sit in the organization. Part 4 establishes
-the system that makes those assertions true — the SaaS-delivered HR system of
-record (Oracle HCM Cloud) as the authoritative source for worker identity and
-organizational structure. It covers the joiner/mover/leaver lifecycle driven by
-HR events, HR-driven provisioning into Entra ID, identifier management, and the
-organizational SSOT: supervisory hierarchy, positions, and cost centers as
-queryable records that derive dynamic groups and access packages instead of
-living in OU trees and drawings. Its integration surface — federation, SCIM
-provisioning, DNS, and evidence export — is an identity-plane and naming-plane
-surface, which is why it belongs to the substrate and not to any
-infrastructure-hosting track.
+the system that makes those assertions true — Oracle HCM Cloud as the
+authoritative source for worker identity and organizational structure:
+
+- **Joiner/mover/leaver lifecycle** — HR events drive same-day account creation, role change, and deprovisioning into Entra ID via SCIM
+- **Organizational SSOT** — supervisory hierarchy, positions, and cost centers as queryable records that derive dynamic groups and access packages instead of living in OU trees and static drawings
+- **Identifier management** — canonical identifiers anchored to the HR record flow through all downstream systems
+- **Identity-plane and naming-plane integration** — federation, SCIM provisioning, DNS, and evidence export make this a substrate function, not a hosting-track function
 
 **Controls closed:** AC-2, AC-2(1), PS-4, PS-5, IA-4, SI-12 — the AC-2 and
 PS-4 closures are necessity closures: you cannot automate account lifecycle
@@ -823,7 +857,7 @@ uiao oscal bundle --system-name "SSA GCC Moderate" \
 | **Phase 1** | August 2026 | ✅ Complete | Part 15 SR/SBOM/VDR; Adapter SR slot bound; KSI-011–014 → active |
 | **Phase 2** | Sep–Oct 2026 | ✅ Complete | OSCAL Emitter AR output; Part 16 PM governance artifacts; CR26 SR/PM rules |
 | **Phase 3** | November 2026 | ✅ Complete | Part 17 PT/PII templates; Part 18 AT training program; KSI-022 → active; all 29 CR26 KSIs evaluable |
-| **Phase 4** | December 2026 | ✅ Complete | BOD 26-04 VDR/VER submission (Dec 7); Authorization package filed; OSCAL AP+AR+POAM bundle (29/29 satisfied) |
+| **Phase 4** | December 2026 | ✅ Complete | BOD 26-04 VDR/VER submission (Dec 7); Authorization package filed; OSCAL AP+AR+POAM bundle (29/29 self-assessed, pending 3PAO validation) |
 | **Phase 5** | January 2027 | ✅ Complete | FedRAMP 20x mandatory deadline; All 19 books operational; Continuous monitoring cadence established |
 | **Phase 6** | Ongoing | 🔄 Active | Monthly OSCAL AR refresh; Quarterly KSI evidence review; Annual full re-assessment; ATO renewal preparation |
 
@@ -868,7 +902,7 @@ uiao oscal bundle --system-name "SSA GCC Moderate" \
 | [Book 16 — Program Management and Governance](Book_16_FedAAN_Program_Management_Governance.qmd) | Part 16: ISPP template, POA&M tracker, SCRM Charter, Leadership RACI matrix, PM-family closure |
 | [Book 17 — PII Processing and Transparency](Book_17_FedAAN_PII_Processing_Transparency.qmd) | Part 17: Privacy Program Plan, authority-to-process templates, SORN/PIA scaffolding, Purview Data Map, PT-family closure |
 | [Book 18 — Cybersecurity Awareness and Training](Book_18_FedAAN_Cybersecurity_Training_Awareness.qmd) | Part 18: AT-2/AT-3/AT-4 training program, role-based matrices for six tiers, LMS evidence schema, CP-3 tabletop calendar, IR-2 drill documentation, KSI-022 activation |
-| [Book 19 — Authorization Package and ConMon](Book_19_FedAAN_Authorization_Package_ConMon.qmd) | Part 19: FedRAMP 20x authorization package structure, OSCAL AP+AR+POA&M bundle (29/29 satisfied), CA-7 ConMon program, BOD 26-04 VDR/VER submission, AO checklist, day-of-submission procedure |
+| [Book 19 — Authorization Package and ConMon](Book_19_FedAAN_Authorization_Package_ConMon.qmd) | Part 19: FedRAMP 20x authorization package structure, OSCAL AP+AR+POA&M bundle (29/29 self-assessed, pending 3PAO validation), CA-7 ConMon program, BOD 26-04 VDR/VER submission, AO checklist, day-of-submission procedure |
 | NIST SP 800-53 Rev 5 | Security and Privacy Controls for Information Systems and Organizations |
 | NIST SP 800-207 | Zero Trust Architecture |
 | OMB M-22-09 | Moving the U.S. Government Toward Zero Trust Cybersecurity Principles |
