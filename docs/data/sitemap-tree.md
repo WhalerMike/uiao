@@ -52,6 +52,8 @@
   - [Book 12 — Supply Chain Risk Management](academy/aan-training-program/books/book-12.html)
   - [Book 13 — Program Management & Governance](academy/aan-training-program/books/book-13.html)
   - [Book 14 — PII Processing & Transparency](academy/aan-training-program/books/book-14.html)
+  - [Book 15 — Cybersecurity Training & Awareness](academy/aan-training-program/books/book-15.html)
+  - [Book 16 — Authorization Package & ConMon](academy/aan-training-program/books/book-16.html)
 
 ## Reference Architecture
 
