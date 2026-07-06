@@ -26,6 +26,12 @@ execute:
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+
+This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+:::
+
 ::: {.callout-important}
 **Series Context** — This document is Part 3 of the 19-part Federal Application-Aware Networking series. [Book 01](Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — authoritative DNS, DHCP, and IPAM as the landing-zone source of truth. [Book 02](Book_02_FedAAN_Network_Access_Control_802_1X.qmd) established device identity at the network port — 802.1X, EAP-TLS, and the machine certificate as the admission credential. This part completes the identity plane's cryptographic foundation: how certificates are issued, revoked, and automated as a function of the naming plane, and how tokens replace network sessions as the carrier of identity. [Books 07](Book_07_FedAAN_SQL_Server_Authentication_Modernization.qmd) and [08](Book_08_FedAAN_SQL_Server_Implementation_Guide.qmd) — SQL Server authentication modernization — are direct applications of the doctrine this part establishes.
 :::
@@ -157,6 +163,18 @@ This framing is not aesthetic — it dictates ownership of function. Because iss
 : Certificate consumers across the series {.striped .hover}
 
 When Book 01 described a workload spin-up that allocates an IP, creates DNS A/PTR records, and enrolls a machine certificate in one automated transaction, that was this doctrine in motion: **name, address, and key bound together at birth, revoked together at death.** A certificate tracked separately from the naming plane is a certificate whose name can silently stop being true.
+
+::: {.callout-note}
+**Cross-Book Link — The Same Binding for NAC-Enrolled Endpoints (Books 01 and 02):**
+The "name, address, and key bound together" compound guarantee applies equally to **NAC-enrolled endpoint devices**:
+
+- [Book 02](Book_02_FedAAN_Network_Access_Control_802_1X.qmd) covers the machine certificate side — Intune/SCEP enrollment issues a certificate with `CN={{DeviceName}}` at 802.1X admission.
+- [Book 01](Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd) owns the DNS hostname side — the InfoBlox DHCP lease assignment should confirm or create a DNS A/PTR record binding the device's name to its admitted IP.
+
+The bridging proposition — that **every NAC-admitted endpoint has both a DNS hostname and a machine certificate, and that InfoBlox holds the authoritative binding record** — is currently a design gap across the series. The intent is that this compound guarantee holds for both cloud workloads (IP allocation → DNS A → SCEP) and for endpoint devices (Intune enrollment → machine cert → DNS A confirmation at DHCP lease). OIS must validate this design and the SCEP-to-DNS linkage implementation before it is treated as a closed control.
+:::
+
+
 
 ## The Internal Trust Hierarchy
 
