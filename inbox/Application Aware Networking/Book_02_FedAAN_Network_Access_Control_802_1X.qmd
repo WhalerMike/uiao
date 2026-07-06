@@ -26,6 +26,12 @@ execute:
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+
+This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+:::
+
 ::: {.callout-important}
 **Series Context** — This document is Part 2 of the Federal Application-Aware Networking series. Part 1 establishes the cloud landing zone and the authoritative naming and addressing plane — IPAM, DHCP, DNS, and certificate issuance (DDI/PKI). This part lays the device identity substrate directly on top of that plane: before any certificate is trusted, any token is minted, or any application flow is authorized, the network must be able to answer the question *what is physically connected to this port?* Part 3 (Certificates and Tokens) builds the cryptographic identity plane on this substrate, and every subsequent part — network modernization, telecommunications, database consolidation, privileged access, telemetry, and the authorization package — depends on the answer being enforced at the wire.
 :::
@@ -368,6 +374,16 @@ InfoBlox IPAM maintains the authoritative mapping of VLAN → IP address range �
 - NAC authentication result (certificate SAN, compliance verdict)
 
 This record is the **CM-8 device inventory artifact** for NAC-controlled devices. Every device that has ever connected to the SSA network — managed or not — has a DHCP record in InfoBlox. The NAC authentication result annotates the record with the identity assertion that was presented (or absent).
+
+::: {.callout-note}
+**Cross-Book Link — DNS Hostname + Certificate Binding at NAC Admission (Books 01 and 03):**
+For every NAC-admitted endpoint, two compound events should occur together at admission:
+
+1. **Machine certificate issued** — Intune/SCEP enrollment (this book) issues a machine certificate with `CN={{DeviceName}}`. The certificate SAN is bound to the device's Entra ID FQDN.
+2. **DNS A/PTR record confirmed in InfoBlox** — the DHCP lease assignment (this section) should trigger InfoBlox to confirm or create a DNS A record binding the device's hostname to its assigned IP address.
+
+When both events complete, every NAC-admitted device has **name, address, and key bound together** — the same compound guarantee that [Book 01](Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd) achieves for cloud workloads at provisioning time, extended to the endpoint population. The machine certificate architecture is generalized in [Book 03](Book_03_FedAAN_Certificates_Tokens_Cryptographic_Identity.qmd). The design decision for the hostname-to-cert binding must be validated with OIS.
+:::
 
 # Logging and Monitoring
 

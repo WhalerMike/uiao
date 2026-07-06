@@ -24,6 +24,12 @@ out-width: "100%"
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+
+This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+:::
+
 ::: {.exec-summary}
 **For decision makers:** This document establishes that the agency's two most visible telecommunications platforms — the national inbound contact center on Amazon Connect and the internal unified communications platform transitioning to Microsoft Teams Phone — share a single, solvable network problem and a single network solution. Voice quality on the N8NN is not a preference: it is a measurable, auditable obligation with a pass/fail threshold defined by international standard. The SD-WAN investment that fixes Amazon Connect fixes Teams Phone simultaneously. That investment does not need to be made twice.
 
@@ -240,6 +246,25 @@ A hybrid agent workstation generates three simultaneous traffic classes during a
 - **Amazon Connect voice (DSCP EF):** citizen call audio. Lowest-latency path, unconditionally. FEC enabled if path loss ≥0.5%.
 - **Teams Phone voice (DSCP EF):** supervisor or internal call audio. Same lowest-latency path.
 - **Contact Control Panel web app and Teams UI (HTTPS):** the browser interface for Amazon Connect and the Teams application interface. Highest-throughput path. These tolerate 200–500 ms of latency without affecting call quality and should not compete with voice for the latency-sensitive path.
+
+## SD-WAN and SASE Stack Architecture
+
+The telecommunications modernization in this book requires three distinct components that operate at different layers and are frequently conflated:
+
+| Component | Layer | Function | Representative vendors |
+|-----------|-------|----------|------------------------|
+| **SD-WAN overlay** | Layer 3 — Network | IPsec encrypted transport; intelligent path selection; QoS traffic classification; DIA local breakout | Cisco Catalyst SD-WAN / VMware VeloCloud (Broadcom) / Palo Alto SD-WAN |
+| **SASE SSE** (Secure Service Edge) | Layer 7 — Application | SWG, CASB, FWaaS, SSL/TLS inspection; TIC 3.0 security capabilities catalog | Zscaler Internet Access (ZIA) / Netskope SSE / Palo Alto Prisma Access |
+| **ZTNA** (Zero Trust Network Access) | Layer 7 — Application | Per-application micro-tunnels; device posture enforcement; least-privilege session access | Zscaler Private Access (ZPA) / Netskope Private Access / Palo Alto Prisma Access ZTNA |
+
+: SD-WAN and SASE Stack Components *(agency selection pending for all three)* {.striped .hover}
+
+SD-WAN and SASE SSE are distinct products procured separately (though some vendors bundle them). The SD-WAN overlay closes SC-8 (network-layer encryption on DIA circuits) and SI-4 (application-layer telemetry on transport). The SASE SSE stack closes AC-4 (information flow enforcement), SC-7 (boundary protection), SI-3 (malware protection via SSL inspection), AU-2/AU-12 (per-session audit records), and CA-7 (continuous monitoring). Neither substitutes for the other; both are required to satisfy TIC 3.0 and the controls cited in this book.
+
+::: {.callout-note}
+## Vendor Selection Pending
+The shortlists above reflect FedRAMP authorization status and federal use-case alignment at time of writing. Agency procurement authority, current FedRAMP Marketplace listings, and environment-specific testing must inform final selection. OIS should participate in vendor evaluation for all three components.
+:::
 
 # Why Direct Internet Access Alone Does Not Satisfy NIST Controls
 
