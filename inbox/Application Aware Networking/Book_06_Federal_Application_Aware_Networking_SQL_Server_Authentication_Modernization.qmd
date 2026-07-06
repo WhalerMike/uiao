@@ -20,7 +20,7 @@ out-width: "100%"
 ---
 
 ::: {.callout-important}
-**Series Context** — This document is Part 4 of the Federal Application-Aware Networking series. Parts 1–3 cover Landing Zone IPAM/DDI/PKI, Telecommunications Modernization, and Network Modernization. This part addresses the authentication layer of SQL Server — the protocol, credential, and identity surface that persists after network controls are in place.
+**Series Context** — This document is Part 6 of the Federal Application-Aware Networking series. Parts 1–5 cover Landing Zone IPAM/DDI/PKI, Network Access Control, Certificates and Tokens, Network Modernization, and Telecommunications Modernization. This part addresses the authentication layer of SQL Server — the protocol, credential, and identity surface that persists after network controls are in place.
 :::
 
 # The Inherited Problem: What Kerberos Actually Does
@@ -333,6 +333,8 @@ The authentication migration described in this document applies to Azure SQL Man
 
 ## NIST SP 800-53 Rev 5 Control Closure
 
+> **Closure Necessity — IA-2 on multipath transport.** Kerberos binds authentication to a session and a location: the client must reach a KDC, the SPN must resolve unambiguously to one service instance, and the ticket assumes a stable path between client, KDC, and server. On an SD-WAN fabric that steers each flow per-application across multiple paths — and across cloud boundaries where no domain controller is reachable — those assumptions fail, and the stack falls back silently to NTLM, which emits no token-level audit event and admits no Conditional Access gate. The only authentication mechanism that survives application-aware, multipath transport is a cryptographically validated token presented at the endpoint, independent of the path the packets took — the doctrine established in [Book 03](Book_03_Federal_Application_Aware_Networking_Certificates_Tokens_Cryptographic_Identity.qmd), which this book applies to SQL Server. There is no SPN repair, KDC placement, or clock discipline that makes session-bound authentication path-independent.
+
 | Control | Control Name | Closed By | How |
 |---|---|---|---|
 | IA-2 | Identification and Authentication — Organizational Users | Entra login migration | Token-based authentication replaces Windows Integrated and SQL auth |
@@ -368,4 +370,4 @@ The SQL Server authentication modernization program addresses the credential sur
 
 The program is structured as four sequential workstreams: estate discovery and consolidation gate, Arc enrollment and Layer 1 authentication migration, NTLM elimination, and application chain migration. Each workstream has measurable exit criteria. The migration does not require taking systems offline — parallel run patterns ensure continuity throughout.
 
-The certificate authority and PKI decisions from Part 1 of this series provide the transport encryption foundation. The network segmentation and SD-WAN traffic class controls from Parts 2 and 3 provide the network-layer isolation. This part provides the identity and credential foundation. Together they constitute the application-aware networking posture required for FedRAMP 20x authorization.
+The certificate authority and PKI decisions from Part 1 of this series provide the transport encryption foundation. The network segmentation and SD-WAN traffic class controls from Parts 4 and 5 provide the network-layer isolation. This part provides the identity and credential foundation. Together they constitute the application-aware networking posture required for FedRAMP 20x authorization.

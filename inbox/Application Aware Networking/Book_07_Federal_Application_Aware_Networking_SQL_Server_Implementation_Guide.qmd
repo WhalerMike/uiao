@@ -20,20 +20,20 @@ out-width: "100%"
 ---
 
 ::: {.callout-important}
-**Series Context** — This document is Part 5 of the Federal Application-Aware Networking series and the implementation companion to Part 4 (SQL Server Authentication Modernization). Part 4 covers the conceptual framework; this document provides the operational runbooks, command references, and configuration templates for execution.
+**Series Context** — This document is Part 7 of the Federal Application-Aware Networking series and the implementation companion to Part 6 (SQL Server Authentication Modernization). Part 6 covers the conceptual framework; this document provides the operational runbooks, command references, and configuration templates for execution.
 :::
 
 # How to Use This Guide
 
 This guide is organized as ten sequential books. Each book has a defined scope, prerequisites, and measurable completion criteria. Books must be run in order — later books depend on state established by earlier ones.
 
-![The ten books run in sequence. The consolidation gate at Book 04 determines which instances proceed. Only retained instances are processed through Books 03–10.](figs/imp-fig-01-book-run-order.png){#fig-imp01 fig-alt="Flowchart showing 10-book run order with consolidation gate at Book 04"}
+![The ten books run in sequence. The consolidation gate at Book 02 determines which instances proceed. Only retained instances are processed through Books 03–10.](figs/imp-fig-01-book-run-order.png){#fig-imp01 fig-alt="Flowchart showing 10-book run order with consolidation gate at Book 02"}
 
-**The consolidation gate** at Book 04 is a real gate, not a formality. Instances that do not meet the retain criteria are decommissioned before migration resources are spent on them. An instance that is retired is not migrated — it is turned off, its databases are archived or transferred, and it is removed from the estate inventory.
+**The consolidation gate** at Book 02 is a real gate, not a formality. Instances that do not meet the retain criteria are decommissioned before migration resources are spent on them. An instance that is retired is not migrated — it is turned off, its databases are archived or transferred, and it is removed from the estate inventory.
 
-**Safety model.** Every destructive action in this guide is preceded by a documented undo path. `ALTER LOGIN DISABLE` can be reversed with `ALTER LOGIN ENABLE`. SPNs can be removed with `setspn -D`. Arc enrollment can be unenrolled. No action in Books 01–07 is irreversible. The first irreversible action is `DROP LOGIN` in Book 07 — and that action is explicitly gated behind a 30-day observation period.
+**Safety model.** Every destructive action in this guide is preceded by a documented undo path. `ALTER LOGIN DISABLE` can be reversed with `ALTER LOGIN ENABLE`. SPNs can be removed with `setspn -D`. Arc enrollment can be unenrolled. No action in Books 01–07 is irreversible. The first irreversible action is `DROP LOGIN` in Book 05 — and that action is explicitly gated behind a 30-day observation period.
 
-**Test environment requirement.** Books 03–06 should be validated in a test environment before execution against production instances. The test environment must be Arc-enrolled and running SQL Server 2022 to produce meaningful validation results. Testing against SQL Server 2019 with the Entra extension is acceptable for Books 03 and 04, but Book 07 (login migration) must be tested against 2022.
+**Test environment requirement.** Books 03–06 should be validated in a test environment before execution against production instances. The test environment must be Arc-enrolled and running SQL Server 2022 to produce meaningful validation results. Testing against SQL Server 2019 with the Entra extension is acceptable for Books 03 and 04, but Book 05 (login migration) must be tested against 2022.
 
 ---
 
@@ -85,7 +85,7 @@ For any instance running under `NETWORK SERVICE` or `LOCAL SYSTEM`, create a ded
 
 ---
 
-# Book 04 — Estate Discovery and Consolidation Gate
+# Book 02 — Estate Discovery and Consolidation Gate
 
 ![Estate discovery drives a consolidation gate assigning each instance to retain, consolidate, or retire. Only retained instances proceed to Books 03–10.](figs/imp-fig-02-estate-discovery.png){#fig-imp02 fig-alt="Diagram showing estate discovery feeding three-way consolidation gate with output targets"}
 
@@ -156,13 +156,13 @@ For each instance, assign one of three dispositions:
 
 **RETIRE:** Instance has no active workloads, no live databases, and no pending dependencies. Decommissioned immediately. Databases archived per records management policy.
 
-Document the disposition decision, authorizing manager, and expected completion date for each instance before proceeding to Book 05.
+Document the disposition decision, authorizing manager, and expected completion date for each instance before proceeding to Book 03.
 
 ---
 
-# Book 05 — Authentication Audit
+# Book 03 — Authentication Audit
 
-The authentication audit produces the pre-migration baseline: every login, its type, its last use, and its associated permissions. This baseline is the reference document for the login migration in Book 07.
+The authentication audit produces the pre-migration baseline: every login, its type, its last use, and its associated permissions. This baseline is the reference document for the login migration in Book 05.
 
 ## Login Inventory
 
@@ -233,7 +233,7 @@ Export-Csv "$env:USERPROFILE\Desktop\ntlm-events-$(Get-Date -Format yyyyMMdd).cs
 
 The authentication audit is complete when all five closure conditions are documented:
 
-![The five closure conditions gate progression from authentication audit to Arc deployment. All five must be documented before Book 06 begins.](figs/san-fig-03-ntlm-elimination.png){#fig-imp03 fig-alt="Diagram showing NTLM elimination phases and source patterns"}
+![The five closure conditions gate progression from authentication audit to Arc deployment. All five must be documented before Book 04 begins.](figs/san-fig-03-ntlm-elimination.png){#fig-imp03 fig-alt="Diagram showing NTLM elimination phases and source patterns"}
 
 1. **Login inventory complete.** All instance-level logins enumerated, typed, and exported.
 2. **Database user mapping complete.** All database users mapped to logins and roles.
@@ -243,7 +243,7 @@ The authentication audit is complete when all five closure conditions are docume
 
 ---
 
-# Book 06 — Arc Deployment and Managed Identity
+# Book 04 — Arc Deployment and Managed Identity
 
 ## Arc Agent Installation
 
@@ -345,7 +345,7 @@ GO
 
 ---
 
-# Book 07 — Login Migration and Parallel Run
+# Book 05 — Login Migration and Parallel Run
 
 This book is the core migration action. Every legacy login on every retained instance is migrated to an Entra login using the four-phase parallel run pattern.
 
@@ -442,11 +442,11 @@ CREATE TABLE dba.login_migration_log (
 
 ---
 
-# Book 08 — NTLM Detection and Remediation
+# Book 06 — NTLM Detection and Remediation
 
 ## SPN Fix
 
-For each NTLM source classified as "missing SPN" in Book 05:
+For each NTLM source classified as "missing SPN" in Book 03:
 
 ```powershell
 # Register SPNs for SQL Server service account
@@ -539,7 +539,7 @@ Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "LmCom
 
 ---
 
-# Book 09 — Groups and Conditional Access Perimeter
+# Book 07 — Groups and Conditional Access Perimeter
 
 ## Entra Group Structure for SQL Authorization
 
@@ -595,7 +595,7 @@ Session: Sign-in frequency = 1 hour (persistent browser = disabled)
 
 ---
 
-# Book 10 — Application Chain and Connection Strings
+# Book 08 — Application Chain and Connection Strings
 
 ## Connection String Inventory
 
@@ -659,7 +659,9 @@ Set-OdbcDsn -Name "ApplicationDSN" -DsnType "System" -SetPropertyValue @(
 
 ---
 
-# Book 11 — Continuous Monitoring and Compliance Record
+# Book 09 — Continuous Monitoring and Compliance Record
+
+> **Closure Necessity — IA-2 evidence on multipath transport.** The compliance record this book produces is closure evidence, not preference. Kerberos is session- and location-bound: it requires a reachable KDC and a stable path between client, KDC, and server, and SD-WAN multipath transport removes both guarantees — the failure mode is silent NTLM fallback, which the queries below exist to detect. No SPN hygiene, KDC placement, or clock discipline makes session-bound authentication path-independent; the token-based authentication these runbooks deploy is the only mechanism that closes IA-2 for SQL Server on modern transport. This guide is the implementation of the cryptographic-identity doctrine in [Book 03](Book_03_Federal_Application_Aware_Networking_Certificates_Tokens_Cryptographic_Identity.qmd).
 
 ## Monitoring Queries
 
@@ -715,7 +717,7 @@ $record | ConvertTo-Json -Depth 5 |
 
 ---
 
-# Book 12 — Certificate Discovery and ADCS Dependencies
+# Book 10 — Certificate Discovery and ADCS Dependencies
 
 ## TLS Certificate Inventory
 
@@ -799,4 +801,4 @@ Use this checklist to track progress across the full migration program for each 
 | 10 | ADCS dependencies documented | ☐ | ☐ | ☐ |
 | 10 | Certificate pinning cleared | ☐ | ☐ | ☐ |
 
-Upon completion of all 10 books for all retained instances, the SQL Server estate is in the transformed posture described in Part 4 of this series.
+Upon completion of all 10 books for all retained instances, the SQL Server estate is in the transformed posture described in Part 6 of this series.

@@ -1,5 +1,5 @@
 ---
-title: "Book 12 — Federal Application-Aware Networking — Part 10"
+title: "Book 12 — Federal Application-Aware Networking — Part 12"
 subtitle: "SIEM, XDR, and Detection Engineering: Microsoft Sentinel and Defender Integration"
 author: "SSA Cloud Services Team"
 date: "July 2, 2026"
@@ -27,18 +27,18 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
 ::: {.callout-important}
-**Series Context** — This document is Part 10 of the Federal Application-Aware Networking series. Parts 1 through 6 established the most comprehensive structured log pipeline a federal agency is likely to operate: InfoBlox syslog with RPZ/DNSSEC telemetry, SASE per-session flow records, Entra ID sign-in and audit logs, SQL Server continuous monitoring, and Defender for Endpoint device findings. Parts 7 and 8 extended that foundation with privileged access management and vulnerability posture. Part 9 addressed Zero Trust network segmentation. This part converts the aggregate log pipeline into an active detection and response capability — closing the gap between log generation (AU-2, AU-12) and log analysis, anomaly detection, and incident response (AU-6, SI-4, IR-4/6/8).
+**Series Context** — This document is Part 12 of the Federal Application-Aware Networking series. Parts 1 through 8 established the most comprehensive structured log pipeline a federal agency is likely to operate: InfoBlox syslog with RPZ/DNSSEC telemetry, SASE per-session flow records, Entra ID sign-in and audit logs, SQL Server continuous monitoring, and Defender for Endpoint device findings. Parts 9 and 10 extended that foundation with privileged access management and vulnerability posture. Part 11 addressed data protection and classification. This part converts the aggregate log pipeline into an active detection and response capability — closing the gap between log generation (AU-2, AU-12) and log analysis, anomaly detection, and incident response (AU-6, SI-4, IR-4/6/8).
 :::
 
 # What This Document Addresses
 
-Parts 1 through 6 of this series built a log pipeline of exceptional depth for a federal agency context. InfoBlox provides structured syslog for every DNS query, RPZ policy hit, DHCP lease event, and DNSSEC validation failure on the network. The SASE platform (Zscaler or Netskope) produces per-session flow telemetry for every user egress connection, including full URL, user identity, device posture score, and data transfer volume. Entra ID exports sign-in logs with IP geolocation, MFA result, Conditional Access policy evaluation detail, and risky sign-in flags. SQL Server continuous auditing writes every authentication event, privileged operation, and schema change to a tamper-resistant audit trail. Defender for Endpoint inventories every vulnerability finding against every enrolled device daily.
+Parts 1 through 8 of this series built a log pipeline of exceptional depth for a federal agency context. InfoBlox provides structured syslog for every DNS query, RPZ policy hit, DHCP lease event, and DNSSEC validation failure on the network. The SASE platform (Zscaler or Netskope) produces per-session flow telemetry for every user egress connection, including full URL, user identity, device posture score, and data transfer volume. Entra ID exports sign-in logs with IP geolocation, MFA result, Conditional Access policy evaluation detail, and risky sign-in flags. SQL Server continuous auditing writes every authentication event, privileged operation, and schema change to a tamper-resistant audit trail. Defender for Endpoint inventories every vulnerability finding against every enrolled device daily.
 
 The problem this document addresses is that none of that log volume is useful if no one is watching it and nothing fires when something goes wrong.
 
 A log warehouse that has never generated an alert does not satisfy AU-6. NIST SP 800-53 Rev 5 AU-6 requires "review and analyze system audit records for indications of inappropriate or unusual activity." The control does not permit a passive archive. The current state at most agencies that have invested in log collection but not detection engineering is: logs are present in a storage tier or a log aggregator; no automated detection rules fire; analysts must manually query; mean time to detect (MTTD) runs days to weeks; and when a FedRAMP assessor asks "show me an alert that fired last month and the incident response ticket it generated," the program cannot produce the artifact.
 
-This document closes that gap through four mechanisms: a connected Security Information and Event Management (SIEM) platform — Microsoft Sentinel — that ingests every log source from the series through native data connectors; a curated detection rule library of KQL-based analytics rules targeted at the specific log sources Parts 1–9 established; User and Entity Behavior Analytics (UEBA) that applies machine learning across the aggregate telemetry to surface anomalies no single-source rule can detect; and automated playbooks that convert alert firings into enriched incident records and, for confirmed high-severity detections, trigger automated containment without waiting for analyst action.
+This document closes that gap through four mechanisms: a connected Security Information and Event Management (SIEM) platform — Microsoft Sentinel — that ingests every log source from the series through native data connectors; a curated detection rule library of KQL-based analytics rules targeted at the specific log sources Parts 1–11 established; User and Entity Behavior Analytics (UEBA) that applies machine learning across the aggregate telemetry to surface anomalies no single-source rule can detect; and automated playbooks that convert alert firings into enriched incident records and, for confirmed high-severity detections, trigger automated containment without waiting for analyst action.
 
 ::: {.callout-note}
 **SIEM vs. Log Aggregator** — A log aggregator (Splunk, Elastic, Azure Log Analytics alone) collects and indexes log data. A SIEM platform — Microsoft Sentinel, Splunk SIEM, IBM QRadar — adds rule-based detection, ML-driven anomaly scoring, incident management workflow, and automation orchestration on top of that indexed data. Microsoft Sentinel is built on Azure Log Analytics as its data store and adds the SIEM detection layer. Both components are required. The distinction matters for assessors: AU-6 does not accept a log aggregator that has no detection rules configured.
@@ -56,7 +56,7 @@ The assessor's actual evidence request is specific: "Provide an example of an al
 
 ## Mean Time to Detect Without a Detection Engine
 
-Before this document's controls are in place, the MTTD for the most common attack patterns against the log sources from Parts 1–9 is as follows:
+Before this document's controls are in place, the MTTD for the most common attack patterns against the log sources from Parts 1–11 is as follows:
 
 | Attack Pattern | Log Source Available | MTTD Without SIEM | MTTD With Sentinel |
 |---|---|---|---|
@@ -87,7 +87,7 @@ Microsoft Sentinel produces items 1 and 2 natively through its incident workflow
 
 ## Overview
 
-Microsoft Sentinel connects to log sources through named data connectors. Each connector handles authentication to the source system, normalization of incoming events into the Azure Monitor Sentinel table schema, and optional field parsing into the Advanced Security Information Model (ASIM) normalized schema. The log sources from Parts 1–9 of this series map directly to available Sentinel connectors with no custom integration required for the primary sources.
+Microsoft Sentinel connects to log sources through named data connectors. Each connector handles authentication to the source system, normalization of incoming events into the Azure Monitor Sentinel table schema, and optional field parsing into the Advanced Security Information Model (ASIM) normalized schema. The log sources from Parts 1–11 of this series map directly to available Sentinel connectors with no custom integration required for the primary sources.
 
 ![Sentinel log connector architecture: InfoBlox, Entra ID, Defender for Endpoint, SASE, and SQL flowing into Log Analytics workspace with ASIM normalization and analytics rule layer above](figs/siem-fig-01-connector-architecture.png){#fig-siem01 fig-alt="Architecture diagram on white background. Left column shows five log source blocks: InfoBlox NIOS (syslog/CEF), Entra ID (sign-in and audit logs), Microsoft Defender for Endpoint (device events and alerts), SASE platform (ZIA or Netskope CE), and SQL Server via Azure Arc and Defender for SQL. Center column shows Microsoft Sentinel with Log Analytics workspace below it. Five arrows flow left-to-right from each source block into the workspace, labeled with connector name: CEF/Syslog connector, Azure Active Directory connector, Microsoft 365 Defender connector, Zscaler or Netskope CE connector, and Azure Monitor connector. Above the workspace, a Sentinel layer shows three components: ASIM normalization, Analytics Rules, and Automation. Right column shows three outputs: Incidents, UEBA scores, and Logic App playbooks. Navy and teal color scheme." width="100%"}
 
@@ -169,7 +169,7 @@ Both Zscaler (ZIA) and Netskope have published Sentinel data connectors availabl
 
 ## Connector: SQL Audit Logs (Azure Monitor / Defender for SQL)
 
-SQL Server audit logs from Arc-connected instances flow through the Azure Monitor Agent (AMA) pipeline established in Part 5. Defender for SQL receives these logs through the AMA channel and surfaces findings as Microsoft Defender alerts in Sentinel.
+SQL Server audit logs from Arc-connected instances flow through the Azure Monitor Agent (AMA) pipeline established in Part 7. Defender for SQL receives these logs through the AMA channel and surfaces findings as Microsoft Defender alerts in Sentinel.
 
 **Table in Sentinel:** `AzureDiagnostics` (SQL audit logs from Arc-managed instances), `SecurityAlert` filtered by `ProductName == "Microsoft Defender for SQL"`.
 
@@ -445,7 +445,7 @@ SigninLogs
 
 ### NTLM: Any NTLM Event Post-Phase-C Block [KQL INCLUDED]
 
-**Threat:** After Phase C NTLM block is enforced (per Part 2 of this series), any NTLM authentication event reaching a Domain Controller or SQL Server is an anomaly. It indicates either a misconfigured client that did not receive the policy, an adversary replaying a captured NTLM hash, or a rogue device not enrolled in Entra ID.
+**Threat:** After Phase C NTLM block is enforced (per Part 6 of this series), any NTLM authentication event reaching a Domain Controller or SQL Server is an anomaly. It indicates either a misconfigured client that did not receive the policy, an adversary replaying a captured NTLM hash, or a rogue device not enrolled in Entra ID.
 
 ```kql
 // NTLM Post-Block Detection via Defender for Endpoint device events
@@ -541,7 +541,7 @@ Set-AzSentinelUeba `
 
 ## Defender for Identity Integration During AD Transition
 
-For agencies still operating on-premises Active Directory during the Entra ID migration — the hybrid state documented in Part 3 of this series — Microsoft Defender for Identity (MDI) provides lateral movement detection, pass-the-hash/pass-the-ticket detection, and Golden Ticket attack detection against the on-premises domain controller. MDI alerts flow into Sentinel through the Microsoft 365 Defender connector and are automatically incorporated into the same entity pages and UEBA scores as Entra ID signals.
+For agencies still operating on-premises Active Directory during the Entra ID migration — the hybrid state documented in Part 6 of this series — Microsoft Defender for Identity (MDI) provides lateral movement detection, pass-the-hash/pass-the-ticket detection, and Golden Ticket attack detection against the on-premises domain controller. MDI alerts flow into Sentinel through the Microsoft 365 Defender connector and are automatically incorporated into the same entity pages and UEBA scores as Entra ID signals.
 
 During the hybrid transition period, MDI is required — Sentinel UEBA cannot see on-premises Kerberos/NTLM events without it. After the AD estate is fully decommissioned (Phase E of the migration), MDI can be removed and UEBA relies entirely on the Entra ID and Defender for Endpoint signals.
 
@@ -788,7 +788,9 @@ Log Analytics pricing at scale is a primary budget consideration for SIEM deploy
 
 The following table documents the NIST SP 800-53 Rev 5 controls addressed by this document, the gap that existed before implementation, the mechanism this document provides, and the authoritative reference.
 
-![NIST control closure for Part 10 SIEM/XDR: AU-6, AU-7, AU-8, AU-11, SI-4, IR-4, IR-6, IR-8 control status](figs/siem-fig-04-nist-closure.png){#fig-siem04 fig-alt="Control closure summary diagram on white background. Title reads 'Part 10 Control Closure: SIEM, XDR, and Detection Engineering'. Two-column layout. Left column header: Controls Addressed (13 controls listed in navy boxes): AU-6, AU-6(1), AU-6(4), AU-7, AU-8, AU-11, SI-4, SI-4(2), SI-4(4), SI-4(7), IR-4, IR-6, IR-8. Right column header: Mechanism. Each control paired with mechanism: Sentinel analytics rules and incident workflow for AU-6; Automated playbooks for AU-6(1); Centralized Log Analytics workspace for AU-6(4); Sentinel KQL queries for AU-7; Sentinel timestamp normalization for AU-8; Three-tier retention architecture for AU-11; UEBA and 20-rule detection library for SI-4; Real-time KQL analytics for SI-4(2); SASE + DNS + network flow telemetry for SI-4(4); Automated isolation and account-disable playbooks for SI-4(7); Sentinel incident workflow + Logic App automation for IR-4; ServiceNow connector + CISA notification procedure for IR-6; Written IR plan document with 7 artifacts for IR-8. Teal accent colors for mechanism column. Navy header bars." width="100%"}
+> **Closure Necessity — SI-4(4) on application-layer telemetry.** SI-4(4) requires monitoring of inbound and outbound communications traffic for unusual or unauthorized activities. A bare circuit emits packets, and router flow logs see what packets expose: IP pairs, ports, byte counts — not the session, the user, the device posture, or the application. The per-session telemetry the detection rules in this table consume — full URL, user identity, posture score, transfer volume — exists only because the SD-WAN/SASE stack of Parts 4–5 decodes traffic at an application-aware enforcement point and emits it. No collector, connector, or analytics rule can extract application-layer fields from traffic that was never decoded in the path: without the overlay, the SI-4 and SI-4(4) rows below have no input, and the control does not close.
+
+![NIST control closure for Part 12 SIEM/XDR: AU-6, AU-7, AU-8, AU-11, SI-4, IR-4, IR-6, IR-8 control status](figs/siem-fig-04-nist-closure.png){#fig-siem04 fig-alt="Control closure summary diagram on white background. Title reads 'Part 10 Control Closure: SIEM, XDR, and Detection Engineering'. Two-column layout. Left column header: Controls Addressed (13 controls listed in navy boxes): AU-6, AU-6(1), AU-6(4), AU-7, AU-8, AU-11, SI-4, SI-4(2), SI-4(4), SI-4(7), IR-4, IR-6, IR-8. Right column header: Mechanism. Each control paired with mechanism: Sentinel analytics rules and incident workflow for AU-6; Automated playbooks for AU-6(1); Centralized Log Analytics workspace for AU-6(4); Sentinel KQL queries for AU-7; Sentinel timestamp normalization for AU-8; Three-tier retention architecture for AU-11; UEBA and 20-rule detection library for SI-4; Real-time KQL analytics for SI-4(2); SASE + DNS + network flow telemetry for SI-4(4); Automated isolation and account-disable playbooks for SI-4(7); Sentinel incident workflow + Logic App automation for IR-4; ServiceNow connector + CISA notification procedure for IR-6; Written IR plan document with 7 artifacts for IR-8. Teal accent colors for mechanism column. Navy header bars." width="100%"}
 
 | Control | Title | Without This Document | With This Document | Authority |
 |---|---|---|---|---|
@@ -806,7 +808,7 @@ The following table documents the NIST SP 800-53 Rev 5 controls addressed by thi
 | IR-6 | Incident Reporting | No formal incident reporting chain; US-CERT notification timing undocumented | IR plan documents 1-hour US-CERT reporting requirement; communication templates drafted for major incident notification; ServiceNow incident record provides timestamped documentation chain for reporting evidence | NIST SP 800-53 Rev 5 IR-6; OMB M-20-04 |
 | IR-8 | Incident Response Plan | No formal written IR plan; IR-8 is a documentation finding in every FedRAMP assessment | Written IR plan covering all NIST 800-61 phases; seven required artifacts defined and authored; annual test and tabletop exercise schedule documented; assessors can be shown all artifacts with current review dates | NIST SP 800-53 Rev 5 IR-8; NIST SP 800-61 Rev 2 |
 
-: NIST SP 800-53 Rev 5 control closure for Part 10 {.striped .hover}
+: NIST SP 800-53 Rev 5 control closure for Part 12 {.striped .hover}
 
 ---
 
