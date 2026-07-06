@@ -257,7 +257,34 @@ When telecommunications modernization proposals include "we will add DIA at fiel
 | AU-12 | Audit Record Generation | AAN logging — user, device, app, action, data type, timestamp |
 | CA-7 | Continuous Monitoring | SASE stack — per-session identity, posture, access records |
 
+> **Closure Necessity — SC-8 on the voice path.** A DIA circuit carries traffic unencrypted at the network layer. SRTP protects the media payload of a call; it does not protect the signaling, the softphone HTTPS session's metadata, or any of the non-voice traffic sharing the circuit — and application-layer TLS covers no non-TLS flows at all. The only mechanism that encrypts *all* traffic on a DIA path regardless of application behavior is an IPsec overlay — i.e., SD-WAN. There is no configuration setting, scanner finding, or policy document that closes SC-8 on a bare pipe.
+
 > **DIA enables; SASE and AAN achieve.** For Amazon Connect and Teams Phone, DIA solves the G.114 latency problem by eliminating the geographic hairpin. That is its entire contribution to the compliance picture. A field office deployment that adds DIA without the SASE control stack has better latency and the same compliance gaps. The NIST controls are not satisfied by the pipe. They are satisfied by what governs the pipe.
+
+# TIC 3.0: The Policy That Makes Local Breakout Lawful
+
+The G.114 argument is the physics half of the case for local breakout: the 150 ms one-way ceiling is an engineering specification, the MPLS hairpin spends the budget before the call begins, and no procurement decision changes the propagation delay of a Portland-to-Washington detour. Physics explains why the agency *needs* DIA at field offices. It does not answer whether the agency *may have* it. That is a policy question, and the policy is TIC 3.0.
+
+Under the TIC 2.x model, every byte of agency internet traffic was required to egress through a small number of consolidated TIC access points — the architecture that created the hairpin in the first place. TIC 3.0 (OMB M-19-26) replaced mandatory consolidation with a use-case model: agencies may distribute their internet egress, provided the protections that the consolidated boundary used to provide are re-established at each distributed egress point. Those protections are enumerated in the **TIC 3.0 Security Capabilities Catalog**, and the place they must be applied is the **policy enforcement point (PEP)** governing each traffic path.
+
+## The Two Use Cases That Govern Agency Voice
+
+Two TIC 3.0 use cases map directly onto the telecommunications populations in this document — the Branch Office use case (elsewhere in this series shorthand-labeled Use Case E) and the Remote User use case (Use Case F):
+
+| TIC 3.0 Use Case | Agency Population | Traffic Path It Governs | Where the PEP Must Be |
+|---|---|---|---|
+| **Branch Office** | Field office agents on Amazon Connect and Teams Phone | Field office → local DIA → AWS .com / M365 GCC | At or near the branch egress: SD-WAN edge + SASE security services |
+| **Remote User** | Teleworking agents and staff on agency or managed devices | Home network → internet → cloud voice platforms | Cloud-delivered SASE PoP the user's traffic traverses; ZTNA replacing VPN |
+
+Both use cases *permit* traffic to leave for the internet without hairpinning through a TIC access point. Neither use case permits the traffic to leave *ungoverned*. The condition attached to both is the same: the applicable security capabilities from the catalog — the universal capabilities (auditable central log management among them) and the relevant PEP capability groups spanning web protections, network protections, and DNS resolution protections — must be demonstrably in place at the distributed PEP for that path.
+
+**This is the formal statement of the permissibility rule: under TIC 3.0, DIA is permissible only when the security-capabilities catalog is satisfied at the distributed PEP — and the SASE stack is that PEP.** The mapping is one-to-one with the NIST table in the previous section: the SD-WAN IPsec overlay provides encryption in transit, the SWG provides traffic inspection and malware protection, the CASB provides application-layer flow enforcement, protective DNS provides resolution security, and the telemetry pipeline to the SIEM provides the auditing and continuous-monitoring capabilities. An agency that deploys the SASE stack at its breakout points has not found a loophole around the TIC — it has implemented TIC 3.0 as designed.
+
+> **Closure Necessity — SC-7 / SC-7(7) on distributed egress.** SC-7 requires communications at external boundaries to be monitored and controlled at managed interfaces. Local breakout creates an external boundary interface at every field office, and remote work creates one at every home — while removing the central boundary stack from the path entirely. SC-7(7) makes the remote-user case explicit: split tunneling on remote devices is prohibited *unless the split tunneling capability is provisioned securely* — and local breakout for voice is precisely a split tunnel. The only mechanism that puts a managed, monitored interface on every distributed egress path is the distributed PEP — the TIC 3.0 SASE stack. The central firewall cannot close it (it is no longer in the path), the circuit provider cannot close it (a carrier hands off packets, not policy), and no document closes a boundary that has no enforcement point.
+
+> **An ungoverned DIA circuit is not modernization; it is a finding.** The bare circuit that fixes G.114 simultaneously deletes the SC-7 boundary that the MPLS-to-TIC path, whatever its latency, did provide. Presented to an assessor, that trade is a regression. Presented with the SASE PEP in place, it is the TIC 3.0 target architecture. The difference between the two deployments is not the circuit — it is the control stack riding on it.
+
+The operational conclusion joins the two halves. The physics half — G.114's budget — remains the driver: it is why the network must be modernized before either voice platform goes live, and it is measured in milliseconds at every agent location. The policy half — TIC 3.0's catalog-at-the-PEP condition — is what makes the resulting architecture authorizable. The same SD-WAN + SASE investment satisfies both at once, which is why this document treats them as one program: local breakout to meet the delay budget, and the distributed PEP to make that breakout lawful.
 
 # FedRAMP Boundary Considerations for Telecommunications
 

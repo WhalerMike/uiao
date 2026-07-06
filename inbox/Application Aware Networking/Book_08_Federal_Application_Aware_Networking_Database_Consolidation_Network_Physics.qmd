@@ -20,7 +20,7 @@ out-width: "100%"
 ---
 
 ::: {.callout-important}
-**Series Context** — This document is Part 6 of the Federal Application-Aware Networking series. Parts 1–5 address network infrastructure (IPAM/DDI/PKI, SD-WAN/SASE, network modernization) and SQL Server identity migration. This part addresses the architectural substrate beneath the identity layer: where databases should live, why network physics constrain that decision, and how SD-WAN and token-based security change the trade-off calculus.
+**Series Context** — This document is Part 8 of the Federal Application-Aware Networking series. Parts 1–7 address network and identity infrastructure (IPAM/DDI/PKI, network access control, certificates and tokens, SD-WAN/SASE, network modernization) and SQL Server identity migration. This part addresses the architectural substrate beneath the identity layer: where databases should live, why network physics constrain that decision, and how SD-WAN and token-based security change the trade-off calculus.
 :::
 
 # The Consolidation Premise
@@ -100,6 +100,16 @@ This is not a configuration problem. It is not a database vendor problem. It is 
 
 The **consistency class** selected for a workload must match the **network transport class** available for that workload's traffic. This is the central design rule of this document.
 
+## Physics Is Not a Procurement Decision
+
+The propagation floor is not a database-specific observation. It is the general form of an argument that runs through this entire series: every latency-sensitive workload in the federal enterprise carries a budget that physics sets and no acquisition can change. Voice carries ITU-T G.114's 150ms one-way ceiling — above it, talker echo is perceptible and the call degrades, regardless of what the contract says. Distributed databases carry the propagation floors documented in this chapter — a strongly consistent read from LA against a DC primary costs 54ms round trip before the first byte of processing, regardless of which vendor sold the circuit. These budgets are **non-negotiable inputs** to architecture. They cannot be traded against cost in a source selection, waived in a risk acceptance memo, or engineered away by a faster router. Light in fiber travels at approximately 200,000 km/s, and no procurement decision repeals that.
+
+Exactly one purchasing decision touches the floor: **where traffic enters the network.** Direct Internet Access — local breakout — shortens the physical path by eliminating the geographic hairpin, the same way regional database placement shortens the path between a write and its quorum. Distance is the only latency variable a buyer controls, which is why DIA is the only latency fix that exists. There is no second one.
+
+And it is *only* a latency fix. A DIA circuit satisfies exactly zero NIST controls. It carries traffic unencrypted at the network layer (SC-8 open). It has no notion of traffic class, so quorum ACKs and backup streams contend for the same queue (SC-5 open). It produces no application-layer telemetry (SI-4 open) and no transport evidence (CA-7 open). Every control claimed in the vicinity of the circuit is satisfied by the SD-WAN overlay and the policy stack that govern it — never by the pipe. An agency that buys the circuit without the overlay has purchased lower latency and a compliance regression, and no subsequent circuit purchase — a second DIA, an MPLS upgrade, dark fiber, more bandwidth — closes any of it. Circuits change how fast packets travel; controls are about what happens to them on the way.
+
+Applied to this document's subject, the doctrine reads: place the primary at the regional center of gravity of its write consumers, because that is arranging around the floor; let SD-WAN attack the addressable gap between the floor and observed latency, because that is the portion engineering can reach; assign each workload the consistency class its geography can actually deliver, because pretending otherwise just relocates the physics into mysterious query latency. Architecture is not the act of overcoming physics. It is the act of arranging around what physics permits — and the propagation floor is where that discipline starts.
+
 # SD-WAN as the Database's Network Ally
 
 SD-WAN does not eliminate the physics floor. What it does is reduce the gap between the physics floor and the observed latency, and it separates traffic classes so that high-priority database traffic is not competing with bulk data transfers for the same network path.
@@ -146,6 +156,8 @@ The lean-fat separation maps directly to database replication topology:
 - Telemetry and monitoring data
 
 The lean lane needs low latency and low jitter. It does not need high bandwidth — heartbeats are tiny. The fat lane needs throughput. It does not need low latency. Designing separate infrastructure for these two characteristics and marking traffic so SD-WAN routes them appropriately is the correct architecture.
+
+> **Closure Necessity — SC-5 on shared database paths.** SC-5 requires the system to protect against or limit the effects of organization-defined denial-of-service events. For a distributed database cluster, the defining event is internal: a bulk replication or backup stream that floods the path carrying quorum ACKs, delaying heartbeats until the cluster loses quorum. More bandwidth does not close this — bulk transfers expand to fill whatever pipe exists. Database-side throttling does not close it — the engine cannot see or schedule the network path. The only mechanism that separates quorum ACKs from bulk replication on a shared path is SD-WAN traffic-class marking with per-class queuing and path policy. There is no circuit size, backup window, or configuration setting that closes SC-5 for a distributed cluster on an unclassified path.
 
 # Token-Based Security as an Architectural Enabler
 
@@ -239,7 +251,7 @@ This is the **SSOT data architecture**: one canonical source, multiple consisten
 
 # Application-Aware Overlay — Transport Governance
 
-Parts 2 and 3 of this series addressed SD-WAN overlay architecture for network traffic and application layer protocols. The same overlay principles apply to database replication traffic, extending the traffic classification described earlier in this document.
+Parts 4 and 5 of this series addressed SD-WAN overlay architecture for network traffic and application layer protocols. The same overlay principles apply to database replication traffic, extending the traffic classification described earlier in this document.
 
 ## Database Traffic as a First-Class Overlay Citizen
 
@@ -250,6 +262,8 @@ Database replication streams — async log shipping, consensus heartbeat traffic
 - Apply separate QoS policies to each stream even though both originate from the same database cluster
 
 This is application-aware networking applied to the database tier: the network knows what the traffic is and treats it accordingly, rather than treating all TCP as equivalent.
+
+> **Closure Necessity — SC-8 on replication paths.** SC-8 requires confidentiality and integrity for transmitted information — all of it, not only the flows an application chose to protect. Client connections to the database ride TLS 1.2+. Replication is a different transmission surface: consensus heartbeats, log-shipping streams, snapshot transfers, and monitoring flows cross inter-site paths — including DIA underlays — with whatever protection each protocol happens to implement, which varies by engine, version, and configuration. The only mechanism that encrypts *all* replication traffic on an inter-site path regardless of application behavior is the SD-WAN IPsec overlay. Per-protocol TLS settings can harden individual streams; they cannot make a claim about the path. SC-8 on the replication path closes at the network layer or it does not close.
 
 ## Overlay vs. Underlay Consistency
 
@@ -306,7 +320,7 @@ The perimeter is not eliminated — firewalls still exist and still block unauth
 | Control | Control Name | Closed By | Mechanism |
 |---|---|---|---|
 | SC-28 | Protection of Information at Rest | Transparent Data Encryption (TDE) | SQL Server TDE encrypts data files at rest with AES-256 |
-| SC-8 | Transmission Confidentiality and Integrity | TLS + Arc-managed certificate | All SQL connections over TLS 1.2+ with agency-PKI certificate |
+| SC-8 | Transmission Confidentiality and Integrity | TLS + Arc-managed certificate + SD-WAN IPsec overlay | SQL client connections over TLS 1.2+ with agency-PKI certificate; inter-site replication paths encrypted by the SD-WAN IPsec overlay regardless of per-protocol behavior |
 | SC-5 | Denial of Service Protection | SD-WAN QoS + lean/fat separation | Bulk traffic cannot flood lean lane; heartbeat protection |
 | SI-12 | Information Management and Retention | SSOT canonical record lifecycle | Canonical source has defined retention; derived stores follow |
 | CA-3 | Information Exchange | Token-scoped cross-system access | Entra tokens scope cross-system database access explicitly |
@@ -327,4 +341,4 @@ Token-based security removes the structural dependency on network perimeter as t
 
 The consistency class to transport class alignment rule — strong consistency intra-region, weaker models for cross-region reads — eliminates the most common source of unnecessary latency in distributed federal database systems: the implicit default of strong consistency everywhere, including cross-region.
 
-Together with the SQL Server authentication modernization (Parts 4 and 5) and the network controls established in Parts 1 through 3, this architectural framework closes the FedRAMP 20x gap in the database and data management layer.
+Together with the SQL Server authentication modernization (Parts 6 and 7) and the network controls established in Parts 1 through 5, this architectural framework closes the FedRAMP 20x gap in the database and data management layer.

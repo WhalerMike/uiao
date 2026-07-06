@@ -102,6 +102,20 @@ Asymmetric routing occurs when the outbound path of a session and the return pat
 
 **How SD-WAN overlay eliminates asymmetric routing:** The SD-WAN overlay tunnel is established between two edge devices as a single logical connection. Inside the tunnel, individual packets may physically traverse any available path. But at the application layer, both directions of every session enter and exit the same SD-WAN edge device. The stateful inspection happens at the tunnel endpoint, which sees both directions. Asymmetric physical routing below the tunnel is structurally removed.
 
+## Where the Inline Tier Went: The Dissolution of the Load Balancer
+
+Before leaving Act 2, follow its signature artifact to its ending. The load balancers that became inline proxies — and the forward proxies, VPN concentrators, and hardware application delivery controllers stacked beside them — do not survive into the modern architecture. But they do not migrate to any single successor either, and that is where modernization plans most often make a category error. The inline tier **dissolves into three separate functional planes**, and each of its legacy functions lands in a different one:
+
+| Legacy function | Dissolves into | Functional plane |
+|---|---|---|
+| Forward proxy / VPN concentrator / secure web gateway appliance | SASE/SSE — cloud-delivered SWG, CASB, ZTNA | Policy enforcement plane |
+| Hardware ADC / reverse proxy / TLS offload | Cloud-native delivery services provisioned in the landing zone (application gateways, cloud load balancers, global front doors) | Application delivery plane — a landing-zone function |
+| GSLB / global traffic steering | DNS-based traffic steering — health-checked, policy-weighted authoritative DNS responses | Naming and addressing plane — a DDI control-plane function ([Book 01](Book_01_Federal_Application_Aware_Networking_SSA_Landing_Zone_IPAM_FedRAMP.qmd)) |
+
+: The Dissolution of the Load-Balancer / Proxy Tier {.striped .hover}
+
+The category error this table pre-empts: "SD-WAN replaces the load balancer." It does not, and claiming it does hands skeptics an easy rebuttal. **SD-WAN does not replace the load balancer; it retires the WAN edge. The load-balancer tier dissolves upward into cloud-native delivery services and downward into the DNS control plane.** The remote-access half of the tier — the forward proxies and VPN concentrators that extended per-network trust — dissolves sideways into the SASE/SSE policy enforcement plane described in Act 4. The global-steering half was always a DNS decision executed by an appliance; returned to the naming plane, it inherits the DNSSEC signing, IaC management, and audit logging that plane already carries. Nothing on the list needs a like-for-like appliance replacement, because none of the functions was ever really about the box.
+
 # Act 3 — The Breaking Point (2020–2026)
 
 ![Act 3 — Four Environments, No Single Identity: The Breaking Point](figs/mf-fig-11-four-environments.png){fig-alt="Four overlapping environments shown as quadrants: VMware on-premises at left, AWS GovCloud at upper right, Azure and M365 at lower right, Oracle OCI with OPM HRIT at bottom. Identity siloed in twelve Regional AD Domains at center with arrows pointing to all four environments but failing to cross boundaries with red X marks. Field office laptop at lower left shows user stuck between environments. Label: Identity was here, Compute went there. Arrow: The twelve AD domains cannot follow. Color: navy, teal, amber." width="100%"}
@@ -125,6 +139,8 @@ When a decision maker hears "the MPLS hairpin is causing latency problems," the 
 And then leadership will conclude that the network problem is solved. **It is not.**
 
 DIA is a pipe. It is a better-positioned pipe than the MPLS circuit it supplements, but it is still a single, unintelligent pipe with no visibility into what is happening on it, no ability to respond when it degrades, and no way to know whether it is actually the best available path to your destination.
+
+> **The three-step every DIA conversation must survive.** (1) *What DIA solves:* exactly one thing — the geographic hairpin. The latency budget is a physics constraint, and local breakout is the only fix. (2) *What DIA satisfies:* exactly zero NIST controls. DIA is a pipe; every control claimed near it — SC-7, SC-8, AC-4, SI-4, CA-7 — is satisfied by the SD-WAN, SASE, and TIC 3.0 stack that governs the pipe, never by the pipe itself. (3) *What DIA breaks if deployed bare:* the TIC boundary. A bare DIA circuit is an SC-7 regression against the MPLS/TIC baseline it replaced — from the assessor's chair, it is *worse* than the hairpin it fixed.
 
 ## Why Satellite Latency Is No Longer What You Remember
 
@@ -200,6 +216,8 @@ Traditional WAN design is **active-passive**: MPLS is the primary circuit, DIA b
 | Applies FEC to recover toward physics minimum on lossy paths | ✘ None | ✔ Per-transport FEC |
 | Provides audit trail of path decisions (TIC 3.0 / AU-12) | ✘ None | ✔ Every decision is a logged event |
 
+> **Closure Necessity — SC-8 on DIA circuits.** A DIA circuit carries traffic unencrypted at the network layer. Application-layer TLS provides no network-layer guarantee and no coverage for non-TLS flows. The only mechanism that encrypts *all* traffic on a DIA path regardless of application behavior is an IPsec overlay — i.e., SD-WAN. There is no configuration setting, scanner finding, or policy document that closes SC-8 on a bare pipe.
+
 ## What the Commercial World Figured Out — and When
 
 | Current Federal Practice | When Commercial Moved On | What Replaced It | Why |
@@ -228,7 +246,11 @@ When agencies present DIA as a modernization achievement, they have solved a con
 | AU-2 / AU-12 Audit Events / Audit Record Generation | User Z on device D accessed application A, performed action V on data type C — not just IP flows | Application-layer logging via AAN |
 | CA-7 Continuous Monitoring | Per-session: identity verified, device posture, access consistent with policy — machine-readable | AAN and SASE stack |
 
+> **Closure Necessity — SI-4 on transport.** SI-4 requires monitoring the system to detect attacks and indicators of potential attacks, including monitoring inbound and outbound communications traffic for unusual or unauthorized activities or conditions. A pipe has no telemetry: a bare DIA circuit reports link state and byte counts, nothing more. Flow records collected off the circuit see five-tuples — IP addresses and ports — not users, devices, applications, or data types, and five-tuples cannot distinguish authorized use from exfiltration on port 443. The only source of application-layer telemetry on the transport is the overlay that classifies it: SD-WAN DPI identifying the application per flow, and the SASE stack recording identity, posture, and action per session. No collector attached to a bare pipe can produce telemetry the pipe does not carry.
+
 > **The precise relationship: DIA enables compliance; AAN and SASE achieve it.** DIA provides the connectivity that makes cloud-hosted services reachable without the MPLS hairpin. It is necessary. It is not sufficient. When an agency presents "we have DIA" as a compliance achievement, the correct technical response is: **you have the pipe. Where is the control stack?**
+
+TIC 3.0 is the policy frame that turns this from good engineering advice into a compliance requirement. Under TIC 3.0, an agency may move enforcement from the consolidated TIC access point to a **distributed policy enforcement point** — but only if the TIC security capabilities catalog is satisfied *at that PEP*. The SASE stack is that distributed PEP. This is what makes DIA lawful: the pipe is permissible precisely and only when the enforcement point travels with it. A DIA circuit deployed without the distributed PEP has not modernized the TIC boundary — it has deleted it, and deleted boundaries surface as findings. The use-case-by-use-case mapping of the TIC 3.0 catalog onto distributed egress is developed in [Book 05](Book_05_Federal_Application_Aware_Networking_Federal_Telecommunications_Modernization.qmd).
 
 # Act 4 — The Way Forward: Application-Aware Modernization
 
