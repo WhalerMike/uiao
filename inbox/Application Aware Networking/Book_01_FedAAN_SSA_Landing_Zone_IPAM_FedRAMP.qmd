@@ -14,6 +14,7 @@ format:
     css: lz-style.css
     number-sections: true
   docx:
+    reference-doc: lz-reference.docx
     toc: true
     toc-depth: 3
     number-sections: true
@@ -290,9 +291,9 @@ AWS-specific InfoBlox capabilities:
 
 ![OPM HRIT on Oracle OCI — SSA Inter-Agency Integration via InfoBlox Certificate Monitor](figs/lz-fig-06-opm-hrit.png){fig-alt="Two-sided diagram with SSA environment on left and OPM HRIT on Oracle OCI on right, with InfoBlox in the center managing the DNS conditional forwarder, certificate monitor, and IP documentation" width="100%"}
 
-OPM is migrating HRIT (federal HR and benefits processing) to Oracle HCM Cloud on OCI. As OPM's HRIT moves to OCI-hosted SaaS, SSA's integration path changes from a mainframe handoff to a cloud API call from SSA's environment to OPM's OCI-hosted service endpoints.
+OPM is migrating OPM HRIT (federal HR and benefits processing) to Oracle HCM Cloud on OCI. As OPM's OPM HRIT moves to OCI-hosted SaaS, SSA's integration path changes from a mainframe handoff to a cloud API call from SSA's environment to OPM's OCI-hosted service endpoints.
 
-**The challenge:** OPM controls their OCI tenancy. SSA has no visibility into OPM's certificate rotation schedule, IP range changes, or maintenance windows. When OPM rotates their HRIT API TLS certificate without SSA's trust stores being updated, the HRIT API call fails — personnel action feeds stop, benefits enrollment breaks.
+**The challenge:** OPM controls their OCI tenancy. SSA has no visibility into OPM's certificate rotation schedule, IP range changes, or maintenance windows. When OPM rotates their OPM HRIT API TLS certificate without SSA's trust stores being updated, the OPM HRIT API call fails — personnel action feeds stop, benefits enrollment breaks.
 
 **InfoBlox manages SSA's side of the integration:**
 
@@ -681,6 +682,96 @@ OPM HRIT on OCI is the **first of many** federal inter-agency SaaS integrations.
 - **External host records** — always document the partner's IP ranges for SA-9 without API access to their cloud
 - **RPZ passthrough entries** — ensure InfoBlox RPZ does not block the inter-agency API calls
 - **Sentinel alerts** — detect if the inter-agency connection's certificate has changed unexpectedly (potential MITM)
+
+---
+
+## System Component Inventory — IPAM, CMDB, and the CM-8 Gap {#sec-cmdb}
+
+### IPAM Is Not an Asset Manager
+
+InfoBlox IPAM is the **network-layer addressing authority**: every IP allocation, every DNS hostname, every DHCP lease, every machine certificate binding — from this plane's point of view. It sees every device that has an IP address. It does not see:
+
+- What software is installed on a device
+- Whether a device's OS is patched
+- The organizational owner or data classification of a workload
+- The FedRAMP boundary membership of an asset
+- Relationships between assets (which application runs on which server, which server supports which system)
+- Non-IP assets (smart cards, HSMs, air-gapped devices, physical media)
+
+NIST SP 800-53 **CM-8 (System Component Inventory)** requires an inventory that includes hardware, software, firmware, and system interconnections — not just IP address records. InfoBlox satisfies the addressing dimension of CM-8; it does not satisfy the full control without a complementary CMDB.
+
+SSA currently operates **four asset management surfaces** with no unified coordinator:
+
+| Surface | Scope | What It Misses |
+|---|---|---|
+| **Microsoft Intune** | Windows, macOS, iOS, Android managed endpoints | AWS EC2, OCI workloads, non-enrolled VMware VMs, network devices, IoT |
+| **Azure Arc (servers)** | Windows Server + Linux on any cloud/on-prem — Arc-enrolled only | Workloads not explicitly Arc-onboarded; OCI-native resources; non-server assets |
+| **AWS Systems Manager (SSM)** | AWS EC2 instances (agent-installed) | Azure, OCI, on-prem VMs; endpoint devices; network gear |
+| **VMware vCenter** | On-premises VMware VMs and ESXi hosts | Cloud-native workloads; endpoints; network devices |
+
+InfoBlox IPAM **bridges these surfaces at the IP layer** — every asset managed by any of the four platforms above will have a DHCP/DNS record in InfoBlox. But correlating IP records to organizational ownership, FedRAMP boundary membership, patch state, and software inventory requires a platform above the addressing layer.
+
+::: {.callout-warning}
+## Open Decision — Asset Manager / CMDB Platform
+
+SSA has not yet selected a unified Asset Manager / CMDB for cross-platform inventory coordination. **This decision must be made by the CIO Office with OIS input** — it is architecturally significant (determines the CM-8 evidence strategy) and has procurement implications. The requirements below define what the selected platform must satisfy. Specific product selection is pending agency review.
+:::
+
+---
+
+### Requirements for the Asset Manager / CMDB {#sec-cmdb-requirements}
+
+The following requirements must be satisfied by whichever platform SSA selects. Requirements are grouped by compliance driver. **All requirements must be satisfied regardless of product selection.**
+
+| ID | Requirement | Control | Priority |
+|---|---|---|---|
+| **R-01** | **Cross-platform automated discovery** — must ingest asset records from Intune, Azure Arc, AWS Systems Manager, OCI Management Agent, VMware vCenter, InfoBlox IPAM, and network device management platforms without manual data entry | CM-8 | Must |
+| **R-02** | **IP/IPAM correlation** — every asset record must link to an InfoBlox IPAM record; the IP address, DNS FQDN, and DHCP lease state from InfoBlox are the authoritative network-layer identity for each asset | CM-8, SC-22 | Must |
+| **R-03** | **Machine certificate binding** — asset records must carry the machine certificate thumbprint and expiry for managed devices, populated from Intune SCEP enrollment (endpoint devices) and from InfoBlox Certificate Tracker (workloads) | IA-5, SC-12, SC-17 | Must |
+| **R-04** | **FedRAMP boundary classification** — each asset record must carry environment tag (AWS GovCloud, Azure Government, OCI, on-prem VMware) and FedRAMP system boundary membership; assets in-boundary vs. out-of-boundary must be queryable | CM-8, CA-3 | Must |
+| **R-05** | **Component owner assignment** — each asset must be assignable to a CIO Component owner; Component owners have read/write access scoped to their own assets and read-only access to nothing beyond their scope | CM-8, AC-3, AC-6 | Must |
+| **R-06** | **Audit trail for asset record changes** — every discovery-driven or manual change to an asset record must produce a log entry with timestamp, change source, before/after state, and actor identity; logs must feed the SIEM | AU-3, AU-12, CM-8(1) | Must |
+| **R-07** | **Network device coverage** — must discover and maintain records for switches, routers, firewalls, load balancers, and wireless access points via SNMP, NetFlow, REST, or CDP/LLDP | CM-8 | Must |
+| **R-08** | **Unmanaged / IoT / OT device visibility** — devices identified by MAC address and DHCP fingerprint in InfoBlox that have no MDM enrollment must appear in the inventory as "unmanaged — device class: [fingerprint]"; these are CM-8 scope items even if they cannot be fully managed | CM-8, IA-3 | Must |
+| **R-09** | **Software inventory per managed asset** — installed software, version, and patch state linked to the asset record for all Intune-managed and Arc-enrolled assets | CM-8(1) | Should |
+| **R-10** | **Deduplication across sources** — when Intune, Arc, AWS SSM, and InfoBlox all report the same physical or virtual asset, the platform must produce a single normalized canonical record, not four separate entries | CM-8 | Must |
+| **R-11** | **FedRAMP Moderate or High authorization** — the platform must carry its own FedRAMP ATO at Moderate or High impact, or be deployed within SSA's own FedRAMP boundary with appropriate documentation | FedRAMP | Must |
+| **R-12** | **SIEM integration** — must export asset inventory and change events to the SIEM (Book 13) for enrichment of security alerts with asset context | SI-4, CA-7 | Must |
+| **R-13** | **ConMon evidence generation** — must produce CM-8-compliant inventory exports (OSCAL format preferred) for the ConMon pipeline (Book 19) | CA-7 | Must |
+| **R-14** | **API-first** — all discovery, query, and reporting functions must be available via documented REST API for integration with the IaC pipeline and ConMon toolchain | CM-8 | Should |
+| **R-15** | **Lifecycle tracking** — asset records must carry lifecycle state (provisioning / active / decommissioning / retired) and must support automated decommission notification from InfoBlox (DHCP lease release triggers review) | CM-8(1) | Should |
+
+: Asset Manager / CMDB Requirements {.striped .hover}
+
+---
+
+### FedRAMP-Authorized Product Candidates {#sec-cmdb-products}
+
+The following platforms have federal government deployments and FedRAMP authorization status relevant to this requirement. **SSA must verify current FedRAMP Marketplace listings at time of procurement** — authorization status changes and this list reflects a point-in-time assessment. No selection is made here; this is a landscape to inform the CIO Office's evaluation.
+
+| Platform | FedRAMP Status | Primary Strength | Key Gap for SSA | Requirements Met |
+|---|---|---|---|---|
+| **ServiceNow Now Platform** (ITOM + CMDB) | FedRAMP Moderate (Government Community Cloud, JAB P-ATO) | Broadest CMDB capability; native Discovery across cloud APIs, VMware, network, and MDM; widely deployed across federal civilian agencies; full lifecycle, ownership, and relationship tracking | High cost; complexity of implementation; Discovery requires agent or network-based scanning agents in each environment | R-01 through R-15 (all, with proper configuration) |
+| **Axonius Cybersecurity Asset Management** | FedRAMP authorization — verify current status on FedRAMP Marketplace | Purpose-built for exactly this problem: correlates 800+ adapters (Intune, Arc, AWS SSM, OCI, VMware, InfoBlox, Qualys, Tenable) into a single deduplicated asset record; no agents required; fastest time-to-value for cross-platform correlation | Less mature CMDB lifecycle and change management than ServiceNow; ITSM integration requires connector work | R-01, R-02, R-03, R-05, R-06, R-08, R-10, R-11, R-12, R-14 |
+| **Qualys Global Asset Inventory (GAI) / VMDR** | FedRAMP Moderate (JAB P-ATO) | Strong cloud connector coverage (AWS, Azure, GCP); vulnerability context tied to asset record; agentless cloud scanning | Weaker normalization across MDM (Intune) and IPAM sources; primarily vulnerability-centric rather than CMDB-centric; limited certificate tracking | R-01 (partial), R-04, R-06, R-08, R-09, R-11 |
+| **Tenable.sc (Security Center)** | FedRAMP Moderate (JAB P-ATO) | Deep vulnerability and asset discovery; strong network device and IoT/OT coverage via passive network analysis (Nessus Network Monitor); widely deployed in federal agencies | Not a CMDB — does not support organizational ownership hierarchy, lifecycle tracking, or ITSM-style asset management; certificate tracking limited | R-01 (partial), R-06, R-07, R-08, R-09 |
+| **Microsoft Defender for Cloud** (GCC High) | FedRAMP High (as part of Microsoft GCC High) | Native integration with Azure Arc, Intune, Defender for Endpoint; cloud security posture management for Azure, AWS, GCP; no additional procurement for Microsoft-licensed agencies | Limited coverage of OCI, VMware non-Arc, network devices; not a general-purpose CMDB; strong for Microsoft estate, weak outside it | R-01 (partial — Microsoft scope), R-04, R-06, R-11 |
+| **AWS Config + Systems Manager Inventory** | FedRAMP High (AWS GovCloud) | Native AWS asset inventory; configuration history; Config Rules for compliance; no additional cost beyond AWS usage | AWS-only — no coverage for Azure, OCI, on-prem, or endpoint devices; cannot serve as the unified cross-environment coordinator | R-01 (AWS scope only), R-04, R-06, R-14 |
+| **Ivanti Neurons for ITSM + Asset Management** | FedRAMP Moderate (verify current status on FedRAMP Marketplace) | Comprehensive ITSM + CMDB + discovery; strong on endpoint asset management and patch management; federal deployments | Less cloud-native than ServiceNow for multi-cloud asset correlation; verify current FedRAMP scope and boundary | R-01 (partial), R-05, R-06, R-09, R-10, R-15 |
+
+: FedRAMP-Authorized Asset Manager Candidates *(verify FedRAMP Marketplace at time of procurement — status changes)* {.striped .hover}
+
+### Recommended Evaluation Approach
+
+SSA should evaluate candidates against requirements R-01 through R-15 in a structured proof-of-concept across three specific scenarios:
+
+1. **Correlation test** — take a single managed Windows laptop; confirm that the candidate platform produces one deduplicated asset record that includes the Intune MDM record, the InfoBlox DHCP record, the machine certificate from Intune SCEP, and the DNS FQDN. This is R-01, R-02, R-03, and R-10 simultaneously.
+
+2. **Unmanaged device test** — connect an IoT device (or a device not enrolled in Intune) to a NAC-controlled port; confirm that the device appears in the inventory within one DHCP lease cycle as an unmanaged asset with InfoBlox DHCP fingerprint data. This is R-08.
+
+3. **Component owner scoping test** — create two CIO Component owners in the candidate platform; confirm that each owner sees only their assigned assets and cannot access the other's records. This is R-05.
+
+Until a platform is selected and deployed, InfoBlox IPAM serves as the **best-available addressing proxy for CM-8** — every in-scope IP address is documented, every DNS hostname is authoritative, and DHCP fingerprinting provides unmanaged device classification. This is not a full CM-8 closure; it is the network-layer foundation on which the CMDB will be built.
 
 ---
 
