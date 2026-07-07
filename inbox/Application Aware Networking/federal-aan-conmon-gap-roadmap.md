@@ -1,5 +1,7 @@
 # Federal AAN / ConMon Compliance Gap Roadmap
-**As of July 5, 2026 — Internal UIAO Working Document**
+**As of July 7, 2026 — Internal UIAO Working Document**
+
+**Date Code:** 2026-07-07 11:52 ET
 
 ---
 
@@ -23,15 +25,72 @@ authorization package is ready for FedRAMP PMO submission.**
 
 ---
 
-## Hard Deadlines
+## Federal Compliance Timeline — All Mandates Touching NIST Control Families
+
+*Researched and verified 2026-07-07 against fedramp.gov, cisa.gov, csrc.nist.gov,
+whitehouse.gov, and NSA CNSA 2.0 guidance. This section is the series' single
+source of truth for federal dates; the Books cite subsets of it.*
+
+### Already in force — the elapsed baseline
+
+| Effective | Mandate | What it requires | NIST families | AAN coverage |
+|-----------|---------|------------------|---------------|--------------|
+| Feb 16, 2020 / Jan 6, 2021 | **Kari's Law / RAY BAUM'S Act §506** | Direct 911 dialing; dispatchable location for MLTS incl. non-fixed devices | (telecom; PE/SC-adjacent) | Part 6 |
+| Sep 23, 2021 | **NIST SP 800-53 Rev 5** (Rev 4 withdrawn) | Current control catalog; FedRAMP Moderate baseline drawn from it | All | Series-wide |
+| May 12, 2021 | **EO 14028** | Zero Trust direction, SBOM, logging, incident sharing | Umbrella | Series-wide |
+| Aug 2022 → Aug 2023 | **OMB M-21-31** (event logging) | EL1 by Aug 2022, EL2 by Feb 2023, EL3 (full) by Aug 2023 | AU-2, AU-6, AU-11, AU-12 | Parts 13, 19 |
+| FY2023 → FY2025 | **OMB M-21-07** (IPv6) | 20% IPv6-only FY2023 → 50% FY2024 → 80% FY2025 | CM-8, SC family | Part 1 (IPAM) |
+| Oct 2018 | **BOD 18-01** | DMARC p=reject; HTTPS everywhere | SC-8; email auth (DNS) | Part 1 (DNS records) |
+| Nov 3, 2021 | **BOD 22-01** (KEV) | Remediate Known Exploited Vulnerabilities on CISA timelines | RA-5, SI-2 | Part 11 |
+| Apr 3, 2023 | **BOD 23-01** | Asset visibility + vulnerability enumeration reporting | CM-8, RA-5 | Parts 1, 2, 11 |
+| Sep 30, 2024 | **OMB M-22-09** (Zero Trust) | Phishing-resistant MFA, app-layer enforcement — goals due end FY2024; **not superseded**: M-24-14 (Jul 2024) + M-25-04 (Jan 2025) continue maturation; FISMA/CDM still measure progress | IA-2(1)/(2), AC-4, SI-4 | Parts 3, 5 |
+| Nov 18, 2022 → 2035 | **OMB M-23-02** (PQC) | Annual cryptographic inventories through 2035; migration leads; funding assessments | SC-12, SC-13 | Parts 3, 12 |
+| Aug 13, 2024 | **NIST FIPS 203/204/205** | PQC algorithms standardized (ML-KEM, ML-DSA, SLH-DSA) | SC-13 | Parts 3, 12 |
+| Jun 20, 2025 | **BOD 25-01** (SCuBA) | Tenants inventoried Feb 21, 2025 → tools deployed Apr 25, 2025 → all mandatory policies Jun 20, 2025 | CM-2/6, AC, IA (M365) | KSI-001..010; ScubaDrift pipeline |
+| Aug 27, 2025 | **NIST SP 800-53 Release 5.2.0** | New controls **SA-15(13), SA-24, SI-2(7)** + SA/SI discussion updates (EO 14306 patch security) | SA, SI | ⚠ **Gap — see callout below** |
+
+### FY2026 — the active window
 
 | Date | Event | Impact |
 |------|--------|--------|
-| **Aug 3, 2026** | FedRAMP 20x Class A opens | First submission window for new authorizations |
-| **Aug 31, 2026** | Class B + C opens | GCC Moderate systems can begin |
-| **Dec 7, 2026** | BOD 26-04 VDR/VER deadline | SBOM + vendor disclosure required |
-| **Jan 1, 2027** | FedRAMP 20x mandatory | All new authorizations must use 20x; legacy Rev 5 path closes |
-| **Jun 11, 2027** | New Rev 5 certs cease | No new legacy authorizations after this date |
+| Jun 10, 2026 | **BOD 26-04 issued** (risk-based remediation) | Four-variable risk model (exposure × KEV × automatable × impact); timelines from 3 days to deferral replace flat CVSS windows |
+| Jun 25, 2026 | **FedRAMP Consolidated Rules for 2026 published** | 20x leaves pilot; machine-readable KSI evidence regime defined |
+| Jul 6, 2026 | 20x Marketplace listings open | CSPs may enter the initial implementation stage |
+| Jul 28, 2026 | FedRAMP Ready goes legacy | No new Ready submissions accepted |
+| **Aug 3, 2026** | **FedRAMP 20x Class A opens** | First submission window for new authorizations |
+| Aug 7, 2026 | **BOD 26-04: agency policies due** | Vulnerability-management policies must support ongoing risk-based remediation |
+| Aug 10, 2026 | Temporary Rev5 Program Certification opens | Class B/C Ready-conversion and lost-sponsor paths |
+| **Aug 31, 2026** | **Class B + C opens** | GCC Moderate systems can begin — **SSA's window** |
+| **Sep 21, 2026** | **FIPS 140-2 certificates → NIST Historical List** | No new procurement reliance on 140-2-only validated modules; verify crypto modules are FIPS 140-3 tracked (SC-13) |
+| **Dec 7, 2026** | **BOD 26-04 remediation timelines in force + FedRAMP VDR/VER mandatory** | SBOM + vendor disclosure required; agencies evaluating/remediating on BOD 26-04 timelines; KSI-011–014 evaluable |
+
+### 2027 and beyond — the horizon
+
+| Date | Event | Impact |
+|------|--------|--------|
+| **Jan 1, 2027** | **FedRAMP CR26 mandatory for all** | All ConMon evidence machine-readable KSI format; legacy Rev 5 path closes for new authorizations |
+| Jan 1, 2027 | **CNSA 2.0 acquisition gate** (NSS-scoped) | New National Security System acquisitions must support ML-KEM-1024 + ML-DSA-87; civilian trajectory follows via M-23-02 |
+| **Jun 11, 2027** | New Rev 5 certifications cease | No new legacy authorizations |
+| ~Aug 2027 | Next scheduled NIST SP 800-53 release | Time-driven major releases every 2 years from Release 5.2.0 — watch for control deltas |
+| 2030 | Quantum-vulnerable cryptography **deprecated** (federal target) | RSA/ECC key establishment and signatures phase out |
+| 2035 | PQC migration **complete**; quantum-vulnerable **prohibited** | M-23-02 / NSM-10 horizon for federal civilian systems |
+
+> **⚠ New exposure from Release 5.2.0 (action item):** NIST SP 800-53 Release
+> 5.2.0 (Aug 27, 2025) added **SA-15(13)** (secure update process), **SA-24**
+> (root-of-trust for software updates), and **SI-2(7)** (update integrity
+> verification), plus discussion changes across SA-4/5/8 and SI-2. The AAN
+> series control-closure tables (Parts 11, 15) predate the additions and do not
+> yet map them. When FedRAMP incorporates 5.2.0 deltas into baselines, these
+> three land in the Part 11 / Part 15 closure scope — track and map before the
+> next annual assessment.
+
+**Timeline sources (verified 2026-07-07):** FedRAMP Consolidated Rules for
+2026 announcement + timeline (fedramp.gov/20x); CISA BOD 26-04 directive +
+implementation guidance (cisa.gov); FedRAMP notice 0014 (BOD 26-04 response —
+VDR/VER Dec 7, 2026); CISA BOD 25-01 (cisa.gov); NIST SP 800-53 Release 5.2.0
+change summary (csrc.nist.gov, Aug 27, 2025); OMB M-22-09 / M-21-31 / M-21-07 /
+M-23-02 (whitehouse.gov); NSA CNSA 2.0 (v2.1, Dec 2024); NIST FIPS 140-2
+Historical List transition (Sep 21, 2026).
 
 ---
 
