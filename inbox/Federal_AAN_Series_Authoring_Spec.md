@@ -45,7 +45,30 @@ YYYY-MM-DD HH:MM ET
 4. Generator scripts (e.g., pptx build scripts) must take the Date Code from
    the clock at build time — never hard-code a stale value into a template.
 
-## 2. Presentation speaker notes — full notes on every slide
+## 2. FedRAMP scope parameter — Moderate only
+
+The series targets **FedRAMP Moderate exclusively** (SSA baseline: GCC
+Moderate / FedRAMP Moderate). This is a hard scope parameter for every
+deliverable:
+
+1. **Never cite, map to, or claim FedRAMP High** — no High baselines, High
+   control selections, or High inheritance claims anywhere in series text,
+   tables, diagrams, or slides.
+2. Where an underlying CSP region or service happens to hold a higher
+   authorization, refer to it simply as **"FedRAMP-authorized"** without
+   naming the High level. The series claims only what SSA's boundary
+   targets: Moderate.
+3. Control mappings use the **FedRAMP Moderate baseline** of NIST SP 800-53
+   Rev 5.
+4. Vendor authorization claims state the CSO's actual level (e.g., InfoBlox
+   BloxOne DDI Federal, CSO FR2017257053, FedRAMP **Moderate**) and are
+   verified against the FedRAMP Marketplace at procurement time.
+
+Rationale: keeps the procurement and authorization conversation inside SSA's
+actual boundary target and avoids implying High-baseline obligations the
+program is not signing up for.
+
+## 3. Presentation speaker notes — full notes on every slide
 
 Every slide in a `.pptx` deliverable carries **full speaker notes** — complete
 presenter prose, not fragments or keyword lists. Notes must be sufficient for
@@ -73,7 +96,17 @@ source, e.g., the FedRAMP Marketplace listing). Conventions:
 5. Generator scripts keep the link map in one place (a `SRC` constant) so URLs
    are updated once, not per slide.
 
-## 3. Existing conventions (carried forward)
+### Build sequences (progressive-reveal slides)
+
+Technical content with three or more moving parts should be presented as a
+**click-through build sequence**: one slide per step, completed steps shown
+tinted/dimmed, the active step highlighted (amber ring), with a
+plain-language detail panel for the active step. Each step slide carries its
+own full speaker notes — the notes deepen per step rather than repeating.
+Single dense "everything at once" slides are reserved for reference tables
+the audience is expected to read, not be walked through.
+
+## 4. Existing conventions (carried forward)
 
 - **Draft-proposal disclaimer** on every deliverable: CSI Team draft, not yet
   reviewed by the SSA CIO Office, OIS, or organizational leadership.
