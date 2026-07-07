@@ -106,7 +106,34 @@ own full speaker notes — the notes deepen per step rather than repeating.
 Single dense "everything at once" slides are reserved for reference tables
 the audience is expected to read, not be walked through.
 
-## 4. Existing conventions (carried forward)
+## 4. Slide images flow back into the Books (PPTX → DOCX)
+
+When a `.pptx` briefing is created or updated with images — diagrams, build
+sequences, comparison layouts, or any slide visual — those images are
+**incorporated into the corresponding Book's document**, either **replacing**
+an existing figure or **augmenting** a section that lacks one.
+
+1. **Replace** when the slide visual covers the same concept as an existing
+   Book figure and is newer or clearer (house style: white background,
+   navy/teal/amber/red ink). The old figure is removed, not left alongside.
+2. **Augment** when the Book section has no figure for the concept the slide
+   illustrates.
+3. **Export mechanics:** export the slide as PNG at presentation resolution
+   or higher (PowerPoint slide export, ≥ 1280×720). For build sequences,
+   use the final step's slide (the complete state) unless an intermediate
+   state carries independent explanatory value.
+4. **Respect the render pipeline:** add the image to the Book's `.qmd`
+   source as a Quarto figure (with descriptive `fig-alt` text) and
+   re-render the `.docx` — do not hand-edit the `.docx` directly.
+5. **Provenance + freshness:** the figure caption or `fig-alt` notes the
+   originating deck and its Date Code, and the updated Book gets a new
+   Date Code per §1 so document and deck stay traceably in sync.
+
+The goal: the deck and the Book never diverge visually — whichever was
+touched last feeds the other, and the Date Codes show which way the sync
+last flowed.
+
+## 5. Existing conventions (carried forward)
 
 - **Draft-proposal disclaimer** on every deliverable: CSI Team draft, not yet
   reviewed by the SSA CIO Office, OIS, or organizational leadership.
