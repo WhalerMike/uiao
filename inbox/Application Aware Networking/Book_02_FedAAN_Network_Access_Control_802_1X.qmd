@@ -2,7 +2,7 @@
 title: "Book 02 — Federal Application-Aware Networking — Network Access Control: 802.1X and Device Identity"
 subtitle: "802.1X, EAP-TLS, and Device Identity Enforcement at the Port — Part 2"
 author: "SSA Cloud Services Team"
-date: "July 5, 2026"
+date: "2026-07-07 10:17 ET"
 format:
   html:
     embed-resources: true
@@ -31,6 +31,8 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-07 10:17 ET
 :::
 
 ::: {.callout-important}
@@ -79,6 +81,8 @@ Federal facilities operate under physical access controls — PIV badge readers,
 
 Each of these is a live network connection with no authentication gate. NAC with 802.1X makes the authentication gate the switch port itself — independent of the physical access regime.
 
+![The federal physical access reality — five exposure classes where a facility badge is the only gate](figs/nac-fig-10-physical-access-reality.png){#fig-nac10 fig-alt="Five cards showing federal facility exposure classes with live, unauthenticated network ports. Conference rooms: routinely accessible to vendors, contractors, and visitors with valid facility badges but no SSA IT authorization. Wiring closets: older federal buildings often lack electronic access control distinct from the floor-level badge reader. Decommissioned areas: live switch ports persist weeks to months after occupancy ends. Hoteling workstations: hot-desk ports are live by design with a different physical occupant daily. IoT/OT devices: printers, badge readers, HVAC, and video endpoints share the same switch fabric as workstations and servers. Banner: each is a live network connection with no authentication gate — NAC makes the gate the switch port itself, independent of the physical access regime. White background. Source: Book 02 NAC briefing deck, Date Code 2026-07-07 10:15 ET." width="100%"}
+
 ## Before and After: The Structural Comparison
 
 ![Before and after NAC deployment showing unauthenticated port access versus 802.1X authenticated admission flow](figs/nac-fig-01-before-after.png){#fig-nac01 fig-alt="Two-panel diagram. Left panel labeled BEFORE shows a laptop connecting to a switch port and immediately receiving a DHCP lease and routing to SSA resources with no authentication gate. Right panel labeled AFTER shows the same laptop initiating 802.1X EAP exchange with the switch acting as authenticator, forwarding the EAP-TLS exchange to a RADIUS server, which validates the machine certificate against Entra ID device inventory, and the switch placing the port into the appropriate VLAN — compliant, non-compliant, or quarantine — before any IP address is issued to a routable segment." width="100%"}
@@ -97,6 +101,8 @@ This is the structural precedent for everything in this document. Voice VLAN ste
 
 The precedent also carried a structural weakness, and naming it precisely is what motivates the rest of this document: **DHCP option-based steering is identity by assertion, not by proof.** Any device can transmit a phone's vendor class identifier; nothing in the exchange is cryptographically verified. That is acceptable for QoS steering, where the worst case of a false claim is mis-prioritized traffic. It is not acceptable for access control, where the worst case is an unauthorized device in a production segment. 802.1X with EAP-TLS replaces the assertion with a proof — a machine certificate whose private key never leaves the device — while the assertion-based lineage survives, deliberately and in a constrained role, in two places later in this document: MAC Authentication Bypass for devices that cannot run a supplicant, and DHCP fingerprinting as the classification and anomaly-detection signal that the IPAM layer feeds back into the NAC decision. The naming and addressing plane asserted device identity first; the identity plane this book builds makes the assertion provable.
 
+![The voice VLAN precedent — identity by assertion (DHCP option 60) versus identity by proof (802.1X EAP-TLS)](figs/nac-fig-08-voice-vlan-precedent.png){#fig-nac08 fig-alt="Two-column comparison. Left, late 1990s IP telephony before 802.1X: phone boots on the data VLAN and sends DHCP option 60 (vendor class identifier); the DHCP server recognizes the class and answers with the voice VLAN ID and config server; the phone re-tags onto the voice VLAN; the switch never authenticated anything — the naming plane classified the device. Verdict: identity by assertion — any device can transmit a phone's vendor class; nothing is verified. Right, today with 802.1X EAP-TLS: the device asserts identity with a machine certificate whose private key never leaves the TPM; RADIUS plus the Entra inventory verify the assertion cryptographically; the network assigns a segment scoped to trust — production, remediation, or quarantine. Verdict: identity by proof — the assertion lineage survives only in MAB and DHCP fingerprinting, deliberately constrained. Banner: the DHCP server was acting as a policy decision point a decade before the term existed; NAC generalizes the pattern and replaces the assertion with a proof. White background. Source: Book 02 NAC briefing deck, Date Code 2026-07-07 10:15 ET." width="100%"}
+
 # NAC Architecture — RADIUS, 802.1X, and EAP-TLS
 
 ## The Authentication Stack
@@ -108,6 +114,8 @@ The precedent also carried a structural weakness, and naming it precisely is wha
 - **Authentication Server** — the RADIUS server that validates the supplicant's credentials and returns the access decision (VLAN ID, session timeout, filter rules).
 
 The exchange protocol between supplicant and authentication server is the Extensible Authentication Protocol (EAP), carried over RADIUS between the authenticator and the authentication server.
+
+![The 802.1X authentication stack — supplicant, authenticator, authentication server](figs/nac-fig-09-authentication-stack.png){#fig-nac09 fig-alt="Three-node flow diagram of the IEEE 802.1X roles. Node 1, supplicant — the device asking: software on the device requesting access; Windows built-in supplicant via Intune, wpa_supplicant on Linux, native supplicant via MDM on macOS. Node 2, authenticator — the switch or WAP enforcing: validates nothing itself; relays the EAP exchange and enforces the VLAN the server returns. Node 3 (highlighted), authentication server — RADIUS deciding: validates the machine certificate against the Entra ID device inventory and returns the access decision — VLAN ID, session timeout, filter rules. Caption: EAP carried end-to-end — supplicant to authenticator over EAPOL, authenticator to authentication server as EAP over RADIUS. White background. Source: Book 02 NAC briefing deck, Date Code 2026-07-07 10:15 ET." width="100%"}
 
 ## EAP Method Selection — Why EAP-TLS for Federal
 
