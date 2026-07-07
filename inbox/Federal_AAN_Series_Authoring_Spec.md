@@ -133,6 +133,21 @@ The goal: the deck and the Book never diverge visually — whichever was
 touched last feeds the other, and the Date Codes show which way the sync
 last flowed.
 
+### Trigger — this step is not optional
+
+Creating or updating a `.pptx` with images **triggers this incorporation
+step in the same work session**. The deck deliverable is not complete until:
+
+1. Each deck visual has been dispositioned against the Book — *replace*,
+   *augment*, or *skip* (skip only when an existing Book figure covers the
+   same concept equally well or better; record the reasoning).
+2. The chosen images are exported, added to the `.qmd`, and the `.docx`
+   re-rendered.
+3. Both artifacts carry fresh Date Codes.
+
+Deferring the incorporation to "the next time the Book is touched" is not
+permitted — that is exactly how deck and Book drift apart.
+
 ## 5. Existing conventions (carried forward)
 
 - **Draft-proposal disclaimer** on every deliverable: CSI Team draft, not yet

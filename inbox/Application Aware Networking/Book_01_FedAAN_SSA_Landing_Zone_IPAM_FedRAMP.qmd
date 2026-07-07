@@ -2,7 +2,7 @@
 title: "Book 01 — Federal Agency Cloud Landing Zone"
 subtitle: "IPAM · SDN · DNS · PKI · Zero Trust — InfoBlox DDI Alignment to NIST, CISA, and FedRAMP"
 author: "SSA Cloud Services Team"
-date: "June 29, 2026"
+date: "2026-07-07 09:14 ET"
 format:
   html:
     toc: true
@@ -34,6 +34,8 @@ execute:
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-07 09:14 ET
 :::
 
 ---
@@ -69,6 +71,8 @@ InfoBlox operates the management control plane on AWS GovCloud (CSO FR2017257053
 The agency deploys an InfoBlox NIOS virtual appliance as the Grid Master on-premises (VMware ESXi or physical InfoBlox appliance). Grid Members are deployed in each environment (AWS GovCloud, Azure Government, Oracle OCI, additional on-premises sites) as spokes. The on-premises Grid Master is the authoritative hub; all Grid Members replicate configuration from it and handle local DNS/DHCP/IPAM for their environment. The agency documents NIOS within its own FedRAMP boundary — no ATO inheritance from InfoBlox's CSO. Procurement via GSA Schedule (GS-35F) or agency IDIQ contract vehicle.
 
 > **SSA topology note:** For SSA's multi-cloud architecture spanning AWS GovCloud, Azure Government, Oracle OCI, and on-premises VMware, Path B — NIOS Grid with an on-premises Grid Master — more closely matches SSA's topology. No single cloud provider is the hub; all four environments are equal spokes of the on-premises control plane. The decision between Path A and Path B should involve OIS and the CIO Office, as it determines whether InfoBlox is a shared-responsibility SaaS or an agency-operated infrastructure component. Agency selection pending.
+
+![Deployment Paths — Path A (BloxOne DDI, cloud-managed) vs. Path B (NIOS Grid, agency-operated)](figs/lz-fig-21-deployment-paths.png){fig-alt="Side-by-side comparison of the two InfoBlox deployment paths. Path A — BloxOne DDI (cloud-managed): InfoBlox operates the management plane on AWS GovCloud (CSO FR2017257053, FedRAMP Moderate); agency deploys lightweight On-Prem Hosts in each environment; FedRAMP Moderate authorization inherited from InfoBlox's ATO; procured via AWS GovCloud Marketplace with no separate IDIQ; best fit for a managed control plane and simplest inheritance. Path B — NIOS Grid (agency-operated, highlighted): Grid Master virtual appliance on on-premises VMware as SSA-governed hub; Grid Members in AWS, Azure Gov, OCI, and on-prem sites as equal spokes; documented inside SSA's own FedRAMP Moderate boundary with agency-owned evidence; procured via GSA Schedule GS-35F or agency IDIQ; best fit when no single cloud is the hub and the trust plane stays in-house. Amber note: Path B more closely matches SSA topology; the A/B decision belongs to OIS and the CIO Office; agency selection pending. White background. Source: Book 01 InfoBlox DDI Briefing deck, Date Code 2026-07-07 09:11 ET." width="100%"}
 
 ```{=html}
 </div>
@@ -374,6 +378,8 @@ Legacy DNS was designed for a flat environment: one zone, manual A records, a si
 **Certificate chaos.** Wildcard certificates (`*.ssa.gov`) match one label to the left of the wildcard per RFC 6125 — they cover `api.ssa.gov` but not `prod.api.ssa.gov`. Without consistent subdomain depth, every new workload either requires a dedicated SAN certificate or causes a multi-SAN certificate to be manually updated. Structured subdomains enable structured wildcards: `*.api.ssa.gov` covers all API workloads at one wildcard.
 
 **Uncontrolled split-brain.** When internal and external DNS are not deliberately separated, the same FQDN resolves to different addresses by accident. Controlled split-horizon DNS is the same mechanism — intentional. Internal users get private resolution; external users get public resolution; InfoBlox view policy enforces both. Accidental split-brain is a misconfiguration; deliberate split-horizon is a security boundary.
+
+![Split-Brain DNS — Same Query, Different Answers, and Why Process Discipline Can't Fix It](figs/lz-fig-22-split-brain-dns.png){fig-alt="Diagram showing split-brain DNS failure. Left: an on-prem client and a cloud workload both ask for svc.ssa.gov. Center: two resolvers with the same zone name but different data. Right: Answer A returns 10.1.4.22, a private IP unreachable from cloud; Answer B returns 20.14.8.55, a public IP that routes over the internet. Red panel below lists three structural reasons runbooks and audits fail: the failure is silent — the query succeeds with the wrong answer and surfaces as a network problem; the change surface is too large — every private endpoint and IP change touches up to five DNS systems; and security policy diverges too — an RPZ block applied in one resolver protects nothing behind the other four. White background. Source: Book 01 InfoBlox DDI Briefing deck, Date Code 2026-07-07 09:11 ET." width="100%"}
 
 **Opaque observability.** When all workloads resolve through undifferentiated names, a DNS query log cannot identify the cloud, environment, or service from the FQDN. `prod.api.azure.ssa.gov` is self-documenting. `svc-443-node7.ssa.gov` is not.
 
