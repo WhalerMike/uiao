@@ -2,7 +2,7 @@
 title: "Book 07 — Federal Application-Aware Networking: SQL Server Authentication Modernization"
 subtitle: "Eliminating Domain Credentials from SQL Server — Azure Arc, Entra ID, and Zero-Trust Authentication"
 author: "Federal Cloud Services"
-date: "2026-07-01"
+date: "2026-07-07 16:26 ET"
 format:
   html:
     embed-resources: true
@@ -24,6 +24,8 @@ out-width: "100%"
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-07 16:26 ET
 :::
 
 ::: {.callout-important}
@@ -86,6 +88,8 @@ The inventory drives a consolidation gate before any technical migration begins.
 **Dependency analysis.** Instances with cross-instance linked servers require a migration sequence that respects dependency order. An instance that is a linked-server target for three other instances cannot be migrated until the other three are migrated first.
 
 Instances that survive the consolidation gate proceed to authentication modernization. Instances that do not survive are documented and decommissioned per change management policy.
+
+![The consolidation gate: three lenses, three outcomes](figs/san-fig-07-consolidation-gate.png){#fig-san07 fig-alt="Three lens cards across the top. Utilization and zombie detection in red: no connections in 90 days, low sustained CPU, or no identifiable owning application means zombie candidate — zombies are decommissioned, not migrated. Version and supportability in amber: below SQL Server 2019 and cannot upgrade in place means candidate for Azure SQL Managed Instance or PostgreSQL by workload characteristics. Dependency analysis in navy: cross-instance linked servers dictate migration order — an instance that is a linked-server target for three others migrates after all three. Below, three outcome chips: RETAIN proceeds to authentication modernization; CONSOLIDATE means the workload moves and instance count shrinks; RETIRE means documented and decommissioned per change management. Teal bar: the gate comes first so migration effort is spent only on instances that survive all three lenses — the estate shrinks before it modernizes. White background. Source: Book 07 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
 
 # Arc as the Identity Bridge
 
@@ -232,6 +236,8 @@ Dynamic groups in Entra ID assign membership based on HR-derived attributes: dep
 
 This is the identity lifecycle enforcement mechanism: access is derived from employment status and role, not from a ticket submitted to a DBA.
 
+![Entra dynamic groups: SQL authorization from HR attributes](figs/san-fig-08-entra-perimeter.png){#fig-san08 fig-alt="Three numbered step cards left to right with arrows. Step 1, HR attribute changes: department, job code, location, management chain maintained in the HR system of record, the Part 4 SSOT. Step 2, dynamic group reconciles: Entra ID continuously re-evaluates membership rules against the attributes — no ticket, no manual step. Step 3, SQL access follows: CREATE USER group FROM EXTERNAL PROVIDER maps the group to a database role — membership is the authorization. Teal consequence bar: when an employee's department changes in the HR system, group membership changes automatically and SQL Server access changes with it — access derived from employment status and role, not a ticket to a DBA. Blue series bar: this is Book 04's HR-driven identity SSOT arriving at the database layer — the leaver whose HR record closes loses SQL access in the same reconciliation pass. White background. Source: Book 07 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
+
 ## Conditional Access Policies for SQL
 
 Entra ID Conditional Access policies are applied to the Entra authentication flow that SQL clients use. Policies can enforce:
@@ -307,6 +313,8 @@ After a complete migration, the SQL Server authentication posture looks fundamen
 # Certificate Authority and PKI Dependencies
 
 SQL Server uses TLS for transport encryption. The TLS certificate chain anchors to a certificate authority. In federal environments this is typically an internal PKI (usually ADCS) or a FedRAMP-authorized certificate service.
+
+![PKI: what breaks when the domain goes away](figs/san-fig-09-pki-dependencies.png){#fig-san09 fig-alt="Three stacked rows. Certificate renewal in red: ADCS auto-enrollment stops working when a host is domain-unjoined — a replacement enrollment mechanism, a FedRAMP-authorized CA of the DigiCert or GlobalSign class or Azure Private CA, must be in place before the unjoin. SQL Server TLS configuration in navy: SQL Server reads its TLS certificate from the local store — migrating from ADCS-issued certificates means updating SQL Server Configuration Manager to the new certificate and restarting the service, a scheduled change per instance. Certificate pinning in amber: some connection strings and ODBC configurations pin a specific certificate thumbprint — these must be found in the dependency inventory and updated before the certificate is replaced or they fail at rotation. Blue series bar: the certificate authority decisions were made in Part 1, Landing Zone IPAM DDI PKI — Book 07 consumes that PKI foundation and does not open a new CA decision. White background. Source: Book 07 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
 
 When Active Directory is retired or domain-unjoined servers are migrated to Entra, the ADCS infrastructure that issued server certificates must be addressed:
 
