@@ -2,7 +2,7 @@
 title: "Book 04 — Federal Application-Aware Networking — OPM HRIT and the Identity & Organizational SSOT"
 subtitle: "The Human System of Record · HR-Driven Account Lifecycle · Joiner-Mover-Leaver as Events · The Org Chart as an API"
 author: "Federal Cloud Services"
-date: "2026-07-07 10:54 ET"
+date: "2026-07-07 11:08 ET"
 format:
   html:
     embed-resources: true
@@ -32,7 +32,7 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
 
-**Date Code:** 2026-07-07 10:54 ET
+**Date Code:** 2026-07-07 11:08 ET
 :::
 
 ::: {.callout-important}
@@ -123,6 +123,38 @@ Three remediation strategies are regularly proposed to fix fragmented identity t
 - **"Review our way to correctness."** Quarterly access reviews sample state; they cannot observe transitions. A review that runs ninety days after a separation certifies an orphan for a quarter, and a reviewer confronted with four hundred entitlements approves them in bulk — the rubber-stamp failure mode every assessor recognizes. Reviews are AC-2(j)'s verification layer and this architecture keeps them (sharper — see the organizational SSOT below); but a detective control needs a truth to detect drift *from*, and reviews cannot manufacture the truth they check against.
 
 Every patch preserves the premise — that identity truth can be maintained where it is consumed rather than where it originates — and the premise is the defect. The remediation is not a cleaner copy; it is a designated origin with an event feed.
+
+# OPM HRIT: The Program and Its Timeline
+
+Before this book can designate OPM HRIT as the system of record, it owes the reader an introduction — awareness of the program cannot be assumed, and the architecture that follows makes considerably more sense once its fifty-year backstory is visible.
+
+**What it is.** OPM HRIT is the Office of Personnel Management's Human Resources Information Technology line — the shared-services program through which OPM delivers HR systems and workforce data services across the federal government: personnel action processing (the SF-50 pipeline), the electronic Official Personnel Folder (eOPF), and the government-wide HR data backbone, Enterprise Human Resources Integration (EHRI).
+
+**Who OPM is in this story.** Not just a policy shop. Under OMB M-19-16 (*Centralized Mission Support Capabilities for the Federal Government*, April 2019), OPM was designated the **HR Quality Services Management Office (HR QSMO)** — the government-wide standards owner and storefront for HR IT. The policy direction is explicit: agencies procure HR technology through the QSMO's vetted marketplace rather than building bespoke systems.
+
+**Why SSA touches it.** SSA consumes OPM HRIT services for personnel actions and workforce records today. As OPM modernizes delivery to SaaS — Oracle HCM Cloud, from the externally managed OCI tenancy [Book 01](Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd) placed as the fourth landing-zone environment — SSA's integration surface changes from file and mainframe handoffs to a federated API surface, which is exactly the provisioning feed this book turns into the identity SSOT.
+
+## Fifty Years of Consolidation
+
+Every milestone in the program's history moves the same direction: fewer systems, more authoritative data, shared delivery. The SSOT architecture in this book is not a novel invention — it is the landing point that five decades of federal HR consolidation policy have been driving toward.
+
+| Year | Milestone | What Changed |
+|---|---|---|
+| 1972 | **CPDF** | The Central Personnel Data File — OPM's first government-wide personnel data system |
+| 2002 | **e-Gov era** | e-Payroll consolidates 26 federal payroll providers to 4; eOPF begins digitizing the paper personnel folder |
+| 2004 | **HR Line of Business** | OPM-led shared-services program; the federal HR business reference model; agency HR moves to shared service centers |
+| ~2010 | **EHRI** | Enterprise Human Resources Integration replaces CPDF — the government-wide HR data warehouse plus electronic OPF |
+| 2019 | **HR QSMO** | OMB M-19-16 designates OPM the HR Quality Services Management Office — standards owner and storefront |
+| 2021 | **QSMO marketplace** | The vetted HR IT catalog opens; agencies steered to standards-aligned shared solutions |
+| 2026 | **SaaS delivery** | OPM HRIT modernization delivers the HCM as SaaS (Oracle HCM Cloud, OCI) — the system-of-record feed this book builds on |
+
+: The OPM HRIT timeline — five decades of consolidation {.striped .hover}
+
+![Five decades of consolidation — the OPM HRIT timeline](figs/hrit-fig-08-opm-hrit-timeline.png){#fig-hrit08 fig-alt="Vertical timeline with seven milestones. 1972 CPDF: the Central Personnel Data File, OPM's first government-wide personnel data system. 2002 e-Gov era: e-Payroll consolidates 26 federal payroll providers to 4; eOPF begins digitizing the paper personnel folder. 2004 HR Line of Business: OPM-led shared-services program, the federal HR business reference model, agency HR moves to shared service centers. Around 2010 EHRI: Enterprise Human Resources Integration replaces CPDF as the government-wide HR data warehouse plus electronic OPF. 2019 HR QSMO: OMB M-19-16 designates OPM the HR Quality Services Management Office, standards owner and storefront. 2021 QSMO marketplace: the vetted HR IT catalog opens, agencies steered to standards-aligned shared solutions. 2026 SaaS delivery: OPM HRIT modernization delivers the HCM as SaaS (Oracle HCM Cloud, OCI), the system-of-record feed this book builds on. Caveat footer: program milestones and vendor selections evolve — verify current OPM HRIT program status at engagement time. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 11:03 ET." width="100%"}
+
+::: {.callout-note}
+**Draft-proposal caveat** — program milestones and vendor selections evolve; verify current OPM HRIT program status, marketplace offerings, and the deployed HCM platform at engagement time. The doctrine of this book is deliberately source-agnostic (see the provisioning pipeline below): if the deployed platform changes, the adapter changes and nothing else does.
+:::
 
 # OPM HRIT as the System of Record
 
@@ -226,6 +258,57 @@ Three properties of this design are doctrine, not implementation detail:
 Native HR connectors, where they exist for a given HCM, are permitted as accelerators — but the API-driven path is the canonical architecture, because it is the one that works for *any* source and the only one whose middleware layer can compute organizational attributes and emit provenance before the identity platform ever sees the record.
 
 ![The inbound provisioning pipeline — one entry point, one provenance stream](figs/hrit-fig-06-provisioning-pipeline.png){#fig-hrit06 fig-alt="Four-node pipeline flow: HR system of record (Oracle HCM Cloud, effective-dated events) → integration middleware (normalizes any HCM export to canonical SCIM 2.0, emits provenance per event) → Microsoft Graph bulkUpload API (HTTPS, accepted asynchronously with HTTP 202, near-real-time processing) → Entra ID provisioning (accounts, attributes, lifecycle workflows). Three property bars below: source-agnostic by design — the middleware normalizes any HCM's export, the bulkUpload call is identical regardless of source, the SSOT is a role; one door to instrument — all inbound identity writes flow through the single provisioning surface with a provenance record per event emitted before the Graph call returns, making lineage (SI-12) and drift detection tractable; an engineered envelope — verified operating numbers: 40 calls per 5-second window, 2,000 (P1/P2) or 6,000 (Governance) calls per day, 50 operations per batch, three provisioning agents where AD writeback persists. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 10:50 ET." width="100%"}
+
+## Microsoft's HR-Driven Provisioning: Two Landing Zones
+
+The pattern this book describes has a first-party name in the Microsoft documentation: **HR-driven provisioning**. Awareness of this cannot be assumed, so it is worth stating plainly — the architecture above is not custom middleware glue. Microsoft ships it as a generally available, documented feature family in which the HR system is the start-of-authority for identity lifecycle and the Entra provisioning service carries its records into the directory targets.
+
+Two on-ramps exist: prebuilt cloud-HR connectors (Workday, SAP SuccessFactors), and the **API-driven inbound provisioning** path — the Graph `bulkUpload` endpoint accepting SCIM 2.0 payloads — which is source-agnostic and is the canonical Spec2-D3.1 architecture above. In both cases the provisioning service applies **scoping filters** (who provisions at all) and **expression-based attribute mappings** (how HR fields become directory attributes).
+
+The consequential fact for a coexisting estate: the same HR feed can land in **two different zones**, separately or simultaneously —
+
+- **API-driven inbound provisioning to Entra ID** writes users directly in the cloud directory.
+- **API-driven inbound provisioning to on-premises Active Directory** delivers the same payloads through Entra provisioning agents (deploy three for high availability) that write to AD DS.
+
+![Microsoft HR-driven provisioning — one feed, two landing zones](figs/hrit-fig-09-hr-driven-two-landing-zones.png){#fig-hrit09 fig-alt="Flow diagram: HR system of record (connectors for Workday and SuccessFactors, or API-driven via Graph bulkUpload with SCIM 2.0) feeds the Entra provisioning service (scoping filters, expression-based attribute mappings — first-party, generally available, documented), which fans out to two landing zones: Entra ID (cloud) with direct write of users, attributes, manager relationship, and employeeOrgData; and on-premises Active Directory via Entra provisioning agents (three for high availability) writing to AD DS — OU placement, manager DN, enable/disable. Banner: the architecture is not custom middleware glue — Microsoft ships it as a first-party feature family called HR-driven provisioning; the same HR feed can land in cloud Entra ID, on-premises AD, or both simultaneously during directory coexistence. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 11:03 ET." width="100%"}
+
+### Landing in Active Directory: Containers and the Manager Chain
+
+Most of the estate still lives in on-premises AD, so the AD landing zone deserves detail. Four mechanics:
+
+- **Where the account lands — the OU is computed, not hand-picked.** The `parentDistinguishedName` attribute mapping derives the destination container from HR attributes; Microsoft's planning guidance shows expression rules (a `Switch` over department or location) selecting the OU. Placement by rule ends the drag-and-drop tradition that produced the twelve drifted regional trees.
+- **The reporting line becomes a queryable chain.** The provisioning service resolves the supervisor by `employeeId` match against already-provisioned users and writes AD's `manager` attribute as a DN reference. Exchange, the address book, and approval tooling read that chain; manager updates flow on mover events.
+- **The attribute surface carries the worker record.** `department`, `title`, `division`, `company`, `employeeId`, `employeeType`, and `extensionAttributes` project the worker record into AD; scoping filters exclude populations that should not provision, and expressions construct UPNs and display names consistently.
+- **The operational floor.** Entra provisioning agents — three, for high availability, per the verified envelope above — perform the AD DS writes from inside the agency network. Accounts enable on the hire date and disable on the leave date: effective dating flows all the way down to the domain controller.
+
+The caveat that motivates the rest of this book: **AD stores structure as *place*.** An OU is a container, and Group Policy that reads OU position inherits every reorganization. HR-driven provisioning keeps AD *correct*; it cannot make AD's model attribute-native.
+
+### Landing in Entra ID: Attributes, Not Containers
+
+Entra ID has no OUs. The worker record lands as **first-class attributes**, and organizational structure becomes data:
+
+- **The attribute surface.** `manager` (a directory *relationship*, not a string — it powers the organization chart in Teams and Outlook profile cards), `department`, `jobTitle`, `employeeId`, `employeeType`, `employeeHireDate` / `employeeLeaveDateTime`, and `employeeOrgData` with `costCenter` and `division`. The attribute authority map earlier in this book, realized in Microsoft's own schema.
+- **Structure becomes computation.** Dynamic membership rules evaluate those attributes continuously — nobody joins a group and nobody forgets to leave one. Access packages route approvals to the `manager` relationship (the supervisor of record). Administrative units scope delegated administration by attribute — the OU's one legitimate remaining job, reimplemented without making policy read a container path.
+- **Lifecycle is platform-native.** Entra Lifecycle Workflows trigger directly off `employeeHireDate` and `employeeLeaveDateTime`: pre-hire onboarding, day-one enablement, and leaver revocation run as first-class platform features keyed to the HR effective dates — not as scheduled scripts someone maintains.
+
+The visible payoff for every employee: the org chart in Teams and Outlook stops being decorative. When `manager` and `employeeOrgData` derive from the HR record, the profile card *is* the supervisory org — the same truth that routes approvals and computes access.
+
+### Absorbing Organizational and Reporting Structure: AD versus Entra ID
+
+| Dimension | Active Directory | Entra ID |
+|---|---|---|
+| Structural container | OU tree — structure as *place*; GPO reads position | None — structure as *attributes*; policy reads claims and groups |
+| Reporting line | `manager` DN reference — Exchange, address book | `manager` relationship — org chart in Teams/Outlook, approval routing |
+| Org placement | OU computed at provisioning (`parentDistinguishedName`) | `employeeOrgData` (division, costCenter) + `department`, stamped |
+| Membership | Static groups, nesting, manual or scripted | Dynamic membership rules — computed, continuously evaluated |
+| Delegated admin | OU ACL delegation | Administrative units, attribute-scoped |
+| Reorg cost | OU restructure + GPO re-link — a migration project | Attribute re-stamp + rule re-evaluation — a data change |
+
+: Absorbing organizational and reporting structure — AD versus Entra ID {.striped .hover}
+
+![Absorbing org and reporting structure — AD versus Entra ID](figs/hrit-fig-10-ad-vs-entra-org-structure.png){#fig-hrit10 fig-alt="Six-row comparison table between Active Directory and Entra ID. Structural container: OU tree, structure as place, GPO reads position — versus none, structure as attributes, policy reads claims and groups. Reporting line: manager DN reference consumed by Exchange and the address book — versus manager relationship powering the org chart in Teams and Outlook and approval routing. Org placement: OU computed at provisioning via parentDistinguishedName — versus employeeOrgData (division, costCenter) plus department, stamped. Membership: static groups, nesting, manual or scripted — versus dynamic membership rules, computed and continuously evaluated. Delegated admin: OU ACL delegation — versus administrative units, attribute-scoped. Reorg cost: OU restructure plus GPO re-link, a migration project — versus attribute re-stamp plus rule re-evaluation, a data change. Banner: both absorb the structure; only one absorbs it as data — Microsoft's own platform direction agrees with the series doctrine: overlay the drifted OU estate with attributes, and retire it. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 11:03 ET." width="100%"}
+
+Both directories can absorb the org chart via HR-driven provisioning — but only one absorbs it as data. The row that decides the argument is the last one: an AD reorganization is a migration project with months of drift; an Entra reorganization is a data change. Microsoft's platform direction and this series' overlay-and-retire doctrine point the same way: provision **both** zones during coexistence, read structure from attributes, and retire OU-bound policy deliberately (Phase 4 below, in coordination with [Part 5](Book_05_FedAAN_Network_Modernization.qmd)).
 
 ## One Person, One Identifier
 
