@@ -2,7 +2,7 @@
 title: "Book 06 — Federal Telecommunications Modernization"
 subtitle: "Amazon Connect, Teams Phone, and the Network Architecture That Must Support Them"
 author: "Michael Stratton"
-date: "2026-06-29"
+date: "2026-07-07 16:04 ET"
 format:
   html:
     embed-resources: true
@@ -29,6 +29,8 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-07 16:04 ET
 :::
 
 ::: {.exec-summary}
@@ -182,7 +184,11 @@ Microsoft Teams Phone is the cloud PBX capability within Microsoft 365 that enab
 
 Teams Phone is not a separate application or interface. An agent answering a Teams Phone call and an agent joining a Teams meeting use the same client, the same audio path, the same DSCP EF marking for audio streams, and the same network dependency on low-latency, low-jitter connectivity to Microsoft's GCC infrastructure. **Fixing the network for Teams meetings fixes it for Teams Phone simultaneously.**
 
+![Teams Phone: the cloud PBX inside GCC Moderate](figs/tc-fig-15-teams-phone-gcc.png){fig-alt="Three stacked summary rows. Row 1, cloud PBX in the Teams client: extension dialing, voicemail, transfer, call queues, auto attendants, PSTN connectivity — replacing the on-premises telephone system through the client agents already run. Row 2, inside the existing boundary: operates within GCC Moderate with the same FedRAMP Moderate authorization, data residency, and feature availability constraints as the rest of the agency M365 environment — no new boundary complications. Row 3, same audio path as Teams meetings: a Teams Phone call and a Teams meeting use the same client, audio path, DSCP EF marking, and dependency on low-latency connectivity to GCC infrastructure. Teal consequence bar: fixing the network for Teams meetings fixes it for Teams Phone simultaneously — the Book 05 SD-WAN work and this book's telephony work are the same investment. White background. Source: Book 06 Telecom Modernization briefing deck, Date Code 2026-07-07 15:57 ET." width="100%"}
+
 ## PSTN Connectivity: Direct Routing and the SBC
+
+![PSTN connectivity: Calling Plans, Direct Routing, and the SBC decision](figs/tc-fig-16-pstn-sbc-options.png){fig-alt="Two side-by-side option cards. Left, Microsoft Calling Plans: PSTN connectivity as a licensed add-on, simplest operational model with no SBC to run, confirm availability in GCC Moderate for the agency's geographic footprint and number types before committing. Right, Direct Routing with SBC: the agency connects its PSTN carrier via a Microsoft-certified Session Border Controller that terminates carrier SIP trunks and presents them to Teams — natural candidates given the existing Cisco voice estate are Cisco CUBE or an AudioCodes or Ribbon-class cloud SBC. Grey panel below: two viable SBC deployment models — on-premises at the Washington data center is a familiar model but hairpins all PSTN traffic and is a single point of failure; a vendor-hosted cloud SBC is geographically distributed with multiple PoPs and removes the single point of failure. Amber procurement gate: a cloud SBC used with a FedRAMP Moderate system must itself hold FedRAMP authorization at the Moderate baseline or above — confirm on the Marketplace before procurement. White background. Source: Book 06 Telecom Modernization briefing deck, Date Code 2026-07-07 15:57 ET." width="100%"}
 
 Connecting Teams Phone to the PSTN requires one of two approaches:
 
@@ -290,6 +296,8 @@ When telecommunications modernization proposals include "we will add DIA at fiel
 # TIC 3.0: The Policy That Makes Local Breakout Lawful
 
 The G.114 argument is the physics half of the case for local breakout: the 150 ms one-way ceiling is an engineering specification, the MPLS hairpin spends the budget before the call begins, and no procurement decision changes the propagation delay of a Portland-to-Washington detour. Physics explains why the agency *needs* DIA at field offices. It does not answer whether the agency *may have* it. That is a policy question, and the policy is TIC 3.0.
+
+![TIC 3.0: the two use cases governing agency voice and the permissibility rule](figs/tc-fig-17-tic3-pep.png){fig-alt="A two-row table mapping the TIC 3.0 use cases that govern agency voice. Branch Office, Use Case E: field office agents on Amazon Connect and Teams Phone, traffic path field office to local DIA to AWS .com or M365 GCC, policy enforcement point at or near the branch egress as SD-WAN edge plus SASE services. Remote User, Use Case F: teleworking agents and staff, home network to internet to cloud voice platforms, PEP as the cloud-delivered SASE PoP with ZTNA replacing VPN. Teal permissibility panel: TIC 3.0 under OMB M-19-26 replaced mandatory consolidation with a use-case model — both use cases permit traffic to leave without hairpinning through a TIC access point, and neither permits it to leave ungoverned; the security-capabilities catalog must be satisfied at the distributed PEP, and the SASE stack is that PEP. Red panel: an ungoverned DIA circuit is not modernization, it is a finding — the bare circuit that fixes G.114 deletes the SC-7 boundary the MPLS-to-TIC path did provide, while with the SASE PEP in place the same circuit is the TIC 3.0 target architecture. White background. Source: Book 06 Telecom Modernization briefing deck, Date Code 2026-07-07 15:57 ET." width="100%"}
 
 Under the TIC 2.x model, every byte of agency internet traffic was required to egress through a small number of consolidated TIC access points — the architecture that created the hairpin in the first place. TIC 3.0 (OMB M-19-26) replaced mandatory consolidation with a use-case model: agencies may distribute their internet egress, provided the protections that the consolidated boundary used to provide are re-established at each distributed egress point. Those protections are enumerated in the **TIC 3.0 Security Capabilities Catalog**, and the place they must be applied is the **policy enforcement point (PEP)** governing each traffic path.
 
