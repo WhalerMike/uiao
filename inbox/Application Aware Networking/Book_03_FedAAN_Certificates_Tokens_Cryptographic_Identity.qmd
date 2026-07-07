@@ -2,7 +2,7 @@
 title: "Book 03 — Federal Application-Aware Networking — Certificates & Tokens: Cryptographic Identity"
 subtitle: "PKI as a Naming-Plane Function · ACME Lifecycle Automation · OAuth 2.0/OIDC · Phishing-Resistant MFA · Workload Identity"
 author: "Federal Cloud Services"
-date: "2026-07-06"
+date: "2026-07-07 10:36 ET"
 format:
   html:
     embed-resources: true
@@ -31,6 +31,8 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-07 10:36 ET
 :::
 
 ::: {.callout-important}
@@ -194,6 +196,8 @@ Public CAs cover names the public Internet must trust. Everything else — devic
 
 : The internal trust hierarchy — key protection descends as lifetime shortens {.striped .hover}
 
+![The internal trust hierarchy — offline root, purpose-scoped issuing CAs, automated end entities](figs/ct-fig-06-trust-hierarchy.png){#fig-ct06 fig-alt="Cascading three-tier diagram of the internal PKI trust hierarchy. Tier 1, Root CA: HSM, offline, never network-reachable; signs exactly two things — issuing CA certificates and its own CRL; exercised only at ceremonies; lifetime decades. Tier 2, Issuing CAs: HSM, online, enrollment protocols only (ACME, SCEP, EST); purpose-scoped per credential class and name-constrained to agency namespaces; lifetime years. Tier 3, End entities: TPM, smart card, or platform key store; devices, servers, users, workloads; lifetime days to months with automated renewal and a new key at every renewal. Red banner: design rules, non-negotiable — offline root, purpose-scoped issuing CAs, name-constrained issuance, status infrastructure run as a monitored production service. White background. Source: Book 03 Certificates & Tokens briefing deck, Date Code 2026-07-07 10:32 ET." width="100%"}
+
 > **Closure Necessity — SC-17 certificate issuance under policy.** SC-17 requires certificates to be issued under an organization-defined certificate policy and requires trust stores to contain only approved trust anchors. A written certificate policy constrains no one at the moment of issuance; the only machine-enforced expression of issuance policy is the CAA record in the authoritative zone, checked by protocol at every public issuance, paired with an internal CA whose enrollment gates (SCEP/EST/ACME) execute against the same authoritative naming plane. There is no scanner, memo, or procurement clause that prevents an unauthorized issuance after the fact — only the naming plane can refuse it before the fact.
 
 # Certificate Lifecycle Automation — The End of the Spreadsheet CA
@@ -278,6 +282,8 @@ The properties that follow are exactly the ones the multipath analysis demanded:
 | **Refresh token** | The right to obtain new access tokens without re-authentication | Only the identity provider | Long-lived but revocable, bound to the client and evaluated against policy at every redemption | The high-value target; every redemption re-enters the policy gate, so revocation and risk signals cut it off |
 
 : The three token artifacts and their theft economics {.striped .hover}
+
+![The refresh token is the high-value target — and every redemption re-enters the policy gate](figs/ct-fig-07-token-anatomy.png){#fig-ct07 fig-alt="Three-chip progression diagram of the token layer: ID token (OIDC), access token (OAuth 2.0), and refresh token (highlighted, labeled the high-value target). Below, three attribute bars for the refresh token: Asserts — the right to obtain new access tokens without re-authentication; Lifetime posture — long-lived but revocable, policy-evaluated at every redemption; If stolen — must survive the policy gate every time: device compliance, risk, revocation. White background. Source: Book 03 Certificates & Tokens briefing deck, Date Code 2026-07-07 10:32 ET." width="100%"}
 
 Two engineering consequences follow. First, **the policy gate runs more than once**: refresh-token redemption re-evaluates conditional access, so a device that falls out of compliance or a user whose risk score spikes loses access at the next refresh — continuous access evaluation tightens this further by pushing revocation events to resources between refreshes. Second, **token signing keys are SC-12 objects**: the identity provider's signing keys, published for verification and rotated on schedule, are cryptographic keys whose generation, rotation, and retirement follow the same lifecycle discipline as every certificate in this book. Relying services fetch current keys from the issuer's published metadata; key rotation is invisible to applications *because* verification was built against the published set, not against a hardcoded key — the same "automation, not custody" doctrine, applied to the trust fabric itself.
 
@@ -383,6 +389,8 @@ Later parts repeat the same move against other estates — privileged sessions (
 # Phased Implementation
 
 The sequencing principle: **establish truth before demanding it.** Each phase creates the inventory and telemetry that make the next phase's enforcement decisions safe. Durations are indicative for a mid-size federal estate; the ordering is not optional, because each phase's gate is the previous phase's output.
+
+![The four implementation phases and their gates — discovery, automation, token migration, workload conversion](figs/ct-fig-08-phased-implementation.png){#fig-ct08 fig-alt="Four-phase implementation flow with gates. Phase 1, estate discovery (weeks 1-4): scan every listener, export every CA database, audit trust stores, correlate against IPAM, enable authentication-protocol auditing; gate — every production certificate has an owner, an issuer, and an IPAM binding, or an investigation ticket. Phase 2, issuance automation (weeks 5-12): offline root ceremony, purpose-scoped issuing CAs on HSMs, CAA published in every public zone, ACME wired to the DDI API, SCEP/EST confirmed on the Book 02 pipeline; gate — zero manual issuance requests for covered classes in a 30-day window. Phase 3 (highlighted), token migration and phishing-resistant MFA (weeks 13-24): applications registered to the IdP, phishing-resistant authenticators enforced privileged-first per IA-2(1) then everyone per IA-2(2), legacy authentication disabled tenant-wide per BOD 25-01; gate — legacy auth blocked with measured zero business impact. Phase 4, workload identity conversion (weeks 25-40): inventory every stored secret, convert to managed identities, federate cross-platform, expire vacated secrets; gate — secret inventory trends monotonically to zero with named, expiring exceptions. White background. Source: Book 03 Certificates & Tokens briefing deck, Date Code 2026-07-07 10:32 ET." width="100%"}
 
 ## Phase 1 — Certificate Estate Discovery (Weeks 1–4)
 
