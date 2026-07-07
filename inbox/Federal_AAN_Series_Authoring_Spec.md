@@ -31,6 +31,7 @@ YYYY-MM-DD HH:MM ET
 | `.docx` (rendered) | Inherited from the `.qmd` render — verify the title block shows the full code after each render |
 | `.html` (rendered) | Inherited from the `.qmd` `date:` field |
 | `.pptx` briefing | Visible `Date Code:` line on the title slide (inside or beside the draft-proposal disclaimer) |
+| `.zip` kit archive | Date Code **in the filename**, filename-safe form `YYYY-MM-DD_HHMMET` (e.g., `AAN_Federal_Series_Complete_2026-07-07_1202ET.zip`). Individual files inside keep plain names — their codes live in their content. Exactly one zip is kept per location; the rebuild deletes the previously-coded zip (newest code wins) |
 
 ### Update discipline
 
