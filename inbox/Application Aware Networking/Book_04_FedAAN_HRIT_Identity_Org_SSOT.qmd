@@ -2,7 +2,7 @@
 title: "Book 04 — Federal Application-Aware Networking — OPM HRIT and the Identity & Organizational SSOT"
 subtitle: "The Human System of Record · HR-Driven Account Lifecycle · Joiner-Mover-Leaver as Events · The Org Chart as an API"
 author: "Federal Cloud Services"
-date: "2026-07-06"
+date: "2026-07-07 10:54 ET"
 format:
   html:
     embed-resources: true
@@ -31,6 +31,8 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-07 10:54 ET
 :::
 
 ::: {.callout-important}
@@ -223,6 +225,8 @@ Three properties of this design are doctrine, not implementation detail:
 
 Native HR connectors, where they exist for a given HCM, are permitted as accelerators — but the API-driven path is the canonical architecture, because it is the one that works for *any* source and the only one whose middleware layer can compute organizational attributes and emit provenance before the identity platform ever sees the record.
 
+![The inbound provisioning pipeline — one entry point, one provenance stream](figs/hrit-fig-06-provisioning-pipeline.png){#fig-hrit06 fig-alt="Four-node pipeline flow: HR system of record (Oracle HCM Cloud, effective-dated events) → integration middleware (normalizes any HCM export to canonical SCIM 2.0, emits provenance per event) → Microsoft Graph bulkUpload API (HTTPS, accepted asynchronously with HTTP 202, near-real-time processing) → Entra ID provisioning (accounts, attributes, lifecycle workflows). Three property bars below: source-agnostic by design — the middleware normalizes any HCM's export, the bulkUpload call is identical regardless of source, the SSOT is a role; one door to instrument — all inbound identity writes flow through the single provisioning surface with a provenance record per event emitted before the Graph call returns, making lineage (SI-12) and drift detection tractable; an engineered envelope — verified operating numbers: 40 calls per 5-second window, 2,000 (P1/P2) or 6,000 (Governance) calls per day, 50 operations per batch, three provisioning agents where AD writeback persists. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 10:50 ET." width="100%"}
+
 ## One Person, One Identifier
 
 IA-4 requires managing identifiers by receiving authorization to assign them, selecting and assigning them to the intended entity, and **preventing their reuse** for a defined period. The enterprise discipline this architecture implements is stricter and simpler: **one person, one identifier, for the life of the affiliation — across every account, system, rehire, and conversion.**
@@ -247,6 +251,8 @@ The leaver sequence deserves its own statement, because it is where the fragment
 6. **Disposition data** — mailbox archive or conversion, file ownership transfer, retention and litigation-hold exceptions applied per policy rather than per memory.
 
 Each step emits a timestamped evidence record; the *distance between the HR effective date and the last revocation timestamp* becomes a measured, reportable ConMon metric instead of an unknowable. Emergency terminations take a defined manual entry into the *same* sequence — the trigger is human, the execution and the evidence are identical.
+
+![The six-step leaver sequence — executed on the effective date, evidenced per step](figs/hrit-fig-05-leaver-sequence.png){#fig-hrit05 fig-alt="Six numbered step cards in two rows: 1 disable the account — the sign-in gate closes first; 2 revoke sessions and refresh tokens — takes effect in token-lifetime minutes, not at next sign-in; 3 verify — read back the revocation state, an unconfirmed step didn't happen as far as evidence is concerned; 4 remove memberships and packages — entitlements end even where an application caches identity; 5 revoke credentials — certificates via Book 03, the device's port admission via Book 02; 6 disposition data — mailbox, file ownership, retention and litigation holds per policy, not per memory. Teal banner: each step emits a timestamped evidence record — the distance between the HR effective date and the last revocation timestamp becomes a measured ConMon metric; emergency terminations take a defined manual entry into the same sequence. Blue banner: the network cannot see a termination, the SIEM sees absence indistinguishable from leave, the review is up to 90 days late — only one system records the separation as a fact with a date. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 10:50 ET." width="100%"}
 
 Contrast the input signals available to any alternative mechanism. The network cannot see a termination — the leaver's laptop authenticates on their last day exactly as it did the day before. The SIEM sees *absence of activity*, which is indistinguishable from leave. The quarterly access review discovers the account up to ninety days late. Only one system in the enterprise records the separation as a first-class fact with an effective date — and once it does, everything downstream is a subscription.
 
@@ -344,6 +350,8 @@ This is the hinge from substrate to application. Every later part consumes this 
 # Phased Implementation
 
 The sequencing principle is inherited from Book 03 and sharpened: **designate truth, prove the pipe, automate the lifecycle, then derive access.** Each phase's gate is the next phase's precondition; the ordering is not optional, because deriving access from attributes nobody has agreed to trust is how fragmented truth gets rebuilt with better tooling. One honest caveat governs the whole program: the authoritative source must be *correct*, not merely *designated* — a drifted HR feed produces a drifted SSOT, so data-quality remediation is Phase 1 work, not a someday.
+
+![The four implementation phases and their gates — truth, pipe, actions, derivations](figs/hrit-fig-07-phased-implementation.png){#fig-hrit07 fig-alt="Four-phase implementation flow with gates. Phase 1, attribute authority agreement (weeks 1-6): signed authority map, source data remediated, every account correlated to a worker record; gate — every enabled account correlated or on a dated exception list. Phase 2, inbound provisioning pilot (weeks 7-14): Spec2-D3.1 pipeline in shadow mode, provenance stream, envelope sized against verified limits; gate — 30 days with every pipeline-versus-directory difference explained. Phase 3 (highlighted), lifecycle automation (weeks 15-26): joiner-mover-leaver from HR events, leaver first, measured intervals, exception paths into the same evidence; gate — zero missed leavers over a full cycle, hours-scale revocation. Phase 4, org-SSOT-derived access (weeks 27-40): attributes stamped tenant-wide, groups converted to rules, packages re-based, OU bindings retiring; gate — a test reorganization propagates with zero manual directory changes. White background. Source: Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 10:50 ET." width="100%"}
 
 ## Phase 1 — Attribute Authority Agreement (Weeks 1–6)
 
