@@ -1,7 +1,7 @@
 # Federal AAN / ConMon Compliance Gap Roadmap
 **As of July 7, 2026 — Internal UIAO Working Document**
 
-**Date Code:** 2026-07-07 11:52 ET
+**Date Code:** 2026-07-07 15:18 ET
 
 ---
 
@@ -43,6 +43,8 @@ source of truth for federal dates; the Books cite subsets of it.*
 | Oct 2018 | **BOD 18-01** | DMARC p=reject; HTTPS everywhere | SC-8; email auth (DNS) | Part 1 (DNS records) |
 | Nov 3, 2021 | **BOD 22-01** (KEV) | Remediate Known Exploited Vulnerabilities on CISA timelines | RA-5, SI-2 | Part 11 |
 | Apr 3, 2023 | **BOD 23-01** | Asset visibility + vulnerability enumeration reporting | CM-8, RA-5 | Parts 1, 2, 11 |
+| Jun 13, 2023 | **BOD 23-02** | Networked management interfaces removed from the public internet or protected by ZTA capability — within 14 days of identification, ongoing | AC-17, CM-7, SC-7 | Parts 5, 10 (PAW/ZTNA) |
+| Annual (FY cycle) | **FISMA CIO Metrics** | Quarterly + annual CyberScope reporting against the CIO metrics; FY26 cycle measures ZT maturity, logging, MFA, and asset coverage | PM, CA families | Book 19 ConMon feeds; measured-lifecycle metrics (Part 4) |
 | Sep 30, 2024 | **OMB M-22-09** (Zero Trust) | Phishing-resistant MFA, app-layer enforcement — goals due end FY2024; **not superseded**: M-24-14 (Jul 2024) + M-25-04 (Jan 2025) continue maturation; FISMA/CDM still measure progress | IA-2(1)/(2), AC-4, SI-4 | Parts 3, 5 |
 | Nov 18, 2022 → 2035 | **OMB M-23-02** (PQC) | Annual cryptographic inventories through 2035; migration leads; funding assessments | SC-12, SC-13 | Parts 3, 12 |
 | Aug 13, 2024 | **NIST FIPS 203/204/205** | PQC algorithms standardized (ML-KEM, ML-DSA, SLH-DSA) | SC-13 | Parts 3, 12 |
@@ -87,10 +89,107 @@ source of truth for federal dates; the Books cite subsets of it.*
 **Timeline sources (verified 2026-07-07):** FedRAMP Consolidated Rules for
 2026 announcement + timeline (fedramp.gov/20x); CISA BOD 26-04 directive +
 implementation guidance (cisa.gov); FedRAMP notice 0014 (BOD 26-04 response —
-VDR/VER Dec 7, 2026); CISA BOD 25-01 (cisa.gov); NIST SP 800-53 Release 5.2.0
-change summary (csrc.nist.gov, Aug 27, 2025); OMB M-22-09 / M-21-31 / M-21-07 /
-M-23-02 (whitehouse.gov); NSA CNSA 2.0 (v2.1, Dec 2024); NIST FIPS 140-2
-Historical List transition (Sep 21, 2026).
+VDR/VER Dec 7, 2026); CISA BOD 25-01 / 23-02 (cisa.gov); NIST SP 800-53
+Release 5.2.0 change summary (csrc.nist.gov, Aug 27, 2025); OMB M-22-09 /
+M-21-31 / M-21-07 / M-23-02 (whitehouse.gov); NSA CNSA 2.0 (v2.1, Dec 2024);
+NIST FIPS 140-2 Historical List transition (Sep 21, 2026); CISA FISMA CIO
+metrics / CyberScope reporting guidance.
+
+### Scoping notes — adjacent regimes, deliberately bounded
+
+- **AI governance (OMB M-24-10, superseded Apr 2025 by M-25-21/M-25-22; NIST
+  AI RMF):** out of scope for this series *as long as no AI system component
+  sits inside the authorization boundary*. The series' network, identity, and
+  evidence planes carry no AI decision systems. If SSA deploys AI within the
+  boundary, the AI use-case inventory, risk management, and transparency
+  requirements attach — track the decision in the PM governance layer
+  (Book 16) and revisit this note. (The SSA reviewer's reference to
+  "M-24-04" conflates the FY24 FISMA guidance memo with the AI memo; the
+  correct citations are above.)
+- **Privacy lifecycle (PIA/PTA under OMB A-130):** the control-family mapping
+  is Part 17's PT coverage (Rev 5 integrated the former Appendix J privacy
+  controls into the catalog; Appendix J no longer exists as such). The
+  PIA/PTA *procedure* lifecycle — privacy threshold analysis at system
+  change, privacy impact assessment before PII processing changes — is an
+  agency SOP artifact layered on Part 17's DFL-001..006 data-flow maps.
+  Flagged as Part 17 backlog: PTA/PIA procedure templates keyed to the
+  data-flow map identifiers.
+- **Memory-safe languages (CISA/NSA joint guidance, *The Case for
+  Memory-Safe Roadmaps*, Dec 2023; CISA Secure by Design):** guidance aimed
+  at software *manufacturers*, not a directive binding on agencies — and
+  distinct from BOD 23-02, which covers internet-exposed management
+  interfaces and appears in the timeline above. The series hook is Part 15
+  vendor diligence: whether a supplier publishes a memory-safety roadmap
+  joins the SCRM evaluation criteria alongside SBOM/VDR posture.
+
+---
+
+## Mechanism, Not Product — Alternative Implementation Paths
+
+*Added 2026-07-07 in response to SSA review feedback. The feedback correctly
+observed that the series' "no alternate closure path" language can be
+misread. The clarification, stated plainly:*
+
+> **Closure necessity names mechanism classes, never products.** "Only
+> port-based authentication closes IA-3" is a claim about protocol behavior;
+> it is falsifiable and it names no vendor. The products named throughout
+> the series (InfoBlox, NPS, Cisco Catalyst SD-WAN, Entra ID, Oracle HCM
+> Cloud, Sentinel) are **deployed examples of the mechanism**, chosen for
+> SSA's current estate. For every layer there are FedRAMP-authorized
+> alternatives that satisfy the same mechanism — and per program doctrine,
+> **the agency must select one path per layer, and the selected path becomes
+> mandatory once chosen.** Multiple compliant paths exist before the choice;
+> exactly one exists after it.
+
+| Layer (mechanism that closes the controls) | Deployed example | FedRAMP-authorized alternatives (verify current status on the Marketplace) | What changes on substitution |
+|---|---|---|---|
+| **Unified DDI** — authoritative DNS/DHCP/IPAM with DNSSEC + RPZ (SC-20/21/22, CM-8) | InfoBlox NIOS / BloxOne | BlueCat Integrity; composite path: Azure DNS Private Resolver + Route 53/AWS IPAM + Windows DHCP | Adapter/connector work per cloud; the composite path forfeits the single policy plane and re-opens the split-brain risk the whitepaper documents — compensating reconciliation required |
+| **NAC / RADIUS** — 802.1X EAP-TLS at the port (IA-3, SC-7(3)/(5)) | Microsoft NPS | Cisco ISE; Aruba ClearPass; Forescout | Same EAP-TLS + Entra inventory pattern (Book 02 already names these); policy syntax, posture connectors, and CoA integration differ |
+| **SD-WAN** — active-active multipath overlay with per-app steering (SC-8, AC-4, AU-12) | Cisco Catalyst SD-WAN | Palo Alto Prisma SD-WAN; Fortinet Secure SD-WAN; Versa; VMware VeloCloud | Book 05 Appendix A's boundary table and KSI evidence contracts re-derived per vendor; an M365 Cloud OnRamp equivalent must exist |
+| **SASE / SSE** — distributed TIC 3.0 PEP (SC-7, SI-3, AC-4) | Cisco Umbrella | Zscaler; Netskope GovCloud; Palo Alto Prisma Access | TIC 3.0 capability mapping redone at the new PEP; M365 Optimize-category exemption honored identically |
+| **Identity provider** — token issuance + conditional access (IA-2, AC-2) | Entra ID (GCC) | Okta for Government; Ping Government | Entra is structurally coupled to M365 GCC — alternatives realistically front non-M365 applications rather than replace the tenant IdP |
+| **HR system of record** — event-driven identity SSOT (AC-2, PS-4/5, IA-4) | Oracle HCM Cloud | Workday Government Cloud; SAP SuccessFactors (gov) | **None of the doctrine changes.** Spec2-D3.1 is source-agnostic by design: the middleware adapter changes, the SCIM pipeline and every downstream derivation do not (Book 04) |
+| **SIEM / evidence plane** — unified telemetry + analytics (AU-6, SI-4, IR-4) | Microsoft Sentinel | Splunk (GovCloud); Elastic (gov offerings); Devo (gov) | Detection content rewritten (KQL → SPL/EQL); the slot evidence contracts and OSCAL emitters are format-stable and unchanged |
+| **PAM** — JIT elevation + privileged workstations (AC-5/6, IA-11) | Entra PIM + PAW | CyberArk (gov); BeyondTrust; Delinea | JIT activation and approval routing still resolve against the Part 4 org SSOT; workflow integration differs |
+| **Certificate lifecycle** — CLM bound to the DNS SSOT (IA-5(2), SC-17) | Keyfactor / Sectigo (named in Part 1) | Venafi; AppViewX | The DNS-name-as-SSOT binding pattern is the invariant; connector estate differs |
+| **MDM / posture** — compliance signal into NAC + CA (CM-2/6) | Microsoft Intune | Omnissa Workspace ONE (gov); Jamf (macOS estate) | SCEP profile delivery and a compliance API the RADIUS layer can query are the invariants |
+
+**What is deliberately *not* integrated here:** the NGTP procurement bid
+matrices (Vendor A–F). Those are source-selection-sensitive acquisition
+documents; folding them into an architecture corpus would compromise the
+procurement. This table serves the same leadership question ("are there
+other ways to comply?") from public, non-competitive information.
+
+---
+
+## GCC-Moderate Boundary Gaps — Where the Compensating-Control Work Lives
+
+The SSA review asked for a "compensating control matrix for GCC-Moderate
+feature gaps." **That artifact exists and is maintained outside this
+roadmap**, in the CSI Team's GCC Moderate boundary-analysis workstream (the
+SCuBA / FedRAMP boundary-limitations briefs and their gap registers):
+
+- A **machine-readable telemetry-gap register** — the signal source of
+  truth: every telemetry and feature signal unavailable at the GCC Moderate
+  service level, with per-signal fix coverage.
+- A **fix-coverage matrix** regenerated automatically from that register on
+  every change, so the matrix cannot drift from the register it summarizes.
+- The boundary analysis's honest finding, restated here so this roadmap
+  cannot be read as contradicting it: **full compensation is *not*
+  achievable** for every gap at GCC Moderate. Gaps divide into compensable
+  (compensating control documented), partially compensable (residual risk
+  accepted and registered), and non-compensable (candidate input to any
+  future boundary-variance discussion).
+- Boundary *expansion* analysis (GCC High and above) deliberately lives in
+  that workstream, not in this series — the series is scoped **FedRAMP
+  Moderate only**, and boundary-variance decisions are an OIS/CIO
+  governance matter informed by the registers.
+
+This roadmap **defers** to that workstream rather than duplicating it. The KSI
+consequence is already wired: the ScuBA-based rules (KSI-001..010) carry
+ScubaDrift dispositions that distinguish governed exceptions from actionable
+drift — a governed exception backed by the gap register is evidence, not a
+finding.
 
 ---
 
