@@ -2,7 +2,7 @@
 title: "Book 09 — Federal Application-Aware Networking: Database Consolidation and Network Physics"
 subtitle: "SSOT Architecture, Propagation Delay, SD-WAN Traffic Classification, and Token-Based Security for Federal Database Infrastructure"
 author: "Federal Cloud Services"
-date: "2026-07-01"
+date: "2026-07-08 12:36 ET"
 format:
   html:
     embed-resources: true
@@ -24,6 +24,8 @@ out-width: "100%"
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-08 12:36 ET
 :::
 
 ::: {.callout-important}
@@ -117,6 +119,8 @@ And it is *only* a latency fix. A DIA circuit satisfies exactly zero NIST contro
 
 Applied to this document's subject, the doctrine reads: place the primary at the regional center of gravity of its write consumers, because that is arranging around the floor; let SD-WAN attack the addressable gap between the floor and observed latency, because that is the portion engineering can reach; assign each workload the consistency class its geography can actually deliver, because pretending otherwise just relocates the physics into mysterious query latency. Architecture is not the act of overcoming physics. It is the act of arranging around what physics permits — and the propagation floor is where that discipline starts.
 
+![Physics is not a procurement decision](figs/db-fig-05-physics-not-procurement.png){#fig-db05 fig-alt="Three stacked doctrine rows. Row 1, budgets physics sets and no acquisition changes: voice carries G.114's 150 ms ceiling; a strongly consistent LA-to-DC read costs 54 ms round trip before processing — regardless of what the contract says or which vendor sold the circuit; non-negotiable inputs to architecture. Row 2, exactly one purchase touches the floor: where traffic enters the network — DIA local breakout shortens the physical path by removing the geographic hairpin, the same move as regional database placement; distance is the only latency variable a buyer controls. Row 3 in red, and it is only a latency fix: a DIA circuit satisfies exactly zero NIST controls — unencrypted at the network layer leaving SC-8 open, no traffic classes leaving SC-5 open, no telemetry leaving SI-4 open, no transport evidence leaving CA-7 open; the overlay and policy stack close controls, never the pipe. Blue doctrine bar: place the primary at the regional center of gravity of its write consumers, let SD-WAN attack the addressable gap, assign each workload the consistency class its geography can deliver. White background. Source: Book 09 Database Physics briefing deck, Date Code 2026-07-08 12:32 ET." width="100%"}
+
 # SD-WAN as the Database's Network Ally
 
 SD-WAN does not eliminate the physics floor. What it does is reduce the gap between the physics floor and the observed latency, and it separates traffic classes so that high-priority database traffic is not competing with bulk data transfers for the same network path.
@@ -193,6 +197,8 @@ Token-based authentication eliminates this structural reason. When access is con
 
 This is why the zero-trust architecture enables more aggressive database consolidation: the security model no longer requires database fragmentation to maintain access control isolation.
 
+![The token is the perimeter: scoped four ways, portable nowhere](figs/db-fig-06-token-scope.png){#fig-db06 fig-alt="Four property cards across the top: bound to an identity — the specific user or Managed Identity that requested it; bound to a resource — valid for one SQL Server endpoint, sql01's token opens nothing else; bound to a time window — access tokens expire, typically in one hour; bound to the tenant — the agency's Entra tenant, foreign tokens are noise. Teal panel pricing the theft scenario: a stolen token buys one resource for one hour from a compliant device if policy requires it — no lateral movement, no reuse after expiry, no replay from an unmanaged endpoint, versus the NTLM hash from Book 07 which was reusable indefinitely. Blue panel: token scope dissolves perimeter fragmentation — a single database instance can serve multiple agencies, segments, and cloud regions, each consumer under a token scoped to exactly its permissions; the firewall rule simplifies because access control moved to the token layer; inside the instance the permission model is unchanged. White background. Source: Book 09 Database Physics briefing deck, Date Code 2026-07-08 12:32 ET." width="100%"}
+
 ## Token Scope and Database Authorization
 
 Entra access tokens for SQL Server are scoped to the specific SQL Server resource. A token issued for `sql01.agency.gov` is not valid against `sql02.agency.gov`. Token scope provides the access control isolation that the perimeter model achieved through network segmentation.
@@ -255,6 +261,8 @@ An HR system that is the authoritative source for employee records must provide 
 But the HR system does not need to provide strong consistency to the analytics system that produces workforce dashboards. The dashboard can show yesterday's headcount with no compliance implication. The same HR system — the same canonical source — serves both consumers with different consistency classes appropriate to each consumer's need.
 
 This is the **SSOT data architecture**: one canonical source, multiple consistency-class projections for different consumer types. The canonical source provides strong consistency to consumers that need it. Derived stores provide bounded staleness or eventual consistency to consumers that can tolerate it. No reconciliation is needed — the derived stores are populated from the canonical source via defined replication paths, not maintained independently.
+
+![One canonical source, many consistency-class projections](figs/db-fig-07-ssot-projections.png){#fig-db07 fig-alt="Fan-out diagram. Left, a navy box: the HR canonical source — one authoritative record per employee, holding history and audit trail. Three arrows fan right to three consumer lanes. Red STRONG lane: access grants, logins, approval routing — a stale employment read could authorize a separated employee. Amber BOUNDED STALENESS lane: case systems and directory projections — seconds-old attributes acceptable, bound configured and monitored. Teal EVENTUAL lane: workforce dashboards and analytics — yesterday's headcount has no compliance implication. Blue bar: no reconciliation needed, ever — derived stores are populated from the canonical source via defined replication paths, not maintained independently; the projections cannot disagree with the truth, they can only lag it by a known and monitored amount. White background. Source: Book 09 Database Physics briefing deck, Date Code 2026-07-08 12:32 ET." width="100%"}
 
 # Application-Aware Overlay — Transport Governance
 
