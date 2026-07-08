@@ -163,7 +163,7 @@ def test_hybrid_rejects_unknown_derived_from_facet(tmp_path: Path) -> None:
         + "    value_type: string\n"
         + "hybrid:\n"
         + "  name: Hybrid-C+Path\n"
-        + '  status: ACCEPTED\n'
+        + "  status: ACCEPTED\n"
         + '  version: "2026-07-07"\n'
         + "  governance_layer:\n"
         + '    attributes: "extensionAttribute1-14"\n'
@@ -190,7 +190,7 @@ def test_hybrid_rejects_attribute_mismatch(tmp_path: Path) -> None:
         + "    value_type: string\n"
         + "hybrid:\n"
         + "  name: Hybrid-C+Path\n"
-        + '  status: ACCEPTED\n'
+        + "  status: ACCEPTED\n"
         + '  version: "2026-07-07"\n'
         + "  governance_layer:\n"
         + '    attributes: "extensionAttribute1-14"\n'

@@ -63,8 +63,17 @@ EXCLUDE_SEGMENTS = (
 )
 
 SCANNABLE_SUFFIXES = {
-    ".yaml", ".yml", ".json", ".qmd", ".md", ".ps1", ".psm1",
-    ".bicep", ".kql", ".txt", ".sh",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".qmd",
+    ".md",
+    ".ps1",
+    ".psm1",
+    ".bicep",
+    ".kql",
+    ".txt",
+    ".sh",
 }
 
 # A prefix-match operator followed by a quoted value:
@@ -84,9 +93,7 @@ PREFIX_EXPR_RE = re.compile(
 
 # A hybrid OrgPath prefix: one or more Facet=Value segments. Values may not
 # contain the delimiter or '='; the final segment may be delimiter-terminated.
-ORGPATH_PREFIX_RE = re.compile(
-    r"^(?:[A-Za-z][A-Za-z0-9]*=[^|=]+\|)*[A-Za-z][A-Za-z0-9]*=[^|=]*\|?$"
-)
+ORGPATH_PREFIX_RE = re.compile(r"^(?:[A-Za-z][A-Za-z0-9]*=[^|=]+\|)*[A-Za-z][A-Za-z0-9]*=[^|=]*\|?$")
 DELIMITER = "|"
 
 
@@ -164,7 +171,9 @@ def main() -> int:
             print(f"  {finding}")
         return 1
 
-    print(f"OrgPath prefix guard OK — scanned {len(files)} files, every -startsWith/like OrgPath prefix carries its trailing '{DELIMITER}'.")
+    print(
+        f"OrgPath prefix guard OK — scanned {len(files)} files, every -startsWith/like OrgPath prefix carries its trailing '{DELIMITER}'."
+    )
     return 0
 
 
