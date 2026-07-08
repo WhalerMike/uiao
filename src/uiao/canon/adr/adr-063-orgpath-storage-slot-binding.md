@@ -12,6 +12,7 @@ related_adrs:
   - ADR-035
   - ADR-038
   - ADR-062
+  - ADR-127
 canon_refs:
   - UIAO_151_OrgPath_Codebook
   - UIAO_158_OrgPath_JSON_Schema
@@ -26,6 +27,17 @@ published_at: docs/adr/adr-063-orgpath-storage-slot-binding.html
 ## Status
 
 Accepted
+
+> **2026-07-07 amendment (ADR-127).** The composite-path storage slot
+> named throughout this ADR is amended from `extensionAttribute1` to
+> `extensionAttribute15`. Under the Hybrid-C+Path model,
+> `extensionAttribute1` carries the `region` facet (ADR-078) and the
+> derived canonical OrgPath — trailing `|` always present — lands on
+> `extensionAttribute15`. This ADR's slot-binding doctrine (single
+> ratified slot, no per-tenant override, the rebind procedure for
+> occupied slots) is retained and now applies to `extensionAttribute15`.
+> See [ADR-127](adr-127-orgpath-hybrid-derived-path.md) §Reconciliation
+> with ADR-063.
 
 ## Context
 

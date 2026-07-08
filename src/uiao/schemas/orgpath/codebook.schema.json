@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://uiao.io/schemas/orgpath/codebook.schema.json",
   "title": "UIAO OrgPath Codebook — Model C (15-Facet Multi-Attribute)",
-  "description": "Machine-readable per-facet enumeration of canonical OrgPath values. Per ADR-078, each of the 15 onPremisesExtensionAttribute slots carries one semantic facet (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType; slots 11-15 reserved for tenant-specific extension). Every value appearing in a slot must resolve to an entry in that facet's enumeration (for enumerated facets) or match its value_pattern (for typed facets) or it is classified as DRIFT-SEMANTIC. Supersedes the v1 composite-hyphen schema per ADR-078; UIAO has no production adopters at ratification time, so the prior Model A schema is not preserved as a legacy file.",
+  "description": "Machine-readable per-facet enumeration of canonical OrgPath values. Per ADR-078, each of the 15 onPremisesExtensionAttribute slots carries one semantic facet (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType; slots 11-14 reserved for tenant-specific extension). Per ADR-127 (Hybrid-C+Path), slot 15 carries the derived canonical OrgPath — the inheritance layer composed from the governance-layer hierarchy facets with a trailing delimiter always present. Every value appearing in a slot must resolve to an entry in that facet's enumeration (for enumerated facets) or match its value_pattern (for typed facets) or it is classified as DRIFT-SEMANTIC. Supersedes the v1 composite-hyphen schema per ADR-078; UIAO has no production adopters at ratification time, so the prior Model A schema is not preserved as a legacy file.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -37,6 +37,79 @@
     "updated": {
       "type": "string",
       "format": "date"
+    },
+    "hybrid": {
+      "type": "object",
+      "description": "Hybrid-C+Path model declaration (ADR-127). Two layers over the 15 slots: the Model C facet decomposition on extensionAttribute1-14 (governance layer) and a derived canonical OrgPath string on extensionAttribute15 (inheritance layer). The derived path is composed from the governance-layer hierarchy facets with every segment — including the last — terminated by the delimiter, so -startsWith / like prefix matching is unambiguous.",
+      "additionalProperties": false,
+      "required": ["name", "status", "version", "governance_layer", "inheritance_layer"],
+      "properties": {
+        "name": {
+          "const": "Hybrid-C+Path"
+        },
+        "status": {
+          "enum": ["PROPOSED", "ACCEPTED", "SUPERSEDED"]
+        },
+        "version": {
+          "type": "string",
+          "format": "date"
+        },
+        "adr": {
+          "type": "string",
+          "pattern": "^ADR-[0-9]{3}$"
+        },
+        "governance_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["attributes", "description"],
+          "properties": {
+            "attributes": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "inheritance_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["facet", "attribute", "derived_from", "delimiter", "trailing_delimiter"],
+          "properties": {
+            "facet": {
+              "type": "string",
+              "description": "Name of the facet (declared under `facets`) that carries the derived path."
+            },
+            "attribute": {
+              "type": "string",
+              "pattern": "^extensionAttribute([1-9]|1[0-5])$"
+            },
+            "derived_from": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string" },
+              "description": "Ordered facet names composed into the derived path. Integrity (each names a declared, projected facet) is enforced by the loader."
+            },
+            "segment_labels": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "Optional per-facet segment label overrides (facet name → path segment label)."
+            },
+            "delimiter": {
+              "const": "|"
+            },
+            "trailing_delimiter": {
+              "const": "always present",
+              "description": "Every segment, including the last, is terminated by the delimiter — the fix that makes prefix matching collision-free (Division=East| never matches Division=Eastern|)."
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      }
     },
     "facets": {
       "type": "object",
