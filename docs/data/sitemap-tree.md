@@ -70,6 +70,7 @@
   - [Where OrgTree & OrgPath Data Lives — Devices and Azure Resources](customer-documents/reference-architecture/where-data-lives-devices-and-azure.html)
   - [Drift Detection — A Walk-through](customer-documents/reference-architecture/drift-walkthrough.html)
   - [OrgPath Codebook](customer-documents/reference-architecture/codebook.html)
+  - [Hybrid OrgPath Model](customer-documents/reference-architecture/hybrid-orgpath-model.html)
   - [Dynamic Group Library](customer-documents/reference-architecture/dynamic-groups.html)
   - [Delegation Matrix](customer-documents/reference-architecture/delegation.html)
 - **Directory Migration**
@@ -228,6 +229,7 @@
 - [LocPath HR Duty-Station Adapter — Read-Only Conformance Adapter for Primary LocPath Assignment](adr/adr-124-locpath-hr-duty-station-adapter.html)
 - [LocPath Drift Taxonomy Extension — Location-Assignment, Location-Policy, and Location-Boundary Drift Classes](adr/adr-125-locpath-drift-taxonomy.html)
 - [FedRAMP CR26 Official Rules Adoption — Authority Upgrade and Coexistence with Palladium OSCAL Snapshot](adr/adr-126-fedramp-cr26-official-rules-adoption.html)
+- [Hybrid OrgPath Model — Model C Facets Plus Derived Canonical Path with Trailing Delimiter](adr/adr-127-orgpath-hybrid-derived-path.html)
 
 ## Schema Reference
 

@@ -1,0 +1,54 @@
+name: OrgPath Prefix Lint
+
+# Fails when a -startsWith / `like` expression carries a Hybrid-C+Path
+# OrgPath prefix (Facet=Value segments, ADR-127) missing its trailing "|".
+# Without the terminator, "Division=East" also matches "Division=Eastern"
+# and "Division=Easton" — a rule that looks correct in review and is wrong
+# in the tenant. The derived path terminates every segment, so the guard
+# is purely mechanical: terminate the prefix (Get-OrgPathPrefix) or, for a
+# doc deliberately showing the broken form, append 'orgpath-prefix-allow'
+# to the line. Run locally:
+#     python scripts/check_orgpath_prefix_delimiter.py
+#
+# Legacy Model A/B prefix styles (ORG-FIN, /Root/Finance/, CORP/US/EAST)
+# contain no Facet=Value segments and are out of scope by construction.
+
+on:
+  pull_request:
+    paths:
+      - 'src/uiao/canon/**'
+      - 'src/uiao/schemas/**'
+      - 'docs/**'
+      - 'examples/**'
+      - 'deploy/**'
+      - 'registry/**'
+      - 'tools/**'
+      - 'tests/fixtures/**'
+      - 'scripts/check_orgpath_prefix_delimiter.py'
+      - '.github/workflows/orgpath-prefix-lint.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/**'
+      - 'docs/**'
+      - 'examples/**'
+      - 'scripts/check_orgpath_prefix_delimiter.py'
+
+permissions:
+  contents: read
+
+jobs:
+  orgpath-prefix-lint:
+    name: Check OrgPath prefixes carry the trailing delimiter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run the OrgPath prefix guard
+        run: python scripts/check_orgpath_prefix_delimiter.py

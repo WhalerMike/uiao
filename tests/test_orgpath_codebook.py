@@ -28,12 +28,14 @@ def test_default_codebook_loads_and_validates() -> None:
     assert codebook.adoption_tier_min == 3
 
 
-def test_default_codebook_has_ten_named_facets_plus_five_reserved() -> None:
+def test_default_codebook_has_eleven_named_facets_plus_four_reserved() -> None:
+    # 10 governance facets + the ADR-127 derived org_path on slot 15;
+    # slots 11-14 stay reserved for tenant extension.
     codebook = load_codebook()
     named = [f for f in codebook.facets.values() if f.kind != "reserved"]
     reserved = [f for f in codebook.facets.values() if f.kind == "reserved"]
-    assert len(named) == 10
-    assert len(reserved) == 5
+    assert len(named) == 11
+    assert len(reserved) == 4
 
 
 def test_canonical_facet_slot_assignments() -> None:
@@ -110,6 +112,98 @@ def test_reserved_facet_rejects_all_values() -> None:
     assert reserved.kind == "reserved"
     assert not reserved.is_active("anything")
     assert not reserved.is_active("")
+
+
+# ---------------------------------------------------------------------------
+# Hybrid-C+Path (ADR-127): derived OrgPath on extensionAttribute15
+# ---------------------------------------------------------------------------
+
+
+def test_hybrid_block_declares_inheritance_layer() -> None:
+    codebook = load_codebook()
+    assert codebook.hybrid is not None
+    assert codebook.hybrid["name"] == "Hybrid-C+Path"
+    assert codebook.hybrid["status"] == "ACCEPTED"
+    layer = codebook.hybrid["inheritance_layer"]
+    assert layer["facet"] == "org_path"
+    assert layer["attribute"] == "extensionAttribute15"
+    assert layer["derived_from"] == ["region", "department", "division"]
+    assert layer["delimiter"] == "|"
+    assert layer["trailing_delimiter"] == "always present"
+
+
+def test_org_path_facet_binds_slot_fifteen() -> None:
+    codebook = load_codebook()
+    org_path = codebook.facet("org_path")
+    assert org_path.attribute == "extensionAttribute15"
+    assert org_path.kind == "typed"
+    assert org_path.projected is True
+
+
+def test_org_path_pattern_requires_trailing_delimiter() -> None:
+    codebook = load_codebook()
+    org_path = codebook.facet("org_path")
+    assert org_path.is_active("Region=NCR|Department=IT|Division=CyberOps|")
+    assert org_path.is_active("Region=NCR|")
+    # Trailing delimiter is always present — an unterminated path is drift.
+    assert not org_path.is_active("Region=NCR|Department=IT|Division=CyberOps")
+    assert not org_path.is_active("Region=NCR")
+    # Empty is allowed: the derived path is absent until facets populate.
+    assert org_path.is_active("")
+
+
+def test_hybrid_rejects_unknown_derived_from_facet(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(
+        _MIN_HEADER
+        + "  org_path:\n"
+        + "    attribute: extensionAttribute15\n"
+        + "    description: Derived path\n"
+        + "    kind: typed\n"
+        + "    value_type: string\n"
+        + "hybrid:\n"
+        + "  name: Hybrid-C+Path\n"
+        + "  status: ACCEPTED\n"
+        + '  version: "2026-07-07"\n'
+        + "  governance_layer:\n"
+        + '    attributes: "extensionAttribute1-14"\n'
+        + "    description: Facets\n"
+        + "  inheritance_layer:\n"
+        + "    facet: org_path\n"
+        + "    attribute: extensionAttribute15\n"
+        + "    derived_from: [region, not_a_facet]\n"
+        + '    delimiter: "|"\n'
+        + '    trailing_delimiter: "always present"\n'
+    )
+    with pytest.raises(CodebookValidationError, match="not_a_facet"):
+        load_codebook(bad)
+
+
+def test_hybrid_rejects_attribute_mismatch(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(
+        _MIN_HEADER
+        + "  org_path:\n"
+        + "    attribute: extensionAttribute15\n"
+        + "    description: Derived path\n"
+        + "    kind: typed\n"
+        + "    value_type: string\n"
+        + "hybrid:\n"
+        + "  name: Hybrid-C+Path\n"
+        + "  status: ACCEPTED\n"
+        + '  version: "2026-07-07"\n'
+        + "  governance_layer:\n"
+        + '    attributes: "extensionAttribute1-14"\n'
+        + "    description: Facets\n"
+        + "  inheritance_layer:\n"
+        + "    facet: org_path\n"
+        + "    attribute: extensionAttribute14\n"
+        + "    derived_from: [region]\n"
+        + '    delimiter: "|"\n'
+        + '    trailing_delimiter: "always present"\n'
+    )
+    with pytest.raises(CodebookValidationError, match="does not match"):
+        load_codebook(bad)
 
 
 def test_facet_unknown_raises_keyerror() -> None:

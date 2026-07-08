@@ -135,8 +135,14 @@ class CaptureResult:
 
 
 def _named_facets(codebook: Codebook) -> list[tuple[str, Any]]:
-    """Return ``(facet_name, Facet)`` for every non-reserved (named) facet."""
-    return [(name, f) for name, f in codebook.facets.items() if f.kind != "reserved"]
+    """Return ``(facet_name, Facet)`` for every non-reserved (named) facet.
+
+    Excludes the ADR-127 derived org_path (inheritance layer): the survey
+    measures which governance facets need backfilling from source data,
+    and the derived path is recomputed by the writers, never backfilled.
+    """
+    derived = codebook.derived_path_facet_name()
+    return [(name, f) for name, f in codebook.facets.items() if f.kind != "reserved" and name != derived]
 
 
 def device_from_entra(raw: Mapping[str, Any], codebook: Codebook) -> DeviceRecord:

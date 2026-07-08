@@ -1,10 +1,11 @@
 # yaml-language-server: $schema=../../../schemas/orgpath/codebook.schema.json
 #
-# UIAO OrgPath Codebook — Model C (15-facet multi-attribute)
-# ==========================================================
+# UIAO OrgPath Codebook — Hybrid-C+Path (Model C facets + derived OrgPath)
+# ========================================================================
 # Canonical source: src/uiao/canon/UIAO_151_OrgPath_Codebook.md
-# Binding ADR:      src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md
-# Schema:           src/uiao/schemas/orgpath/codebook.schema.json (v2.0.0)
+# Binding ADRs:     src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md
+#                   src/uiao/canon/adr/adr-127-orgpath-hybrid-derived-path.md
+# Schema:           src/uiao/schemas/orgpath/codebook.schema.json (v2.1.0)
 # Supersedes:       Model A composite-hyphen path (single attribute). See
 #                   ADR-078 §Decision for the rationale. Per ADR-078's
 #                   no-grandfathering update (2026-05-23), the prior
@@ -23,27 +24,74 @@
 # Conditional Access policies compose facet values via boolean
 # operators rather than text-parsing a composite string.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 document_id: UIAO_151
 parent_canon: UIAO_007
 model: "C"
 adoption_tier_min: 3
-updated: "2026-05-23"
+updated: "2026-07-07"
+
+# Hybrid-C+Path model (ADR-127). Two layers over the same 15 slots:
+#
+#   - Governance layer (extensionAttribute1-14): the Model C facet
+#     decomposition per ADR-078/ADR-121 — per-facet validation, boolean
+#     composition in dynamic groups, CA, and AU scoping. Unchanged.
+#   - Inheritance layer (extensionAttribute15): a canonical OrgPath
+#     string DERIVED from the governance-layer hierarchy facets, giving
+#     back the subtree-prefix targeting Model C removed. Never hand-
+#     authored; recomputed from the facets it derives from, and any
+#     divergence is drift (Test-OrgPathDrift / DRIFT-SEMANTIC).
+#
+# Every segment — including the last — is terminated by the delimiter
+# ("trailing delimiter always present"), so a `-startsWith` /
+# `like` prefix such as "Division=East|" can never match
+# "Division=Eastern|" or "Division=Easton|". Prefixes used in dynamic
+# group rules and Azure Policy conditions MUST include the trailing
+# delimiter (normalize with Get-OrgPathPrefix; CI lints for violations).
+hybrid:
+  name: "Hybrid-C+Path"
+  status: ACCEPTED
+  version: "2026-07-07"
+  adr: ADR-127
+  governance_layer:
+    attributes: "extensionAttribute1-14"
+    description: >-
+      Model C facet decomposition (ADR-078): one semantic facet per
+      slot, validated per-facet against this codebook. Slots 11-14
+      remain reserved for tenant-specific extension.
+  inheritance_layer:
+    facet: org_path
+    attribute: extensionAttribute15
+    derived_from: [region, department, division]
+    segment_labels:
+      region: Region
+      department: Department
+      division: Division
+    delimiter: "|"
+    trailing_delimiter: "always present"
+    description: >-
+      Derived canonical OrgPath. Segments are "<Label>=<value>|" in
+      derived_from order, truncated at the first unpopulated facet so
+      the value is always a contiguous hierarchy prefix. The trailing
+      delimiter is always present, making subtree prefix matching
+      (-startsWith / like) unambiguous at every depth.
 
 # Each facet is a semantic field bound to exactly one
 # onPremisesExtensionAttribute slot. The 10 named facets below are
 # canonical and MUST NOT have their slot assignments changed without a
-# superseding ADR. Slots 11-15 are reserved for tenant-specific
+# superseding ADR. Slots 11-14 are reserved for tenant-specific
 # extensions; tenants declare facet semantics for those via a governed
-# PR before populating values.
+# PR before populating values. Slot 15 carries the derived canonical
+# OrgPath (inheritance layer, ADR-127) and is not tenant-claimable.
 #
 # Projection subset (ADR-121): `projected: false` keeps a facet's
 # semantics (HR-SSOT / reporting / JML lifecycle) WITHOUT stamping it to
 # a scarce directory slot. Only projected facets are written per object,
 # so "attributes written per object" = the projected count, not the
 # defined count. Default is `projected: true` (omitted on projected
-# facets). Currently projected (6): region, department, division,
-# classification, clearance_level, account_type. Not projected (4): role,
+# facets). Currently projected (7): region, department, division,
+# classification, clearance_level, account_type, plus the ADR-127
+# derived org_path on slot 15. Not projected (4): role,
 # cost_center, hire_date, term_date. The 15 extensionAttribute slots are a
 # shared, tenant-wide resource; projecting fewer leaves slots free for
 # other tooling and avoids the hybrid-synced read-only-in-cloud trap on
@@ -259,11 +307,25 @@ facets:
       Reserved for tenant-specific extension. See reserved_11.
     kind: reserved
 
-  reserved_15:
+  org_path:
     attribute: extensionAttribute15
+    # Inheritance layer of the Hybrid-C+Path model (ADR-127; see the
+    # top-level `hybrid` block). Kind `typed` so the drift engine
+    # validates the derived string by pattern like any other typed
+    # facet; the derivation contract (never hand-authored, recomputed
+    # from region/department/division) is enforced by the writers
+    # (Update-OrgAttributes) and Test-OrgPathDrift, not by this file.
     description: >-
-      Reserved for tenant-specific extension. See reserved_11.
-    kind: reserved
+      Derived canonical OrgPath — the inheritance layer restored by
+      ADR-127. Composed from the governance-layer hierarchy facets
+      (region, department, division) as "Label=value|" segments with
+      the trailing "|" always present, so -startsWith / like subtree
+      prefixes are unambiguous. Never hand-authored; divergence from
+      the recomputed value is drift.
+    kind: typed
+    value_type: string
+    value_pattern: "^([A-Za-z][A-Za-z0-9]*=[^|=]+\\|)+$"
+    allow_empty: true
 
 # Deprecated values, per-facet. A principal carrying a deprecated value
 # generates DRIFT-SEMANTIC findings; `replaced_by` is the governed

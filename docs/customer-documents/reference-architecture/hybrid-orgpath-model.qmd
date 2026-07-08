@@ -1,0 +1,190 @@
+---
+title: "Hybrid OrgPath Model"
+subtitle: "Model C governance facets + derived canonical OrgPath with the trailing-delimiter contract"
+date: 2026-07-07
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: aspirational
+lifecycle_review: 2027-01-07
+---
+
+{{< lifecycle-banner >}}
+
+> **Hybrid-C+Path (per [ADR-127](../../adr/adr-127-orgpath-hybrid-derived-path.qmd)).** The Model C facet decomposition ([ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)) stays canonical on `extensionAttribute1-14`; a **derived** canonical OrgPath string lands on `extensionAttribute15`, restoring subtree inheritance. The executable canon is [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml) (`schema_version: 2.1.0`, `hybrid` block).
+
+## One Model, Two Layers
+
+Model C fixed what the composite path did badly — per-facet validation,
+boolean composition, lifecycle dates as data — and silently dropped the
+one thing it did well: a single expression for *"this node and
+everything beneath it."* The hybrid model keeps both, over the same
+fifteen slots:
+
+| Layer | Slots | Carries | Answers |
+| :--- | :--- | :--- | :--- |
+| **Governance** | `extensionAttribute1-14` | One validated facet per slot (ADR-078), slots 11-14 reserved for tenant extension | "Privileged, cleared, NCR-based" — boolean facet composition |
+| **Inheritance** | `extensionAttribute15` | The **derived** canonical OrgPath | "Everyone in IT/CyberOps and below, at any future depth" — one prefix predicate |
+
+The inheritance layer is *derived data*: composed from the hierarchy
+facets (`region`, `department`, `division`) in canonical order, never
+hand-authored, recomputed on every write. If the stored value ever
+disagrees with the recomputation, that is drift — the same class of
+finding as an invalid facet value.
+
+```
+extensionAttribute1  = "NCR"          ─┐
+extensionAttribute2  = "IT"            ├─ governance layer (facets)
+extensionAttribute3  = "CyberOps"     ─┘
+extensionAttribute15 = "Region=NCR|Department=IT|Division=CyberOps|"   ← derived
+```
+
+## The Trailing Delimiter Is the Whole Fix
+
+Every segment of the derived path — **including the last** — is
+terminated by `|`. This is not a stylistic choice; it is what makes
+prefix matching correct. Without a terminator, a rule targeting the
+`East` division also captures its lexical siblings:
+
+```
+prefix "Division=East"    matches "Division=East|…"      ✓ intended
+prefix "Division=East"    matches "Division=Eastern|…"   ✗ collision
+prefix "Division=East"    matches "Division=Easton|…"    ✗ collision
+
+prefix "Division=East|"   matches "Division=East|…"      ✓ intended
+prefix "Division=East|"   misses  "Division=Eastern|…"   ✓ excluded
+prefix "Division=East|"   misses  "Division=Easton|…"    ✓ excluded
+```
+
+Every `-startsWith` (Entra dynamic groups) and `like` (Azure Policy)
+expression against the derived path MUST carry the trailing `|`. CI
+enforces this: the OrgPath prefix lint scans policy definitions and
+dynamic-group-rule files and fails the build on any prefix missing its
+terminator.
+
+## The Query Pattern: `Get-OrgPathPrefix`
+
+Never build prefixes by string concatenation. The
+[`UIAO.OrgPath`](https://github.com/WhalerMike/uiao/tree/main/tools/powershell/UIAO.OrgPath)
+module normalizes any prefix to the delimiter-terminated form —
+idempotently, so already-correct prefixes pass through unchanged:
+
+```powershell
+Import-Module UIAO.OrgPath
+
+# Normalize a subtree prefix (appends the trailing "|" when missing).
+$prefix = Get-OrgPathPrefix -Prefix 'Region=NCR|Department=IT'
+# → Region=NCR|Department=IT|
+
+# Idempotent: never doubles the delimiter.
+Get-OrgPathPrefix -Prefix $prefix
+# → Region=NCR|Department=IT|
+
+# Compose a branch rule for an Entra dynamic group.
+$rule = "(device.extensionAttribute15 -startsWith `"$prefix`")"
+# → (device.extensionAttribute15 -startsWith "Region=NCR|Department=IT|")
+```
+
+The companion functions complete the write/verify loop:
+
+```powershell
+# Compose the derived path (always ends in "|").
+New-OrgPath -Region NCR -Department IT -Division CyberOps
+# → Region=NCR|Department=IT|Division=CyberOps|
+
+# Stamp facets + derived path in one Graph update.
+# Users and devices use DIFFERENT Graph properties:
+Update-OrgAttributes -UserId alice@contoso.com -Region NCR -Department IT -Division CyberOps
+#   → Update-MgUser …  onPremisesExtensionAttributes
+Update-OrgAttributes -DeviceId $deviceObjectId -Region NCR -Department IT -Division CyberOps
+#   → Update-MgDevice … extensionAttributes
+
+# Detect divergence between stored and recomputed derived path.
+Test-OrgPathDrift -StoredOrgPath $stored -Region NCR -Department IT -Division CyberOps
+```
+
+## Consumer Examples
+
+Note the trailing `|` inside every prefix below — it is part of the
+value, not punctuation.
+
+### Intune / Entra dynamic groups (branch group)
+
+One rule covers the division and every future descendant — no
+enumeration, no reorganization rewrites:
+
+```
+(device.extensionAttribute15 -startsWith "Region=NCR|Department=IT|Division=CyberOps|")
+```
+
+Node-exact targeting (this level only, no descendants) composes
+governance-layer facets instead — that is the point of keeping both
+layers:
+
+```
+(device.extensionAttribute2 -eq "IT") and (device.extensionAttribute3 -eq "CyberOps")
+```
+
+### Azure Arc / Azure Policy (`like` on the OrgPath tag)
+
+Arc-enabled servers carry the derived path as the `OrgPath` ARM tag
+(trailing delimiter included). Azure Policy's `like` operator has
+exactly one wildcard, `*`; the pipe is a literal in the condition
+grammar (ADR-127 records this with a live-tenant confirmation flagged
+as pending):
+
+```json
+{
+  "if": {
+    "allOf": [
+      {
+        "field": "type",
+        "equals": "Microsoft.HybridCompute/machines"
+      },
+      {
+        "field": "tags['OrgPath']",
+        "like": "Region=NCR|Department=IT|*"
+      }
+    ]
+  },
+  "then": {
+    "effect": "audit"
+  }
+}
+```
+
+### Azure Resource Graph (reporting by subtree)
+
+```kusto
+resources
+| where type == "microsoft.hybridcompute/machines"
+| where tags["OrgPath"] startswith "Region=NCR|Department=IT|"
+| summarize count() by tostring(tags["OrgPath"])
+```
+
+## Rules of the Road
+
+1. **Never hand-author `extensionAttribute15`.** It is derived. Write
+   facets through `Update-OrgAttributes` (or the Python writers) and
+   let the path be recomputed.
+2. **Never build a prefix without `Get-OrgPathPrefix`.** Concatenation
+   is how the trailing delimiter gets dropped.
+3. **Prefix queries are for subtrees; facet predicates are for nodes
+   and cross-cutting slices.** Using a prefix where you mean one exact
+   level (or a facet AND where you mean a subtree) works until the
+   hierarchy grows — then it quietly stops meaning what you meant.
+4. **Hybrid-synced users:** `onPremisesExtensionAttributes` are
+   read-only in the cloud. Stamp on-prem and let it sync, or defer to
+   cloud-only conversion (the same ADR-121 trap as the governance
+   facets).
+
+## Where This Is Bound
+
+- [ADR-127](../../adr/adr-127-orgpath-hybrid-derived-path.qmd) — the decision, the ADR-063 reconciliation, and the Azure Policy literal-pipe footnote
+- [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd) — the governance-layer facet schema
+- [ADR-121](../../adr/adr-121-orgpath-projection-subset.qmd) — the projection subset the derived path joins
+- [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml) — the executable canon (`hybrid` block + `org_path` facet)
+- [OrgPath Codebook](codebook.qmd) — the governance-layer reference
