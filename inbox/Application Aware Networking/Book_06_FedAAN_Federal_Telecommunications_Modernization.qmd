@@ -97,29 +97,31 @@ The N8NN contact center must sustain MOS above 4.0 consistently across all agent
 
 Amazon Connect is AWS's cloud-native contact center platform, providing inbound and outbound call handling, IVR via contact flows, skills-based routing, real-time and historical analytics, call recording, and the agent desktop (Contact Control Panel) as a managed SaaS service. Agents access all contact center functionality through a browser-based WebRTC softphone. There is no proprietary hardware at the agent's desk, no on-premises call processing equipment, and no PBX to maintain.
 
-![Amazon Connect: AWS GovCloud .us vs. AWS Commercial .com — The Authorized Exception](figs/tc-fig-09-aws-exception.png){fig-alt="Two cloud panels side by side. Left AWS GovCloud .us: navy background with lock icon, GovCloud badge, physical separation, screened personnel, GovCloud controls, but capability gaps at evaluation time. Right AWS Commercial .com: teal background with FedRAMP Moderate badge, Contact Lens real-time transcription with eye icon, Amazon Q agent assist with brain icon, full integration ecosystem. AUTHORIZED EXCEPTION amber banner. Center decision diamond showing which platform to choose. Note: current evaluation required before any new deployment as capability gaps may have closed." width="100%"}
+![Amazon Connect: AWS GovCloud vs. AWS Commercial — The Authorized Exception](figs/tc-fig-09-aws-exception.png){fig-alt="Two cloud panels side by side. Left AWS GovCloud: navy background with lock icon, FedRAMP High and ITAR badge, physical separation, screened personnel, GovCloud controls, but capability gaps at evaluation time. Right AWS Commercial (.com): light panel with FedRAMP Moderate badge, Contact Lens real-time transcription, Amazon Q agent assist, full integration ecosystem. AUTHORIZED EXCEPTION amber banner noting the FedRAMP Moderate baseline is maintained. Center decision diamond showing which platform to choose. Note: current evaluation required before any new deployment as capability gaps may have closed." width="100%"}
 
-## The .us vs. .com Decision and the Authorized Exception
+## The GovCloud vs. Commercial Decision and the Authorized Exception
 
 AWS structures its federal cloud offerings differently from Microsoft and Oracle:
 
 | Provider | Moderate Delivery Model | High / Sovereign Model |
 |----------|------------------------|----------------------|
-| AWS | .us infrastructure (separate government regions) | GovCloud (.gov); physically separate, screened personnel |
+| AWS | US East/West commercial regions (FedRAMP Moderate P-ATO) | GovCloud us-gov-east-1 / us-gov-west-1 (FedRAMP High P-ATO; ITAR; US-persons operations; physically separate) |
 | Microsoft | Partitioned .com (GCC Moderate on Azure Commercial) | GCC High / DoD on physically separate infrastructure |
 | Oracle | Partitioned .com (OCI Moderate) | OCI Government Cloud (separate) |
 
-Amazon Connect is available on the AWS .us infrastructure. At the time the agency evaluated platforms for the N8NN contact center, the .us version presented operational capability gaps relative to the commercial (.com) version in three categories:
+AWS has exactly two FedRAMP boundaries — there is no middle tier. Amazon Connect is available in **AWS GovCloud, where it holds FedRAMP High authorization**. At the time the agency evaluated platforms for the N8NN contact center, the GovCloud version presented operational capability gaps relative to the commercial (.com) version in three categories:
 
-- **AI-assisted contact center capabilities:** Contact Lens (real-time speech transcription, sentiment analysis, supervisor alerting) and Amazon Q agent assist availability lagged .us at time of evaluation.
+- **AI-assisted contact center capabilities:** Contact Lens (real-time speech transcription, sentiment analysis, supervisor alerting) and Amazon Q agent assist availability lagged in GovCloud at time of evaluation.
 - **Third-party integration ecosystem:** AWS Marketplace integrations for CRM connectors, workforce management, and reporting were predominantly certified for commercial Connect.
-- **Operational tooling and support maturity:** AWS support procedures and feature release cadence in .us lagged commercial, creating a growing capability gap.
+- **Operational tooling and support maturity:** AWS support procedures and feature release cadence in GovCloud lagged commercial, creating a growing capability gap.
 
-> **Current evaluation required before any new agency deployment.** AWS continuously updates its .us infrastructure. The capability gaps identified at the time of this agency's evaluation may have closed. Any agency evaluating Amazon Connect for a new deployment **must conduct a current-state evaluation of .us Connect against its specific requirements** before concluding that a .com exception is necessary.
+Stated as the trade it actually was: **the agency accepted commercial-at-Moderate with the capabilities it needed over GovCloud-at-High without them.** That is a starker trade than a tier label suggests — and it is exactly the kind of trade an AO can own explicitly, which is what the authorized-exception process did.
+
+> **Current evaluation required before any new agency deployment.** AWS continuously updates GovCloud service parity. The capability gaps identified at the time of this agency's evaluation may have closed. Any agency evaluating Amazon Connect for a new deployment **must conduct a current-state evaluation of GovCloud Connect against its specific requirements** before concluding that a commercial exception is necessary.
 
 ## What the .com Exception Means Structurally
 
-The agency's use of Amazon Connect on AWS commercial (.com) is the same structural pattern as GCC Moderate on Azure Commercial: a federally authorized service running on commercial infrastructure with FedRAMP Moderate controls applied. AWS commercial data centers are US-based. Data is encrypted in transit and at rest. Amazon Connect holds FedRAMP Moderate authorization. But the personnel screening, physical separation, and elevated control baseline of GovCloud do not apply.
+The agency's use of Amazon Connect on AWS commercial (.com) is the same structural pattern as GCC Moderate on Azure Commercial: a federally authorized service running on commercial infrastructure with FedRAMP Moderate controls applied. AWS commercial data centers are US-based. Data is encrypted in transit and at rest. Amazon Connect holds FedRAMP Moderate authorization in the commercial regions (and FedRAMP High in GovCloud). But the personnel screening, physical separation, ITAR/US-persons handling, and High control baseline of GovCloud do not apply on the commercial side.
 
 This does not make the deployment less secure — FedRAMP Moderate controls are extensive. It means the authorization boundary is explicitly a commercial environment with federal controls applied, and that boundary must be accurately reflected in the SSP, understood by the AO, and re-evaluated at each authorization renewal.
 
@@ -141,7 +143,7 @@ An agent in Portland whose network routes all internet traffic through Washingto
 
 **Portland → MPLS → Washington → internet → AWS us-west-2 (.com) → Amazon Connect**
 
-One-way network latency: 80–110 ms. G.114 network budget: 75 ms. **Over spec.** The citizen hears the degradation.
+One-way network latency: 80–110 ms (engineering estimate: ~50 ms coast-to-coast propagation plus inspection-stack and queuing overhead; validate with per-site measurement during discovery). G.114 network budget: 75 ms. **Over spec.** The citizen hears the degradation.
 
 The same agent with local internet breakout:
 
@@ -423,7 +425,7 @@ The shared network requirement row is the most operationally significant in this
 - Instrument SD-WAN dashboards to surface G.114 violations by location before they become citizen complaints
 - Integrate Amazon Connect Call Analytics with agency SIEM for AU-12 continuous monitoring
 - Establish MOS floor SLA (≥4.0) per agent location; alert when sustained MOS drops below threshold
-- Review Amazon Connect .com exception at each ATO renewal; evaluate whether .us capability gaps have been resolved
+- Review Amazon Connect commercial exception at each ATO renewal; evaluate whether GovCloud capability gaps have been resolved
 - **FedRAMP 20x alignment (mandatory January 1, 2027):** Configure SD-WAN telemetry exports in machine-readable JSON format; ensure Connect audit logs, authentication events, and boundary crossing records meet structured KSI format requirements; validate SBC event logs feed SIEM in queryable format
 
 # Federal Framework Alignment

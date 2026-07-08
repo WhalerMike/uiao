@@ -531,13 +531,13 @@ Every federal cloud landing zone — whether on AWS GovCloud, Azure Government, 
 | **AU-2 / AU-12** | Audit Events / Audit Record Generation | InfoBlox Syslog | DNS, DHCP, and IP allocation events logged per-environment in incompatible formats; no unified SIEM feed | Single syslog stream from all Grid Members across all four environments; RFC 5424 format; 3-year retention configured | SIEM dashboards; retention policy; pre-built Sentinel/Splunk queries |
 | **IR-4 / IR-5** | Incident Handling / Incident Monitoring | InfoBlox RPZ + SIEM | RPZ block events require manual review; no automated IR ticket generation | RPZ block events auto-generate SIEM IR tickets; DNSSEC failure triggers SOC alerts; DNS exfiltration detection with behavioral baselining | IR playbook; RPZ alert-to-ticket pipeline |
 | **SI-3 / SI-3(1)** | Malware Protection | InfoBlox RPZ + TIDE | No DNS-layer malware blocking; C2 domains reachable via standard resolution | DNS-layer malware blocking via RPZ prevents resolution of C2 domains, ransomware callback, and phishing sites using CISA PDNS + TIDE feed | RPZ block count by threat category; TIDE feed update log |
-| **PL-8** | Security and Privacy Architectures | InfoBlox DDI (inherited ATO) | DDI architecture described informally or not at all in SSP | Unified DDI architecture documented in SSP; InfoBlox FedRAMP ATO cited as inherited control for DDI layer | SSP Section 13 architecture narrative |
+| **PL-8** | Security and Privacy Architectures | InfoBlox DDI (Path A: inherited CSO / Path B: agency-carried) | DDI architecture described informally or not at all in SSP | Unified DDI architecture documented in SSP; under Path A the InfoBlox CSO is cited as an inherited control for the DDI layer, under Path B (the closer fit for SSA's topology per Book 01) the DDI layer is documented as an agency-operated component with natively generated evidence | SSP Section 13 architecture narrative |
 
 : Part 1 — NIST SP 800-53 Rev 5 Control Closure: InfoBlox DDI Landing Zone {.striped .hover}
 
 **Controls closed: 16** (SC-20, SC-20(1), SC-21, SC-22, SC-7, SC-7(7), SC-8, SC-8(1), CM-8, CM-8(1), CM-2/CM-6, SA-9, IA-5(2), IA-9, AU-2/AU-12, IR-4/IR-5, SI-3/SI-3(1), PL-8)
 
-> **FedRAMP 20x alignment:** InfoBlox WAPI provides all DDI evidence in machine-readable JSON format — the native evidence format for FedRAMP 20x Key Security Indicators. InfoBlox is the only DDI platform that generates KSI-compliant evidence without additional tooling.
+> **FedRAMP 20x alignment:** InfoBlox WAPI generates all DDI evidence natively as machine-readable JSON — the evidence format the FedRAMP 20x KSI schema expects — with no additional tooling. Mechanism-class peers with full REST APIs (e.g., BlueCat) can satisfy the same evidence contract; the ConMon roadmap's alternatives matrix documents the substitution consequences.
 
 ---
 
@@ -608,6 +608,8 @@ authorization they assert is correct") resolves here.
 ---
 
 # Part 5 — Network and Identity Modernization: Entra ID + ZTNA + Active Governance Closes 12 NIST Controls
+
+> **"Active Governance" is an architectural pattern, not a product.** Wherever it appears in this document's technology columns, it names a control-plane role: continuously observe actual state, compare it to desired state, and emit machine-readable reconciliation records. Any conformance/reconciliation engine that satisfies that contract fills the role; no product selection is implied.
 
 ## What This Document Addresses
 
@@ -979,7 +981,7 @@ executed.
 | SBOM generation | Syft (Anchore) or Trivy — integrated into CI/CD pipeline |
 | VDR format | CycloneDX 1.6 (XML or JSON) — CISA-preferred |
 | VER submission | CISA VEX Portal or email per BOD 26-04 guidance |
-| OSCAL AP/AR | `trestle` (IBM) or custom Python emitter against OSCAL 1.1 schema |
+| OSCAL AP/AR | `uiao oscal bundle` Python emitter — OSCAL document version pinned in Book 19 §2.1 (currently 1.0.4); verify FedRAMP's current machine-readable schema target before each authorization-cycle freeze |
 | PII mapping | Purview Data Map + sensitivity label lineage (extends Part 12) |
 | PM metrics | Sentinel workbook for AU/CA/PM KPI dashboard (extends Part 13) |
 
