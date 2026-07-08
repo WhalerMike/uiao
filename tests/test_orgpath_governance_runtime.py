@@ -34,8 +34,9 @@ from uiao.governance.orgpath_runtime import (
 runner = CliRunner()
 
 
-# A principal whose every enumerated facet is valid and whose required typed
-# facet (hire_date) passes its pattern → no P1/P2 findings on this principal.
+# A principal whose every enumerated facet is valid, whose required typed
+# facet (hire_date) passes its pattern, and whose derived OrgPath (ADR-127)
+# equals the recomputation from the hierarchy facets → no P1/P2 findings.
 _CLEAN_ATTRS = {
     "extensionAttribute1": "NCR",
     "extensionAttribute2": "IT",
@@ -46,6 +47,7 @@ _CLEAN_ATTRS = {
     "extensionAttribute7": "2020-01-15",  # hire_date (typed, required)
     "extensionAttribute9": "Secret",
     "extensionAttribute10": "Standard",
+    "extensionAttribute15": "Region=NCR|Department=IT|Division=CyberOps|",  # derived path, in sync
 }
 
 

@@ -19,6 +19,12 @@ the retired Model A device-plane adapter:
 The consumer plans the per-facet writes; the
 :py:class:`uiao.adapters.entra_device_orgpath.EntraDeviceOrgPathAdapter`
 dispatches them through the correct transport.
+
+When the codebook declares the ADR-127 ``hybrid`` block, the planner
+also stamps the derived canonical OrgPath (recomputed from the
+hierarchy facets via :py:meth:`Codebook.derive_org_path` — never taken
+from caller input) to ``extensionAttribute15`` on the Graph plane and
+the ``OrgPath`` tag on the ARM plane.
 """
 
 from __future__ import annotations
@@ -105,9 +111,16 @@ class DeviceOrgPathPlanner:
                 writes=(),
             )
 
+        derived_name = self.codebook.derived_path_facet_name()
+
         writes: list[FacetOperation] = []
         for facet_name, value in assignment.facet_values.items():
             facet = self.codebook.facet(facet_name)
+            if facet_name == derived_name:
+                # The derived OrgPath is never hand-authored (ADR-127) —
+                # a caller-supplied value is ignored; the recomputed
+                # path is appended below.
+                continue
             if facet.kind == "reserved":
                 # Reserved facets cannot be written until promoted.
                 continue
@@ -137,11 +150,56 @@ class DeviceOrgPathPlanner:
                     },
                 )
             )
+
+        # Inheritance layer (ADR-127): recompute the derived OrgPath from
+        # the hierarchy facets and stamp it alongside them — writer parity
+        # with UIAO.OrgPath's Update-OrgAttributes. Emitted only when the
+        # assignment supplies at least one hierarchy facet, so a partial
+        # assignment that never mentions the hierarchy cannot clear a
+        # previously stamped path.
+        derived_write = self._plan_derived_path(assignment, plane, derived_name)
+        if derived_write is not None:
+            writes.append(derived_write)
+
         return DeviceOrgPathPlan(
             device_id=assignment.device_id,
             disposition=assignment.disposition,
             plane=plane,
             writes=tuple(writes),
+        )
+
+    def _plan_derived_path(
+        self,
+        assignment: DeviceFacetAssignment,
+        plane: str,
+        derived_name: str | None,
+    ) -> FacetOperation | None:
+        if derived_name is None:
+            return None
+        path_facet = self.codebook.facets.get(derived_name)
+        if path_facet is None or not path_facet.projected:
+            return None
+        layer = (self.codebook.hybrid or {}).get("inheritance_layer") or {}
+        source_names = tuple(layer.get("derived_from", ()))
+        if not any(name in assignment.facet_values for name in source_names):
+            return None
+        value = self.codebook.derive_org_path(assignment.facet_values)
+        attribute = (
+            path_facet.attribute  # Graph: extensionAttribute15
+            if plane == "entra"
+            else f"tags.{_arm_tag_name(derived_name)}"  # ARM: tags.OrgPath
+        )
+        return FacetOperation(
+            facet=derived_name,
+            attribute=attribute,
+            op="write",
+            value=value,
+            target=assignment.device_id,
+            metadata={
+                "disposition": assignment.disposition,
+                "plane": plane,
+                "derived": True,
+            },
         )
 
     def plan(self, assignments: Iterable[DeviceFacetAssignment]) -> list[FacetOperation]:
