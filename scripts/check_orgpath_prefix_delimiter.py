@@ -81,9 +81,12 @@ SCANNABLE_SUFFIXES = {
 #   startswith "…"       (Kusto / Azure Resource Graph)
 #   "like": "…"          (Azure Policy condition JSON)
 #   like: "…"  / -like "…"  (YAML rule files, PowerShell)
+#   op: -startsWith, value: "…"  (canon predicate YAML, UIAO_152/UIAO_153)
 _QUOTED = r"""["']([^"']+)["']"""
 PREFIX_EXPR_RE = re.compile(
     rf"""(?:
+        -startsWith \s* ,? \s* value: \s* {_QUOTED}  # op: -startsWith, value: "…"
+        |
         -?startsWith \s* [,(]? \s* {_QUOTED}      # -startsWith "…" / startswith("…")
         |
         ["']?like["']? \s* [:=]? \s* {_QUOTED}    # "like": "…" / like: "…" / -like "…"
@@ -126,7 +129,7 @@ def scan_text(text: str, rel: str) -> list[str]:
         if ALLOW_MARKER in line:
             continue
         for match in PREFIX_EXPR_RE.finditer(line):
-            value = match.group(1) or match.group(2)
+            value = next((g for g in match.groups() if g), None)
             if not value or not is_orgpath_prefix(value):
                 continue
             if not is_terminated(value):
