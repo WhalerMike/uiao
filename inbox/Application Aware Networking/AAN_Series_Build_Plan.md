@@ -140,9 +140,10 @@ figures do not rename).
 | 18 | 16 | Authorization Package & ConMon | **Major** — KSI Closure Necessity Matrix appendix; 10/29 coverage table; slot-binding updates |
 
 Companion updates: `federal-aan-conmon-gap-roadmap.md` (slot bindings cite Part
-numbers — all shift), Book 00 series-map tables, `AAN_Federal_Series_Complete.zip`
-(rebuild last), series overview figure `es-fig-01` (four columns → revised track
-layout per ADR-093 committed-SVG house style).
+numbers — all shift), Book 00 series-map tables, the datecoded distribution kit
+`AAN_Federal_Series_Complete_<DATE>ET.zip` (rebuild last, locally — carries the
+docx + .pptx briefing decks + governance docx), series overview figure `es-fig-01`
+(four columns → revised track layout per ADR-093 committed-SVG house style).
 
 ## 4. Existing-Document Edit Specs
 
@@ -258,7 +259,7 @@ series Part. Bottom line pre-computed: 10 Y / 19 N.
 | **3** | New Book 02 (NAC) and Book 03 (Cert/Token) full drafts (§5.1–5.2) | Two new books + control-closure tables | Author review; control claims verified against Rev 5 text |
 | **4** | Moderate/major edits: Books 01, 04, 05, 08, 13 (§4.2) | Sharpened transport/physics/TIC spine | Necessity callouts consistent with Book 00 vocabulary |
 | **5** | Light passes: Books 06–07, 09–12, 14–17 (§4.3); Book 18 + roadmap + Necessity Matrix (§4.4) | Full-series consistency; authoritative matrix | KSI counts reconcile: Book 00 = Book 18 = roadmap |
-| **6** | Derived artifacts: regenerate .docx/.html from .qmd; redraw es-fig-01 series figure (committed SVG per ADR-093); rebuild `AAN_Federal_Series_Complete.zip`; note training-program modules (`docs/publications/aan-training-program/`) as downstream regeneration | Publishable series v2 | Render clean; fig-alt text updated |
+| **6** | Derived artifacts: regenerate .docx/.html from .qmd; redraw es-fig-01 series figure (committed SVG per ADR-093); rebuild the datecoded kit `AAN_Federal_Series_Complete_<DATE>ET.zip` locally (docx + .pptx decks + governance docx); note training-program modules (`docs/publications/aan-training-program/`) as downstream regeneration | Publishable series v2 | Render clean; fig-alt text updated |
 
 Phases 2–5 are content; each lands as its own commit (or commit series) on this
 branch so review is per-phase, not one monolith.
