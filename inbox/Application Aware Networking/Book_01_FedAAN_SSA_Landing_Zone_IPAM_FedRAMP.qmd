@@ -48,23 +48,25 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 
 The Social Security Administration operates four distinct cloud environments — on-premises VMware Cloud Foundation, Microsoft Azure Government (GCC Moderate), AWS GovCloud, and Oracle Cloud Infrastructure (OCI) for OPM HRIT integration. Each environment uses a different Software Defined Networking fabric that replaces traditional broadcast DHCP with fabric-native IP assignment. Without a unified control layer, SSA has no cross-environment IP visibility, no unified DNS security policy, no automated certificate lifecycle, and must collect FedRAMP compliance evidence from four separate sources.
 
-**InfoBlox DDI** — the market-leading platform for DNS, DHCP, and IP Address Management — solves all four problems from a single FedRAMP-authorized control plane (CSO FR2017257053, authorized January 2023, hosted on AWS GovCloud).
+**Unified DDI** — an authoritative DNS/DHCP/IPAM plane with DNSSEC and RPZ — solves all four problems from a single control plane. **InfoBlox DDI** is the deployed example this document evaluates for SSA's estate. Under Path A (cloud-managed, below) the control plane is InfoBlox's FedRAMP-authorized offering, listed on the Marketplace as **Infoblox Government Cloud** (CSO FR2017257053, hosted on AWS GovCloud — verify current scope and authorization date on the FedRAMP Marketplace); under Path B (agency-operated, the better fit for SSA's topology) the agency carries the component in its own boundary and no inheritance applies.
+
+> **Mechanism, not product.** Per series doctrine (Book 00), closure necessity names mechanism classes, never products. The mechanism argued for throughout this document is unified DDI; InfoBlox is the deployed example chosen for SSA's current estate, **BlueCat Integrity** is the principal mechanism-class peer, and the ConMon roadmap's alternatives matrix documents what changes on substitution. Every closure claim below is a claim about the mechanism class.
 
 **The three business outcomes this document demonstrates:**
 
 **1. Operational Risk Elimination.** A single Infoblox deployment replaces four separate DNS systems, four separate IP inventory processes, and four separate certificate-tracking tools. When a new cloud workload spins up in any environment, Infoblox automatically allocates an IP (cross-cloud conflict checked), creates DNS A and PTR records, and enrolls a machine certificate via SCEP — in seconds, without a change ticket. When a workload decommissions, all three are revoked atomically.
 
-**2. Continuous FedRAMP Compliance.** Infoblox is one of a small number of DDI platforms with its own FedRAMP Moderate CSO authorization; verify current authorization on the FedRAMP Marketplace at time of procurement, meaning SSA inherits the DDI layer controls rather than re-proving them. Evidence for SC-20/21 (DNSSEC), CM-8 (inventory), IA-5(2) (certificates), AU-12 (audit), and IR-4 (incident response) is generated continuously and automatically — not assembled manually for annual assessments.
+**2. Continuous FedRAMP Compliance.** Infoblox is one of a small number of DDI platforms with its own FedRAMP Moderate CSO authorization (verify current authorization on the FedRAMP Marketplace at time of procurement). Under Path A, SSA inherits the DDI-layer controls rather than re-proving them; under Path B the same controls are agency-carried, with the evidence generated natively by the platform. Evidence for SC-20/21 (DNSSEC), CM-8 (inventory), IA-5(2) (certificates), AU-12 (audit), and IR-4 (incident response) is generated continuously and automatically — not assembled manually for annual assessments.
 
 **3. M365 GCC Boundary Enforcement.** Microsoft publishes M365 GCC endpoint changes up to 12 times per year. Without automation, each change requires four manual updates across NSG rules, VPC security groups, RPZ policies, and VPN split-tunnel configurations — during which a gap exists between when Microsoft changes an endpoint and when SSA's controls reflect it. Infoblox polls the Microsoft 365 IP & URL Web Service API daily and pushes all four enforcement updates simultaneously, closing the boundary gap window to minutes.
 
-**Vendor relationships:** InfoBlox has formal technology partnerships with all three of SSA's primary cloud vendors. InfoBlox BloxOne's own FedRAMP-authorized service runs *on* AWS GovCloud, making AWS the infrastructure foundation. InfoBlox is a Microsoft Azure Technology Alliance Partner with native Microsoft Sentinel, Defender Threat Intelligence, and Entra ID integrations. InfoBlox is available on the Oracle Cloud Marketplace with OCI connector support for the OPM HRIT integration path.
+**Vendor relationships:** InfoBlox has formal technology partnerships with all three of SSA's primary cloud vendors. InfoBlox's own FedRAMP-authorized service (Infoblox Government Cloud) runs *on* AWS GovCloud, making AWS the infrastructure foundation. InfoBlox is a Microsoft Azure Technology Alliance Partner with native Microsoft Sentinel, Defender Threat Intelligence, and Entra ID integrations. InfoBlox is available on the Oracle Cloud Marketplace with OCI connector support for the OPM HRIT integration path.
 
 InfoBlox DDI can be deployed via two architecturally distinct paths; the choice determines the FedRAMP authorization inheritance model:
 
 **Path A — BloxOne DDI (Cloud-Managed, FedRAMP ATO Inherited)**
 
-InfoBlox operates the management control plane on AWS GovCloud (CSO FR2017257053, authorized January 2023). The agency deploys BloxOne On-Prem Hosts in each environment; they connect to the InfoBlox-hosted management plane. FedRAMP authorization is inherited from InfoBlox's ATO — the agency does not carry this component independently. Procurement via AWS GovCloud Marketplace (no separate IDIQ required). Best fit if the agency prefers a managed control plane and the simplest FedRAMP inheritance path.
+InfoBlox operates the management control plane on AWS GovCloud (Infoblox Government Cloud, CSO FR2017257053 — verify current scope and authorization date on the FedRAMP Marketplace). The agency deploys BloxOne On-Prem Hosts in each environment; they connect to the InfoBlox-hosted management plane. FedRAMP authorization is inherited from InfoBlox's ATO — the agency does not carry this component independently. Procurement via AWS GovCloud Marketplace (no separate IDIQ required). Best fit if the agency prefers a managed control plane and the simplest FedRAMP inheritance path.
 
 **Path B — NIOS Grid (Agency-Operated, On-Premises Hub)**
 
@@ -241,7 +243,7 @@ InfoBlox and Microsoft have a formal **Azure Technology Alliance Partnership** w
 | **Microsoft Sentinel Native Connector** | First-party Sentinel content pack — DNS Security Events, DHCP events, RPZ blocks stream to Sentinel without custom parsing |
 | **Defender Threat Intelligence (MDTI)** | Bidirectional IOC sharing between InfoBlox TIDE and MDTI — a domain blocked by MDTI is also blocked by InfoBlox RPZ |
 | **Entra ID / Azure AD SSO** | InfoBlox Grid Manager and BloxOne portal support Entra ID SAML/OIDC — Grid admin auth governed by SSA Conditional Access policies |
-| **Azure Government Marketplace** | BloxOne DDI Federal is procurable via existing Azure EA/ELA agreements — no separate IDIQ |
+| **Azure Government Marketplace** | The Path A cloud-managed offering is procurable via existing Azure EA/ELA agreements — no separate IDIQ |
 | **AD-Integrated DNS Migration** | Documented migration tooling from Windows DNS zones to InfoBlox Grid — AD still replicates, InfoBlox serves authoritative records |
 | **M365 GCC Endpoint Lifecycle** | InfoBlox polls Microsoft 365 IP & URL Web Service API and auto-updates all enforcement layers |
 
@@ -271,12 +273,12 @@ InfoBlox provides the automated enforcement pipeline:
 
 ### AWS Partnership: BloxOne Runs ON AWS GovCloud {#sec-aws}
 
-![AWS GovCloud × InfoBlox — BloxOne DDI Federal Hosted on AWS, LZA DNS Alignment](figs/lz-fig-07-aws-lza.png){fig-alt="Diagram showing BloxOne DDI Federal hosted inside AWS GovCloud container, with connections to AWS LZA, Security Hub, ACM, AWS IPAM, and GovCloud Marketplace, plus SSA environments on the right" width="100%"}
+![AWS GovCloud × InfoBlox — Infoblox Government Cloud Hosted on AWS, LZA DNS Alignment](figs/lz-fig-07-aws-lza.png){fig-alt="Diagram showing Infoblox Government Cloud (CSO FR2017257053, verify scope and date on the FedRAMP Marketplace) hosted inside AWS GovCloud container, with connections to AWS LZA, Security Hub, ACM, AWS IPAM, and GovCloud Marketplace, plus SSA environments on the right" width="100%"}
 
-The AWS relationship is the deepest of all three cloud vendors: **InfoBlox's own FedRAMP-authorized cloud service (BloxOne DDI Federal, CSO FR2017257053) is hosted on AWS GovCloud.** This makes AWS the infrastructure foundation for InfoBlox's SaaS control plane.
+The AWS relationship is the deepest of all three cloud vendors: **InfoBlox's own FedRAMP-authorized cloud service (Infoblox Government Cloud, CSO FR2017257053 — verify current scope and date on the FedRAMP Marketplace) is hosted on AWS GovCloud.** This makes AWS the infrastructure foundation for InfoBlox's SaaS control plane.
 
 ::: {.callout-tip}
-**Key Point:** When SSA uses BloxOne DDI Federal, the control plane is hosted on AWS GovCloud infrastructure with its own FedRAMP High authorization. SSA inherits both the InfoBlox DDI CSO (FR2017257053) and the AWS GovCloud infrastructure authorization — layered FedRAMP coverage.
+**Key Point (Path A only):** When SSA uses the cloud-managed control plane, it is hosted on AWS GovCloud infrastructure with its own FedRAMP High authorization. SSA inherits both the InfoBlox CSO (FR2017257053) and the AWS GovCloud infrastructure authorization — layered FedRAMP coverage. Under Path B neither inheritance applies; the agency carries the component.
 :::
 
 AWS-specific InfoBlox capabilities:
@@ -285,7 +287,7 @@ AWS-specific InfoBlox capabilities:
 - **AWS Security Hub:** InfoBlox RPZ block events flow natively to Security Hub findings and correlate with GuardDuty detections.
 - **ACM Private CA Integration:** InfoBlox auto-creates DNS validation CNAME records for ACM certificate issuance; ACM PCA certificate expiry is tracked in InfoBlox Certificate Tracker.
 - **AWS IPAM Sync:** AWS IPAM pool allocations are imported into InfoBlox's AWS-GovCloud Network View — cross-cloud CIDR conflict detection includes native AWS IPAM-managed ranges.
-- **AWS GovCloud Marketplace Procurement:** BloxOne DDI Federal is procurable via the GovCloud Marketplace against existing EA agreements — no separate IDIQ or procurement action required.
+- **AWS GovCloud Marketplace Procurement (Path A):** the cloud-managed offering is procurable via the GovCloud Marketplace against existing EA agreements — no separate IDIQ or procurement action required.
 
 ::: {.callout-note}
 **Route 53 Private Zone DNSSEC Gap:** AWS Route 53 private hosted zones *cannot* be DNSSEC-signed — this is a documented AWS platform limitation as of 2026. InfoBlox Grid Members sign all internal zones including private SDN segments, closing this gap. This is a key differentiator for FedRAMP SC-20/SC-21 evidence.
@@ -807,7 +809,7 @@ Each phase produces immediately usable compliance evidence and security value �
 
 ### Phase 0 — Procurement and Architecture (Month 1) {.unnumbered}
 
-- Procure InfoBlox BloxOne DDI Federal via **AWS GovCloud Marketplace** against existing EA (no new IDIQ)
+- Path A: procure the InfoBlox cloud-managed offering (Infoblox Government Cloud) via **AWS GovCloud Marketplace** against existing EA (no new IDIQ); Path B: procure NIOS via GSA Schedule GS-35F or agency IDIQ
 - Reference FedRAMP Marketplace CSO **FR2017257053** in procurement documentation
 - Design Network View CIDR allocation plan: audit all existing IP ranges across on-prem, Azure VNet, AWS VPC, OCI VCN for overlaps
 - Engage InfoBlox Professional Services for VCF 9.1 DDI integration workshop
@@ -851,7 +853,7 @@ Each phase produces immediately usable compliance evidence and security value �
 
 ### Phase 6 — FedRAMP Continuous Monitoring (Months 9–12) {.unnumbered}
 
-- Complete InfoBlox FedRAMP ATO documentation in SSP; reference CSO FR2017257053 for DDI layer control inheritance
+- Complete InfoBlox FedRAMP documentation in SSP; reference CSO FR2017257053 for DDI-layer control inheritance (Path A only — Path B documents NIOS as an agency-operated component)
 - Configure all eight FedRAMP control evidence exports as scheduled reports
 - Implement IaC Terraform pipeline: IP allocation → DNS record → SCEP cert enrollment as single atomic pipeline
 - Configure FedRAMP 20x KSI automation checks (DNSSEC status, RPZ coverage, cert expiry, CIDR conflict) as CI/CD pipeline tests
@@ -862,7 +864,7 @@ Each phase produces immediately usable compliance evidence and security value �
 
 | Source | URL |
 |---|---|
-| InfoBlox FedRAMP Marketplace (CSO FR2017257053) | [fedramp.gov/marketplace/products/FR2017257053](https://www.fedramp.gov/marketplace/products/FR2017257053/) |
+| Infoblox Government Cloud — FedRAMP Marketplace listing (CSO FR2017257053) | [fedramp.gov/marketplace/products/FR2017257053](https://www.fedramp.gov/marketplace/products/FR2017257053/) |
 | VMware VCF 9.1 InfoBlox DDI Integration (May 2026) | [blogs.vmware.com/cloud-foundation](https://blogs.vmware.com/cloud-foundation/2026/05/15/vcf-networking-9-1-seamless-ddi-integration-with-infoblox/) |
 | Register InfoBlox NIOS DDI with NSX — Broadcom TechDocs | [techdocs.broadcom.com/.../integrate-nsx-with-infoblox](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/advanced-network-management/ip-address-management-ipam/integrate-nsx-with-infoblox.html) |
 | Microsoft 365 IP and URL Web Service | [docs.microsoft.com/en-us/microsoft-365/enterprise/microsoft-365-ip-web-service](https://docs.microsoft.com/en-us/microsoft-365/enterprise/microsoft-365-ip-web-service) |
