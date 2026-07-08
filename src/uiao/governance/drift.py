@@ -401,6 +401,49 @@ def _classify_facet_drift(codebook: Any, actual_state: Dict[str, Any]) -> tuple[
         reasons.append(f"facet '{name}' value '{value}' is not in the codebook (phantom)")
         per_facet.append(entry)
 
+    # Derived-path reconciliation (ADR-127): when the codebook declares the
+    # Hybrid-C+Path inheritance layer, the stored derived OrgPath must equal
+    # the recomputation from the governance-layer hierarchy facets. A
+    # stale-but-well-formed path passes the per-facet loop above (status
+    # ``active``) and is only caught here. ``replacement`` carries the
+    # recomputed value — the corrective write, exactly like a deprecated
+    # value's successor.
+    hybrid = getattr(codebook, "hybrid", None)
+    derive = getattr(codebook, "derive_org_path", None)
+    if hybrid and callable(derive):
+        layer = hybrid.get("inheritance_layer") or {}
+        path_name = layer.get("facet")
+        path_facet = codebook.facets.get(path_name or "")
+        if path_facet is not None:
+            facet_values: Dict[str, str] = {}
+            for source_name in layer.get("derived_from", ()):
+                source = codebook.facets.get(source_name)
+                if source is None:
+                    continue
+                raw = actual_state.get(source.attribute)
+                if raw is None:
+                    raw = actual_state.get(source_name)
+                facet_values[source_name] = "" if raw is None else str(raw)
+            expected = derive(facet_values)
+            raw = actual_state.get(path_facet.attribute)
+            if raw is None:
+                raw = actual_state.get(str(path_name))
+            stored = "" if raw is None else str(raw)
+            if stored != expected:
+                reasons.append(
+                    f"derived org_path '{stored}' does not equal the recomputation "
+                    f"'{expected}' from the hierarchy facets (ADR-127)"
+                )
+                per_facet.append(
+                    {
+                        "facet": path_facet.name,
+                        "slot": path_facet.attribute,
+                        "value": stored,
+                        "status": "derived_divergence",
+                        "replacement": expected,
+                    }
+                )
+
     return reasons, per_facet
 
 
@@ -423,8 +466,11 @@ def classify_identity_drift(
     Identity drift is detected when:
       1. Any sentinel identity field has changed, OR
       2. A per-facet OrgPath value is deprecated, phantom (unknown to the
-         codebook), or a reserved slot is populated — when a Model C
-         ``orgpath_codebook`` is supplied, OR
+         codebook), a reserved slot is populated, or — when the codebook
+         declares the ADR-127 hybrid inheritance layer — the stored derived
+         OrgPath diverges from its recomputation (``derived_divergence``,
+         with the recomputed path carried as the ``replacement``) — when a
+         Model C ``orgpath_codebook`` is supplied, OR
       3. Lifecycle state is inconsistent with accountEnabled, OR
       4. Required identity fields are absent from actual_state
 
@@ -494,7 +540,7 @@ def classify_identity_drift(
             [p["facet"], p["slot"], p["value"], p["status"]] + ([p["replacement"]] if p.get("replacement") else [])
         )
         for p in per_facet
-        if p["status"] in ("deprecated", "phantom", "reserved_violation")
+        if p["status"] in ("deprecated", "phantom", "reserved_violation", "derived_divergence")
     ]
     if drifting:
         delta_out["per_facet"] = drifting

@@ -88,10 +88,35 @@ def render_predicates(codebook: Codebook, predicates: Iterable[FacetPredicate]) 
 def _render_predicate(codebook: Codebook, predicate: FacetPredicate) -> str:
     facet = _resolve_facet(codebook, predicate.facet)
     _validate_operator(predicate)
+    _validate_derived_prefix(codebook, facet, predicate)
     _validate_value(facet, predicate)
     attribute = f"{_USER_ATTRIBUTE_PREFIX}{facet.attribute}"
     rendered_value = _render_value(predicate)
     return f"({attribute} {predicate.op} {rendered_value})"
+
+
+def _validate_derived_prefix(codebook: Codebook, facet: Facet, predicate: FacetPredicate) -> None:
+    """Enforce the ADR-127 trailing-delimiter contract on branch prefixes.
+
+    A ``-startsWith`` prefix against the derived-OrgPath facet must end
+    with the delimiter, or ``"Division=East"`` silently also matches
+    ``"Division=Eastern|…"`` and ``"Division=Easton|…"``. The generic
+    value check below would reject the same input via the facet pattern,
+    but with a message that doesn't name the fix.
+    """
+    if facet.name != codebook.derived_path_facet_name() or predicate.op != "-startsWith":
+        return
+    layer = (codebook.hybrid or {}).get("inheritance_layer") or {}
+    delimiter = layer.get("delimiter", "|")
+    values = predicate.value if isinstance(predicate.value, list) else [predicate.value]
+    for v in values:
+        if not v or not v.endswith(delimiter):
+            raise RuleRenderError(
+                f"Derived-OrgPath prefix '{v}' on facet '{facet.name}' is missing the "
+                f"trailing '{delimiter}' (ADR-127): an unterminated prefix also matches "
+                "sibling segments ('Division=East' matches 'Division=Eastern|'). "
+                "Terminate the prefix (Get-OrgPathPrefix normalizes)."
+            )
 
 
 def _resolve_facet(codebook: Codebook, name: str) -> Facet:

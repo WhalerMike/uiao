@@ -14,7 +14,7 @@ provenance_flatten:
 
 # Appendix H — OrgPath Codebook JSON Schema (Model C)
 
-> **Model C — 15-facet multi-attribute (per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)).** The canonical OrgPath JSON Schema validates the **per-facet Codebook document** declaring each of the 10 named facets with its slot binding, kind (enumerated / typed / reserved), and per-facet enumeration or typed pattern. The executable schema is [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json) (JSON Schema draft 2020-12; `schema_version: 2.0.0`). The Python loader at [`uiao.modernization.orgtree.codebook`](../modernization/orgtree/codebook.py) additionally enforces the **slot-uniqueness invariant** after JSON Schema validation passes — cross-property uniqueness is not expressible in JSON Schema, so the loader is the enforcement point. This appendix is the v3.0 Model C rewrite; the prior Model A composite-hyphen schemas (`OrgPathEntry`, `OrgPathCodebook`, `DynamicGroupDefinition`, `AttributeMapping`) were retired by ADR-078 Phase 1 and are no longer authoritative.
+> **Model C — 15-facet multi-attribute (per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)).** The canonical OrgPath JSON Schema validates the **per-facet Codebook document** declaring each of the 10 named facets with its slot binding, kind (enumerated / typed / reserved), and per-facet enumeration or typed pattern. The executable schema is [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json) (JSON Schema draft 2020-12; `schema_version: 2.1.0` — v2.1 adds the optional ADR-127 `hybrid` block declaring the derived-OrgPath inheritance layer on slot 15). The Python loader at [`uiao.modernization.orgtree.codebook`](../modernization/orgtree/codebook.py) additionally enforces the **slot-uniqueness invariant** after JSON Schema validation passes — cross-property uniqueness is not expressible in JSON Schema, so the loader is the enforcement point. This appendix is the v3.0 Model C rewrite; the prior Model A composite-hyphen schemas (`OrgPathEntry`, `OrgPathCodebook`, `DynamicGroupDefinition`, `AttributeMapping`) were retired by ADR-078 Phase 1 and are no longer authoritative.
 
 ## Purpose
 
@@ -43,7 +43,7 @@ The canonical schema validates a Codebook document with **per-facet declarations
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://uiao.gov/schemas/orgpath-codebook.schema.json",
   "title": "OrgPath Codebook (Model C)",
-  "description": "Per-facet codebook declaring the 10 named facets + 5 reserved slots that compose Model C OrgPath. Slot uniqueness is loader-enforced after schema validation.",
+  "description": "Per-facet codebook declaring the 10 named facets, 4 reserved slots, and the ADR-127 derived org_path on slot 15 (Hybrid-C+Path). Slot uniqueness is loader-enforced after schema validation.",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -65,7 +65,7 @@ The canonical schema validates a Codebook document with **per-facet declarations
       "type": "array",
       "items": { "$ref": "#/$defs/Facet" },
       "minItems": 10,
-      "description": "Array of Facet declarations. Each of the 10 named slots (extensionAttribute1..10) must be claimed by exactly one facet; reserved slots (extensionAttribute11..15) may appear with kind: reserved."
+      "description": "Array of Facet declarations. Each of the 10 named slots (extensionAttribute1..10) must be claimed by exactly one facet; reserved slots (extensionAttribute11..14) may appear with kind: reserved; slot 15 carries the derived org_path (typed) per ADR-127."
     }
   },
   "required": ["schema_version", "codebook_version", "generated_date", "facets"],
