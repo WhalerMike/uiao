@@ -81,6 +81,15 @@ def test_passes_kusto_startswith() -> None:
     assert len(lint.scan_text(bad, "report.kql")) == 1
 
 
+def test_yaml_predicate_style_covered() -> None:
+    # Canon rule-library predicate shape (UIAO_152 / UIAO_153):
+    #   - { facet: org_path, op: -startsWith, value: "…" }
+    good = '        - { facet: org_path, op: -startsWith, value: "Region=NCR|Department=IT|" }'
+    bad = '        - { facet: org_path, op: -startsWith, value: "Region=NCR|Department=IT" }'
+    assert lint.scan_text(good, "dynamic-groups.yaml") == []
+    assert len(lint.scan_text(bad, "dynamic-groups.yaml")) == 1
+
+
 def test_ignores_non_orgpath_startswith() -> None:
     # Graph display-name filters and legacy composite paths are not prefixes
     # of the hybrid derived path.

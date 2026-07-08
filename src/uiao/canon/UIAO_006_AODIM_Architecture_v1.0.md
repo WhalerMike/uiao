@@ -24,7 +24,7 @@ provenance:
 > single composite path string (`CORP/US/EAST/BALTIMORE/IT`) was
 > **Model B (composite-slash)**, which **[ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)
 > superseded** with **Model C — the 15-facet multi-attribute schema**
-> (10 named facets across `extensionAttribute1`–`10`, 5 reserved). The
+> (10 named facets across `extensionAttribute1`–`10`, 4 reserved, plus the ADR-127 derived OrgPath on slot 15). The
 > Attribute Model, Dynamic Group Model, and CLI sections below reflect
 > Model C. See the [OrgPath Codebook (UIAO_151)](UIAO_151_OrgPath_Codebook.md)
 > for the canonical facet→slot map.
@@ -76,7 +76,7 @@ facet is queried directly rather than parsed out of a composite path.
 | `ClearanceLevel` | `extensionAttribute9` | Clearance band |
 | `AccountType` | `extensionAttribute10` | Account type (Privileged / Service / …) |
 
-Slots `extensionAttribute11`–`15` are reserved for tenant-declared facets
+Slots `extensionAttribute11`–`14` are reserved for tenant-declared facets
 introduced via governed PR. The native `manager` relationship is consumed
 alongside these facets but is a standard directory attribute, not an
 OrgPath facet.
