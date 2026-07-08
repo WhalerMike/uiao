@@ -191,6 +191,44 @@ class Codebook:
         layer = self.hybrid.get("inheritance_layer") or {}
         return layer.get("facet")
 
+    def derive_org_path(self, facet_values: Mapping[str, str]) -> str:
+        """Compose the ADR-127 derived canonical OrgPath from facet values.
+
+        The single source of truth for the derivation the writers stamp
+        and the drift engine reconciles against — the Python counterpart
+        of the ``UIAO.OrgPath`` module's ``New-OrgPath``.
+
+        Segments are ``<Label>=<value>|`` in ``derived_from`` order, and
+        every segment — including the last — is terminated by the
+        delimiter (the trailing-delimiter contract that makes prefix
+        matching collision-free). Composition truncates at the first
+        facet whose value is unpopulated or not active in the codebook,
+        so the result is always a contiguous hierarchy prefix of
+        codebook-valid values; the invalid input itself is the facet's
+        own Value-drift finding, not the path's problem.
+
+        Returns ``""`` when the codebook declares no ``hybrid`` block or
+        the first hierarchy facet is unpopulated.
+        """
+        if not self.hybrid:
+            return ""
+        layer = self.hybrid.get("inheritance_layer") or {}
+        delimiter = layer.get("delimiter", "|")
+        labels = layer.get("segment_labels") or {}
+        parts: list[str] = []
+        for facet_name in layer.get("derived_from", ()):
+            value = facet_values.get(facet_name) or ""
+            facet = self.facets.get(facet_name)
+            if not value or facet is None or not facet.is_active(value):
+                break
+            if delimiter in value or "=" in value:
+                # Defense in depth: a value that would corrupt the
+                # segment grammar never lands in the path.
+                break
+            label = labels.get(facet_name) or _segment_label(facet_name)
+            parts.append(f"{label}={value}{delimiter}")
+        return "".join(parts)
+
     def projected_facets(self) -> Mapping[str, Facet]:
         """Facets stamped onto a directory slot (``projected`` and not reserved).
 
@@ -199,6 +237,15 @@ class Codebook:
         not pushed to the directory (ADR-121).
         """
         return {n: f for n, f in self.facets.items() if f.projected and f.kind != "reserved"}
+
+
+def _segment_label(facet_name: str) -> str:
+    """Fallback path-segment label: PascalCase of the facet name.
+
+    Used only when the ``hybrid`` block declares no ``segment_labels``
+    entry for the facet (the canonical codebook declares all three).
+    """
+    return "".join(part.capitalize() for part in facet_name.split("_"))
 
 
 # ---------------------------------------------------------------------------

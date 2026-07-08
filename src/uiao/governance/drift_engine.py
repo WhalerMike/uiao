@@ -34,6 +34,13 @@ Categories":
 * **Orphan** (P3) — enumeration value with zero matching principals; flag only
 * **Phantom** (P3) — principal carries a deprecated value; optionally
   auto-reassigned per facet policy when ``replaced_by`` is set
+
+Plus, when the codebook declares the ADR-127 ``hybrid`` block:
+
+* **Derived** (P2) — the stored derived OrgPath (inheritance layer,
+  ``extensionAttribute15``) does not equal the value recomputed from
+  the governance-layer hierarchy facets; never auto-fixed here
+  (restamping is the writers' job)
 """
 
 from __future__ import annotations
@@ -66,6 +73,10 @@ _CATEGORY_META: Mapping[str, tuple[str, str, bool]] = {
     "Slot": ("DRIFT-SCHEMA::slot-occupied", "P1", False),
     "Orphan": ("DRIFT-SEMANTIC::orphan", "P3", False),
     "Phantom": ("DRIFT-SEMANTIC::phantom", "P3", False),  # config can opt-in
+    # ADR-127: the stored derived OrgPath (extensionAttribute15) does not
+    # equal the value recomputed from the governance-layer hierarchy
+    # facets. Never auto-fixed here — restamping is the writers' job.
+    "Derived": ("DRIFT-SEMANTIC::derived-path", "P2", False),
 }
 
 
@@ -318,6 +329,59 @@ class DriftEngine:
                 snapshot_id=snapshot_id,
                 timestamp=ts,
             )
+
+        # Derived-path reconciliation (ADR-127): the inheritance layer is
+        # derived data — the stored value must equal the recomputation
+        # from the governance-layer hierarchy facets at all times. A
+        # stale-but-well-formed path (facet moved, path never restamped)
+        # passes the per-facet checks above and is only caught here.
+        yield from self._classify_derived_path(principal, snapshot_id, ts)
+
+    def _classify_derived_path(
+        self,
+        principal: PrincipalSnapshot,
+        snapshot_id: str,
+        ts: str,
+    ) -> Iterable[DriftFinding]:
+        hybrid = self.codebook.hybrid
+        if not hybrid:
+            return
+        layer = hybrid.get("inheritance_layer") or {}
+        path_facet_name = layer.get("facet")
+        path_facet = self.codebook.facets.get(path_facet_name or "")
+        if path_facet is None:
+            return
+
+        facet_values: dict[str, str] = {}
+        for source_name in layer.get("derived_from", ()):
+            source = self.codebook.facets.get(source_name)
+            if source is not None:
+                facet_values[source_name] = principal.attributes.get(source.attribute, "") or ""
+        expected = self.codebook.derive_org_path(facet_values)
+        stored = principal.attributes.get(path_facet.attribute, "") or ""
+        if stored == expected:
+            return
+
+        delimiter = layer.get("delimiter", "|")
+        if stored and not stored.endswith(delimiter):
+            detail = f"stored path is missing the trailing '{delimiter}' (ADR-127 trailing-delimiter contract)"
+        elif not stored:
+            detail = "derived path is not stamped"
+        else:
+            detail = "stored path is stale against the governance-layer facets"
+        yield self._finding(
+            principal=principal,
+            facet=path_facet,
+            observed_value=stored,
+            category="Derived",
+            reason=(
+                f"{path_facet.attribute} '{stored}' does not equal the path "
+                f"derived from the governance-layer facets ('{expected}'): {detail}."
+            ),
+            snapshot_id=snapshot_id,
+            timestamp=ts,
+            metadata={"expected": expected},
+        )
 
     def _classify_orphan_drift(
         self,
