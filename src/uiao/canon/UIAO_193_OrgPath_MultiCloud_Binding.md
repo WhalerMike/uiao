@@ -140,7 +140,7 @@ The following profiles are specified at the Moderate and Commercial boundaries. 
 ### `microsoft-entra` (reference profile)
 
 - **Planes:** identity, workload (device).
-- **Identity storage:** `onPremisesExtensionAttribute1..15` on the directory object, exactly per ADR-078's slot table (Region→1, Department→2, Division→3, Role→4, CostCenter→5, Classification→6, HireDate→7, TermDate→8, ClearanceLevel→9, AccountType→10, reserved 11–15).
+- **Identity storage:** `onPremisesExtensionAttribute1..15` on the directory object, exactly per ADR-078's slot table (Region→1, Department→2, Division→3, Role→4, CostCenter→5, Classification→6, HireDate→7, TermDate→8, ClearanceLevel→9, AccountType→10, reserved 11–14, derived canonical OrgPath→15 per ADR-127).
 - **Workload storage:** Arc-connected machine tags (key = facet name, value = facet value).
 - **Endpoint resolution:** the Graph cloud resolver for identity; the ARM resolver for the device plane — both at the commercial / GCC-Moderate boundary.
 - **Constraints:** 15 named slots; no overflow needed (the facet count equals the slot count by construction).

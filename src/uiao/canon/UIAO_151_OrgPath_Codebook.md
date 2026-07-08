@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_151
-title: "Appendix A — OrgPath Codebook (Model C, 15-facet multi-attribute)"
-version: "4.0"
+title: "Appendix A — OrgPath Codebook (Hybrid-C+Path: Model C facets + derived OrgPath)"
+version: "4.1"
 status: Current
 owner: Michael Stratton
 author: Michal Doroszewski
 created_at: "2026-04-18"
-updated_at: "2026-05-24"
+updated_at: "2026-07-08"
 promotion:
   prior_version: "3.0 (Model A composite-hyphen, ADR-062 8-segment cap)"
   promoted_by: "Governance Steward"
@@ -20,11 +20,11 @@ provenance_flatten:
 
 # Appendix A — OrgPath Codebook (Model C)
 
-> **Model C (15-facet multi-attribute) is the canonical OrgPath schema for new UIAO adoption.** Per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md), the prior Model A composite-hyphen path (`extensionAttribute1: ORG-FIN-AP-EAST`) is superseded. The executable canon at [`data/orgpath/codebook.yaml`](data/orgpath/codebook.yaml) is `schema_version: 2.0.0`, validated by [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json), and loaded into a `Codebook` / `Facet` / `FacetValue` Python API at [`uiao.modernization.orgtree.codebook`](../modernization/orgtree/codebook.py).
+> **Model C (15-facet multi-attribute) is the canonical OrgPath schema for new UIAO adoption.** Per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md), the prior Model A composite-hyphen path (`extensionAttribute1: ORG-FIN-AP-EAST`) is superseded. Per [ADR-127](adr/adr-127-orgpath-hybrid-derived-path.md) the model is **Hybrid-C+Path**: the facets are the governance layer on slots 1–14, and slot 15 carries a **derived canonical OrgPath** (the inheritance layer) recomputed from the hierarchy facets, with the trailing `|` always present. The executable canon at [`data/orgpath/codebook.yaml`](data/orgpath/codebook.yaml) is `schema_version: 2.1.0`, validated by [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json), and loaded into a `Codebook` / `Facet` / `FacetValue` Python API at [`uiao.modernization.orgtree.codebook`](../modernization/orgtree/codebook.py).
 
 ## Purpose
 
-This appendix defines the canonical 15-facet multi-attribute model for encoding organizational identity in Entra ID `onPremisesExtensionAttributes`. Each of the 15 attribute slots carries one *semantic facet* (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType — plus five reserved for tenant-specific extension). Together, the facets give every principal a structured identity surface that dynamic groups, Administrative Units, Conditional Access policies, and lifecycle workflows compose against via boolean rules rather than text-parsing a single composite string.
+This appendix defines the canonical 15-facet multi-attribute model for encoding organizational identity in Entra ID `onPremisesExtensionAttributes`. Each of the 15 attribute slots carries one *semantic facet* (Region, Department, Division, Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType — plus four reserved for tenant-specific extension, and the ADR-127 derived canonical OrgPath on slot 15). Together, the facets give every principal a structured identity surface that dynamic groups, Administrative Units, Conditional Access policies, and lifecycle workflows compose against via boolean rules rather than text-parsing a single composite string.
 
 Every other OrgTree artifact depends on this codebook: dynamic groups (UIAO_152) AND facet predicates into membership rules, Administrative Units (UIAO_154) scope by facet tuples, drift detection (UIAO_163) validates each attribute against its facet's enumeration independently, and the delegation matrix maps role assignments to facet-defined scopes.
 
@@ -36,7 +36,7 @@ Per ADR-078 and ADR-076, Model C is a **Tier 3+ doctrine for new adoption**. UIA
 
 ## Canonical Attribute Assignments
 
-Per ADR-078 §Canonical attribute assignments, the 10 named facets bind to specific extensionAttribute slots. Slot assignments are canonical and MUST NOT be remapped without a superseding ADR. Slots 11–15 are reserved for tenant-specific extensions and require a governed PR before population.
+Per ADR-078 §Canonical attribute assignments, the 10 named facets bind to specific extensionAttribute slots. Slot assignments are canonical and MUST NOT be remapped without a superseding ADR. Slots 11–14 are reserved for tenant-specific extensions and require a governed PR before population. Slot 15 carries the derived canonical OrgPath (inheritance layer, ADR-127) and is not tenant-claimable.
 
 | Slot | Facet | Kind | Description |
 |---|---|---|---|
@@ -50,7 +50,8 @@ Per ADR-078 §Canonical attribute assignments, the 10 named facets bind to speci
 | `extensionAttribute8` | **TermDate** | typed (ISO date, allow_empty) | Leaver-lifecycle anchor; ISO 8601 or empty for active |
 | `extensionAttribute9` | **ClearanceLevel** | enumerated | Personnel security clearance (e.g., `None`, `PublicTrust`, `Secret`, `TopSecret`, `TS_SCI`) |
 | `extensionAttribute10` | **AccountType** | enumerated | Account category (e.g., `Standard`, `Privileged`, `Service`, `SharedMailbox`, `Guest`, `Vendor`) |
-| `extensionAttribute11`–`15` | **Reserved** | reserved | Tenant-specific extension slots; declare facet semantics via governed PR before populating |
+| `extensionAttribute11`–`14` | **Reserved** | reserved | Tenant-specific extension slots; declare facet semantics via governed PR before populating |
+| `extensionAttribute15` | **OrgPath** (derived) | typed | Derived canonical OrgPath (ADR-127): `Region=NCR\|Department=IT\|Division=CyberOps\|` — recomputed from the hierarchy facets, trailing `\|` always present, never hand-authored |
 
 ## Facet Kinds
 
@@ -60,7 +61,7 @@ Every facet declares one of three kinds:
 |---|---|---|
 | **enumerated** | Value must appear in the facet's closed `enumeration` list | Region, Department, Division, Role, CostCenter, Classification, ClearanceLevel, AccountType |
 | **typed** | Value must match `value_type` and optional `value_pattern` regex; `allow_empty: true` permits empty string | HireDate, TermDate (dates are not enumerable) |
-| **reserved** | No value accepted until promoted to enumerated or typed via governed PR | Slots 11–15 until declared |
+| **reserved** | No value accepted until promoted to enumerated or typed via governed PR | Slots 11–14 until declared |
 
 The Python loader rejects any value that is neither active nor explicitly deprecated. The drift engine emits `DRIFT-SEMANTIC` per-facet for unknown values and per-facet for deprecated values — the second class additionally carries the `replaced_by` successor for remediation.
 
@@ -74,6 +75,22 @@ Each extensionAttribute slot must be claimed by at most one facet.
 ```
 
 This invariant cannot be expressed in JSON Schema (which checks per-property shape, not cross-property uniqueness), so the loader enforces it after schema validation.
+
+## Inheritance Layer — Derived Canonical OrgPath (ADR-127)
+
+The codebook's top-level `hybrid` block declares the **Hybrid-C+Path** model: the facets above are the *governance layer*, and `extensionAttribute15` carries the *inheritance layer* — a canonical OrgPath string **derived** from the hierarchy facets (`region`, `department`, `division`, in that order) as `Label=value` segments delimited by `|`:
+
+```
+extensionAttribute15 = "Region=NCR|Department=IT|Division=CyberOps|"
+```
+
+Three rules make this a mechanism rather than a second source of truth:
+
+1. **Derived, never hand-authored.** The value is a pure function of the governance facets. The writers (`Update-OrgAttributes` in the `UIAO.OrgPath` PowerShell module; `Codebook.derive_org_path` / `DeviceOrgPathPlanner` in Python) recompute it on every stamp, and the drift engine flags any stored value that does not equal the recomputation (`DRIFT-SEMANTIC::derived-path`).
+2. **Trailing delimiter always present.** Every segment — including the last — is terminated by `|`, so a subtree prefix such as `Division=East|` can never match `Division=Eastern|` or `Division=Easton|`. Prefixes used with `-startsWith` (Entra) or `like` (Azure Policy) MUST carry the terminator; `Get-OrgPathPrefix` normalizes, the rule renderer rejects unterminated prefixes at library-load time, and CI lints the corpus.
+3. **Contiguous prefix.** Composition truncates at the first unpopulated (or codebook-invalid) hierarchy facet — a Division without a Department is governance-layer drift, not a path.
+
+This restores the subtree-inheritance query Model C removed — one branch rule covers a node and every future descendant (`OrgTree-Branch-NCR-IT-Users` in UIAO_152 targets `extensionAttribute15 -startsWith "Region=NCR|Department=IT|"`) — while node-exact and cross-cutting targeting remain boolean facet composition on the governance layer. See [ADR-127](adr/adr-127-orgpath-hybrid-derived-path.md) for the full contract, the ADR-063 reconciliation, and the Azure Policy `like` literal-pipe footnote.
 
 ## Per-Facet Enumeration (Starter Set)
 
@@ -180,7 +197,7 @@ Administrative Units scope role assignments by facet tuples mirroring the dynami
 ## Boundary Rules
 
 1. Each `extensionAttribute` slot 1–15 may be claimed by at most one facet (loader-enforced).
-2. Slots 11–15 default to `kind: reserved` and reject all values until declared via governed PR.
+2. Slots 11–14 default to `kind: reserved` and reject all values until declared via governed PR; slot 15 is the derived canonical OrgPath (ADR-127) and is never hand-authored.
 3. Enumerated facet values must match the facet's `enumeration` list (case-sensitive); non-matching values are `DRIFT-SEMANTIC`.
 4. Typed facet values must match `value_type` and optional `value_pattern`; non-matching values are `DRIFT-SEMANTIC`.
 5. OrgPath data lives in Entra ID `onPremisesExtensionAttributes` within the M365 GCC-Moderate boundary; no facet references external systems outside the SaaS perimeter.
@@ -241,7 +258,7 @@ A complete per-facet validation script iterates every facet declared in the code
 ## Implementation Steps
 
 1. **Finalize the codebook** — Review and customize each of the 10 named facet enumerations against your tenant's actual organizational structure. The shipped starter values are federal-IT defaults; every tenant tunes Department, Division, Role, CostCenter, and ClearanceLevel to match local taxonomy.
-2. **Plan reserved-slot use** — If your tenant needs additional facets beyond the 10 named ones, draft a governed PR declaring semantics for one or more of slots 11–15. Per ADR-078, this MUST verify the slot's current `extensionAttribute[N]` value is null tenant-wide before promoting the facet.
+2. **Plan reserved-slot use** — If your tenant needs additional facets beyond the 10 named ones, draft a governed PR declaring semantics for one or more of slots 11–14 (slot 15 belongs to the derived OrgPath per ADR-127). Per ADR-078, this MUST verify the slot's current `extensionAttribute[N]` value is null tenant-wide before promoting the facet.
 3. **Populate the attributes** — Use HR-driven inbound provisioning (HR system → Entra Connect → 10-slot population) to write each facet to its slot. Per ADR-001/ADR-002, this happens at the identity-provisioning layer; IT never manually edits these values in Entra.
 4. **Author dynamic groups** — Start with single-facet groups (`Department`, `Region`) and grow to multi-facet compositions (`Department + Division + Role`) as Conditional Access targeting matures.
 5. **Create Administrative Units** — Mirror the dynamic group pattern with AU scoping. Mark each AU as Restricted Management per UIAO_154.
