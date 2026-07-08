@@ -58,16 +58,17 @@ def test_facet_defaults_to_projected() -> None:
     assert f.projected is True
 
 
-def test_device_writer_stamps_only_projected_facets() -> None:
+def test_device_writer_stamps_projected_facets_plus_derived_path() -> None:
     planner = DeviceOrgPathPlanner(load_codebook())
     plan = planner.plan_device(
         DeviceFacetAssignment(device_id="dev-1", disposition="ENTRA-DEVICE", facet_values=_ALL_TEN)
     )
     written = {op.facet for op in plan.writes}
-    assert written == _PROJECTED
+    # 6 projected governance facets + the ADR-127 derived path.
+    assert written == _PROJECTED | _DERIVED
     # The four demoted facets are not stamped to a slot.
     assert written.isdisjoint(_NOT_PROJECTED)
-    assert len(plan.writes) == 6
+    assert len(plan.writes) == 7
 
 
 def test_arc_plane_also_respects_projection() -> None:
@@ -79,4 +80,4 @@ def test_arc_plane_also_respects_projection() -> None:
     )
     plan = planner.plan_device(arc)
     assert plan.plane == "arm"
-    assert len(plan.writes) == 6
+    assert len(plan.writes) == 7
