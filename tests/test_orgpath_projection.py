@@ -28,14 +28,18 @@ _ALL_TEN = {
 
 _PROJECTED = {"region", "department", "division", "classification", "clearance_level", "account_type"}
 _NOT_PROJECTED = {"role", "cost_center", "hire_date", "term_date"}
+# The ADR-127 derived org_path (slot 15) is projected too — 7 written per
+# object — but it is the inheritance layer, not a governance facet.
+_DERIVED = {"org_path"}
 
 
-def test_canonical_codebook_projects_six_facets() -> None:
+def test_canonical_codebook_projects_six_governance_facets_plus_derived_path() -> None:
     c = load_codebook()
-    assert set(c.projected_facets()) == _PROJECTED
-    # All ten remain *defined* — projection demotes, it does not delete.
+    assert set(c.projected_facets()) == _PROJECTED | _DERIVED
+    # All ten governance facets remain *defined* — projection demotes, it
+    # does not delete — and the derived path is defined alongside them.
     named = {n for n, f in c.facets.items() if f.kind != "reserved"}
-    assert named == _PROJECTED | _NOT_PROJECTED
+    assert named == _PROJECTED | _NOT_PROJECTED | _DERIVED
 
 
 def test_demoted_facets_keep_semantics() -> None:

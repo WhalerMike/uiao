@@ -11,7 +11,12 @@ one ``onPremisesExtensionAttribute`` slot:
 * slots 1-10 are the canonical facets (region, department, division,
   role, cost_center, classification, hire_date, term_date,
   clearance_level, account_type);
-* slots 11-15 are reserved for tenant-specific extension.
+* slots 11-14 are reserved for tenant-specific extension;
+* slot 15 carries the derived canonical OrgPath — the inheritance
+  layer of the Hybrid-C+Path model (ADR-127), composed from the
+  governance-layer hierarchy facets with a trailing delimiter always
+  present. The optional top-level ``hybrid`` block declares the
+  composition (``derived_from`` order, delimiter, segment labels).
 
 The loader:
 
@@ -149,6 +154,10 @@ class Codebook:
     model: str
     adoption_tier_min: int
     facets: Mapping[str, Facet]
+    # Hybrid-C+Path declaration (ADR-127): governance layer on slots
+    # 1-14, derived OrgPath (inheritance layer) on slot 15. ``None`` for
+    # in-memory codebooks that predate the hybrid model.
+    hybrid: Mapping | None = None
 
     def facet(self, name: str) -> Facet:
         """Return the facet by name, raising KeyError if unknown.
@@ -169,6 +178,18 @@ class Codebook:
 
     def has_facet(self, name: str) -> bool:
         return name in self.facets
+
+    def derived_path_facet_name(self) -> str | None:
+        """Name of the ADR-127 derived-OrgPath facet, or None.
+
+        The inheritance layer of the Hybrid-C+Path model is recomputed
+        from governance facets by the writers — it is never sourced from
+        HR / survey data, so surveys and backfill planners exclude it.
+        """
+        if not self.hybrid:
+            return None
+        layer = self.hybrid.get("inheritance_layer") or {}
+        return layer.get("facet")
 
     def projected_facets(self) -> Mapping[str, Facet]:
         """Facets stamped onto a directory slot (``projected`` and not reserved).
@@ -234,6 +255,36 @@ def _validate_integrity(document: Dict) -> None:
             )
         slots_seen[attribute] = facet_name
 
+    # Hybrid-C+Path (ADR-127): the inheritance layer must reference a
+    # declared facet, bind the same slot as that facet, and derive from
+    # declared, projected, non-reserved facets.
+    hybrid_doc = document.get("hybrid")
+    if hybrid_doc:
+        layer = hybrid_doc["inheritance_layer"]
+        path_facet_name = layer["facet"]
+        if path_facet_name not in facets:
+            raise CodebookValidationError(
+                f"hybrid.inheritance_layer.facet '{path_facet_name}' is not declared in 'facets'."
+            )
+        path_facet_doc = facets[path_facet_name]
+        if path_facet_doc["attribute"] != layer["attribute"]:
+            raise CodebookValidationError(
+                f"hybrid.inheritance_layer.attribute '{layer['attribute']}' does not match "
+                f"facet '{path_facet_name}' binding '{path_facet_doc['attribute']}'."
+            )
+        for source_name in layer["derived_from"]:
+            if source_name not in facets:
+                raise CodebookValidationError(
+                    f"hybrid.inheritance_layer.derived_from names '{source_name}', which is not declared in 'facets'."
+                )
+            source_doc = facets[source_name]
+            if source_doc.get("kind") == "reserved" or not source_doc.get("projected", True):
+                raise CodebookValidationError(
+                    f"hybrid.inheritance_layer.derived_from names '{source_name}', which is "
+                    "reserved or not projected — the derived OrgPath can only compose "
+                    "facets that are actually stamped to a directory slot."
+                )
+
     # Deprecated.replaced_by must resolve to an active enumeration value
     # in the same facet.
     deprecated_doc = document.get("deprecated") or {}
@@ -297,6 +348,7 @@ def _build(document: Dict) -> Codebook:
         model=document["model"],
         adoption_tier_min=int(document.get("adoption_tier_min", 3)),
         facets=facets,
+        hybrid=document.get("hybrid"),
     )
 
 
