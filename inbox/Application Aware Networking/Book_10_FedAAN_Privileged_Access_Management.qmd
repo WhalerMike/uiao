@@ -2,7 +2,7 @@
 title: "Book 10 — Federal Application-Aware Networking — Part 10"
 subtitle: "Privileged Access Management: Entra PIM, Just-in-Time Access, and Privileged Access Workstations"
 author: "SSA Cloud Services Team"
-date: "July 2, 2026"
+date: "2026-07-08 13:08 ET"
 format:
   html:
     embed-resources: true
@@ -31,6 +31,8 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+
+**Date Code:** 2026-07-08 13:08 ET
 :::
 
 ::: {.callout-important}
@@ -98,6 +100,8 @@ Privileged Identity Management (PIM) introduces two assignment states for direct
 **Eligible assignment** is the PIM state. The role is assigned but not effective. The user must explicitly activate the role, satisfying configured requirements (MFA, justification, approver), to receive a time-limited active session. When the time window expires, the role returns to eligible-only. No persistent active scope exists between activations.
 
 The operational difference is decisive: an eligible assignment is worthless to an attacker who has compromised the user's session but not completed the activation ceremony. An active assignment is immediately exploitable.
+
+![Eligible vs. active: the one PIM distinction that does the work](figs/pam-fig-05-eligible-vs-active.png){#fig-pam05 fig-alt="Two side-by-side panels. Left, ACTIVE assignment in red: the traditional state — role assigned and immediately effective, exercisable at any time with no additional step; appropriate only for automated service principals and break-glass accounts; immediately exploitable if the session is compromised. Right, ELIGIBLE assignment in teal: the PIM state — role assigned but not effective; the user must explicitly activate, satisfying MFA plus justification plus optional approver; grants a time-limited active session that returns to eligible-only at expiry; worthless to an attacker who has the session but has not completed the activation ceremony. Blue bar: the decisive operational difference — an eligible assignment is worthless without the activation ceremony while an active assignment is immediately exploitable; between activations no persistent active scope exists; human accounts hold eligible only, active assignments are reserved for service principals and break-glass. White background. Source: Book 10 Privileged Access Management briefing deck, Date Code 2026-07-08 13:08 ET." width="100%"}
 
 ## PIM Activation Flow
 
@@ -648,6 +652,8 @@ Break-glass accounts are the exception to all controls. They are not used in nor
 
 Two break-glass accounts are required. Two accounts protect against the failure of a single account (lost credential, locked out, Entra soft-delete). They are configured as follows:
 
+![Break-glass: the deliberate exception to every control](figs/pam-fig-06-break-glass-design.png){#fig-pam06 fig-alt="Red panel on why break-glass must exist: every control that blocks an admin path can itself fail — if Intune is down, the PAW is lost, or PIM has an outage, a PAW-requiring Conditional Access policy would block all access, a permanent tenant lockout; break-glass is the path that survives failure of the control plane that enforces access. Four design cards: two cloud-only accounts (not synced from AD, not federated, reachable when AD/ADFS/Entra Connect is down; two so a single failure is survivable); standing Global Admin (the one exception to eligible-only, because PIM may be the unavailable system); excluded from every Conditional Access policy by group membership; FIDO2 plus an offline credential — a 20-plus character random password in a physical safe, never digital, with a FIDO2 hardware key as unphishable MFA, two sealed envelopes in two safes held by two officials. Naming: follow the normal convention with no indicator of elevated privilege. White background. Source: Book 10 Privileged Access Management briefing deck, Date Code 2026-07-08 13:08 ET." width="100%"}
+
 **Account type.** Cloud-only accounts. Not synced from on-premises Active Directory, not federated through any identity provider. Cloud-only accounts are accessible even when the on-premises AD, ADFS, or Entra Connect infrastructure is down.
 
 **Role assignment.** Active (standing) Global Administrator. This is the one exception to the eligible-only rule — break-glass must have immediate standing access because PIM may be the system that is unavailable.
@@ -800,6 +806,8 @@ The quarterly test is:
 The test should trigger the Sentinel alert. Confirm the alert fires within 5 minutes. This validates both the account and the detection capability simultaneously.
 
 # Session Management and Re-authentication
+
+![Three controls that bound a live privileged session](figs/pam-fig-07-session-controls.png){#fig-pam07 fig-alt="Three stacked rows. AC-11 Session lock in navy, tagged 15 min idle: 15-minute idle screen lock enforced by an Intune configuration profile on the PAW group, not user-overridable, requires re-authentication to unlock. AC-12 Session termination in teal, tagged 1 hr / 8 hr: Conditional Access sign-in frequency bounds session lifetime — 8 hours for the base privileged portal session, 1 hour for PIM-activated role sessions with re-auth forced independent of the activation window. IA-11 Re-authentication in amber, tagged every activation: every PIM activation requires fresh MFA via Authentication Context c1 regardless of session age. Blue bar: together they bound the third dimension — PIM bounds privilege in time between episodes, PAW bounds it by device, session controls bound it within a live episode, so a walked-away workstation, an over-long session, and a stale MFA proof each fail closed. White background. Source: Book 10 Privileged Access Management briefing deck, Date Code 2026-07-08 13:08 ET." width="100%"}
 
 ## AC-11: Session Lock
 
