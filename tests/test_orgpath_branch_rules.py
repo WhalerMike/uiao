@@ -33,9 +33,7 @@ def test_renderer_emits_branch_rule_with_terminated_prefix(codebook) -> None:
         predicates=(FacetPredicate(facet="org_path", op="-startsWith", value="Region=NCR|Department=IT|"),),
     )
     rule = render_rule(codebook, spec)
-    assert rule == (
-        '(user.onPremisesExtensionAttributes.extensionAttribute15 -startsWith "Region=NCR|Department=IT|")'
-    )
+    assert rule == ('(user.onPremisesExtensionAttributes.extensionAttribute15 -startsWith "Region=NCR|Department=IT|")')
 
 
 def test_renderer_rejects_unterminated_branch_prefix(codebook) -> None:

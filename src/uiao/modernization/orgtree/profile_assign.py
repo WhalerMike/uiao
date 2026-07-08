@@ -81,6 +81,28 @@ class BindingProfilePlanner:
             return ranked, []
         return ranked[:max_keys], ranked[max_keys:]
 
+    def _with_derived_path(self, facet_values: Mapping[str, str], plane: str) -> Mapping[str, str]:
+        """Recompute the ADR-127 derived OrgPath when the profile binds it.
+
+        The inheritance layer is derived data — never hand-authored — so a
+        caller-supplied value for the derived facet is always discarded.
+        When the profile binds the facet on this plane AND the caller
+        supplied at least one hierarchy facet, the recomputed path is
+        injected (a partial assignment that never mentions the hierarchy
+        cannot clear a previously stamped path). Profiles that do not bind
+        the facet just have the caller value dropped, so it can neither be
+        written nor surface as an ``uncaptured`` finding.
+        """
+        derived_name = self.codebook.derived_path_facet_name()
+        if derived_name is None or derived_name not in {*facet_values, *self.profile.facets_for_plane(plane)}:
+            return facet_values
+        merged = {k: v for k, v in facet_values.items() if k != derived_name}
+        if derived_name in self.profile.facets_for_plane(plane):
+            layer = (self.codebook.hybrid or {}).get("inheritance_layer") or {}
+            if any(name in merged for name in layer.get("derived_from", ())):
+                merged[derived_name] = self.codebook.derive_org_path(merged)
+        return merged
+
     def plan_principal(
         self,
         principal_id: str,
@@ -94,6 +116,7 @@ class BindingProfilePlanner:
                 f"profile '{self.profile.profile_id}' does not bind plane '{plane}' "
                 f"(declares {', '.join(self.profile.planes)})"
             )
+        facet_values = self._with_derived_path(facet_values, plane)
         captured, uncaptured = self._ordered_facets_for_plane(plane, facet_values)
         ops: list[FacetOperation] = []
         for facet_name in captured:
