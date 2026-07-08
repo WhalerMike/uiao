@@ -42,7 +42,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 ::: {.exec-summary}
 **For decision makers: read this page first.**
 
-Your agency's authentication architecture still assumes the network is a place. Kerberos — the protocol beneath most federal application sign-ins — proves identity by demonstrating a relationship to the network: a reachable domain controller, a continuous session, a stable path. The transport modernization your agency is executing (SD-WAN multipath, direct internet access under TIC 3.0, multi-cloud landing zones) removes every one of those assumptions *on purpose*, because removing them is what makes the network fast and resilient.
+Your agency's authentication architecture still assumes the network is a place. Kerberos — the protocol beneath most federal application sign-ins — proves identity by demonstrating a relationship to the network: a reachable domain controller for ticket issuance, an uninterrupted session, a network the agency controls end to end. The transport modernization your agency is executing (SD-WAN with inline inspection, direct internet access under TIC 3.0, multi-cloud landing zones) removes every one of those assumptions *on purpose*, because removing them is what makes the network fast and resilient.
 
 **Four things this document establishes:**
 
@@ -63,7 +63,7 @@ Every book in this series ultimately depends on one substitution: **identity car
 
 The argument proceeds in five movements:
 
-1. **Why session-based, location-bound authentication died.** Kerberos binds identity to a network session; SD-WAN active-active multipath structurally eliminates the stable session the ticket assumes. This is not a tuning problem — it is a protocol-versus-transport contradiction.
+1. **Why session-based, location-bound authentication died.** Kerberos binds identity to network reachability and session continuity. The modern estate breaks those bindings — not through multipath itself (the SD-WAN overlay resequences packets and holds the transport session across path switches), but through what the modernized path contains and spans: inline decrypt/re-encrypt and NAT rebinding at stateful middleboxes, and cloud tenancies where no KDC is reachable for ticket issuance at all. This is not a tuning problem — it is a protocol-versus-boundary contradiction, and its failure mode is a silent fallback to NTLM.
 2. **PKI is a naming-plane function.** Certificate issuance, revocation checking, and DNS are one substrate. CAA records put issuance policy *in* DNS; ACME DNS-01 challenges make the authoritative zone the issuance gate; CRL/OCSP reachability is a DNS resolution dependency.
 3. **Certificate lifecycle automation.** ACME, SCEP/EST, and short-lived certificates end the spreadsheet-tracked certificate authority — an operational model that industry lifetime policy has made arithmetically impossible to sustain.
 4. **Token-based identity.** OAuth 2.0/OIDC, certificate-based authentication, and phishing-resistant MFA — the BOD 25-01 and OMB M-22-09 alignment layer.
@@ -85,21 +85,21 @@ Kerberos (RFC 4120) was engineered for a network that no longer exists, and its 
 
 | Binding | What Kerberos Assumes | What the Modern Transport Provides |
 |---|---|---|
-| **Session binding** | The authenticated exchange rides one stateful, continuous connection between client and service | SD-WAN active-active multipath distributes packets of a single conversation across multiple simultaneous physical paths; inline inspection, NAT, and re-encryption interrupt session state by design |
-| **Location binding** | A domain controller is reachable within sub-5 ms round-trip; the client and the KDC share a network | Workloads span on-premises virtualization, two hyperscale government clouds, and an externally managed tenancy; the KDC is co-located with none of them |
+| **Session binding** | The authenticated exchange rides one stateful, continuous connection between client and service | The SD-WAN overlay itself preserves the stream — it resequences multipath packets and holds the transport session across path switches. What interrupts session state is what sits *on* the modern path: inline inspection, NAT rebinding, and decrypt/re-encrypt middleboxes |
+| **Location binding** | A domain controller is reachable within sub-5 ms round-trip; the client and the KDC share a network | Workloads span on-premises virtualization, two hyperscale government clouds, and an externally managed tenancy; the KDC is co-located with none of them — and while service-side ticket validation is offline, ticket *issuance and renewal* require that reachability |
 | **Time binding** | Client and KDC clocks agree within five minutes | The only binding that survives — NTP disciplining is solvable everywhere |
 
 : The three bindings of session-based authentication and their fate on modern transport {.striped .hover}
 
-Two of the three bindings are broken by the very technologies the rest of this series requires. That is the structural point: **the transport modernization mandated by TIC 3.0 and demonstrated in [Book 05](Book_05_FedAAN_Network_Modernization.qmd) is incompatible with the authentication model most federal application estates still run.** You cannot keep both.
+Two of the three bindings fail on the modern estate — not because the overlay mishandles packets, but because the estate now spans inspection points and trust boundaries the protocol never contemplated. That is the structural point: **the transport and boundary modernization mandated by TIC 3.0 and demonstrated in [Book 05](Book_05_FedAAN_Network_Modernization.qmd) is incompatible with the authentication model most federal application estates still run.** You cannot keep both.
 
-## What Multipath Does to a Session-Bound Ticket
+## What the Modern Path Does to a Session-Bound Ticket
 
-[Book 05](Book_05_FedAAN_Network_Modernization.qmd) develops this argument in full — the security-stacking history in which inline proxies, NAT tiers, and stacked firewalls broke Kerberos sessions across the 2010s, and the multipath analysis showing why SD-WAN finishes the job. The load-bearing facts, restated:
+[Book 05](Book_05_FedAAN_Network_Modernization.qmd) develops this argument in full — the security-stacking history in which inline proxies, NAT tiers, and stacked firewalls broke Kerberos sessions across the 2010s, and why the cross-boundary estate finishes the job. The load-bearing facts, restated:
 
 - Under **active-passive failover**, a Kerberos exchange that is mid-flight when a path fails times out over several seconds — the "logon takes 45 seconds" symptom field offices report.
-- Under **active-active multipath**, packets of one conversation traverse multiple physical paths simultaneously by design. The overlay resequences them into one ordered stream, and a transport-layer path switch costs roughly 50 ms. The *transport* problem is solved.
-- But the authentication contract is not. A protocol that binds its proof of identity to the continuity of a network session inherits every discontinuity the session suffers — every NAT rebind, every inline decrypt/re-encrypt, every stateful device that sees only half a flow. Token-based authentication survives all of these, because the proof travels *in the credential*, not in the connection.
+- Under **active-active multipath**, packets of one conversation traverse multiple physical paths simultaneously by design. The overlay resequences them into one ordered stream, and a transport-layer path switch costs roughly 50 ms. The *transport* problem is solved — multipath itself does not break a Kerberos exchange.
+- But the authentication contract is not solved, because the modernized path is not just plural — it is *inspected, translated, and boundary-spanning*. A protocol that binds its proof of identity to the continuity of a network session inherits every discontinuity the session suffers — every NAT rebind, every inline decrypt/re-encrypt, every stateful device that sees only half a flow. And a protocol whose ticket issuance and renewal require a reachable KDC cannot issue tickets in a cloud tenancy that has no path to one, however healthy the transport. Token-based authentication survives all of these, because the proof travels *in the credential*, not in the connection.
 
 ![Session-bound versus credential-bound identity under SD-WAN multipath](figs/ct-fig-01-session-vs-credential.png){#fig-ct01 fig-alt="Two-panel comparison diagram. Left panel labeled Session-Bound Identity shows a Kerberos client whose authenticated session rides a single highlighted path from branch to data center; beneath it the same conversation is shown distributed across three simultaneous SD-WAN paths — fiber, broadband DIA, and 5G — with the session state icon cracking and a red annotation reading the proof of identity lived in the path and the path is now plural. Right panel labeled Credential-Bound Identity shows the same client presenting a signed JWT token and an X.509 certificate directly to services across all three paths, each service verifying the signature locally against a trust anchor with green checkmarks, annotated the proof of identity lives in the credential and is path-independent. Navy, teal, amber palette on white background." width="100%"}
 
@@ -116,8 +116,8 @@ The full comparison, stated as protocol properties rather than preferences — e
 | Property | Session-Based (Kerberos/NTLM) | Credential-Based (X.509 / OAuth 2.0 / OIDC) |
 |---|---|---|
 | Proof of identity lives in | The authenticated network session | The signed credential itself |
-| Verification requires | Reachable KDC / domain controller callback | Local signature check against published trust anchors and keys |
-| Survives path switch / NAT rebind | No — session state interrupted | Yes — nothing about validity references the path |
+| Verification requires | Reachable KDC at ticket issuance and renewal (service-side validation is offline against the service's key — the dependency is the issuance path, not a per-request callback) | Local signature check against published trust anchors and keys |
+| Survives path switch / NAT rebind | Path switch: yes at the transport layer (the overlay resequences); NAT rebind and stateful-middlebox session breaks: no | Yes — nothing about validity references the path |
 | Survives inline decrypt/re-encrypt | No — the middlebox is a session break | Yes — the assertion is opaque to the path |
 | Works across boundaries the agency does not control | No — requires domain reachability | Yes — requires only the issuer's published keys |
 | Failure mode | Silent fallback to a weaker protocol (NTLM) | Explicit denial at the policy gate |
