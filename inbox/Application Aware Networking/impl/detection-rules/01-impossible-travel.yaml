@@ -1,0 +1,61 @@
+id: fedaan-vi03-0001-impossible-travel
+name: In-boundary impossible-travel (Identity Protection ML reconstruction)
+description: |
+  Reconstructs the commercial Identity Protection impossible-travel signal inside
+  the agency boundary using geo-velocity correlation over sign-in logs. Fires when
+  two successful sign-ins for the same user imply a travel speed faster than a
+  commercial flight. Static-threshold rebuild — minutes-to-hours, no continuously
+  tuned model, no global threat intelligence.
+  Implements: AAN Vol III SIEM/XDR | Vol VI Book 03 | NIST SI-4, AC-7, IA-2
+severity: Medium
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - SigninLogs
+queryFrequency: PT1H
+queryPeriod: P1D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - InitialAccess
+  - CredentialAccess
+relevantTechniques:
+  - T1078
+query: |
+  let LookbackVpnEgress = dynamic([]);  // TUNE: add known corporate VPN egress IPs to suppress
+  SigninLogs
+  | where ResultType == 0
+  | where IPAddress !in (LookbackVpnEgress)
+  | extend Lat = todouble(LocationDetails.geoCoordinates.latitude),
+           Lon = todouble(LocationDetails.geoCoordinates.longitude)
+  | where isnotnull(Lat) and isnotnull(Lon)
+  | project UserPrincipalName, TimeGenerated, IPAddress, Lat, Lon,
+            City = tostring(LocationDetails.city), Country = tostring(LocationDetails.countryOrRegion)
+  | sort by UserPrincipalName asc, TimeGenerated asc
+  | serialize
+  | extend PrevLat = prev(Lat), PrevLon = prev(Lon), PrevTime = prev(TimeGenerated),
+           PrevUser = prev(UserPrincipalName), PrevIP = prev(IPAddress), PrevCity = prev(City)
+  | where UserPrincipalName == PrevUser
+  | extend Hours = datetime_diff('minute', TimeGenerated, PrevTime) / 60.0
+  | where Hours > 0
+  | extend Km = geo_distance_2points(PrevLon, PrevLat, Lon, Lat) / 1000.0
+  | extend ImpliedKmh = Km / Hours
+  | where Km > 500 and ImpliedKmh > 900   // TUNE: 900 km/h ~ commercial flight; raise for frequent flyers
+  | project TimeGenerated, UserPrincipalName, PrevCity, City, Km = round(Km, 0),
+            Hours = round(Hours, 2), ImpliedKmh = round(ImpliedKmh, 0), PrevIP, IPAddress
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserPrincipalName
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: IPAddress
+version: 1.0.0
+kind: Scheduled
+metadata:
+  series: Federal Application-Aware Networking
+  book: Vol VI Book 03 — Detection Engineering
+  implements: Vol III SIEM/XDR
+  reconstructs: identity-protection-impossible-travel

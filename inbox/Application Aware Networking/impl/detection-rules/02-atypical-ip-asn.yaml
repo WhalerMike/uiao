@@ -1,0 +1,57 @@
+id: fedaan-vi03-0002-atypical-ip-asn
+name: In-boundary atypical IP / unfamiliar ASN (Identity Protection ML reconstruction)
+description: |
+  Reconstructs the commercial "unfamiliar sign-in properties / atypical IP" signal
+  by baselining each user's normal ASN and country over a trailing window and
+  flagging sign-ins from a new ASN, optionally joined to a threat-intel feed.
+  Agency-local baseline only — no global IP reputation.
+  Implements: AAN Vol III SIEM/XDR | Vol VI Book 03 | NIST SI-4, AC-2, IA-2
+severity: Medium
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - SigninLogs
+queryFrequency: PT1H
+queryPeriod: P14D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - InitialAccess
+  - CredentialAccess
+relevantTechniques:
+  - T1078
+  - T1090
+query: |
+  let baselineWindow = 14d;
+  let newActivity = 1h;
+  let Baseline =
+      SigninLogs
+      | where TimeGenerated between (ago(baselineWindow) .. ago(newActivity))
+      | where ResultType == 0
+      | summarize by UserPrincipalName, ASN = tostring(AutonomousSystemNumber);
+  SigninLogs
+  | where TimeGenerated > ago(newActivity)
+  | where ResultType == 0
+  | extend ASN = tostring(AutonomousSystemNumber)
+  | join kind=leftanti Baseline on UserPrincipalName, ASN
+  // TUNE: raise floor so first-seen-in-window noise for new/mobile users is suppressed
+  | summarize FirstSeen = min(TimeGenerated), Count = count(),
+              Countries = make_set(tostring(LocationDetails.countryOrRegion), 8),
+              IPs = make_set(IPAddress, 8)
+          by UserPrincipalName, ASN
+  | project FirstSeen, UserPrincipalName, ASN, Count, Countries, IPs
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserPrincipalName
+version: 1.0.0
+kind: Scheduled
+metadata:
+  series: Federal Application-Aware Networking
+  book: Vol VI Book 03 — Detection Engineering
+  implements: Vol III SIEM/XDR
+  reconstructs: identity-protection-atypical-ip
+  note: |
+    Optional hardening — join IPs against a subscribed threat-intel feed
+    (ThreatIntelligenceIndicator). Bounded by the feed the agency buys.

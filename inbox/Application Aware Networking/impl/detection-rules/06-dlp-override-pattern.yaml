@@ -1,0 +1,50 @@
+id: fedaan-vi03-0006-dlp-override-pattern
+name: In-boundary DLP override / near-miss pattern
+description: |
+  Reconstructs behavioral-DLP richness: a per-user pattern of DLP policy overrides,
+  false-positive justifications, and repeated near-miss matches that, in aggregate,
+  indicate deliberate exfiltration probing. Pattern rules only — this does NOT
+  reconstruct the commercial content-fingerprint behavioral model.
+  Implements: AAN Vol III SIEM/XDR + Data Protection | Vol VI Book 03 | NIST SI-4, AU-6, AC-4
+severity: Medium
+requiredDataConnectors:
+  - connectorId: Office365
+    dataTypes:
+      - OfficeActivity
+queryFrequency: PT1H
+queryPeriod: P1D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Exfiltration
+relevantTechniques:
+  - T1567
+query: |
+  let window = 1d;
+  OfficeActivity
+  | where TimeGenerated > ago(window)
+  | where Operation has "DlpRuleMatch" or Operation has "DLPRuleUndo" or RecordType has "Dlp"
+  | extend Overridden = Operation has "Undo" or AuditData has "Override" or AuditData has "FalsePositive"
+  | summarize Matches = count(),
+              Overrides = countif(Overridden),
+              Policies = make_set(tostring(PolicyId), 10),
+              StartTime = min(TimeGenerated), EndTime = max(TimeGenerated)
+          by UserId
+  // TUNE: sustained override behavior over a day; set floors above the agency's benign override rate
+  | where Overrides >= 5 or (Matches >= 20 and Overrides >= 2)
+  | project StartTime, EndTime, UserId, Matches, Overrides, Policies
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserId
+version: 1.0.0
+kind: Scheduled
+metadata:
+  series: Federal Application-Aware Networking
+  book: Vol VI Book 03 — Detection Engineering
+  implements: Vol III SIEM/XDR + Data Protection
+  reconstructs: dlp-behavioral-richness
+  residual: |
+    Pattern rules over audit events only. No content-fingerprint behavioral model —
+    that fidelity is not reconstructable in-boundary.
