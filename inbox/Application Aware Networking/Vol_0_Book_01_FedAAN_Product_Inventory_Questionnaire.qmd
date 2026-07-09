@@ -1,0 +1,208 @@
+---
+title: "Federal Application-Aware Networking — Existing Product Inventory Questionnaire"
+subtitle: "Discovery Instrument: Map the Agency's Deployed Tools onto the AAN Compliance Architecture"
+author: "SSA Cloud Services Team"
+date: "2026-07-08 15:21 ET"
+format:
+  html:
+    embed-resources: true
+    css: lz-style.css
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+  docx:
+    reference-doc: lz-reference.docx
+    toc: true
+    toc-depth: 3
+    number-sections: true
+fig-align: center
+out-width: "100%"
+execute:
+  echo: false
+---
+
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+
+This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is a discovery instrument, not an authorization artifact or a procurement decision, and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership.
+
+**Date Code:** 2026-07-08 15:21 ET
+:::
+
+# Purpose and How to Use
+
+This questionnaire inventories the products an agency **already operates** and
+maps each onto the Federal Application-Aware Networking (AAN) compliance
+architecture — the functional planes, the control-closure books, and the
+Management-Plane Coordination Doctrine. It exists because the AAN plan is being
+executed without full visibility into the agency's deployed tooling: you cannot
+select a coordination stack, or claim an inherited control, without first
+knowing what is already in place and how it is authorized.
+
+**Two editions of this instrument:**
+
+- **SSA edition (this document)** — carries a **hard scope rule (§2)** and a
+  pre-filled block of known SSA tools (§3). Everything the SSA edition
+  recommends or documents must be **FedRAMP Moderate** (see §2).
+- **Federal-agnostic edition (to follow)** — the same discovery tables (§4)
+  with the SSA pre-fills (§3) removed and the level rule relaxed to
+  "state the agency's boundary level, then require products at or above it."
+
+**How to complete it:** for each category in §4, fill the four working columns —
+*In use?*, *Product & offering*, *FedRAMP status*, *Deployment surface*. The
+*Maps to* column is pre-filled; it tells you which AAN book and functional plane
+the answer feeds. Anything that fails the §2 rule goes on the §5 flag list.
+
+# The Scope Rule — SSA Edition Is Exclusively FedRAMP Moderate {#scope-rule}
+
+Every product the SSA edition documents as an in-boundary dependency must be
+**FedRAMP Certified at Class C (Moderate)**. Apply the following dispositions:
+
+| Situation | Disposition |
+|---|---|
+| Product has a **Class C (Moderate)** authorization | ✅ In scope — record the CSO / Marketplace ID |
+| Product is authorized **Class D (High) only**, no Moderate offering | ⚠️ **Flag** — High exceeds Moderate technically, but the SSA target is Moderate; confirm boundary treatment or seek a Moderate-authorized alternative |
+| Product is **on-premises gear** (appliance/firmware), not a CSP service | ↪️ Not a FedRAMP item — accredit via **NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL** (see the Network Enforcement Substrate book, Theme F) |
+| Product is **not FedRAMP authorized** (commercial SaaS) | ❌ **Flag** — not eligible as an in-boundary SSA dependency; find a Government/GovCloud edition or replace |
+
+::: {.callout-note}
+**FedRAMP nomenclature (current).** As of May 4, 2026 FedRAMP uses **"FedRAMP
+Certified"** with impact classes: **Class C = Moderate**, **Class D = High**.
+This document says "Class C (Moderate)" for the SSA requirement and flags "Class
+D (High)-only." Verify every status on the **FedRAMP Marketplace** at the time
+of any authorization or procurement decision — authorizations change.
+:::
+
+::: {.callout-note}
+## Selection principle — Microsoft-suite preference is earned, not automatic
+
+The agency holds a large Microsoft enterprise agreement, so a Microsoft product
+is the **default candidate** for any role **when it genuinely coordinates the
+multi-vendor surface (CSP + NEM + OS) at FedRAMP Moderate** — e.g., Sentinel
+ingesting AWS/OCI/NEM telemetry, or Defender for Cloud as a multi-cloud CNAPP.
+Preference is earned by demonstrated cross-vendor coordination, **not** by
+ownership: where a Microsoft product coordinates only Microsoft surfaces or
+cannot reach the surface (e.g., Azure Arc cannot patch ESXi), the best
+cross-vendor coordinator at Moderate wins.
+:::
+
+# Known SSA Inventory — Pre-Filled (SSA edition only) {#known-ssa}
+
+*This section is SSA-specific and is removed in the Federal-agnostic edition.*
+Confirmed or stated tools, with verified FedRAMP status (2026-07-08) and
+dispositions under §2.
+
+| Product | Category | FedRAMP status (verified) | Disposition | Maps to |
+|---|---|---|---|---|
+| **SailPoint Identity Security Cloud** | Identity governance (IGA) | **Class C (Moderate)** — AWS GovCloud (CSO FR2001938710A) | ✅ In scope | Identity coordinator; PAM / HRIT / identity books |
+| **ServiceNow Government Cloud** | ITSM / CMDB / workflow coordinator | **Class D (High)** (DoD IL-4) | ⚠️ Flag — High covers Moderate; confirm boundary treatment. **CMDB must reconcile to IPAM/DDI (CM-8), not replace it** | Evidence Fabric book (coordination home); Program Mgmt book |
+| **Splunk Cloud Platform** | SIEM | **Class C (Moderate)** (2019) *and* Class D (High). **Splunk SOAR = Moderate** | ✅ In scope — use the **Moderate** offering | Evidence Fabric / SIEM book |
+| **Riverbed** (Aternity, NPM+, SteelHead) | Network performance / observability / WAN-opt | Riverbed Platform for Gov (Aternity/NPM+) = **Class D (High) only**; **SteelHead = on-prem gear** | ⚠️⚠️ Double flag — cloud DEX is High-only (above Moderate target); SteelHead is gear (NIAP/STIG path) | Transport/telecom books (SI-4/CA-7 telemetry); Network Enforcement Substrate (SteelHead) |
+| **Confluence** (Atlassian) | Documentation / knowledge | **Class C (Moderate)** — **only via Atlassian Government Cloud** (Mar 2025). Commercial Confluence is **not** authorized | ⚠️ Flag — confirm you are on **Atlassian Government Cloud**, not commercial | Program Mgmt / governance book; evidence documentation |
+| **InfoBlox DDI** | Naming & addressing (DDI/IPAM) | **Class C (Moderate)** (CSO FR2017257053) | ✅ In scope — the authoritative asset-identity join key | Landing Zone book; plane 2 |
+| **Microsoft 365 GCC / Entra / Intune / Sentinel / Purview / Defender** | CSP + identity + endpoint + SIEM + data | **GCC Moderate** | ✅ In scope | Landing Zone, identity, patch, SIEM, data books |
+| **Cisco Catalyst SD-WAN** | SD-WAN | Cloud-hosted SD-WAN Manager carries a FedRAMP authorization (verify level/CSO on Marketplace); on-prem WAN Edge = gear (NIAP/STIG/FIPS) | ✅ / ↪️ **Chosen** — selected for Microsoft 365 **Informed Network Routing (INR)**; see Network Modernization book Appendix A | Network Mod / Telecom / Network Enforcement · plane 1 |
+| **Cisco ThousandEyes for Government** | Network / path observability | **Class C (Moderate)** — ATO 2026-03-05 (CSO FR2523656707), FIPS-validated | ✅ In scope — the Moderate-compliant observability option (contrast Riverbed) | Transport telemetry (SI-4/CA-7) · Evidence Fabric · plane 6 |
+| **Palo Alto Prisma** (agency-preferred) | Cloud security / SASE / CNAPP | **Prisma Access (SASE) = Class C (Moderate)** ✅; **Prisma Cloud (CNAPP) = Class D (High)-only** ⚠️ | Prisma Access ✅; Prisma Cloud ⚠️ (High) | SASE → Network Enforcement / Telecom; CNAPP → Cloud-Native Posture |
+
+**Immediate reads from the SSA block:**
+
+- **Observability** has a clean option and a flagged one: **Cisco ThousandEyes
+  for Government** is Class C (Moderate) ✅, while **Riverbed** is High-only cloud
+  + on-prem gear ⚠️. Prefer ThousandEyes where the Moderate rule binds.
+- **SD-WAN** is settled: **Cisco Catalyst SD-WAN**, chosen for Microsoft 365 INR
+  (Network Modernization book Appendix A).
+- **Palo Alto (Prisma)** is agency-preferred but splits on level: **Prisma
+  Access (SASE) is Moderate ✅**; **Prisma Cloud (CNAPP) is High-only ⚠️** — so
+  the Cloud-Native Posture book must weigh Prisma Cloud (High) against a
+  Moderate-authorized CNAPP (e.g., Microsoft Defender for Cloud in GCC Moderate;
+  Wiz and Prisma Cloud are both at High).
+- **ServiceNow** (best coordination hub) is High — usable for a Moderate
+  boundary, documented as such, CMDB reconciled to IPAM/DDI. **Splunk** and
+  **Sentinel** both give you a Moderate SIEM today.
+
+# The Discovery Questionnaire {#discovery}
+
+For each category: mark *In use?*, name the *Product & offering*, record
+*FedRAMP status* (Class C required for SSA per §2), and the *Deployment surface*
+(CSP / NEM / OS / cross). The *Maps to* column is pre-filled.
+
+## Volume I — Foundation & Transport
+
+| Category | Example products | In use? | Product & offering | FedRAMP status | Surface | Maps to |
+|---|---|---|---|---|---|---|
+| Cloud platforms (CSP) | Azure/M365 GCC, AWS GovCloud, OCI, GCP, VMware Cloud | | | | | Landing Zone · all planes |
+| Naming & addressing (DDI/IPAM) | InfoBlox, BlueCat, NetBox | | | | | Landing Zone · plane 2 |
+| Certificates / PKI | ADCS, Entrust, DigiCert, Venafi | | | | | Certs & Tokens · plane 2 |
+| HR system of record | Oracle HCM, Workday, SAP SuccessFactors | | | | | HRIT · plane 3 |
+| Directory & IdP | Entra ID, Okta, Ping, on-prem AD | | | | | Network Modernization · plane 3 |
+| Network equipment (NEM) | Cisco, Palo Alto, Juniper, Fortinet, Arista | | | | NEM | Network Enforcement Substrate · plane 1/4 |
+| NAC | Cisco ISE, Aruba ClearPass, Juniper Mist | | | | NEM | NAC / Network Enforcement · plane 3 |
+| SD-WAN / SASE | Catalyst SD-WAN, Prisma SASE, Zscaler, Netskope | | | | cross | Network Mod / Telecom · plane 1/4 |
+| Network performance / observability / WAN-opt | Riverbed, ThousandEyes, Kentik, SolarWinds | | | | cross | Transport telemetry (SI-4/CA-7) · plane 6 |
+| Contact center / UC | Amazon Connect, Teams Phone | | | | CSP | Telecommunications · plane 5 |
+
+## Volume II — Data Platform
+
+| Category | Example products | In use? | Product & offering | FedRAMP status | Surface | Maps to |
+|---|---|---|---|---|---|---|
+| Database platforms | SQL Server, Oracle DB, PostgreSQL/RDS, Azure SQL | | | | CSP/OS | SQL & DB books · plane 5 |
+| Database auth modernization | Azure Arc + Entra for SQL, IAM DB auth | | | | cross | SQL Auth book · plane 3 |
+
+## Volume III — Security Operations
+
+| Category | Example products | In use? | Product & offering | FedRAMP status | Surface | Maps to |
+|---|---|---|---|---|---|---|
+| Privileged access (PAM) | Entra PIM, CyberArk, BeyondTrust, Delinea, SailPoint | | | | cross | PAM book · plane 3 |
+| Vulnerability assessment | Defender VM, Tenable, Qualys, Rapid7, Amazon Inspector | | | | cross | Vulnerability Mgmt · plane 6 |
+| Patch / systems management | Intune, SSM, Azure Update Mgr, OCI OS Mgmt Hub, vLCM, Workspace ONE, Satellite/Ansible, Tanium, BigFix, Ivanti | | | | OS/cross | Patch & Systems Mgmt · plane 7 |
+| Cloud posture / CNAPP / CSPM | Wiz, Prisma Cloud, Defender for Cloud, Orca | | | | CSP | Cloud-Native Posture · plane 6 |
+| Container / K8s platform & security | AKS, EKS, OKE, OpenShift; image scanning | | | | CSP | Cloud-Native Posture · plane 5/6 |
+| Data protection / DLP / classification | Purview, AWS Macie, Symantec DLP | | | | CSP | Data Protection · plane 2/5 |
+| Key management / HSM | Azure Key Vault, AWS KMS, OCI Vault, Thales, Entrust | | | | CSP | Data Protection · plane 2 |
+| SIEM | Sentinel, Splunk, Elastic, Google SecOps, QRadar | | | | cross | SIEM / Evidence Fabric · plane 6 |
+| XDR / EDR | Defender XDR, Cortex XDR, CrowdStrike | | | | OS/cross | SIEM/XDR · plane 6 |
+| SOAR / automation | Sentinel+Logic Apps, Cortex XSOAR, Splunk SOAR, ServiceNow SecOps | | | | cross | SIEM / Evidence Fabric · plane 6/7 |
+| Multi-cloud evidence / coordination hub | ServiceNow, BMC Helix, Jira Service Mgmt | | | | cross | Evidence Fabric · plane 6/7 |
+
+## Volume IV — Governance & Assurance
+
+| Category | Example products | In use? | Product & offering | FedRAMP status | Surface | Maps to |
+|---|---|---|---|---|---|---|
+| Backup / BC-DR | Azure Site Recovery, AWS Backup, Veeam, Commvault, Cohesity | | | | cross | Business Continuity · plane |
+| Supply chain / SBOM | Syft, Grype, Anchore, Snyk | | | | cross | Supply Chain Risk Mgmt |
+| Documentation / knowledge / collaboration | Confluence (Atlassian Gov), SharePoint, ServiceNow KB | | | | CSP | Program Mgmt / evidence |
+| GRC / ConMon / OSCAL | ServiceNow GRC, Xacta, eMASS, UIAO tooling | | | | cross | Authorization Package & ConMon |
+
+# Flags & Gaps Summary {#flags}
+
+Roll up here anything that failed the §2 rule or has no product at all. This
+list becomes the procurement / boundary-decision agenda.
+
+| Item | Category | Issue (High-only · gear · unauthorized · missing) | Action |
+|---|---|---|---|
+| Riverbed (Aternity/NPM+) | Network observability | Class D (High)-only cloud | Confirm Moderate need or boundary fit |
+| Riverbed SteelHead | WAN-opt | On-prem gear (not FedRAMP) | Accredit via NIAP/STIG/FIPS |
+| Confluence | Documentation | Moderate **only** on Atlassian Gov Cloud | Confirm not on commercial edition |
+| ServiceNow | Coordination hub | Class D (High) | Document as High covering Moderate boundary |
+| Palo Alto Prisma Cloud (CNAPP) | Cloud posture | Class D (High)-only | Agency-preferred; document as High covering Moderate, or select a Moderate CNAPP (Defender for Cloud) |
+| _(add rows as discovery proceeds)_ | | | |
+
+# References — FedRAMP Status Sources
+
+| Product | Source |
+|---|---|
+| FedRAMP Marketplace | <https://marketplace.fedramp.gov/> |
+| SailPoint Identity Security Cloud (Moderate) | <https://www.fedramp.gov/marketplace/products/FR2001938710A/> |
+| ServiceNow Government Cloud (High) | <https://www.servicenow.com/company/media/press-room/servicenow-secures-fedramp-high-authorization.html> |
+| Splunk Cloud Platform (Moderate) | <https://www.fedramp.gov/marketplace/products/F1607197917/> |
+| Riverbed Platform for Government (Class D / High) | <https://www.riverbed.com/blogs/riverbed-platform-achieves-fedramp-class-d-certification/> |
+| Atlassian Government Cloud — Confluence/Jira (Moderate) | <https://www.atlassian.com/blog/announcements/atlassiangovernmentcloud> |
+| Tanium Cloud for US Government (Moderate) | <https://www.fedramp.gov/marketplace/products/FR2110342613/> |
+| Wiz for Government (High) | <https://www.wiz.io/blog/wiz-achieves-fedramp-high-authorization> |
+| Palo Alto Prisma Cloud (High) | <https://www.paloaltonetworks.com/blog/prisma-cloud/fedramp-high-impact-ready/> |

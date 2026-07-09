@@ -1,0 +1,606 @@
+# AAN briefing-deck spec — Vol IV Book 02: Supply Chain Risk Management (SR family, SBOM/VDR/VEX)
+# Distilled from inbox/Application Aware Networking/Vol_IV_Book_02_FedAAN_Supply_Chain_Risk_Management.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "inbox/Application Aware Networking/specs/Vol_IV_Book_02.yaml" \
+#     --out "inbox/Application Aware Networking/Vol_IV_Book_02_FedAAN_Supply_Chain_Risk_Management.pptx" \
+#     --date-code "2026-07-09 09:53 ET"
+deck:
+  title: "Supply Chain Risk Management: SBOM, VDR, and VEX"
+  subtitle: "The BOD 26-04 evidence pipeline — closing eight SR-family controls and seeding KSI-SCR before the December 7, 2026 deadline"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOL IV BOOK 02"
+  date_code: "2026-07-09 09:53 ET"
+  journey:
+    - "Generate SBOM"
+    - "Scan VDR"
+    - "Assert VEX"
+    - "Submit and prove"
+  # Book References + authoritative sources → deck link-map (cited per-slide via vendor_sources)
+  sources:
+    eo_14028: "https://www.federalregister.gov/documents/2021/05/17/2021-10460/improving-the-nations-cybersecurity"
+    nist_800_161: "https://csrc.nist.gov/pubs/sp/800/161/r1/final"
+    cisa_directives: "https://www.cisa.gov/news-events/directives"
+    cisa_kev: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+    ntia_sbom: "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom"
+    cyclonedx: "https://cyclonedx.org/specification/overview/"
+    openvex: "https://github.com/openvex/spec"
+    slsa: "https://slsa.dev/spec/v1.0/levels"
+    syft: "https://github.com/anchore/syft"
+    grype: "https://github.com/anchore/grype"
+    cosign: "https://docs.sigstore.dev/cosign/overview/"
+    nvd: "https://nvd.nist.gov/"
+    fedramp_marketplace: "https://marketplace.fedramp.gov/"
+
+slides:
+  # 1 --- title -------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for the supply-chain book. The message to establish up front:
+      supply chain risk is the fastest-growing federal attack vector, and unlike
+      most of the AAN series this book closes its controls through governance and
+      pipeline artifacts, not through the network substrate. Three mandates converge
+      — Executive Order 14028 of May 2021, NIST SP 800-161r1, and CISA Binding
+      Operational Directive 26-04 — and together they require an agency to enumerate
+      every software component in production, disclose the vulnerability status of
+      those components, and prove that exploitable vulnerabilities are tracked,
+      triaged, and remediated. The hardest date in the FedRAMP 20x compliance
+      calendar for SSA is the December 7, 2026 BOD 26-04 deadline, which demands
+      three machine-readable artifacts for every system: a Software Bill of
+      Materials, a Vulnerability Disclosure Report, and a Vulnerability
+      Exploitability eXchange document. This book establishes the architecture,
+      the CI pipeline, and the governance process for all three; it closes eight
+      NIST SP 800-53 Rev 5 SR-family controls and provides the exploitability
+      evidence contract that upgrades the KSI-CMT rules from scaffold to evaluable.
+      Walk the four-step journey — generate the SBOM, scan for the VDR, assert the
+      VEX, submit and prove — and flag the draft disclaimer: pre-decisional CSI Team
+      material, tool selections pending procurement review, FedRAMP Moderate scope.
+    vendor_sources: ["uiao repo: inbox/Application Aware Networking/Vol_IV_Book_02_FedAAN_Supply_Chain_Risk_Management.qmd"]
+
+  # 2 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART ONE — THE MANDATE"
+    title: "BOD 26-04 sets the hardest date on the calendar"
+    callout: "One deadline, three tiers, three artifacts — SBOM, VDR, and VEX for every production system by December 7, 2026."
+    callout_accent: navy
+    notes: >
+      This section frames the regulatory forcing function so the rest of the deck
+      reads as a response to a fixed deadline rather than an optional maturity
+      exercise. CISA Binding Operational Directive 26-04 activates the SBOM, VDR, and
+      VER requirement for all federal civilian executive branch agencies effective
+      December 7, 2026, and it is structured as three tiers that all fall due on the
+      same date: Tier 1 is a Software Bill of Materials present for every production
+      system, Tier 2 is a Vulnerability Disclosure Report covering every SBOM
+      component, and Tier 3 is a VEX exploitability assertion for every CVE in the
+      VDR. The strategic point to make is that this is not three separate compliance
+      programs — it is one data pipeline whose outputs serve multiple masters. Under
+      the FedRAMP 20x Consolidated Rules the same artifacts become the machine-
+      readable evidence package for KSI-SCR (supply chain risk), KSI-CMT-VTD
+      (validation throughout deployment), and the SR control-family assessment. So the
+      agency builds one pipeline and satisfies the directive, the KSI schema, and the
+      NIST control family at once. Hold the deadline up as the organizing constraint
+      the whole book is engineered around, and return to it at the close as the date
+      every implementation-checklist milestone counts down toward.
+    vendor_sources: ["cisa_directives"]
+
+  # 3 --- content: the three tiers ------------------------------------------
+  - type: content
+    kicker: "THE THREE ARTIFACTS"
+    title: "SBOM, VDR, VEX — inventory, disclosure, assertion"
+    layout: columns
+    cards:
+      - title: "SBOM"
+        body: "A machine-readable inventory of every software component, version, and supplier in production. CycloneDX 1.6 XML, generated by Syft on every push and release."
+        accent: navy
+        status: "Tier 1"
+      - title: "VDR"
+        body: "A structured enumeration of every known CVE affecting SBOM components, with NVD-sourced CVSS scores. Grype takes the SBOM as input and emits the VDR."
+        accent: teal
+        status: "Tier 2"
+      - title: "VEX"
+        body: "A machine-readable assertion per CVE: is this vulnerability exploitable in this product, in this deployment context? Human judgment, OpenVEX format."
+        accent: amber
+        status: "Tier 3"
+    callout:
+      text: "The three build on each other: no VDR without an SBOM, no VEX without a VDR. One pipeline produces all three from source."
+      accent: navy
+    notes: >
+      This slide defines the three artifacts and, more importantly, the dependency
+      chain between them, because the chain is what makes a single pipeline sufficient.
+      The Software Bill of Materials is the foundation: a machine-readable inventory of
+      every software component, its exact version, and its supplier in production,
+      emitted as CycloneDX 1.6 XML — the format the CISA VEX Portal requires — by Syft
+      on every push to main and every release tag. The Vulnerability Disclosure Report
+      is the second layer: Grype consumes the CycloneDX SBOM and produces a CycloneDX
+      VDR that enumerates every known CVE affecting those components, each with an
+      NVD-sourced CVSS 3.1 score and severity. The Vulnerability Exploitability
+      eXchange is the third and the only one that requires human judgment: for every
+      CVE in the VDR, the security team asserts whether the vulnerability is actually
+      exploitable in this product and this deployment context, and records that
+      assertion in OpenVEX JSON with a justification. The critical structural point is
+      that the tiers are cumulative — there is no VDR without an SBOM to scan, and no
+      VEX without a VDR to assert against — so the agency does not build three
+      programs, it builds one source-to-submission pipeline whose stages produce each
+      tier in turn. That single insight is what keeps the December deadline achievable.
+    vendor_sources: ["syft", "grype", "openvex", "cyclonedx"]
+
+  # 4 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART TWO — THE PIPELINE"
+    title: "From source code to CISA submission"
+    callout: "A GitHub Actions pipeline turns every commit into signed, archived, submittable supply-chain evidence."
+    callout_accent: teal
+    notes: >
+      This section walks the pipeline that produces the three artifacts automatically
+      from source. The framing to set: the entire compliance obligation is
+      operationalized as continuous integration, so evidence is a byproduct of the
+      normal development flow rather than a manual assembly exercise at authorization
+      time. The pipeline runs on GitHub Actions, triggers on every push to main and
+      every release, and moves through generation, scanning, triage, assertion, and
+      signed archival before submission to the CISA VEX Portal and ingestion into the
+      Sentinel KSI dashboard. Preview the build sequence that follows as the five
+      core stages the audience should be able to recite: Syft generates the SBOM,
+      Grype scans it into a VDR, the KEV check triages the exploited CVEs to the
+      front, the security team authors VEX assertions, and the signed artifacts are
+      submitted and archived. Stress that only one of those five stages requires human
+      judgment — the VEX authoring — while the other four are fully automated, which is
+      what makes the pipeline sustainable at the cadence BOD 26-04 implies. The
+      artifacts land in immutable storage on a seven-year NARA retention schedule, and
+      a new critical CVE anywhere in the SBOM feeds back into the Defender
+      vulnerability-management alert chain, so the pipeline is a loop, not a one-way
+      street.
+
+  # 5 --- build-sequence: the pipeline stages -------------------------------
+  - type: build-sequence
+    kicker: "THE EVIDENCE PIPELINE"
+    title: "Five stages from commit to compliance evidence"
+    notes: "Fallback notes if a stage omits its own."
+    steps:
+      - label: "Generate SBOM"
+        sub: "Syft → CycloneDX 1.6"
+        accent: navy
+        detail: >
+          On every push to main and every release, a GitHub Actions job runs Syft
+          (Anchore) against the source and container images, emitting a CycloneDX 1.6
+          XML SBOM that satisfies all NTIA minimum elements — supplier, component,
+          version, PURL, dependency graph, author, and timestamp.
+        notes: >
+          Stage one produces the foundation artifact. Syft, the CISA-recommended SBOM
+          generator for federal systems, runs as a GitHub Actions job triggered on
+          every push to main and every published release, scanning source code,
+          dependency manifests, and container images. It emits CycloneDX 1.6 XML
+          natively — the exact format the CISA VEX Portal requires — and satisfies all
+          seven NTIA minimum elements automatically: supplier name, component name,
+          exact version, a Package URL that uniquely identifies each component version,
+          the full dependency graph, the SBOM author drawn from the CI environment, and
+          a UTC build timestamp. The design intent is that no developer hand-authors an
+          SBOM; it is a deterministic output of the build. Because it runs on every
+          push, the SBOM is always current with the deployed state, which is what lets
+          later stages compute a meaningful diff between releases and treat every
+          dependency change as a logged, structured event rather than a surprise found
+          at audit time. This stage alone satisfies BOD 26-04 Tier 1.
+      - label: "Scan VDR"
+        sub: "Grype → NVD CVE list"
+        accent: teal
+        detail: >
+          Grype (Anchore) takes the CycloneDX SBOM as input and matches every
+          component against the National Vulnerability Database, producing a CycloneDX
+          VDR that lists each CVE with its CVSS 3.1 base score, vector, and severity —
+          the machine-readable disclosure BOD 26-04 Tier 2 requires.
+        notes: >
+          Stage two turns the inventory into a disclosure. Grype consumes the CycloneDX
+          SBOM produced upstream and matches every component and version against the
+          National Vulnerability Database, emitting a CycloneDX VDR that enumerates each
+          affecting CVE with its CVSS 3.1 base score, the full attack vector string, the
+          severity rating, and the affected component reference by PURL. The output is
+          fully machine-readable, which is the entire point — an assessor or a KSI rule
+          can parse it programmatically rather than reading a prose vulnerability
+          report. This stage runs on every pull request as well as every merge, and it
+          is wired as a CI gate: a new critical CVE appearing in the SBOM blocks the
+          merge, so the VDR is not just a report but an enforcement point. Because Grype
+          re-scans against a database that updates daily, the same committed artifact
+          can develop new findings over time as CVEs are disclosed, which is why the
+          pipeline re-runs on a schedule and not only on code change. Completing this
+          stage satisfies BOD 26-04 Tier 2, and the VDR becomes the input the human
+          triage and assertion stages work against.
+      - label: "Triage against KEV"
+        sub: "CISA KEV → P0 escalation"
+        accent: amber
+        detail: >
+          A CI step cross-references every VDR CVE against the CISA Known Exploited
+          Vulnerabilities catalog. Any match is escalated to P0 with a 14-day
+          remediation SLA per BOD 22-01, focusing scarce human review on the
+          vulnerabilities attackers are actually using.
+        notes: >
+          Stage three is the prioritization filter that makes human review tractable. A
+          VDR can list hundreds of CVEs, and analyzing every one for deployment-context
+          exploitability by hand is neither possible nor useful. The KEV triage step
+          cross-references every CVE in the VDR against the CISA Known Exploited
+          Vulnerabilities catalog — the authoritative list of vulnerabilities with
+          confirmed active exploitation in the wild. Any CVE that appears in KEV is
+          automatically escalated to P0 with a fourteen-day remediation SLA per BOD
+          22-01, and surfaced first to the security team. This is the point where the
+          pipeline expresses risk-based prioritization: the scarce resource is human
+          analyst attention, and it is spent first on the vulnerabilities adversaries
+          are demonstrably exploiting, not on theoretical findings with high CVSS scores
+          but no real-world use. The KEV check also feeds a Sentinel analytic rule that
+          fires when a KEV-listed CVE in an affected or under-investigation state passes
+          its fourteen-day window, so an overdue KEV item becomes an alert, not a line
+          buried in a report. Triage is automated; the judgment it enables is not.
+      - label: "Assert VEX"
+        sub: "OpenVEX → exploitability"
+        accent: navy
+        detail: >
+          For each CVE, the security team asserts not_affected, affected, fixed, or
+          under_investigation — with a justification and, where relevant, a mitigating-
+          control or remediation statement. Automated tools find reachable code paths;
+          only humans can assert deployment-context exploitability.
+        notes: >
+          Stage four is the one stage that cannot be automated, and the deck should be
+          honest about why. Automated tooling can determine whether a vulnerable
+          component is present and whether a vulnerable code path is reachable, but it
+          cannot assert whether the vulnerability is exploitable in the specific
+          deployment context — that requires human judgment about architecture,
+          configuration, and compensating controls. For each CVE the security team
+          authors a VEX statement in OpenVEX JSON with one of four status values:
+          not_affected when the vulnerability exists but cannot be exploited here,
+          carrying a justification such as protected-by-mitigating-control; affected
+          when the production system uses the vulnerable path, which triggers a POA&M;
+          fixed when the component has been patched, with the remediation commit
+          referenced; and under_investigation while analysis is in progress, bounded by
+          a short triage window. The worked example in the book is a not_affected
+          assertion for a CVE in the requests library, justified because the SSA API
+          gateway enforces input validation upstream and the vulnerable deserialization
+          function is never called in the production configuration. Each assertion is a
+          defensible, signed, timestamped record — the substance of BOD 26-04 Tier 3.
+      - label: "Sign and submit"
+        sub: "Cosign · immutable store · CISA Portal"
+        accent: teal
+        detail: >
+          VEX documents are GPG-signed and submitted to the CISA VEX Portal; SBOM, VDR,
+          and VEX are stored in the Azure Blob immutable tier on a 7-year NARA schedule
+          with SHA-256 integrity, and their hashes are published to a signed manifest
+          for Sentinel KSI ingestion.
+        notes: >
+          Stage five closes the loop by making the evidence tamper-evident, durable,
+          and submittable. Each VEX document is signed with a GPG key and submitted to
+          the CISA VEX Portal via signed URLs; the SBOM, VDR, and VEX artifacts are
+          written to the Azure Blob immutable tier on a seven-year NARA retention
+          schedule, so once stored they cannot be silently altered or deleted. Every
+          generation run produces a signed evidence manifest recording the commit SHA,
+          the SHA-256 hashes of all three artifacts, the component count, the CVE counts
+          by severity, the KEV hit count, the SLSA level achieved, and the storage URI —
+          a single record that ties the whole run together and is itself the object a
+          KSI rule ingests. Container images are signed with Cosign from sigstore, and
+          SLSA provenance attestation proves the deployed artifact matches what the
+          pipeline built. The manifest hashes flow into Microsoft Sentinel, where the
+          SBOM dashboard tracks daily component diffs, CVE counts, VEX status
+          distribution, KEV hits, and days-since-last-VEX-review per product. At this
+          point the pipeline has satisfied all three BOD 26-04 tiers and produced the
+          machine-readable evidence the KSI schema and the SR control family both
+          consume.
+
+  # 6 --- content: NTIA minimum elements ------------------------------------
+  - type: content
+    kicker: "SBOM CONTENT"
+    title: "The NTIA minimum elements — satisfied automatically"
+    layout: grid
+    cards:
+      - title: "Identity fields"
+        body: "Supplier name, component name, and exact version — CycloneDX supplier.name, component.name, and component.version, extracted from package metadata by Syft."
+        accent: navy
+      - title: "Unique identifier"
+        body: "The Package URL (PURL) in component.purl uniquely identifies each component version — the key later stages join CVEs and VEX assertions against."
+        accent: teal
+      - title: "Dependency graph"
+        body: "The full dependencies relationship graph, not just a flat list — so transitive components are visible, where most supply-chain risk actually hides."
+        accent: amber
+      - title: "Provenance fields"
+        body: "SBOM author from the CI environment and a UTC build timestamp in metadata — establishing who produced the SBOM and exactly when."
+        accent: red
+    callout:
+      text: "Syft emits all seven NTIA minimum elements with no manual authoring — the SBOM is a deterministic output of the build, not a document someone writes."
+      accent: navy
+    notes: >
+      This slide reassures the audience that meeting the federal SBOM content standard
+      is automatic rather than a documentation burden. The National Telecommunications
+      and Information Administration defines the minimum elements a federal SBOM must
+      contain, and Syft satisfies every one of them by construction. The identity fields
+      — supplier name, component name, and exact version — map to CycloneDX
+      supplier.name, component.name, and component.version and are extracted directly
+      from package metadata. The unique identifier is the Package URL carried in
+      component.purl, and it matters more than it looks: the PURL is the join key that
+      the VDR and VEX stages use to attach CVEs and exploitability assertions to a
+      precise component version, so getting it right upstream is what lets everything
+      downstream correlate. The dependency relationships are captured as a full graph
+      rather than a flat list, which is essential because most real supply-chain risk
+      lives in transitive dependencies a developer never explicitly chose. The
+      provenance fields — the SBOM author drawn from the CI environment and a UTC build
+      timestamp in the metadata — answer who produced this SBOM and exactly when,
+      which is the first question any assessor asks. The organizing message: because
+      all seven elements fall out of the build automatically, the SBOM is a
+      deterministic artifact, not a document someone has to remember to write and keep
+      current.
+    vendor_sources: ["ntia_sbom", "cyclonedx", "syft"]
+
+  # 7 --- content: VEX status values ----------------------------------------
+  - type: content
+    kicker: "VEX STATUS VALUES"
+    title: "Four assertions — and what each one commits the agency to"
+    layout: grid
+    cards:
+      - title: "not_affected"
+        body: "The vulnerability exists in the component but cannot be exploited here — the function is never called, or a mitigating control blocks it. Requires a justification."
+        accent: teal
+      - title: "affected"
+        body: "The vulnerability is exploitable in this deployment — remediation is underway. Creates a POA&M; a CVSS 9+ finding carries a 15-day remediation clock."
+        accent: red
+      - title: "fixed"
+        body: "The component has been patched to a non-vulnerable version. The assertion includes the remediation commit SHA as proof the fix is deployed, not planned."
+        accent: navy
+      - title: "under_investigation"
+        body: "Exploitability is still being analyzed. Time-bounded — a short triage window before the CVE must resolve to one of the other three states."
+        accent: amber
+    callout:
+      text: "not_affected is the most valuable assertion: it closes a CVE with a justification instead of a patch, but the justification must survive assessor scrutiny."
+      accent: navy
+    notes: >
+      This slide makes clear that a VEX status is a commitment, not a label, and that
+      the four values carry very different obligations. not_affected asserts the
+      vulnerability is present but cannot be exploited in this deployment — because the
+      vulnerable function is never called, the OS feature is not enabled, or a
+      mitigating control such as an upstream API gateway blocks the path — and it must
+      carry a justification that an assessor will scrutinize; it is the most valuable
+      status because it lawfully closes a CVE with reasoning rather than requiring a
+      patch, but a weak justification is worse than none. affected concedes the
+      vulnerability is exploitable in production, which opens a POA&M item and, for a
+      CVSS 9-or-higher finding, starts a fifteen-day remediation clock. fixed states the
+      component has been patched to a non-vulnerable version and includes the
+      remediation commit SHA, so the assertion proves the fix is actually deployed
+      rather than merely planned. under_investigation is the honest interim state while
+      analysis proceeds, and it is deliberately time-bounded — a short triage window,
+      after which the CVE must resolve to one of the other three, so the state cannot
+      become a permanent parking lot. The point to leave with the audience: the value
+      of a VEX program is disciplined use of not_affected backed by justifications that
+      hold up, because that is what prevents an unmanageable backlog of patches for
+      vulnerabilities that pose no real exploitability in context.
+    vendor_sources: ["openvex"]
+
+  # 8 --- table: vendor disclosure matrix -----------------------------------
+  - type: table
+    kicker: "SR-6 EVIDENCE"
+    title: "Vendor disclosure matrix — supplier posture and authorization"
+    headers: ["Supplier", "Products in SBOM", "FedRAMP", "Disclosure program"]
+    rows:
+      - cells: ["Anchore", "Syft, Grype", "N/A (tooling)", "Native CycloneDX"]
+      - cells: ["Microsoft", "Defender VM, Sentinel, Purview, Key Vault", "Authorized", "MSRC Security Update Guide"]
+        accent: teal
+      - cells: ["Cisco", "SD-WAN (IOS XE, vManage)", "Moderate", "Cisco PSIRT (OpenVEX)"]
+        accent: teal
+      - cells: ["Infoblox", "NIOS Grid, BloxOne DDI", "Moderate — FR2017257053", "Infoblox Security Portal"]
+        accent: teal
+      - cells: ["CISA / NIST", "KEV catalog, NVD data feed", "N/A (data source)", "Public advisory feeds"]
+    callout:
+      text: "SR-6 requires documented supplier assessments. Each supplier's authorization status and disclosure channel is verified against the FedRAMP Marketplace at procurement."
+      accent: navy
+    notes: >
+      This is the reference table that satisfies SR-6, which requires documented
+      supplier assessments — read it rather than narrating each row. The matrix maps
+      every third-party component supplier in the SBOM to their FedRAMP authorization
+      status and their security disclosure channel, and the discipline it encodes is
+      that both are tracked per supplier and verified at procurement time against the
+      FedRAMP Marketplace, not assumed. Anchore supplies the pipeline tooling itself,
+      Syft and Grype, and needs no FedRAMP authorization because it is build-time
+      tooling that emits native CycloneDX. Microsoft supplies the Defender, Sentinel,
+      Purview, and Key Vault services and discloses through the MSRC Security Update
+      Guide, which itself publishes machine-readable VEX. Cisco supplies the SD-WAN
+      stack at FedRAMP Moderate and discloses through Cisco PSIRT in OpenVEX format.
+      Infoblox supplies the DDI grid and BloxOne at FedRAMP Moderate under CSO
+      FR2017257053 and discloses through the Infoblox Security Portal. CISA and NIST are
+      data sources rather than component suppliers, providing the KEV catalog and the
+      NVD feed the pipeline consumes. In keeping with the series scope rule, every
+      authorization is stated at Moderate or simply as authorized — the deck never
+      claims a High baseline even where an underlying region holds one. The subscriptions
+      to these disclosure channels are themselves SR-8 evidence: they are how the agency
+      receives and acts on supplier vulnerability notifications.
+    vendor_sources: ["fedramp_marketplace"]
+
+  # 9 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART THREE — CLOSURE & EVIDENCE"
+    title: "Eight SR controls and the KSI contract"
+    callout: "The pipeline is not just BOD compliance — it is the evidence contract that upgrades KSI-CMT from scaffold to evaluable."
+    callout_accent: navy
+    notes: >
+      This section connects the pipeline to the two frameworks it ultimately serves:
+      the NIST SP 800-53 Rev 5 SR control family and the FedRAMP 20x Key Security
+      Indicators. The point to establish is that the artifacts built in Parts One and
+      Two are not single-purpose BOD 26-04 deliverables — they are reusable evidence
+      that closes eight SR-family controls and provides the Vulnerability
+      Exploitability Report evidence contract that the KSI-CMT rules need to move from
+      scaffold status, where a rule is defined but not yet backed by evaluable
+      evidence, to evaluable status, where an automated assessment can actually score
+      it. The section also introduces SLSA, the NIST-endorsed framework for measuring
+      build integrity, because build integrity is what lets the agency assert that the
+      component it scanned is the component it deployed — the provenance thread that
+      ties the SBOM to the running system. Frame the honesty point the book makes
+      explicitly: this series claims a technology as required only where control text,
+      physics, or protocol behavior makes it the sole closure path, and supply-chain
+      risk management is deliberately not such a case — these controls close through
+      governance artifacts, and saying so plainly is what keeps the necessity claims
+      credible elsewhere in the series.
+
+  # 10 --- table: SR family control closure ---------------------------------
+  - type: table
+    kicker: "CONTROL CLOSURE"
+    title: "NIST SP 800-53 Rev 5 — SR family, eight controls closed"
+    headers: ["Control", "Title", "Closed by"]
+    rows:
+      - cells: ["SR-1", "SCRM Policy and Procedures", "SCRM policy + pipeline governance charter"]
+      - cells: ["SR-2", "SCRM Plan", "Pipeline + vendor matrix + KEV integration"]
+        accent: teal
+      - cells: ["SR-3", "Supply Chain Controls and Processes", "Acquisition clause requiring CycloneDX SBOM delivery"]
+      - cells: ["SR-5", "Acquisition Strategies, Tools, Methods", "Syft + Grype SCA gate before production promotion"]
+        accent: teal
+      - cells: ["SR-6", "Supplier Assessments and Reviews", "Vendor disclosure matrix; MSRC/PSIRT subscriptions"]
+      - cells: ["SR-8", "Notification Agreements", "MSRC, Cisco PSIRT, Infoblox feed subscriptions"]
+        accent: teal
+      - cells: ["SR-10", "Inspection of Components", "SBOM hash verification; GPG-signed manifest; SLSA L2"]
+      - cells: ["SR-11", "Component Authenticity", "Cosign image signing; SLSA provenance; component hashes"]
+        accent: teal
+    callout:
+      text: "Eight controls, all closed through governance and pipeline artifacts — no IPAM record, SD-WAN overlay, or TIC enforcement point produces an SBOM."
+      accent: navy
+    notes: >
+      This is the SR-family closure matrix — the reference table that shows an assessor
+      exactly how eight controls are satisfied. Read it; do not narrate every row. SR-1
+      closes with a documented SCRM policy and the pipeline governance charter that
+      replaces procurement decisions made without security criteria. SR-2 closes with
+      the pipeline plus the vendor disclosure matrix and KEV integration, giving a
+      systematic supplier-risk assessment where none existed. SR-3 closes with an
+      acquisition policy update that contractually requires suppliers to deliver a
+      CycloneDX SBOM, plus the ingest pipeline that consumes it. SR-5 closes with the
+      Syft-and-Grype software-composition-analysis gate integrated into CI before any
+      production promotion. SR-6 closes with the vendor disclosure matrix and the
+      MSRC and PSIRT feed subscriptions that track supplier posture. SR-8 closes with
+      those same notification-feed subscriptions, which are the documented process for
+      receiving and responding to supplier vulnerability disclosures. SR-10 closes with
+      SBOM hash verification at container pull, the GPG-signed manifest, and SLSA Level
+      2 attestation. SR-11 closes with Cosign container signing, SLSA provenance, and
+      the component hashes in the SBOM manifest. The single message the book insists
+      on and the deck should echo: all eight close through governance and pipeline
+      artifacts, not through the network substrate — no IPAM record, SD-WAN overlay, or
+      TIC 3.0 enforcement point can produce a software bill of materials or a supplier
+      attestation, and admitting that is what makes the series' network-necessity
+      claims credible where they are genuinely warranted.
+    vendor_sources: ["nist_800_161", "eo_14028"]
+
+  # 11 --- content: KSI-CMT evidence contract -------------------------------
+  - type: content
+    kicker: "KSI-CMT EVIDENCE CONTRACT"
+    title: "The pipeline upgrades four KSI rules to evaluable"
+    layout: grid
+    cards:
+      - title: "KSI-011"
+        body: "Change logging and monitoring (CM-3, AU-6). The SBOM diff between releases logs every dependency change with author, timestamp, and before/after hash into Sentinel."
+        accent: navy
+      - title: "KSI-012"
+        body: "Immutable redeployment over direct modification (CM-2, SA-10). SLSA provenance proves the deployed artifact was built from versioned source, not modified in place."
+        accent: teal
+      - title: "KSI-013"
+        body: "Change-procedure effectiveness review (CM-3, CA-7). The 90-day VEX review cycle is a dated, signed record — the effectiveness evidence the rule requires."
+        accent: amber
+      - title: "KSI-014"
+        body: "Automated validation throughout deployment (CM-3(2), SA-11). Grype runs on every PR and blocks merge on a new critical CVE — validation per deployment."
+        accent: red
+    callout:
+      text: "Each KSI moves from scaffold to evaluable because the pipeline emits a machine-readable artifact an automated assessment can actually score."
+      accent: navy
+    notes: >
+      This slide shows how the same pipeline artifacts satisfy four specific KSI-CMT
+      rules, turning them from defined-but-unevaluable scaffolds into rules an
+      automated assessment can score. KSI-011, change logging and monitoring, maps to
+      CM-3 and AU-6 and is satisfied by the SBOM diff between releases: every
+      dependency change is logged as a structured artifact carrying author, timestamp,
+      and before-and-after hashes, ingested by Sentinel as a change event, so the
+      change record is machine-readable rather than a prose changelog. KSI-012,
+      immutable redeployment over direct modification, maps to CM-2 and SA-10 and is
+      satisfied by SLSA provenance attestation: every production artifact is built from
+      versioned source rather than modified in place, and the SBOM manifest plus the
+      SLSA Level 2 record proves the deployed artifact matches the build artifact.
+      KSI-013, change-procedure effectiveness review, maps to CM-3 and CA-7 and is
+      satisfied by the ninety-day VEX review cycle, whose completion is a dated, signed
+      record demonstrating the change procedure is periodically reviewed for
+      effectiveness. KSI-014, automated validation throughout deployment, maps to
+      CM-3(2) and SA-11 and is satisfied by the Grype scan that runs on every pull
+      request and blocks the merge if a new critical CVE appears, producing a machine-
+      readable validation artifact per deployment. The unifying idea: each rule becomes
+      evaluable because the pipeline emits an artifact a machine can parse and score,
+      which is exactly what the shift to continuous, evidence-based authorization
+      demands.
+
+  # 12 --- content: SLSA levels ---------------------------------------------
+  - type: content
+    kicker: "BUILD INTEGRITY"
+    title: "SLSA levels — the provenance ladder"
+    layout: columns
+    cards:
+      - title: "Level 1"
+        body: "A provenance document exists. The GitHub Actions SBOM workflow produces a build attestation automatically — the entry rung, present from day one."
+        accent: navy
+        status: "Provenance exists"
+      - title: "Level 2"
+        body: "Hosted build with signed provenance. GitHub-hosted runners produce provenance signed by an OIDC token — the current SSA target across production."
+        accent: teal
+        status: "Current target"
+      - title: "Level 3"
+        body: "Hardened build with two-party review. Branch protection plus required reviewers on the release workflow — the goal before the authorization deadline."
+        accent: amber
+        status: "Deadline goal"
+    callout:
+      text: "SLSA is the NIST-endorsed framework for measuring build integrity — the provenance thread that proves the component scanned is the component deployed."
+      accent: navy
+    notes: >
+      This slide gives the audience the build-integrity ladder and where SSA sits on
+      it. SLSA — Supply Chain Levels for Software Artifacts — is the NIST-endorsed
+      framework for measuring how trustworthy a build process is, and it matters
+      because the whole SBOM and VEX argument rests on an assumption that the component
+      the pipeline scanned is the component actually deployed; provenance is what makes
+      that assumption defensible. Level 1 requires only that a provenance document
+      exists, which the GitHub Actions SBOM workflow produces automatically as a build
+      attestation, so the agency clears it from day one. Level 2 requires a hosted
+      build with signed provenance: because the workflows run on GitHub-hosted runners
+      and the provenance is signed by an OIDC token, the estate meets Level 2, which is
+      the current SSA target across all production release workflows. Level 3 requires
+      a hardened build with two-party review — branch protection plus required
+      reviewers on the release workflow so no single person can push a release
+      unreviewed — and that is the explicit goal before the authorization deadline. The
+      progression is the point: SLSA is not a checkbox but a maturity path, and stating
+      the current level honestly (Level 2, moving to Level 3) is more credible to an
+      assessor than claiming a level the evidence does not yet support. Level 2
+      provenance is also what backs the SR-10 and SR-11 closures and the KSI-012
+      immutable-redeployment assertion.
+    vendor_sources: ["slsa", "cosign"]
+
+  # 13 --- closing ----------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "One pipeline, three artifacts, one deadline"
+    layout: columns
+    cards:
+      - title: "Automated"
+        body: "Four of five pipeline stages need no human. SBOM, VDR, KEV triage, and signed archival are continuous integration — evidence is a byproduct of the build."
+        accent: teal
+        status: "CI-native"
+      - title: "Judgment"
+        body: "Only VEX authoring needs a human, focused by KEV triage on the CVEs attackers actually use. That is where analyst attention is deliberately spent."
+        accent: navy
+        status: "Where humans matter"
+      - title: "Next"
+        body: "The organizational backbone — the PM-30 SCRM charter and governance cadence — is authored in Vol IV Book 03, binding leadership to this posture."
+        accent: amber
+        status: "Book 03"
+    callout:
+      text: "Final BOD 26-04 VDR/VER submission is due December 7, 2026. Every implementation-checklist milestone counts down to that date."
+      accent: red
+    notes: >
+      Close on the through-line the book has built: the entire supply-chain compliance
+      obligation is engineered as one source-to-submission pipeline whose three
+      artifacts serve BOD 26-04, the KSI schema, and the SR control family at once. The
+      first takeaway is that the pipeline is CI-native — four of its five stages, SBOM
+      generation, VDR scanning, KEV triage, and signed immutable archival, require no
+      human intervention, so the evidence is a byproduct of normal development rather
+      than a manual assembly at authorization time. The second is that human judgment
+      is spent exactly where it belongs: only the VEX authoring stage needs an analyst,
+      and the KEV triage step focuses that analyst on the vulnerabilities under active
+      exploitation rather than a flat list of high-CVSS findings. The third is the
+      handoff to the next book: the pipeline is the technical backbone, but a technical
+      pipeline without organizational commitment is an experiment, so Vol IV Book 03
+      authors the PM-30 SCRM governance charter and the governance cadence that bind
+      agency leadership to this supply-chain posture and turn the pipeline into a
+      durable program. Leave the audience on the date: the final BOD 26-04 VDR and VER
+      submission is due December 7, 2026, and every milestone in the implementation
+      checklist — install Syft and Grype, generate initial SBOMs, register with the
+      disclosure feeds, author initial VEX, achieve SLSA Level 2, run the quarterly
+      review — counts down to that single hard deadline.
+    vendor_sources: ["cisa_directives", "fedramp_marketplace"]

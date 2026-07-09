@@ -6,7 +6,13 @@ from pptx import Presentation
 from pptx.util import Inches
 
 warnings.warn(
-    "scripts/generate_pptx.py is deprecated. Use `uiao generate pptx` instead.",
+    "scripts/generate_pptx.py is DEPRECATED and will be removed. "
+    "For the leadership briefing deck use `uiao generate pptx`. "
+    "For canonical AAN (FedAAN Book) briefing decks — the white 10x5.625in, "
+    "Arial, house-palette, amber-ring build-sequence DNA — author a deck-spec "
+    "YAML and run `uiao generate aan-deck --spec <yaml> --out <pptx> "
+    '--date-code "YYYY-MM-DD HH:MM ET"` '
+    "(generator: src/uiao/generators/aan_deck.py).",
     DeprecationWarning,
     stacklevel=1,
 )

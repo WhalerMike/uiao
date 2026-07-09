@@ -1,0 +1,127 @@
+# Example AAN deck spec — minimal but exercises every slide type.
+# Schema: see the module docstring in src/uiao/generators/aan_deck.py
+# Build: uiao generate aan-deck --spec src/uiao/generators/aan_deck_example.yaml \
+#          --out exports/pptx/AAN_Example.pptx --date-code "2026-07-09 14:30 ET"
+deck:
+  title: "Network Enforcement Substrate"
+  subtitle: "How 802.1X, security-group tags, and microsegmentation compose the AAN floor"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING"
+  date_code: "2026-07-09 14:30 ET"
+  journey:
+    - "Identify"
+    - "Authorize"
+    - "Segment"
+    - "Enforce"
+  sources:
+    cisco_trustsec: "https://www.cisco.com/c/en/us/products/ios-nx-os-software/trustsec/index.html"
+
+slides:
+  - type: title
+    notes: >
+      Opening frame. The enforcement substrate is the physical and logical floor
+      on which every application-aware policy rests. Walk the audience through the
+      four-step journey before diving into each plane.
+    vendor_sources: ["cisco_trustsec", "uiao repo: src/uiao/substrate/"]
+
+  - type: section
+    kicker: "PART ONE"
+    title: "Why the wire needs identity"
+    callout: "Without identity at the access edge, every downstream control is guessing."
+    callout_accent: navy
+    notes: >
+      A flat network cannot express application intent. This section motivates the
+      identity-first enforcement model before we enumerate the planes.
+
+  - type: content
+    kicker: "THE ENFORCEMENT PLANES"
+    title: "Four planes carry the policy"
+    layout: grid
+    cards:
+      - title: "802.1X"
+        body: "Port-based authentication gates the access edge before an address is issued."
+        accent: navy
+      - title: "SGT"
+        body: "Security Group Tags travel with the packet, decoupling policy from topology."
+        accent: teal
+      - title: "Microsegmentation"
+        body: "East-west policy confines lateral movement inside the enclave."
+        accent: amber
+      - title: "Boundary"
+        body: "The SC-7 boundary remains the seam where enforcement is hardest to prove."
+        accent: red
+    callout:
+      text: "Enforcement is a stack, not a switch."
+      accent: navy
+    notes: >
+      Each card is one enforcement plane. Emphasize that they compose: authenticate,
+      tag, segment, and bound. The red boundary card foreshadows the evidence gap.
+    vendor_sources: ["cisco_trustsec"]
+
+  - type: build-sequence
+    kicker: "THE ENFORCEMENT SEQUENCE"
+    title: "How a session is admitted"
+    notes: "Fallback presenter notes if a step omits its own."
+    steps:
+      - label: "Authenticate"
+        sub: "802.1X / EAP-TLS"
+        accent: navy
+        detail: >
+          The supplicant presents a certificate; the switch relays the exchange to
+          the policy service. No identity, no port.
+        notes: "Step one: authentication at the access edge. Certificate-based, no shared secrets."
+      - label: "Authorize"
+        sub: "dACL / SGT"
+        accent: teal
+        detail: >
+          The policy service returns an authorization result — a downloadable ACL and
+          a security-group tag that the switch programs onto the port.
+        notes: "Step two: authorization returns the enforcement primitives the switch applies."
+      - label: "Segment"
+        sub: "SGACL"
+        accent: amber
+        detail: >
+          Tag-to-tag policy (SGACL) confines east-west traffic. Policy follows the
+          workload, not the subnet.
+        notes: "Step three: segmentation enforced by tag, independent of IP topology."
+
+  - type: table
+    kicker: "COVERAGE"
+    title: "Control-to-plane mapping"
+    headers: ["Control", "Plane", "Status"]
+    rows:
+      - cells: ["AC-4", "Segmentation", "Enforced"]
+        accent: teal
+      - cells: ["IA-2", "Access edge", "Enforced"]
+      - cells: ["SC-7", "Boundary", "Partial"]
+        accent: amber
+    callout:
+      text: "Boundary enforcement remains the open seam we carry into the evidence fabric."
+      accent: amber
+    notes: >
+      The mapping shows where the substrate satisfies NIST 800-53 controls today and
+      where SC-7 boundary evidence is still partial.
+    vendor_sources: ["nist_800_53"]
+
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "The substrate is necessary but not sufficient"
+    layout: columns
+    cards:
+      - title: "Necessary"
+        body: "No application-aware posture exists without an enforcing floor."
+        accent: teal
+        status: "Established"
+      - title: "Partial"
+        body: "Boundary enforcement is provable only where telemetry reaches."
+        accent: amber
+        status: "Open seam"
+      - title: "Next"
+        body: "The evidence fabric turns enforcement into continuous proof."
+        accent: navy
+        status: "Book 07"
+    callout:
+      text: "Next: the evidence fabric that proves the floor holds."
+      accent: navy
+    notes: >
+      Close on the through-line: the substrate is the floor, not the ceiling. The
+      open boundary seam is the handoff to the evidence-fabric volume.
