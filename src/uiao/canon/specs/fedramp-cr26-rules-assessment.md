@@ -45,8 +45,8 @@ This document:
 
 **Out of scope:**
 - Per-indicator KSI forward/reverse mapping (covered in UIAO_137 §3–4).
-- New KSI rule authoring (downstream; tracked in FINDING-004 §4).
-- CSP-side filing operations (tracked in FINDING-002 §4).
+- New KSI rule authoring (downstream; tracked in FINDING-PGM-003 §4).
+- CSP-side filing operations (tracked in FINDING-PGM-001 §4).
 - OSCAL catalog tailoring for Low/Moderate/High baselines (fedramp-cr26 overlays).
 
 ---
@@ -142,7 +142,7 @@ are covered by:
 
 CCM-all requires quarterly collaborative-monitoring reviews with all agency
 customers; the ConMon pipeline produces the required artifacts. Open item:
-automated agency-distribution of ConMon output (tracked in FINDING-002 §3.2, not a
+automated agency-distribution of ConMon output (tracked in FINDING-PGM-001 §3.2, not a
 CR26-gate blocker).
 
 ### CDS — Certification Data Sharing

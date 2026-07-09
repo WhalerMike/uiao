@@ -45,7 +45,7 @@ Out of scope for this document:
 
 - Internal substrate KSI emission mechanics (UIAO_133).
 - 3PAO engagement interface for evidence review (UIAO_138).
-- CSP-side P-ATO package filings (FINDING-002 §4 external remedies).
+- CSP-side P-ATO package filings (FINDING-PGM-001 §4 external remedies).
 - The decision rationale for the 20x posture (ADR-106).
 
 ---
@@ -62,7 +62,7 @@ FedRAMP 20x registration. Prerequisites are divided into substrate-side
 |---|---|---|
 | S-1 | ADR-106 status is ACCEPTED | Check `src/uiao/canon/adr/adr-106-fedramp-20x-integration.md` frontmatter `status:` field |
 | S-2 | ADR-061 status is ACCEPTED (CR26 snapshot vendored) | Check `src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md` |
-| S-3 | `uiao fedramp dryrun` passes against the agency's target baseline with zero P0/P1 events | Run and record per UIAO_138 §7; result recorded in FINDING-002 §4.7 |
+| S-3 | `uiao fedramp dryrun` passes against the agency's target baseline with zero P0/P1 events | Run and record per UIAO_138 §7; result recorded in FINDING-PGM-001 §4.7 |
 | S-4 | UIAO_138 evidence artifact index (§2) is fully populated — all 11 artifact types present in the OSCAL store | Run `uiao fedramp staleness` and confirm zero missing artifact types |
 | S-5 | All `in-scope` canon components carry a written MAS-scope justification | Canon-steward review; UIAO_133 §3.3 rubric |
 
@@ -106,7 +106,7 @@ in both pathways.
 
 **UIAO canon-steward.** Coordinates the substrate-side readiness checks
 (§2.1), signs off on the dry-run result, and maintains the registration
-record in FINDING-002.
+record in FINDING-PGM-001.
 
 ### 3.2 Sponsor KSI feed contract
 
@@ -141,7 +141,7 @@ migration ceremony (§4) completes.
    24 hours.
 5. Both parties sign the sponsor intake checklist (Attachment A to this
    document) confirming endpoint configuration, artifact coverage, and
-   freshness verification. The signed checklist is retained in FINDING-002
+   freshness verification. The signed checklist is retained in FINDING-PGM-001
    §5.
 
 ---
@@ -151,14 +151,14 @@ migration ceremony (§4) completes.
 The following ordered gate sequence moves an agency from the traditional
 pathway (UIAO_133 §5.1) to the modernized pathway (UIAO_133 §5.2). Each
 gate must be satisfied in sequence; a gate that cannot be satisfied is
-recorded as a blocking item in FINDING-002.
+recorded as a blocking item in FINDING-PGM-001.
 
 | Gate | Condition | Artifact |
 |---|---|---|
-| G-1 | Substrate prerequisites satisfied (§2.1, all five) | Canon-steward sign-off, recorded in FINDING-002 |
+| G-1 | Substrate prerequisites satisfied (§2.1, all five) | Canon-steward sign-off, recorded in FINDING-PGM-001 |
 | G-2 | Agency prerequisites satisfied (§2.2, all four) | Agency program manager attestation |
-| G-3 | Clean dry-run on record (UIAO_138 §7) | Run ID in FINDING-002 §4.7 |
-| G-4 | Authorization sponsor onboarded (§3.3, steps 1–5) | Signed sponsor intake checklist in FINDING-002 §5 |
+| G-3 | Clean dry-run on record (UIAO_138 §7) | Run ID in FINDING-PGM-001 §4.7 |
+| G-4 | Authorization sponsor onboarded (§3.3, steps 1–5) | Signed sponsor intake checklist in FINDING-PGM-001 §5 |
 | G-5 | Traditional-pathway cATO package completed for at least one full quarter under the substrate | cATO package artifact from UIAO_133 §2.2 row 11 |
 | G-6 | FedRAMP PMO pilot application submitted and accepted | PMO acceptance email / portal confirmation |
 | G-7 | Migration ceremony sign-off (§4.1) | Countersigned ceremony record |
@@ -184,7 +184,7 @@ It requires three sign-offs in sequence:
 
 The ceremony record — a brief document capturing the three sign-offs, the
 date, the dry-run run ID, and the current ADR-106 status — is committed to
-`docs/findings/fedramp-20x-moderate-pilot.qmd` (FINDING-002) §5 and becomes
+`docs/findings/fedramp-20x-moderate-pilot.qmd` (FINDING-PGM-001) §5 and becomes
 the authoritative record that the agency transitioned to the modernized
 pathway.
 
@@ -200,7 +200,7 @@ evidence package. The command outputs a directory containing:
   oscal-artifact-index.json       # UIAO_138 §2 artifact types + freshness status
   ksi-coverage-map.json           # Which KSI themes are covered, per UIAO_137
   mas-scope-classification.json   # Per-component MAS scope + justifications, per UIAO_133 §3
-  dry-run-results.json            # Latest dry-run result from FINDING-002 §4.7
+  dry-run-results.json            # Latest dry-run result from FINDING-PGM-001 §4.7
   poam-open-items.json            # Open POA&M items, per UIAO_133 §4.3
   cato-package-latest.oscal       # Most recent quarterly cATO package (OSCAL SSP aggregate)
   README.md                       # Cover sheet with run metadata
@@ -248,11 +248,11 @@ as a new adapter. UIAO_205 §4 is the gate sequence that determines when those
 conditions are satisfied; §4.1 is the ceremony that makes the migration
 official.
 
-### 6.4 With FINDING-002 (FedRAMP 20x Moderate Pilot)
+### 6.4 With FINDING-PGM-001 (FedRAMP 20x Moderate Pilot)
 
-FINDING-002 is the tracking document for the 20x pilot. UIAO_205 references
+FINDING-PGM-001 is the tracking document for the 20x pilot. UIAO_205 references
 it as the artifact store for: the dry-run run ID (§4.7), open scope disputes
-(§5), and the migration ceremony record. FINDING-002 §5 (added as part of
+(§5), and the migration ceremony record. FINDING-PGM-001 §5 (added as part of
 this spec) is the "registration record" section where these artifacts land.
 
 ---
@@ -264,7 +264,7 @@ UIAO_205 moves from Draft to Current when:
 1. At least one agency deployment has completed the §4 gate sequence and
    filed a FedRAMP 20x pilot application using the §5 submission package.
 2. FedRAMP PMO has accepted the application (Gate G-6 satisfied).
-3. The migration ceremony record (§4.1) is committed to FINDING-002 §5 with
+3. The migration ceremony record (§4.1) is committed to FINDING-PGM-001 §5 with
    all three sign-offs.
 
 Until condition 1 is met, this spec is a pre-operational template. Sections
@@ -284,7 +284,7 @@ may be updated as the FedRAMP 20x pilot program publishes additional guidance
 - [UIAO_137 — FedRAMP CR26 KSI Mapping](./fedramp-cr26-ksi-mapping.md)
 - [UIAO_185 — System Security Plan Template](./system-security-plan.md)
 - [UIAO_139 — FedRAMP GCC-Moderate Realtime Boundary Impact](./fedramp-gcc-moderate-realtime-boundary-impact.md)
-- [FINDING-002 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
 
 ### FedRAMP primary sources
 

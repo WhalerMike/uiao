@@ -139,7 +139,7 @@ def dryrun(
       3. The cATO package (artifact row 11) is present.
 
     Exits 0 on pass, 1 on failure.  Use --out to persist the result for
-    FINDING-002 §4 recording.
+    FINDING-PGM-001 §4 recording.
     """
     evidence_file = evidence_dir / "ksi-evidence.json"
     if not evidence_file.exists():

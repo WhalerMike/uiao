@@ -1,0 +1,162 @@
+---
+title: "FedRAMP GCC-Moderate — Microsoft Purview and Defender: compliance role and residual boundary gap"
+finding_id: "FINDING-010"
+status: Awaiting-Internal-Remediation
+severity: P2
+created_at: "2026-07-09"
+updated_at: "2026-07-09"
+owner: "Michael Stratton"
+related_canon: ["UIAO_003", "UIAO_109", "UIAO_113", "UIAO_132"]
+related_ksi: ["KSI-MLA", "KSI-IAM", "KSI-PIY", "KSI-AU-11"]
+related_findings: ["FINDING-005", "FINDING-008"]
+related_data:
+  - "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+  - "src/uiao/canon/gcc-boundary-gap-registry.yaml"
+gap_matrix_rows:
+  - sensitivity-label-usage-analytics
+  - dlp-behavioral-richness
+  - copilot-ai-prompt-response-telemetry
+  - m365-usage-analytics-historical-pivots
+  - entra-identity-protection-realtime-risk
+  - cae-realtime-revocation-paths
+  - device-boot-performance
+  - app-reliability-crashcount-hangrate
+  - resource-performance-cpu-memory
+  - device-performance-anomalies-regression
+  - app-protection-policy-violation-analytics
+supersedes: []
+superseded_by: []
+---
+
+# FedRAMP GCC-Moderate — Microsoft Purview and Defender: compliance role and residual boundary gap
+
+> **Purpose of this finding.** This is a single classification artifact for
+> distribution to the FedRAMP/OIS reviewer and the internal team. It states
+> (1) the compliance role Microsoft Purview and Microsoft Defender play in the
+> agency's RMF/FISMA authorization, and (2) the residual capability gap that
+> remains when those tools operate inside the FedRAMP GCC-Moderate authorization
+> boundary. It does **not** introduce a new telemetry signal — every gap named
+> here is already registered in `gcc-moderate-telemetry-gaps.yaml`; this finding
+> is the consolidated Purview/Defender view over those existing rows.
+
+## 1. Constraint
+
+Microsoft Purview and Microsoft Defender are the agency's **payload-protection**
+and **detection-and-response** control surfaces. Their positive control-closure
+role is documented in the Federal Application-Aware Networking (AAN) series:
+
+| Tool | AAN home (closure corpus) | Controls closed |
+|---|---|---|
+| **Microsoft Purview** (sensitivity labels, DLP, Data Map, Audit, CMK) | Vol III — Data Protection (Purview) | AC-4, AU-10, MP-2–5, SC-12/12(1)/13/17/28, PT-1..7 (with Book 17) |
+| **Microsoft Sentinel + Microsoft 365 Defender** (SIEM/XDR, detection engineering) | Vol III — SIEM/XDR Detection | AU-6(×3), AU-7/8/11, SI-4(×4), IR-4/6/8 |
+| **Microsoft Defender for Cloud** (CSPM/CNAPP) | Vol III — Cloud-Native Security Posture | CM-6, RA-5, CM-7, SC-7, SI-3, SA-11 |
+| **Microsoft Defender Vulnerability Management** (MDVM + KEV) | Vol III — Vulnerability Management | RA-5(×3), SI-2(×2), SI-5, CM-7(×2) |
+
+Both tools are **required, not optional**, for a complete FedRAMP Moderate
+posture: the network and identity layers regulate the pipe; Purview classifies
+and protects the payload; Defender/Sentinel convert the log warehouse into an
+active detection engine (AU-6 is not satisfied by a passive archive).
+
+**The constraint:** several of the analytic and real-time signals these tools
+expose in Microsoft **commercial** cloud are **unavailable, restricted, or
+inferred-blocked** at the GCC-Moderate service level, because FedRAMP Moderate
+boundary controls (SI-4, AU-2, AU-3, SC-7) sever the client-side and
+Microsoft-hosted-ML telemetry paths those features depend on. The tools remain
+authoritative for their *enforcement* function; they are **degraded for their
+*analytic* function**. Per the boundary analysis's standing finding, **full
+compensation is not achievable** for every degraded signal.
+
+## 2. Evidence
+
+### Primary sources
+
+- **[Microsoft Purview auditing solutions overview — Microsoft Learn](https://learn.microsoft.com/en-us/purview/audit-solutions-overview)** (accessed 2026-07-09) — Audit Standard 180-day retention; Premium 1 year; 10-year add-on. Drives the retention cliff (FINDING-008).
+- **[Microsoft Entra ID Protection — risk detections — Microsoft Learn](https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks)** (accessed 2026-07-09) — real-time, ML-driven risk scoring; the Microsoft-hosted signal path is not exposed at the GCC-Moderate boundary.
+- **GCC-Moderate telemetry-gap register** — `src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml` (signal SSOT, extracted from the M365 GCC-Moderate Telemetry & Boundary Assessment External v1.0, 2026-04-25).
+- **GCC boundary gap registry** — `src/uiao/canon/gcc-boundary-gap-registry.yaml`, `GAP-INT-001` (Endpoint Analytics `SILENTLY_BLOCKED`, DiagTrack endpoints blocked by FedRAMP Moderate controls; `COMPENSATED` via `UIAO-TELEM-001`).
+
+### Interpretation authority
+
+In-boundary rebuild verdicts are owned by **B.1.3** (`docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd`). The verdict taxonomy — `fixes` / `partial-substitute` / `partial-bounded` / `not-fixed` — is B.1.3's, reproduced here per-row.
+
+## 3. Capability gap
+
+### 3.1 Purview — payload protection retained, analytic depth degraded
+
+Enforcement (labels apply, DLP blocks, CMK protects) is **unaffected**. What is
+degraded is the *analytic and forensic* layer:
+
+| Gap-matrix row | Signal degraded at GCC-M | B.1.3 verdict | Residual after rebuild |
+|---|---|---|---|
+| `sensitivity-label-usage-analytics` | Bulk label-change / mass-decrypt analytics | **fixes** | Label history reconstructed from Purview audit |
+| `dlp-behavioral-richness` | Override / near-miss / fingerprint context | **fixes** | Pattern rules only; no content-fingerprint model |
+| `copilot-ai-prompt-response-telemetry` | AI prompt/response richness | **partial-substitute** | Incident counts only; behavioral patterns unrecoverable |
+| `m365-usage-analytics-historical-pivots` (Purview Audit 180-day cliff) | 12+ month forensic pivots | **fixes** (retention) | Requires agency long-retention store / Audit Premium — see FINDING-008 |
+
+### 3.2 Defender / Entra Identity Protection — detection retained, real-time latency degraded
+
+| Gap-matrix row | Signal degraded at GCC-M | B.1.3 verdict | Residual after rebuild |
+|---|---|---|---|
+| `entra-identity-protection-realtime-risk` | ML impossible-travel / atypical-IP risk scoring | **fixes** | Detection latency minutes→hours; **no global Microsoft threat intelligence** |
+| `cae-realtime-revocation-paths` | Sub-second CAE token revocation | **partial-bounded** | Minutes, not sub-second; ZTMM Optimal unreachable |
+| `app-protection-policy-violation-analytics` | Real-time app-protection violation flags | **fixes** | Snapshot-driven, not real-time behavioral |
+
+### 3.3 Defender for Endpoint device telemetry — Endpoint Analytics silently blocked
+
+`GAP-INT-001` (feature registry): Endpoint Analytics renders in the portal but
+its dashboard is **permanently empty** — DiagTrack endpoints
+(`*.events.data.microsoft.com`, `vortex.data.microsoft.com`) are blocked by the
+Moderate boundary. Status: **COMPENSATED** by `UIAO-TELEM-001` (in-boundary
+aggregation via Graph + Defender `DeviceEvents`). Underlying signal rows:
+
+| Gap-matrix row | B.1.3 verdict | Residual |
+|---|---|---|
+| `device-boot-performance` | **partial-substitute** | Depends on exportable device telemetry |
+| `app-reliability-crashcount-hangrate` | **partial-substitute** | Exploit-attempt clusters partially recovered |
+| `resource-performance-cpu-memory` | **partial-substitute** | High value — recovers grey-ware / miner / exfil signal |
+| `device-performance-anomalies-regression` | **partial-substitute** | Core device-integrity signal partially recovered |
+
+### 3.4 Gap classification summary (for the reviewer)
+
+- **Compensable (fixed in-boundary):** label-usage analytics, DLP behavioral rules, app-protection flags, Identity Protection detection (at higher latency), retention cliff (via storage). Documented compensating controls exist.
+- **Partially compensable (residual risk registered):** Copilot telemetry, Endpoint Analytics device signals, CAE revocation latency. Accepted-and-registered residuals.
+- **Non-compensable (irreducible):** global Microsoft threat intelligence behind Identity Protection scoring, and commercial sub-second/real-time latency. These are candidate inputs to any future boundary-variance (GCC High) discussion — **out of scope for FedRAMP Moderate**.
+
+## 4. Proposed remedy
+
+### 4.1 Internal (inside substrate scope — load-bearing)
+
+1. Ship Purview unified audit + Defender/Entra sign-in + device events to a
+   Sentinel/Log Analytics long-retention archive (single compensating store;
+   also resolves FINDING-008's retention cliff).
+2. Author agency-side detection content over the exported deltas — the
+   Phase 2/3 rules named in B.1.3 (impossible-travel, atypical-IP, mass-decrypt,
+   DLP override patterns, elevation anomalies).
+3. Keep `UIAO-TELEM-001` active for Endpoint Analytics device signals.
+4. Register the residual-risk items (§3.4) in the POA&M with accepted-risk
+   dispositions; wire them as continuous drift signals through the Purview /
+   Defender conformance-adapter slots (ADR-058) rather than one-shot findings.
+
+### 4.2 External (requires third-party change)
+
+- **None available on the FedRAMP Moderate path.** Real-time latency and
+  Microsoft-hosted global threat intelligence are boundary characteristics, not
+  licensing gaps. FedRAMP 20x does not address them. Closing the non-compensable
+  residuals would require a **boundary-variance decision (GCC High or above)** —
+  an OIS/CIO governance matter, deliberately outside this finding's Moderate
+  scope.
+
+## 5. Ownership trail
+
+| Date | Status | Note |
+|---|---|---|
+| 2026-07-09 | Awaiting-Internal-Remediation | Consolidated Purview/Defender classification authored for FedRAMP/OIS + internal distribution. No new telemetry-gap rows required; references 11 existing rows + `GAP-INT-001`. Compensating architecture (Sentinel long-retention store + agency detection content) is the load-bearing internal fix. |
+
+## Related
+
+- **FINDING-005** — Entra Identity Protection inferred-blocked (sibling; the identity-risk half of §3.2).
+- **FINDING-008** — Purview Audit 180-day retention cliff (the retention row in §3.1).
+- **Closure corpus:** AAN Vol III Books — Data Protection (Purview), SIEM/XDR Detection, Cloud-Native Posture, Vulnerability Management.
+- **Interpretation authority:** B.1.3 (`docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd`).
+- **Registers (SSOT):** `gcc-moderate-telemetry-gaps.yaml` (signal), `gcc-boundary-gap-registry.yaml` (feature).
+- **Conformance slot:** ADR-058 reserves the `purview-audit` adapter slot; activation converts §3.1/§3.4 residuals into live drift signals in the ConMon program.
