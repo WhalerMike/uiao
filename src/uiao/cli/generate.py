@@ -188,6 +188,46 @@ def generate_pptx(
     _console.print(f"[green]PPTX exported to {out}[/green]")
 
 
+@generate_app.command("aan-deck")
+def generate_aan_deck(
+    spec: str = typer.Option(
+        ...,
+        "--spec",
+        "-s",
+        help="Path to the AAN deck-spec YAML.",
+    ),
+    out: str = typer.Option(
+        ...,
+        "--out",
+        "-o",
+        help="Output .pptx path.",
+    ),
+    date_code: str = typer.Option(
+        "",
+        "--date-code",
+        help='Date Code rendered on the title slide, e.g. "2026-07-09 14:30 ET". '
+        "Falls back to deck.date_code in the spec if omitted.",
+    ),
+) -> None:
+    """Generate a canonical AAN (Application-Aware Networking) briefing deck.
+
+    Reproduces the Book_10/Book_11 FedAAN deck DNA (white 10x5.625 in canvas,
+    Arial, house palette, full speaker notes, amber-ring build sequence) from a
+    YAML deck spec. The schema is documented in
+    ``src/uiao/generators/aan_deck.py``.
+
+    Example::
+
+        uiao generate aan-deck --spec specs/book07.yaml \\
+            --out exports/pptx/Book_07.pptx --date-code "2026-07-09 14:30 ET"
+    """
+    from uiao.generators.aan_deck import build_aan_deck
+
+    _console.print(f"[bold]Generating AAN briefing deck from {spec}...[/bold]")
+    result = build_aan_deck(spec_path=spec, out_path=out, date_code=date_code)
+    _console.print(f"[green]AAN deck exported to {result}[/green]")
+
+
 @generate_app.command("docx")
 def generate_docx(
     canon_path: str = typer.Option(
