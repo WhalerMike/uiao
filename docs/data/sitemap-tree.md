@@ -23,38 +23,6 @@
 
 - [UIAO Academy](academy/index.html)
 
-### AAN Training Program
-
-- [AAN Training Program](academy/aan-training-program/index.html)
-- [AAN Track A — Compliance](academy/aan-training-program/compliance-track.html)
-- [AAN Track B — Implementation](academy/aan-training-program/implementation-track.html)
-- [AAN Vendor Training Catalog](academy/aan-training-program/vendor-training-catalog.html)
-- [AAN Track A — Assessment Rubrics](academy/aan-training-program/assessment-rubrics.html)
-- **Lab environments**
-  - [AAN Lab Environments](academy/aan-training-program/labs/index.html)
-  - [Lab environment — DDI (Module B1)](academy/aan-training-program/labs/lab-b1-ddi.html)
-  - [Lab environment — PIM & privileged access (Module B4)](academy/aan-training-program/labs/lab-b4-pim.html)
-  - [Lab environment — Sentinel detection (Module B5)](academy/aan-training-program/labs/lab-b5-sentinel.html)
-  - [Lab environment — Purview data protection (Module B5)](academy/aan-training-program/labs/lab-b5-purview.html)
-- **Book modules**
-  - [Book 00 — Executive Summary](academy/aan-training-program/books/book-00.html)
-  - [Book 01 — SSA Landing Zone, IPAM & FedRAMP](academy/aan-training-program/books/book-01.html)
-  - [Book 02 — Network Modernization](academy/aan-training-program/books/book-02.html)
-  - [Book 03 — Federal Telecommunications Modernization](academy/aan-training-program/books/book-03.html)
-  - [Book 04 — SQL Server Authentication Modernization](academy/aan-training-program/books/book-04.html)
-  - [Book 05 — SQL Server Implementation Guide](academy/aan-training-program/books/book-05.html)
-  - [Book 06 — Database Consolidation & Network Physics](academy/aan-training-program/books/book-06.html)
-  - [Book 07 — Privileged Access Management](academy/aan-training-program/books/book-07.html)
-  - [Book 08 — Vulnerability Management](academy/aan-training-program/books/book-08.html)
-  - [Book 09 — Data Protection (Purview)](academy/aan-training-program/books/book-09.html)
-  - [Book 10 — SIEM / XDR Detection](academy/aan-training-program/books/book-10.html)
-  - [Book 11 — Business Continuity](academy/aan-training-program/books/book-11.html)
-  - [Book 12 — Supply Chain Risk Management](academy/aan-training-program/books/book-12.html)
-  - [Book 13 — Program Management & Governance](academy/aan-training-program/books/book-13.html)
-  - [Book 14 — PII Processing & Transparency](academy/aan-training-program/books/book-14.html)
-  - [Book 15 — Cybersecurity Training & Awareness](academy/aan-training-program/books/book-15.html)
-  - [Book 16 — Authorization Package & ConMon](academy/aan-training-program/books/book-16.html)
-
 ## Reference Architecture
 
 ### Reference Architecture — Modernization Canon
