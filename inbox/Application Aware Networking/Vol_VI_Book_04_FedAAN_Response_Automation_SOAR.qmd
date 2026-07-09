@@ -26,22 +26,60 @@ Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed 
 
 # What This Document Addresses
 
-Detection without response only shortens the investigation, not the exposure. The Volume III SIEM/XDR architecture ends at the alert; this book carries the automation that acts on it: revoke a session, disable a principal, force re-auth, enrich and ticket. It is the in-boundary substitute for the sub-second Continuous Access Evaluation revocation the boundary removes — honest that the substitute lands at minutes, not sub-second.
+Detection without response only shortens the investigation, not the exposure. The Volume III SIEM/XDR architecture ends at the alert; this book carries the automation that acts on it. It is the in-boundary substitute for the sub-second Continuous Access Evaluation revocation the boundary removes — and it is honest that the substitute lands at minutes, not sub-second, because a playbook triggered by a scheduled analytic cannot beat the analytic's cadence.
+
+The design rule for every playbook here is **confidence-gated action**: high-confidence detections auto-contain; medium-confidence detections enrich and ticket for a human; nothing low-confidence auto-acts. Auto-containment on a noisy rule is its own denial-of-service.
+
+# The Response Ladder
+
+| Confidence | Action | Human in loop? | Substitutes for |
+|---|---|---|---|
+| High (e.g. rule 04 session-anomaly with corroboration) | Revoke sessions, confirm-compromised, force re-auth | No — auto | CAE sub-second revocation (→ minutes) |
+| Medium | Enrich (identity/device/IP context), open ticket, raise risk | Yes | Vendor auto-remediation |
+| Standing control | Bound token lifetime to 60–90 min | n/a — config | CAE exposure ceiling |
 
 # Deployable Artifacts
 
 | Playbook | Trigger (Book VI-03) | Action | Substitutes for |
 |---|---|---|---|
-| `revoke-session` | Token-theft / session-anomaly (rule 04) | Graph revokeSignInSessions + confirm-compromised | CAE sub-second revocation (→ minutes) |
+| `revoke-session` | Token-theft / session-anomaly (rule 04) | Graph `revokeSignInSessions` + confirm-compromised | CAE sub-second revocation (→ minutes) |
 | `disable-principal` | High-confidence account compromise | Disable account, block sign-in | Automated account containment |
 | `short-token-lifetime` (config) | Standing control | Bound token lifetime to 60–90 min | CAE exposure ceiling |
 | `enrich-and-ticket` | Medium-confidence detections | Enrich with identity/device context, open ticket (human-in-loop) | Vendor auto-remediation |
+
+## Illustrative playbook — session revocation on a high-confidence session anomaly
+
+The `revoke-session` playbook is the containment path for Book VI-03 rule 04. It runs entirely in-boundary against the management plane; the containment action is a Graph call, and the whole run is itself logged as an incident action into the evidence contract.
+
+```jsonc
+// Logic App / Automation runbook (deployed example) — pseudocode of the revoke-session flow
+{
+  "trigger": "Sentinel incident: rule 'token-theft-session-anomaly'",
+  "steps": [
+    { "guard": "incident.severity == 'High' && entities.Account != null" },        // confidence gate
+    { "graph": "POST /users/{account}/revokeSignInSessions" },                      // AC-12 containment
+    { "graph": "PATCH /identityProtection/riskyUsers/confirmCompromised",
+      "body": { "userIds": ["{account}"] } },                                       // raise risk state
+    { "ticket": "create IR record, link Sentinel incident, attach entity context" },// IR-4 record
+    { "evidence": "emit response-action to the evidence contract (Book VI-07)" }     // CA-7 evidence
+  ],
+  "notes": "Containment latency = detection cadence (minutes), not CAE sub-second. TUNE the confidence gate."
+}
+```
+
+The `short-token-lifetime` artifact is not a playbook but a standing configuration: it bounds the maximum exposure window so that even a *missed* detection cannot leave a stolen token valid indefinitely. It is the exposure ceiling under which the playbooks operate.
+
+# Deployment
+
+1. Deploy playbooks through the pipeline (Book VI-00); grant the automation identity only the Graph scopes each action needs (least privilege — the revocation identity should not also be able to create accounts).
+2. Wire each Book VI-03 rule to its playbook via the SIEM automation rules; start every auto-containment playbook in **alert-only** mode and promote to auto-action only after the triggering rule's false-positive rate is measured (Book VI-08).
+3. Set the standing token-lifetime bound in the identity policy (Book VI-02).
 
 # Closure Necessity
 
 ::: {.callout-tip}
 ## Closure Necessity — a detection with no response is exposure, not control
-IR-4 requires incident *handling*, not just detection. These playbooks are what convert a Book VI-03 firing into a bounded containment action and a documented incident record — the artifact an assessor asks for. Without them, the detection layer shortens time-to-know but not time-to-contain, and the token-theft window stays open.
+IR-4 requires incident *handling*, not just detection. These playbooks are what convert a Book VI-03 firing into a bounded containment action and a documented incident record — the artifact an assessor asks for. Without them, the detection layer shortens time-to-know but not time-to-contain, and the token-theft window stays open for the full token lifetime.
 :::
 
 # Controls Operationalized
@@ -50,13 +88,22 @@ IR-4 requires incident *handling*, not just detection. These playbooks are what 
 |---|---|---|
 | IR-4/6 | Incident Handling / Reporting | Automated containment + enriched incident records |
 | AC-12 | Session Termination | Session revocation + short token lifetime |
+| AC-2(13) | Disable Accounts (high-risk) | `disable-principal` on high-confidence compromise |
+
+# Honest Limits
+
+- Containment is **minutes, not sub-second** — bounded by the detection cadence. The `short-token-lifetime` config is the standing ceiling that makes that latency tolerable.
+- Auto-containment amplifies a noisy rule into an availability incident; the confidence gate and the alert-only ramp (Book VI-08) are mandatory, not optional.
+- The playbooks act only on the agency's own tenant; a compromised identity federated elsewhere is outside their reach.
 
 # Cross-References
 
 - **Book VI-03** — the detections these playbooks respond to.
+- **Book VI-02** — the token-lifetime standing control.
 - **Volume III — SIEM/XDR** — the incident-workflow architecture.
 - **Book VI-07** — response actions emit to the evidence contract.
+- **Book VI-08** — false-positive measurement that gates auto-action.
 
 # Provenance
 
-Draft. Containment latency is honestly minutes, not sub-second (see Book VI-03 limits). Products are deployed examples; the mechanism — SOAR containment approximating real-time revocation — is portable.
+Draft. Containment latency is honestly minutes, not sub-second. The playbook pseudocode is an illustrative flow to adapt, not a deployable runbook. Products are deployed examples of the SOAR-containment mechanism, which is portable across automation engines.

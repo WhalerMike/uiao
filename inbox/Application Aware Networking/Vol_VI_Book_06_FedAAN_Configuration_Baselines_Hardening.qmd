@@ -26,7 +26,20 @@ Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed 
 
 # What This Document Addresses
 
-A baseline that no pipeline enforces is a document, not a control. Volume III establishes the required secure-configuration posture — SCuBA for the cloud business applications, CIS/STIG for the platforms. This book expresses those baselines as machine-enforced policy, detects drift against them continuously, and reconciles or reports it, so CM-6 means an enforced state rather than an aspiration.
+A baseline that no pipeline enforces is a document, not a control. Volume III establishes the required secure-configuration posture — SCuBA for the cloud business applications, CIS/STIG for the platforms — and makes the sharp point that conformance tooling *measures drift from an intended state; it cannot author one.*
+
+This book authors the intended state as machine-enforced policy, detects drift against it continuously, and reconciles or reports it. It closes the loop CM-6 actually requires: an enforced configuration, a detection of deviation, and a documented reconciliation — not a spreadsheet of settings someone once applied.
+
+# The Baseline Lifecycle
+
+Each baseline moves through four as-code stages; the last two are what turn a one-time hardening into a standing control.
+
+| Stage | Artifact | Control tie |
+|---|---|---|
+| Author | Baseline definition (SCuBA/CIS/STIG mapped to policy) | CM-6 settings |
+| Assign | Policy assignment to the target scope | CM-2 baseline |
+| Detect | Continuous compliance scan → drift record | CM-3 change; CM-6 |
+| Reconcile / report | Auto-remediate where safe; POA&M where not | CM-6; SI-2 feed |
 
 # Deployable Artifacts
 
@@ -35,13 +48,45 @@ A baseline that no pipeline enforces is a document, not a control. Volume III es
 | SCuBA baseline conformance packs | CM-6 cloud business-app baseline | ScubaGear assessment + policy-as-code | equivalent CIS cloud benchmark packs |
 | Guest/machine-config baselines | CM-2/6 OS configuration | Azure Machine Config (Guest Config) | AWS SSM State Manager; GCP OS Config |
 | Host hardening roles | CM-6/7 least functionality | Ansible/DSC roles mapped to STIG/CIS | Chef/Puppet equivalents |
-| Drift detection + reconciliation | CM-3 change control; SI-2 flaw remediation feed | Config drift export to evidence contract | native config-compliance exports |
+| Drift detection + reconciliation | CM-3 change control; SI-2 flaw feed | Config drift export to evidence contract | native config-compliance exports |
+
+## Illustrative artifact — a machine-config baseline with drift export
+
+The baseline declares the desired setting *and* what to do when the fleet drifts from it. The drift record is not a dashboard tile — it is emitted to the evidence contract so CM-6 compliance is continuously attestable and SI-2 sees the remediation feed.
+
+```yaml
+# Guest/machine-config baseline (deployed example: Azure Machine Config) — CM-6
+baseline: cis-l1-win-server
+assignment:
+  scope: /subscriptions/*/resourceGroups/prod
+  enforcementMode: AuditThenRemediate     # detect first, remediate the safe rules
+rules:
+  - id: 2.3.1.1
+    setting: "Accounts: Administrator account status"
+    desired: "Disabled"
+    onDrift: remediate
+  - id: 18.9.x
+    setting: "Configure SMBv1 client driver"
+    desired: "Disabled"
+    onDrift: report          # TUNE: report-only where auto-remediation risks a break
+driftExport:
+  target: evidence-contract  # Book VI-07: every drift + reconciliation is an evidence record
+```
+
+The SCuBA conformance packs are the cloud-business-application counterpart: the assessment output is diffed against the intended SCuBA baseline, and any governed exception is carried as a documented deviation rather than an open drift — so an assessor sees a governed exception backed by policy, not a silent gap.
+
+# Deployment
+
+1. Assign each baseline in **audit-only** first; measure the drift population before enabling any auto-remediation — a baseline that auto-remediates a setting the estate depends on is an availability incident.
+2. Split rules into `remediate` (safe, idempotent) and `report` (needs human judgment); the split is itself reviewed in the pull request.
+3. Wire drift and reconciliation records to the evidence contract (Book VI-07) so CM-6 is continuously evidenced.
+4. Feed unremediated drift into the SI-2 remediation queue and the POA&M.
 
 # Closure Necessity
 
 ::: {.callout-tip}
 ## Closure Necessity — an unenforced baseline is not a baseline
-Volume III proves conformance tooling *measures drift from an intended state; it cannot author one.* This book authors the intended state as code and enforces it. CM-6 is satisfied only when the baseline is machine-enforced and drift is detected — a spreadsheet of settings no pipeline applies closes nothing.
+Volume III proves conformance tooling *measures drift from an intended state; it cannot author one.* This book authors the intended state as code and enforces it. CM-6 is satisfied only when the baseline is machine-enforced and drift is detected and dispositioned — a spreadsheet of settings no pipeline applies closes nothing, and a scanner with no authored baseline has nothing to measure against.
 :::
 
 # Controls Operationalized
@@ -49,8 +94,15 @@ Volume III proves conformance tooling *measures drift from an intended state; it
 | Control | Title | How this book deploys it |
 |---|---|---|
 | CM-2/6 | Baseline Configuration / Settings | Policy-as-code baselines + drift detection |
+| CM-3 | Configuration Change Control | Drift records + reconciliation through the pipeline |
 | CM-7 | Least Functionality | Host hardening roles; admission control |
-| SI-2 | Flaw Remediation | Drift/patch-state feed into remediation |
+| SI-2 | Flaw Remediation | Drift/patch-state feed into the remediation queue |
+
+# Honest Limits
+
+- Auto-remediation is safe only for idempotent, low-blast-radius settings; the `report` path exists precisely because not every drift can be closed without human judgment.
+- SCuBA/CIS/STIG baselines are point-in-time; they must track the publishing authority's updates, or the "baseline" silently ages out of currency.
+- Cloud-native posture (CSPM) findings on multi-CSP estates require per-CSP packs; the mechanism is uniform, the pack content is not.
 
 # Cross-References
 
@@ -60,4 +112,4 @@ Volume III proves conformance tooling *measures drift from an intended state; it
 
 # Provenance
 
-Draft. Products are deployed examples; substitution columns preserve the mechanism. Baseline sources (SCuBA, CIS, DISA STIG) cite their publishing authority.
+Draft. Products are deployed examples; substitution columns preserve the mechanism. The baseline YAML is an illustrative pattern to adapt, not a drop-in pack. Baseline sources (CISA SCuBA, CIS Benchmarks, DISA STIG) cite their publishing authority.

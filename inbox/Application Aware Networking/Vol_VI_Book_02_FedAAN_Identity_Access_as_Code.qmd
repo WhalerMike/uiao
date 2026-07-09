@@ -26,7 +26,20 @@ Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed 
 
 # What This Document Addresses
 
-The architecture volumes establish that a verified identity, phishing-resistant authentication, and just-in-time elevation are the mechanisms that gate access. This book expresses those decisions as code: Conditional Access as a reviewable policy set, privileged roles as declarative JIT configuration, port authentication as profiles, and certificates as an automated lifecycle — so access policy is diffable and attestable rather than clicked into a portal.
+The architecture volumes establish that a verified identity, phishing-resistant authentication, and just-in-time elevation are the mechanisms that gate access. Those decisions are worthless as portal clicks — a Conditional Access estate no one can diff is a control no assessor can trace, and IA-2/AC-6 become assertions rather than evidence.
+
+This book expresses the access decisions as code: Conditional Access as a reviewable policy set, privileged roles as declarative JIT configuration, port authentication as profiles, and certificates as an automated lifecycle. The invariant it enforces is that **every access decision has a reviewable source of truth** that the pipeline applies and Book VI-08 re-asserts.
+
+# The Policy-as-Code Model
+
+Access policy is held as declarative files, applied idempotently, and guarded by two safety rules that prevent the classic self-lockout and silent-drift failures.
+
+| Element | As-code form | Safety rule |
+|---|---|---|
+| Conditional Access | Policy JSON per named scenario | A **break-glass** exclusion group is mandatory in every blocking policy |
+| Privileged roles | PIM role-setting policy | Activation requires approval + justification + MFA; no standing global admin |
+| Port authentication | 802.1X EAP-TLS + MAB profiles | Certificate-based device identity; MAB only for enumerated exceptions |
+| Certificates | ACME / short-lived issuance policy | Rotation automated; no long-lived secrets in config |
 
 # Deployable Artifacts
 
@@ -37,11 +50,41 @@ The architecture volumes establish that a verified identity, phishing-resistant 
 | Port-authentication profiles (802.1X EAP-TLS, MAB) | IA-3 device identity at the edge | NPS/RADIUS + switch profiles | Cisco ISE / Aruba ClearPass profiles |
 | Certificate lifecycle automation (ACME, short-lived certs) | IA-5(2), SC-17 | Keyfactor/Sectigo + ACME as code | Venafi / AppViewX |
 
+## Illustrative artifact — a phishing-resistant Conditional Access policy as code
+
+The policy below requires a phishing-resistant authentication strength for all users reaching any cloud app, with the mandatory break-glass exclusion. Held as code, it is diffable against intent; a reviewer can see in the pull request that the exclusion group is present and scoped, which a portal screenshot can never prove over time.
+
+```jsonc
+// Conditional Access policy (deployed example: Entra, applied via Graph) — IA-2(1)/(2)
+{
+  "displayName": "CA001 - Require phishing-resistant MFA for all cloud apps",
+  "state": "enabled",
+  "conditions": {
+    "users":        { "includeUsers": ["All"], "excludeGroups": ["grp-breakglass"] }, // SAFETY: break-glass
+    "applications": { "includeApplications": ["All"] },
+    "clientAppTypes": ["all"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "authenticationStrength": { "id": "phishing-resistant" }   // BOD 25-01 / M-22-09 alignment
+  }
+}
+```
+
+The PIM configuration is the privileged-access counterpart: it declares that eligible roles require approval, justification, and MFA to activate, and that no principal holds a standing high-privilege assignment — so AC-6 least privilege is a property of the declared role policy, not an audit finding waiting to happen.
+
+# Deployment
+
+1. Apply Conditional Access in **report-only** first, review the impact against sign-in logs, then enable — the break-glass exclusion is verified present before any policy is set to `enabled`.
+2. Apply PIM role settings; migrate any standing privileged assignments to eligible-with-approval.
+3. Deploy 802.1X EAP-TLS profiles (Book VI-01 supplies the cert authority they trust).
+4. Stand up ACME/short-lived certificate automation so no long-lived credential lives in a config file.
+
 # Closure Necessity
 
 ::: {.callout-tip}
 ## Closure Necessity — a policy you cannot review is a policy you cannot assess
-Volume I/III prove that phishing-resistant, JIT-scoped identity is the closure mechanism. This book makes those decisions **reviewable**: Conditional Access and privileged-role settings held as code can be diffed against intent and attested. Portal-clicked access policy has no reviewable source — IA-2 and AC-6 become assertions no assessor can trace.
+Volume I/III prove that phishing-resistant, JIT-scoped identity is the closure mechanism. This book makes those decisions **reviewable**: Conditional Access and privileged-role settings held as code can be diffed against intent and attested. Portal-clicked access policy has no reviewable source — IA-2 and AC-6 become assertions no assessor can trace, and drift is invisible until it is a finding.
 :::
 
 # Controls Operationalized
@@ -52,13 +95,22 @@ Volume I/III prove that phishing-resistant, JIT-scoped identity is the closure m
 | AC-2/5/6 | Account Mgmt / Least Privilege | PIM/JIT role config; access reviews as code |
 | IA-3 | Device Identification & Authentication | 802.1X EAP-TLS profiles |
 | IA-5(2)/SC-17 | PKI-based Authentication | Certificate lifecycle automation |
+| IA-11 | Re-authentication | PIM activation re-auth; sign-in frequency in CA |
+
+# Honest Limits
+
+- Conditional Access as code governs the *policy*; a global administrator can still change it out of band — Book VI-08 diffs deployed state against the source to catch that.
+- The break-glass account is a deliberate, monitored exception; its use must itself be a high-severity Book VI-03 detection.
+- Substituting the identity provider changes the policy syntax and the connectors; the access-decision mechanism is invariant.
 
 # Cross-References
 
 - **Volume I (identity plane)** and **Volume III (PAM)** — the architecture this book deploys.
+- **Book VI-01** — the certificate authority the port-auth profiles trust.
 - **Book VI-04** — SOAR playbooks that consume identity risk to drive revocation.
 - **Book VI-07** — access-policy state and reviews emit to the evidence contract.
+- **Book VI-08** — deployed-vs-intended policy diffing.
 
 # Provenance
 
-Draft. Products are deployed examples; substitution columns preserve the mechanism. Vendor claims cite vendor documentation.
+Draft. Products are deployed examples; substitution columns preserve the mechanism. The policy JSON is an illustrative pattern to adapt, not a drop-in policy — validate against the tenant and current Graph schema. Vendor claims cite vendor documentation.
