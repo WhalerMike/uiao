@@ -65,6 +65,7 @@ from uiao.cli.orchestrator import orchestrator_app  # noqa: E402
 from uiao.cli.orgtree import orgtree_app  # noqa: E402
 from uiao.cli.oscal import oscal_app  # noqa: E402
 from uiao.cli.reciprocity import reciprocity_app  # noqa: E402
+from uiao.cli.report import report_app  # noqa: E402
 from uiao.cli.scuba import scuba_app  # noqa: E402
 from uiao.cli.substrate import substrate_app  # noqa: E402
 from uiao.cli.tenant import tenant_app  # noqa: E402
@@ -93,6 +94,7 @@ app.add_typer(orchestrator_app, name="orchestrator")
 app.add_typer(orgtree_app, name="orgtree")
 app.add_typer(oscal_app, name="oscal")
 app.add_typer(reciprocity_app, name="reciprocity")
+app.add_typer(report_app, name="report")
 app.add_typer(scuba_app, name="scuba")
 app.add_typer(substrate_app, name="substrate")
 app.add_typer(tenant_app, name="tenant")
