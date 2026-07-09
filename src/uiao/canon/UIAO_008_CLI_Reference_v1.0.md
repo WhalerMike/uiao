@@ -124,6 +124,19 @@ Continuous monitoring is the operational heartbeat of FedRAMP compliance. These 
 
 **conmon dashboard** — Generates the Key Security Indicator (KSI) dashboard — a governance-grade summary of security posture, control effectiveness, and operational health. Includes SLA status, drift indicators, and trend data.
 
+#### Reporting-Egress — `report` (ADR-128)
+
+The `report` group is the *transport* leg of ConMon: it submits already-generated evidence outward to external federal destinations (CDM, CyberScope, FedRAMP repository, CISA SBOM inbox, CISA incident portal). Dry-run is the default; every live submission requires an explicit `--approver` (the L3 human-approval gate). There is no autonomous submission path, and raw telemetry (NCPS/CLAW) is deliberately out of scope. See ADR-128 and UIAO_208.
+
+| Command | Description | Pipeline Role |
+|---|---|---|
+| `report list-destinations` | List egress destinations and their wiring state. | Discovery; shows which endpoints are live vs. unwired. |
+| `report submit` | Plan (dry-run) or perform a gated outward submission. | The "file/transport" leg of ConMon; L3-gated. |
+
+**report list-destinations** — Prints the five registered destinations and whether each has a live endpoint wired. All destinations ship unwired; a live submission to an unwired endpoint is blocked.
+
+**report submit** — Submits one artifact to one destination. Without `--live` it validates and plans only (disposition `planned`), transmitting nothing. With `--live` it requires `--approver`; the submission is `blocked` (exit 1) if there is no approver, if the artifact fails validation, or if the destination endpoint is not configured — and only `submitted` when live, approved, configured, and valid. The one wired destination (`cisa-sbom`, via `UIAO_CISA_SBOM_ENDPOINT`) demonstrates the live path.
+
 ### 3.5 Full Pipeline
 
 For end-to-end generation from canon YAML through all output artifacts in a single deterministic pass.
