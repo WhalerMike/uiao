@@ -30,7 +30,7 @@ canon_refs:
   - UIAO_139
 related_findings:
   - FINDING-001
-  - FINDING-002
+  - FINDING-PGM-001
 related_discussions:
   - https://www.fedramp.gov/20x/
   - https://www.fedramp.gov/docs/20x/
@@ -60,7 +60,7 @@ published_at: docs/adr/adr-047-fedramp-20x-integration.html
 - Gate c (dry-run pass): `uiao fedramp dryrun` executed 2026-06-25
   against a synthetic GCC-Moderate IR (run ID
   `79de8c93-f8df-406d-b39f-d0616015c222`); all three criteria passed
-  with zero P0/P1 events. Recorded in FINDING-002 §4.7.
+  with zero P0/P1 events. Recorded in FINDING-PGM-001 §4.7.
 
 UIAO_138 (3PAO evidence interface) and UIAO_139 (GCC-Moderate boundary
 impact analysis) landed in PR #1028. ADR-061 ratified in PR #1029.
@@ -108,7 +108,7 @@ Authorization Act.
 
 ### Why this is an ADR and not just a finding
 
-[FINDING-002](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
 records the framework movement as an environmental constraint. This
 ADR records the substrate-level *decision* about how UIAO responds:
 the substrate emits KSI-tagged OSCAL evidence, applies the Minimum
@@ -211,7 +211,7 @@ The substrate's KSI emission surface is well-defined and stable
 regardless of whether any specific CSP (Microsoft, AWS, Google) has
 filed a 20x-aligned package for its sovereign-cloud offering. CSP
 filings are tracked as external-remedy items in
-[FINDING-002](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
 and propagate to UIAO only as inherited control evidence becomes
 available; they do not block substrate-side readiness.
 
@@ -268,7 +268,7 @@ KSI evidence opportunistically.
   chain, OSCAL pipeline, and all adapters are unchanged.
 - ADR-047 does not assert that any specific CSP has filed a
   20x-aligned sovereign-cloud package. CSP filings are tracked
-  externally in FINDING-002.
+  externally in FINDING-PGM-001.
 
 ## Ratification gate
 
@@ -302,7 +302,7 @@ operational companion to this ADR.
 - UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration spec
 - UIAO_133 — FedRAMP 20x Integration spec (operational mechanics)
 - [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-002 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
 - Phase 0 §1 — Master Plan, FedRAMP Boundary Gap paragraph (forward-looking note)
 - Phase 2 §13.3 — KSI Emission Surface (TBL-P2-011)
 - Phase 3 §4.1.1 — FedRAMP 20x KSI Crosswalk (P3-T-001a)

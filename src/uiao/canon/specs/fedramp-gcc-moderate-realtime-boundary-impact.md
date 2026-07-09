@@ -17,7 +17,7 @@ mas-scope: "in-scope"
 > **Purpose:** Document the structural impact of the FedRAMP Moderate
 > authorization boundary on real-time telemetry and reporting from Microsoft
 > and other vendors operating in or adjacent to the GCC-Moderate boundary.
-> This analysis is the factual basis for FINDING-001, FINDING-002, and the
+> This analysis is the factual basis for FINDING-001, FINDING-PGM-001, and the
 > compensating control strategy in ADR-033.
 
 ---
@@ -261,7 +261,7 @@ retention depth; (2) all non-interactive/SP/MI log categories explicitly enabled
 | **KSI-INR** | No real-time ML-driven incident detection | Incident response relies on log-based alerting, not behavioral anomaly |
 | **KSI-SCR** | Limited supply-chain telemetry from commercial pipeline | Supply-chain posture assessment relies on static inventory, not behavioral |
 
-**The 20x framework-to-product gap** (FINDING-002): FedRAMP 20x changes how
+**The 20x framework-to-product gap** (FINDING-PGM-001): FedRAMP 20x changes how
 compliance is assessed — it does not ship new telemetry features into GCC-Moderate.
 Until Microsoft files a 20x-aligned package for GCC-Moderate, agencies must
 satisfy KSI evidence requirements using the telemetry that the boundary permits,
@@ -485,7 +485,7 @@ with commercial becomes achievable through normal licensing and configuration.
 
 **Timeline:** Contingent on RFC-0010 publication (FedRAMP 20x best-practices
 guidance) and Microsoft filing a 20x-aligned GCC-Moderate package.  Tracked
-in FINDING-002 §4.
+in FINDING-PGM-001 §4.
 
 ### 6.4 Relationship to the B.1 boundary-model leaves (CLAW, EO 14117, ceiling)
 
@@ -582,7 +582,7 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 
 ### Governance findings
 - [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-002 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
 
 ### UIAO canon
 - [ADR-033 — GCC Boundary Drift Class and Compensating Controls Architecture](../adr/adr-033-gcc-boundary-drift-class.md)

@@ -126,7 +126,7 @@ Coverage summary:
 - 4 of 14 are `low` confidence **scaffolds** (KSI-011…014, KSI-CMT theme):
   the rule files exist and carry `Status: scaffold`, but their evidence
   bindings are not yet evaluable. They finalize when the CR26 VDR/VER
-  evidence contract publishes (ADR-111 ratification gate; FINDING-004 §4).
+  evidence contract publishes (ADR-111 ratification gate; FINDING-PGM-003 §4).
 
 ---
 
@@ -151,7 +151,7 @@ that contribute to it.
 
 **Themes uiao currently has zero local rules for: 5 of 10** —
 KSI-CED · KSI-INR · KSI-PIY · KSI-RPL · KSI-SCR. (KSI-CMT exited this
-list 2026-06-18 with the KSI-011…014 scaffolds per ADR-111 / FINDING-004
+list 2026-06-18 with the KSI-011…014 scaffolds per ADR-111 / FINDING-PGM-003
 §4 — the rules exist but are not yet evaluable.)
 
 These gaps are expected: the local KSI corpus was authored against
@@ -163,7 +163,7 @@ surfaces uiao has not yet wired to a SCuBA-style evaluator. The KSI-CMT
 scaffolds bind to substrate-native change/drift telemetry (UIAO_110,
 UIAO_132 §3) rather than ScubaGear. Closing the remaining gaps, and
 making the KSI-CMT scaffolds evaluable, is downstream work tracked in
-FINDING-004 §4 and gated on the CR26 VDR/VER evidence contract.
+FINDING-PGM-003 §4 and gated on the CR26 VDR/VER evidence contract.
 
 ---
 
