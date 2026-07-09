@@ -1,0 +1,115 @@
+---
+title: "Book 02 — Network Access Control: 802.1X"
+subtitle: "AAN module: device identity at the port — EAP-TLS, NPS, the five-tier VLAN model, and posture-driven CoA"
+date: today
+date-format: "MMMM D, YYYY"
+description: "Module page for AAN Book 02: 802.1X/EAP-TLS network access control with NPS as RADIUS, Intune SCEP device certificates, the production/remediation/quarantine VLAN tiers, MAB as documented exception, and WPA3-Enterprise wireless."
+---
+
+**Source:** [Book_02 Network Access Control 802.1X](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_02_FedAAN_Network_Access_Control_802_1X.qmd)
+· **Evidence slot:** — (KSI-CMT / KSI-IAM themes; slot binding pending the adapter mapping refresh) · **Track modules:** [A5](../compliance-track.html#module-a5-endpoint-control-plane-slot-5) context, [B2](../implementation-track.html#module-b2-access-identity-foundations-books-0204)
+
+## Scope
+
+Closes the **device identity gap**: user identity alone says nothing about
+what hardware just plugged into the wall jack. The book builds port- and
+SSID-level admission control — 802.1X with EAP-TLS against an NPS RADIUS
+tier, Intune SCEP-issued device certificates, a five-tier VLAN policy
+structure, MAB confined to documented guest/IoT exceptions, and Intune
+compliance as the posture signal enforced in real time via RADIUS Change
+of Authorization. Thesis: **the physical port is an identity-plane
+enforcement point, and the same certificate substrate that authenticates
+users must authenticate devices before they get a VLAN at all.**
+
+## Learning objectives
+
+- Explain why user authentication alone leaves the physical-access gap,
+  and how the voice-VLAN precedent already normalized per-device network
+  decisions.
+- Describe the authentication stack (supplicant → authenticator → RADIUS)
+  and justify EAP-TLS over credential-based EAP methods for federal use.
+- Design the NPS RADIUS tier and the 802.1X port configuration (IOS-XE
+  reference) including re-authentication and session timeout behavior.
+- Stand up Intune SCEP device-certificate enrollment against the issuing
+  CA, and state the revocation story for machine certs.
+- Apply the five-tier NAC policy structure — production, remediation,
+  quarantine VLANs, plus MAB-profiled guest/IoT — and defend MAB as a
+  logged exception, never a default.
+- Wire Intune compliance state into access decisions and trigger CoA to
+  re-evaluate a live session when posture changes.
+- Extend the same model to wireless via WPA3-Enterprise, and to DHCP
+  fingerprinting / IPAM-driven VLAN assignment through the Book 01
+  Infoblox layer.
+
+## Key concepts
+
+- Device identity vs. user identity; the federal physical-access reality.
+- EAP-TLS mutual certificate authentication; why password-carrying EAP
+  methods fail the phishing-resistance bar.
+- The certificate trust chain for devices (Book 03's hierarchy applied at
+  the port) and SCEP enrollment through Intune.
+- Five-tier VLAN model: production / remediation / quarantine / voice /
+  MAB-profiled exceptions.
+- RADIUS CoA as the real-time enforcement channel for posture changes.
+- RADIUS accounting into Sentinel; NAC analytics rules as slot-relevant
+  telemetry.
+- The NAC → ZTNA continuum: the port decision and the Conditional Access
+  decision are the same decision at different layers.
+
+## Implementation sequence (phased, per the book)
+
+1. **Phase 1 — monitor mode (weeks 1–4):** 802.1X open/monitor on pilot
+   switches; collect would-have-failed data; fix supplicants and cert
+   coverage before anything blocks.
+2. **Phase 2 — wired enforcement (weeks 5–10):** promote pilot closets to
+   enforce; remediation/quarantine VLANs live; MAB exceptions documented.
+3. **Phase 3 — wireless enforcement (weeks 11–14):** WPA3-Enterprise
+   SSID cutover; retire PSK networks.
+4. **Phase 4 — IoT segmentation and hardening (weeks 15–20):** DHCP
+   fingerprinting, IPAM-driven VLAN assignment, CoA-driven posture
+   enforcement across the estate.
+
+## Compliance hooks
+
+IA-3 (+1) device identification and authentication; AC-3, AC-17, AC-19,
+AC-20 access enforcement surfaces; SC-7(3)(5) boundary/deny-by-default;
+CM-6, CM-7, CM-8 configuration and inventory; AU-11 accounting retention.
+FedRAMP 20x: KSI-CMT and KSI-IAM themes — the slot binding lands with the
+adapter mapping refresh.
+
+## Prerequisites
+
+Book 01 (the DDI/IPAM layer NAC assigns into); Book 03 is read next but
+its certificate hierarchy is the trust anchor this book consumes — skim
+its trust-chain section first if certificates are new to you. Basic
+switching/CLI familiarity.
+
+## Labs
+
+1. Configure one switch port pair in monitor mode against a lab NPS;
+   review the would-have-failed log and produce the pre-enforcement
+   readiness report.
+2. Issue a device certificate via an Intune SCEP profile, complete an
+   EAP-TLS authentication, then revoke and watch the re-auth fail into
+   the quarantine VLAN.
+3. Flip a device out of Intune compliance and verify CoA moves the live
+   session to remediation without waiting for re-authentication.
+
+## Pitfalls the book calls out
+
+- Skipping monitor mode and enforcing on day one — the classic
+  NAC-lockout failure; monitor-mode-first is non-negotiable.
+- Letting MAB become the default path instead of a documented,
+  inventoried exception — it silently converts NAC back to MAC filtering.
+- Certificate expiry as an availability event: device certs that expire
+  without renewal automation take the fleet off the network.
+- Treating the voice VLAN as a security boundary rather than the
+  precedent it is.
+
+## Vendor training
+
+[Cisco U / Networking Academy](../vendor-training-catalog.html#networking-ddi)
+(ISE/NAC), [SC-300, AZ-500](../vendor-training-catalog.html#microsoft)
+(Intune/Conditional Access side).
+
+**Previous:** [Book 01](book-01.html) · **Next:** [Book 03 — Certificates, Tokens & Cryptographic Identity](book-03.html)
