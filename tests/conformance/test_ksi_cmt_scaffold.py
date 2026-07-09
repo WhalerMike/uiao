@@ -1,4 +1,4 @@
-"""Conformance tests for the KSI-CMT rules (ADR-111 / FINDING-004 §4).
+"""Conformance tests for the KSI-CMT rules (ADR-111 / FINDING-PGM-003 §4).
 
 KSI-011..014 seed the CR26 KSI-CMT (Change Management) theme and are now
 ``Status: active`` — the evaluation engine was wired in ADR-111 phase 5

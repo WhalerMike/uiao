@@ -48,7 +48,7 @@ Out of scope for this document:
 
 - CSP-side 20x package filings. Those are external-remedy items
   tracked in
-  [FINDING-002 §4](../../../../docs/findings/fedramp-20x-moderate-pilot.md).
+  [FINDING-PGM-001 §4](../../../../docs/findings/fedramp-20x-moderate-pilot.md).
 - Agency-side authorization sponsor selection and onboarding. Those
   are agency-program decisions; UIAO_133 covers only the substrate's
   emission-side surface that an authorization sponsor consumes.
@@ -300,14 +300,14 @@ OSCAL artifact store; no upstream substrate code changes.
   injection point, so RFC-0026 modernized-pathway evidence is also
   20x KSI evidence by construction.
 
-### 6.4 With FINDING-001 and FINDING-002
+### 6.4 With FINDING-001 and FINDING-PGM-001
 
 - FINDING-001 (INR unavailable in GCC-Moderate) is unaffected by
   UIAO_133. INR's external remedy still requires Microsoft product
   action regardless of substrate-side KSI readiness.
-- FINDING-002 (20x Moderate Pilot active) §4 internal-remedy items
+- FINDING-PGM-001 (20x Moderate Pilot active) §4 internal-remedy items
   are the substrate-side reconfiguration UIAO_133 implements. CSP
-  external-remedy items in FINDING-002 §4 are independent.
+  external-remedy items in FINDING-PGM-001 §4 are independent.
 
 ---
 
@@ -355,4 +355,4 @@ Until all five conditions are met, this spec stays at status `Draft`.
 - [Phase 2 §13.3 KSI Emission Surface (UIAO_022)](../../../../docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd)
 - [Phase 3 §4.1.1 20x KSI Crosswalk (UIAO_023)](../../../../docs/customer-documents/operational-guides/uiao-modernization-program/04-phase3-optimization-cato.qmd)
 - [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-002 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)

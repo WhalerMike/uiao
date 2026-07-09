@@ -16,7 +16,7 @@ canon_refs:
   - UIAO_132
   - UIAO_133
 related_findings:
-  - FINDING-002
+  - FINDING-PGM-001
 related_issues:
   - WhalerMike/uiao#355
 related_discussions:
@@ -208,7 +208,7 @@ that touch `fedramp-cr26/snapshot/**`.
   baseline tailoring lives under `canon/compliance/reference/gcc-
   moderate-boundary-assessment/` and is unaffected by this ADR.
 - Any 20x-package-filing logic. Filing is a CSP-side concern tracked
-  in [`FINDING-002 §4`](../../../docs/findings/fedramp-20x-moderate-pilot.md);
+  in [`FINDING-PGM-001 §4`](../../../docs/findings/fedramp-20x-moderate-pilot.md);
   this ADR covers only the substrate's emission-side anchoring surface.
 
 ## Re-evaluation triggers

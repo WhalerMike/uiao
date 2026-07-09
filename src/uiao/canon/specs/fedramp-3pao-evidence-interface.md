@@ -52,7 +52,7 @@ disputes.
 
 - The substrate's internal emission pipeline (see UIAO_133)
 - Per-control CR26 ↔ local-rule mapping (see UIAO_137)
-- CSP-side P-ATO package artifacts (tracked in FINDING-002 §4)
+- CSP-side P-ATO package artifacts (tracked in FINDING-PGM-001 §4)
 - Agency-side ATO narrative authoring; UIAO produces evidence, not the
   narrative the agency uses to present it
 
@@ -188,7 +188,7 @@ If the disagreement persists after step 2:
 
 - The component is **re-classified `in-scope` pending resolution** —
   the substrate takes the conservative position.
-- The dispute is documented in FINDING-002 §5 (open scope disputes) with
+- The dispute is documented in FINDING-PGM-001 §5 (open scope disputes) with
   the component path, both arguments, and the date of escalation.
 - Resolution requires either (a) the 3PAO withdrawing the dispute in
   writing, or (b) FedRAMP PMO guidance that resolves the classification
@@ -251,12 +251,12 @@ package. The boundary is:
 |---|---|---|
 | Substrate (drift, baselines, workflows, provenance, OSCAL pipeline) | UIAO | Artifacts 1–11 in §2 |
 | Entra ID / M365 platform configuration | Agency (via substrate adapters) | Artifacts 7, 10 — Conditional Access evaluation + SCuBA conformance |
-| GCC-Moderate P-ATO inherited controls | Microsoft | Microsoft's P-ATO package (external; tracked in FINDING-002 §4) |
+| GCC-Moderate P-ATO inherited controls | Microsoft | Microsoft's P-ATO package (external; tracked in FINDING-PGM-001 §4) |
 
 The 3PAO's substrate-side engagement covers rows 1 and 2. Row 3 (Microsoft
 P-ATO) is outside UIAO's evidence surface. Where a KSI requires inherited
 control evidence from Microsoft and Microsoft has not yet filed a 20x-aligned
-GCC-Moderate package, UIAO marks the gap in FINDING-002 §4 and the 3PAO
+GCC-Moderate package, UIAO marks the gap in FINDING-PGM-001 §4 and the 3PAO
 records it as a CSP-external-remedy item — not a substrate failure.
 
 ---
@@ -295,7 +295,7 @@ The dry-run passes when:
 
 ### 7.3 Recording results
 
-Dry-run results are recorded in FINDING-002 §4 (internal-remedy items)
+Dry-run results are recorded in FINDING-PGM-001 §4 (internal-remedy items)
 with:
 
 - Date of run
@@ -303,7 +303,7 @@ with:
 - Pass/fail per criterion in §7.2
 - Any P0/P1 events observed, with responsible component and remediation status
 
-A passing dry-run result in FINDING-002 is the artifact that satisfies
+A passing dry-run result in FINDING-PGM-001 is the artifact that satisfies
 ADR-106 ratification condition 3.
 
 ---
@@ -339,7 +339,7 @@ UIAO_138 moves from Draft to Current when:
   control mapping
 - [`UIAO_132`](./fedramp-rfc-0026-ca7-integration.md) — RFC-0026 CA-7
   pathway integration
-- [`FINDING-002`](../../../../docs/findings/fedramp-20x-moderate-pilot.md) — FedRAMP 20x Moderate Pilot active; CSP external-remedy tracker
+- [`FINDING-PGM-001`](../../../../docs/findings/fedramp-20x-moderate-pilot.md) — FedRAMP 20x Moderate Pilot active; CSP external-remedy tracker
 
 ### FedRAMP primary sources
 

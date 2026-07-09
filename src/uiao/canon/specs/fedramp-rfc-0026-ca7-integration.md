@@ -87,7 +87,7 @@ lands.
 > trigger below now has a date and a regulatory hook; the migration is
 > no longer discretionary timing. The dated obligation and its full
 > internal/external remedy split are tracked in
-> [FINDING-004](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd).
+> [FINDING-PGM-003](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd).
 
 When the VDR / VER rules publish in CR26, UIAO will:
 
@@ -277,7 +277,7 @@ position:
 - **[CISA BOD 26-04](https://cyber.dhs.gov/bod/26-04/)** — risk-based
   remediation directive VER (§2.5) aligns to; supersedes BOD 22-01 /
   19-02 (not BOD 25-01).
-- **[FINDING-004](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd)**
+- **[FINDING-PGM-003](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd)**
   — environmental-constraint record for the NTC-0014 / BOD 26-04 mandate.
 
 ---
@@ -288,4 +288,4 @@ position:
 |---|---|---|---|
 | 0.1 | 2026-04-21 | Initial draft during RFC-0026 comment window | Automation |
 | 0.2 | 2026-04-21 | O5 + O6 checked off — `conmon-aggregate.yml` + `scripts/conmon/aggregate.py` scaffolded; tests land under `tests/conmon/`; July-2026 dry-run agenda seeded under `docs/docs/conmon/templates/` | Automation |
-| 0.3 | 2026-06-18 | §2.4 Pathway-1 gate marked fired by NTC-0014 / BOD 26-04 (VDR + VER mandatory 2026-12-07); new §2.5 VER / VER-EVA-EIR subsection binding internet-reachability to the `locpath` exposure evaluator; §8 references + FINDING-004 cross-link added | Automation |
+| 0.3 | 2026-06-18 | §2.4 Pathway-1 gate marked fired by NTC-0014 / BOD 26-04 (VDR + VER mandatory 2026-12-07); new §2.5 VER / VER-EVA-EIR subsection binding internet-reachability to the `locpath` exposure evaluator; §8 references + FINDING-PGM-003 cross-link added | Automation |
