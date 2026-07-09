@@ -1,0 +1,64 @@
+id: fedaan-vi03-0007-anomalous-elevation-epm
+name: In-boundary anomalous elevation (EPM-equivalent)
+description: |
+  Reconstructs endpoint privilege-management elevation analytics where elevation
+  events are collectible in-boundary: flags users/devices whose privileged-elevation
+  volume or off-hours elevation pattern deviates from their trailing baseline.
+  Conditional on elevation events being exportable (device events / audit).
+  Implements: AAN Vol III SIEM/XDR + PAM | Vol VI Book 03 | NIST SI-4, AC-6(9)
+severity: Medium
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceEvents
+queryFrequency: PT6H
+queryPeriod: P14D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1548
+query: |
+  // TUNE: adjust ActionType filter to the agency's actual EPM/elevation event names.
+  let elevationEvents = dynamic(["ProcessPrimaryTokenModified", "ElevationRequest", "SensitivePrivilegeUse"]);
+  let baselineWindow = 14d;
+  let newWindow = 6h;
+  let Baseline =
+      DeviceEvents
+      | where TimeGenerated between (ago(baselineWindow) .. ago(newWindow))
+      | where ActionType in (elevationEvents)
+      | summarize BaselinePer6h = count() / (todouble(datetime_diff('hour', ago(newWindow), ago(baselineWindow))) / 6.0)
+              by AccountName, DeviceName;
+  DeviceEvents
+  | where TimeGenerated > ago(newWindow)
+  | where ActionType in (elevationEvents)
+  | extend OffHours = hourofday(TimeGenerated) < 6 or hourofday(TimeGenerated) > 20
+  | summarize Elevations = count(), OffHoursElevations = countif(OffHours),
+              Processes = make_set(FileName, 15), StartTime = min(TimeGenerated), EndTime = max(TimeGenerated)
+          by AccountName, DeviceName
+  | join kind=leftouter Baseline on AccountName, DeviceName
+  | extend BaselinePer6h = coalesce(BaselinePer6h, 0.0)
+  // TUNE: 3x baseline OR any off-hours cluster; calibrate the multiplier to admin workflows
+  | where Elevations > (BaselinePer6h * 3.0 + 3) or OffHoursElevations >= 3
+  | project StartTime, EndTime, AccountName, DeviceName, Elevations,
+            BaselinePer6h = round(BaselinePer6h, 1), OffHoursElevations, Processes
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+version: 1.0.0
+kind: Scheduled
+metadata:
+  series: Federal Application-Aware Networking
+  book: Vol VI Book 03 — Detection Engineering
+  implements: Vol III SIEM/XDR + PAM
+  reconstructs: epm-elevation-analytics
+  residual: |
+    Conditional on elevation-event collectibility. Where EPM events are not
+    exportable, this rule cannot fire — a collection gap, not a logic gap.

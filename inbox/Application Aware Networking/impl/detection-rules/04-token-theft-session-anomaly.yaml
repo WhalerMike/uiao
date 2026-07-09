@@ -1,0 +1,55 @@
+id: fedaan-vi03-0004-token-theft-session-anomaly
+name: In-boundary token-theft / session anomaly (CAE-approximation trigger)
+description: |
+  Heuristic for session hijack / token replay: within a short window the same user
+  authenticates from materially different device + IP + client-app combinations.
+  This is the detection that FEEDS the Vol VI Book 04 SOAR revocation playbook,
+  approximating real-time session containment at minutes rather than the sub-second
+  revocation the commercial boundary removes.
+  Implements: AAN Vol III SIEM/XDR | Vol VI Book 03 | NIST SI-4, AC-12
+severity: High
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - SigninLogs
+queryFrequency: PT15M
+queryPeriod: PT1H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - DefenseEvasion
+  - CredentialAccess
+relevantTechniques:
+  - T1539
+  - T1078
+query: |
+  let window = 1h;
+  SigninLogs
+  | where TimeGenerated > ago(window)
+  | where ResultType == 0
+  | extend DeviceId = tostring(DeviceDetail.deviceId),
+           ASN = tostring(AutonomousSystemNumber)
+  | summarize
+        Devices = dcount(DeviceId), ASNs = dcount(ASN), Apps = dcount(AppDisplayName),
+        Countries = dcount(tostring(LocationDetails.countryOrRegion)),
+        DeviceSet = make_set(DeviceId, 10), ASNSet = make_set(ASN, 10),
+        AppSet = make_set(AppDisplayName, 10), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)
+      by UserPrincipalName
+  // TUNE: multi-ASN + multi-app within an hour is the token-replay tell; adjust for mobile users
+  | where ASNs >= 3 and Apps >= 2 and Countries >= 2
+  | project FirstSeen, LastSeen, UserPrincipalName, Devices, ASNs, Apps, Countries, DeviceSet, ASNSet, AppSet
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserPrincipalName
+version: 1.0.0
+kind: Scheduled
+metadata:
+  series: Federal Application-Aware Networking
+  book: Vol VI Book 03 — Detection Engineering
+  implements: Vol III SIEM/XDR
+  reconstructs: cae-session-anomaly
+  response: |
+    High-confidence firings trigger the Vol VI Book 04 SOAR playbook (revoke
+    sessions + disable/confirm-compromised). Containment is minutes, not sub-second.
