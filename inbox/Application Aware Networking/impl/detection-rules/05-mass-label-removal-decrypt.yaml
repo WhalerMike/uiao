@@ -1,0 +1,52 @@
+id: fedaan-vi03-0005-mass-label-removal-decrypt
+name: In-boundary mass sensitivity-label removal / decrypt
+description: |
+  Reconstructs sensitivity-label usage analytics by detecting bulk label
+  downgrades/removals from the unified audit — the mass-decrypt / label-strip
+  pattern that precedes exfiltration. Label enforcement itself is unaffected; this
+  reconstructs the ANALYTIC layer over it.
+  Implements: AAN Vol III SIEM/XDR + Data Protection | Vol VI Book 03 | NIST SI-4, AU-6, AC-4
+severity: Medium
+requiredDataConnectors:
+  - connectorId: Office365
+    dataTypes:
+      - OfficeActivity
+queryFrequency: PT1H
+queryPeriod: PT2H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Collection
+  - Exfiltration
+relevantTechniques:
+  - T1530
+query: |
+  let window = 1h;
+  OfficeActivity
+  | where TimeGenerated > ago(window)
+  | where Operation in ("SensitivityLabelRemoved", "SensitivityLabelUpdated",
+                        "SensitivityLabelApplied", "FileSensitivityLabelRemoved",
+                        "FileSensitivityLabelChanged")
+  | extend Downgrade = Operation in ("SensitivityLabelRemoved", "FileSensitivityLabelRemoved")
+  | summarize Removals = countif(Downgrade), Changes = count(),
+              Items = make_set(OfficeObjectId, 25), StartTime = min(TimeGenerated), EndTime = max(TimeGenerated)
+          by UserId, ClientIP
+  // TUNE: 25 removals/hour is a placeholder — set well above the agency's normal label-churn baseline
+  | where Removals >= 25
+  | project StartTime, EndTime, UserId, ClientIP, Removals, Changes, Items
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserId
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: ClientIP
+version: 1.0.0
+kind: Scheduled
+metadata:
+  series: Federal Application-Aware Networking
+  book: Vol VI Book 03 — Detection Engineering
+  implements: Vol III SIEM/XDR + Data Protection
+  reconstructs: sensitivity-label-usage-analytics
