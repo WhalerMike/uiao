@@ -26,7 +26,29 @@ Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed 
 
 # What This Document Addresses
 
-Each Volume VI book emits deployment and operating evidence. This book carries the pipeline that consumes it: the normalized **evidence contract** every mechanism writes to, the correlation keyed to authoritative asset identity and time, the binding of evidence to the control and Key Security Indicator it satisfies, and the emission of the machine-readable authorization package. It is where "we deploy the control" becomes "here is continuously-refreshed evidence, bound to the control, in the package."
+Each Volume VI book emits deployment and operating evidence — a drift record, a detection firing, a revocation action, a key rotation. Scattered, that telemetry proves nothing. This book carries the pipeline that consumes it: the normalized **evidence contract** every mechanism writes to, the correlation keyed to authoritative asset identity and time, the binding of each record to the control and Key Security Indicator it satisfies, and the emission of the machine-readable authorization package.
+
+It is where "we deploy the control" becomes "here is continuously-refreshed evidence, bound to the control, in the package an assessor reads."
+
+# The Evidence Contract
+
+The contract is a single normalized record shape that every deployed mechanism emits. It is the interface that keeps the pipeline **engine-neutral**: any conformant back-end can consume the contract and produce the package.
+
+```jsonc
+// evidence-contract record — the normalized shape every Vol VI mechanism emits
+{
+  "source":      "vi-06/machine-config",     // which deployed mechanism
+  "assetId":     "ipam:10.4.2.17",           // authoritative identity (Book VI-01 IPAM/DDI join key)
+  "timestamp":   "2026-07-09T15:13:00Z",
+  "control":     ["CM-6"],                    // control(s) this record evidences
+  "ksi":         ["KSI-CM"],                  // FedRAMP 20x KSI theme(s)
+  "verdict":     "compliant",                 // compliant | drift | remediated | exception
+  "detail":      { "rule": "2.3.1.1", "desired": "Disabled", "observed": "Disabled" },
+  "evidenceRef": "loganalytics://.../row/abc123"
+}
+```
+
+Two properties make the record load-bearing: the `assetId` is the authoritative IPAM/DDI identity from Book VI-01, so records from different surfaces correlate to the same asset (AU-12(1)); and the `control`/`ksi` fields are what bind raw telemetry to the authorization package rather than leaving it as undifferentiated logs.
 
 # Deployable Artifacts
 
@@ -41,11 +63,18 @@ Each Volume VI book emits deployment and operating evidence. This book carries t
 **Engine-neutral by contract** — The evidence contract is an open, normalized record; the emitters and the OSCAL generator are named by *function*. Any conformant evidence engine can produce the package from the contract. The series does not bind the pipeline to a particular back-end — the contract is the interface, and the back-end is a swappable deployed example.
 :::
 
+# The Pipeline
+
+1. **Collect** — each mechanism's emitter writes evidence-contract records (via diagnostic settings / data-collection rules) to the telemetry lake, in-boundary.
+2. **Correlate** — records are joined on `assetId` + time, producing the system-wide time-correlated trail AU-12(1) expects.
+3. **Bind** — the KSI binding layer maps each control-tagged record to its evidence slot and KSI theme.
+4. **Emit** — the OSCAL emitter produces the Assessment Plan / Assessment Results / POA&M bundle on a schedule, so the package is continuously current rather than assembled at audit time.
+
 # Closure Necessity
 
 ::: {.callout-tip}
 ## Closure Necessity — evidence no pipeline emits does not exist to an assessor
-Volume III/IV prove the evidence fabric is the mechanism that makes continuous monitoring real. This book deploys it: CA-7 is satisfied by a pipeline that continuously refreshes control-bound evidence and emits the package, not by a claim that monitoring occurs. Remove it and every other Volume VI deployment is invisible to the authorization process.
+Volume III/IV prove the evidence fabric is the mechanism that makes continuous monitoring real. This book deploys it: CA-7 is satisfied by a pipeline that continuously refreshes control-bound evidence and emits the package, not by a claim that monitoring occurs. Remove it and every other Volume VI deployment is invisible to the authorization process — the controls operate but cannot be shown to.
 :::
 
 # Controls Operationalized
@@ -55,13 +84,20 @@ Volume III/IV prove the evidence fabric is the mechanism that makes continuous m
 | CA-7 / CA-7(1) | Continuous Monitoring | Telemetry→evidence→KSI→package pipeline |
 | AU-6(1) | Automated Process Integration | Automated aggregation and analysis across surfaces |
 | AU-12(1) | System-Wide Time-Correlated Trail | Asset-id + time correlation across the lake |
+| CA-5 | Plan of Action & Milestones | POA&M items emitted from unremediated drift/findings |
+
+# Honest Limits
+
+- The pipeline is only as complete as its emitters — a mechanism that deploys but does not emit an evidence-contract record is invisible; Book VI-08's telemetry-completeness workbook is the guard against silent emitter failure.
+- Correlation depends on the authoritative `assetId`; where the IPAM/DDI identity is missing, records cannot be joined and the trail fragments.
+- The OSCAL package reflects the evidence present; it cannot attest a control whose mechanism emits nothing.
 
 # Cross-References
 
 - **Volume III — Multi-Cloud Evidence Fabric** and **Volume IV — Authorization Package & ConMon** — the architecture this book deploys.
 - **Books VI-01…VI-06** — the mechanisms whose evidence this pipeline consumes.
-- **Series evidence contract** — the normalized record every artifact emits to.
+- **Book VI-08** — telemetry-completeness validation that guards the emitters.
 
 # Provenance
 
-Draft. The pipeline is engine-neutral by contract; back-ends named are deployed examples. Format standards (OSCAL, the KSI schema) cite their publishing authority.
+Draft. The pipeline is engine-neutral by contract; back-ends named are deployed examples. The evidence-contract record is an illustrative shape to adapt. Format standards (OSCAL, the FedRAMP 20x KSI schema) cite their publishing authority.

@@ -26,7 +26,17 @@ Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed 
 
 # What This Document Addresses
 
-The most dangerous failure in this volume is the silent one: a detection that never fires because a source stopped emitting, a baseline that drifted unnoticed, an IaC change that regressed a control. A rebuild fails silently far more often than it fails loudly. This book carries the harnesses that make failure loud — detection-efficacy tests against known-good events, telemetry-completeness workbooks that alert when a source goes dark, and smoke tests that verify a deployment closed what it claims.
+The most dangerous failure in this volume is the silent one: a detection that never fires because a source stopped emitting, a baseline that drifted unnoticed, an IaC change that regressed a control, an evidence emitter that went dark. A rebuild fails silently far more often than it fails loudly, and a control that fails silently is worse than one known to be absent — it carries false confidence into an authorization.
+
+This book carries the harnesses that make failure loud: detection-efficacy tests against known-good events, telemetry-completeness workbooks that alert when a source goes dark, and smoke tests that verify a deployment actually closed what it claims.
+
+# The Three Harnesses
+
+| Harness | Question it answers | Fires when |
+|---|---|---|
+| Detection-efficacy | Do the Book VI-03 rules still catch what they should? | A replayed known-bad event does not raise its rule |
+| Telemetry-completeness | Is every expected source still emitting? | A table's freshness exceeds its SLA |
+| Deploy smoke test | Did the IaC actually close the control? | A post-apply assertion fails |
 
 # Deployable Artifacts
 
@@ -37,11 +47,41 @@ The most dangerous failure in this volume is the silent one: a detection that ne
 | Deploy smoke tests | CA-2 assessment | Post-apply assertions on IaC (Books VI-01/02/05/06) | Deployments that did not close the control |
 | Baseline conformance re-check | CM-6 verification | Scheduled re-scan vs. the intended baseline | Configuration drift past reconciliation |
 
+## Illustrative artifact — the telemetry-completeness check
+
+The single most valuable harness, because every other control in the volume depends on its source still emitting. It asserts that each expected table has produced data within its freshness SLA; a table that goes silent is the leading indicator of a blind detection.
+
+```kql
+// Telemetry-completeness — alert when any expected source exceeds its freshness SLA (CA-7(3))
+let expected = datatable(TableName:string, SlaMinutes:long) [
+  "SigninLogs", 60, "AADNonInteractiveUserSignInLogs", 60,
+  "OfficeActivity", 120, "DeviceEvents", 120
+];
+expected
+| join kind=leftouter (
+    union withsource=TableName SigninLogs, AADNonInteractiveUserSignInLogs, OfficeActivity, DeviceEvents
+    | summarize LastSeen = max(TimeGenerated) by TableName
+  ) on TableName
+| extend AgeMin = datetime_diff('minute', now(), LastSeen)
+| extend Status = iff(isnull(LastSeen) or AgeMin > SlaMinutes, "STALE", "ok")
+| where Status == "STALE"        // any row here is a source that went dark — a blind detection
+| project TableName, LastSeen, AgeMin, SlaMinutes
+```
+
+The detection-efficacy harness is the active counterpart: it replays a library of known-bad events (a benign impossible-travel pair, a scripted spray burst) into a test scope and asserts the corresponding Book VI-03 rule raises — so a rule that silently regressed after a schema change is caught by a test, not by a missed incident.
+
+# Deployment
+
+1. Schedule the telemetry-completeness workbook at the tightest source SLA; route STALE results to a high-severity alert — a dark source is a control outage.
+2. Maintain the known-bad event library as code alongside the Book VI-03 rules; run efficacy tests on every rule change (regression gate) and on a schedule.
+3. Attach smoke tests to each IaC pipeline (Books VI-01/02/05/06) so a deploy that does not close its control fails the pipeline, not the audit.
+4. Emit all harness results to the evidence contract (Book VI-07) as CA-2 assessment evidence.
+
 # Closure Necessity
 
 ::: {.callout-tip}
 ## Closure Necessity — an unverified control is a hope, not a control
-CA-2 requires that controls be *assessed*, and CA-7(3) that monitoring detect degradation. This book is what makes the rest of the volume trustworthy over time: without a harness that fires when a detection goes blind or a baseline drifts, the deployment decays into false confidence — the exact failure the operate-and-tune discipline of Book VI-00 warns against.
+CA-2 requires that controls be *assessed*, and CA-7(3) that monitoring detect degradation. This book is what makes the rest of the volume trustworthy over time: without a harness that fires when a detection goes blind or a baseline drifts, the deployment decays into false confidence — the exact operate-and-tune failure Book VI-00 warns against. The harnesses are the difference between "deployed once" and "operating."
 :::
 
 # Controls Operationalized
@@ -50,13 +90,21 @@ CA-2 requires that controls be *assessed*, and CA-7(3) that monitoring detect de
 |---|---|---|
 | CA-2 | Control Assessments | Efficacy + smoke tests exercising deployed controls |
 | CA-7(3) | Trend Analyses | Telemetry-completeness and drift trend monitoring |
+| SI-4 | System Monitoring | Source-liveness monitoring as a first-class signal |
+
+# Honest Limits
+
+- Detection-efficacy tests prove a rule *can* fire on a known pattern; they do not prove coverage of unknown attacker variants — they bound false-negative regression, not the false-negative floor.
+- The known-bad event library must be maintained as attacker behavior and schemas change, or the efficacy test silently ages into a rubber stamp.
+- Smoke tests assert what they are written to assert; a control dimension no test covers is still unverified.
 
 # Cross-References
 
 - **Books VI-01…VI-07** — every artifact this volume validates.
 - **Book VI-00** — the operate-and-tune discipline these harnesses enforce.
+- **Book VI-03** — the detections whose efficacy is tested here.
 - **Book VI-07** — validation results emit to the evidence contract as assessment evidence.
 
 # Provenance
 
-Draft. The harnesses are the standing quality gate for the deployable-artifact layer; products named are deployed examples of the validation mechanism.
+Draft. The harnesses are the standing quality gate for the deployable-artifact layer. The KQL is an illustrative pattern to adapt, not a drop-in workbook. Products named are deployed examples of the validation mechanism.
