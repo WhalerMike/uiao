@@ -32,6 +32,8 @@ The design rule for every playbook here is **confidence-gated action**: high-con
 
 # The Response Ladder
 
+![The response ladder — three confidence tiers, each substituting for a containment capability the boundary removed](figs/vol6b04-fig-01-response-ladder.png){#fig-vol6b04-ladder fig-alt="A three-column table describing the confidence-gated response ladder. Columns are Confidence, Action, and Substitutes for. Rows: High (rule 04 plus corroboration) — action is revoke sessions, confirm-compromised, and force re-auth, executed automatically with no human — substitutes for CAE sub-second revocation, approximated to minutes. Medium — action is enrich context, open a ticket, and raise risk, with a human in the loop — substitutes for vendor auto-remediation. Standing control (config) — action is to bound token lifetime to 60 to 90 minutes — substitutes for the CAE exposure ceiling. A banner beneath the table states the short-token-lifetime config is the exposure ceiling under which the playbooks operate, so even a missed detection cannot leave a stolen token valid indefinitely. White background. Source: Vol VI Book 04 — Federal Application-Aware Networking — Response Automation: The SOAR Playbook Library briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
+
 | Confidence | Action | Human in loop? | Substitutes for |
 |---|---|---|---|
 | High (e.g. rule 04 session-anomaly with corroboration) | Revoke sessions, confirm-compromised, force re-auth | No — auto | CAE sub-second revocation (→ minutes) |
@@ -46,6 +48,8 @@ The design rule for every playbook here is **confidence-gated action**: high-con
 | `disable-principal` | High-confidence account compromise | Disable account, block sign-in | Automated account containment |
 | `short-token-lifetime` (config) | Standing control | Bound token lifetime to 60–90 min | CAE exposure ceiling |
 | `enrich-and-ticket` | Medium-confidence detections | Enrich with identity/device context, open ticket (human-in-loop) | Vendor auto-remediation |
+
+![Four deployable playbooks, each wired to a Book VI-03 detection trigger](figs/vol6b04-fig-02-deployable-playbooks.png){#fig-vol6b04-playbooks fig-alt="A three-column table listing the four deployable SOAR playbooks. Columns are Playbook, Trigger (Book VI-03), and Action. Rows: revoke-session — triggered by token-theft / session anomaly (rule 04) — action is Graph revokeSignInSessions plus confirm-compromised. disable-principal — triggered by high-confidence account compromise — action is disable account and block sign-in. short-token-lifetime (config) — a standing control — action is to bound token lifetime to 60 to 90 minutes. enrich-and-ticket — triggered by medium-confidence detections — action is to enrich with identity, device, and IP context and open a ticket with a human in the loop. A banner states the revocation identity should not also be able to create accounts, so each automation identity should be granted only the Graph scopes its action needs. White background. Source: Vol VI Book 04 — Federal Application-Aware Networking — Response Automation: The SOAR Playbook Library briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 ## Illustrative playbook — session revocation on a high-confidence session anomaly
 
@@ -66,6 +70,8 @@ The `revoke-session` playbook is the containment path for Book VI-03 rule 04. It
   "notes": "Containment latency = detection cadence (minutes), not CAE sub-second. TUNE the confidence gate."
 }
 ```
+
+![The revoke-session playbook end to end — gate, revoke, raise risk, and record](figs/vol6b04-fig-03-revoke-session-playbook.png){#fig-vol6b04-revoke fig-alt="A horizontal four-stage pipeline diagram showing how a high-confidence session anomaly is contained, left to right. Stage 1, Gate — the playbook fires on a Sentinel incident from rule 04 and first evaluates the confidence guard, requiring severity High and a non-null Account entity; anything below the gate stops here and routes to enrich-and-ticket. Stage 2, Revoke — a Graph POST to revokeSignInSessions invalidates the account's refresh tokens, the AC-12 session-termination action, executed in-boundary against the management plane. Stage 3, Raise risk — a confirmCompromised call raises the identity risk state. Stage 4, Record — the playbook creates an IR-4 incident record linked to the Sentinel incident with full entity context, then emits the response action to the Book VI-07 evidence contract, so the whole run is itself logged as an incident action. All four stages are shown connected in sequence. White background. Source: Vol VI Book 04 — Federal Application-Aware Networking — Response Automation: The SOAR Playbook Library briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 The `short-token-lifetime` artifact is not a playbook but a standing configuration: it bounds the maximum exposure window so that even a *missed* detection cannot leave a stolen token valid indefinitely. It is the exposure ceiling under which the playbooks operate.
 

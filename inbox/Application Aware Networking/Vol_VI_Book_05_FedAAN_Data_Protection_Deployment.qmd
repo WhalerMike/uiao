@@ -34,6 +34,8 @@ This book deploys them as code: the CUI label taxonomy, DLP policies as versione
 
 The taxonomy is a declared hierarchy, not a set of portal-created labels, so that the protection settings at each tier are reviewable and consistent across the estate.
 
+![The CUI taxonomy as a declared, reviewable hierarchy](figs/vol6b05-fig-01-cui-taxonomy.png){#fig-vol6b05-taxonomy fig-alt="A three-column table titled 'A declared hierarchy — reviewable, consistent across the estate' with a dark navy header row labeled Tier, Label, and Encryption / Access. Four tier rows descend in sensitivity. Public: label 'none / Public', encryption none, access unrestricted. Internal: label 'Internal', encryption none, access agency domain (informational). CUI-Basic (shaded light teal): label 'CUI-Basic', encryption BYOK, access agency domain (enforced). CUI-Specified (shaded light amber): label 'CUI-Specified — [Category]', encryption BYOK, access named holders, time-limited, with premium audit. A callout beneath the table states the taxonomy is a declared hierarchy, not a set of portal-created labels, so the protection settings at each tier are reviewable and consistent across the estate. White background. Source: Vol VI Book 05 — Federal Application-Aware Networking — Data Protection Deployment briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
+
 | Tier | Label | Encryption | Access scope | Audit |
 |---|---|---|---|---|
 | Public | none / "Public" | none | unrestricted | standard |
@@ -57,6 +59,8 @@ New-Label -Name "CUI-Specified-PrivacyAct" -DisplayName "CUI-Specified — Priva
 
 The key material is the other half: sensitivity-label encryption for the CUI tiers binds to **agency-held keys**, so the agency can rotate or revoke them — for instance after an administrator with access departs. The key vault, its customer-managed keys, rotation policy, and access policy are declared as infrastructure (SC-12/12(1)), giving the audit trail SC-28 and AU-10 expect.
 
+![Agency-held keys turn a label into control the agency owns](figs/vol6b05-fig-02-agency-held-keys.png){#fig-vol6b05-keys fig-alt="A three-card panel titled 'Agency-held keys turn a label into control the agency owns.' Card 1, numbered in navy, 'Agency rotates and revokes': CUI-tier label encryption binds to agency-held keys, so the agency can rotate or revoke them — for instance after an administrator with access departs; tagged SC-12(1). Card 2, numbered in teal, 'Declared as infrastructure': the key vault, its CMKs, rotation policy, and access policy are declared as infrastructure — the audit trail SC-28 and AU-10 expect; tagged SC-28 / AU-10. Card 3, numbered in amber, 'Custody is the trade': agency-held keys shift the operational burden of key custody to the agency — rotation and recovery become the agency's responsibility, not the platform's; tagged Honest limit. A summary bar beneath states the label carries the classification with the file, and the agency-held key is what makes the protection something the agency alone can rotate, revoke, and prove. White background. Source: Vol VI Book 05 — Federal Application-Aware Networking — Data Protection Deployment briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
+
 # Deployable Artifacts
 
 | Artifact | Realizes (Vol III) | Deployed example | Multi-CSP substitution |
@@ -67,6 +71,8 @@ The key material is the other half: sensitivity-label encryption for the CUI tie
 | Audit-retention configuration | AU-10 non-repudiation, retention | Purview Audit tier + export as code | CloudTrail Lake retention config |
 
 # Deployment
+
+![Keys first, then labels, then DLP, then audit — the deployment order](figs/vol6b05-fig-03-deployment-order.png){#fig-vol6b05-order fig-alt="A four-step horizontal sequence titled 'Keys first, then labels, then DLP, then audit,' with the fourth step highlighted and all connectors filled to show the completed order. Step 1 (navy), Keys — CMK / BYOK. Step 2 (teal), Labels — taxonomy as code. Step 3 (amber), DLP — test / notify then enforce. Step 4 (red, highlighted), Audit — premium tier plus export. The detail panel for step 4 reads: set the audit tier and immutable export so retention meets the high-impact bar — the retention-cliff fix the detection layer depends on for long-tail forensics (AU-10 non-repudiation). The sequence encodes the dependency chain: labels' encryption depends on the keys, DLP acts on the labels, and audit retention closes the evidence trail. White background. Source: Vol VI Book 05 — Federal Application-Aware Networking — Data Protection Deployment briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 1. Deploy the key vault and customer-managed keys first (the labels' encryption depends on them); set the rotation policy and restrict key access to a minimal, audited set.
 2. Apply the label taxonomy as code, then the label auto-labeling / publishing policy scoped to the pilot before tenant-wide.
