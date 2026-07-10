@@ -1,0 +1,479 @@
+# AAN briefing-deck spec — Vol VI Book 08: Validation & Test Harnesses.
+# Distills inbox/Application Aware Networking/Vol_VI_Book_08_FedAAN_Validation_Test_Harnesses.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "inbox/Application Aware Networking/specs/Vol_VI_Book_08.yaml" \
+#     --out  "inbox/Application Aware Networking/Vol_VI_Book_08_FedAAN_Validation_Test_Harnesses.pptx" \
+#     --date-code "2026-07-09 17:00 ET"
+deck:
+  title: "Validation & Test Harnesses"
+  subtitle: "Proving the deployment works: detection-efficacy tests, telemetry-completeness workbooks, and deploy smoke tests"
+  series_kicker: "Federal AAN — Volume VI: Implementation"
+  date_code: "2026-07-09 17:00 ET"
+  journey:
+    - "Replay"
+    - "Watch"
+    - "Assert"
+    - "Attest"
+  sources:
+    azure_monitor_workbooks: "https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-overview"
+    kql: "https://learn.microsoft.com/azure/data-explorer/kusto/query/"
+    ms_sentinel: "https://learn.microsoft.com/azure/sentinel/overview"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+    fedramp_20x: "https://www.fedramp.gov/20x/"
+
+slides:
+  # 1 --- title --------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Volume VI, Book 08 — the validation layer for the whole
+      volume. Where every other book deploys an artifact, this book proves each
+      one actually works and keeps working, closing the gap between deployed and
+      operating. Start with the thesis that motivates the entire book: the most
+      dangerous failure in this volume is the silent one — a detection that never
+      fires because a source stopped emitting, a baseline that drifted unnoticed,
+      an IaC change that regressed a control, an evidence emitter that went dark.
+      A rebuild fails silently far more often than it fails loudly, and a control
+      that fails silently is worse than one known to be absent, because it
+      carries false confidence into an authorization. Walk the journey strip,
+      which is the shape of the validation program: Replay known events against
+      the detection rules; Watch every expected source for freshness; Assert that
+      an IaC deploy actually closed its control; and Attest by emitting every
+      harness result to the evidence contract as assessment evidence. Keep
+      FedRAMP scope at Moderate for the SSA edition, and note the draft
+      disclaimer — developed by the Cloud Services Infrastructure team, not yet
+      reviewed by the SSA CIO Office, OIS, or leadership, with all closure claims
+      self-assessed pending SCA and PMO/AO review.
+
+  # 2 --- section ------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "An unverified control is a hope, not a control"
+    callout: "A control that fails silently is worse than one known to be absent — it carries false confidence into an authorization."
+    callout_accent: red
+    notes: >
+      This section states the Closure Necessity that runs through the book. NIST
+      SP 800-53 Rev 5 CA-2 requires that controls be assessed, and CA-7(3)
+      requires that monitoring detect degradation over time. This book is what
+      makes the rest of the volume trustworthy across time: without a harness
+      that fires when a detection goes blind or a baseline drifts, the deployment
+      decays into false confidence — the exact operate-and-tune failure Book
+      VI-00 warns against. Dwell on the asymmetry, because it is the whole
+      argument. A control known to be absent is a managed risk: it has an owner,
+      a POA&M, and a compensating measure. A control that has silently failed is
+      an unmanaged risk that looks like a managed one, and it fails at the worst
+      possible moment — during a real incident, when the missed detection was the
+      one that mattered. The harnesses in this book exist to convert silent
+      failure into loud failure, so that a degraded control raises an alert
+      instead of a false sense of coverage. That conversion is the difference
+      between deployed once and operating.
+
+  # 3 --- content columns ---------------------------------------------------
+  - type: content
+    kicker: "THE THREE HARNESSES"
+    title: "Three ways a deployment is made to prove itself"
+    layout: columns
+    cards:
+      - title: "Detection-efficacy"
+        body: "Replays known-bad events against the Book VI-03 rules and asserts the right rule raises. Catches rules that silently regressed after a schema change."
+        accent: navy
+        status: "CA-2 assessment"
+      - title: "Telemetry-completeness"
+        body: "Checks that every expected source has emitted within its freshness SLA. Catches a source that silently stopped — the leading indicator of a blind detection."
+        accent: teal
+        status: "CA-7(3) trend"
+      - title: "Deploy smoke test"
+        body: "Post-apply assertions on IaC verify the deploy actually closed the control. Catches a deployment that ran green but changed nothing that matters."
+        accent: amber
+        status: "CA-2 assessment"
+    callout:
+      text: "Each harness answers a different silent-failure question — together they make the difference between deployed once and operating."
+      accent: navy
+    notes: >
+      These three cards are the harnesses the book carries, each aimed at a
+      different flavor of silent failure. Detection-efficacy is the active test:
+      it replays a library of known-bad events — a benign impossible-travel pair,
+      a scripted spray burst — into a test scope and asserts the corresponding
+      Book VI-03 detection rule raises, so a rule that silently regressed after a
+      schema change is caught by a test rather than by a missed incident. This is
+      CA-2 assessment evidence. Telemetry-completeness is the passive watch: it
+      asserts that every expected source has produced data within its freshness
+      SLA, because a table that goes silent is the leading indicator of a blind
+      detection — the detection cannot fire on data it never received. This is
+      CA-7(3) trend monitoring. The deploy smoke test is the assertion at build
+      time: post-apply checks on the infrastructure-as-code verify the deploy
+      actually closed the control it claims to, catching a pipeline that ran
+      green but changed nothing load-bearing. Together they answer three distinct
+      questions — does the rule still fire, is the data still flowing, did the
+      deploy actually close the control — and answering all three is what turns a
+      one-time deployment into a standing, trustworthy control.
+    vendor_sources: ["ms_sentinel"]
+
+  # 4 --- table -------------------------------------------------------------
+  - type: table
+    kicker: "THE THREE HARNESSES, PRECISELY"
+    title: "The question each answers and when it fires"
+    headers: ["Harness", "Question it answers", "Fires when"]
+    rows:
+      - cells: ["Detection-efficacy", "Do the Book VI-03 rules still catch what they should?", "A replayed known-bad event does not raise its rule"]
+        accent: navy
+      - cells: ["Telemetry-completeness", "Is every expected source still emitting?", "A table's freshness exceeds its SLA"]
+        accent: teal
+      - cells: ["Deploy smoke test", "Did the IaC actually close the control?", "A post-apply assertion fails"]
+        accent: amber
+      - cells: ["Baseline conformance re-check", "Has anything drifted past reconciliation?", "A scheduled re-scan diverges from the baseline"]
+        accent: red
+    callout:
+      text: "A harness that fires is a control caught before it fails an audit — or worse, an incident. Silence with no test is not the same as health."
+      accent: navy
+    notes: >
+      This table restates the harnesses precisely, pairing each with the exact
+      question it answers and the exact condition that makes it fire — the level
+      of specificity an assessor wants to see. Detection-efficacy answers whether
+      the Book VI-03 rules still catch what they should, and it fires when a
+      replayed known-bad event does not raise its rule. Telemetry-completeness
+      answers whether every expected source is still emitting, and it fires when a
+      table's freshness exceeds its SLA. The deploy smoke test answers whether the
+      IaC actually closed the control, and it fires when a post-apply assertion
+      fails. The fourth row adds the baseline conformance re-check from the
+      deployable-artifacts inventory — a scheduled re-scan against the intended
+      baseline that fires when configuration has drifted past reconciliation,
+      which is the CM-6 verification counterpart to the CM-6 enforcement in Book
+      VI-06. The callout is the discipline to leave with the audience: a harness
+      that fires is a control caught early, and — critically — silence with no
+      test behind it is not evidence of health, it is absence of information. The
+      whole book is about not mistaking one for the other.
+
+  # 5 --- content grid ------------------------------------------------------
+  - type: content
+    kicker: "DEPLOYABLE ARTIFACTS"
+    title: "Four artifacts turn deployed into operating"
+    layout: grid
+    cards:
+      - title: "Detection-efficacy tests"
+        body: "Replay of known-good and attack events against Book VI-03 rules (CA-2). Catches false-negative posture and rule regressions."
+        accent: navy
+      - title: "Telemetry-completeness workbook"
+        body: "Data-freshness checks across every expected table (CA-7(3)). Catches sources that silently stopped emitting."
+        accent: teal
+      - title: "Deploy smoke tests"
+        body: "Post-apply assertions on IaC — Books VI-01/02/05/06 (CA-2). Catches deployments that did not close the control."
+        accent: amber
+      - title: "Baseline conformance re-check"
+        body: "Scheduled re-scan versus the intended baseline (CM-6). Catches configuration drift past reconciliation."
+        accent: red
+    callout:
+      text: "All four emit their results to the evidence contract as CA-2 assessment evidence — validation is itself continuously attested."
+      accent: navy
+    notes: >
+      These four artifacts are the deployable form of the validation program, and
+      each names what it catches. The detection-efficacy tests replay known-good
+      and attack events against the Book VI-03 rules, catching false-negative
+      posture and rule regressions — the rule that quietly stopped matching after
+      a field was renamed. The telemetry-completeness workbook runs data-freshness
+      checks across every expected table, catching the sources that silently
+      stopped emitting before that silence becomes a blind detection. The deploy
+      smoke tests attach post-apply assertions to the infrastructure-as-code
+      pipelines for Books VI-01, VI-02, VI-05, and VI-06, catching deployments
+      that ran but did not actually close their control. The baseline conformance
+      re-check is a scheduled re-scan against the intended baseline that catches
+      configuration drift past reconciliation, complementing the enforcement in
+      Book VI-06 with independent verification. The unifying move is in the
+      callout: all four emit their results to the Book VI-07 evidence contract as
+      CA-2 assessment evidence, so the validation layer is not a side process — it
+      is itself continuously attested in the same authorization package as the
+      controls it validates. That closes the loop: the tests that prove the
+      controls work are themselves evidence in the package.
+
+  # 6 --- content columns ---------------------------------------------------
+  - type: content
+    kicker: "THE STAR HARNESS"
+    title: "Telemetry-completeness — because every detection depends on its source"
+    layout: columns
+    cards:
+      - title: "Assert freshness"
+        body: "For each expected table, assert it produced data within its SLA — SigninLogs at 60 minutes, DeviceEvents at 120. A null or stale result is a source gone dark."
+        accent: teal
+        status: "per-table SLA"
+      - title: "STALE is an outage"
+        body: "Any table over its SLA is surfaced as STALE and routed to a high-severity alert. A dark source is a control outage, not a data-quality nit."
+        accent: red
+        status: "high-severity"
+      - title: "Efficacy is the counterpart"
+        body: "The active twin replays known-bad events and asserts the Book VI-03 rule raises — so a rule regressed by a schema change is caught by a test, not a missed incident."
+        accent: navy
+        status: "regression gate"
+    callout:
+      text: "Schedule completeness at the tightest source SLA and gate efficacy on every rule change — the two harnesses guard opposite ends of the same blind spot."
+      accent: navy
+    notes: >
+      This slide unpacks the book's illustrative artifact, the telemetry-
+      completeness check, which the book calls the single most valuable harness
+      because every other control in the volume depends on its source still
+      emitting. The KQL pattern declares a table of expected sources and their
+      freshness SLAs — SigninLogs and the non-interactive sign-in logs at sixty
+      minutes, OfficeActivity and DeviceEvents at a hundred and twenty — joins
+      each against the last time it was seen, computes the age, and flags any
+      source whose age exceeds its SLA as STALE. Every STALE row is a source that
+      went dark, and the deployment guidance is to route STALE results to a
+      high-severity alert, because a dark source is a control outage: the
+      detections built on that table are blind and will not fire, silently. The
+      detection-efficacy harness is the active counterpart — it replays a library
+      of known-bad events into a test scope and asserts the corresponding Book
+      VI-03 rule raises, so a rule silently regressed by a schema change is caught
+      by a regression test rather than by a missed incident. The callout gives the
+      operating cadence: schedule completeness at the tightest source SLA and gate
+      efficacy on every rule change. The two harnesses guard opposite ends of the
+      same blind spot — one watches the data flowing in, the other watches the
+      rule that acts on it.
+    vendor_sources: ["kql", "azure_monitor_workbooks", "ms_sentinel"]
+
+  # 7 --- build-sequence ----------------------------------------------------
+  - type: build-sequence
+    kicker: "THE VALIDATION DEPLOYMENT"
+    title: "How the harnesses are stood up and kept honest"
+    notes: "Fallback presenter notes; each step carries its own."
+    steps:
+      - label: "Schedule completeness"
+        sub: "tightest SLA; STALE → high-severity"
+        accent: teal
+        detail: >
+          Schedule the telemetry-completeness workbook at the tightest source
+          SLA and route STALE results to a high-severity alert — a dark source is
+          a control outage, not a dashboard curiosity. This runs first because
+          every other harness assumes the data is flowing.
+        notes: >
+          Step one stands up the completeness watch, and it goes first for a
+          reason: every other harness in the book assumes its data is arriving.
+          Schedule the telemetry-completeness workbook to run at the tightest
+          source SLA — if any expected table has a sixty-minute freshness
+          expectation, the check runs at least that often — and route any STALE
+          result to a high-severity alert. The framing that matters is that a
+          dark source is a control outage. It is tempting to treat data-freshness
+          as an operations-hygiene metric, but in this architecture a table that
+          stops emitting silently disables every detection built on it, so its
+          silence is a security event. Running this first means the program never
+          trusts a green detection dashboard that is green only because no data
+          is arriving to turn anything red. The KQL pattern the book ships makes
+          this concrete: a datatable of expected tables and their SLAs, a
+          left-outer join to each table's last-seen timestamp, and a filter that
+          surfaces any source whose age exceeds its SLA as STALE. The
+          left-outer join is deliberate — a table that has produced nothing at
+          all shows up as a null last-seen rather than silently dropping out of
+          the result, so a source that never started is caught as surely as one
+          that stopped. Wire STALE rows to the same high-severity channel as a
+          real incident, because operationally they are one: the detections that
+          depend on that table are blind for as long as it stays dark, and no
+          amount of green elsewhere compensates for a foundation that has gone
+          silent.
+      - label: "Gate efficacy on change"
+        sub: "known-bad library as code"
+        accent: navy
+        detail: >
+          Maintain the known-bad event library as code alongside the Book VI-03
+          rules, and run efficacy tests on every rule change as a regression gate
+          and on a schedule. A rule change that breaks a known-good detection
+          fails the gate before it reaches production.
+        notes: >
+          Step two wires the detection-efficacy harness into change control.
+          Maintain the known-bad event library as code, versioned alongside the
+          Book VI-03 detection rules, and run the efficacy tests on every rule
+          change as a regression gate as well as on a schedule. The regression-
+          gate framing is the important part: a change to a detection rule is
+          exactly when a silent regression is introduced — a renamed field, a
+          tightened threshold, a refactored query — and running the known-bad
+          replay at that moment catches the break before it reaches production.
+          On a schedule it also catches regressions introduced upstream, in the
+          data schema rather than the rule. The honest limit to keep in view is
+          that this proves a rule can fire on a known pattern; it bounds false-
+          negative regression, it does not establish the false-negative floor for
+          unknown attacker variants. That is a real boundary, and naming it keeps
+          the harness from being oversold as proof of complete coverage. The
+          library itself is the asset to protect: a benign impossible-travel pair,
+          a scripted spray burst, and the other known-bad patterns are stored as
+          code next to the rules so they version together, and each entry pairs a
+          replayed event with the rule it must raise. Running the replay into an
+          isolated test scope keeps it from polluting production detections or
+          paging a real analyst, while still exercising the exact rule logic. The
+          cadence is the point: gate on every rule change so a regression cannot
+          merge, and run on a schedule so a drift in the upstream schema is caught
+          within a day rather than at the next incident. A rule that silently
+          stopped matching is indistinguishable from a quiet environment until
+          this harness proves otherwise.
+      - label: "Attach smoke tests"
+        sub: "IaC deploy fails, not the audit"
+        accent: amber
+        detail: >
+          Attach smoke tests to each IaC pipeline — Books VI-01/02/05/06 — so a
+          deploy that does not close its control fails the pipeline, not the
+          audit. The failure surfaces at deploy time, where it is cheap to fix,
+          rather than at assessment time, where it is expensive.
+        notes: >
+          Step three attaches the deploy smoke tests to the infrastructure-as-code
+          pipelines for Books VI-01, VI-02, VI-05, and VI-06. The design intent is
+          captured in a single line: a deploy that does not close its control
+          should fail the pipeline, not the audit. A post-apply assertion that
+          checks the control was actually closed moves the discovery of a broken
+          deployment to the moment it happens, where it is cheap to diagnose and
+          fix, instead of to assessment time, where a control that never closed is
+          both expensive and embarrassing. This is CA-2 assessment folded into the
+          build process. The honest limit is that a smoke test asserts only what
+          it is written to assert; a control dimension no test covers is still
+          unverified, so the smoke-test suite is itself something that has to grow
+          with the controls it guards. The practical shape of a smoke test is a
+          post-apply assertion tied to what the deploy was supposed to accomplish:
+          after the IaC applies, query the actual state and confirm the control is
+          present — the policy is assigned, the diagnostic setting is routing, the
+          rule is enabled — not merely that the apply returned success. That
+          distinction is the whole value: infrastructure-as-code can report a
+          clean apply while leaving a control functionally unclosed because a
+          dependency was missing or a parameter was wrong. Failing the pipeline on
+          a missed assertion means the broken deployment is a build problem the
+          team owns immediately, rather than a finding an assessor discovers
+          months later, and it keeps the deploy-time and audit-time pictures of
+          the estate from silently diverging.
+      - label: "Emit to the contract"
+        sub: "harness results as CA-2 evidence"
+        accent: red
+        detail: >
+          Emit all harness results to the evidence contract as CA-2 assessment
+          evidence. The validation layer is not a side process — its results are
+          continuously attested in the same authorization package as the controls
+          it validates.
+        notes: >
+          Step four closes the loop by emitting every harness result to the Book
+          VI-07 evidence contract as CA-2 assessment evidence. This is what keeps
+          the validation layer from being a private engineering activity invisible
+          to the authorization: the efficacy tests, the completeness checks, the
+          smoke-test outcomes, and the baseline re-checks all become records in
+          the same package as the controls they validate. An assessor reading the
+          package sees not only that a control is claimed closed but that a
+          harness continuously proves it still operates. That is the final
+          expression of the book's thesis — the harnesses are the standing quality
+          gate for the deployable-artifact layer, and their own results are
+          evidence. By the end of the four steps the volume is not merely deployed;
+          it is continuously proving itself, with every proof attested. Emitting to
+          the contract also means the harness results are subject to the same
+          correlation and freshness discipline as every other record — a validation
+          run that stops emitting is itself a stale source the completeness workbook
+          will flag, so the guards guard each other. For an assessor this is the
+          decisive property: CA-2 assessment is not a periodic artifact someone
+          assembles, it is a continuous feed of test outcomes bound to the controls
+          under test, refreshed on the same cadence as the evidence it accompanies.
+          The book's thesis lands here — deployed once is a claim, operating and
+          proving it is a control, and the difference is a stream of attested
+          harness results in the authorization package.
+
+  # 8 --- table -------------------------------------------------------------
+  - type: table
+    kicker: "CONTROLS OPERATIONALIZED"
+    title: "What this book deploys, mapped to NIST 800-53r5"
+    headers: ["Control", "Title", "How this book deploys it"]
+    rows:
+      - cells: ["CA-2", "Control Assessments", "Efficacy and smoke tests exercising deployed controls"]
+        accent: navy
+      - cells: ["CA-7(3)", "Trend Analyses", "Telemetry-completeness and drift trend monitoring"]
+        accent: teal
+      - cells: ["SI-4", "System Monitoring", "Source-liveness monitoring as a first-class signal"]
+        accent: amber
+    callout:
+      text: "Source-liveness is treated as a security signal, not an ops metric — SI-4 covers the monitoring system monitoring itself."
+      accent: navy
+    notes: >
+      This is the control-to-deployment mapping for the validation layer. CA-2
+      control assessments is deployed as the efficacy and smoke tests that
+      actively exercise the deployed controls — assessment is not a periodic
+      manual exercise here, it is a continuous, automated one. CA-7(3) trend
+      analyses is deployed as the telemetry-completeness and drift-trend
+      monitoring, which watches for degradation over time rather than at a single
+      point. SI-4 system monitoring is deployed in a way worth dwelling on:
+      source-liveness is treated as a first-class security signal, not an
+      operations metric. The insight is that SI-4 has to cover the monitoring
+      system monitoring itself — if the telemetry that feeds every detection can
+      go dark unnoticed, then system monitoring has a blind spot at its own
+      foundation, and treating source-liveness as a security signal closes that
+      blind spot. The callout carries that point. For the SSA Moderate edition
+      every closure here is self-assessed pending security control assessment and
+      AO review, and the honest limits on the next slide bound exactly what these
+      assessments do and do not prove.
+    vendor_sources: ["nist_800_53"]
+
+  # 9 --- content columns ---------------------------------------------------
+  - type: content
+    kicker: "HONEST LIMITS"
+    title: "What the harnesses prove — and what they do not"
+    layout: columns
+    cards:
+      - title: "Regression, not the floor"
+        body: "Efficacy tests prove a rule can fire on a known pattern. They bound false-negative regression; they do not prove coverage of unknown attacker variants."
+        accent: amber
+        status: "Bounds ≠ floor"
+      - title: "Libraries age"
+        body: "The known-bad event library must track changing attacker behavior and schemas, or the efficacy test silently ages into a rubber stamp."
+        accent: red
+        status: "Maintain as code"
+      - title: "Tests assert what they assert"
+        body: "A smoke test proves only what it is written to check. A control dimension no test covers is still unverified."
+        accent: navy
+        status: "Coverage is finite"
+    callout:
+      text: "Naming these limits is itself part of the assessment — a harness that oversells its coverage is the silent failure it was meant to catch."
+      accent: navy
+    notes: >
+      The validation layer names its own edges, and the edges are subtle because
+      a testing program that oversells its coverage becomes the very silent
+      failure it was built to prevent. First, detection-efficacy tests prove a
+      rule can fire on a known pattern; they bound false-negative regression, but
+      they do not prove coverage of unknown attacker variants, so they establish
+      that the rule did not break, not that the rule is sufficient. Second, the
+      known-bad event library must be maintained as attacker behavior and log
+      schemas change; a library that stops tracking reality means the efficacy
+      test silently ages into a rubber stamp that passes because it is testing
+      yesterday's threats against yesterday's schema. Third, smoke tests assert
+      only what they are written to assert — a control dimension no test covers is
+      still unverified, and the absence of a failing test is not the presence of
+      coverage. The callout is the meta-point that makes this book coherent:
+      naming these limits is itself part of the assessment, because a harness that
+      claims more than it proves reintroduces false confidence, which is the exact
+      failure mode the entire book exists to eliminate.
+
+  # 10 --- closing ----------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "From deployed once to operating and proving it"
+    layout: columns
+    cards:
+      - title: "Validates VI-01…07"
+        body: "Every artifact in the volume is exercised by a harness, so silent failure becomes loud failure with an alert and an owner."
+        accent: teal
+        status: "VI-01…07"
+      - title: "Enforces VI-00 discipline"
+        body: "The operate-and-tune discipline Book VI-00 demands is made real: a control that decays raises a test failure, not false confidence."
+        accent: navy
+        status: "Vol VI-00"
+      - title: "Emits to VI-07"
+        body: "Harness results are CA-2 assessment evidence in the same package as the controls they validate — validation is continuously attested."
+        accent: amber
+        status: "→ Book VI-07"
+    callout:
+      text: "The harnesses are the difference between a control deployed once and a control that keeps proving it operates."
+      accent: navy
+    notes: >
+      Close on the through-line for the whole volume. This book is what makes the
+      other seven trustworthy across time. It validates every deployed artifact —
+      Books VI-01 through VI-07 — with a harness aimed at a specific silent-failure
+      mode, so a detection gone blind, a source gone dark, an IaC deploy that
+      changed nothing, or a baseline drifted past reconciliation becomes a loud
+      alert with an owner instead of quiet false confidence. It enforces the
+      operate-and-tune discipline Book VI-00 demands, converting deployed once into
+      operating and proving it. And it emits every harness result to the Book
+      VI-07 evidence contract as CA-2 assessment evidence, so validation is
+      attested in the same authorization package as the controls it exercises.
+      Leave the audience with the Closure Necessity that opened the book: CA-2
+      requires controls be assessed and CA-7(3) requires monitoring detect
+      degradation, and an unverified control is a hope, not a control — the
+      harnesses are the difference between a deployment that decays into false
+      confidence and one that keeps earning its authorization. All closure claims
+      are self-assessed at FedRAMP Moderate, pending SCA and PMO/AO review.
+    vendor_sources: ["nist_800_53", "fedramp_20x", "ms_sentinel"]

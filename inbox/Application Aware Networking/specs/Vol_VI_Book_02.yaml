@@ -1,0 +1,490 @@
+# Deck spec — Vol VI Book 02, FedAAN Identity & Access as Code.
+# Distilled from inbox/Application Aware Networking/Vol_VI_Book_02_FedAAN_Identity_Access_as_Code.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "inbox/Application Aware Networking/specs/Vol_VI_Book_02.yaml" \
+#     --out  "inbox/Application Aware Networking/Vol_VI_Book_02_FedAAN_Identity_Access_as_Code.pptx" \
+#     --date-code "2026-07-09 17:00 ET"
+deck:
+  title: "Identity & Access as Code"
+  subtitle: "Conditional Access, privileged access, port authentication, and certificate lifecycle as versioned policy"
+  series_kicker: "Federal AAN — Volume VI: Implementation"
+  date_code: "2026-07-09 17:00 ET"
+  journey:
+    - "Author"
+    - "Review"
+    - "Report-only"
+    - "Enforce"
+  sources:
+    entra_ca: "https://learn.microsoft.com/entra/identity/conditional-access/overview"
+    ms_graph_ca: "https://learn.microsoft.com/graph/api/resources/conditionalaccesspolicy"
+    entra_pim: "https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-configure"
+    entra_auth_strength: "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
+    m2209: "https://www.whitehouse.gov/wp-content/uploads/2022/01/M-22-09.pdf"
+    cisa_bod2501: "https://www.cisa.gov/news-events/directives/bod-25-01-implementing-secure-practices-cloud-services"
+    cyberark: "https://www.cyberark.com/products/privileged-access-manager/"
+    cisco_ise: "https://www.cisco.com/site/us/en/products/security/identity-services-engine/index.html"
+    keyfactor: "https://www.keyfactor.com/products/command/"
+    acme_rfc8555: "https://datatracker.ietf.org/doc/html/rfc8555"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+
+slides:
+  # 1 -----------------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Book VI-02 — the deployable realization of the Volume I
+      identity plane and the Volume III privileged-access architecture. The
+      architecture volumes establish that a verified identity, phishing-resistant
+      authentication, and just-in-time elevation are the mechanisms that gate
+      access. Those decisions are worthless as portal clicks: a Conditional Access
+      estate no one can diff is a control no assessor can trace, and IA-2 and AC-6
+      become assertions rather than evidence. This book expresses the access
+      decisions as code — Conditional Access as a reviewable policy set, privileged
+      roles as declarative just-in-time configuration, port authentication as
+      profiles, and certificates as an automated lifecycle. The invariant it
+      enforces is that every access decision has a reviewable source of truth the
+      pipeline applies and Book VI-08 re-asserts. Walk the journey strip — Author,
+      Review, Report-only, Enforce — because it is the safe deployment order for
+      access policy: you never set a blocking policy to enabled without first
+      reviewing the diff and running it in report-only against real sign-in logs.
+      Keep scope honest: SSA edition, FedRAMP Moderate; the deployed examples are
+      named realizations of a mechanism and each carries a multi-CSP substitution
+      column. Note the draft disclaimer — CSI Team, not yet reviewed by the SSA CIO
+      Office, OIS, or leadership.
+
+  # 2 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "Every access decision needs a reviewable source of truth"
+    callout: "A Conditional Access estate no one can diff is a control no assessor can trace — IA-2 and AC-6 become assertions, and drift is invisible until it is a finding."
+    callout_accent: navy
+    notes: >
+      This section frames the book's thesis before the artifacts. The architecture
+      volumes prove that phishing-resistant, just-in-time-scoped identity is the
+      closure mechanism for the access controls. This book's job is to make those
+      decisions reviewable — held as code that can be diffed against intent and
+      attested. The failure mode it exists to prevent is the portal-clicked access
+      estate: a Conditional Access tenant configured by hand has no reviewable
+      source, so IA-2 identification-and-authentication and AC-6 least-privilege
+      become assertions an assessor must take on faith, and any drift — a scope
+      widened, an exclusion added, a policy disabled — is invisible until it
+      surfaces as an audit finding or an incident. Set the callout as the section
+      thesis: the point of policy-as-code here is not elegance, it is
+      traceability. When every access decision is source, a reviewer can see the
+      change before it lands, an assessor can trace the control to the line that
+      implements it, and drift is a diff rather than a surprise. Everything that
+      follows — the policy-as-code model, the safety rules, the deployment order —
+      serves that single property.
+
+  # 3 -----------------------------------------------------------------------
+  - type: content
+    kicker: "THE POLICY-AS-CODE MODEL"
+    title: "Declarative, idempotent, and guarded by two safety rules"
+    layout: columns
+    cards:
+      - title: "Held as code"
+        body: "Access policy is declarative files, applied idempotently through the VI-00 pipeline — diffable against intent, never a portal screenshot that cannot prove itself over time."
+        accent: navy
+        status: "Reviewable"
+      - title: "Break-glass mandatory"
+        body: "A break-glass exclusion group is mandatory in every blocking Conditional Access policy — the safety rule that prevents the classic self-lockout."
+        accent: amber
+        status: "Safety"
+      - title: "No standing privilege"
+        body: "PIM activation requires approval, justification, and MFA; no principal holds a standing global-admin assignment. Least privilege is a property of the declared policy."
+        accent: teal
+        status: "AC-6"
+    callout:
+      text: "The two safety rules — mandatory break-glass and no standing privilege — prevent the classic self-lockout and silent-drift failures policy-as-code would otherwise invite."
+      accent: navy
+    notes: >
+      This slide states the policy-as-code model and, more importantly, the two
+      safety rules that make it operable rather than dangerous. Access policy is
+      held as declarative files and applied idempotently through the Book VI-00
+      pipeline, so it is diffable against intent — a reviewer can see in a pull
+      request that a policy is scoped correctly, which a portal screenshot can never
+      prove over time. But policy-as-code applied to access controls invites two
+      classic failures, and each has a mandatory safety rule. The first is
+      self-lockout: a blocking Conditional Access policy that catches every
+      account, including the administrators who would fix it. The rule is that a
+      break-glass exclusion group is mandatory in every blocking policy, verified
+      present before the policy is ever enabled. The second is silent privilege
+      drift: standing high-privilege assignments that accumulate and are never
+      reviewed. The rule is that privileged roles are eligible-with-approval through
+      PIM — activation requires approval, justification, and MFA, and no principal
+      holds a standing global-admin assignment — so AC-6 least privilege is a
+      property of the declared role policy rather than an audit finding waiting to
+      happen. These two rules are what make the model safe to run.
+    vendor_sources: ["entra_ca", "entra_pim"]
+
+  # 4 -----------------------------------------------------------------------
+  - type: table
+    kicker: "THE POLICY-AS-CODE MODEL"
+    title: "Each access element as code, each with its safety rule"
+    headers: ["Element", "As-code form", "Safety rule"]
+    rows:
+      - cells: ["Conditional Access", "Policy JSON per named scenario", "A break-glass exclusion group is mandatory in every blocking policy"]
+        accent: navy
+      - cells: ["Privileged roles", "PIM role-setting policy", "Activation requires approval + justification + MFA; no standing global admin"]
+        accent: teal
+      - cells: ["Port authentication", "802.1X EAP-TLS + MAB profiles", "Certificate-based device identity; MAB only for enumerated exceptions"]
+        accent: amber
+      - cells: ["Certificates", "ACME / short-lived issuance policy", "Rotation automated; no long-lived secrets in config"]
+        accent: red
+    callout:
+      text: "Each element is declarative and idempotent; each safety rule closes a specific failure mode — self-lockout, standing privilege, unmanaged device access, and long-lived secrets."
+      accent: navy
+    notes: >
+      This table is the book's model in full — the four access elements, the form
+      each takes as code, and the safety rule each carries. Conditional Access is
+      policy JSON authored per named scenario, and its safety rule is the mandatory
+      break-glass exclusion group in every blocking policy — the guard against
+      self-lockout. Privileged roles are a PIM role-setting policy, and the safety
+      rule is that activation requires approval, justification, and multi-factor
+      authentication, with no standing global-admin assignment — the guard against
+      accumulated standing privilege. Port authentication is 802.1X EAP-TLS plus MAB
+      profiles, and the safety rule is that device identity is certificate-based,
+      with MAB reserved only for an enumerated exception list rather than used as a
+      convenient default — the guard against unmanaged devices reaching the wire.
+      Certificates are an ACME or short-lived issuance policy, and the safety rule
+      is that rotation is automated and no long-lived secret ever lives in a config
+      file — the guard against the credential that outlives its usefulness and
+      becomes an attacker's foothold. Read together, the table shows that
+      policy-as-code for identity is not just expressing decisions as files; it is
+      pairing each declarative element with the specific failure mode that element
+      is prone to and the rule that forecloses it.
+    vendor_sources: ["entra_ca", "entra_pim", "cisco_ise", "acme_rfc8555"]
+
+  # 5 -----------------------------------------------------------------------
+  - type: table
+    kicker: "DEPLOYABLE ARTIFACTS"
+    title: "Each artifact realizes an access mechanism — with a substitution path"
+    headers: ["Artifact", "Realizes", "Deployed example", "Multi-CSP substitution"]
+    rows:
+      - cells: ["Conditional Access set (as code via Graph)", "IA-2, AC-3 access decisions", "Entra CA JSON/Bicep/Terraform", "Okta / Ping policy-as-code"]
+        accent: navy
+      - cells: ["PIM / JIT role configuration", "AC-5/6 least privilege, IA-11 re-auth", "Entra PIM as code", "CyberArk / BeyondTrust JIT config"]
+        accent: teal
+      - cells: ["Port-auth profiles (802.1X EAP-TLS, MAB)", "IA-3 device identity at the edge", "NPS/RADIUS + switch profiles", "Cisco ISE / Aruba ClearPass profiles"]
+        accent: amber
+      - cells: ["Certificate lifecycle (ACME, short-lived)", "IA-5(2), SC-17", "Keyfactor / Sectigo + ACME as code", "Venafi / AppViewX"]
+        accent: red
+    callout:
+      text: "Substituting the identity provider changes the policy syntax and the connectors; the access-decision mechanism is invariant. SSA edition target is FedRAMP Moderate."
+      accent: navy
+    notes: >
+      This is the artifact ledger with the substitution column that keeps the book
+      multi-CSP and honest about product neutrality. The Conditional Access policy
+      set, authored as code and applied via the Graph API, realizes IA-2 and AC-3
+      access decisions; the deployed example is Entra Conditional Access expressed
+      as JSON, Bicep, or Terraform, substitutable with Okta or Ping policy-as-code.
+      The PIM and just-in-time role configuration realizes AC-5 and AC-6 least
+      privilege and IA-11 re-authentication; the deployed example is Entra PIM as
+      code, substitutable with CyberArk or BeyondTrust just-in-time configuration.
+      The port-authentication profiles — 802.1X EAP-TLS and MAB — realize IA-3
+      device identification at the edge; the deployed example is NPS/RADIUS with
+      switch profiles, substitutable with Cisco ISE or Aruba ClearPass. The
+      certificate-lifecycle automation using ACME and short-lived certificates
+      realizes IA-5(2) and SC-17; the deployed example is Keyfactor or Sectigo with
+      ACME as code, substitutable with Venafi or AppViewX. State the rule the series
+      turns on: substituting the identity provider changes the policy syntax and the
+      connector estate but never the access-decision mechanism, which is invariant.
+      Microsoft products appear as the SSA-estate realization because they
+      coordinate this multi-vendor surface, not automatically; the FedRAMP target
+      for this edition is Moderate.
+    vendor_sources: ["entra_ca", "ms_graph_ca", "entra_pim", "cyberark", "cisco_ise", "keyfactor", "acme_rfc8555"]
+
+  # 6 -----------------------------------------------------------------------
+  - type: content
+    kicker: "THE LOAD-BEARING ARTIFACT"
+    title: "A phishing-resistant Conditional Access policy, diffable against intent"
+    layout: columns
+    cards:
+      - title: "Phishing-resistant strength"
+        body: "The policy requires a phishing-resistant authentication strength for all users reaching any cloud app — IA-2(1)/(2), aligned to BOD 25-01 and M-22-09."
+        accent: teal
+        status: "IA-2(1)/(2)"
+      - title: "Break-glass visible in the PR"
+        body: "The mandatory break-glass exclusion group is present and scoped in the source — a reviewer sees it in the pull request; a portal screenshot cannot prove it over time."
+        accent: amber
+        status: "Safety"
+      - title: "PIM is the counterpart"
+        body: "Eligible roles require approval, justification, and MFA to activate; no standing high-privilege assignment — AC-6 as a property of declared policy."
+        accent: navy
+        status: "AC-6"
+    callout:
+      text: "Held as code, the exclusion group and the authentication strength are attestable properties of source — not portal settings someone hopes are still configured."
+      accent: navy
+    notes: >
+      This slide walks the book's illustrative artifact, a phishing-resistant
+      Conditional Access policy expressed as code. The policy requires a
+      phishing-resistant authentication strength for all users reaching any cloud
+      application, which is how IA-2(1) and IA-2(2) multi-factor authentication are
+      closed in a form aligned to CISA BOD 25-01 and OMB M-22-09's phishing-
+      resistant mandate. The critical detail is the second card: the mandatory
+      break-glass exclusion group is present and scoped in the source itself, so a
+      reviewer can see in the pull request that the safety exclusion exists and is
+      correctly narrow — something a portal screenshot can never prove over time,
+      because the screenshot is a moment and the source is the enforced state. The
+      PIM configuration is the privileged-access counterpart shown alongside it: it
+      declares that eligible roles require approval, justification, and MFA to
+      activate and that no principal holds a standing high-privilege assignment, so
+      AC-6 least privilege is a property of the declared role policy rather than an
+      audit finding waiting to happen. The callout is the payoff: held as code, both
+      the exclusion group and the authentication strength are attestable properties
+      of source, not portal settings someone hopes are still configured. The JSON in
+      the book is an illustrative pattern to adapt against the tenant and the current
+      Graph schema, not a drop-in policy.
+    vendor_sources: ["entra_auth_strength", "ms_graph_ca", "cisa_bod2501", "m2209"]
+
+  # 7 -----------------------------------------------------------------------
+  - type: build-sequence
+    kicker: "DEPLOYMENT"
+    title: "Apply access policy the safe way — never straight to enforcing"
+    notes: >
+      Fallback notes: access policy is applied in a deliberate safe order through
+      the Book VI-00 pipeline — report-only with the break-glass exclusion verified
+      first, then enabled; standing privilege migrated to eligible-with-approval;
+      802.1X profiles deployed against the Book VI-01 certificate authority; and
+      short-lived certificate automation stood up so no long-lived secret lives in
+      config.
+    steps:
+      - label: "Report-only"
+        sub: "verify break-glass"
+        accent: amber
+        detail: >
+          Apply Conditional Access in report-only first, review the impact against
+          sign-in logs, then enable. The break-glass exclusion is verified present
+          before any policy is set to enabled — no exceptions.
+        notes: >
+          Step one: apply Conditional Access in report-only mode first. Never set a
+          blocking policy straight to enabled — run it in report-only, review its
+          projected impact against real sign-in logs to see exactly who it would
+          have blocked, and only then enable it. The non-negotiable gate is that the
+          mandatory break-glass exclusion group is verified present and correctly
+          scoped before any policy is set to enabled, because this is the single
+          rule that prevents locking every administrator, including the ones who
+          would fix it, out of the tenant. Report-only is the identity equivalent of
+          the protective-DNS log-only baseline in Book VI-01 — observe before you
+          enforce, so an access control does not become a self-inflicted outage.
+      - label: "Migrate PIM"
+        sub: "eligible + approval"
+        accent: teal
+        detail: >
+          Apply PIM role settings and migrate any standing privileged assignments
+          to eligible-with-approval. After this step, no principal holds a standing
+          high-privilege role — activation is just-in-time.
+        notes: >
+          Step two: apply the PIM role settings and migrate standing privileged
+          assignments to eligible-with-approval. This is where AC-5 and AC-6 least
+          privilege stop being an aspiration and become the declared state: any
+          account that held a permanent high-privilege role is converted to
+          eligible, so it must activate just-in-time with approval, justification,
+          and MFA rather than carrying the privilege continuously. After this step
+          there is no standing global administrator to compromise, which collapses a
+          large part of the privileged-access attack surface. The migration is
+          deliberate and ordered — you confirm the eligible-with-approval path works
+          before removing the standing assignment, so no one is stranded without a
+          route to the access they legitimately need.
+      - label: "Deploy 802.1X"
+        sub: "EAP-TLS to the CA"
+        accent: navy
+        detail: >
+          Deploy the 802.1X EAP-TLS port-authentication profiles. Book VI-01
+          supplies the certificate authority these profiles trust, so device
+          identity at the edge chains to a source of truth, not a shared secret.
+        notes: >
+          Step three: deploy the 802.1X EAP-TLS port-authentication profiles that
+          close IA-3 device identification at the wire. The dependency matters: Book
+          VI-01 supplies the certificate authority these profiles trust, so device
+          identity at the access edge chains to the same PKI source of truth rather
+          than a shared secret or a MAC address that is trivially spoofed. MAB — MAC
+          Authentication Bypass — is reserved only for an enumerated exception list
+          of devices that genuinely cannot present a certificate, never used as a
+          convenient default, because every MAB exception is an unauthenticated
+          device on the network. Certificate-based device identity is what makes the
+          edge trustworthy, and it depends on the certificate lifecycle stood up in
+          the next step.
+      - label: "Automate certs"
+        sub: "ACME / short-lived"
+        accent: teal
+        detail: >
+          Stand up ACME/short-lived certificate automation so no long-lived
+          credential lives in a config file. Rotation is automated; IA-5(2) and
+          SC-17 are closed by an issuing pipeline, not a manual renewal calendar.
+        notes: >
+          Step four: stand up the ACME and short-lived certificate automation so no
+          long-lived credential ever lives in a configuration file. This closes
+          IA-5(2) PKI-based authentication and SC-17 public-key-infrastructure
+          certificates as an operating pipeline rather than a manual renewal
+          calendar that someone eventually forgets. Short-lived certificates with
+          automated rotation mean a leaked credential has a small window of value
+          and no human is tempted to hard-code a long-lived secret for convenience.
+          This step also underwrites the previous one: the 802.1X EAP-TLS profiles
+          and the phishing-resistant authentication both depend on a healthy,
+          automatically rotating certificate estate, so automating issuance is what
+          keeps the whole identity plane from decaying into expired-certificate
+          outages or long-lived-secret risk.
+    vendor_sources: ["entra_ca", "cisco_ise", "acme_rfc8555"]
+
+  # 8 -----------------------------------------------------------------------
+  - type: content
+    kicker: "CLOSURE NECESSITY"
+    title: "A policy you cannot review is a policy you cannot assess"
+    layout: columns
+    cards:
+      - title: "The claim"
+        body: "Volume I/III prove phishing-resistant, JIT-scoped identity is the closure mechanism for the access controls."
+        accent: navy
+        status: "Vol I/III"
+      - title: "What this book adds"
+        body: "It makes those decisions reviewable — CA and privileged-role settings held as code can be diffed against intent and attested."
+        accent: teal
+        status: "Reviewable"
+      - title: "Why portal-clicked fails"
+        body: "Portal-clicked access policy has no reviewable source — IA-2 and AC-6 become assertions no assessor can trace, and drift is invisible until it is a finding."
+        accent: amber
+        status: "IA-2 / AC-6"
+    callout:
+      text: "The tracing property is the closure — a policy that cannot be diffed against intent cannot be assessed, no matter how correctly it happens to be configured today."
+      accent: navy
+    notes: >
+      This is the book's Closure Necessity argument, and it parallels Book VI-01's:
+      the claim is not a new control closure but a property — reviewability.
+      Volumes I and III prove that phishing-resistant, just-in-time-scoped identity
+      is the closure mechanism for the access controls. What this book adds is that
+      it makes those access decisions reviewable: Conditional Access and
+      privileged-role settings held as code can be diffed against intent and
+      attested to an assessor. Portal-clicked access policy has no reviewable
+      source, so IA-2 identification-and-authentication and AC-6 least privilege
+      become assertions no assessor can trace, and drift — a widened scope, a new
+      exclusion, a disabled policy — is invisible until it surfaces as a finding or
+      an incident. The callout is the crux: the tracing property is itself the
+      closure. A policy that cannot be diffed against intent cannot be assessed, no
+      matter how correctly it happens to be configured on the day someone looks,
+      because there is no way to prove it was correct yesterday or will be tomorrow.
+      This is why the book insists every access decision be source applied through a
+      pipeline and re-asserted by Book VI-08 — reviewability is not a nicety layered
+      on top of the control, it is what makes the control assessable at all.
+
+  # 9 -----------------------------------------------------------------------
+  - type: table
+    kicker: "CONTROLS OPERATIONALIZED"
+    title: "What this book deploys, mapped to NIST 800-53r5"
+    headers: ["Control", "Title", "How this book deploys it"]
+    rows:
+      - cells: ["IA-2(1)/(2)", "Identification & Authentication (MFA)", "Phishing-resistant CA policy set as code"]
+        accent: navy
+      - cells: ["AC-2/5/6", "Account Mgmt / Least Privilege", "PIM/JIT role config; access reviews as code"]
+        accent: teal
+      - cells: ["IA-3", "Device Identification & Authentication", "802.1X EAP-TLS profiles"]
+        accent: amber
+      - cells: ["IA-5(2) / SC-17", "PKI-based Authentication", "Certificate lifecycle automation"]
+      - cells: ["IA-11", "Re-authentication", "PIM activation re-auth; sign-in frequency in CA"]
+        accent: red
+    callout:
+      text: "Conditional Access as code governs the policy; a global admin can still change it out of band — Book VI-08 diffs deployed state against source to catch that."
+      accent: amber
+    notes: >
+      This table is the book's control ledger, mapping each deployed artifact to
+      the NIST 800-53r5 control it operationalizes. IA-2(1) and IA-2(2), multi-
+      factor identification and authentication, are deployed as the phishing-
+      resistant Conditional Access policy set held as code. AC-2, AC-5, and AC-6 —
+      account management and least privilege — are deployed as the PIM and
+      just-in-time role configuration plus access reviews expressed as code. IA-3,
+      device identification and authentication, is deployed as the 802.1X EAP-TLS
+      profiles that authenticate devices at the wire. IA-5(2) and SC-17, PKI-based
+      authentication and public-key-infrastructure certificates, are deployed as the
+      certificate-lifecycle automation. IA-11, re-authentication, is deployed as PIM
+      activation re-authentication together with sign-in frequency conditions in
+      Conditional Access. The callout carries the honest limit that leads into the
+      next slide: Conditional Access as code governs the policy, but a global
+      administrator can still change it out of band, which is exactly why Book VI-08
+      diffs deployed state against source to catch that drift. Policy-as-code makes
+      the control reviewable and reproducible; continuous diffing is what keeps the
+      reviewed state and the running state the same.
+    vendor_sources: ["nist_800_53"]
+
+  # 10 ----------------------------------------------------------------------
+  - type: content
+    kicker: "HONEST LIMITS"
+    title: "What policy-as-code does not repeal"
+    layout: columns
+    cards:
+      - title: "Out-of-band change"
+        body: "CA as code governs the policy; a global admin can still change it out of band — Book VI-08 diffs deployed state against source to catch it."
+        accent: amber
+        status: "VI-08"
+      - title: "Break-glass is watched"
+        body: "The break-glass account is a deliberate, monitored exception; its every use must itself be a high-severity Book VI-03 detection."
+        accent: red
+        status: "VI-03"
+      - title: "Substitution ≠ re-architecture"
+        body: "Substituting the identity provider changes the policy syntax and the connectors; the access-decision mechanism is invariant."
+        accent: navy
+        status: "Invariant"
+    callout:
+      text: "The break-glass exclusion is the safety rule and the residual risk at once — it exists so policy-as-code cannot lock everyone out, which is exactly why its use must be alarmed."
+      accent: navy
+    notes: >
+      Close the book by naming its limits plainly. First, out-of-band change:
+      Conditional Access held as code governs the policy, but a global administrator
+      retains the power to change the running configuration directly in the portal,
+      outside the pipeline — policy-as-code does not remove that capability, it makes
+      the divergence detectable, which is why Book VI-08 diffs deployed state against
+      source to catch exactly this. Second, the break-glass account is a deliberate
+      and necessary exception, but it is also residual risk: it exists precisely so
+      that policy-as-code cannot lock every administrator out, which means it is a
+      privileged path that bypasses the blocking policies, and therefore its every
+      use must itself be a high-severity detection in Book VI-03's rule library.
+      The safety rule and the risk are the same object. Third, substituting the
+      identity provider changes the policy syntax and the connector estate but not
+      the access-decision mechanism, which is invariant across providers. The
+      callout draws the honest tension together: the break-glass exclusion is both
+      the safety rule that keeps the model operable and the residual risk that must
+      be alarmed — you cannot have policy-as-code for blocking access without it,
+      and you cannot have it safely without watching it.
+    vendor_sources: ["nist_800_53"]
+
+  # 11 ----------------------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "Every access decision now has a reviewable source of truth"
+    layout: columns
+    cards:
+      - title: "Decisions as code"
+        body: "Conditional Access, PIM/JIT, 802.1X, and certificate lifecycle deployed as versioned policy through the VI-00 pipeline — diffable, attestable, safe by construction."
+        accent: teal
+        status: "IA/AC realized"
+      - title: "Feeds response"
+        body: "Book VI-04 SOAR playbooks consume identity risk to drive revocation; break-glass use is a high-severity Book VI-03 detection."
+        accent: navy
+        status: "→ VI-03/04"
+      - title: "Diffed continuously"
+        body: "Book VI-07 emits access-policy state and reviews to the evidence contract; Book VI-08 diffs deployed policy against intent to catch out-of-band change."
+        accent: amber
+        status: "→ VI-07/08"
+    callout:
+      text: "IA-2 and AC-6 stop being assertions and become evidence — because the access decision is source the pipeline applies and the harness re-asserts, not a portal click no one can trace."
+      accent: navy
+    notes: >
+      Land the through-line for Book VI-02. This book takes the access-control
+      claims of the Volume I identity plane and the Volume III privileged-access
+      architecture and makes them deployable and reviewable: Conditional Access,
+      PIM and just-in-time roles, 802.1X port authentication, and certificate
+      lifecycle are all expressed as versioned policy applied through the Book VI-00
+      pipeline, guarded by the mandatory break-glass exclusion and the no-standing-
+      privilege rule so the model is safe by construction. From here the volume
+      continues to wire the plane into operations: Book VI-04's SOAR playbooks
+      consume identity risk to drive automated revocation, and break-glass use is a
+      high-severity detection in Book VI-03's rule library; Book VI-07 emits access-
+      policy state and access reviews to the evidence contract; and Book VI-08 diffs
+      deployed policy against intent to catch the out-of-band change a global
+      administrator can still make. Leave the audience with the sentence that
+      defines the book: IA-2 and AC-6 stop being assertions and become evidence,
+      because every access decision is now source the pipeline applies and the
+      harness re-asserts, not a portal click no one can trace. Keep scope honest:
+      SSA edition, FedRAMP Moderate, and the access-decision mechanism invariant
+      across identity providers.
+    vendor_sources: ["nist_800_53", "entra_ca", "entra_pim"]

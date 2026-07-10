@@ -32,6 +32,8 @@ This book carries the harnesses that make failure loud: detection-efficacy tests
 
 # The Three Harnesses
 
+![Three ways a deployment is made to prove itself](figs/vol6b08-fig-01-three-harnesses.png){#fig-vol6b08-harnesses fig-alt="A three-card diagram titled 'Three ways a deployment is made to prove itself,' under the eyebrow 'The three harnesses.' Card 1 (navy), Detection-efficacy: replays known-bad events against the Book VI-03 rules and asserts the right rule raises, catching rules that silently regressed after a schema change; tagged CA-2 assessment. Card 2 (teal), Telemetry-completeness: checks that every expected source has emitted within its freshness SLA, catching a source that silently stopped — the leading indicator of a blind detection; tagged CA-7(3) trend. Card 3 (amber), Deploy smoke test: post-apply assertions on IaC verify the deploy actually closed the control, catching a deployment that ran green but changed nothing that matters; tagged CA-2 assessment. A summary bar states each harness answers a different silent-failure question — together they make the difference between deployed once and operating. White background. Source: Vol VI Book 08 — Federal Application-Aware Networking — Validation & Test Harnesses briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
+
 | Harness | Question it answers | Fires when |
 |---|---|---|
 | Detection-efficacy | Do the Book VI-03 rules still catch what they should? | A replayed known-bad event does not raise its rule |
@@ -50,6 +52,8 @@ This book carries the harnesses that make failure loud: detection-efficacy tests
 ## Illustrative artifact — the telemetry-completeness check
 
 The single most valuable harness, because every other control in the volume depends on its source still emitting. It asserts that each expected table has produced data within its freshness SLA; a table that goes silent is the leading indicator of a blind detection.
+
+![Telemetry-completeness — every detection depends on its source](figs/vol6b08-fig-02-telemetry-completeness.png){#fig-vol6b08-completeness fig-alt="A three-card diagram titled 'Telemetry-completeness — because every detection depends on its source,' under the eyebrow 'The star harness.' Card 1 (teal), Assert freshness: for each expected table, assert it produced data within its SLA — SigninLogs at 60 minutes, DeviceEvents at 120; a null or stale result is a source gone dark; tagged per-table SLA. Card 2 (red), STALE is an outage: any table over its SLA is surfaced as STALE and routed to a high-severity alert — a dark source is a control outage, not a data-quality nit; tagged high-severity. Card 3 (navy), Efficacy is the counterpart: the active twin replays known-bad events and asserts the Book VI-03 rule raises, so a rule regressed by a schema change is caught by a test, not a missed incident; tagged regression gate. A summary bar states you schedule completeness at the tightest source SLA and gate efficacy on every rule change — the two harnesses guard opposite ends of the same blind spot. White background. Source: Vol VI Book 08 — Federal Application-Aware Networking — Validation & Test Harnesses briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 ```kql
 // Telemetry-completeness — alert when any expected source exceeds its freshness SLA (CA-7(3))
@@ -71,6 +75,8 @@ expected
 The detection-efficacy harness is the active counterpart: it replays a library of known-bad events (a benign impossible-travel pair, a scripted spray burst) into a test scope and asserts the corresponding Book VI-03 rule raises — so a rule that silently regressed after a schema change is caught by a test, not by a missed incident.
 
 # Deployment
+
+![How the harnesses are stood up and kept honest](figs/vol6b08-fig-03-validation-deployment.png){#fig-vol6b08-deployment fig-alt="A four-step horizontal sequence titled 'How the harnesses are stood up and kept honest,' under the eyebrow 'The validation deployment,' with the fourth step highlighted and all connectors filled to show the completed order. Step 1 (teal), Schedule completeness — tightest SLA; STALE to high-severity. Step 2 (navy), Gate efficacy on change — known-bad library as code. Step 3 (amber), Attach smoke tests — IaC deploy fails, not the audit. Step 4 (red, highlighted), Emit to the contract — harness results as CA-2 evidence. The detail panel for step 4 reads: emit all harness results to the evidence contract as CA-2 assessment evidence; the validation layer is not a side process — its results are continuously attested in the same authorization package as the controls it validates. White background. Source: Vol VI Book 08 — Federal Application-Aware Networking — Validation & Test Harnesses briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 1. Schedule the telemetry-completeness workbook at the tightest source SLA; route STALE results to a high-severity alert — a dark source is a control outage.
 2. Maintain the known-bad event library as code alongside the Book VI-03 rules; run efficacy tests on every rule change (regression gate) and on a schedule.
