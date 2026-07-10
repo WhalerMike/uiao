@@ -1,0 +1,434 @@
+# Deck spec — Vol VI Book 01, FedAAN Landing Zone & Network as Code.
+# Distilled from inbox/Application Aware Networking/Vol_VI_Book_01_FedAAN_Landing_Zone_Network_as_Code.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "inbox/Application Aware Networking/specs/Vol_VI_Book_01.yaml" \
+#     --out  "inbox/Application Aware Networking/Vol_VI_Book_01_FedAAN_Landing_Zone_Network_as_Code.pptx" \
+#     --date-code "2026-07-09 17:00 ET"
+deck:
+  title: "Landing Zone & Network as Code"
+  subtitle: "Infrastructure-as-code for the landing zone, IPAM/DDI naming plane, and the distributed policy-enforcement edge"
+  series_kicker: "Federal AAN — Volume VI: Implementation"
+  date_code: "2026-07-09 17:00 ET"
+  journey:
+    - "Platform"
+    - "Address"
+    - "Name"
+    - "Enforce"
+  sources:
+    terraform: "https://developer.hashicorp.com/terraform/docs"
+    azure_landing_zone: "https://learn.microsoft.com/azure/cloud-adoption-framework/ready/landing-zone/"
+    azure_firewall: "https://learn.microsoft.com/azure/firewall/overview"
+    infoblox_ddi: "https://www.infoblox.com/products/ddi/"
+    aws_control_tower: "https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html"
+    aws_network_firewall: "https://docs.aws.amazon.com/network-firewall/latest/developerguide/what-is-aws-network-firewall.html"
+    route53_dnssec: "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec.html"
+    zscaler_gov: "https://www.zscaler.com/products-and-solutions/public-sector-and-government"
+    cisa_protective_dns: "https://www.cisa.gov/resources-tools/services/protective-domain-name-system-resolver"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+
+slides:
+  # 1 -----------------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Book VI-01 — the deployable realization of Volume I,
+      Foundation and Transport. Volume I argues that authoritative naming and
+      addressing and a distributed enforcement edge are the only mechanisms that
+      close the DNS-authority, boundary-protection, and component-inventory
+      controls: you cannot attest authoritative name resolution without an
+      authoritative resolver, and you cannot inventory what you cannot enumerate.
+      No scanner creates that source of truth — it can only measure drift from
+      one. This book carries the code that stands the source of truth up: the
+      landing-zone scaffolding, the IPAM/DDI naming-and-addressing plane, and the
+      SASE/TIC 3.0 enforcement edge, all expressed as version-controlled modules
+      applied through the Book VI-00 pipeline. Walk the journey strip — Platform,
+      Address, Name, Enforce — because it is the dependency order of the module
+      topology: the platform foundation, then the address plan that becomes the
+      inventory join key, then the authoritative signed resolver, then the edge
+      that reads from it. Keep scope honest: this is the SSA edition targeting
+      FedRAMP Moderate; the deployed examples are named realizations of a mechanism
+      and every artifact carries a multi-CSP substitution column. Note the draft
+      disclaimer — CSI Team, not yet reviewed by the SSA CIO Office, OIS, or
+      leadership.
+
+  # 2 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "Stand the source of truth up — do not hope it is correct"
+    callout: "A source of truth you cannot re-derive is not a source of truth — it is a snapshot no one can regenerate."
+    callout_accent: navy
+    notes: >
+      This section frames the book's central claim before the modules. Volume I's
+      argument is that no scanner creates authoritative naming or inventory; it can
+      only measure drift from a source of truth that something else must author.
+      This book is what authors it — and, more importantly, what makes it
+      reproducible. An IPAM/DDI plane and a boundary defined in code can be
+      re-derived, diffed against intent, and attested. A hand-built landing zone
+      cannot satisfy CM-8's authoritative-inventory claim, because there is no
+      authority to point at — only a snapshot no one can regenerate. Set the
+      callout as the section thesis: reproducibility from source is not a
+      convenience, it is the property that turns "we have a resolver" into "the
+      resolver is authoritative and signing, and here is the source that proves
+      it." Everything that follows — the module topology, the DNSSEC-signed zone,
+      the deployment order — exists to make the Volume I source of truth
+      re-derivable rather than hand-assembled and hoped to be correct.
+
+  # 3 -----------------------------------------------------------------------
+  - type: table
+    kicker: "THE MODULE TOPOLOGY"
+    title: "Layered modules — each owns one plane, depends only on the layer beneath"
+    headers: ["Layer", "Module", "Owns", "Depends on"]
+    rows:
+      - cells: ["Foundation", "platform", "Management groups, subscriptions/accounts, org policy", "—"]
+        accent: navy
+      - cells: ["Addressing", "ipam", "Address-space allocation, subnet plan (source of truth)", "platform"]
+      - cells: ["Naming", "ddi", "Authoritative DNS, DNSSEC signing, RPZ, DHCP scopes", "ipam"]
+        accent: teal
+      - cells: ["Transport", "network", "Hub-spoke, segmentation, NGFW/route intent", "ipam"]
+      - cells: ["Enforcement", "edge", "SASE/TIC 3.0 PEP capability set", "network, ddi"]
+        accent: amber
+    callout:
+      text: "The ipam module's output — the authoritative address plan — is the join key that later makes CM-8 inventory possible. Each module emits its state to the evidence contract (Book VI-07)."
+      accent: navy
+    notes: >
+      This is the module topology, and the layering is deliberate rather than
+      cosmetic. Each module owns exactly one plane and depends only on the layer
+      beneath it, because the naming and addressing plane must exist before
+      workloads can be enumerated against it, and the enforcement edge must be able
+      to read from it. The platform module is the governed cloud foundation —
+      management groups, subscriptions or accounts, and org policy — and depends on
+      nothing. The ipam module allocates address space and owns the subnet plan,
+      and that plan is the source of truth everything downstream keys to. The ddi
+      module stands up authoritative DNS with DNSSEC signing, protective-DNS
+      response policy, and DHCP scopes, and it draws its scopes from the same ipam
+      source, so a device's lease, its address, and its inventory record are one
+      chain of custody rather than three independent guesses. The network module
+      lays down hub-spoke transport, segmentation, and NGFW and route intent. The
+      edge module deploys the SASE/TIC 3.0 policy-enforcement capability and depends
+      on both network and ddi. The load-bearing detail is in the callout: the ipam
+      output is the join key that makes CM-8 component inventory possible, and every
+      module emits its deployed state to the evidence contract in Book VI-07.
+
+  # 4 -----------------------------------------------------------------------
+  - type: table
+    kicker: "DEPLOYABLE ARTIFACTS"
+    title: "Each artifact realizes a Volume I mechanism — with a substitution path"
+    headers: ["Artifact", "Realizes (Vol I)", "Deployed example", "Multi-CSP substitution"]
+    rows:
+      - cells: ["platform module", "Governed cloud foundation", "Azure Landing Zone (Bicep/Terraform)", "AWS Control Tower + Terraform; GCP org policy"]
+        accent: navy
+      - cells: ["network module", "SC-7 boundary + traffic-class separation", "Terraform (VNet, Azure Firewall)", "AWS VPC + Network Firewall; GCP VPC-SC"]
+      - cells: ["ddi module", "SC-20/21/22 naming plane; CM-8 inventory key", "InfoBlox / cloud DNS as code", "BlueCat; Route 53 + IPAM"]
+        accent: teal
+      - cells: ["edge config", "AC-4 flow enforcement at the PEP", "SASE tenant-as-code", "Zscaler / Netskope GovCloud config-as-code"]
+        accent: amber
+    callout:
+      text: "The mechanism is the invariant. Swapping the deployed example changes the module syntax and the connector estate — never the control it closes."
+      accent: navy
+    notes: >
+      This is the artifact ledger — the concrete deployables and, critically, the
+      substitution column that keeps the book multi-CSP. The platform module
+      realizes the governed cloud foundation; the deployed example is an Azure
+      Landing Zone expressed in Bicep or Terraform, and the substitution is AWS
+      Control Tower with Terraform, or GCP org policy. The network module realizes
+      the SC-7 boundary and traffic-class separation; the deployed example is
+      Terraform provisioning a VNet and Azure Firewall, substitutable with AWS VPC
+      and Network Firewall, or GCP VPC Service Controls. The ddi module realizes
+      the SC-20/21/22 naming plane and produces the CM-8 inventory join key; the
+      deployed example is InfoBlox or a cloud DNS service expressed as code, and the
+      substitution is BlueCat, or Route 53 with AWS IPAM. The edge config realizes
+      AC-4 information-flow enforcement at the distributed policy-enforcement point;
+      the deployed example is a SASE tenant expressed as code, substitutable with
+      Zscaler or Netskope GovCloud configuration-as-code. State the rule the whole
+      series turns on: swapping the deployed example changes the module's syntax and
+      the connector estate, but never the control it closes. For the SSA edition the
+      target is FedRAMP Moderate, and the deployed examples are realizations, not
+      requirements.
+    vendor_sources: ["azure_landing_zone", "azure_firewall", "infoblox_ddi", "aws_control_tower", "aws_network_firewall", "route53_dnssec", "zscaler_gov"]
+
+  # 5 -----------------------------------------------------------------------
+  - type: content
+    kicker: "THE LOAD-BEARING MODULE"
+    title: "The DNSSEC-signed authoritative zone — a property of source, not a portal setting"
+    layout: columns
+    cards:
+      - title: "Authoritative + signing"
+        body: "The zone declares dnssec = on so SC-20(1) signed responses are an attestable property of source. The resolver being authoritative is diffable, not a portal claim."
+        accent: teal
+        status: "SC-20(1)"
+      - title: "Every query is telemetry"
+        body: "query_log = on makes every resolution an SI-4 / AU-12 record — the naming plane emits monitoring evidence by construction."
+        accent: navy
+        status: "SI-4 / AU-12"
+      - title: "Protective-DNS RPZ"
+        body: "An RPZ response policy fed by CISA Protective DNS blocks known-bad resolution (SC-21). Run log_only first to baseline, then flip to nxdomain enforcing."
+        accent: amber
+        status: "SC-21"
+    callout:
+      text: "The DHCP scopes and address plan come from the same ipam source, so a device's lease, its address, and its inventory record are one chain of custody — not three guesses."
+      accent: navy
+    notes: >
+      This slide walks the book's illustrative module, because the naming plane is
+      the load-bearing one — it is the source of truth SC-20, SC-21, SC-22, and
+      CM-8 all depend on. The zone, its DNSSEC signing posture, and its
+      protective-DNS response policy are all declared in code, so "the resolver is
+      authoritative and signing" becomes an attestable property of source rather
+      than a portal setting someone hopes is still true. The first card: the zone
+      resource sets DNSSEC on, closing SC-20(1) signed responses in a way a
+      reviewer can diff. The second: query logging is on, so every resolution is
+      SI-4 continuous-monitoring and AU-12 audit-generation telemetry — the naming
+      plane emits monitoring evidence by construction, not as an afterthought. The
+      third: a response-policy-zone fed by the CISA Protective DNS resolver or a
+      commercial threat-intelligence feed blocks known-bad resolution to satisfy
+      SC-21, and the deployment discipline is to run it in log-only mode first to
+      baseline benign resolution before flipping the action to nxdomain enforcing,
+      so you do not black-hole legitimate traffic on day one. The callout is the
+      chain-of-custody point: DHCP scopes and the address plan come from the same
+      ipam source, so a lease, an address, and an inventory record are one
+      traceable chain rather than three independent guesses. The HCL in the book is
+      an illustrative pattern to adapt against the agency's cloud and current
+      provider schema, not a drop-in module.
+    vendor_sources: ["infoblox_ddi", "route53_dnssec", "cisa_protective_dns", "terraform"]
+
+  # 6 -----------------------------------------------------------------------
+  - type: build-sequence
+    kicker: "DEPLOYMENT"
+    title: "Apply in dependency order — never a portal"
+    notes: >
+      Fallback notes: deployment is a strict dependency order through the Book
+      VI-00 change-controlled pipeline. Platform, then addressing, then the naming
+      and network planes, then the enforcement edge — with protective DNS baselined
+      in log-only before it enforces, and the ipam output registered as the
+      authoritative inventory source the CM-8 join reads.
+    steps:
+      - label: "Apply base"
+        sub: "platform to ipam to ddi/network"
+        accent: navy
+        detail: >
+          Apply platform, then ipam, then ddi and network in dependency order
+          through the change-controlled pipeline — never a portal. The address
+          plane must exist before anything can be enumerated against it.
+        notes: >
+          Step one: apply the base planes in dependency order — platform, then
+          ipam, then ddi and network — through the Book VI-00 change-controlled
+          pipeline, never a portal. The order is not optional: the ipam address
+          plane is the source of truth the naming plane's DHCP scopes and the later
+          CM-8 inventory join both read, so it must exist first. Applying through
+          the pipeline rather than clicking in a portal is what makes the deployed
+          state equal to reviewed source, which is the precondition for detecting
+          drift later. This is CM-2 and CM-3 in practice — a re-derivable baseline
+          applied under change control.
+      - label: "Baseline RPZ"
+        sub: "log_only first"
+        accent: amber
+        detail: >
+          Run the ddi protective-DNS response policy in log_only mode first to
+          baseline benign resolution, then flip the action to enforcing. This
+          prevents a day-one black-hole of legitimate traffic.
+        notes: >
+          Step two: baseline the protective-DNS response policy before it blocks
+          anything. Run the RPZ in log-only mode to observe what benign resolution
+          actually looks like in the estate, confirm the feed is not flagging
+          legitimate destinations, and only then flip the action to nxdomain
+          enforcing. This is basic operational safety — a protective-DNS control
+          that goes straight to enforcing can black-hole legitimate traffic on day
+          one and manufacture an outage that reads as a security failure. The
+          efficacy of the enforcing policy is bounded by the threat-intelligence
+          feed the agency subscribes to; the RPZ is only ever as current as its
+          feed.
+      - label: "Register CM-8"
+        sub: "ipam is the authority"
+        accent: teal
+        detail: >
+          Register the ipam output as the authoritative inventory source the CM-8
+          join reads. The address plan is now the enumeration authority — inventory
+          is derived from source, not hand-maintained.
+        notes: >
+          Step three: register the ipam output as the authoritative inventory
+          source the CM-8 component-inventory join reads. This is the step that
+          turns the address plan into an enumeration authority: CM-8 requires an
+          authoritative inventory, and a hand-maintained spreadsheet cannot satisfy
+          it because there is no authority to point at. Deriving inventory from the
+          ipam source of truth means the inventory is re-derivable and diffable,
+          which is exactly the property CM-8 needs and a snapshot cannot provide.
+          The join key produced here is what later lets a device's lease, address,
+          and inventory record resolve to one chain of custody.
+      - label: "Point the edge"
+        sub: "SASE/TIC at ddi"
+        accent: navy
+        detail: >
+          Point the edge SASE/TIC policy-enforcement point at the ddi resolver so
+          egress name resolution is governed at the enforcement edge — AC-4 flow
+          policy and protective DNS meet at the PEP.
+        notes: >
+          Step four: point the enforcement edge at the ddi resolver so egress name
+          resolution is governed at the SASE/TIC 3.0 policy-enforcement point. This
+          closes the loop: the distributed PEP enforces AC-4 information-flow policy
+          and, by resolving through the authoritative protective-DNS resolver,
+          extends SC-21 protection to egress traffic at the edge rather than
+          trusting endpoints to resolve safely on their own. With the edge reading
+          from the same naming plane the rest of the estate uses, name resolution
+          is consistent and governed at the one place traffic actually leaves the
+          boundary. This is where the Volume I distributed-enforcement claim
+          becomes an operating control.
+    vendor_sources: ["cisa_protective_dns", "zscaler_gov"]
+
+  # 7 -----------------------------------------------------------------------
+  - type: content
+    kicker: "CLOSURE NECESSITY"
+    title: "A source of truth you cannot re-derive is not one"
+    layout: columns
+    cards:
+      - title: "The claim"
+        body: "Volume I: no scanner creates authoritative naming or inventory — it only measures drift from a source of truth that something must author."
+        accent: navy
+        status: "Vol I"
+      - title: "What this book adds"
+        body: "It makes the source of truth reproducible — an IPAM/DDI plane and a boundary in code can be re-derived, diffed, and attested."
+        accent: teal
+        status: "Reproducible"
+      - title: "Why hand-built fails"
+        body: "A hand-built landing zone cannot satisfy CM-8's authoritative-inventory claim — there is no authority to point at, only a snapshot no one can regenerate."
+        accent: amber
+        status: "CM-8"
+    callout:
+      text: "Reproducibility from source is the property that turns 'we have a resolver' into an attested, re-derivable, diffable closure."
+      accent: navy
+    notes: >
+      This is the book's Closure Necessity argument, and it turns on
+      reproducibility. Volume I's claim is that no scanner creates authoritative
+      naming or inventory — a scanner can only measure drift from a source of truth
+      that something else must author in the first place. What this book adds is not
+      a new control closure but a property: it makes that source of truth
+      reproducible. An IPAM/DDI plane and a boundary defined in code can be
+      re-derived from source, diffed against intent, and attested to an assessor. A
+      hand-built landing zone cannot satisfy CM-8's authoritative-inventory
+      requirement, because there is no authority to point at — only a snapshot that
+      no one can regenerate and that begins drifting the moment it is captured. The
+      callout is the crux: reproducibility from source is the property that turns
+      the weak statement "we have a resolver" into the strong, assessable statement
+      "the resolver is authoritative and signing, here is the source, and here is
+      the diff proving deployed equals intended." This is why the book insists every
+      plane be code applied through a pipeline rather than assembled by hand and
+      hoped to be correct.
+
+  # 8 -----------------------------------------------------------------------
+  - type: table
+    kicker: "CONTROLS OPERATIONALIZED"
+    title: "What this book deploys, mapped to NIST 800-53r5"
+    headers: ["Control", "Title", "How this book deploys it"]
+    rows:
+      - cells: ["SC-7", "Boundary Protection", "Segmentation + NGFW/route intent as code at the enforcement edge"]
+        accent: navy
+      - cells: ["SC-20/20(1)", "Secure Name/Address Resolution (Authoritative)", "DNSSEC-signing authoritative resolver as code"]
+        accent: teal
+      - cells: ["SC-21", "Secure Name/Address Resolution (Recursive)", "Validating recursive resolver + RPZ protective DNS"]
+      - cells: ["SC-22", "Architecture & Provisioning for Name/Address", "Redundant resolver topology in the ddi module"]
+      - cells: ["CM-8", "System Component Inventory", "Address-keyed inventory derived from the IPAM source of truth"]
+        accent: amber
+      - cells: ["AC-4", "Information Flow Enforcement", "Application-aware flow policy at the SASE/TIC PEP"]
+    callout:
+      text: "The IaC deploys the mechanism; it does not repeal operational discipline — an out-of-band portal change still causes drift, which Book VI-08's smoke tests re-assert against."
+      accent: amber
+    notes: >
+      This table is the book's control ledger, mapping each deployed artifact to
+      the NIST 800-53r5 control it operationalizes. SC-7 boundary protection is
+      deployed as segmentation and NGFW and route intent expressed as code at the
+      enforcement edge. SC-20 and SC-20(1), secure and authoritative name and
+      address resolution, are deployed as the DNSSEC-signing authoritative resolver
+      declared in the ddi module. SC-21, secure recursive resolution, is the
+      validating recursive resolver plus the RPZ protective-DNS response policy.
+      SC-22, architecture and provisioning for name and address resolution, is the
+      redundant resolver topology the ddi module stands up. CM-8, system component
+      inventory, is the address-keyed inventory derived from the ipam source of
+      truth — the join key from the topology slide. AC-4, information-flow
+      enforcement, is the application-aware flow policy at the SASE/TIC
+      policy-enforcement point. The callout carries the honest limit: this
+      infrastructure-as-code deploys the mechanism, but it does not repeal
+      operational discipline. An out-of-band portal change still causes drift,
+      which is precisely why Book VI-08's smoke tests re-assert the intended state
+      against deployed reality. Deployment is necessary; continuous re-assertion is
+      what keeps the closure true.
+    vendor_sources: ["nist_800_53"]
+
+  # 9 -----------------------------------------------------------------------
+  - type: content
+    kicker: "HONEST LIMITS"
+    title: "What the code does not repeal"
+    layout: columns
+    cards:
+      - title: "Drift still happens"
+        body: "IaC deploys the mechanism; it does not repeal operational discipline. An out-of-band portal change still drifts — Book VI-08 smoke tests re-assert intent."
+        accent: amber
+        status: "VI-08"
+      - title: "RPZ is only its feed"
+        body: "Protective-DNS efficacy is bounded by the threat-intelligence feed the agency subscribes to. The RPZ is only ever as current as its feed."
+        accent: red
+        status: "Feed-bound"
+      - title: "Substitution ≠ re-architecture"
+        body: "Multi-CSP substitution changes the module syntax and connector estate; the naming/addressing/enforcement mechanism it realizes is invariant."
+        accent: navy
+        status: "Invariant"
+    callout:
+      text: "Naming these limits is what keeps the book honest — the Terraform shown is an illustrative pattern to adapt against the agency's cloud and current provider schema, not a drop-in module."
+      accent: navy
+    notes: >
+      Close the book by stating its limits plainly, because a deck that oversells
+      infrastructure-as-code is worse than one that is honest about it. First,
+      drift still happens: the IaC deploys the mechanism but does not repeal
+      operational discipline, and an out-of-band portal change will still cause the
+      deployed state to diverge from source — which is exactly why Book VI-08's
+      smoke tests re-assert the intended state rather than trusting that a one-time
+      apply holds forever. Second, protective-DNS efficacy is bounded by the
+      threat-intelligence feed the agency subscribes to; the RPZ blocks only what
+      its feed knows about, so it is only ever as current as that feed, whether
+      that is the CISA Protective DNS resolver or a commercial source. Third,
+      multi-CSP substitution is a change of syntax and connector estate, not a
+      re-architecture — the naming, addressing, and enforcement mechanism the
+      module realizes is invariant across clouds. The callout reinforces the
+      practical caveat the book itself makes: the Terraform shown is an illustrative
+      pattern to adapt against the agency's cloud and current provider schema, not a
+      drop-in module, and it should be validated before it is trusted.
+    vendor_sources: ["cisa_protective_dns", "terraform"]
+
+  # 10 ----------------------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "The Volume I source of truth, now re-derivable from code"
+    layout: columns
+    cards:
+      - title: "Foundation stood up"
+        body: "Landing zone, IPAM/DDI naming plane, and the SASE/TIC enforcement edge deployed as version-controlled modules through the VI-00 pipeline."
+        accent: teal
+        status: "Vol I realized"
+      - title: "Hardened next"
+        body: "Book VI-06 applies the SCuBA/CIS/STIG baselines that harden the deployed platform this book stands up."
+        accent: navy
+        status: "→ VI-06"
+      - title: "Proven continuously"
+        body: "Book VI-07 consumes each module's evidence-contract emission; Book VI-08 smoke tests re-assert the deployed boundary against intent."
+        accent: amber
+        status: "→ VI-07/08"
+    callout:
+      text: "A device's lease, its address, and its inventory record are now one chain of custody — the naming/addressing plane is authoritative because it is code, not because someone remembers."
+      accent: navy
+    notes: >
+      Land the through-line for Book VI-01. This book takes Volume I's argument —
+      that authoritative naming and addressing and a distributed enforcement edge
+      are the only mechanisms that close the DNS-authority, boundary, and inventory
+      controls — and makes it deployable and, crucially, reproducible. The landing
+      zone, the IPAM/DDI naming plane, and the SASE/TIC enforcement edge are now
+      version-controlled modules applied through the Book VI-00 pipeline, so the
+      source of truth Volume I designs can be re-derived, diffed, and attested
+      rather than hand-assembled and hoped to be correct. From here the volume
+      continues: Book VI-06 applies the SCuBA, CIS, and STIG baselines that harden
+      the platform this book stands up; Book VI-07 consumes each module's evidence-
+      contract emission and binds it to controls and KSIs; and Book VI-08's smoke
+      tests re-assert the deployed boundary against intent to catch drift. Leave the
+      audience with the chain-of-custody image: a device's lease, its address, and
+      its inventory record are now one traceable chain because the naming and
+      addressing plane is authoritative by being code — not because someone
+      remembers how it was built. Keep scope honest: SSA edition, FedRAMP Moderate,
+      mechanism invariant across clouds.
+    vendor_sources: ["nist_800_53", "azure_landing_zone"]
