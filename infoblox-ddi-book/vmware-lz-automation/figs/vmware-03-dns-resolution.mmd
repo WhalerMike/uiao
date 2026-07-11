@@ -1,0 +1,22 @@
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  VM["Tenant VM"]:::spoke
+  FWD["NSX-T DNS forwarder<br/>(Tier-0 / Tier-1)"]:::native
+  GRID["vNIOS member<br/>authoritative + recursive"]:::ibx
+
+  subgraph ANS["Answer path"]
+    LOCAL["Authoritative zone<br/>answered locally"]:::ibx
+    AD["On-prem AD DNS<br/>corp.example"]:::ext
+    CSP["Cloud resolver<br/>(CSP cross-forward)"]:::ext
+  end
+
+  VM -->|"1 query"| FWD
+  FWD -->|"2 forward all<br/>53 tcp+udp"| GRID
+  GRID -->|"3a enterprise / private zone"| LOCAL
+  GRID -.->|"3b corp.example<br/>conditional forward"| AD
+  GRID -.->|"3c CSP-private name<br/>cross-forward"| CSP
+  LOCAL -->|"4 answer"| VM

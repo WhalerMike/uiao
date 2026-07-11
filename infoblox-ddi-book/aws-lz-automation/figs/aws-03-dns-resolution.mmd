@@ -1,0 +1,26 @@
+%% aws-03-dns-resolution.mmd
+%% Resolution flow: spoke -> Infoblox anycast -> answered locally (enterprise)
+%% or conditionally forwarded to Route 53 Resolver inbound for AWS-service names.
+graph LR
+  SPOKE["Spoke EC2 instance<br/>DHCP option set -> DDI VIP"]:::spoke
+
+  subgraph hub["Network account · hub VPC"]
+    VIP["Infoblox anycast VIP<br/>(hub vNIOS members)<br/>authoritative + RPZ"]:::ibx
+    RINB["Route 53 Resolver<br/>INBOUND endpoint"]:::native
+    R53["Route 53 private<br/>hosted zones / VPC resolver"]:::native
+  end
+
+  ONPREM["On-prem / enterprise<br/>corp.example"]:::ext
+  OTHER["Other cloud<br/>(Azure/GCP/OCI)"]:::ext
+
+  SPOKE -->|"all DNS 53"| VIP
+  VIP -->|"enterprise + on-prem zones<br/>answered / recursed"| ONPREM
+  VIP -. "amazonaws.com,<br/>compute.internal,<br/>R53 private zones" .-> RINB
+  RINB --> R53
+  VIP -. "conditional forward" .-> OTHER
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;

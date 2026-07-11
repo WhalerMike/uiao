@@ -33,6 +33,8 @@ Shared VPC itself come from the Google Cloud foundation blueprint.
 
 ## 2. Reference architecture
 
+![GCP reference architecture: anycast vNIOS members in the host-project Shared VPC hub, service-project workloads resolving via 169.254.169.254 to Cloud DNS server policies that forward to the members, conditional-forward of googleapis/private names back to Cloud DNS, and a least-privilege discovery service account syncing VPCs into IPAM](figs/gcp-ch-01-reference-architecture.png)
+
 The control plane is either an on-prem/hub **NIOS Grid Master (+ Grid Master
 Candidate)** or the **Universal DDI** SaaS portal. Data-plane **vNIOS members**
 providing DNS (and DHCP where you override Google's managed DHCP for specific

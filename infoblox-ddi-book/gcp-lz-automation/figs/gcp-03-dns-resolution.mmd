@@ -1,0 +1,28 @@
+%% gcp-03-dns-resolution.mmd
+%% DNS resolution flow: Cloud DNS inbound server policy + outbound forwarding zones
+%% around the Infoblox members. Enterprise / other-cloud / on-prem / internet paths.
+graph TD
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  VM["workload VM"]:::spoke
+  MDS["169.254.169.254<br/>metadata resolver"]:::native
+  CDNS["Cloud DNS<br/>server policy · zones"]:::native
+  IBX["Infoblox members<br/>authoritative + RPZ/Threat Defense"]:::ibx
+
+  ENT["Cloud DNS private zones<br/>*.googleapis.com"]:::native
+  ONPREM["on-prem / corp<br/>corp.example.com · reverse"]:::ext
+  OTHER["other cloud<br/>AWS / Azure zones"]:::ext
+  NET["internet / public DNS"]:::ext
+
+  VM --> MDS
+  MDS --> CDNS
+  CDNS -- "outbound forwarding zone<br/>(corp/reverse → members)" --> IBX
+  CDNS -- "native: googleapis / private zones" --> ENT
+  IBX -- "inbound server policy<br/>(forwarder IPs → Cloud DNS)" --> ENT
+  IBX -- "conditional forward" --> ONPREM
+  IBX -- "conditional forward" --> OTHER
+  IBX -- "recursion (policy-filtered)" --> NET
+  ONPREM -. "inbound forwarder IPs<br/>resolve Cloud DNS private" .-> CDNS

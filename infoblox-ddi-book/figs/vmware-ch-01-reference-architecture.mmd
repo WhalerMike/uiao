@@ -1,0 +1,37 @@
+%% VMware chapter reference architecture (05-vmware.md §2).
+%% Palette per figs/HOUSE-STYLE.md.
+graph TD
+  subgraph Mgmt["VCF Management / Edge Domain"]
+    GM["vNIOS Grid Master<br/>+ GM Candidate"]
+    IB1["vNIOS member A<br/>DNS/DHCP · VRRP"]
+    IB2["vNIOS member B<br/>HA pair"]
+    DISCO["vCenter + NSX<br/>discovery accounts"]
+  end
+  subgraph Ext["Adjacent services"]
+    AD["On-prem AD DNS<br/>corp.example"]
+  end
+  subgraph NSX["NSX fabric (Geneve overlay)"]
+    T0["Tier-0 / Tier-1 GW<br/>DNS fwd + DHCP relay"]
+    S1["Segment / tenant VMs"]
+    S2["Segment / tenant VMs"]
+  end
+
+  GM --- IB1
+  GM --- IB2
+  T0 -- "DNS 53 / DHCP 67-68" --> IB1
+  S1 --> T0
+  S2 --> T0
+  IB1 -- "cond. fwd corp.example" --> AD
+  DISCO -- "discover vCenter/NSX → IPAM" --> IB1
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class GM,IB1,IB2 ibx;
+  class T0 native;
+  class AD ext;
+  class DISCO ctrl;
+  class S1,S2 spoke;

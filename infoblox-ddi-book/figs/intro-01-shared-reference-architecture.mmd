@@ -1,0 +1,35 @@
+%% Shared reference architecture — the hub-and-spoke DDI pattern every chapter specializes.
+%% Palette per figs/HOUSE-STYLE.md.
+graph TD
+  subgraph OnPrem["On-prem DC"]
+    GM["Grid Master / GMC<br/>or Universal DDI"]
+  end
+  subgraph Hub["Cloud hub VNet / VPC (connectivity LZ)"]
+    IB["vNIOS members<br/>DNS/DHCP anycast"]
+    IPAM["Infoblox IPAM<br/>authoritative"]
+    NAT["Native cloud DNS<br/>private zones"]
+    DISCO["Discovery adapter<br/>cloud credential"]
+  end
+  subgraph Spokes["Workload spokes"]
+    W1["Spoke VNet / VPC"]
+    W2["Spoke VNet / VPC"]
+  end
+
+  GM -- "Grid sync / 443 SaaS" --> IB
+  W1 -- "DNS query" --> IB
+  W2 -- "DNS query" --> IB
+  IB -- "cond. fwd cloud names" --> NAT
+  DISCO -- "discover VNets/subnets" --> IPAM
+  IB --- IPAM
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class GM ext;
+  class IB,IPAM ibx;
+  class NAT native;
+  class DISCO ctrl;
+  class W1,W2 spoke;

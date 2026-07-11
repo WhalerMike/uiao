@@ -1,0 +1,38 @@
+%% GCP chapter reference architecture (03-gcp.md §2).
+%% Palette per figs/HOUSE-STYLE.md.
+graph TD
+  subgraph OnPrem["On-prem DC (Interconnect / HA VPN)"]
+    GM["Grid Master / GMC<br/>or Universal DDI Portal"]
+  end
+  subgraph Host["Host project — Hub / Shared VPC"]
+    IB1["vNIOS member A<br/>us-central1-a"]
+    IB2["vNIOS member B<br/>us-central1-b · anycast"]
+    CDNS["Cloud DNS<br/>in/out server policy"]
+    SA["Discovery SA<br/>compute+dns reader"]
+  end
+  subgraph Svc1["Service project 1"]
+    W1["Workload VMs<br/>→ 169.254.169.254"]
+  end
+  subgraph Svc2["Service project 2"]
+    W2["Workload VMs<br/>→ 169.254.169.254"]
+  end
+
+  GM -- "Grid VPN 1194/2114<br/>or 443 sync" --> IB1
+  GM --- IB2
+  W1 -- "Cloud DNS → members" --> IB1
+  W2 -- "Cloud DNS → members" --> IB2
+  IB1 -- "cond. fwd googleapis / private" --> CDNS
+  CDNS -- "inbound policy: corp.example" --> IB1
+  SA -- "discover VPCs → IPAM" --> IB1
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class GM ext;
+  class IB1,IB2 ibx;
+  class CDNS native;
+  class SA ctrl;
+  class W1,W2 spoke;

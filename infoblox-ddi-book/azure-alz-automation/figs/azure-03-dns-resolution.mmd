@@ -1,0 +1,30 @@
+%% Azure DNS resolution flow through the Infoblox hub.
+%% Palette per ../../figs/HOUSE-STYLE.md.
+graph LR
+  W["Spoke VM"]
+  VIP["Infoblox anycast VIP<br/>recursion + RPZ"]
+  PR["Azure Private Resolver<br/>inbound endpoint"]
+  PDNS["privatelink / Azure<br/>Private DNS"]
+  ENT["Enterprise zones<br/>corp.example"]
+  OTH["Other-cloud<br/>private zones"]
+  AD["On-prem AD DNS"]
+  INT["Internet<br/>+ threat feeds"]
+
+  W -- "all DNS" --> VIP
+  VIP -- "cond. fwd privatelink" --> PR
+  PR -- "resolves" --> PDNS
+  VIP -- "authoritative" --> ENT
+  VIP -- "cross-forward" --> OTH
+  VIP -- "cond. fwd" --> AD
+  VIP -- "recursive" --> INT
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class VIP,ENT ibx;
+  class PR,PDNS,OTH native;
+  class AD,INT ext;
+  class W spoke;

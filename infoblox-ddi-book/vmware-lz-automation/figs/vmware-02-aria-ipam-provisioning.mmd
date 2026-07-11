@@ -1,0 +1,25 @@
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+
+  subgraph ARIA["VMware Aria Automation"]
+    BP["Blueprint /<br/>cloud template"]:::native
+    PLUG["Infoblox IPAM plug-in<br/>(external IPAM provider)"]:::ctrl
+  end
+
+  subgraph GRID["Infoblox Grid (authoritative IPAM/DNS)"]
+    IPAM["IPAM: allocate next<br/>free IP from range"]:::ibx
+    DNS["DNS: create A / PTR<br/>host record"]:::ibx
+  end
+
+  VM["Tenant VM on<br/>NSX segment"]:::spoke
+
+  BP -->|"1 request network + IP"| PLUG
+  PLUG -->|"2 WAPI / 443<br/>EA-steered by env / tenant / zone"| IPAM
+  IPAM --> DNS
+  DNS -->|"3 allocate IP + record"| PLUG
+  PLUG -->|"4 inject IP / gateway / netmask / DNS"| VM
+  VM -.->|"5 delete VM"| PLUG
+  PLUG -.->|"6 reclaim: release IP +<br/>remove DNS records"| IPAM

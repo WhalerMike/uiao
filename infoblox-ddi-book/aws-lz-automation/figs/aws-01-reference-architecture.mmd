@@ -1,0 +1,45 @@
+%% aws-01-reference-architecture.mmd
+%% Infoblox DDI in the AWS Landing Zone connectivity hub (Network account,
+%% shared-services VPC, Transit Gateway) with cross-AZ vNIOS members and the
+%% on-prem Grid Master control plane.
+graph TD
+  subgraph onprem["On-prem DC (existing Grid)"]
+    GM["Grid Master / GMC<br/>control plane · Grid DB"]:::ibx
+  end
+
+  subgraph net["Network account · shared-services (hub) VPC"]
+    direction TB
+    subgraph azA["AZ-a"]
+      M1["vNIOS member<br/>ENI0=MGMT · ENI1=LAN1<br/>DNS/DHCP + RPZ"]:::ibx
+    end
+    subgraph azB["AZ-b"]
+      M2["vNIOS member<br/>ENI0=MGMT · ENI1=LAN1<br/>HA pair / anycast"]:::ibx
+    end
+    VIP["DDI anycast VIP<br/>(one stable resolver)"]:::ibx
+    RINB["Route 53 Resolver<br/>INBOUND endpoint"]:::native
+    ROUT["Route 53 Resolver<br/>OUTBOUND endpoint + rules"]:::native
+    TGW{{"Transit Gateway"}}:::native
+  end
+
+  subgraph spokeA["Workload account A"]
+    SA["spoke VPC/subnets<br/>DHCP option set -> members"]:::spoke
+  end
+  subgraph spokeB["Workload account B"]
+    SB["spoke VPC/subnets<br/>DHCP option set -> members"]:::spoke
+  end
+
+  GM ===|"Grid VPN 1194/udp + 2114/tcp"| M1
+  GM ===|"Grid VPN 1194/udp + 2114/tcp"| M2
+  M1 --- VIP
+  M2 --- VIP
+  VIP -. "conditional forward<br/>AWS-service names" .-> RINB
+  ROUT -. "forwarding rules" .-> VIP
+  TGW --- VIP
+  SA -->|"DNS 53 via TGW"| TGW
+  SB -->|"DNS 53 via TGW"| TGW
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;

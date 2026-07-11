@@ -99,6 +99,8 @@ enterprises pick there.
 
 ## 0.4 A shared reference architecture (the pattern every chapter specializes)
 
+![Shared hub-and-spoke DDI reference architecture: an on-prem Grid Master/GMC (or Universal DDI) drives anycast vNIOS DNS/DHCP members in the cloud hub, workload spokes forward DNS to them, members conditionally forward to native cloud DNS, and the discovery adapter syncs cloud VNets/VPCs into the authoritative Infoblox IPAM](figs/intro-01-shared-reference-architecture.png)
+
 ```
                     ┌──────────────────────────────────────────┐
    On-prem DC ──────┤  Grid Master / GMC  or  Universal DDI     │

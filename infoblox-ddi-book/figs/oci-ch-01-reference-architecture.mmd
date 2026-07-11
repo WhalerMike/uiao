@@ -1,0 +1,38 @@
+%% OCI chapter reference architecture (04-oci.md §2).
+%% Palette per figs/HOUSE-STYLE.md.
+graph TD
+  subgraph OnPrem["On-prem DC (FastConnect / IPSec · DRG)"]
+    GM["Grid Master / GMC<br/>or Universal DDI SaaS"]
+  end
+  subgraph Hub["Hub VCN — connectivity compartment"]
+    IB1["vNIOS member<br/>AD-1 · CP-2205"]
+    IB2["vNIOS member<br/>AD-2 · HA/anycast"]
+    RES["OCI DNS resolver<br/>listen + forward EP"]
+    KEY["OCI API key<br/>SDK/Terraform disco"]
+  end
+  subgraph SpokeA["Spoke VCN A"]
+    W1["Subnet DHCP opts<br/>→ hub members"]
+  end
+  subgraph SpokeB["Spoke VCN B"]
+    W2["Subnet DHCP opts<br/>→ hub members"]
+  end
+
+  GM -- "Grid VPN 1194/2114" --> IB1
+  GM --- IB2
+  W1 -- "DRG · DNS" --> IB1
+  W2 -- "DRG · DNS" --> IB2
+  IB1 -- "cond. fwd oraclevcn.com" --> RES
+  RES -- "private views" --> IB1
+  KEY -- "discover VCNs → IPAM" --> IB1
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class GM ext;
+  class IB1,IB2 ibx;
+  class RES native;
+  class KEY ctrl;
+  class W1,W2 spoke;
