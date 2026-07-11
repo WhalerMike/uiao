@@ -60,6 +60,10 @@ validation scripts): see `azure-alz-automation/servicenow/`, `aws-lz-automation/
 `gcp-lz-automation/servicenow/`, `oci-lz-automation/servicenow/`, and
 `vmware-lz-automation/servicenow/`.
 
+For the **importable starting point** — the actual scoped-app records (Script Includes that
+implement the WAPI/Universal DDI calls, a REST Message, the MID validation gate, and a Flow
+blueprint) — see [`servicenow-app/`](./servicenow-app/README.md).
+
 ## 7.4 GCC-Moderate boundary & governance
 
 This *strengthens* the compliance story rather than complicating it:
