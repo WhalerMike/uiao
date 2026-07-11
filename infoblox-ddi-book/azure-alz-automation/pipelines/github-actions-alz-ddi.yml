@@ -1,0 +1,303 @@
+# ---------------------------------------------------------------------------
+# github-actions-alz-ddi.yml
+#
+# Stage 2 (+ Stage 3) GitOps pipeline for the Infoblox DDI extension that layers
+# on the Microsoft ALZ Accelerator. STARTER SKELETON — coherent and internally
+# consistent, but pin your own action SHAs/versions and supply environment
+# values (subscription IDs, backend config, image/SKU) before production use.
+#
+# Boundary: Commercial Azure (.com) — login.microsoftonline.com /
+# management.azure.com. NOT Azure Government (.us). Auth is OIDC federated
+# credentials (azure/login) — NO stored client secrets. See _module-contract.md.
+#
+# Stages (jobs):
+#   alz       reference/placeholder — reads Stage 1 (ALZ Accelerator) remote-state
+#             outputs. Stage 1 itself is typically a SEPARATE pipeline; this job
+#             only CONSUMES its outputs (hub_vnet_id, hub_resource_group_name,
+#             connectivity_subscription_id, log_analytics_workspace_id, ...).
+#   ddi       terraform init/plan/apply of ../terraform (with a parallel note for
+#             the ../bicep path). Gated on the deployment_model /
+#             acknowledge_saas_boundary contract rule (§1).
+#   validate  runs validation/*.sh; any non-zero exit fails the pipeline.
+# ---------------------------------------------------------------------------
+
+name: alz-ddi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infoblox-ddi-book/azure-alz-automation/terraform/**"
+      - "infoblox-ddi-book/azure-alz-automation/bicep/**"
+      - "infoblox-ddi-book/azure-alz-automation/validation/**"
+      - "infoblox-ddi-book/azure-alz-automation/pipelines/github-actions-alz-ddi.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev sandbox -> prod promotion flow)"
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      apply:
+        description: "Run terraform apply (false = plan-only)"
+        type: boolean
+        default: false
+
+# OIDC: id-token:write lets the job fetch the GitHub OIDC token that azure/login
+# exchanges for an Azure access token via a federated credential. It grants NO
+# write access to repo contents.
+permissions:
+  id-token: write
+  contents: read
+
+# Non-secret config. Secrets (AZURE_CLIENT_ID, AZURE_TENANT_ID,
+# AZURE_SUBSCRIPTION_ID, INFOBLOX_* ...) live in GitHub Environments /
+# repository secrets and are pulled through to jobs, but WAPI/CSP creds are
+# ultimately sourced from Azure Key Vault at run time (see the validate job).
+env:
+  TF_VERSION: "1.9.5"
+  TF_WORKING_DIR: "infoblox-ddi-book/azure-alz-automation/terraform"
+  VALIDATION_DIR: "infoblox-ddi-book/azure-alz-automation/validation"
+  ARM_USE_OIDC: "true"          # tells the azurerm provider to auth via OIDC
+  # deployment_model drives the boundary rule; keep in sync with the TF var.
+  DEPLOYMENT_MODEL: "grid"      # grid | universal_ddi
+  ACKNOWLEDGE_SAAS_BOUNDARY: "false"
+
+concurrency:
+  group: alz-ddi-${{ github.ref }}-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  # =========================================================================
+  # Stage 1 handoff (reference/placeholder). Stage 1 = the Microsoft ALZ
+  # Accelerator, usually its OWN pipeline. This job does not build the landing
+  # zone; it only reads Stage 1's remote-state outputs so Stage 2 can consume
+  # them as inputs (contract §2). Swap the data source for however your platform
+  # team publishes outputs (remote state, a published artifact, or azure CLI).
+  # =========================================================================
+  alz:
+    name: "Stage 1 · read ALZ outputs"
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    outputs:
+      hub_vnet_id: ${{ steps.read.outputs.hub_vnet_id }}
+      hub_resource_group_name: ${{ steps.read.outputs.hub_resource_group_name }}
+      connectivity_subscription_id: ${{ steps.read.outputs.connectivity_subscription_id }}
+      log_analytics_workspace_id: ${{ steps.read.outputs.log_analytics_workspace_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC, commercial .com)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # environment defaults to AzureCloud (commercial). Do NOT set
+          # AzureUSGovernment here — this deliverable is .com, not .us.
+
+      - name: Read Stage 1 (ALZ Accelerator) remote-state outputs
+        id: read
+        shell: bash
+        env:
+          ALZ_STATE_RG: ${{ vars.ALZ_STATE_RG }}
+          ALZ_STATE_SA: ${{ vars.ALZ_STATE_SA }}
+          ALZ_STATE_CONTAINER: ${{ vars.ALZ_STATE_CONTAINER }}
+          ALZ_STATE_KEY: ${{ vars.ALZ_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          # STARTER: this reads the Stage 1 platform state produced by the ALZ
+          # Accelerator. In a real setup use `terraform_remote_state` from the
+          # Stage 2 module, or `az` to read published outputs. Shown here with
+          # the Azure CLI as an illustrative, provider-agnostic handoff.
+          echo "Reading ALZ Accelerator outputs from ${ALZ_STATE_SA}/${ALZ_STATE_CONTAINER}/${ALZ_STATE_KEY}"
+          # az storage blob download ... | jq -r '.outputs.hub_vnet_id.value'
+          # Placeholders below so downstream wiring is exercised end-to-end:
+          echo "hub_vnet_id=${HUB_VNET_ID:-/subscriptions/xxxx/resourceGroups/rg-connectivity/providers/Microsoft.Network/virtualNetworks/vnet-hub}" >> "$GITHUB_OUTPUT"
+          echo "hub_resource_group_name=${HUB_RG:-rg-connectivity}" >> "$GITHUB_OUTPUT"
+          echo "connectivity_subscription_id=${CONN_SUB:-00000000-0000-0000-0000-000000000000}" >> "$GITHUB_OUTPUT"
+          echo "log_analytics_workspace_id=${LAW_ID:-/subscriptions/xxxx/resourceGroups/rg-mgmt/providers/Microsoft.OperationalInsights/workspaces/law-alz}" >> "$GITHUB_OUTPUT"
+
+  # =========================================================================
+  # Stage 2 — the Infoblox DDI module. terraform init/plan/apply of ../terraform.
+  # Parallel Bicep path is noted (bicep/ mirrors the same variables; deploy with
+  # `az deployment sub/group create`). Apply is gated on the SaaS boundary rule.
+  # =========================================================================
+  ddi:
+    name: "Stage 2 · Terraform DDI"
+    needs: alz
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Contract §1 boundary gate ---------------------------------------
+      # deployment_model=universal_ddi routes the control plane to the Infoblox
+      # Portal SaaS, OUTSIDE the ATO boundary. Hard-fail unless explicitly
+      # acknowledged. (The TF module also enforces this; the pipeline fails fast
+      # so we never even init the SaaS path unacknowledged.)
+      - name: Enforce SaaS boundary acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${DEPLOYMENT_MODEL}" = "universal_ddi" ] && [ "${ACKNOWLEDGE_SAAS_BOUNDARY}" != "true" ]; then
+            echo "::error::deployment_model=universal_ddi routes control plane to Infoblox Portal SaaS (outside the ATO boundary)."
+            echo "::error::Set ACKNOWLEDGE_SAAS_BOUNDARY=true only after the FedRAMP/authorization review. See _module-contract.md §1."
+            exit 1
+          fi
+          echo "Boundary gate OK (model=${DEPLOYMENT_MODEL}, ack=${ACKNOWLEDGE_SAAS_BOUNDARY})"
+
+      - name: Azure login (OIDC, commercial .com)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # Pull provider creds Infoblox needs (e.g. WAPI admin, join token) from
+      # Key Vault. The azurerm provider itself uses OIDC (ARM_USE_OIDC); the
+      # infobloxopen/infoblox provider needs its own creds, sourced here.
+      - name: Fetch Infoblox provider creds from Key Vault
+        shell: bash
+        env:
+          KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::secret"
+          INFOBLOX_PASSWORD="$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name infoblox-wapi-password --query value -o tsv)"
+          echo "::add-mask::${INFOBLOX_PASSWORD}"
+          echo "INFOBLOX_USERNAME=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name infoblox-wapi-username --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${INFOBLOX_PASSWORD}" >> "$GITHUB_ENV"
+
+      - name: Terraform Init (remote state)
+        env:
+          # Remote backend on commercial blob storage (*.blob.core.windows.net).
+          # OIDC-based backend auth mirrors the provider (ARM_USE_OIDC=true).
+          BACKEND_RG: ${{ vars.TFSTATE_RG }}
+          BACKEND_SA: ${{ vars.TFSTATE_SA }}
+          BACKEND_CONTAINER: ${{ vars.TFSTATE_CONTAINER }}
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${BACKEND_RG}" \
+            -backend-config="storage_account_name=${BACKEND_SA}" \
+            -backend-config="container_name=${BACKEND_CONTAINER}" \
+            -backend-config="key=ddi-${{ github.event.inputs.environment || 'dev' }}.tfstate" \
+            -backend-config="use_oidc=true"
+
+      - name: Terraform Plan
+        id: plan
+        env:
+          # Canonical contract variables (identical names in TF/Bicep, §3).
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_deployment_model: ${{ env.DEPLOYMENT_MODEL }}
+          TF_VAR_acknowledge_saas_boundary: ${{ env.ACKNOWLEDGE_SAAS_BOUNDARY }}
+          TF_VAR_hub_resource_group_name: ${{ needs.alz.outputs.hub_resource_group_name }}
+          TF_VAR_hub_vnet_id: ${{ needs.alz.outputs.hub_vnet_id }}
+          TF_VAR_key_vault_id: ${{ vars.KEY_VAULT_ID }}
+        run: terraform plan -input=false -out=tfplan
+
+      # Apply only on: workflow_dispatch with apply=true, OR a push to main.
+      # PRs are plan-only. Environment protection rules (reviewers) on `prod`
+      # provide the human gate for the promotion flow.
+      - name: Terraform Apply
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: "Parallel path note — Bicep"
+        if: always()
+        shell: bash
+        run: |
+          echo "Bicep alternative (../bicep) mirrors the same contract variables (§9):"
+          echo "  az deployment group create -g <hub_rg> -f ../bicep/main.bicep -p @../bicep/params.<env>.bicepparam"
+          echo "Where no Bicep-native Infoblox resource exists, the module uses a"
+          echo "deploymentScript (Azure CLI/REST) or an Ansible handoff. Choose ONE"
+          echo "path (Terraform OR Bicep) per environment — do not run both."
+
+      # Publish Stage 2 outputs for the validate job (contract §7).
+      - name: Export DDI outputs
+        id: out
+        run: |
+          {
+            echo "ddi_anycast_vip=$(terraform output -raw ddi_anycast_vip 2>/dev/null || echo '')"
+            echo "grid_master_ip=$(terraform output -raw grid_master_ip 2>/dev/null || echo '')"
+          } >> "$GITHUB_OUTPUT"
+    outputs:
+      ddi_anycast_vip: ${{ steps.out.outputs.ddi_anycast_vip }}
+      grid_master_ip: ${{ steps.out.outputs.grid_master_ip }}
+
+  # =========================================================================
+  # Stage 3 — validation gates. Runs the validation/*.sh scripts; any non-zero
+  # exit fails the pipeline. Secrets come from Key Vault; non-secret inputs from
+  # Stage 2 outputs.
+  # =========================================================================
+  validate:
+    name: "Stage 3 · Validate"
+    needs: ddi
+    # Skip validation on plan-only PR runs (nothing was applied).
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validation tooling
+        run: sudo apt-get update && sudo apt-get install -y dnsutils jq curl
+
+      - name: Azure login (OIDC, commercial .com)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch Infoblox creds from Key Vault
+        shell: bash
+        env:
+          KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+        run: |
+          set -euo pipefail
+          P="$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name infoblox-wapi-password --query value -o tsv)"
+          echo "::add-mask::${P}"
+          echo "INFOBLOX_USERNAME=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name infoblox-wapi-username --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${P}" >> "$GITHUB_ENV"
+
+      - name: DNS resolution check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_VIP: ${{ needs.ddi.outputs.ddi_anycast_vip }}
+          TEST_FQDN: ${{ vars.TEST_FQDN }}
+          EXPECTED_IP: ${{ vars.EXPECTED_IP }}
+          PRIVATELINK_FQDN: ${{ vars.PRIVATELINK_FQDN }}
+        run: bash dns-validation.sh
+
+      - name: Discovery-sync freshness check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_API_FLAVOR: ${{ env.DEPLOYMENT_MODEL == 'universal_ddi' && 'universal_ddi' || 'nios' }}
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          STALE_THRESHOLD_MIN: "1440"
+          # INFOBLOX_USERNAME / INFOBLOX_PASSWORD exported above from Key Vault.
+          # For universal_ddi, provide INFOBLOX_CSP_TOKEN from Key Vault instead.
+        run: bash discovery-sync-check.sh
+
+      - name: IPAM conflict check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          NETWORK_VIEW: "default"
+        run: bash ipam-conflict-check.sh
