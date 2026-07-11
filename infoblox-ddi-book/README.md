@@ -24,6 +24,26 @@ runbooks are directly comparable across platforms.
 | 5 | [VMware (VCF / vSphere / NSX-T)](./05-vmware.md) | VMware Cloud Foundation — management/edge domain |
 | 6 | [Cross-Platform Operations & Multi-Cloud Governance](./06-cross-platform-operations.md) | Grid/Portal design, anycast, DR, one authoritative IPAM |
 
+## Automation packages (Terraform, per platform)
+
+Each chapter has a companion **automation package** — a Terraform-only, `deployment_model`-driven
+starter that layers Infoblox DDI onto the platform's landing-zone accelerator (Stage 1 → **DDI
+module** → validation), with pipelines, validation scripts, an architecture guide, a
+command-level step-by-step runbook, and fill-in variable worksheets. All share the same shared
+contract, canonical variables, port table, and the GCC-Moderate SaaS-boundary guard.
+
+| Platform | Package |
+|---|---|
+| Azure | [`azure-alz-automation/`](./azure-alz-automation/README.md) |
+| AWS | [`aws-lz-automation/`](./aws-lz-automation/README.md) |
+| Google Cloud | [`gcp-lz-automation/`](./gcp-lz-automation/README.md) |
+| Oracle Cloud | [`oci-lz-automation/`](./oci-lz-automation/README.md) |
+| VMware | [`vmware-lz-automation/`](./vmware-lz-automation/README.md) |
+
+Figures are Mermaid sources under each `figs/`, rendered to PNG by
+[`figs/render-figs.sh`](./figs/render-figs.sh) with the shared
+[house style](./figs/HOUSE-STYLE.md).
+
 ## How each chapter is structured
 
 Every platform chapter follows the same 11 sections (defined in

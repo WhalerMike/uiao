@@ -1,0 +1,38 @@
+%% AWS chapter reference architecture (02-aws.md §2).
+%% Palette per figs/HOUSE-STYLE.md.
+graph TD
+  subgraph OnPrem["On-prem DC (DX / VPN)"]
+    GM["Grid Master / GMC<br/>or Infoblox Portal"]
+  end
+  subgraph Net["Network account — shared-services (hub) VPC"]
+    IB1["vNIOS member<br/>AZ-a · DNS/DHCP"]
+    IB2["vNIOS member<br/>AZ-b · HA/anycast"]
+    R53["Route 53 Resolver<br/>inbound + outbound EP"]
+    ROLE["IAM discovery role<br/>ExternalId"]
+  end
+  subgraph AccA["Workload account A"]
+    W1["Spoke VPC<br/>DHCP opt set → members"]
+  end
+  subgraph AccB["Workload account B"]
+    W2["Spoke VPC<br/>DHCP opt set → members"]
+  end
+
+  GM -- "Grid VPN 1194/2114" --> IB1
+  GM --- IB2
+  W1 -- "TGW · DNS" --> IB1
+  W2 -- "TGW · DNS" --> IB2
+  IB1 -- "cond. fwd amazonaws.com" --> R53
+  R53 -- "outbound rule: corp.example" --> IB1
+  ROLE -- "discover VPCs → IPAM" --> IB1
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class GM ext;
+  class IB1,IB2 ibx;
+  class R53 native;
+  class ROLE ctrl;
+  class W1,W2 spoke;

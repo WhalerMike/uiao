@@ -35,6 +35,8 @@ layer on top.
 
 ## 2. Reference architecture
 
+![AWS reference architecture: vNIOS members across two AZs in the Network account's shared-services hub VPC behind the Transit Gateway, workload-account spokes pointing DHCP option sets at the members, Route 53 Resolver inbound/outbound endpoints for split-horizon forwarding, and a cross-account IAM discovery role syncing VPCs into IPAM](figs/aws-ch-01-reference-architecture.png)
+
 Infoblox members sit in the **Network/connectivity account's shared-services VPC**,
 spread across at least two Availability Zones, behind the Transit Gateway that all
 spokes attach to. The control plane is either an on-prem/in-cloud **Grid Master**

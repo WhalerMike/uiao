@@ -1,0 +1,273 @@
+# ---------------------------------------------------------------------------
+# github-actions-aws-ddi.yml
+#
+# Stage 2 (+ Stage 3) GitOps pipeline for the Infoblox DDI extension that layers
+# on AWS Control Tower / the Landing Zone Accelerator on AWS. STARTER SKELETON —
+# coherent and internally consistent, but pin your own action SHAs/versions and
+# supply environment values (account IDs, backend config, AMI/instance type)
+# before production use.
+#
+# Boundary: Commercial AWS partition (.com) — sts.amazonaws.com. NOT AWS GovCloud
+# (us-gov-*). Auth is OIDC federated credentials (aws-actions/configure-aws-
+# credentials with role-to-assume) — NO stored long-lived access keys.
+# See _module-contract.md.
+#
+# Stages (jobs):
+#   lza       reference/placeholder — reads Stage 1 (Control Tower / LZA) outputs
+#             (network_account_id, hub_vpc_id, transit_gateway_id, ...). Stage 1
+#             itself is a SEPARATE pipeline; this job only CONSUMES its outputs.
+#   ddi       terraform init/plan/apply of ../terraform. Gated on the
+#             deployment_model / acknowledge_saas_boundary contract rule (§1).
+#   validate  runs validation/*.sh; any non-zero exit fails the pipeline.
+# ---------------------------------------------------------------------------
+
+name: aws-ddi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infoblox-ddi-book/aws-lz-automation/terraform/**"
+      - "infoblox-ddi-book/aws-lz-automation/validation/**"
+      - "infoblox-ddi-book/aws-lz-automation/pipelines/github-actions-aws-ddi.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev sandbox -> prod promotion flow)"
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      apply:
+        description: "Run terraform apply (false = plan-only)"
+        type: boolean
+        default: false
+
+# OIDC: id-token:write lets the job fetch the GitHub OIDC token that
+# aws-actions/configure-aws-credentials exchanges (AssumeRoleWithWebIdentity)
+# for temporary AWS credentials. It grants NO write access to repo contents.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_VERSION: "1.9.5"
+  AWS_REGION: "us-east-1" # commercial region; do NOT use us-gov-*
+  TF_WORKING_DIR: "infoblox-ddi-book/aws-lz-automation/terraform"
+  VALIDATION_DIR: "infoblox-ddi-book/aws-lz-automation/validation"
+  # deployment_model drives the boundary rule; keep in sync with the TF var.
+  DEPLOYMENT_MODEL: "grid" # grid | universal_ddi
+  ACKNOWLEDGE_SAAS_BOUNDARY: "false"
+
+concurrency:
+  group: aws-ddi-${{ github.ref }}-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  # =========================================================================
+  # Stage 1 handoff (reference/placeholder). Stage 1 = Control Tower / LZA,
+  # usually its OWN pipeline. This job does not build the landing zone; it only
+  # reads Stage 1's outputs so Stage 2 can consume them as inputs (contract §2).
+  # Swap the read for however your platform team publishes outputs (remote state,
+  # SSM parameters, or CloudFormation exports).
+  # =========================================================================
+  lza:
+    name: "Stage 1 · read LZA outputs"
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    outputs:
+      network_account_id: ${{ steps.read.outputs.network_account_id }}
+      hub_vpc_id: ${{ steps.read.outputs.hub_vpc_id }}
+      transit_gateway_id: ${{ steps.read.outputs.transit_gateway_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC, commercial .com)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          # No stored access keys — temporary creds via AssumeRoleWithWebIdentity.
+
+      - name: Read Stage 1 (Control Tower / LZA) outputs
+        id: read
+        shell: bash
+        env:
+          LZA_STATE_BUCKET: ${{ vars.LZA_STATE_BUCKET }}
+          LZA_STATE_KEY: ${{ vars.LZA_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          # STARTER: read the Stage 1 network outputs. In a real setup use
+          # `terraform_remote_state` from the Stage 2 module, SSM parameters, or
+          # `aws cloudformation describe-stacks` outputs. Shown here reading SSM
+          # as an illustrative, provider-agnostic handoff.
+          echo "Reading LZA outputs (bucket=${LZA_STATE_BUCKET} key=${LZA_STATE_KEY})"
+          # aws ssm get-parameter --name /lza/network/hub_vpc_id --query Parameter.Value --output text
+          # Placeholders below so downstream wiring is exercised end-to-end:
+          echo "network_account_id=${NETWORK_ACCOUNT_ID:-000000000000}" >> "$GITHUB_OUTPUT"
+          echo "hub_vpc_id=${HUB_VPC_ID:-vpc-0123456789abcdef0}" >> "$GITHUB_OUTPUT"
+          echo "transit_gateway_id=${TRANSIT_GATEWAY_ID:-tgw-0123456789abcdef0}" >> "$GITHUB_OUTPUT"
+
+  # =========================================================================
+  # Stage 2 — the Infoblox DDI module. terraform init/plan/apply of ../terraform.
+  # Apply is gated on the SaaS boundary rule.
+  # =========================================================================
+  ddi:
+    name: "Stage 2 · Terraform DDI"
+    needs: lza
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Contract §1 boundary gate ---------------------------------------
+      # deployment_model=universal_ddi routes the control plane to the Infoblox
+      # Portal SaaS, OUTSIDE the ATO boundary. Hard-fail unless acknowledged.
+      # (The TF module also enforces this; the pipeline fails fast so we never
+      # even init the SaaS path unacknowledged.)
+      - name: Enforce SaaS boundary acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${DEPLOYMENT_MODEL}" = "universal_ddi" ] && [ "${ACKNOWLEDGE_SAAS_BOUNDARY}" != "true" ]; then
+            echo "::error::deployment_model=universal_ddi routes control plane to Infoblox Portal SaaS (outside the ATO boundary)."
+            echo "::error::Set ACKNOWLEDGE_SAAS_BOUNDARY=true only after the FedRAMP/authorization review. See _module-contract.md §1."
+            exit 1
+          fi
+          echo "Boundary gate OK (model=${DEPLOYMENT_MODEL}, ack=${ACKNOWLEDGE_SAAS_BOUNDARY})"
+
+      - name: Configure AWS credentials (OIDC, commercial .com)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # Pull provider creds Infoblox needs (WAPI admin, etc.) from Secrets Manager.
+      # The aws provider itself uses the OIDC role; the infobloxopen/infoblox
+      # provider needs its own creds, sourced here.
+      - name: Fetch Infoblox provider creds from Secrets Manager
+        shell: bash
+        run: |
+          set -euo pipefail
+          IB_PW="$(aws secretsmanager get-secret-value --secret-id infoblox/wapi-password --query SecretString --output text)"
+          echo "::add-mask::${IB_PW}"
+          echo "INFOBLOX_USERNAME=$(aws secretsmanager get-secret-value --secret-id infoblox/wapi-username --query SecretString --output text)" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${IB_PW}" >> "$GITHUB_ENV"
+
+      - name: Terraform Init (remote state — S3 + DynamoDB lock)
+        env:
+          BACKEND_BUCKET: ${{ vars.TFSTATE_BUCKET }}
+          BACKEND_LOCK_TABLE: ${{ vars.TFSTATE_LOCK_TABLE }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${BACKEND_BUCKET}" \
+            -backend-config="key=ddi-${{ github.event.inputs.environment || 'dev' }}.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${BACKEND_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Plan
+        id: plan
+        env:
+          # Canonical contract variables (§3).
+          TF_VAR_region: ${{ env.AWS_REGION }}
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_deployment_model: ${{ env.DEPLOYMENT_MODEL }}
+          TF_VAR_acknowledge_saas_boundary: ${{ env.ACKNOWLEDGE_SAAS_BOUNDARY }}
+          TF_VAR_network_account_id: ${{ needs.lza.outputs.network_account_id }}
+          TF_VAR_hub_vpc_id: ${{ needs.lza.outputs.hub_vpc_id }}
+          TF_VAR_transit_gateway_id: ${{ needs.lza.outputs.transit_gateway_id }}
+          TF_VAR_discovery_external_id: ${{ secrets.DISCOVERY_EXTERNAL_ID }}
+        run: terraform plan -input=false -out=tfplan
+
+      # Apply only on: workflow_dispatch with apply=true, OR a push to main.
+      # PRs are plan-only. Environment protection rules (reviewers) on `prod`
+      # provide the human gate for the promotion flow.
+      - name: Terraform Apply
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: terraform apply -input=false -auto-approve tfplan
+
+      # Publish Stage 2 outputs for the validate job (contract §7).
+      - name: Export DDI outputs
+        id: out
+        run: |
+          {
+            echo "ddi_anycast_vip=$(terraform output -raw ddi_anycast_vip 2>/dev/null || echo '')"
+            echo "grid_master_ip=$(terraform output -raw grid_master_ip 2>/dev/null || echo '')"
+          } >> "$GITHUB_OUTPUT"
+    outputs:
+      ddi_anycast_vip: ${{ steps.out.outputs.ddi_anycast_vip }}
+      grid_master_ip: ${{ steps.out.outputs.grid_master_ip }}
+
+  # =========================================================================
+  # Stage 3 — validation gates. Runs the validation/*.sh scripts; any non-zero
+  # exit fails the pipeline. Secrets come from Secrets Manager; non-secret inputs
+  # from Stage 2 outputs.
+  # =========================================================================
+  validate:
+    name: "Stage 3 · Validate"
+    needs: ddi
+    # Skip validation on plan-only PR runs (nothing was applied).
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validation tooling
+        run: sudo apt-get update && sudo apt-get install -y dnsutils jq curl
+
+      - name: Configure AWS credentials (OIDC, commercial .com)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Fetch Infoblox creds from Secrets Manager
+        shell: bash
+        run: |
+          set -euo pipefail
+          P="$(aws secretsmanager get-secret-value --secret-id infoblox/wapi-password --query SecretString --output text)"
+          echo "::add-mask::${P}"
+          echo "INFOBLOX_USERNAME=$(aws secretsmanager get-secret-value --secret-id infoblox/wapi-username --query SecretString --output text)" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${P}" >> "$GITHUB_ENV"
+
+      - name: DNS resolution check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_VIP: ${{ needs.ddi.outputs.ddi_anycast_vip }}
+          TEST_FQDN: ${{ vars.TEST_FQDN }}
+          EXPECTED_IP: ${{ vars.EXPECTED_IP }}
+          PRIVATELINK_FQDN: ${{ vars.PRIVATELINK_FQDN }}
+        run: bash dns-validation.sh
+
+      - name: Discovery-sync freshness check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_API_FLAVOR: ${{ env.DEPLOYMENT_MODEL == 'universal_ddi' && 'universal_ddi' || 'nios' }}
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          STALE_THRESHOLD_MIN: "1440"
+          # INFOBLOX_USERNAME / INFOBLOX_PASSWORD exported above from Secrets Manager.
+          # For universal_ddi, provide INFOBLOX_CSP_TOKEN from Secrets Manager instead.
+        run: bash discovery-sync-check.sh
+
+      - name: IPAM conflict check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          NETWORK_VIEW: "default"
+        run: bash ipam-conflict-check.sh

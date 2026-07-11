@@ -33,6 +33,8 @@ deploy the SDDC, NSX, or the domain topology itself.
 
 ## 2. Reference architecture
 
+![VMware reference architecture: vNIOS Grid Master/GMC and an HA (VRRP) DNS/DHCP member pair in the VCF management/edge domain, NSX Tier-0/Tier-1 gateways relaying DNS forwarder and DHCP traffic from tenant segments to the members, conditional-forward of corp.example to on-prem AD DNS, and vCenter/NSX discovery accounts syncing into IPAM](figs/vmware-ch-01-reference-architecture.png)
+
 Place the Infoblox control plane and the primary DNS/DHCP members in the **VCF
 management (or a dedicated edge/services) domain**, on a management port group reachable
 by every workload domain across the NSX fabric. Workload segments never talk to the

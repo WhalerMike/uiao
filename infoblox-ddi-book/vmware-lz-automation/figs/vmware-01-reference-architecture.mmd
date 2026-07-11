@@ -1,0 +1,42 @@
+graph TD
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph MGMT["VCF Management / Edge Domain (vSphere cluster)"]
+    GM["vNIOS Grid Master<br/>+ GM Candidate"]:::ibx
+    MA["vNIOS member A<br/>DNS + DHCP"]:::ibx
+    MB["vNIOS member B<br/>DNS + DHCP"]:::ibx
+    VIP(["VRRP / anycast VIP<br/>DNS 53 · DHCP 67-68"]):::ibx
+    GM ---|Grid comms<br/>1194/udp + 2114/tcp| MA
+    MA ---|VRRP HA pair| MB
+    MA -.-> VIP
+    MB -.-> VIP
+  end
+
+  subgraph NSX["NSX-T fabric (Tier-0 / Tier-1 gateways)"]
+    T1A["Tier-1 GW<br/>DNS forwarder + DHCP relay"]:::native
+    T1B["Tier-1 GW<br/>DNS forwarder + DHCP relay"]:::native
+  end
+
+  subgraph WLD["Workload domains / clusters (spokes)"]
+    S1["Segment / tenant VMs"]:::spoke
+    S2["Segment / tenant VMs"]:::spoke
+    S3["Segment / tenant VMs"]:::spoke
+  end
+
+  subgraph EXT["On-prem / external"]
+    AD["On-prem AD DNS<br/>corp.example"]:::ext
+    OG["Existing on-prem Grid<br/>or Universal DDI"]:::ctrl
+  end
+
+  S1 --> T1A
+  S2 --> T1A
+  S3 --> T1B
+  T1A -->|"DNS 53 · DHCP relay 67-68"| VIP
+  T1B -->|"DNS 53 · DHCP relay 67-68"| VIP
+  VIP -.->|conditional forward<br/>AD zones| AD
+  GM -.->|Grid comms / SaaS sync| OG
+  MA -.->|vCenter / NSX API<br/>CNA discovery 443| NSX

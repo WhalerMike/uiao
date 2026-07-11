@@ -1,0 +1,282 @@
+# ---------------------------------------------------------------------------
+# github-actions-gcp-ddi.yml
+#
+# Stage 2 (+ Stage 3) GitOps pipeline for the Infoblox DDI extension that layers
+# on a Google Cloud landing-zone foundation. STARTER SKELETON — coherent and
+# internally consistent, but pin your own action SHAs/versions and supply
+# environment values (project IDs, backend bucket, image/machine type) before
+# production use.
+#
+# Boundary: commercial Google Cloud. Auth is Workload Identity Federation
+# (google-github-actions/auth) — NO exported service-account keys. See
+# _module-contract.md.
+#
+# Stages (jobs):
+#   lz        reference/placeholder — reads Stage 1 (landing-zone foundation)
+#             remote-state outputs. Stage 1 itself is typically a SEPARATE
+#             pipeline; this job only CONSUMES its outputs (host_project_id,
+#             shared_vpc_network, region, ...).
+#   ddi       terraform init/plan/apply of ../terraform. Gated on the
+#             deployment_model / acknowledge_saas_boundary contract rule (§1).
+#   validate  runs validation/*.sh; any non-zero exit fails the pipeline.
+# ---------------------------------------------------------------------------
+
+name: gcp-ddi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infoblox-ddi-book/gcp-lz-automation/terraform/**"
+      - "infoblox-ddi-book/gcp-lz-automation/validation/**"
+      - "infoblox-ddi-book/gcp-lz-automation/pipelines/github-actions-gcp-ddi.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev sandbox -> prod promotion flow)"
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      apply:
+        description: "Run terraform apply (false = plan-only)"
+        type: boolean
+        default: false
+
+# OIDC: id-token:write lets the job fetch the GitHub OIDC token that
+# google-github-actions/auth exchanges for a short-lived Google access token via
+# a Workload Identity Provider. It grants NO write access to repo contents.
+permissions:
+  id-token: write
+  contents: read
+
+# Non-secret config. WIF provider + service-account email are identifiers, not
+# credentials — the token is fetched via OIDC. Infoblox WAPI/CSP creds are
+# ultimately sourced from Secret Manager at run time (see the validate job).
+env:
+  TF_VERSION: "1.9.5"
+  TF_WORKING_DIR: "infoblox-ddi-book/gcp-lz-automation/terraform"
+  VALIDATION_DIR: "infoblox-ddi-book/gcp-lz-automation/validation"
+  # deployment_model drives the boundary rule; keep in sync with the TF var.
+  DEPLOYMENT_MODEL: "grid"      # grid | universal_ddi
+  ACKNOWLEDGE_SAAS_BOUNDARY: "false"
+
+concurrency:
+  group: gcp-ddi-${{ github.ref }}-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  # =========================================================================
+  # Stage 1 handoff (reference/placeholder). Stage 1 = the landing-zone
+  # foundation (Terraform Example Foundation / Fabric FAST), usually its OWN
+  # pipeline. This job does not build the landing zone; it only reads Stage 1's
+  # remote-state outputs so Stage 2 can consume them as inputs (contract §2).
+  # =========================================================================
+  lz:
+    name: "Stage 1 · read foundation outputs"
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    outputs:
+      host_project_id: ${{ steps.read.outputs.host_project_id }}
+      shared_vpc_network: ${{ steps.read.outputs.shared_vpc_network }}
+      region: ${{ steps.read.outputs.region }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF, no key)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA_EMAIL }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Read Stage 1 (foundation) remote-state outputs
+        id: read
+        shell: bash
+        env:
+          LZ_STATE_BUCKET: ${{ vars.LZ_STATE_BUCKET }}
+          LZ_STATE_PREFIX: ${{ vars.LZ_STATE_PREFIX }}
+        run: |
+          set -euo pipefail
+          # STARTER: this reads the Stage 1 foundation state (Example Foundation /
+          # Fabric FAST). In a real setup use `terraform_remote_state` from the
+          # Stage 2 module, or `gsutil`/`gcloud` to read published outputs. Shown
+          # here with placeholders so downstream wiring is exercised end-to-end:
+          echo "Reading foundation outputs from gs://${LZ_STATE_BUCKET}/${LZ_STATE_PREFIX}"
+          echo "host_project_id=${HOST_PROJECT_ID:-hostproj-shared-vpc}" >> "$GITHUB_OUTPUT"
+          echo "shared_vpc_network=${SHARED_VPC_NETWORK:-vpc-hub}" >> "$GITHUB_OUTPUT"
+          echo "region=${REGION:-us-central1}" >> "$GITHUB_OUTPUT"
+
+  # =========================================================================
+  # Stage 2 — the Infoblox DDI module. terraform init/plan/apply of ../terraform.
+  # Apply is gated on the SaaS boundary rule.
+  # =========================================================================
+  ddi:
+    name: "Stage 2 · Terraform DDI"
+    needs: lz
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Contract §1 boundary gate ---------------------------------------
+      # deployment_model=universal_ddi routes the control plane to the Infoblox
+      # Portal SaaS, OUTSIDE the ATO boundary. Hard-fail unless explicitly
+      # acknowledged. (The TF module also enforces this; the pipeline fails fast
+      # so we never even init the SaaS path unacknowledged.)
+      - name: Enforce SaaS boundary acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${DEPLOYMENT_MODEL}" = "universal_ddi" ] && [ "${ACKNOWLEDGE_SAAS_BOUNDARY}" != "true" ]; then
+            echo "::error::deployment_model=universal_ddi routes control plane to Infoblox Portal SaaS (outside the ATO boundary)."
+            echo "::error::Set ACKNOWLEDGE_SAAS_BOUNDARY=true only after the FedRAMP/authorization review. See _module-contract.md §1."
+            exit 1
+          fi
+          echo "Boundary gate OK (model=${DEPLOYMENT_MODEL}, ack=${ACKNOWLEDGE_SAAS_BOUNDARY})"
+
+      - name: Authenticate to Google Cloud (WIF, no key)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA_EMAIL }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # Pull provider creds Infoblox needs (WAPI admin) from Secret Manager. The
+      # google provider itself uses the WIF token; the infobloxopen/infoblox
+      # provider needs its own creds, sourced here.
+      - name: Fetch Infoblox provider creds from Secret Manager
+        shell: bash
+        env:
+          SECRET_PROJECT_ID: ${{ vars.SECRET_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          U="$(gcloud secrets versions access latest --project "$SECRET_PROJECT_ID" --secret infoblox-wapi-username)"
+          P="$(gcloud secrets versions access latest --project "$SECRET_PROJECT_ID" --secret infoblox-wapi-password)"
+          echo "::add-mask::${P}"
+          echo "INFOBLOX_USERNAME=${U}" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${P}" >> "$GITHUB_ENV"
+
+      - name: Terraform Init (remote state in GCS)
+        env:
+          BACKEND_BUCKET: ${{ vars.TFSTATE_BUCKET }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${BACKEND_BUCKET}" \
+            -backend-config="prefix=infoblox-ddi/${{ github.event.inputs.environment || 'dev' }}"
+
+      - name: Terraform Plan
+        id: plan
+        env:
+          # Canonical contract variables (§3).
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_deployment_model: ${{ env.DEPLOYMENT_MODEL }}
+          TF_VAR_acknowledge_saas_boundary: ${{ env.ACKNOWLEDGE_SAAS_BOUNDARY }}
+          TF_VAR_host_project_id: ${{ needs.lz.outputs.host_project_id }}
+          TF_VAR_shared_vpc_network: ${{ needs.lz.outputs.shared_vpc_network }}
+          TF_VAR_region: ${{ needs.lz.outputs.region }}
+          TF_VAR_secret_project_id: ${{ vars.SECRET_PROJECT_ID }}
+        run: terraform plan -input=false -out=tfplan
+
+      # Apply only on: workflow_dispatch with apply=true, OR a push to main.
+      # PRs are plan-only. Environment protection rules (reviewers) on `prod`
+      # provide the human gate for the promotion flow.
+      - name: Terraform Apply
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: terraform apply -input=false -auto-approve tfplan
+
+      # Publish Stage 2 outputs for the validate job (contract §7).
+      - name: Export DDI outputs
+        id: out
+        run: |
+          {
+            echo "ddi_anycast_vip=$(terraform output -raw ddi_anycast_vip 2>/dev/null || echo '')"
+            echo "grid_master_ip=$(terraform output -raw grid_master_ip 2>/dev/null || echo '')"
+          } >> "$GITHUB_OUTPUT"
+    outputs:
+      ddi_anycast_vip: ${{ steps.out.outputs.ddi_anycast_vip }}
+      grid_master_ip: ${{ steps.out.outputs.grid_master_ip }}
+
+  # =========================================================================
+  # Stage 3 — validation gates. Runs the validation/*.sh scripts; any non-zero
+  # exit fails the pipeline. Secrets come from Secret Manager; non-secret inputs
+  # from Stage 2 outputs.
+  # =========================================================================
+  validate:
+    name: "Stage 3 · Validate"
+    needs: ddi
+    # Skip validation on plan-only PR runs (nothing was applied).
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validation tooling
+        run: sudo apt-get update && sudo apt-get install -y dnsutils jq curl
+
+      - name: Authenticate to Google Cloud (WIF, no key)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA_EMAIL }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch Infoblox creds from Secret Manager
+        shell: bash
+        env:
+          SECRET_PROJECT_ID: ${{ vars.SECRET_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          U="$(gcloud secrets versions access latest --project "$SECRET_PROJECT_ID" --secret infoblox-wapi-username)"
+          P="$(gcloud secrets versions access latest --project "$SECRET_PROJECT_ID" --secret infoblox-wapi-password)"
+          echo "::add-mask::${P}"
+          echo "INFOBLOX_USERNAME=${U}" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${P}" >> "$GITHUB_ENV"
+
+      - name: DNS resolution check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_VIP: ${{ needs.ddi.outputs.ddi_anycast_vip }}
+          TEST_FQDN: ${{ vars.TEST_FQDN }}
+          EXPECTED_IP: ${{ vars.EXPECTED_IP }}
+          PRIVATELINK_FQDN: ${{ vars.PRIVATELINK_FQDN }}
+        run: bash dns-validation.sh
+
+      - name: Discovery-sync freshness check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_API_FLAVOR: ${{ env.DEPLOYMENT_MODEL == 'universal_ddi' && 'universal_ddi' || 'nios' }}
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          STALE_THRESHOLD_MIN: "1440"
+          # INFOBLOX_USERNAME / INFOBLOX_PASSWORD exported above from Secret Manager.
+          # For universal_ddi, provide INFOBLOX_CSP_TOKEN from Secret Manager instead.
+        run: bash discovery-sync-check.sh
+
+      - name: IPAM conflict check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          NETWORK_VIEW: "default"
+        run: bash ipam-conflict-check.sh
+</content>

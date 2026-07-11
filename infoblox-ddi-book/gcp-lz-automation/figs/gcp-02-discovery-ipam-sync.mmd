@@ -1,0 +1,27 @@
+%% gcp-02-discovery-ipam-sync.mmd
+%% GCP -> Infoblox IPAM sync: least-privilege service account feeds vDiscovery,
+%% which populates IPAM networks + fixed addresses from GCP reality.
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+
+  subgraph GCP["Discovered scope (org / folder / projects)"]
+    HP["host project<br/>VPCs · subnets · addresses"]:::native
+    SP["service projects<br/>VM instances · labels/tags"]:::spoke
+  end
+
+  SA["ddi-disco service account<br/>roles/compute.networkViewer<br/>roles/dns.reader"]:::ctrl
+
+  subgraph INFOBLOX["Infoblox control plane"]
+    VD["vDiscovery job<br/>(Cloud Network Automation)"]:::ibx
+    IPAM["IPAM<br/>networks · fixed addresses<br/>labels → extensible attrs"]:::ibx
+  end
+
+  SA -. "least-priv read auth" .-> VD
+  VD -- "enumerate" --> HP
+  VD -- "enumerate" --> SP
+  HP -- "subnets → networks" --> IPAM
+  SP -- "VMs → host records / fixed addrs" --> IPAM
+  IPAM -- "conflict check + reclaim on delete" --> IPAM

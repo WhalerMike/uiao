@@ -1,0 +1,32 @@
+%% aws-02-discovery-ipam-sync.mmd
+%% Cross-account IAM discovery role (ExternalId, least-privilege read) ->
+%% Infoblox vDiscovery (Cloud Network Automation) -> Infoblox IPAM.
+graph LR
+  subgraph integ["Infoblox integration account"]
+    ROLEHUB["Discovery principal<br/>(integration account)"]:::ctrl
+  end
+
+  subgraph mbr["Discovered AWS accounts (Organizations / Control Tower)"]
+    direction TB
+    ROLE["Cross-account IAM role<br/>trust: sts:AssumeRole<br/>Condition: sts:ExternalId"]:::ctrl
+    POL["Least-priv policy<br/>ec2:Describe* · route53 read · tags<br/>NO data-plane"]:::ctrl
+    VPCS["VPCs · subnets · ENIs<br/>EC2 instances · tags"]:::spoke
+  end
+
+  subgraph grid["Infoblox control plane"]
+    VDISC["vDiscovery job<br/>(Cloud Network Automation)"]:::ibx
+    IPAM["Infoblox IPAM<br/>network views + EAs"]:::ibx
+  end
+
+  ROLEHUB -->|"AssumeRole + ExternalId"| ROLE
+  ROLE --- POL
+  VDISC -->|"assume role,<br/>enumerate"| ROLE
+  ROLE -->|"read-only"| VPCS
+  VPCS -->|"discovered CIDRs,<br/>tags as EAs"| VDISC
+  VDISC --> IPAM
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;

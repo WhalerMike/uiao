@@ -42,6 +42,8 @@ plainly and gives the API-driven pattern that works.
 
 ## 2. Reference architecture
 
+![OCI reference architecture: HA vNIOS CP-2205 members across availability domains in the hub VCN, spoke VCNs pointing subnet DHCP options at the members over the DRG, conditional-forward of oraclevcn.com names to the hub OCI DNS resolver, and an OCI API key driving SDK/Terraform-based discovery into IPAM](figs/oci-ch-01-reference-architecture.png)
+
 The pattern mirrors Chapter 0: authoritative control plane (on-prem Grid Master or
 Universal DDI SaaS) → vNIOS DNS/DHCP members in the **hub VCN** → spokes forward
 to them → members conditionally forward to the OCI resolver.

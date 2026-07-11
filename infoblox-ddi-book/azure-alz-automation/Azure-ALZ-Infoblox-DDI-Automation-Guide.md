@@ -51,6 +51,8 @@ self-service IPAM, and an explicit FedRAMP-Moderate control mapping.
 
 ## 2. The layered model
 
+![Azure Connectivity-hub reference architecture: vNIOS members in the hub VNet's ddi-subnet, spoke VNets with dns_servers pointed at the Infoblox anycast VIP, conditional-forward of privatelink zones to the Azure DNS Private Resolver, the resolver outbound ruleset returning corp.example to Infoblox, and an on-prem Grid Master anchoring the control plane](figs/azure-01-reference-architecture.png)
+
 Three stages. This module is **Stage 2** and never reaches up into Stage 1's remit.
 
 ```mermaid
@@ -181,6 +183,8 @@ Stage 2 learns about the hub — it does not query or mutate Stage-1-owned resou
 The Grid rows and the outbound-Portal row are toggled by `deployment_model`, so a Grid
 deployment never opens the SaaS egress and a Universal DDI deployment never opens the Grid
 VPN.
+
+![Azure discovery to Infoblox IPAM sync: a least-privilege managed identity or Entra app registration authenticates the discovery job, which enumerates Azure VNets, subnets, and NICs and maps resource tags into Infoblox IPAM as networks and extensible attributes](figs/azure-02-discovery-ipam-sync.png)
 
 **Least-privilege discovery identity.** Prefer a **user-assigned managed identity**
 (`discovery_identity_type = "user_assigned_mi"`, resource `ddi-disco-mi`); fall back to an
@@ -382,6 +386,8 @@ drift-resistant rather than a one-time deploy.
 The DNS wiring is the reason Infoblox sits in the hub at all. Two conditional-forwarding paths
 meet at the Azure DNS Private Resolver, giving split-horizon resolution without either side
 becoming authoritative for the other. This is implemented in `terraform/dns.tf`.
+
+![Azure DNS resolution flow: a spoke VM sends all DNS to the Infoblox anycast VIP, which conditionally forwards privatelink names to the Azure Private Resolver inbound endpoint, answers enterprise corp.example zones authoritatively, cross-forwards other-cloud private zones, forwards on-prem AD, and recurses to the internet with Threat Defense inline](figs/azure-03-dns-resolution.png)
 
 **Infoblox → Azure (inbound path).** On the Infoblox members, create **conditional
 forwarders** for Azure-service and Private DNS namespaces — the `privatelink.*` zones (e.g.
