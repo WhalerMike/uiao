@@ -1,8 +1,8 @@
 # Chapter 0 — Introduction: DDI in the Multi-Cloud Landing Zone
 
-## 0.1 What this book is
+## 0.1 What this volume is
 
-This is an implementation book. Each chapter takes one target platform — a public
+This is an implementation volume. Each chapter takes one target platform — a public
 cloud service provider (CSP) or VMware private cloud — and walks an architect or
 platform engineer from a blank landing zone to a working, production-grade Infoblox
 **DDI** (DNS, DHCP, IP Address Management) and DNS-security layer inside it.
@@ -75,7 +75,7 @@ Infoblox operates the control plane as a cloud service (the **Infoblox Portal**,
 Cloud Services Portal / CSP). You deploy lightweight on-prem/on-cloud **hosts** that run
 DNS/DHCP under central SaaS management. Best for greenfield multi-cloud, where you want
 centralized management without operating Grid Masters yourself. (Note: Infoblox's own
-term *CSP* means **Cloud Services Portal** — not the cloud service providers this book's
+term *CSP* means **Cloud Services Portal** — not the cloud service providers this volume's
 chapters cover.)
 
 ### Cloud discovery & automation (Universal Cloud / Cloud Network Automation)
@@ -125,7 +125,7 @@ authoritative control plane (on-prem Grid Master or Universal DDI SaaS) so IPAM 
 consistent across every cloud and on-prem. Each platform chapter fills in the concrete
 resource names, ports, IAM objects, and click/CLI/IaC steps.
 
-## 0.5 How to read this book
+## 0.5 How to read this volume
 
 - **Deploying one platform now?** Jump straight to its chapter and work the runbook.
 - **Designing the multi-cloud target state?** Read section 1 (overview) and 2
@@ -143,4 +143,4 @@ resource names, ports, IAM objects, and click/CLI/IaC steps.
 - [Microsoft — What is an Azure landing zone? (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/)
 - [AWS — Landing Zone Accelerator / Control Tower](https://aws.amazon.com/solutions/implementations/landing-zone-accelerator-on-aws/)
 - [Google Cloud — Landing zone design](https://cloud.google.com/architecture/landing-zones)
-- [Oracle — OCI Landing Zones](https://www.oracle.com/security/cloud-security/landing-zone/)
+- [Oracle — OCI Core Landing Zone](https://docs.oracle.com/en-us/iaas/Content/cloud-adoption-framework/oci-core-landing-zone.htm)

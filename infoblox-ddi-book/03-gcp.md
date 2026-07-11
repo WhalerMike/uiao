@@ -27,7 +27,7 @@ the **hub (host) VPC** of a **Shared VPC**: Infoblox DNS/DHCP members live there
 workload service projects consume the shared network and forward DNS to them, the
 members conditionally forward to Cloud DNS for `*.googleapis.com` / private-zone names
 and to on-prem/other clouds for everything else, and the discovery adapter keeps IPAM
-synchronized with the real VPCs and subnets. As always in this book, Infoblox provides
+synchronized with the real VPCs and subnets. As always in this volume, Infoblox provides
 the DDI layer *within* the landing zone — the project hierarchy, org policy, and
 Shared VPC itself come from the Google Cloud foundation blueprint.
 

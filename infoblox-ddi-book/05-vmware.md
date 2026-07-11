@@ -2,7 +2,7 @@
 
 ## 1. Overview — where DDI fits in the VMware landing zone
 
-VMware Cloud Foundation (VCF) is the private-cloud landing zone this book anchors to.
+VMware Cloud Foundation (VCF) is the private-cloud landing zone this volume anchors to.
 A VCF instance is organized into a **management domain** (vCenter, NSX Manager, SDDC
 Manager, and the platform's own infrastructure VMs) and one or more **workload
 domains** (tenant vSphere clusters), stitched together by an **NSX** overlay of
@@ -24,7 +24,7 @@ tenant segments (via NSX DHCP relay) and the *authoritative DNS servers* that th
 DNS forwarder points at — while a single Grid database keeps IPAM consistent.
 
 Because most enterprises adopting VMware already run an on-prem Infoblox Grid, the
-VMware chapter is the **private-cloud/on-prem anchor** of this book. The Grid Master
+VMware chapter is the **private-cloud/on-prem anchor** of this volume. The Grid Master
 (and often the whole control plane) frequently lives right here in the VCF management
 domain. The CSP chapters then *extend* this Grid into each public cloud rather than
 standing up a parallel one. Keep the scope discipline from Chapter 0: Infoblox

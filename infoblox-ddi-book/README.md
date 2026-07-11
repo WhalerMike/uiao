@@ -1,9 +1,9 @@
-# Infoblox DDI Across the Enterprise: A Multi-Cloud & VMware Implementation Book
+# Infoblox DDI Across the Enterprise: A Multi-Cloud & VMware Implementation Volume
 
 An implementation guide for deploying **Infoblox DDI** (DNS, DHCP, IP Address
 Management) and DNS security **inside** the landing zones of every major cloud
 service provider and VMware private cloud. Each platform gets its own chapter,
-built on an identical section skeleton so the book reads consistently and the
+built on an identical section skeleton so the volume reads consistently and the
 runbooks are directly comparable across platforms.
 
 > **Framing (read this first):** Infoblox does not build the whole landing zone.
@@ -45,7 +45,7 @@ Every platform chapter follows the same 11 sections (defined in
 
 Cloud and network architects, platform engineers, and DDI/network-services teams
 implementing a consistent, authoritative name-resolution and IP-management fabric
-across a hybrid, multi-cloud estate. The reader knows their cloud platform; the book
+across a hybrid, multi-cloud estate. The reader knows their cloud platform; the volume
 supplies the Infoblox side.
 
 ## How to use it
@@ -57,6 +57,6 @@ supplies the Infoblox side.
 
 ---
 
-*This book is platform-vendor documentation, independent of the surrounding UIAO
+*This volume is platform-vendor documentation, independent of the surrounding UIAO
 repository's governance canon. It is intentionally self-contained under
 `infoblox-ddi-book/`.*

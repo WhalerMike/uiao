@@ -1,6 +1,6 @@
 # Chapter Conventions (shared contract)
 
-Every platform chapter in this book MUST follow the same 11-section skeleton so
+Every platform chapter in this volume MUST follow the same 11-section skeleton so
 readers can move between clouds and find the same information in the same place.
 Do **not** reorder or rename these headings.
 

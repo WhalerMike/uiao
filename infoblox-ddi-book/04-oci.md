@@ -321,7 +321,7 @@ flow keeps DHCP, DNS, and IPAM consistent on the shared database.
 - [Infoblox — Uploading the vNIOS Image in Oracle Cloud Infrastructure](https://docs.infoblox.com/display/vniosoci/Uploading+the+vNIOS+Image+in+Oracle+Cloud+Infrastructure)
 - [Infoblox — Supported vNIOS for OCI Appliances](https://docs.infoblox.com/space/vniosoci/1335820994/Supported+vNIOS+for+Oracle+Cloud+Infrastructure+Appliances)
 - [Infoblox blog — Bringing Next-Level DDI Automation to OCI (NIOS 8.5.2 / CP-2205)](https://blogs.infoblox.com/community/bringing-next-level-ddi-automation-to-oracle-cloud-infrastructure/)
-- [Infoblox — OCI (NIOS-X Servers) Deployment (Universal DDI)](https://docs.infoblox.com/space/BloxOneInfrastructure/2129920010/Oracle+Cloud+Infrastructure+(OCI)+Deployment)
+- [Infoblox — OCI (NIOS-X Servers) Deployment (Universal DDI)](https://docs.infoblox.com/space/BloxOneInfrastructure/2129920010/Oracle+Cloud+Infrastructure+%28OCI%29+Deployment)
 - [Infoblox — Cloud Network Automation](https://www.infoblox.com/products/cloud-network-automation/)
 - [Infoblox — Source and Destination Ports for Services (NIOS 9.0)](https://docs.infoblox.com/space/nios90/1327530037/Source+and+Destination+Ports+for+Services)
 - [Oracle — Private DNS (views, zones, resolvers, endpoints)](https://docs.oracle.com/en-us/iaas/Content/DNS/Tasks/privatedns.htm)

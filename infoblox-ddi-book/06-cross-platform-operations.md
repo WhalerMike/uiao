@@ -8,7 +8,7 @@ posture — instead of five disconnected islands that happen to run the same ven
 
 ## 6.1 The organizing principle: one authoritative IPAM
 
-The single most important design rule in this book: **there is exactly one authoritative
+The single most important design rule in this volume: **there is exactly one authoritative
 source of truth for IP space and name records across the entire estate.** Every platform
 chapter feeds *into* it; none of them owns a private copy.
 
@@ -21,7 +21,7 @@ chapter feeds *into* it; none of them owns a private copy.
 Either way, the cloud-discovery adapters described in each chapter (Azure service
 principal, AWS IAM role, GCP service account, OCI API key, vCenter service account) are
 what keep that one source of truth synchronized with reality. Discovery is not optional
-polish — it is the mechanism that prevents the drift the whole book exists to eliminate.
+polish — it is the mechanism that prevents the drift the whole volume exists to eliminate.
 
 **Non-overlapping address plan.** Before any cloud is onboarded, carve the enterprise
 supernet into non-overlapping blocks per platform/region/environment and model it in

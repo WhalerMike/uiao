@@ -31,7 +31,7 @@ DDI layer inside the Azure landing zone, not the landing zone itself.**
 
 ## 2. Reference architecture
 
-The recurring book pattern specializes cleanly on Azure. Infoblox DNS members live in
+The recurring volume pattern specializes cleanly on Azure. Infoblox DNS members live in
 the **connectivity subscription's hub VNet**. Spoke workload VNets are configured
 (via VNet DNS settings) to send queries to the Infoblox members' private IPs. The
 members conditionally forward Azure-service and Private DNS names to the **Azure DNS
