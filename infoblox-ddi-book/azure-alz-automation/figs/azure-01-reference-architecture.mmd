@@ -1,0 +1,37 @@
+%% Azure ALZ package reference architecture — Infoblox DDI in the Connectivity hub.
+%% Palette per ../../figs/HOUSE-STYLE.md.
+graph TD
+  subgraph OnPrem["On-prem DC"]
+    GM["Grid Master / GMC<br/>or Universal DDI Portal"]
+  end
+  subgraph Hub["Connectivity subscription — Hub VNet"]
+    IB1["vNIOS member 1<br/>AZ1 · ddi-subnet"]
+    IB2["vNIOS member 2<br/>AZ2 · ddi-subnet"]
+    PR["Azure DNS<br/>Private Resolver"]
+    PDNS["Private DNS +<br/>privatelink zones"]
+  end
+  subgraph Spoke1["Spoke A — Workload VNet"]
+    W1["VMs · dns_servers = VIP"]
+  end
+  subgraph Spoke2["Spoke B — Workload VNet"]
+    W2["VMs · dns_servers = VIP"]
+  end
+
+  GM -- "Grid VPN 1194/2114<br/>or 443 sync" --> IB1
+  GM --- IB2
+  W1 -- "peering · DNS" --> IB1
+  W2 -- "peering · DNS" --> IB2
+  IB1 -- "cond. fwd privatelink" --> PR
+  PR -- "resolves" --> PDNS
+  PR -- "outbound: corp.example" --> IB1
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class GM ext;
+  class IB1,IB2 ibx;
+  class PR,PDNS native;
+  class W1,W2 spoke;

@@ -1,0 +1,253 @@
+# ---------------------------------------------------------------------------
+# github-actions-vmware-ddi.yml
+#
+# Stage 2 (+ Stage 3) GitOps pipeline for the Infoblox DDI extension that layers
+# on a VMware Cloud Foundation SDDC. STARTER SKELETON — coherent and internally
+# consistent, but pin your own action SHAs/versions and supply environment values
+# (vCenter/NSX coordinates, backend config, OVA/model) before production use.
+#
+# AUTH — the honest VMware difference: there is NO cloud OIDC / workload-identity
+# federation here (no hyperscaler token service to trade an OIDC token with). The
+# vsphere/nsxt/infoblox providers authenticate with USERNAME + PASSWORD, so the
+# passwords come from GitHub Actions SECRETS (ideally fronted by HashiCorp Vault
+# via the Vault GitHub Action / a self-hosted runner with Vault agent). Treat
+# these secrets accordingly: least-privilege service accounts, rotate on schedule,
+# and prefer a self-hosted runner INSIDE the management network so credentials and
+# the vCenter/NSX/Grid endpoints never traverse the public internet. See
+# _module-contract.md §1/§9.
+#
+# STATE — remote state lives on a SHARED backend reachable on-prem (e.g. an
+# S3-compatible object store like MinIO, an HTTP backend, Consul, or Terraform
+# Enterprise). There is no Azure blob storage on-prem; pick a backend your SDDC
+# already runs and configure it in ../terraform (backend block) — shown as
+# backend-config args below.
+#
+# Stages (jobs):
+#   inventory  reads Stage-1 (VCF/vSphere/NSX-T) facts — datacenter, cluster,
+#              datastore, management port group, Tier-1 gateway paths — and passes
+#              them to Stage 2. Stage 1 (the SDDC) is built elsewhere; this job
+#              only CONSUMES its inventory.
+#   ddi        terraform init/plan/apply of ../terraform. Gated on the
+#              deployment_model / acknowledge_saas_boundary contract rule (§1).
+#   validate   runs validation/*.sh; any non-zero exit fails the pipeline.
+# ---------------------------------------------------------------------------
+
+name: vmware-ddi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infoblox-ddi-book/vmware-lz-automation/terraform/**"
+      - "infoblox-ddi-book/vmware-lz-automation/validation/**"
+      - "infoblox-ddi-book/vmware-lz-automation/pipelines/github-actions-vmware-ddi.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev sandbox -> prod promotion flow)"
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      apply:
+        description: "Run terraform apply (false = plan-only)"
+        type: boolean
+        default: false
+
+# No id-token needed — there is no cloud OIDC exchange on VMware. Providers use
+# username/password from secrets (see the env/secret wiring below).
+permissions:
+  contents: read
+
+# Non-secret config. Secrets (VSPHERE_PASSWORD, NSX_PASSWORD, VNIOS_ADMIN_PASSWORD,
+# GRID_SHARED_SECRET, INFOBLOX_* ...) live in GitHub Environments / repository
+# secrets, ideally sourced from HashiCorp Vault at run time.
+env:
+  TF_VERSION: "1.9.5"
+  TF_WORKING_DIR: "infoblox-ddi-book/vmware-lz-automation/terraform"
+  VALIDATION_DIR: "infoblox-ddi-book/vmware-lz-automation/validation"
+  # deployment_model drives the boundary rule; keep in sync with the TF var.
+  DEPLOYMENT_MODEL: "grid"      # grid | universal_ddi
+  ACKNOWLEDGE_SAAS_BOUNDARY: "false"
+
+concurrency:
+  group: vmware-ddi-${{ github.ref }}-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  # =========================================================================
+  # Stage 1 handoff (inventory). Stage 1 = the VCF SDDC (vCenter/NSX/SDDC
+  # Manager), built and owned elsewhere. This job does NOT build the SDDC; it
+  # reads the inventory facts Stage 2 consumes as inputs (contract §2). Swap the
+  # placeholder for however your platform team publishes them (a facts file in
+  # git, `govc`/PowerCLI lookups, or remote state).
+  # =========================================================================
+  inventory:
+    name: "Stage 1 · read SDDC inventory"
+    runs-on: [self-hosted, mgmt-network]   # runner inside the management network
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    outputs:
+      vsphere_datacenter: ${{ steps.read.outputs.vsphere_datacenter }}
+      compute_cluster: ${{ steps.read.outputs.compute_cluster }}
+      datastore: ${{ steps.read.outputs.datastore }}
+      management_portgroup: ${{ steps.read.outputs.management_portgroup }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read SDDC inventory facts
+        id: read
+        shell: bash
+        run: |
+          set -euo pipefail
+          # STARTER: publish these however your platform team does. Example with
+          # govc (VMware CLI) against vCenter — creds from secrets/Vault:
+          #   export GOVC_URL="$VSPHERE_SERVER" GOVC_USERNAME="$VSPHERE_USER" GOVC_PASSWORD="$VSPHERE_PASSWORD"
+          #   govc ls /DC1/host        # clusters
+          #   govc ls /DC1/datastore   # datastores
+          #   govc ls /DC1/network     # port groups
+          # Placeholders below so downstream wiring is exercised end-to-end:
+          echo "vsphere_datacenter=${VSPHERE_DATACENTER:-DC1}" >> "$GITHUB_OUTPUT"
+          echo "compute_cluster=${COMPUTE_CLUSTER:-MgmtCluster}" >> "$GITHUB_OUTPUT"
+          echo "datastore=${DATASTORE:-DS-SSD-01}" >> "$GITHUB_OUTPUT"
+          echo "management_portgroup=${MGMT_PG:-MGMT-dvPG}" >> "$GITHUB_OUTPUT"
+
+  # =========================================================================
+  # Stage 2 — the Infoblox DDI module. terraform init/plan/apply of ../terraform.
+  # Apply is gated on the SaaS boundary rule.
+  # =========================================================================
+  ddi:
+    name: "Stage 2 · Terraform DDI"
+    needs: inventory
+    runs-on: [self-hosted, mgmt-network]
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Contract §1 boundary gate ---------------------------------------
+      # deployment_model=universal_ddi routes the control plane to the Infoblox
+      # Portal SaaS, OUTSIDE the SDDC boundary. Hard-fail unless acknowledged.
+      # (The TF module also enforces this; the pipeline fails fast so the SaaS
+      # path is never even init'd unacknowledged.)
+      - name: Enforce SaaS boundary acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${DEPLOYMENT_MODEL}" = "universal_ddi" ] && [ "${ACKNOWLEDGE_SAAS_BOUNDARY}" != "true" ]; then
+            echo "::error::deployment_model=universal_ddi routes control plane to Infoblox Portal SaaS (outside the SDDC/ATO boundary)."
+            echo "::error::Set ACKNOWLEDGE_SAAS_BOUNDARY=true only after the FedRAMP/authorization review. See _module-contract.md §1."
+            exit 1
+          fi
+          echo "Boundary gate OK (model=${DEPLOYMENT_MODEL}, ack=${ACKNOWLEDGE_SAAS_BOUNDARY})"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init (shared remote state)
+        env:
+          # Shared on-prem backend (e.g. MinIO/S3, HTTP, Consul, TFE). Configure
+          # the matching backend block in ../terraform; pass coordinates here.
+          BACKEND_BUCKET: ${{ vars.TFSTATE_BUCKET }}
+          BACKEND_ENDPOINT: ${{ vars.TFSTATE_ENDPOINT }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${BACKEND_BUCKET}" \
+            -backend-config="endpoint=${BACKEND_ENDPOINT}" \
+            -backend-config="key=vmware-ddi-${{ github.event.inputs.environment || 'dev' }}.tfstate"
+
+      - name: Terraform Plan
+        id: plan
+        env:
+          # Canonical contract variables (§3) + connection + SECRETS from Vault/CI.
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_deployment_model: ${{ env.DEPLOYMENT_MODEL }}
+          TF_VAR_acknowledge_saas_boundary: ${{ env.ACKNOWLEDGE_SAAS_BOUNDARY }}
+          TF_VAR_vsphere_datacenter: ${{ needs.inventory.outputs.vsphere_datacenter }}
+          TF_VAR_compute_cluster: ${{ needs.inventory.outputs.compute_cluster }}
+          TF_VAR_datastore: ${{ needs.inventory.outputs.datastore }}
+          TF_VAR_management_portgroup: ${{ needs.inventory.outputs.management_portgroup }}
+          # Connection
+          TF_VAR_vsphere_server: ${{ vars.VSPHERE_SERVER }}
+          TF_VAR_vsphere_user: ${{ vars.VSPHERE_USER }}
+          TF_VAR_nsx_manager: ${{ vars.NSX_MANAGER }}
+          TF_VAR_nsx_user: ${{ vars.NSX_USER }}
+          # SECRETS (no OIDC on VMware) — from GH secrets / Vault
+          TF_VAR_vsphere_password: ${{ secrets.VSPHERE_PASSWORD }}
+          TF_VAR_nsx_password: ${{ secrets.NSX_PASSWORD }}
+          TF_VAR_admin_password: ${{ secrets.VNIOS_ADMIN_PASSWORD }}
+          TF_VAR_grid_shared_secret: ${{ secrets.GRID_SHARED_SECRET }}
+          # universal_ddi only: TF_VAR_saas_join_token: ${{ secrets.SAAS_JOIN_TOKEN }}
+        run: terraform plan -input=false -out=tfplan
+
+      # Apply only on: workflow_dispatch with apply=true, OR a push to main.
+      # PRs are plan-only. Environment protection rules (reviewers) on `prod`
+      # provide the human gate for the promotion flow.
+      - name: Terraform Apply
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: terraform apply -input=false -auto-approve tfplan
+
+      # Publish Stage 2 outputs for the validate job (contract §7).
+      - name: Export DDI outputs
+        id: out
+        run: |
+          {
+            echo "ddi_anycast_vip=$(terraform output -raw ddi_anycast_vip 2>/dev/null || echo '')"
+            echo "grid_master_ip=$(terraform output -raw grid_master_ip 2>/dev/null || echo '')"
+          } >> "$GITHUB_OUTPUT"
+    outputs:
+      ddi_anycast_vip: ${{ steps.out.outputs.ddi_anycast_vip }}
+      grid_master_ip: ${{ steps.out.outputs.grid_master_ip }}
+
+  # =========================================================================
+  # Stage 3 — validation gates. Runs the validation/*.sh scripts; any non-zero
+  # exit fails the pipeline. Secrets come from Vault/CI; non-secret inputs from
+  # Stage 2 outputs.
+  # =========================================================================
+  validate:
+    name: "Stage 3 · Validate"
+    needs: ddi
+    # Skip validation on plan-only PR runs (nothing was applied).
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: [self-hosted, mgmt-network]
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: DNS resolution check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_VIP: ${{ needs.ddi.outputs.ddi_anycast_vip }}
+          TEST_FQDN: ${{ vars.TEST_FQDN }}
+          EXPECTED_IP: ${{ vars.EXPECTED_IP }}
+          AD_FQDN: ${{ vars.AD_FQDN }}
+        run: bash dns-validation.sh
+
+      - name: Discovery-sync freshness check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_API_FLAVOR: ${{ env.DEPLOYMENT_MODEL == 'universal_ddi' && 'universal_ddi' || 'nios' }}
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          STALE_THRESHOLD_MIN: "1440"
+          INFOBLOX_USERNAME: ${{ secrets.INFOBLOX_USERNAME }}
+          INFOBLOX_PASSWORD: ${{ secrets.INFOBLOX_PASSWORD }}
+          # For universal_ddi, provide INFOBLOX_CSP_TOKEN from Vault instead.
+        run: bash discovery-sync-check.sh
+
+      - name: IPAM conflict check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          INFOBLOX_USERNAME: ${{ secrets.INFOBLOX_USERNAME }}
+          INFOBLOX_PASSWORD: ${{ secrets.INFOBLOX_PASSWORD }}
+          NETWORK_VIEW: "default"
+        run: bash ipam-conflict-check.sh

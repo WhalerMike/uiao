@@ -43,6 +43,8 @@ Enterprise supernet 10.0.0.0/8  (authoritative in Infoblox IPAM)
 
 A recommended layout for the self-managed Grid model:
 
+![Multi-cloud Grid control-plane topology: a single Grid Master plus Grid Master Candidate on-prem/VMware anchoring vNIOS member pairs in each of the Azure hub VNet, AWS network-account VPC, GCP host VPC, and OCI hub VCN over private Grid VPN paths](figs/xplat-01-grid-topology.png)
+
 ```mermaid
 graph TD
   GM[Grid Master + GMC<br/>on-prem / VMware mgmt domain] 
@@ -84,6 +86,8 @@ Design rules that apply regardless of platform:
 
 The goal is that any workload in any cloud can resolve any name — cloud-service private
 names, other clouds' private zones, on-prem AD, and the internet — deterministically.
+
+![Consistent resolution fabric: a workload in any cloud sends all DNS to the Infoblox anycast VIP, which conditionally forwards cloud-native private names to the local cloud resolver, answers enterprise zones authoritatively, cross-forwards to other clouds' private zones, forwards on-prem AD names, and recurses to the internet with RPZ/threat feeds applied uniformly](figs/xplat-02-resolution-fabric.png)
 
 | Name type | Resolved by | Mechanism (per-chapter detail) |
 |---|---|---|

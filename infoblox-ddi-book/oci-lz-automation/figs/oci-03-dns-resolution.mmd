@@ -1,0 +1,26 @@
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph SPOKE["Spoke VCN"]
+    VM["Workload<br/>queries 169.254.169.254"]:::spoke
+    SR["Spoke VCN resolver<br/>(DHCP options)"]:::native
+  end
+
+  subgraph HUB["Hub VCN"]
+    FE["OCI resolver<br/>FORWARDING endpoint<br/>(2 IPs)"]:::native
+    VIP["Infoblox anycast VIP<br/>/ member IPs"]:::ibx
+    NIOS["vNIOS members<br/>authoritative: corp zones<br/>Threat Defense / RPZ"]:::ibx
+    LE["OCI resolver<br/>LISTENING endpoint<br/>(1 IP)"]:::native
+  end
+
+  VM --> SR
+  SR -- "forward enterprise/<br/>unknown names" --> FE
+  FE -- "FORWARD rule 53" --> VIP
+  VIP --> NIOS
+  NIOS -- "answers corp.example<br/>(authoritative)" --> VM
+  NIOS -- "cond. fwd *.oraclevcn.com<br/>+ private zones 53" --> LE
+  LE -- "OCI private views<br/>answer" --> NIOS

@@ -1,0 +1,38 @@
+graph TD
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph ONPREM["On-prem data center"]
+    GM["Grid Master / GMC<br/>authoritative IPAM + DNS<br/>control plane"]:::ibx
+  end
+
+  subgraph HUB["Hub VCN — connectivity compartment (CIS Landing Zone)"]
+    DRG["DRG v2<br/>hub-spoke + hybrid"]:::native
+    subgraph AD1["AD-1 / FD-1"]
+      M1["vNIOS member<br/>CP-2205"]:::ibx
+    end
+    subgraph AD2["AD-2 / FD-2"]
+      M2["vNIOS member<br/>CP-2205"]:::ibx
+    end
+    VIP["Anycast /32 VIP<br/>(BGP over DRG) or<br/>OCI Load Balancer"]:::ibx
+    RES["OCI DNS resolver<br/>listening + forwarding EP<br/>+ private views"]:::native
+  end
+
+  subgraph SPOKES["Spoke VCNs"]
+    SA["Spoke VCN A<br/>subnet DHCP options<br/>-> hub resolver"]:::spoke
+    SB["Spoke VCN B<br/>subnet DHCP options<br/>-> hub resolver"]:::spoke
+  end
+
+  GM -- "Grid VPN 1194/udp + 2114/tcp<br/>FastConnect / IPSec" --> DRG
+  DRG --> M1
+  DRG --> M2
+  M1 -- "HA pair" --> M2
+  M1 --> VIP
+  M2 --> VIP
+  M1 -- "cond. fwd 53" --> RES
+  M2 -- "cond. fwd 53" --> RES
+  SA -- "DNS 53 over DRG" --> DRG
+  SB -- "DNS 53 over DRG" --> DRG

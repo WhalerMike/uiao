@@ -31,6 +31,8 @@ DDI layer inside the Azure landing zone, not the landing zone itself.**
 
 ## 2. Reference architecture
 
+![Azure Connectivity-hub reference architecture: vNIOS members in the hub VNet, spoke VNets forwarding DNS to them, conditional-forward of privatelink zones to the Azure DNS Private Resolver inbound endpoint, the resolver outbound ruleset returning corp.example to Infoblox, and an Entra ID app registration driving discovery into IPAM](figs/azure-ch-01-reference-architecture.png)
+
 The recurring volume pattern specializes cleanly on Azure. Infoblox DNS members live in
 the **connectivity subscription's hub VNet**. Spoke workload VNets are configured
 (via VNet DNS settings) to send queries to the Infoblox members' private IPs. The

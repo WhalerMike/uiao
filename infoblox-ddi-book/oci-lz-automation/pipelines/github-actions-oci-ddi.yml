@@ -1,0 +1,342 @@
+# ---------------------------------------------------------------------------
+# github-actions-oci-ddi.yml
+#
+# Stage 2 (+ Stage 3) GitOps pipeline for the Infoblox DDI extension that layers
+# on the OCI CIS Landing Zone. STARTER SKELETON — coherent and internally
+# consistent, but pin your own action SHAs/versions and supply environment values
+# (OCIDs, backend config, image OCID/shape) before production use.
+#
+# Boundary: Commercial OCI (the OC1 realm, *.oraclecloud.com). NOT OCI Government
+# (OC2/OC3) or National-Security realms. See _module-contract.md §1.
+#
+# AUTH — CANDID: OCI's OIDC federation to GitHub Actions is limited (there is no
+# broadly-available azure/login-style OIDC token exchange for OCI today). So this
+# pipeline assembles an OCI API-key config from GitHub SECRETS
+# (OCI_CLI_USER/TENANCY/FINGERPRINT/KEY_CONTENT/REGION). The CLEANER native option
+# is OCI Resource Manager, which injects credentials automatically and needs no key
+# in CI — see resource-manager-oci-ddi.md.
+#
+# Stages (jobs):
+#   lz        reference/placeholder — reads Stage 1 (CIS Landing Zone) remote-state
+#             outputs (hub_vcn_ocid, network_compartment_ocid, drg_ocid, vault_ocid,
+#             hub_resolver_ocid). Stage 1 is a SEPARATE pipeline; this only CONSUMES.
+#   ddi       terraform init/plan/apply of ../terraform. Gated on the
+#             deployment_model / acknowledge_saas_boundary contract rule (§1).
+#   validate  runs validation/*.sh; any non-zero exit fails the pipeline.
+# ---------------------------------------------------------------------------
+
+name: oci-ddi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infoblox-ddi-book/oci-lz-automation/terraform/**"
+      - "infoblox-ddi-book/oci-lz-automation/validation/**"
+      - "infoblox-ddi-book/oci-lz-automation/pipelines/github-actions-oci-ddi.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev sandbox -> prod promotion flow)"
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+      apply:
+        description: "Run terraform apply (false = plan-only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: "1.9.5"
+  TF_WORKING_DIR: "infoblox-ddi-book/oci-lz-automation/terraform"
+  VALIDATION_DIR: "infoblox-ddi-book/oci-lz-automation/validation"
+  # deployment_model drives the boundary rule; keep in sync with the TF var.
+  DEPLOYMENT_MODEL: "grid"      # grid | universal_ddi
+  ACKNOWLEDGE_SAAS_BOUNDARY: "false"
+
+concurrency:
+  group: oci-ddi-${{ github.ref }}-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  # =========================================================================
+  # Stage 1 handoff (reference/placeholder). Stage 1 = the OCI CIS Landing Zone,
+  # usually its OWN pipeline. This job does not build the landing zone; it only
+  # reads Stage 1's remote-state outputs so Stage 2 can consume them as inputs
+  # (contract §2). Swap the data source for however your platform team publishes
+  # outputs (remote state, a Resource Manager stack output, or the oci CLI).
+  # =========================================================================
+  lz:
+    name: "Stage 1 · read CIS Landing Zone outputs"
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    outputs:
+      hub_vcn_ocid: ${{ steps.read.outputs.hub_vcn_ocid }}
+      network_compartment_ocid: ${{ steps.read.outputs.network_compartment_ocid }}
+      drg_ocid: ${{ steps.read.outputs.drg_ocid }}
+      vault_ocid: ${{ steps.read.outputs.vault_ocid }}
+      hub_resolver_ocid: ${{ steps.read.outputs.hub_resolver_ocid }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Assemble the OCI API-key config from secrets (see AUTH note at the top).
+      - name: Configure OCI CLI (API-key config from secrets)
+        shell: bash
+        env:
+          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+          OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+          OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.oci
+          printf '%s' "$OCI_CLI_KEY_CONTENT" > ~/.oci/key.pem
+          chmod 600 ~/.oci/key.pem
+          cat > ~/.oci/config <<EOF
+          [DEFAULT]
+          user=${OCI_CLI_USER}
+          tenancy=${OCI_CLI_TENANCY}
+          fingerprint=${OCI_CLI_FINGERPRINT}
+          key_file=${HOME}/.oci/key.pem
+          region=${OCI_CLI_REGION}
+          EOF
+          echo "::add-mask::${OCI_CLI_FINGERPRINT}"
+
+      - name: Read Stage 1 (CIS Landing Zone) outputs
+        id: read
+        shell: bash
+        env:
+          LZ_STATE_BUCKET: ${{ vars.LZ_STATE_BUCKET }}
+          LZ_STATE_KEY: ${{ vars.LZ_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          # STARTER: read the Stage 1 network state published by the CIS Landing
+          # Zone. In a real setup use `terraform_remote_state` from the Stage 2
+          # module, a Resource Manager stack output, or `oci` lookups. Placeholders
+          # below so downstream wiring is exercised end-to-end:
+          echo "Reading CIS LZ outputs from ${LZ_STATE_BUCKET}/${LZ_STATE_KEY}"
+          echo "hub_vcn_ocid=${HUB_VCN_OCID:-ocid1.vcn.oc1..aaaaEXAMPLE}" >> "$GITHUB_OUTPUT"
+          echo "network_compartment_ocid=${NETWORK_COMPARTMENT_OCID:-ocid1.compartment.oc1..aaaaEXAMPLE}" >> "$GITHUB_OUTPUT"
+          echo "drg_ocid=${DRG_OCID:-ocid1.drg.oc1..aaaaEXAMPLE}" >> "$GITHUB_OUTPUT"
+          echo "vault_ocid=${VAULT_OCID:-ocid1.vault.oc1..aaaaEXAMPLE}" >> "$GITHUB_OUTPUT"
+          echo "hub_resolver_ocid=${HUB_RESOLVER_OCID:-ocid1.dnsresolver.oc1..aaaaEXAMPLE}" >> "$GITHUB_OUTPUT"
+
+  # =========================================================================
+  # Stage 2 — the Infoblox DDI module. terraform init/plan/apply of ../terraform.
+  # Apply is gated on the SaaS boundary rule.
+  # =========================================================================
+  ddi:
+    name: "Stage 2 · Terraform DDI"
+    needs: lz
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Contract §1 boundary gate ---------------------------------------
+      - name: Enforce SaaS boundary acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${DEPLOYMENT_MODEL}" = "universal_ddi" ] && [ "${ACKNOWLEDGE_SAAS_BOUNDARY}" != "true" ]; then
+            echo "::error::deployment_model=universal_ddi routes control plane to Infoblox Portal SaaS (outside the ATO boundary)."
+            echo "::error::Set ACKNOWLEDGE_SAAS_BOUNDARY=true only after the authorization review. See _module-contract.md §1."
+            exit 1
+          fi
+          echo "Boundary gate OK (model=${DEPLOYMENT_MODEL}, ack=${ACKNOWLEDGE_SAAS_BOUNDARY})"
+
+      - name: Configure OCI CLI (API-key config from secrets)
+        shell: bash
+        env:
+          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+          OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+          OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.oci
+          printf '%s' "$OCI_CLI_KEY_CONTENT" > ~/.oci/key.pem
+          chmod 600 ~/.oci/key.pem
+          cat > ~/.oci/config <<EOF
+          [DEFAULT]
+          user=${OCI_CLI_USER}
+          tenancy=${OCI_CLI_TENANCY}
+          fingerprint=${OCI_CLI_FINGERPRINT}
+          key_file=${HOME}/.oci/key.pem
+          region=${OCI_CLI_REGION}
+          EOF
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # Pull provider creds Infoblox needs (WAPI admin) from OCI Vault. The oci
+      # provider uses the API-key config above; the infobloxopen/infoblox provider
+      # needs its own creds, sourced here.
+      - name: Fetch Infoblox provider creds from OCI Vault
+        shell: bash
+        env:
+          IB_USER_SECRET_OCID: ${{ vars.IB_USER_SECRET_OCID }}
+          IB_PASS_SECRET_OCID: ${{ vars.IB_PASS_SECRET_OCID }}
+        run: |
+          set -euo pipefail
+          IB_USER="$(oci secrets secret-bundle get --secret-id "$IB_USER_SECRET_OCID" --query 'data."secret-bundle-content".content' -o tsv | base64 -d)"
+          IB_PASS="$(oci secrets secret-bundle get --secret-id "$IB_PASS_SECRET_OCID" --query 'data."secret-bundle-content".content' -o tsv | base64 -d)"
+          echo "::add-mask::${IB_PASS}"
+          echo "INFOBLOX_USERNAME=${IB_USER}" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${IB_PASS}" >> "$GITHUB_ENV"
+
+      - name: Terraform Init (remote state in OCI Object Storage)
+        env:
+          # S3-compatible Object Storage backend. Access/secret keys are the
+          # user's Customer Secret Key (S3-compat), passed as backend env.
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_BACKEND_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_BACKEND_SECRET_KEY }}
+          STATE_BUCKET: ${{ vars.STATE_BUCKET }}
+          STATE_NAMESPACE: ${{ vars.STATE_NAMESPACE }}
+          OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="key=ddi-${{ github.event.inputs.environment || 'dev' }}.tfstate" \
+            -backend-config="region=${OCI_CLI_REGION}" \
+            -backend-config="endpoints={s3=\"https://${STATE_NAMESPACE}.compat.objectstorage.${OCI_CLI_REGION}.oraclecloud.com\"}" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_requesting_account_id=true"
+
+      - name: Terraform Plan
+        id: plan
+        env:
+          # Canonical contract variables (§3).
+          TF_VAR_region: ${{ secrets.OCI_CLI_REGION }}
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_deployment_model: ${{ env.DEPLOYMENT_MODEL }}
+          TF_VAR_acknowledge_saas_boundary: ${{ env.ACKNOWLEDGE_SAAS_BOUNDARY }}
+          TF_VAR_tenancy_ocid: ${{ secrets.OCI_CLI_TENANCY }}
+          TF_VAR_network_compartment_ocid: ${{ needs.lz.outputs.network_compartment_ocid }}
+          TF_VAR_hub_vcn_ocid: ${{ needs.lz.outputs.hub_vcn_ocid }}
+          TF_VAR_drg_ocid: ${{ needs.lz.outputs.drg_ocid }}
+          TF_VAR_vault_ocid: ${{ needs.lz.outputs.vault_ocid }}
+          TF_VAR_hub_resolver_ocid: ${{ needs.lz.outputs.hub_resolver_ocid }}
+        run: terraform plan -input=false -out=tfplan
+
+      # Apply only on: workflow_dispatch with apply=true, OR a push to main.
+      # PRs are plan-only. Environment protection rules (reviewers) on `prod`
+      # provide the human gate for the promotion flow.
+      - name: Terraform Apply
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: "Native path note — OCI Resource Manager"
+        if: always()
+        shell: bash
+        run: |
+          echo "OCI Resource Manager is the managed-Terraform alternative to this key-based CI."
+          echo "It injects credentials automatically (no OCI key in the pipeline)."
+          echo "See pipelines/resource-manager-oci-ddi.md."
+
+      - name: Export DDI outputs
+        id: out
+        run: |
+          {
+            echo "ddi_anycast_vip=$(terraform output -raw ddi_anycast_vip 2>/dev/null || echo '')"
+            echo "grid_master_ip=$(terraform output -raw grid_master_ip 2>/dev/null || echo '')"
+          } >> "$GITHUB_OUTPUT"
+    outputs:
+      ddi_anycast_vip: ${{ steps.out.outputs.ddi_anycast_vip }}
+      grid_master_ip: ${{ steps.out.outputs.grid_master_ip }}
+
+  # =========================================================================
+  # Stage 3 — validation gates. Runs the validation/*.sh scripts; any non-zero
+  # exit fails the pipeline. Secrets come from OCI Vault; non-secret inputs from
+  # Stage 2 outputs.
+  # =========================================================================
+  validate:
+    name: "Stage 3 · Validate"
+    needs: ddi
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validation tooling
+        run: sudo apt-get update && sudo apt-get install -y dnsutils jq curl
+
+      - name: Configure OCI CLI (API-key config from secrets)
+        shell: bash
+        env:
+          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+          OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+          OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.oci
+          printf '%s' "$OCI_CLI_KEY_CONTENT" > ~/.oci/key.pem
+          chmod 600 ~/.oci/key.pem
+          cat > ~/.oci/config <<EOF
+          [DEFAULT]
+          user=${OCI_CLI_USER}
+          tenancy=${OCI_CLI_TENANCY}
+          fingerprint=${OCI_CLI_FINGERPRINT}
+          key_file=${HOME}/.oci/key.pem
+          region=${OCI_CLI_REGION}
+          EOF
+
+      - name: Fetch Infoblox creds from OCI Vault
+        shell: bash
+        env:
+          IB_USER_SECRET_OCID: ${{ vars.IB_USER_SECRET_OCID }}
+          IB_PASS_SECRET_OCID: ${{ vars.IB_PASS_SECRET_OCID }}
+        run: |
+          set -euo pipefail
+          IB_USER="$(oci secrets secret-bundle get --secret-id "$IB_USER_SECRET_OCID" --query 'data."secret-bundle-content".content' -o tsv | base64 -d)"
+          IB_PASS="$(oci secrets secret-bundle get --secret-id "$IB_PASS_SECRET_OCID" --query 'data."secret-bundle-content".content' -o tsv | base64 -d)"
+          echo "::add-mask::${IB_PASS}"
+          echo "INFOBLOX_USERNAME=${IB_USER}" >> "$GITHUB_ENV"
+          echo "INFOBLOX_PASSWORD=${IB_PASS}" >> "$GITHUB_ENV"
+
+      - name: DNS resolution check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_VIP: ${{ needs.ddi.outputs.ddi_anycast_vip }}
+          TEST_FQDN: ${{ vars.TEST_FQDN }}
+          EXPECTED_IP: ${{ vars.EXPECTED_IP }}
+          OCI_FQDN: ${{ vars.OCI_FQDN }}
+        run: bash dns-validation.sh
+
+      - name: Discovery-sync freshness check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          DDI_API_FLAVOR: ${{ env.DEPLOYMENT_MODEL == 'universal_ddi' && 'universal_ddi' || 'nios' }}
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          STALE_THRESHOLD_MIN: "1440"
+          # INFOBLOX_USERNAME / INFOBLOX_PASSWORD exported above from OCI Vault.
+          # For universal_ddi, provide INFOBLOX_CSP_TOKEN from OCI Vault instead.
+        run: bash discovery-sync-check.sh
+
+      - name: IPAM conflict check
+        working-directory: ${{ env.VALIDATION_DIR }}
+        env:
+          GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
+          NETWORK_VIEW: "default"
+        run: bash ipam-conflict-check.sh

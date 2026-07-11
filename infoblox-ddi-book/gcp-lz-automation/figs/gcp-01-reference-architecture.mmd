@@ -1,0 +1,43 @@
+%% gcp-01-reference-architecture.mmd
+%% Infoblox DDI on a Google Cloud landing zone — Shared VPC host project hub with
+%% vNIOS members, service-project spokes, and the on-prem Grid Master / Portal.
+graph TD
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph ONPREM["On-prem DC / control plane"]
+    GM["Grid Master + GMC<br/>(or Universal DDI Portal)"]:::ctrl
+  end
+
+  subgraph HOST["Host project — Shared VPC hub (Stage 1 foundation)"]
+    subgraph DDI["ddi-subnet (Stage 2, this module)"]
+      MA["vNIOS member A<br/>zone -a"]:::ibx
+      MB["vNIOS member B<br/>zone -b"]:::ibx
+      VIP["anycast VIP<br/>ddi_anycast_vip"]:::ibx
+    end
+    FW["VPC firewall rules<br/>ddi-member tag · default-deny"]:::native
+    CDNS["Cloud DNS<br/>inbound policy · fwd/peer zones"]:::native
+    DISCO["ddi-disco service account<br/>networkViewer · dns.reader"]:::ctrl
+  end
+
+  subgraph SP1["Service project 1 (spoke)"]
+    W1["workload VMs<br/>169.254.169.254 → Cloud DNS"]:::spoke
+  end
+  subgraph SP2["Service project 2 (spoke)"]
+    W2["workload VMs"]:::spoke
+  end
+
+  GM -- "Grid VPN 1194/udp + 2114/tcp<br/>(or 443 SaaS sync)" --> MA
+  GM -- "Grid VPN / sync" --> MB
+  MA --- VIP
+  MB --- VIP
+  W1 -- "shared subnet + DNS peering" --> CDNS
+  W2 -- "shared subnet + DNS peering" --> CDNS
+  CDNS -- "forwarding zone → members" --> VIP
+  VIP -- "conditional forward googleapis" --> CDNS
+  DISCO -. "read VPCs/subnets/VMs" .-> SP1
+  DISCO -. "read VPCs/subnets/VMs" .-> SP2
+  FW -. "scopes member ports" .-> DDI

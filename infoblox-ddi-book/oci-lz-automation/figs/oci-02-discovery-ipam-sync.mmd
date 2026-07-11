@@ -1,0 +1,34 @@
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph CRED["OCI IAM — least-privilege credential"]
+    IP["Instance principal<br/>(dynamic group)"]:::ctrl
+    AK["OR IAM user +<br/>API signing key"]:::ctrl
+    POL["Policy: read<br/>virtual-network-family,<br/>read dns, tag-namespaces"]:::ctrl
+  end
+
+  subgraph SYNC["API/SDK-driven sync — NOT a native connector"]
+    JOB["Scheduled OCI-SDK job<br/>OR Terraform infoblox<br/>provider in-pipeline"]:::native
+  end
+
+  subgraph OCI["OCI resources (read-only)"]
+    VCN["VCNs / subnets /<br/>VNICs / CIDRs<br/>+ defined tags"]:::spoke
+  end
+
+  subgraph IB["Infoblox"]
+    IPAM["IPAM networks /<br/>containers<br/>+ extensible attributes"]:::ibx
+  end
+
+  IP --> POL
+  AK --> POL
+  POL -- "grants read" --> JOB
+  JOB -- "list VCNs/subnets<br/>(OCI SDK)" --> VCN
+  VCN -- "push as networks<br/>tag -> EA" --> JOB
+  JOB -- "WAPI / Universal DDI API" --> IPAM
+
+  NOTE["No event-driven OCI<br/>discovery connector —<br/>this path is code you run"]:::ext
+  NOTE -.-> JOB
