@@ -1,0 +1,41 @@
+%% gcp-sn-01-catalog-flow.mmd
+%% ServiceNow governed front door for the GCP DDI module: catalog intake →
+%% approval/SoD → CPG Terraform apply of ../terraform → IntegrationHub IPAM (WAPI)
+%% → MID Server validation gate → Service Graph Connector CMDB sync → close.
+%% A failed validation gate returns the request to approval (governance loop).
+graph LR
+  REQ["Service Catalog item<br/>catalog inputs → tfvars"]:::spoke
+
+  subgraph SN["ServiceNow (FedRAMP GovCloud instance)"]
+    APPR["Flow Designer<br/>approval + SoD gate"]:::ctrl
+    IH["IntegrationHub REST<br/>allocate-next-IP · A/PTR"]:::ctrl
+    SGC["Service Graph Connector<br/>IPAM → CMDB CIs"]:::ctrl
+    CLOSE["Change closed<br/>audit trail"]:::spoke
+  end
+
+  subgraph BND["ATO boundary — MID Server (in-boundary)"]
+    TF["CPG Terraform Connector<br/>plan/apply ../terraform"]:::native
+    VAL["Validation gate<br/>midserver-validate.sh"]:::native
+  end
+
+  subgraph GRID["Infoblox — system of record"]
+    IPAM["Grid Master / IPAM<br/>WAPI · Universal DDI"]:::ibx
+  end
+
+  REQ --> APPR
+  APPR -- "approved" --> TF
+  TF -- "apply GCP DDI module" --> IPAM
+  APPR -.-> IH
+  IH -- "WAPI next-available-IP · record:a/ptr" --> IPAM
+  TF --> VAL
+  VAL -- "dns · discovery-sync · ipam-conflict" --> IPAM
+  VAL -- "exit 0 → reconcile" --> SGC
+  VAL -- "non-zero exit → work-note" --> APPR
+  IPAM -- "subnets/IPs/EAs" --> SGC
+  SGC --> CLOSE
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;

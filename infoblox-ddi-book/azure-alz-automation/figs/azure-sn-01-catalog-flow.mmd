@@ -1,0 +1,34 @@
+%% Azure ServiceNow catalog → approval → Terraform → Infoblox WAPI → validation → CMDB loop.
+%% Palette per ../../figs/HOUSE-STYLE.md.
+%% ibx=Infoblox(red) native=validation/cloud(green) spoke=CMDB(blue)
+%% ctrl=ServiceNow(purple) ext=MID Server / in-boundary exec(grey)
+graph LR
+  REQ["Service Catalog item<br/>Azure DDI request<br/>(location, hub_vnet_id, ...)"]
+  APP["Flow Designer<br/>approval + SoD gate"]
+  subgraph MIDB["MID Server (in ATO boundary)"]
+    TF["CPG Terraform Connector<br/>plan → approve → apply<br/>../terraform"]
+    VAL["midserver-validate.sh<br/>dns / discovery / conflict"]
+  end
+  IBX["Infoblox WAPI / Universal DDI<br/>allocate-next-available<br/>+ create A/PTR"]
+  KV["Azure Key Vault<br/>WAPI + grid secrets"]
+  CMDB["ServiceNow CMDB<br/>Service Graph Connector<br/>cmdb_ci_ip_network(_subnet)"]
+  DONE["Close request<br/>work-notes + audit trail"]
+
+  REQ --> APP --> TF
+  KV -. "secret refs" .-> TF
+  TF --> IBX
+  IBX --> VAL
+  VAL --> CMDB --> DONE
+  VAL -. "fail (non-zero)" .-> APP
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  class REQ,APP,TF,DONE ctrl;
+  class VAL native;
+  class MIDB,KV ext;
+  class IBX ibx;
+  class CMDB spoke;
