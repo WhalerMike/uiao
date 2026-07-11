@@ -1,0 +1,38 @@
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph SN["ServiceNow (GovCloud / FedRAMP)"]
+    CAT["1 Service Catalog<br/>item (intake)"]:::ctrl
+    FLOW["2 Flow Designer<br/>approval + SoD gate"]:::ctrl
+    IH["4 IntegrationHub<br/>REST -> WAPI"]:::ctrl
+    SGC["6 Service Graph<br/>Connector -> CMDB"]:::ctrl
+    CLOSE["7 Close +<br/>audit trail"]:::ctrl
+  end
+
+  subgraph BND["In-boundary MID Server (ATO)"]
+    MID["3 CPG Terraform apply<br/>../terraform"]:::spoke
+    VAL["5 MID Server gate<br/>../validation/*.sh"]:::spoke
+  end
+
+  subgraph VCF["VMware Cloud Foundation (private cloud)"]
+    ARIA["Aria Automation +<br/>Infoblox IPAM plug-in"]:::native
+    GRID["Infoblox Grid<br/>IPAM / DNS / DHCP"]:::ibx
+    NSX["NSX-T DFW / segments /<br/>DHCP relay"]:::native
+  end
+
+  CAT --> FLOW
+  FLOW -->|"approved"| MID
+  MID --> ARIA
+  MID --> NSX
+  ARIA -->|"provision-time IPAM"| GRID
+  IH -->|"allocate-next-IP,<br/>A/PTR, fixed-address"| GRID
+  MID --> IH
+  IH --> VAL
+  VAL -->|"pass"| SGC
+  GRID -.->|"IPAM truth"| SGC
+  SGC --> CLOSE
+  VAL -.->|"non-zero exit<br/>-> back to approval"| FLOW

@@ -1,0 +1,25 @@
+graph TD
+  subgraph SN["ServiceNow (FedRAMP/GovCloud instance)"]
+    CAT["Service Catalog + Flow Designer"]:::ctrl
+    IH["IntegrationHub REST spokes"]:::ctrl
+    SGC["Service Graph Connector for Infoblox"]:::ctrl
+    CMDB["CMDB<br/>cmdb_ci_ip_network / subnet"]:::spoke
+  end
+  MID["MID Server<br/>(in ATO boundary)"]:::ext
+  subgraph ACT["System of action"]
+    TFR["Terraform run<br/>per-platform module"]:::native
+    CLOUD["CSP / VMware<br/>subnet + resources"]:::spoke
+  end
+  IBX["Infoblox DDI<br/>authoritative IPAM + DNS"]:::ibx
+  CAT --> MID
+  IH --> MID
+  MID --> TFR --> CLOUD
+  MID -->|WAPI / Universal DDI API| IBX
+  TFR -->|allocate CIDR| IBX
+  IBX --> SGC --> CMDB
+  MID -->|run validation scripts| IBX
+  classDef ibx fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext fill:#595959,stroke:#333333,color:#fff;
