@@ -486,8 +486,8 @@ default and recommended path**, keeping the entire control plane inside the boun
 
 ## Sources
 
-- [Azure Landing Zones — IaC accelerator](https://azure.github.io/Azure-Landing-Zones/accelerator/)
-- [Azure Landing Zones — Starter modules](https://azure.github.io/Azure-Landing-Zones/accelerator/startermodules/)
+- [Azure Landing Zones — repository (accelerator + docs)](https://github.com/Azure/Azure-Landing-Zones)
+- [Azure Landing Zones — Terraform accelerator (starter modules)](https://github.com/Azure/alz-terraform-accelerator)
 - [Azure Landing Zones Accelerators for Bicep and Terraform — GA announcement](https://techcommunity.microsoft.com/blog/azuretoolsblog/azure-landing-zones-accelerators-for-bicep-and-terraform-announcing-general-avai/4029866)
 - [Release of Bicep Azure Verified Modules for Platform Landing Zone](https://techcommunity.microsoft.com/blog/azuretoolsblog/release-of-bicep-azure-verified-modules-for-platform-landing-zone/4487932)
 - [AVM pattern module — ALZ connectivity hub-and-spoke VNet (Terraform Registry)](https://registry.terraform.io/modules/Azure/avm-ptn-alz-connectivity-hub-and-spoke-vnet/azurerm/latest)
@@ -499,7 +499,7 @@ default and recommended path**, keeping the entire control plane inside the boun
 - [Infoblox — `infoblox_ipv4_network` resource](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs/resources/infoblox_ipv4_network)
 - [Infoblox — terraform-provider-infoblox (GitHub)](https://github.com/infobloxopen/terraform-provider-infoblox)
 - [Infoblox — Deploying vNIOS for Azure from the Marketplace](https://docs.infoblox.com/space/vniosazure/37486729/Deploying+vNIOS+for+Azure+from+the+Marketplace)
-- [Infoblox — Terraform Resources deployment guide (NIOS provider)](https://docs.infoblox.com/space/DeploymentGuideTerraformNIOSProvider/807896547/Terraform+Resources)
+- [Infoblox — Terraform provider deployment guide (NIOS)](https://github.com/infobloxopen/terraform-provider-infoblox)
 - [Infoblox — Firewall Requirements for Infoblox Cloud Services (NIOS-X / 443)](https://docs.infoblox.com/space/BloxOneInfrastructure/873660456/Firewall+Requirements+for+Infoblox+Cloud+Services)
 - [Microsoft — Azure DNS Private Resolver overview](https://learn.microsoft.com/en-us/azure/dns/dns-private-resolver-overview)
 - [Microsoft — Private Resolver endpoints and rulesets](https://learn.microsoft.com/en-us/azure/dns/private-resolver-endpoints-rulesets)
