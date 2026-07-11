@@ -4,7 +4,7 @@
 > but every endpoint, WAPI object/field version, FQDN, and CIDR is
 > environment-specific and supplied via env vars — nothing is hard-coded to a
 > guess. Confirm WAPI object/field names against **your** Grid Master at
-> `https://<grid-master>/wapidoc/` before trusting the freshness parsing.
+> `<grid-master>/wapidoc/` (over HTTPS) before trusting the freshness parsing.
 
 Stage 3 is the pipeline gate. After Stage 2 (this Infoblox DDI module) applies,
 the `validate` stage runs these three checks and **fails the pipeline on any
@@ -23,7 +23,7 @@ discovery current, and is the address space clean?*
 
 - **`deployment_model = grid`** (default, boundary-clean for GCC-Moderate):
   discovery-sync and IPAM checks talk **NIOS WAPI** on the in-tenant Grid Master
-  (`https://<grid-master>/wapi/v2.12/…`). This is the default code path.
+  (`<grid-master>/wapi/v2.12/…` over HTTPS). This is the default code path.
 - **`deployment_model = universal_ddi`**: `discovery-sync-check.sh` has a second
   variant (`DDI_API_FLAVOR=universal_ddi`) that queries the **Infoblox Portal
   (CSP) SaaS** control plane at `csp.infoblox.com`. That endpoint is **outside
