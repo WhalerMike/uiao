@@ -1,0 +1,269 @@
+# ---------------------------------------------------------------------------
+# azure-pipelines-alz-ddi.yml
+#
+# Azure DevOps equivalent of github-actions-alz-ddi.yml. STARTER SKELETON —
+# coherent and internally consistent; pin task versions and supply environment
+# values before production use.
+#
+# Boundary: Commercial Azure (.com) — auth via a **workload-identity federation
+# service connection** (the ADO equivalent of GitHub OIDC; NO stored secrets).
+# NOT Azure Government (.us). See _module-contract.md.
+#
+# Stages:
+#   ALZ       reads Stage 1 (ALZ Accelerator) remote-state outputs. Stage 1 is
+#             typically its own pipeline; this stage only consumes its outputs.
+#   DDI       terraform init/plan/apply of ../terraform (parallel Bicep note).
+#             Gated on deployment_model / acknowledge_saas_boundary (§1).
+#   Validate  runs validation/*.sh; any non-zero exit fails the pipeline.
+#
+# Prereqs:
+#   * A service connection of type "Azure Resource Manager" using
+#     "Workload Identity federation (automatic)" — set azureServiceConnection.
+#   * A variable group "alz-ddi-secrets" linked to Azure Key Vault providing
+#     INFOBLOX-WAPI-USERNAME / INFOBLOX-WAPI-PASSWORD (and INFOBLOX-CSP-TOKEN
+#     for the universal_ddi path).
+#   * Environments "dev" / "test" / "prod" with approval checks for the
+#     promotion flow.
+# ---------------------------------------------------------------------------
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - infoblox-ddi-book/azure-alz-automation/terraform
+      - infoblox-ddi-book/azure-alz-automation/bicep
+      - infoblox-ddi-book/azure-alz-automation/validation
+      - infoblox-ddi-book/azure-alz-automation/pipelines/azure-pipelines-alz-ddi.yml
+
+pr:
+  branches:
+    include: [main]
+
+parameters:
+  - name: environment
+    displayName: "Target environment (dev sandbox -> prod)"
+    type: string
+    default: dev
+    values: [dev, test, prod]
+  - name: apply
+    displayName: "Run terraform apply (false = plan-only)"
+    type: boolean
+    default: false
+
+variables:
+  - group: alz-ddi-secrets            # Key Vault-linked variable group
+  - name: azureServiceConnection
+    value: "sc-alz-ddi-wif"           # ARM service connection (workload identity federation)
+  - name: tfVersion
+    value: "1.9.5"
+  - name: tfWorkingDir
+    value: "$(Build.SourcesDirectory)/infoblox-ddi-book/azure-alz-automation/terraform"
+  - name: validationDir
+    value: "$(Build.SourcesDirectory)/infoblox-ddi-book/azure-alz-automation/validation"
+  - name: deploymentModel
+    value: "grid"                     # grid | universal_ddi
+  - name: acknowledgeSaasBoundary
+    value: "false"
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  # =========================================================================
+  # Stage 1 handoff (reference/placeholder). Reads ALZ Accelerator outputs;
+  # does not build the landing zone. Publishes them as pipeline variables for
+  # the DDI stage (contract §2).
+  # =========================================================================
+  - stage: ALZ
+    displayName: "Stage 1 · read ALZ outputs"
+    jobs:
+      - job: read_alz
+        displayName: "Read ALZ Accelerator remote-state outputs"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Read Stage 1 outputs (OIDC / workload identity)"
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              # addSpnToEnvironment surfaces the federated identity to the script
+              # (no secret is stored; the connection uses workload identity).
+              addSpnToEnvironment: true
+              inlineScript: |
+                set -euo pipefail
+                # STARTER: read Stage 1 platform state (ALZ Accelerator). Replace
+                # with `terraform_remote_state` in the DDI module or an `az`
+                # blob read of the published outputs.
+                echo "Reading ALZ Accelerator outputs from $(ALZ_STATE_SA)/$(ALZ_STATE_CONTAINER)"
+                HUB_VNET_ID="${HUB_VNET_ID:-/subscriptions/xxxx/resourceGroups/rg-connectivity/providers/Microsoft.Network/virtualNetworks/vnet-hub}"
+                HUB_RG="${HUB_RG:-rg-connectivity}"
+                # Expose as output variables consumed by the DDI stage.
+                echo "##vso[task.setvariable variable=hub_vnet_id;isOutput=true]${HUB_VNET_ID}"
+                echo "##vso[task.setvariable variable=hub_resource_group_name;isOutput=true]${HUB_RG}"
+            name: alzout
+
+  # =========================================================================
+  # Stage 2 — Infoblox DDI module (Terraform). Parallel Bicep note included.
+  # Apply gated on SaaS boundary rule + environment approval.
+  # =========================================================================
+  - stage: DDI
+    displayName: "Stage 2 · Terraform DDI"
+    dependsOn: ALZ
+    variables:
+      hub_vnet_id: $[ stageDependencies.ALZ.read_alz.outputs['alzout.hub_vnet_id'] ]
+      hub_resource_group_name: $[ stageDependencies.ALZ.read_alz.outputs['alzout.hub_resource_group_name'] ]
+    jobs:
+      # deployment job binds to an ADO Environment => approvals gate prod.
+      - deployment: terraform_ddi
+        displayName: "Terraform init/plan/apply"
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                # --- Contract §1 boundary gate -----------------------------
+                - script: |
+                    set -euo pipefail
+                    if [ "$(deploymentModel)" = "universal_ddi" ] && [ "$(acknowledgeSaasBoundary)" != "true" ]; then
+                      echo "##vso[task.logissue type=error]deployment_model=universal_ddi routes the control plane to Infoblox Portal SaaS (outside the ATO boundary)."
+                      echo "##vso[task.logissue type=error]Set acknowledgeSaasBoundary=true only after the FedRAMP/authorization review. See _module-contract.md §1."
+                      exit 1
+                    fi
+                    echo "Boundary gate OK (model=$(deploymentModel), ack=$(acknowledgeSaasBoundary))"
+                  displayName: "Enforce SaaS boundary acknowledgement"
+
+                - task: TerraformInstaller@1
+                  displayName: "Install Terraform $(tfVersion)"
+                  inputs:
+                    terraformVersion: $(tfVersion)
+
+                # Fetch Infoblox provider creds from Key Vault (variable group is
+                # already KV-linked; this shows an explicit fetch when finer
+                # control is needed). azurerm/backend auth uses the WIF service
+                # connection, not a stored secret.
+                - task: AzureKeyVault@2
+                  displayName: "Load Infoblox creds from Key Vault"
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    KeyVaultName: $(KEY_VAULT_NAME)
+                    SecretsFilter: "infoblox-wapi-username,infoblox-wapi-password"
+                    RunAsPreJob: false
+
+                - task: TerraformTaskV4@4
+                  displayName: "Terraform Init (remote state, OIDC backend)"
+                  inputs:
+                    provider: azurerm
+                    command: init
+                    workingDirectory: $(tfWorkingDir)
+                    backendServiceArm: $(azureServiceConnection)
+                    backendAzureRmResourceGroupName: $(TFSTATE_RG)
+                    backendAzureRmStorageAccountName: $(TFSTATE_SA)
+                    backendAzureRmContainerName: $(TFSTATE_CONTAINER)
+                    backendAzureRmKey: "ddi-${{ parameters.environment }}.tfstate"
+
+                - task: TerraformTaskV4@4
+                  displayName: "Terraform Plan"
+                  inputs:
+                    provider: azurerm
+                    command: plan
+                    workingDirectory: $(tfWorkingDir)
+                    environmentServiceNameAzureRM: $(azureServiceConnection)
+                    commandOptions: >-
+                      -input=false -out=tfplan
+                      -var environment=${{ parameters.environment }}
+                      -var deployment_model=$(deploymentModel)
+                      -var acknowledge_saas_boundary=$(acknowledgeSaasBoundary)
+                      -var hub_resource_group_name=$(hub_resource_group_name)
+                      -var hub_vnet_id=$(hub_vnet_id)
+                      -var key_vault_id=$(KEY_VAULT_ID)
+                  env:
+                    INFOBLOX_USERNAME: $(infoblox-wapi-username)
+                    INFOBLOX_PASSWORD: $(infoblox-wapi-password)
+
+                # Apply only when the apply parameter is true. Environment
+                # approval checks provide the human gate for prod promotion.
+                - ${{ if eq(parameters.apply, true) }}:
+                    - task: TerraformTaskV4@4
+                      displayName: "Terraform Apply"
+                      inputs:
+                        provider: azurerm
+                        command: apply
+                        workingDirectory: $(tfWorkingDir)
+                        environmentServiceNameAzureRM: $(azureServiceConnection)
+                        commandOptions: "-input=false -auto-approve tfplan"
+                      env:
+                        INFOBLOX_USERNAME: $(infoblox-wapi-username)
+                        INFOBLOX_PASSWORD: $(infoblox-wapi-password)
+
+                # Publish Stage 2 outputs (contract §7) for the Validate stage.
+                - task: TerraformTaskV4@4
+                  displayName: "Terraform Output"
+                  inputs:
+                    provider: azurerm
+                    command: output
+                    workingDirectory: $(tfWorkingDir)
+                    environmentServiceNameAzureRM: $(azureServiceConnection)
+
+                - script: |
+                    set -euo pipefail
+                    echo "Parallel path note — Bicep (../bicep) mirrors the same contract variables (§9):"
+                    echo "  az deployment group create -g <hub_rg> -f ../bicep/main.bicep -p @../bicep/params.${{ parameters.environment }}.bicepparam"
+                    echo "Where no Bicep-native Infoblox resource exists the module uses a"
+                    echo "deploymentScript (Azure CLI/REST) or an Ansible handoff. Pick ONE"
+                    echo "path (Terraform OR Bicep) per environment."
+                  displayName: "Parallel path note — Bicep"
+
+  # =========================================================================
+  # Stage 3 — Validation gates. Runs validation/*.sh; any non-zero exit fails.
+  # =========================================================================
+  - stage: Validate
+    displayName: "Stage 3 · Validate"
+    dependsOn: DDI
+    condition: and(succeeded(), eq('${{ parameters.apply }}', true))
+    jobs:
+      - job: validate
+        displayName: "DNS + discovery-sync + IPAM conflict checks"
+        steps:
+          - checkout: self
+
+          - script: sudo apt-get update && sudo apt-get install -y dnsutils jq curl
+            displayName: "Install validation tooling"
+
+          - task: AzureKeyVault@2
+            displayName: "Load Infoblox creds from Key Vault"
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              KeyVaultName: $(KEY_VAULT_NAME)
+              SecretsFilter: "infoblox-wapi-username,infoblox-wapi-password"
+
+          # DDI_VIP / GRID_MASTER: in a real run, read from Stage 2 remote-state
+          # outputs (terraform output) rather than pipeline vars; shown as vars
+          # here for a self-contained skeleton.
+          - task: AzureCLI@2
+            displayName: "Run validation scripts (fail pipeline on any check)"
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                cd "$(validationDir)"
+
+                export DDI_VIP="$(DDI_VIP)"
+                export TEST_FQDN="$(TEST_FQDN)"
+                export EXPECTED_IP="$(EXPECTED_IP)"
+                export PRIVATELINK_FQDN="$(PRIVATELINK_FQDN)"
+                bash dns-validation.sh
+
+                export DDI_API_FLAVOR="$( [ "$(deploymentModel)" = "universal_ddi" ] && echo universal_ddi || echo nios )"
+                export GRID_MASTER="$(GRID_MASTER)"
+                export INFOBLOX_USERNAME="$(infoblox-wapi-username)"
+                export INFOBLOX_PASSWORD="$(infoblox-wapi-password)"
+                export STALE_THRESHOLD_MIN="1440"
+                bash discovery-sync-check.sh
+
+                export NETWORK_VIEW="default"
+                bash ipam-conflict-check.sh
