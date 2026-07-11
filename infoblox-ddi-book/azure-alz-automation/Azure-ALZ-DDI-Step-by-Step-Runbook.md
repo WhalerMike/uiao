@@ -947,6 +947,216 @@ production-ready.
 
 ---
 
+## Appendix A — Variable Worksheets (fill-in forms)
+
+Copy each block, replace every `____` (and any `REPLACE_ME…`) with your value, and
+keep the rest. Fields marked **REQUIRED** have no default — the plan/deploy fails
+without them. The trailing comment gives the **source** of each value:
+
+- **you choose** — a design decision (region, CIDRs, names)
+- **Stage-1 output** — comes from the ALZ Accelerator (Phase 2)
+- **generated** — a command produces it (`az …`) or a Stage-2 output does (Phase 6)
+- **existing** — an already-provisioned resource (e.g. your Key Vault)
+
+### A.1 Terraform — `terraform/terraform.tfvars`
+
+```hcl
+# ---- REQUIRED (no default) ----
+location                  = "____"   # you choose — Azure region, .com (e.g. eastus)
+hub_resource_group_name   = "____"   # Stage-1 output: hub_resource_group_name
+hub_vnet_id               = "____"   # Stage-1 output: hub_vnet_id (/subscriptions/.../virtualNetworks/<name>)
+ddi_subnet_address_prefix = "____"   # you choose — from the IPAM plan (e.g. 10.100.8.0/26)
+key_vault_id              = "____"   # existing — /subscriptions/.../vaults/<kv>
+vnios_vm_sku              = "____"   # you choose — per NIOS version/region (+ vCPU quota)
+vnios_image = {                      # generated — az vm image list --publisher infoblox --all -o table
+  publisher = "infoblox"
+  offer     = "____"
+  sku       = "____"
+  version   = "latest"               # or pin a build
+  # plan_name = "____"               # only if the Marketplace plan name differs from sku
+}
+mgmt_source_cidrs = ["____"]         # you choose — jumpbox/bastion/mgmt CIDRs (NEVER 0.0.0.0/0)
+dns_client_cidrs  = ["____"]         # you choose — spoke + on-prem CIDRs allowed to query DNS (53)
+
+# ---- OPTIONAL (defaults shown — change as needed) ----
+name_prefix               = "ddi"
+environment               = "prod"          # dev | test | prod
+deployment_model          = "grid"          # grid | universal_ddi
+acknowledge_saas_boundary = false           # MUST be true if deployment_model = "universal_ddi"
+compliance_profile        = "gcc-moderate"
+member_count              = 2               # >= 2 for HA
+availability_zones        = ["1", "2"]
+discovery_identity_type   = "user_assigned_mi"   # or "service_principal"
+tags                      = {}
+
+# NSG / networking
+monitoring_source_cidrs       = []          # REQUIRED only if enable_snmp = true
+grid_peer_cidrs               = ["____"]    # grid only — on-prem GM subnet + DDI subnet (1194/udp, 2114/tcp)
+enable_ssh                    = false
+enable_dhcp                   = false
+enable_snmp                   = false
+enable_accelerated_networking = true
+
+# DNS integration
+private_resolver_inbound_ip   = null        # Stage-1/existing — Private Resolver inbound IP (null = skip forwarders)
+azure_service_forward_domains = ["privatelink.blob.core.windows.net", "azure.com"]
+ddi_anycast_vip               = null        # set once you own the anycast VIP
+enable_spoke_dns_write        = false       # true needs Network Contributor on spokes
+spoke_vnet_ids                = []          # spokes to point at the DDI VIP
+
+# Discovery scoping
+discovered_subscription_ids          = ["____"]  # subscriptions to grant Reader for discovery
+enable_record_write                  = false     # true grants Private DNS Zone Contributor
+private_dns_zone_rg_ids              = []        # RG IDs of Private DNS zones (only if enable_record_write)
+existing_service_principal_object_id = null      # only if discovery_identity_type = "service_principal"
+
+# Key Vault secret NAMES (defaults usually fine; the VALUES go into Key Vault — see A.3)
+admin_password_secret_name  = "ddi-vnios-admin-password"
+temp_license_secret_name    = "ddi-vnios-temp-license"
+grid_shared_secret_name     = "ddi-grid-shared-secret"
+saas_join_token_secret_name = "ddi-uddi-join-token"
+
+# Grid join (deployment_model = "grid")
+grid_name       = "Infoblox"
+grid_master_vip = "____"                    # on-prem GM VIP (null only for a lab where the first member IS the GM)
+
+# Universal DDI (deployment_model = "universal_ddi")
+infoblox_portal_url = "https://csp.infoblox.com"
+
+# Marketplace
+accept_marketplace_agreement = true
+admin_username               = "azinfoblox"
+```
+
+### A.2 Bicep — `bicep/main.bicepparam`
+
+Same variable names as A.1. Fill the required params; the rest mirror the tfvars
+defaults. Note two Bicep secret-name defaults differ from Terraform's — set them
+explicitly to match your Key Vault (A.3):
+
+```bicep
+param location                  = '____'   // REQUIRED — you choose
+param hub_resource_group_name   = '____'   // REQUIRED — Stage-1 output
+param hub_vnet_id               = '____'   // REQUIRED — Stage-1 output
+param ddi_subnet_address_prefix = '____'   // REQUIRED — you choose
+param key_vault_id              = '____'   // REQUIRED — existing
+param vnios_vm_sku              = '____'   // REQUIRED — you choose
+param vnios_image = { publisher: 'infoblox', offer: '____', sku: '____', version: 'latest' }  // generated
+param deployment_model          = 'grid'        // grid | universal_ddi
+param acknowledge_saas_boundary = false         // true required for universal_ddi
+param member_count              = 2
+param availability_zones        = [ '1', '2' ]
+// secret names — align with the Key Vault you populate in A.3
+param admin_password_secret_name = 'ddi-admin-password'
+param grid_shared_secret_name    = 'ddi-grid-shared-secret'
+param temp_license_secret_name   = 'ddi-temp-license'
+```
+
+### A.3 Key Vault secrets (the values referenced by A.1/A.2)
+
+| Secret (default name) | Content to store | Source | Applies to |
+|---|---|---|---|
+| `ddi-vnios-admin-password` | vNIOS `admin` password to set at first boot | you choose (strong) | both |
+| `ddi-vnios-temp-license` | temp license string, e.g. `vnios dns dhcp grid enterprise` | Infoblox licensing | both |
+| `ddi-grid-shared-secret` | Grid shared secret used to join members | your Grid config | `grid` |
+| `ddi-uddi-join-token` | Infoblox Portal (CSP) join token | Infoblox Portal | `universal_ddi` |
+
+```bash
+KV=____   # your Key Vault NAME (not the resource ID)
+az keyvault secret set --vault-name "$KV" --name ddi-vnios-admin-password --value '____'
+az keyvault secret set --vault-name "$KV" --name ddi-vnios-temp-license   --value '____'
+az keyvault secret set --vault-name "$KV" --name ddi-grid-shared-secret   --value '____'   # grid
+az keyvault secret set --vault-name "$KV" --name ddi-uddi-join-token      --value '____'   # universal_ddi only
+```
+
+### A.4 Validation scripts — environment forms
+
+**`validation/dns-validation.sh`**
+
+```bash
+export DDI_VIP="____"                 # REQUIRED — anycast VIP or a member IP (Stage-2 output ddi_anycast_vip)
+export TEST_FQDN="____"               # REQUIRED — an authoritative A record (e.g. host.corp.example)
+export EXPECTED_IP="____"             # REQUIRED — the IP TEST_FQDN must resolve to
+export DNS_PORT="53"                  # default 53
+export DNS_TIMEOUT="5"                # default 5 (seconds)
+export RESOLVER="____"                # optional — override resolver (default: DDI_VIP)
+export PRIVATELINK_FQDN="____"        # optional — e.g. <acct>.privatelink.blob.core.windows.net
+export PRIVATELINK_EXPECTED_IP="____" # optional — expected private IP for the privatelink name
+```
+
+**`validation/discovery-sync-check.sh`**
+
+```bash
+export DDI_API_FLAVOR="nios"          # nios | universal_ddi (default nios)
+export STALE_THRESHOLD_MIN="1440"     # default 1440 (24h)
+# --- NIOS (deployment_model = grid) ---
+export GRID_MASTER="____"             # REQUIRED (nios) — Grid Master host/IP
+export INFOBLOX_USERNAME="____"       # REQUIRED (nios)
+export INFOBLOX_PASSWORD="____"       # REQUIRED (nios) — inject from Key Vault / CI secret, not literal
+export WAPI_VERSION="v2.12"           # default v2.12
+export WAPI_CA_BUNDLE="____"          # optional — path to CA bundle for TLS verification
+export DISCOVERY_TASK_NAME="____"     # optional — filter to a named vDiscovery task
+# --- Universal DDI (deployment_model = universal_ddi) ---
+export INFOBLOX_CSP_URL="https://csp.infoblox.com"  # default
+export INFOBLOX_CSP_TOKEN="____"      # REQUIRED (universal_ddi) — Portal API token
+```
+
+**`validation/ipam-conflict-check.sh`**
+
+```bash
+export GRID_MASTER="____"             # REQUIRED — Grid Master host/IP
+export INFOBLOX_USERNAME="____"       # REQUIRED
+export INFOBLOX_PASSWORD="____"       # REQUIRED — inject from a secret
+export WAPI_VERSION="v2.12"           # default v2.12
+export WAPI_CA_BUNDLE="____"          # optional — CA bundle path
+export NETWORK_VIEW="____"            # optional — limit to a network view
+export CANDIDATE_NETWORK="____"       # optional — pre-check one CIDR before allocating (e.g. 10.100.9.0/24)
+```
+
+### A.5 Pipeline — GitHub Actions (`pipelines/github-actions-alz-ddi.yml`)
+
+Set under **Settings → Secrets and variables → Actions** (or a repo Environment).
+
+**Secrets** (OIDC — no passwords stored):
+
+| Secret | Value | Source |
+|---|---|---|
+| `AZURE_CLIENT_ID` | client ID of the federated app/MI | generated (Phase 12) |
+| `AZURE_TENANT_ID` | your Entra tenant ID | you choose |
+| `AZURE_SUBSCRIPTION_ID` | target subscription | you choose |
+
+**Variables** (`vars.*`):
+
+| Variable | Value | Source |
+|---|---|---|
+| `TFSTATE_RG` / `TFSTATE_SA` / `TFSTATE_CONTAINER` | Stage-2 Terraform remote-state backend | you create (Phase 1) |
+| `ALZ_STATE_RG` / `ALZ_STATE_SA` / `ALZ_STATE_CONTAINER` / `ALZ_STATE_KEY` | Stage-1 state location | Stage-1 |
+| `KEY_VAULT_ID` / `KEY_VAULT_NAME` | your Key Vault | existing |
+| `DEPLOYMENT_MODEL` / `ACKNOWLEDGE_SAAS_BOUNDARY` | `grid` / `false` | you choose |
+| `TEST_FQDN` / `EXPECTED_IP` / `PRIVATELINK_FQDN` | validation inputs (A.4) | you choose |
+| `DDI_VIP` / `GRID_MASTER` | Stage-2 outputs | generated (Phase 6) |
+
+### A.6 Pipeline — Azure DevOps (`pipelines/azure-pipelines-alz-ddi.yml`)
+
+Set in a **variable group** (link a Key Vault for secrets) and pipeline variables:
+
+| Variable | Value |
+|---|---|
+| `azureServiceConnection` | name of the workload-identity ARM service connection |
+| `TFSTATE_RG` / `TFSTATE_SA` / `TFSTATE_CONTAINER` | Terraform backend |
+| `ALZ_STATE_SA` / `ALZ_STATE_CONTAINER` | Stage-1 state location |
+| `KEY_VAULT_ID` / `KEY_VAULT_NAME` | your Key Vault |
+| `deploymentModel` / `acknowledgeSaasBoundary` | `grid` / `false` |
+| `hub_vnet_id` / `hub_resource_group_name` | Stage-1 outputs |
+| `DDI_VIP` / `GRID_MASTER` / `TEST_FQDN` / `EXPECTED_IP` / `PRIVATELINK_FQDN` | validation inputs |
+| `tfVersion` / `tfWorkingDir` / `validationDir` | pipeline config |
+
+> Never put `INFOBLOX_PASSWORD`, `INFOBLOX_CSP_TOKEN`, or the vNIOS admin password
+> in plain pipeline variables — reference them from Key Vault (linked variable group
+> / `AzureKeyVault@2`) so they are injected at run time only.
+
+---
+
 ## Sources
 
 - [Azure Landing Zones — repository (accelerator + docs)](https://github.com/Azure/Azure-Landing-Zones)
