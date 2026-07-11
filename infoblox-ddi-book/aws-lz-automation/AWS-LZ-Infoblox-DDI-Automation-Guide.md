@@ -429,7 +429,7 @@ before use. The module enforces the pause: the plan hard-fails unless
 
 ## Sources
 
-- [Landing Zone Accelerator on AWS (GitHub)](https://github.com/aws-samples/landing-zone-accelerator-on-aws)
+- [Landing Zone Accelerator on AWS (GitHub)](https://github.com/awslabs/landing-zone-accelerator-on-aws)
 - [Infoblox — terraform-provider-infoblox (GitHub)](https://github.com/infobloxopen/terraform-provider-infoblox)
 - [Terraform Registry — hashicorp/aws provider docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 - [Terraform Registry — infobloxopen/infoblox provider docs](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs)

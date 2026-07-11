@@ -16,7 +16,7 @@ boundary rule, adapted to AWS primitives.
 The building blocks are all vendor-supported, but **no single vendor document ties
 them together**:
 
-- **AWS** ships [Control Tower and the Landing Zone Accelerator on AWS](https://github.com/aws-samples/landing-zone-accelerator-on-aws)
+- **AWS** ships [Control Tower and the Landing Zone Accelerator on AWS](https://github.com/awslabs/landing-zone-accelerator-on-aws)
   — they build the organization, guardrails, and the Network-account hub VPC +
   Transit Gateway, but know nothing about Infoblox.
 - **Infoblox** ships the [official Terraform provider](https://github.com/infobloxopen/terraform-provider-infoblox)
