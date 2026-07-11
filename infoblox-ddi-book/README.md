@@ -43,7 +43,7 @@ contract, canonical variables, port table, and the GCC-Moderate SaaS-boundary gu
 
 Each package also carries a **`servicenow/`** folder that fronts its Terraform module and
 validation scripts with ServiceNow (self-service catalog → approval → apply → validate →
-CMDB), per [Chapter 7](./07-servicenow-orchestration.md).
+CMDB), per [Chapter 7](./07-servicenow-orchestration.md). An **importable ServiceNow app skeleton** (Script Includes, REST Message, Flow blueprint, MID gate) lives in [`servicenow-app/`](./servicenow-app/README.md).
 
 Figures are Mermaid sources under each `figs/`, rendered to PNG by
 [`figs/render-figs.sh`](./figs/render-figs.sh) with the shared

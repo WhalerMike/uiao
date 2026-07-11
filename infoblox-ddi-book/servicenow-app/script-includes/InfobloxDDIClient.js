@@ -1,0 +1,133 @@
+// Script Include: InfobloxDDIClient  (application scope: x_infoblox_ddi)
+// -----------------------------------------------------------------------------
+// Server-side Infoblox client for the ServiceNow DDI orchestration app. Wraps the
+// two control planes described in Chapter 7:
+//   * NIOS WAPI  (self-managed Grid — in ATO boundary, deployment_model = grid)
+//   * Universal DDI / Portal API (SaaS — out of boundary, acknowledge_saas_boundary)
+//
+// Credentials/endpoint come from a Connection & Credential alias
+// (x_infoblox_ddi.infoblox) so no secrets live in code. Pick the flavor with the
+// system property x_infoblox_ddi.api_flavor = "nios" | "universal_ddi".
+//
+// STARTER SKELETON — validate WAPI object/field versions against your Grid
+// (<grid-master>/wapidoc) and the Universal DDI API reference before production use.
+// -----------------------------------------------------------------------------
+var InfobloxDDIClient = Class.create();
+InfobloxDDIClient.prototype = {
+
+    initialize: function () {
+        this.flavor = gs.getProperty('x_infoblox_ddi.api_flavor', 'nios');
+        this.wapiVersion = gs.getProperty('x_infoblox_ddi.wapi_version', 'v2.12');
+        // Connection alias supplies base URL + basic/oauth credentials.
+        this.midServer = gs.getProperty('x_infoblox_ddi.mid_server', '');
+        this.log = new GSLog('x_infoblox_ddi.log', 'InfobloxDDIClient');
+    },
+
+    // Allocate the next free IP from a network and return it, or '' on failure.
+    // networkCidr e.g. "10.16.4.0/24"; networkView optional.
+    nextAvailableIp: function (networkCidr, networkView) {
+        try {
+            if (this.flavor === 'universal_ddi')
+                return this._uddiNextAvailableIp(networkCidr, networkView);
+            return this._niosNextAvailableIp(networkCidr, networkView);
+        } catch (e) {
+            this.log.logErr('nextAvailableIp failed: ' + e);
+            return '';
+        }
+    },
+
+    // Create an authoritative host (A+PTR) record. Returns the object ref/id or ''.
+    createHostRecord: function (fqdn, ip, dnsView) {
+        try {
+            if (this.flavor === 'universal_ddi')
+                return this._uddiCreateHost(fqdn, ip, dnsView);
+            return this._niosCreateHost(fqdn, ip, dnsView);
+        } catch (e) {
+            this.log.logErr('createHostRecord failed: ' + e);
+            return '';
+        }
+    },
+
+    // Reclaim on decommission: delete an object by its ref/id. Returns boolean.
+    deleteObject: function (ref) {
+        try {
+            var r = this._rest('DELETE', this._path(ref), null);
+            return r.getStatusCode() < 300;
+        } catch (e) {
+            this.log.logErr('deleteObject failed: ' + e);
+            return false;
+        }
+    },
+
+    // ---- NIOS WAPI branch ---------------------------------------------------
+    _niosNextAvailableIp: function (cidr, view) {
+        // 1) resolve the network _ref, 2) call its next_available_ip function.
+        var q = '/network?network=' + encodeURIComponent(cidr) +
+                (view ? '&network_view=' + encodeURIComponent(view) : '');
+        var netResp = this._rest('GET', q, null);
+        var nets = JSON.parse(netResp.getBody() || '[]');
+        if (!nets.length) { this.log.logWarning('network not found: ' + cidr); return ''; }
+        var ref = nets[0]._ref;
+        var fnResp = this._rest('POST', '/' + ref + '?_function=next_available_ip&num=1', {});
+        var out = JSON.parse(fnResp.getBody() || '{}');
+        return (out.ips && out.ips.length) ? out.ips[0] : '';
+    },
+
+    _niosCreateHost: function (fqdn, ip, view) {
+        var body = {
+            name: fqdn,
+            ipv4addrs: [{ ipv4addr: ip }],
+            configure_for_dns: true,
+            view: view || 'default'
+        };
+        var resp = this._rest('POST', '/record:host?_return_fields=name', body);
+        // WAPI returns the object _ref as a quoted string on create.
+        return (resp.getBody() || '').replace(/"/g, '');
+    },
+
+    // ---- Universal DDI (Portal) branch -------------------------------------
+    _uddiNextAvailableIp: function (cidr, space) {
+        // POST /api/ddi/v1/ipam/address/nextavailableip against the subnet id.
+        var body = { count: 1 };
+        var resp = this._rest('POST',
+            '/api/ddi/v1/ipam/subnet/' + encodeURIComponent(cidr) + '/nextavailableip', body);
+        var out = JSON.parse(resp.getBody() || '{}');
+        return (out.results && out.results.length) ? out.results[0].address : '';
+    },
+
+    _uddiCreateHost: function (fqdn, ip, zone) {
+        var body = {
+            name_in_zone: fqdn.split('.')[0],
+            zone: zone,
+            rdata: { address: ip },
+            type: 'A'
+        };
+        var resp = this._rest('POST', '/api/ddi/v1/dns/record', body);
+        var out = JSON.parse(resp.getBody() || '{}');
+        return (out.result && out.result.id) ? out.result.id : '';
+    },
+
+    // ---- transport ----------------------------------------------------------
+    _path: function (ref) {
+        return this.flavor === 'universal_ddi' ? '/' + ref : '/' + ref;
+    },
+
+    _rest: function (method, path, body) {
+        var base = (this.flavor === 'universal_ddi')
+            ? ''                                   // UDDI paths already absolute under the alias base
+            : '/wapi/' + this.wapiVersion;
+        var m = new sn_ws.RESTMessageV2('x_infoblox_ddi.infoblox', 'default');
+        m.setHttpMethod(method);
+        m.setEndpoint(m.getEndpoint() + base + path);
+        if (this.midServer) m.setMIDServer(this.midServer);  // keep the call in-boundary
+        m.setRequestHeader('Content-Type', 'application/json');
+        if (body !== null && body !== undefined)
+            m.setRequestBody(JSON.stringify(body));
+        var resp = m.execute();
+        if (resp.getStatusCode() >= 300)
+            this.log.logWarning(method + ' ' + path + ' -> ' + resp.getStatusCode() + ': ' + resp.getBody());
+        return resp;
+    },
+
+    type: 'InfobloxDDIClient'
+};

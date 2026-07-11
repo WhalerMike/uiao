@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Infoblox DDI REST Message  (scope: x_infoblox_ddi)
+  Importable record definition for the outbound REST integration the Script
+  Includes call. Endpoint + auth are supplied by the Connection & Credential
+  alias 'x_infoblox_ddi.infoblox' at runtime; the value below is an illustrative
+  default only. STARTER SKELETON — adjust methods to your WAPI / Universal DDI
+  version. (XML records are not link-checked; the <endpoint> is a placeholder.)
+-->
+<record_update table="sys_rest_message">
+  <sys_rest_message action="INSERT_OR_UPDATE">
+    <name>Infoblox DDI</name>
+    <description>Outbound REST to Infoblox NIOS WAPI / Universal DDI. Routed via the in-boundary MID Server.</description>
+    <rest_endpoint>https://grid-master.example/wapi/v2.12</rest_endpoint>
+    <authentication_type>credentials_alias</authentication_type>
+    <use_mid>true</use_mid>
+    <sys_scope>x_infoblox_ddi</sys_scope>
+  </sys_rest_message>
+
+  <!-- next-available-IP (NIOS: network _ref + _function=next_available_ip) -->
+  <sys_rest_message_fn action="INSERT_OR_UPDATE">
+    <function_name>nextAvailableIp</function_name>
+    <rest_message>Infoblox DDI</rest_message>
+    <http_method>POST</http_method>
+    <rest_endpoint>${base}/${network_ref}?_function=next_available_ip&amp;num=${count}</rest_endpoint>
+    <content>{}</content>
+    <use_mid>true</use_mid>
+  </sys_rest_message_fn>
+
+  <!-- create host (A+PTR) record -->
+  <sys_rest_message_fn action="INSERT_OR_UPDATE">
+    <function_name>createHost</function_name>
+    <rest_message>Infoblox DDI</rest_message>
+    <http_method>POST</http_method>
+    <rest_endpoint>${base}/record:host</rest_endpoint>
+    <content>{"name":"${fqdn}","ipv4addrs":[{"ipv4addr":"${ip}"}],"configure_for_dns":true,"view":"${dns_view}"}</content>
+    <use_mid>true</use_mid>
+  </sys_rest_message_fn>
+
+  <!-- reclaim: delete by object ref -->
+  <sys_rest_message_fn action="INSERT_OR_UPDATE">
+    <function_name>deleteObject</function_name>
+    <rest_message>Infoblox DDI</rest_message>
+    <http_method>DELETE</http_method>
+    <rest_endpoint>${base}/${object_ref}</rest_endpoint>
+    <use_mid>true</use_mid>
+  </sys_rest_message_fn>
+</record_update>
