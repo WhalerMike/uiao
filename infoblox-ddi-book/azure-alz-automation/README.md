@@ -46,6 +46,7 @@ See [`_module-contract.md`](./_module-contract.md) for the full boundary rule.
 |---|---|
 | [`_module-contract.md`](./_module-contract.md) | The shared contract — variables, ports, IAM, naming, outputs. Read this first. |
 | `Azure-ALZ-Infoblox-DDI-Automation-Guide.md` | The implementation guide: 11-section skeleton mapped to ALZ automation, layered architecture, sequencing, GCC-Moderate control mapping. |
+| [`Azure-ALZ-DDI-Step-by-Step-Runbook.md`](./Azure-ALZ-DDI-Step-by-Step-Runbook.md) | The **detailed step-by-step deployment runbook** — 14 sequential phases with exact `az`/`terraform`/`git` commands, per-step verification, and troubleshooting. Start here to actually deploy. |
 | `terraform/` | Starter Terraform module (`azurerm` + `infobloxopen/infoblox`), `deployment_model`-driven, with a hub-integration example. |
 | `bicep/` | Parallel Bicep module + params; API/Ansible handoff where no Bicep-native Infoblox resource exists. |
 | `pipelines/` | Multi-stage GitOps examples (GitHub Actions + Azure DevOps): ALZ → DDI → validation. |
