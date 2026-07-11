@@ -18,7 +18,7 @@ The building blocks are all vendor-supported, but **no single vendor document ti
 them together**:
 
 - **Google** ships landing-zone foundations
-  ([Terraform Example Foundation](https://github.com/GoogleCloudPlatform/terraform-example-foundation),
+  ([Terraform Example Foundation](https://github.com/terraform-google-modules/terraform-example-foundation),
   [Cloud Foundation Fabric / FAST](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric))
   — they build the org, projects, and Shared VPC, but know nothing about Infoblox.
 - **Infoblox** ships the [official Terraform provider](https://github.com/infobloxopen/terraform-provider-infoblox)

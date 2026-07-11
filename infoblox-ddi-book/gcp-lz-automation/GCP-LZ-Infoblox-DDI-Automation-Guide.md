@@ -17,7 +17,7 @@
 ## 1. Overview & scope
 
 A Google Cloud landing-zone **foundation** — the [Terraform Example
-Foundation](https://github.com/GoogleCloudPlatform/terraform-example-foundation) or [Cloud
+Foundation](https://github.com/terraform-google-modules/terraform-example-foundation) or [Cloud
 Foundation Fabric / FAST](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric) —
 builds the *governed platform*: the resource-hierarchy (org → folders → projects), org
 policy, IAM, logging, and a **Shared VPC** in a connectivity/host project. What it does
@@ -430,7 +430,7 @@ default and recommended path**, keeping the entire control plane inside the boun
 
 ## Sources
 
-- [Terraform Example Foundation (Google Cloud landing zone)](https://github.com/GoogleCloudPlatform/terraform-example-foundation)
+- [Terraform Example Foundation (Google Cloud landing zone)](https://github.com/terraform-google-modules/terraform-example-foundation)
 - [Cloud Foundation Fabric / FAST](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric)
 - [Infoblox — `infobloxopen/infoblox` Terraform provider (Registry)](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs)
 - [Infoblox — terraform-provider-infoblox (GitHub)](https://github.com/infobloxopen/terraform-provider-infoblox)

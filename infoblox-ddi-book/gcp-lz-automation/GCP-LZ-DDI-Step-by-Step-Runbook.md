@@ -1042,7 +1042,7 @@ Set as **substitutions** on the trigger (or in the `cloudbuild.yaml`):
 
 ## Sources
 
-- [Terraform Example Foundation (Google Cloud landing zone)](https://github.com/GoogleCloudPlatform/terraform-example-foundation)
+- [Terraform Example Foundation (Google Cloud landing zone)](https://github.com/terraform-google-modules/terraform-example-foundation)
 - [Cloud Foundation Fabric / FAST](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric)
 - [HashiCorp — `hashicorp/google` provider (Registry)](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
 - [Infoblox — `infobloxopen/infoblox` Terraform provider (Registry)](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs)
