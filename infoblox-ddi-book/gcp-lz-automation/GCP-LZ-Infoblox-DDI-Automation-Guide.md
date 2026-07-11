@@ -436,7 +436,7 @@ default and recommended path**, keeping the entire control plane inside the boun
 - [Infoblox — terraform-provider-infoblox (GitHub)](https://github.com/infobloxopen/terraform-provider-infoblox)
 - [HashiCorp — `hashicorp/google` provider (Registry)](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
 - [Infoblox — Firewall Requirements for Infoblox Cloud Services (NIOS-X / 443)](https://docs.infoblox.com/space/BloxOneInfrastructure/873660456/Firewall+Requirements+for+Infoblox+Cloud+Services)
-- [Google Cloud — Cloud DNS documentation](https://cloud.google.com/dns/docs)
-- [Google Cloud — landing zone / architecture](https://cloud.google.com/architecture)
+- [Google Cloud — Cloud DNS documentation](https://docs.cloud.google.com/dns/docs/server-policies-overview)
+- [Google Cloud — landing zone / architecture](https://cloud.google.com/architecture/landing-zones)
 - Deploy chapter (click/CLI mechanics): [`../03-gcp.md`](../03-gcp.md)
 </content>

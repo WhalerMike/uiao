@@ -1048,7 +1048,7 @@ Set as **substitutions** on the trigger (or in the `cloudbuild.yaml`):
 - [Infoblox — `infobloxopen/infoblox` Terraform provider (Registry)](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs)
 - [Infoblox — terraform-provider-infoblox (GitHub)](https://github.com/infobloxopen/terraform-provider-infoblox)
 - [Infoblox — Firewall Requirements for Infoblox Cloud Services (NIOS-X / 443)](https://docs.infoblox.com/space/BloxOneInfrastructure/873660456/Firewall+Requirements+for+Infoblox+Cloud+Services)
-- [Google Cloud — Cloud DNS documentation](https://cloud.google.com/dns/docs)
+- [Google Cloud — Cloud DNS documentation](https://docs.cloud.google.com/dns/docs/server-policies-overview)
 - Module contract: [`_module-contract.md`](./_module-contract.md)
 - Architecture guide: [`GCP-LZ-Infoblox-DDI-Automation-Guide.md`](./GCP-LZ-Infoblox-DDI-Automation-Guide.md)
 - Deploy chapter (click/CLI mechanics): [`../03-gcp.md`](../03-gcp.md)

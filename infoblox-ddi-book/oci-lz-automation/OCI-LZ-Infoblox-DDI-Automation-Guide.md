@@ -437,7 +437,7 @@ keeping the entire control plane inside the tenancy.
 
 - [OCI CIS Landing Zone quickstart (Terraform)](https://github.com/oracle-quickstart/oci-cis-landingzone-quickstart)
 - [Oracle — OCI Terraform provider (Registry docs)](https://registry.terraform.io/providers/oracle/oci/latest/docs)
-- [Oracle — OCI DNS (private views, resolvers, endpoints)](https://docs.oracle.com/en-us/iaas/Content/DNS/home.htm)
+- [Oracle — OCI DNS (private views, resolvers, endpoints)](https://docs.oracle.com/en-us/iaas/Content/DNS/Tasks/privatedns.htm)
 - [Infoblox — `infobloxopen/infoblox` Terraform provider (Registry docs)](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs)
 - [Infoblox — terraform-provider-infoblox (GitHub)](https://github.com/infobloxopen/terraform-provider-infoblox)
 - [Infoblox — Firewall Requirements for Infoblox Cloud Services (NIOS-X / 443)](https://docs.infoblox.com/space/BloxOneInfrastructure/873660456/Firewall+Requirements+for+Infoblox+Cloud+Services)
