@@ -1,0 +1,32 @@
+graph LR
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;
+
+  subgraph SN["ServiceNow (FedRAMP GovCloud) — system of engagement"]
+    CAT["Catalog item<br/>DDI request<br/>(region, CIDR,<br/>deployment_model)"]:::ctrl
+    APR["Flow Designer<br/>approval + SoD<br/>(AC-5 / AC-6)"]:::ctrl
+    CMDB["Service Graph<br/>Connector -&gt; CMDB<br/>cmdb_ci_ip_network"]:::ctrl
+  end
+
+  subgraph MID["MID Server — inside the OCI ATO boundary"]
+    TF["CPG Terraform<br/>plan/apply<br/>../terraform"]:::native
+    GATE["Validation gate<br/>../validation/*.sh<br/>(midserver-validate.sh)"]:::native
+  end
+
+  subgraph IB["Infoblox DDI (Grid, in-tenancy)"]
+    IPAM["IntegrationHub REST<br/>next-available-IP<br/>+ A / PTR (WAPI)"]:::ibx
+  end
+
+  CAT --> APR
+  APR -- "approved" --> TF
+  TF -- "creates DDI subnet<br/>+ vNIOS members" --> IPAM
+  IPAM -- "allocation +<br/>records" --> GATE
+  GATE -- "pass -> reconcile" --> CMDB
+  CMDB -- "close request<br/>(AU-2 / CM-3 audit)" --> CAT
+  GATE -. "fail -> back to approval" .-> APR
+
+  NOTE["OCI discovery is<br/>API/SDK-driven —<br/>no native connector"]:::ext
+  NOTE -.-> GATE

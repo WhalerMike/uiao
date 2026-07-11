@@ -1,0 +1,44 @@
+%% aws-sn-01-catalog-flow.mmd
+%% ServiceNow governed front door for the AWS DDI module:
+%% Service Catalog intake -> Flow Designer approval/SoD -> CPG Terraform apply of
+%% ../terraform -> IntegrationHub IPAM calls to Infoblox -> MID Server validation
+%% gate (the three ../validation scripts) -> Service Graph Connector CMDB sync ->
+%% close. A failed validation gate returns to approval (the closed loop).
+graph LR
+  subgraph sn["ServiceNow (FedRAMP / GovCloud instance)"]
+    direction TB
+    CAT["Service Catalog item<br/>DDI subnet request"]:::spoke
+    FLOW["Flow Designer<br/>approval + SoD gate"]:::ctrl
+    CPG["CPG Terraform Connector<br/>speculative plan -> apply"]:::ctrl
+    IH["IntegrationHub REST<br/>allocate-next-IP · A/PTR"]:::ctrl
+    SGC["Service Graph Connector<br/>IPAM -> CMDB"]:::ctrl
+    CLOSE["Change closed<br/>audit trail"]:::spoke
+  end
+
+  subgraph mid["MID Server (inside ATO boundary)"]
+    TF["terraform plan/apply<br/>../terraform"]:::native
+    VAL["Validation gate<br/>dns · discovery-sync · ipam-conflict"]:::native
+  end
+
+  subgraph ibx["Infoblox DDI (system of record)"]
+    GRID["vNIOS Grid / Universal DDI<br/>WAPI · IPAM · DNS"]:::ibx
+  end
+
+  CAT --> FLOW
+  FLOW -->|approved| CPG
+  CPG --> TF
+  TF -->|apply to AWS| GRID
+  CPG --> IH
+  IH -->|"next-available-IP,<br/>create A/PTR"| GRID
+  IH --> VAL
+  VAL -->|"dns/discovery/conflict<br/>exit codes"| GRID
+  VAL -->|PASS| SGC
+  VAL -.->|FAIL: back to approval| FLOW
+  GRID -->|"networks + IPs"| SGC
+  SGC --> CLOSE
+
+  classDef ibx    fill:#C00000,stroke:#7d0000,color:#fff;
+  classDef native fill:#548235,stroke:#38571f,color:#fff;
+  classDef spoke  fill:#2E75B6,stroke:#1c4e7a,color:#fff;
+  classDef ctrl   fill:#7030A0,stroke:#4c2070,color:#fff;
+  classDef ext    fill:#595959,stroke:#333333,color:#fff;

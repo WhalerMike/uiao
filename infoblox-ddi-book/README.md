@@ -23,6 +23,7 @@ runbooks are directly comparable across platforms.
 | 4 | [Oracle Cloud Infrastructure](./04-oci.md) | OCI (CIS) Landing Zone — hub VCN |
 | 5 | [VMware (VCF / vSphere / NSX-T)](./05-vmware.md) | VMware Cloud Foundation — management/edge domain |
 | 6 | [Cross-Platform Operations & Multi-Cloud Governance](./06-cross-platform-operations.md) | Grid/Portal design, anycast, DR, one authoritative IPAM |
+| 7 | [ServiceNow Orchestration — A Governed Front Door](./07-servicenow-orchestration.md) | Self-service catalog → approval → Terraform + Infoblox → validation → CMDB, closed loop |
 
 ## Automation packages (Terraform, per platform)
 
@@ -39,6 +40,10 @@ contract, canonical variables, port table, and the GCC-Moderate SaaS-boundary gu
 | Google Cloud | [`gcp-lz-automation/`](./gcp-lz-automation/README.md) |
 | Oracle Cloud | [`oci-lz-automation/`](./oci-lz-automation/README.md) |
 | VMware | [`vmware-lz-automation/`](./vmware-lz-automation/README.md) |
+
+Each package also carries a **`servicenow/`** folder that fronts its Terraform module and
+validation scripts with ServiceNow (self-service catalog → approval → apply → validate →
+CMDB), per [Chapter 7](./07-servicenow-orchestration.md).
 
 Figures are Mermaid sources under each `figs/`, rendered to PNG by
 [`figs/render-figs.sh`](./figs/render-figs.sh) with the shared
