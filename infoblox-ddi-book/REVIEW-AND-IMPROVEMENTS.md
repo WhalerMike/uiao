@@ -59,11 +59,16 @@ modules validate; the one remaining failure is the VMware example on intentional
 secret arguments (§2.3 — the gold-exemplar wiring). This is exactly the "provably validates"
 bar the finding asked for.
 
-Still open: `tflint`, wiring the example modules' required args, and promoting the advisory
-checks to blocking once the gold exemplar (§2.2) is deployment-tested.
+Still open: promoting `terraform fmt`, `shellcheck`, and `tflint` to blocking (they need a
+local run to confirm clean first — not installable in this sandbox), and wiring the example
+modules' required args.
 - ~~No JS parse check~~ and ~~no `bash -n`~~ — **done** (blocking).
-- `shellcheck` and `terraform fmt/validate` — **wired, advisory.**
-- `tflint` — not yet added.
+- ~~`terraform validate`~~ — **now blocking for the five module roots** (a dedicated
+  `terraform-modules` job; all five report `Success! The configuration is valid`). Example
+  modules stay advisory (they intentionally omit secret args).
+- ~~`tflint` — not yet added~~ — **added (advisory).** Runs per module root; findings are
+  informational until reviewed, then promote.
+- `shellcheck` and `terraform fmt` — **wired, advisory** (promote once confirmed clean).
 - **Why the offline subset was run here:** `terraform`/`shellcheck` aren't installable in
   this authoring sandbox (network-restricted), so they run on the CI runner; the checks
   that *could* run locally were run, and pass. Removing the stray `</content>` tags (see
