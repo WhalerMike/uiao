@@ -116,11 +116,17 @@ records," but the practical gaps are real:
   gate-fail routes back to approval (CM-6), `universal_ddi` without `acknowledge_saas_boundary`
   is blocked, and requester = approver is prevented (AC-5/AC-6) — driven by a
   `test_force_gate_fail` toggle for the gate-failure case.
-- It is still not packaged as a **signed scoped application / update set** you can import in
-  one step, and the Flow is still a **prose blueprint** rather than an exported `sys_hub_flow`.
-- **Recommendation:** finish the importable, ATF-covered update set for the Azure exemplar
-  (sign it, resolve the ATF step configs, run it green); keep the others as documented
-  blueprints until proven.
+- ~~It is still not packaged as a **scoped application / update set** you can import in one
+  step~~ — **now assembled.** [`update-set/build-update-set.py`](./servicenow-app/update-set/README.md)
+  bundles the 19 app records (Script Includes, REST Message, five variable sets, four ATF
+  tests, seven properties) into one importable `x_infoblox_ddi-update-set.xml`. Honest caveat:
+  it is an **unsigned** update set — cryptographic signing is a ServiceNow Store publishing
+  step a repo can't emit — and the payload encoding should be previewed against your instance.
+- The Flow is still a **prose blueprint** rather than an exported `sys_hub_flow` (Flow exports
+  are large opaque XML; rebuild it in Flow Designer per the blueprint).
+- **Recommendation:** develop the app in a sub-prod scoped application seeded from this update
+  set, resolve the ATF step configs, run the suite green, then publish/sign through your Store
+  pipeline; keep the other four platforms as documented blueprints until each is proven.
 
 ---
 

@@ -1,0 +1,1593 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<unload unload_date="2026-01-01 00:00:00">
+  <sys_remote_update_set action="INSERT_OR_UPDATE">
+    <name>Infoblox DDI (x_infoblox_ddi) — assembled starter</name>
+    <application>x_infoblox_ddi</application>
+    <description>Assembled by build-update-set.py — Script Includes, REST Message, 5 catalog variable sets, 4 ATF tests, and default app properties. UNSIGNED starter; verify payload encoding against your instance.</description>
+    <state>loaded</state>
+    <sys_created_on>2026-01-01 00:00:00</sys_created_on>
+  </sys_remote_update_set>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Script Include_InfobloxDDIClient</name>
+    <type>Script Include</type>
+    <target_name>InfobloxDDIClient</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_script_include"&gt;
+  &lt;sys_script_include action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;InfobloxDDIClient&lt;/name&gt;
+    &lt;api_name&gt;x_infoblox_ddi.InfobloxDDIClient&lt;/api_name&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;access&gt;package_private&lt;/access&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;script&gt;// Script Include: InfobloxDDIClient  (application scope: x_infoblox_ddi)
+// -----------------------------------------------------------------------------
+// Server-side Infoblox client for the ServiceNow DDI orchestration app. Wraps the
+// two control planes described in Chapter 7:
+//   * NIOS WAPI  (self-managed Grid — in ATO boundary, deployment_model = grid)
+//   * Universal DDI / Portal API (SaaS — out of boundary, acknowledge_saas_boundary)
+//
+// Credentials/endpoint come from a Connection &amp;amp; Credential alias
+// (x_infoblox_ddi.infoblox) so no secrets live in code. Pick the flavor with the
+// system property x_infoblox_ddi.api_flavor = "nios" | "universal_ddi".
+//
+// STARTER SKELETON — validate WAPI object/field versions against your Grid
+// (&amp;lt;grid-master&amp;gt;/wapidoc) and the Universal DDI API reference before production use.
+// -----------------------------------------------------------------------------
+var InfobloxDDIClient = Class.create();
+InfobloxDDIClient.prototype = {
+
+    initialize: function () {
+        this.flavor = gs.getProperty('x_infoblox_ddi.api_flavor', 'nios');
+        this.wapiVersion = gs.getProperty('x_infoblox_ddi.wapi_version', 'v2.12');
+        // Connection alias supplies base URL + basic/oauth credentials.
+        this.midServer = gs.getProperty('x_infoblox_ddi.mid_server', '');
+        this.log = new GSLog('x_infoblox_ddi.log', 'InfobloxDDIClient');
+        // TEST MODE — when x_infoblox_ddi.test_mode = 'true', the allocate/register/
+        // delete calls return deterministic canned values instead of hitting Infoblox,
+        // so the ATF happy-path test (atf/) can drive the whole Flow in a sub-prod
+        // instance with NO live Grid/Portal connectivity. Never enable in production.
+        this.testMode = gs.getProperty('x_infoblox_ddi.test_mode', 'false') === 'true';
+    },
+
+    // Allocate the next free IP from a network and return it, or '' on failure.
+    // networkCidr e.g. "10.16.4.0/24"; networkView optional.
+    nextAvailableIp: function (networkCidr, networkView) {
+        if (this.testMode) return gs.getProperty('x_infoblox_ddi.test_ip', '10.10.8.12');
+        try {
+            if (this.flavor === 'universal_ddi')
+                return this._uddiNextAvailableIp(networkCidr, networkView);
+            return this._niosNextAvailableIp(networkCidr, networkView);
+        } catch (e) {
+            this.log.logErr('nextAvailableIp failed: ' + e);
+            return '';
+        }
+    },
+
+    // Create an authoritative host (A+PTR) record. Returns the object ref/id or ''.
+    createHostRecord: function (fqdn, ip, dnsView) {
+        if (this.testMode) return 'record:host/TEST:' + fqdn;
+        try {
+            if (this.flavor === 'universal_ddi')
+                return this._uddiCreateHost(fqdn, ip, dnsView);
+            return this._niosCreateHost(fqdn, ip, dnsView);
+        } catch (e) {
+            this.log.logErr('createHostRecord failed: ' + e);
+            return '';
+        }
+    },
+
+    // Reclaim on decommission: delete an object by its ref/id. Returns boolean.
+    deleteObject: function (ref) {
+        if (this.testMode) return true;
+        try {
+            var r = this._rest('DELETE', this._path(ref), null);
+            return r.getStatusCode() &amp;lt; 300;
+        } catch (e) {
+            this.log.logErr('deleteObject failed: ' + e);
+            return false;
+        }
+    },
+
+    // ---- NIOS WAPI branch ---------------------------------------------------
+    _niosNextAvailableIp: function (cidr, view) {
+        // 1) resolve the network _ref, 2) call its next_available_ip function.
+        var q = '/network?network=' + encodeURIComponent(cidr) +
+                (view ? '&amp;amp;network_view=' + encodeURIComponent(view) : '');
+        var netResp = this._rest('GET', q, null);
+        var nets = JSON.parse(netResp.getBody() || '[]');
+        if (!nets.length) { this.log.logWarning('network not found: ' + cidr); return ''; }
+        var ref = nets[0]._ref;
+        var fnResp = this._rest('POST', '/' + ref + '?_function=next_available_ip&amp;amp;num=1', {});
+        var out = JSON.parse(fnResp.getBody() || '{}');
+        return (out.ips &amp;amp;&amp;amp; out.ips.length) ? out.ips[0] : '';
+    },
+
+    _niosCreateHost: function (fqdn, ip, view) {
+        var body = {
+            name: fqdn,
+            ipv4addrs: [{ ipv4addr: ip }],
+            configure_for_dns: true,
+            view: view || 'default'
+        };
+        var resp = this._rest('POST', '/record:host?_return_fields=name', body);
+        // WAPI returns the object _ref as a quoted string on create.
+        return (resp.getBody() || '').replace(/"/g, '');
+    },
+
+    // ---- Universal DDI (Portal) branch -------------------------------------
+    _uddiNextAvailableIp: function (cidr, space) {
+        // SKELETON — the CIDR is NOT the resource id. Universal DDI addresses objects
+        // by an opaque id (e.g. "ipam/subnet/&amp;lt;uuid&amp;gt;"), so resolve the subnet id first
+        // — GET /api/ddi/v1/ipam/subnet?_filter=address=='&amp;lt;cidr&amp;gt;' — then call
+        // nextavailableip against that id, mirroring the NIOS branch's _ref lookup.
+        // (Pin the exact endpoint/shape to your Universal DDI API version before use.)
+        var subnetId = this._uddiResolveSubnetId(cidr, space); // resolve id from CIDR
+        var body = { count: 1 };
+        var resp = this._rest('POST',
+            '/api/ddi/v1/' + subnetId + '/nextavailableip', body);
+        var out = JSON.parse(resp.getBody() || '{}');
+        return (out.results &amp;amp;&amp;amp; out.results.length) ? out.results[0].address : '';
+    },
+
+    // Resolve a Universal DDI subnet's opaque object id from its CIDR (skeleton;
+    // confirm the filter syntax/field against your Universal DDI API version).
+    _uddiResolveSubnetId: function (cidr, space) {
+        var q = '/api/ddi/v1/ipam/subnet?_filter=' +
+            encodeURIComponent("address=='" + cidr + "'") +
+            (space ? '&amp;amp;_filter=' + encodeURIComponent("space=='" + space + "'") : '');
+        var resp = this._rest('GET', q, null);
+        var out = JSON.parse(resp.getBody() || '{}');
+        return (out.results &amp;amp;&amp;amp; out.results.length) ? out.results[0].id : '';
+    },
+
+    _uddiCreateHost: function (fqdn, ip, zone) {
+        var body = {
+            name_in_zone: fqdn.split('.')[0],
+            zone: zone,
+            rdata: { address: ip },
+            type: 'A'
+        };
+        var resp = this._rest('POST', '/api/ddi/v1/dns/record', body);
+        var out = JSON.parse(resp.getBody() || '{}');
+        return (out.result &amp;amp;&amp;amp; out.result.id) ? out.result.id : '';
+    },
+
+    // ---- transport ----------------------------------------------------------
+    _path: function (ref) {
+        return this.flavor === 'universal_ddi' ? '/' + ref : '/' + ref;
+    },
+
+    _rest: function (method, path, body) {
+        var base = (this.flavor === 'universal_ddi')
+            ? ''                                   // UDDI paths already absolute under the alias base
+            : '/wapi/' + this.wapiVersion;
+        var m = new sn_ws.RESTMessageV2('x_infoblox_ddi.infoblox', 'default');
+        m.setHttpMethod(method);
+        m.setEndpoint(m.getEndpoint() + base + path);
+        if (this.midServer) m.setMIDServer(this.midServer);  // keep the call in-boundary
+        m.setRequestHeader('Content-Type', 'application/json');
+        if (body !== null &amp;amp;&amp;amp; body !== undefined)
+            m.setRequestBody(JSON.stringify(body));
+        var resp = m.execute();
+        if (resp.getStatusCode() &amp;gt;= 300)
+            this.log.logWarning(method + ' ' + path + ' -&amp;gt; ' + resp.getStatusCode() + ': ' + resp.getBody());
+        return resp;
+    },
+
+    type: 'InfobloxDDIClient'
+};
+&lt;/script&gt;
+  &lt;/sys_script_include&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Script Include_InfobloxDDIGate</name>
+    <type>Script Include</type>
+    <target_name>InfobloxDDIGate</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_script_include"&gt;
+  &lt;sys_script_include action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;InfobloxDDIGate&lt;/name&gt;
+    &lt;api_name&gt;x_infoblox_ddi.InfobloxDDIGate&lt;/api_name&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;access&gt;package_private&lt;/access&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;script&gt;// Script Include: InfobloxDDIGate  (application scope: x_infoblox_ddi)
+// -----------------------------------------------------------------------------
+// Post-apply validation gate. Dispatches the MID Server wrapper
+// (mid/infoblox-ddi-validate.sh) which runs the three validation scripts shipped
+// in each platform package (dns-validation / discovery-sync-check /
+// ipam-conflict-check) and returns one JSON verdict. A non-"pass" overall fails
+// the Flow so the change is not marked complete.
+//
+// Runs the checks on the MID Server so the credential + execution path stays
+// inside the ATO boundary (Chapter 7 §7.4).
+//
+// STARTER SKELETON — wire the ECC/command execution to your MID Server capability
+// model; the parse contract below matches infoblox-ddi-validate.sh's single-line
+// JSON output (the wrapper this Script Include dispatches on runGate()).
+// -----------------------------------------------------------------------------
+var InfobloxDDIGate = Class.create();
+InfobloxDDIGate.prototype = {
+
+    initialize: function () {
+        this.midServer = gs.getProperty('x_infoblox_ddi.mid_server', '');
+        this.log = new GSLog('x_infoblox_ddi.log', 'InfobloxDDIGate');
+        // TEST MODE — see InfobloxDDIClient. When x_infoblox_ddi.test_mode = 'true',
+        // runGate() returns a canned verdict so ATF can run the Flow's gate step
+        // without a MID Server or live validation scripts. Set
+        // x_infoblox_ddi.test_force_gate_fail = 'true' to force a FAIL verdict — this
+        // is how the negative ATF test proves a failed gate routes back to approval
+        // and does NOT close the change. Never enable either in production.
+        this.testMode = gs.getProperty('x_infoblox_ddi.test_mode', 'false') === 'true';
+        this.testForceGateFail = gs.getProperty('x_infoblox_ddi.test_force_gate_fail', 'false') === 'true';
+    },
+
+    // env: object of the DDI_VIP / TEST_FQDN / EXPECTED_IP / GRID_MASTER / ...
+    // values (sourced from the request + credential alias). Returns:
+    //   { overall: 'pass'|'fail', checks: [{name, exit}], raw: '&amp;lt;stdout&amp;gt;' }
+    runGate: function (env) {
+        if (this.testMode) {
+            if (this.testForceGateFail) {
+                return {
+                    overall: 'fail',
+                    checks: [
+                        { name: 'dns', exit: 0 },
+                        { name: 'discovery-sync', exit: 0 },
+                        { name: 'ipam-conflict', exit: 1 }
+                    ],
+                    raw: '{"overall":"fail","checks":[{"name":"ipam-conflict","exit":1}],"note":"test_mode force-fail"}'
+                };
+            }
+            return {
+                overall: 'pass',
+                checks: [
+                    { name: 'dns', exit: 0 },
+                    { name: 'discovery-sync', exit: 0 },
+                    { name: 'ipam-conflict', exit: 0 }
+                ],
+                raw: '{"overall":"pass","checks":[],"note":"test_mode"}'
+            };
+        }
+        var verdict = { overall: 'fail', checks: [], raw: '' };
+        try {
+            var stdout = this._execOnMid('infoblox-ddi-validate.sh', env);
+            verdict.raw = stdout;
+            var parsed = JSON.parse(stdout);
+            verdict.overall = parsed.overall || 'fail';
+            verdict.checks = parsed.checks || [];
+        } catch (e) {
+            this.log.logErr('runGate parse/exec failed: ' + e);
+            verdict.overall = 'fail';
+        }
+        return verdict;
+    },
+
+    // Convenience for a Flow Action: returns true only when every check passed.
+    passed: function (env) {
+        return this.runGate(env).overall === 'pass';
+    },
+
+    // Dispatch to the MID Server. Implement with your standard pattern —
+    // an ECC queue "command" probe, a Scripted REST callback, or the
+    // MIDServer/Command capability. Env vars are passed to the wrapper.
+    _execOnMid: function (script, env) {
+        // SKELETON — ILLUSTRATIVE, NOT RUNNABLE AS-IS. A MID probe is asynchronous:
+        // probe.create() enqueues an ECC job and the response arrives later on an
+        // ecc_queue record — there is no synchronous getResponse(), so the fallback
+        // below would always return 'fail'. Rework this into the async pattern before
+        // use: run the gate from a MID "command"/Scripted-REST step and resume the
+        // Flow on the ECC response, or use an orchestration Activity that blocks on it.
+        // Also note JavascriptProbe runs JavaScript on the MID; to run the bash
+        // wrapper use a CommandProbe (or a shell-invoking script). Left inline only to
+        // show the shape (name → invocation → verdict string).
+        var probe = new global.JavascriptProbe(this.midServer);
+        probe.setName('x_infoblox_ddi.validate');
+        probe.setJavascript(this._buildInvocation(script, env));
+        probe.create();          // enqueues async ECC job; response handled separately
+        return probe.getResponse ? probe.getResponse() : '{"overall":"fail","checks":[]}';
+    },
+
+    _buildInvocation: function (script, env) {
+        var exports = '';
+        for (var k in env) exports += 'export ' + k + '=' + JSON.stringify('' + env[k]) + '; ';
+        return exports + 'bash ' + gs.getProperty('x_infoblox_ddi.mid_scripts_dir',
+            '/opt/servicenow/mid/agent/scripts/ddi') + '/' + script;
+    },
+
+    type: 'InfobloxDDIGate'
+};
+&lt;/script&gt;
+  &lt;/sys_script_include&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>REST Message_Infoblox DDI</name>
+    <type>REST Message</type>
+    <target_name>Infoblox DDI</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  Infoblox DDI REST Message  (scope: x_infoblox_ddi)
+  Importable record definition for the outbound REST integration the Script
+  Includes call. Endpoint + auth are supplied by the Connection &amp; Credential
+  alias 'x_infoblox_ddi.infoblox' at runtime; the value below is an illustrative
+  default only. STARTER SKELETON — adjust methods to your WAPI / Universal DDI
+  version. (XML records are not link-checked; the &lt;endpoint&gt; is a placeholder.)
+--&gt;
+&lt;record_update table="sys_rest_message"&gt;
+  &lt;sys_rest_message action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;Infoblox DDI&lt;/name&gt;
+    &lt;description&gt;Outbound REST to Infoblox NIOS WAPI / Universal DDI. Routed via the in-boundary MID Server.&lt;/description&gt;
+    &lt;rest_endpoint&gt;https://grid-master.example/wapi/v2.12&lt;/rest_endpoint&gt;
+    &lt;authentication_type&gt;credentials_alias&lt;/authentication_type&gt;
+    &lt;use_mid&gt;true&lt;/use_mid&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_rest_message&gt;
+
+  &lt;!-- next-available-IP (NIOS: network _ref + _function=next_available_ip) --&gt;
+  &lt;sys_rest_message_fn action="INSERT_OR_UPDATE"&gt;
+    &lt;function_name&gt;nextAvailableIp&lt;/function_name&gt;
+    &lt;rest_message&gt;Infoblox DDI&lt;/rest_message&gt;
+    &lt;http_method&gt;POST&lt;/http_method&gt;
+    &lt;rest_endpoint&gt;${base}/${network_ref}?_function=next_available_ip&amp;amp;num=${count}&lt;/rest_endpoint&gt;
+    &lt;content&gt;{}&lt;/content&gt;
+    &lt;use_mid&gt;true&lt;/use_mid&gt;
+  &lt;/sys_rest_message_fn&gt;
+
+  &lt;!-- create host (A+PTR) record --&gt;
+  &lt;sys_rest_message_fn action="INSERT_OR_UPDATE"&gt;
+    &lt;function_name&gt;createHost&lt;/function_name&gt;
+    &lt;rest_message&gt;Infoblox DDI&lt;/rest_message&gt;
+    &lt;http_method&gt;POST&lt;/http_method&gt;
+    &lt;rest_endpoint&gt;${base}/record:host&lt;/rest_endpoint&gt;
+    &lt;content&gt;{"name":"${fqdn}","ipv4addrs":[{"ipv4addr":"${ip}"}],"configure_for_dns":true,"view":"${dns_view}"}&lt;/content&gt;
+    &lt;use_mid&gt;true&lt;/use_mid&gt;
+  &lt;/sys_rest_message_fn&gt;
+
+  &lt;!-- reclaim: delete by object ref --&gt;
+  &lt;sys_rest_message_fn action="INSERT_OR_UPDATE"&gt;
+    &lt;function_name&gt;deleteObject&lt;/function_name&gt;
+    &lt;rest_message&gt;Infoblox DDI&lt;/rest_message&gt;
+    &lt;http_method&gt;DELETE&lt;/http_method&gt;
+    &lt;rest_endpoint&gt;${base}/${object_ref}&lt;/rest_endpoint&gt;
+    &lt;use_mid&gt;true&lt;/use_mid&gt;
+  &lt;/sys_rest_message_fn&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Variable Set_DDI-backed subnet (azure)</name>
+    <type>Variable Set</type>
+    <target_name>DDI-backed subnet (azure)</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  Catalog variable set — "Request a DDI-backed subnet" (Azure exemplar)
+  Scope: x_infoblox_ddi
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each &lt;item_option_new&gt; is a catalog
+  variable; its &lt;map_to&gt; names the Azure Terraform module variable it feeds
+  (../../azure-alz-automation/terraform/variables.tf). `contract_check.py`
+  asserts that every REQUIRED module variable (one with no default) is covered
+  by a &lt;map_to&gt; here — so the form and the module cannot silently drift.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  to your instance conventions (the numeric `type` values below are the common
+  defaults: 6=Single Line Text, 5=Select Box, 21=List, 7=Reference, 20=Multi
+  Line Text, 24=Checkbox). Stage-1-sourced fields should become reference
+  lookups so requesters cannot free-type hub identifiers.
+--&gt;
+&lt;record_update table="item_option_new"&gt;
+  &lt;sys_variable_set action="INSERT_OR_UPDATE"&gt;
+    &lt;title&gt;Request a DDI-backed subnet&lt;/title&gt;
+    &lt;internal_name&gt;x_infoblox_ddi_ddi_subnet&lt;/internal_name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;description&gt;Front-door variable set; each variable maps to one Azure module tfvar (see map_to). The contract test keeps this ⊇ the module's required variables.&lt;/description&gt;
+  &lt;/sys_variable_set&gt;
+
+  &lt;!-- ===== Required module variables (no default in variables.tf) ======= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;target_platform&lt;/name&gt;&lt;question_text&gt;Target platform&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;__platform_selector__&lt;/map_to&gt;
+    &lt;help_text&gt;Selects the module + validation scripts; this variable set is the Azure instance.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;location&lt;/name&gt;&lt;question_text&gt;Region&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;location&lt;/map_to&gt;
+    &lt;help_text&gt;Commercial (.com) Azure region. Pick-list of approved regions; no default.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;hub_resource_group_name&lt;/name&gt;&lt;question_text&gt;Hub resource group&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;hub_resource_group_name&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 (ALZ) output — reference lookup, not free-typed.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;hub_vnet_id&lt;/name&gt;&lt;question_text&gt;Hub network (VNet)&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;hub_vnet_id&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; full VNet resource ID. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;ddi_subnet_address_prefix&lt;/name&gt;&lt;question_text&gt;Requested CIDR&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;ddi_subnet_address_prefix&lt;/map_to&gt;
+    &lt;help_text&gt;Must fit the hub, no overlap. Pre-flight + gate conflict-check it.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_vm_sku&lt;/name&gt;&lt;question_text&gt;VM size&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_vm_sku&lt;/map_to&gt;
+    &lt;help_text&gt;Region/NIOS-version dependent; pick-list of approved SKUs.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_image&lt;/name&gt;&lt;question_text&gt;Marketplace image&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_image&lt;/map_to&gt;
+    &lt;help_text&gt;publisher/offer/sku/version object; pick-list, do not hard-code a version.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;key_vault_id&lt;/name&gt;&lt;question_text&gt;Key Vault (secret reference)&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;key_vault_id&lt;/map_to&gt;
+    &lt;help_text&gt;Existing Key Vault holding module secrets. A REFERENCE only — no secret is entered on the form.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;mgmt_source_cidrs&lt;/name&gt;&lt;question_text&gt;Management source CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;mgmt_source_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Non-empty, never 0.0.0.0/0 (form-validate).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;dns_client_cidrs&lt;/name&gt;&lt;question_text&gt;DNS client CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;dns_client_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Spoke/on-prem ranges permitted to query DNS.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Commonly-set optional module variables ======================= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;environment&lt;/name&gt;&lt;question_text&gt;Environment&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;environment&lt;/map_to&gt;
+    &lt;help_text&gt;dev|test|prod — drives tags/sizing and the approval tier.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;deployment_model&lt;/name&gt;&lt;question_text&gt;Deployment model&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;deployment_model&lt;/map_to&gt;
+    &lt;help_text&gt;grid (in-boundary) | universal_ddi (SaaS, gated).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;acknowledge_saas_boundary&lt;/name&gt;&lt;question_text&gt;Acknowledge SaaS boundary&lt;/question_text&gt;
+    &lt;type&gt;24&lt;/type&gt;&lt;mandatory&gt;false&lt;/mandatory&gt;
+    &lt;map_to&gt;acknowledge_saas_boundary&lt;/map_to&gt;
+    &lt;help_text&gt;Required true only for universal_ddi; drives an extra approval.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Flow-only fields (not module tfvars — no map_to) ============== --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;host_fqdn&lt;/name&gt;&lt;question_text&gt;Host FQDN&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Registered as the A + PTR for the allocated host IP. Consumed by the Flow, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;business_justification&lt;/name&gt;&lt;question_text&gt;Business justification&lt;/question_text&gt;
+    &lt;type&gt;20&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Read first by the approver. Flow/record field, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Variable Set_DDI-backed subnet (aws)</name>
+    <type>Variable Set</type>
+    <target_name>DDI-backed subnet (aws)</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  Catalog variable set — "Request a DDI-backed subnet" (AWS)
+  Scope: x_infoblox_ddi
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each &lt;item_option_new&gt; is a catalog
+  variable; its &lt;map_to&gt; names the AWS Terraform module variable it feeds
+  (../../aws-lz-automation/terraform/variables.tf). `contract_check.py`
+  asserts that every REQUIRED module variable (one with no default) is covered
+  by a &lt;map_to&gt; here — so the form and the module cannot silently drift.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  to your instance conventions (the numeric `type` values below are the common
+  defaults: 6=Single Line Text, 5=Select Box, 21=List, 7=Reference, 20=Multi
+  Line Text, 24=Checkbox). Stage-1-sourced fields should become reference
+  lookups so requesters cannot free-type hub identifiers. AWS credentials come
+  from the MID Server's IAM role, so no secret is a required module var.
+--&gt;
+&lt;record_update table="item_option_new"&gt;
+  &lt;sys_variable_set action="INSERT_OR_UPDATE"&gt;
+    &lt;title&gt;Request a DDI-backed subnet&lt;/title&gt;
+    &lt;internal_name&gt;x_infoblox_ddi_ddi_subnet_aws&lt;/internal_name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;description&gt;Front-door variable set; each variable maps to one AWS module tfvar (see map_to). The contract test keeps this ⊇ the module's required variables.&lt;/description&gt;
+  &lt;/sys_variable_set&gt;
+
+  &lt;!-- ===== Required module variables (no default in variables.tf) ======= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;target_platform&lt;/name&gt;&lt;question_text&gt;Target platform&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;__platform_selector__&lt;/map_to&gt;
+    &lt;help_text&gt;Selects the module + validation scripts; this variable set is the AWS instance.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;region&lt;/name&gt;&lt;question_text&gt;Region&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;region&lt;/map_to&gt;
+    &lt;help_text&gt;Commercial AWS region. Pick-list of approved regions; no default.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;network_account_id&lt;/name&gt;&lt;question_text&gt;Network account&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;network_account_id&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output — reference lookup, not free-typed.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;hub_vpc_id&lt;/name&gt;&lt;question_text&gt;Hub network (VPC)&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;hub_vpc_id&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; hub VPC ID. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;transit_gateway_id&lt;/name&gt;&lt;question_text&gt;Transit gateway&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;transit_gateway_id&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; transit gateway ID. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;ddi_subnet_cidrs&lt;/name&gt;&lt;question_text&gt;Requested CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;ddi_subnet_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Must fit the hub, no overlap. Pre-flight + gate conflict-check it.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;availability_zones&lt;/name&gt;&lt;question_text&gt;Availability zones&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;availability_zones&lt;/map_to&gt;
+    &lt;help_text&gt;AZs to spread the subnet across; region-dependent pick-list.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_instance_type&lt;/name&gt;&lt;question_text&gt;Instance type&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_instance_type&lt;/map_to&gt;
+    &lt;help_text&gt;Region/NIOS-version dependent; pick-list of approved instance types.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_ami_id&lt;/name&gt;&lt;question_text&gt;Marketplace image (AMI)&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_ami_id&lt;/map_to&gt;
+    &lt;help_text&gt;vNIOS AMI ID; pick-list per region, do not hard-code a version.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;mgmt_source_cidrs&lt;/name&gt;&lt;question_text&gt;Management source CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;mgmt_source_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Non-empty, never 0.0.0.0/0 (form-validate).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;dns_client_cidrs&lt;/name&gt;&lt;question_text&gt;DNS client CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;dns_client_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Spoke/on-prem ranges permitted to query DNS.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Commonly-set optional module variables ======================= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;environment&lt;/name&gt;&lt;question_text&gt;Environment&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;environment&lt;/map_to&gt;
+    &lt;help_text&gt;dev|test|prod — drives tags/sizing and the approval tier.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;deployment_model&lt;/name&gt;&lt;question_text&gt;Deployment model&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;deployment_model&lt;/map_to&gt;
+    &lt;help_text&gt;grid (in-boundary) | universal_ddi (SaaS, gated).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;acknowledge_saas_boundary&lt;/name&gt;&lt;question_text&gt;Acknowledge SaaS boundary&lt;/question_text&gt;
+    &lt;type&gt;24&lt;/type&gt;&lt;mandatory&gt;false&lt;/mandatory&gt;
+    &lt;map_to&gt;acknowledge_saas_boundary&lt;/map_to&gt;
+    &lt;help_text&gt;Required true only for universal_ddi; drives an extra approval.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Flow-only fields (not module tfvars — no map_to) ============== --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;host_fqdn&lt;/name&gt;&lt;question_text&gt;Host FQDN&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Registered as the A + PTR for the allocated host IP. Consumed by the Flow, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;business_justification&lt;/name&gt;&lt;question_text&gt;Business justification&lt;/question_text&gt;
+    &lt;type&gt;20&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Read first by the approver. Flow/record field, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Variable Set_DDI-backed subnet (gcp)</name>
+    <type>Variable Set</type>
+    <target_name>DDI-backed subnet (gcp)</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  Catalog variable set — "Request a DDI-backed subnet" (GCP)
+  Scope: x_infoblox_ddi
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each &lt;item_option_new&gt; is a catalog
+  variable; its &lt;map_to&gt; names the GCP Terraform module variable it feeds
+  (../../gcp-lz-automation/terraform/variables.tf). `contract_check.py`
+  asserts that every REQUIRED module variable (one with no default) is covered
+  by a &lt;map_to&gt; here — so the form and the module cannot silently drift.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  to your instance conventions (the numeric `type` values below are the common
+  defaults: 6=Single Line Text, 5=Select Box, 21=List, 7=Reference, 20=Multi
+  Line Text, 24=Checkbox). Stage-1-sourced fields should become reference
+  lookups so requesters cannot free-type host/shared-VPC identifiers.
+--&gt;
+&lt;record_update table="item_option_new"&gt;
+  &lt;sys_variable_set action="INSERT_OR_UPDATE"&gt;
+    &lt;title&gt;Request a DDI-backed subnet&lt;/title&gt;
+    &lt;internal_name&gt;x_infoblox_ddi_ddi_subnet_gcp&lt;/internal_name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;description&gt;Front-door variable set; each variable maps to one GCP module tfvar (see map_to). The contract test keeps this ⊇ the module's required variables.&lt;/description&gt;
+  &lt;/sys_variable_set&gt;
+
+  &lt;!-- ===== Required module variables (no default in variables.tf) ======= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;target_platform&lt;/name&gt;&lt;question_text&gt;Target platform&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;__platform_selector__&lt;/map_to&gt;
+    &lt;help_text&gt;Selects the module + validation scripts; this variable set is the GCP instance.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;host_project_id&lt;/name&gt;&lt;question_text&gt;Host project&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;host_project_id&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; Shared-VPC host project. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;secret_project_id&lt;/name&gt;&lt;question_text&gt;Secret project&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;secret_project_id&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; project holding Secret Manager secrets. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;shared_vpc_network&lt;/name&gt;&lt;question_text&gt;Shared VPC network&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;shared_vpc_network&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; Shared-VPC network self-link. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;region&lt;/name&gt;&lt;question_text&gt;Region&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;region&lt;/map_to&gt;
+    &lt;help_text&gt;Commercial GCP region. Pick-list of approved regions; no default.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;ddi_subnet_cidr&lt;/name&gt;&lt;question_text&gt;Requested CIDR&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;ddi_subnet_cidr&lt;/map_to&gt;
+    &lt;help_text&gt;Must fit the shared VPC, no overlap. Pre-flight + gate conflict-check it.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;machine_type&lt;/name&gt;&lt;question_text&gt;Machine type&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;machine_type&lt;/map_to&gt;
+    &lt;help_text&gt;Region/NIOS-version dependent; pick-list of approved machine types.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_image&lt;/name&gt;&lt;question_text&gt;Marketplace image&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_image&lt;/map_to&gt;
+    &lt;help_text&gt;vNIOS image self-link; pick-list, do not hard-code a version.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;mgmt_source_ranges&lt;/name&gt;&lt;question_text&gt;Management source ranges&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;mgmt_source_ranges&lt;/map_to&gt;
+    &lt;help_text&gt;Non-empty, never 0.0.0.0/0 (form-validate).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;dns_client_ranges&lt;/name&gt;&lt;question_text&gt;DNS client ranges&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;dns_client_ranges&lt;/map_to&gt;
+    &lt;help_text&gt;Spoke/on-prem ranges permitted to query DNS.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Commonly-set optional module variables ======================= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;environment&lt;/name&gt;&lt;question_text&gt;Environment&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;environment&lt;/map_to&gt;
+    &lt;help_text&gt;dev|test|prod — drives tags/sizing and the approval tier.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;deployment_model&lt;/name&gt;&lt;question_text&gt;Deployment model&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;deployment_model&lt;/map_to&gt;
+    &lt;help_text&gt;grid (in-boundary) | universal_ddi (SaaS, gated).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;acknowledge_saas_boundary&lt;/name&gt;&lt;question_text&gt;Acknowledge SaaS boundary&lt;/question_text&gt;
+    &lt;type&gt;24&lt;/type&gt;&lt;mandatory&gt;false&lt;/mandatory&gt;
+    &lt;map_to&gt;acknowledge_saas_boundary&lt;/map_to&gt;
+    &lt;help_text&gt;Required true only for universal_ddi; drives an extra approval.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Flow-only fields (not module tfvars — no map_to) ============== --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;host_fqdn&lt;/name&gt;&lt;question_text&gt;Host FQDN&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Registered as the A + PTR for the allocated host IP. Consumed by the Flow, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;business_justification&lt;/name&gt;&lt;question_text&gt;Business justification&lt;/question_text&gt;
+    &lt;type&gt;20&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Read first by the approver. Flow/record field, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Variable Set_DDI-backed subnet (oci)</name>
+    <type>Variable Set</type>
+    <target_name>DDI-backed subnet (oci)</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  Catalog variable set — "Request a DDI-backed subnet" (OCI)
+  Scope: x_infoblox_ddi
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each &lt;item_option_new&gt; is a catalog
+  variable; its &lt;map_to&gt; names the OCI Terraform module variable it feeds
+  (../../oci-lz-automation/terraform/variables.tf). `contract_check.py`
+  asserts that every REQUIRED module variable (one with no default) is covered
+  by a &lt;map_to&gt; here, or resolved on the MID Server (&lt;resolved_by_mid&gt;) — so
+  the form and the module cannot silently drift.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  to your instance conventions (the numeric `type` values below are the common
+  defaults: 6=Single Line Text, 5=Select Box, 21=List, 7=Reference, 20=Multi
+  Line Text, 24=Checkbox). Stage-1-sourced OCIDs should become reference
+  lookups so requesters cannot free-type identity/compartment/vault OCIDs.
+--&gt;
+&lt;record_update table="item_option_new"&gt;
+  &lt;sys_variable_set action="INSERT_OR_UPDATE"&gt;
+    &lt;title&gt;Request a DDI-backed subnet&lt;/title&gt;
+    &lt;internal_name&gt;x_infoblox_ddi_ddi_subnet_oci&lt;/internal_name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;description&gt;Front-door variable set; each variable maps to one OCI module tfvar (see map_to) or is resolved on the MID Server. The contract test keeps this ⊇ the module's required variables.&lt;/description&gt;
+  &lt;/sys_variable_set&gt;
+
+  &lt;!-- ===== Required module variables (no default in variables.tf) ======= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;target_platform&lt;/name&gt;&lt;question_text&gt;Target platform&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;__platform_selector__&lt;/map_to&gt;
+    &lt;help_text&gt;Selects the module + validation scripts; this variable set is the OCI instance.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;region&lt;/name&gt;&lt;question_text&gt;Region&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;region&lt;/map_to&gt;
+    &lt;help_text&gt;Commercial OCI region. Pick-list of approved regions; no default.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;tenancy_ocid&lt;/name&gt;&lt;question_text&gt;Tenancy&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;tenancy_ocid&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; tenancy OCID. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;network_compartment_ocid&lt;/name&gt;&lt;question_text&gt;Network compartment&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;network_compartment_ocid&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; network compartment OCID. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;hub_vcn_ocid&lt;/name&gt;&lt;question_text&gt;Hub network (VCN)&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;hub_vcn_ocid&lt;/map_to&gt;
+    &lt;help_text&gt;Stage-1 output; hub VCN OCID. Pre-populated reference.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vault_ocid&lt;/name&gt;&lt;question_text&gt;Vault (secret reference)&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vault_ocid&lt;/map_to&gt;
+    &lt;help_text&gt;Existing Vault holding module secrets. A REFERENCE only — no secret is entered on the form.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;ddi_subnet_cidr&lt;/name&gt;&lt;question_text&gt;Requested CIDR&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;ddi_subnet_cidr&lt;/map_to&gt;
+    &lt;help_text&gt;Must fit the hub VCN, no overlap. Pre-flight + gate conflict-check it.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;availability_domains&lt;/name&gt;&lt;question_text&gt;Availability domains&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;availability_domains&lt;/map_to&gt;
+    &lt;help_text&gt;ADs to spread the subnet across; region-dependent pick-list.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_shape&lt;/name&gt;&lt;question_text&gt;Shape&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_shape&lt;/map_to&gt;
+    &lt;help_text&gt;Region/NIOS-version dependent; pick-list of approved shapes.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;mgmt_source_cidrs&lt;/name&gt;&lt;question_text&gt;Management source CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;mgmt_source_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Non-empty, never 0.0.0.0/0 (form-validate).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;dns_client_cidrs&lt;/name&gt;&lt;question_text&gt;DNS client CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;dns_client_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Spoke/on-prem ranges permitted to query DNS.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Commonly-set optional module variables ======================= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;environment&lt;/name&gt;&lt;question_text&gt;Environment&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;environment&lt;/map_to&gt;
+    &lt;help_text&gt;dev|test|prod — drives tags/sizing and the approval tier.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;deployment_model&lt;/name&gt;&lt;question_text&gt;Deployment model&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;deployment_model&lt;/map_to&gt;
+    &lt;help_text&gt;grid (in-boundary) | universal_ddi (SaaS, gated).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;acknowledge_saas_boundary&lt;/name&gt;&lt;question_text&gt;Acknowledge SaaS boundary&lt;/question_text&gt;
+    &lt;type&gt;24&lt;/type&gt;&lt;mandatory&gt;false&lt;/mandatory&gt;
+    &lt;map_to&gt;acknowledge_saas_boundary&lt;/map_to&gt;
+    &lt;help_text&gt;Required true only for universal_ddi; drives an extra approval.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Flow-only fields (not module tfvars — no map_to) ============== --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;host_fqdn&lt;/name&gt;&lt;question_text&gt;Host FQDN&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Registered as the A + PTR for the allocated host IP. Consumed by the Flow, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;business_justification&lt;/name&gt;&lt;question_text&gt;Business justification&lt;/question_text&gt;
+    &lt;type&gt;20&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Read first by the approver. Flow/record field, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- credential/secret vars resolved on the in-boundary MID Server, NOT typed on the form --&gt;
+  &lt;resolved_by_mid&gt;admin_password_secret_ocid&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;temp_license_secret_ocid&lt;/resolved_by_mid&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>Variable Set_DDI-backed subnet (vmware)</name>
+    <type>Variable Set</type>
+    <target_name>DDI-backed subnet (vmware)</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  Catalog variable set — "Request a DDI-backed subnet" (VMware)
+  Scope: x_infoblox_ddi
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each &lt;item_option_new&gt; is a catalog
+  variable; its &lt;map_to&gt; names the VMware Terraform module variable it feeds
+  (../../vmware-lz-automation/terraform/variables.tf). `contract_check.py`
+  asserts that every REQUIRED module variable (one with no default) is covered
+  by a &lt;map_to&gt; here, or resolved on the MID Server (&lt;resolved_by_mid&gt;) — so
+  the form and the module cannot silently drift.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  to your instance conventions (the numeric `type` values below are the common
+  defaults: 6=Single Line Text, 5=Select Box, 21=List, 7=Reference, 20=Multi
+  Line Text, 24=Checkbox). The vCenter/NSX connection endpoints, users, and
+  passwords come from the MID Server credential alias and are NEVER typed into
+  the catalog form — this is the whole point of the resolved_by_mid split.
+--&gt;
+&lt;record_update table="item_option_new"&gt;
+  &lt;sys_variable_set action="INSERT_OR_UPDATE"&gt;
+    &lt;title&gt;Request a DDI-backed subnet&lt;/title&gt;
+    &lt;internal_name&gt;x_infoblox_ddi_ddi_subnet_vmware&lt;/internal_name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;description&gt;Front-door variable set; each variable maps to one VMware module tfvar (see map_to) or is resolved on the MID Server. The contract test keeps this ⊇ the module's required variables.&lt;/description&gt;
+  &lt;/sys_variable_set&gt;
+
+  &lt;!-- ===== Required module variables (no default in variables.tf) ======= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;target_platform&lt;/name&gt;&lt;question_text&gt;Target platform&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;__platform_selector__&lt;/map_to&gt;
+    &lt;help_text&gt;Selects the module + validation scripts; this variable set is the VMware instance.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vsphere_datacenter&lt;/name&gt;&lt;question_text&gt;vSphere datacenter&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vsphere_datacenter&lt;/map_to&gt;
+    &lt;help_text&gt;Target vSphere datacenter; reference lookup, not free-typed.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;compute_cluster&lt;/name&gt;&lt;question_text&gt;Compute cluster&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;compute_cluster&lt;/map_to&gt;
+    &lt;help_text&gt;Target compute cluster; reference lookup within the datacenter.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;datastore&lt;/name&gt;&lt;question_text&gt;Datastore&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;datastore&lt;/map_to&gt;
+    &lt;help_text&gt;Target datastore; reference lookup of approved datastores.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;management_portgroup&lt;/name&gt;&lt;question_text&gt;Management port group&lt;/question_text&gt;
+    &lt;type&gt;7&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;management_portgroup&lt;/map_to&gt;
+    &lt;help_text&gt;Management port group; reference lookup, not free-typed.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;ddi_mgmt_network_cidr&lt;/name&gt;&lt;question_text&gt;Requested CIDR&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;ddi_mgmt_network_cidr&lt;/map_to&gt;
+    &lt;help_text&gt;Must fit the management network, no overlap. Pre-flight + gate conflict-check it.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_appliance_model&lt;/name&gt;&lt;question_text&gt;Appliance model&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_appliance_model&lt;/map_to&gt;
+    &lt;help_text&gt;NIOS-version dependent; pick-list of approved appliance models.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;vnios_ovf&lt;/name&gt;&lt;question_text&gt;Appliance image (OVF)&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;vnios_ovf&lt;/map_to&gt;
+    &lt;help_text&gt;vNIOS OVF/OVA template; pick-list, do not hard-code a version.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;mgmt_source_cidrs&lt;/name&gt;&lt;question_text&gt;Management source CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;mgmt_source_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Non-empty, never 0.0.0.0/0 (form-validate).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;dns_client_cidrs&lt;/name&gt;&lt;question_text&gt;DNS client CIDRs&lt;/question_text&gt;
+    &lt;type&gt;21&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;dns_client_cidrs&lt;/map_to&gt;
+    &lt;help_text&gt;Spoke/on-prem ranges permitted to query DNS.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Commonly-set optional module variables ======================= --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;environment&lt;/name&gt;&lt;question_text&gt;Environment&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;environment&lt;/map_to&gt;
+    &lt;help_text&gt;dev|test|prod — drives tags/sizing and the approval tier.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;deployment_model&lt;/name&gt;&lt;question_text&gt;Deployment model&lt;/question_text&gt;
+    &lt;type&gt;5&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;map_to&gt;deployment_model&lt;/map_to&gt;
+    &lt;help_text&gt;grid (in-boundary) | universal_ddi (SaaS, gated).&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;acknowledge_saas_boundary&lt;/name&gt;&lt;question_text&gt;Acknowledge SaaS boundary&lt;/question_text&gt;
+    &lt;type&gt;24&lt;/type&gt;&lt;mandatory&gt;false&lt;/mandatory&gt;
+    &lt;map_to&gt;acknowledge_saas_boundary&lt;/map_to&gt;
+    &lt;help_text&gt;Required true only for universal_ddi; drives an extra approval.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- ===== Flow-only fields (not module tfvars — no map_to) ============== --&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;host_fqdn&lt;/name&gt;&lt;question_text&gt;Host FQDN&lt;/question_text&gt;
+    &lt;type&gt;6&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Registered as the A + PTR for the allocated host IP. Consumed by the Flow, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;item_option_new action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;business_justification&lt;/name&gt;&lt;question_text&gt;Business justification&lt;/question_text&gt;
+    &lt;type&gt;20&lt;/type&gt;&lt;mandatory&gt;true&lt;/mandatory&gt;
+    &lt;help_text&gt;Read first by the approver. Flow/record field, not a module tfvar.&lt;/help_text&gt;
+  &lt;/item_option_new&gt;
+
+  &lt;!-- credential/secret vars resolved on the in-boundary MID Server, NOT typed on the form --&gt;
+  &lt;resolved_by_mid&gt;vsphere_server&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;vsphere_user&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;vsphere_password&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;nsx_manager&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;nsx_user&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;nsx_password&lt;/resolved_by_mid&gt;
+  &lt;resolved_by_mid&gt;admin_password&lt;/resolved_by_mid&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>ATF Test_provision happy path</name>
+    <type>ATF Test</type>
+    <target_name>provision happy path</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  ATF test — "DDI happy path: provision a DDI-backed subnet" (scope: x_infoblox_ddi)
+  ===========================================================================
+  STARTER SKELETON. ServiceNow ATF tests are sys_atf_test + sys_atf_step records
+  whose steps reference built-in sys_atf_step_config records by an instance/version
+  specific sys_id and carry an opaque encoded `inputs` field — neither of which can
+  be authored blind. So each step below names its step config by TITLE and gives the
+  inputs / assertion script in readable form. Rebuild it in the ATF Test Designer (or
+  resolve the step_config sys_ids on import), then run it. See README.md.
+
+  PRECONDITION (critical): set system property  x_infoblox_ddi.test_mode = 'true'.
+  In test mode InfobloxDDIClient/Gate return deterministic canned values
+  (test_ip default 10.10.8.12, gate = pass), so this test drives the whole Flow in a
+  sub-prod instance with NO live Grid/Portal/MID connectivity. Never enable in prod.
+--&gt;
+&lt;record_update table="sys_atf_test"&gt;
+  &lt;sys_atf_test action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;DDI happy path: provision a DDI-backed subnet&lt;/name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;description&gt;End-to-end happy path in test_mode: a requester orders the subnet, an approver approves (SoD), the Flow allocates + registers + gates + reconciles, and the request closes complete. Asserts each stage.&lt;/description&gt;
+  &lt;/sys_atf_test&gt;
+
+  &lt;!-- Step 1 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;100&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Impersonate User&lt;/step_config_title&gt;
+    &lt;description&gt;Impersonate the requester (a non-admin test user, e.g. ddi.requester) so SoD is real.&lt;/description&gt;
+    &lt;inputs&gt;user = ddi.requester&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 2 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;200&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Open a Catalog Item&lt;/step_config_title&gt;
+    &lt;description&gt;Open "Request a DDI-backed subnet".&lt;/description&gt;
+    &lt;inputs&gt;catalog_item = Request a DDI-backed subnet&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 3 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;300&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Set Catalog Item Variable Values&lt;/step_config_title&gt;
+    &lt;description&gt;Fill the form with the Azure exemplar values (mirrors terraform.tfvars.example).&lt;/description&gt;
+    &lt;inputs&gt;
+      target_platform          = Microsoft Azure (ALZ)
+      location                 = eastus
+      hub_vnet_id              = /subscriptions/0000.../virtualNetworks/vnet-hub-conn
+      ddi_subnet_address_prefix= 10.10.8.0/27
+      environment              = dev
+      deployment_model         = grid
+      host_fqdn                = app-gw01.corp.example
+      key_vault_id             = /subscriptions/0000.../vaults/kv-ddi-conn
+      mgmt_source_cidrs        = 10.10.0.0/24
+      dns_client_cidrs         = 10.16.0.0/12
+      business_justification   = ATF happy-path test
+    &lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 4 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;400&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Submit a Catalog Item (Order Now)&lt;/step_config_title&gt;
+    &lt;description&gt;Order it; ATF captures the generated Requested Item (RITM). Save the RITM sys_id as step output for later steps.&lt;/description&gt;
+    &lt;inputs&gt;outputs: request_item (RITM sys_id)&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 5 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;500&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Impersonate User&lt;/step_config_title&gt;
+    &lt;description&gt;Switch to the approver (a DIFFERENT user, ddi.approver) — this is what makes the SoD gate meaningful (requester != approver).&lt;/description&gt;
+    &lt;inputs&gt;user = ddi.approver&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 6 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;600&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;Approve the pending approval for the RITM (ATF has no built-in "approve" step). Assert requester != current approver first.&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('400').request_item;          // RITM sys_id from step 4
+  var appr = new GlideRecord('sysapproval_approver');
+  appr.addQuery('sysapproval', ritm);
+  appr.addQuery('state', 'requested');
+  appr.query();
+  if (!appr.next()) { stepResult.setFailed('no pending approval for ' + ritm); return; }
+  if (appr.approver == gs.getUserID()) { stepResult.setFailed('SoD violated: requester == approver'); return; }
+  appr.setValue('state', 'approved');
+  appr.update();
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 7 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;700&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;Assert the Flow ran to completion in test_mode: allocated IP recorded and gate passed. (The provisioning Flow runs async — see README for the wait pattern; here we assert the recorded results.)&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('400').request_item;
+  var gr = new GlideRecord('sc_req_item');
+  if (!gr.get(ritm)) { stepResult.setFailed('RITM not found'); return; }
+  var expectIp = gs.getProperty('x_infoblox_ddi.test_ip', '10.10.8.12');
+  // The Flow writes the allocated IP + gate verdict to work notes / a field.
+  var notes = gr.getValue('work_notes') || '';
+  var ok = notes.indexOf(expectIp) &gt; -1 &amp;&amp; notes.toLowerCase().indexOf('pass') &gt; -1;
+  stepResult.setOutputMessage('work_notes checked for ' + expectIp + ' and gate pass');
+  ok ? stepResult.setSuccess() : stepResult.setFailed('allocated IP / gate-pass not found in work notes');
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 8 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;800&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Record Query&lt;/step_config_title&gt;
+    &lt;description&gt;OPTIONAL — assert a cmdb_ci_ip_network CI exists for the subnet correlated by servicenow_sys_id. In test_mode the Service Graph Connector import does not run, so either seed a CI as a test fixture or skip this assertion. See README.&lt;/description&gt;
+    &lt;inputs&gt;
+      table = cmdb_ci_ip_network
+      conditions = name=10.10.8.0/27
+      assert = at least 1 record (requires SGC test double or a seeded fixture)
+    &lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- Step 9 --&gt;
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;900&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Record Query&lt;/step_config_title&gt;
+    &lt;description&gt;Assert the request item closed complete.&lt;/description&gt;
+    &lt;inputs&gt;
+      table = sc_req_item
+      conditions = sys_id={RITM from step 4}
+      assert = state = 3 (Closed Complete)
+    &lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;!-- ATF automatically rolls back all data this test created on completion. --&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>ATF Test_negative gate fail</name>
+    <type>ATF Test</type>
+    <target_name>negative gate fail</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  ATF NEGATIVE test — "Gate failure routes back to approval, does NOT close"
+  Scope: x_infoblox_ddi.  STARTER SKELETON (see atf/README.md).
+  Proves the CM-6 control: a failed validation gate must NOT close the change.
+
+  PRECONDITION: x_infoblox_ddi.test_mode = 'true'. This test additionally sets
+  x_infoblox_ddi.test_force_gate_fail = 'true' (step 1) so InfobloxDDIGate.runGate
+  returns a FAIL verdict, then resets it (last step).
+--&gt;
+&lt;record_update table="sys_atf_test"&gt;
+  &lt;sys_atf_test action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;DDI negative: gate failure routes back to approval&lt;/name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;description&gt;Force the validation gate to fail; assert the request does NOT close complete and is routed back to approval / a task, with the failure in work notes.&lt;/description&gt;
+  &lt;/sys_atf_test&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;100&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;Force gate failure for this run.&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  gs.setProperty('x_infoblox_ddi.test_force_gate_fail', 'true');
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;200&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Order the "Request a DDI-backed subnet" item&lt;/step_config_title&gt;
+    &lt;description&gt;Impersonate the requester, set the Azure exemplar variables, Order Now; capture the RITM. (Same as the happy-path steps 1-4.)&lt;/description&gt;
+    &lt;inputs&gt;see atf-provision-happy-path.xml steps 1-4; outputs: request_item (RITM sys_id)&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;300&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;Approve as a different user (SoD), then assert the gate failed and the request is NOT closed complete.&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('200').request_item;
+  // (approve as ddi.approver — see happy-path step 6)
+  var gr = new GlideRecord('sc_req_item');
+  if (!gr.get(ritm)) { stepResult.setFailed('RITM not found'); return; }
+  var notes = (gr.getValue('work_notes') || '').toLowerCase();
+  var gateFailed = notes.indexOf('fail') &gt; -1;
+  var notClosed  = gr.getValue('state') != '3';           // 3 = Closed Complete
+  if (gateFailed &amp;&amp; notClosed) {
+    stepResult.setOutputMessage('gate failed and request not closed — routed back as designed');
+    stepResult.setSuccess();
+  } else {
+    stepResult.setFailed('expected gate fail + not-closed; got closed=' + (!notClosed) + ' gateFailed=' + gateFailed);
+  }
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;400&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;Cleanup — reset the force-fail toggle so later tests get the pass path.&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  gs.setProperty('x_infoblox_ddi.test_force_gate_fail', 'false');
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>ATF Test_negative saas boundary</name>
+    <type>ATF Test</type>
+    <target_name>negative saas boundary</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  ATF NEGATIVE test — "universal_ddi without acknowledge_saas_boundary is blocked"
+  Scope: x_infoblox_ddi.  STARTER SKELETON (see atf/README.md).
+  Proves the boundary gate: selecting the SaaS control plane WITHOUT acknowledging
+  the out-of-boundary path must NOT provision — the module hard-fails the plan, and
+  the Flow should guard it up front so the request never reaches apply.
+
+  PRECONDITION: x_infoblox_ddi.test_mode = 'true'. Requires the Flow to implement the
+  early boundary guard (deployment_model == universal_ddi =&gt; acknowledge_saas_boundary
+  must be true), per flow-blueprint.md / PLAYBOOK Phase 3.
+--&gt;
+&lt;record_update table="sys_atf_test"&gt;
+  &lt;sys_atf_test action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;DDI negative: SaaS boundary not acknowledged is blocked&lt;/name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;description&gt;Order with deployment_model=universal_ddi and acknowledge_saas_boundary unchecked; assert the request is blocked (not closed complete) and the reason cites the boundary.&lt;/description&gt;
+  &lt;/sys_atf_test&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;100&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Impersonate User&lt;/step_config_title&gt;
+    &lt;description&gt;Impersonate the requester (ddi.requester).&lt;/description&gt;
+    &lt;inputs&gt;user = ddi.requester&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;200&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Open a Catalog Item&lt;/step_config_title&gt;
+    &lt;description&gt;Open "Request a DDI-backed subnet".&lt;/description&gt;
+    &lt;inputs&gt;catalog_item = Request a DDI-backed subnet&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;300&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Set Catalog Item Variable Values&lt;/step_config_title&gt;
+    &lt;description&gt;Same as the happy path BUT deployment_model = universal_ddi and acknowledge_saas_boundary = false (unchecked).&lt;/description&gt;
+    &lt;inputs&gt;
+      (happy-path values) ...
+      deployment_model          = universal_ddi
+      acknowledge_saas_boundary = false
+    &lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;400&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Submit a Catalog Item (Order Now)&lt;/step_config_title&gt;
+    &lt;description&gt;Order it; capture the RITM.&lt;/description&gt;
+    &lt;inputs&gt;outputs: request_item (RITM sys_id)&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;500&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;Assert the request was blocked by the boundary guard: not closed complete, and a work note / close notes cite acknowledge_saas_boundary.&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('400').request_item;
+  var gr = new GlideRecord('sc_req_item');
+  if (!gr.get(ritm)) { stepResult.setFailed('RITM not found'); return; }
+  var notClosed = gr.getValue('state') != '3';                 // must NOT be Closed Complete
+  var notes = (gr.getValue('work_notes') || '').toLowerCase();
+  var citesBoundary = notes.indexOf('acknowledge_saas_boundary') &gt; -1 || notes.indexOf('boundary') &gt; -1;
+  (notClosed &amp;&amp; citesBoundary)
+    ? stepResult.setSuccess()
+    : stepResult.setFailed('expected blocked+boundary note; closed=' + (!notClosed) + ' citesBoundary=' + citesBoundary);
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>ATF Test_negative self approve</name>
+    <type>ATF Test</type>
+    <target_name>negative self approve</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!--
+  ATF NEGATIVE test — "requester cannot approve their own request (SoD)"
+  Scope: x_infoblox_ddi.  STARTER SKELETON (see atf/README.md).
+  Proves AC-5/AC-6 separation of duties: the person who submits the request must
+  not be able to approve it.
+
+  PRECONDITION: x_infoblox_ddi.test_mode = 'true'. The requester (ddi.requester)
+  must NOT be a member of the network/DDI approver group.
+--&gt;
+&lt;record_update table="sys_atf_test"&gt;
+  &lt;sys_atf_test action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;DDI negative: requester cannot self-approve (SoD)&lt;/name&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;description&gt;The requester submits, then (still as the requester) attempts to approve their own request; assert the approval cannot be granted by them and the request does not advance.&lt;/description&gt;
+  &lt;/sys_atf_test&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;100&lt;/order&gt;
+    &lt;step_config_title&gt;Service Catalog - Order the "Request a DDI-backed subnet" item&lt;/step_config_title&gt;
+    &lt;description&gt;Impersonate ddi.requester, set the Azure exemplar variables, Order Now; capture the RITM. (Same as happy-path steps 1-4; stay impersonated as the requester.)&lt;/description&gt;
+    &lt;inputs&gt;outputs: request_item (RITM sys_id); current user remains ddi.requester&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;200&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Run Server Side Script&lt;/step_config_title&gt;
+    &lt;description&gt;As the requester, attempt to approve the pending approval; assert it is NOT permitted (the requester is not an approver, so no approval record is assigned to them, or the attempt is rejected). The approval must remain 'requested'.&lt;/description&gt;
+    &lt;inputs&gt;&lt;![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('100').request_item;
+  var me = gs.getUserID();                                   // the impersonated requester
+  var appr = new GlideRecord('sysapproval_approver');
+  appr.addQuery('sysapproval', ritm);
+  appr.query();
+  var assignedToRequester = false, stillPending = false;
+  while (appr.next()) {
+    if (appr.approver == me) assignedToRequester = true;      // requester should NOT be an approver
+    if (appr.state == 'requested') stillPending = true;
+  }
+  if (assignedToRequester) { stepResult.setFailed('SoD violated: an approval is assigned to the requester'); return; }
+  stillPending
+    ? stepResult.setSuccess()                                 // still awaiting a real approver
+    : stepResult.setFailed('expected the approval to remain pending for a separate approver');
+})(outputs, steps, stepResult);
+    ]]&gt;&lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+
+  &lt;sys_atf_step action="INSERT_OR_UPDATE"&gt;
+    &lt;order&gt;300&lt;/order&gt;
+    &lt;step_config_title&gt;Server - Record Query&lt;/step_config_title&gt;
+    &lt;description&gt;Assert the request did not advance (not closed complete) while unapproved.&lt;/description&gt;
+    &lt;inputs&gt;
+      table = sc_req_item
+      conditions = sys_id={RITM from step 1}
+      assert = state != 3 (Closed Complete)
+    &lt;/inputs&gt;
+  &lt;/sys_atf_step&gt;
+&lt;/record_update&gt;
+</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.api_flavor</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.api_flavor</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.api_flavor&lt;/name&gt;
+    &lt;value&gt;nios&lt;/value&gt;
+    &lt;description&gt;nios | universal_ddi&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.wapi_version</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.wapi_version</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.wapi_version&lt;/name&gt;
+    &lt;value&gt;v2.12&lt;/value&gt;
+    &lt;description&gt;NIOS WAPI version&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.mid_server</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.mid_server</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.mid_server&lt;/name&gt;
+    &lt;value&gt;&lt;/value&gt;
+    &lt;description&gt;In-boundary MID Server name&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.mid_scripts_dir</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.mid_scripts_dir</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.mid_scripts_dir&lt;/name&gt;
+    &lt;value&gt;/opt/servicenow/mid/agent/scripts/ddi&lt;/value&gt;
+    &lt;description&gt;MID scripts dir&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.test_mode</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.test_mode</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.test_mode&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+    &lt;description&gt;TEST ONLY — canned Infoblox responses for ATF&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.test_force_gate_fail</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.test_force_gate_fail</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.test_force_gate_fail&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+    &lt;description&gt;TEST ONLY — force a gate FAIL verdict&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+  <sys_update_xml action="INSERT_OR_UPDATE">
+    <name>System Property_x_infoblox_ddi.test_ip</name>
+    <type>System Property</type>
+    <target_name>x_infoblox_ddi.test_ip</target_name>
+    <application>x_infoblox_ddi</application>
+    <update_set/>
+    <payload>&lt;record_update table="sys_properties"&gt;
+  &lt;sys_properties action="INSERT_OR_UPDATE"&gt;
+    &lt;name&gt;x_infoblox_ddi.test_ip&lt;/name&gt;
+    &lt;value&gt;10.10.8.12&lt;/value&gt;
+    &lt;description&gt;TEST ONLY — canned next-available IP&lt;/description&gt;
+    &lt;type&gt;string&lt;/type&gt;
+    &lt;sys_scope&gt;x_infoblox_ddi&lt;/sys_scope&gt;
+  &lt;/sys_properties&gt;
+&lt;/record_update&gt;</payload>
+  </sys_update_xml>
+</unload>
