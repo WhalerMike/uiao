@@ -32,14 +32,23 @@ each mapped to its NIST control and KSI in `helpdesk-control-map.json`. The
 Conditional-Access exception item **reuses the Vol VII Book 02 pattern** (mandatory
 break-glass exclusion + expiry + access review) rather than re-inventing it.
 
-## Next steps (issue #1139)
+## Status — promoted to Volume IX
 
-1. Promote this scaffold into a full **Volume IX — ServiceNow Day-2 Operations** book
-   (Lanes C helpdesk, D landing-zone front door, E app-registration governance, plus the
-   §4 telephony catalog), registered in the compliance spine as `vol-9`.
-2. Author the scoped-app records (Flows + catalog items + ATF) mirroring
+This scaffold is now the data layer of **Volume IX — ServiceNow Day-2 Operations**
+(registered in `aan-compliance-spine.yml` as `vol-9`):
+
+- `Vol_IX_Book_00_FedAAN_Day2_Operations_Overview.qmd` — the day-2 coordination discipline
+- `Vol_IX_Book_01_FedAAN_Helpdesk_ITSM_Catalog.qmd` — the ten catalog items this map binds
+- `Vol_IX_Book_02_FedAAN_Landing_Zone_Front_Door.qmd` — Lane D
+- `Vol_IX_Book_03_FedAAN_App_Registration_Governance.qmd` — Lane E (issue #1140)
+- `Vol_IX_Book_04_FedAAN_Teams_Telephony_Catalog.qmd` — §4 (issue #1141)
+
+## Remaining steps (issue #1139)
+
+1. Author the scoped-app records (Flows + catalog items + ATF) mirroring
    `infoblox-ddi-book/servicenow-app/`, extended for the helpdesk families.
-3. Wire the control-map CI check so the catalog cannot drift from the spine.
+2. Wire the control-map CI check so the catalog cannot drift from the spine.
+3. Add per-lane control maps (landing-zone, app-reg, telephony) alongside this helpdesk map.
 
 ## References
 
