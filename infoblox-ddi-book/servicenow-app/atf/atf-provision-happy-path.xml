@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF test — "DDI happy path: provision a DDI-backed subnet" (scope: x_infoblox_ddi)
+  ===========================================================================
+  STARTER SKELETON. ServiceNow ATF tests are sys_atf_test + sys_atf_step records
+  whose steps reference built-in sys_atf_step_config records by an instance/version
+  specific sys_id and carry an opaque encoded `inputs` field — neither of which can
+  be authored blind. So each step below names its step config by TITLE and gives the
+  inputs / assertion script in readable form. Rebuild it in the ATF Test Designer (or
+  resolve the step_config sys_ids on import), then run it. See README.md.
+
+  PRECONDITION (critical): set system property  x_infoblox_ddi.test_mode = 'true'.
+  In test mode InfobloxDDIClient/Gate return deterministic canned values
+  (test_ip default 10.10.8.12, gate = pass), so this test drives the whole Flow in a
+  sub-prod instance with NO live Grid/Portal/MID connectivity. Never enable in prod.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>DDI happy path: provision a DDI-backed subnet</name>
+    <sys_scope>x_infoblox_ddi</sys_scope>
+    <active>true</active>
+    <description>End-to-end happy path in test_mode: a requester orders the subnet, an approver approves (SoD), the Flow allocates + registers + gates + reconciles, and the request closes complete. Asserts each stage.</description>
+  </sys_atf_test>
+
+  <!-- Step 1 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Impersonate User</step_config_title>
+    <description>Impersonate the requester (a non-admin test user, e.g. ddi.requester) so SoD is real.</description>
+    <inputs>user = ddi.requester</inputs>
+  </sys_atf_step>
+
+  <!-- Step 2 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Service Catalog - Open a Catalog Item</step_config_title>
+    <description>Open "Request a DDI-backed subnet".</description>
+    <inputs>catalog_item = Request a DDI-backed subnet</inputs>
+  </sys_atf_step>
+
+  <!-- Step 3 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Service Catalog - Set Catalog Item Variable Values</step_config_title>
+    <description>Fill the form with the Azure exemplar values (mirrors terraform.tfvars.example).</description>
+    <inputs>
+      target_platform          = Microsoft Azure (ALZ)
+      location                 = eastus
+      hub_vnet_id              = /subscriptions/0000.../virtualNetworks/vnet-hub-conn
+      ddi_subnet_address_prefix= 10.10.8.0/27
+      environment              = dev
+      deployment_model         = grid
+      host_fqdn                = app-gw01.corp.example
+      key_vault_id             = /subscriptions/0000.../vaults/kv-ddi-conn
+      mgmt_source_cidrs        = 10.10.0.0/24
+      dns_client_cidrs         = 10.16.0.0/12
+      business_justification   = ATF happy-path test
+    </inputs>
+  </sys_atf_step>
+
+  <!-- Step 4 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Service Catalog - Submit a Catalog Item (Order Now)</step_config_title>
+    <description>Order it; ATF captures the generated Requested Item (RITM). Save the RITM sys_id as step output for later steps.</description>
+    <inputs>outputs: request_item (RITM sys_id)</inputs>
+  </sys_atf_step>
+
+  <!-- Step 5 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>500</order>
+    <step_config_title>Server - Impersonate User</step_config_title>
+    <description>Switch to the approver (a DIFFERENT user, ddi.approver) — this is what makes the SoD gate meaningful (requester != approver).</description>
+    <inputs>user = ddi.approver</inputs>
+  </sys_atf_step>
+
+  <!-- Step 6 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>600</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Approve the pending approval for the RITM (ATF has no built-in "approve" step). Assert requester != current approver first.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('400').request_item;          // RITM sys_id from step 4
+  var appr = new GlideRecord('sysapproval_approver');
+  appr.addQuery('sysapproval', ritm);
+  appr.addQuery('state', 'requested');
+  appr.query();
+  if (!appr.next()) { stepResult.setFailed('no pending approval for ' + ritm); return; }
+  if (appr.approver == gs.getUserID()) { stepResult.setFailed('SoD violated: requester == approver'); return; }
+  appr.setValue('state', 'approved');
+  appr.update();
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <!-- Step 7 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>700</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the Flow ran to completion in test_mode: allocated IP recorded and gate passed. (The provisioning Flow runs async — see README for the wait pattern; here we assert the recorded results.)</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('400').request_item;
+  var gr = new GlideRecord('sc_req_item');
+  if (!gr.get(ritm)) { stepResult.setFailed('RITM not found'); return; }
+  var expectIp = gs.getProperty('x_infoblox_ddi.test_ip', '10.10.8.12');
+  // The Flow writes the allocated IP + gate verdict to work notes / a field.
+  var notes = gr.getValue('work_notes') || '';
+  var ok = notes.indexOf(expectIp) > -1 && notes.toLowerCase().indexOf('pass') > -1;
+  stepResult.setOutputMessage('work_notes checked for ' + expectIp + ' and gate pass');
+  ok ? stepResult.setSuccess() : stepResult.setFailed('allocated IP / gate-pass not found in work notes');
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <!-- Step 8 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>800</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>OPTIONAL — assert a cmdb_ci_ip_network CI exists for the subnet correlated by servicenow_sys_id. In test_mode the Service Graph Connector import does not run, so either seed a CI as a test fixture or skip this assertion. See README.</description>
+    <inputs>
+      table = cmdb_ci_ip_network
+      conditions = name=10.10.8.0/27
+      assert = at least 1 record (requires SGC test double or a seeded fixture)
+    </inputs>
+  </sys_atf_step>
+
+  <!-- Step 9 -->
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>900</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert the request item closed complete.</description>
+    <inputs>
+      table = sc_req_item
+      conditions = sys_id={RITM from step 4}
+      assert = state = 3 (Closed Complete)
+    </inputs>
+  </sys_atf_step>
+
+  <!-- ATF automatically rolls back all data this test created on completion. -->
+</record_update>
