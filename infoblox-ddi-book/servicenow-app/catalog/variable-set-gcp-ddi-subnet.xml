@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Catalog variable set — "Request a DDI-backed subnet" (GCP)
+  Scope: x_infoblox_ddi
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each <item_option_new> is a catalog
+  variable; its <map_to> names the GCP Terraform module variable it feeds
+  (../../gcp-lz-automation/terraform/variables.tf). `contract_check.py`
+  asserts that every REQUIRED module variable (one with no default) is covered
+  by a <map_to> here — so the form and the module cannot silently drift.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  to your instance conventions (the numeric `type` values below are the common
+  defaults: 6=Single Line Text, 5=Select Box, 21=List, 7=Reference, 20=Multi
+  Line Text, 24=Checkbox). Stage-1-sourced fields should become reference
+  lookups so requesters cannot free-type host/shared-VPC identifiers.
+-->
+<record_update table="item_option_new">
+  <sys_variable_set action="INSERT_OR_UPDATE">
+    <title>Request a DDI-backed subnet</title>
+    <internal_name>x_infoblox_ddi_ddi_subnet_gcp</internal_name>
+    <sys_scope>x_infoblox_ddi</sys_scope>
+    <description>Front-door variable set; each variable maps to one GCP module tfvar (see map_to). The contract test keeps this ⊇ the module's required variables.</description>
+  </sys_variable_set>
+
+  <!-- ===== Required module variables (no default in variables.tf) ======= -->
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>target_platform</name><question_text>Target platform</question_text>
+    <type>5</type><mandatory>true</mandatory>
+    <map_to>__platform_selector__</map_to>
+    <help_text>Selects the module + validation scripts; this variable set is the GCP instance.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>host_project_id</name><question_text>Host project</question_text>
+    <type>7</type><mandatory>true</mandatory>
+    <map_to>host_project_id</map_to>
+    <help_text>Stage-1 output; Shared-VPC host project. Pre-populated reference.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>secret_project_id</name><question_text>Secret project</question_text>
+    <type>7</type><mandatory>true</mandatory>
+    <map_to>secret_project_id</map_to>
+    <help_text>Stage-1 output; project holding Secret Manager secrets. Pre-populated reference.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>shared_vpc_network</name><question_text>Shared VPC network</question_text>
+    <type>7</type><mandatory>true</mandatory>
+    <map_to>shared_vpc_network</map_to>
+    <help_text>Stage-1 output; Shared-VPC network self-link. Pre-populated reference.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>region</name><question_text>Region</question_text>
+    <type>5</type><mandatory>true</mandatory>
+    <map_to>region</map_to>
+    <help_text>Commercial GCP region. Pick-list of approved regions; no default.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>ddi_subnet_cidr</name><question_text>Requested CIDR</question_text>
+    <type>6</type><mandatory>true</mandatory>
+    <map_to>ddi_subnet_cidr</map_to>
+    <help_text>Must fit the shared VPC, no overlap. Pre-flight + gate conflict-check it.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>machine_type</name><question_text>Machine type</question_text>
+    <type>5</type><mandatory>true</mandatory>
+    <map_to>machine_type</map_to>
+    <help_text>Region/NIOS-version dependent; pick-list of approved machine types.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>vnios_image</name><question_text>Marketplace image</question_text>
+    <type>5</type><mandatory>true</mandatory>
+    <map_to>vnios_image</map_to>
+    <help_text>vNIOS image self-link; pick-list, do not hard-code a version.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>mgmt_source_ranges</name><question_text>Management source ranges</question_text>
+    <type>21</type><mandatory>true</mandatory>
+    <map_to>mgmt_source_ranges</map_to>
+    <help_text>Non-empty, never 0.0.0.0/0 (form-validate).</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>dns_client_ranges</name><question_text>DNS client ranges</question_text>
+    <type>21</type><mandatory>true</mandatory>
+    <map_to>dns_client_ranges</map_to>
+    <help_text>Spoke/on-prem ranges permitted to query DNS.</help_text>
+  </item_option_new>
+
+  <!-- ===== Commonly-set optional module variables ======================= -->
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>environment</name><question_text>Environment</question_text>
+    <type>5</type><mandatory>true</mandatory>
+    <map_to>environment</map_to>
+    <help_text>dev|test|prod — drives tags/sizing and the approval tier.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>deployment_model</name><question_text>Deployment model</question_text>
+    <type>5</type><mandatory>true</mandatory>
+    <map_to>deployment_model</map_to>
+    <help_text>grid (in-boundary) | universal_ddi (SaaS, gated).</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>acknowledge_saas_boundary</name><question_text>Acknowledge SaaS boundary</question_text>
+    <type>24</type><mandatory>false</mandatory>
+    <map_to>acknowledge_saas_boundary</map_to>
+    <help_text>Required true only for universal_ddi; drives an extra approval.</help_text>
+  </item_option_new>
+
+  <!-- ===== Flow-only fields (not module tfvars — no map_to) ============== -->
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>host_fqdn</name><question_text>Host FQDN</question_text>
+    <type>6</type><mandatory>true</mandatory>
+    <help_text>Registered as the A + PTR for the allocated host IP. Consumed by the Flow, not a module tfvar.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>business_justification</name><question_text>Business justification</question_text>
+    <type>20</type><mandatory>true</mandatory>
+    <help_text>Read first by the approver. Flow/record field, not a module tfvar.</help_text>
+  </item_option_new>
+</record_update>
