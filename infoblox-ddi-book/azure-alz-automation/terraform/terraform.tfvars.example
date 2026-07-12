@@ -1,0 +1,63 @@
+# terraform.tfvars.example — Azure DDI reference values (gold exemplar)
+# ---------------------------------------------------------------------------
+# Copy to terraform.tfvars and replace placeholders. This is the committed,
+# worked example the volume's REVIEW asked for (§2.3): concrete values for every
+# REQUIRED module variable plus the common optional ones for a grid deployment.
+#
+# Stage-1 (ALZ Accelerator) outputs feed hub_* and key_vault_id — read them from
+# remote state, do not invent them. Placeholders are marked <...> or 000...0.
+# ---------------------------------------------------------------------------
+
+name_prefix        = "ddi"
+location           = "eastus"           # commercial .com region
+environment        = "prod"
+deployment_model   = "grid"             # boundary-clean default (in-boundary)
+compliance_profile = "gcc-moderate"
+
+# --- from Stage-1 (ALZ Accelerator) remote state / outputs -----------------
+hub_resource_group_name = "rg-hub-connectivity"
+hub_vnet_id             = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-hub-connectivity/providers/Microsoft.Network/virtualNetworks/vnet-hub-conn"
+key_vault_id            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-hub-connectivity/providers/Microsoft.KeyVault/vaults/kv-ddi-conn"
+
+# --- DDI subnet (must fit the hub, no overlap) -----------------------------
+ddi_subnet_address_prefix = "10.10.8.0/27"
+
+# --- members / HA ----------------------------------------------------------
+member_count       = 2
+availability_zones = ["1", "2"]
+
+# --- VM size + Marketplace image (verify per NIOS version + region) --------
+# az vm image list --publisher infoblox --all -o table
+vnios_vm_sku = "Standard_E8s_v5"        # confirm vCPU quota + supported-appliance list
+vnios_image = {
+  publisher = "infoblox"
+  offer     = "infoblox_nios_on_azure"
+  sku       = "<your-plan-sku>"         # from the Marketplace listing
+  version   = "latest"                  # pin to a TESTED build for prod
+  # plan_name = "<plan>"                # set only if the plan name != sku
+}
+
+# --- NSG source scoping (contract §4 — never 0.0.0.0/0) --------------------
+mgmt_source_cidrs = ["10.10.0.0/24"]                 # bastion / jumpbox / mgmt only
+dns_client_cidrs  = ["10.16.0.0/12", "10.0.0.0/12"]  # spoke + on-prem ranges
+
+# --- Grid join (deployment_model = "grid") ---------------------------------
+grid_name       = "Infoblox"
+grid_master_vip = "10.0.0.10"                        # on-prem Grid Master VIP
+grid_peer_cidrs = ["10.0.0.0/24", "10.10.8.0/27"]    # GM subnet + DDI subnet
+
+# --- discovery (least privilege: Reader on the listed subscriptions) -------
+discovery_identity_type     = "user_assigned_mi"
+discovered_subscription_ids = ["11111111-1111-1111-1111-111111111111"]
+
+# --- Azure DNS Private Resolver conditional forwarding (optional) ----------
+private_resolver_inbound_ip = "10.10.0.68"
+
+tags = { costcenter = "netops", app = "ddi" }
+
+# --- Universal DDI SaaS path — ONLY if deployment_model = "universal_ddi" ---
+# Uncommenting deployment_model below without acknowledge_saas_boundary=true
+# HARD-FAILS the plan by design (the SaaS control plane is out-of-boundary).
+# deployment_model          = "universal_ddi"
+# acknowledge_saas_boundary = true
+# infoblox_portal_url       = "https://csp.infoblox.com"
