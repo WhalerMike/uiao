@@ -19,12 +19,27 @@ InfobloxDDIGate.prototype = {
     initialize: function () {
         this.midServer = gs.getProperty('x_infoblox_ddi.mid_server', '');
         this.log = new GSLog('x_infoblox_ddi.log', 'InfobloxDDIGate');
+        // TEST MODE — see InfobloxDDIClient. When x_infoblox_ddi.test_mode = 'true',
+        // runGate() returns a canned pass verdict so the ATF happy-path test can run
+        // the Flow's gate step without a MID Server or live validation scripts.
+        this.testMode = gs.getProperty('x_infoblox_ddi.test_mode', 'false') === 'true';
     },
 
     // env: object of the DDI_VIP / TEST_FQDN / EXPECTED_IP / GRID_MASTER / ...
     // values (sourced from the request + credential alias). Returns:
     //   { overall: 'pass'|'fail', checks: [{name, exit}], raw: '<stdout>' }
     runGate: function (env) {
+        if (this.testMode) {
+            return {
+                overall: 'pass',
+                checks: [
+                    { name: 'dns', exit: 0 },
+                    { name: 'discovery-sync', exit: 0 },
+                    { name: 'ipam-conflict', exit: 0 }
+                ],
+                raw: '{"overall":"pass","checks":[],"note":"test_mode"}'
+            };
+        }
         var verdict = { overall: 'fail', checks: [], raw: '' };
         try {
             var stdout = this._execOnMid('infoblox-ddi-validate.sh', env);

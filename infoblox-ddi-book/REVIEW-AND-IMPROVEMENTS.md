@@ -102,10 +102,18 @@ records," but the practical gaps are real:
 - The Flow is a **prose blueprint** ([`flow/flow-blueprint.md`](./servicenow-app/flow/flow-blueprint.md)),
   not an exported `sys_hub_flow`.
 - The REST Message XML is **illustrative and untested**; endpoints are placeholders.
-- **No ATF (Automated Test Framework) tests**, and it is not packaged as a **signed scoped
-  application / update set** you can import in one step.
-- **Recommendation:** build one importable, ATF-covered update set for the Azure exemplar;
-  keep the others as documented blueprints until proven.
+- ~~**No ATF (Automated Test Framework) tests**~~ — **started.** A happy-path test spec is now
+  in [`servicenow-app/atf/`](./servicenow-app/atf/README.md), and — importantly — the Script
+  Includes gained a `test_mode` short-circuit so the Flow runs end-to-end in a sub-prod
+  instance with **no live Infoblox/MID** (deterministic canned allocate/register/gate). Still
+  a starter: the step-config `sys_id`s must be wired in the ATF Designer, and a green run on a
+  real instance is the evidence to capture. Negative tests (gate-fail routes back to approval;
+  SaaS-boundary hard-fail; requester = approver blocked) are the next additions.
+- It is still not packaged as a **signed scoped application / update set** you can import in
+  one step, and the Flow is still a **prose blueprint** rather than an exported `sys_hub_flow`.
+- **Recommendation:** finish the importable, ATF-covered update set for the Azure exemplar
+  (sign it, resolve the ATF step configs, run it green); keep the others as documented
+  blueprints until proven.
 
 ---
 

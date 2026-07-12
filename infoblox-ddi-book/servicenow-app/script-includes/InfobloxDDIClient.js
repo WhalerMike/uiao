@@ -21,11 +21,17 @@ InfobloxDDIClient.prototype = {
         // Connection alias supplies base URL + basic/oauth credentials.
         this.midServer = gs.getProperty('x_infoblox_ddi.mid_server', '');
         this.log = new GSLog('x_infoblox_ddi.log', 'InfobloxDDIClient');
+        // TEST MODE — when x_infoblox_ddi.test_mode = 'true', the allocate/register/
+        // delete calls return deterministic canned values instead of hitting Infoblox,
+        // so the ATF happy-path test (atf/) can drive the whole Flow in a sub-prod
+        // instance with NO live Grid/Portal connectivity. Never enable in production.
+        this.testMode = gs.getProperty('x_infoblox_ddi.test_mode', 'false') === 'true';
     },
 
     // Allocate the next free IP from a network and return it, or '' on failure.
     // networkCidr e.g. "10.16.4.0/24"; networkView optional.
     nextAvailableIp: function (networkCidr, networkView) {
+        if (this.testMode) return gs.getProperty('x_infoblox_ddi.test_ip', '10.10.8.12');
         try {
             if (this.flavor === 'universal_ddi')
                 return this._uddiNextAvailableIp(networkCidr, networkView);
@@ -38,6 +44,7 @@ InfobloxDDIClient.prototype = {
 
     // Create an authoritative host (A+PTR) record. Returns the object ref/id or ''.
     createHostRecord: function (fqdn, ip, dnsView) {
+        if (this.testMode) return 'record:host/TEST:' + fqdn;
         try {
             if (this.flavor === 'universal_ddi')
                 return this._uddiCreateHost(fqdn, ip, dnsView);
@@ -50,6 +57,7 @@ InfobloxDDIClient.prototype = {
 
     // Reclaim on decommission: delete an object by its ref/id. Returns boolean.
     deleteObject: function (ref) {
+        if (this.testMode) return true;
         try {
             var r = this._rest('DELETE', this._path(ref), null);
             return r.getStatusCode() < 300;

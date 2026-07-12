@@ -58,6 +58,8 @@ approval, change record, gate output, and CMDB reconcile are the audit evidence
 - [Build playbook](./PLAYBOOK-servicenow-led-build.md) — step-by-step build, ServiceNow first, with the sample screens.
 - [User guide](./USER-GUIDE.md) — requester / approver / admin end-user documentation.
 - [Mock-up gallery](./mockups/README.md) — sample catalog, approval, status, flow, and CMDB screens.
+- [Catalog variable sets + contract check](./catalog/README.md) — the form as a machine-readable, CI-checked artifact (all five platforms).
+- [ATF test](./atf/README.md) — an automated happy-path test, runnable in a sub-prod instance via `test_mode` (no live Infoblox).
 
 ---
 
