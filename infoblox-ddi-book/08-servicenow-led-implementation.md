@@ -70,7 +70,9 @@ At a chapter level it runs experience-first:
    **inside the ATO boundary**, and the two certified Store apps (CPG Terraform
    Connector, Service Graph Connector for Infoblox).
 2. **Scoped app** — import the [`servicenow-app/`](./servicenow-app/README.md) records
-   (Script Includes, REST Message, MID gate) and set the app properties.
+   (Script Includes, REST Message, MID gate) and set the app properties. These are a
+   **labeled starter skeleton** — review, complete the platform variable sets, and test in
+   a sub-prod instance before use; they are not a signed, production-certified store app.
 3. **Catalog item** — build the request form (§8.2); its variables define the contract.
 4. **Flow + approval** — build the closed loop per
    [`flow/flow-blueprint.md`](./servicenow-app/flow/flow-blueprint.md).

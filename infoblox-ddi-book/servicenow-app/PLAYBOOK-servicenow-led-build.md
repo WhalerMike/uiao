@@ -126,29 +126,35 @@ carries the exact inline Action scripts.
 
 1. **Trigger — Catalog item submitted.** Inputs are the Phase-2 variables mapped
    to the target platform's `tfvars`.
-2. **Approval — Ask for approval (SoD gate).** Approvers = the network/DDI group;
+2. **Pre-flight validation (before approval).** Action → Script step: a **read-only**
+   check on the *requested* CIDR — that it fits the chosen hub and does not overlap
+   an existing Infoblox network — so a bad request fails fast and the approver reads
+   a real result, not a promise. (Add the read-only helpers to `InfobloxDDIClient`;
+   it currently ships allocate/register/delete.) The *enforced* check is the
+   post-apply gate (step 6).
+3. **Approval — Ask for approval (SoD gate).** Approvers = the network/DDI group;
    requester ≠ approver. Route on `environment` (prod needs change-advisory
    approval) and on `deployment_model` (selecting `universal_ddi` requires
    `acknowledge_saas_boundary = true` and an **extra approval**). Reject → close
    request *cancelled*.
 
-   ![Illustrative mock-up of the approver's screen: the SoD approval for a DDI subnet request showing requester, environment, deployment model, requested CIDR, and Approve / Reject buttons, badged ILLUSTRATIVE MOCK-UP](mockups/sn-02-approval.png)
+   ![Illustrative mock-up of the approver's screen: the SoD approval for a DDI subnet request showing requester, environment, deployment model, requested CIDR, pre-flight check results, and Approve / Reject buttons, badged ILLUSTRATIVE MOCK-UP](mockups/sn-02-approval.png)
 
-3. **Allocate CIDR** — Action → Script step calling
-   `x_infoblox_ddi.InfobloxDDIClient` (`nextAvailableIp(...)`), reserving the
-   gateway IP / block from IPAM.
 4. **CPG Terraform apply** — call the **Cloud Provisioning & Governance Terraform
    Connector** catalog task for the platform's module, passing the catalog inputs
-   as `tfvars` and `inputs.cidr` as `ddi_subnet_address_prefix`. Speculative plan
-   → the approval above → apply, on the MID Server. (The module itself is ingested
-   in Phase 5 — the Flow references the task that Phase 5 wires up.)
-5. **Register DNS** — Action → Script step calling
-   `InfobloxDDIClient.createHostRecord(fqdn, gateway_ip, dns_view)`.
+   as `tfvars` and `inputs.requested_cidr` as `ddi_subnet_address_prefix`.
+   Speculative plan → the approval above → apply, on the MID Server. (The module
+   itself is ingested in Phase 5 — the Flow references the task that Phase 5 wires up.)
+5. **Allocate + register** — Action → Script step calling
+   `x_infoblox_ddi.InfobloxDDIClient`: *after* apply has created the subnet,
+   `nextAvailableIp(...)` allocates the next-available **host** IP (not the gateway)
+   and `createHostRecord(fqdn, allocated_ip, dns_view)` registers the A + PTR.
 6. **Validation gate** — Action → Script step calling
    `InfobloxDDIGate.runGate({...})` (`SCRIPTS_DIR = inputs.platform`, `DDI_VIP`,
-   `TEST_FQDN`, `EXPECTED_IP`, `GRID_MASTER`). **If `overall != 'pass'`**, post
-   the detail to work-notes and route back to step 2 (or open a task) — do **not**
-   close the change. This is wired to the MID script in Phase 4.
+   `TEST_FQDN`, `EXPECTED_IP`, `GRID_MASTER`; `DDI_VIP`/`GRID_MASTER` from app
+   properties). **If `overall != 'pass'`**, post the detail to work-notes and route
+   back to the **approval step** (or open a task) — do **not** close the change.
+   This is wired to the MID script in Phase 4.
 7. **CMDB reconcile** — trigger the **Service Graph Connector for Infoblox**
    import so the new `cmdb_ci_ip_network` / `_subnet` CIs appear; attach them to
    the request.
@@ -229,7 +235,7 @@ Run the whole loop end-to-end in a sub-prod catalog before promoting.
 3. **Watch the closed loop** on the request status timeline: allocate → apply →
    register → gate → reconcile → close, with work-notes at each step.
 
-   ![Illustrative mock-up of the request status timeline: a vertical progress track showing approval, Terraform apply, IP allocation, DNS registration, validation gate PASS, CMDB reconcile, and closed-complete, with work-note entries, badged ILLUSTRATIVE MOCK-UP](mockups/sn-03-request-status.png)
+   ![Illustrative mock-up of the request status timeline for an in-progress request: a vertical progress track with Submitted, Approved, Terraform apply, and IPAM allocate/register done, the validation gate currently running, and CMDB reconcile and Close still pending, alongside a work-notes stream, badged ILLUSTRATIVE MOCK-UP](mockups/sn-03-request-status.png)
 
 4. **Confirm the CMDB CI** exists and is correlated back to the request.
 

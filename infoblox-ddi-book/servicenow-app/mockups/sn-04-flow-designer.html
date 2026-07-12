@@ -23,20 +23,20 @@
   <div class="main">
     <div class="crumb">Flow Designer &nbsp;›&nbsp; x_infoblox_ddi &nbsp;›&nbsp; <b>Provision DDI-backed subnet</b></div>
     <h1 class="page">Provision DDI-backed subnet</h1>
-    <div class="sub">Trigger + 8 actions · runs as the app service account · MID Server in-boundary. Mirrors Chapter 7 §7.1 and <code>flow/flow-blueprint.md</code>.</div>
+    <div class="sub">Trigger + 7 actions · runs as the app service account · MID Server in-boundary. Mirrors Chapter 7 §7.1 and <code>flow/flow-blueprint.md</code>.</div>
 
     <div class="flow">
       <div class="fnode trigger"><div class="lab">Trigger</div><div class="ti">Service Catalog — item submitted</div><div class="d">“Request a DDI-backed subnet” · inputs mapped to module tfvars</div></div>
       <div class="fconn"></div><div class="farr">▼</div>
-      <div class="fnode"><div class="lab">1 · Approval</div><div class="ti">Ask for approval (SoD gate)</div><div class="d">Approvers = Network / DDI group · reject → close cancelled</div></div>
+      <div class="fnode gate"><div class="lab">1 · Script (InfobloxDDIClient)</div><div class="ti">Pre-flight validation (read-only)</div><div class="d">requested CIDR fits hub + no IPAM overlap · before approval, shown to approver</div></div>
       <div class="fconn"></div><div class="farr">▼</div>
-      <div class="fnode"><div class="lab">2 · Script (InfobloxDDIClient)</div><div class="ti">Allocate CIDR / next-available IP</div><div class="d">nextAvailableIp(requested_cidr, network_view)</div></div>
+      <div class="fnode"><div class="lab">2 · Approval</div><div class="ti">Ask for approval (SoD gate)</div><div class="d">Approvers = Network / DDI group · reject → close cancelled</div></div>
       <div class="fconn"></div><div class="farr">▼</div>
       <div class="fnode"><div class="lab">3 · CPG Terraform Connector</div><div class="ti">Plan → approve → apply ../terraform</div><div class="d">runs on MID Server · Key Vault secret refs resolve on MID</div></div>
       <div class="fconn"></div><div class="farr">▼</div>
-      <div class="fnode"><div class="lab">4 · Script (InfobloxDDIClient)</div><div class="ti">Register DNS (A + PTR)</div><div class="d">createHostRecord(fqdn, ip, dns_view)</div></div>
+      <div class="fnode"><div class="lab">4 · Script (InfobloxDDIClient)</div><div class="ti">Allocate host IP + register DNS (A + PTR)</div><div class="d">after apply · nextAvailableIp(cidr) → createHostRecord(fqdn, ip, dns_view)</div></div>
       <div class="fconn"></div><div class="farr">▼</div>
-      <div class="fnode gate"><div class="lab">5 · Script (InfobloxDDIGate)</div><div class="ti">Validation gate — pass/fail</div><div class="d">runGate() → dns / discovery-sync / ipam-conflict · fail → back to step 1</div></div>
+      <div class="fnode gate"><div class="lab">5 · Script (InfobloxDDIGate)</div><div class="ti">Validation gate — pass/fail</div><div class="d">runGate() → dns / discovery-sync / ipam-conflict · fail → back to approval</div></div>
       <div class="fconn"></div><div class="farr">▼</div>
       <div class="fnode"><div class="lab">6 · Service Graph Connector</div><div class="ti">CMDB reconcile</div><div class="d">cmdb_ci_ip_network / _subnet attached to the request</div></div>
       <div class="fconn"></div><div class="farr">▼</div>

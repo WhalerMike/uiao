@@ -87,12 +87,28 @@ InfobloxDDIClient.prototype = {
 
     // ---- Universal DDI (Portal) branch -------------------------------------
     _uddiNextAvailableIp: function (cidr, space) {
-        // POST /api/ddi/v1/ipam/address/nextavailableip against the subnet id.
+        // SKELETON — the CIDR is NOT the resource id. Universal DDI addresses objects
+        // by an opaque id (e.g. "ipam/subnet/<uuid>"), so resolve the subnet id first
+        // — GET /api/ddi/v1/ipam/subnet?_filter=address=='<cidr>' — then call
+        // nextavailableip against that id, mirroring the NIOS branch's _ref lookup.
+        // (Pin the exact endpoint/shape to your Universal DDI API version before use.)
+        var subnetId = this._uddiResolveSubnetId(cidr, space); // resolve id from CIDR
         var body = { count: 1 };
         var resp = this._rest('POST',
-            '/api/ddi/v1/ipam/subnet/' + encodeURIComponent(cidr) + '/nextavailableip', body);
+            '/api/ddi/v1/' + subnetId + '/nextavailableip', body);
         var out = JSON.parse(resp.getBody() || '{}');
         return (out.results && out.results.length) ? out.results[0].address : '';
+    },
+
+    // Resolve a Universal DDI subnet's opaque object id from its CIDR (skeleton;
+    // confirm the filter syntax/field against your Universal DDI API version).
+    _uddiResolveSubnetId: function (cidr, space) {
+        var q = '/api/ddi/v1/ipam/subnet?_filter=' +
+            encodeURIComponent("address=='" + cidr + "'") +
+            (space ? '&_filter=' + encodeURIComponent("space=='" + space + "'") : '');
+        var resp = this._rest('GET', q, null);
+        var out = JSON.parse(resp.getBody() || '{}');
+        return (out.results && out.results.length) ? out.results[0].id : '';
     },
 
     _uddiCreateHost: function (fqdn, ip, zone) {

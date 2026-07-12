@@ -55,7 +55,7 @@ free-type them, so you can't invent a hub that doesn't exist.
 | **Target platform** | The cloud/estate the subnet lives in — Azure, AWS, GCP, OCI, or VMware. This selects which Terraform module and validation scripts run. |
 | **Region** | The provider region for the subnet (e.g. an Azure commercial region). Pick from the approved list; there is no default. |
 | **Hub network** (pre-populated) | The hub VNet/VPC the subnet attaches to, sourced from your landing-zone outputs. Choose from the list — do not type a raw ID. This is what the new CIDR must fit inside. |
-| **Requested CIDR** | The address range for the new subnet (e.g. `10.20.4.0/24`). It must fit inside the hub network and not overlap anything already allocated — the approval pre-checks verify this, so a bad CIDR is caught before anything is built. |
+| **Requested CIDR** | The address range for the new subnet (e.g. `10.20.4.0/24`). It must fit inside the hub network and not overlap anything already allocated — a **pre-flight check runs before approval** (and its result is shown to the approver), so a bad CIDR is caught before anything is built. The post-apply validation gate re-checks for conflicts as the enforced backstop. |
 | **Environment** | `dev`, `test`, or `prod`. Drives tags and sizing **and** the approval tier — `prod` gets an extra approval step. |
 | **Deployment model** | `grid` (default) or `universal_ddi`. **`grid`** keeps every DDI call in-boundary (WAPI to your Grid) — this is the boundary-clean default. **`universal_ddi`** uses Infoblox's SaaS Portal control plane, which sits **outside** the ATO boundary; pick it only when you genuinely need the SaaS path. |
 | **Host FQDN** | The fully-qualified name to register in DNS for the primary/gateway address (e.g. `app-ddi-01.corp.example`). The flow creates the A record (and PTR) for this name. |
@@ -288,8 +288,10 @@ violated, or a `universal_ddi` (SaaS) path wasn't justified. The rejection notes
 which — fix it and resubmit.
 
 **How do I get a DNS record without provisioning a subnet?**
-This catalog item is for a **DDI-backed subnet** (subnet + IP + DNS together). A
-standalone DNS record is a different request — ask your DDI team; it isn't this form.
+This catalog item is for a **DDI-backed subnet** (subnet + IP + DNS together). For a
+standalone name, use the separate **"Request a DNS record"** catalog item (shown in the
+Network Services catalog) rather than this form — it registers a record without allocating
+a subnet.
 
 **What if I chose the wrong platform (or CIDR, region, FQDN)?**
 If the request hasn't been approved yet, ask an approver to reject it and submit a

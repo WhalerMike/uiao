@@ -186,6 +186,17 @@ a [build playbook](./servicenow-app/PLAYBOOK-servicenow-led-build.md), and a
   order is sound in principle; it has not been run end-to-end. The pilot step in the playbook
   is the place to capture evidence (a recorded dev-instance run) and close this.
 
+> **Defect-review pass applied.** A skeptical read of Chapter 8, the playbook, the user guide,
+> and the mock-up HTML found and *fixed* a set of internal inconsistencies: the flow now uses
+> one canonical order (**pre-flight → approval → apply → allocate/register → gate**) across the
+> blueprint, playbook, flow mock, and status view; the flow mock's action count (7) and step
+> numbering match the prose; the catalog mock shows the **Key Vault reference** + an **Advanced**
+> group so it matches the "form is the contract" claim; the CMDB `servicenow_sys_id` is a GUID
+> (not a RITM); the MID wrapper name is consistent; and the Script Includes carry explicit
+> "illustrative, rework before use" caveats (async ECC round-trip; Universal DDI id resolution).
+> These were contract-level mismatches worth reconciling — but they do **not** touch the P0
+> below (a *tested* exemplar), which remains the real gap.
+
 **Net:** Round 2 added the *experience and documentation* layer the review said was missing —
 but it is documentation and mock-ups, which is precisely the gap Section 2 warns about,
 one level up. The single highest-value next step is unchanged and now doubly earned:

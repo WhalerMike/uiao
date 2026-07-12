@@ -11,7 +11,7 @@ shoot(){ # <file-stem> <height>
     --window-size="1200,$2" "file://$DIR/$1.html" >/dev/null 2>&1
   echo "rendered $1.png (1200x$2 @2x)"
 }
-shoot sn-01-catalog-request 985
+shoot sn-01-catalog-request 1330
 shoot sn-02-approval 900
 shoot sn-03-request-status 930
 shoot sn-04-flow-designer 1190
