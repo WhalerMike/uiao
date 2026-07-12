@@ -1,0 +1,87 @@
+---
+title: "Vol IX Book 02 — Federal Application-Aware Networking — Landing Zone Front Door"
+subtitle: "The catalog request that drives change-controlled landing-zone IaC and reconciles every allocation to the IPAM/DDI join key"
+author: "SSA Cloud Services Team"
+date: "2026-07-12 15:00 ET"
+format:
+  html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: lz-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
+fig-align: center
+out-width: "100%"
+execute: {echo: false}
+---
+
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the SSA CIO Office, OIS, or leadership. **Date Code:** 2026-07-12 15:00 ET
+:::
+
+::: {.callout-important}
+**Series Context** — Volume IX Book 02. The infrastructure-as-code exists (Vol VI Book 01, `infoblox-ddi-book/azure-alz-automation/`); what is missing is the *governed front door* — the catalog request that drives it. This book puts a ServiceNow catalog item on the landing-zone IaC so a subscription, virtual network, or subnet is provisioned through an approved, change-controlled pipeline and reconciled to the authoritative IPAM/DDI record at allocation time.
+:::
+
+# What This Document Addresses
+
+Landing-zone infrastructure-as-code is a solved problem in this series — Terraform and Bicep modules stand up subscriptions, networks, and subnets from reviewed source (Vol VI Book 01). But a module that anyone can `apply` from a laptop is not change control, and an address block allocated outside the naming plane is a CM-8 gap the moment it exists. The gap is the *front door*: the governed request that turns "run the module" into "an approved, evidenced, reconciled provisioning event."
+
+This book supplies that front door, reusing the exact pattern the DDI ServiceNow app already proves (`infoblox-ddi-book/servicenow-app/`): **catalog request → approval / separation-of-duties → speculative Terraform plan → apply → validation gate → CMDB reconcile → close.**
+
+# The Provisioning Loop
+
+| Step | What happens | Control |
+|---|---|---|
+| **1. Request** | A catalog item captures the landing-zone parameters (environment, size, address requirements) as typed variables, not free text | — |
+| **2. Approve / SoD** | The request routes through approval with separation of duties (requester ≠ approver) | CM-3, CM-5 |
+| **3. Plan** | The CPG Terraform Connector runs a **speculative plan** the approver reviews before any state changes | CM-3 |
+| **4. Apply** | On approval, the change-controlled pipeline applies the reviewed source idempotently — deployed state equals reviewed source | CM-2 |
+| **5. Reconcile** | The address/subnet allocation is written to and reconciled with the authoritative **IPAM/DDI** record | CM-8 |
+| **6. Close** | The validation gate confirms the landing zone matches intent; the change record and gate verdict are the evidence | CM-3, AU-2 |
+
+::: {.callout-important}
+**No landing zone stands up outside the naming plane.** Step 5 is the load-bearing one: an address block allocated by IaC but never reconciled to IPAM/DDI is shadow inventory (a CM-8 / BOD 23-01 finding) the moment it exists. The front door makes reconciliation part of provisioning, not a later clean-up.
+:::
+
+# Reuse — This Is the DDI App, Generalized
+
+The DDI ServiceNow app (Vol VIII Book 07, `infoblox-ddi-book/servicenow-app/`) already implements this loop for DNS-backed subnet provisioning: a catalog item fronts a Terraform module through the CPG Connector, a MID-Server gate validates, and the Service Graph Connector reconciles to the CMDB. This book **extends the same records** to full landing-zone provisioning — same connectors, same in-boundary MID, same validation-gate discipline, broader module scope.
+
+# Closure Necessity
+
+::: {.callout-tip}
+## Closure Necessity — IaC without a governed front door is not change control
+Volume VI proves the mechanism: landing zones expressed as reviewable source close CM-2/CM-3/CM-6. This book makes the *invocation* of that source governed — an approved, SoD-gated, evidenced provisioning event reconciled to the naming plane. Without the front door, the same modules are a click-path with no approval trail and no guarantee the allocation reached IPAM — CM-3 becomes an assertion and CM-8 forks. The IaC is necessary; the governed front door is what makes it *assessable*.
+:::
+
+# NIST SP 800-53 Rev 5 Control Closure — Authorities Closed Here
+
+Generated from the compliance spine (`aan-compliance-spine.yml`); not hand-edited here.
+
+<!-- authorities:book-day2-landingzone — generated from aan-compliance-spine.yml; do not hand-edit -->
+| Control | Title | Closing mechanism (function, not product) | Accreditation gate | Authority drivers | Evidence slot | FedRAMP 20x KSI | Tool-attestable? |
+|---|---|---|---|---|---|---|---|
+| CM-8 | System Component Inventory | Subnet/address allocation reconciled to the authoritative IPAM/DDI record (CM-8) at provisioning time — no landing zone stood up outside the naming plane | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 23-01 | Network | KSI-PIY | No |
+| CM-3 | Configuration Change Control | Catalog approval → speculative Terraform plan → apply → validation gate → CMDB close as the CM-3 gate for landing-zone changes | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB Circular A-130 | Security / supply chain | KSI-CMT | No |
+| CM-2 | Baseline Configuration | Landing-zone catalog request drives the change-controlled IaC pipeline (Terraform/Bicep) — deployed state equals reviewed source | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB Circular A-130 | Security / supply chain | KSI-CMT | No |
+
+: Authorities Closed Here — Landing Zone Front Door (catalog → IaC → CMDB) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+
+# Honest Limits
+
+- The front door governs provisioning; drift *after* apply is a Vol VII Book 03 (Azure Policy) concern — the two compose (provision governed, then monitor drift).
+- The speculative plan is only as safe as the module's blast radius; destructive changes carry a heightened approval gate.
+- Reconciliation depends on the IPAM/DDI backend chosen in the Volume VIII / InfoBlox decision; until that lands, the reconcile step targets whatever authoritative record exists.
+
+# Cross-References
+
+- **Vol VI Book 01 (Landing Zone & Network as Code)** — the IaC this front door drives.
+- **Vol VIII Book 07 / `infoblox-ddi-book/servicenow-app/`** — the DDI catalog→Terraform→gate→CMDB pattern this book generalizes.
+- **Vol I Book 01 (IPAM/DDI)** — the authoritative record allocations reconcile to (CM-8).
+- **Vol VII Book 04** — where the provisioning evidence becomes attestation.
+
+# Provenance
+
+Draft. ServiceNow, the CPG Terraform Connector, Terraform/Bicep, and Azure ALZ are deployed examples; the catalog→approve/SoD→plan→apply→reconcile→close discipline is the invariant. House-style figures per ADR-093 (rendered at 3× for crisp `.docx` zoom) are added in the figure pass; this draft is text-and-table-first.

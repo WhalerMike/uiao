@@ -51,6 +51,12 @@ volumes:
   # binds it via this spine + the Vol VIII overview + cross-references, without
   # relocating the 70-file kit.
   - {id: vol-8, title: "Multi-Cloud DDI Landing-Zone Automation", books: [book-ddi-intro, book-ddi-azure, book-ddi-aws, book-ddi-gcp, book-ddi-oci, book-ddi-vmware, book-ddi-xplat, book-ddi-servicenow, book-ddi-impl, book-ddi-appendix]}
+  # Volume IX extends the ServiceNow coordination layer (Vol VII) from compliance
+  # drift to DAY-2 OPERATIONS — the governed catalog for the common Entra/M365/Azure
+  # helpdesk tasks, the landing-zone front door, app-registration governance, and
+  # Teams telephony. Same discipline: Graph via in-boundary MID, no standing admin,
+  # every action audited and reconciled to the CM-8 join key. GCC Moderate only.
+  - {id: vol-9, title: "ServiceNow Day-2 Operations", books: [book-day2-intro, book-day2-helpdesk, book-day2-landingzone, book-day2-appreg, book-day2-telephony]}
 
 # -----------------------------------------------------------------------------
 # Authority registry — every instrument the series maps control closures to.
@@ -182,6 +188,13 @@ books:
   - {id: book-ddi-impl,       temp_slot: "VIII-08", target_slot: "VIII-08", title: "ServiceNow-Led Implementation (infoblox-ddi-book/08-servicenow-led-implementation.md)"}
   - {id: book-ddi-appendix,   temp_slot: "VIII-A", target_slot: "VIII-A", title: "Appendix A — Sizing, Cost, IPv6 & DHCP (infoblox-ddi-book/appendix-A-sizing-cost-ipv6-dhcp.md)"}
 
+  # Volume IX — ServiceNow Day-2 Operations (helpdesk, landing zone, app-reg, telephony).
+  - {id: book-day2-intro,       temp_slot: "IX-00", target_slot: "IX-00", title: "Volume IX Overview — ServiceNow Day-2 Operations"}
+  - {id: book-day2-helpdesk,    temp_slot: "IX-01", target_slot: "IX-01", title: "Helpdesk & ITSM Catalog (Entra · M365 · Azure)"}
+  - {id: book-day2-landingzone, temp_slot: "IX-02", target_slot: "IX-02", title: "Landing Zone Front Door (catalog → IaC → CMDB)"}
+  - {id: book-day2-appreg,      temp_slot: "IX-03", target_slot: "IX-03", title: "App Registration Governance (request · consent · secret/cert lifecycle)"}
+  - {id: book-day2-telephony,   temp_slot: "IX-04", target_slot: "IX-04", title: "Teams Telephony Catalog & Teams SCuBA Drift"}
+
 # -----------------------------------------------------------------------------
 # Evidence slots (Conformance Adapter surface slots, carried from the series).
 # -----------------------------------------------------------------------------
@@ -282,3 +295,23 @@ closures:
   - {control: "CM-3",     title: "Configuration Change Control",                book: book-ddi-servicenow, plane: 6, mechanism: "Service Catalog → Flow Designer approval/SoD → Terraform apply → validation gate → CMDB close: DDI provisioning gated by an approved, audited change record", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
   - {control: "CM-5",     title: "Access Restrictions for Change",              book: book-ddi-servicenow, plane: 3, mechanism: "Separation-of-duties gate in the catalog approval flow (requester ≠ approver) over DDI changes", gate: fedramp, drivers: [nist-800-53r5], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
   - {control: "AU-2",     title: "Event Logging",                               book: book-ddi-servicenow, plane: 6, mechanism: "Immutable request/approval/apply/validation audit trail emitted from the ServiceNow closed loop into the evidence contract", gate: fedramp, drivers: [nist-800-53r5, omb-m-21-31], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false}
+
+  # --- book-day2-helpdesk : Helpdesk & ITSM Catalog (Vol IX) ---
+  - {control: "AC-2",     title: "Account Management",                          book: book-day2-helpdesk, plane: 3, mechanism: "Joiner/mover/leaver, guest invite, and license/group requests as governed ServiceNow catalog items over Entra (Graph via in-boundary MID); leaver de-provisioning evidenced", gate: fedramp, drivers: [nist-800-53r5, omb-m-22-09], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "IA-5",     title: "Authenticator Management",                    book: book-day2-helpdesk, plane: 3, mechanism: "Password reset, MFA-method reset, and account unlock as identity-verified catalog items (self-service via SSPR where policy allows; else approver-gated)", gate: fedramp, drivers: [nist-800-53r5], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "AC-6",     title: "Least Privilege",                             book: book-day2-helpdesk, plane: 3, mechanism: "Group and privileged-access requests time-bound and access-reviewed; no standing elevation granted by a helpdesk click", gate: fedramp, drivers: [nist-800-53r5, omb-m-22-09], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+
+  # --- book-day2-landingzone : Landing Zone Front Door (Vol IX) ---
+  - {control: "CM-2",     title: "Baseline Configuration",                      book: book-day2-landingzone, plane: 7, mechanism: "Landing-zone catalog request drives the change-controlled IaC pipeline (Terraform/Bicep) — deployed state equals reviewed source", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
+  - {control: "CM-8",     title: "System Component Inventory",                  book: book-day2-landingzone, plane: 2, mechanism: "Subnet/address allocation reconciled to the authoritative IPAM/DDI record (CM-8) at provisioning time — no landing zone stood up outside the naming plane", gate: fedramp, drivers: [nist-800-53r5, cisa-bod-23-01], slot: slot-03-network, ksi: [KSI-PIY], tool: false, necessity: false}
+  - {control: "CM-3",     title: "Configuration Change Control",                book: book-day2-landingzone, plane: 6, mechanism: "Catalog approval → speculative Terraform plan → apply → validation gate → CMDB close as the CM-3 gate for landing-zone changes", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
+
+  # --- book-day2-appreg : App Registration Governance (Vol IX) ---
+  - {control: "IA-5(2)",  title: "Public Key-Based Authentication",             book: book-day2-appreg, plane: 3, mechanism: "App-registration credentials issued as short-lived certs (ACME) with mandatory expiry and automated rotation — no long-lived secrets in config", gate: fedramp, drivers: [nist-800-53r5, eo-14028], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "SC-17",    title: "Public Key Infrastructure Certificates",      book: book-day2-appreg, plane: 3, mechanism: "Certificate issuance and rotation for service principals via the governed catalog", gate: fedramp, drivers: [nist-800-53r5], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "AC-6",     title: "Least Privilege",                             book: book-day2-appreg, plane: 3, mechanism: "Scoped admin consent; over-broad/privileged scopes gated by a security approver; orphaned/expired app registrations flagged for attestation", gate: fedramp, drivers: [nist-800-53r5], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+
+  # --- book-day2-telephony : Teams Telephony Catalog & Teams SCuBA Drift (Vol IX) ---
+  - {control: "CM-6",     title: "Configuration Settings",                      book: book-day2-telephony, plane: 5, mechanism: "Teams SCuBA / secure-baseline drift raised as a ServiceNow Change/Incident, extending the Vol VII Book 02 M365 loop to the Teams surface", gate: fedramp, drivers: [nist-800-53r5, cisa-scuba, cisa-bod-25-01], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
+  - {control: "CM-3",     title: "Configuration Change Control",                book: book-day2-telephony, plane: 5, mechanism: "Number assignment, calling-policy, and voice-routing/SBC changes as change-controlled catalog items with E911 emergency-address validation", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
+  - {control: "AU-2",     title: "Event Logging",                               book: book-day2-telephony, plane: 6, mechanism: "Call-detail and telephony admin actions audited into the evidence contract", gate: fedramp, drivers: [nist-800-53r5, omb-m-21-31], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false}
