@@ -1,0 +1,147 @@
+# AAN deck spec — Vol VII Book 01 (CMDB Reconciliation & Asset Identity).
+# Scope: FedRAMP Moderate & Microsoft GCC Moderate only. Never cite High.
+deck:
+  title: "CMDB Reconciliation & Asset Identity"
+  subtitle: "Vol VII Book 01 — populate the CMDB from M365 & Azure, reconcile it to the authoritative IPAM/DDI join key (CM-8)"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOLUME VII"
+  date_code: "2026-07-12 15:00 ET"
+  journey:
+    - "Populate"
+    - "Match"
+    - "Bind"
+    - "Flag"
+  sources:
+    ms_graph: "https://learn.microsoft.com/graph/"
+    ms_resourcegraph: "https://learn.microsoft.com/azure/governance/resource-graph/"
+    cisa_bod2301: "https://www.cisa.gov/news-events/directives/bod-23-01-improving-asset-visibility-and-vulnerability-detection-federal-networks"
+
+slides:
+  - type: title
+    notes: >
+      Book 01 is the foundation of the coordination layer. Before ServiceNow can route a single
+      compliance task, its CMDB must know what exists — and that knowledge must reconcile to the
+      authoritative IPAM/DDI asset identity from Volume I Book 01, not compete with it. The four-word
+      journey — Populate, Match, Bind, Flag — is the reconcile pass this book defines. Keep the whole
+      talk inside the GCC-Moderate boundary.
+    vendor_sources: ["uiao repo: inbox/Application Aware Networking/Vol_I_Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd"]
+
+  - type: section
+    kicker: "PART ONE"
+    title: "You cannot coordinate what you cannot address"
+    callout: "A compliance task is only as good as the asset it names — 'remediate the exposed storage account' is actionable; 'something in one of three subscriptions' is not."
+    callout_accent: navy
+    notes: >
+      Motivate the reconcile discipline. Coordination begins with inventory: the CMDB must hold every
+      M365 and Azure asset a control claim can attach to, keyed to an identity an assessor can trace
+      end to end. The whole rest of the volume routes work to the CIs this book establishes, so if the
+      identity forks, every downstream task inherits the ambiguity.
+
+  - type: content
+    kicker: "THE RECONCILIATION MODEL"
+    title: "Truth plane, projection plane"
+    layout: grid
+    cards:
+      - title: "Naming plane owns identity"
+        body: "IPAM/DDI holds the authoritative name/address per asset — the CM-8 SSOT (Vol I Book 01)."
+        accent: teal
+      - title: "Cloud inventory is per-surface"
+        body: "M365 Graph, Azure Resource Graph, and Defender each carry their own resource state — reconciled at ingest."
+        accent: navy
+      - title: "CMDB is a projection"
+        body: "Workflow-addressable CI records and relationships — populated by connectors, never hand-entry."
+        accent: navy
+      - title: "Config objects are CIs too"
+        body: "A CA policy, an Azure Policy assignment, a SCuBA setting — modeled so a drift task references the exact object."
+        accent: amber
+    callout:
+      text: "The CMDB reconciles to IPAM/DDI; where they disagree, the CMDB is wrong by definition."
+      accent: navy
+    notes: >
+      The truth-vs-projection split is the load-bearing idea. Discovery and connectors populate the
+      CMDB; the authoritative IPAM/DDI record governs identity. Emphasize card four — configuration
+      objects are modeled as CIs so a drift task can point at the exact policy that drifted rather than
+      a free-text description. This is what makes the downstream M365 and Azure loops precise.
+    vendor_sources: ["ms_graph", "ms_resourcegraph"]
+
+  - type: build-sequence
+    kicker: "THE RECONCILE PASS"
+    title: "How a cloud asset becomes a trusted CI"
+    notes: "Fallback notes if a step omits its own."
+    steps:
+      - label: "Match"
+        sub: "on the CM-8 key"
+        accent: navy
+        detail: >
+          The incoming cloud asset is matched to an authoritative IPAM/DDI record by name/address —
+          the authoritative key first, the cloud resource-id second. Never the reverse, or the CMDB
+          would anoint the cloud id as truth.
+        notes: >
+          Step one is identity matching. The identification rule order is the whole game: authoritative
+          key first. Reverse it and the CMDB quietly becomes a second source of truth.
+      - label: "Bind"
+        sub: "inherit one identity"
+        accent: teal
+        detail: >
+          The matched CI carries the authoritative identity as its correlation key, so every downstream
+          task, change, and evidence record inherits one traceable asset identity across surfaces.
+        notes: >
+          Step two propagates the join key. Once bound, an M365 finding and an Azure finding on the
+          same host land on the same CI — one compliance picture, not two.
+      - label: "Flag"
+        sub: "exception = finding"
+        accent: amber
+        detail: >
+          An asset present in a cloud surface but absent from the naming plane is a reconciliation
+          exception — shadow IT (a real finding, CM-8 and BOD 23-01) or an IPAM gap (a naming-plane
+          defect). Either way it is raised, not silently absorbed.
+        notes: >
+          Step three is the honesty check. The exception queue is itself a compliance artifact — it is
+          the running measure of how completely the estate is enumerated, which is exactly what CM-8
+          and CISA BOD 23-01 require.
+    vendor_sources: ["cisa_bod2301"]
+
+  - type: table
+    kicker: "POPULATION"
+    title: "Where CIs come from"
+    headers: ["Surface", "Connector", "Representative CIs"]
+    rows:
+      - cells: ["M365 / Entra", "Microsoft Graph (in-boundary)", "User, Group, SaaS Subscription, CA Policy"]
+      - cells: ["Azure", "Azure Resource Graph / Service Graph", "Subscription, VM, Storage, Key Vault, Policy"]
+        accent: teal
+      - cells: ["Endpoint / hybrid", "Discovery via in-boundary MID; Arc", "Server, Arc-enabled Server"]
+      - cells: ["Security posture", "Defender / MDVM (attributes)", "attributes on existing CIs — not a parallel tree"]
+        accent: amber
+    callout:
+      text: "Connectors populate; the reconcile pass binds to IPAM/DDI. Population without reconciliation is a second inventory."
+      accent: navy
+    notes: >
+      Populate by connector, never by hand, so the CMDB is reproducible and diffable. Stress the last
+      row: Defender/MDVM data lands as attributes and relationships on existing CIs, not a parallel CI
+      tree — otherwise you get two inventories for the same asset, the exact failure the reconcile
+      pass exists to prevent.
+    vendor_sources: ["ms_graph", "ms_resourcegraph"]
+
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "One authoritative identity, every task addressed to it"
+    layout: columns
+    cards:
+      - title: "Reconciled"
+        body: "Every CI carries the CM-8 join key; the CMDB is a projection of asset state, not its owner."
+        accent: teal
+        status: "This book"
+      - title: "Addressable"
+        body: "M365 and Azure tasks (Books 02–03) attach to a real, single asset an assessor can trace."
+        accent: navy
+        status: "Books 02–03"
+      - title: "Enumerated"
+        body: "The reconcile-exception queue is the standing measure of estate completeness (CM-8, BOD 23-01)."
+        accent: navy
+        status: "Ongoing"
+    callout:
+      text: "Next: operate the compliance loop on M365 (Book 02) against the CIs this book establishes."
+      accent: navy
+    notes: >
+      Close on the payoff: reconciliation is unglamorous but everything downstream depends on it. The
+      CMDB reconciles to the naming plane; it cannot repair the naming plane — an IPAM gap is fixed in
+      IPAM, not patched in the CMDB, or the fix inverts the truth relationship. Hand off to Book 02.
