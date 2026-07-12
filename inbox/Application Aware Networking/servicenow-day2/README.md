@@ -1,18 +1,27 @@
-# ServiceNow Day-2 Operations — Helpdesk / ITSM Catalog (Lane C scaffold)
+# `x_ssa_day2_ops` — ServiceNow Day-2 Operations scoped app
 
-> Status: DRAFT scaffold · Surface: `inbox/` (not canon) · Tracks issue #1139
+> Status: DRAFT importable skeleton · Surface: `inbox/` (not canon) · Tracks issue #1139
 > Scope: **FedRAMP Moderate + Microsoft GCC Moderate** only. Date Code: 2026-07-12 15:00 ET
 
-This is the starting scaffold for the day-2 **helpdesk / ITSM catalog** — the common
-Entra / M365 / Azure operator tasks — from `inbox/Federal_Compliance_Automation_Roadmap.md`
-(§3, Lane C). It reuses the Vol VII coordination discipline: **ServiceNow governs
-who/when/approval/evidence; Microsoft Graph actuates through the in-boundary MID Server.**
+The importable scoped app for the day-2 **helpdesk / landing-zone / app-reg / telephony**
+catalog — the common Entra / M365 / Azure operator tasks (`inbox/Federal_Compliance_Automation_Roadmap.md`
+§3–§4). It generalizes the DDI ServiceNow app (`infoblox-ddi-book/servicenow-app/`) from
+provisioning to day-2 operations, with the Vol VII coordination discipline: **ServiceNow
+governs who/when/approval/evidence; Microsoft Graph actuates through the in-boundary MID Server.**
 
 ## What's here
 
-| File | Role |
-|---|---|
-| [`helpdesk-control-map.json`](./helpdesk-control-map.json) | The machine-readable catalog → (control, task type, approval, KSI, slot) binding. A projection of `aan-compliance-spine.yml`, meant to be CI-checked against it (same regen-and-diff pattern as `render_authorities_table.py`). |
+| Path | Record / artifact | Role |
+|---|---|---|
+| [`script-includes/EntraHelpdeskClient.js`](./script-includes/EntraHelpdeskClient.js) | `sys_script_include` | MID-routed Graph client — JML, password/MFA reset, group/license, guest invite |
+| [`script-includes/EntraHelpdeskGate.js`](./script-includes/EntraHelpdeskGate.js) | `sys_script_include` | Pre-flight safety (SoD/least-privilege) + post-action verify gate |
+| [`flow/flow-blueprint.md`](./flow/flow-blueprint.md) | Flow Designer blueprint | The "Governed Day-2 Request" flow + access-review / leaver-completion flows |
+| [`helpdesk-control-map.json`](./helpdesk-control-map.json) | app data (CI-checked) | Helpdesk catalog → (control, task type, approval, KSI, slot) — projection of `aan-compliance-spine.yml` |
+| [`landingzone-control-map.json`](./landingzone-control-map.json) | app data | Lane D landing-zone front-door bindings (CM-2/3/8) |
+| [`appreg-control-map.json`](./appreg-control-map.json) | app data | Lane E app-registration lifecycle bindings (IA-5(2)/SC-17/AC-6) |
+| [`telephony-control-map.json`](./telephony-control-map.json) | app data | §4 Teams telephony + SCuBA-drift bindings (CM-3/CM-6/AU-2) |
+| [`atf/README.md`](./atf/README.md) | ATF test spec | Happy-path + negative (self-approve, standing-privilege, unreconciled) via `test_mode` |
+| [`update-set/README.md`](./update-set/README.md) | update set | How the app assembles into one importable XML |
 
 ## The pattern (inherited from Vol VII Book 05)
 
@@ -45,10 +54,11 @@ This scaffold is now the data layer of **Volume IX — ServiceNow Day-2 Operatio
 
 ## Remaining steps (issue #1139)
 
-1. Author the scoped-app records (Flows + catalog items + ATF) mirroring
-   `infoblox-ddi-book/servicenow-app/`, extended for the helpdesk families.
-2. Wire the control-map CI check so the catalog cannot drift from the spine.
-3. Add per-lane control maps (landing-zone, app-reg, telephony) alongside this helpdesk map.
+1. ~~Author the scoped-app records (Script Includes, Flows, ATF) mirroring the DDI app.~~ **Done** (this skeleton).
+2. ~~Add per-lane control maps (landing-zone, app-reg, telephony).~~ **Done.**
+3. Export the actual `sys_atf_test` XML and the assembled update-set XML from a sub-prod build.
+4. Wire the control-map CI check (regen-and-diff vs `aan-compliance-spine.yml`) into the book CI.
+5. Add catalog variable-set XMLs per item (mirroring the DDI app's `catalog/` variable sets).
 
 ## References
 
