@@ -25,6 +25,7 @@ runbooks are directly comparable across platforms.
 | 6 | [Cross-Platform Operations & Multi-Cloud Governance](./06-cross-platform-operations.md) | Grid/Portal design, anycast, DR, one authoritative IPAM |
 | 7 | [ServiceNow Orchestration — A Governed Front Door](./07-servicenow-orchestration.md) | Self-service catalog → approval → Terraform + Infoblox → validation → CMDB, closed loop |
 | 8 | [ServiceNow-Led Implementation](./08-servicenow-led-implementation.md) | Experience-first build order + sample catalog/approval screens, build playbook, and full user documentation |
+| A | [Appendix A — Sizing & Cost, IPv6/Dual-Stack, DHCP](./appendix-A-sizing-cost-ipv6-dhcp.md) | Cross-platform sizing/cost framework, IPv6 planning, and where DHCP is real |
 
 > Numbers are **reference order**, not the required reading order. If ServiceNow is your
 > front door, read **§0.5 → Ch 8 → Ch 7** first, then your platform chapter as the fulfillment
