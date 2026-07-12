@@ -1,0 +1,127 @@
+---
+title: "Vol VII Book 03 — Federal Application-Aware Networking — Azure Federal Control Compliance Automation"
+subtitle: "Azure Policy, Defender for Cloud, and Update Manager control state, operated as ServiceNow work"
+author: "SSA Cloud Services Team"
+date: "2026-07-12 15:00 ET"
+format:
+  html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: lz-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
+fig-align: center
+out-width: "100%"
+execute: {echo: false}
+---
+
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the SSA CIO Office, OIS, or leadership. **Date Code:** 2026-07-12 15:00 ET
+:::
+
+::: {.callout-important}
+**Series Context** — Volume VII Book 03. The Azure half of the coordination layer. Azure is the IaaS/PaaS control plane — resource configuration (Azure Policy), security posture (Defender for Cloud / MDVM), and flaw remediation (Update Manager, with Arc for hybrid reach). This book operates that surface's control state as ServiceNow work, on the identical loop as the M365 book. **Actuation stays platform-native** — Azure Policy remediation tasks, Defender recommendations, and Update Manager runs make the change; ServiceNow governs ownership, SLA, approval, and evidence.
+:::
+
+# What This Document Addresses
+
+Where M365 is a SaaS boundary the agency configures but does not host, Azure is a boundary the agency both configures and populates with its own workloads — so it carries the resource-configuration, vulnerability, and patch obligations directly: baseline configuration and settings (CM-2, CM-6), flaw remediation (SI-2), and vulnerability monitoring (RA-5). Azure's native stack *actuates* all three; the coordination role is to make each one owned, clocked, approved where it changes state, and evidenced.
+
+This book runs the same five-step loop as Vol VII Book 02 — **test → detect drift → raise a typed task against the reconciled CI → actuate on the native surface → close with evidence** — over the three Azure control engines. The loop is deliberately identical across surfaces: one coordination pattern, two clouds, so the evidence and the assessor-facing story are uniform.
+
+# The Azure Control Engines and Their Coordination Role
+
+| Azure engine | Owns (actuation) | Control | ServiceNow coordination role |
+|---|---|---|---|
+| **Azure Policy** | Resource configuration compliance; deployIfNotExists/modify remediation | CM-2, CM-6 | Non-compliant resource → Change/remediation task against the CI; track native remediation to closure |
+| **Defender for Cloud / MDVM** | Posture recommendations; workload & image vulnerability findings | CM-6, RA-5 | Recommendation/finding → prioritized Vulnerability-Response task; SLA by exposure |
+| **Update Manager (+ Arc)** | Guest-OS patch assessment and deployment | SI-2, SI-2(2/3) | Patch result → Change/Incident; SLA-class task keyed to KEV/exposure |
+
+::: {.callout-note}
+**Arc is bounded, by doctrine — and this volume's scope is Azure + Arc-for-hybrid.** Azure Arc extends Update Manager and policy to hybrid Windows/Linux *guest OS* inside the GCC Moderate boundary; it does not patch ESXi, firmware, or a managed database service (Management-Plane Coordination Doctrine, Vol 0 Book 00). This volume coordinates the Azure and Arc-managed-hybrid surface only. **Other CSPs (AWS, OCI, VMware) reconcile into the same ServiceNow SI-2 queue in a later follow-up** (their native stacks are catalogued in Vol III Book 03); ServiceNow already coordinates a single queue, so adding those surfaces later needs no rework here.
+:::
+
+# Control Engine 1 — Azure Policy (CM-2 / CM-6)
+
+Azure Policy continuously evaluates resource configuration against assigned definitions and can remediate a subset natively (deployIfNotExists / modify). The coordination role covers the rest — and the change control around all of it.
+
+- **Test:** policy compliance state is read per assignment/resource (compliant / non-compliant / exempt).
+- **Detect + Raise:** a non-compliant resource becomes a ServiceNow **Change** (for a controlled configuration change) tagged with the policy definition, the mapped control (CM-2/CM-6), severity, and the reconciled resource CI. An *exemption* is not silent — it is a request with an approver and an expiry, so a policy exception is reviewable (the same discipline as an M365 CA exception).
+- **Actuate:** native Azure Policy remediation runs, or the owning team applies the configuration through infrastructure-as-code (Vol VI Book 01/06). ServiceNow does not write the resource.
+- **Close:** the next evaluation flips the resource to compliant; ServiceNow closes and stamps the evidence.
+
+# Control Engine 2 — Defender for Cloud / MDVM (CM-6 / RA-5)
+
+Defender for Cloud is the Azure posture engine (CSPM) and the vulnerability source for Azure workloads (MDVM) within the GCC Moderate boundary; Vol III Book 04 owns the posture architecture and Vol III Book 02 owns the assessment doctrine. (Defender for Cloud's multi-cloud CNAPP reach is a later follow-up, out of scope here.) The coordination role turns its Azure findings into prioritized, owned remediation work.
+
+- **Test + Detect:** Defender recommendations (misconfiguration) and MDVM findings (workload/image vulnerabilities) are read via the security-posture API.
+- **Raise:** each finding becomes a ServiceNow **Vulnerability Response** task against the reconciled CI, with a severity and an SLA class derived from exposure and KEV status — the risk-based prioritization CISA BOD 22-01 and the four-variable model (BOD 26-04) call for.
+- **Actuate:** the owning team remediates on the native surface — a configuration fix, an image rebuild (Vol VI Book 01), or a patch (Update Manager, below).
+- **Close:** the finding clears on the next Defender assessment; ServiceNow closes the task, and the mean-time-to-remediate becomes an SI-2(3) / KSI metric.
+
+# Control Engine 3 — Update Manager + Arc (SI-2)
+
+Azure Update Manager assesses and deploys guest-OS patches across Azure and, via Arc, hybrid Windows/Linux servers inside the GCC Moderate boundary. It is the SI-2 actuation engine for the guest OS; the coordination role reconciles its results into change/incident work with the SLA discipline SI-2(3) requires.
+
+- **Test:** Update Manager's assessment reports missing updates per machine, classified (critical / security / other).
+- **Raise:** a missing critical/security update becomes a ServiceNow **Change** (scheduled maintenance) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the BOD 26-04 model. The same SLA discipline is what other-CSP patch queues will reconcile into when they are added later (Vol III Book 03).
+- **Actuate:** Update Manager deploys the patch in the approved maintenance window; ServiceNow does not push the update, it schedules and governs it.
+- **Close + evidence:** post-deployment assessment confirms the update landed; the Change record, approval, window, and re-assessment become the SI-2(2) machine-readable remediation-status evidence.
+
+::: {.callout-note}
+**Scan is not remediation, and remediation is not the record.** Vol III Book 02 measures the gap (RA-5); Update Manager and the native stacks close it (SI-2); this book is the *record and clock* — the owned task, the approved window, the SLA, and the closure evidence. Three distinct jobs; conflating them is how a "patched" estate still fails an assessment for want of evidence.
+:::
+
+# Continuous Monitoring Roll-Up (CA-7)
+
+Each engine's loop emits its result into the continuous-monitoring feed: policy-compliance percentage, open Defender findings by severity and age, patch SLA conformance. ServiceNow rolls these into a per-control Azure posture that Vol VII Book 04 turns into attestation and KSI evidence, keyed to the same reconciled asset identity the M365 posture uses — so the two clouds produce *one* compliance picture, not two.
+
+# Closure Necessity
+
+::: {.callout-tip}
+## Closure Necessity — Azure actuates; the estate still needs an owner and a clock
+Azure Policy remediates, Defender recommends, Update Manager patches — the native stack is genuinely sufficient to *change state*. What it does not supply is the governance wrapper: who owns this finding, by when, under whose approval, with what evidence. Strip the coordination layer and Azure's own consoles show green while the authorization package has no owned-and-evidenced record an assessor can trace. CM-6, SI-2, and RA-5 are closed by Azure; they are *operated* — owned, clocked, evidenced — here.
+:::
+
+# NIST SP 800-53 Rev 5 Control Closure — Authorities Closed Here
+
+Generated from the series compliance spine (`aan-compliance-spine.yml`) by `render_authorities_table.py`; not hand-edited here. Coordination closures — the Azure control state operated as tracked work — not a re-closure of the posture/patch mechanisms Volumes III and VI own.
+
+<!-- authorities:book-sn-azure — generated from aan-compliance-spine.yml; do not hand-edit -->
+| Control | Title | Closing mechanism (function, not product) | Accreditation gate | Authority drivers | Evidence slot | FedRAMP 20x KSI | Tool-attestable? |
+|---|---|---|---|---|---|---|---|
+| CM-6 | Configuration Settings | Azure Policy / Defender-for-Cloud recommendations raised as ServiceNow remediation tasks; Azure-native remediation actuates, ServiceNow tracks to closure | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA SCuBA | Security / supply chain | KSI-CMT | No |
+| RA-5 | Vulnerability Monitoring and Scanning | Defender for Cloud / MDVM findings on Azure workloads flow to ServiceNow Vulnerability Response as prioritized remediation tasks | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 22-01 | Security / supply chain | KSI-MLA | No |
+| SI-2 | Flaw Remediation | Azure Update Manager patch results reconciled into ServiceNow Change/Incident with SLA-class tasks keyed to KEV/exposure (actuation platform-native) | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 26-04 | Endpoint | KSI-SVC, KSI-MLA | No |
+
+: Authorities Closed Here — Azure Federal Control Compliance Automation († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+
+# Honest Limits
+
+- A task closes when the native re-evaluation passes; Azure Policy/Defender assessment latency means "closed" can lag actual state by an evaluation cycle. Evidence timestamps record the cycle, not the instant.
+- Arc governs guest OS only; ESXi, firmware, and managed-service patching reconcile in from their own native stacks (Vol III Book 03). Treating Arc as the whole management plane is a doctrine violation the reconcile-exception queue is meant to catch.
+- Native Azure Policy auto-remediation (deployIfNotExists/modify) still carries a Change record — automated actuation does not waive change control (CM-3); it makes the change record's *actuator* the policy engine rather than a person.
+
+# Cross-References
+
+- **Vol III Book 02 (Vulnerability Management)** — the assessment half whose findings this book routes to remediation tasks.
+- **Vol III Book 03 (Patch & Systems Management)** — the SI-2 queue this book's Update Manager results reconcile into (Azure/hybrid now; other CSPs in a later follow-up).
+- **Vol III Book 04 (Cloud-Native Posture)** — the Defender for Cloud posture architecture this book coordinates findings from.
+- **Vol VI Book 01/06 (Landing Zone / Baselines as Code)** — the IaC that actuates many Azure remediations.
+- **Vol VII Book 01** — the reconciled CIs every Azure task is raised against; **Vol VII Book 04** — where the Azure posture roll-up becomes attestation.
+
+# Provenance
+
+Draft. Azure Policy, Defender for Cloud, MDVM, Update Manager, and Arc are deployed examples; the detect→raise→actuate-native→close→evidence loop is the invariant, identical to the M365 book. Vendor claims cite vendor documentation (see References). House-style figures per ADR-093 are added in the PPTX→DOCX sync pass; this draft is text-and-table-first.
+
+# References
+
+| Claim | Source |
+|---|---|
+| Azure Policy compliance & remediation | Microsoft Learn — <https://learn.microsoft.com/azure/governance/policy/> |
+| Microsoft Defender for Cloud (CSPM/CNAPP, MDVM) | Microsoft Learn — <https://learn.microsoft.com/azure/defender-for-cloud/> |
+| Azure Update Manager (guest-OS patch) | Microsoft Learn — <https://learn.microsoft.com/azure/update-manager/> |
+| Azure Arc (hybrid guest-OS reach) | Microsoft Learn — <https://learn.microsoft.com/azure/azure-arc/> |
+| Risk-based remediation prioritization (KEV; four-variable model) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
+| ServiceNow as workflow/CMDB/evidence coordination hub | Expansion Plan §16 — `inbox/Application Aware Networking/AAN_Series_Expansion_Plan_Substrate_Accreditation.md` |
