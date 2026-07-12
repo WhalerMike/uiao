@@ -4,10 +4,11 @@ name: Infoblox DDI Book Checks
 # scripts, which the repo's other CI does not cover (see
 # infoblox-ddi-book/REVIEW-AND-IMPROVEMENTS.md §2.1). Only runs when the book
 # changes. Two tiers:
-#   * BLOCKING  — checks proven clean locally (bash -n, node --check).
-#   * ADVISORY  — shellcheck + `terraform fmt/validate` start non-blocking
-#     (continue-on-error) while the modules are acknowledged starter skeletons;
-#     flip to blocking once the "gold exemplar" (REVIEW §2.2) hardens them.
+#   * BLOCKING  — bash -n, node --check, the catalog↔module contract check, and
+#     `terraform validate` of the five hardened per-platform MODULES.
+#   * ADVISORY  — shellcheck, tflint, and `terraform fmt` + example-module
+#     validate start non-blocking (continue-on-error) while those remain starter
+#     skeletons; promote as each hardens (REVIEW §2.2/§2.3).
 on:
   pull_request:
     paths:
@@ -51,9 +52,9 @@ jobs:
           done < <(find infoblox-ddi-book/servicenow-app -name '*.js' | sort)
           exit $fail
 
-      # BLOCKING — the catalog variable set must collect every REQUIRED Azure
-      # module variable, so the requester-facing form and the Terraform module
-      # cannot silently drift (REVIEW §2.1/§2.4).
+      # BLOCKING — each platform's catalog variable set must collect every REQUIRED
+      # module variable (form field or MID-resolved), so the requester-facing form
+      # and the Terraform modules cannot silently drift (REVIEW §2.1/§2.4).
       - name: Catalog↔module contract check — blocking
         run: python3 infoblox-ddi-book/servicenow-app/catalog/contract_check.py
 
@@ -67,12 +68,44 @@ jobs:
           find infoblox-ddi-book -name '*.sh' -print0 \
             | xargs -0 shellcheck --severity=warning --external-sources || true
 
-  terraform:
-    name: Terraform fmt + validate (advisory)
+  terraform-modules:
+    name: Terraform validate (modules) — blocking
     runs-on: ubuntu-latest
-    # ADVISORY — the per-platform terraform/ modules are labeled starter
-    # skeletons (placeholder image SKUs, two-phase DDI-object apply). This job
-    # reports fmt/validate status without blocking; harden per REVIEW §2.2/2.3.
+    # BLOCKING — the five per-platform MODULE roots are hardened enough to validate
+    # cleanly (they all report "Success! The configuration is valid"). Example
+    # modules (which intentionally omit secret args) stay in the advisory job below.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform validate (each of the 5 module roots)
+        run: |
+          set -euo pipefail
+          fail=0
+          for pkg in azure-alz aws-lz gcp-lz oci-lz vmware-lz; do
+            d="infoblox-ddi-book/${pkg}-automation/terraform"
+            echo "::group::validate $d"
+            if terraform -chdir="$d" init -backend=false -input=false -no-color \
+               && terraform -chdir="$d" validate -no-color; then
+              echo "ok $d"
+            else
+              echo "FAIL $d"; fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $fail
+
+  terraform-advisory:
+    name: Terraform fmt + tflint + examples (advisory)
+    runs-on: ubuntu-latest
+    # ADVISORY — formatting, lint, and the example modules (placeholder SKUs,
+    # intentionally-absent secret args) report status without blocking. Promote
+    # each as it hardens (REVIEW §2.2/§2.3).
     continue-on-error: true
     steps:
       - name: Checkout
@@ -83,18 +116,33 @@ jobs:
         with:
           terraform_wrapper: false
 
+      - name: Setup tflint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
       - name: terraform fmt -check (recursive)
         continue-on-error: true
         run: terraform fmt -check -recursive infoblox-ddi-book
 
-      - name: terraform validate (each module, no backend)
+      - name: tflint (each module root)
         continue-on-error: true
         run: |
           set -uo pipefail
-          # Validate every directory that has a top-level .tf file.
+          for pkg in azure-alz aws-lz gcp-lz oci-lz vmware-lz; do
+            d="infoblox-ddi-book/${pkg}-automation/terraform"
+            echo "::group::tflint $d"
+            tflint --chdir="$d" --no-color || echo "tflint findings in $d (advisory)"
+            echo "::endgroup::"
+          done
+
+      - name: terraform validate (example modules)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
           while IFS= read -r d; do
             echo "::group::validate $d"
             terraform -chdir="$d" init -backend=false -input=false -no-color || echo "init issue in $d (skeleton)"
             terraform -chdir="$d" validate -no-color || echo "validate issue in $d (skeleton)"
             echo "::endgroup::"
-          done < <(find infoblox-ddi-book -name '*.tf' -exec dirname {} \; | sort -u)
+          done < <(find infoblox-ddi-book -path '*/examples/*' -name '*.tf' -exec dirname {} \; | sort -u)
