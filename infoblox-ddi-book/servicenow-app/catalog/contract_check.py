@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
-"""Catalog↔module contract check (Azure exemplar).
+"""Catalog<->module contract check (all five platforms).
 
-Asserts that every REQUIRED Azure module variable — a `variable "x" {}` block in
-azure-alz-automation/terraform/variables.tf with no `default` — is collected by
-the catalog variable set (a `<map_to>` entry in variable-set-azure-ddi-subnet.xml).
+For each platform, assert that every REQUIRED module variable -- a
+`variable "x" {}` block with no `default` in that package's
+terraform/variables.tf -- is accounted for by the catalog variable set, either:
 
-This is the machine-readable version of the "the form is the contract" claim
+  * collected as a catalog form field  -> <map_to>VAR</map_to>, or
+  * resolved on the in-boundary MID Server via the credential alias / app
+    properties -> <resolved_by_mid>VAR</resolved_by_mid>  (for secrets and
+    connection endpoints that must NEVER be typed into the catalog form, e.g.
+    vsphere_password, nsx_password, admin_password).
+
+This is the machine-readable form of "the form is the contract"
 (REVIEW-AND-IMPROVEMENTS.md §2.1/§2.4): the requester-facing form and the
-Terraform module cannot silently drift. Exit non-zero on any gap.
+Terraform modules cannot silently drift. Blocking in the book CI; exit non-zero
+on any gap.
 
 Run: python3 servicenow-app/catalog/contract_check.py
 """
@@ -18,8 +25,15 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # .../servicenow-app/catalog
 BOOK = os.path.normpath(os.path.join(HERE, "..", ".."))  # .../infoblox-ddi-book
-VARS_TF = os.path.join(BOOK, "azure-alz-automation", "terraform", "variables.tf")
-VAR_SET = os.path.join(HERE, "variable-set-azure-ddi-subnet.xml")
+
+# platform -> (package dir, variable-set XML filename in this dir)
+PLATFORMS = [
+    ("azure", "azure-alz-automation", "variable-set-azure-ddi-subnet.xml"),
+    ("aws", "aws-lz-automation", "variable-set-aws-ddi-subnet.xml"),
+    ("gcp", "gcp-lz-automation", "variable-set-gcp-ddi-subnet.xml"),
+    ("oci", "oci-lz-automation", "variable-set-oci-ddi-subnet.xml"),
+    ("vmware", "vmware-lz-automation", "variable-set-vmware-ddi-subnet.xml"),
+]
 
 
 def required_module_vars(path):
@@ -29,7 +43,6 @@ def required_module_vars(path):
     required = set()
     for m in re.finditer(r'variable\s+"([^"]+)"\s*\{', txt):
         name = m.group(1)
-        # brace-match the block body starting at the '{' we just matched
         start = txt.index("{", m.start())
         depth, j = 0, start
         while j < len(txt):
@@ -47,42 +60,49 @@ def required_module_vars(path):
     return required
 
 
-def mapped_vars(path):
-    """Return the set of module variables the catalog variable set maps to."""
+def covered_vars(path):
+    """Return (form_fields, mid_resolved) module-variable name sets from a variable set."""
     with open(path, encoding="utf-8") as fh:
         txt = fh.read()
-    return {m.group(1).strip() for m in re.finditer(r"<map_to>([^<]+)</map_to>", txt)}
+    form = {m.group(1).strip() for m in re.finditer(r"<map_to>([^<]+)</map_to>", txt)}
+    mid = {m.group(1).strip() for m in re.finditer(r"<resolved_by_mid>([^<]+)</resolved_by_mid>", txt)}
+    form.discard("__platform_selector__")
+    return form, mid
 
 
 def main():
-    for p in (VARS_TF, VAR_SET):
-        if not os.path.exists(p):
-            print(f"contract_check: missing input {p}", file=sys.stderr)
-            return 2
-    required = required_module_vars(VARS_TF)
-    mapped = mapped_vars(VAR_SET)
-    # ignore the synthetic platform selector marker
-    mapped.discard("__platform_selector__")
-
-    missing = sorted(required - mapped)
-    print("required module variables :", ", ".join(sorted(required)) or "(none)")
-    print("catalog-mapped variables  :", ", ".join(sorted(mapped)) or "(none)")
-    if missing:
-        print()
-        print("CONTRACT FAIL — required Azure module variables NOT collected by the catalog variable set:")
-        for v in missing:
-            print(f"  - {v}")
+    rc = 0
+    for plat, pkg, xml in PLATFORMS:
+        vf = os.path.join(BOOK, pkg, "terraform", "variables.tf")
+        xf = os.path.join(HERE, xml)
+        if not os.path.exists(vf):
+            print(f"[{plat}] SKIP — missing module variables.tf: {vf}")
+            rc = 2
+            continue
+        if not os.path.exists(xf):
+            print(f"[{plat}] SKIP — missing variable set: {xf}")
+            rc = 2
+            continue
+        required = required_module_vars(vf)
+        form, mid = covered_vars(xf)
+        missing = sorted(required - form - mid)
+        status = "OK" if not missing else "FAIL"
         print(
-            "Add an <item_option_new> with <map_to>" + missing[0] + "</map_to> "
-            "(and the rest) to variable-set-azure-ddi-subnet.xml, or give the "
-            "module variable a default."
+            f"[{plat:6}] required={len(required):2} "
+            f"form={len(form & required):2} mid={len(mid & required):2} -> {status}"
         )
-        return 1
+        if missing:
+            print(f"          missing (neither a form field nor MID-resolved): {', '.join(missing)}")
+            rc = 1
     print()
-    print(
-        f"CONTRACT OK — all {len(required)} required Azure module variables are collected by the catalog variable set."
-    )
-    return 0
+    if rc == 0:
+        print(
+            "CONTRACT OK — every required module variable across all five platforms is "
+            "collected by a catalog form field or resolved on the in-boundary MID Server."
+        )
+    else:
+        print("CONTRACT FAIL — see per-platform gaps above.")
+    return rc
 
 
 if __name__ == "__main__":
