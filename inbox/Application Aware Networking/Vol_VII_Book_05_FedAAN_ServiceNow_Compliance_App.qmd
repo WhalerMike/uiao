@@ -1,0 +1,120 @@
+---
+title: "Vol VII Book 05 — Federal Application-Aware Networking — The ServiceNow Compliance App"
+subtitle: "The deployable artifact: a scoped app with connectors, Flows, catalog items, ATF tests, and one importable update set"
+author: "SSA Cloud Services Team"
+date: "2026-07-12 15:00 ET"
+format:
+  html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: lz-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
+fig-align: center
+out-width: "100%"
+execute: {echo: false}
+---
+
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+
+::: {.callout-warning}
+## Draft Proposal — Subject to Review
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the SSA CIO Office, OIS, or leadership. **Date Code:** 2026-07-12 15:00 ET
+:::
+
+::: {.callout-important}
+**Series Context** — Volume VII Book 05. The deployable counterpart to Books 00–04: a scoped ServiceNow app that carries the connectors, Flows, catalog items, control map, ATF tests, and update set implementing the coordination loop. It generalizes the in-repo DDI-provisioning app skeleton (`infoblox-ddi-book/servicenow-app/`) from *provisioning* to *control compliance* — same boundary discipline (in-boundary MID Server, FedRAMP-authorized instance, machine-readable + CI-checked artifacts), new purpose.
+:::
+
+# What This Document Addresses
+
+Books 00–04 describe the coordination loop as doctrine and control mapping. This book is the artifact that runs it: a scoped app an admin can import into a sub-production instance, wire to the M365 and Azure surfaces through an in-boundary MID Server, and stand up — rather than hand-build from prose. It follows the series' *everything-as-code* rule (Vol VI Book 00): the app is an importable update set, its control map is machine-readable data, and its behavior is covered by runnable ATF tests.
+
+::: {.callout-note}
+**Starter skeleton, not a signed product.** The records described here are an illustrative scoped app named `x_ssa_fed_compliance`. Review them, complete the connector credential aliases and the control map per tenant, pin API versions, and test in a sub-prod instance before any production use. This mirrors the disposition of the DDI app skeleton already in the repo.
+:::
+
+# App Record Model
+
+The scoped app is `x_ssa_fed_compliance`. Its records implement the five-step loop (test → detect → raise → actuate-native → close+evidence) as reusable ServiceNow building blocks.
+
+| Path (in the app) | Record / artifact | Role |
+|---|---|---|
+| `script-includes/ComplianceIngest.js` | `sys_script_include` | Server-side reader — pulls M365 (Graph/SCuBA/Purview) and Azure (Resource Graph / Defender / Update Manager) control state via the MID-routed REST messages; normalizes to a control-finding shape |
+| `script-includes/ComplianceReconcile.js` | `sys_script_include` | Matches each finding's asset to the authoritative IPAM/DDI CI (CM-8 join) before a task is raised; routes unmatched assets to the reconcile-exception queue (Vol VII Book 01) |
+| `script-includes/ComplianceGate.js` | `sys_script_include` | Post-actuation validation — re-reads the native surface, confirms closure, and stamps the re-test evidence on the task |
+| `rest/sys_rest_message_graph.xml`, `..._arm.xml` | `sys_rest_message` (+ `_fn`) | Outbound REST to Microsoft Graph and Azure Resource Manager — endpoint/auth from a credential alias, **routed via the MID Server** |
+| `data/control-map.json` | app data (machine-readable) | The finding→(control, task type, severity, SLA, KSI slot) binding — a projection of `aan-compliance-spine.yml`; CI-checked against the spine |
+| `flow/flow-blueprint.md` | Flow Designer blueprint | The "Detect & Route Control Drift" flow, the exception-review flow, and the attestation-emit job, with inline Action scripts |
+| `mid/compliance-validate.sh` | MID Server script | Runs the per-surface read/validate scripts on the in-boundary MID host; emits one JSON verdict |
+| `atf/*.xml` | ATF test suites | Happy-path (drift→task→close→evidence) + negative (unreconciled asset, self-approval block, SLA breach escalation), runnable via `test_mode` with no live cloud |
+| `update-set/x_ssa_fed_compliance-update-set.xml` | update set | The whole app assembled into one importable XML |
+
+# Connectors & Prerequisites
+
+- **Microsoft Graph** app registration (or managed identity) with **read** over Conditional Access, directory, and secure-configuration state, plus the narrowly-scoped write used only for approved, logged remediations — never standing tenant admin.
+- **Azure Resource Manager / Defender / Update Manager** read via a scoped service principal or managed identity per subscription.
+- **A MID Server registered inside the ATO boundary** so every callout's credentials and execution stay in-boundary.
+- **Discovery / Service Graph Connectors** for the CMDB population (Vol VII Book 01); the reconcile job binds their output to IPAM/DDI.
+- **ServiceNow IRM/GRC** for the attestation surface (Vol VII Book 04) — the control tests and POA&M consume this app's task stream.
+
+# Import & Wire-Up
+
+1. Create the scoped app `x_ssa_fed_compliance` (or import the update set) in a sub-prod instance.
+2. Add the three **Script Includes** and the two **REST Messages**.
+3. Create **Connection & Credential aliases** `x_ssa_fed_compliance.graph` and `x_ssa_fed_compliance.arm`, each with the MID Server selected, pointing at the in-boundary Graph and ARM endpoints (GCC/Gov cloud hosts per the tenant).
+4. Set app properties: `x_ssa_fed_compliance.mid_server`, `x_ssa_fed_compliance.graph_cloud` (`gcc`|`gcc-high`|`commercial`), `x_ssa_fed_compliance.arm_cloud`, `x_ssa_fed_compliance.mid_scripts_dir`, and `x_ssa_fed_compliance.acknowledge_saas_boundary`.
+5. Load `data/control-map.json` and run the CI check against `aan-compliance-spine.yml` so the app's control bindings match the series SSOT.
+6. Copy `mid/compliance-validate.sh` and the per-surface read scripts to the MID host under `mid_scripts_dir/<surface>/`.
+7. Build the **Flows** per `flow/flow-blueprint.md`, publish the **catalog items** (control-exception request, POA&M item, remediation change), and run the **ATF suites** in `test_mode` before enabling live connectors.
+
+# Boundary & Governance
+
+Identical discipline to the rest of the series and the in-repo DDI app: a FedRAMP-authorized ServiceNow instance; the **MID Server in-boundary** so credentials and execution never leave the ATO boundary; any SaaS-surface reach gated by `acknowledge_saas_boundary`; and least-privilege connector identities that hold read plus scoped, logged, individually-approved write — never standing admin over the estate being governed. The catalog approval, the change record, the gate verdict, and the CMDB reconcile are the audit evidence.
+
+# The Control Map — Data, Checked Against the Spine
+
+The finding-to-task binding lives in `data/control-map.json`, not in code, so it is reviewable and CI-checked. Each entry mirrors a closure row in `aan-compliance-spine.yml`:
+
+```jsonc
+// control-map.json — one entry per (finding class → task). Projection of the spine.
+{
+  "m365.scuba.fail": {
+    "control": "CM-6", "task_type": "change", "severity": "moderate",
+    "sla_class": "baseline-drift", "ksi": ["KSI-CMT", "KSI-SVC"], "slot": "slot-06-security"
+  },
+  "azure.updatemgr.missing_critical": {
+    "control": "SI-2", "task_type": "change", "severity": "high",
+    "sla_class": "kev-exposed", "ksi": ["KSI-SVC", "KSI-MLA"], "slot": "slot-05-endpoint"
+  },
+  "azure.defender.finding": {
+    "control": "RA-5", "task_type": "vulnerability_response", "severity": "by-exposure",
+    "sla_class": "risk-based", "ksi": ["KSI-MLA"], "slot": "slot-06-security"
+  }
+}
+```
+
+A CI check (the same regen-and-diff pattern as `render_authorities_table.py --check`) fails when the app's control map diverges from the spine — so the deployable app and the series SSOT cannot silently drift.
+
+# Closure Necessity
+
+::: {.callout-tip}
+## Closure Necessity — the loop has to be an artifact, or it is a slideware promise
+Books 00–04 describe the coordination loop; a described loop deploys nothing. This book is the importable artifact that makes it real — connectors, reconcile job, typed-task flows, ATF coverage, and one update set — carrying the same boundary and change-control discipline the series requires. Without it, "ServiceNow coordinates M365 and Azure compliance" is an intention; with it, it is a scoped app an admin imports, tests, and stands up.
+:::
+
+# Honest Limits
+
+- The records here are a starter skeleton, not a signed store app; connector scopes, the control map, and API versions are completed per tenant and tested in sub-prod first.
+- Connector permission scope is the sharpest risk: the app must resist scope creep toward standing tenant admin. The least-privilege posture is a review item every time a new remediation is automated.
+- The ATF `test_mode` exercises the loop with no live cloud; it validates the *workflow*, not the native surfaces' behavior — live-connector validation is a separate, gated step.
+
+# Cross-References
+
+- **`infoblox-ddi-book/servicenow-app/`** — the in-repo DDI scoped-app skeleton (Script Includes, REST Message, Flow blueprint, MID gate, ATF, update set) this app generalizes to control compliance.
+- **Vol VII Book 01** — the CMDB reconcile the app's `ComplianceReconcile.js` implements.
+- **Vol VII Book 02 / 03** — the M365 and Azure loops the Flows and control map encode.
+- **Vol VII Book 04** — the IRM/GRC attestation surface that consumes this app's task stream.
+- **Vol VI Book 00 (Implementation Overview)** — the everything-as-code / in-boundary / evidence-emitting deploy model this app conforms to.
+
+# Provenance
+
+Draft. `x_ssa_fed_compliance`, Microsoft Graph, and Azure Resource Manager are deployed examples; the in-boundary-MID, least-privilege-connector, control-map-checked-against-the-spine disciplines are the invariants. This is a vendor-integration skeleton independent of UIAO governance canon. House-style figures per ADR-093 are added in the PPTX→DOCX sync pass; this draft is text-and-table-first.

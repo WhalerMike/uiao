@@ -42,6 +42,7 @@ volumes:
   - {id: vol-4, title: "Governance & Assurance", books: [book-vol4-intro, book-14, book-15, book-16, book-17, book-18, book-19]}
   - {id: vol-5, title: "Training & Certification", books: [book-vol5-intro, book-vol5-compliance-track, book-vol5-implementation-track, book-vol5-assessment-cert, book-vol5-vendor-labs]}
   - {id: vol-6, title: "Implementation", books: [book-vol6-intro, book-impl-landingzone-iac, book-impl-identity-as-code, book-impl-detection, book-impl-soar, book-impl-dataprotection, book-impl-baselines, book-impl-evidence-pipeline, book-impl-validation]}
+  - {id: vol-7, title: "ServiceNow Automation for Federal Control Compliance", books: [book-vol7-intro, book-sn-cmdb, book-sn-m365, book-sn-azure, book-sn-attestation, book-sn-app]}
 
 # -----------------------------------------------------------------------------
 # Authority registry — every instrument the series maps control closures to.
@@ -145,6 +146,19 @@ books:
   - {id: book-impl-evidence-pipeline,temp_slot: "VI-07", target_slot: "VI-07", title: "Evidence & ConMon Pipeline Deployment"}
   - {id: book-impl-validation,       temp_slot: "VI-08", target_slot: "VI-08", title: "Validation & Test Harnesses"}
 
+  # Volume VII carries the ServiceNow COORDINATION layer — the workflow, CMDB,
+  # and GRC/attestation automation that turns M365 & Azure control state into
+  # tracked tasks, evidence, and authorization-package input. ServiceNow is a
+  # workflow/enforcement plane: its CMDB reconciles to the authoritative IPAM/DDI
+  # asset identity (CM-8 join key) and never becomes the SSOT; actuation stays
+  # platform-native. FedRAMP-authorized (Moderate boundary; refer as authorized).
+  - {id: book-vol7-intro,     temp_slot: "VII-00", target_slot: "VII-00", title: "Volume VII Overview — ServiceNow Automation for Federal Control Compliance"}
+  - {id: book-sn-cmdb,        temp_slot: "VII-01", target_slot: "VII-01", title: "CMDB Reconciliation & Asset Identity (reconciled to IPAM/DDI)"}
+  - {id: book-sn-m365,        temp_slot: "VII-02", target_slot: "VII-02", title: "M365 Federal Control Compliance Automation"}
+  - {id: book-sn-azure,       temp_slot: "VII-03", target_slot: "VII-03", title: "Azure Federal Control Compliance Automation"}
+  - {id: book-sn-attestation, temp_slot: "VII-04", target_slot: "VII-04", title: "Control Attestation, Evidence & KSI"}
+  - {id: book-sn-app,         temp_slot: "VII-05", target_slot: "VII-05", title: "The ServiceNow Compliance App (scoped app, Flows, ATF, Update Set)"}
+
 # -----------------------------------------------------------------------------
 # Evidence slots (Conformance Adapter surface slots, carried from the series).
 # -----------------------------------------------------------------------------
@@ -212,3 +226,24 @@ closures:
   - {control: "SC-7",     title: "Boundary Protection",                         book: book-cloudnative-posture, plane: 4, mechanism: "Cloud network-exposure and attack-path analysis (CNAPP) — internet-reachable workloads flagged", gate: fedramp, drivers: [nist-800-53r5, nist-800-207], slot: slot-03-network, ksi: [KSI-CNA], tool: false, necessity: false}
   - {control: "SI-3",     title: "Malicious Code Protection",                   book: book-cloudnative-posture, plane: 6, mechanism: "Container / workload runtime threat detection", gate: fedramp, drivers: [nist-800-53r5], slot: slot-06-security, ksi: [KSI-MLA], tool: false, necessity: false}
   - {control: "SA-11",    title: "Developer Testing and Evaluation",            book: book-cloudnative-posture, plane: 6, mechanism: "Shift-left IaC and container-image scanning in CI (CNAPP code security)", gate: fedramp, drivers: [nist-800-53r5, nist-800-218], slot: slot-06-security, ksi: [KSI-SVC], tool: false, necessity: false}
+
+  # --- book-sn-cmdb : CMDB Reconciliation & Asset Identity (reconciled to IPAM/DDI) ---
+  # Coordination, not truth: the CMDB is the workflow projection of asset state;
+  # IPAM/DDI (Vol I Book 01) remains the CM-8 SSOT — no necessity anchor here.
+  - {control: "CM-8",     title: "System Component Inventory",                   book: book-sn-cmdb, plane: 2, mechanism: "ServiceNow CMDB populated by Discovery/Service Graph connectors and reconciled to the authoritative IPAM/DDI asset identity (CM-8 join key); DDI stays the SSOT, the CMDB is the workflow projection", gate: fedramp, drivers: [nist-800-53r5, cisa-bod-23-01], slot: slot-03-network, ksi: [KSI-PIY], tool: false, necessity: false}
+  - {control: "CM-3",     title: "Configuration Change Control",                book: book-sn-cmdb, plane: 6, mechanism: "Change Management as the CM-3 gate: every compliance-affecting change to M365/Azure carries an approved, reviewable change record before actuation", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
+
+  # --- book-sn-m365 : M365 Federal Control Compliance Automation ---
+  - {control: "CM-6",     title: "Configuration Settings",                      book: book-sn-m365, plane: 6, mechanism: "SCuBA / secure-baseline drift on the M365 SaaS surface raised as a ServiceNow Incident/Change task and tracked to closure (actuation stays platform-native)", gate: fedramp, drivers: [nist-800-53r5, cisa-scuba, cisa-bod-25-01], slot: slot-06-security, ksi: [KSI-CMT, KSI-SVC], tool: false, necessity: false}
+  - {control: "AC-2",     title: "Account Management",                          book: book-sn-m365, plane: 3, mechanism: "Joiner/mover/leaver and Conditional-Access exception requests raised, approved, and access-reviewed as ServiceNow tasks over the Entra estate", gate: fedramp, drivers: [nist-800-53r5, omb-m-22-09], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "CA-7",     title: "Continuous Monitoring",                       book: book-sn-m365, plane: 6, mechanism: "M365 control-test results (Graph, SCuBA, Purview) ingested as attestation tasks feeding the KSI evidence pipeline", gate: fedramp, drivers: [nist-800-53r5, nist-800-137, fedramp-20x], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false}
+
+  # --- book-sn-azure : Azure Federal Control Compliance Automation ---
+  - {control: "CM-6",     title: "Configuration Settings",                      book: book-sn-azure, plane: 6, mechanism: "Azure Policy / Defender-for-Cloud recommendations raised as ServiceNow remediation tasks; Azure-native remediation actuates, ServiceNow tracks to closure", gate: fedramp, drivers: [nist-800-53r5, cisa-scuba], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false}
+  - {control: "SI-2",     title: "Flaw Remediation",                            book: book-sn-azure, plane: 7, mechanism: "Azure Update Manager patch results reconciled into ServiceNow Change/Incident with SLA-class tasks keyed to KEV/exposure (actuation platform-native)", gate: fedramp, drivers: [nist-800-53r5, cisa-bod-26-04], slot: slot-05-endpoint, ksi: [KSI-SVC, KSI-MLA], tool: false, necessity: false}
+  - {control: "RA-5",     title: "Vulnerability Monitoring and Scanning",       book: book-sn-azure, plane: 6, mechanism: "Defender for Cloud / MDVM findings on Azure workloads flow to ServiceNow Vulnerability Response as prioritized remediation tasks", gate: fedramp, drivers: [nist-800-53r5, cisa-bod-22-01], slot: slot-06-security, ksi: [KSI-MLA], tool: false, necessity: false}
+
+  # --- book-sn-attestation : Control Attestation, Evidence & KSI ---
+  - {control: "CA-2",     title: "Control Assessments",                         book: book-sn-attestation, plane: 6, mechanism: "ServiceNow IRM/GRC control tests and evidence tasks produce assessed control state feeding the authorization package", gate: fedramp, drivers: [nist-800-53r5], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false}
+  - {control: "CA-5",     title: "Plan of Action and Milestones",               book: book-sn-attestation, plane: 6, mechanism: "POA&M items tracked as ServiceNow IRM issues/tasks with owner, milestone, and closure evidence", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-MLA], tool: false, necessity: false}
+  - {control: "CA-7",     title: "Continuous Monitoring",                       book: book-sn-attestation, plane: 6, mechanism: "Compliance posture rolled up in ServiceNow and emitted as OSCAL/KSI evidence into the ConMon package (Vol IV Book 06 / Vol VI Book 07)", gate: fedramp, drivers: [nist-800-53r5, nist-800-137, cisa-cdm, fedramp-20x], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false}
