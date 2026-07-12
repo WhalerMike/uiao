@@ -47,9 +47,13 @@ and Vol VI (the artifacts whose state it coordinates); it feeds Vol IV Book 06
 2. **CMDB reconciles to the naming plane; it does not become the SSOT.** IPAM/DDI
    and HRIT are truth planes; the CMDB and GRC workflow are enforcement/coordination
    planes. A CMDB that drifts from IPAM/DDI is a reconciliation defect.
-3. **FedRAMP Moderate only.** ServiceNow referred to as *FedRAMP-authorized*; never
-   cite High in body text (authoring-spec §2). Verified on the Marketplace at
-   procurement.
+3. **FedRAMP Moderate + Microsoft GCC Moderate only (this task).** Boundary is M365
+   GCC (Moderate) + Moderate-targeted Azure; Graph/ARM resolve to the commercial
+   endpoints that serve GCC Moderate (ADR-033). ServiceNow referred to as
+   *FedRAMP-authorized*; never cite High in body text (authoring-spec §2). **Other
+   CSPs (AWS/OCI/VMware) and higher boundaries (GCC High, DoD) are explicit
+   follow-ups, out of scope now** — the coordination loop is built so they reconcile
+   into the same ServiceNow queues later without reworking the M365/Azure core.
 4. **In-boundary by construction.** MID Server inside the ATO boundary; least-privilege
    connector identities (read + scoped/logged/approved write, never standing admin).
 5. **Everything as code, checked against the SSOT.** The app's control map is
@@ -81,3 +85,6 @@ and Vol VI (the artifacts whose state it coordinates); it feeds Vol IV Book 06
 4. **Scoped-app records.** Book VII-05 specifies the app; the actual `x_ssa_fed_compliance`
    record skeleton (generalizing `infoblox-ddi-book/servicenow-app/`) is a separate
    build once the control map and connector scopes are confirmed per tenant.
+5. **Other CSPs & higher boundaries.** AWS/OCI/VMware coordination and GCC High / DoD
+   endpoints are deferred by author direction (2026-07-12). They reconcile into the
+   same queues later; no rework of the M365/Azure core is required to add them.

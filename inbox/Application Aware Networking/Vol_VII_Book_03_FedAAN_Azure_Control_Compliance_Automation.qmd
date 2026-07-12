@@ -39,7 +39,7 @@ This book runs the same five-step loop as Vol VII Book 02 — **test → detect 
 | **Update Manager (+ Arc)** | Guest-OS patch assessment and deployment | SI-2, SI-2(2/3) | Patch result → Change/Incident; SLA-class task keyed to KEV/exposure |
 
 ::: {.callout-note}
-**Arc is bounded, by doctrine.** Azure Arc extends Update Manager and policy to hybrid and multi-cloud *guest OS* — but it does not patch ESXi, firmware, or a managed database service (Management-Plane Coordination Doctrine, Vol 0 Book 00). Where an asset falls outside Arc's guest-OS reach, its patch state arrives from that platform's own native stack (Vol III Book 03) and reconciles into the same ServiceNow SI-2 queue. ServiceNow coordinates the unified queue; it does not pretend one agent covers the estate.
+**Arc is bounded, by doctrine — and this volume's scope is Azure + Arc-for-hybrid.** Azure Arc extends Update Manager and policy to hybrid Windows/Linux *guest OS* inside the GCC Moderate boundary; it does not patch ESXi, firmware, or a managed database service (Management-Plane Coordination Doctrine, Vol 0 Book 00). This volume coordinates the Azure and Arc-managed-hybrid surface only. **Other CSPs (AWS, OCI, VMware) reconcile into the same ServiceNow SI-2 queue in a later follow-up** (their native stacks are catalogued in Vol III Book 03); ServiceNow already coordinates a single queue, so adding those surfaces later needs no rework here.
 :::
 
 # Control Engine 1 — Azure Policy (CM-2 / CM-6)
@@ -53,7 +53,7 @@ Azure Policy continuously evaluates resource configuration against assigned defi
 
 # Control Engine 2 — Defender for Cloud / MDVM (CM-6 / RA-5)
 
-Defender for Cloud is the multi-cloud posture engine (CSPM) and the vulnerability source for Azure workloads (MDVM); Vol III Book 04 owns the posture architecture and Vol III Book 02 owns the assessment doctrine. The coordination role turns its findings into prioritized, owned remediation work.
+Defender for Cloud is the Azure posture engine (CSPM) and the vulnerability source for Azure workloads (MDVM) within the GCC Moderate boundary; Vol III Book 04 owns the posture architecture and Vol III Book 02 owns the assessment doctrine. (Defender for Cloud's multi-cloud CNAPP reach is a later follow-up, out of scope here.) The coordination role turns its Azure findings into prioritized, owned remediation work.
 
 - **Test + Detect:** Defender recommendations (misconfiguration) and MDVM findings (workload/image vulnerabilities) are read via the security-posture API.
 - **Raise:** each finding becomes a ServiceNow **Vulnerability Response** task against the reconciled CI, with a severity and an SLA class derived from exposure and KEV status — the risk-based prioritization CISA BOD 22-01 and the four-variable model (BOD 26-04) call for.
@@ -62,10 +62,10 @@ Defender for Cloud is the multi-cloud posture engine (CSPM) and the vulnerabilit
 
 # Control Engine 3 — Update Manager + Arc (SI-2)
 
-Azure Update Manager assesses and deploys guest-OS patches across Azure and, via Arc, hybrid and multi-cloud servers. It is the SI-2 actuation engine for the guest OS; the coordination role reconciles its results into change/incident work with the SLA discipline SI-2(3) requires.
+Azure Update Manager assesses and deploys guest-OS patches across Azure and, via Arc, hybrid Windows/Linux servers inside the GCC Moderate boundary. It is the SI-2 actuation engine for the guest OS; the coordination role reconciles its results into change/incident work with the SLA discipline SI-2(3) requires.
 
 - **Test:** Update Manager's assessment reports missing updates per machine, classified (critical / security / other).
-- **Raise:** a missing critical/security update becomes a ServiceNow **Change** (scheduled maintenance) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the BOD 26-04 model, applied uniformly with the multi-CSP patch queue (Vol III Book 03).
+- **Raise:** a missing critical/security update becomes a ServiceNow **Change** (scheduled maintenance) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the BOD 26-04 model. The same SLA discipline is what other-CSP patch queues will reconcile into when they are added later (Vol III Book 03).
 - **Actuate:** Update Manager deploys the patch in the approved maintenance window; ServiceNow does not push the update, it schedules and governs it.
 - **Close + evidence:** post-deployment assessment confirms the update landed; the Change record, approval, window, and re-assessment become the SI-2(2) machine-readable remediation-status evidence.
 
@@ -106,7 +106,7 @@ Generated from the series compliance spine (`aan-compliance-spine.yml`) by `rend
 # Cross-References
 
 - **Vol III Book 02 (Vulnerability Management)** — the assessment half whose findings this book routes to remediation tasks.
-- **Vol III Book 03 (Patch & Systems Management)** — the multi-CSP SI-2 queue this book's Update Manager results reconcile into.
+- **Vol III Book 03 (Patch & Systems Management)** — the SI-2 queue this book's Update Manager results reconcile into (Azure/hybrid now; other CSPs in a later follow-up).
 - **Vol III Book 04 (Cloud-Native Posture)** — the Defender for Cloud posture architecture this book coordinates findings from.
 - **Vol VI Book 01/06 (Landing Zone / Baselines as Code)** — the IaC that actuates many Azure remediations.
 - **Vol VII Book 01** — the reconciled CIs every Azure task is raised against; **Vol VII Book 04** — where the Azure posture roll-up becomes attestation.
@@ -122,6 +122,6 @@ Draft. Azure Policy, Defender for Cloud, MDVM, Update Manager, and Arc are deplo
 | Azure Policy compliance & remediation | Microsoft Learn — <https://learn.microsoft.com/azure/governance/policy/> |
 | Microsoft Defender for Cloud (CSPM/CNAPP, MDVM) | Microsoft Learn — <https://learn.microsoft.com/azure/defender-for-cloud/> |
 | Azure Update Manager (guest-OS patch) | Microsoft Learn — <https://learn.microsoft.com/azure/update-manager/> |
-| Azure Arc (hybrid/multi-cloud guest-OS reach) | Microsoft Learn — <https://learn.microsoft.com/azure/azure-arc/> |
+| Azure Arc (hybrid guest-OS reach) | Microsoft Learn — <https://learn.microsoft.com/azure/azure-arc/> |
 | Risk-based remediation prioritization (KEV; four-variable model) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
 | ServiceNow as workflow/CMDB/evidence coordination hub | Expansion Plan §16 — `inbox/Application Aware Networking/AAN_Series_Expansion_Plan_Substrate_Accreditation.md` |

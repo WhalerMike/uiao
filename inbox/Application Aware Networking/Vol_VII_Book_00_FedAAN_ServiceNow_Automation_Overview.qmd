@@ -38,6 +38,19 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 **Series Context** — This is the Volume VII overview of the Federal Application-Aware Networking series. Volumes I–IV establish the architecture (*what must be true and why*); Volume V covers training; Volume VI carries the deployable infrastructure-as-code, detection, and evidence artifacts. **Volume VII is the coordination layer: the ServiceNow workflow, CMDB, and governance-risk-compliance (GRC) automation that turns M365 and Azure control state into tracked tasks, reviewable change, machine-readable evidence, and authorization-package input.** Where Volume VI *deploys* a control as code, Volume VII *operates* it — routing drift to an owner, gating change, and rolling posture up into the continuous-monitoring package.
 :::
 
+::: {.callout-note}
+## Scope of this volume — FedRAMP Moderate & Microsoft GCC Moderate
+
+This volume targets **FedRAMP Moderate** and the **Microsoft GCC Moderate** boundary
+exclusively: Microsoft 365 GCC (Moderate) as the SaaS control plane and the agency's
+FedRAMP-authorized Azure resources targeted at the Moderate boundary. The ServiceNow
+instance is *FedRAMP-authorized* for that boundary (never cited at a higher level; the
+series scope parameter is Moderate — authoring-spec §2). **Other cloud service providers
+(AWS, Oracle/OCI, VMware) and higher boundaries (GCC High, DoD) are explicit follow-ups,
+out of scope here** — the coordination loop is designed so those surfaces reconcile into
+the same ServiceNow queues later without reworking this volume's M365-and-Azure core.
+:::
+
 # What This Volume Addresses
 
 The architecture volumes prove that a mechanism closes a control. Volume VI expresses that mechanism as code and emits an evidence record when it deploys. But a federal estate is not run by artifacts alone — it is run by **work**: a misconfiguration someone must own and fix, a privileged-access request someone must approve, a patch cycle someone must schedule, a control someone must test and attest before an assessor will accept it. That work needs a system of record with an approval trail, an SLA clock, and a reconcilable link to the authoritative asset it touches.
@@ -72,7 +85,7 @@ The series' Management-Plane Coordination Doctrine (Vol 0 Book 00, Executive Sum
 
 Volume VII inherits the series' in-boundary rule without exception. Three constraints govern every workflow in it:
 
-1. **FedRAMP-authorized platform.** The ServiceNow instance carries an authorization commensurate with the identity-attributed compliance data it handles. The series scope parameter is FedRAMP Moderate; the platform is referred to as *FedRAMP-authorized* and is verified on the FedRAMP Marketplace at procurement.
+1. **FedRAMP-authorized platform, GCC Moderate boundary.** The ServiceNow instance carries an authorization commensurate with the identity-attributed compliance data it handles, and operates against the Microsoft GCC Moderate surface (M365 GCC + Moderate-targeted Azure). The scope parameter is FedRAMP Moderate; the platform is referred to as *FedRAMP-authorized* and is verified on the FedRAMP Marketplace at procurement.
 2. **MID Server in-boundary.** Any callout that reaches an agency surface — Graph, Azure Resource Manager, a DDI grid — runs through a **MID Server registered inside the ATO boundary**, so credentials and execution never leave it. Cloud-to-cloud integrations use the platform's in-boundary integration surface, not a commercial multi-tenant relay.
 3. **Least-privilege service identity.** ServiceNow reaches M365 and Azure through a scoped, auditable app registration / managed identity with only the read and task-creation permissions the coordination role needs — never standing write authority over the estate it is meant to *govern*.
 
