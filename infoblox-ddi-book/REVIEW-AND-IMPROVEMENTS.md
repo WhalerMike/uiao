@@ -49,7 +49,18 @@ initializes.
 > while the modules remain acknowledged skeletons, and flip to blocking once the gold
 > exemplar (§2.2) hardens them.
 
-Still open: `tflint`, and promoting the advisory checks to blocking.
+**What the advisory `terraform validate` immediately caught and what was then fixed:**
+on first run, **all five modules failed to validate** — proof of the gap, not a hypothesis.
+The bugs were real: a heredoc-in-a-ternary that doesn't parse in HCL (all four cloud
+modules), an invalid `vsphere_compute_cluster_anti_affinity_rule` resource type, and an
+unsupported `content_library_item_id` in `ovf_deploy` (VMware). After the fixes, **all five
+modules now report `Success! The configuration is valid`**, and four of the five example
+modules validate; the one remaining failure is the VMware example on intentionally-absent
+secret arguments (§2.3 — the gold-exemplar wiring). This is exactly the "provably validates"
+bar the finding asked for.
+
+Still open: `tflint`, wiring the example modules' required args, and promoting the advisory
+checks to blocking once the gold exemplar (§2.2) is deployment-tested.
 - ~~No JS parse check~~ and ~~no `bash -n`~~ — **done** (blocking).
 - `shellcheck` and `terraform fmt/validate` — **wired, advisory.**
 - `tflint` — not yet added.
