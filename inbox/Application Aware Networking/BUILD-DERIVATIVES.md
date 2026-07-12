@@ -28,9 +28,26 @@ uiao generate aan-deck \
 Repeat per `decks/*.yaml`. The `.pptx` are allowlisted (`Vol_*_Book_*.pptx`) so they
 ride with their books in git.
 
-## 2. Book renders (.docx) — local only
+## 2. Book renders (.docx)
 
-Requires **Quarto** + **Pandoc** (not present in the web environment). Per book:
+> **The Vol VII and Vol IX book `.docx` are committed** — rendered with **Pandoc**
+> (`pypandoc-binary`) using `--reference-doc=lz-reference.docx`, so text, tables, and
+> figures carry house style. Note: a bare Pandoc render draws the Quarto **callouts**
+> (draft-proposal, FOUO banner, closure-necessity) as plain content rather than
+> styled boxes. For full callout fidelity, re-render with **Quarto** locally
+> (command below) — the committed Pandoc docx is the portable, content-complete
+> version; a Quarto re-render supersedes it.
+
+Pandoc render (what produced the committed docx):
+
+```bash
+cd "inbox/Application Aware Networking"
+pandoc Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd -f markdown \
+  -o Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.docx \
+  --reference-doc=lz-reference.docx --resource-path=.
+```
+
+Full-fidelity Quarto render (requires **Quarto** + **Pandoc**):
 
 ```bash
 cd "inbox/Application Aware Networking"
