@@ -1,0 +1,115 @@
+# AAN deck spec — Vol IX Book 03 (App Registration Governance).
+# Scope: FedRAMP Moderate & Microsoft GCC Moderate only. Never cite High.
+deck:
+  title: "App Registration Governance"
+  subtitle: "Vol IX Book 03 — the app-registration lifecycle as a governed catalog: request, consent, short-lived credentials, rotation, attestation"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOLUME IX"
+  date_code: "2026-07-12 15:00 ET"
+  journey:
+    - "Request"
+    - "Consent"
+    - "Rotate"
+    - "Attest"
+  sources:
+    ms_appreg: "https://learn.microsoft.com/entra/identity-platform/quickstart-register-app"
+
+slides:
+  - type: title
+    notes: >
+      Book 03 governs app registrations — the machine analogue of the joiner/mover/leaver lifecycle,
+      and the largest source of long-lived-secret and over-consent risk in an Entra estate. The
+      architecture is set (Vol I Book 03, Vol VI Book 02); this book adds the governed lifecycle:
+      request, scoped consent, short-lived credentials, automated rotation, and attestation. GCC
+      Moderate throughout.
+
+  - type: section
+    kicker: "PART ONE"
+    title: "Where credential sprawl lives"
+    callout: "Long-lived client secrets in config, over-broad admin consent granted 'to make it work', orphaned apps whose owner left — each a standing violation of least privilege and secure authenticator management."
+    callout_accent: navy
+    notes: >
+      Motivate the lifecycle. An app registration is a workload identity: a service principal with
+      credentials and consented permissions. Left ungoverned it accumulates the exact risks above.
+      Governing the lifecycle is what keeps the mechanism — certificate-based, short-lived,
+      least-privilege identity — true over time.
+
+  - type: build-sequence
+    kicker: "THE LIFECYCLE"
+    title: "App registrations as machine JML"
+    notes: "Fallback notes if a step omits its own."
+    steps:
+      - label: "Request"
+        sub: "owner + scopes"
+        accent: navy
+        detail: >
+          An app-registration request captures owner, purpose, and the specific scopes needed —
+          least privilege is the default (AC-2).
+        notes: "Step one: the request names an owner and the exact scopes, not a blanket ask."
+      - label: "Consent"
+        sub: "scoped"
+        accent: teal
+        detail: >
+          Scoped, admin-consented permissions only — any privileged or write scope requires a
+          security approver (AC-6). No blanket delegation.
+        notes: "Step two: consent is least-privilege and security-approved for anything privileged."
+      - label: "Credential"
+        sub: "short-lived"
+        accent: amber
+        detail: >
+          A short-lived certificate (ACME) or a secret with a mandatory expiry — no long-lived secrets
+          in config (IA-5(2) / SC-17).
+        notes: >
+          Step three is the single highest-value rule: no long-lived secrets. A client secret with a
+          two-year expiry in a pipeline variable is the credential an attacker wants most; certificate-
+          based, auto-rotated identity removes the target.
+      - label: "Attest"
+        sub: "rotate + review"
+        accent: teal
+        detail: >
+          Automated rotation before expiry, and ownership and scope re-attested on a cadence; orphaned
+          or expired registrations are flagged (feeds Vol VII Book 04, CA-7).
+        notes: "Step four: rotation never depends on a human remembering, and attestation is the machine-identity access review."
+    vendor_sources: ["ms_appreg"]
+
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "The app-registration closures"
+    headers: ["Control", "Title", "Mechanism"]
+    rows:
+      - cells: ["IA-5(2)", "Public Key-Based Authentication", "Short-lived certs (ACME), mandatory expiry, automated rotation"]
+        accent: teal
+      - cells: ["SC-17", "PKI Certificates", "Certificate issuance/rotation for service principals via the catalog"]
+      - cells: ["AC-6", "Least Privilege", "Scoped consent; privileged scopes security-approved; orphaned/expired flagged"]
+        accent: teal
+    callout:
+      text: "The leaver step is the one most often skipped for apps — an orphaned service principal with live credentials is a ghost-credential risk."
+      accent: amber
+    notes: >
+      Mirror the generated rows. Voice the machine-JML framing: the lifecycle is the same shape as the
+      human help-desk JML, and the retirement/attestation step is the one teams skip. FedRAMP Moderate.
+    vendor_sources: ["uiao repo: inbox/Application Aware Networking/aan-compliance-spine.yml"]
+
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "Workload identity with a lifecycle"
+    layout: columns
+    cards:
+      - title: "Least-privilege"
+        body: "Scoped, security-approved consent — no blanket delegation."
+        accent: teal
+        status: "This book"
+      - title: "No long-lived secrets"
+        body: "Certificate-based, auto-rotated credentials with mandatory expiry."
+        accent: navy
+        status: "IA-5(2) / SC-17"
+      - title: "Attested"
+        body: "Ownership and scope re-attested; orphaned apps flagged to CA-7."
+        accent: navy
+        status: "Vol VII Book 04"
+    callout:
+      text: "Next: Teams telephony (Book 04) — governed voice operations and Teams SCuBA drift."
+      accent: navy
+    notes: >
+      Close on the honest limit: not every app supports certificate credentials; where a secret is
+      unavoidable, the expiry is short and rotation still automated, and the exception is documented.
+      Hand off to Book 04.
