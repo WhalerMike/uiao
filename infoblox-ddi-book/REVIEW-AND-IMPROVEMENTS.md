@@ -185,12 +185,13 @@ a [build playbook](./servicenow-app/PLAYBOOK-servicenow-led-build.md), and a
   scoped app / update set plus an exported `sys_hub_flow` and a committed **catalog variable
   set XML** — none of which exist yet. Prose + Script Includes ≠ importable app.
 - ~~**The catalog→`tfvars` mapping lives in prose, not a machine-readable artifact (P1).**~~
-  **Done.** A committed variable-set definition
-  ([`servicenow-app/catalog/variable-set-azure-ddi-subnet.xml`](./servicenow-app/catalog/variable-set-azure-ddi-subnet.xml))
-  now carries a `<map_to>` per field, and
-  [`contract_check.py`](./servicenow-app/catalog/contract_check.py) asserts the form covers
-  every required Azure module variable — **blocking in the book CI**, so form/module drift
-  fails the build. (Extend the same pattern to the other four platforms.)
+  **Done — all five platforms.** A committed variable-set per platform
+  ([`servicenow-app/catalog/`](./servicenow-app/catalog/)) carries a `<map_to>` per field, and
+  [`contract_check.py`](./servicenow-app/catalog/contract_check.py) asserts each form covers
+  every required module variable — either as a form field (`<map_to>`) or resolved on the
+  in-boundary MID Server (`<resolved_by_mid>`, for secrets/connection endpoints that must
+  never be typed on the form, e.g. VMware's `vsphere_password`/`nsx_password`). **Blocking in
+  the book CI**, so form/module drift fails the build for any of the five platforms.
 - **Accessibility & localization of the screens (P2).** The mock-ups have reasonable contrast
   but no WCAG audit, no keyboard-focus states, and are English-only. Real catalog UIs need
   both. Cheap to note; worth doing before these become "the" screens.
