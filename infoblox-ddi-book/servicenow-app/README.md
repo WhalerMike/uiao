@@ -52,6 +52,13 @@ and the Universal DDI SaaS path gated by `acknowledge_saas_boundary`. The catalo
 approval, change record, gate output, and CMDB reconcile are the audit evidence
 (control mapping in Chapter 7 §7.4).
 
+## Related (ServiceNow-led implementation)
+
+- [Chapter 8 — ServiceNow-Led Implementation](../08-servicenow-led-implementation.md) — the experience-first build strategy this app supports.
+- [Build playbook](./PLAYBOOK-servicenow-led-build.md) — step-by-step build, ServiceNow first, with the sample screens.
+- [User guide](./USER-GUIDE.md) — requester / approver / admin end-user documentation.
+- [Mock-up gallery](./mockups/README.md) — sample catalog, approval, status, flow, and CMDB screens.
+
 ---
 
 *Vendor-integration skeleton, independent of UIAO governance canon; self-contained

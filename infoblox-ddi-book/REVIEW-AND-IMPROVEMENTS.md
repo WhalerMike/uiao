@@ -155,5 +155,45 @@ can trust enough to deploy from." That is the single most valuable next investme
 
 ---
 
+## 6. Round 2 — critiquing the ServiceNow-led deliverables
+
+The volume now leads with ServiceNow ([Chapter 8](./08-servicenow-led-implementation.md)),
+ships **sample screens** ([`servicenow-app/mockups/`](./servicenow-app/mockups/README.md)),
+a [build playbook](./servicenow-app/PLAYBOOK-servicenow-led-build.md), and a
+[user guide](./servicenow-app/USER-GUIDE.md). Applying the same honesty to *that* work:
+
+- **The screens are mock-ups, not a real instance (P0).** They render an *intended* UX;
+  they have not been validated against an actual ServiceNow build, so field names, control
+  types, and Next-Experience behaviors may differ by version and theme. They're labeled as
+  illustrative — but a reader could still anchor on them. The fix is the same gold exemplar
+  (§2.2): stand the app up once for real and replace the mock-ups with genuine screenshots,
+  or explicitly keep both and mark which is which.
+- **The user guide documents a UI that isn't tested yet (P1).** It's written to the mock-ups.
+  Until the exemplar exists, treat it as a *design intent* doc, not an operations manual —
+  and say so at the top (it does).
+- **Still no importable, ATF-tested update set (P0, unchanged).** The build playbook has you
+  hand-build the catalog item, variable set, and flow. The real deliverable is a signed
+  scoped app / update set plus an exported `sys_hub_flow` and a committed **catalog variable
+  set XML** — none of which exist yet. Prose + Script Includes ≠ importable app.
+- **The catalog→`tfvars` mapping lives in prose, not a machine-readable artifact (P1).** A
+  committed variable-set definition (and a JSON contract test that the form fields ⊇ the
+  module's required variables) would prevent form/module drift — exactly the kind of check
+  the new book CI could run.
+- **Accessibility & localization of the screens (P2).** The mock-ups have reasonable contrast
+  but no WCAG audit, no keyboard-focus states, and are English-only. Real catalog UIs need
+  both. Cheap to note; worth doing before these become "the" screens.
+- **"ServiceNow-led" is now asserted as a strategy but unproven (P1).** The inverted build
+  order is sound in principle; it has not been run end-to-end. The pilot step in the playbook
+  is the place to capture evidence (a recorded dev-instance run) and close this.
+
+**Net:** Round 2 added the *experience and documentation* layer the review said was missing —
+but it is documentation and mock-ups, which is precisely the gap Section 2 warns about,
+one level up. The single highest-value next step is unchanged and now doubly earned:
+**build the one tested Azure gold exemplar** — real deployment, real ServiceNow update set
+with ATF tests, real screenshots — and let everything else (the other four platforms, the
+mock-ups, the user guide) be explicitly *patterned on it*.
+
+---
+
 *Self-assessment, part of the volume and independent of UIAO governance canon. Kept under
 `infoblox-ddi-book/` with everything it critiques.*
