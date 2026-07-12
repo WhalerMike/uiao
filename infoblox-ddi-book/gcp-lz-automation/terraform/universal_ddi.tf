@@ -25,7 +25,7 @@ locals {
   # NIOS-X first-boot user-data. The join token (from Secret Manager) enrolls the
   # host into the Portal over outbound 443. Exact schema is release-dependent —
   # verify against the current NIOS-X / Infoblox Cloud Services docs.
-  uddi_user_data = local.is_uddi ? <<-EOT
+  uddi_user_data = local.is_uddi ? (<<-EOT
     #infoblox-config
 
     default_admin_password: ${data.google_secret_manager_secret_version.admin_password.secret_data}
@@ -36,7 +36,7 @@ locals {
     join_token: ${data.google_secret_manager_secret_version.saas_join_token[0].secret_data}
     csp_url: ${var.infoblox_portal_url}
   EOT
-  : null
+  ) : null
 }
 
 # --- Reserved internal IPs on the DDI subnet --------------------------
