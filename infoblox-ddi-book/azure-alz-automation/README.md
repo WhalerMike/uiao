@@ -6,6 +6,11 @@ chapter is the **deploy-oriented runbook**, this package is the **automation-gra
 how to add Infoblox DDI to an Azure Landing Zone (ALZ) as a modular, IaC-driven,
 drift-resistant component that layers cleanly on top of Microsoft's ALZ Accelerator.
 
+> **This package is the volume's designated gold exemplar** — the one being hardened to a
+> *tested* reference. See [`GOLD-EXEMPLAR.md`](./GOLD-EXEMPLAR.md) for the committed
+> `terraform.tfvars.example`, the machine-checked catalog↔module contract, and the
+> certification checklist you run in your environment.
+
 ## Why this exists
 
 The building blocks are all vendor-supported, but **no single vendor document ties them

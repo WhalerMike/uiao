@@ -128,6 +128,14 @@ candid, prioritized assessment of what is strong and what to build next (test/CI
 signed update set, cost/sizing tables, DHCP/IPv6 depth, GovCloud variants) is in
 [`REVIEW-AND-IMPROVEMENTS.md`](./REVIEW-AND-IMPROVEMENTS.md).
 
+**Azure is the designated gold exemplar** — the one platform being hardened to a *tested*
+reference the others pattern on. Its kit is in
+[`azure-alz-automation/GOLD-EXEMPLAR.md`](./azure-alz-automation/GOLD-EXEMPLAR.md): a committed
+`terraform.tfvars.example`, a `terraform validate`-clean module, and a **machine-checked
+catalog↔module contract** (blocking in CI) — plus a certification checklist with evidence
+slots for the live apply, validation transcript, and real screenshots you run in your
+environment.
+
 ---
 
 *This volume is platform-vendor documentation, independent of the surrounding UIAO

@@ -69,15 +69,24 @@ checks to blocking once the gold exemplar (§2.2) is deployment-tested.
   that *could* run locally were run, and pass. Removing the stray `</content>` tags (see
   the diagram-cleanup work) is what makes the shell scripts pass `bash -n` at all.
 
-### 2.2 Nothing has been deployed and validated end-to-end
+### 2.2 Nothing has been deployed and validated end-to-end — *exemplar kit started*
 Every claim is architecture-correct but **unproven**. There is no recorded run of a module
 producing working DNS, no captured `discovery-sync` success, no screenshot/log of a
 ServiceNow catalog request closing the loop.
-- **Recommendation:** produce **one fully-worked, tested reference deployment** (suggest
-  **Azure, `deployment_model = grid`**) with a committed `terraform.tfvars.example`, a
-  captured validation transcript, and a short "verified against NIOS vX / provider vY on
-  <date>" banner. Make it the **gold exemplar** the other four packages explicitly say they
-  are patterned on. Truth-in-labeling: keep the "starter skeleton" banners on the rest.
+
+> **Started (Azure):** [`azure-alz-automation/GOLD-EXEMPLAR.md`](./azure-alz-automation/GOLD-EXEMPLAR.md)
+> is now the designated exemplar. What a repo *can* prove without a cloud is committed and
+> CI-enforced: a complete
+> [`terraform.tfvars.example`](./azure-alz-automation/terraform/terraform.tfvars.example)
+> (§2.3), a `terraform validate`-clean module, and a **machine-checked catalog↔module
+> contract** (§2.4). What a repo *cannot* do — the live apply, the validation transcript,
+> the real ServiceNow screenshots, and the ATF run — is laid out as a certification checklist
+> with "paste yours" evidence slots. **Honesty:** this is the runnable kit, not a claim of
+> having deployed; the exemplar is "certified" only once someone runs it and fills the slots.
+- **Remaining:** the live apply + transcript + screenshots + ATF run (done in your
+  environment), then relabel the other four packages "patterned on the certified Azure
+  exemplar" and swap Azure's mock-ups for real screenshots. Truth-in-labeling: keep the
+  "starter skeleton" banners on the rest until each is certified in turn.
 
 ### 2.3 The IaC skeletons carry placeholders that will not apply as-is
 By design the modules leave `vnios_image` publisher/offer/sku/version and VM SKUs as
@@ -175,10 +184,13 @@ a [build playbook](./servicenow-app/PLAYBOOK-servicenow-led-build.md), and a
   hand-build the catalog item, variable set, and flow. The real deliverable is a signed
   scoped app / update set plus an exported `sys_hub_flow` and a committed **catalog variable
   set XML** — none of which exist yet. Prose + Script Includes ≠ importable app.
-- **The catalog→`tfvars` mapping lives in prose, not a machine-readable artifact (P1).** A
-  committed variable-set definition (and a JSON contract test that the form fields ⊇ the
-  module's required variables) would prevent form/module drift — exactly the kind of check
-  the new book CI could run.
+- ~~**The catalog→`tfvars` mapping lives in prose, not a machine-readable artifact (P1).**~~
+  **Done.** A committed variable-set definition
+  ([`servicenow-app/catalog/variable-set-azure-ddi-subnet.xml`](./servicenow-app/catalog/variable-set-azure-ddi-subnet.xml))
+  now carries a `<map_to>` per field, and
+  [`contract_check.py`](./servicenow-app/catalog/contract_check.py) asserts the form covers
+  every required Azure module variable — **blocking in the book CI**, so form/module drift
+  fails the build. (Extend the same pattern to the other four platforms.)
 - **Accessibility & localization of the screens (P2).** The mock-ups have reasonable contrast
   but no WCAG audit, no keyboard-focus states, and are English-only. Real catalog UIs need
   both. Cheap to note; worth doing before these become "the" screens.
