@@ -26,6 +26,10 @@ runbooks are directly comparable across platforms.
 | 7 | [ServiceNow Orchestration — A Governed Front Door](./07-servicenow-orchestration.md) | Self-service catalog → approval → Terraform + Infoblox → validation → CMDB, closed loop |
 | 8 | [ServiceNow-Led Implementation](./08-servicenow-led-implementation.md) | Experience-first build order + sample catalog/approval screens, build playbook, and full user documentation |
 
+> Numbers are **reference order**, not the required reading order. If ServiceNow is your
+> front door, read **§0.5 → Ch 8 → Ch 7** first, then your platform chapter as the fulfillment
+> engine — see [Reading paths](#reading-paths-the-order-to-read-in).
+
 ## Automation packages (Terraform, per platform)
 
 Each chapter has a companion **automation package** — a Terraform-only, `deployment_model`-driven
@@ -87,12 +91,34 @@ implementing a consistent, authoritative name-resolution and IP-management fabri
 across a hybrid, multi-cloud estate. The reader knows their cloud platform; the volume
 supplies the Infoblox side.
 
-## How to use it
+## Reading paths (the order to read in)
 
-- **Deploying one platform now** → go straight to its chapter and work section 5.
-- **Designing the target state** → read sections 1–2 of every chapter plus Chapter 6.
-- **Standardizing** → lift the section-4 prerequisites into landing-zone guardrails and
-  the section-5 runbooks into your IaC/pipelines.
+The chapters are **numbered in reference order** — platform-by-platform, so you can jump
+straight to your cloud. That is deliberately *not* the only order to read them in: the
+platform chapters are reference material, consulted by platform, not a front-to-back novel.
+Pick the path that matches your goal — and note the first one **leads with ServiceNow**, per
+the experience-first strategy in [Chapter 8](./08-servicenow-led-implementation.md).
+
+- **⭐ ServiceNow-led** *(recommended if ServiceNow is your system of engagement)* — stand up
+  the governed experience first, then the automation behind it:
+  [Ch 0 §0.5](./00-introduction.md) → **[Ch 8](./08-servicenow-led-implementation.md)** →
+  [Ch 7](./07-servicenow-orchestration.md) → [`servicenow-app/`](./servicenow-app/README.md)
+  → your platform chapter (1–5) as the *fulfillment engine* → [Ch 6](./06-cross-platform-operations.md).
+- **Platform-led** *(deploying one cloud now)* — your chapter (1–5) → its automation package
+  → [Ch 7](./07-servicenow-orchestration.md)/[Ch 8](./08-servicenow-led-implementation.md) to
+  add the front door → [Ch 6](./06-cross-platform-operations.md) for the estate.
+- **Architecture / target-state** — [Ch 0](./00-introduction.md) → sections 1–2 of every
+  platform chapter → [Ch 6](./06-cross-platform-operations.md) →
+  [Ch 7](./07-servicenow-orchestration.md)/[Ch 8](./08-servicenow-led-implementation.md).
+- **End users (request / approve / operate)** — go straight to the
+  [user guide](./servicenow-app/USER-GUIDE.md).
+- **Standardizing** — lift each chapter's section-4 prerequisites into landing-zone guardrails
+  and the section-5 runbooks into your IaC/pipelines.
+
+> **Why the chapters aren't physically renumbered ServiceNow-first:** the numeric order is
+> the reference index (and the AAN volume naming), while the *reading* order above is where
+> "lead with ServiceNow" lives. Renumbering would churn every cross-reference and file name
+> for no reader benefit the reading paths don't already provide.
 
 ## Maturity & roadmap
 
