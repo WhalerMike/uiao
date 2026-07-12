@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE test — "requester cannot approve their own request (SoD)"
+  Scope: x_infoblox_ddi.  STARTER SKELETON (see atf/README.md).
+  Proves AC-5/AC-6 separation of duties: the person who submits the request must
+  not be able to approve it.
+
+  PRECONDITION: x_infoblox_ddi.test_mode = 'true'. The requester (ddi.requester)
+  must NOT be a member of the network/DDI approver group.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>DDI negative: requester cannot self-approve (SoD)</name>
+    <sys_scope>x_infoblox_ddi</sys_scope>
+    <active>true</active>
+    <description>The requester submits, then (still as the requester) attempts to approve their own request; assert the approval cannot be granted by them and the request does not advance.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Service Catalog - Order the "Request a DDI-backed subnet" item</step_config_title>
+    <description>Impersonate ddi.requester, set the Azure exemplar variables, Order Now; capture the RITM. (Same as happy-path steps 1-4; stay impersonated as the requester.)</description>
+    <inputs>outputs: request_item (RITM sys_id); current user remains ddi.requester</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>As the requester, attempt to approve the pending approval; assert it is NOT permitted (the requester is not an approver, so no approval record is assigned to them, or the attempt is rejected). The approval must remain 'requested'.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('100').request_item;
+  var me = gs.getUserID();                                   // the impersonated requester
+  var appr = new GlideRecord('sysapproval_approver');
+  appr.addQuery('sysapproval', ritm);
+  appr.query();
+  var assignedToRequester = false, stillPending = false;
+  while (appr.next()) {
+    if (appr.approver == me) assignedToRequester = true;      // requester should NOT be an approver
+    if (appr.state == 'requested') stillPending = true;
+  }
+  if (assignedToRequester) { stepResult.setFailed('SoD violated: an approval is assigned to the requester'); return; }
+  stillPending
+    ? stepResult.setSuccess()                                 // still awaiting a real approver
+    : stepResult.setFailed('expected the approval to remain pending for a separate approver');
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert the request did not advance (not closed complete) while unapproved.</description>
+    <inputs>
+      table = sc_req_item
+      conditions = sys_id={RITM from step 1}
+      assert = state != 3 (Closed Complete)
+    </inputs>
+  </sys_atf_step>
+</record_update>
