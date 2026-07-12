@@ -10,7 +10,8 @@
 // inside the ATO boundary (Chapter 7 §7.4).
 //
 // STARTER SKELETON — wire the ECC/command execution to your MID Server capability
-// model; the parse contract below matches midserver-validate.sh's JSON output.
+// model; the parse contract below matches infoblox-ddi-validate.sh's single-line
+// JSON output (the wrapper this Script Include dispatches on runGate()).
 // -----------------------------------------------------------------------------
 var InfobloxDDIGate = Class.create();
 InfobloxDDIGate.prototype = {
@@ -47,12 +48,19 @@ InfobloxDDIGate.prototype = {
     // an ECC queue "command" probe, a Scripted REST callback, or the
     // MIDServer/Command capability. Env vars are passed to the wrapper.
     _execOnMid: function (script, env) {
-        // Skeleton: replace with ECCQueue/JavascriptProbe or CommandProbe call.
-        // The wrapper prints exactly one JSON line to stdout; return that string.
+        // SKELETON — ILLUSTRATIVE, NOT RUNNABLE AS-IS. A MID probe is asynchronous:
+        // probe.create() enqueues an ECC job and the response arrives later on an
+        // ecc_queue record — there is no synchronous getResponse(), so the fallback
+        // below would always return 'fail'. Rework this into the async pattern before
+        // use: run the gate from a MID "command"/Scripted-REST step and resume the
+        // Flow on the ECC response, or use an orchestration Activity that blocks on it.
+        // Also note JavascriptProbe runs JavaScript on the MID; to run the bash
+        // wrapper use a CommandProbe (or a shell-invoking script). Left inline only to
+        // show the shape (name → invocation → verdict string).
         var probe = new global.JavascriptProbe(this.midServer);
         probe.setName('x_infoblox_ddi.validate');
         probe.setJavascript(this._buildInvocation(script, env));
-        probe.create();          // async — the flow waits for the ECC response record
+        probe.create();          // enqueues async ECC job; response handled separately
         return probe.getResponse ? probe.getResponse() : '{"overall":"fail","checks":[]}';
     },
 
