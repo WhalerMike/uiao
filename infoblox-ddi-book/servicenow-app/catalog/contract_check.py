@@ -23,7 +23,8 @@ VAR_SET = os.path.join(HERE, "variable-set-azure-ddi-subnet.xml")
 
 def required_module_vars(path):
     """Return the set of module variable names that have no default (required)."""
-    txt = open(path, encoding="utf-8").read()
+    with open(path, encoding="utf-8") as fh:
+        txt = fh.read()
     required = set()
     for m in re.finditer(r'variable\s+"([^"]+)"\s*\{', txt):
         name = m.group(1)
@@ -47,7 +48,8 @@ def required_module_vars(path):
 
 def mapped_vars(path):
     """Return the set of module variables the catalog variable set maps to."""
-    txt = open(path, encoding="utf-8").read()
+    with open(path, encoding="utf-8") as fh:
+        txt = fh.read()
     return {m.group(1).strip() for m in re.finditer(r"<map_to>([^<]+)</map_to>", txt)}
 
 
