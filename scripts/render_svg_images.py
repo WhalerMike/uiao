@@ -50,8 +50,10 @@ from generate_images import (  # noqa: E402
 )
 
 GENERATOR = "claude-svg-v1"
-DEFAULT_SCALE = 2.0  # rasterize at 2x the SVG viewBox for crisp PNG
-MAX_WIDTH = 2400  # cap output width (px)
+DEFAULT_SCALE = 3.0  # rasterize at 3x the SVG viewBox — enough pixels to stay
+# crisp when a reader pinch-zooms an embedded PNG in a .docx on a phone (a raster
+# has no detail beyond its own resolution; 3x ≈ 550 ppi at a 6.5in display).
+MAX_WIDTH = 3600  # cap output width (px)
 SCAN_ROOTS = [REPO_ROOT / "docs", REPO_ROOT / "src" / "uiao" / "canon"]
 SKIP_PARTS = {"_site", "_freeze", ".quarto", "node_modules", ".git", ".venv"}
 
