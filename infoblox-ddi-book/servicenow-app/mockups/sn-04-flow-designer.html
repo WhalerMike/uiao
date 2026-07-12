@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="sn-mock.css"></head>
+<body><div class="mock" style="position:relative">
+<div class="badge-mock">ILLUSTRATIVE MOCK-UP</div>
+
+<div class="topbar">
+  <div class="brand"><span class="logo">DDI</span> DDI Self-Service <small>| Flow Designer</small></div>
+  <div class="topnav"><span>Flows</span><span class="active">Provision DDI-backed subnet</span><span>Executions</span></div>
+  <input class="topsearch" value="Search…" readonly>
+  <div class="avatar">AD</div>
+</div>
+
+<div class="shell">
+  <div class="side">
+    <h4>Flow</h4>
+    <a href="#" class="on">Provision DDI-backed subnet</a>
+    <a href="#">Decommission DDI subnet</a>
+    <a href="#">Staleness → Incident</a>
+    <h4>Scope</h4>
+    <a href="#">x_infoblox_ddi</a>
+  </div>
+
+  <div class="main">
+    <div class="crumb">Flow Designer &nbsp;›&nbsp; x_infoblox_ddi &nbsp;›&nbsp; <b>Provision DDI-backed subnet</b></div>
+    <h1 class="page">Provision DDI-backed subnet</h1>
+    <div class="sub">Trigger + 8 actions · runs as the app service account · MID Server in-boundary. Mirrors Chapter 7 §7.1 and <code>flow/flow-blueprint.md</code>.</div>
+
+    <div class="flow">
+      <div class="fnode trigger"><div class="lab">Trigger</div><div class="ti">Service Catalog — item submitted</div><div class="d">“Request a DDI-backed subnet” · inputs mapped to module tfvars</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode"><div class="lab">1 · Approval</div><div class="ti">Ask for approval (SoD gate)</div><div class="d">Approvers = Network / DDI group · reject → close cancelled</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode"><div class="lab">2 · Script (InfobloxDDIClient)</div><div class="ti">Allocate CIDR / next-available IP</div><div class="d">nextAvailableIp(requested_cidr, network_view)</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode"><div class="lab">3 · CPG Terraform Connector</div><div class="ti">Plan → approve → apply ../terraform</div><div class="d">runs on MID Server · Key Vault secret refs resolve on MID</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode"><div class="lab">4 · Script (InfobloxDDIClient)</div><div class="ti">Register DNS (A + PTR)</div><div class="d">createHostRecord(fqdn, ip, dns_view)</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode gate"><div class="lab">5 · Script (InfobloxDDIGate)</div><div class="ti">Validation gate — pass/fail</div><div class="d">runGate() → dns / discovery-sync / ipam-conflict · fail → back to step 1</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode"><div class="lab">6 · Service Graph Connector</div><div class="ti">CMDB reconcile</div><div class="d">cmdb_ci_ip_network / _subnet attached to the request</div></div>
+      <div class="fconn"></div><div class="farr">▼</div>
+      <div class="fnode"><div class="lab">7 · Close</div><div class="ti">Request closed complete</div><div class="d">audit trail = approvals + plan + validation JSON (AU-2/AU-6/AU-12)</div></div>
+    </div>
+  </div>
+</div>
+<div class="disc">Illustrative mock-up for documentation — resembles a ServiceNow® Flow Designer canvas. Not a real screenshot; ServiceNow is a trademark of its owner and is not affiliated with this material.</div>
+</div></body></html>

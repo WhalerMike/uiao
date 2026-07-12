@@ -24,6 +24,7 @@ runbooks are directly comparable across platforms.
 | 5 | [VMware (VCF / vSphere / NSX-T)](./05-vmware.md) | VMware Cloud Foundation — management/edge domain |
 | 6 | [Cross-Platform Operations & Multi-Cloud Governance](./06-cross-platform-operations.md) | Grid/Portal design, anycast, DR, one authoritative IPAM |
 | 7 | [ServiceNow Orchestration — A Governed Front Door](./07-servicenow-orchestration.md) | Self-service catalog → approval → Terraform + Infoblox → validation → CMDB, closed loop |
+| 8 | [ServiceNow-Led Implementation](./08-servicenow-led-implementation.md) | Experience-first build order + sample catalog/approval screens, build playbook, and full user documentation |
 
 ## Automation packages (Terraform, per platform)
 
@@ -50,6 +51,13 @@ The **ServiceNow governed front door is woven through the volume**, not siloed i
 **every platform chapter's section 8** shows the platform-specific catalog → approve → apply
 → validate → CMDB loop, [Chapter 6](./06-cross-platform-operations.md) §6.9 unifies it across
 the estate, and each automation guide/runbook carries a "governed path" section.
+
+[**Chapter 8**](./08-servicenow-led-implementation.md) flips the build order to **lead with
+ServiceNow** — stand up the governed experience first, then wire the automation behind it —
+and ships the human-facing deliverables: **sample ServiceNow screens** (catalog, approval,
+status, flow, CMDB — [`servicenow-app/mockups/`](./servicenow-app/mockups/README.md)), a
+**step-by-step [build playbook](./servicenow-app/PLAYBOOK-servicenow-led-build.md)**, and a
+**full [user guide](./servicenow-app/USER-GUIDE.md)** (requester / approver / admin).
 
 Figures are Mermaid sources under each `figs/`, rendered to PNG by
 [`figs/render-figs.sh`](./figs/render-figs.sh) with the shared
