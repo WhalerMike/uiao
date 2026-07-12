@@ -112,8 +112,10 @@ records," but the practical gaps are real:
   Includes gained a `test_mode` short-circuit so the Flow runs end-to-end in a sub-prod
   instance with **no live Infoblox/MID** (deterministic canned allocate/register/gate). Still
   a starter: the step-config `sys_id`s must be wired in the ATF Designer, and a green run on a
-  real instance is the evidence to capture. Negative tests (gate-fail routes back to approval;
-  SaaS-boundary hard-fail; requester = approver blocked) are the next additions.
+  real instance is the evidence to capture. **Negative tests are now included** too —
+  gate-fail routes back to approval (CM-6), `universal_ddi` without `acknowledge_saas_boundary`
+  is blocked, and requester = approver is prevented (AC-5/AC-6) — driven by a
+  `test_force_gate_fail` toggle for the gate-failure case.
 - It is still not packaged as a **signed scoped application / update set** you can import in
   one step, and the Flow is still a **prose blueprint** rather than an exported `sys_hub_flow`.
 - **Recommendation:** finish the importable, ATF-covered update set for the Azure exemplar

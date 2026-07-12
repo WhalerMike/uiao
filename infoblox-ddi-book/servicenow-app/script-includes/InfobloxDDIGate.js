@@ -20,9 +20,13 @@ InfobloxDDIGate.prototype = {
         this.midServer = gs.getProperty('x_infoblox_ddi.mid_server', '');
         this.log = new GSLog('x_infoblox_ddi.log', 'InfobloxDDIGate');
         // TEST MODE — see InfobloxDDIClient. When x_infoblox_ddi.test_mode = 'true',
-        // runGate() returns a canned pass verdict so the ATF happy-path test can run
-        // the Flow's gate step without a MID Server or live validation scripts.
+        // runGate() returns a canned verdict so ATF can run the Flow's gate step
+        // without a MID Server or live validation scripts. Set
+        // x_infoblox_ddi.test_force_gate_fail = 'true' to force a FAIL verdict — this
+        // is how the negative ATF test proves a failed gate routes back to approval
+        // and does NOT close the change. Never enable either in production.
         this.testMode = gs.getProperty('x_infoblox_ddi.test_mode', 'false') === 'true';
+        this.testForceGateFail = gs.getProperty('x_infoblox_ddi.test_force_gate_fail', 'false') === 'true';
     },
 
     // env: object of the DDI_VIP / TEST_FQDN / EXPECTED_IP / GRID_MASTER / ...
@@ -30,6 +34,17 @@ InfobloxDDIGate.prototype = {
     //   { overall: 'pass'|'fail', checks: [{name, exit}], raw: '<stdout>' }
     runGate: function (env) {
         if (this.testMode) {
+            if (this.testForceGateFail) {
+                return {
+                    overall: 'fail',
+                    checks: [
+                        { name: 'dns', exit: 0 },
+                        { name: 'discovery-sync', exit: 0 },
+                        { name: 'ipam-conflict', exit: 1 }
+                    ],
+                    raw: '{"overall":"fail","checks":[{"name":"ipam-conflict","exit":1}],"note":"test_mode force-fail"}'
+                };
+            }
             return {
                 overall: 'pass',
                 checks: [

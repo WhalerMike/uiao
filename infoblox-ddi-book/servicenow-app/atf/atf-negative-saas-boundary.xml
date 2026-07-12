@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE test — "universal_ddi without acknowledge_saas_boundary is blocked"
+  Scope: x_infoblox_ddi.  STARTER SKELETON (see atf/README.md).
+  Proves the boundary gate: selecting the SaaS control plane WITHOUT acknowledging
+  the out-of-boundary path must NOT provision — the module hard-fails the plan, and
+  the Flow should guard it up front so the request never reaches apply.
+
+  PRECONDITION: x_infoblox_ddi.test_mode = 'true'. Requires the Flow to implement the
+  early boundary guard (deployment_model == universal_ddi => acknowledge_saas_boundary
+  must be true), per flow-blueprint.md / PLAYBOOK Phase 3.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>DDI negative: SaaS boundary not acknowledged is blocked</name>
+    <sys_scope>x_infoblox_ddi</sys_scope>
+    <active>true</active>
+    <description>Order with deployment_model=universal_ddi and acknowledge_saas_boundary unchecked; assert the request is blocked (not closed complete) and the reason cites the boundary.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Impersonate User</step_config_title>
+    <description>Impersonate the requester (ddi.requester).</description>
+    <inputs>user = ddi.requester</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Service Catalog - Open a Catalog Item</step_config_title>
+    <description>Open "Request a DDI-backed subnet".</description>
+    <inputs>catalog_item = Request a DDI-backed subnet</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Service Catalog - Set Catalog Item Variable Values</step_config_title>
+    <description>Same as the happy path BUT deployment_model = universal_ddi and acknowledge_saas_boundary = false (unchecked).</description>
+    <inputs>
+      (happy-path values) ...
+      deployment_model          = universal_ddi
+      acknowledge_saas_boundary = false
+    </inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Service Catalog - Submit a Catalog Item (Order Now)</step_config_title>
+    <description>Order it; capture the RITM.</description>
+    <inputs>outputs: request_item (RITM sys_id)</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>500</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the request was blocked by the boundary guard: not closed complete, and a work note / close notes cite acknowledge_saas_boundary.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('400').request_item;
+  var gr = new GlideRecord('sc_req_item');
+  if (!gr.get(ritm)) { stepResult.setFailed('RITM not found'); return; }
+  var notClosed = gr.getValue('state') != '3';                 // must NOT be Closed Complete
+  var notes = (gr.getValue('work_notes') || '').toLowerCase();
+  var citesBoundary = notes.indexOf('acknowledge_saas_boundary') > -1 || notes.indexOf('boundary') > -1;
+  (notClosed && citesBoundary)
+    ? stepResult.setSuccess()
+    : stepResult.setFailed('expected blocked+boundary note; closed=' + (!notClosed) + ' citesBoundary=' + citesBoundary);
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
