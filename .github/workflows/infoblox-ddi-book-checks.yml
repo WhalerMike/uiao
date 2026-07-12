@@ -1,0 +1,94 @@
+name: Infoblox DDI Book Checks
+
+# Book-scoped CI for infoblox-ddi-book/ — validates the volume's own IaC and
+# scripts, which the repo's other CI does not cover (see
+# infoblox-ddi-book/REVIEW-AND-IMPROVEMENTS.md §2.1). Only runs when the book
+# changes. Two tiers:
+#   * BLOCKING  — checks proven clean locally (bash -n, node --check).
+#   * ADVISORY  — shellcheck + `terraform fmt/validate` start non-blocking
+#     (continue-on-error) while the modules are acknowledged starter skeletons;
+#     flip to blocking once the "gold exemplar" (REVIEW §2.2) hardens them.
+on:
+  pull_request:
+    paths:
+      - 'infoblox-ddi-book/**'
+      - '.github/workflows/infoblox-ddi-book-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infoblox-ddi-book/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scripts:
+    name: Shell + JS static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # BLOCKING — every *.sh must parse (this caught the stray </content>
+      # tags that had corrupted the gcp-lz-automation scripts).
+      - name: bash -n (syntax) — blocking
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            if bash -n "$f"; then echo "ok   $f"; else echo "FAIL $f"; fail=1; fi
+          done < <(find infoblox-ddi-book -name '*.sh' | sort)
+          exit $fail
+
+      # BLOCKING — Script Includes must parse under Node.
+      - name: node --check (Script Includes) — blocking
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            if node --check "$f"; then echo "ok   $f"; else echo "FAIL $f"; fail=1; fi
+          done < <(find infoblox-ddi-book/servicenow-app -name '*.js' | sort)
+          exit $fail
+
+      # ADVISORY — shellcheck warnings are informational until scripts harden.
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: shellcheck — advisory (non-blocking)
+        continue-on-error: true
+        run: |
+          find infoblox-ddi-book -name '*.sh' -print0 \
+            | xargs -0 shellcheck --severity=warning --external-sources || true
+
+  terraform:
+    name: Terraform fmt + validate (advisory)
+    runs-on: ubuntu-latest
+    # ADVISORY — the per-platform terraform/ modules are labeled starter
+    # skeletons (placeholder image SKUs, two-phase DDI-object apply). This job
+    # reports fmt/validate status without blocking; harden per REVIEW §2.2/2.3.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt -check (recursive)
+        continue-on-error: true
+        run: terraform fmt -check -recursive infoblox-ddi-book
+
+      - name: terraform validate (each module, no backend)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          # Validate every directory that has a top-level .tf file.
+          while IFS= read -r d; do
+            echo "::group::validate $d"
+            terraform -chdir="$d" init -backend=false -input=false -no-color || echo "init issue in $d (skeleton)"
+            terraform -chdir="$d" validate -no-color || echo "validate issue in $d (skeleton)"
+            echo "::endgroup::"
+          done < <(find infoblox-ddi-book -name '*.tf' -exec dirname {} \; | sort -u)

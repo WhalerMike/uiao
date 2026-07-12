@@ -35,19 +35,28 @@ correctness — do first), **P1** (completeness — do next), **P2** (polish / U
 
 ## 2. P0 — Credibility & correctness gaps (do first)
 
-### 2.1 The book's own code is not tested by CI
-The repository has strong CI (schema validation, link-check), but **none of it validates
-the volume's IaC or scripts**. A reader who copies a module has no assurance it even
+### 2.1 The book's own code is not tested by CI — *partially addressed*
+The repository has strong CI (schema validation, link-check), but **none of it validated
+the volume's IaC or scripts**. A reader who copies a module had no assurance it even
 initializes.
-- **No `terraform fmt -check` / `terraform validate` / `tflint`** over the per-platform
-  `*/terraform/` modules and their `examples/hub-integration/`.
-- **No `shellcheck`** over the `validation/*.sh` and `servicenow/midserver-validate.sh`
-  and [`servicenow-app/mid/infoblox-ddi-validate.sh`](./servicenow-app/mid/infoblox-ddi-validate.sh).
-- **No JS lint / parse check** over the Script Includes in
-  [`servicenow-app/script-includes/`](./servicenow-app/README.md).
-- **Recommendation:** add a book-scoped CI job (start non-blocking) running
-  `terraform fmt/validate` + `tflint`, `shellcheck`, and a JS syntax lint. This alone moves
-  the artifacts from "looks right" to "provably parses/validates."
+
+> **Applied in this PR:** a book-scoped workflow —
+> [`.github/workflows/infoblox-ddi-book-checks.yml`](../.github/workflows/infoblox-ddi-book-checks.yml) —
+> now runs on any change under `infoblox-ddi-book/`. **Blocking:** `bash -n` over all 22
+> shell scripts and `node --check` over the Script Includes (both verified green locally).
+> **Advisory (non-blocking to start, per the recommendation below):** `shellcheck` and
+> `terraform fmt -check` + `terraform validate` across every module — they report status
+> while the modules remain acknowledged skeletons, and flip to blocking once the gold
+> exemplar (§2.2) hardens them.
+
+Still open: `tflint`, and promoting the advisory checks to blocking.
+- ~~No JS parse check~~ and ~~no `bash -n`~~ — **done** (blocking).
+- `shellcheck` and `terraform fmt/validate` — **wired, advisory.**
+- `tflint` — not yet added.
+- **Why the offline subset was run here:** `terraform`/`shellcheck` aren't installable in
+  this authoring sandbox (network-restricted), so they run on the CI runner; the checks
+  that *could* run locally were run, and pass. Removing the stray `</content>` tags (see
+  the diagram-cleanup work) is what makes the shell scripts pass `bash -n` at all.
 
 ### 2.2 Nothing has been deployed and validated end-to-end
 Every claim is architecture-correct but **unproven**. There is no recorded run of a module
@@ -121,7 +130,8 @@ records," but the practical gaps are real:
 ## 5. Suggested roadmap (in order)
 
 1. **Add book-scoped CI** — `terraform validate`/`tflint`, `shellcheck`, JS lint (P0.1).
-   Cheap, immediate credibility.
+   Cheap, immediate credibility. **✅ Started in this PR** (bash + JS blocking; shellcheck +
+   terraform advisory); remaining: `tflint` and promoting the advisory checks to blocking.
 2. **Ship the Azure gold exemplar** — tested deployment, `tfvars.example`, validation
    transcript, signed + ATF-tested ServiceNow update set, "verified against" banner
    (P0.2–2.4). Label the other four as patterned on it.
