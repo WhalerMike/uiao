@@ -11,12 +11,13 @@ Terraform module cannot silently drift. Exit non-zero on any gap.
 
 Run: python3 servicenow-app/catalog/contract_check.py
 """
+
 import os
 import re
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))          # .../servicenow-app/catalog
-BOOK = os.path.normpath(os.path.join(HERE, "..", ".."))    # .../infoblox-ddi-book
+HERE = os.path.dirname(os.path.abspath(__file__))  # .../servicenow-app/catalog
+BOOK = os.path.normpath(os.path.join(HERE, "..", ".."))  # .../infoblox-ddi-book
 VARS_TF = os.path.join(BOOK, "azure-alz-automation", "terraform", "variables.tf")
 VAR_SET = os.path.join(HERE, "variable-set-azure-ddi-subnet.xml")
 
@@ -41,7 +42,7 @@ def required_module_vars(path):
             j += 1
         block = txt[start:j]
         # a top-level `default =` anywhere in the block => optional
-        if not re.search(r'(^|\n)\s*default\s*=', block):
+        if not re.search(r"(^|\n)\s*default\s*=", block):
             required.add(name)
     return required
 
@@ -68,17 +69,19 @@ def main():
     print("catalog-mapped variables  :", ", ".join(sorted(mapped)) or "(none)")
     if missing:
         print()
-        print("CONTRACT FAIL — required Azure module variables NOT collected by the "
-              "catalog variable set:")
+        print("CONTRACT FAIL — required Azure module variables NOT collected by the catalog variable set:")
         for v in missing:
             print(f"  - {v}")
-        print("Add an <item_option_new> with <map_to>" + missing[0] + "</map_to> "
-              "(and the rest) to variable-set-azure-ddi-subnet.xml, or give the "
-              "module variable a default.")
+        print(
+            "Add an <item_option_new> with <map_to>" + missing[0] + "</map_to> "
+            "(and the rest) to variable-set-azure-ddi-subnet.xml, or give the "
+            "module variable a default."
+        )
         return 1
     print()
-    print(f"CONTRACT OK — all {len(required)} required Azure module variables are "
-          "collected by the catalog variable set.")
+    print(
+        f"CONTRACT OK — all {len(required)} required Azure module variables are collected by the catalog variable set."
+    )
     return 0
 
 
