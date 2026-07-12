@@ -44,30 +44,6 @@ spokes attach to. The control plane is either an on-prem/in-cloud **Grid Master*
 the internet for DNS — they resolve against the hub members, which own recursion,
 RPZ/threat feeds, and conditional forwarding.
 
-```
-                 ┌─────────────────────────────────────────────┐
-   On-prem DC ───┤  Grid Master / GMC  (or Infoblox Portal SaaS)│
-   (existing     │  control plane — mgmt path, Grid DB          │
-    Grid) DX/VPN └───────────────────────┬─────────────────────┘
-                                         │ Grid VPN 1194/udp + 2114
-        ┌────────────────────────────────┼──────────────────────────┐
-        │ Network account · shared-services (hub) VPC                │
-        │                                                            │
-        │   AZ-a: vNIOS member (DNS/DHCP)   AZ-b: vNIOS member       │
-        │        ENI0=MGMT  ENI1=LAN1            (HA pair / anycast) │
-        │                                                            │
-        │   R53 Resolver INBOUND ep  ◄── AWS VPCs resolve to Infoblox│
-        │   R53 Resolver OUTBOUND ep ──► forward zones to Infoblox   │
-        └───────────────┬───────────────────────────┬───────────────┘
-                        │ Transit Gateway (hub-spoke)│
-            ┌───────────┴────────┐        ┌──────────┴──────────┐
-            │ Workload account A │        │ Workload account B  │
-            │  spoke VPC/subnets │        │  spoke VPC/subnets  │
-            │  DHCP option set → │        │  DHCP option set →  │
-            │  hub member IPs    │        │  hub member IPs     │
-            └────────────────────┘        └─────────────────────┘
-```
-
 Resolution flow: a workload instance's DHCP option set points `domain-name-servers`
 at the hub members' LAN ENIs (reachable via TGW). The member answers authoritative
 internal zones directly, applies RPZ, and **conditionally forwards** AWS-specific
@@ -225,6 +201,16 @@ Consistency is preserved because allocations, DHCP leases, and DNS records share
 one Infoblox database — an address handed out in a spoke, its record, and its IPAM
 entry stay aligned rather than living in three disconnected systems.
 
+### Governed self-service provisioning (ServiceNow)
+
+The discovery and allocation machinery above is what an engineer drives directly. In a governed enterprise you put a **ServiceNow front door** on it so a subnet or DNS record is *requested*, *approved*, and *provisioned* through one auditable loop instead of ad-hoc API calls — the **same** Infoblox WAPI/Universal DDI operations and the **same** validation checks, now behind a catalog item and an approval gate.
+
+![AWS ServiceNow closed loop for Infoblox DDI: a Service Catalog request carrying the AWS module tfvars is approved with a separation-of-duties gate, the CPG Terraform Connector plans and applies the aws-lz-automation/terraform module on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers the A/PTR records over Infoblox WAPI/Universal DDI, the MID Server runs the three validation checks as a pass/fail gate, the Service Graph Connector reconciles the result into cmdb_ci_ip_network, and the request closes with a full audit trail while a failed gate routes back to approval](aws-lz-automation/figs/aws-sn-01-catalog-flow.png)
+
+**The governed loop for AWS:** Service Catalog request (form fields mapped to this module's `tfvars`) → Flow Designer approval + separation-of-duties gate → the **CPG Terraform Connector** applies the [`aws-lz-automation/terraform`](./aws-lz-automation/terraform/README.md) module on an **in-boundary MID Server** → **IntegrationHub REST** allocates the next-available IP and registers A/PTR over Infoblox WAPI/Universal DDI → the MID Server runs the package's three validation checks (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as a **pass/fail gate** → the **Service Graph Connector for Infoblox** reconciles the result into the CMDB (`cmdb_ci_ip_network`) → the request closes with a full audit trail. A failed gate routes back to approval; nothing is recorded as done until validation passes.
+
+Boundary discipline is unchanged: the MID Server and credential path stay **inside the ATO boundary**, secrets stay in **AWS Secrets Manager**, and the Universal DDI SaaS path remains the `acknowledge_saas_boundary`-gated exception. See **[Chapter 7 — ServiceNow Orchestration](./07-servicenow-orchestration.md)** for the certified pieces and control-family mapping, **[`aws-lz-automation/servicenow/`](./aws-lz-automation/servicenow/ServiceNow-Orchestration.md)** for this platform's catalog→`tfvars` wiring and IntegrationHub payloads, and the importable **[`servicenow-app/`](./servicenow-app/README.md)** for the actual scoped-app records.
+
 ## 9. High availability, sizing & scaling
 
 - **Grid roles.** One **Grid Master** (+ optional **Grid Master Candidate** for DR),
@@ -279,6 +265,11 @@ Validation checklist:
 5. **Failover test** — stop the AZ-a member; confirm resolution continues via AZ-b
    (anycast/HA) and DHCP leases persist.
 
+> The same checks run by the governed flow: the ServiceNow MID Server executes
+> these validations (`dns-validation.sh`, `discovery-sync-check.sh`,
+> `ipam-conflict-check.sh`) as the post-apply gate in §8's ServiceNow loop —
+> validation is identical whether an engineer runs it or the catalog flow does.
+
 Day-2: schedule **NIOS upgrades** Grid-wide (Master first, then members), monitor
 member health/query rates via SNMP (161/udp) and CloudWatch, keep **threat feeds**
 current, re-run/scheduled **vDiscovery** as accounts are added under Control Tower,
@@ -303,3 +294,5 @@ actions.
 - [AWS — Forwarding outbound DNS queries to your network](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver-forwarding-outbound-queries.html)
 - [AWS — Resolving DNS queries between VPCs and your network](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver-overview-DSN-queries-to-vpc.html)
 - [AWS — Landing Zone Accelerator on AWS](https://aws.amazon.com/solutions/implementations/landing-zone-accelerator-on-aws/)
+- [Service Graph Connector for Infoblox — ServiceNow Store](https://store.servicenow.com/store/app/eeb927621b246a50a85b16db234bcbf1)
+- [Cloud Provisioning & Governance: Terraform Connector — ServiceNow Store](https://store.servicenow.com/store/app/6ff8ef2e1be06a50a85b16db234bcbcb)

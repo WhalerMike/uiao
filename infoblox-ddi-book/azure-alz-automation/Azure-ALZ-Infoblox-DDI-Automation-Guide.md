@@ -490,6 +490,16 @@ default and recommended path**, keeping the entire control plane inside the boun
 
 ---
 
+## 12. Governed self-service via ServiceNow
+
+§10 makes IPAM an API the platform consumes. This section puts a **governed front door** on that API and on the Terraform apply itself: a ServiceNow Service Catalog item, an approval / separation-of-duties gate, the **CPG Terraform Connector** applying [`terraform/`](./terraform/README.md) on an **in-boundary MID Server**, **IntegrationHub REST** driving the Infoblox allocate/register calls, the three `validation/` scripts run as a **pass/fail gate**, and the **Service Graph Connector for Infoblox** reconciling the result into the CMDB. It is assembly of certified products, not custom glue.
+
+![Azure ServiceNow closed loop for Infoblox DDI: a catalog request mapped to this module's tfvars is approved, the CPG Terraform Connector applies terraform/ on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers A/PTR over Infoblox WAPI/Universal DDI, the MID Server runs the validation scripts as a gate, and the Service Graph Connector reconciles into cmdb_ci_ip_network before the request closes](figs/azure-sn-01-catalog-flow.png)
+
+The platform-specific wiring — the catalog-form-to-`tfvars` mapping, the IntegrationHub REST payloads, and the MID Server validation wrapper — is in [`servicenow/ServiceNow-Orchestration.md`](./servicenow/ServiceNow-Orchestration.md) and [`servicenow/integrationhub-actions.md`](./servicenow/integrationhub-actions.md). The shared model, the certified pieces, and the FedRAMP control-family mapping are in [Chapter 7](../07-servicenow-orchestration.md); the importable scoped-app records (Script Includes, REST Message, Flow blueprint, MID gate) are in [`servicenow-app/`](../servicenow-app/README.md). Boundary discipline is unchanged: MID Server in-boundary, secrets in Azure Key Vault, Universal DDI SaaS path gated by `acknowledge_saas_boundary`.
+
+---
+
 ## Sources
 
 - [Azure Landing Zones — repository (accelerator + docs)](https://github.com/Azure/Azure-Landing-Zones)

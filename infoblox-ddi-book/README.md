@@ -45,6 +45,12 @@ Each package also carries a **`servicenow/`** folder that fronts its Terraform m
 validation scripts with ServiceNow (self-service catalog → approval → apply → validate →
 CMDB), per [Chapter 7](./07-servicenow-orchestration.md). An **importable ServiceNow app skeleton** (Script Includes, REST Message, Flow blueprint, MID gate) lives in [`servicenow-app/`](./servicenow-app/README.md).
 
+The **ServiceNow governed front door is woven through the volume**, not siloed in one chapter:
+[Chapter 0](./00-introduction.md) §0.5 introduces it as part of the target operating model,
+**every platform chapter's section 8** shows the platform-specific catalog → approve → apply
+→ validate → CMDB loop, [Chapter 6](./06-cross-platform-operations.md) §6.9 unifies it across
+the estate, and each automation guide/runbook carries a "governed path" section.
+
 Figures are Mermaid sources under each `figs/`, rendered to PNG by
 [`figs/render-figs.sh`](./figs/render-figs.sh) with the shared
 [house style](./figs/HOUSE-STYLE.md).
@@ -79,6 +85,14 @@ supplies the Infoblox side.
 - **Designing the target state** → read sections 1–2 of every chapter plus Chapter 6.
 - **Standardizing** → lift the section-4 prerequisites into landing-zone guardrails and
   the section-5 runbooks into your IaC/pipelines.
+
+## Maturity & roadmap
+
+This volume is an honest **starter** — production-grade in structure and framing, explicitly
+labeled as un-certified skeletons where the IaC and ServiceNow records are concerned. A
+candid, prioritized assessment of what is strong and what to build next (test/CI gaps,
+signed update set, cost/sizing tables, DHCP/IPv6 depth, GovCloud variants) is in
+[`REVIEW-AND-IMPROVEMENTS.md`](./REVIEW-AND-IMPROVEMENTS.md).
 
 ---
 

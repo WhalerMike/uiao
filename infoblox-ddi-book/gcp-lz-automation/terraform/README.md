@@ -164,4 +164,3 @@ confirm discovery sync, conflict check).
 > jobs, and Universal DDI Portal enrollment). Pin your own provider/module
 > versions, supply your image and machine type, and **test in a sandbox project
 > first**.
-</content>

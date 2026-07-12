@@ -103,4 +103,3 @@ are isolated.
 The `validate` stage installs `dnsutils` (`dig`), `jq`, and `curl`. Runners need
 network reachability to the DDI anycast VIP, the Grid Master WAPI, and (for
 `universal_ddi`) `csp.infoblox.com`.
-</content>

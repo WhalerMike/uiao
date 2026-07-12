@@ -23,7 +23,7 @@ locals {
   # NIOS-X first-boot user-data. The join token (from Secrets Manager/SSM) enrolls
   # the host into the Portal over outbound 443. Exact schema is release-dependent —
   # verify against the current NIOS-X / Infoblox Cloud Services docs.
-  uddi_user_data = local.is_uddi ? <<-EOT
+  uddi_user_data = local.is_uddi ? (<<-EOT
     #infoblox-config
 
     default_admin_password: ${local.admin_password}
@@ -34,7 +34,7 @@ locals {
     join_token: ${local.saas_join_token}
     csp_url: ${var.infoblox_portal_url}
   EOT
-  : null
+  ) : null
 }
 
 # --- MGMT ENIs (ENI0) --------------------------------------------------

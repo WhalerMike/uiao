@@ -835,6 +835,12 @@ production-ready.
 
 ---
 
+## Optional: run this runbook through ServiceNow (governed path)
+
+Every manual step here can be driven from a **ServiceNow Service Catalog item** instead of a shell: request → approval / separation-of-duties gate → **CPG Terraform Connector** apply of [`terraform/`](./terraform/README.md) on an in-boundary MID Server → **IntegrationHub REST** allocate/register over Infoblox WAPI/Universal DDI → the [`validation/`](./validation/README.md) scripts run by the MID Server as a **pass/fail gate** → **Service Graph Connector** CMDB reconcile → close with a full audit trail. Wire it per [`servicenow/ServiceNow-Orchestration.md`](./servicenow/ServiceNow-Orchestration.md) and stand up the importable records from [`servicenow-app/`](../servicenow-app/README.md); the model and control mapping are in [Chapter 7](../07-servicenow-orchestration.md). Secrets stay in AWS Secrets Manager; the MID Server and credential path stay inside the ATO boundary.
+
+---
+
 ## Appendix A — Variable Worksheets (fill-in forms)
 
 Copy each block, replace every `____` (and any `REPLACE_ME…`) with your value, and

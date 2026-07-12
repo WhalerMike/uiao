@@ -119,4 +119,3 @@ resource "google_project_iam_member" "disco_dns_admin" {
 #     "dns.resourceRecordSets.list",
 #   ]
 # }
-</content>

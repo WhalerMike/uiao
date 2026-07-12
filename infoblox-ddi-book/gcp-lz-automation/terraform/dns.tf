@@ -187,4 +187,3 @@ resource "google_dns_managed_zone" "spoke_peering" {
 #   them from the same API-handoff seam as universal_ddi.tf's portal_enroll, or via
 #   the CSP/Universal DDI Terraform provider once wired. The Cloud DNS resources
 #   (a/c/d) apply identically on both paths.
-</content>

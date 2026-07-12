@@ -25,7 +25,7 @@ locals {
   # NIOS-X first-boot user-data. The join token (from Key Vault) enrolls the
   # host into the Portal over outbound 443. Exact schema is release-dependent —
   # verify against the current NIOS-X / Infoblox Cloud Services docs.
-  uddi_user_data = local.is_uddi ? <<-EOT
+  uddi_user_data = local.is_uddi ? (<<-EOT
     #infoblox-config
 
     default_admin_password: ${data.azurerm_key_vault_secret.admin_password.value}
@@ -36,7 +36,7 @@ locals {
     join_token: ${data.azurerm_key_vault_secret.saas_join_token[0].value}
     csp_url: ${var.infoblox_portal_url}
   EOT
-  : null
+  ) : null
 }
 
 # --- NIOS-X host NICs on the DDI subnet -------------------------------

@@ -188,4 +188,3 @@ case "${DDI_API_FLAVOR}" in
 esac
 
 log "Discovery-sync freshness check passed."
-</content>

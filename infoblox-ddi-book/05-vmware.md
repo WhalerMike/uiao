@@ -41,31 +41,6 @@ by every workload domain across the NSX fabric. Workload segments never talk to 
 Grid Master directly; they use their local NSX gateway's DNS forwarder and DHCP relay,
 which point at the Infoblox members.
 
-```
-                 VCF Management / Edge Domain (vSphere cluster)
-   ┌───────────────────────────────────────────────────────────────┐
-   │  vNIOS Grid Master (GM)  ──  vNIOS GM Candidate (GMC)          │
-   │        │  Grid comms (VPN 1194/udp + 2114/tcp)                │
-   │  vNIOS DNS/DHCP member A ── HA pair ── member B  (VRRP)        │
-   │        │ MGMT port group (dvPortGroup / VMXNET3)              │
-   └────────┼───────────────────────────────┬──────────────────────┘
-            │ conditional fwd                │ Grid comms / SaaS sync
-     ┌──────┴────────┐                ┌──────┴───────────────┐
-     │ On-prem AD DNS │                │ Existing on-prem Grid │
-     │ corp.example   │                │  or Universal DDI     │
-     └───────────────┘                └───────────────────────┘
-            ▲ NSX overlay (Geneve)             ▲ vCenter/NSX API discovery
-   ┌────────┼─────────────────────────────────┼──────────────────┐
-   │  NSX Tier-0 GW ── Tier-1 GW (per workload domain / tenant)   │
-   │     DNS forwarder ─► vNIOS members (53/tcp+udp)              │
-   │     DHCP relay ─────► vNIOS members (67-68/udp)              │
-   │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐         │
-   │  │ Segment/    │   │ Segment/    │   │ Segment/    │  …      │
-   │  │ tenant VMs  │   │ tenant VMs  │   │ tenant VMs  │         │
-   │  └─────────────┘   └─────────────┘   └─────────────┘         │
-   └─────────────────────────────────────────────────────────────┘
-```
-
 **Resolution/lease flow.** A tenant VM boots on an NSX segment → DHCP `DISCOVER`
 hits the Tier-1 DHCP relay → relayed to the vNIOS DHCP member, which allocates from
 the IPAM-authoritative range and (optionally) writes the A/PTR record → the VM
@@ -232,6 +207,16 @@ Automation / vRealize Automation**:
   consistent automatically — the core DDI promise. CNA discovery independently reaps
   orphaned objects if a VM is deleted outside Aria.
 
+### Governed self-service provisioning (ServiceNow)
+
+The discovery and allocation machinery above is what an engineer drives directly. In a governed enterprise you put a **ServiceNow front door** on it so a subnet or DNS record is *requested*, *approved*, and *provisioned* through one auditable loop instead of ad-hoc API calls — the **same** Infoblox WAPI/Universal DDI operations and the **same** validation checks, now behind a catalog item and an approval gate. (On VMware this complements the Aria Automation IPAM plugin path: ServiceNow governs the request/approval and audit; Aria/Terraform performs the provisioning.)
+
+![VMware ServiceNow closed loop for Infoblox DDI: a Service Catalog request carrying the VMware module tfvars is approved with a separation-of-duties gate, the CPG Terraform Connector plans and applies the vmware-lz-automation/terraform module on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers the A/PTR records over Infoblox WAPI/Universal DDI, the MID Server runs the three validation checks as a pass/fail gate, the Service Graph Connector reconciles the result into cmdb_ci_ip_network, and the request closes with a full audit trail while a failed gate routes back to approval](vmware-lz-automation/figs/vmware-sn-01-catalog-flow.png)
+
+**The governed loop for VMware:** Service Catalog request (form fields mapped to this module's `tfvars`) → Flow Designer approval + separation-of-duties gate → the **CPG Terraform Connector** applies the [`vmware-lz-automation/terraform`](./vmware-lz-automation/terraform/README.md) module on an **in-boundary MID Server** → **IntegrationHub REST** allocates the next-available IP and registers A/PTR over Infoblox WAPI/Universal DDI → the MID Server runs the package's three validation checks (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as a **pass/fail gate** → the **Service Graph Connector for Infoblox** reconciles the result into the CMDB (`cmdb_ci_ip_network`) → the request closes with a full audit trail. A failed gate routes back to approval; nothing is recorded as done until validation passes.
+
+Boundary discipline is unchanged: the MID Server and credential path stay **inside the ATO boundary**, secrets stay in a vault (never in ServiceNow), and the Universal DDI SaaS path remains the `acknowledge_saas_boundary`-gated exception. See **[Chapter 7 — ServiceNow Orchestration](./07-servicenow-orchestration.md)** for the certified pieces and control-family mapping, **[`vmware-lz-automation/servicenow/`](./vmware-lz-automation/servicenow/ServiceNow-Orchestration.md)** for this platform's catalog→`tfvars` wiring and IntegrationHub payloads, and the importable **[`servicenow-app/`](./servicenow-app/README.md)** for the actual scoped-app records.
+
 ## 9. High availability, sizing & scaling
 
 **Grid roles & HA.** Grid Master + Grid Master Candidate for control-plane HA;
@@ -292,6 +277,8 @@ DNS/DHCP, and you can run several for scale/redundancy.
 6. **Failover:** power off the active HA member; confirm VRRP moves the VIP and DNS/DHCP
    continue; confirm DRS anti-affinity kept nodes on separate hosts.
 
+> The same checks run by the governed flow: the ServiceNow MID Server executes these validations (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as the post-apply gate in §8's ServiceNow loop — validation is identical whether an engineer runs it or the catalog flow does.
+
 **Day-2 operations.** Patch/upgrade NIOS via the Grid (rolling, GM-coordinated —
 snapshot/back up the Grid DB first); monitor member health, DNS query rate, and DHCP
 pool utilization via SNMP/Infoblox reporting; periodically reconcile CNA discovery
@@ -314,3 +301,5 @@ API credentials on the enterprise schedule.
 - [Broadcom TechDocs — Infoblox-specific properties & extensible attributes for IPAM in Aria Automation](https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-16/assembler-on-prem-using-and-managing-master-map-8-16/starter-kit-introduction/infoblox-external-ipam-integration-use-case-grouper/using-infloblox-specific-properties-for-external-ipam.html)
 - [Broadcom TechDocs — Configure DHCP Relay on an NSX Segment](https://techdocs.broadcom.com/us/en/vmware-cis/nsx/vmware-nsx/4-2/administration-guide/nsx-dhcp-policy-ui/configure-nsx-dhcp-service/configure-dhcp-relay-on-an-nsx-segment.html)
 - [Broadcom TechDocs — Attach a DHCP Profile to a Tier-0 or Tier-1 Gateway](https://techdocs.broadcom.com/us/en/vmware-cis/nsx/nsxt-dc/3-0/administration-guide/ip-address-management-ipam/attach-an-nsx-dhcp-profile-to-a-tier-0-or-tier-1-gateway.html)
+- [Service Graph Connector for Infoblox — ServiceNow Store](https://store.servicenow.com/store/app/eeb927621b246a50a85b16db234bcbf1)
+- [Cloud Provisioning & Governance: Terraform Connector — ServiceNow Store](https://store.servicenow.com/store/app/6ff8ef2e1be06a50a85b16db234bcbcb)
