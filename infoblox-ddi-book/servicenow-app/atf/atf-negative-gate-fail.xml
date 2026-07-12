@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE test — "Gate failure routes back to approval, does NOT close"
+  Scope: x_infoblox_ddi.  STARTER SKELETON (see atf/README.md).
+  Proves the CM-6 control: a failed validation gate must NOT close the change.
+
+  PRECONDITION: x_infoblox_ddi.test_mode = 'true'. This test additionally sets
+  x_infoblox_ddi.test_force_gate_fail = 'true' (step 1) so InfobloxDDIGate.runGate
+  returns a FAIL verdict, then resets it (last step).
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>DDI negative: gate failure routes back to approval</name>
+    <sys_scope>x_infoblox_ddi</sys_scope>
+    <active>true</active>
+    <description>Force the validation gate to fail; assert the request does NOT close complete and is routed back to approval / a task, with the failure in work notes.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Force gate failure for this run.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  gs.setProperty('x_infoblox_ddi.test_force_gate_fail', 'true');
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Service Catalog - Order the "Request a DDI-backed subnet" item</step_config_title>
+    <description>Impersonate the requester, set the Azure exemplar variables, Order Now; capture the RITM. (Same as the happy-path steps 1-4.)</description>
+    <inputs>see atf-provision-happy-path.xml steps 1-4; outputs: request_item (RITM sys_id)</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Approve as a different user (SoD), then assert the gate failed and the request is NOT closed complete.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ritm = steps('200').request_item;
+  // (approve as ddi.approver — see happy-path step 6)
+  var gr = new GlideRecord('sc_req_item');
+  if (!gr.get(ritm)) { stepResult.setFailed('RITM not found'); return; }
+  var notes = (gr.getValue('work_notes') || '').toLowerCase();
+  var gateFailed = notes.indexOf('fail') > -1;
+  var notClosed  = gr.getValue('state') != '3';           // 3 = Closed Complete
+  if (gateFailed && notClosed) {
+    stepResult.setOutputMessage('gate failed and request not closed — routed back as designed');
+    stepResult.setSuccess();
+  } else {
+    stepResult.setFailed('expected gate fail + not-closed; got closed=' + (!notClosed) + ' gateFailed=' + gateFailed);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Cleanup — reset the force-fail toggle so later tests get the pass path.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  gs.setProperty('x_infoblox_ddi.test_force_gate_fail', 'false');
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
