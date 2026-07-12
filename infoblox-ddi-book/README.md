@@ -12,6 +12,16 @@ runbooks are directly comparable across platforms.
 > Accelerator, Google Cloud Foundation, OCI Landing Zone, VMware Cloud Foundation).
 > Every chapter keeps that scope. See [Chapter 0](./00-introduction.md).
 
+> **Series membership:** this kit is also **Volume VIII — Multi-Cloud DDI
+> Landing-Zone Automation** of the Federal Application-Aware Networking series.
+> It is bound to the series through the compliance spine
+> (`aan-compliance-spine.yml`, `vol-8`) and the volume overview at
+> `inbox/Application Aware Networking/Vol_VIII_Book_00_FedAAN_DDI_Automation_Overview.qmd`,
+> without relocating this kit — it remains independently distributable. The kit is
+> intentionally multi-CSP (a deliberate breadth exception to the series' current
+> GCC-Moderate scope); federal control closure is operated at the GCC-Moderate
+> ServiceNow front door in [Chapter 7 §7.4](./07-servicenow-orchestration.md).
+
 ## Table of contents
 
 | # | Chapter | Platform |
