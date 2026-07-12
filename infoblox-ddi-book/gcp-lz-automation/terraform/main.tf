@@ -207,4 +207,3 @@ data "google_secret_manager_secret_version" "saas_join_token" {
   secret  = var.saas_join_token_secret_id
   version = "latest"
 }
-</content>

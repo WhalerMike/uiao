@@ -44,28 +44,6 @@ must touch two VPCs uses **two NICs on two VPCs**; a member serving one Shared V
 uses a single NIC. Management (Grid VPN) and DNS data typically ride the same
 interface in cloud unless you split them across the two NICs.
 
-```
-                    ┌───────────────────────────────────────────────┐
-   On-prem DC ──────┤  Grid Master / GMC   OR   Universal DDI portal │
-  (existing Grid /  │  control plane (mgmt), Cloud Interconnect/VPN  │
-   Interconnect)    └───────────────────────┬───────────────────────┘
-                                            │ Grid VPN 1194/udp + 2114/tcp
-                                            │  (or 443 SaaS sync)
-  ┌─────────────────────────────────────────┴──────────────────────────────┐
-  │ Host project — HUB / Shared VPC (connectivity landing zone)             │
-  │   • vNIOS member A (zone us-central1-a)   • vNIOS member B (…-b) anycast│
-  │   • Inbound DNS server policy  → GCP forwards to Infoblox               │
-  │   • Outbound policy / alt name server → VMs resolve via Infoblox        │
-  │   • Conditional forward ↔ Cloud DNS private zones & googleapis.com      │
-  └──────────┬───────────────────────────────────────────┬─────────────────┘
-             │ Shared VPC subnet share / DNS peering      │
-  ┌──────────┴──────────┐                      ┌──────────┴──────────┐
-  │ Service project 1   │                      │ Service project 2   │
-  │  workload subnets   │                      │  workload subnets   │
-  │  VMs → 169.254.169.254 → Cloud DNS → Infoblox                   │
-  └─────────────────────┘                      └─────────────────────┘
-```
-
 Resolution flow: a VM queries `169.254.169.254`; Cloud DNS applies the VPC's server
 policy / forwarding / peering zones; internal-corp and reverse names go to the
 Infoblox members; Google-service and Cloud-DNS-private names stay in Cloud DNS; the
@@ -209,6 +187,16 @@ vDiscovery on a schedule reconciles adds/moves/deletes; because DHCP for most GC
 subnets is Google-managed, IPAM tracks those as discovered/leased-by-platform while
 Infoblox remains the authoritative record for allocations, reservations, and DNS.
 
+### Governed self-service provisioning (ServiceNow)
+
+The discovery and allocation machinery above is what an engineer drives directly. In a governed enterprise you put a **ServiceNow front door** on it so a subnet or DNS record is *requested*, *approved*, and *provisioned* through one auditable loop instead of ad-hoc API calls — the **same** Infoblox WAPI/Universal DDI operations and the **same** validation checks, now behind a catalog item and an approval gate.
+
+![Google Cloud ServiceNow closed loop for Infoblox DDI: a Service Catalog request carrying the GCP module tfvars is approved with a separation-of-duties gate, the CPG Terraform Connector plans and applies the gcp-lz-automation/terraform module on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers the A/PTR records over Infoblox WAPI/Universal DDI, the MID Server runs the three validation checks as a pass/fail gate, the Service Graph Connector reconciles the result into cmdb_ci_ip_network, and the request closes with a full audit trail while a failed gate routes back to approval](gcp-lz-automation/figs/gcp-sn-01-catalog-flow.png)
+
+**The governed loop for Google Cloud:** Service Catalog request (form fields mapped to this module's `tfvars`) → Flow Designer approval + separation-of-duties gate → the **CPG Terraform Connector** applies the [`gcp-lz-automation/terraform`](./gcp-lz-automation/terraform/README.md) module on an **in-boundary MID Server** → **IntegrationHub REST** allocates the next-available IP and registers A/PTR over Infoblox WAPI/Universal DDI → the MID Server runs the package's three validation checks (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as a **pass/fail gate** → the **Service Graph Connector for Infoblox** reconciles the result into the CMDB (`cmdb_ci_ip_network`) → the request closes with a full audit trail. A failed gate routes back to approval; nothing is recorded as done until validation passes.
+
+Boundary discipline is unchanged: the MID Server and credential path stay **inside the ATO boundary**, secrets stay in **Secret Manager**, and the Universal DDI SaaS path remains the `acknowledge_saas_boundary`-gated exception. See **[Chapter 7 — ServiceNow Orchestration](./07-servicenow-orchestration.md)** for the certified pieces and control-family mapping, **[`gcp-lz-automation/servicenow/`](./gcp-lz-automation/servicenow/ServiceNow-Orchestration.md)** for this platform's catalog→`tfvars` wiring and IntegrationHub payloads, and the importable **[`servicenow-app/`](./servicenow-app/README.md)** for the actual scoped-app records.
+
 ## 9. High availability, sizing & scaling
 
 - **Grid roles:** one Grid Master + a Grid Master Candidate (separate zone/region);
@@ -254,6 +242,8 @@ Infoblox remains the authoritative record for allocations, reservations, and DNS
 5. **Failover test:** stop the primary member's DNS service (or the VM) and confirm
    the second zone's member/anycast VIP keeps answering; promote the GMC in a drill.
 
+> The same checks run by the governed flow: the ServiceNow MID Server executes these validations (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as the post-apply gate in §8's ServiceNow loop — validation is identical whether an engineer runs it or the catalog flow does.
+
 **Day-2 operations**
 - Schedule vDiscovery and reconcile IPAM drift; review label→network-view mappings as
   new projects onboard.
@@ -285,3 +275,5 @@ Infoblox remains the authoritative record for allocations, reservations, and DNS
 - [Google Cloud — Cloud forwarding, peering and zones](https://cloud.google.com/blog/products/networking/cloud-forwarding-peering-and-zones)
 - [Google Cloud — Cloud DNS peering in a Shared VPC environment](https://cloud.google.com/blog/products/networking/how-to-use-cloud-dns-peering-in-a-shared-vpc-environment/)
 - [Google Cloud — Landing zone design](https://cloud.google.com/architecture/landing-zones)
+- [Service Graph Connector for Infoblox — ServiceNow Store](https://store.servicenow.com/store/app/eeb927621b246a50a85b16db234bcbf1)
+- [Cloud Provisioning & Governance: Terraform Connector — ServiceNow Store](https://store.servicenow.com/store/app/6ff8ef2e1be06a50a85b16db234bcbcb)

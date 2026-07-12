@@ -81,4 +81,3 @@ Any script exiting non-zero (`set -euo pipefail` + explicit `fail`) aborts the
 - `bash` 4+ (`mapfile`, `IN()` jq builtin), `curl`, `jq`
 - `dig` (bind-utils / dnsutils) preferred, `nslookup` fallback
 - Network path from the runner to the DDI VIP / Grid Master / CSP endpoint.
-</content>

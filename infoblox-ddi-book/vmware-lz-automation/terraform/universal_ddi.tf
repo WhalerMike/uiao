@@ -75,7 +75,9 @@ resource "vsphere_virtual_machine" "niosx" {
 
   ovf_deploy {
     allow_unverified_ssl_cert = var.allow_unverified_ssl
-    content_library_item_id   = try(var.vnios_ovf.content_library_item, null) != null ? data.vsphere_content_library_item.niosx[0].id : null
+    # NOTE: content_library_item_id is not a valid ovf_deploy argument in the vsphere
+    # provider (v2.x). Deploy the vNIOS OVA via local_ovf_path/remote_ovf_url below;
+    # content-library deployment requires the vSphere Automation SDK, not this block.
     local_ovf_path            = try(var.vnios_ovf.local_ovf_path, null)
     deployment_option         = try(var.vnios_ovf.deployment_option, var.vnios_appliance_model)
     disk_provisioning         = var.disk_thin_provisioned ? "thin" : "eagerZeroedThick"
@@ -99,7 +101,7 @@ resource "vsphere_virtual_machine" "niosx" {
 }
 
 # --- DRS anti-affinity for NIOS-X hosts (keep the pair on separate hosts) -----
-resource "vsphere_compute_cluster_anti_affinity_rule" "niosx" {
+resource "vsphere_compute_cluster_vm_anti_affinity_rule" "niosx" {
   count               = local.uddi_member_count >= 2 ? 1 : 0
   name                = "${var.name_prefix}-niosx-anti-affinity"
   compute_cluster_id  = data.vsphere_compute_cluster.cluster.id

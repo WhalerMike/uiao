@@ -45,27 +45,6 @@ A recommended layout for the self-managed Grid model:
 
 ![Multi-cloud Grid control-plane topology: a single Grid Master plus Grid Master Candidate on-prem/VMware anchoring vNIOS member pairs in each of the Azure hub VNet, AWS network-account VPC, GCP host VPC, and OCI hub VCN over private Grid VPN paths](figs/xplat-01-grid-topology.png)
 
-```mermaid
-graph TD
-  GM[Grid Master + GMC<br/>on-prem / VMware mgmt domain] 
-  subgraph Azure hub VNet
-    AZ1[vNIOS member pair<br/>DNS/DHCP anycast]
-  end
-  subgraph AWS network account VPC
-    AW1[vNIOS member pair<br/>DNS/DHCP anycast]
-  end
-  subgraph GCP host VPC
-    GC1[vNIOS member pair]
-  end
-  subgraph OCI hub VCN
-    OC1[vNIOS member pair]
-  end
-  GM --- AZ1
-  GM --- AW1
-  GM --- GC1
-  GM --- OC1
-```
-
 Design rules that apply regardless of platform:
 
 - **Grid Master lives where your operational gravity is.** For most enterprises that is
@@ -133,6 +112,10 @@ Treat DDI as code, consistently across platforms:
   across every cloud and have discovery map those tags into IPAM extensible attributes, so
   one query answers "what is this IP, who owns it, and where does it live" across all five
   platforms.
+- **A governed front door.** The pipeline path above is engineer-driven; put a **ServiceNow**
+  self-service catalog in front of it for the request/approval/audit loop — one governance
+  model across all five platforms. This is developed estate-wide in §6.9 and per platform in
+  each chapter's section 8.
 
 ## 6.6 Resilience & disaster recovery
 
@@ -174,6 +157,35 @@ Treat DDI as code, consistently across platforms:
    and register automatically (§6.5).
 7. **Prove DR** — game-day the control-plane and member failovers (§6.6).
 
+## 6.9 Governed self-service across the estate (ServiceNow)
+
+§6.5 makes DDI an API. This section puts **one governed front door** on that API for every
+platform at once. Rather than five separate automation entry points, a single **ServiceNow**
+Service Catalog fronts all five per-platform Terraform modules and the Infoblox
+allocate/register calls behind them — with one approval model, one change record, and one
+CMDB reconciled back *from* Infoblox as the source of truth.
+
+![ServiceNow to Terraform to Infoblox integration architecture: the ServiceNow catalog, Flow Designer, IntegrationHub, and the Service Graph Connector drive a MID Server inside the boundary, which runs each per-platform Terraform module against its cloud and calls Infoblox over WAPI/Universal DDI, while Infoblox feeds the CMDB through the Service Graph Connector](figs/sn-02-integration-architecture.png)
+
+- **One catalog, five modules.** The **CPG Terraform Connector** ingests each platform
+  package's `terraform/` module as a catalog item; the requester picks the target platform
+  and the form maps to that module's `tfvars`.
+- **One approval + audit model.** The same separation-of-duties gate, change record, and
+  audit trail apply whether the subnet lands in Azure, AWS, GCP, OCI, or VMware — consistent
+  governance across tenancies (§6.7), and the evidence an auditor asks for.
+- **One validation gate.** Each platform's three `validation/` scripts run on the
+  **in-boundary MID Server** as the post-apply gate; a red check blocks closure everywhere,
+  identically.
+- **One CMDB, reconciled from IPAM.** The **Service Graph Connector for Infoblox** keeps
+  `cmdb_ci_ip_network` reflecting Infoblox — the single authoritative IPAM of §6.1 — not a
+  per-cloud guess.
+
+The boundary discipline is uniform: MID Server in-boundary, secrets in each platform's own
+vault, and the Universal DDI SaaS path gated by `acknowledge_saas_boundary`. Full model,
+certified pieces, and the FedRAMP control-family mapping are in
+[Chapter 7](./07-servicenow-orchestration.md); the importable scoped-app records are in
+[`servicenow-app/`](./servicenow-app/README.md).
+
 ---
 
 ## Sources
@@ -183,3 +195,5 @@ Treat DDI as code, consistently across platforms:
 - [Infoblox — Response Policy Zones (RPZ) / DNS security](https://www.infoblox.com/products/threat-defense/)
 - [Infoblox Terraform provider (NIOS)](https://registry.terraform.io/providers/infobloxopen/infoblox/latest/docs)
 - [Infoblox — Anycast DNS with NIOS](https://docs.infoblox.com/space/nios)
+- [Service Graph Connector for Infoblox — ServiceNow Store](https://store.servicenow.com/store/app/eeb927621b246a50a85b16db234bcbf1)
+- [Cloud Provisioning & Governance: Terraform Connector — ServiceNow Store](https://store.servicenow.com/store/app/6ff8ef2e1be06a50a85b16db234bcbcb)

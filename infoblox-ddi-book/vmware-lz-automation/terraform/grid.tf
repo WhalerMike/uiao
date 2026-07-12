@@ -10,7 +10,7 @@
 #                                              across esxi_hosts. First-boot config
 #                                              (temp license + admin pw + static IP
 #                                              + grid-join) via OVF vApp properties.
-#   * vsphere_compute_cluster_anti_affinity_rule — keep the HA pair on separate
+#   * vsphere_compute_cluster_vm_anti_affinity_rule — keep the HA pair on separate
 #                                              ESXi hosts (contract §9).
 #
 # All resources here have count = 0 when deployment_model = "universal_ddi".
@@ -95,7 +95,9 @@ resource "vsphere_virtual_machine" "grid" {
   # Deploy from the vNIOS OVA/OVF — content-library item OR local path.
   ovf_deploy {
     allow_unverified_ssl_cert = var.allow_unverified_ssl
-    content_library_item_id   = try(var.vnios_ovf.content_library_item, null) != null ? data.vsphere_content_library_item.vnios[0].id : null
+    # NOTE: content_library_item_id is not a valid ovf_deploy argument in the vsphere
+    # provider (v2.x). Deploy the vNIOS OVA via local_ovf_path/remote_ovf_url below;
+    # content-library deployment requires the vSphere Automation SDK, not this block.
     local_ovf_path            = try(var.vnios_ovf.local_ovf_path, null)
     deployment_option         = try(var.vnios_ovf.deployment_option, var.vnios_appliance_model)
     disk_provisioning         = var.disk_thin_provisioned ? "thin" : "eagerZeroedThick"
@@ -128,7 +130,7 @@ resource "vsphere_virtual_machine" "grid" {
 
 # --- DRS VM-VM anti-affinity: keep the HA pair on separate ESXi hosts --------
 # Requires >=2 members; contract §9. A single-member (lab) deploy skips it.
-resource "vsphere_compute_cluster_anti_affinity_rule" "ddi" {
+resource "vsphere_compute_cluster_vm_anti_affinity_rule" "ddi" {
   count               = local.grid_member_count >= 2 ? 1 : 0
   name                = "${var.name_prefix}-anti-affinity"
   compute_cluster_id  = data.vsphere_compute_cluster.cluster.id

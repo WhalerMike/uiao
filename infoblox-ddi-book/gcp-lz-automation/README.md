@@ -74,4 +74,3 @@ sandbox project first.
 
 *Independent of UIAO governance canon; vendor-integration documentation, self-contained
 under `infoblox-ddi-book/gcp-lz-automation/`.*
-</content>

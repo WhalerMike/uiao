@@ -130,4 +130,3 @@ if [ "${conflicts}" -gt 0 ]; then
   fail "${conflicts} IPAM network conflict(s) detected"
 fi
 log "IPAM conflict check passed."
-</content>

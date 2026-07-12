@@ -41,33 +41,6 @@ Private Resolver inbound endpoint**, and the resolver's **outbound endpoint** fo
 corporate namespaces back to Infoblox. Grid/SaaS control traffic ties everything to a
 single authoritative control plane.
 
-```mermaid
-flowchart TB
-  subgraph OnPrem["On-prem DC"]
-    GM["Grid Master / GMC\n(or Universal DDI SaaS Portal)"]
-  end
-  subgraph Conn["Connectivity subscription — Hub VNet"]
-    direction TB
-    IB1["vNIOS member 1\n(AZ1) DNS 53"]
-    IB2["vNIOS member 2\n(AZ2) DNS 53"]
-    PR["Azure DNS Private Resolver\ninbound /28 + outbound /28\nforwarding ruleset"]
-    PDNS["Azure Private DNS zones\n+ privatelink.* zones"]
-  end
-  subgraph Spoke1["Spoke A — Workload VNet"]
-    W1["VMs → VNet DNS = IB member IPs"]
-  end
-  subgraph Spoke2["Spoke B — Workload VNet"]
-    W2["VMs → VNet DNS = IB member IPs"]
-  end
-  GM -- "Grid VPN 1194/udp + 2114/tcp\n(or 443 SaaS sync)" --> IB1
-  GM --- IB2
-  W1 -- "peering" --> IB1
-  W2 -- "peering" --> IB2
-  IB1 -- "cond. fwd Azure/privatelink zones\n→ inbound endpoint" --> PR
-  PR -- "resolves" --> PDNS
-  PR -- "outbound ruleset:\ncorp.example → IB member IPs" --> IB1
-```
-
 **Control-plane placement:** hub, always. **Management vs. data path:** Grid
 management (1194/udp VPN + 2114/tcp) and SaaS sync (443/tcp outbound) are separate
 from the DNS data path (53). **Resolution flow:** spoke VM → Infoblox member →
@@ -217,6 +190,16 @@ DNS-Zone-Contributor rights, forward/reverse records stay consistent with the
 discovered addresses; otherwise discovery is read-only and Azure DNS remains the
 writer for those zones.
 
+### Governed self-service provisioning (ServiceNow)
+
+The discovery and allocation machinery above is what an engineer drives directly. In a governed enterprise you put a **ServiceNow front door** on it so a subnet or DNS record is *requested*, *approved*, and *provisioned* through one auditable loop instead of ad-hoc API calls — the **same** Infoblox WAPI/Universal DDI operations and the **same** validation checks, now behind a catalog item and an approval gate.
+
+![Azure ServiceNow closed loop for Infoblox DDI: a Service Catalog request carrying the Azure module tfvars is approved with a separation-of-duties gate, the CPG Terraform Connector plans and applies the azure-alz-automation/terraform module on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers the A/PTR records over Infoblox WAPI/Universal DDI, the MID Server runs the three validation checks as a pass/fail gate, the Service Graph Connector reconciles the result into cmdb_ci_ip_network, and the request closes with a full audit trail while a failed gate routes back to approval](azure-alz-automation/figs/azure-sn-01-catalog-flow.png)
+
+**The governed loop for Azure:** Service Catalog request (form fields mapped to this module's `tfvars`) → Flow Designer approval + separation-of-duties gate → the **CPG Terraform Connector** applies the [`azure-alz-automation/terraform`](./azure-alz-automation/terraform/README.md) module on an **in-boundary MID Server** → **IntegrationHub REST** allocates the next-available IP and registers A/PTR over Infoblox WAPI/Universal DDI → the MID Server runs the package's three validation checks (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as a **pass/fail gate** → the **Service Graph Connector for Infoblox** reconciles the result into the CMDB (`cmdb_ci_ip_network`) → the request closes with a full audit trail. A failed gate routes back to approval; nothing is recorded as done until validation passes.
+
+Boundary discipline is unchanged: the MID Server and credential path stay **inside the ATO boundary**, secrets stay in **Azure Key Vault**, and the Universal DDI SaaS path remains the `acknowledge_saas_boundary`-gated exception. See **[Chapter 7 — ServiceNow Orchestration](./07-servicenow-orchestration.md)** for the certified pieces and control-family mapping, **[`azure-alz-automation/servicenow/`](./azure-alz-automation/servicenow/ServiceNow-Orchestration.md)** for this platform's catalog→`tfvars` wiring and IntegrationHub payloads, and the importable **[`servicenow-app/`](./servicenow-app/README.md)** for the actual scoped-app records.
+
 ## 9. High availability, sizing & scaling
 
 - **Member roles:** at minimum two DNS members in the hub; for a self-managed Grid,
@@ -267,6 +250,8 @@ writer for those zones.
 5. **Failover test:** stop/deallocate one member; confirm the anycast/second member
    keeps answering and the Grid stays converged.
 
+> This checklist doubles as the ServiceNow gate: the same checks run by the governed flow. The ServiceNow MID Server executes these validations (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as the post-apply gate in §8's ServiceNow loop — validation is identical whether an engineer runs it or the catalog flow does.
+
 **Day-2**
 
 - Re-run/schedule vDiscovery; review drift and reconcile overlapping CIDRs.
@@ -293,3 +278,5 @@ writer for those zones.
 - [Microsoft — Private Link and DNS integration at scale (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/private-link-and-dns-integration-at-scale)
 - [Microsoft — DNS for on-premises and Azure resources (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/dns-for-on-premises-and-azure-resources)
 - [Microsoft — What is an Azure landing zone? (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/)
+- [Service Graph Connector for Infoblox — ServiceNow Store](https://store.servicenow.com/store/app/eeb927621b246a50a85b16db234bcbf1)
+- [Cloud Provisioning & Governance: Terraform Connector — ServiceNow Store](https://store.servicenow.com/store/app/6ff8ef2e1be06a50a85b16db234bcbcb)

@@ -31,4 +31,3 @@ output "ddi_subnet_id" {
   description = "Self-link/id of the dedicated DDI subnet created in the Shared VPC host project."
   value       = google_compute_subnetwork.ddi.id
 }
-</content>

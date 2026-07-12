@@ -114,4 +114,3 @@ else
 fi
 
 log "All DNS validation checks passed."
-</content>

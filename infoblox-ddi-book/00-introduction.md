@@ -127,7 +127,30 @@ authoritative control plane (on-prem Grid Master or Universal DDI SaaS) so IPAM 
 consistent across every cloud and on-prem. Each platform chapter fills in the concrete
 resource names, ports, IAM objects, and click/CLI/IaC steps.
 
-## 0.5 How to read this volume
+## 0.5 The governed front door (ServiceNow)
+
+Deploying the fabric is half the story; **operating** it in a governed enterprise is the
+other half. Every platform chapter's provisioning process — allocate a subnet, register a
+record, reclaim on delete — can be driven directly by an engineer *or* fronted by a
+**ServiceNow** self-service catalog so the same actions are **requested, approved, and
+audited**. The Infoblox calls and the validation checks are identical; ServiceNow adds the
+approval / separation-of-duties gate, the change record, and the closed-loop CMDB sync that
+keeps the ITSM system reflecting reality instead of guessing it.
+
+![ServiceNow closed-loop for DDI: a catalog request is approved in Flow Designer, the CPG Terraform Connector plans and applies the platform module, Infoblox allocates and registers via WAPI/Universal DDI, a MID Server gate runs the validation checks, the Service Graph Connector syncs the result into the CMDB, and the request closes with a full audit trail while a failed gate returns to approval](figs/sn-01-closed-loop.png)
+
+This is **assembly of certified products** — ServiceNow's CPG Terraform Connector and the
+Service Graph Connector for Infoblox — not custom glue. It appears here, in the framing
+chapter, because it is part of the **target operating model**, not an afterthought:
+[Chapter 7](./07-servicenow-orchestration.md) develops it in full, **each platform chapter's
+section 8 shows the platform-specific loop** over that platform's Terraform module and
+validation scripts, and [`servicenow-app/`](./servicenow-app/README.md) is an importable
+starting point (Script Includes, REST Message, Flow blueprint, MID gate). The boundary
+discipline the rest of the volume applies holds here too — the MID Server that runs
+Terraform and the validation gate stays **inside the ATO boundary**, and the Universal DDI
+SaaS path is the explicit, `acknowledge_saas_boundary`-gated exception.
+
+## 0.6 How to read this volume
 
 - **Deploying one platform now?** Jump straight to its chapter and work the runbook.
 - **Designing the multi-cloud target state?** Read section 1 (overview) and 2

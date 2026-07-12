@@ -130,4 +130,3 @@ output "ddi_subnet_id" {
 output "ddi_grid_master_ip" {
   value = module.infoblox_ddi.grid_master_ip
 }
-</content>
