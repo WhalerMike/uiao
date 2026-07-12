@@ -132,11 +132,18 @@ records," but the practical gaps are real:
 
 ## 3. P1 — Completeness gaps (do next)
 
+> **DHCP, IPv6, and Cost/sizing are now addressed** in
+> [Appendix A](./appendix-A-sizing-cost-ipv6-dhcp.md) — a cross-platform sizing/cost
+> *framework* (dimensions + worksheet, deliberately no fabricated prices), IPv6/dual-stack
+> planning (IPAM, RA vs DHCPv6, `ip6.arpa`, per-platform notes), and "DHCP where it matters"
+> (VMware/NSX failover + options + fingerprinting; cloud = platform-managed + discover). The
+> remaining rows below (anycast, DR, GovCloud, migration, observability) are still open.
+
 | Area | Gap | Suggested fix |
 |---|---|---|
-| **DHCP** | Thin across the board (correctly noted as platform-managed in cloud), but hybrid **DHCP failover**, option-code design, and DHCP fingerprinting are absent — including on VMware/NSX where Infoblox DHCP is real. | A short "DHCP where it matters" section per platform; a worked NSX + Infoblox DHCP example. |
-| **IPv6 / dual-stack** | Essentially uncovered — IPAM for v6, RA/DHCPv6, reverse zones. | A dual-stack subsection in the shared reference architecture + each IPAM section. |
-| **Cost & licensing** | Sizing→SKU and licensing tiers are repeatedly deferred to the vendor; there is no cost model. | A per-platform sizing/cost table (instance class, disk, Universal DDI subscription tier, query-rate guidance) with "estimate, verify with account team." |
+| ~~**DHCP**~~ **(done — Appendix A.3)** | hybrid failover, option-code design, fingerprinting, VMware/NSX. | Delivered in Appendix A.3. |
+| ~~**IPv6 / dual-stack**~~ **(done — Appendix A.2)** | IPAM for v6, RA/DHCPv6, reverse zones. | Delivered in Appendix A.2. |
+| ~~**Cost & licensing**~~ **(done — Appendix A.1)** | sizing framework + cost dimensions + worksheet (no invented numbers). | Delivered in Appendix A.1. |
 | **Multi-region anycast** | Conceptual only; no worked BGP / route-health-injection config. | One concrete anycast example (advertisement, withdrawal on failure, per-cloud specifics). |
 | **DR** | Conceptual; no tested GM-promotion runbook with RTO/RPO. | A game-day runbook with steps, expected timings, and rollback. |
 | **GovCloud / sovereign** | Only `.com` / GCC-Moderate-on-commercial is built; Azure Government, AWS GovCloud, etc. are named but not implemented. | A GovCloud variant of the Azure exemplar (endpoints, image availability, boundary deltas). |
