@@ -288,4 +288,3 @@ resource "google_compute_firewall" "out_deny_all" {
     metadata = "INCLUDE_ALL_METADATA"
   }
 }
-</content>

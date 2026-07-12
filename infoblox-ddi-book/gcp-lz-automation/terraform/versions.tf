@@ -71,4 +71,3 @@ provider "google" {
 #   # For Universal DDI (SaaS) this provider is not used for the control plane;
 #   # the Portal (CSP) API is driven from universal_ddi.tf instead.
 # }
-</content>

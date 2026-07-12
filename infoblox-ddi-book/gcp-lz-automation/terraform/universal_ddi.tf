@@ -143,4 +143,3 @@ resource "null_resource" "portal_enroll" {
 
   depends_on = [terraform_data.boundary_guard]
 }
-</content>

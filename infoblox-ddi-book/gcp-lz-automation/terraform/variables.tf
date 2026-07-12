@@ -369,4 +369,3 @@ variable "infoblox_portal_url" {
   type        = string
   default     = "https://csp.infoblox.com"
 }
-</content>

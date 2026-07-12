@@ -166,5 +166,4 @@ constructs (03-gcp.md §7):
   local-exec seam), never a silent guess.
 - Never invent Marketplace image names, machine types, or Portal endpoints — parameterize and
   point at `gcloud compute images list` / the deployment guide.
-</content>
 </invoke>

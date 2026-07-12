@@ -48,36 +48,6 @@ The pattern mirrors Chapter 0: authoritative control plane (on-prem Grid Master 
 Universal DDI SaaS) → vNIOS DNS/DHCP members in the **hub VCN** → spokes forward
 to them → members conditionally forward to the OCI resolver.
 
-```
-                 ┌───────────────────────────────────────────────┐
-  On-prem DC ────┤  Grid Master / GMC  (or Universal DDI SaaS)    │
-  (existing Grid)│  authoritative IPAM + DNS control plane        │
-                 └───────────────┬───────────────────────────────┘
-                                 │ Grid VPN 1194/udp + 2114/tcp
-                        FastConnect / IPSec via DRG
-                                 │
-   ┌─────────────────────────────┴──────────────────────────────┐
-   │ HUB VCN  (connectivity compartment, CIS Landing Zone)       │
-   │                                                             │
-   │   AD-1 / FD-1            AD-2 / FD-2                         │
-   │   ┌────────────┐         ┌────────────┐                     │
-   │   │ vNIOS mbr  │  HA/    │ vNIOS mbr  │  (DNS/DHCP, anycast │
-   │   │ CP-2205    │◄──────► │ CP-2205    │   or LB VIP)        │
-   │   └─────┬──────┘         └─────┬──────┘                     │
-   │         │  cond. fwd 53 ↕      │                            │
-   │   ┌─────┴─────────────────────┴─────┐                       │
-   │   │ OCI DNS resolver (hub VCN)       │  listening + fwd EP   │
-   │   │ + associated private views (spokes)                     │
-   │   └──────────────────────────────────┘                      │
-   └───────────────┬───────────────────────────┬────────────────┘
-                   │ DRG v2 (hub-spoke)         │
-        ┌──────────┴─────────┐        ┌─────────┴──────────┐
-        │ Spoke VCN A         │       │ Spoke VCN B         │
-        │ subnet DHCP options │       │ subnet DHCP options │
-        │  → point DNS to hub │       │  → point DNS to hub │
-        └─────────────────────┘       └─────────────────────┘
-```
-
 **Control plane vs. data plane.** The Grid Master (on-prem or in a management
 compartment) holds the authoritative database; OCI members serve the data plane
 (DNS answers, DHCP for on-prem/extranet clients, IPAM API). Management is the
@@ -248,6 +218,16 @@ provision time and reconciling discovered state on a cadence. For on-prem/extran
 segments that vNIOS *does* serve DHCP for, the standard lease→A/PTR fixed-address
 flow keeps DHCP, DNS, and IPAM consistent on the shared database.
 
+### Governed self-service provisioning (ServiceNow)
+
+The discovery and allocation machinery above is what an engineer drives directly. In a governed enterprise you put a **ServiceNow front door** on it so a subnet or DNS record is *requested*, *approved*, and *provisioned* through one auditable loop instead of ad-hoc API calls — the **same** Infoblox WAPI/Universal DDI operations and the **same** validation checks, now behind a catalog item and an approval gate.
+
+![OCI ServiceNow closed loop for Infoblox DDI: a Service Catalog request carrying the OCI module tfvars is approved with a separation-of-duties gate, the CPG Terraform Connector plans and applies the oci-lz-automation/terraform module on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers the A/PTR records over Infoblox WAPI/Universal DDI, the MID Server runs the three validation checks as a pass/fail gate, the Service Graph Connector reconciles the result into cmdb_ci_ip_network, and the request closes with a full audit trail while a failed gate routes back to approval](oci-lz-automation/figs/oci-sn-01-catalog-flow.png)
+
+**The governed loop for OCI:** Service Catalog request (form fields mapped to this module's `tfvars`) → Flow Designer approval + separation-of-duties gate → the **CPG Terraform Connector** applies the [`oci-lz-automation/terraform`](./oci-lz-automation/terraform/README.md) module on an **in-boundary MID Server** → **IntegrationHub REST** allocates the next-available IP and registers A/PTR over Infoblox WAPI/Universal DDI → the MID Server runs the package's three validation checks (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as a **pass/fail gate** → the **Service Graph Connector for Infoblox** reconciles the result into the CMDB (`cmdb_ci_ip_network`) → the request closes with a full audit trail. A failed gate routes back to approval; nothing is recorded as done until validation passes.
+
+Boundary discipline is unchanged: the MID Server and credential path stay **inside the ATO boundary**, secrets stay in **OCI Vault**, and the Universal DDI SaaS path remains the `acknowledge_saas_boundary`-gated exception. See **[Chapter 7 — ServiceNow Orchestration](./07-servicenow-orchestration.md)** for the certified pieces and control-family mapping, **[`oci-lz-automation/servicenow/`](./oci-lz-automation/servicenow/ServiceNow-Orchestration.md)** for this platform's catalog→`tfvars` wiring and IntegrationHub payloads, and the importable **[`servicenow-app/`](./servicenow-app/README.md)** for the actual scoped-app records.
+
 ## 9. High availability, sizing & scaling
 
 - **Grid roles.** Grid Master (+ GMC) authoritative; OCI members are DNS/DHCP/IPAM
@@ -304,6 +284,8 @@ flow keeps DHCP, DNS, and IPAM consistent on the shared database.
 5. **Failover test:** stop the primary member (or its fault domain); confirm the
    anycast/LB path shifts DNS to the second member with no client reconfig.
 
+> The same checks run by the governed flow: the ServiceNow MID Server executes these validations (`dns-validation.sh`, `discovery-sync-check.sh`, `ipam-conflict-check.sh`) as the post-apply gate in §8's ServiceNow loop — validation is identical whether an engineer runs it or the catalog flow does.
+
 **Day-2 operations:**
 - **Upgrades:** upgrade the Grid Master first, then OCI members (rolling), during
   a window; snapshot boot/block volumes beforehand.
@@ -334,3 +316,5 @@ flow keeps DHCP, DNS, and IPAM consistent on the shared database.
 - [Oracle — Hub-and-spoke network topology using a DRG](https://docs.oracle.com/en/solutions/hub-spoke-network-drg/index.html)
 - [Oracle — IAM Policy Syntax](https://docs.oracle.com/en-us/iaas/Content/Identity/Concepts/policysyntax.htm)
 - [Oracle — CIS OCI Foundations Benchmark landing zone](https://docs.oracle.com/en/solutions/cis-oci-benchmark/index.html)
+- [Service Graph Connector for Infoblox — ServiceNow Store](https://store.servicenow.com/store/app/eeb927621b246a50a85b16db234bcbf1)
+- [Cloud Provisioning & Governance: Terraform Connector — ServiceNow Store](https://store.servicenow.com/store/app/6ff8ef2e1be06a50a85b16db234bcbcb)

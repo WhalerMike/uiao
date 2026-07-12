@@ -127,4 +127,3 @@ resource "google_compute_instance" "grid" {
 
   depends_on = [terraform_data.boundary_guard]
 }
-</content>

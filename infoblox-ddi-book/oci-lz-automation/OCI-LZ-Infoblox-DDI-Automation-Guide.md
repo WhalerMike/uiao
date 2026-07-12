@@ -433,6 +433,16 @@ keeping the entire control plane inside the tenancy.
 
 ---
 
+## 12. Governed self-service via ServiceNow
+
+This section puts a **governed front door** on the IPAM API and the Terraform apply: a ServiceNow Service Catalog item, an approval / separation-of-duties gate, the **CPG Terraform Connector** applying [`terraform/`](./terraform/README.md) on an **in-boundary MID Server**, **IntegrationHub REST** driving the Infoblox allocate/register calls, the three `validation/` scripts run as a **pass/fail gate**, and the **Service Graph Connector for Infoblox** reconciling into the CMDB. It is assembly of certified products, not custom glue.
+
+![OCI ServiceNow closed loop for Infoblox DDI: a catalog request mapped to this module's tfvars is approved, the CPG Terraform Connector applies terraform/ on an in-boundary MID Server, IntegrationHub REST allocates the next available IP and registers A/PTR over Infoblox WAPI/Universal DDI, the MID Server runs the validation scripts as a gate, and the Service Graph Connector reconciles into cmdb_ci_ip_network before the request closes](figs/oci-sn-01-catalog-flow.png)
+
+The platform-specific wiring is in [`servicenow/ServiceNow-Orchestration.md`](./servicenow/ServiceNow-Orchestration.md) and [`servicenow/integrationhub-actions.md`](./servicenow/integrationhub-actions.md). The shared model, certified pieces, and FedRAMP control mapping are in [Chapter 7](../07-servicenow-orchestration.md); the importable scoped-app records are in [`servicenow-app/`](../servicenow-app/README.md). Boundary discipline is unchanged: MID Server in-boundary, secrets in OCI Vault, Universal DDI SaaS path gated by `acknowledge_saas_boundary`.
+
+---
+
 ## Sources
 
 - [OCI CIS Landing Zone quickstart (Terraform)](https://github.com/oracle-quickstart/oci-cis-landingzone-quickstart)

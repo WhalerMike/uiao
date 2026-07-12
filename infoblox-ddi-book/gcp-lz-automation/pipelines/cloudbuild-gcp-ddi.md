@@ -129,4 +129,3 @@ Mirror the GitHub Actions flow: a **PR trigger** runs plan-only (`_APPLY=false`)
 Gate `prod` with a **manual approval** on the trigger and a distinct state prefix
 (`infoblox-ddi/prod`) so promotions stay isolated. The Stage-1 foundation is its own
 build/pipeline; this config only consumes its outputs.
-</content>
