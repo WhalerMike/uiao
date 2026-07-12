@@ -1,0 +1,155 @@
+# AAN deck spec — Vol VII Book 02 (M365 Federal Control Compliance Automation).
+# Scope: FedRAMP Moderate & Microsoft GCC Moderate only. Never cite High.
+deck:
+  title: "M365 Federal Control Compliance Automation"
+  subtitle: "Vol VII Book 02 — SCuBA drift, Conditional Access exceptions, and Purview state, operated as ServiceNow work"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOLUME VII"
+  date_code: "2026-07-12 15:00 ET"
+  journey:
+    - "Test"
+    - "Detect"
+    - "Raise"
+    - "Close"
+  sources:
+    ms_graph: "https://learn.microsoft.com/graph/api/resources/conditionalaccesspolicy"
+    ms_purview: "https://learn.microsoft.com/purview/"
+    cisa_scuba: "https://www.cisa.gov/scuba"
+    scubagear: "https://github.com/cisagov/ScubaGear"
+
+slides:
+  - type: title
+    notes: >
+      Book 02 is the M365 half of the coordination layer. Microsoft 365 is the SaaS control plane —
+      identity, Conditional Access, secure-configuration baselines (CISA SCuBA under BOD 25-01), and
+      Purview data protection. This book operates that surface's control state as ServiceNow work.
+      Repeat the discipline that governs the whole book: actuation stays platform-native — Graph and
+      the M365 policy engines make the change; ServiceNow governs who, when, under what approval, and
+      with what evidence. GCC-Moderate boundary throughout.
+    vendor_sources: ["cisa_scuba"]
+
+  - type: section
+    kicker: "PART ONE"
+    title: "SCuBA measures the gap; someone must own the close"
+    callout: "Conformance tooling proves where M365 deviates from the secure baseline — it authors no fix and owns no clock."
+    callout_accent: navy
+    notes: >
+      Frame the coverage gap this book fills. ScubaGear and equivalents measure drift from the secure
+      baseline; they do not own the fix. That gap is the coordination role. The architecture and the
+      Volume VI baseline-as-code prove the mechanism is sufficient; this book makes M365 closure
+      operating — every deviation gets an owner, an SLA, an approval trail, and a re-tested evidence
+      record.
+    vendor_sources: ["scubagear"]
+
+  - type: content
+    kicker: "THREE CONTROL FAMILIES"
+    title: "The same loop, three M365 surfaces"
+    layout: grid
+    cards:
+      - title: "SCuBA baseline (CM-6)"
+        body: "Each secure-baseline fail becomes a Change or Incident tagged with the SCuBA policy id and the mapped control."
+        accent: navy
+      - title: "Account & CA (AC-2)"
+        body: "Joiner/mover/leaver and Conditional-Access exceptions requested, approved, time-bound, and access-reviewed."
+        accent: teal
+      - title: "Purview (AU-10 / SC-28)"
+        body: "DLP-override and mass-label events become review Incidents; label/DLP policy changes carry a change record."
+        accent: amber
+      - title: "Roll-up (CA-7)"
+        body: "Each loop's result feeds the continuous-monitoring stream that Book 04 turns into attestation and KSI evidence."
+        accent: navy
+    callout:
+      text: "One detect-raise-actuate-close-evidence loop; three surfaces; one boundary."
+      accent: navy
+    notes: >
+      The three families each run the identical loop. Card two is where the most standing human work
+      lives — every Conditional-Access exception weakens a blocking control, so it carries a security
+      approver and an expiry, and the break-glass exclusion mandated in every blocking CA policy is
+      visible in the request record and its review, which a portal screenshot can never prove over
+      time. Card three keeps ServiceNow narrow: Purview is the actuation and evidence engine; ServiceNow
+      coordinates the human-judgment and change-control steps around it.
+    vendor_sources: ["ms_graph", "ms_purview"]
+
+  - type: build-sequence
+    kicker: "THE M365 COMPLIANCE LOOP"
+    title: "Drift to closure to evidence"
+    notes: "Fallback notes if a step omits its own."
+    steps:
+      - label: "Test"
+        sub: "read native state"
+        accent: navy
+        detail: >
+          Read the M365 control state — the SCuBA/secure-baseline result, the Conditional Access
+          inventory, the Purview posture — on a schedule, in-boundary.
+        notes: "Step one: read the native surface. In-boundary read only; the loop is only as good as the test behind it."
+      - label: "Raise"
+        sub: "typed task"
+        accent: teal
+        detail: >
+          A new deviation becomes a typed Change, Incident, or Request against the reconciled CI, with
+          the control id, a severity, and an SLA class — held as a data-driven control map, not ad hoc.
+        notes: "Step two: raise a typed task bound to the reconciled CI. The finding-to-task mapping is reproducible data."
+      - label: "Actuate"
+        sub: "platform-native"
+        accent: amber
+        detail: >
+          The owner applies the baseline setting or the access change on the M365 surface. ServiceNow
+          does not flip the setting — standing write authority over Conditional Access is itself a
+          control weakness.
+        notes: >
+          Step three is platform-native by design. Where an automated remediation is genuinely safe and
+          reversible it is invoked as a scoped, logged, individually-approved action — never blanket
+          standing access over the estate being governed.
+      - label: "Close"
+        sub: "re-test + evidence"
+        accent: teal
+        detail: >
+          The next assessment flips the result to pass; ServiceNow closes the task and stamps the
+          re-test result, the approval trail, and the change record as the evidence.
+        notes: "Step four: closure is proven by re-test, and the whole trail becomes the evidence record feeding CA-7."
+    vendor_sources: ["scubagear"]
+
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "Coordination closures — not a re-closure"
+    headers: ["Control", "Title", "Coordination mechanism"]
+    rows:
+      - cells: ["CM-6", "Configuration Settings", "SCuBA drift to a tracked Change/Incident (actuation native)"]
+        accent: teal
+      - cells: ["AC-2", "Account Management", "JML + CA-exception requests, approved and access-reviewed"]
+      - cells: ["CA-7", "Continuous Monitoring", "M365 test results ingested as attestation input to the KSI pipeline"]
+        accent: teal
+    callout:
+      text: "These operate the M365 control state as tracked work; they do not re-close the identity/data mechanisms Volumes I, III, and VI own."
+      accent: amber
+    notes: >
+      This table mirrors the book's generated Authorities-Closed-Here rows from the compliance spine.
+      Be precise with assessors: these are coordination closures — the control state operated as owned,
+      evidenced work — layered on the architecture closures, never double-counting them. All at FedRAMP
+      Moderate.
+    vendor_sources: ["uiao repo: inbox/Application Aware Networking/aan-compliance-spine.yml"]
+
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "M365 control state, now owned and evidenced"
+    layout: columns
+    cards:
+      - title: "Operated"
+        body: "SCuBA, CA, and Purview drift is owned, clocked, approved, and re-tested — not a report read and shelved."
+        accent: teal
+        status: "This book"
+      - title: "Native"
+        body: "Graph and the M365 engines actuate; ServiceNow never holds standing tenant admin."
+        accent: navy
+        status: "Guardrail"
+      - title: "Fed forward"
+        body: "The M365 posture roll-up becomes attestation and KSI evidence in Book 04."
+        accent: navy
+        status: "Book 04"
+    callout:
+      text: "Next: the identical loop on Azure — Policy, Defender, Update Manager (Book 03)."
+      accent: navy
+    notes: >
+      Close by naming the honest limit: a task closes when the native re-test passes, so a SCuBA check
+      that does not cover a setting leaves a blind spot ServiceNow cannot see — test coverage is a
+      Volume VI Book 08 concern. Hand off to the Azure book, which runs the same loop over three Azure
+      engines.
