@@ -1,5 +1,14 @@
 # Chapter 0 — Introduction: DDI in the Multi-Cloud Landing Zone
 
+> **Scope note — breadth exception.** This kit is also **Volume VIII** of the
+> Federal Application-Aware Networking series. It is **intentionally multi-CSP**
+> (Azure, AWS, Google Cloud, OCI, VMware) — the one deliberate breadth exception
+> to the series' current **FedRAMP Moderate + Microsoft GCC Moderate** scope, by
+> author direction. Federal control closure is operated at the GCC-Moderate
+> ServiceNow front door (Chapter 7); the per-cloud chapters are CSP-agnostic
+> mechanism build-out. Treat the non-Azure chapters as reference architecture,
+> not an in-scope authorization surface, unless your own boundary covers them.
+
 ## 0.1 What this volume is
 
 This is an implementation volume. Each chapter takes one target platform — a public

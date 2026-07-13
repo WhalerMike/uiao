@@ -10,3 +10,8 @@
 
 : Authorities Closed Here — Multi-Cloud Evidence Fabric (telemetry → CDM → KSI) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
 
+**Closure-Necessity — alternate-path rebuttals (†).** For each necessity anchor, the strongest alternative a reviewer might propose and the specific reason it fails to close the control:
+
+- **AU-12(1)** — Strongest alternative: "Correlate on hostname or IP as each tool logs it." Fails AU-12(1) because raw hostnames and IPs collide and churn across clouds (reused RFC1918 space, ephemeral IPs), mis-joining records; only a stable authoritative asset identity (the IPAM/DDI join key) plus time yields a correct system-wide, time-correlated audit trail.
+- **AU-3** — Strongest alternative: "Every system already logs; just aggregate in the SIEM." Fails AU-3 because heterogeneous native logs use incompatible schemas and keys, so a SIEM can co-locate but not reconcile them; the shared machine-readable record contract is what makes cross-surface records carry a consistent, joinable content set.
+

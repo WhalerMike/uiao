@@ -196,6 +196,43 @@ def render() -> str:
         f"**{mapped}/{tot} explicitly mapped** |"
     )
     L.append("")
+
+    # Remediation plan for the not-yet-mapped indicators.
+    unmapped = [
+        (th, themes[th]["title"], len(themes[th]["ind"]))
+        for th in order
+        if sum(1 for cid, _ in themes[th]["ind"] if cid in cr26_to_rule) == 0
+    ]
+    unmapped_total = sum(n for _, _, n in unmapped)
+    L.append("## Remediation plan for the not-yet-mapped indicators")
+    L.append("")
+    L.append(
+        f"The **{unmapped_total} not-yet-mapped indicators** fall entirely in the "
+        f"{len(unmapped)} themes below, each attested today at the CISA ScuBA "
+        "baseline level (rules KSI-001..010) but not yet bound to a CR26 indicator "
+        "ID. The external dependency has **cleared** — the finalized CR26 Moderate "
+        "list was published **June 25, 2026** — so this is actionable now, not "
+        "blocked. Owner is stated by role (no individual named here); the "
+        "authorization timeline dates are from the ConMon Gap Roadmap."
+    )
+    L.append("")
+    L.append("| Theme | Unmapped indicators | Disposition | Owner (role) | Target |")
+    L.append("|---|---|---|---|---|")
+    for th, title, n in unmapped:
+        L.append(
+            f"| {th} — {title} | {n} | Bind each indicator to a rule, **or** record "
+            "an explicit ScuBA-baseline attestation decision | AAN compliance "
+            "authoring lead (OIS ConMon lead accountable) | Before independent SCA; "
+            "no later than the Class B+C window (Aug 31, 2026) |"
+        )
+    L.append(f"| **Total** | **{unmapped_total}** | — | — | — |")
+    L.append("")
+    L.append(
+        "Until these are dispositioned, the POA&M is expected to be non-empty: each "
+        "unmapped indicator is a candidate POA&M item pending the binding decision "
+        "and the independent SCA verdict."
+    )
+    L.append("")
     return "\n".join(L)
 
 

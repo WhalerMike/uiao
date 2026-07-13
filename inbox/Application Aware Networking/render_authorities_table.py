@@ -108,6 +108,21 @@ def render_book(spine: dict, book_id: str) -> str:
         "(† = Closure-Necessity anchor: no alternate closure path) {.striped .hover}"
     )
     lines.append("")
+    rebuttals = [
+        (c["control"], c["alternative_rebuttal"])
+        for c in sorted(rows, key=lambda r: (r["plane"], r["control"]))
+        if c.get("necessity") and c.get("alternative_rebuttal")
+    ]
+    if rebuttals:
+        lines.append(
+            "**Closure-Necessity — alternate-path rebuttals (†).** For each "
+            "necessity anchor, the strongest alternative a reviewer might propose "
+            "and the specific reason it fails to close the control:"
+        )
+        lines.append("")
+        for ctrl, reb in rebuttals:
+            lines.append(f"- **{ctrl}** — {reb}")
+        lines.append("")
     return "\n".join(lines)
 
 

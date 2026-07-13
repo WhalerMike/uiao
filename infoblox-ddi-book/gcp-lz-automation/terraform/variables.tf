@@ -369,3 +369,10 @@ variable "infoblox_portal_url" {
   type        = string
   default     = "https://csp.infoblox.com"
 }
+
+# --- Scoped egress (SC-7) --------------------------------------------
+variable "infoblox_portal_cidrs" {
+  description = "Destination CIDRs for the Infoblox Universal DDI SaaS portal 443/tcp egress (universal_ddi only). SCOPE to the published Infoblox Portal (csp.infoblox.com) ranges for production; the open default is lab-only."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
