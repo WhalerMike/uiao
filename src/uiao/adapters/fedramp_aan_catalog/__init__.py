@@ -1,8 +1,8 @@
 """FedRAMP AAN Evidence Catalog — Conformance Adapter.
 
 Maps the Federal Application-Aware Networking (AAN) series artifacts
-(Parts 1–14) to their governing NIST SP 800-53 Rev 5 controls and
-FedRAMP 20x KSI categories across all seven active Conformance Adapter
+(the ten-volume series) to their governing NIST SP 800-53 Rev 5 controls
+and FedRAMP 20x KSI categories across all seven active Conformance Adapter
 surface slots.
 
 Surface slots (control-planes.yml):
@@ -17,11 +17,15 @@ Surface slots (control-planes.yml):
 Evidence binding files live in mappings/slot-0N-*.yaml.
 Registry entry: src/uiao/canon/adapter-registry.yaml — id: fedramp-aan-catalog
 
-Canon references:
-    - inbox/Application Aware Networking/ (AAN document series)
-    - src/uiao/canon/data/control-planes.yml (slot definitions)
-    - src/uiao/adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml (KSI rules)
-    - inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md (roadmap)
+References:
+    Canon (this adapter depends on these):
+      - src/uiao/canon/data/control-planes.yml (slot definitions)
+      - src/uiao/adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml (KSI rules)
+      - ADR-066 (Application-Aware Networking concept — the canonical anchor)
+    External companion content (evidence source; NOT canon — canon does not
+    depend on inbox/ paths):
+      - inbox/Application Aware Networking/ (AAN document series)
+      - inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md (roadmap)
 """
 
 ADAPTER_ID: str = "fedramp-aan-catalog"
