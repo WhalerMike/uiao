@@ -1,0 +1,185 @@
+<title>UIAO · OrgPath · AAN — One Failure Mode, Three Times</title>
+<style>
+  :root {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --paper:#eef2f7; --surface:#fff; --surface-2:#f7f9fc; --ink:#101a28; --muted:#566577;
+    --hair:#d8e0ea; --hair-strong:#c3cedb;
+    --uiao:#3a4fc0; --org:#0c8d80; --aan:#a86a15;
+    --crit:#b23a48; --crit-soft:#f6e7e9;
+    --shadow:0 1px 2px rgba(16,26,40,.04),0 8px 28px -12px rgba(16,26,40,.18);
+    --radius:14px; --maxw:1100px;
+  }
+  @media (prefers-color-scheme: dark){ :root{
+    --paper:#0a111b; --surface:#111c2a; --surface-2:#0e1826; --ink:#e8eef6; --muted:#94a4b8;
+    --hair:#223142; --hair-strong:#2c3d51;
+    --uiao:#8090f2; --org:#35bfb0; --aan:#dda757;
+    --crit:#e2757f; --crit-soft:#3a1e22;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+  }}
+  :root[data-theme="light"]{ --paper:#eef2f7;--surface:#fff;--surface-2:#f7f9fc;--ink:#101a28;--muted:#566577;--hair:#d8e0ea;--hair-strong:#c3cedb;--uiao:#3a4fc0;--org:#0c8d80;--aan:#a86a15;--crit:#b23a48;--crit-soft:#f6e7e9;--shadow:0 1px 2px rgba(16,26,40,.04),0 8px 28px -12px rgba(16,26,40,.18);}
+  :root[data-theme="dark"]{ --paper:#0a111b;--surface:#111c2a;--surface-2:#0e1826;--ink:#e8eef6;--muted:#94a4b8;--hair:#223142;--hair-strong:#2c3d51;--uiao:#8090f2;--org:#35bfb0;--aan:#dda757;--crit:#e2757f;--crit-soft:#3a1e22;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);}
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 72px}
+
+  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 18px;display:flex;align-items:center;gap:12px}
+  .eyebrow::after{content:"";height:1px;flex:1;background:var(--hair-strong)}
+  h1{font-size:clamp(30px,5.2vw,50px);line-height:1.05;letter-spacing:-.02em;font-weight:680;margin:0 0 16px;text-wrap:balance;max-width:20ch}
+  h1 .accent{color:var(--crit)}
+  .lede{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:64ch;margin:0}
+  .lede strong{color:var(--ink);font-weight:600}
+  .credit{margin-top:18px;font-size:14px;color:var(--muted);max-width:66ch;border-left:3px solid var(--org);padding-left:14px}
+
+  section{margin-top:clamp(40px,6vw,64px)}
+  .sec-head{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 20px;display:flex;align-items:center;gap:12px}
+  .sec-head b{color:var(--ink);font-weight:600}
+
+  /* gap cards */
+  .gaps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .gap{background:var(--surface);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+  .gap .name{display:flex;align-items:center;gap:9px;padding:14px 18px 10px}
+  .gap .name .dot{width:11px;height:11px;border-radius:3px;flex:none}
+  .gap .name h3{margin:0;font-size:17px;letter-spacing:-.01em}
+  .gap .name .tag{margin-left:auto;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .claim,.reality{padding:12px 18px}
+  .claim{background:var(--surface-2)}
+  .lab{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 5px}
+  .claim .lab{color:var(--muted)}
+  .claim p{margin:0;font-size:13.6px;color:var(--ink)}
+  .claim em{font-style:normal;color:var(--muted)}
+  .fault{position:relative;height:0;border-top:2px dashed var(--crit);margin:0 14px;opacity:.85}
+  .fault span{position:absolute;left:50%;top:-9px;transform:translateX(-50%);background:var(--surface);color:var(--crit);font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;padding:0 8px;text-transform:uppercase}
+  .reality .lab{color:var(--crit)}
+  .reality p{margin:0;font-size:13.6px;color:var(--ink)}
+  .reality .code{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+  .g-uiao .dot{background:var(--uiao)} .g-uiao h3{color:var(--uiao)}
+  .g-org .dot{background:var(--org)} .g-org h3{color:var(--org)}
+  .g-aan .dot{background:var(--aan)} .g-aan h3{color:var(--aan)}
+
+  /* decision lag chips */
+  .lags{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .lag{background:var(--surface);border:1px solid var(--hair);border-left:3px solid var(--crit);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+  .lag .h{font-family:var(--font-mono);font-size:12px;color:var(--ink);margin:0 0 6px;letter-spacing:.01em}
+  .lag .h b{color:var(--ink)}
+  .lag p{margin:0;font-size:13.2px;color:var(--muted)}
+  .lag code{font-family:var(--font-mono);font-size:11.5px;color:var(--ink)}
+
+  /* sharpest findings */
+  .sharp{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .sh{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:16px 18px 18px;box-shadow:var(--shadow)}
+  .sh .top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sh .top .d{width:9px;height:9px;border-radius:2px}
+  .sh .top h4{margin:0;font-size:14.5px;letter-spacing:-.01em}
+  .sh p{margin:0 0 8px;font-size:13.4px;color:var(--ink)}
+  .sh .fix{font-size:12.8px;color:var(--muted)}
+  .sh .fix b{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--org);font-weight:600}
+  .s-uiao .d{background:var(--uiao)} .s-uiao h4{color:var(--uiao)}
+  .s-org .d{background:var(--org)} .s-org h4{color:var(--org)}
+  .s-aan .d{background:var(--aan)} .s-aan h4{color:var(--aan)}
+
+  /* cross-cutting */
+  .cross{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .cx{background:var(--crit-soft);border:1px solid color-mix(in srgb,var(--crit) 30%,var(--hair));border-radius:12px;padding:16px 18px}
+  .cx h4{margin:0 0 6px;font-size:15px;color:var(--crit);letter-spacing:-.01em}
+  .cx p{margin:0;font-size:13.4px;color:var(--ink)}
+  .cx .big{font-family:var(--font-mono);font-weight:600}
+
+  /* fixes */
+  .fixes{counter-reset:f;display:grid;gap:10px}
+  .fx{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:13px 16px;box-shadow:var(--shadow)}
+  .fx::before{counter-increment:f;content:counter(f);font-family:var(--font-mono);font-weight:600;font-size:13px;color:var(--surface);background:var(--uiao);width:24px;height:24px;border-radius:6px;display:grid;place-items:center}
+  .fx p{margin:0;font-size:14px}
+  .fx p b{font-weight:620}
+  .fx p .m{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+  .close{margin-top:34px;font-size:15px;color:var(--ink);max-width:74ch;border-left:3px solid var(--uiao);padding-left:14px}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;align-items:baseline}
+  footer .cites{font-size:12.5px;color:var(--muted);max-width:64ch}
+  footer .cites code{font-family:var(--font-mono);font-size:11.5px;color:var(--ink)}
+  footer .stamp{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+
+  .reveal{opacity:0;transform:translateY(10px);animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.reveal{animation:none;opacity:1;transform:none}}
+  @media (max-width:820px){ .gaps,.lags,.sharp,.cross{grid-template-columns:1fr} }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow reveal">Constructive Critique · UIAO · OrgPath · AAN</p>
+  <h1 class="reveal" style="animation-delay:.05s">One failure mode,<br><span class="accent">three times.</span></h1>
+  <p class="lede reveal" style="animation-delay:.1s">All three are real, substantial engineering — not slideware. Their shared weakness is uniform: <strong>the narrative runs ahead of the code, and the fast-moving decision layer outpaces the docs that should reflect it.</strong> A skeptical reviewer catches the identical gap in each.</p>
+  <p class="credit reveal" style="animation-delay:.15s"><b style="color:var(--ink)">Credit first:</b> UIAO ships 163 real KSI rule files + a 783-line substrate walker; OrgPath/LocPath is ~7,000 LoC with a schema-validated codebook; AAN runs four working drift gates and a machine-checked spine.</p>
+
+  <section class="reveal" style="animation-delay:.2s">
+    <p class="sec-head"><b>The gap</b> — what the narrative claims vs what the code ships</p>
+    <div class="gaps">
+
+      <div class="gap g-uiao">
+        <div class="name"><span class="dot"></span><h3>UIAO</h3><span class="tag">the engine</span></div>
+        <div class="claim"><p class="lab">Claims</p><p>“Immutable, certificate-anchored provenance chains that <em>cannot be backfilled.</em>”</p></div>
+        <div class="fault"><span>but ships</span></div>
+        <div class="reality"><p class="lab">Reality</p><p>A check that a <span class="code">trust-anchor:</span> key is <em>present in YAML</em> — no signature or chain verification.</p><p class="code" style="margin-top:6px">walker.py:513-528</p></div>
+      </div>
+
+      <div class="gap g-org">
+        <div class="name"><span class="dot"></span><h3>OrgPath</h3><span class="tag">the plane</span></div>
+        <div class="claim"><p class="lab">Claims</p><p>“Vendor-neutral binding across <em>AWS / GCP / Okta / LDAP / VMware.</em>”</p></div>
+        <div class="fault"><span>but ships</span></div>
+        <div class="reality"><p class="lab">Reality</p><p>Transports exist only for the <em>IdPs</em>. No <span class="code">aws_/gcp_/vmware_transport.py</span> — those planes are YAML-only.</p><p class="code" style="margin-top:6px">ADR-098 = PROPOSED</p></div>
+      </div>
+
+      <div class="gap g-aan">
+        <div class="name"><span class="dot"></span><h3>AAN</h3><span class="tag">the content</span></div>
+        <div class="claim"><p class="lab">Claims</p><p>Crosswalk “<em>generated from the spine</em>”; the spine is “<em>the SSOT.</em>”</p></div>
+        <div class="fault"><span>but ships</span></div>
+        <div class="reality"><p class="lab">Reality</p><p>A 146-control crosswalk that is <em>hand-typed</em>; the generator is vaporware; the spine covers <b style="color:var(--crit)">15 of 66 books</b>.</p><p class="code" style="margin-top:6px">Vol_0_Book_02:63-68</p></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-head"><b>The other half</b> — the decision layer outran its own docs</p>
+    <div class="lags">
+      <div class="lag"><p class="h"><b>UIAO</b> — <code>ADR-085</code> ⟂ <code>VISION.qmd</code></p><p>The accepted ADR bans federal-scoped descriptions of the core; the “authoritative” mission statement still opens <em>“a federal network modernization platform.”</em></p></div>
+      <div class="lag"><p class="h"><b>OrgPath</b> — <code>ADR-127</code> ⟂ <code>UIAO_152</code></p><p>ADR-127 re-introduced the composite path Model C removed; downstream docs still say the composite is “not needed,” with stale version/slot counts.</p></div>
+      <div class="lag"><p class="h"><b>AAN</b> — corrected numbers ⟂ figures</p><p>The 19/46 &amp; 15/66 corrections landed 07-12/13, but the coverage charts still date to 07-09 — they predate the numbers they show.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-head"><b>Sharpest finding</b> per layer</p>
+    <div class="sharp">
+      <div class="sh s-uiao"><div class="top"><span class="d"></span><h4>The provenance claim is the auditor kill</h4></div><p>“Immutable evidence fabric” resting on a key-presence lint is the claim most likely to fail a probe.</p><p class="fix"><b>Fix</b> · soften to “declares a trust anchor,” or wire real verification into the walker.</p></div>
+      <div class="sh s-org"><div class="top"><span class="d"></span><h4>HR is a silent single point of failure</h4></div><p>A wrong-but-well-formed HR value silently re-scopes access; the drift engine only catches codebook-<em>invalid</em> values.</p><p class="fix"><b>Fix</b> · an HR-ingest quarantine gate (staleness · null-placement · improbable-delta).</p></div>
+      <div class="sh s-aan"><div class="top"><span class="d"></span><h4>No path into canon — and canon cheats to reach it</h4></div><p>The 66-book corpus lives in <span style="font-family:var(--font-mono);font-size:12px">inbox/</span> (which canon must not cite), yet an adapter hard-codes an <span style="font-family:var(--font-mono);font-size:12px">inbox/</span> path and emits nothing.</p><p class="fix"><b>Fix</b> · decide AAN’s destiny — promote to canon, or accept it as external and drop the reference.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-head"><b>Two risks</b> that hit all three</p>
+    <div class="cross">
+      <div class="cx"><h4>Positioning: “universal” in doctrine, “federal” in reality</h4><p>ADR-085 wants a vertical-agnostic core, but the orchestrator carries <span class="big">86</span> federal references, every active adapter is <span class="big">gcc-moderate</span>, OrgPath’s marquee instance is OPM HRIT, and AAN <em>is</em> the federal program. The universal story isn’t yet in the module layout or a second vertical.</p></div>
+      <div class="cx"><h4>Bus-factor</h4><p><span class="big">139</span> ADRs + ~70 canon docs + the OrgPath codebook chain + a 66-book corpus — and <span class="big">63 of 64</span> commits are one author. The conceptual surface is likely navigable only by its author: a continuity and adoption risk pre-1.0.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-head"><b>Fix first</b> — cheapest, highest-credibility</p>
+    <div class="fixes">
+      <div class="fx"><p><b>Language-tighten the three over-claims</b> to match what’s built — UIAO provenance, OrgPath AWS/GCP/VMware “first-class,” AAN “generated” crosswalk. <span class="m">Mostly one-file edits.</span></p></div>
+      <div class="fx"><p><b>Reconcile the three decision-vs-doc lags</b> — rewrite VISION to ADR-085; land the ADR-127 doc sweep; regenerate the AAN figures. <span class="m">Add a CI lint each so they can’t drift again.</span></p></div>
+      <div class="fx"><p><b>Ship one proof-of-life per axis</b> — a non-federal vertical skeleton (UIAO), one cloud transport e.g. AWS Identity Center (OrgPath), the crosswalk generator (AAN).</p></div>
+      <div class="fx"><p><b>Address the two structural risks deliberately</b> — the HR-ingest quarantine gate (OrgPath) and a documented AAN → canon promotion decision.</p></div>
+    </div>
+  </section>
+
+  <p class="close">None of this is a rearchitecture. All three are strong enough underneath that their main enemy is their own presentation getting ahead of their code — the same lesson the AAN critiques already landed, now one level up across the whole stack.</p>
+
+  <footer>
+    <p class="cites">From three independent read-only investigations at HEAD (2026-07-13). Evidence anchored to <code>walker.py</code>, <code>adr-085</code>, <code>adr-127</code>, the OrgPath transports, and the AAN spine + <code>adapter-registry.yaml</code>. A peer review, not an assessment result.</p>
+    <span class="stamp">inbox draft · not canon</span>
+  </footer>
+</div>
