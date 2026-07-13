@@ -78,9 +78,40 @@ for src in "${!V8MAP[@]}"; do
   if render "$DDI/$src.md" "$V8/${V8MAP[$src]}.docx" "$DDI"; then ok=$((ok+1)); else fail=$((fail+1)); fi
 done
 
-echo "== ServiceNow app kit (source) into Vol VIII =="
-cp -r "$DDI/servicenow-app" "$V8/servicenow-app-kit"
-find "$V8/servicenow-app-kit" -name '*.png' -delete 2>/dev/null  # drop heavy raster mock renders if any
+echo "== Kits (deployable source) — every kit registered in the spine, into its volume =="
+# Driven from aan-compliance-spine.yml so the zip carries EVERY registered kit
+# (Terraform IaC, ServiceNow scoped apps, detection rules, training academy) —
+# complete source, nothing dropped. Each kit lands under <Volume>/kits/<name>/.
+REPO_ROOT="$HERE/../.."
+kits=0
+while IFS=$'\t' read -r volfolder src base; do
+  [ -z "$volfolder" ] && continue
+  destdir="$STAGE/$volfolder/kits"
+  mkdir -p "$destdir"
+  if [ -e "$REPO_ROOT/$src" ]; then
+    cp -r "$REPO_ROOT/$src" "$destdir/$base"
+    n=$(find "$destdir/$base" -type f | wc -l)
+    printf '   + %-34s %4s files -> %s/kits/%s\n' "$base" "$n" "$volfolder" "$base"
+    kits=$((kits+1))
+  else
+    echo "   MISSING kit source: $src"
+  fi
+done < <(python3 - "$HERE/aan-compliance-spine.yml" <<'PY'
+import sys, os, yaml
+d = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+volfolder = {
+  "vol-0":"Vol_0_Executive_Summary_and_Program","vol-1":"Vol_I_Foundation_and_Transport",
+  "vol-2":"Vol_II_Data_Platform","vol-3":"Vol_III_Security_Operations",
+  "vol-4":"Vol_IV_Governance_and_Assurance","vol-5":"Vol_V_Training_and_Certification",
+  "vol-6":"Vol_VI_Implementation","vol-7":"Vol_VII_ServiceNow_Automation",
+  "vol-8":"Vol_VIII_Multi_Cloud_DDI","vol-9":"Vol_IX_Day2_Operations",
+}
+for k in d.get("kits", []):
+    src = k["source"]
+    print(f"{volfolder[k['volume']]}\t{src}\t{os.path.basename(src)}")
+PY
+)
+echo "   bundled $kits kits"
 
 echo "== Governance / roadmap docs (rendered from .md) =="
 render "federal-aan-conmon-gap-roadmap.md" "$STAGE/federal-aan-conmon-gap-roadmap.docx" "." && ok=$((ok+1)) || fail=$((fail+1))
@@ -96,17 +127,26 @@ Date Code: $(date +'%Y-%m-%d %H%M') ET
 
 Volumes 0-IX are included here (rendered .docx books + .pptx briefing decks).
 
-Volume VIII (Multi-Cloud DDI Landing-Zone Automation) is now included in FULL:
+Volume VIII (Multi-Cloud DDI Landing-Zone Automation) is included in FULL:
 the series overview book plus all per-cloud chapters (Azure, AWS, GCP, OCI,
 VMware), Cross-Platform Operations, the two ServiceNow chapters (07 ServiceNow
-Orchestration, 08 ServiceNow-Led Implementation), and Appendix A. The ServiceNow
-scoped-app kit (catalog, Flow, Script Includes, ATF, Update Set, mockups) ships
-as source under Vol_VIII_Multi_Cloud_DDI/servicenow-app-kit/. This replaces the
-prior kit, which represented Volume VIII by its overview book only.
+Orchestration, 08 ServiceNow-Led Implementation), and Appendix A.
+
+DEPLOYABLE SOURCE — every kit registered in the compliance spine now ships in
+this zip as complete source, under <Volume>/kits/<name>/:
+  - Vol VIII: the five per-cloud landing-zone Terraform/IaC kits
+    (azure-alz-automation, aws-lz-automation, gcp-lz-automation, oci-lz-automation,
+    vmware-lz-automation) and the ServiceNow DDI scoped app (servicenow-app).
+  - Vol IX:  the ServiceNow Day-2 scoped-app kit (servicenow-day2).
+  - Vol VI:  the Sentinel detection-rule library (detection-rules).
+  - Vol V:   the companion training academy curriculum (AAN-Training-Program).
+Nothing is dropped — the Terraform (.tf), shell, ServiceNow XML/JS, and ATF
+sources are all present. Prior kits carried only the rendered books (+ the
+ServiceNow app); this kit carries the deployable code too.
 
 Every AAN deliverable is bound by the compliance spine (aan-compliance-spine.yml):
 each book carries an explicit source: file path and the non-prose kits are
-registered in its kits: section.
+registered in its kits: section — the same registry drives the kit bundling above.
 
 All book .docx carry AAN house-style callout boxes (important/note/tip/warning,
 FOUO and executive-summary blocks) produced with Pandoc + aan-reference.docx +
