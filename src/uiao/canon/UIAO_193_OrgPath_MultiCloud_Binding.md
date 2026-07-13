@@ -33,6 +33,19 @@ Covers all 15 codebook facets across the nine first-class binding-profile target
 
 Out of scope: the facet semantics themselves (UIAO_151), the drift taxonomy mechanics (UIAO_163), and the Microsoft-tenant Zero Trust *assessment* digest (`uiao.adapters.zta`), which scores posture rather than enforcing policy. This document concerns the cross-vendor enforcement *subject* and the storage contract.
 
+> **Implementation status (as of this revision).** This spec is `status: Draft` /
+> `lifecycle: aspirational` — it specifies all nine profiles, but not all are
+> implemented. **Identity-plane write-back is implemented** for the Microsoft
+> (Graph), Okta, generic LDAP, PingOne, Keycloak, and Auth0 targets (transports
+> under `src/uiao/adapters/*_transport.py`), plus an Azure ARM transport; the
+> **enforcement plane** has an **NSX** projector (`enforcement_projection.to_nsx`)
+> plus a generic tag-matcher. The **AWS, GCP, and VMware** profiles are
+> **specified here but have no transport or dedicated enforcement renderer yet**
+> — treat their per-target tables below as the design contract, not a shipped
+> capability. Read UIAO_193's "first-class targets" as *first-class in the
+> specification*; the identity plane leads implementation, workload/enforcement
+> for the cloud targets is deferred.
+
 ## Background — why decouple storage from the facet model
 
 ADR-078 bound each facet to a numbered Microsoft extension slot, and ADR-035 published the codebook as executable canon read out of those slots. That contract is correct for the Microsoft estate and is the first deployed boundary. But it conflates *meaning* (vendor-neutral) with *storage location* (Microsoft-shaped). No AWS account, GCP organization, VMware vCenter, Okta org, or LDAP directory has `onPremisesExtensionAttribute1..15`. ADR-098 separates the two: the facet stays canonical; the storage locator becomes a per-profile concern. This document is the specification ADR-098 §D6 authorizes.
@@ -177,9 +190,9 @@ The following profiles are specified at the Moderate and Commercial boundaries. 
 - **Endpoint resolution:** the directory host/port from operator config; commercial/on-prem only.
 - **Overflow:** none in schema-extension mode; in reserved-attribute mode, `priority` overflow when fewer than 15 reserved attributes are available.
 
-### `vmware` (three-plane proof)
+### `vmware` (three-plane design)
 
-VMware is bound across all three planes — the proof that the contract is not IdP-centric.
+VMware is *specified* across all three planes — the design proof that the contract is not IdP-centric. (Implementation status: the enforcement plane has an NSX projector in code; the VMware identity and workload planes are specified here but not yet implemented — see the Implementation Status note above.)
 
 - **Identity plane — Workspace ONE Access:** user attributes (custom user-attribute keys named for the facet), sourced from the directory of record and projected onto Access user profiles for SSO/Conditional-Access-equivalent policy.
 - **Workload plane — vSphere / vCenter:** tags organized into one **category per facet** (category name = facet name; tag name = facet value). vSphere tag categories with single-cardinality enforce one value per facet per VM, matching the one-facet-per-slot discipline of the reference profile.
