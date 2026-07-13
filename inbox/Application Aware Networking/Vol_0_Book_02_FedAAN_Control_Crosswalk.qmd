@@ -55,17 +55,21 @@ asset to the CM-8 join key (the one genuinely new control number they add is
 **CM-5**, the separation-of-duties gate over DDI change).
 
 ::: {.callout-warning}
-## Maintenance status — this master table is hand-maintained, pending spine back-fill
+## Maintenance status — a machine-derived slice now exists; this master table remains the hand-maintained superset
 
 The **per-book "Authorities Closed Here" tables are generated** from
 `aan-compliance-spine.yml` by `render_authorities_table.py`, and a CI drift gate
-(`--check`, `.github/workflows/aan-authorities-drift.yml`) now blocks any partial
-that diverges from the spine. **This series-wide master table below is not yet a
-rendered output** — it is currently **hand-maintained**, because the spine's
-per-book closures are only partially back-filled (~15 of 66 books). Until the
-back-fill completes and a crosswalk generator is wired to the same gate, treat
-this table as an author-maintained index, not a machine-derived one, and do not
-assume it stays in sync with the books automatically.
+(`--check`, `.github/workflows/aan-authorities-drift.yml`) blocks any partial
+that diverges from the spine. A **spine-derived crosswalk is now generated too**
+— `render_crosswalk.py` renders [`AAN_Spine_Crosswalk.md`](AAN_Spine_Crosswalk.md)
+from the same closures and is behind the same drift gate, so the machine-derived
+slice can never silently fall out of sync with the spine. That slice currently
+covers the **59 closures across 15 of 66 books** the spine carries (38 distinct
+controls). **This series-wide master table below is still the hand-maintained
+superset** — it indexes all 146 controls, including the books the spine has not
+yet back-filled — so treat it as an author-maintained index, and read the
+generated slice for the machine-verified subset. As the spine is back-filled book
+by book, the generated slice grows toward this master automatically.
 :::
 
 # How This Crosswalk Was Built
@@ -98,11 +102,15 @@ treats that control as a first-class subject in the named book.
   single source of truth for the machine-checked closures, and the per-book
   authorities tables are rendered from it and CI-gated against drift. The spine is
   being progressively back-filled book by book (~15 of 66 books carry closure rows
-  today). **Until that back-fill completes, this master crosswalk is hand-maintained
-  rather than rendered from the spine** — so it, not the spine, is presently the
-  most complete series-wide control view, at the cost of being author-maintained.
-  The end state is to render this table from the spine and put it behind the same
-  drift gate as the per-book tables.
+  today). A **machine-derived slice of this crosswalk is now rendered from the spine**
+  by `render_crosswalk.py` into [`AAN_Spine_Crosswalk.md`](AAN_Spine_Crosswalk.md),
+  behind the same drift gate as the per-book tables — so the spine-provable subset
+  is auto-generated and cannot drift. **This master crosswalk remains
+  hand-maintained** for the controls in books the spine has not yet back-filled, so
+  it, not the generated slice, is presently the most complete series-wide control
+  view, at the cost of being author-maintained for that remainder. The end state is
+  for the generated slice to reach every book and this table to become fully
+  spine-rendered.
 - **Claim → evidence → test.** For the closure-bearing books, the spine now
   renders a generated, CI-gated [claim → evidence → test traceability
   matrix](AAN_Claim_Evidence_Test_Matrix.md): each of the 59 closure claims maps
