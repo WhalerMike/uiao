@@ -27,7 +27,26 @@ date: "2026-07-13"
 | **Already addressed** | The fix is materially present; the critique overstates the gap. |
 | **Not reproduced** | The finding does not reproduce against HEAD. |
 
-<!-- SCORECARD -->
+## Scorecard
+
+| # | Critique finding | Prioritized action | Verdict | One-line status |
+|---|---|---|---|---|
+| 1 | KSI arithmetic (29/29 · 0 POA&M) | 1 & 2 | **Partially addressed** | Caveat present in callouts; unconditional headlines still win; no CR26 diff exists |
+| 2 | Authoring vs compliance-complete | 3 | **Partially addressed** | Phased table split into Authoring/Implementation; 4-level maturity legend absent |
+| 3a | Vol VIII breadth exception | 5 | **Already addressed** | Visible, justified scope-exception banner present |
+| 3b | ServiceNow High-on-Moderate | 5 | **Partially addressed** | Flagged in SSOT but unresolved; described 4 different ways across books |
+| 4 | "Generated" crosswalk | 6 | **Still open** | 146-row master hand-typed; spine 15/65 books; `--check` gate un-wired |
+| 5 | Exec summary is not one | 4 | **Partially addressed** | Decision-maker block added; still 1,314 lines, no cost-of-inaction / decisions list |
+| 6 | Necessity claims overreach | — | **Partially addressed** | Absolutism pervasive; alternatives matrix exists but off in companion, not per-claim |
+| 7 | Timeline/status duplication | 7 | **Still open** | SSOTs declared but bypassed; a live ServiceNow Moderate-vs-High contradiction already present |
+| a | Claim→evidence→test trace | — | **Still open** | No evidence/test columns in the crosswalk |
+| b | Date-code drift | — | **Still open** | 102 lagging Date Codes across 34 files |
+| c | Close vs deepen marking | — | **Partially addressed** | Narrative only; not per-row (SC-7 lists 6 books unflagged) |
+| d | Accessibility (34 MB zip) | — | **Still open** | 58 docx + 55 pptx, no HTML/PDF; no navigable brief-on-top |
+
+**Tally:** 1 Already addressed · 6 Partially addressed · 5 Still open · 0 Not
+reproduced. Every one of the critique's substantive findings reproduces against
+HEAD; none is refuted.
 
 ## Concern 1 — KSI coverage arithmetic
 
@@ -147,7 +166,38 @@ corpus contradicting itself on a load-bearing authorization fact. Priority-5(b)
 remains open.
 
 ## Concern 4 — "Generated, not hand-maintained"
-<!-- C4 -->
+
+**Verdict: Still open — finding Confirmed, and the counts are stark.**
+
+All three sub-allegations hold:
+
+1. **The crosswalk claims to be generated but is not.**
+   `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd:56` — "The crosswalk is generated
+   from the books and the compliance spine, not maintained by hand." Yet the
+   146-row master table (`:101-249`) is literal hand-typed Markdown: no include,
+   no code cell, and the only generator (`render_authorities_table.py`) emits
+   **per-book** "Authorities Closed Here" partials only (`:87-122`), never a
+   series-wide reverse index. The per-book partials carry a "generated… do not
+   hand-edit" header; the master table does not — confirming it is outside the
+   generated set. The doc's own regeneration note (`:309-311`) is a manual
+   instruction citing no tool.
+2. **The spine back-fill is ~23% complete.** **15 of 65** registered books have
+   `closures:` rows (59 rows total); 50 books contribute none — including all of
+   Vol II, most of Vol III, and all of Vols IV–VI, which supply the bulk of the
+   146-row crosswalk. The spine header concedes "Status: SEED" (`:12-14`). So the
+   crosswalk *cannot* be spine-derived today even in principle.
+3. **The one real drift gate is not wired in.** `render_authorities_table.py`
+   *does* have a `--check` mode (`:125-140,162`) — but it appears in **no**
+   `.github/workflows/` file (47 searched) and not in `.pre-commit-config.yaml`,
+   and it only diffs the standalone `authorities/*.md` partials, not the inline
+   `.qmd` copies nor the master crosswalk. One book even references a CI check
+   that does not exist (`Vol_VII_Book_05…:97`).
+
+**Assessment:** The critique is precisely right, and understates the gap: a
+"generated" label sits on a hand-typed 146-row table fed by a spine that covers
+under a quarter of the books, with the sole drift gate un-wired. Priority-6
+remains fully open, and until it lands the "generated" claim should be relabeled
+"hand-maintained pending spine back-fill" as the critique recommends.
 
 ## Concern 5 — The Executive Summary is not one
 
@@ -177,10 +227,33 @@ brief a decision-maker will finish, carrying the honest maturity framing from
 Concerns 1–2) is not met. Priority-4 remains substantially open.
 
 ## Concern 6 — Necessity claims risk overreaching
-<!-- C6 -->
 
-## Concern 7 — Timeline / product-status duplication
-<!-- C7 -->
+**Verdict: Partially addressed — finding Confirmed.**
+
+Absolutist "no alternate closure path" phrasing is pervasive and does drift into
+rhetorical absolutes — e.g. `Vol_0_Book_00…:306` "you cannot inventory what you
+cannot enumerate. No scanner creates a source of truth"; `:307` "There is no
+second way to encrypt a DIA circuit at the network layer";
+`Vol_I_Book_05…:232` "There is no configuration setting, scanner finding, or
+policy document that closes SC-8 on a bare pipe." The doctrine is centralized
+(`Vol_0_Book_00…:296-310`, "Three Necessity Anchors") and even machine-anchored
+(`necessity: true` on 8 spine closure rows, footnoted in every generated table).
+
+An alternatives artifact **does** exist — but it is a *product-substitution*
+matrix in a **companion doc** (`federal-aan-conmon-gap-roadmap.md:152-180`),
+reached from the claims only by a pointer (`Vol_0_Book_00…:314-324`). It is not
+the recommended co-located, per-claim **alternate-path rebuttal** (strongest
+alternative a reviewer would propose + the specific control-text/physics reason
+it fails). Two gaps: (1) not co-located — the rebuttal sits in the roadmap, not
+beside the claim; (2) wrong shape — it enumerates *product* alternatives within
+the same mechanism class, not an adversarial rebuttal of alternate *mechanisms*.
+The closest thing is the "Why no alternative exists" column
+(`:304-308`), which asserts the reason but names no alternative to defeat.
+
+**Assessment:** The series "already gestures at this," exactly as the critique
+says. The absolutism is a live rebuttal surface, and the fix (surface a
+per-claim rebuttal row beside the claim) is not yet implemented. Priority-6-class
+item; lower severity than 1–5.
 
 ## Concern 7 — Timeline / product-status duplication
 
@@ -212,4 +285,54 @@ was copied rather than referenced. Priority-7 remains open.
 | **(d) Accessibility (34 MB Office zip)** | **Still open** | `AAN_Federal_Series_Complete_2026-07-12_2020ET.zip` = ~33.8 MB, 58 docx + 55 pptx + 1 txt, **no HTML/PDF inside**. The two directory-level `.html` files are single-book renders (Vol I Bks 05/06), not a navigable series doc with the brief on top. |
 
 ## Overall assessment
-<!-- OVERALL -->
+
+**The critique is sound and its findings hold.** Verified against the corpus at
+HEAD, every substantive concern reproduces; none is a false positive. The
+critique's central diagnosis — *the architecture is the asset, the wrapped
+claims are the liability, and the fixes are presentational not structural* — is
+confirmed by the evidence. Nothing here asks for an architecture change.
+
+**What has already moved (to the author's credit).** The corpus is not standing
+still against the review: the two-state "self-assessed pending SCA" caveat and a
+dedicated "KSI-count reconciliation (open item)" callout are now present in all
+three primary locations (Concern 1); the Phased Delivery table has been split
+into explicit Authoring vs Implementation columns (Concern 2); and Vol VIII
+carries a clean, justified scope-exception banner (Concern 3a). These are real
+improvements and should be preserved.
+
+**Where the exposure still concentrates — fix these first:**
+
+1. **The headlines still beat the caveats (Concern 1).** "0 open risks · all
+   KSIs satisfied" survives in status tables, code comments, checklists, and
+   figure alt-text even though the honest footnote sits nearby. This is the
+   fastest credibility kill and the highest-leverage fix. Retire the
+   unconditional headlines everywhere and publish the ADR-111 → CR26 diff (which
+   **does not yet exist** in any form).
+2. **The "generated" crosswalk is hand-typed (Concern 4).** A 146-row master
+   table labeled "generated… not maintained by hand" is fed by a spine covering
+   15 of 65 books, with the only drift gate un-wired from CI. This is a silent-
+   drift time bomb and the label currently misrepresents the artifact. Either
+   wire the gate and finish the back-fill, or relabel to "hand-maintained
+   pending spine back-fill."
+3. **Single-sourcing has already failed once (Concern 7).** ServiceNow is
+   simultaneously "High" and "Moderate" across books — the exact drift the
+   critique predicted, now realized. Combined with the unresolved
+   High-on-Moderate boundary question (Concern 3b), this is a load-bearing
+   authorization fact the corpus contradicts itself on.
+
+**Bottom line.** This assessment concurs with the critique without reservation
+and adds three sharpenings the review did not have room to surface: (a) the CR26
+diff is entirely absent, not merely incomplete; (b) the spine back-fill is
+quantifiably ~23% (15/65 books), so the crosswalk cannot be spine-derived even
+in principle today; and (c) the predicted product-status drift has **already
+occurred** (ServiceNow Moderate-vs-High). The architecture underneath remains
+the strong asset the critique describes; the claims wrapped around it are the
+liability, and they are the parts most cheaply fixed — none requiring a change
+to the architecture itself.
+
+---
+
+*Method: each finding was verified by independent read-only investigation of the
+corpus at branch HEAD (`inbox/Application Aware Networking/`, the compliance
+spine, `render_authorities_table.py`, and `.github/workflows/`). File:line
+citations point to that state; a later renumber may shift them.*
