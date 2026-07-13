@@ -20,9 +20,11 @@ The evaluation engine (ADR-111) is wired for **all 29 KSI rules in the ADR-111
 rule set** — zero scaffold rules remain. Part 18 (Book_18) delivered the AT
 family training evidence and closed KSI-022 (KSI-CED-RAT). Part 19 (Book_19)
 assembled the authorization package — OSCAL bundle (29/29 rules in scope
-satisfied, 0 open risks, 0 POA&M items), BOD 26-04 VDR/VER submission
-procedure, and CA-7 ConMon program. All rules in scope are self-assessed
-satisfied pending independent security control assessment (SCA). **The series
+self-assessed satisfied, 0 open **in the internal ADR-111 rule set**, 0 POA&M
+items — expected non-empty once mapped to CR26 and assessed), BOD 26-04 VDR/VER
+submission procedure, and CA-7 ConMon program. All rules in scope are
+self-assessed satisfied against the internal ADR-111 rule set (not the finalized
+CR26 Moderate catalog) pending independent security control assessment (SCA). **The series
 is complete and the authorization package is assembled for the SSA Authorizing
 Official's review.**
 
@@ -346,7 +348,10 @@ Matrix."
 - [x] Part 19: Authorization package + ConMon program (Book_19 — CA-2, CA-5, CA-6,
       CA-7, CA-7(1), CA-7(3), RA-3, SA-15)
 - [x] OSCAL bundle generated and committed (`output/artifacts/ksi-bundle/`):
-      29/29 KSIs satisfied, 0 open risks, 0 POA&M items, 8 evidence slots bound
+      29/29 of the internal ADR-111 rule set self-assessed satisfied, 0 open in
+      that rule set, 0 POA&M items, 8 evidence slots bound — **pending CR26
+      rule-ID reconciliation and independent SCA** (POA&M expected non-empty once
+      mapped/assessed; see the KSI-count reconciliation open item above)
 - [x] ScuBA guard wired in `ksi_ar.py`: KSI-001..010 always satisfied via CISA
       ScuBAGear adapter without entering slot evaluator
       — **superseded 2026-07-05 by ScubaDrift evidence-backed verdicts**:
