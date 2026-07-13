@@ -36,9 +36,19 @@ from .inventory import (
     HRIT_PHASE_POST_MIGRATION,
     HRIT_PHASE_PRE_MIGRATION,
     HRIT_PHASE_UNSPECIFIED,
+    DriftFinding,
     HRRecord,
     HRRecordInventory,
     extract_hrit_record_inventory,
+)
+from .quarantine import (
+    QUARANTINE_IMPROBABLE_DELTA,
+    QUARANTINE_NULL_PLACEMENT,
+    QUARANTINE_STALE,
+    QuarantineConfig,
+    QuarantineDecision,
+    QuarantineReport,
+    evaluate_hr_quarantine,
 )
 
 __all__ = [
@@ -50,8 +60,16 @@ __all__ = [
     "HRIT_PHASE_POST_MIGRATION",
     "HRIT_PHASE_PRE_MIGRATION",
     "HRIT_PHASE_UNSPECIFIED",
+    "QUARANTINE_IMPROBABLE_DELTA",
+    "QUARANTINE_NULL_PLACEMENT",
+    "QUARANTINE_STALE",
+    "DriftFinding",
     "HRRecord",
     "HRRecordInventory",
+    "QuarantineConfig",
+    "QuarantineDecision",
+    "QuarantineReport",
+    "evaluate_hr_quarantine",
     "extract_hrit_record_inventory",
 ]
 
