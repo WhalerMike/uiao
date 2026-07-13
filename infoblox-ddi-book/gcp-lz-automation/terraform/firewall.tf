@@ -260,7 +260,7 @@ resource "google_compute_firewall" "out_portal_sync" {
   network            = local.network_self_link
   direction          = "EGRESS"
   priority           = 1030
-  destination_ranges = ["0.0.0.0/0"] # TODO: scope to Infoblox Portal ranges
+  destination_ranges = var.infoblox_portal_cidrs
   target_tags        = local.member_tags
 
   allow {

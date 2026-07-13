@@ -36,7 +36,7 @@ locals {
   nsg_snmp_src   = local.use_nsg && var.enable_snmp ? toset(var.monitoring_source_cidrs) : toset([])
   nsg_dhcp_src   = local.use_nsg && var.enable_dhcp ? toset(var.dns_client_cidrs) : toset([])
   nsg_grid_src   = local.use_nsg && local.is_grid ? toset(var.grid_peer_cidrs) : toset([])
-  nsg_portal_dst = local.use_nsg && local.is_uddi ? toset(["0.0.0.0/0"]) : toset([]) # TODO scope to Infoblox Portal ranges
+  nsg_portal_dst = local.use_nsg && local.is_uddi ? toset(var.infoblox_portal_cidrs) : toset([])
 }
 
 # ===========================  NSG MODEL  ==============================
@@ -204,11 +204,11 @@ resource "oci_core_network_security_group_security_rule" "in_grid_comms" {
 # NTP 123/udp egress — always. Scope destination to your NTP servers where
 # possible; 0.0.0.0/0 shown as a placeholder.
 resource "oci_core_network_security_group_security_rule" "out_ntp" {
-  count                     = local.use_nsg ? 1 : 0
+  for_each                  = local.use_nsg ? toset(var.ntp_egress_cidrs) : toset([])
   network_security_group_id = oci_core_network_security_group.ddi[0].id
   direction                 = "EGRESS"
   protocol                  = "17"
-  destination               = "0.0.0.0/0" # TODO scope to NTP server CIDRs
+  destination               = each.value
   destination_type          = "CIDR_BLOCK"
   description               = "Allow-NTP-Out"
   udp_options {
@@ -221,11 +221,11 @@ resource "oci_core_network_security_group_security_rule" "out_ntp" {
 
 # DNS 53/tcp egress — members recurse / conditionally forward.
 resource "oci_core_network_security_group_security_rule" "out_dns_tcp" {
-  count                     = local.use_nsg ? 1 : 0
+  for_each                  = local.use_nsg ? toset(var.dns_upstream_cidrs) : toset([])
   network_security_group_id = oci_core_network_security_group.ddi[0].id
   direction                 = "EGRESS"
   protocol                  = "6"
-  destination               = "0.0.0.0/0" # TODO scope to resolver/upstream CIDRs
+  destination               = each.value
   destination_type          = "CIDR_BLOCK"
   description               = "Allow-DNS-TCP-Out"
   tcp_options {
@@ -238,11 +238,11 @@ resource "oci_core_network_security_group_security_rule" "out_dns_tcp" {
 
 # DNS 53/udp egress
 resource "oci_core_network_security_group_security_rule" "out_dns_udp" {
-  count                     = local.use_nsg ? 1 : 0
+  for_each                  = local.use_nsg ? toset(var.dns_upstream_cidrs) : toset([])
   network_security_group_id = oci_core_network_security_group.ddi[0].id
   direction                 = "EGRESS"
   protocol                  = "17"
-  destination               = "0.0.0.0/0" # TODO scope to resolver/upstream CIDRs
+  destination               = each.value
   destination_type          = "CIDR_BLOCK"
   description               = "Allow-DNS-UDP-Out"
   udp_options {
@@ -295,7 +295,7 @@ resource "oci_core_network_security_group_security_rule" "out_portal_sync" {
   network_security_group_id = oci_core_network_security_group.ddi[0].id
   direction                 = "EGRESS"
   protocol                  = "6"
-  destination               = each.value # TODO scope to Infoblox Portal ranges
+  destination               = each.value
   destination_type          = "CIDR_BLOCK"
   description               = "Allow-InfobloxPortal-Out"
   tcp_options {
@@ -416,28 +416,37 @@ resource "oci_core_security_list" "ddi" {
   }
 
   # --- EGRESS ---
-  egress_security_rules {
-    protocol    = "17"        # NTP
-    destination = "0.0.0.0/0" # TODO scope to NTP servers
-    udp_options {
-      min = 123
-      max = 123
+  dynamic "egress_security_rules" {
+    for_each = toset(var.ntp_egress_cidrs)
+    content {
+      protocol    = "17" # NTP
+      destination = egress_security_rules.value
+      udp_options {
+        min = 123
+        max = 123
+      }
     }
   }
-  egress_security_rules {
-    protocol    = "6"         # DNS TCP out
-    destination = "0.0.0.0/0" # TODO scope to resolver/upstream
-    tcp_options {
-      min = 53
-      max = 53
+  dynamic "egress_security_rules" {
+    for_each = toset(var.dns_upstream_cidrs)
+    content {
+      protocol    = "6" # DNS TCP out
+      destination = egress_security_rules.value
+      tcp_options {
+        min = 53
+        max = 53
+      }
     }
   }
-  egress_security_rules {
-    protocol    = "17"        # DNS UDP out
-    destination = "0.0.0.0/0" # TODO scope to resolver/upstream
-    udp_options {
-      min = 53
-      max = 53
+  dynamic "egress_security_rules" {
+    for_each = toset(var.dns_upstream_cidrs)
+    content {
+      protocol    = "17" # DNS UDP out
+      destination = egress_security_rules.value
+      udp_options {
+        min = 53
+        max = 53
+      }
     }
   }
   dynamic "egress_security_rules" {
@@ -463,7 +472,7 @@ resource "oci_core_security_list" "ddi" {
     }
   }
   dynamic "egress_security_rules" {
-    for_each = local.is_uddi ? ["0.0.0.0/0"] : [] # TODO scope to Infoblox Portal ranges
+    for_each = local.is_uddi ? var.infoblox_portal_cidrs : []
     content {
       protocol    = "6" # Portal sync out (universal_ddi only)
       destination = egress_security_rules.value

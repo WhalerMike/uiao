@@ -377,3 +377,10 @@ variable "admin_username" {
   type        = string
   default     = "azinfoblox"
 }
+
+# --- Scoped egress (SC-7) --------------------------------------------
+variable "infoblox_portal_cidrs" {
+  description = "Destination CIDRs for the Infoblox Universal DDI SaaS portal 443/tcp egress (universal_ddi only). SCOPE to the published Infoblox Portal (csp.infoblox.com) ranges for production; the open default ['0.0.0.0/0'] is lab-only. Replaces the 'Internet' service tag so egress is an explicit, documented CIDR set."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
