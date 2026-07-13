@@ -4,8 +4,8 @@
 
 ## Coverage (stated honestly)
 
-- The spine records **59 control-closure claims** across **15 of 66 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
-- **11 of 59** claims carry a named falsifying test; **15 of 59** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
+- The spine records **65 control-closure claims** across **16 of 66 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
+- **11 of 65** claims carry a named falsifying test; **15 of 65** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
 
 ## Matrix
 
@@ -13,6 +13,12 @@
 |---|---|---|---|---|---|
 | SC-20 † | book-01 | 2 | Network | — | — *(no falsifying test bound yet)* |
 | SC-21 † | book-01 | 2 | Network | — | — *(no falsifying test bound yet)* |
+| AC-2 † | book-04 | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-2(1) | book-04 | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-4 † | book-04 | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| PS-4 † | book-04 | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| PS-5 † | book-04 | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| SI-12 † | book-04 | 3 | Identity | — | — *(no falsifying test bound yet)* |
 | CM-7 | book-cloudnative-posture | 4 | Security / supply chain | — | — *(no falsifying test bound yet)* |
 | SC-7 | book-cloudnative-posture | 4 | Network | — | — *(no falsifying test bound yet)* |
 | CM-6 | book-cloudnative-posture | 6 | Security / supply chain | — | Vol VI Book 08 — baseline conformance re-check (scheduled re-scan vs intended baseline) |
