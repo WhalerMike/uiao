@@ -34,8 +34,10 @@ product. See [ADR-085](src/uiao/canon/adr/adr-085-universal-enterprise-positioni
 
 The substrate defines:
 
-- **SSOT** — a single source of truth per claim, certificate-anchored,
-  certified via provenance chains that cannot be backfilled.
+- **SSOT** — a single source of truth per claim, with adapters able to declare a
+  trust anchor for their evidence. (The substrate enforces trust-anchor
+  *declaration* today; issuer-chain / signature verification of the provenance
+  chain is on the roadmap.)
 - **Canon** — the authoritative artifacts (schemas, registries, policies,
   executive-order mappings). Canon lives under [`src/uiao/canon/`](src/uiao/canon/) and ships with the wheel as package data; everything else derives.
 - **Substrate** — the cross-cutting data and control layer that adapters
