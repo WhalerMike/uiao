@@ -89,6 +89,7 @@ while IFS=$'\t' read -r volfolder src base; do
   destdir="$STAGE/$volfolder/kits"
   mkdir -p "$destdir"
   if [ -e "$REPO_ROOT/$src" ]; then
+    rm -rf "$destdir/$base"   # idempotent: drop any copy seeded from the prior kit (avoids nesting)
     cp -r "$REPO_ROOT/$src" "$destdir/$base"
     n=$(find "$destdir/$base" -type f | wc -l)
     printf '   + %-34s %4s files -> %s/kits/%s\n' "$base" "$n" "$volfolder" "$base"
