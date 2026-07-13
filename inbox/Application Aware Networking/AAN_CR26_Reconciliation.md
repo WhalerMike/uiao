@@ -79,3 +79,17 @@ So "29/29 satisfied" is a statement about the **internal rule set**, not the CR2
 | KSI-INR — Incident Response | 3 | 3 | fully mapped |
 | KSI-RPL — Recovery Planning | 4 | 4 | fully mapped |
 | **Total** | **46** | **19** | **19/46 explicitly mapped** |
+
+## Remediation plan for the not-yet-mapped indicators
+
+The **27 not-yet-mapped indicators** fall entirely in the 4 themes below, each attested today at the CISA ScuBA baseline level (rules KSI-001..010) but not yet bound to a CR26 indicator ID. The external dependency has **cleared** — the finalized CR26 Moderate list was published **June 25, 2026** — so this is actionable now, not blocked. Owner is stated by role (no individual named here); the authorization timeline dates are from the ConMon Gap Roadmap.
+
+| Theme | Unmapped indicators | Disposition | Owner (role) | Target |
+|---|---|---|---|---|
+| KSI-IAM — Identity and Access Management | 6 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-CNA — Cloud Native Architecture | 8 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-SVC — Service Configuration | 8 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-MLA — Monitoring, Logging, and Auditing | 5 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| **Total** | **27** | — | — | — |
+
+Until these are dispositioned, the POA&M is expected to be non-empty: each unmapped indicator is a candidate POA&M item pending the binding decision and the independent SCA verdict.
