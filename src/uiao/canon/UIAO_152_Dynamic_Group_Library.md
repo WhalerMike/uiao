@@ -20,7 +20,7 @@ provenance_flatten:
 
 # Appendix B — Dynamic Group Library (Model C)
 
-> **Model C (15-facet multi-attribute) per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md).** Membership rules compose facet predicates from the 15-slot model rather than `-startsWith` / `-eq` on a composite-hyphen path. The facet/slot definitions are in [UIAO_151](UIAO_151_OrgPath_Codebook.md) v4.0; the executable codebook is [`data/orgpath/codebook.yaml`](data/orgpath/codebook.yaml) `schema_version: 2.0.0`.
+> **Model C (15-facet multi-attribute) per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md), refined to Hybrid-C+Path per [ADR-127](adr/adr-127-orgpath-hybrid-derived-path.md).** Membership rules compose facet predicates from the governance-layer slots (1–14); subtree targeting uses `-startsWith` on the slot-15 derived OrgPath (the inheritance layer, ADR-127). The facet/slot definitions are in [UIAO_151](UIAO_151_OrgPath_Codebook.md) v4.1; the executable codebook is [`data/orgpath/codebook.yaml`](data/orgpath/codebook.yaml) `schema_version: 2.1.0`.
 
 ## Purpose
 
@@ -30,7 +30,7 @@ The Dynamic Group Library is the operational bridge between the OrgPath Codebook
 
 ## Scope
 
-Covers all dynamic security groups and Microsoft 365 groups whose membership is derived from facet values across `extensionAttribute1`–`10` (plus tenant-declared reserved slots 11–15 if used). Applies to all group-based access control, delegation, licensing, and policy targeting within the M365 GCC-Moderate boundary.
+Covers all dynamic security groups and Microsoft 365 groups whose membership is derived from facet values across `extensionAttribute1`–`10` (plus tenant-declared reserved slots 11–14 if used, and the slot-15 derived OrgPath for subtree targeting per ADR-127). Applies to all group-based access control, delegation, licensing, and policy targeting within the M365 GCC-Moderate boundary.
 
 ## Naming Convention
 
@@ -95,7 +95,7 @@ For multi-facet OR, group via parenthesization:
 
 **Use cases:** Joint compliance groups, cross-divisional projects, role-tier sets.
 
-The Model A "Branch" pattern (`-startsWith "ORG-FIN-AP"` to capture an entire subtree) is *not needed* in Model C because the codebook's tree structure is encoded across facets, not in a single string. To capture "all of IT", use single-facet `attr2 -eq "IT"`. To capture "all of IT/CyberOps", use multi-facet `attr2 -eq "IT" and attr3 -eq "CyberOps"`. Each clause validates independently.
+Node-exact and cross-cutting targeting use boolean facet composition on the governance layer: to capture "all of IT", use single-facet `attr2 -eq "IT"`; to capture "all of IT/CyberOps", use multi-facet `attr2 -eq "IT" and attr3 -eq "CyberOps"`. Each clause validates independently. For **subtree** targeting (a node and every future descendant), [ADR-127](adr/adr-127-orgpath-hybrid-derived-path.md) restored the `-startsWith` branch pattern on the slot-15 **derived OrgPath** — e.g. `extensionAttribute15 -startsWith "Region=NCR|Department=IT|"` — so the one query Model C had dropped is available again without re-introducing a hand-authored composite path. (Earlier revisions of this section stated the branch pattern was "not needed"; ADR-127 reconciled that: it is not needed for node-exact targeting, but it is the correct tool for subtree inheritance.)
 
 ## Canonical Group Definitions
 

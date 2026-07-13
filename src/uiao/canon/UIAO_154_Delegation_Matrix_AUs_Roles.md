@@ -20,7 +20,7 @@ provenance_flatten:
 
 # Appendix D — Delegation Matrix (AUs + Roles) — Model C
 
-> **Model C (15-facet multi-attribute) per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md).** Administrative Unit membership rules compose facet predicates from the 15-slot model rather than `-startsWith` on a composite-hyphen path. The facet/slot definitions are in [UIAO_151](UIAO_151_OrgPath_Codebook.md) v4.0; the dynamic group library that supplies admin groups is in [UIAO_152](UIAO_152_Dynamic_Group_Library.md) v3.0.
+> **Model C (15-facet multi-attribute) per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md).** Administrative Unit membership rules compose facet predicates from the 15-slot model rather than `-startsWith` on a composite-hyphen path. The facet/slot definitions are in [UIAO_151](UIAO_151_OrgPath_Codebook.md) v4.1 (Hybrid-C+Path, ADR-127); the dynamic group library that supplies admin groups is in [UIAO_152](UIAO_152_Dynamic_Group_Library.md).
 
 ## Purpose
 
