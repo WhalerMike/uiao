@@ -9,3 +9,4 @@
 | SI-4(16) | Correlate Monitoring Information | Correlation of monitoring data across vendor/surface boundaries in the unified fabric | FedRAMP Moderate | NIST SP 800-53 Rev 5 | Telemetry | KSI-MLA | No |
 
 : Authorities Closed Here — Multi-Cloud Evidence Fabric (telemetry → CDM → KSI) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+
