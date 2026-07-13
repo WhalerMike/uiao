@@ -42,13 +42,16 @@ Official's review.**
 > its own right; split it out explicitly at that point rather than letting the
 > CSO framing color the enterprise corpus.
 >
-> **KSI-count reconciliation (open item).** The "29 KSI rules" throughout this
-> document are the ADR-111 rule decomposition, not the published CR26 Moderate
-> KSI catalog (~56–63 indicators across the same 10 theme codes, depending on
-> counting method). Until the 29-rule set is diffed rule-ID-by-rule-ID against
-> the finalized CR26 Moderate list (June 25, 2026) and the mapping stated
-> explicitly, "29/29 satisfied" is a claim about the internal rule set — not
-> about coverage of the full CR26 indicator set.
+> **KSI-count reconciliation (initial diff published).** The "29 KSI rules"
+> throughout this document are the ADR-111 rule decomposition, not the published
+> CR26 Moderate KSI catalog. The rule-ID-by-rule-ID diff against the in-repo CR26
+> OSCAL catalog now exists — see `AAN_CR26_Reconciliation.md`. It finds **19 of
+> 46** CR26 indicators explicitly mapped 1:1 to an internal rule (six themes
+> fully covered) and **27 not yet bound to an indicator ID** (IAM/CNA/SVC/MLA,
+> attested at the ScuBA baseline level only). So "29/29 satisfied" is a claim
+> about the internal rule set; CR26 indicator-level coverage is 19/46 explicitly
+> mapped pending reconciliation to the finalized CR26 Moderate list (June 25,
+> 2026) and independent SCA.
 
 ---
 
