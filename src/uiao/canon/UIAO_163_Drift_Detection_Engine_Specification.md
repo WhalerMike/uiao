@@ -53,11 +53,11 @@ Snapshot ──▶ Compare ──▶ Classify ──▶ Alert ──▶ Remediat
 
 ### Format Drift detail
 
-Format Drift applies only to typed facets (currently `HireDate` at `extensionAttribute7` and `TermDate` at `extensionAttribute8`; tenant-declared typed facets in slots 11–15 also qualify). The check is the facet's `value_pattern` regex plus the `allow_empty` flag.
+Format Drift applies only to typed facets (currently `HireDate` at `extensionAttribute7` and `TermDate` at `extensionAttribute8`; tenant-declared typed facets in slots 11–14 also qualify). The check is the facet's `value_pattern` regex plus the `allow_empty` flag.
 
 ### Value Drift detail
 
-Value Drift applies to enumerated facets (8 of the 10 named facets, plus tenant-declared enumerated facets in slots 11–15). A value present in the enumeration with `status: active` validates cleanly. A value present with `status: deprecated` is classified as **Phantom**, not Value Drift. A value not in the enumeration at all is Value Drift.
+Value Drift applies to enumerated facets (8 of the 10 named facets, plus tenant-declared enumerated facets in slots 11–14). A value present in the enumeration with `status: active` validates cleanly. A value present with `status: deprecated` is classified as **Phantom**, not Value Drift. A value not in the enumeration at all is Value Drift.
 
 ### Slot Drift detail
 
