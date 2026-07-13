@@ -59,7 +59,10 @@ PANDOC=/usr/local/lib/python3.11/dist-packages/pypandoc/files/pandoc
   --reference-doc=aan-reference.docx --lua-filter=aan-callouts.lua --resource-path=.
 ```
 
-Render the whole series (56 books) in one pass:
+Render the whole series in one pass (the renderable `Vol_*_Book_*.qmd` books —
+~56 rendered book files; the compliance spine registers 66 deliverables total,
+including the Volume VIII chapters that render from `infoblox-ddi-book/*.md` and
+the non-prose kits):
 
 ```bash
 cd "inbox/Application Aware Networking"
@@ -106,3 +109,13 @@ anywhere (including CI) and are committed. `.docx` needs the Quarto+Pandoc
 toolchain, which the web environment does not carry; committing a stale or
 un-rendered docx would be worse than none, so the render is a local step and the
 allowlist simply keeps a locally-produced docx from being silently dropped.
+
+## Date-code convention (single source per book)
+
+Each book's authoritative Date Code is its front-matter `date:`. Figure alt-text
+that carries its own "Date Code" must match the book's front-matter date, not a
+stale render timestamp — a figure Date Code that lags the book's `date:` is a
+known drift smell a reviewer will notice. When a figure is regenerated, stamp it
+with the current book date; when a book's content changes materially, refresh its
+figures so their Date Codes do not fall behind. The series target is one date per
+book, carried from the front matter into its figures.
