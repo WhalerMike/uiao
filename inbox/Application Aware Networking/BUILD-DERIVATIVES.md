@@ -77,8 +77,27 @@ so a committed render rides with its source.
 The datecoded kit bundles the rendered `.docx` + `.pptx` decks + the governance
 `.docx`. Rebuild it **after** rendering the docx, carrying the Date Code in the
 filename (`AAN_Federal_Series_Complete_YYYY-MM-DD_HHMMET.zip`), and **delete the
-previously-coded zip** (newest code wins — exactly one kept). The current tracked
-kit predates the Vol VII–IX work and should be rebuilt once the docx are rendered.
+previously-coded zip** (newest code wins — exactly one kept).
+
+One script does the whole rebuild:
+
+```bash
+cd "inbox/Application Aware Networking"
+./build_distribution_kit.sh   # renders all book .docx + the full Vol VIII
+                              # chapter set, seeds decks from the prior kit,
+                              # writes the new datecoded zip
+```
+
+`build_distribution_kit.sh` seeds staging from the prior kit (so every `.pptx`
+deck and governance doc is preserved — only Vol VII/IX decks exist as loose
+files), then overwrites each book's `.docx` with a fresh render and **adds the
+full Volume VIII set**: the overview book, all per-cloud chapters
+(`infoblox-ddi-book/01-azure.md … 05-vmware.md`), Cross-Platform Operations, the
+two ServiceNow chapters (07 Orchestration, 08 ServiceNow-Led Implementation),
+Appendix A, and the `servicenow-app` scoped-app kit as source. Earlier kits
+represented Volume VIII by its overview book only; the Vol VIII chapters live at
+repo-root `infoblox-ddi-book/` and are bound into the series via the compliance
+spine (each with an explicit `source:` path).
 
 ## Why the split
 
