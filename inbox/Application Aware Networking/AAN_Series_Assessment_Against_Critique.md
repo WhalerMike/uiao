@@ -106,13 +106,75 @@ four-state legend applied to *all* status tables, and the most optimistic table
 action remains partially open.
 
 ## Concern 3 — Scope discipline
-<!-- C3 -->
+
+**Verdict: (a) Vol VIII banner — Already addressed. (b) ServiceNow
+High-on-Moderate — Partially addressed (finding Confirmed).**
+
+**(a) Vol VIII breadth exception — the fix the critique asked for is present.**
+`Vol_VIII_Book_00_FedAAN_DDI_Automation_Overview.qmd:41-45` carries a dedicated
+"Scope note — this volume is intentionally multi-CSP" callout naming the
+breadth (Azure/AWS/GCP/OCI/VMware), the author direction, and the justification
+(DDI is CSP-agnostic foundation; cross-cloud comparison is the value; governance
+still closes at the GCC-Moderate ServiceNow front door). Reinforced at `:84-86`,
+`:123`, and the figure alt-text `:47`, plus a matching callout in the kit
+(`infoblox-ddi-book/00-introduction.md:55`). This meets Priority-5(a).
+
+**(b) ServiceNow FedRAMP-High covering a Moderate boundary — raised but not
+closed, and now actively inconsistent across books.** The question is flagged
+substantively in the SSOT questionnaire — not merely a footnote —
+(`Vol_0_Book_01…:105` "Class D (High) | ⚠️ Flag — High covers Moderate; confirm
+boundary treatment"; `:247` disposition "Document as High covering Moderate
+boundary"). But:
+
+- **No risk-acceptance artifact, POA&M entry, or AO concurrence** is recorded
+  for it anywhere, and **no Moderate-authorized alternative is named** for the
+  coordination-hub role — unlike the parallel Prisma Cloud / Wiz High-only case,
+  which *is* fully handled with a named Moderate substitute (Defender for Cloud)
+  and an explicit questionnaire cross-reference (`Vol_III_Book_04…:98-103`).
+  That contrast shows the concern is real and the treatment for ServiceNow is
+  weaker than the corpus's own best practice.
+- **Live contradiction across books** (a concrete instance of the aging risk):
+  ServiceNow is "Class D (High)" in the SSOT (`Vol_0_Book_01…:105`), "never
+  cited at a higher level… Moderate" in `Vol_VII_Book_00…:46-48`, "FedRAMP
+  Moderate (GCC, JAB P-ATO)" in `Vol_I_Book_01…:762`, and plain
+  "FedRAMP-authorized" with a link to the **High** press release in
+  `Vol_III_Book_07…:228`. The same platform is described four different ways.
+
+**Assessment:** 3(a) is closed cleanly. 3(b) confirms the critique and is
+arguably worse than described — the boundary question is not only footnoted
+rather than resolved, it is answered inconsistently, so a reviewer can find the
+corpus contradicting itself on a load-bearing authorization fact. Priority-5(b)
+remains open.
 
 ## Concern 4 — "Generated, not hand-maintained"
 <!-- C4 -->
 
 ## Concern 5 — The Executive Summary is not one
-<!-- C5 -->
+
+**Verdict: Partially addressed — finding Confirmed.**
+
+`Vol_0_Book_00_FedAAN_Executive_Summary.qmd` is still a single **1,314-line**
+document with per-book NIST closure tables; it has **not** been split into a
+standalone 2–3 page brief plus a retitled technical body. A decision-maker block
+now exists — an `.exec-summary` div (`:117-169`) that opens "For authorizing
+officials, program executives, and budget decision makers" and states the thesis
+(`:166`) — but it is not a true executive brief:
+
+- It sits **after ~115 lines** of FOUO banner, a "Draft Proposal" warning,
+  "About This Document," and two long "Series Extension" callouts — ~3–4
+  rendered pages before the reader reaches it.
+- It is a book-by-book enumeration of 23 books (`:120-156`), not a distilled
+  thesis / deadlines / decisions / cost-of-inaction brief.
+- **No "decisions needed from OIS/CIO"** list exists (0 matches), and
+  **"cost of inaction" returns 0 matches corpus-wide.** The three binding
+  deadlines appear only as an 8-row table (`:223-236`), not distilled.
+- The first deep per-book NIST control table is at **`:701`** — ~53% into the
+  file, roughly rendered page 14–16.
+
+**Assessment:** The audience is now named and a thesis block exists — genuine
+progress — but the critique's actual recommendation (a self-contained 2–3 page
+brief a decision-maker will finish, carrying the honest maturity framing from
+Concerns 1–2) is not met. Priority-4 remains substantially open.
 
 ## Concern 6 — Necessity claims risk overreaching
 <!-- C6 -->
@@ -120,8 +182,34 @@ action remains partially open.
 ## Concern 7 — Timeline / product-status duplication
 <!-- C7 -->
 
+## Concern 7 — Timeline / product-status duplication
+
+**Verdict: Still open — finding Confirmed.**
+
+Both SSOTs are *declared* — dates at `federal-aan-conmon-gap-roadmap.md:56-57`
+("the series' single source of truth for federal dates"); product status at the
+questionnaire (`Vol_0_Book_01…:37-59`) — but the "cite, don't restate"
+convention is used in only **~2 places** (`Vol_III_Book_04…:102-103`;
+`Vol_V_Book_01…:110`) against dozens of inline restatements:
+
+- "January 1, 2027" / CR26-mandatory: restated as a hard date in **≥7 books**.
+- "BOD 26-04" / "December 7, 2026": restated in **~11 books**.
+- Product/authorization statuses (CSO IDs, FedRAMP levels) restated inline in
+  **≥6 books**, including a full comparison table at `Vol_I_Book_01…:762-768`.
+
+Critically, the aging risk the critique predicted **has already materialized**:
+ServiceNow is "Class D (High)" in the SSOT but "FedRAMP Moderate" in
+`Vol_I_Book_01…:762` — a live contradiction produced precisely because the fact
+was copied rather than referenced. Priority-7 remains open.
+
 ## Cross-cutting, lower-severity notes
-<!-- XC -->
+
+| Note | Verdict | Evidence |
+|---|---|---|
+| **(a) Claim → evidence → test traceability** | **Still open** | Crosswalk columns (`Vol_0_Book_02…:101`) are Control/Title/Family/Where addressed/KSI — no evidence-artifact or validating-test column. Vol VI Bk 08 exists but operationalizes only 3 controls (`:96-99`); no series-wide claim→test matrix. |
+| **(b) Figure/prose date-code drift** | **Still open (widespread)** | 102 lagging `Date Code` hits across 34 .qmd files. Book 00 front matter `date: 2026-07-12` vs fig-alt `Date Code 2026-07-07/-09` (`:271,336,521,599`) — 3–5 day lag; Vol VI Bk 08 even varies within one file. |
+| **(c) Duplicated coverage: "closes" vs "deepens"** | **Partially addressed** | Marked in narrative (`Vol_0_Book_00…:103-104,751,907`; crosswalk `:76-83`) but **not per-row**: the SC-7 row (`Vol_0_Book_02…:215`) lists 6 books with no close/deepen flag. |
+| **(d) Accessibility (34 MB Office zip)** | **Still open** | `AAN_Federal_Series_Complete_2026-07-12_2020ET.zip` = ~33.8 MB, 58 docx + 55 pptx + 1 txt, **no HTML/PDF inside**. The two directory-level `.html` files are single-book renders (Vol I Bks 05/06), not a navigable series doc with the brief on top. |
 
 ## Overall assessment
 <!-- OVERALL -->
