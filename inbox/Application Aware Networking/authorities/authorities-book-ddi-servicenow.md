@@ -5,5 +5,5 @@
 | AU-2 | Event Logging | Immutable request/approval/apply/validation audit trail emitted from the ServiceNow closed loop into the evidence contract | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB M-21-31 | Telemetry | KSI-MLA | No |
 | CM-3 | Configuration Change Control | Service Catalog → Flow Designer approval/SoD → Terraform apply → validation gate → CMDB close: DDI provisioning gated by an approved, audited change record | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB Circular A-130 | Security / supply chain | KSI-CMT | No |
 
-: Authorities Closed Here — ServiceNow Orchestration — Governed Front Door for DDI (infoblox-ddi-book/07-servicenow-orchestration.md) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+: Authorities Closed Here — ServiceNow Orchestration — Governed Front Door for DDI († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
 
