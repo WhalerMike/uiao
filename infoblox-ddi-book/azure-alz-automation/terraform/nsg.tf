@@ -271,7 +271,7 @@ resource "azurerm_network_security_rule" "out_portal_sync" {
   source_port_range           = "*"
   destination_port_range      = "443"
   source_address_prefix       = var.ddi_subnet_address_prefix
-  destination_address_prefix  = "Internet" # TODO: scope to Infoblox Portal ranges
+  destination_address_prefixes = var.infoblox_portal_cidrs
   resource_group_name         = var.hub_resource_group_name
   network_security_group_name = azurerm_network_security_group.ddi.name
 }

@@ -11,3 +11,8 @@
 
 : Authorities Closed Here — Patch & Systems Management (multi-CSP SI-2/CM) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
 
+**Closure-Necessity — alternate-path rebuttals (†).** For each necessity anchor, the strongest alternative a reviewer might propose and the specific reason it fails to close the control:
+
+- **CM-8** — Strongest alternative: "The ServiceNow CMDB is the authoritative inventory." Fails CM-8 because a CMDB is a discovery-populated projection that must reconcile to an authoritative address/name identity to dedupe across clouds; you cannot inventory what you cannot enumerate, and only the IPAM/DDI naming plane enumerates every host by construction. The CMDB reconciles to it, it does not replace it.
+- **SI-2** — Strongest alternative: "A single cross-platform scanner or patch console covers every OS." Fails SI-2 because a scanner detects but does not remediate, and cross-platform consoles still delegate the actual install to each platform native mechanism (Intune/Arc, SSM, vLCM, Ksplice); no remediation path bypasses the per-CSP-by-OS orchestrator.
+

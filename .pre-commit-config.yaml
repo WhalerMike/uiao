@@ -189,3 +189,27 @@ repos:
         language: system
         pass_filenames: false
         files: ^(inbox/Application Aware Networking/(render_cr26_reconciliation\.py|AAN_CR26_Reconciliation\.md)|src/uiao/ksi/rules/.*\.yaml|src/uiao/canon/compliance/reference/fedramp-cr26/.*)$
+
+      # AAN day-2 control-map validation — the Vol IX servicenow-day2 control
+      # maps declare themselves a 'projection of aan-compliance-spine.yml,
+      # CI-validated against it'. This gate makes that claim true: it checks
+      # every catalog item's slot against the spine, its KSI theme against the
+      # CR26 catalog, the boundary, and schema completeness.
+      # Matches .github/workflows/aan-authorities-drift.yml.
+      - id: aan-day2-control-maps
+        name: AAN day-2 control-map validation (validate_day2_control_maps.py)
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python validate_day2_control_maps.py'
+        language: system
+        pass_filenames: false
+        files: ^(inbox/Application Aware Networking/(validate_day2_control_maps\.py|aan-compliance-spine\.yml|servicenow-day2/.*)|src/uiao/canon/compliance/reference/fedramp-cr26/.*)$
+
+      # AAN claim -> evidence -> test matrix — generated from the spine closures;
+      # fails when the committed matrix drifts from what the spine now produces,
+      # so the traceability view (and its honest 15/65 coverage numbers) stays
+      # current (AAN critique v2 Concern 4).
+      - id: aan-claim-evidence-test
+        name: AAN claim-evidence-test matrix drift (render_claim_evidence_test.py --check)
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python render_claim_evidence_test.py --check'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(render_claim_evidence_test\.py|AAN_Claim_Evidence_Test_Matrix\.md|aan-compliance-spine\.yml)$

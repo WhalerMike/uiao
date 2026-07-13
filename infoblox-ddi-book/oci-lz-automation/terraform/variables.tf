@@ -460,3 +460,26 @@ variable "data_volume_size_gbs" {
   type        = number
   default     = 0
 }
+
+# --- Scoped egress destinations (SC-7) -------------------------------
+# These default to open egress (0.0.0.0/0) for lab bring-up ONLY. SCOPE each to
+# the real upstreams before presenting this stack as authorization-ready — an
+# unscoped egress CIDR is an SC-7 boundary-protection finding, not a TODO.
+
+variable "ntp_egress_cidrs" {
+  description = "Destination CIDRs for outbound NTP (123/udp). SCOPE to your NTP servers for production; the open default is lab-only."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "dns_upstream_cidrs" {
+  description = "Destination CIDRs for outbound DNS (53/tcp+udp) to resolvers/upstream forwarders. SCOPE for production; the open default is lab-only."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "infoblox_portal_cidrs" {
+  description = "Destination CIDRs for the Infoblox Universal DDI SaaS portal 443/tcp egress (universal_ddi only). SCOPE to the published Infoblox Portal (csp.infoblox.com) ranges for production; the open default is lab-only."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}

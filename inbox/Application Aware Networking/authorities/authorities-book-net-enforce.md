@@ -13,3 +13,8 @@
 
 : Authorities Closed Here — Network Enforcement Substrate (Cisco/Palo Alto/Juniper) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
 
+**Closure-Necessity — alternate-path rebuttals (†).** For each necessity anchor, the strongest alternative a reviewer might propose and the specific reason it fails to close the control:
+
+- **SC-8** — Strongest alternative: "TLS already encrypts the data in transit." Fails SC-8 for the circuit as a whole — TLS protects only applications that implement it, leaving management, legacy, and non-TLS flows in cleartext on a bare DIA path; only a network-layer IPsec/MACsec overlay encrypts all traffic regardless of application behavior.
+- **IA-3** — Strongest alternative: "MAC filtering / port security identifies the device." Fails IA-3 because MAC identity is spoofable identification, not authentication; only 802.1X (EAP-TLS) supplies cryptographically authenticated device identity, and it gates access at the port rather than observing devices already admitted.
+
