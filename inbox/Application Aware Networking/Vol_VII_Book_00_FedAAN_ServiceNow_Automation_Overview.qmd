@@ -44,8 +44,12 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 This volume targets **FedRAMP Moderate** and the **Microsoft GCC Moderate** boundary
 exclusively: Microsoft 365 GCC (Moderate) as the SaaS control plane and the agency's
 FedRAMP-authorized Azure resources targeted at the Moderate boundary. The ServiceNow
-instance is *FedRAMP-authorized* for that boundary (never cited at a higher level; the
-series scope parameter is Moderate — authoring-spec §2). **Other cloud service providers
+instance runs on **ServiceNow Government Cloud, which holds FedRAMP High
+authorization** — High fully encompasses the Moderate control baseline this series
+targets, so the platform over-satisfies the boundary rather than falling short of it.
+Because that is a High-on-Moderate treatment (not a Moderate authorization), it is
+documented explicitly in the *Authorization Boundary Treatment* subsection below rather
+than left as a footnote. **Other cloud service providers
 (AWS, Oracle/OCI, VMware) and higher boundaries (GCC High, DoD) are explicit follow-ups,
 out of scope here** — the coordination loop is designed so those surfaces reconcile into
 the same ServiceNow queues later without reworking this volume's M365-and-Azure core.
@@ -87,9 +91,43 @@ The series' Management-Plane Coordination Doctrine (Vol 0 Book 00, Executive Sum
 
 Volume VII inherits the series' in-boundary rule without exception. Three constraints govern every workflow in it:
 
-1. **FedRAMP-authorized platform, GCC Moderate boundary.** The ServiceNow instance carries an authorization commensurate with the identity-attributed compliance data it handles, and operates against the Microsoft GCC Moderate surface (M365 GCC + Moderate-targeted Azure). The scope parameter is FedRAMP Moderate; the platform is referred to as *FedRAMP-authorized* and is verified on the FedRAMP Marketplace at procurement.
+1. **FedRAMP High platform, GCC Moderate boundary.** ServiceNow Government Cloud holds FedRAMP High authorization and operates against the Microsoft GCC Moderate surface (M365 GCC + Moderate-targeted Azure). This High-on-Moderate posture is treated explicitly in the subsection below; it is verified on the FedRAMP Marketplace at procurement.
 2. **MID Server in-boundary.** Any callout that reaches an agency surface — Graph, Azure Resource Manager, a DDI grid — runs through a **MID Server registered inside the ATO boundary**, so credentials and execution never leave it. Cloud-to-cloud integrations use the platform's in-boundary integration surface, not a commercial multi-tenant relay.
 3. **Least-privilege service identity.** ServiceNow reaches M365 and Azure through a scoped, auditable app registration / managed identity with only the read and task-creation permissions the coordination role needs — never standing write authority over the estate it is meant to *govern*.
+
+## Authorization Boundary Treatment — ServiceNow High-on-Moderate
+
+::: {.callout-important}
+## The coordination hub is FedRAMP High; the boundary it coordinates is Moderate — treat this explicitly, not as a footnote
+
+ServiceNow Government Cloud (the coordination hub for Volumes VII and IX) holds a
+**FedRAMP High** authorization, while the boundary it coordinates — Microsoft GCC
+Moderate — is **FedRAMP Moderate**. A reviewer is entitled to ask how a High-only
+service sits inside a Moderate architecture. The series' position:
+
+- **Direction of the delta is conservative.** FedRAMP High's control baseline is a
+  strict superset of Moderate's. A High-authorized service *over-satisfies* every
+  Moderate control requirement; the risk direction of a High tool coordinating a
+  Moderate boundary is toward more assurance, not less. (The inverse — a Moderate
+  tool handling High data — is the one that fails, and is not the case here.)
+- **The hub coordinates; it does not become the boundary's system of record.** The
+  ServiceNow CMDB **reconciles to** the authoritative IPAM/DDI plane on the CM-8
+  join key and never replaces it (Vol VII Book 01). Identity-attributed compliance
+  data handled by the hub is commensurate with a High authorization.
+- **Documented boundary treatment, or a named Moderate alternative.** The agency
+  either (a) records a risk-acceptance for running a FedRAMP High coordination
+  platform against a Moderate boundary — the recommended path, given the
+  conservative delta — or (b) selects a FedRAMP **Moderate** workflow/CMDB platform
+  instead. Moderate-authorized alternatives already named in the Product Inventory
+  Questionnaire include Atlassian Government Cloud (Jira/Confluence, Moderate) and
+  Ivanti Neurons for ITSM (Moderate); the mechanism-not-product doctrine (Vol 0
+  Book 00) means the coordination loop in this volume is unchanged by the choice.
+
+**Single source of truth:** the platform's authorization status is pinned in the
+Product Inventory Questionnaire (Vol 0 Book 01 §product-status). Every other book —
+including this one — references that entry rather than restating the level. Verify on
+the FedRAMP Marketplace at procurement.
+:::
 
 # Closure Necessity — Coordination Operationalizes, It Does Not Re-Close
 

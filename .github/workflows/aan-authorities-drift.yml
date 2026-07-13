@@ -1,0 +1,78 @@
+name: AAN Authorities Drift
+
+# Each Federal AAN book's "Authorities Closed Here" table is GENERATED from the
+# single compliance spine (inbox/Application Aware Networking/aan-compliance-spine.yml)
+# by render_authorities_table.py. This gate fails when a committed per-book
+# partial diverges from what the spine now produces — the same regen-and-diff
+# pattern the repo uses for other derived tables.
+#
+# It closes the silent-drift gap called out in the AAN series constructive
+# critique (Concern 4): before this gate, the authorities partials could — and
+# did — fall out of sync with the spine SSOT (stale KSI theme codes) with no
+# check to catch it.
+#
+# To resolve a failing run, regenerate the partials from the spine:
+#     cd "inbox/Application Aware Networking"
+#     python render_authorities_table.py --emit-dir authorities
+
+on:
+  pull_request:
+    paths:
+      - 'inbox/Application Aware Networking/aan-compliance-spine.yml'
+      - 'inbox/Application Aware Networking/authorities/**'
+      - 'inbox/Application Aware Networking/render_authorities_table.py'
+      - 'inbox/Application Aware Networking/render_cr26_reconciliation.py'
+      - 'inbox/Application Aware Networking/AAN_CR26_Reconciliation.md'
+      - 'src/uiao/ksi/rules/**'
+      - 'src/uiao/canon/compliance/reference/fedramp-cr26/**'
+      - '.github/workflows/aan-authorities-drift.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'inbox/Application Aware Networking/aan-compliance-spine.yml'
+      - 'inbox/Application Aware Networking/authorities/**'
+      - 'inbox/Application Aware Networking/render_authorities_table.py'
+      - 'inbox/Application Aware Networking/render_cr26_reconciliation.py'
+      - 'inbox/Application Aware Networking/AAN_CR26_Reconciliation.md'
+      - 'src/uiao/ksi/rules/**'
+      - 'src/uiao/canon/compliance/reference/fedramp-cr26/**'
+      - '.github/workflows/aan-authorities-drift.yml'
+
+jobs:
+  aan-authorities-drift:
+    name: Check AAN authorities tables against the compliance spine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Run authorities-table drift gate
+        working-directory: 'inbox/Application Aware Networking'
+        run: python render_authorities_table.py --check authorities
+
+  aan-cr26-reconciliation-drift:
+    name: Check AAN CR26 reconciliation against the rules and CR26 catalog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Run CR26 reconciliation drift gate
+        working-directory: 'inbox/Application Aware Networking'
+        run: python render_cr26_reconciliation.py --check

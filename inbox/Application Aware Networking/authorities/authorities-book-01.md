@@ -5,3 +5,4 @@
 | SC-21 † | Secure Name/Address Resolution (Recursive) | Recursive DNSSEC validation + protective-DNS RPZ | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA TIC 3.0 | Network | KSI-CNA | No |
 
 : Authorities Closed Here — Cloud Landing Zone, IPAM/DDI, FedRAMP († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+
