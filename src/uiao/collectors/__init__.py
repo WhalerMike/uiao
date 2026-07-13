@@ -13,7 +13,7 @@ This module:
 import importlib
 import inspect
 import pkgutil
-from typing import Dict, List, Type
+from typing import Dict, List, Type, cast
 
 from .base_collector import BaseCollector
 
@@ -60,7 +60,10 @@ def _discover_collectors() -> None:
         # Inspect module members for concrete collector classes
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if _is_concrete_collector(obj):
-                collector_cls: Type[BaseCollector] = obj
+                # _is_concrete_collector guarantees obj is a BaseCollector
+                # subclass; cast so the assignment type-checks under mypy
+                # versions that infer inspect.getmembers as type[object].
+                collector_cls = cast("Type[BaseCollector]", obj)
                 collector_id = getattr(collector_cls, "COLLECTOR_ID", None)
                 if not collector_id:
                     continue
