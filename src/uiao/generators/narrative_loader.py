@@ -368,7 +368,11 @@ def load_control_library(
 
         # --- Optional fields ---
         family = str(data.get("family", "")).strip()
-        status = str(data.get("status", "implemented")).strip()
+        # Lower-cased because this value is copied verbatim into the OSCAL
+        # implementation-status prop, whose vocabulary is lowercase. Belt and
+        # braces with scripts/check_control_library.py, which rejects an
+        # out-of-vocabulary status at source.
+        status = str(data.get("status", "implemented")).strip().lower()
         raw_impl = _resolve_field(data, "implemented_by") or []
         impl_by = _normalise_implemented_by(raw_impl)
         evidence = data.get("evidence", [])

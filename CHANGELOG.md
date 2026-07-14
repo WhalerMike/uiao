@@ -16,6 +16,20 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
   adds a house-style placement figure, and documents it in the Azure SaaS
   operator guide (§13).
 
+### Fixed
+
+- **Control-library `status` casing produced non-conformant OSCAL props.**
+  31 controls across the CA, MA, MP, PL, PS and RA families carried
+  `status: Implemented` (capital I) against 216 lowercase siblings.
+  `narrative_loader._build_oscal_props` copies `status` verbatim into the
+  OSCAL `implementation-status` prop, whose vocabulary is lowercase — so the
+  generated SSP emitted 31 props with a value outside the vocabulary the repo
+  declares in `uiao.oscal.generator`. Normalized to `implemented` (31 files),
+  and `scripts/check_control_library.py` now validates every `status:` against
+  the OSCAL vocabulary as a blocking `--strict` check — it previously did not
+  inspect the field at all, which is why the drift went unnoticed.
+  `narrative_loader` also lower-cases defensively.
+
 ## [0.7.0] — 2026-06-07
 
 **Theme: Multi-tenant Azure SaaS (ADR-096).** Adds a multi-tenant SaaS
