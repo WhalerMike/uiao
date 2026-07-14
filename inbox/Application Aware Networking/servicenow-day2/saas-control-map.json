@@ -1,0 +1,342 @@
+{
+  "_comment": "Lane F SaaS-integration governance control map (Vol VII Book 06). Onboarding a third-party SaaS is not one control event — it is the moment ~18 controls are closed at the workflow plane, or silently skipped. The lifecycle: request -> verify authorization -> classify the flow -> agree (ISA) -> register as a CI -> configure SSO -> issue+rotate credentials -> enable SCIM -> assign least privilege -> propagate JML -> log -> attest -> offboard. Actuation via Graph through the in-boundary MID; ServiceNow governs who/when/approval/evidence. Per the Vol 0 Book 02 convention, Vol VII/IX closures are where a control is COORDINATED, EVIDENCED and OPERATED — the architecture volumes own the primary closure; this lane is the workflow plane. Each item carries `phase` and `summary`: the Book 06 catalog tables are RENDERED from these by render_book_catalog.py and drift-gated, so the book cannot hand-drift from this map. Projection of aan-compliance-spine.yml, CI-validated against it (slots, KSI themes, boundary, schema) by validate_day2_control_maps.py. Scope: FedRAMP Moderate + GCC Moderate.",
+  "boundary": "gcc-moderate",
+  "catalog": {
+    "saas.request": {
+      "title": "Request a SaaS integration",
+      "phase": "1 — Intake and authorization",
+      "summary": "Records the SaaS, its business owner, the business need, and **the specific identity attributes it will receive**. That last field is what makes classification possible; without it, exposure gets reasoned about from vendor marketing",
+      "control": "AC-20",
+      "task_type": "request",
+      "approval": "owner",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Captures the SaaS, its business owner, the business need, and THE SPECIFIC IDENTITY ATTRIBUTES IT WILL RECEIVE. That last field is what makes saas.classify possible — without it nobody can reason about exposure except from vendor marketing. This is the record of which organizational data leaves the boundary, to which external system: the outbound direction that inbound-scoped external-access controls never reach."
+    },
+    "saas.verify.authorization": {
+      "title": "Record the FedRAMP authorization verdict",
+      "phase": "1 — Intake and authorization",
+      "summary": "**The gate.** A FedRAMP Marketplace verdict at or above the Moderate baseline, recorded against the request. No verdict, no progression",
+      "control": "SA-9",
+      "task_type": "request",
+      "approval": "security_approver",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-SCR"
+      ],
+      "slot": "slot-06-security",
+      "note": "THE GATE. A FedRAMP Marketplace verdict at or above the Moderate baseline, recorded against the request BEFORE anything is configured. No verdict, no progression. The verdict is an ISSO decision recorded by a human — the inventory tooling narrows the queue and never emits an 'unauthorized' finding, because name-matching a gallery display name to a marketplace offering is unreliable. A verdict collected after configuration is a rationalization, not a gate."
+    },
+    "saas.verify.interfaces": {
+      "title": "Record the CSO's functions, ports, protocols and endpoints",
+      "phase": "1 — Intake and authorization",
+      "summary": "The CSO's SSO/SCIM endpoints, ports and protocols recorded; the NGFW allow-list and DDI records derive from this, so an undocumented endpoint is drift",
+      "control": "SA-9(2)",
+      "task_type": "request",
+      "approval": "security_approver",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-SCR"
+      ],
+      "slot": "slot-03-network",
+      "note": "The SaaS declares its endpoints (SSO ACS URL, SCIM base URL, IdP-initiated targets) and the protocols in use. The NGFW allow-list and the DDI/DNS records for the integration derive from this record rather than from a ticket comment — so an undocumented endpoint is detectable as drift."
+    },
+    "saas.classify": {
+      "title": "Classify the outbound flow — assertion or standing replica",
+      "phase": "1 — Intake and authorization",
+      "summary": "Assertion-only or standing replica? Derived from the attributes captured at request, not judged ad hoc",
+      "control": "AC-4",
+      "task_type": "request",
+      "approval": "automated",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-02-data",
+      "note": "SSO-only passes an assertion at sign-in and is gone. SCIM leaves a durable, continuously synced replica of directory data in the vendor cloud. Derived from the attributes captured at saas.request, not judged ad hoc. This classification decides whether saas.isa applies — collapsing the two is the most expensive modelling error available here."
+    },
+    "saas.isa": {
+      "title": "Attach an ISA before enabling synchronization",
+      "phase": "1 — Intake and authorization",
+      "summary": "SCIM path only — an ISA attached and approved **before** the sync job is enabled",
+      "control": "CA-3",
+      "task_type": "change",
+      "approval": "owner+security",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-PIY"
+      ],
+      "slot": "slot-06-security",
+      "note": "SCIM path only. A standing directory replica in an external system is an interconnection, and an interconnection needs an agreement — attached and approved BEFORE the sync job is enabled, not after it works. SSO-only integrations skip this entirely and must not be made to wait for it: over-gating the cheap path is how a control gets routed around."
+    },
+    "saas.approve": {
+      "title": "Separate request from approval",
+      "phase": "1 — Intake and authorization",
+      "summary": "Requester may never approve. Privileged scope or any SCIM path requires a security approver distinct from the owner",
+      "control": "AC-5",
+      "task_type": "request",
+      "approval": "security_approver",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Requester may never be approver. Any integration receiving privileged scopes, or any SCIM path, requires a security approver distinct from the business owner. Enforced pre-flight by EntraHelpdeskGate, not by convention."
+    },
+    "saas.register.ci": {
+      "title": "Register the integration as a reconciled CI",
+      "phase": "2 — Register and configure",
+      "summary": "The service principal, its gallery template id, SSO mode and sync-job state become a CMDB CI **reconciled to the authoritative IPAM/DDI asset identity** (the CM-8 join key, Book 01). An integration absent from the register is drift",
+      "control": "CM-8",
+      "task_type": "change",
+      "approval": "automated",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-PIY"
+      ],
+      "slot": "slot-03-network",
+      "note": "The service principal, its applicationTemplateId, its SSO mode and its sync-job state become a CMDB CI reconciled to the authoritative IPAM/DDI asset identity (the CM-8 join key, Vol VII Book 01). DDI stays the SSOT; the CMDB is the workflow projection. An integration absent from the CI register is drift, which is what makes an un-governed portal click detectable at all."
+    },
+    "saas.change": {
+      "title": "Gate actuation on an approved change record",
+      "phase": "2 — Register and configure",
+      "summary": "Every compliance-affecting change carries an approved, reviewable change record before actuation",
+      "control": "CM-3",
+      "task_type": "change",
+      "approval": "owner+security",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-CMT"
+      ],
+      "slot": "slot-06-security",
+      "note": "Every compliance-affecting change to the integration — enabling SSO, enabling SCIM, widening scope, rotating a credential — carries an approved, reviewable change record before actuation. This is the Vol VII Book 00 coordination doctrine applied unchanged."
+    },
+    "saas.sso.configure": {
+      "title": "Configure federated SSO; forbid local app accounts",
+      "phase": "2 — Register and configure",
+      "summary": "Federation actuated via Graph through the MID Server — never a portal click. Records that SaaS-local credentials are disabled or exception-approved: *\"SSO available\" is not \"SSO required\"*",
+      "control": "IA-2",
+      "task_type": "change",
+      "approval": "owner",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "SAML or OIDC federation actuated via Graph through the in-boundary MID Server — never a portal click. The catalog item also records that local/native credentials on the SaaS side are disabled or explicitly exception-approved: 'SSO available' is not 'SSO required', and only the second closes anything."
+    },
+    "saas.identifier": {
+      "title": "Bind the integration to the enterprise identifier",
+      "phase": "2 — Register and configure",
+      "summary": "One enterprise identifier per person from the HR-derived worker record (Book 04). The vendor never mints its own identifier for an organizational user",
+      "control": "IA-4",
+      "task_type": "change",
+      "approval": "automated",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "One enterprise identifier per person carried into the SaaS, sourced from the HR-derived worker record (Vol I Book 04). Prevents per-app identity sprawl and makes rehire/transfer correlation possible in the target system. The SaaS never mints its own identifier for an organizational user."
+    },
+    "saas.credential.issue": {
+      "title": "Issue the federation credential — short-lived",
+      "phase": "3 — Credentials",
+      "summary": "Certificate-based where the SaaS supports it; a secret with a **mandatory expiry** where it does not. No long-lived secret in configuration",
+      "control": "IA-5(2)",
+      "task_type": "change",
+      "approval": "owner",
+      "actuation": "acme-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "The SAML token-signing certificate and the SCIM bearer token are authenticators with lifecycles, not setup steps. Certificate-based where the SaaS supports it; a secret with a MANDATORY expiry where it does not. No long-lived secret in config — same rule as Vol IX Book 03 Lane E, applied to the federation trust."
+    },
+    "saas.credential.rotate": {
+      "title": "Rotate the federation credential before expiry",
+      "phase": "3 — Credentials",
+      "summary": "Automated rotation ahead of expiry, SaaS-side update tracked as a change. The trust never depends on a human remembering a three-year certificate",
+      "control": "IA-5",
+      "task_type": "change",
+      "approval": "automated",
+      "actuation": "acme-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Automated rotation ahead of expiry, with the SaaS-side update tracked as a change. The integration never depends on a human remembering a 3-year certificate. An expiring signing certificate is the single most common cause of a federation outage, which makes this the control with the strongest operational ally."
+    },
+    "saas.pki": {
+      "title": "Govern the token-signing certificate lifecycle",
+      "phase": "3 — Credentials",
+      "summary": "Issuance, publication to the relying party, rollover and revocation under the agency certificate policy — not the IdP's default self-signed certificate accepted at setup",
+      "control": "SC-17",
+      "task_type": "change",
+      "approval": "owner",
+      "actuation": "acme-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-06-security",
+      "note": "Issuance, publication to the SaaS relying party, rollover and revocation of the token-signing certificate under the agency certificate policy — rather than Entra's default self-signed 3-year certificate accepted silently at setup."
+    },
+    "saas.scim.enable": {
+      "title": "Enable automated provisioning (ISA-gated)",
+      "phase": "4 — Provision and authorize",
+      "summary": "Creating the sync job **is** automated account management. Blocked until `saas.isa` is approved. Scoping filter and attribute mapping ride in the change record, so *which attributes leave* is reviewable, not discovered later",
+      "control": "AC-2(1)",
+      "task_type": "change",
+      "approval": "owner+security",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Creating the synchronization job IS automated account management: accounts in the SaaS are created, updated and removed from the authoritative directory rather than by hand. Blocked until saas.isa is approved. The scoping filter and attribute mapping are part of the change record, so 'which attributes leave' is reviewable, not discovered later."
+    },
+    "saas.assign": {
+      "title": "Enforce access by assignment",
+      "phase": "4 — Provision and authorize",
+      "summary": "User/group assignment required — never \"available to all users\". The assignment is the enforcement point the agency still controls once the trust exists",
+      "control": "AC-3",
+      "task_type": "change",
+      "approval": "owner",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "User/group assignment required on the enterprise app — never 'available to all users'. Access to the SaaS is enforced centrally by the assignment, which is the only enforcement point the agency still controls once the trust exists."
+    },
+    "saas.roles": {
+      "title": "Map least-privilege app roles",
+      "phase": "4 — Provision and authorize",
+      "summary": "App roles mapped from the authoritative org model, not a vendor default. Administrative roles inside the SaaS require a security approver",
+      "control": "AC-6",
+      "task_type": "change",
+      "approval": "security_approver",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "App roles mapped from the authoritative org/assignment model, not from a vendor's default 'all users are admins' role. Any role granting administrative authority inside the SaaS requires a security approver."
+    },
+    "saas.leaver": {
+      "title": "Propagate separation to the SaaS",
+      "phase": "5 — Lifecycle (joiner/mover/leaver)",
+      "summary": "The separation event drives disable/remove in the SaaS **on the effective date**, evidenced per step. Separation-to-revocation interval inside the SaaS becomes a ConMon metric",
+      "control": "AC-2(3)",
+      "task_type": "change",
+      "approval": "automated",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "The HR separation event (Vol I Book 04 owns the fact; PS-4) drives disable/remove in the SaaS on the effective date, evidenced per step. Separation-to-revocation interval in the SaaS becomes a ConMon metric. Without this, the directory is clean and the SaaS still has a live account — the exact failure an assessor probes."
+    },
+    "saas.mover": {
+      "title": "Re-derive access on transfer",
+      "phase": "5 — Lifecycle (joiner/mover/leaver)",
+      "summary": "A transfer re-derives entitlements from the new assignment and raises an access review of the residual",
+      "control": "PS-5",
+      "task_type": "change",
+      "approval": "owner",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "A mover event re-derives SaaS entitlements from the new assignment and raises an access review of the residual. To the SaaS a transferred person is the same account doing the same things; only the HR event makes the change visible."
+    },
+    "saas.account.audit": {
+      "title": "Emit automated audit actions on account lifecycle",
+      "phase": "6 — Evidence",
+      "summary": "Account create/modify/enable/disable/remove emit audit records automatically, correlated to the originating HR or catalog event",
+      "control": "AC-2(4)",
+      "task_type": "change",
+      "approval": "automated",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-MLA"
+      ],
+      "slot": "slot-04-telemetry",
+      "note": "Creation, modification, enable/disable and removal of SaaS accounts emit audit records automatically, correlated to the originating HR or catalog event. The provisioning service's own log is the source; the catalog item is what guarantees it is collected rather than left in the tenant."
+    },
+    "saas.logs": {
+      "title": "Collect provisioning and sign-in telemetry",
+      "phase": "6 — Evidence",
+      "summary": "Provisioning and sign-in telemetry routed to the SIEM **at onboarding**, not retrofitted after an incident",
+      "control": "AU-2",
+      "task_type": "change",
+      "approval": "automated",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-MLA"
+      ],
+      "slot": "slot-04-telemetry",
+      "note": "Provisioning logs and application sign-in logs for the integration routed to the agency SIEM at onboarding — not retrofitted after an incident. Note the boundary caveat: what the tenant can see is bounded by GCC-Moderate telemetry limits (see the SCuBA boundary-limitations brief); this collects what exists, it does not conjure what the boundary withholds."
+    },
+    "saas.audit.review": {
+      "title": "Review integration audit records on cadence",
+      "phase": "6 — Evidence",
+      "summary": "A named reviewer, a cadence, a closure record. Collection is AU-2; evidence that somebody looked is AU-6",
+      "control": "AU-6",
+      "task_type": "request",
+      "approval": "security_approver",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-MLA"
+      ],
+      "slot": "slot-04-telemetry",
+      "note": "A named reviewer, a cadence, and a closure record. AU-6 is the control most often assumed by 'the logs are in Sentinel' — collection is AU-2; somebody actually looking is AU-6, and only a task with an owner produces evidence of it."
+    },
+    "saas.attest": {
+      "title": "Re-attest authorization, ownership and scope",
+      "phase": "7 — Attest and exit",
+      "summary": "Cadence re-verification of the marketplace verdict, the owner and the attribute scope. A lapsed authorization or orphaned integration raises a task; feeds Book 04 attestation and the KSI pipeline",
+      "control": "CA-7",
+      "task_type": "request",
+      "approval": "owner+security",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-MLA"
+      ],
+      "slot": "slot-04-telemetry",
+      "note": "Authorization is not a one-time fact: a CSO can lose its authorization and an integration can outlive its business need. Cadence re-verification of the marketplace verdict, the owner, and the attribute scope; a lapsed authorization or an orphaned integration raises a task. Feeds Vol VII Book 04 attestation and the KSI evidence pipeline."
+    },
+    "saas.retention": {
+      "title": "Record attribute lineage and retention",
+      "phase": "7 — Attest and exit",
+      "summary": "Which attributes flow, from which authoritative source, and the vendor's retention/deletion commitments — recorded where the data originates, because lineage cannot be reconstructed from the vendor's copy at audit time",
+      "control": "SI-12",
+      "task_type": "request",
+      "approval": "owner",
+      "actuation": "servicenow-native",
+      "ksi": [
+        "KSI-PIY"
+      ],
+      "slot": "slot-02-data",
+      "note": "Which identity attributes flow to this SaaS, from which authoritative source, and what the vendor's retention and deletion commitments are. Lineage must be recorded where the data originates and flows — it cannot be reconstructed from the vendor's copy at audit time."
+    },
+    "saas.offboard": {
+      "title": "Terminate the integration and revoke the trust",
+      "phase": "7 — Attest and exit",
+      "summary": "Disable the sync job, remove assignments, revoke the trust and credential, confirm vendor-side deletion against the retention record, retire the CI",
+      "control": "AC-2",
+      "task_type": "change",
+      "approval": "owner+security",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Disable the sync job, remove assignments, revoke the federation trust and the credential, confirm vendor-side deletion against the retention record, retire the CI. The step most often skipped: an integration nobody uses still holds a live directory replica and a valid signing certificate. Triggered by attestation failure, business-need lapse, or a withdrawn FedRAMP authorization."
+    }
+  }
+}

@@ -4,8 +4,8 @@
 
 ## Coverage (stated honestly)
 
-- The spine records **65 control-closure claims** across **16 of 66 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
-- **11 of 65** claims carry a named falsifying test; **15 of 65** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
+- The spine records **89 control-closure claims** across **17 of 67 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
+- **11 of 89** claims carry a named falsifying test; **15 of 89** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
 
 ## Matrix
 
@@ -76,5 +76,29 @@
 | AC-2 | book-sn-m365 | 3 | Identity | — | — *(no falsifying test bound yet)* |
 | CA-7 | book-sn-m365 | 6 | Telemetry | — | Vol VI Book 08 — telemetry-completeness workbook (CA-7(3)) |
 | CM-6 | book-sn-m365 | 6 | Security / supply chain | — | Vol VI Book 08 — baseline conformance re-check (scheduled re-scan vs intended baseline) |
+| CM-8 | book-sn-saas | 2 | Network | — | — *(no falsifying test bound yet)* |
+| AC-2 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-2(1) | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-2(3) | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-20 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-3 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-4 | book-sn-saas | 3 | Data | — | — *(no falsifying test bound yet)* |
+| AC-5 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-6 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-2 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-4 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-5 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-5(2) | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| PS-5 | book-sn-saas | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| SI-12 | book-sn-saas | 3 | Data | — | — *(no falsifying test bound yet)* |
+| SA-9(2) | book-sn-saas | 4 | Network | — | — *(no falsifying test bound yet)* |
+| AC-2(4) | book-sn-saas | 6 | Telemetry | — | — *(no falsifying test bound yet)* |
+| AU-2 | book-sn-saas | 6 | Telemetry | — | — *(no falsifying test bound yet)* |
+| AU-6 | book-sn-saas | 6 | Telemetry | — | — *(no falsifying test bound yet)* |
+| CA-3 | book-sn-saas | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
+| CA-7 | book-sn-saas | 6 | Telemetry | — | — *(no falsifying test bound yet)* |
+| CM-3 | book-sn-saas | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
+| SA-9 † | book-sn-saas | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
+| SC-17 | book-sn-saas | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
 
 *† = Closure-Necessity anchor (no alternate closure path; see the per-book alternate-path rebuttals). Slot names are the evidence categories declared in the spine; a kit named here ships as source in the distribution kit under its volume.*
