@@ -15,7 +15,7 @@
 //     consented Graph scopes (e.g. User.ReadWrite.All, Group.ReadWrite.All,
 //     UserAuthenticationMethod.ReadWrite.All) — never Directory-wide admin.
 //   * Under GCC Moderate the Graph host resolves to the commercial endpoint that
-//     serves that boundary (ADR-033): graph.microsoft.com. GCC High / DoD are not
+//     serves that boundary: graph.microsoft.com. GCC High / DoD are not
 //     offered here.
 //
 // STARTER SKELETON — pin the Graph API version and validate scopes against your
