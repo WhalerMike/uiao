@@ -27,7 +27,7 @@
 | AU-6 | Audit Record Review, Analysis, and Reporting | AU | Vol VII Bk 06 | KSI-MLA |
 | AU-6(1) | Automated Process Integration | AU | Vol III Bk 07 | KSI-MLA |
 | AU-12 | Audit Record Generation | AU | Vol III Bk 07 | KSI-MLA |
-| AU-12(1) † | System-Wide / Time-Correlated Audit Trail | AU | Vol III Bk 07 | KSI-MLA |
+| AU-12(1) † | System-wide and Time-correlated Audit Trail | AU | Vol III Bk 07 | KSI-MLA |
 | CA-2 | Control Assessments | CA | Vol VII Bk 04 | KSI-MLA |
 | CA-3 | Information Exchange | CA | Vol VII Bk 06 | KSI-PIY |
 | CA-5 | Plan of Action and Milestones | CA | Vol VII Bk 04 | KSI-MLA |
@@ -54,12 +54,12 @@
 | SC-8 † | Transmission Confidentiality and Integrity | SC | Vol I Bk 07 | KSI-CNA |
 | SC-8(1) | Cryptographic Protection | SC | Vol I Bk 07 | KSI-CNA |
 | SC-17 | Public Key Infrastructure Certificates | SC | Vol VII Bk 06, Vol IX Bk 03 | KSI-IAM |
-| SC-20 † | Secure Name/Address Resolution (Authoritative) | SC | Vol I Bk 01, Vol VIII Bk 06 | KSI-CNA |
-| SC-21 † | Secure Name/Address Resolution (Recursive) | SC | Vol I Bk 01 | KSI-CNA |
-| SC-22 | Architecture / Provisioning for Name/Address Resolution | SC | Vol VIII Bk 06 | KSI-CNA |
+| SC-20 † | Secure Name/Address Resolution Service (Authoritative Source) | SC | Vol I Bk 01, Vol VIII Bk 06 | KSI-CNA |
+| SC-21 † | Secure Name/Address Resolution Service (Recursive or Caching Resolver) | SC | Vol I Bk 01 | KSI-CNA |
+| SC-22 | Architecture and Provisioning for Name/Address Resolution Service | SC | Vol VIII Bk 06 | KSI-CNA |
 | SI-2 † | Flaw Remediation | SI | Vol III Bk 03, Vol VII Bk 03 | KSI-MLA, KSI-SVC |
 | SI-2(2) | Automated Flaw Remediation Status | SI | Vol III Bk 03 | KSI-MLA, KSI-SVC |
-| SI-2(3) | Time to Remediate / Benchmarks | SI | Vol III Bk 03 | KSI-SVC |
+| SI-2(3) | Time to Remediate Flaws and Benchmarks for Corrective Actions | SI | Vol III Bk 03 | KSI-SVC |
 | SI-3 | Malicious Code Protection | SI | Vol III Bk 04 | KSI-MLA |
 | SI-4 | System Monitoring | SI | Vol I Bk 07 | KSI-MLA |
 | SI-4(16) | Correlate Monitoring Information | SI | Vol III Bk 07 | KSI-MLA |
