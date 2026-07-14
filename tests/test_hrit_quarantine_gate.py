@@ -120,9 +120,7 @@ def test_null_placement_is_held_as_identity() -> None:
 # 5 -------------------------------------------------------------------
 def test_improbable_delta_top_level_org_change() -> None:
     rec = _record(resolved_orgpath="OTHERAGENCY/OPS/TEAM/")
-    report = evaluate_hr_quarantine(
-        [rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"}
-    )
+    report = evaluate_hr_quarantine([rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"})
     assert report.held == ["E-1000"]
     d = report.decisions[0]
     assert d.reasons == (QUARANTINE_IMPROBABLE_DELTA,)
@@ -133,9 +131,7 @@ def test_improbable_delta_top_level_org_change() -> None:
 # 6 -------------------------------------------------------------------
 def test_improbable_delta_too_many_segments_changed() -> None:
     rec = _record(resolved_orgpath="AGENCY/OPS/LOGISTICS/EAST/")
-    report = evaluate_hr_quarantine(
-        [rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/BUDGET/"}
-    )
+    report = evaluate_hr_quarantine([rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/BUDGET/"})
     d = report.decisions[0]
     assert QUARANTINE_IMPROBABLE_DELTA in d.reasons
     assert "segments changed" in d.findings[0].detail
@@ -160,9 +156,7 @@ def test_improbable_delta_depth_jump() -> None:
 def test_plausible_move_clears() -> None:
     # Same top-level + division, only the leaf branch changes.
     rec = _record(resolved_orgpath="AGENCY/CFO/ACCOUNTING/")
-    report = evaluate_hr_quarantine(
-        [rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"}
-    )
+    report = evaluate_hr_quarantine([rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"})
     assert report.held == []
     assert report.decisions[0].quarantined is False
 
@@ -178,9 +172,7 @@ def test_joiner_without_prior_placement_skips_delta_check() -> None:
 def test_multiple_reasons_stack() -> None:
     # Stale AND an improbable top-level move at once.
     rec = _record(extracted_at=_STALE, resolved_orgpath="OTHER/OPS/TEAM/")
-    report = evaluate_hr_quarantine(
-        [rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"}
-    )
+    report = evaluate_hr_quarantine([rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"})
     d = report.decisions[0]
     assert set(d.reasons) == {QUARANTINE_STALE, QUARANTINE_IMPROBABLE_DELTA}
     assert len(d.findings) == 2
@@ -217,9 +209,7 @@ def test_report_aggregation_and_reason_counts() -> None:
 def test_trailing_delimiter_tolerated_in_delta() -> None:
     # Prior has no trailing delimiter, current does — must still compare equal.
     rec = _record(resolved_orgpath="AGENCY/CFO/FINANCE/")
-    report = evaluate_hr_quarantine(
-        [rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE"}
-    )
+    report = evaluate_hr_quarantine([rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE"})
     assert report.held == []
 
 
@@ -264,9 +254,7 @@ def test_config_override_allows_whole_org_moves() -> None:
 # 15 ------------------------------------------------------------------
 def test_error_codes_are_unique_and_sequential() -> None:
     rec = _record(extracted_at=_STALE, resolved_orgpath="OTHER/OPS/TEAM/")
-    report = evaluate_hr_quarantine(
-        [rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"}
-    )
+    report = evaluate_hr_quarantine([rec], now=_NOW, prior_placements={"E-1000": "AGENCY/CFO/FINANCE/"})
     codes = [f.error_code for f in report.findings]
     assert codes == ["GOV-HRQ-001", "GOV-HRQ-002"]
     assert len(set(codes)) == len(codes)
