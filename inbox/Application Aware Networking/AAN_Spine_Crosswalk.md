@@ -4,18 +4,18 @@
 
 ## Coverage (stated honestly)
 
-- This crosswalk is rendered from the **89 closure rows** the spine carries across **17 of 67 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd` indexes the full 146 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
+- This crosswalk is rendered from the **91 closure rows** the spine carries across **17 of 67 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd` indexes the full 146 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
 - It aggregates those closures into **53 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
 
 ## Crosswalk
 
 | Control | Title | Family | Where addressed (spine) | FedRAMP 20x KSI |
 |---|---|---|---|---|
-| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol VII Bk 06, Vol IX Bk 01 | KSI-IAM |
+| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol VII Bk 06, Vol IX Bk 01, Vol IX Bk 03 | KSI-IAM |
 | AC-2(1) | Account Management | Automated System Account Management | AC | Vol I Bk 04, Vol VII Bk 06 | KSI-IAM |
 | AC-2(3) | Account Management | Disable Accounts | AC | Vol VII Bk 06 | KSI-IAM |
 | AC-2(4) | Account Management | Automated Audit Actions | AC | Vol VII Bk 06 | KSI-MLA |
-| AC-3 | Access Enforcement | AC | Vol VII Bk 06 | KSI-IAM |
+| AC-3 | Access Enforcement | AC | Vol VII Bk 06, Vol IX Bk 01 | KSI-IAM |
 | AC-4 | Information Flow Enforcement | AC | Vol I Bk 07, Vol VII Bk 06 | KSI-CNA, KSI-IAM |
 | AC-5 | Separation of Duties | AC | Vol VII Bk 06 | KSI-IAM |
 | AC-6 | Least Privilege | AC | Vol VII Bk 06, Vol IX Bk 01, Vol IX Bk 03 | KSI-IAM |
@@ -77,7 +77,7 @@ Distinct controls the spine closes within each volume (a control closed in sever
 | Vol III | 17 |
 | Vol VII | 29 |
 | Vol VIII | 6 |
-| Vol IX | 10 |
+| Vol IX | 11 |
 | **Series total (distinct)** | **53** |
 
 : Spine control coverage by volume {.striped}
