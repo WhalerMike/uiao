@@ -1,4 +1,4 @@
-"""Conformance tests for the SOC 2 Trust Services vertical scaffold (ADR-085).
+"""Conformance tests for the SOC 2 Trust Services vertical (ADR-085 / ADR-129).
 
 These tests assert the second (non-federal) vertical adapter pack is well-formed
 and — the point of the whole exercise — binds the *same* substrate surface slots
@@ -22,7 +22,9 @@ import yaml
 
 from uiao.adapters import fedramp_aan_catalog, soc2_trust_services_catalog
 
-_PLANES = Path(__file__).resolve().parents[2] / "src" / "uiao" / "canon" / "data" / "control-planes.yml"
+_ROOT = Path(__file__).resolve().parents[2]
+_PLANES = _ROOT / "src" / "uiao" / "canon" / "data" / "control-planes.yml"
+_REGISTRY = _ROOT / "src" / "uiao" / "canon" / "adapter-registry.yaml"
 
 # control-planes.yml order defines the canonical slot numbering (1-based).
 _SLOT_PLANE = {
@@ -45,11 +47,11 @@ def _plane_ids() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def test_manifest_is_non_federal_scaffold() -> None:
+def test_manifest_is_non_federal_proposed_vertical() -> None:
     assert soc2_trust_services_catalog.ADAPTER_ID == "soc2-trust-services-catalog"
-    # Intentionally NOT active — promoting a non-federal vertical is the
-    # ADR-085 review_trigger and needs its own ADR.
-    assert soc2_trust_services_catalog.STATUS == "scaffold"
+    # Registered + ADR-backed (ADR-129) but not yet operational — proposed, not
+    # active. Promotion to active is gated on an operational gate / customer.
+    assert soc2_trust_services_catalog.STATUS == "proposed"
     assert soc2_trust_services_catalog.VERTICAL == "commercial-regulated"
     assert soc2_trust_services_catalog.SURFACE_SLOTS_BOUND == (1, 2, 3, 4, 5, 6)
 
@@ -79,7 +81,7 @@ def test_mapping_binds_the_matching_substrate_plane(slot_id: int) -> None:
     mapping = soc2_trust_services_catalog.load_slot_mapping(slot_id)
     assert mapping["slot_id"] == slot_id
     assert mapping["slot"] == _SLOT_PLANE[slot_id]
-    assert mapping["status"] == "scaffold"
+    assert mapping["status"] == "proposed"
     assert mapping["vertical"] == "commercial-regulated"
     # Every binding names a TSC criterion + a substrate capability + rationale.
     assert mapping["bindings"], f"slot {slot_id} has no bindings"
@@ -125,3 +127,32 @@ def test_control_plane_order_matches_the_slot_numbering() -> None:
     # verticals depend on.
     ordered = _plane_ids()[:6]
     assert ordered == [_SLOT_PLANE[i] for i in range(1, 7)]
+
+
+# ---------------------------------------------------------------------------
+# Registry admission (ADR-129) — the pack is now a first-class registry citizen
+# ---------------------------------------------------------------------------
+
+
+def _registry_entry() -> dict:
+    reg = yaml.safe_load(_REGISTRY.read_text(encoding="utf-8"))
+    matches = [a for a in reg["adapters"] if a["id"] == "soc2-trust-services-catalog"]
+    assert matches, "SOC 2 pack is not registered in adapter-registry.yaml"
+    return matches[0]
+
+
+def test_pack_is_registered_with_the_non_federal_boundary() -> None:
+    entry = _registry_entry()
+    assert entry["class"] == "conformance"
+    assert entry["status"] == "proposed"
+    # The ADR-129 boundary value — non-federal, regime-scoped.
+    assert entry["gcc-boundary"] == "commercial-general"
+    # In lockstep with the module + mapping status markers.
+    assert entry["status"] == soc2_trust_services_catalog.STATUS
+
+
+def test_registry_status_matches_module_and_mappings() -> None:
+    status = _registry_entry()["status"]
+    assert status == soc2_trust_services_catalog.STATUS
+    for slot_id in soc2_trust_services_catalog.SURFACE_SLOTS_BOUND:
+        assert soc2_trust_services_catalog.load_slot_mapping(slot_id)["status"] == status

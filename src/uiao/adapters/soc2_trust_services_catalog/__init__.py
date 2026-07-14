@@ -40,28 +40,28 @@ top — they are not a substrate concern.
 
 STATUS
 ------
-``scaffold`` — this is a skeleton that demonstrates vertical-agnosticism. It is
-intentionally NOT ``active``: promoting a non-federal compliance regime to a
-first-class, CI-gated vertical is exactly the ADR-085 ``review_trigger`` ("A new
-vertical adapter (non-federal compliance regime) is proposed") and must land
-with its own ADR and a ``verticals-registry.yaml`` (deferred by ADR-085 to a
-separate ADR). Until then this pack is loadable, testable, and honest about
-being a proof-of-shape.
+``proposed`` — registered in ``adapter-registry.yaml`` and ADR-backed
+(ADR-129), but not yet operational. It is intentionally NOT ``active``: there is
+no SOC 2 CI gate, no evidence emitter, and no customer engagement. Promotion to
+``active`` is gated on operational reality (an operational SOC 2 conformance
+gate and/or a real commercial engagement) plus ratification of ADR-129 from
+PROPOSED to ACCEPTED — a separate, small follow-up.
 
-Registry admission (a concrete finding, not an oversight)
----------------------------------------------------------
-This pack is deliberately **not** registered in
-``src/uiao/canon/adapter-registry.yaml`` yet. The registry schema
-(``adapter-registry.schema.json``) makes ``gcc-boundary`` a *required* field
-whose enum is federal-only (``gcc-moderate`` plus three named commercial
-exceptions). There is no non-federal boundary value, so a truthful SOC 2 entry
-cannot be written without either (a) asserting a false ``gcc-moderate`` boundary
-— a positioning bug under ADR-085 D1 — or (b) extending the boundary enum, which
-ADR-085 D3 says must happen "in lockstep with [an] authorizing ADR". So the
-substrate is vertical-agnostic, but the *registry schema still carries residual
-federal coupling*. Surfacing that is more useful than papering over it: the
-vertical ADR that promotes this pack is where the boundary enum gets a
-non-federal value and this pack gets its registry row.
+Registry admission (ADR-129 resolved the finding)
+-------------------------------------------------
+This pack surfaced a concrete obstruction when first authored: the registry
+schema (``adapter-registry.schema.json``) makes ``gcc-boundary`` a *required*
+field whose enum was federal-only (``gcc-moderate`` plus three named
+commercial-product exceptions), with no value for a genuinely non-federal
+vertical. The substrate was vertical-agnostic, but the *registry schema carried
+residual federal coupling*. ADR-129 resolved it in lockstep with the schema
+change ADR-085 D3 anticipated: it added ``commercial-general`` (the boundary for
+non-federal, regime-scoped packs) and registered this pack at status
+``proposed``. A *second* coupling remains noted, not yet fixed: the registry's
+``controls`` field is NIST-patterned and cannot hold SOC 2 Trust Services
+Criteria, so the registry entry omits it and the criteria live in
+``mappings/slot-0N-*.yaml``; the field's vertical-neutral redesign travels with
+the deferred ``verticals-registry.yaml`` work.
 
 References
 ----------
@@ -85,7 +85,7 @@ except ImportError:  # pragma: no cover
     yaml = None  # type: ignore[assignment]
 
 ADAPTER_ID: str = "soc2-trust-services-catalog"
-STATUS: str = "scaffold"
+STATUS: str = "proposed"
 VERTICAL: str = "commercial-regulated"
 STANDARD: str = "AICPA SOC 2 Type II — Trust Services Criteria (2017/2022)"
 SURFACE_SLOTS_BOUND: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
