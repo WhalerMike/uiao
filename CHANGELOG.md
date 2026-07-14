@@ -16,6 +16,35 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
   adds a house-style placement figure, and documents it in the Azure SaaS
   operator guide (§13).
 
+## [0.7.1] — 2026-07-14
+
+### Fixed
+
+- **Control-library status vocabulary — 31 controls silently outside every
+  bucket.** 31 controls (whole `ca` / `ma` / `mp` / `pl` / `ps` / `ra` families)
+  carried `status: Implemented` instead of `implemented`. Every consumer matches
+  this token exactly and case-sensitively — `generators/ssp.py` passes it
+  straight through into the OSCAL `implementation-status` prop (FedRAMP ns), so
+  the capitalized variant emitted an **invalid OSCAL token** and matched neither
+  the implemented nor the not-implemented bucket. Normalized to lower-case:
+  controls loading as `implemented` go 99 → 130, off-vocabulary 31 → 0 (247
+  total unchanged).
+
+### Added
+
+- **Status-vocabulary guard in `scripts/check_control_library.py`.** The checker
+  validated field-set drift but never the `status` value. It now rejects any
+  token outside the OSCAL implementation-status vocabulary
+  (`implemented` / `partial` / `not-implemented` / `not-applicable`), reporting
+  drift per file and failing `--strict`, so the case split cannot silently
+  return. Covered by `tests/test_check_control_library.py`.
+
+### Changed
+
+- **`generators/narrative_loader.py` normalizes `status` defensively** with
+  `.lower()`, so a stray case variant reaching the loader cannot skew generated
+  output ahead of the blocking checker.
+
 ## [0.7.0] — 2026-06-07
 
 **Theme: Multi-tenant Azure SaaS (ADR-096).** Adds a multi-tenant SaaS

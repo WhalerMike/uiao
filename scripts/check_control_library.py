@@ -14,6 +14,8 @@ Checks (each a BLOCKING failure when ``--strict``):
   2. ``total_controls`` == sum of family counts.
   3. ``base_controls`` / ``enhancements`` match the filename split
      (enhancements carry ``(N)`` in the name, e.g. ``AC-2(1).yml``).
+  4. Every ``status`` value is in the OSCAL implementation-status vocabulary
+     (case-sensitive, all lower-case).
 
 Loose ``*.yml`` files at the control-library root (the legacy ``control-id``
 schema reference controls, e.g. ``SC-8.yml`` / ``IA-2.yml``, exercised by
@@ -50,11 +52,20 @@ INDEX = LIB_DIR / "index.yaml"
 # → narrative normalization and the automation → implemented_by/evidence unify).
 _LEGACY_FIELDS = {"control_narrative", "responsible_role", "implementation_status", "automation"}
 
+# Allowed ``status`` values. A control's status is passed through verbatim by
+# uiao.generators.ssp into the OSCAL ``implementation-status`` prop (FedRAMP ns),
+# so it must be a valid OSCAL implementation-status token — the vocabulary
+# documented at uiao/oscal/generator.py (module docstring). Matching downstream
+# is case-sensitive and exact (ssp.py, narrative_loader.py, oscal/generator.py),
+# so a capitalized "Implemented" silently matches no bucket at all: keep these
+# lower-case.
+_VALID_STATUSES = {"implemented", "partial", "not-implemented", "not-applicable"}
+
 
 def scan() -> dict:
     idx = yaml.safe_load(INDEX.read_text())
     families = idx.get("families", {})
-    rows, mismatches, schema_drift = {}, [], []
+    rows, mismatches, schema_drift, status_drift = {}, [], [], []
     base = enh = total_files = 0
     for fam, meta in families.items():
         famdir = LIB_DIR / fam
@@ -79,6 +90,13 @@ def scan() -> dict:
             legacy = _LEGACY_FIELDS & set(d)
             if legacy:
                 schema_drift.append(f"{fam}/{p.name}: {', '.join(sorted(legacy))}")
+            # Status-vocabulary guard: downstream matching is exact, so any
+            # token outside the vocabulary (including a case variant such as
+            # "Implemented") lands in no bucket and is silently dropped.
+            if "status" in d:
+                status = d["status"]
+                if not isinstance(status, str) or status not in _VALID_STATUSES:
+                    status_drift.append(f"{fam}/{p.name}: {status!r}")
 
     if idx.get("total_controls") != total_files:
         mismatches.append(f"total_controls: index={idx.get('total_controls')} sum_of_families={total_files}")
@@ -93,6 +111,13 @@ def scan() -> dict:
             f"(schema-B) fields — {', '.join(sorted(_LEGACY_FIELDS))}"
         )
 
+    if status_drift:
+        mismatches.append(
+            f"status drift: {len(status_drift)} file(s) carry a status outside "
+            f"the OSCAL implementation-status vocabulary — "
+            f"{', '.join(sorted(_VALID_STATUSES))}"
+        )
+
     root_legacy = sorted(p.name for p in LIB_DIR.glob("*.yml"))
     return {
         "total_files": total_files,
@@ -102,6 +127,7 @@ def scan() -> dict:
         "families": rows,
         "root_legacy_files": root_legacy,
         "schema_drift": schema_drift,
+        "status_drift": status_drift,
         "mismatches": mismatches,
     }
 
@@ -123,6 +149,9 @@ def main() -> int:
         print(f"Legacy root-schema files : {', '.join(r['root_legacy_files']) or '(none)'}")
         print(f"Schema-drift files       : {len(r['schema_drift'])}")
         for d in r["schema_drift"]:
+            print(f"    - {d}")
+        print(f"Status-drift files       : {len(r['status_drift'])}")
+        for d in r["status_drift"]:
             print(f"    - {d}")
         if r["mismatches"]:
             print("\nMISMATCHES:")

@@ -368,7 +368,12 @@ def load_control_library(
 
         # --- Optional fields ---
         family = str(data.get("family", "")).strip()
-        status = str(data.get("status", "implemented")).strip()
+        # Lower-cased because every downstream consumer matches this token
+        # exactly (ssp.py passes it through into the OSCAL implementation-status
+        # prop), so a case variant would match no bucket and be dropped.
+        # scripts/check_control_library.py blocks case variants at the source;
+        # this keeps a stray one from silently skewing output in the meantime.
+        status = str(data.get("status", "implemented")).strip().lower()
         raw_impl = _resolve_field(data, "implemented_by") or []
         impl_by = _normalise_implemented_by(raw_impl)
         evidence = data.get("evidence", [])
