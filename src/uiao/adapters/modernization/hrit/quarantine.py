@@ -178,9 +178,7 @@ def _has_placement_fields(record: HRRecord) -> bool:
     )
 
 
-def _improbable_delta(
-    prior: str, current: str, config: QuarantineConfig
-) -> Optional[str]:
+def _improbable_delta(prior: str, current: str, config: QuarantineConfig) -> Optional[str]:
     """Return a human-readable reason if prior->current is an improbable move, else None."""
     delim = config.orgpath_delimiter
     old = _segments(prior, delim)
@@ -203,16 +201,12 @@ def _improbable_delta(
 
     changed = max(len(old), len(new)) - common
     if changed > config.max_changed_segments:
-        return (
-            f"{changed} OrgPath segments changed at once "
-            f"(threshold {config.max_changed_segments})"
-        )
+        return f"{changed} OrgPath segments changed at once (threshold {config.max_changed_segments})"
 
     depth_jump = abs(len(new) - len(old))
     if depth_jump > config.max_depth_jump:
         return (
-            f"OrgPath depth jumped by {depth_jump} levels "
-            f"({len(old)} -> {len(new)}; threshold {config.max_depth_jump})"
+            f"OrgPath depth jumped by {depth_jump} levels ({len(old)} -> {len(new)}; threshold {config.max_depth_jump})"
         )
     return None
 
