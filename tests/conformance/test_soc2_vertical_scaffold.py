@@ -22,10 +22,7 @@ import yaml
 
 from uiao.adapters import fedramp_aan_catalog, soc2_trust_services_catalog
 
-_PLANES = (
-    Path(__file__).resolve().parents[2]
-    / "src" / "uiao" / "canon" / "data" / "control-planes.yml"
-)
+_PLANES = Path(__file__).resolve().parents[2] / "src" / "uiao" / "canon" / "data" / "control-planes.yml"
 
 # control-planes.yml order defines the canonical slot numbering (1-based).
 _SLOT_PLANE = {
@@ -61,8 +58,7 @@ def test_no_federal_terms_leak_into_the_manifest() -> None:
     # The pack must be genuinely non-federal — no FedRAMP/KSI/NIST framing in
     # its own identity fields (ADR-085 D1/D6).
     blob = " ".join(
-        str(getattr(soc2_trust_services_catalog, name))
-        for name in ("ADAPTER_ID", "STATUS", "VERTICAL", "STANDARD")
+        str(getattr(soc2_trust_services_catalog, name)) for name in ("ADAPTER_ID", "STATUS", "VERTICAL", "STANDARD")
     ).lower()
     for term in ("fedramp", "ksi", "nist", "federal", "oscal"):
         assert term not in blob
@@ -120,8 +116,7 @@ def test_every_slot_resolves_to_a_real_control_plane() -> None:
     for slot_id in soc2_trust_services_catalog.SURFACE_SLOTS_BOUND:
         mapping = soc2_trust_services_catalog.load_slot_mapping(slot_id)
         assert mapping["slot"] in plane_ids, (
-            f"slot {slot_id} plane '{mapping['slot']}' is not a real "
-            "control-planes.yml plane"
+            f"slot {slot_id} plane '{mapping['slot']}' is not a real control-planes.yml plane"
         )
 
 

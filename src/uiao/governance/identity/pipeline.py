@@ -162,11 +162,7 @@ def run_pipeline(
     # Hold records unsafe to provision from (stale snapshot, null placement,
     # improbable OrgPath move) BEFORE the JML diff acts on them.  Prior
     # placements come from the prior HRIT snapshot's resolved OrgPaths.
-    prior_placements = {
-        r.employee_id: r.resolved_orgpath
-        for r in (prior_hrit or [])
-        if r.resolved_orgpath
-    }
+    prior_placements = {r.employee_id: r.resolved_orgpath for r in (prior_hrit or []) if r.resolved_orgpath}
     quarantine_now = now if now is not None else _latest_extracted_at(current_hrit)
     quarantine = evaluate_hr_quarantine(
         current_hrit,
