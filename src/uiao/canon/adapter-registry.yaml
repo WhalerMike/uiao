@@ -881,6 +881,75 @@ adapters:
       tests: tests/test_fedramp_cr26_catalog_adapter.py
 
   # ──────────────────────────────────────────────────────────────────
+  # SOC 2 Trust Services catalog — first non-federal vertical (ADR-129)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: soc2-trust-services-catalog
+    name: SOC 2 Trust Services Evidence Catalog (Surface Slots 1–6) — non-federal vertical
+    class: conformance
+    mission-class: policy
+    status: proposed
+    phase: phase-planning
+    vendor: UIAO (native)
+    license: per-repo
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    policy-engine: none
+    scope:
+      - soc2-identity-slot-1
+      - soc2-addressing-slot-2
+      - soc2-network-slot-3
+      - soc2-telemetry-slot-4
+      - soc2-endpoint-slot-5
+      - soc2-security-slot-6
+    outputs:
+      - soc2-evidence-bindings.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: point-in-time
+    retention-years: 3
+    freshness-window-hours: 8760
+    # `controls` intentionally omitted: the registry's controls field is
+    # NIST-patterned (^[A-Z]{2}-[0-9]+...), which cannot express SOC 2 Trust
+    # Services Criteria (CC6.1 etc.). The TSC criteria live in the pack's
+    # mappings/slot-0N-*.yaml. This residual schema coupling is noted by ADR-129
+    # and left for the deferred verticals-registry work.
+    automation-domain:
+      - configuration-management
+      - event-management
+    gcc-boundary: commercial-general
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    references:
+      - src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md
+      - src/uiao/canon/adr/adr-129-non-federal-vertical-registration.md
+      - src/uiao/canon/data/control-planes.yml
+    notes: >-
+      First non-federal vertical adapter pack (ADR-129), and the executable
+      proof of ADR-085 vertical-agnosticism: it binds the SAME surface slots as
+      the federal fedramp-aan-catalog, but crosswalks the SOC 2 Type II Trust
+      Services Criteria (CC6 logical access, CC7 system operations, CC8 change
+      management) instead of NIST / KSI. Status `proposed`: registered and
+      ADR-backed, but not operational — no SOC 2 CI gate, evidence emitter, or
+      customer engagement yet. Boundary `commercial-general`: regime-scoped, not
+      federal-cloud-scoped.
+
+
+      Surface slots bound (control-planes.yml IDs):
+        1 identity   CC6.1-6.3     4 telemetry CC7.1-7.3
+        2 addressing CC6.1 / CC7.1 5 endpoint  CC6.8 / CC7.1
+        3 network    CC6.6-6.7     6 security  CC7.4 / CC8.1
+
+
+      Binding files: src/uiao/adapters/soc2_trust_services_catalog/mappings/
+        slot-01-identity-evidence.yaml … slot-06-security-evidence.yaml
+    implementation:
+      python_module: src/uiao/adapters/soc2_trust_services_catalog
+      tests: tests/conformance/test_soc2_vertical_scaffold.py
+
+  # ──────────────────────────────────────────────────────────────────
   # Reserved adapter slots allocated by ADR-049 (2026-04-30)
   # ──────────────────────────────────────────────────────────────────
 
