@@ -84,7 +84,20 @@ echo "== Kits (deployable source) — every kit registered in the spine, into it
 # complete source, nothing dropped. Each kit lands under <Volume>/kits/<name>/.
 REPO_ROOT="$HERE/../.."
 kits=0
+# Purge every kits/ dir seeded from the prior zip BEFORE re-copying. The loop
+# below re-adds every kit the spine registers, so nothing is lost — and this is
+# the only way to evict a mis-named directory a previous run may have left
+# behind. Per-kit `rm -rf "$destdir/$base"` cannot do it: if $base was mangled
+# on the run that created the directory, the name no longer matches.
+find "$STAGE" -type d -name kits -prune -exec rm -rf {} + 2>/dev/null || true
 while IFS=$'\t' read -r volfolder src base; do
+  # Strip a trailing CR: python3 on Windows emits CRLF, and `read` splits on \n
+  # only — so the CR lands on the last field and `cp -r` then creates a
+  # directory whose name carries it. That silently duplicated every kit on each
+  # Windows rebuild (681 -> 942 entries) before this guard.
+  base="${base%$'\r'}"
+  src="${src%$'\r'}"
+  volfolder="${volfolder%$'\r'}"
   [ -z "$volfolder" ] && continue
   destdir="$STAGE/$volfolder/kits"
   mkdir -p "$destdir"
@@ -156,6 +169,76 @@ aan-callouts.lua. See BUILD-DERIVATIVES.md and build_distribution_kit.sh.
 Scope: FedRAMP Moderate & Microsoft GCC Moderate (Volume VIII is the explicit,
 author-directed multi-cloud breadth exception).
 EOF
+
+# ---------------------------------------------------------------------------
+# Self-check — assert the staged tree's SHAPE before zipping.
+#
+# A closed-world assertion, not a diff. The CRLF bug above shipped a corrupt
+# kit past a "nothing was dropped" check because the corruption was purely
+# ADDITIVE (a mangled twin per kit, per rebuild: 420 -> 681 -> 942 files).
+# Diffing for losses can never catch that; enumerating what is ALLOWED can.
+# ---------------------------------------------------------------------------
+echo "== Self-check =="
+selfcheck_fail=0
+
+# NOTE — these assertions deliberately avoid grep. MSYS/Git Bash grep strips \r
+# from BOTH its input and its pattern, so `grep -qxF "$name"` silently matches
+# "kit" against "kit<CR>" — i.e. grep is blind to precisely the corruption this
+# check exists to catch. Bash's own [[ ]] compares the raw bytes. Verified: a
+# grep-based version of check 1 scored 0 against an injected <CR> twin.
+expected_kits=()
+while IFS= read -r k; do
+  k="${k%$'\r'}"
+  [ -n "$k" ] && expected_kits+=("$k")
+done < <(python3 - "$HERE/aan-compliance-spine.yml" <<'PY'
+import sys, os, yaml
+d = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+for k in d.get("kits", []):
+    print(os.path.basename(k["source"]))
+PY
+)
+
+_is_expected() {  # exact byte-for-byte membership; no grep, no globbing
+  local needle="$1" e
+  for e in "${expected_kits[@]}"; do [[ "$e" == "$needle" ]] && return 0; done
+  return 1
+}
+
+# 1. Every kits/<name> on disk must be a kit the spine registers. Anything else
+#    is a mis-named directory a previous run left behind.
+found_kits=()
+while IFS= read -r -d '' dir; do
+  name="${dir##*/}"
+  found_kits+=("$name")
+  if ! _is_expected "$name"; then
+    echo "   FAIL unexpected kit dir: $(printf '%q' "$name")"
+    selfcheck_fail=$((selfcheck_fail+1))
+  fi
+  if [[ "$name" =~ [[:cntrl:]] ]]; then
+    echo "   FAIL kit dir name carries a control character (CRLF leak): $(printf '%q' "$name")"
+    selfcheck_fail=$((selfcheck_fail+1))
+  fi
+done < <(find "$STAGE" -mindepth 3 -maxdepth 3 -type d -path '*/kits/*' -print0 2>/dev/null)
+
+# 2. Every registered kit must actually be present.
+for e in "${expected_kits[@]}"; do
+  present=0
+  for f in "${found_kits[@]}"; do [[ "$f" == "$e" ]] && present=1 && break; done
+  if [ "$present" -eq 0 ]; then
+    echo "   FAIL registered kit missing from staging: $e"
+    selfcheck_fail=$((selfcheck_fail+1))
+  fi
+done
+
+staged_files=$(find "$STAGE" -type f | wc -l)
+echo "   staged files: $staged_files | kits expected: $(printf '%s\n' "$expected_kits" | grep -c .)"
+if [ "$selfcheck_fail" -eq 0 ]; then
+  echo "   self-check OK"
+else
+  echo "   SELF-CHECK FAILED ($selfcheck_fail problem(s)) — NOT zipping."
+  echo "   Staging left at $STAGE for inspection."
+  exit 1
+fi
 
 echo "== Zipping -> $ZIP =="
 ( cd "$STAGE" && zip -r -q "$HERE/$ZIP" . )
