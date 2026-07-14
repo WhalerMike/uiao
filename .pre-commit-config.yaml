@@ -35,6 +35,7 @@ repos:
             |AAN_Spine_Crosswalk\.md
             |AAN_Claim_Evidence_Test_Matrix\.md
             |AAN_CR26_Reconciliation\.md
+            |AAN_Implementation_Coverage\.md
           )$
       - id: check-yaml
         args: [--allow-multiple-documents]
@@ -259,3 +260,38 @@ repos:
         language: system
         pass_filenames: false
         files: ^inbox/Application Aware Networking/(check_prose_counts\.py|aan-compliance-spine\.yml|AAN_Claim_Evidence_Test_Matrix\.md|Vol_0_Book_0(0|0a|2)_FedAAN_.*\.qmd)$
+
+      # Content-correctness gate suite (2026-07-14): federal deadlines vs the
+      # authority registry; control ids/titles vs the vendored NIST Rev 5
+      # catalog; the no-FedRAMP-High ratchet + crossref integrity; tracked
+      # derivative Date Codes; the ServiceNow implementation-coverage matrix.
+      - id: aan-authority-deadlines
+        name: AAN federal-deadline claims vs authority registry
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_authority_deadlines.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_authority_deadlines\.py|aan-authority-deadlines\.yml|Vol_.*\.qmd|decks/.*\.yaml|specs/.*\.yaml|federal-aan-conmon-gap-roadmap\.md)$
+      - id: aan-control-citations
+        name: AAN control ids/titles vs NIST Rev 5 catalog
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_control_citations.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_control_citations\.py|reference/.*|aan-compliance-spine\.yml|Vol_.*\.qmd|servicenow-day2/.*\.json|x_ssa_fed_compliance/data/.*\.json|decks/.*\.yaml|specs/.*\.yaml)$
+      - id: aan-series-rules
+        name: AAN scope ratchet (no new FedRAMP-High) + crossref integrity
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_series_rules.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_series_rules\.py|aan-high-claim-baseline\.yml|aan-compliance-spine\.yml|Vol_.*\.qmd|decks/.*\.yaml|specs/.*\.yaml)$
+      - id: aan-derivative-freshness
+        name: AAN tracked derivatives carry their source Date Code
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_derivative_freshness.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_derivative_freshness\.py|Vol_.*\.(qmd|docx|pptx)|decks/.*\.yaml)$
+      - id: aan-impl-coverage
+        name: AAN ServiceNow implementation-coverage matrix drift
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python render_impl_coverage.py --check'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(render_impl_coverage\.py|AAN_Implementation_Coverage\.md|servicenow-day2/.*|x_ssa_fed_compliance/.*)$
