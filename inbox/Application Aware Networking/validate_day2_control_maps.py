@@ -47,40 +47,42 @@ except ImportError:  # pragma: no cover
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 SPINE = HERE / "aan-compliance-spine.yml"
-MAPS = sorted((HERE / "servicenow-day2").glob("*-control-map.json"))
+# Every ServiceNow scoped-app control map in the AAN corpus: the day-2 lanes
+# plus the Vol VII compliance app's map (x_ssa_fed_compliance/data/). One gate,
+# all apps — a new app's map is covered by adding its glob + MAP_TO_BOOK entry.
+MAPS = sorted((HERE / "servicenow-day2").glob("*-control-map.json")) + sorted(
+    (HERE / "x_ssa_fed_compliance" / "data").glob("control-map.json")
+)
 
 REQUIRED = {"title", "control", "task_type", "approval", "actuation", "ksi", "slot"}
 CONTROL_RE = re.compile(r"^[A-Z]{2}-\d+(\(\d+\))?$")
 
-# Which book each lane map projects. A map with no entry here is not
-# projection-checked — add it when the lane gets a book.
+# Which book(s) each map projects — a str for one book, a list where an app
+# operates several (its control set must equal the UNION of their closures).
+# A map with no entry here is not projection-checked; add it when the lane
+# gets a book.
 MAP_TO_BOOK = {
     "helpdesk-control-map.json": "book-day2-helpdesk",
     "landingzone-control-map.json": "book-day2-landingzone",
     "appreg-control-map.json": "book-day2-appreg",
     "telephony-control-map.json": "book-day2-telephony",
     "saas-control-map.json": "book-sn-saas",
+    # x_ssa_fed_compliance operates the Book 02/03/04 surfaces
+    "control-map.json": ["book-sn-m365", "book-sn-azure", "book-sn-attestation"],
 }
 
-# Pre-existing map/spine divergences, found when this check was added on
-# 2026-07-14. They are reported as warnings so new drift blocks while these stay
-# visible; `--strict-projection` fails on them too. Each needs an owner decision
-# — is the map wrong, or is the spine missing a closure? — not a silent fix by
-# whoever next runs the gate.
-_KNOWN_DELTAS = {
-    "helpdesk-control-map.json": {
-        "map_only": {"AC-3"},  # map binds AC-3; spine has no AC-3 closure for the book
-        "spine_only": set(),
-    },
-    "appreg-control-map.json": {
-        "map_only": {"AC-2"},  # map binds AC-2 (appreg.request); spine does not close it here
-        "spine_only": {"SC-17"},  # spine + the book's own table claim SC-17; the map omits it
-    },
-    "telephony-control-map.json": {
-        "map_only": set(),
-        "spine_only": {"AU-2"},  # spine closes AU-2 for the lane; no catalog item carries it
-    },
-}
+# Pre-existing map/spine divergences tolerated as warnings. EMPTY as of
+# 2026-07-14: the three deltas found when the projection check was added were
+# each resolved with an owner decision the same day —
+#   helpdesk AC-3   -> the ca-exception catalog item was right; spine closure ADDED
+#   appreg  AC-2    -> the machine-JML request item was right; spine closure ADDED
+#   appreg  SC-17   -> appreg.credential.issue REBOUND IA-5(2) -> SC-17 (its note
+#                      already cited SC-17; rotate keeps the IA-5(2) bind)
+#   telephony AU-2  -> the closure was real but carried by nothing; catalog item
+#                      tel.audit.collect ADDED (and a row in Vol IX Book 04)
+# With this empty, EVERY map/spine delta is a hard error — do not repopulate it
+# to make a red build green; resolve the delta or revert the change that made it.
+_KNOWN_DELTAS: dict[str, dict[str, set[str]]] = {}
 
 
 def valid_slots() -> set[str]:
@@ -126,7 +128,12 @@ def check_projection(name: str, mapped: set[str], strict: bool) -> tuple[list[st
     book = MAP_TO_BOOK.get(name)
     if not book:
         return [], []
-    spine_ctrls = spine_controls_by_book().get(book, set())
+    books = [book] if isinstance(book, str) else list(book)
+    by_book = spine_controls_by_book()
+    spine_ctrls: set[str] = set()
+    for b in books:
+        spine_ctrls |= by_book.get(b, set())
+    book = "+".join(books)
     map_only = mapped - spine_ctrls
     spine_only = spine_ctrls - mapped
     known = _KNOWN_DELTAS.get(name, {"map_only": set(), "spine_only": set()})
