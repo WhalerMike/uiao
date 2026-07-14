@@ -231,3 +231,80 @@ class TestSampleFixtures:
             run_pipeline(hrit, svcs, output_dir=d)
             report = json.loads((Path(d) / "gate-report.json").read_text())
             assert report["service"]["orphaned"] >= 2
+
+
+# ---------------------------------------------------------------------------
+# HR-quarantine gate integration (Step 0 of the pipeline)
+# ---------------------------------------------------------------------------
+
+
+def _hrq(
+    employee_id: str,
+    *,
+    department: str = "IT",
+    division=None,
+    organization_code=None,
+    cost_center=None,
+    resolved_orgpath=None,
+    extracted_at: str = "2026-06-22T00:00:00Z",
+) -> HRRecord:
+    return HRRecord(
+        employee_id=employee_id,
+        first_name="Test",
+        last_name="User",
+        department=department,
+        hire_date="2022-01-01",
+        worker_type="FullTimeEmployee",
+        location_code="NCR",
+        country="US",
+        employment_status="Active",
+        extracted_at=extracted_at,
+        division=division,
+        organization_code=organization_code,
+        cost_center=cost_center,
+        resolved_orgpath=resolved_orgpath,
+    )
+
+
+class TestQuarantineIntegration:
+    _NOW = "2026-06-22T00:00:00Z"
+
+    def test_clean_records_are_not_quarantined(self):
+        hrit = [_hrq("E100", organization_code="ORG-1", resolved_orgpath="AG/IT/")]
+        result = run_pipeline(hrit, [], now=self._NOW)
+        assert result.quarantine is not None
+        assert result.quarantined_ids == []
+        assert result.to_dict()["quarantine"]["held_count"] == 0
+
+    def test_null_placement_record_is_held_and_fails_gate(self):
+        # No org fields at all -> null-placement (P1) -> gate fails on P1.
+        hrit = [_hrq("E200", department="")]
+        result = run_pipeline(hrit, [], now=self._NOW, fail_on_p1=True)
+        assert "E200" in result.quarantined_ids
+        assert result.gate_passed is False
+
+    def test_stale_snapshot_is_held(self):
+        hrit = [_hrq("E300", extracted_at="2026-06-01T00:00:00Z")]  # ~21 days old
+        result = run_pipeline(hrit, [], now=self._NOW)
+        assert "E300" in result.quarantined_ids
+        assert result.quarantine.reason_counts()["STALE"] == 1
+
+    def test_improbable_move_versus_prior_placement_is_held(self):
+        prior = [_hrq("E400", resolved_orgpath="AG/CFO/FIN/")]
+        current = [_hrq("E400", resolved_orgpath="OTHER/OPS/TEAM/")]
+        result = run_pipeline(current, [], prior_hrit=prior, now=self._NOW)
+        assert "E400" in result.quarantined_ids
+        assert result.quarantine.reason_counts()["IMPROBABLE_DELTA"] == 1
+
+    def test_plausible_move_is_not_held(self):
+        prior = [_hrq("E500", resolved_orgpath="AG/CFO/FIN/")]
+        current = [_hrq("E500", resolved_orgpath="AG/CFO/ACCT/")]
+        result = run_pipeline(current, [], prior_hrit=prior, now=self._NOW)
+        assert "E500" not in result.quarantined_ids
+
+    def test_now_defaults_to_latest_extract(self):
+        # Without an explicit now, the newest extracted_at is the clock, so a
+        # same-stamp record is fresh (age 0) and not quarantined for staleness.
+        hrit = [_hrq("E600", extracted_at="2026-06-22T00:00:00Z")]
+        result = run_pipeline(hrit, [])
+        assert "E600" not in result.quarantined_ids

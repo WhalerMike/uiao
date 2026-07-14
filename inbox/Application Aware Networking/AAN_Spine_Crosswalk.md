@@ -4,14 +4,15 @@
 
 ## Coverage (stated honestly)
 
-- This crosswalk is rendered from the **59 closure rows** the spine carries across **15 of 66 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd` indexes the full 146 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
-- It aggregates those closures into **38 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
+- This crosswalk is rendered from the **65 closure rows** the spine carries across **16 of 66 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd` indexes the full 146 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
+- It aggregates those closures into **43 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
 
 ## Crosswalk
 
 | Control | Title | Family | Where addressed (spine) | FedRAMP 20x KSI |
 |---|---|---|---|---|
-| AC-2 | Account Management | AC | Vol VII Bk 02, Vol IX Bk 01 | KSI-IAM |
+| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol IX Bk 01 | KSI-IAM |
+| AC-2(1) | Automated System Account Management | AC | Vol I Bk 04 | KSI-IAM |
 | AC-4 | Information Flow Enforcement | AC | Vol I Bk 07 | KSI-CNA |
 | AC-6 | Least Privilege | AC | Vol IX Bk 01, Vol IX Bk 03 | KSI-IAM |
 | AC-17 | Remote Access | AC | Vol I Bk 07 | KSI-CNA |
@@ -31,8 +32,11 @@
 | CM-7 | Least Functionality | CM | Vol III Bk 04 | KSI-SVC |
 | CM-8 † | System Component Inventory | CM | Vol III Bk 03, Vol VII Bk 01, Vol VIII Bk 06, Vol IX Bk 02 | KSI-PIY |
 | IA-3 † | Device Identification and Authentication | IA | Vol I Bk 07 | KSI-IAM |
+| IA-4 † | Identifier Management | IA | Vol I Bk 04 | KSI-IAM |
 | IA-5 | Authenticator Management | IA | Vol IX Bk 01 | KSI-IAM |
 | IA-5(2) | Public Key-Based Authentication | IA | Vol IX Bk 03 | KSI-IAM |
+| PS-4 † | Personnel Termination | PS | Vol I Bk 04 | — |
+| PS-5 † | Personnel Transfer | PS | Vol I Bk 04 | — |
 | RA-5 | Vulnerability Monitoring and Scanning | RA | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 03 | KSI-MLA |
 | SA-11 | Developer Testing and Evaluation | SA | Vol III Bk 04 | KSI-SVC |
 | SC-7 | Boundary Protection | SC | Vol I Bk 07, Vol III Bk 04 | KSI-CNA |
@@ -49,6 +53,7 @@
 | SI-3 | Malicious Code Protection | SI | Vol III Bk 04 | KSI-MLA |
 | SI-4 | System Monitoring | SI | Vol I Bk 07 | KSI-MLA |
 | SI-4(16) | Correlate Monitoring Information | SI | Vol III Bk 07 | KSI-MLA |
+| SI-12 † | Information Management and Retention | SI | Vol I Bk 04 | — |
 
 *† = Closure-Necessity anchor (no alternate closure path; see the per-book alternate-path rebuttals in the authorities tables).*
 
@@ -58,12 +63,12 @@ Distinct controls the spine closes within each volume (a control closed in sever
 
 | Volume | Distinct controls closed |
 |---|---|
-| Vol I | 11 |
+| Vol I | 17 |
 | Vol III | 17 |
 | Vol VII | 9 |
 | Vol VIII | 6 |
 | Vol IX | 10 |
-| **Series total (distinct)** | **38** |
+| **Series total (distinct)** | **43** |
 
 : Spine control coverage by volume {.striped}
 
@@ -73,7 +78,7 @@ Distinct controls the spine closes within each volume (a control closed in sever
 |---|---|
 | **KSI-CMT** | CM-2, CM-3, CM-6 |
 | **KSI-CNA** | AC-4, AC-17, SC-7, SC-7(8), SC-8, SC-8(1), SC-20, SC-21, SC-22 |
-| **KSI-IAM** | AC-2, AC-6, AC-19, CM-5, IA-3, IA-5, IA-5(2), SC-17 |
+| **KSI-IAM** | AC-2, AC-2(1), AC-6, AC-19, CM-5, IA-3, IA-4, IA-5, IA-5(2), SC-17 |
 | **KSI-MLA** | AU-2, AU-3, AU-6(1), AU-12, AU-12(1), CA-2, CA-5, CA-7, RA-5, SI-2, SI-2(2), SI-3, SI-4, SI-4(16) |
 | **KSI-PIY** | CM-8 |
 | **KSI-SVC** | CM-6, CM-7, SA-11, SI-2, SI-2(2), SI-2(3) |
@@ -85,6 +90,7 @@ Distinct controls the spine closes within each volume (a control closed in sever
 | Book | Volume/Book | Title |
 |---|---|---|
 | book-01 | Vol I Bk 01 | Cloud Landing Zone, IPAM/DDI, FedRAMP |
+| book-04 | Vol I Bk 04 | HRIT Identity & Org SSOT |
 | book-net-enforce | Vol I Bk 07 | Network Enforcement Substrate (Cisco/Palo Alto/Juniper) |
 | book-patch-sysmgmt | Vol III Bk 03 | Patch & Systems Management (multi-CSP SI-2/CM) |
 | book-cloudnative-posture | Vol III Bk 04 | Cloud-Native Security Posture & Containers (CSPM/CNAPP, K8s) |

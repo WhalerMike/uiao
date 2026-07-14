@@ -21,6 +21,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from uiao.adapters.modernization.hrit.inventory import HRRecord
+from uiao.adapters.modernization.hrit.quarantine import (
+    QuarantineConfig,
+    QuarantineReport,
+    evaluate_hr_quarantine,
+)
 from uiao.governance.identity.jml import HumanJMLEventSet, detect_events
 from uiao.governance.identity.jml import write_evidence_artifacts as write_human_artifacts
 from uiao.governance.identity.service_identity import (
@@ -48,9 +53,15 @@ class GateResult:
     evidence_paths: list[Path] = field(default_factory=list)
     gate_passed: bool = True
     summary_lines: list[str] = field(default_factory=list)
+    quarantine: QuarantineReport | None = None
+
+    @property
+    def quarantined_ids(self) -> list[str]:
+        """Employee ids the HR-quarantine gate held — must NOT be provisioned."""
+        return list(self.quarantine.held) if self.quarantine is not None else []
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "gate_passed": self.gate_passed,
             "p1_count": self.p1_count,
             "p2_count": self.p2_count,
@@ -68,6 +79,14 @@ class GateResult:
             },
             "evidence_paths": [str(p) for p in self.evidence_paths],
         }
+        if self.quarantine is not None:
+            d["quarantine"] = {
+                "held": list(self.quarantine.held),
+                "held_count": self.quarantine.held_count,
+                "cleared_count": self.quarantine.cleared_count,
+                "reason_counts": self.quarantine.reason_counts(),
+            }
+        return d
 
     def write_gate_report(self, output_dir: Path) -> Path:
         """Write gate-report.json to output_dir."""
@@ -84,6 +103,17 @@ class GateResult:
 # ---------------------------------------------------------------------------
 
 
+def _latest_extracted_at(records: list[HRRecord]) -> str:
+    """Newest ``extracted_at`` across records ("as of this extract").
+
+    Used as the default clock for the HR-quarantine staleness check so a run
+    is deterministic and replayable. Empty when there are no records (the gate
+    then cannot compute an age and skips the staleness check).
+    """
+    stamps = [r.extracted_at for r in records if r.extracted_at]
+    return max(stamps) if stamps else ""
+
+
 def run_pipeline(
     current_hrit: list[HRRecord],
     current_services: list[ServiceIdentityRecord],
@@ -92,6 +122,8 @@ def run_pipeline(
     prior_services: list[ServiceIdentityRecord] | None = None,
     output_dir: str | Path | None = None,
     fail_on_p1: bool = True,
+    now: str | None = None,
+    quarantine_config: QuarantineConfig | None = None,
 ) -> GateResult:
     """Run the full identity governance pipeline.
 
@@ -113,11 +145,32 @@ def run_pipeline(
     fail_on_p1:
         When True (default), ``GateResult.gate_passed`` is False if any
         P1 findings are present.  The CLI uses this to set exit code 1.
+    now:
+        Current time (ISO-8601) for the HR-quarantine staleness check.  When
+        None, defaults to the newest ``extracted_at`` across ``current_hrit``
+        (i.e. "as of this extract"), keeping the run deterministic and
+        replayable in evidence.
+    quarantine_config:
+        Threshold overrides for the HR-quarantine gate.  Defaults are
+        conservative (see ``QuarantineConfig``).
 
     Returns
     -------
     GateResult
     """
+    # --- Step 0: HR-feed quarantine gate -------------------------------------
+    # Hold records unsafe to provision from (stale snapshot, null placement,
+    # improbable OrgPath move) BEFORE the JML diff acts on them.  Prior
+    # placements come from the prior HRIT snapshot's resolved OrgPaths.
+    prior_placements = {r.employee_id: r.resolved_orgpath for r in (prior_hrit or []) if r.resolved_orgpath}
+    quarantine_now = now if now is not None else _latest_extracted_at(current_hrit)
+    quarantine = evaluate_hr_quarantine(
+        current_hrit,
+        now=quarantine_now,
+        prior_placements=prior_placements,
+        config=quarantine_config,
+    )
+
     # --- Step 1: human JML ---------------------------------------------------
     human_events = detect_events(current_hrit, prior_hrit)
 
@@ -140,12 +193,18 @@ def run_pipeline(
     p1_count = sum(1 for f in human_findings + service_findings if f.severity.value == "P1")
     p2_count = sum(1 for f in human_findings + service_findings if f.severity.value == "P2")
 
+    # Quarantine findings carry plain string severities (P1 | P2); count them
+    # alongside the enum-severity JML/service findings so the gate sees them.
+    p1_count += sum(1 for f in quarantine.findings if f.severity == "P1")
+    p2_count += sum(1 for f in quarantine.findings if f.severity == "P2")
+
     gate_passed = not (fail_on_p1 and p1_count > 0)
 
     # --- Step 4: summary lines -----------------------------------------------
     summary_lines = [
         human_events.summary(),
         service_events.summary(),
+        f"HR quarantine: {quarantine.held_count} held, {quarantine.cleared_count} cleared.",
         f"Findings: {p1_count} P1, {p2_count} P2.",
         "GATE: PASSED" if gate_passed else f"GATE: FAILED — {p1_count} P1 finding(s) require immediate action.",
     ]
@@ -166,6 +225,7 @@ def run_pipeline(
         evidence_paths=evidence_paths,
         gate_passed=gate_passed,
         summary_lines=summary_lines,
+        quarantine=quarantine,
     )
 
     if output_dir is not None:
