@@ -2,12 +2,19 @@
 """Validate the NIST 800-53 control-library against its own index.yaml.
 
 The control-library under ``src/uiao/canon/data/control-library/`` is a
-**curated** set of the controls UIAO implements/shares in depth — not an
-attempt at the full 323-control FedRAMP Moderate baseline (the SSP, UIAO_185
-§3, carries the all-323 control-by-control mapping at summary level). This
-checker therefore validates **internal consistency** — that ``index.yaml``
-faithfully describes the files on disk — rather than coverage against an
-external baseline.
+**curated** set of the controls UIAO implements/shares in depth — not the full
+FedRAMP Moderate baseline. This checker validates **internal consistency** —
+that ``index.yaml`` faithfully describes the files on disk — rather than
+coverage against an external baseline.
+
+Coverage is deliberately out of scope, and the reason matters: this docstring
+previously claimed the remainder was carried by "the SSP, UIAO_185 §3 …
+all-323 control-by-control mapping at summary level". That was false. UIAO_185
+is a template whose §3 is an 18-row family-level table with no control
+identifiers, so a control absent from this library is an **unmapped gap**, not
+a curation choice. Nothing here checks that — a coverage gate needs an
+authoritative Moderate control list, which the repo does not carry. See the
+header of ``index.yaml``.
 
 Checks (each a BLOCKING failure when ``--strict``):
   1. Every family directory's ``*.yml`` count matches ``families.<fam>.count``.

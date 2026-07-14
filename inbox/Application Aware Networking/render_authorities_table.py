@@ -27,6 +27,37 @@ except ImportError:  # pragma: no cover
 
 SPINE = Path(__file__).with_name("aan-compliance-spine.yml")
 
+# The authoritative FedRAMP CR26 OSCAL catalog vendored in the repo — the same
+# source render_cr26_reconciliation.py reconciles against. KSI theme ids are
+# read from it rather than hard-coded, so the vocabulary cannot drift from
+# FedRAMP's own. (Reference data, not UIAO engine code — the series' stand-alone
+# posture is unaffected.)
+_CR26_CATALOG_GLOB = (
+    "src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/"
+    "catalog/json/FedRAMP_CR26_catalog.json"
+)
+
+
+def _valid_ksi_themes() -> set[str]:
+    """KSI theme ids from the CR26 catalog; empty set if it cannot be read.
+
+    Returning empty (rather than raising) keeps the spine renderable in a
+    checkout without the catalog — validate() then skips the KSI check rather
+    than failing closed on a missing reference file.
+    """
+    import json
+    import re
+
+    repo = Path(__file__).resolve().parents[2]
+    matches = sorted(repo.glob(_CR26_CATALOG_GLOB))
+    if not matches:
+        return set()
+    try:
+        raw = matches[0].read_text(encoding="utf-8")
+    except OSError:
+        return set()
+    return set(re.findall(r"\bKSI-[A-Z]{3}\b", raw))
+
 # Column order for the generated "Authorities Closed Here" table.
 COLUMNS = [
     ("control", "Control"),
@@ -52,6 +83,10 @@ def validate(spine: dict) -> list[str]:
     auth_ids = {a["id"] for a in spine["authorities"]}
     slot_ids = set(spine["slots"])
     gate_ids = set(spine["gates"])
+    # KSI was previously unvalidated — an invented theme (e.g. KSI-TPR, the
+    # FedRAMP 20x name that is NOT in the CR26 catalog) rendered straight into
+    # the authorities table and the generated docx with nothing to catch it.
+    ksi_ids = _valid_ksi_themes()
 
     for i, c in enumerate(spine["closures"]):
         where = f"closure[{i}] {c.get('control', '?')}/{c.get('book', '?')}"
@@ -64,6 +99,13 @@ def validate(spine: dict) -> list[str]:
         for d in c["drivers"]:
             if d not in auth_ids:
                 errors.append(f"{where}: unknown authority driver '{d}'")
+        if ksi_ids:
+            for k in c.get("ksi") or []:
+                if k not in ksi_ids:
+                    errors.append(
+                        f"{where}: unknown KSI theme '{k}' — not in the CR26 catalog "
+                        f"({', '.join(sorted(ksi_ids))})"
+                    )
         if not isinstance(c.get("plane"), int) or not 1 <= c["plane"] <= 7:
             errors.append(f"{where}: plane must be an int 1-7")
     return errors
