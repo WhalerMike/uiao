@@ -7,7 +7,7 @@
 | CM-6 | Configuration Settings | Drift detection + reconciliation against the baseline; drift record to the evidence contract | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA SCuBA | Endpoint | KSI-CMT | No |
 | SI-2 † | Flaw Remediation | Platform-native patch orchestration per CSP × OS (Intune/Arc, SSM, OS Mgmt Hub/Ksplice, vLCM, Satellite/Ansible) | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 26-04; EO 14028 | Endpoint | KSI-SVC, KSI-MLA | No |
 | SI-2(2) | Automated Flaw Remediation Status | Machine-readable remediation-status record emitted by each native stack into the unified evidence contract | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA CDM | Endpoint | KSI-SVC, KSI-MLA | No |
-| SI-2(3) | Time to Remediate / Benchmarks | Remediation-SLA class per asset, keyed to KEV/exposure (BOD 26-04 four-variable model) | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 22-01; CISA BOD 26-04 | Endpoint | KSI-SVC | No |
+| SI-2(3) | Time to Remediate Flaws and Benchmarks for Corrective Actions | Remediation-SLA class per asset, keyed to KEV/exposure (BOD 26-04 four-variable model) | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 22-01; CISA BOD 26-04 | Endpoint | KSI-SVC | No |
 
 : Authorities Closed Here — Patch & Systems Management (multi-CSP SI-2/CM) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
 
