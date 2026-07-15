@@ -30,7 +30,9 @@ EntraHelpdeskClient.prototype = {
         this.graphVersion = gs.getProperty('x_ssa_day2_ops.graph_version', 'v1.0');
         this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
         this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
-        this.log = new GSLog('x_ssa_day2_ops.log', 'EntraHelpdeskClient');
+        // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
+        // Script Include unprefixed; gs.error always resolves).
+        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.EntraHelpdeskClient] ' + m); } };
         this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
     },
 
@@ -42,11 +44,14 @@ EntraHelpdeskClient.prototype = {
 
     // --- Leaver: evidenced de-provision (AC-2). Disable, revoke sessions. -----
     disableUser: function (userId) {
-        if (this.testMode) return { ok: true, id: userId, accountEnabled: false };
+        if (this.testMode) return { ok: true, id: userId, accountEnabled: false, sessionsRevoked: true };
         var r = this._graph('PATCH', '/users/' + userId, { accountEnabled: false });
         // Revoke refresh tokens / active sessions so the disable takes effect now.
-        this._graph('POST', '/users/' + userId + '/revokeSignInSessions', {});
-        return r;
+        // A leaver is NOT fully de-provisioned if the revoke silently failed — fold
+        // its result into ok so the verify gate and leaver-completion flow see it.
+        var revoke = this._graph('POST', '/users/' + userId + '/revokeSignInSessions', {});
+        return { ok: r.ok && revoke.ok, id: userId, accountEnabled: false,
+                 disableStatus: r.status, sessionsRevoked: revoke.ok, revokeStatus: revoke.status };
     },
 
     // --- Credential: reset password / MFA method, unlock (IA-5). --------------

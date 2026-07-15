@@ -13,7 +13,12 @@ var ComplianceReconcile = Class.create();
 ComplianceReconcile.prototype = {
 
     initialize: function () {
-        this.log = new GSLog('x_ssa_fed_compliance.log', 'ComplianceReconcile');
+        // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
+        // Script Include unprefixed; gs.warn/error always resolve).
+        this.log = {
+            logErr: function (m) { gs.error('[x_ssa_fed_compliance.ComplianceReconcile] ' + m); },
+            logWarning: function (m) { gs.warn('[x_ssa_fed_compliance.ComplianceReconcile] ' + m); }
+        };
         this.testMode = gs.getProperty('x_ssa_fed_compliance.test_mode', 'false') === 'true';
     },
 
