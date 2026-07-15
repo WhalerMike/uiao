@@ -4,9 +4,11 @@
 > Federal Application-Aware Networking series. It is **intentionally multi-CSP**
 > (Azure, AWS, Google Cloud, OCI, VMware) — the one deliberate breadth exception
 > to the series' current **FedRAMP Moderate + Microsoft GCC Moderate** scope, by
-> author direction. Federal control closure is operated at the GCC-Moderate
-> ServiceNow front door (Chapter 7); the per-cloud chapters are CSP-agnostic
-> mechanism build-out. Treat the non-Azure chapters as reference architecture,
+> author direction. Federal control closure spans both Volume VIII books: the
+> GCC-Moderate ServiceNow front door (Chapter 7) operates the change-governance
+> closures (CM-3/CM-5/AU-2), while the naming-plane closures (SC-20/SC-22/CM-8)
+> are registered to the cross-platform operations book (Chapter 6). The per-cloud
+> chapters are CSP-agnostic mechanism build-out. Treat the non-Azure chapters as reference architecture,
 > not an in-scope authorization surface, unless your own boundary covers them.
 
 ## 0.1 What this volume is

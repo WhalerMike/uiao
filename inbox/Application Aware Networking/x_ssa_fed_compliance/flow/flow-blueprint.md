@@ -8,10 +8,13 @@
 1. **Trigger**: schedule (default 6h) or MID verdict-file arrival.
 2. `ComplianceIngest.ingestM365()` + `.ingestAzure()` → findings.
 3. For each finding: `ComplianceReconcile.reconcile(finding)`.
-   - **No CI → no task**: `raiseUnreconciled()` instead (CM-8 inventory defect).
+   - **No CI → no task**: `raiseUnreconciled()` instead (booked under the CA-7
+     conmon rollup, `attest.conmon.rollup`; the CM-8 inventory control closes in
+     Vol VII Book 01).
 4. Look up the finding class in `data/control-map.json` → task type, approval,
-   SLA class, KSI, slot. Unknown class = flow error, not a default task.
-5. Open the Incident/Change with owner + SLA; stamp control + KSI on the record.
+   actuation, KSI, slot. Unknown class = flow error, not a default task.
+5. Open the Incident/Change and stamp control + KSI on the record; owner and SLA
+   come from ServiceNow assignment rules and SLA definitions, not the control map.
 
 ## Flow 2 — Exception Review
 Approval path for `m365.account.exception`: security approver distinct from the

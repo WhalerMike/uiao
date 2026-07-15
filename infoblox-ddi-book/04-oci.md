@@ -210,7 +210,9 @@ carried on subnets become Infoblox **extensible attributes**, so Next-Available-
 requests can be scoped by tag and records inherit ownership metadata. In pipelines,
 Terraform's `infoblox_ip_allocation` + `infoblox_a_record` (or the Universal DDI
 API) reserve the address and create DNS *before* the OCI VNIC is attached — so no
-address is used in OCI that IPAM doesn't already know about.
+pipeline-provisioned address enters OCI that IPAM doesn't already know about;
+out-of-band changes (console-attached VNICs, platform DHCP) are caught by the
+scheduled reconciliation in §6/Day-2.
 
 **Consistency.** Because OCI VCN DHCP is platform-managed (no vNIOS leases inside
 the VCN), keep records authoritative by driving allocation through IPAM at

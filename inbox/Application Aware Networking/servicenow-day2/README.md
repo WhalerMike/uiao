@@ -20,6 +20,7 @@ governs who/when/approval/evidence; Microsoft Graph actuates through the in-boun
 | [`landingzone-control-map.json`](./landingzone-control-map.json) | app data | Lane D landing-zone front-door bindings (CM-2/3/8) |
 | [`appreg-control-map.json`](./appreg-control-map.json) | app data | Lane E app-registration lifecycle bindings (IA-5(2)/SC-17/AC-6) |
 | [`telephony-control-map.json`](./telephony-control-map.json) | app data | §4 Teams telephony + SCuBA-drift bindings (CM-3/CM-6/AU-2) |
+| [`saas-control-map.json`](./saas-control-map.json) | app data | Lane F SaaS integration governance bindings (Vol VII Book 06) |
 | [`atf/README.md`](./atf/README.md) | ATF test spec | Happy-path + negative (self-approve, standing-privilege, unreconciled) via `test_mode` |
 | [`update-set/README.md`](./update-set/README.md) | update set | How the app assembles into one importable XML |
 

@@ -2,10 +2,11 @@
 // -----------------------------------------------------------------------------
 // Step 1-2 of the loop (test -> detect): READ-ONLY pull of native control state
 // from the two surfaces that carry most federal control work —
-//   * M365:  Graph secureScoreControlProfiles + Conditional Access policy state,
-//            SCuBA baseline results, Purview label/DLP posture
-//   * Azure: Resource Graph posture queries, Defender for Cloud assessments,
-//            Update Manager patch state
+//   * M365:  Graph secureScoreControlProfiles + Conditional Access policy state
+//            (SCuBA verdicts arrive as a MID file drop; the ingestion path is a
+//            stub, and Purview label/DLP posture is not yet read)
+//   * Azure: Defender for Cloud (Microsoft.Security) assessments + Update Manager
+//            (Microsoft.Maintenance) patch state, read directly over ARM
 // Every callout is routed through the in-boundary MID Server; the service
 // identity is READ + task-creation only (Vol VII Book 00 doctrine). Drift =
 // (observed != intended baseline) => a finding record, classified against
