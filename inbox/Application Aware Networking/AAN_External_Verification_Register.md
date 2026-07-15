@@ -13,7 +13,7 @@
 >
 > Regenerating from the sweep JSON would wipe sign-offs — edit in place.
 
-**3 HIGH · 90 MED · 81 LOW** — full finding text in `AAN_Corpus_Sweep_Findings.json`.
+**3 HIGH · 90 MED · 85 LOW** (178 rows) — full finding text in `AAN_Corpus_Sweep_Findings.json`. The last 4 LOW rows (EV-L082–L085) come from the 2026-07-15 Vol I Book 02 re-review, not the original sweep.
 
 ## HIGH (3)
 
@@ -118,7 +118,7 @@
 | EV-M089 | 05-vmware.md:61 | "There is no VMware Marketplace SKU that auto-deploys the Grid" and the Aria plug-in "carries no separate per-VM license beyond the underlying Grid";  | Infoblox product docs | ☐ unverified |  |
 | EV-M090 | 07-servicenow-orchestration.md:9 | Load-bearing vendor claims: (a) 'this is assembly of certified products' — ServiceNow ships a Terraform connector and Infoblox ships a *certified* Ser | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 
-## LOW (81)
+## LOW (85)
 
 | ID | Location | Claim to verify | Suggested source | Status | Verifier · date · result |
 |---|---|---|---|---|---|
@@ -203,3 +203,7 @@
 | EV-L079 | 08-servicenow-led-implementation.md:69 | Prerequisites cite "a FedRAMP-authorized ServiceNow instance" and "the two certified Store apps (CPG Terraform Connector, Service Graph Connector for  | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-L080 | appendix-A-sizing-cost-ipv6-dhcp.md:56 | Infoblox capability claims: "Infoblox IPAM/DNS/DHCP are natively dual-stack" (line 56-57), "Infoblox supports stateful DHCPv6 with option assignment"  | Infoblox product docs | ☐ unverified |  |
 | EV-L081 | appendix-A-sizing-cost-ipv6-dhcp.md:85 | A.2.4 table: "Route 53 Resolver supports v6" (AWS row) and "Cloud DNS AAAA + inbound/outbound v6" (Google Cloud row, line 86) | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
+| EV-L082 | Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd:122 | NIST SP 800-120 and SP 800-153 "both recommend EAP-TLS as the strongest EAP method for federal environments" — verify the SP titles and that each so recommends | NIST SP 800-120 / 800-153 | ☐ unverified |  |
+| EV-L083 | Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd:141 | NPS has no path to authorize cloud-native Entra-joined devices; Cisco ISE and Aruba ClearPass terminate EAP-TLS and authorize against Entra/Intune inventory without an AD computer object (load-bearing for the D3 platform decision) | Microsoft / Cisco / Aruba product docs | ☐ unverified |  |
+| EV-L084 | Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd:327 | "NPS has no RFC 5176 support. ISE and ClearPass issue CoA natively from their own session state; NPS cannot." | Microsoft Learn (NPS RFC 5176 / CoA) | ☐ unverified |  |
+| EV-L085 | Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd:349 | WPA3-Enterprise "provides Protected Management Frames (PMF) and eliminates the KRACK-class attacks that affect WPA2-Enterprise" | Wi-Fi Alliance / IEEE 802.11 docs | ☐ unverified |  |
