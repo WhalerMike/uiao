@@ -40,7 +40,7 @@ This guide is organized as ten sequential books. Each book has a defined scope, 
 
 **Safety model.** Every destructive action in this guide is preceded by a documented undo path. `ALTER LOGIN DISABLE` can be reversed with `ALTER LOGIN ENABLE`. SPNs can be removed with `setspn -D`. Arc enrollment can be unenrolled. Every action up to that point is reversible; the first irreversible action is `DROP LOGIN` in Book 05 — and that action is explicitly gated behind a 30-day observation period.
 
-**Test environment requirement.** Books 03–06 should be validated in a test environment before execution against production instances. The test environment must be Arc-enrolled and running SQL Server 2022 to produce meaningful validation results. Testing against SQL Server 2019 with the Entra extension is acceptable for Books 03 and 04, but Book 05 (login migration) must be tested against 2022.
+**Test environment requirement.** Books 03–06 should be validated in a test environment before execution against production instances. The test environment must be Arc-enrolled and running SQL Server 2022 to produce meaningful validation results. Testing against SQL Server 2019 with the Entra extension is acceptable for Book 03 (audit only); Book 04's Entra-enablement and Book 05 (login migration) require 2022.
 
 ---
 
@@ -145,10 +145,11 @@ Identify zombie instances using connection history and SQL Agent job history:
 SELECT
     record.value('(./Record/ConnectivityTraceRecord/LoginName)[1]', 'NVARCHAR(128)') AS login_name,
     record.value('(./Record/ConnectivityTraceRecord/ProtocolType)[1]', 'NVARCHAR(128)') AS protocol,
-    DATEADD(ms, -1 * (sys.dm_os_ring_buffers.timestamp - cpu_tick_count), GETDATE()) AS event_time
-FROM sys.dm_os_ring_buffers
-CROSS APPLY (SELECT CAST(ring_buffer_address AS XML) AS record) AS xRecord(record)
-WHERE ring_buffer_type = N'RING_BUFFER_CONNECTIVITY'
+    DATEADD(ms, rb.timestamp - si.ms_ticks, GETDATE()) AS event_time
+FROM sys.dm_os_ring_buffers AS rb
+CROSS JOIN sys.dm_os_sys_info AS si
+CROSS APPLY (SELECT CAST(rb.record AS XML) AS record) AS xRecord(record)
+WHERE rb.ring_buffer_type = N'RING_BUFFER_CONNECTIVITY'
 AND record.value('(./Record/ConnectivityTraceRecord/RecordType)[1]', 'VARCHAR(50)') = 'LoginTimers'
 ORDER BY event_time DESC;
 ```
