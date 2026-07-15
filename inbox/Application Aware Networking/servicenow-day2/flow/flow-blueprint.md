@@ -43,10 +43,30 @@ via MID) → verify gate → reconcile to CMDB → close with evidence.** Safety
    the requested action — `createUser` / `disableUser` / `resetPassword` /
    `resetMfaMethod` / `addGroupMember` / `assignLicense` / `inviteGuest` — each a
    **MID-routed** Graph call. ServiceNow never holds standing tenant admin.
+
+   Dispatch through an explicit **allowlist**, never `c[inputs.action](...)`.
+   Bracket-indexing a client with a flow input is a privilege-escalation surface:
+   `inputs.action = '_graph'` would invoke the internal method with an
+   attacker-chosen HTTP verb and path, bypassing every per-item control mapping.
+   The allowlist also fixes each method's real argument shape (the seven methods
+   do NOT share one `(target_id, opts)` signature).
    ```javascript
    (function execute(inputs, outputs) {
      var c = new x_ssa_day2_ops.EntraHelpdeskClient();
-     var r = c[inputs.action](inputs.target_id, inputs.opts);   // dispatch by action
+     var o = inputs.opts || {};
+     // action -> the one call it is allowed to make, with its correct arguments.
+     var ACTIONS = {
+       createUser:      function () { return c.createUser(o.payload); },
+       disableUser:     function () { return c.disableUser(inputs.target_id); },
+       resetPassword:   function () { return c.resetPassword(inputs.target_id, o); },
+       resetMfaMethod:  function () { return c.resetMfaMethod(inputs.target_id, o.methodId); },
+       addGroupMember:  function () { return c.addGroupMember(o.groupId, inputs.target_id); },
+       assignLicense:   function () { return c.assignLicense(inputs.target_id, o.skuId); },
+       inviteGuest:     function () { return c.inviteGuest(o.email, o.redirectUrl); }
+     };
+     var fn = ACTIONS.hasOwnProperty(inputs.action) ? ACTIONS[inputs.action] : null;
+     if (!fn) { outputs.ok = false; outputs.result = 'refused: action not in allowlist: ' + inputs.action; return; }
+     var r = fn();
      outputs.ok = r.ok; outputs.result = JSON.stringify(r);
    })(inputs, outputs);
    ```
