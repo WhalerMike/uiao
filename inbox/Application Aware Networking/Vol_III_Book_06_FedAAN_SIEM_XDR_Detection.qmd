@@ -106,7 +106,7 @@ InfoBlox NIOS does not have a native Sentinel connector with first-party schema 
 
 **Architecture:** InfoBlox NIOS is configured to forward syslog to a dedicated Linux forwarder VM (minimum Standard_B2s, separate from production infrastructure). The forwarder runs the Log Analytics agent with the CEF daemon (rsyslog or syslog-ng) configured to listen on UDP 514. The agent forwards CEF-formatted events to the Log Analytics workspace. InfoBlox DNS RPZ events arrive with event category `DNS_RPZ`; DHCP events arrive as `DHCP_LEASE`; DNSSEC failures arrive as `DNS_DNSSEC_FAIL`.
 
-**Estimated EPS:** A mid-size federal agency resolving 500,000 DNS queries per day generates approximately 6 EPS average, with spikes to 50–100 EPS during business hours. RPZ hits are a small fraction — typically less than 0.1% of query volume, or fewer than 1 event per minute. DHCP lease events at 10,000 endpoints average 0.5 EPS. Total InfoBlox contribution: 10–15 EPS average.
+**Estimated EPS:** A mid-size federal agency resolving 500,000 DNS queries per day generates approximately 6 EPS average, with spikes to 50–100 EPS during business hours. RPZ hits are a small fraction — typically less than 0.1% of query volume, or fewer than 1 event per minute. DHCP lease events at 10,000 endpoints average 0.5 EPS. Total InfoBlox contribution: approximately 6.5–7 EPS average (the ~6 EPS DNS baseline plus DHCP and sub-1-per-minute RPZ events), rising with the business-hours DNS spikes noted above.
 
 **Table in Sentinel:** `CommonSecurityLog` (CEF) with `DeviceVendor == "Infoblox"`.
 
@@ -134,7 +134,7 @@ The Entra ID connector is a first-party Sentinel connector that pulls sign-in lo
 
 **Enabling the connector:** In the Sentinel workspace, navigate to Data Connectors, select Azure Active Directory, and enable the following log categories: Sign-in Logs, Audit Logs, Non-Interactive User Sign-In Logs, Service Principal Sign-In Logs, Managed Identity Sign-In Logs, Risky Users, and Risk Events. All categories are required for the detection rules in Section 4.
 
-**Estimated EPS:** At 5,000 users, Entra ID generates approximately 50,000–200,000 sign-in events per day depending on MFA frequency and application count, averaging 2–7 EPS. Audit log events (role changes, policy changes, user provisioning) average 0.5–2 EPS. Risky user and risk event logs are low volume (fewer than 1 EPS) but high value.
+**Estimated EPS:** At 5,000 users, Entra ID generates approximately 50,000–200,000 sign-in events per day depending on MFA frequency and application count, averaging roughly 0.6–2.3 EPS. Audit log events (role changes, policy changes, user provisioning) average 0.5–2 EPS. Risky user and risk event logs are low volume (fewer than 1 EPS) but high value.
 
 **Tables in Sentinel:** `SigninLogs`, `AuditLogs`, `AADNonInteractiveUserSignInLogs`, `AADServicePrincipalSignInLogs`, `AADManagedIdentitySignInLogs`, `AADUserRiskEvents`, `AADRiskyUsers`.
 
@@ -633,7 +633,7 @@ The Logic App uses the Microsoft Sentinel and Microsoft Entra ID connectors avai
 
 ## Playbook: Auto-Isolate Device on Confirmed KEV Exploitation
 
-When the KEV CVE Actively Exploited rule (Section 4, Rule 10) fires AND Defender for Endpoint confirms active exploitation (not just vulnerability presence), trigger automated device network isolation through the Defender for Endpoint API. Network isolation removes the device from all network access except the Defender management channel, preventing lateral movement while preserving forensic state.
+When the KEV CVE Actively Exploited rule (Section 4, Rule 9) fires AND Defender for Endpoint confirms active exploitation (not just vulnerability presence), trigger automated device network isolation through the Defender for Endpoint API. Network isolation removes the device from all network access except the Defender management channel, preventing lateral movement while preserving forensic state.
 
 ```powershell
 # Called from Logic App — isolate a Defender for Endpoint device
@@ -676,7 +676,7 @@ Invoke-RestMethod `
 
 ## Playbook: Auto-Disable Account on Confirmed Impossible Travel + Risky Sign-In
 
-When two signals fire simultaneously for the same user — the Impossible Travel rule (Section 4, Rule 2) AND an Entra ID Identity Protection risk event of High severity — trigger an automated account disable. This compound condition has an extremely low false positive rate (legitimate impossible travel that also triggers Identity Protection high risk is essentially non-existent) and a short attack window, justifying automated action without SOC approval.
+When two signals fire simultaneously for the same user — the Impossible Travel rule (Section 4, Rule 2) AND an Entra ID Identity Protection risk event of High severity — trigger an automated account disable. This compound condition is expected to have a low false positive rate — legitimate impossible travel that also triggers Identity Protection high risk should be rare — and a short attack window. During an initial tuning period, gate the disable on a Logic App approval step and measure the observed false-positive rate on this environment's own data before promoting it to fully automated action, consistent with the SOC-review posture the KEV auto-isolate playbook keeps for its analogous action.
 
 The Logic App action calls the Microsoft Graph API:
 
@@ -691,9 +691,9 @@ The playbook appends a comment to the Sentinel incident documenting the action t
 
 # Incident Response Plan Structure (IR-8)
 
-## NIST SP 800-61 Rev 2 Lifecycle Mapping
+## NIST SP 800-61 Lifecycle Mapping
 
-NIST SP 800-61 Rev 2 defines the incident response lifecycle in four phases: Preparation, Detection and Analysis, Containment/Eradication/Recovery, and Post-Incident Activity. Microsoft Sentinel's incident workflow maps directly to this lifecycle:
+NIST SP 800-61 Rev 3 (April 2025) superseded and withdrew Rev 2, replacing the four-phase lifecycle with an incident-response model aligned to the CSF 2.0 functions. This IR plan retains the familiar four Rev 2 phase names — Preparation, Detection and Analysis, Containment/Eradication/Recovery, and Post-Incident Activity — as an internal operating convention, each mapping onto the Rev 3 / CSF 2.0 model. Microsoft Sentinel's incident workflow maps directly to this lifecycle:
 
 | NIST 800-61 Phase | Sentinel Mechanism | Required Documentation |
 |---|---|---|
@@ -710,11 +710,11 @@ NIST SP 800-61 Rev 2 defines the incident response lifecycle in four phases: Pre
 
 FedRAMP assessors evaluating IR-8 request a specific set of documented artifacts. The presence of these documents is separately evaluated from the presence of the SIEM system — an agency can have a fully deployed Sentinel environment and still fail IR-8 if the documentation artifacts are missing.
 
-**Artifact 1 — IR Plan Document:** A written incident response plan covering scope, roles and responsibilities, detection criteria, escalation procedures, communication protocol (including US-CERT/CISA reporting obligations for significant incidents), evidence preservation requirements, and recovery objectives. This is the IR-8 control document. It must be reviewed and updated annually. Minimum length is typically 20–40 pages for a federal moderate system; assessors will review for completeness against the NIST 800-61 lifecycle sections.
+**Artifact 1 — IR Plan Document:** A written incident response plan covering scope, roles and responsibilities, detection criteria, escalation procedures, communication protocol (including CISA reporting obligations for significant incidents), evidence preservation requirements, and recovery objectives. This is the IR-8 control document. It must be reviewed and updated annually. Minimum length is typically 20–40 pages for a federal moderate system; assessors will review for completeness against the NIST 800-61 lifecycle sections.
 
-**Artifact 2 — Incident Response Contact List:** A current (updated quarterly minimum) contact list including: internal SOC escalation chain, system owner, ISSO, ISSM, Agency CISO, Legal counsel, Public Affairs (for incidents with public disclosure risk), US-CERT reporting contact (`https://www.cisa.gov/report`), and FBI Cyber Division contact for criminal referral (if applicable). Assessors verify the list is dated and actively maintained.
+**Artifact 2 — Incident Response Contact List:** A current (updated quarterly minimum) contact list including: internal SOC escalation chain, system owner, ISSO, ISSM, Agency CISO, Legal counsel, Public Affairs (for incidents with public disclosure risk), CISA reporting contact (`https://www.cisa.gov/report`), and FBI Cyber Division contact for criminal referral (if applicable). Assessors verify the list is dated and actively maintained.
 
-**Artifact 3 — Communication Templates:** Pre-drafted notification templates for: initial internal escalation, agency leadership notification, US-CERT/CISA notification per OMB M-20-04 (1-hour reporting requirement for major incidents), and external disclosure (if required). Templates reduce response time under pressure and ensure legally required notification elements are included without drafting under stress.
+**Artifact 3 — Communication Templates:** Pre-drafted notification templates for: initial internal escalation, agency leadership notification, CISA notification per the current-year OMB FISMA guidance (e.g., OMB M-24-04, which carries forward the 1-hour reporting requirement for major incidents), and external disclosure (if required). Templates reduce response time under pressure and ensure legally required notification elements are included without drafting under stress.
 
 **Artifact 4 — Evidence Preservation Procedure:** A documented procedure for preserving forensic evidence from Sentinel incidents: incident record export to PDF, Log Analytics query results export to storage account, Defender for Endpoint device memory dump and disk image procedure, and chain of custody documentation. Assessors will ask whether evidence was preserved in the last incident and how.
 
@@ -725,7 +725,7 @@ FedRAMP assessors evaluating IR-8 request a specific set of documented artifacts
 **Artifact 7 — Annual IR Test Record:** FedRAMP requires that the IR plan be tested annually (IR-3). The test can be the tabletop exercise (Artifact 6) or a live-fire drill using Sentinel's testing capabilities (Sentinel analytics rules support a "test rule" function that fires a simulated alert through the full automation chain). Record the test date, method, outcome, and any plan updates resulting from the test.
 
 ::: {.callout-note}
-**US-CERT Reporting Threshold** — OMB M-20-04 requires federal agencies to report major incidents to US-CERT within 1 hour of discovery. A major incident is defined as an incident that is likely to result in demonstrable harm to the national security interests, foreign relations, or economy of the United States, or is likely to have significant adverse effect on significant agency operations. In practical terms: any confirmed data breach, any successful ransomware deployment, and any confirmed APT access to federal systems are major incidents. The IR plan must document the 1-hour notification pathway explicitly.
+**CISA Reporting Threshold** — the current-year OMB FISMA guidance (e.g., OMB M-24-04, carrying forward the requirement first set in earlier annual FISMA memos) requires federal agencies to report major incidents to CISA within 1 hour of discovery. A major incident is defined as an incident that is likely to result in demonstrable harm to the national security interests, foreign relations, or economy of the United States, or is likely to have significant adverse effect on significant agency operations. In practical terms: any confirmed data breach, any successful ransomware deployment, and any confirmed APT access to federal systems are major incidents. The IR plan must document the 1-hour notification pathway explicitly.
 :::
 
 # AU-11 Retention Architecture
@@ -739,6 +739,10 @@ The AU-11 retention requirement — preserve audit records for a period sufficie
 **Tier 2 — Archive (2 additional years, 90 days to 3 years total):** Log Analytics archive tier retains data at approximately 1/12th the hot tier cost. Archived data is not queryable in real-time — a query job must be submitted, which runs asynchronously and returns results to a temporary workspace. Archive tier satisfies the FedRAMP ConMon requirement for 3-year audit record availability at an operationally sustainable cost.
 
 **Tier 3 — Immutable WORM Storage (3 years minimum, policy-driven):** Export daily snapshots from the Log Analytics workspace to Azure Blob Storage with legal hold (object immutability, WORM — Write Once Read Many). This tier satisfies the NARA General Records Schedule 3.2 requirement for disposition-controlled federal records. Legal hold prevents deletion even by subscription administrators until the hold is explicitly lifted through a documented process.
+
+::: {.callout-important}
+**OMB M-21-31 event-logging maturity (EL1).** Beyond AU-11 and NARA GRS 3.2, OMB M-21-31 sets an EL1 floor of **12 months of active (readily accessible) storage plus 18 months of cold storage** for in-scope logs — a longer active window than the 90-day interactive tier above. Two conformant options exist, and the choice must be recorded per table: (1) extend Tier 1 interactive retention to 12 months for the in-scope tables (SigninLogs, AuditLogs, and the other authentication, EDR, and DNS tables M-21-31 enumerates), accepting the added retention cost; or (2) where the asynchronous query-job latency of the Tier 2 archive is argued to satisfy "readily accessible" for a given table, document that determination and note the residual-risk acceptance explicitly. Map each in-scope table to its chosen option in the per-table retention configuration so an assessor can trace the M-21-31 EL1 decision.
+:::
 
 ```powershell
 # Configure Azure Blob WORM storage with legal hold for AU-11 immutable retention
@@ -814,8 +818,8 @@ The following table documents the NIST SP 800-53 Rev 5 controls addressed by thi
 | SI-4(4) | Inbound and Outbound Communications Traffic | No monitoring of DNS traffic patterns or SASE egress at user level | InfoBlox RPZ monitoring covers all DNS (inbound and internal); SASE connector covers all user egress with URL, user, and volume telemetry; Defender network events cover endpoint-level outbound | NIST SP 800-53 Rev 5 SI-4(4) |
 | SI-4(7) | Automated Response to Suspicious Events | No automated response; all containment actions require manual analyst intervention | Automated device isolation playbook for confirmed KEV exploitation; automated account disable for compound impossible travel + high-risk sign-in; automated suppression for known FP patterns | NIST SP 800-53 Rev 5 SI-4(7) |
 | IR-4 | Incident Handling | Incident handling process informal; no structured workflow; no automated enrichment; escalation paths undocumented | Sentinel incident queue provides structured handling; automation rules assign severity and owner; enrichment playbooks provide context before analyst touch; playbook actions documented in incident comments | NIST SP 800-53 Rev 5 IR-4 |
-| IR-6 | Incident Reporting | No formal incident reporting chain; US-CERT notification timing undocumented | IR plan documents 1-hour US-CERT reporting requirement; communication templates drafted for major incident notification; ServiceNow incident record provides timestamped documentation chain for reporting evidence | NIST SP 800-53 Rev 5 IR-6; OMB M-20-04 |
-| IR-8 | Incident Response Plan | No formal written IR plan; IR-8 is a documentation finding in every FedRAMP assessment | Written IR plan covering all NIST 800-61 phases; seven required artifacts defined and authored; annual test and tabletop exercise schedule documented; assessors can be shown all artifacts with current review dates | NIST SP 800-53 Rev 5 IR-8; NIST SP 800-61 Rev 2 |
+| IR-6 | Incident Reporting | No formal incident reporting chain; CISA notification timing undocumented | IR plan documents 1-hour CISA reporting requirement; communication templates drafted for major incident notification; ServiceNow incident record provides timestamped documentation chain for reporting evidence | NIST SP 800-53 Rev 5 IR-6; OMB M-24-04 (current-year FISMA guidance) |
+| IR-8 | Incident Response Plan | No formal written IR plan; IR-8 is a documentation finding in every FedRAMP assessment | Written IR plan covering all NIST 800-61 phases; seven required artifacts defined and authored; annual test and tabletop exercise schedule documented; assessors can be shown all artifacts with current review dates | NIST SP 800-53 Rev 5 IR-8; NIST SP 800-61 Rev 3 (Rev 2 phase names retained as internal convention) |
 
 : NIST SP 800-53 Rev 5 control closure for Vol III Book 06 {.striped .hover}
 

@@ -47,7 +47,7 @@ They did not eliminate it.
 
 The residual risk is not in service accounts or application credentials — those are now credential-free or token-gated. The residual risk is in *administrative accounts*: the identities that hold Global Administrator, Privileged Role Administrator, server local Administrator, and equivalent standing roles. A standard user account that has been compromised can escalate to standing admin through credential reuse, social engineering, or MFA bypass — and once it does, every token-gated control in the environment is irrelevant. The attacker is now the admin.
 
-Standing privilege is the structural problem. "Standing" means the role is always active. A Global Administrator account is always a Global Administrator, 24 hours per day, whether the holder is actively performing administrative work or not. Every minute that the role is active and the account is not in use is a minute where a compromised credential grants unrestricted tenant control. Across a federal environment operating 8,760 hours per year, a standing Global Administrator has that scope for 8,752 hours more than is operationally necessary.
+Standing privilege is the structural problem. "Standing" means the role is always active. A Global Administrator account is always a Global Administrator, 24 hours per day, whether the holder is actively performing administrative work or not. Every minute that the role is active and the account is not in use is a minute where a compromised credential grants unrestricted tenant control. Across a federal environment operating 8,760 hours per year, a standing Global Administrator holds that scope for thousands of hours in which no administrative work is occurring.
 
 This document closes that gap through three mechanisms: Privileged Identity Management (PIM) for just-in-time role activation, Privileged Access Workstations (PAW) for device-scoped session trust, and session policy controls for re-authentication, session lock, and session termination. Together these mechanisms reduce the window of administrative exposure from continuous to bounded and auditable.
 
@@ -86,7 +86,7 @@ The confusion between authentication quality and authorization scope is common i
 **After this document** — the same administrator holds no standing admin role. The Entra ID Global Admin assignment is *eligible*, not *active*. When the administrator needs to perform an administrative task, they request activation through PIM, present MFA, provide a justification, wait for approver consent (if configured), and receive a time-limited role token valid for 1–8 hours. When the window expires, the role deactivates automatically. A compromised session gives an attacker nothing beyond the standard user scope.
 
 ::: {.callout-warning}
-**Compliance Dependency** — OMB M-22-09 (Moving the U.S. Government Toward Zero Trust Cybersecurity Principles) requires agencies to implement least-privilege access controls and time-bound privilege. NIST SP 800-207 (Zero Trust Architecture) requires that privilege be granted per-request, not standing. PIM is the Microsoft implementation of these requirements. CMMC 2.0 Level 2 and FedRAMP Moderate both require AC-6 Least Privilege and AC-6(5) Privileged Accounts controls that PIM directly satisfies.
+**Compliance Dependency** — OMB M-22-09 (Moving the U.S. Government Toward Zero Trust Cybersecurity Principles) requires agencies to implement least-privilege access controls and time-bound privilege. NIST SP 800-207 (Zero Trust Architecture) — an architecture publication, not an agency mandate — sets out in Tenet 2 that resource access is granted on a per-session basis rather than as standing entitlement. PIM is the Microsoft implementation of these principles. CMMC 2.0 Level 2 and FedRAMP Moderate both require AC-6 Least Privilege and AC-6(5) Privileged Accounts controls; PIM provides the enforcement mechanism agencies use to implement AC-6 and AC-6(5).
 :::
 
 # Entra PIM Architecture
@@ -158,12 +158,12 @@ $privilegedRoles = @(
     "194ae4cb-b126-40b2-bd5b-6091b380977d",  # Security Administrator
     "29232cdf-9323-42fd-ade2-1d097af3e4de",  # Exchange Administrator
     "f28a1f50-f6e7-4571-818b-6a12f2af6b6c",  # SharePoint Administrator
-    "3a2c62db-5318-420d-8d74-23affee5d9d5",  # Intune Administrator
+    "3a2c62db-5318-420d-8d74-23affee5d9d5"   # Intune Administrator
 )
 
 Write-Host "=== Standing Active Role Assignments (Human Accounts) ===" -ForegroundColor Cyan
 
-foreach ($roleId in $privilegedRoles) {
+$(foreach ($roleId in $privilegedRoles) {
     $roleDefinition = Get-MgRoleManagementDirectoryRoleDefinition -UnifiedRoleDefinitionId $roleId
 
     # Get active (standing) assignments -- not eligible, not time-limited
@@ -185,7 +185,7 @@ foreach ($roleId in $privilegedRoles) {
             }
         }
     }
-} | Format-Table -AutoSize
+}) | Format-Table -AutoSize
 ```
 
 After enumerating standing assignments, convert each human account from active to eligible. This is done through the PIM API via Microsoft Graph.
@@ -321,7 +321,7 @@ Azure Arc JIT access uses two distinct mechanisms depending on the protocol:
 
 **SSH via Arc.** The `az ssh` command establishes an SSH tunnel through the Arc agent to the target host. The tunnel is authenticated using an Entra ID token issued after PIM activation. The local SSH daemon validates the token through the Arc agent. No SSH key needs to be distributed or managed. The session is logged in Arc activity logs.
 
-**RDP via Arc.** The `az network bastion rdp` command (or the Azure portal "Connect" blade for Arc) establishes a proxied RDP session through the Arc connectivity layer. The RDP connection is authenticated using a time-limited certificate issued to the Entra ID user after PIM activation. No public RDP endpoint needs to be exposed.
+**RDP via Arc.** The `az ssh arc ... --rdp` command (or the Azure portal "Connect" blade for Arc) establishes a proxied RDP session through the Arc connectivity layer. The RDP connection is authenticated using a time-limited certificate issued to the Entra ID user after PIM activation. No public RDP endpoint needs to be exposed.
 
 Both mechanisms require:
 
@@ -510,16 +510,18 @@ $pawCompliancePolicy = @{
     # Windows Defender real-time protection required
     defenderEnabled                          = $true
 
-    # Minimum OS version -- require Windows 11 22H2 or later
+    # Minimum OS version -- Windows 10 22H2 baseline (set 10.0.22621 to require Windows 11 22H2)
     osMinimumVersion                         = "10.0.19045"   # Windows 10 22H2 minimum; set 10.0.22621 for Win11 22H2
 
     # Code integrity / WDAC
     codeIntegrityEnabled                     = $true
 
-    # Credential Guard (requires Virtualization-Based Security)
+    # Mobile Threat Defense: require devices at or below the "secured" MTD risk level
+    # (Credential Guard / VBS is enforced separately via a Device Guard configuration profile)
     deviceThreatProtectionRequiredSecurityLevel = "secured"
 
-    # Mark non-compliant after 1 day (no grace period for privileged devices)
+    # Privileged-device password and idle-lock policy
+    # (the non-compliance grace period is configured separately in scheduledActionsForRule)
     passwordRequiredToUnlockFromIdle         = $true
     passwordMinutesOfInactivityBeforeLock    = 15
     passwordExpirationDays                   = 365
@@ -676,8 +678,10 @@ Connect-MgGraph -Scopes "User.ReadWrite.All", "RoleManagement.ReadWrite.Director
 
 function New-BreakGlassAccount {
     param(
-        [string]$AccountNumber,       # "01" or "02"
-        [string]$Domain               # Agency tenant domain, e.g. "agency.gov"
+        [string]$AccountNumber,       # "01" or "02" -- internal reference only, never embedded in the account name
+        [string]$Domain,              # Agency tenant domain, e.g. "agency.gov"
+        [string]$AccountName,         # Local part following the agency's NORMAL user-naming convention -- no "bg"/privilege indicator
+        [string]$DisplayName          # Display name matching ordinary accounts -- no "Break Glass" indicator
     )
 
     # Generate a cryptographically random 24-character password
@@ -689,12 +693,12 @@ function New-BreakGlassAccount {
     Write-Host $password -ForegroundColor Red
     Write-Host "STORE THIS PASSWORD IN THE PHYSICAL SAFE IMMEDIATELY" -ForegroundColor Red
 
-    $accountUpn = "bg-cloud-$AccountNumber@$Domain"
+    $accountUpn = "$AccountName@$Domain"
 
     $userParams = @{
-        DisplayName          = "Break Glass $AccountNumber"
+        DisplayName          = $DisplayName
         UserPrincipalName    = $accountUpn
-        MailNickname         = "bg-cloud-$AccountNumber"
+        MailNickname         = $AccountName
         AccountEnabled       = $true
         PasswordProfile      = @{
             Password                      = $password
@@ -722,9 +726,12 @@ function New-BreakGlassAccount {
     return $bgUser.Id
 }
 
-# Create both break-glass accounts
-$bg01Id = New-BreakGlassAccount -AccountNumber "01" -Domain "agency.gov"
-$bg02Id = New-BreakGlassAccount -AccountNumber "02" -Domain "agency.gov"
+# Create both break-glass accounts.
+# The names below follow the agency's normal user-naming convention and are deliberately
+# NOT self-identifying. Substitute names that blend into your directory, and record the
+# mapping (account number -> object ID) offline in the break-glass runbook only.
+$bg01Id = New-BreakGlassAccount -AccountNumber "01" -Domain "agency.gov" -AccountName "svc-ops-a41" -DisplayName "Operations Service A41"
+$bg02Id = New-BreakGlassAccount -AccountNumber "02" -Domain "agency.gov" -AccountName "svc-ops-b72" -DisplayName "Operations Service B72"
 
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
@@ -746,13 +753,16 @@ $workspaceId   = "00000000-0000-0000-0000-000000000004"   # Replace with your wo
 $resourceGroup = "rg-sentinel-prod"
 $workspaceName = "law-sentinel-prod"
 
-# KQL query: detect any sign-in by break-glass accounts
-$alertQuery = @'
+# KQL query: detect any sign-in by break-glass accounts.
+# Drive the alert from the object IDs captured at creation ($bg01Id/$bg02Id), NOT the
+# (deliberately non-identifying) account names -- ideally maintain them in a Sentinel
+# watchlist so the account names never need to appear in detection content.
+$alertQuery = @"
 SigninLogs
-| where UserPrincipalName in ("bg-cloud-01@agency.gov", "bg-cloud-02@agency.gov")
+| where UserId in ("$bg01Id", "$bg02Id")   // object IDs from New-BreakGlassAccount; or _GetWatchlist('BreakGlassAccounts')
 | project TimeGenerated, UserPrincipalName, AppDisplayName, IPAddress, ResultType, Location, DeviceDetail
 | order by TimeGenerated desc
-'@
+"@
 
 $alertRuleBody = @{
     kind       = "Scheduled"
