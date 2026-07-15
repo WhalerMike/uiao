@@ -9,7 +9,11 @@ update set. Negatives are the point:
 | `happy_path_drift_to_evidence` | fixture drift → reconciled CI → task with control+KSI from the map → RETEST_PASSED stamp on close |
 | `unreconciled_asset_raises_inventory_finding` | asset `unreconciled-*` → NO task for the original finding; a CM-8 inventory finding instead |
 | `self_approval_is_refused` | `preflight` fails when requester == approver |
+| `sod_indeterminate_is_refused` | `preflight` fails when `requester_id` or `approver_id` is empty — SoD is fail-closed, not skipped |
 | `write_scope_voids_attestation` | with `test_fixture_write_scopes=true`, the gate refuses to run at all |
+| `scope_check_unverified_is_refused` | in a non-test run with `scope_check_enabled` unset, `preflight` refuses — an UNVERIFIED read-only check fails closed exactly like `holds-write` (no false assurance) |
 | `retest_failed_blocks_closure` | a task whose re-read still shows drift cannot close; escalates |
+| `retest_read_failure_is_inconclusive` | a READ_FAILED sentinel in the re-read → `RETEST_INCONCLUSIVE`, task does NOT close (a failed read is not closure) |
+| `retest_asset_not_observed_is_inconclusive` | the asset absent from the re-read → `RETEST_INCONCLUSIVE`; closure needs an affirmative compliant observation |
 | `sla_breach_opens_poam` | breached SLA → linked `attest.poam.item` (CA-5) |
 | `unknown_finding_class_is_flow_error` | a finding class absent from control-map.json errors; no default task |

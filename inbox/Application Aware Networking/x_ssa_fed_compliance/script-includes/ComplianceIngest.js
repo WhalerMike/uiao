@@ -18,7 +18,12 @@ var ComplianceIngest = Class.create();
 ComplianceIngest.prototype = {
 
     initialize: function () {
-        this.log = new GSLog('x_ssa_fed_compliance.log', 'ComplianceIngest');
+        // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
+        // Script Include unprefixed; gs.error/warn always resolve).
+        this.log = {
+            logErr: function (m) { gs.error('[x_ssa_fed_compliance.ComplianceIngest] ' + m); },
+            logWarning: function (m) { gs.warn('[x_ssa_fed_compliance.ComplianceIngest] ' + m); }
+        };
         this.testMode = gs.getProperty('x_ssa_fed_compliance.test_mode', 'false') === 'true';
         this.midServer = gs.getProperty('x_ssa_fed_compliance.mid_server', '');
         this.boundary = gs.getProperty('x_ssa_fed_compliance.boundary', 'gcc-moderate');
