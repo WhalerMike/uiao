@@ -58,7 +58,7 @@ The Social Security Administration operates four distinct cloud environments —
 
 **2. Continuous FedRAMP Compliance.** Infoblox is one of a small number of DDI platforms with its own FedRAMP Moderate CSO authorization (verify current authorization on the FedRAMP Marketplace at time of procurement). Under Path A, SSA inherits the DDI-layer controls rather than re-proving them; under Path B the same controls are agency-carried, with the evidence generated natively by the platform. Evidence for SC-20/21 (DNSSEC), CM-8 (inventory), IA-5(2) (certificates), AU-12 (audit), and IR-4 (incident response) is generated continuously and automatically — not assembled manually for annual assessments.
 
-**3. M365 GCC Boundary Enforcement.** Microsoft publishes M365 GCC endpoint changes up to 12 times per year. Without automation, each change requires four manual updates across NSG rules, VPC security groups, RPZ policies, and VPN split-tunnel configurations — during which a gap exists between when Microsoft changes an endpoint and when SSA's controls reflect it. Infoblox polls the Microsoft 365 IP & URL Web Service API daily and pushes all four enforcement updates simultaneously, closing the boundary gap window to minutes.
+**3. M365 GCC Boundary Enforcement.** Microsoft publishes M365 GCC endpoint changes up to 12 times per year. Without automation, each change requires four manual updates across NSG rules, VPC security groups, RPZ policies, and VPN split-tunnel configurations — during which a gap exists between when Microsoft changes an endpoint and when SSA's controls reflect it. Infoblox polls the Microsoft 365 IP & URL Web Service API daily and pushes all four enforcement updates simultaneously — closing the boundary gap to within minutes of the next daily poll, a worst-case bound of roughly 24 hours versus the 7+ days a manual four-ticket cycle typically takes.
 
 **Vendor relationships:** InfoBlox has formal technology partnerships with all three of SSA's primary cloud vendors. InfoBlox's own FedRAMP-authorized service (Infoblox Government Cloud) runs *on* AWS GovCloud, making AWS the infrastructure foundation. InfoBlox is a Microsoft Azure Technology Alliance Partner with native Microsoft Sentinel, Defender Threat Intelligence, and Entra ID integrations. InfoBlox is available on the Oracle Cloud Marketplace with OCI connector support for the OPM HRIT integration path.
 
@@ -268,7 +268,7 @@ InfoBlox provides the automated enforcement pipeline:
 7. **Sentinel alert** — any DNS query from an in-boundary workload to a commercial M365 endpoint triggers an IR ticket
 
 ::: {.callout-warning}
-**Without InfoBlox automation:** Each of Microsoft's 8–12 annual endpoint changes requires four separate change tickets across NSG, Security Groups, RPZ, and VPN config — during which SSA has a boundary gap window. With InfoBlox, all four update within minutes of Microsoft's API publishing the change.
+**Without InfoBlox automation:** Each of Microsoft's 8–12 annual endpoint changes requires four separate change tickets across NSG, Security Groups, RPZ, and VPN config — during which SSA has a boundary gap window. With InfoBlox, all four update within minutes of the next daily poll of Microsoft's API — a worst-case gap of roughly 24 hours rather than the days-to-weeks a manual four-ticket cycle takes.
 :::
 
 ### AWS Partnership: BloxOne Runs ON AWS GovCloud {#sec-aws}
@@ -499,7 +499,7 @@ A query resolving through `mgmt.ssa.gov` that does not match the management-plan
 
 ### Additional NIST Controls from Namespace Design {#sec-subdomain-nist}
 
-The subdomain strategy adds three controls to the NIST mapping in [Section -@sec-nist]:
+The subdomain strategy adds one new control — AC-4 — to the NIST mapping in [Section -@sec-nist] and deepens two rows already present there (SC-22 and SA-9):
 
 | Control | Title | Contribution |
 |---|---|---|
@@ -529,7 +529,7 @@ The practical consequence for the buildout roadmap: when application teams ask w
 
 ## NIST SP 800-53 Rev 5 Control Mapping {#sec-nist}
 
-The following table maps InfoBlox DDI landing zone capabilities to specific NIST SP 800-53 Rev 5 controls. A single InfoBlox deployment provides evidence for 16 controls that would otherwise require separate evidence collection from four separate platforms.
+The following table maps InfoBlox DDI landing zone capabilities to specific NIST SP 800-53 Rev 5 controls. A single InfoBlox deployment provides evidence across 15 control rows covering 17 distinct NIST SP 800-53 Rev 5 controls that would otherwise require separate evidence collection from four separate platforms.
 
 | Control | What InfoBlox DDI Provides | Evidence Artifact | Satisfies |
 |---|---|---|---|
@@ -552,7 +552,7 @@ The following table maps InfoBlox DDI landing zone capabilities to specific NIST
 : NIST SP 800-53 Rev 5 Control Coverage {.striped .hover}
 
 ::: {.callout-important}
-**Closure Necessity — SC-20 / SC-21 / SC-22 (authoritative DNS).** SC-20 requires the system to *provide* origin authentication and integrity verification artifacts with authoritative name resolution responses; SC-21 requires requesting systems to *perform* validation on the responses they receive; SC-22 requires the resolution architecture itself to be fault-tolerant and role-separated. All three controls presuppose an authoritative naming plane, because there is nothing else that can close them: you cannot attest authoritative name resolution without an authoritative resolver. No scanner creates a source of truth — a scanner, a compliance dashboard, or a conformance tool can only measure drift *from* a source of truth that must already exist. The DNSSEC-signed, view-separated Grid described in this document is not one implementation option among several; it is the class of mechanism these controls name.
+**Closure Necessity — SC-20 / SC-21 (authoritative DNS).** SC-20 requires the system to *provide* origin authentication and integrity verification artifacts with authoritative name resolution responses; SC-21 requires requesting systems to *perform* validation on the responses they receive. Both controls presuppose an authoritative naming plane, because there is nothing else that can close them: you cannot attest authoritative name resolution without an authoritative resolver. (SC-22 — the fault-tolerant, role-separated resolution architecture — is closed by the same Grid, but its closure-necessity anchor is registered for the cross-cloud build-out in Vol VIII rather than here.) No scanner creates a source of truth — a scanner, a compliance dashboard, or a conformance tool can only measure drift *from* a source of truth that must already exist. The DNSSEC-signed, view-separated Grid described in this document is not one implementation option among several; it is the class of mechanism these controls name.
 :::
 
 ---
@@ -656,7 +656,7 @@ For SSA's multi-environment landing zone, InfoBlox DDI is well-positioned for th
 
 FedRAMP 20x replaces periodic evidence collection with continuously-verified Key Security Indicators enforced by infrastructure-as-code guardrails:
 
-| FedRAMP 20x KSI | InfoBlox Enforcement | Automated? |
+| KSI-supporting capability | InfoBlox Enforcement | Automated? |
 |---|---|---|
 | All DNS traffic encrypted or integrity-protected | DNSSEC on all zones; DoH/DoT endpoint on Grid Members | **Yes** — Grid policy |
 | Protective DNS for all workloads | Grid Member = resolver for all VPC/VNet DHCP options; RPZ active | **Yes** — DHCP Options + RPZ |
@@ -854,7 +854,7 @@ Each phase produces immediately usable compliance evidence and security value �
 ### Phase 6 — FedRAMP Continuous Monitoring (Months 9–12) {.unnumbered}
 
 - Complete InfoBlox FedRAMP documentation in SSP; reference CSO FR2017257053 for DDI-layer control inheritance (Path A only — Path B documents NIOS as an agency-operated component)
-- Configure all eight FedRAMP control evidence exports as scheduled reports
+- Configure all seven FedRAMP control evidence exports as scheduled reports
 - Implement IaC Terraform pipeline: IP allocation → DNS record → SCEP cert enrollment as single atomic pipeline
 - Configure FedRAMP 20x KSI automation checks (DNSSEC status, RPZ coverage, cert expiry, CIDR conflict) as CI/CD pipeline tests
 

@@ -42,7 +42,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 
 2. **Amazon Connect runs on AWS commercial (.com) by specific authorized exception.** The exception is documented in the ATO, must be maintained at each renewal, and carries specific boundary obligations described in this document.
 
-3. **Teams Phone in GCC Moderate is the correct path for internal telephony replacement.** It introduces no new boundary complications but introduces network dependencies identical to Amazon Connect.
+3. **Teams Phone in GCC Moderate is the correct path for internal telephony replacement.** It introduces no new authorization boundary beyond the existing GCC Moderate ATO — the PSTN/SBC interconnect is the one new boundary interface, and it is documented in this book — while its network dependencies are identical to Amazon Connect.
 
 4. **One network modernization investment enables both platforms.** SD-WAN local breakout, per-DSCP steering, active-active multipath, and FEC apply to both platforms without modification.
 :::
@@ -61,13 +61,13 @@ Behind the N8NN sits Amazon Connect processing calls on AWS commercial infrastru
 
 Unlike most enterprise applications, voice quality has internationally standardized, measurable pass/fail thresholds that are not preferences or benchmarks but engineering specifications with a direct relationship to intelligibility.
 
-![Voice Quality: MOS Scale and G.114 One-Way Delay Budget](figs/tc-fig-01-voice-quality.png){fig-alt="Illustrative diagram showing the MOS scale from 1 (Bad) to 5 (Excellent) with the N8NN target at 4.0 Good, and the G.114 150ms one-way delay budget broken into Opus codec 20ms, adaptive jitter buffer 50ms, and network budget remaining 75ms. Real-world path comparison shows Portland MPLS at 100-130ms over budget, and Portland local DIA at 5-15ms well within budget." width="100%"}
+![Voice Quality: MOS Scale and G.114 One-Way Delay Budget](figs/tc-fig-01-voice-quality.png){fig-alt="Illustrative diagram showing the MOS scale from 1 (Bad) to 5 (Excellent) with the N8NN target at 4.0 Good, and the G.114 150ms one-way delay budget broken into Opus codec 20ms, adaptive jitter buffer 55ms, and network budget remaining 75ms. Real-world path comparison shows Portland MPLS at 100-130ms over budget, and Portland local DIA at 5-15ms well within budget." width="100%"}
 
 ## ITU-T G.114: The One-Way Delay Limit
 
 ITU-T G.114 is the international standard governing one-way delay in voice communications. Its specification: **one-way mouth-to-ear delay must not exceed 150 ms for most applications.** Above 150 ms, talker echo becomes perceptible and conversation degrades. Above 400 ms, the call becomes unusable for interactive conversation. These are not targets — they are ceilings.
 
-The 150 ms limit covers the entire path: codec encoding (~20 ms for Opus), network propagation and queuing, jitter buffer at the receiver (typically 50–80 ms adaptive), and decoding. This leaves approximately **50–80 ms of budget for the network itself.** That is the target.
+The 150 ms limit covers the entire path: codec encoding (~20 ms for Opus), network propagation and queuing, jitter buffer at the receiver (~55 ms adaptive), and decoding. Subtracting the ~20 ms codec and ~55 ms jitter buffer from the 150 ms ceiling leaves approximately **75 ms of budget for the network itself.** That is the target.
 
 ## MOS and the E-Model: Quantifying Call Quality
 
@@ -143,7 +143,7 @@ An agent in Portland whose network routes all internet traffic through Washingto
 
 **Portland → MPLS → Washington → internet → AWS us-west-2 (.com) → Amazon Connect**
 
-One-way network latency: 80–110 ms (engineering estimate: ~50 ms coast-to-coast propagation plus inspection-stack and queuing overhead; validate with per-site measurement during discovery). G.114 network budget: 75 ms. **Over spec.** The citizen hears the degradation.
+One-way network latency: 100–130 ms (engineering estimate: ~50 ms coast-to-coast propagation plus inspection-stack and queuing overhead; validate with per-site measurement during discovery). G.114 network budget: 75 ms. **Over spec.** The citizen hears the degradation.
 
 The same agent with local internet breakout:
 
@@ -151,7 +151,7 @@ The same agent with local internet breakout:
 
 One-way network latency: 5–15 ms. Portland and us-west-2 are geographically adjacent. This is the physics minimum for this path, and it is far within budget.
 
-![WebRTC Voice Path: DSCP EF from Agent Desktop to Amazon Connect](figs/tc-fig-10-webrtc-path.png){fig-alt="Left to right data flow showing agent desktop browser with headset generating UDP RTP SRTP stream marked DSCP EF 46 with shield icon. Stream passes through SD-WAN edge device with Priority Lowest Latency Path label. Continues via DIA to AWS cloud with Connect logo. Below main flow: horizontal 75ms budget gauge showing 20ms codec in teal, 30ms jitter buffer in amber, 25ms remaining in green. Note: TCP fallback degrades quality, maintain direct UDP 3478 and 443 outbound." width="100%"}
+![WebRTC Voice Path: DSCP EF from Agent Desktop to Amazon Connect](figs/tc-fig-10-webrtc-path.png){fig-alt="Left to right data flow showing agent desktop browser with headset generating UDP RTP SRTP stream marked DSCP EF 46 with shield icon. Stream passes through SD-WAN edge device with Priority Lowest Latency Path label. Continues via DIA to AWS cloud with Connect logo. Below main flow: horizontal 150ms G.114 delay budget gauge showing 20ms codec in teal, 55ms jitter buffer in amber, 75ms network budget in green. Note: TCP fallback degrades quality, maintain direct UDP 3478 and 443 outbound." width="100%"}
 
 ## WebRTC Network Requirements
 
@@ -268,7 +268,7 @@ The telecommunications modernization in this book requires three distinct compon
 
 : SD-WAN and SASE Stack Components *(agency selection pending for all three)* {.striped .hover}
 
-SD-WAN and SASE SSE are distinct products procured separately (though some vendors bundle them). The SD-WAN overlay closes SC-8 (network-layer encryption on DIA circuits) and SI-4 (application-layer telemetry on transport). The SASE SSE stack closes AC-4 (information flow enforcement), SC-7 (boundary protection), SI-3 (malware protection via SSL inspection), AU-2/AU-12 (per-session audit records), and CA-7 (continuous monitoring). Neither substitutes for the other; both are required to satisfy TIC 3.0 and the controls cited in this book.
+SD-WAN and SASE SSE are distinct products procured separately (though some vendors bundle them). These transport components are where several boundary controls are *implemented* on the field-office path; the formal closures are registered to other books, and this book cross-references them rather than re-claiming them. The SD-WAN overlay provides the SC-8 network-layer encryption on DIA circuits (SC-8 closure anchored in [Vol I Book 07](Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd)). The SASE SSE stack provides AC-4 information-flow enforcement, SC-7 boundary protection, and SI-3 malware protection via SSL inspection (AC-4 and SC-7 anchored in Vol I Book 07), plus CA-7 continuous-monitoring records (anchored in the multi-cloud evidence fabric). The application-aware layer above them supplies the audit and monitoring telemetry — SI-4 (application-layer telemetry and behavioral analysis) and AU-2/AU-12 (application-layer audit logging: user, device, app, action, data type, timestamp) — whose closures are likewise owned by the enforcement-substrate and evidence-fabric books. Neither the SD-WAN overlay nor the SASE stack substitutes for the other; all are required to satisfy TIC 3.0 and the controls cited in this book.
 
 ::: {.callout-note}
 ## Vendor Selection Pending
@@ -291,7 +291,7 @@ When telecommunications modernization proposals include "we will add DIA at fiel
 | AU-12 | Audit Record Generation | AAN logging — user, device, app, action, data type, timestamp |
 | CA-7 | Continuous Monitoring | SASE stack — per-session identity, posture, access records |
 
-> **Closure Necessity — SC-8 on the voice path.** A DIA circuit carries traffic unencrypted at the network layer. SRTP protects the media payload of a call; it does not protect the signaling, the softphone HTTPS session's metadata, or any of the non-voice traffic sharing the circuit — and application-layer TLS covers no non-TLS flows at all. The only mechanism that encrypts *all* traffic on a DIA path regardless of application behavior is an IPsec overlay — i.e., SD-WAN. There is no configuration setting, scanner finding, or policy document that closes SC-8 on a bare pipe.
+> **Why SC-8 Cannot Be Inherited — the voice path.** A DIA circuit carries traffic unencrypted at the network layer. SRTP protects the media payload of a call; it does not protect the signaling, the softphone HTTPS session's metadata, or any of the non-voice traffic sharing the circuit — and application-layer TLS covers no non-TLS flows at all. The only mechanism that encrypts *all* traffic on a DIA path regardless of application behavior is an IPsec overlay — i.e., SD-WAN. There is no configuration setting, scanner finding, or policy document that closes SC-8 on a bare pipe. The formal SC-8 closure-necessity anchor is registered in [Vol I Book 07](Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd); this book applies that mechanism on the telecommunications path.
 
 > **DIA enables; SASE and AAN achieve.** For Amazon Connect and Teams Phone, DIA solves the G.114 latency problem by eliminating the geographic hairpin. That is its entire contribution to the compliance picture. A field office deployment that adds DIA without the SASE control stack has better latency and the same compliance gaps. The NIST controls are not satisfied by the pipe. They are satisfied by what governs the pipe.
 
@@ -316,7 +316,7 @@ Both use cases *permit* traffic to leave for the internet without hairpinning th
 
 **This is the formal statement of the permissibility rule: under TIC 3.0, DIA requires a distributed PEP providing protection commensurate with the agency's risk tolerance — in practice the applicable security-capabilities catalog entries — and the SASE stack is that PEP.** The mapping is one-to-one with the NIST table in the previous section: the SD-WAN IPsec overlay provides encryption in transit, the SWG provides traffic inspection and malware protection, the CASB provides application-layer flow enforcement, protective DNS provides resolution security, and the telemetry pipeline to the SIEM provides the auditing and continuous-monitoring capabilities. An agency that deploys the SASE stack at its breakout points has not found a loophole around the TIC — it has implemented TIC 3.0 as designed.
 
-> **Closure Necessity — SC-7 / SC-7(7) on distributed egress.** SC-7 requires communications at external boundaries to be monitored and controlled at managed interfaces. Local breakout creates an external boundary interface at every field office, and remote work creates one at every home — while removing the central boundary stack from the path entirely. SC-7(7) makes the remote-user case explicit: split tunneling on remote devices is prohibited *unless the split tunneling capability is provisioned securely* — and local breakout for voice is precisely a split tunnel. The only mechanism that puts a managed, monitored interface on every distributed egress path is the distributed PEP — the TIC 3.0 SASE stack. The central firewall cannot close it (it is no longer in the path), the circuit provider cannot close it (a carrier hands off packets, not policy), and no document closes a boundary that has no enforcement point.
+> **Why SC-7 / SC-7(7) Cannot Be Inherited — distributed egress.** SC-7 requires communications at external boundaries to be monitored and controlled at managed interfaces. Local breakout creates an external boundary interface at every field office, and remote work creates one at every home — while removing the central boundary stack from the path entirely. SC-7(7) makes the remote-user case explicit: split tunneling on remote devices is prohibited *unless the split tunneling capability is provisioned securely* — and local breakout for voice is precisely a split tunnel. The only mechanism that puts a managed, monitored interface on every distributed egress path is the distributed PEP — the TIC 3.0 SASE stack. The central firewall cannot close it (it is no longer in the path), the circuit provider cannot close it (a carrier hands off packets, not policy), and no document closes a boundary that has no enforcement point. The formal SC-7 closure-necessity anchor is registered in [Vol I Book 07](Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd); this book shows why the distributed PEP is mandatory on the telecommunications egress path.
 
 > **An ungoverned DIA circuit is not modernization; it is a finding.** The bare circuit that fixes G.114 simultaneously deletes the SC-7 boundary that the MPLS-to-TIC path, whatever its latency, did provide. Presented to an assessor, that trade is a regression. Presented with the SASE PEP in place, it is the TIC 3.0 target architecture. The difference between the two deployments is not the circuit — it is the control stack riding on it.
 
@@ -343,7 +343,7 @@ FedRAMP published its **Consolidated Rules for 2026** on June 25, 2026. Three ke
 **What 20x means for Amazon Connect continuous monitoring:** FedRAMP 20x replaces periodic evidence assembly with continuously-verified Key Security Indicators (KSIs) in machine-readable format. For Amazon Connect, this means:
 
 - **Call audit logs** (AU-12): every agent session, call recording access, and contact flow execution must generate structured, queryable records — not just archived log files
-- **Federated authentication events** (IA-8): Entra ID → Amazon Connect SAML assertions must produce KSI-verifiable authentication telemetry
+- **Federated authentication events** (IA-2): Entra ID → Amazon Connect SAML assertions must produce KSI-verifiable authentication telemetry — the agents are agency (organizational) users authenticating through the agency IdP, so this is IA-2 rather than the non-organizational-user control IA-8
 - **Boundary traffic logs** (SA-9): API calls crossing the .com boundary (CRM integration, recording access, contact flow analytics) must be captured in machine-readable format
 - **ATO exception documentation**: The .com exception itself must be maintained in a format compatible with 20x continuous review rather than point-in-time SSP snapshots
 
