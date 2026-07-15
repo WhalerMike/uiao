@@ -13,6 +13,14 @@ catalog (provenance in the file). This checker enforces:
      closure or control map carries for an id matches the catalog title
      (normalized). Catches "AC-2(5) = Account Monitoring" when Rev 5 says
      AC-2(5) = Inactivity Logout.
+  3. PROSE TITLE ACCURACY (blocking): control titles cited in book crosswalk /
+     summary TABLE ROWS (a bold id followed by its title, e.g.
+     `| **AU-2** | Audit Events |`) match the catalog. Added 2026-07-14 after
+     the corpus sweep found 35 Rev 4 titles in book prose ("Audit Events" for
+     AU-2, "Malware Protection" for SI-3, etc.) that checks 1-2 could not see —
+     they only covered spine/map titles, not the books' own tables. Uses a
+     subset match so the `Base — Enhancement` prose form and `A / B` combined
+     cells pass, and only a genuinely different title (a Rev 4 rename) fails.
 
 Usage:
     python check_control_citations.py            # exit 1 on any violation
@@ -66,6 +74,50 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+# A book table row whose first cell is a **bold control id** and whose second
+# cell is its title: `| **AU-2** | Event Logging | ... |`. The bold id is the
+# discriminator — authorities tables (mechanism in col 2) do not bold the id.
+_TITLE_ROW = re.compile(r"^\|\s*\*\*([^*|]+?)\*\*\s*\|\s*([^|]+?)\s*\|")
+_TITLE_ROW_GLOBS = ["Vol_*_Book_*.qmd", "AAN_Spine_Crosswalk.md"]
+
+
+def _clean_cell(s: str) -> str:
+    s = s.replace("&nbsp;", " ")
+    s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)  # markdown links -> text
+    s = re.sub(r"[*`]", "", s)
+    return s.strip()
+
+
+def _looks_like_title(cell: str) -> bool:
+    """A control TITLE, not a mechanism/implementation description.
+
+    Many book tables are `| **id** | how-we-implement-it | ...` — column 2 is a
+    mechanism, and comparing it to the catalog title is a false positive. A real
+    title is short and has no sentence/list structure. Without this guard the
+    gate flagged 20+ mechanism cells (DNSSEC signing…, AWS KMS + S3…) that the
+    corpus sweep correctly left alone.
+    """
+    if len(cell.split()) > 6:
+        return False
+    if any(t in cell for t in ("+", ";", " via ", " all ", " and ")):
+        return False
+    return True
+
+
+def _title_matches(prose: str, official: str) -> bool:
+    """True if the prose title is consistent with the catalog title.
+
+    Subset either way: the prose 'Account Management — Automated System Account
+    Management' contains the catalog enhancement title; a bare catalog title
+    contains a truncated prose form. Only a genuinely different string (a Rev 4
+    rename) fails both directions.
+    """
+    p, o = _norm(prose), _norm(official)
+    if not p or not o:
+        return True
+    return p == o or o in p or p in o
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -102,9 +154,35 @@ def main() -> int:
     # 2b. Title accuracy — control maps (maps carry item titles, not control
     # titles, so only the *control id* is checked there; nothing to compare).
 
+    # 3. Prose title accuracy — control titles in book crosswalk/summary tables.
+    prose_titles = 0
+    for pattern in _TITLE_ROW_GLOBS:
+        for f in sorted(HERE.glob(pattern)):
+            for ln, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                m = _TITLE_ROW.match(line)
+                if not m:
+                    continue
+                ids = [x.strip() for x in _clean_cell(m.group(1)).split("/")]
+                titles = [x.strip() for x in _clean_cell(m.group(2)).split("/")]
+                # Only pair when the split is unambiguous and every cell-1 token
+                # is a real control id; otherwise the row is not an id/title row.
+                if len(ids) != len(titles) or not all(CTRL_RE.fullmatch(i) for i in ids):
+                    continue
+                for cid, prose in zip(ids, titles):
+                    official = catalog.get(cid)
+                    if official is None:
+                        continue  # id validity handled in part 1
+                    if not _looks_like_title(prose):
+                        continue  # mechanism cell, not a title claim
+                    prose_titles += 1
+                    if not _title_matches(prose, official):
+                        errors.append(
+                            f"{f.name}:{ln}: {cid} titled '{prose}' in prose, Rev 5 catalog says '{official}'"
+                        )
+
     print("AAN control-citation check")
     print("=" * 44)
-    print(f"Catalog ids: {len(catalog)} | citations scanned: {cited}")
+    print(f"Catalog ids: {len(catalog)} | id citations: {cited} | prose titles: {prose_titles}")
     if errors:
         print("\nERRORS:")
         for e in errors:
