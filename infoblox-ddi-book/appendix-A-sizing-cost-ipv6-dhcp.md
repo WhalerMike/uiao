@@ -32,8 +32,8 @@ platform (map to each chapter's §4/§9):
 | Platform | Compute (member VM) | Storage | Notes on cost |
 |---|---|---|---|
 | Azure | Esv5/Esv3 series ×N members (chapter 1) | Premium LRS SSD, ≥250 GB data (+≥250 GB reporting) | + Private Resolver endpoints (2×/28) if used |
-| AWS | Compute-optimised/EBS-optimised instance ×N (chapter 2) | gp3/io2 EBS, sized as above | + Route 53 Resolver endpoints/queries if used |
-| Google Cloud | `n2`/`c3` class ×N (chapter 3) | Balanced/SSD PD | + Cloud DNS inbound/outbound forwarding |
+| AWS | M7i/R7i shapes (NIOS 9.0.5+) ×N (chapter 2) | gp3/io2 EBS, sized as above | + Route 53 Resolver endpoints/queries if used |
+| Google Cloud | N1 general-purpose series ×N (chapter 3) | Balanced/SSD PD | + Cloud DNS inbound/outbound forwarding |
 | OCI | VM.Standard shape ×N (chapter 4) | Block Volume (balanced/higher-perf) | + OCI private resolver endpoints |
 | VMware | vCPU/RAM from the appliance model (chapter 5) | Datastore capacity (thin/thick per policy) | No cloud meter; cost is host capacity + support |
 | **All** | **Licensing:** vNIOS BYOL/token *or* Universal DDI subscription; DNS/DHCP/Threat Defense grid licenses | | The licensing line usually dominates; get it from Infoblox |
