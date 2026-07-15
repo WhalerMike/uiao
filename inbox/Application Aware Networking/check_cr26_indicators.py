@@ -20,6 +20,12 @@ see:
 The correct phrasing (already used in parts of Book 00) is "the 29 rules in the
 series' internal KSI decomposition"; mapping to CR26 is 19 of 46.
 
+  3. NUMBER->THEME MISBINDING (blocking): a KSI-0NN indicator number bound to the
+     wrong theme — e.g. KSI-011..014 (which are KSI-CMT, Change Management)
+     labelled KSI-SCR (Supply Chain Risk = KSI-015/016). The number->theme map
+     is derived from AAN_CR26_Reconciliation.md (the SSOT), for KSI-011..029
+     only (KSI-001..010 are the shared ScuBA baseline spanning several themes).
+
 Usage:
     python check_cr26_indicators.py            # exit 1 on any violation
 """
@@ -44,6 +50,44 @@ SCAN_GLOBS = [
 ]
 
 IND_RE = re.compile(r"KSI-[A-Z]{3}-[A-Z]{2,4}")
+
+# --- KSI number -> theme binding (3rd check) --------------------------------
+# The corpus sweep found KSI-011..014 (which are KSI-CMT, Change Management)
+# repeatedly mislabelled as KSI-SCR (Supply Chain Risk = KSI-015/016). The
+# number->theme map is derived from AAN_CR26_Reconciliation.md (the SSOT), so
+# this gate tracks the SSOT rather than hardcoding it. Only KSI-011..029 are
+# enforced: KSI-001..010 are the shared ScuBA baseline that legitimately spans
+# several themes (IAM/MLA/CNA/SVC), so they carry no single canonical theme.
+_THEME_ABBR = "CED|CMT|CNA|IAM|INR|MLA|PIY|RPL|SCR|SVC"
+# A KSI-0NN (optionally a range) bound within a short window to a theme
+# sub-indicator "KSI-TTT-YYY" — e.g. "KSI-011 through KSI-014 (KSI-SCR-MIT ...)".
+_BIND_SUBIND = re.compile(
+    r"(KSI-0\d\d)(?:\s*(?:\.\.0?\d\d|[–-]\s*KSI-0\d\d|through\s+KSI-0\d\d|to\s+KSI-0\d\d))?"
+    r"[^.\n]{0,35}?KSI-(" + _THEME_ABBR + r")-"
+)
+# Table-cell form "KSI-011..014 (4) | SCR — ..." (bare theme code after a pipe).
+_BIND_BARE = re.compile(r"(KSI-0\d\d)\s*\.\.0?\d\d\s*\(\d+\)\s*\|\s*(" + _THEME_ABBR + r")\b")
+
+
+def number_theme_map() -> dict[str, str]:
+    """KSI-0NN -> KSI-TTT parsed from the reconciliation SSOT, 011..029 only."""
+    recon = HERE / "AAN_CR26_Reconciliation.md"
+    m: dict[str, str] = {}
+    for line in recon.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        mt = re.match(r"(KSI-[A-Z]{2,3})\s*\(", cells[0])
+        if not mt:
+            continue
+        theme = mt.group(1)
+        for c in cells:
+            for n in re.findall(r"KSI-(0\d\d)\b", c):
+                if "011" <= n <= "029":
+                    m["KSI-" + n] = theme
+    return m
 # Categorically-wrong phrasings. Tight on purpose: "29" and "CR26" legitimately
 # co-occur ("the 29 rules map to 19 of the 46 CR26 indicators"), so only the
 # conflating forms below fail.
@@ -70,8 +114,23 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     valid = valid_indicators()
+    num2theme = number_theme_map()
     errors: list[str] = []
-    ids_seen = confl_seen = 0
+    ids_seen = confl_seen = bind_seen = 0
+
+    def _check_binding(f_name: str, ln: int, line: str) -> None:
+        nonlocal bind_seen
+        for rx in (_BIND_SUBIND, _BIND_BARE):
+            for mm in rx.finditer(line):
+                num, theme = mm.group(1), "KSI-" + mm.group(2)
+                bind_seen += 1
+                canon = num2theme.get(num)
+                if canon and canon != theme:
+                    errors.append(
+                        f"{f_name}:{ln}: {num} belongs to {canon}, but is bound "
+                        f"here to {theme} — see AAN_CR26_Reconciliation.md: "
+                        f"«{line.strip()[:70]}»"
+                    )
 
     for pattern in SCAN_GLOBS:
         for f in sorted(HERE.glob(pattern)):
@@ -91,10 +150,12 @@ def main() -> int:
                             f"indicators (19 mapped): «{line.strip()[:80]}»"
                         )
                         break
+                _check_binding(f.name, ln, line)
 
     print("AAN CR26-indicator check")
     print("=" * 44)
-    print(f"Valid CR26 indicators: {len(valid)} | indicator citations: {ids_seen}")
+    print(f"Valid CR26 indicators: {len(valid)} | indicator citations: {ids_seen} | "
+          f"number->theme bindings: {bind_seen}")
     if errors:
         print("\nERRORS:")
         for e in errors:
