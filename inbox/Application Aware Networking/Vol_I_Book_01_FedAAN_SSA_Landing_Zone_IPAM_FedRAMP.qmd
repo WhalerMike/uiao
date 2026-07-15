@@ -278,7 +278,7 @@ InfoBlox provides the automated enforcement pipeline:
 The AWS relationship is the deepest of all three cloud vendors: **InfoBlox's own FedRAMP-authorized cloud service (Infoblox Government Cloud, CSO FR2017257053 — verify current scope and date on the FedRAMP Marketplace) is hosted on AWS GovCloud.** This makes AWS the infrastructure foundation for InfoBlox's SaaS control plane.
 
 ::: {.callout-tip}
-**Key Point (Path A only):** When SSA uses the cloud-managed control plane, it is hosted on AWS GovCloud infrastructure with its own FedRAMP High authorization. SSA inherits both the InfoBlox CSO (FR2017257053) and the AWS GovCloud infrastructure authorization — layered FedRAMP coverage. Under Path B neither inheritance applies; the agency carries the component.
+**Key Point (Path A only):** When SSA uses the cloud-managed control plane, InfoBlox operates it on AWS GovCloud under **InfoBlox's own FedRAMP Moderate authorization** (CSO FR2017257053) — that CSO's authorization already accounts for its AWS hosting. SSA inherits the InfoBlox CSO it consumes; it does **not** separately inherit the underlying AWS IaaS authorization (a consumer inherits the service it consumes, not the provider's own supply chain). Under Path B this inheritance does not apply; the agency operates and carries the component itself.
 :::
 
 AWS-specific InfoBlox capabilities:
@@ -533,7 +533,7 @@ The following table maps InfoBlox DDI landing zone capabilities to specific NIST
 
 | Control | What InfoBlox DDI Provides | Evidence Artifact | Satisfies |
 |---|---|---|---|
-| **SC-20** | DNSSEC signing of all DNS zones including internal SDN segments | DNSSEC key log; DS record at .gov registrar | SC-20, SC-20(1) |
+| **SC-20** | DNSSEC signing of all DNS zones including internal SDN segments | DNSSEC key log; DS record at .gov registrar | SC-20 |
 | **SC-21** | Recursive DNSSEC validation on all Grid Members; RPZ with CISA Protective DNS feed | RPZ hit log → SIEM; validation failure alert | SC-21 |
 | **SC-22** | Network Insight auto-generates DDI topology; Grid Master-to-Member map | Network Insight export; SSP Appendix J | SC-22 |
 | **SC-7** | RPZ enforces domain-level egress blocking across all four SDN environments; DNS exfiltration detection | RPZ block rate dashboard; exfil alert config | SC-7, SC-7(7) |
@@ -546,7 +546,7 @@ The following table maps InfoBlox DDI landing zone capabilities to specific NIST
 | **AU-2** | DNS query events, DHCP lease events, IP allocation events, and cert enrollment events defined and logged | SIEM event catalog; AU-2 event list | AU-2 |
 | **AU-12** | Single syslog stream from all Grid Members across all four SDN environments; RFC 5424 format; 3-year retention | SIEM dashboards; retention policy | AU-12 |
 | **IR-4** | RPZ block events auto-generate SIEM IR tickets; DNSSEC failure triggers SOC alerts; DNS exfil detection | IR playbook; RPZ alert→ticket pipeline | IR-4, IR-5 |
-| **SI-3** | DNS-layer malware blocking via RPZ prevents resolution of C2 domains, ransomware, phishing | RPZ block count by threat category | SI-3, SI-3(1) |
+| **SI-3** | DNS-layer malware blocking via RPZ prevents resolution of C2 domains, ransomware, phishing | RPZ block count by threat category | SI-3 |
 | **PL-8** | Unified DDI architecture in SSP; InfoBlox FedRAMP ATO cited as inherited control for DDI layer | SSP Section 13 architecture narrative | PL-8 |
 
 : NIST SP 800-53 Rev 5 Control Coverage {.striped .hover}
@@ -612,7 +612,7 @@ InfoBlox's IaC integrations directly enable the CISA Automation and Orchestratio
 
 InfoBlox DDI enforces the FedRAMP authorization boundary at three layers simultaneously:
 
-**Layer 1 — IP Inventory = Boundary Definition.** The FedRAMP authorization boundary is defined by IP address ranges. InfoBlox IPAM *is* the authoritative record of every IP inside the boundary. The CM-8 IP inventory export *is* the boundary IP list — no separate reconciliation required.
+**Layer 1 — IP inventory feeds the boundary and asset documentation.** A FedRAMP authorization boundary is defined by its components, services, interconnections, and data flows — **not** by IP address ranges (SaaS components and external services inside the boundary hold no agency IP). What InfoBlox IPAM provides is the authoritative record of every *agency-addressed* asset inside the boundary: the CM-8 IP/asset inventory export is a primary input to the boundary's component inventory and network diagram, reconciled against the service and interconnection catalog rather than standing in for it.
 
 ::: {.callout-important}
 **Closure Necessity — CM-8 (system component inventory).** CM-8 requires an inventory that accurately reflects the system and includes all components within its boundary. You cannot inventory what you cannot enumerate — and the only layer that observes every component at the moment it joins the network is the addressing plane, because every component must take an address before it can do anything else. Discovery scanners enumerate what answered a probe during a scan window; an IPAM database enumerates what was *allocated*, which is the population the scanner's results must be reconciled against. Without the enumeration substrate, a scan result is a sample with no denominator. DHCP fingerprinting extends the same substrate downward to device identity at the moment of lease — the port-level device inventory built on it is the subject of [Vol I Book 02](Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd).
