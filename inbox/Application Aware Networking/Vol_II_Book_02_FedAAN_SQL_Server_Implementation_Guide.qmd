@@ -38,7 +38,7 @@ This guide is organized as ten sequential books. Each book has a defined scope, 
 
 **The consolidation gate** at Book 02 is a real gate, not a formality. Instances that do not meet the retain criteria are decommissioned before migration resources are spent on them. An instance that is retired is not migrated — it is turned off, its databases are archived or transferred, and it is removed from the estate inventory.
 
-**Safety model.** Every destructive action in this guide is preceded by a documented undo path. `ALTER LOGIN DISABLE` can be reversed with `ALTER LOGIN ENABLE`. SPNs can be removed with `setspn -D`. Arc enrollment can be unenrolled. No action in Books 01–07 is irreversible. The first irreversible action is `DROP LOGIN` in Book 05 — and that action is explicitly gated behind a 30-day observation period.
+**Safety model.** Every destructive action in this guide is preceded by a documented undo path. `ALTER LOGIN DISABLE` can be reversed with `ALTER LOGIN ENABLE`. SPNs can be removed with `setspn -D`. Arc enrollment can be unenrolled. Every action up to that point is reversible; the first irreversible action is `DROP LOGIN` in Book 05 — and that action is explicitly gated behind a 30-day observation period.
 
 **Test environment requirement.** Books 03–06 should be validated in a test environment before execution against production instances. The test environment must be Arc-enrolled and running SQL Server 2022 to produce meaningful validation results. Testing against SQL Server 2019 with the Entra extension is acceptable for Books 03 and 04, but Book 05 (login migration) must be tested against 2022.
 
@@ -226,7 +226,7 @@ $events = Get-WinEvent -FilterHashtable @{
     Id        = 4624, 4625
     StartTime = $startDate
 } | Where-Object {
-    $_.Properties[8].Value -eq 'NTLM'  # AuthenticationPackageName
+    $_.Properties[10].Value -eq 'NTLM'  # AuthenticationPackageName (index 10 in event 4624; index 8 is LogonType)
 }
 
 $events | Select-Object TimeCreated,
