@@ -69,10 +69,9 @@ _BIND_SUBIND = re.compile(
 _BIND_BARE = re.compile(r"(KSI-0\d\d)\s*\.\.0?\d\d\s*\(\d+\)\s*\|\s*(" + _THEME_ABBR + r")\b")
 
 
-def number_theme_map() -> dict[str, str]:
-    """KSI-0NN -> KSI-TTT parsed from the reconciliation SSOT, 011..029 only."""
+def _recon_rows() -> list[tuple[str, list[str]]]:
     recon = HERE / "AAN_CR26_Reconciliation.md"
-    m: dict[str, str] = {}
+    rows: list[tuple[str, list[str]]] = []
     for line in recon.read_text(encoding="utf-8").splitlines():
         if not line.startswith("|"):
             continue
@@ -80,14 +79,30 @@ def number_theme_map() -> dict[str, str]:
         if len(cells) < 3:
             continue
         mt = re.match(r"(KSI-[A-Z]{2,3})\s*\(", cells[0])
-        if not mt:
-            continue
-        theme = mt.group(1)
+        if mt:
+            rows.append((mt.group(1), cells))
+    return rows
+
+
+def number_theme_map() -> dict[str, str]:
+    """KSI-0NN -> KSI-TTT parsed from the reconciliation SSOT, 011..029 only."""
+    m: dict[str, str] = {}
+    for theme, cells in _recon_rows():
         for c in cells:
             for n in re.findall(r"KSI-(0\d\d)\b", c):
                 if "011" <= n <= "029":
                     m["KSI-" + n] = theme
     return m
+
+
+def canonical_themes() -> set[str]:
+    """The 10 canonical CR26 theme codes (KSI-TTT), from the reconciliation SSOT."""
+    return {theme for theme, _ in _recon_rows()}
+
+
+# A bare theme code KSI-TTT (2-3 letters), not a KSI-TTT-YYY sub-indicator and
+# not a KSI-0NN number. Catches invented codes like KSI-CM/KSI-DAT/KSI-IR.
+THEME_RE = re.compile(r"KSI-([A-Z]{2,3})(?![-A-Z0-9])")
 # Categorically-wrong phrasings. Tight on purpose: "29" and "CR26" legitimately
 # co-occur ("the 29 rules map to 19 of the 46 CR26 indicators"), so only the
 # conflating forms below fail.
@@ -115,8 +130,9 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     valid = valid_indicators()
     num2theme = number_theme_map()
+    canon = canonical_themes()
     errors: list[str] = []
-    ids_seen = confl_seen = bind_seen = 0
+    ids_seen = confl_seen = bind_seen = theme_seen = 0
 
     def _check_binding(f_name: str, ln: int, line: str) -> None:
         nonlocal bind_seen
@@ -151,11 +167,20 @@ def main() -> int:
                         )
                         break
                 _check_binding(f.name, ln, line)
+                for tm in THEME_RE.finditer(line):
+                    theme = tm.group(0)
+                    theme_seen += 1
+                    if theme not in canon:
+                        errors.append(
+                            f"{f.name}:{ln}: '{theme}' is not a canonical CR26 theme "
+                            f"(the 10 are {', '.join(sorted(canon))}) — "
+                            f"see AAN_CR26_Reconciliation.md: «{line.strip()[:60]}»"
+                        )
 
     print("AAN CR26-indicator check")
     print("=" * 44)
     print(f"Valid CR26 indicators: {len(valid)} | indicator citations: {ids_seen} | "
-          f"number->theme bindings: {bind_seen}")
+          f"number->theme bindings: {bind_seen} | theme codes: {theme_seen}")
     if errors:
         print("\nERRORS:")
         for e in errors:
