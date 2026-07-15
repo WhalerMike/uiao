@@ -13,12 +13,14 @@
 >
 > Regenerating from the sweep JSON would wipe sign-offs — edit in place.
 >
-> **Status markers:** `☐ unverified` · `☑ OK` / `FIX` / `N/A` (owner-confirmed) ·
-> `◑ (v3)` = a verdict supplied by the #1185 external-verification critique
-> (`AAN_Series_Constructive_Critique_v3.md`), an independent Claude Code round
-> that checked claims against primary sources — **pending owner confirmation**,
-> not yet an owner sign-off. Four rows (EV-M004, EV-L011, EV-L017, EV-L045)
-> carry `◑ (v3)` verdicts folded in 2026-07-15.
+> **Status markers:** `☐ unverified` · `☑ OK` / `FIX` / `N/A` (verified) ·
+> `☑ RESOLVED` = independently verified against primary sources this session
+> **and** corrected in a PR. Five rows (EV-H003, EV-M004, EV-L011, EV-L017,
+> EV-L045) were resolved 2026-07-15 and fixed in #1187 — the corpus corrections
+> from the #1185 critique. Note: independent re-verification **overturned two of
+> #1185's own claims** — there is no NIST "no-cadence" (it has a 2-year
+> major-release cadence) and no TIC "Branch Office Use Case v3.0" (the doc is
+> v1.0). Those rows record the correction, not #1185's version.
 
 **3 HIGH · 90 MED · 85 LOW** (178 rows) — full finding text in `AAN_Corpus_Sweep_Findings.json`. The last 4 LOW rows (EV-L082–L085) come from the 2026-07-15 Vol I Book 02 re-review, not the original sweep.
 
@@ -28,7 +30,7 @@
 |---|---|---|---|---|---|
 | EV-H001 | Vol_III_Book_02_FedAAN_Vulnerability_Management.qmd:490 | Intune Windows Update for Business rings (and the windows10CompliancePolicy at line 611) are the patch-delivery and enforcement lane for the Arc-enrol | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-H002 | Vol_III_Book_05_FedAAN_Data_Protection_Purview.qmd:656 | Standard M365 unified audit logs are 'mutable by a Global Administrator'; Purview Audit Premium provides 'immutable log storage in a location not acce | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
-| EV-H003 | Vol_IV_Book_02_FedAAN_Supply_Chain_Risk_Management.qmd:126 | A "CISA VEX Portal" exists and is the submission target: pipeline stage 7, 'Signed URLs for CISA VEX Portal submission', 'CycloneDX 1.6 XML natively,  | CISA SCuBA / ScubaGear | ☐ unverified |  |
+| EV-H003 | Vol_IV_Book_02_FedAAN_Supply_Chain_Risk_Management.qmd:126 | A "CISA VEX Portal" exists and is the submission target: pipeline stage 7, 'Signed URLs for CISA VEX Portal submission', 'CycloneDX 1.6 XML natively,  | CISA VEX guidance | ☑ RESOLVED — FIX (verified 2026-07-15) | Web-verified: **no "CISA VEX Portal" exists** (CISA publishes VEX minimum-requirements guidance; VEX is vendor-authored and shared, not portal-filed). All "CISA VEX Portal" references removed in #1187 (prose, ASCII pipeline, both figures) → agency evidence repository |
 
 ## MED (90)
 
@@ -37,7 +39,7 @@
 | EV-M001 | book-03.qmd:20 | "certificate lifecycle automation (ACME, CAA) sized for the industry's 47-day maximum lifetimes" (also title/description and repeated at lines 34, 53, | vendor / authoritative product docs | ☐ unverified |  |
 | EV-M002 | book-12.qmd:33 | Key Vault Premium (HSM, FIPS 140-2 Level 2) | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-M003 | lab-b6-purview.qmd:59 | Learners should review false positives 'before switching `-Mode` to `Enforce`'. | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
-| EV-M004 | Vol_0_Book_00_FedAAN_Executive_Summary.qmd:718 | InfoBlox DDI 'FedRAMP Moderate-authorized... CSO FR2017257053, authorized January 2023, hosted on AWS GovCloud' and 'one of a small number of FedRAMP  | FedRAMP Marketplace / 20x docs | ◑ FIX (v3) | #1185 v3 E7 [3-0 voted] · 2026-07-15 · CSO ID / Moderate / DDI SaaS / GovCloud all confirmed, but auth date is **2022-12-15** (agency: Census/Commerce), not Jan 2023 — owner to confirm |
+| EV-M004 | Vol_0_Book_00_FedAAN_Executive_Summary.qmd:718 | InfoBlox DDI 'FedRAMP Moderate-authorized... CSO FR2017257053, authorized January 2023, hosted on AWS GovCloud' and 'one of a small number of FedRAMP  | FedRAMP Marketplace / 20x docs | ☑ RESOLVED (verified 2026-07-15) | Independently verified via FedRAMP Marketplace ("As of 12/15/2022", agency: Census/Commerce) + FIXED in #1187. CSO ID / Moderate / DDI SaaS / GovCloud confirmed; auth date corrected Jan 2023 → **2022-12-15** (Jan 2023 was the vendor press-release date) |
 | EV-M005 | Vol_0_Book_00_FedAAN_Executive_Summary.qmd:724 | 'AWS Route 53 private zones cannot be DNSSEC-signed (documented platform gap)' — asserted twice (lines 691 and 724) as the basis for an expected SC-20 | Infoblox product docs | ☐ unverified |  |
 | EV-M006 | Vol_0_Book_00a_FedAAN_Executive_Brief.qmd:50 | "ServiceNow Government Cloud is FedRAMP High coordinating a Moderate boundary (a conservative delta)." | ServiceNow product docs | ☐ unverified |  |
 | EV-M007 | Vol_0_Book_01_FedAAN_Product_Inventory_Questionnaire.qmd:102 | Vendor FedRAMP statuses in §3 and §6: SailPoint ISC Moderate (CSO FR2001938710A); ServiceNow Government Cloud High / DoD IL-4; Splunk Cloud Moderate ( | ServiceNow product docs | ☐ unverified |  |
@@ -139,13 +141,13 @@
 | EV-L008 | book-15.qmd:42 | 'CycloneDX 1.6 XML as the CISA-preferred format' | CISA SCuBA / ScubaGear | ☐ unverified |  |
 | EV-L009 | book-17.qmd:27 | SORN requires 'the 40-day OMB/Congress comment and 30-day pre-collection Federal Register timeline' | Cisco product docs | ☐ unverified |  |
 | EV-L010 | book-17.qmd:33 | 'OMB M-03-22 compliant privacy notice with all six required elements' | vendor / authoritative product docs | ☐ unverified |  |
-| EV-L011 | book-19.qmd:30 | BOD 26-04 pipeline named as "Syft -> Grype -> OpenVEX via vexctl" producing "Syft CycloneDX 1.6 -> Grype VDR -> OpenVEX VER" | CISA SCuBA / ScubaGear | ◑ FIX (v3) | #1185 v3 E6/Concern 1 [3-0 voted] · 2026-07-15 · BOD 26-04 is a risk-tiered *remediation* directive — no SBOM/VEX mandate. FedRAMP VDR = Vulnerability **Detection & Response**, VER = **Evaluation & Reporting** (NTC-0014), NOT "Disclosure Report". Re-anchor pipeline to EO 14028 §4 / OMB M-22-18 / SR-family — owner to confirm |
+| EV-L011 | book-19.qmd:30 | BOD 26-04 pipeline named as "Syft -> Grype -> OpenVEX via vexctl" producing "Syft CycloneDX 1.6 -> Grype VDR -> OpenVEX VER" | CISA SCuBA / ScubaGear | ☑ RESOLVED (verified 2026-07-15) | Independently verified (fedramp.gov/notices/0014) + FIXED in #1187. BOD 26-04 is risk-tiered *remediation* — no SBOM/VEX mandate. FedRAMP VDR = **Detection & Response**, VER = **Evaluation & Reporting** (NTC-0014). Pipeline re-anchored to EO 14028 §4 / SR-family. Note: the pipeline's own "VDR" = OWASP CycloneDX *Vulnerability Disclosure Report* (a correct, different term); "CISA VEX Portal" (EV-H003) removed — no such portal exists |
 | EV-L012 | implementation-track.qmd:57 | "ACME/SCEP issuance sized for 47-day certificate lifetimes" | vendor / authoritative product docs | ☐ unverified |  |
 | EV-L013 | index.qmd:43 | "M365 E5 developer/trial tenants cover Entra ID P2 (PIM), Purview, and Defender features for the trial window" | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-L014 | lab-b5-pim.qmd:21 | PIM requires Entra ID P2, and PIM audit events are retrievable with `-Filter "loggedByService eq 'PIM'"` via Get-MgAuditLogDirectoryAudit. | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-L015 | lab-b6-sentinel.qmd:42 | SigninLogs ResultType 500121 captures denied/timed-out MFA prompts for the MFA-fatigue rule, and `az sentinel alert-rule create --scheduled` accepts t | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-L016 | vendor-training-catalog.qmd:40 | SC-401 (Information Security Administrator) is 'successor to the retired SC-400'. | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
-| EV-L017 | Vol_0_Book_00_FedAAN_Executive_Summary.qmd:267 | Broader-clock rows not in the deadline SSOT: CNSA 2.0 acquisition gate Jan 1 2027 (ML-KEM-1024 + ML-DSA-87); next NIST SP 800-53 release ~Aug 2027 on  | NSA CNSA 2.0 FAQ / NIST CSRC | ◑ PARTIAL (v3) | #1185 v3 E13/E15 [primary-source] · 2026-07-15 · ML-KEM-1024/ML-DSA-87 correct; soften "gate" → new NSS must "**support** CNSA 2.0 ... unless an exception is explicitly noted" (NSA FAQ v2.1). NIST announces **no** 800-53 cadence — drop/flag the ~Aug 2027 extrapolation — owner to confirm |
+| EV-L017 | Vol_0_Book_00_FedAAN_Executive_Summary.qmd:267 | Broader-clock rows not in the deadline SSOT: CNSA 2.0 acquisition gate Jan 1 2027 (ML-KEM-1024 + ML-DSA-87); next NIST SP 800-53 release ~Aug 2027 on  | NSA CNSA 2.0 FAQ / NIST CSRC | ☑ RESOLVED (verified 2026-07-15) | Independently web-verified + FIXED in #1187. CNSA: ML-KEM-1024/ML-DSA-87 correct; softened "gate" → "must **support** ... unless an exception is explicitly noted" (NSA FAQ). ⚠️ v3 E15 was **WRONG** — NIST *does* state a 2-year **major-release** cadence (5.2.0 was a minor release), so the line was corrected (minor vs Revision), NOT dropped |
 | EV-L018 | Vol_III_Book_03_FedAAN_Patch_Systems_Management.qmd:146 | Vendor capability claims: Ksplice 'applies kernel and user-space patches without a reboot'; OCI Autonomous DB 'self-patching'; Workspace ONE patching  | ServiceNow product docs | ☐ unverified |  |
 | EV-L019 | Vol_III_Book_04_FedAAN_Cloud_Native_Posture.qmd:93 | Microsoft Defender for Cloud 'does multi-cloud CSPM/CWPP across AWS, GCP, and Azure and is available within GCC at FedRAMP Moderate'. | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-L020 | Vol_III_Book_04_FedAAN_Cloud_Native_Posture.qmd:98 | Prisma Cloud is 'FedRAMP High-only, as is Wiz for Government' (also lines 190, 205-206). | FedRAMP Marketplace / 20x docs | ☐ unverified |  |
@@ -173,7 +175,7 @@
 | EV-L042 | Vol_I_Book_05_FedAAN_Network_Modernization.qmd:414 | Vendor facts with no source links: Microsoft backbone "approximately 200,000 km of dedicated fiber" (~414); Viptela "acquired 2017 and rebranded 2023" | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-L043 | Vol_I_Book_06_FedAAN_Federal_Telecommunications_Modernization.qmd:441 | Kari's Law reference given as "47 CFR §9.4". | vendor / authoritative product docs | ☐ unverified |  |
 | EV-L044 | Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd:151 | Vendor-realization matrix and references: product identities and capabilities (Catalyst SD-WAN/Viptela, Prisma SD-WAN, Session Smart Router/128T, ISE+ | FedRAMP Marketplace / 20x docs | ☐ unverified |  |
-| EV-L045 | Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd:183 | "Under TIC 3.0, a branch running Direct Internet Access is permissible *only when* the security-capabilities catalog is satisfied at a distributed enf | CISA TIC 3.0 Branch Office Use Case v3.0 | ◑ FIX (v3) | #1185 v3 E10/Concern 5 [primary-source] · 2026-07-15 · TIC 3.0 standard is "commensurate protection based on agency risk tolerance", NOT "only when catalog satisfied" (AO may accept a risk-appropriate subset). Re-cite Branch Office Use Case **v3.0** (Jul 2025), not v1.0 (2021) — owner to confirm |
+| EV-L045 | Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd:183 | "Under TIC 3.0, a branch running Direct Internet Access is permissible *only when* the security-capabilities catalog is satisfied at a distributed enf | CISA TIC 3.0 Branch Office Use Case v1.0 (Apr 2021) | ☑ RESOLVED (verified 2026-07-15) | Independently web-verified + FIXED in #1187. Softened "only when catalog satisfied" → "commensurate protection based on agency risk tolerance". ⚠️ v3 was **WRONG** that a "Branch Office Use Case v3.0 (Jul 2025)" exists — the "3.0" is the TIC *program* version; the doc is v1.0 (Apr 2021), which the series already cites correctly, so the citation was **kept** |
 | EV-L046 | Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd:47 | ServiceNow Government Cloud holds FedRAMP High authorization (lines 47, 94, 103); Atlassian Government Cloud (Jira/Confluence) is FedRAMP Moderate (li | ServiceNow product docs | ☐ unverified |  |
 | EV-L047 | Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd:95 | MID Server callouts mean 'credentials and execution never leave' the ATO boundary, and 'Cloud-to-cloud integrations use the platform's in-boundary int | ServiceNow product docs | ☐ unverified |  |
 | EV-L048 | Vol_VII_Book_02_FedAAN_M365_Control_Compliance_Automation.qmd:55 | Vendor capability claims: ScubaGear "runs on a schedule and produces a per-policy pass/fail result" (line 55); Graph-applied changes are "logged, scop | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
