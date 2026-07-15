@@ -77,19 +77,28 @@ Identical discipline to the rest of the series and the in-repo DDI app: a FedRAM
 The finding-to-task binding lives in `data/control-map.json`, not in code, so it is reviewable and CI-checked. Each entry mirrors a closure row in `aan-compliance-spine.yml`:
 
 ```jsonc
-// control-map.json — one entry per (finding class → task). Projection of the spine.
+// data/control-map.json — finding class → task binding. Projection of the spine.
+// Structure: { boundary, catalog: { <finding-class>: {…} } }; CI-validated by validate_day2_control_maps.py.
 {
-  "m365.scuba.fail": {
-    "control": "CM-6", "task_type": "change", "severity": "moderate",
-    "sla_class": "baseline-drift", "ksi": ["KSI-CMT", "KSI-SVC"], "slot": "slot-06-security"
-  },
-  "azure.updatemgr.missing_critical": {
-    "control": "SI-2", "task_type": "change", "severity": "high",
-    "sla_class": "kev-exposed", "ksi": ["KSI-SVC", "KSI-MLA"], "slot": "slot-05-endpoint"
-  },
-  "azure.defender.finding": {
-    "control": "RA-5", "task_type": "vulnerability_response", "severity": "by-exposure",
-    "sla_class": "risk-based", "ksi": ["KSI-MLA"], "slot": "slot-06-security"
+  "boundary": "gcc-moderate",
+  "catalog": {
+    "m365.baseline.drift": {
+      "title": "M365 SCuBA / secure-baseline drift", "control": "CM-6",
+      "task_type": "change", "approval": "owner", "actuation": "platform-native",
+      "ksi": ["KSI-CMT"], "slot": "slot-06-security"
+    },
+    "azure.patch.remediation": {
+      "title": "Azure patch / flaw-remediation task", "control": "SI-2",
+      "task_type": "change", "approval": "owner", "actuation": "platform-native",
+      "ksi": ["KSI-SVC"], "slot": "slot-05-endpoint"
+    },
+    "azure.vuln.finding": {
+      "title": "Defender / MDVM vulnerability finding", "control": "RA-5",
+      "task_type": "change", "approval": "owner", "actuation": "platform-native",
+      "ksi": ["KSI-MLA"], "slot": "slot-06-security"
+    }
+    // … plus m365.account.exception (AC-2), attest.control.test (CA-2),
+    //   attest.poam.item (CA-5), attest.conmon.rollup (CA-7)
   }
 }
 ```
