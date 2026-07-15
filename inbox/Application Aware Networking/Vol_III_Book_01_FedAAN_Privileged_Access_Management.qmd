@@ -105,7 +105,7 @@ The operational difference is decisive: an eligible assignment is worthless to a
 
 ## PIM Activation Flow
 
-![PIM activation flow: request — MFA — approval — time-limited role — audit showing all steps and the resulting audit trail](figs/pam-fig-02-pim-activation-flow.png){#fig-pam02 fig-alt="Flowchart showing the PIM activation sequence. Step 1: Administrator submits activation request with justification text and requested duration in the Entra ID portal or My Access. Step 2: Entra ID Conditional Access enforces MFA at activation time, requiring a fresh authentication proof. Step 3: If approver is configured, the approver receives an email notification and approves or denies the request. Step 4: Upon approval, Entra ID issues a time-limited active role assignment with an expiration timestamp. Step 5: All steps generate audit log entries in the Entra ID audit log and feed to Microsoft Sentinel or equivalent SIEM. Step 6: At expiration the role automatically deactivates with no user action required." width="100%"}
+![PIM activation flow: request — MFA — approval — time-limited role — audit showing all steps and the resulting audit trail](figs/pam-fig-02-pim-activation-flow.png){#fig-pam02 fig-alt="Flowchart showing the PIM activation sequence. Step 1: Administrator submits activation request with justification text and requested duration in the Entra ID portal or My Access. Step 2: Entra ID Conditional Access enforces MFA at activation time, requiring a fresh authentication proof. Step 3: If approver is configured, the approver receives an email notification and approves or denies the request. Step 4: Upon approval, Entra ID issues a time-limited active role assignment with an expiration timestamp. Step 5: At expiration the role automatically deactivates with no user action required. Audit logging spans all five stages: every stage generates audit log entries in the Entra ID audit log that feed to Microsoft Sentinel or equivalent SIEM." width="100%"}
 
 The activation flow has five stages:
 
@@ -119,7 +119,7 @@ The activation flow has five stages:
 
 5. **Automatic deactivation.** At expiration, the role returns to eligible-only automatically. No user action is required. No manual deactivation step can be forgotten.
 
-Every stage generates an audit log entry in the Entra ID audit log under the "PIM" category. These entries are structured and queryable in Microsoft Sentinel (Defender for Cloud via the Entra connector) and in Log Analytics.
+Every stage generates an audit log entry in the Entra ID audit log under the "PIM" category. These entries are structured and queryable in Microsoft Sentinel (via the Microsoft Entra ID connector) and in Log Analytics.
 
 ## Roles to Protect with PIM
 
@@ -246,7 +246,7 @@ Convert-ToPimEligible `
 
 ## PIM Policy Configuration
 
-PIM policy is configured per role. The following settings represent the recommended baseline for federal environments operating at FedRAMP Moderate or High:
+PIM policy is configured per role. The following settings represent the recommended baseline for federal environments operating at FedRAMP Moderate:
 
 ```powershell
 # Configure PIM role policy for Global Administrator
@@ -1024,7 +1024,7 @@ The following table maps each NIST control addressed by this document to its sta
 | AC-5 | Separation of Duties | Standing Global Admin accounts combine administrative authorization with routine operations; no separation between role assignment and role use | PIM requires a separate authorization ceremony (request, MFA, justification, optional approver) before role is active; role assignment and role use are distinct events | NIST SP 800-53 Rev 5 AC-5 |
 | AC-6 | Least Privilege | Standing admin assignments grant maximum scope for the duration of employment regardless of current task | PIM eligible assignments grant scope only for the duration of the activation window (1–8 hours); scope returns to zero between activations | NIST SP 800-53 Rev 5 AC-6 |
 | AC-6(1) | Authorize Access to Security Functions | Access to security functions (Conditional Access editing, role management, security policy) is always available to standing admins | PIM activation for Security Administrator and Privileged Role Administrator roles requires explicit authorization ceremony; Conditional Access policy gates on PAW device compliance | NIST SP 800-53 Rev 5 AC-6(1) |
-| AC-6(2) | Non-privileged Access for Non-security Functions | Admins performing routine tasks (email, documents) use the same account scope as their administrative role — elevated scope is always in use | Admins use a standard account for routine tasks; privileged roles are activated only when needed through PIM; PAW is used only for admin tasks, never for general productivity | NIST SP 800-53 Rev 5 AC-6(2) |
+| AC-6(2) | Non-privileged Access for Nonsecurity Functions | Admins performing routine tasks (email, documents) use the same account scope as their administrative role — elevated scope is always in use | Admins use a standard account for routine tasks; privileged roles are activated only when needed through PIM; PAW is used only for admin tasks, never for general productivity | NIST SP 800-53 Rev 5 AC-6(2) |
 | AC-6(5) | Privileged Accounts | Privileged accounts exist with no inventory, no defined scope justification, and no audit trail of activation events | PIM eligible assignments constitute the inventory of privileged accounts; each activation generates an audit event with justification, requestor, approver, and time window | NIST SP 800-53 Rev 5 AC-6(5) |
 | AC-6(9) | Log Use of Privileged Functions | NTLM-based admin sessions do not generate token-level audit events; standing admin session activities are not distinguishable from normal use in the audit log | PIM activation and deactivation are logged; Sentinel analytics rules correlate activation events with subsequent administrative actions during the activation window | NIST SP 800-53 Rev 5 AC-6(9) |
 | AC-6(10) | Prohibit Non-privileged Users from Executing Privileged Functions | Any account that discovers a standing admin credential can immediately execute privileged functions; no additional gate | PIM eligible assignments require activation ceremony; PAW Conditional Access blocks role activation from non-compliant devices; Credential Guard blocks credential extraction from PAW memory | NIST SP 800-53 Rev 5 AC-6(10) |
