@@ -4,7 +4,7 @@
 
 ## Coverage (stated honestly)
 
-- This crosswalk is rendered from the **91 closure rows** the spine carries across **17 of 67 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd` indexes the full 146 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
+- This crosswalk is rendered from the **91 closure rows** the spine carries across **17 of 67 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_FedAAN_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
 - It aggregates those closures into **53 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
 
 ## Crosswalk
