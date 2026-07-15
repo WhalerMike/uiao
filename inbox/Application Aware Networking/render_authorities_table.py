@@ -12,6 +12,7 @@ Usage:
     python render_authorities_table.py --book book-net-enforce
     python render_authorities_table.py --emit-dir authorities
     python render_authorities_table.py --check authorities   # drift gate (exit 1 on drift)
+    python render_authorities_table.py --check-inline         # gate inline .qmd tables vs spine
 """
 
 from __future__ import annotations
@@ -45,7 +46,6 @@ def _valid_ksi_themes() -> set[str]:
     checkout without the catalog — validate() then skips the KSI check rather
     than failing closed on a missing reference file.
     """
-    import json
     import re
 
     repo = Path(__file__).resolve().parents[2]
@@ -143,7 +143,9 @@ def render_book(spine: dict, book_id: str) -> str:
     lines.append(sep)
     for c in sorted(rows, key=lambda r: (r["plane"], r["control"])):
         cells = _row_cells(spine, c)
-        lines.append("| " + " | ".join(str(cells[key]) for key, _ in COLUMNS) + " |")
+        # Escape any '|' inside a cell (enhancement titles are "Parent | Enhancement")
+        # so it does not split the markdown row into an extra column.
+        lines.append("| " + " | ".join(str(cells[key]).replace("|", "\\|") for key, _ in COLUMNS) + " |")
     lines.append("")
     lines.append(
         f": Authorities Closed Here — {book['title']} "
@@ -197,6 +199,94 @@ def check(spine: dict, out_dir: Path) -> int:
     return 0
 
 
+def _spine_expected(spine: dict) -> dict[str, dict[str, tuple[frozenset[str], str]]]:
+    """{book_id: {control(with †): (frozenset(ksi themes), title)}} from the spine."""
+    out: dict[str, dict[str, tuple[frozenset[str], str]]] = {}
+    for c in spine["closures"]:
+        cells = _row_cells(spine, c)
+        themes = frozenset(c["ksi"] or [])
+        out.setdefault(c["book"], {})[cells["control"]] = (themes, c["title"])
+    return out
+
+
+def check_inline(spine: dict, roots: list[Path]) -> int:
+    """Gate the INLINE authorities tables embedded in the .qmd files against the
+    spine. The generated authorities-<book>.md partials are covered by --check;
+    the hand-copied inline tables (same `<!-- authorities:book-… -->` marker)
+    were not, which let a control->KSI mapping drift (CM-8 mislabelled KSI-CMT
+    instead of KSI-PIY). This compares each inline row's Control -> {KSI, Title}
+    to the spine — structurally, so caption/mechanism customisation is fine."""
+    import re
+
+    expected = _spine_expected(spine)
+    marker = re.compile(r"<!--\s*authorities:(book-[\w-]+)")
+    errors: list[str] = []
+    tables = 0
+
+    qmds: list[Path] = []
+    for root in roots:
+        qmds += sorted(root.rglob("*.qmd"))
+    for qmd in qmds:
+        lines = qmd.read_text(encoding="utf-8", errors="replace").splitlines()
+        for i, line in enumerate(lines):
+            m = marker.search(line)
+            if not m:
+                continue
+            book_id = m.group(1)
+            exp = expected.get(book_id)
+            if not exp:
+                continue
+            tables += 1
+            j = i + 1
+            while j < len(lines) and not lines[j].lstrip().startswith("|"):
+                j += 1
+            if j >= len(lines):
+                continue
+            cols = [c.strip() for c in re.split(r"(?<!\\)\|", lines[j].strip().strip("|"))]
+            ncols = len(cols)
+            try:
+                ksi_idx = next(k for k, c in enumerate(cols) if "KSI" in c and "20x" in c)
+            except StopIteration:
+                errors.append(f"{qmd.name}:{j + 1}: authorities:{book_id} table header missing the 'FedRAMP 20x KSI' column")
+                continue
+            k = j + 2  # skip the |---| separator
+            while k < len(lines) and lines[k].lstrip().startswith("|"):
+                raw = lines[k].strip().strip("|")
+                cells = [c.strip() for c in re.split(r"(?<!\\)\|", raw)]
+                k += 1
+                ctrl = cells[0]
+                if ctrl not in exp:
+                    continue  # not a spine-tracked control row (nested header / continuation)
+                want_ksi, _ = exp[ctrl]
+                # A control row whose cell count != the header's almost always means
+                # an unescaped '|' inside a cell (e.g. an enhancement title
+                # "Parent | Enhancement"), which corrupts the row and shifts every
+                # column. Report that rather than mis-reading a shifted column.
+                if len(cells) != ncols:
+                    errors.append(
+                        f"{qmd.name}:{k}: {ctrl} row has {len(cells)} cells, header has "
+                        f"{ncols} — an unescaped '|' inside a cell (escape it as '\\|')"
+                    )
+                    continue
+                got_ksi = frozenset(
+                    t.strip() for t in cells[ksi_idx].split(",") if t.strip() and t.strip() != "—"
+                )
+                if got_ksi != want_ksi:
+                    errors.append(
+                        f"{qmd.name}:{k}: {ctrl} KSI is {sorted(got_ksi) or ['—']}, "
+                        f"spine says {sorted(want_ksi) or ['—']} — inline authorities table drifted"
+                    )
+
+    print("AAN inline-authorities drift check")
+    print("=" * 44)
+    print(f"Inline authorities tables checked: {tables}")
+    if errors:
+        print("\nERRORS:", *(f"  - {e}" for e in errors), sep="\n")
+        return 1
+    print("\nOK — every inline authorities row's control->KSI matches the spine.")
+    return 0
+
+
 def summary(spine: dict) -> None:
     n_books = len(spine["books"])
     n_auth = len(spine["authorities"])
@@ -217,6 +307,8 @@ def main() -> int:
     ap.add_argument("--book", help="print one book's table to stdout")
     ap.add_argument("--emit-dir", help="write authorities-<book>.md partials into DIR")
     ap.add_argument("--check", metavar="DIR", help="drift gate against committed partials")
+    ap.add_argument("--check-inline", action="store_true",
+                    help="drift gate: inline .qmd authorities tables (control->KSI/title) vs the spine")
     args = ap.parse_args()
 
     # Windows consoles default to cp1252; the tables carry '†' and '—'.
@@ -238,6 +330,8 @@ def main() -> int:
         return 0
     if args.check:
         return check(spine, Path(args.check))
+    if args.check_inline:
+        return check_inline(spine, [Path(__file__).parent])
 
     summary(spine)
     return 0
