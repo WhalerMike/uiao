@@ -1,6 +1,6 @@
 ---
 title: "Vol IV Book 02 — Federal Application-Aware Networking — Supply Chain Risk Management"
-subtitle: "Supply Chain Risk Management: SBOM, VDR, and VER Framework for FedRAMP 20x and BOD 26-04"
+subtitle: "Supply Chain Risk Management: SBOM, VDR, and VEX Framework (EO 14028 §4 / NIST SP 800-161 / SR-family), with BOD 26-04 remediation SLAs"
 author: "SSA Cloud Services Team"
 date: "2026-07-08 16:07 ET"
 format:
@@ -38,43 +38,67 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 ## What This Document Addresses
 
 Supply chain risk is the fastest-growing attack vector in the federal technology
-landscape. Executive Order 14028 (May 2021), NIST SP 800-161r1, and CISA
-Binding Operational Directive 26-04 together establish a mandatory framework:
-agencies must be able to enumerate every software component in their production
-systems, disclose vulnerability status for those components, and demonstrate
-that exploitable vulnerabilities are tracked, triaged, and remediated.
+landscape. Executive Order 14028 (May 2021) §4, NIST SP 800-161r1, OMB M-22-18
+and M-23-16, and the NIST SP 800-53 SR control family together establish a
+mandatory framework: agencies must be able to enumerate every software component
+in their production systems, disclose vulnerability status for those components,
+and demonstrate that exploitable vulnerabilities are tracked, triaged, and
+remediated. CISA Binding Operational Directive 26-04 governs the last of these —
+the risk-tiered *remediation* timelines — but does not itself mandate the SBOM or
+disclosure artifacts; those trace to EO 14028 §4 and NIST SP 800-161.
 
-The **December 7, 2026 BOD 26-04 VDR/VER deadline** is the hardest date in the
-FedRAMP 20x compliance calendar for SSA. It requires:
+Two independent things converge on **December 7, 2026**, and this document keeps
+them distinct:
+
+1. **The supply-chain evidence artifacts** (below), mandated by EO 14028 §4 /
+   NIST SP 800-161 / the SR family and expressed in the OWASP CycloneDX formats.
+2. **FedRAMP's Vulnerability Detection & Response (VDR) and Vulnerability
+   Evaluation & Reporting (VER) rule sets** (Public Notice NTC-0014), which
+   become mandatory for FedRAMP offerings on the same date BOD 26-04's
+   remediation timelines take effect. Note the acronym collision: FedRAMP's
+   "VDR/VER" are *rule sets*, distinct from the OWASP CycloneDX *Vulnerability
+   Disclosure Report* this pipeline generates.
+
+The supply-chain evidence framework requires:
 
 1. A **Software Bill of Materials (SBOM)** for every system — a machine-readable
    inventory of every software component, version, and supplier in production
-2. A **Vulnerability Disclosure Report (VDR)** — a structured enumeration of
-   known vulnerabilities in SBOM components
+   (EO 14028 §4; CISA/NTIA minimum elements)
+2. A **Vulnerability Disclosure Report (VDR)** — the OWASP CycloneDX artifact
+   enumerating known vulnerabilities in SBOM components (NIST SP 800-161)
 3. A **Vulnerability Exploitability eXchange (VEX)** document — a machine-readable
    assertion for each CVE: is this vulnerability exploitable in this product, in
    this deployment context?
 
 This document establishes the technical architecture, pipeline, and governance
 process for all three. It closes eight NIST SP 800-53 Rev 5 SR family controls
-and provides the VER evidence contract required to upgrade KSI-CMT rules
-KSI-011 through KSI-014 from scaffold to evaluable status.
+and provides the evidence contract that upgrades KSI-011 through KSI-014 from
+scaffold to evaluable status.
 
 ---
 
-# The BOD 26-04 Compliance Requirement
+# The Supply-Chain Evidence Framework and the December 7, 2026 Deadline
 
-CISA Binding Operational Directive 26-04 activates the SBOM/VDR/VER requirement
-for all federal civilian executive branch (FCEB) agencies effective
-**December 7, 2026**. The directive defines three tiers:
+The supply-chain evidence artifacts are mandated by EO 14028 §4, NIST SP 800-161,
+and the SR control family — **not** by BOD 26-04 — and are produced in three
+CycloneDX evidence tiers:
 
-| Tier | Requirement | Deadline |
-|------|-------------|----------|
-| **Tier 1** | SBOM present for all production systems | December 7, 2026 |
-| **Tier 2** | VDR present — vulnerability disclosure for all SBOM components | December 7, 2026 |
-| **Tier 3** | VEX present — exploitability assertions for all CVEs in VDR | December 7, 2026 |
+| Tier | Artifact | Authority |
+|------|----------|-----------|
+| **Tier 1** | SBOM present for all production systems | EO 14028 §4; CISA/NTIA minimum elements |
+| **Tier 2** | VDR present — CycloneDX Vulnerability Disclosure Report for all SBOM components | NIST SP 800-161; OWASP CycloneDX |
+| **Tier 3** | VEX present — exploitability assertions for all CVEs in the VDR | NIST SP 800-161; OWASP CycloneDX |
 
-: BOD 26-04 Compliance Tiers {.striped .hover}
+: Supply-chain evidence tiers {.striped .hover}
+
+Two instruments then carry a **December 7, 2026** deadline that this program
+aligns to. **CISA BOD 26-04** sets risk-tiered *remediation* timelines — a
+four-variable KEV/exposure/automatability/impact model with 3/14/60-day bands,
+the SLAs the pipeline's blocking gate enforces — and does not mandate the
+artifacts above. **FedRAMP NTC-0014** makes the FedRAMP VDR/VER rule sets
+mandatory for FedRAMP offerings on the same date. The evidence pipeline serves
+both: it produces the SBOM/VDR/VEX artifacts (EO 14028 §4) and enforces the
+BOD 26-04 remediation SLAs against what they surface.
 
 Under FedRAMP 20x Consolidated Rules, the same data serves as the machine-readable
 evidence package for KSI-SCR (Supply Chain Risk), KSI-CMT-VTD (Validation
@@ -118,22 +142,23 @@ Throughout Deployment), and the SR control family assessment.
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Artifact Storage (GitHub Releases + Azure Blob immutable tier)     │
 │  Retention: 7 years (NARA standard)                                  │
-│  Access: Signed URLs for CISA VEX Portal submission                  │
+│  Access: Signed URLs for agency evidence repo + downstream sharing   │
 └───────────────────┬─────────────────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  CISA VEX Portal Submission + Sentinel KSI Dashboard Ingestion      │
+│  Agency Evidence Repository + Sentinel KSI Dashboard Ingestion      │
 │  Feedback loop: new CVEs trigger Defender VM alert (Part 11 chain)   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-![SBOM / VDR / VEX Pipeline — BOD 26-04 Compliance Stages](figs/scrm-fig-01-sbom-pipeline.png){fig-alt="Seven-stage pipeline diagram for SBOM/VDR/VEX compliance. Stage 1: Source Code Repository (GitHub with branch protection). Stage 2: GitHub Actions CI Trigger (push, PR, or weekly scheduled). Stage 3: Syft SBOM Generation (CycloneDX 1.6 XML). Stage 4: Grype VDR Scan (NVD/GHSA/KEV lookup, CVSS scores). Stage 5: VEX Authoring (OpenVEX CLI, exploitability assertions). Stage 6: Signed Artifact Store (S3 + KMS, SHA-256 integrity, immutable). Stage 7: CISA VEX Portal + Sentinel (BOD 26-04 submission, KSI evidence). Bottom shows three BOD 26-04 tiers: Tier 1 SBOM (stages 1-3), Tier 2 VDR (stages 1-4), Tier 3 VEX (stages 1-7). All required by December 7, 2026." width="100%"}
+![SBOM / VDR / VEX Pipeline — EO 14028 §4 Evidence Stages](figs/scrm-fig-01-sbom-pipeline.png){fig-alt="Seven-stage pipeline diagram for SBOM/VDR/VEX evidence. Stage 1: Source Code Repository (GitHub with branch protection). Stage 2: GitHub Actions CI Trigger (push, PR, or weekly scheduled). Stage 3: Syft SBOM Generation (CycloneDX 1.6 XML). Stage 4: Grype vulnerability scan producing the VDR (NVD/GHSA/KEV lookup, CVSS scores). Stage 5: VEX Authoring (OpenVEX CLI, exploitability assertions). Stage 6: Signed Artifact Store (S3 + KMS, SHA-256 integrity, immutable). Stage 7: Agency evidence repository + Sentinel (KSI evidence ingestion). Bottom shows three evidence tiers mandated by EO 14028 section 4 / NIST SP 800-161: Tier 1 SBOM (stages 1-3), Tier 2 VDR (stages 1-4), Tier 3 VEX (stages 1-7). Remediation SLAs for surfaced vulnerabilities follow CISA BOD 26-04. White background." width="100%"}
 
 ## SBOM Generation with Syft
 
-Syft (Anchore) is the CISA-recommended SBOM generator for federal systems. It
-produces CycloneDX 1.6 XML natively, the format required by the CISA VEX Portal.
+Syft (Anchore) is a widely used SBOM generator for federal systems. It
+produces CycloneDX 1.6 XML natively, a format consistent with CISA's VEX
+minimum requirements and the 2025 CISA SBOM minimum elements.
 
 ### GitHub Actions Integration
 
@@ -286,7 +311,7 @@ def triage_against_kev(vdr_path: str) -> list[dict]:
 VEX is the assertion layer — for every CVE in the VDR, the agency asserts
 whether it is exploitable in the specific deployment context.
 
-![VEX Exploitability Assessment — Decision Flow for Each CVE in VDR](figs/scrm-fig-02-vex-flow.png){fig-alt="Decision flow diagram for VEX exploitability assessment. Starting from CVE Identified in VDR Scan, first decision: Is the vulnerable component present in this build? If NO: not_affected (component absent). If YES: Is the vulnerable code path reachable at runtime? If NO: not_affected (code path not reachable, justify with call graph). If YES: affected (exploitable, create POA&M, CVSS 9+ requires 15-day remediation). Parallel check: Was a fix applied (patch/version bump)? If YES: fixed (include remediation commit SHA). If NO: under_investigation (30-day triage SLA). VEX format: CycloneDX 1.6 VEX or OpenVEX. Satisfies SR-6, SR-8, SA-11, BOD 26-04 Tier 3." width="100%"}
+![VEX Exploitability Assessment — Decision Flow for Each CVE in VDR](figs/scrm-fig-02-vex-flow.png){fig-alt="Decision flow diagram for VEX exploitability assessment. Starting from CVE Identified in VDR Scan, first decision: Is the vulnerable component present in this build? If NO: not_affected (component absent). If YES: Is the vulnerable code path reachable at runtime? If NO: not_affected (code path not reachable, justify with call graph). If YES: affected (exploitable, create POA&M, CVSS 9+ requires 15-day remediation). Parallel check: Was a fix applied (patch/version bump)? If YES: fixed (include remediation commit SHA). If NO: under_investigation (30-day triage SLA). VEX format: CycloneDX 1.6 VEX or OpenVEX. Satisfies SR-6, SR-8, SA-11, and the Tier 3 VEX evidence requirement (EO 14028 section 4 / NIST SP 800-161)." width="100%"}
 
 ## VEX Status Values
 
@@ -340,7 +365,7 @@ The authoring process:
 2. **Triage**: KEV check escalates P0 CVEs for immediate human review
 3. **Analysis**: Security team reviews each CVE for deployment-context exploitability
 4. **Assertion**: Security team authors VEX assertion with justification
-5. **Sign + Submit**: VEX signed with GPG key; submitted to CISA VEX Portal
+5. **Sign + Publish**: VEX signed with GPG key; filed to the agency evidence repository and shared with downstream consumers per CISA VEX guidance
 6. **Ingest**: Signed VEX stored in Azure Blob immutable tier; hash published to SBOM manifest
 
 ---
@@ -489,11 +514,11 @@ Every SBOM generation run produces a signed manifest:
 | **Immediate** | Generate initial SBOM for all production repos | DevOps | Jul 2026 |
 | **Immediate** | Register with MSRC, Cisco PSIRT, Infoblox security portals | ISSO | Jul 2026 |
 | **Phase 1** | Author initial VEX for all critical/high CVEs | Security Team | Aug 2026 |
-| **Phase 1** | Submit SBOM + VDR to CISA VEX Portal (test submission) | ISSO | Aug 2026 |
+| **Phase 1** | Publish SBOM + VDR to the agency evidence repository (test run) | ISSO | Aug 2026 |
 | **Phase 1** | Update acquisition policy to require SBOM from suppliers | Contracting | Sep 2026 |
 | **Phase 2** | Achieve SLSA Level 2 for all production release workflows | DevOps | Oct 2026 |
 | **Phase 3** | Complete VEX quarterly review cycle | Security Team | Nov 2026 |
-| **Phase 4** | Final BOD 26-04 VDR/VER submission | ISSO | Dec 7, 2026 |
+| **Phase 4** | Final FedRAMP VDR/VER submission (NTC-0014); BOD 26-04 remediation SLAs in force | ISSO | Dec 7, 2026 |
 
 : Vol IV Book 02 — Implementation Checklist {.striped .hover}
 
@@ -522,8 +547,9 @@ Every SBOM generation run produces a signed manifest:
 |---|---|
 | EO 14028 — Improving the Nation's Cybersecurity (May 2021) | Mandates SBOM for software sold to the federal government |
 | NIST SP 800-161r1 — Supply Chain Risk Management | Normative reference for SR family controls |
-| CISA BOD 26-04 | VDR/VER deadline Dec 7, 2026; SBOM submission requirements |
-| CISA Minimum SBOM Elements (July 2021) | NTIA-aligned minimum content requirements |
+| CISA BOD 26-04 (June 2026) | Risk-tiered remediation timelines (3/14/60-day); supersedes BOD 19-02/22-01. Does not mandate SBOM/VDR/VEX artifacts |
+| FedRAMP NTC-0014 (June 2026) | FedRAMP VDR (Vulnerability Detection & Response) / VER (Vulnerability Evaluation & Reporting) rule sets mandatory Dec 7, 2026 |
+| CISA/NTIA Minimum Elements for an SBOM (July 2021; CISA 2025 update) | NTIA-aligned minimum content requirements |
 | CycloneDX 1.6 Specification | SBOM, VDR, and VEX document format |
 | OpenVEX v0.2.0 | VEX statement format and submission protocol |
 | SLSA v1.0 Framework | Build integrity levels and provenance requirements |
