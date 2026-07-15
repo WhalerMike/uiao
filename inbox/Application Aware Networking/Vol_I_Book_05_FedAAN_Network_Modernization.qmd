@@ -256,9 +256,9 @@ When agencies present DIA as a modernization achievement, they have solved a con
 | AC-4 Information Flow Enforcement | Application-layer enforcement identifying the destination application, not just the destination IP | CASB in SASE stack |
 | SC-7 Boundary Protection | Application-layer inspection; detect C2 on port 443, exfiltration in DNS | SWG / FWaaS in SASE stack |
 | SC-8 Transmission Confidentiality and Integrity | Network-layer encryption | SD-WAN IPsec tunnel — DIA alone encrypts nothing |
-| SI-3 Malware Protection | Inline malware inspection at appropriate locations | SWG with SSL inspection in SASE stack |
+| SI-3 Malicious Code Protection | Inline malware inspection at appropriate locations | SWG with SSL inspection in SASE stack |
 | SI-4 System Monitoring | Application-layer telemetry — user, device, app, data, behavioral pattern | AAN application telemetry |
-| AU-2 / AU-12 Audit Events / Audit Record Generation | User Z on device D accessed application A, performed action V on data type C — not just IP flows | Application-layer logging via AAN |
+| AU-2 / AU-12 Event Logging / Audit Record Generation | User Z on device D accessed application A, performed action V on data type C — not just IP flows | Application-layer logging via AAN |
 | CA-7 Continuous Monitoring | Per-session: identity verified, device posture, access consistent with policy — machine-readable | AAN and SASE stack |
 
 > **Closure Necessity — SI-4 on transport.** SI-4 requires monitoring the system to detect attacks and indicators of potential attacks, including monitoring inbound and outbound communications traffic for unusual or unauthorized activities or conditions. A pipe has no telemetry: a bare DIA circuit reports link state and byte counts, nothing more. Flow records collected off the circuit see five-tuples — IP addresses and ports — not users, devices, applications, or data types, and five-tuples cannot distinguish authorized use from exfiltration on port 443. The only source of application-layer telemetry on the transport is the overlay that classifies it: SD-WAN DPI identifying the application per flow, and the SASE stack recording identity, posture, and action per session. No collector attached to a bare pipe can produce telemetry the pipe does not carry.
@@ -323,9 +323,9 @@ For agencies on the mainframe-to-AAN modernization path, this is not a complianc
 | Machine-readable evidence format (JSON) | SD-WAN telemetry APIs, SIEM structured exports, InfoBlox WAPI — all native JSON |
 | Infrastructure-as-code guardrails | Terraform for DDI, IaC for SASE policy, GitOps for network config — guardrails enforced at commit |
 | No manual evidence assembly for assessments | The control plane's continuous observation IS the evidence — not a report prepared for an assessor |
-| Automated KSI: all DNS encrypted or integrity-protected | DNSSEC on all zones; DoH/DoT on Grid Members |
-| Automated KSI: no CIDR overlap between environments | Terraform InfoBlox provider blocks overlapping allocation at request time |
-| Automated KSI: every workload has machine identity | SCEP/EST auto-enrollment triggered at IP provisioning |
+| Automated check: all DNS encrypted or integrity-protected | DNSSEC on all zones; DoH/DoT on Grid Members |
+| Automated check: no CIDR overlap between environments | Terraform InfoBlox provider blocks overlapping allocation at request time |
+| Automated check: every workload has machine identity | SCEP/EST auto-enrollment triggered at IP provisioning |
 
 : FedRAMP 20x Consolidated Rules Alignment {.striped .hover}
 
@@ -504,7 +504,7 @@ TIC 3.0 Use Cases E (Branch/Remote Office Internet Access) and F (Remote Users) 
 | **SC-8** Transmission Confidentiality and Integrity | Encrypt all WAN traffic | IPsec BFD tunnels between all cEdge WAN Edges — including DIA and 5G paths; Cisco's DTLS-over-UDP for data-plane encryption; cipher suite is configurable to FIPS 140-3 validated AES-256-GCM |
 | **SC-20 / SC-21** Secure DNS | DNS responses integrity-protected | Cisco Umbrella (DNS-over-HTTPS / DNS-over-TLS) on branch; SD-WAN Manager integrates Umbrella DNS policy — all branch DNS queries resolve through Umbrella, not local recursive resolvers |
 | **AC-4** Information Flow Enforcement | Application-layer flow control | DPI-based application identification classifies each flow by application ID (Teams, SharePoint, O365, etc.); Cloud OnRamp policy applies per-application path selection; CASB in Umbrella applies per-application data classification and DLP |
-| **AU-2 / AU-12** Audit Events / Audit Record Generation | Every flow traceable to source, destination, application, policy decision | SD-WAN Manager retains full flow telemetry: WAN Edge ID, source/destination IP, application ID, path selected, policy applied, timestamp; exported via syslog or streaming telemetry to SIEM |
+| **AU-2 / AU-12** Event Logging / Audit Record Generation | Every flow traceable to source, destination, application, policy decision | SD-WAN Manager retains full flow telemetry: WAN Edge ID, source/destination IP, application ID, path selected, policy applied, timestamp; exported via syslog or streaming telemetry to SIEM |
 | **CA-7** Continuous Monitoring | Real-time observation of security posture | Cloud OnRamp path-quality metrics (per-transport latency, jitter, loss) exported continuously; Umbrella DNS security events; deviation from desired path policy triggers alert in SD-WAN Manager |
 | **SI-4** System Monitoring | Detect anomalies in communications | Cisco SD-WAN integrates with Cisco Cyber Vision and Cisco XDR for behavioral anomaly detection; Umbrella cloud-delivered security provides CASB and threat intelligence integration |
 | **CM-7** Least Functionality | Disable unused services on branch devices | cEdge configuration templates in SD-WAN Manager enforce device hardening baseline (no unused services, no local management plane access); template drift is detected and alerted by SD-WAN Manager |
