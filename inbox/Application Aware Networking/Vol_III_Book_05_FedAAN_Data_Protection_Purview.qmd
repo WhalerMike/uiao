@@ -474,7 +474,7 @@ The federal key management hierarchy for a GCC (Government Community Cloud) envi
 
 ## Creating and Configuring Azure Key Vault with HSM
 
-Azure Key Vault Standard tier uses software-protected keys. Azure Key Vault Premium tier uses HSM-protected keys (FIPS 140-2 Level 2). For federal CUI environments, the Premium tier with HSM-protected keys is required to satisfy SC-12 and SC-13 at the Moderate impact level.
+Azure Key Vault Standard tier uses software-protected keys. Azure Key Vault Premium tier uses HSM-protected keys (FIPS 140-3 validated; FIPS 140-2 modules only while they remain on the CMVP Active list, pending the 2026-09-21 Historical transition). For federal CUI environments, the Premium tier with HSM-protected keys is required to satisfy SC-12 and SC-13 at the Moderate impact level.
 
 ```powershell
 # Connect to Azure
@@ -484,7 +484,7 @@ Set-AzContext -SubscriptionId "your-subscription-id"
 # Create a resource group for key management (separate from workload RGs)
 New-AzResourceGroup `
   -Name "rg-keyvault-prod" `
-  -Location "USGov Virginia"  # GCC-High: use USGov regions
+  -Location "USGov Virginia"  # SSA Azure Government estate per Vol I Book 01; use commercial regions if the tenant is commercial Azure
 
 # Create Key Vault with HSM-protected keys (Premium SKU)
 $kv = New-AzKeyVault `
@@ -604,7 +604,7 @@ Get-AzSqlDatabase `
 
 ## Key Rotation Policy
 
-SC-12 requires a defined key management policy that includes rotation requirements. The minimum federal standard for symmetric encryption keys is annual rotation. Customer-Managed Keys in Key Vault support two rotation mechanisms:
+SC-12 requires a defined key management policy that includes rotation requirements. This architecture adopts a 12-month cryptoperiod for symmetric encryption keys as an organization-defined policy choice, within the recommended cryptoperiods of NIST SP 800-57 Part 1. Customer-Managed Keys in Key Vault support two rotation mechanisms:
 
 **Automatic rotation.** Key Vault generates a new key version on a configured schedule (minimum: every 12 months). The SQL TDE protector's `AutoRotationEnabled` flag (set above) directs the SQL service to automatically pick up the new key version. This is the preferred mechanism for bulk encryption keys.
 
@@ -649,7 +649,7 @@ Get-AzKeyVaultKeyRotationPolicy `
 
 ## AU-10 and the Signed Audit Record Requirement
 
-NIST SP 800-53 Rev 5 AU-10 states: "Provide irrefutable evidence that an individual (or process acting on behalf of an individual) performed [Assignment: organization-defined actions to be covered by non-repudiation] on the information system."
+NIST SP 800-53 Rev 5 AU-10 states: "Provide irrefutable evidence that an individual (or process acting on behalf of an individual) performed [Assignment: organization-defined actions to be covered by non-repudiation]."
 
 The word "irrefutable" is load-bearing. A standard audit log entry that records "user@agency.gov accessed file budget-draft.docx at 14:32:07 UTC" satisfies AU-12 (audit generation) — the event was generated. It does not satisfy AU-10 because the record is mutable. A Global Administrator can alter or delete the standard audit log. An attacker who achieves Global Admin scope can cover their tracks. The record is not irrefutable.
 
@@ -750,9 +750,9 @@ Search-UnifiedAuditLog `
 
 ## SC-17 Requirements
 
-NIST SP 800-53 Rev 5 SC-17 states: "Issue public key certificates under an appropriate certificate policy or obtain public key certificates from an approved service provider."
+NIST SP 800-53 Rev 5 SC-17 states: "a. Issue public key certificates under an [Assignment: organization-defined certificate policy] or obtain public key certificates from an approved service provider; and b. Include only approved trust anchors in trust stores or certificate stores managed by the organization."
 
-The key word is "appropriate certificate policy." SC-17 is not satisfied merely by having certificates. It requires a *documented policy* governing the certificate lifecycle: how certificates are issued, who may request them, how private keys are protected, how certificates are revoked, and what happens to keys after expiration. This documented policy is called a Certificate Practice Statement (CPS).
+The key element is the organization-defined certificate policy in part (a). SC-17 is not satisfied merely by having certificates. It requires a *documented policy* governing the certificate lifecycle: how certificates are issued, who may request them, how private keys are protected, how certificates are revoked, and what happens to keys after expiration. This documented policy is called a Certificate Practice Statement (CPS). Part (b) adds a distinct obligation — trust-anchor management — addressed in the "Trust-Anchor Management" subsection below.
 
 Without a CPS, an assessor cannot determine whether the agency's certificate infrastructure provides any assurance beyond "we have a CA." Certificates could be issued to any requestor, private keys could be stored anywhere, revocation might not be checked, and there is no accountability framework. The CPS is the governance artifact that converts a CA deployment into an SC-17-satisfying PKI.
 
@@ -770,7 +770,7 @@ RFC 3647 provides the standard framework for CPS documentation. A federal agency
 
 **Section 5 — Management, Operational, and Physical Controls.** Physical security of the CA, personnel security requirements for CA operators, audit logging of CA operations, records archival, and disaster recovery.
 
-**Section 6 — Technical Security Controls.** Key pair generation (HSM requirement for root and issuing CA private keys), private key protection, key backup (escrow conditions), key archival, key transport, key destruction, cryptographic module engineering controls (FIPS 140-2 Level 2 minimum), and algorithm and key length requirements (RSA 2048 minimum; SHA-256 minimum).
+**Section 6 — Technical Security Controls.** Key pair generation (HSM requirement for root and issuing CA private keys), private key protection, key backup (escrow conditions), key archival, key transport, key destruction, cryptographic module engineering controls (FIPS 140-3 validated minimum; FIPS 140-2 modules only while they remain on the CMVP Active list, pending the 2026-09-21 Historical transition), and algorithm and key length requirements (RSA 2048 minimum; SHA-256 minimum).
 
 **Section 7 — Certificate, CRL, and OCSP Profiles.** Defines the exact ASN.1 structure of issued certificates — which extensions are present, critical or non-critical, and what values they carry.
 
@@ -787,6 +787,10 @@ InfoBlox provides the IPAM and DNS foundation that certificate infrastructure de
 Azure Key Vault provides the HSM-backed private key storage for the issuing CA. The CA software (Active Directory Certificate Services or a third-party CA) is configured to store and use the signing key in Key Vault, never in the CA's local Windows Certificate Store. Key access is governed by Managed Identity RBAC, and all key operations are logged to the Key Vault audit log. This configuration satisfies Section 6 of the CPS (technical security controls) — the private key never exists in unprotected software storage.
 
 The CPS documents both of these dependencies explicitly: Section 2 specifies the DNS names for CRL and OCSP endpoints that are registered in InfoBlox IPAM; Section 6 specifies that CA private keys are stored in Azure Key Vault Premium (HSM tier) and are not exportable.
+
+## Trust-Anchor Management (SC-17 part b)
+
+SC-17 part (b) requires that the organization include *only approved trust anchors* in the trust stores and certificate stores it manages. Issuing a well-governed certificate hierarchy (part a) does not by itself satisfy this: an endpoint that trusts an unapproved or compromised root will accept forged certificates regardless of how carefully the agency's own CA is run. The agency therefore maintains an approved trust-anchor list — the agency Root CA plus any explicitly authorized external roots (for example, the Federal PKI Common Policy root where cross-certification applies) — and distributes it as the authoritative trusted-root set to managed devices via Intune configuration profiles (Windows) and equivalent MDM payloads. Unmanaged additions to the trusted-root store are prevented by device configuration policy, and the approved list is reviewed on the same cycle as the CPS. This trust-store curation is what closes SC-17 part (b); the CPS closes part (a).
 
 ```powershell
 # Verify CRL Distribution Point is resolvable (operational check for SC-17)
@@ -853,7 +857,7 @@ The following table maps the NIST SP 800-53 Rev 5 controls addressed in this doc
 
 > **Closure Necessity — AC-4 and the MP/SC families at the data layer.** The controls in this table close through data-governance artifacts — sensitivity labels, DLP policy, agency-held keys, and a documented CPS — not through the network substrate. None of the series' three necessity anchors closes them: IPAM/DDI cannot author a classification, SD-WAN cannot sign an audit record, and a TIC 3.0 enforcement point cannot hold a key. The CASB deployed in Vol I Book 06 enforces label-derived policy at the boundary, but only after Purview has supplied the payload signal; the sole substrate dependency in this table is SC-17's revocation endpoints, which must resolve through the authoritative DNS plane of Vol I Book 01. Saying this plainly is what keeps the necessity claims elsewhere in this series falsifiable rather than rhetorical.
 
-![NIST control closure for Part 12 Data Protection: table showing AC-4, AU-10, MP-2 through MP-5, SC-12, SC-12(1), SC-13, SC-17, and SC-28 mapped from their pre-implementation state to their post-implementation state with the authority cited for each control](figs/purview-fig-04-nist-closure.png){fig-alt="List-style diagram on white background titled Part 12 — NIST SP 800-53 Control Closure, with the subtitle Data Protection: Microsoft Purview + Azure Key Vault. Eleven orange control chips are stacked vertically — AC-4, AU-10, MP-2, MP-3, MP-4, MP-5, SC-12, SC-12(1), SC-13, SC-17, and SC-28(ext) — each with its control name to the left: Information Flow Enforcement data classification layer; Non-repudiation; Media Access; Media Marking; Media Storage; Media Transport; Cryptographic Key Establishment and Management; Availability of Key Management; Cryptographic Protection; Public Key Infrastructure Certificates; and Protection of Information at Rest data-layer extension. A summary badge at the bottom reads 11 NIST SP 800-53 Rev 5 controls — Part closes or deepens." width="100%"}
+![NIST control closure for Part 12 Data Protection: table showing AC-4, AU-10, MP-2 through MP-5, SC-12, SC-12(1), SC-13, SC-17, and SC-28 mapped from their pre-implementation state to their post-implementation state with the authority cited for each control](figs/purview-fig-04-nist-closure.png){fig-alt="List-style diagram on white background titled Part 12 — NIST SP 800-53 Control Closure, with the subtitle Data Protection: Microsoft Purview + Azure Key Vault. Eleven orange control chips are stacked vertically — AC-4, AU-10, MP-2, MP-3, MP-4, MP-5, SC-12, SC-12(1), SC-13, SC-17, and SC-28(ext) — each with its control name to the left: Information Flow Enforcement data classification layer; Non-repudiation; Media Access; Media Marking; Media Storage; Media Transport; Cryptographic Key Establishment and Management; Availability; Cryptographic Protection; Public Key Infrastructure Certificates; and Protection of Information at Rest data-layer extension. A summary badge at the bottom reads 11 NIST SP 800-53 Rev 5 controls — Part closes or deepens." width="100%"}
 
 | Control | Title | Without | With | Authority |
 |---|---|---|---|---|
@@ -864,12 +868,16 @@ The following table maps the NIST SP 800-53 Rev 5 controls addressed in this doc
 | MP-4 | Media Storage | No encryption differentiated by content sensitivity. All SharePoint content is encrypted by Microsoft-managed keys at the same tier. | Customer-Managed Keys in Azure Key Vault provide agency-controlled encryption for CUI storage across SharePoint, OneDrive, and SQL Server. | NIST SP 800-53 Rev 5 MP-4 |
 | MP-5 | Media Transport | No automated enforcement on external transfer of sensitive data. DLP policies may exist ad hoc but are not based on classification labels. | DLP policies block external sharing and email transfer of labeled CUI. Endpoint DLP blocks USB and print transfer. CASB enforces at the network boundary using label metadata. | NIST SP 800-53 Rev 5 MP-5 |
 | SC-12 | Cryptographic Key Establishment and Management | Keys managed by individual application owners without central inventory, rotation schedule, or access audit trail. | Azure Key Vault Premium (HSM tier) provides central key management with RBAC access, automatic rotation policy (12-month cycle), and full Key Vault audit logging. No human has standing access to key material. | NIST SP 800-53 Rev 5 SC-12; NIST SP 800-57 Part 1 |
-| SC-12(1) | Cryptographic Key Availability | No documented key recovery procedure. Loss of a key means loss of data. | Key Vault soft-delete with 90-day retention and purge protection prevents accidental key deletion. Key Vault backup can be restored to a paired region. | NIST SP 800-53 Rev 5 SC-12(1) |
-| SC-13 | Cryptographic Protection | TDE enabled with Microsoft-managed keys. SharePoint encryption uses Microsoft-managed keys. No agency visibility into key operations. | SQL TDE protector migrated to CMK in Key Vault. SharePoint BYOK and Exchange Customer Key extend agency-controlled CMK to Microsoft 365 workloads. All key operations are logged. | NIST SP 800-53 Rev 5 SC-13; FIPS 140-2 Level 2 |
-| SC-17 | PKI Certificates | CA deployed and issuing certificates without a documented Certificate Practice Statement. No defined issuance, revocation, or key protection policy. | CPS per RFC 3647 governs the full certificate lifecycle. Issuing CA private key stored in Key Vault HSM. CRL and OCSP endpoints registered in InfoBlox IPAM with verified DNS resolution. | NIST SP 800-53 Rev 5 SC-17; RFC 3647 |
+| SC-12(1) | Availability | No documented key recovery procedure. Loss of a key means loss of data. | Key Vault soft-delete with 90-day retention and purge protection prevents accidental key deletion. Key Vault backup can be restored to a paired region. | NIST SP 800-53 Rev 5 SC-12(1) |
+| SC-13 | Cryptographic Protection | TDE enabled with Microsoft-managed keys. SharePoint encryption uses Microsoft-managed keys. No agency visibility into key operations. | SQL TDE protector migrated to CMK in Key Vault. SharePoint BYOK and Exchange Customer Key extend agency-controlled CMK to Microsoft 365 workloads. All key operations are logged. | NIST SP 800-53 Rev 5 SC-13; FIPS 140-3 (validated modules; 140-2 only while CMVP-Active, pending 2026-09-21 Historical transition) |
+| SC-17 | PKI Certificates | CA deployed and issuing certificates without a documented Certificate Practice Statement. No defined issuance, revocation, or key protection policy; no curated trusted-root set on managed devices. | Part (a): CPS per RFC 3647 governs the full certificate lifecycle; issuing CA private key stored in Key Vault HSM; CRL and OCSP endpoints registered in InfoBlox IPAM with verified DNS resolution. Part (b): an approved trust-anchor list is distributed to managed devices via Intune configuration profiles, and unmanaged trusted-root additions are blocked by policy. | NIST SP 800-53 Rev 5 SC-17; RFC 3647 |
 | SC-28 | Protection of Information at Rest (depth extension) | SQL Server TDE (established in Vol II Book 01) protects database files at rest with Microsoft-managed keys. Label-enforced file encryption for Office documents not enabled. | TDE protector migrated to CMK under agency control. Sensitivity label encryption on CUI-Basic and CUI-Specified documents extends at-rest protection beyond the database boundary to any storage location where the file resides. | NIST SP 800-53 Rev 5 SC-28 |
 
 : NIST SP 800-53 Rev 5 control closure — Vol III Book 05 Data Protection {.striped .hover}
+
+::: {.callout-note}
+**Interpretive note on the MP family.** The MP family (MP-2 through MP-5) governs *system media* — removable media, paper, and output. The rows above map sensitivity-label access, marking, and DLP to MP-2/MP-3/MP-4/MP-5 as a *supporting* interpretation for SaaS-resident files; a 3PAO may prefer to see label-based attribute control anchored to **AC-16 (Security and Privacy Attributes)** and **AC-4**, reserving MP claims for where physical or removable media is actually controlled (endpoint USB and print, MP-5/MP-7). Read the MP rows here as supporting evidence for the data-layer intent rather than as the sole closure of the media-handling controls.
+:::
 
 ---
 
@@ -878,13 +886,13 @@ The following table maps the NIST SP 800-53 Rev 5 controls addressed in this doc
 
 FedRAMP 20x shifts authorization from document-heavy assessment to continuous, evidence-based Key Security Indicators (KSIs). The controls established in this document contribute to the following KSIs:
 
-**KSI: Data Protection.** Continuous evidence that sensitive data is classified, labeled, and subject to automated protection controls. Purview auto-labeling policies and DLP enforcement logs provide machine-readable evidence that classification and protection are operating continuously — not a point-in-time assessment finding.
+**KSI-CNA (Cloud Native Architecture) — data classification and payload-layer protection.** Continuous evidence that sensitive data is classified, labeled, and subject to automated protection controls. Purview auto-labeling policies and DLP enforcement logs provide machine-readable evidence that classification and protection are operating continuously — not a point-in-time assessment finding.
 
-**KSI: Cryptographic Key Management.** Continuous evidence that encryption keys are managed under agency control with defined rotation schedules and access audit trails. Key Vault audit logs, rotation policy compliance reports, and RBAC access reviews provide the continuous evidence stream required by FedRAMP 20x.
+**KSI-SVC (Service Configuration) — cryptographic key management.** Continuous evidence that encryption keys are managed under agency control with defined rotation schedules and access audit trails. Key Vault audit logs, rotation policy compliance reports, and RBAC access reviews provide the continuous evidence stream required by FedRAMP 20x.
 
-**KSI: Non-repudiation and Audit Integrity.** Continuous evidence that high-value audit records are immutable and retained at the required duration. Purview Audit Premium retention policy compliance and the availability of MailItemsAccessed events in the audit log provide this evidence.
+**KSI-MLA (Monitoring, Logging, and Auditing) — non-repudiation and audit integrity.** Continuous evidence that high-value audit records are immutable and retained at the required duration. Purview Audit Premium retention policy compliance and the availability of MailItemsAccessed events in the audit log provide this evidence.
 
-**KSI: Boundary Protection.** The DLP policy architecture extends boundary enforcement to the data payload layer, complementing the network and identity boundary controls established in Volumes I and II and the Privileged Access Management and Vulnerability Management books of Volume III. FedRAMP 20x assessors reviewing boundary protection KSIs should examine DLP policy reports and CASB enforcement logs alongside the network perimeter controls.
+**KSI-CNA (Cloud Native Architecture) — payload-boundary enforcement.** The DLP policy architecture extends boundary enforcement to the data payload layer, complementing the network and identity boundary controls established in Volumes I and II and the Privileged Access Management and Vulnerability Management books of Volume III. FedRAMP 20x assessors reviewing the boundary-related KSIs should examine DLP policy reports and CASB enforcement logs alongside the network perimeter controls.
 
 The integration of Purview classification with the CASB deployed in Vol I Book 06 is the critical architectural link: it converts a static network boundary into a content-aware enforcement boundary. This integration is the mechanism by which the data protection controls established in this document satisfy the continuous-monitoring intent of FedRAMP 20x.
 :::

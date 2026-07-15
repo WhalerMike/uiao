@@ -152,7 +152,7 @@ Throughout Deployment), and the SR control family assessment.
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-![SBOM / VDR / VEX Pipeline — EO 14028 §4 Evidence Stages](figs/scrm-fig-01-sbom-pipeline.png){fig-alt="Seven-stage pipeline diagram for SBOM/VDR/VEX evidence. Stage 1: Source Code Repository (GitHub with branch protection). Stage 2: GitHub Actions CI Trigger (push, PR, or weekly scheduled). Stage 3: Syft SBOM Generation (CycloneDX 1.6 XML). Stage 4: Grype vulnerability scan producing the VDR (NVD/GHSA/KEV lookup, CVSS scores). Stage 5: VEX Authoring (OpenVEX CLI, exploitability assertions). Stage 6: Signed Artifact Store (S3 + KMS, SHA-256 integrity, immutable). Stage 7: Agency evidence repository + Sentinel (KSI evidence ingestion). Bottom shows three evidence tiers mandated by EO 14028 section 4 / NIST SP 800-161: Tier 1 SBOM (stages 1-3), Tier 2 VDR (stages 1-4), Tier 3 VEX (stages 1-7). Remediation SLAs for surfaced vulnerabilities follow CISA BOD 26-04. White background." width="100%"}
+![SBOM / VDR / VEX Pipeline — EO 14028 §4 Evidence Stages](figs/scrm-fig-01-sbom-pipeline.png){fig-alt="Seven-stage pipeline diagram for SBOM/VDR/VEX evidence. Stage 1: Source Code Repository (GitHub with branch protection). Stage 2: GitHub Actions CI Trigger (push, PR, or weekly scheduled). Stage 3: Syft SBOM Generation (CycloneDX 1.6 XML). Stage 4: Grype vulnerability scan producing the VDR (NVD/GHSA/KEV lookup, CVSS scores). Stage 5: VEX Authoring (OpenVEX CLI, exploitability assertions). Stage 6: Signed Artifact Store (GitHub Releases + Azure Blob immutable tier, SHA-256 integrity, immutable). Stage 7: Agency evidence repository + Sentinel (KSI evidence ingestion). Bottom shows three evidence tiers mandated by EO 14028 section 4 / NIST SP 800-161: Tier 1 SBOM (stages 1-3), Tier 2 VDR (stages 1-4), Tier 3 VEX (stages 1-7). Remediation SLAs for surfaced vulnerabilities follow CISA BOD 26-04. White background." width="100%"}
 
 ## SBOM Generation with Syft
 
@@ -193,6 +193,7 @@ jobs:
         with:
           sbom: sbom-${{ github.sha }}.xml
           output-format: cyclonedx-xml
+          output-file: vdr-${{ github.sha }}.xml
           fail-build: false
         id: scan
 
@@ -202,7 +203,7 @@ jobs:
         with:
           files: |
             sbom-${{ github.sha }}.xml
-            ${{ steps.scan.outputs.sarif }}
+            vdr-${{ github.sha }}.xml
 
       - name: Store to Azure Blob immutable tier
         env:
@@ -280,7 +281,11 @@ CycloneDX VDR with NVD-sourced CVE data.
 
 The VDR pipeline integrates with the CISA Known Exploited Vulnerabilities (KEV)
 catalog. Any CVE in the SBOM that appears in the KEV catalog is automatically
-escalated to P0 — 14-day remediation SLA per BOD 22-01.
+escalated to P0. BOD 22-01 assigns each KEV entry its own remediation due
+date (the roughly two-week window applies to recently added CVEs; older
+entries carry longer deadlines), and the clock runs from the date CISA adds
+the CVE to the catalog, not from disclosure. The pipeline drives the SLA off
+each entry's `dueDate`.
 
 ```python
 # scripts/kev_triage.py — CI step after VDR generation
@@ -289,17 +294,21 @@ import json, requests
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
 def triage_against_kev(vdr_path: str) -> list[dict]:
-    kev = {e["cveID"] for e in requests.get(KEV_URL).json()["vulnerabilities"]}
+    # Each KEV entry carries its own dueDate; BOD 22-01 sets a per-entry
+    # remediation deadline measured from KEV catalog addition, not a flat window.
+    kev = {e["cveID"]: e for e in requests.get(KEV_URL).json()["vulnerabilities"]}
     vdr = json.loads(open(vdr_path).read())
     escalations = []
     for vuln in vdr.get("vulnerabilities", []):
         cve_id = vuln.get("id", "")
-        if cve_id in kev:
+        entry = kev.get(cve_id)
+        if entry:
             escalations.append({
                 "cve": cve_id,
                 "severity": vuln.get("ratings", [{}])[0].get("severity", "unknown"),
                 "kev_escalated": True,
-                "sla_days": 14,
+                "kev_date_added": entry.get("dateAdded"),
+                "kev_due_date": entry.get("dueDate"),
             })
     return escalations
 ```
@@ -320,7 +329,7 @@ whether it is exploitable in the specific deployment context.
 | `not_affected` | Vulnerability exists in component but cannot be exploited | Library function not called; OS feature not enabled |
 | `affected` | Vulnerability is exploitable — remediation underway | Production system uses the affected code path |
 | `fixed` | Component has been patched to a non-vulnerable version | CVE remediated in current deployment |
-| `under_investigation` | Exploitability being analyzed | New CVE, analysis in progress (max 7-day window) |
+| `under_investigation` | Exploitability being analyzed | New CVE, analysis in progress (30-day internal triage SLA) |
 
 : VEX Status Values {.striped .hover}
 
@@ -382,7 +391,8 @@ and FedRAMP authorization status.
 | Microsoft | Defender VM, Sentinel, Purview, Key Vault | Yes — GCC Moderate (fedramp.gov/marketplace/products/MSO365MT) | MSRC Security Update Guide | Yes (MSRC VEX) |
 | Cisco | SD-WAN (IOS XE, vManage) | Yes — FedRAMP Moderate (FR2012534927) | Cisco PSIRT | Yes (OpenVEX) |
 | Infoblox | NIOS Grid, BloxOne DDI | Yes — FR2017257053 | Infoblox Security Portal | Yes |
-| Anchore/CISA | NVD data feed | N/A (data source) | NVD JSON feed | N/A |
+| NIST | NVD data feed | N/A (data source) | NVD JSON feed | N/A |
+| CISA | KEV catalog feed | N/A (data source) | KEV JSON feed | N/A |
 
 : Vendor Disclosure Matrix — SR-6 Evidence {.striped .hover}
 
@@ -394,7 +404,7 @@ and FedRAMP authorization status.
 
 | NIST Control | Control Title | Gap Under Current State | Closed By | Evidence |
 |---|---|---|---|---|
-| **SR-1** | Supply Chain Risk Management Policy and Procedures | No documented SCRM policy; procurement decisions lack security evaluation criteria | SCRM Policy document + SBOM pipeline governance charter | Pipeline run log; policy document in SSP |
+| **SR-1** | Policy and Procedures | No documented SCRM policy; procurement decisions lack security evaluation criteria | SCRM Policy document + SBOM pipeline governance charter | Pipeline run log; policy document in SSP |
 | **SR-2** | Supply Chain Risk Management Plan | No SCRM plan; supplier risk not assessed systematically | SBOM pipeline + vendor disclosure matrix + KEV integration | SBOM manifest; vendor matrix; KEV triage log |
 | **SR-3** | Supply Chain Controls and Processes | Software acquisition lacks SBOM requirements; no contractual SBOM delivery clause | Acquisition policy update requiring CycloneDX SBOM delivery from suppliers; SBOM ingest pipeline | Acquisition policy; SBOM pipeline job log |
 | **SR-5** | Acquisition Strategies, Tools, and Methods | No software composition analysis in procurement evaluation | SCA tooling (Syft + Grype) integrated into CI/CD before production promotion | Pipeline artifact; pre-approval gate log |
@@ -405,7 +415,7 @@ and FedRAMP authorization status.
 
 : Vol IV Book 02 — NIST SP 800-53 Rev 5 Control Closure: SR Family {.striped .hover}
 
-**Controls closed: 8** (SR-1, SR-2, SR-3, SR-5, SR-6, SR-8, SR-10, SR-11)
+**Controls closed: 8** (SR-1, SR-2, SR-3, SR-5, SR-6, SR-8, SR-10, SR-11) — pending registration in the compliance spine.
 
 > **Closure Necessity — SR family.** These eight controls close through
 > governance artifacts — the SBOM manifest, the VDR, signed VEX assertions, and
@@ -419,8 +429,8 @@ and FedRAMP authorization status.
 
 ## KSI-CMT Evidence Contract (KSI-011–014)
 
-The SBOM/VDR/VEX pipeline provides the VER (Vulnerability Exploitability
-Report) evidence contract required to upgrade KSI-CMT rules from scaffold
+The SBOM/VDR/VEX pipeline provides the VER (Vulnerability Evaluation &
+Reporting) evidence contract required to upgrade KSI-CMT rules from scaffold
 to evaluable. The pipeline produces machine-readable artifacts that satisfy
 the KSI-CMT sub-control requirements:
 
@@ -475,10 +485,10 @@ SBOMVulnerabilities_CL
 | where TimeGenerated > ago(1d)
 | where kev_listed_b == true
 | where vex_status_s in ("affected", "under_investigation")
-| where days_since_disclosure_d > 14
+| where now() > kev_due_date_t
 | project CVE = cve_id_s, Component = component_name_s,
-          CVSS = cvss_score_d, KEVDate = kev_date_added_t,
-          DaysOverdue = days_since_disclosure_d - 14
+          CVSS = cvss_score_d, KEVDate = kev_date_added_t, DueDate = kev_due_date_t,
+          DaysOverdue = datetime_diff('day', now(), kev_due_date_t)
 | order by DaysOverdue desc
 ```
 

@@ -68,16 +68,16 @@ The key material is the other half: sensitivity-label encryption for the CUI tie
 | Sensitivity-label taxonomy (CUI tiers, parent/child, protection settings) | Information classification & marking | Purview labels via PowerShell/Graph as code | AWS Macie classifications; data-tagging policy |
 | DLP policy packs (service/endpoint/network) | AC-4 movement restriction | Purview DLP as code | Symantec/Forcepoint DLP policy-as-code |
 | Key management (CMK/BYOK, rotation, access policy) | SC-12/12(1), SC-28 | Key Vault + CMK Terraform | AWS KMS + CloudHSM as code |
-| Audit-retention configuration | AU-10 non-repudiation, retention | Purview Audit tier + export as code | CloudTrail Lake retention config |
+| Audit-retention configuration | AU-10 non-repudiation (agency-elected, above the Moderate baseline), retention | Purview Audit tier + export as code | CloudTrail Lake retention config |
 
 # Deployment
 
-![Keys first, then labels, then DLP, then audit — the deployment order](figs/vol6b05-fig-03-deployment-order.png){#fig-vol6b05-order fig-alt="A four-step horizontal sequence titled 'Keys first, then labels, then DLP, then audit,' with the fourth step highlighted and all connectors filled to show the completed order. Step 1 (navy), Keys — CMK / BYOK. Step 2 (teal), Labels — taxonomy as code. Step 3 (amber), DLP — test / notify then enforce. Step 4 (red, highlighted), Audit — premium tier plus export. The detail panel for step 4 reads: set the audit tier and immutable export so retention meets the high-impact bar — the retention-cliff fix the detection layer depends on for long-tail forensics (AU-10 non-repudiation). The sequence encodes the dependency chain: labels' encryption depends on the keys, DLP acts on the labels, and audit retention closes the evidence trail. White background. Source: Vol VI Book 05 — Federal Application-Aware Networking — Data Protection Deployment briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
+![Keys first, then labels, then DLP, then audit — the deployment order](figs/vol6b05-fig-03-deployment-order.png){#fig-vol6b05-order fig-alt="A four-step horizontal sequence titled 'Keys first, then labels, then DLP, then audit,' with the fourth step highlighted and all connectors filled to show the completed order. Step 1 (navy), Keys — CMK / BYOK. Step 2 (teal), Labels — taxonomy as code. Step 3 (amber), DLP — test / notify then enforce. Step 4 (red, highlighted), Audit — premium tier plus export. The detail panel for step 4 reads: set the audit tier and immutable export so retention meets the OMB M-21-31 event-logging tier and the Volume III audit-retention rationale — the retention-cliff fix the detection layer depends on for long-tail forensics (AU-10 non-repudiation). The sequence encodes the dependency chain: labels' encryption depends on the keys, DLP acts on the labels, and audit retention closes the evidence trail. White background. Source: Vol VI Book 05 — Federal Application-Aware Networking — Data Protection Deployment briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 1. Deploy the key vault and customer-managed keys first (the labels' encryption depends on them); set the rotation policy and restrict key access to a minimal, audited set.
 2. Apply the label taxonomy as code, then the label auto-labeling / publishing policy scoped to the pilot before tenant-wide.
 3. Apply DLP policy packs in **test/notify** mode, measure false positives, then enforce — the Book VI-03 DLP-override detection (rule 06) watches for abuse of the override path once enforcing.
-4. Set the audit tier and export so retention meets the high-impact bar (this is also the retention-cliff fix the detection layer depends on for long-tail forensics).
+4. Set the audit tier and export so retention meets the OMB M-21-31 event-logging tier and the Volume III audit-retention rationale (this is also the retention-cliff fix the detection layer depends on for long-tail forensics).
 
 # Closure Necessity
 
@@ -93,8 +93,8 @@ Volume III shows a network boundary cannot enforce "block external sharing of CU
 | AC-4 | Information Flow Enforcement | Label-derived DLP movement restriction |
 | SC-12/12(1) | Cryptographic Key Establishment & Management | CMK/BYOK, rotation, revocation as code |
 | SC-28 | Protection of Information at Rest | CMK-backed encryption of classified stores |
-| AU-10 | Non-repudiation | Premium audit tier + immutable export |
-| MP-2..5 | Media Protection | Label-driven handling/marking of CUI media |
+| AU-10 | Non-repudiation (agency-elected, above the Moderate baseline) | Premium audit tier + immutable export |
+| MP-3 | Media Marking | Label-driven electronic marking of CUI; physical-media controls (MP-2/4/5) out of scope |
 
 # Honest Limits
 
@@ -106,9 +106,9 @@ Volume III shows a network boundary cannot enforce "block external sharing of CU
 
 - **Volume III — Data Protection (Purview)** — the architecture this book deploys.
 - **Book VI-03** — the label/DLP detections that watch this deployment for abuse.
-- **Book VI-01** — the key-vault placement inside the authorized boundary.
+- **Book VI-01** — the landing zone and authorized boundary the key vault is deployed inside.
 - **Book VI-07** — label and key events emit to the evidence contract.
 
 # Provenance
 
-Draft. Products are deployed examples; substitution columns preserve the mechanism. The PowerShell is an illustrative pattern to adapt, not a drop-in script — validate against current cmdlet schemas and the agency's CUI category set. Vendor claims cite vendor documentation.
+Draft. Products are deployed examples; substitution columns preserve the mechanism. The PowerShell is an illustrative pattern to adapt, not a drop-in script — validate against current cmdlet schemas and the agency's CUI category set. Vendor capability claims name deployed examples and substitution candidates; their Microsoft Learn and AWS documentation sources are carried in the briefing deck spec (Vol_VI_Book_05.yaml), not inline here.

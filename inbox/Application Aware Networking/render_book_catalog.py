@@ -121,9 +121,18 @@ def render() -> str:
             ctrl = v["control"] + (" †" if v["control"] in _NECESSITY else "")
             approval = v["approval"].replace("_", " ").replace("+", " + ")
             L.append(f"| `{k}` | {v['summary']} | {approval} | **{ctrl}** |")
-        closes = ", ".join(f"**{v['control']}**" + (" †" if v["control"] in _NECESSITY else "") for _, v in items)
+        # Per the Vol 0 Book 02 convention, Vol VII/IX rows record where a control is
+        # coordinated, evidenced and operated — not a second independent closure. SA-9
+        # is the sole primary closure ("closed here first"); the rest are operationalized.
+        necessity = [v["control"] for _, v in items if v["control"] in _NECESSITY]
+        others = [v["control"] for _, v in items if v["control"] not in _NECESSITY]
+        segs: list[str] = []
+        if necessity:
+            segs.append("closes " + ", ".join(f"**{c}** †" for c in necessity))
+        if others:
+            segs.append("operationalizes " + ", ".join(f"**{c}**" for c in others))
         L.append("")
-        L.append(f": Phase {phase.split(' — ')[0]} — closes {closes} {{.striped .hover}}")
+        L.append(f": Phase {phase.split(' — ')[0]} — {'; '.join(segs)} {{.striped .hover}}")
         L.append("")
         if phase in PHASE_CALLOUT:
             cls, body = PHASE_CALLOUT[phase]

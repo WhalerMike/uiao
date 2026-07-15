@@ -236,7 +236,7 @@ Dynamic groups in Entra ID assign membership based on HR-derived attributes: dep
 
 This is the identity lifecycle enforcement mechanism: access is derived from employment status and role, not from a ticket submitted to a DBA.
 
-![Entra dynamic groups: SQL authorization from HR attributes](figs/san-fig-08-entra-perimeter.png){#fig-san08 fig-alt="Three numbered step cards left to right with arrows. Step 1, HR attribute changes: department, job code, location, management chain maintained in the HR system of record, the Part 4 SSOT. Step 2, dynamic group reconciles: Entra ID continuously re-evaluates membership rules against the attributes — no ticket, no manual step. Step 3, SQL access follows: CREATE USER group FROM EXTERNAL PROVIDER maps the group to a database role — membership is the authorization. Teal consequence bar: when an employee's department changes in the HR system, group membership changes automatically and SQL Server access changes with it — access derived from employment status and role, not a ticket to a DBA. Blue series bar: this is Book 04's HR-driven identity SSOT arriving at the database layer — the leaver whose HR record closes loses SQL access in the same reconciliation pass. White background. Source: Vol II Book 01 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
+![Entra dynamic groups: SQL authorization from HR attributes](figs/san-fig-08-entra-perimeter.png){#fig-san08 fig-alt="Three numbered step cards left to right with arrows. Step 1, HR attribute changes: department, job code, location, management chain maintained in the HR system of record, the Vol I Book 04 (HRIT Identity & Org SSOT). Step 2, dynamic group reconciles: Entra ID continuously re-evaluates membership rules against the attributes — no ticket, no manual step. Step 3, SQL access follows: CREATE USER group FROM EXTERNAL PROVIDER maps the group to a database role — membership is the authorization. Teal consequence bar: when an employee's department changes in the HR system, group membership changes automatically and SQL Server access changes with it — access derived from employment status and role, not a ticket to a DBA. Blue series bar: this is Vol I Book 04 (HRIT Identity & Org SSOT) arriving at the database layer — the leaver whose HR record closes loses SQL access in the same reconciliation pass. White background. Source: Vol II Book 01 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
 
 ## Conditional Access Policies for SQL
 
@@ -278,7 +278,7 @@ Server=sql01.agency.gov;Database=ApplicationDB;Integrated Security=SSPI;
 
 **After:**
 ```
-Server=sql01.database.usgovcloudapi.net;Database=ApplicationDB;Authentication=Active Directory Default;
+Server=sql01.agency.gov;Database=ApplicationDB;Authentication=Active Directory Default;
 ```
 
 The `Authentication=Active Directory Default` directive instructs the SQL client library to acquire an access token from the available managed identity, environment credential, or interactive login — whichever is available in the execution context — and present it to SQL Server as the authentication credential.
@@ -314,7 +314,7 @@ After a complete migration, the SQL Server authentication posture looks fundamen
 
 SQL Server uses TLS for transport encryption. The TLS certificate chain anchors to a certificate authority. In federal environments this is typically an internal PKI (usually ADCS) or a FedRAMP-authorized certificate service.
 
-![PKI: what breaks when the domain goes away](figs/san-fig-09-pki-dependencies.png){#fig-san09 fig-alt="Three stacked rows. Certificate renewal in red: ADCS auto-enrollment stops working when a host is domain-unjoined — a replacement enrollment mechanism, a FedRAMP-authorized CA of the DigiCert or GlobalSign class or Azure Private CA, must be in place before the unjoin. SQL Server TLS configuration in navy: SQL Server reads its TLS certificate from the local store — migrating from ADCS-issued certificates means updating SQL Server Configuration Manager to the new certificate and restarting the service, a scheduled change per instance. Certificate pinning in amber: some connection strings and ODBC configurations pin a specific certificate thumbprint — these must be found in the dependency inventory and updated before the certificate is replaced or they fail at rotation. Blue series bar: the certificate authority decisions were made in Part 1, Landing Zone IPAM DDI PKI — Book 07 consumes that PKI foundation and does not open a new CA decision. White background. Source: Vol II Book 01 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
+![PKI: what breaks when the domain goes away](figs/san-fig-09-pki-dependencies.png){#fig-san09 fig-alt="Three stacked rows. Certificate renewal in red: ADCS auto-enrollment stops working when a host is domain-unjoined — a replacement enrollment mechanism, a FedRAMP-authorized CA of the DigiCert or GlobalSign class or Azure Private CA, must be in place before the unjoin. SQL Server TLS configuration in navy: SQL Server reads its TLS certificate from the local store — migrating from ADCS-issued certificates means updating SQL Server Configuration Manager to the new certificate and restarting the service, a scheduled change per instance. Certificate pinning in amber: some connection strings and ODBC configurations pin a specific certificate thumbprint — these must be found in the dependency inventory and updated before the certificate is replaced or they fail at rotation. Blue series bar: the certificate authority decisions were made in Vol I Book 01 (Landing Zone, IPAM/DDI, PKI) — this book (Vol II Book 01) consumes that PKI foundation and does not open a new CA decision. White background. Source: Vol II Book 01 SQL Auth Modernization briefing deck, Date Code 2026-07-07 16:23 ET." width="100%"}
 
 When Active Directory is retired or domain-unjoined servers are migrated to Entra, the ADCS infrastructure that issued server certificates must be addressed:
 
@@ -377,7 +377,7 @@ FedRAMP 20x replaces annual assessment with continuous machine-readable evidence
 - **Conditional Access compliance.** Percentage of Entra-authenticated SQL connections from compliant devices. Non-compliant connection attempts are blocked and logged.
 - **sa account status.** Disabled and renamed on all instances. Continuous check via SQL audit.
 
-These artifacts satisfy the IA-2, IA-5, AU-2, AU-12, CA-7, and CM-8 KSI requirements under FedRAMP 20x.
+These artifacts provide KSI evidence (KSI-IAM for identity and authentication, KSI-MLA for monitoring and logging) toward the IA-2, IA-5, AU-2, AU-12, CA-7, and CM-8 control obligations under FedRAMP 20x.
 
 # Summary
 

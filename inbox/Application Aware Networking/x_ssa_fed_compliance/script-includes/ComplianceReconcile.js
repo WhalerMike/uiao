@@ -41,7 +41,7 @@ ComplianceReconcile.prototype = {
 
     // The no-CI path: raise the inventory defect instead of the original task.
     raiseUnreconciled: function (finding) {
-        this.log.logWarning('unreconciled asset ' + finding.asset + ' — raising CM-8 inventory finding, suppressing the original task');
+        this.log.logWarning('unreconciled asset ' + finding.asset + ' — booking the inventory defect under the CA-7 conmon rollup (attest.conmon.rollup); the CM-8 inventory control itself closes in Vol VII Book 01. Suppressing the original task.');
         return { 'class': 'attest.conmon.rollup', asset: finding.asset, observed: 'NOT_IN_CMDB', intended: 'RECONCILED_TO_DDI', source: 'ComplianceReconcile' };
     },
 

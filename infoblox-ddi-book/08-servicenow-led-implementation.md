@@ -102,7 +102,8 @@ Leading with ServiceNow does not relax the volume's discipline — it applies it
 
 - The **MID Server stays in-boundary**; the Terraform apply, the REST callouts, and the
   validation gate all run there, so the execution and credential path never leaves the
-  ATO boundary.
+  ATO boundary on the self-managed (NIOS/vNIOS) path — the Universal DDI SaaS path is the
+  explicit, `acknowledge_saas_boundary`-gated exception below.
 - **Secrets never enter ServiceNow.** The catalog collects a vault *reference*; the MID
   Server resolves the actual credential at run time.
 - The **Universal DDI SaaS path** remains the explicit, `acknowledge_saas_boundary`-gated
