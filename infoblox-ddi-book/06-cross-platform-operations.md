@@ -78,7 +78,7 @@ names, other clouds' private zones, on-prem AD, and the internet — determinist
 
 **Anycast** the DNS service VIP so every VM uses the same DNS address everywhere and the
 nearest healthy member answers. This removes per-cloud DNS-server IP sprawl from VM
-images and DHCP scopes, and gives instant failover if a member dies.
+images and DHCP scopes, and gives automatic failover within routing-convergence time if a member dies.
 
 ## 6.4 One DNS-security posture, everywhere
 

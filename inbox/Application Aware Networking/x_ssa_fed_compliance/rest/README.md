@@ -14,6 +14,6 @@ graph.microsoft.com / management.azure.com serve that boundary; GCC High and
 DoD are not in scope for this series.
 
 Least privilege is structural, not aspirational: the Graph app registration
-holds Policy.Read.All, Directory.Read.All, SecurityEvents.Read.All (and the
-narrow task-creation scope) — `ComplianceGate` refuses to run if it detects a
+holds Policy.Read.All, Directory.Read.All, SecurityEvents.Read.All —
+`ComplianceGate` refuses to run if it detects a
 `*.ReadWrite.*` grant over the governed surfaces.
