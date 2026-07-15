@@ -1,5 +1,5 @@
 ---
-title: "Vol VII Book 06 + Entra Track 4 — Constructive Critique"
+title: "Vol IX Book 05 + Entra Track 4 — Constructive Critique"
 subtitle: "An independent peer review of the SaaS-integration-governance document set, written immediately after it — what holds, what a hostile reader breaks first, and what to fix before it leaves draft"
 author: "Independent review (Claude Code, at author request)"
 date: "2026-07-14 10:03 ET"
@@ -22,8 +22,8 @@ date: "2026-07-14 10:03 ET"
 > below are the ones I could find by attacking my own reasoning; they are not a
 > substitute for a reader who does not already believe the thesis.
 >
-> **Scope reviewed:** `Vol_VII_Book_06_FedAAN_SaaS_Integration_Governance.qmd`
-> (+ its `.docx`, `.pptx`, `decks/Vol_VII_Book_06.yaml`, and
+> **Scope reviewed:** `Vol_IX_Book_05_FedAAN_SaaS_Integration_Governance.qmd`
+> (+ its `.docx`, `.pptx`, `decks/Vol_IX_Book_05.yaml`, and
 > `figs/vol7b06-fig-01-*`), the three `book-sn-saas` closures in
 > `aan-compliance-spine.yml`, and `inbox/entra-assessment/04-saas-integration-authorization/`
 > (Track 4 README, `Get-EntraSaaSIntegrationInventory.ps1`, and the

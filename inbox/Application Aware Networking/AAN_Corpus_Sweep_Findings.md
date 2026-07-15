@@ -430,7 +430,7 @@
 - **Problem:** The shipped `x_ssa_fed_compliance/data/control-map.json` contains none of those keys and uses a different schema (title/approval/actuation; no severity/sla_class anywhere). Values conflict (RA-5 task_type, CM-6/SI-2 ksi sets), and the doc's sample entries would **fail the CI gate the doc itself cites** (`validate_day2_control_maps.py` REQUIRED fields). Line 45's table repeats the phantom fields.
 - **Fix:** Replace the sample with a verbatim excerpt of the shipped file; correct line 45 to the actual binding fields.
 
-#### H-077 — `Vol_VII_Book_06_FedAAN_SaaS_Integration_Governance.qmd:227` — irreproducible-number
+#### H-077 — `Vol_IX_Book_05_FedAAN_SaaS_Integration_Governance.qmd:227` — irreproducible-number
 - **Claim:** Quoted validator output: "5 day-2 control maps, 47 catalog items, all consistent with the spine".
 - **Problem:** Current output is "OK — 6 day-2 control maps, 55 catalog items"; even restricted to servicenow-day2/, the five maps sum to 48, not 47. The quote is wrong under either framing.
 - **Fix:** Re-run and update the quote (6 maps, 55 items), or rephrase to avoid quoting a point-in-time count.

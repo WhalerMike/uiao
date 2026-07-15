@@ -83,7 +83,7 @@ def main() -> int:
 
     for pptx in tracked(".pptx"):
         base = pptx.stem
-        # deck spec name convention: Vol_VII_Book_06 -> decks/Vol_VII_Book_06.yaml
+        # deck spec name convention: Vol_IX_Book_05 -> decks/Vol_IX_Book_05.yaml
         m = re.match(r"(Vol_[0IVX]+_Book_\w+?)_FedAAN", base)
         spec = HERE / "decks" / (m.group(1) + ".yaml") if m else None
         if not spec or not spec.exists():

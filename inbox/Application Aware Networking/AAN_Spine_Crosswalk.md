@@ -11,49 +11,49 @@
 
 | Control | Title | Family | Where addressed (spine) | FedRAMP 20x KSI |
 |---|---|---|---|---|
-| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol VII Bk 06, Vol IX Bk 01, Vol IX Bk 03 | KSI-IAM |
-| AC-2(1) | Account Management | Automated System Account Management | AC | Vol I Bk 04, Vol VII Bk 06 | KSI-IAM |
-| AC-2(3) | Account Management | Disable Accounts | AC | Vol VII Bk 06 | KSI-IAM |
-| AC-2(4) | Account Management | Automated Audit Actions | AC | Vol VII Bk 06 | KSI-MLA |
-| AC-3 | Access Enforcement | AC | Vol VII Bk 06, Vol IX Bk 01 | KSI-IAM |
-| AC-4 | Information Flow Enforcement | AC | Vol I Bk 07, Vol VII Bk 06 | KSI-CNA, KSI-IAM |
-| AC-5 | Separation of Duties | AC | Vol VII Bk 06 | KSI-IAM |
-| AC-6 | Least Privilege | AC | Vol VII Bk 06, Vol IX Bk 01, Vol IX Bk 03 | KSI-IAM |
+| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
+| AC-2(1) | Account Management | Automated System Account Management | AC | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
+| AC-2(3) | Account Management | Disable Accounts | AC | Vol IX Bk 05 | KSI-IAM |
+| AC-2(4) | Account Management | Automated Audit Actions | AC | Vol IX Bk 05 | KSI-MLA |
+| AC-3 | Access Enforcement | AC | Vol IX Bk 01, Vol IX Bk 05 | KSI-IAM |
+| AC-4 | Information Flow Enforcement | AC | Vol I Bk 07, Vol IX Bk 05 | KSI-CNA, KSI-IAM |
+| AC-5 | Separation of Duties | AC | Vol IX Bk 05 | KSI-IAM |
+| AC-6 | Least Privilege | AC | Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
 | AC-17 | Remote Access | AC | Vol I Bk 07 | KSI-CNA |
 | AC-19 | Access Control for Mobile Devices | AC | Vol I Bk 07 | KSI-IAM |
-| AC-20 | Use of External Systems | AC | Vol VII Bk 06 | KSI-IAM |
-| AU-2 | Event Logging | AU | Vol VII Bk 06, Vol VIII Bk 07, Vol IX Bk 04 | KSI-MLA |
+| AC-20 | Use of External Systems | AC | Vol IX Bk 05 | KSI-IAM |
+| AU-2 | Event Logging | AU | Vol VIII Bk 07, Vol IX Bk 04, Vol IX Bk 05 | KSI-MLA |
 | AU-3 † | Content of Audit Records | AU | Vol III Bk 07 | KSI-MLA |
-| AU-6 | Audit Record Review, Analysis, and Reporting | AU | Vol VII Bk 06 | KSI-MLA |
+| AU-6 | Audit Record Review, Analysis, and Reporting | AU | Vol IX Bk 05 | KSI-MLA |
 | AU-6(1) | Automated Process Integration | AU | Vol III Bk 07 | KSI-MLA |
 | AU-12 | Audit Record Generation | AU | Vol III Bk 07 | KSI-MLA |
 | AU-12(1) † | System-wide and Time-correlated Audit Trail | AU | Vol III Bk 07 | KSI-MLA |
 | CA-2 | Control Assessments | CA | Vol VII Bk 04 | KSI-MLA |
-| CA-3 | Information Exchange | CA | Vol VII Bk 06 | KSI-PIY |
+| CA-3 | Information Exchange | CA | Vol IX Bk 05 | KSI-PIY |
 | CA-5 | Plan of Action and Milestones | CA | Vol VII Bk 04 | KSI-MLA |
-| CA-7 | Continuous Monitoring | CA | Vol III Bk 07, Vol VII Bk 02, Vol VII Bk 04, Vol VII Bk 06 | KSI-MLA |
+| CA-7 | Continuous Monitoring | CA | Vol III Bk 07, Vol VII Bk 02, Vol VII Bk 04, Vol IX Bk 05 | KSI-MLA |
 | CM-2 | Baseline Configuration | CM | Vol III Bk 03, Vol IX Bk 02 | KSI-CMT |
-| CM-3 | Configuration Change Control | CM | Vol VII Bk 01, Vol VII Bk 06, Vol VIII Bk 07, Vol IX Bk 02, Vol IX Bk 04 | KSI-CMT |
+| CM-3 | Configuration Change Control | CM | Vol VII Bk 01, Vol VIII Bk 07, Vol IX Bk 02, Vol IX Bk 04, Vol IX Bk 05 | KSI-CMT |
 | CM-5 | Access Restrictions for Change | CM | Vol VIII Bk 07 | KSI-IAM |
 | CM-6 | Configuration Settings | CM | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 02, Vol VII Bk 03, Vol IX Bk 04 | KSI-CMT, KSI-SVC |
 | CM-7 | Least Functionality | CM | Vol III Bk 04 | KSI-SVC |
-| CM-8 † | System Component Inventory | CM | Vol III Bk 03, Vol VII Bk 01, Vol VII Bk 06, Vol VIII Bk 06, Vol IX Bk 02 | KSI-PIY |
-| IA-2 | Identification and Authentication (Organizational Users) | IA | Vol VII Bk 06 | KSI-IAM |
+| CM-8 † | System Component Inventory | CM | Vol III Bk 03, Vol VII Bk 01, Vol VIII Bk 06, Vol IX Bk 02, Vol IX Bk 05 | KSI-PIY |
+| IA-2 | Identification and Authentication (Organizational Users) | IA | Vol IX Bk 05 | KSI-IAM |
 | IA-3 † | Device Identification and Authentication | IA | Vol I Bk 07 | KSI-IAM |
-| IA-4 † | Identifier Management | IA | Vol I Bk 04, Vol VII Bk 06 | KSI-IAM |
-| IA-5 | Authenticator Management | IA | Vol VII Bk 06, Vol IX Bk 01 | KSI-IAM |
-| IA-5(2) | Authenticator Management | Public Key-Based Authentication | IA | Vol VII Bk 06, Vol IX Bk 03 | KSI-IAM |
+| IA-4 † | Identifier Management | IA | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
+| IA-5 | Authenticator Management | IA | Vol IX Bk 01, Vol IX Bk 05 | KSI-IAM |
+| IA-5(2) | Authenticator Management | Public Key-Based Authentication | IA | Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
 | PS-4 † | Personnel Termination | PS | Vol I Bk 04 | — |
-| PS-5 † | Personnel Transfer | PS | Vol I Bk 04, Vol VII Bk 06 | KSI-IAM |
+| PS-5 † | Personnel Transfer | PS | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
 | RA-5 | Vulnerability Monitoring and Scanning | RA | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 03 | KSI-MLA |
-| SA-9 † | External System Services | SA | Vol VII Bk 06 | KSI-SCR |
-| SA-9(2) | External System Services | Identification of Functions, Ports, Protocols, and Services | SA | Vol VII Bk 06 | KSI-SCR |
+| SA-9 † | External System Services | SA | Vol IX Bk 05 | KSI-SCR |
+| SA-9(2) | External System Services | Identification of Functions, Ports, Protocols, and Services | SA | Vol IX Bk 05 | KSI-SCR |
 | SA-11 | Developer Testing and Evaluation | SA | Vol III Bk 04 | KSI-SVC |
 | SC-7 | Boundary Protection | SC | Vol I Bk 07, Vol III Bk 04 | KSI-CNA |
 | SC-7(8) | Route Traffic to Authenticated Proxy Servers | SC | Vol I Bk 07 | KSI-CNA |
 | SC-8 † | Transmission Confidentiality and Integrity | SC | Vol I Bk 07 | KSI-CNA |
 | SC-8(1) | Cryptographic Protection | SC | Vol I Bk 07 | KSI-CNA |
-| SC-17 | Public Key Infrastructure Certificates | SC | Vol VII Bk 06, Vol IX Bk 03 | KSI-IAM |
+| SC-17 | Public Key Infrastructure Certificates | SC | Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
 | SC-20 † | Secure Name/Address Resolution Service (Authoritative Source) | SC | Vol I Bk 01, Vol VIII Bk 06 | KSI-CNA |
 | SC-21 † | Secure Name/Address Resolution Service (Recursive or Caching Resolver) | SC | Vol I Bk 01 | KSI-CNA |
 | SC-22 | Architecture and Provisioning for Name/Address Resolution Service | SC | Vol VIII Bk 06 | KSI-CNA |
@@ -63,7 +63,7 @@
 | SI-3 | Malicious Code Protection | SI | Vol III Bk 04 | KSI-MLA |
 | SI-4 | System Monitoring | SI | Vol I Bk 07 | KSI-MLA |
 | SI-4(16) | Correlate Monitoring Information | SI | Vol III Bk 07 | KSI-MLA |
-| SI-12 † | Information Management and Retention | SI | Vol I Bk 04, Vol VII Bk 06 | KSI-PIY |
+| SI-12 † | Information Management and Retention | SI | Vol I Bk 04, Vol IX Bk 05 | KSI-PIY |
 
 *† = Closure-Necessity anchor (no alternate closure path; see the per-book alternate-path rebuttals in the authorities tables).*
 
@@ -75,9 +75,9 @@ Distinct controls the spine closes within each volume (a control closed in sever
 |---|---|
 | Vol I | 17 |
 | Vol III | 17 |
-| Vol VII | 29 |
+| Vol VII | 9 |
 | Vol VIII | 6 |
-| Vol IX | 11 |
+| Vol IX | 26 |
 | **Series total (distinct)** | **53** |
 
 : Spine control coverage by volume {.striped}
@@ -110,10 +110,10 @@ Distinct controls the spine closes within each volume (a control closed in sever
 | book-sn-m365 | Vol VII Bk 02 | M365 Federal Control Compliance Automation |
 | book-sn-azure | Vol VII Bk 03 | Azure Federal Control Compliance Automation |
 | book-sn-attestation | Vol VII Bk 04 | Control Attestation, Evidence & KSI |
-| book-sn-saas | Vol VII Bk 06 | SaaS Integration Governance (the Entra app gallery as a governed SA-9 event) |
 | book-ddi-xplat | Vol VIII Bk 06 | Cross-Platform Operations & Multi-Cloud Governance |
 | book-ddi-servicenow | Vol VIII Bk 07 | ServiceNow Orchestration — Governed Front Door for DDI |
 | book-day2-helpdesk | Vol IX Bk 01 | Helpdesk & ITSM Catalog (Entra · M365 · Azure) |
 | book-day2-landingzone | Vol IX Bk 02 | Landing Zone Front Door (catalog → IaC → CMDB) |
 | book-day2-appreg | Vol IX Bk 03 | App Registration Governance (request · consent · secret/cert lifecycle) |
 | book-day2-telephony | Vol IX Bk 04 | Teams Telephony Catalog & Teams SCuBA Drift |
+| book-sn-saas | Vol IX Bk 05 | SaaS Integration Governance (the Entra app gallery as a governed SA-9 event) |
