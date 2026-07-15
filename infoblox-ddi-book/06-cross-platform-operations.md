@@ -25,9 +25,9 @@ polish — it is the mechanism that prevents the drift the whole volume exists t
 
 **Non-overlapping address plan.** Before any cloud is onboarded, carve the enterprise
 supernet into non-overlapping blocks per platform/region/environment and model it in
-IPAM *first*. Overlapping CIDRs across clouds are the number-one cause of failed
-transit/peering and un-routable hybrid connectivity, and they are nearly impossible to
-unwind after workloads land. Let IPAM allocate cloud subnets; do not let each cloud team
+IPAM *first*. Overlapping CIDRs across clouds are a leading and hard-to-remediate cause
+of failed transit/peering and un-routable hybrid connectivity, and they are nearly
+impossible to unwind after workloads land. Let IPAM allocate cloud subnets; do not let each cloud team
 pick CIDRs independently.
 
 ```

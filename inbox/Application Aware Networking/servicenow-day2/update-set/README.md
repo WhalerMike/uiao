@@ -7,8 +7,8 @@ The whole `x_ssa_day2_ops` scoped app assembled into one importable update-set X
 - **REST Message** — `x_ssa_day2_ops.graph` (Microsoft Graph, MID-routed, credential
   alias — no secrets in the record).
 - **Flow** — "Governed Day-2 Request" (see `../flow/flow-blueprint.md`).
-- **Catalog items + variable sets** — one per catalog entry across the four control
-  maps (`helpdesk-`, `landingzone-`, `appreg-`, `telephony-control-map.json`).
+- **Catalog items + variable sets** — one per catalog entry across the five control
+  maps (`helpdesk-`, `landingzone-`, `appreg-`, `telephony-`, `saas-control-map.json`).
 - **App properties** — `mid_server`, `boundary` (`gcc-moderate`), `graph_version`,
   `test_mode`.
 - **ATF tests** — the suites in `../atf/`.

@@ -73,10 +73,14 @@ This *strengthens* the compliance story rather than complicating it:
   same boundary discipline the rest of the volume applies.
 - The **Universal DDI SaaS caveat still holds**: WAPI-to-Grid keeps DDI calls in-boundary;
   the Portal (CSP) API path is the out-of-boundary case gated by `acknowledge_saas_boundary`.
-- **Control-family mapping:** the catalog approval + SoD gate → **AC-5/AC-6**; the change
-  record and immutable audit trail → **AU-2/AU-6/AU-12** and **CM-3/CM-5**; the validation
-  gates → **CM-6** configuration enforcement; reclaim-on-delete → **CM-8** accurate
-  inventory. ServiceNow gives you the *evidence*, Infoblox gives you the *truth*.
+- **Control-family mapping:** the change record and immutable audit trail are this book's
+  registered control closures — **CM-3/CM-5** (change control / access restriction for
+  change) and **AU-2** (auditable events). The remaining families are **supporting/informal
+  family touchpoints**, not closures registered to this book: the catalog approval + SoD
+  gate (AC-5/AC-6), the extended audit trail (AU-6/AU-12), the validation gates as CM-6
+  configuration enforcement, and reclaim-on-delete as a CM-8 inventory input (CM-8 closes in
+  the cross-platform book, Chapter 6). ServiceNow gives you the *evidence*, Infoblox gives
+  you the *truth*.
 
 ## 7.5 Build sequence
 
