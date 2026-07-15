@@ -344,7 +344,7 @@ Matrix."
 - [x] KSI-022 (KSI-CED-RAT) upgraded: scaffold → active, confidence low → high
 - [x] governance.training-effectiveness-record JSON schema (AT-4 evidence contract);
       exported via Viva Learning Graph API; evaluated by slot_evaluator
-- [x] **All 29 CR26 KSIs now evaluable at high confidence — zero scaffold rules remain**
+- [x] **All 29 internal KSI-decomposition rules now evaluable at high confidence — zero scaffold rules remain**
 - [x] Book_00 Executive Summary updated to fifteen-book series
 
 ### Phase 6 — Completed 2026-07-05 ✓

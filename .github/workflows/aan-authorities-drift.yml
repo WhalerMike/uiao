@@ -19,6 +19,7 @@ on:
   pull_request:
     paths:
       - 'inbox/Application Aware Networking/aan-compliance-spine.yml'
+      - 'inbox/Application Aware Networking/**'
       - 'inbox/Application Aware Networking/authorities/**'
       - 'inbox/Application Aware Networking/render_authorities_table.py'
       - 'inbox/Application Aware Networking/render_cr26_reconciliation.py'
@@ -42,6 +43,7 @@ on:
     branches: [main]
     paths:
       - 'inbox/Application Aware Networking/aan-compliance-spine.yml'
+      - 'inbox/Application Aware Networking/**'
       - 'inbox/Application Aware Networking/authorities/**'
       - 'inbox/Application Aware Networking/render_authorities_table.py'
       - 'inbox/Application Aware Networking/render_cr26_reconciliation.py'
@@ -156,3 +158,34 @@ jobs:
       - name: Run prose spine-count drift gate
         working-directory: 'inbox/Application Aware Networking'
         run: python check_prose_counts.py --strict
+
+      # ---- Content-correctness gate suite ----
+      # These also run as pre-commit hooks; wired here so CI enforces them for
+      # contributors without pre-commit and for direct pushes. (The explicit
+      # steps were dropped from #1180 in a CRLF re-commit; restored here.)
+      - name: Install content-gate deps (docx/pptx readers)
+        run: pip install python-docx python-pptx
+
+      - name: Federal-deadline claims vs authority registry
+        working-directory: 'inbox/Application Aware Networking'
+        run: python check_authority_deadlines.py
+
+      - name: Control ids/titles vs NIST Rev 5 catalog
+        working-directory: 'inbox/Application Aware Networking'
+        run: python check_control_citations.py
+
+      - name: CR26 indicator ids + 29/46 conflation
+        working-directory: 'inbox/Application Aware Networking'
+        run: python check_cr26_indicators.py
+
+      - name: Scope ratchet (no new FedRAMP-High) + crossref integrity
+        working-directory: 'inbox/Application Aware Networking'
+        run: python check_series_rules.py
+
+      - name: Tracked-derivative Date Codes
+        working-directory: 'inbox/Application Aware Networking'
+        run: python check_derivative_freshness.py
+
+      - name: Implementation-coverage matrix drift
+        working-directory: 'inbox/Application Aware Networking'
+        run: python render_impl_coverage.py --check
