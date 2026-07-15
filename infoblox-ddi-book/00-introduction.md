@@ -166,7 +166,7 @@ SaaS path is the explicit, `acknowledge_saas_boundary`-gated exception.
 - **Deploying one platform now?** Jump straight to its chapter and work the runbook.
 - **Designing the multi-cloud target state?** Read section 1 (overview) and 2
   (reference architecture) of every chapter, then the cross-platform operations
-  appendix, before touching a single deployment.
+  chapter (Chapter 6), before touching a single deployment.
 - **Standardizing?** The identical skeleton means you can lift the section-5 runbooks
   into your own IaC/pipeline and the section-4 prerequisites into your landing-zone
   guardrails.

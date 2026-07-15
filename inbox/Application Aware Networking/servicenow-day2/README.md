@@ -18,7 +18,7 @@ governs who/when/approval/evidence; Microsoft Graph actuates through the in-boun
 | [`flow/flow-blueprint.md`](./flow/flow-blueprint.md) | Flow Designer blueprint | The "Governed Day-2 Request" flow + access-review / leaver-completion flows |
 | [`helpdesk-control-map.json`](./helpdesk-control-map.json) | app data (CI-checked) | Helpdesk catalog → (control, task type, approval, KSI, slot) — projection of `aan-compliance-spine.yml` |
 | [`landingzone-control-map.json`](./landingzone-control-map.json) | app data | Lane D landing-zone front-door bindings (CM-2/3/8) |
-| [`appreg-control-map.json`](./appreg-control-map.json) | app data | Lane E app-registration lifecycle bindings (IA-5(2)/SC-17/AC-6) |
+| [`appreg-control-map.json`](./appreg-control-map.json) | app data | Lane E app-registration lifecycle bindings (AC-2/IA-5(2)/SC-17/AC-6) |
 | [`telephony-control-map.json`](./telephony-control-map.json) | app data | §4 Teams telephony + SCuBA-drift bindings (CM-3/CM-6/AU-2) |
 | [`saas-control-map.json`](./saas-control-map.json) | app data | Lane F SaaS integration governance bindings (Vol VII Book 06) |
 | [`atf/README.md`](./atf/README.md) | ATF test spec | Happy-path + negative (self-approve, standing-privilege, unreconciled) via `test_mode` |
@@ -58,7 +58,7 @@ This scaffold is now the data layer of **Volume IX — ServiceNow Day-2 Operatio
 1. ~~Author the scoped-app records (Script Includes, Flows, ATF) mirroring the DDI app.~~ **Done** (this skeleton).
 2. ~~Add per-lane control maps (landing-zone, app-reg, telephony).~~ **Done.**
 3. Export the actual `sys_atf_test` XML and the assembled update-set XML from a sub-prod build.
-4. Wire the control-map CI check (regen-and-diff vs `aan-compliance-spine.yml`) into the book CI.
+4. ~~Wire the control-map CI check (regen-and-diff vs `aan-compliance-spine.yml`) into the book CI.~~ **Done** (`validate_day2_control_maps.py`, wired in `.pre-commit-config.yaml` and `.github/workflows/aan-authorities-drift.yml`).
 5. Add catalog variable-set XMLs per item (mirroring the DDI app's `catalog/` variable sets).
 
 ## References

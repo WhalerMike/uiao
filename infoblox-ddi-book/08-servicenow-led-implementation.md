@@ -1,7 +1,8 @@
 # Chapter 8 — ServiceNow-Led Implementation
 
 Chapters 1–6 build DDI **platform-first**: stand up the appliances, wire discovery
-and DNS, then (in each chapter's §8) put a ServiceNow front door on the result.
+and DNS, then (in each chapter's ServiceNow section — §8 for Chapters 1–5, §6.9 for
+Chapter 6) put a ServiceNow front door on the result.
 [Chapter 7](./07-servicenow-orchestration.md) defines that front door. This chapter
 turns the order around and makes it a deliberate implementation strategy:
 **lead with ServiceNow.** Stand up the governed *experience* — the catalog request,
