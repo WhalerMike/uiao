@@ -67,6 +67,9 @@ _BIND_SUBIND = re.compile(
 )
 # Table-cell form "KSI-011..014 (4) | SCR — ..." (bare theme code after a pipe).
 _BIND_BARE = re.compile(r"(KSI-0\d\d)\s*\.\.0?\d\d\s*\(\d+\)\s*\|\s*(" + _THEME_ABBR + r")\b")
+# Theme-first table row "| KSI-IAM | KSI-001, KSI-017-019 | ..." — a theme cell
+# followed by a cell listing the numbers it (wrongly) claims.
+_BIND_THEMEFIRST = re.compile(r"\|\s*KSI-(" + _THEME_ABBR + r")\s*\|\s*([^|]*)")
 
 
 def _recon_rows() -> list[tuple[str, list[str]]]:
@@ -145,6 +148,18 @@ def main() -> int:
                     errors.append(
                         f"{f_name}:{ln}: {num} belongs to {canon}, but is bound "
                         f"here to {theme} — see AAN_CR26_Reconciliation.md: "
+                        f"«{line.strip()[:70]}»"
+                    )
+        # Theme-first table row: "| KSI-TTT | KSI-0NN, KSI-0MM |"
+        for mm in _BIND_THEMEFIRST.finditer(line):
+            theme = "KSI-" + mm.group(1)
+            for num in re.findall(r"KSI-0\d\d", mm.group(2)):
+                bind_seen += 1
+                canon = num2theme.get(num)
+                if canon and canon != theme:
+                    errors.append(
+                        f"{f_name}:{ln}: {num} belongs to {canon}, but the "
+                        f"'{theme}' row claims it — see AAN_CR26_Reconciliation.md: "
                         f"«{line.strip()[:70]}»"
                     )
 
