@@ -61,7 +61,7 @@ Each module emits its state to the evidence contract (Book VI-07); the `ipam` mo
 
 The naming plane is the load-bearing one, because it is the source of truth SC-20/21/22 and CM-8 depend on. The zone, its DNSSEC signing posture, and its protective-DNS (RPZ) response policy are all declared, so "the resolver is authoritative and signing" is an attestable property of source, not a portal setting.
 
-![The DNSSEC-signed authoritative zone as code — authority, query telemetry, and protective-DNS RPZ are properties of source, not portal settings](figs/vol6b01-fig-03-dnssec-authoritative-zone.png){#fig-vol6b01-dnssec fig-alt="Three side-by-side cards describing the load-bearing ddi naming module declared as code. Card 1, Authoritative plus signing — the zone declares dnssec = on, so SC-20 signed responses are an attestable property of source; the resolver being authoritative is diffable, not a portal claim; tagged SC-20. Card 2, Every query is telemetry — query_log = on makes every resolution an SI-4 / AU-12 record, so the naming plane emits monitoring evidence by construction; tagged SI-4 / AU-12. Card 3, Protective-DNS RPZ — an RPZ response policy fed by CISA Protective DNS blocks known-bad resolution under SC-21, run in log_only mode first to baseline benign traffic, then flipped to nxdomain enforcing; tagged SC-21. A banner beneath the cards states the DHCP scopes and address plan come from the same ipam source, so a device's lease, its address, and its inventory record are one chain of custody rather than three guesses. White background. Source: Vol VI Book 01 — Federal Application-Aware Networking — Landing Zone & Network as Code briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
+![The DNSSEC-signed authoritative zone as code — authority, query telemetry, and protective-DNS RPZ are properties of source, not portal settings](figs/vol6b01-fig-03-dnssec-authoritative-zone.png){#fig-vol6b01-dnssec fig-alt="Three side-by-side cards describing the load-bearing ddi naming module declared as code. Card 1, Authoritative plus signing — the zone declares dnssec = on, so SC-20 signed responses are an attestable property of source; the resolver being authoritative is diffable, not a portal claim; tagged SC-20. Card 2, Every query is telemetry — query_log = on makes every resolution an SI-4 / AU-12 record, so the naming plane emits monitoring evidence by construction; tagged SI-4 / AU-12. Card 3, Protective-DNS RPZ — the recursive resolver performs DNSSEC validation for SC-21, and an RPZ response policy fed by CISA Protective DNS blocks known-bad resolution as the SC-21 protective-DNS complement, run in log_only mode first to baseline benign traffic, then flipped to nxdomain enforcing; tagged SC-21. A banner beneath the cards states the DHCP scopes and address plan come from the same ipam source, so a device's lease, its address, and its inventory record are one chain of custody rather than three guesses. White background. Source: Vol VI Book 01 — Federal Application-Aware Networking — Landing Zone & Network as Code briefing deck, Date Code 2026-07-09 17:00 ET." width="100%"}
 
 ```hcl
 # ddi module — authoritative, DNSSEC-signed zone with protective-DNS RPZ (deployed example: cloud DNS)
@@ -71,10 +71,14 @@ resource "dns_zone" "agency" {
   query_log   = "on"                    # SI-4 / AU-12: every resolution is telemetry
 }
 
+resource "dns_resolver" "agency" {
+  dnssec_validation = "on"              # SC-21: recursive resolver validates upstream signatures
+}
+
 resource "dns_rpz_policy" "protective" {
   zone            = dns_zone.agency.id
   feed            = var.protective_dns_feed   # CISA Protective DNS / commercial TI
-  action          = "nxdomain"                # SC-21: block known-bad resolution
+  action          = "nxdomain"                # SC-21 protective-DNS complement: block known-bad resolution
   log_only        = false                     # TUNE: run log_only first to baseline
 }
 
@@ -96,7 +100,7 @@ The DHCP scopes and the address plan come from the same `ipam` source, so a devi
 
 ::: {.callout-tip}
 ## Closure Necessity — a source of truth you cannot re-derive is not one
-Volume I's claim is that no scanner *creates* authoritative naming or inventory — it only measures drift from a source of truth. This book is what makes that source of truth **reproducible**: an IPAM/DDI plane and a boundary defined in code can be re-derived, diffed, and attested. A hand-built landing zone cannot satisfy CM-8's "authoritative inventory" claim because there is no authority to point at — only a snapshot no one can regenerate.
+Volume I's claim is that no scanner *creates* authoritative naming or inventory — it only measures drift from a source of truth. This book is what makes that source of truth **reproducible**: an IPAM/DDI plane and a boundary defined in code can be re-derived, diffed, and attested. A hand-built landing zone weakens the accuracy and completeness evidence CM-8's System Component Inventory demands, because there is no authority to point at — only a snapshot no one can regenerate.
 :::
 
 # Controls Operationalized
@@ -105,8 +109,8 @@ Volume I's claim is that no scanner *creates* authoritative naming or inventory 
 |---|---|---|
 | SC-7 | Boundary Protection | Segmentation + NGFW/route intent as code at the enforcement edge |
 | SC-20 | Secure Name/Address Resolution Service (Authoritative Source) | DNSSEC-signing authoritative resolver as code |
-| SC-21 | Secure Name/Address Resolution (Recursive) | Validating recursive resolver + RPZ protective DNS |
-| SC-22 | Architecture & Provisioning for Name/Address | Redundant resolver topology in the `ddi` module |
+| SC-21 | Secure Name/Address Resolution Service (Recursive or Caching Resolver) | Validating recursive resolver + RPZ protective DNS |
+| SC-22 | Architecture and Provisioning for Name/Address Resolution Service | Redundant resolver topology in the `ddi` module |
 | CM-8 | System Component Inventory | Address-keyed inventory derived from the IPAM source of truth |
 | AC-4 | Information Flow Enforcement | Application-aware flow policy at the SASE/TIC PEP |
 
