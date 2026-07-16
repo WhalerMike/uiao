@@ -200,7 +200,7 @@ SQL Server supports three login types:
 
 Login migration must be executed as a parallel run — not a cutover. The legacy login remains active while the Entra login is created and validated. Only after validation is the legacy login disabled, and only after a 30-day observation period is it dropped.
 
-**Phase 1 — Create.** `CREATE LOGIN [user@agency.gov] FROM EXTERNAL PROVIDER` — or for a group: `CREATE LOGIN [GroupName] FROM EXTERNAL PROVIDER` with the Entra Object ID.
+**Phase 1 — Create.** `CREATE LOGIN [user@{{< meta agency.domain >}}] FROM EXTERNAL PROVIDER` — or for a group: `CREATE LOGIN [GroupName] FROM EXTERNAL PROVIDER` with the Entra Object ID.
 
 **Phase 2 — Validate.** The Entra login is tested with real credentials against every connection path: direct connection, application connection string, ODBC data source, linked server. Authentication scheme is confirmed as Entra (not Windows Integrated, not SQL). Database role membership is verified.
 
@@ -274,12 +274,12 @@ The most common transformation in the application chain is connection string mod
 
 **Before:**
 ```
-Server=sql01.agency.gov;Database=ApplicationDB;Integrated Security=SSPI;
+Server=sql01.{{< meta agency.domain >}};Database=ApplicationDB;Integrated Security=SSPI;
 ```
 
 **After:**
 ```
-Server=sql01.agency.gov;Database=ApplicationDB;Authentication=Active Directory Default;
+Server=sql01.{{< meta agency.domain >}};Database=ApplicationDB;Authentication=Active Directory Default;
 ```
 
 The `Authentication=Active Directory Default` directive instructs the SQL client library to acquire an access token from the available managed identity, environment credential, or interactive login — whichever is available in the execution context — and present it to SQL Server as the authentication credential.

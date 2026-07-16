@@ -347,8 +347,8 @@ GO
 
 -- Create the Azure AD admin account (first Entra login must be an admin)
 -- Replace with the agency's Entra ID group for SQL DBAs
-CREATE LOGIN [SQLDBAs@agency.gov] FROM EXTERNAL PROVIDER;
-ALTER SERVER ROLE sysadmin ADD MEMBER [SQLDBAs@agency.gov];
+CREATE LOGIN [SQLDBAs@{{< meta agency.domain >}}] FROM EXTERNAL PROVIDER;
+ALTER SERVER ROLE sysadmin ADD MEMBER [SQLDBAs@{{< meta agency.domain >}}];
 GO
 ```
 
@@ -364,7 +364,7 @@ This book is the core migration action. Every legacy login on every retained ins
 
 ```sql
 -- For a user login:
-CREATE LOGIN [firstname.lastname@agency.gov] FROM EXTERNAL PROVIDER;
+CREATE LOGIN [firstname.lastname@{{< meta agency.domain >}}] FROM EXTERNAL PROVIDER;
 
 -- For a group login (use Object ID for nested groups):
 CREATE LOGIN [SQL-ApplicationName-ReadOnly] FROM EXTERNAL PROVIDER
@@ -372,15 +372,15 @@ CREATE LOGIN [SQL-ApplicationName-ReadOnly] FROM EXTERNAL PROVIDER
 
 -- Grant database access:
 USE [ApplicationDatabase];
-CREATE USER [firstname.lastname@agency.gov] FOR LOGIN [firstname.lastname@agency.gov];
-ALTER ROLE db_datareader ADD MEMBER [firstname.lastname@agency.gov];
+CREATE USER [firstname.lastname@{{< meta agency.domain >}}] FOR LOGIN [firstname.lastname@{{< meta agency.domain >}}];
+ALTER ROLE db_datareader ADD MEMBER [firstname.lastname@{{< meta agency.domain >}}];
 ```
 
 **Phase 2 — Validate:**
 
 ```powershell
 # Test connection using Azure AD authentication (run from workstation enrolled with target identity)
-$connectionString = "Server=sql01.agency.gov;Database=ApplicationDatabase;Authentication=Active Directory Interactive;"
+$connectionString = "Server=sql01.{{< meta agency.domain >}};Database=ApplicationDatabase;Authentication=Active Directory Interactive;"
 $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
 $connection.Open()
 Write-Host "Authentication scheme: $(
@@ -466,7 +466,7 @@ For each NTLM source classified as "missing SPN" in Book 03:
 
 $serviceAccount = "DOMAIN\svc-sql01"
 $hostname = "SQL01"
-$fqdn = "sql01.agency.gov"
+$fqdn = "sql01.{{< meta agency.domain >}}"
 $port = 1433
 
 # Register both hostname and FQDN variants, with and without port
@@ -521,7 +521,7 @@ EXEC sp_addlinkedsrvlogin
     @rmtsrvname   = 'LINKEDSERVER01',
     @useself      = 'FALSE',
     @locallogin   = NULL,
-    @rmtuser      = 'svc-linkedserver@agency.gov',  -- Entra service account
+    @rmtuser      = 'svc-linkedserver@{{< meta agency.domain >}}',  -- Entra service account
     @rmtpassword  = NULL;  -- Token authentication — no password
 ```
 
@@ -632,12 +632,12 @@ For each Class 3 application (OIDC/Token path):
 
 **Before:**
 ```
-Data Source=SQL01.agency.gov;Initial Catalog=ApplicationDB;Integrated Security=SSPI;
+Data Source=SQL01.{{< meta agency.domain >}};Initial Catalog=ApplicationDB;Integrated Security=SSPI;
 ```
 
 **After:**
 ```
-Data Source=SQL01.agency.gov;Initial Catalog=ApplicationDB;Authentication=Active Directory Default;
+Data Source=SQL01.{{< meta agency.domain >}};Initial Catalog=ApplicationDB;Authentication=Active Directory Default;
 ```
 
 For applications using the Azure Identity SDK, add the credential provider:
@@ -648,7 +648,7 @@ using Azure.Identity;
 using Microsoft.Data.SqlClient;
 
 var credential = new DefaultAzureCredential();
-var connection = new SqlConnection("Server=sql01.agency.gov;Database=ApplicationDB;Authentication=Active Directory Default;");
+var connection = new SqlConnection("Server=sql01.{{< meta agency.domain >}};Database=ApplicationDB;Authentication=Active Directory Default;");
 // DefaultAzureCredential automatically uses the Managed Identity when running on Arc-enrolled server
 connection.Open();
 ```
@@ -701,7 +701,7 @@ WHERE name LIKE 'sa' OR name LIKE 'disabled_sa%';  -- Alert if 'sa' row has is_d
 The compliance record is a structured JSON export produced daily and stored in the agency's compliance evidence repository:
 
 ```powershell
-$instance = "SQL01.agency.gov"
+$instance = "SQL01.{{< meta agency.domain >}}"
 $connectionString = "Server=$instance;Database=master;Authentication=Active Directory Default;"
 
 $record = @{
