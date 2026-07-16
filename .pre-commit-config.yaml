@@ -252,6 +252,21 @@ repos:
         pass_filenames: false
         files: ^inbox/Application Aware Networking/(check_reference_doc_truth\.py|Vol_.*_Book_.*\.qmd|render_all_docx\.sh|build_distribution_kit\.sh)$
 
+      # Quarto CLAIMS `::: {.callout-*}` and rewrites those divs in its own pipeline
+      # before any user filter runs — measured: rendering an AAN book with Quarto
+      # dropped every house style and produced its own red-bordered widget, and
+      # attaching the filter did not help (byte-identical output; the filter never
+      # sees a div Quarto already took). The `aan-*` names take the divs back. This
+      # keeps them taken: no Quarto-owned classes, the filter is declared, every
+      # class is mapped. A regression looks fine under Pandoc — the CLI passes the
+      # filter — so it would only surface once the site renders it.
+      - id: aan-callout-classes
+        name: "AAN owns its callout classes (Quarto must not claim them)"
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_callout_classes.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_callout_classes\.py|Vol_.*_Book_.*\.qmd|aan-callouts\.lua)$
+
       - id: aan-day2-l3-ceiling
         name: "AAN day-2 L3 ceiling — no undeclared autonomous estate writes"
         entry: bash -c 'cd "inbox/Application Aware Networking/servicenow-day2" && python check_l3_ceiling.py'

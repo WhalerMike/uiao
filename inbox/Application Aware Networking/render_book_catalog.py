@@ -53,7 +53,7 @@ PHASE_BLURB = {
 # authored here rather than in the map.
 PHASE_CALLOUT = {
     "5 — Lifecycle (joiner/mover/leaver)": (
-        "callout-important",
+        "aan-important",
         "**This phase is why the others matter.** Without it the directory is clean and the vendor "
         "still holds a live account — the precise failure an assessor probes, and the one an "
         "ungoverned portal-click integration guarantees. Separation is not network-observable: "
@@ -61,14 +61,14 @@ PHASE_CALLOUT = {
         "owner of the fact starts the revocation on time.",
     ),
     "6 — Evidence": (
-        "callout-warning",
+        "aan-warning",
         "**Boundary caveat on `saas.logs`.** This collects what the tenant can see; it does not "
         "conjure what the boundary withholds. GCC-Moderate telemetry limits bound what reaches the "
         "SIEM in the first place — see the SCuBA boundary-limitations analysis. A ConMon claim built "
         "on this must state that limit rather than imply completeness.",
     ),
     "7 — Attest and exit": (
-        "callout-note",
+        "aan-note",
         "**Authorization is not a one-time fact.** A CSO can lose its authorization; an integration "
         "can outlive its business need. `saas.offboard` is the step most often skipped — an "
         "integration nobody uses still holds a live directory replica and a valid signing certificate.",

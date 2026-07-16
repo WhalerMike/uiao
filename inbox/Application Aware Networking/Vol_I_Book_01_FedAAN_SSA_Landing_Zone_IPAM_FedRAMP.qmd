@@ -24,13 +24,14 @@ fig-align: center
 out-width: "100%"
 execute:
   echo: false
+filters: [aan-callouts.lua]
 ---
 
 ```{=html}
 <div class="fouo-banner">UNCLASSIFIED // FOR OFFICIAL USE ONLY — SSA Cloud Services Team</div>
 ```
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -93,13 +94,13 @@ For SSA operating under FedRAMP Moderate, the landing zone must satisfy four ove
 - **FedRAMP Moderate** — boundary definition, continuous monitoring, evidence packaging
 - **FedRAMP 20x Consolidated Rules (2026)** — automated, machine-readable compliance evidence enforced by infrastructure-as-code; Class A/B/C certification pipelines; mandatory January 1, 2027
 
-::: {.callout-important}
+::: {.aan-important}
 **FedRAMP 20x Consolidated Rules — June 25, 2026:** FedRAMP published its Consolidated Rules for 2026 on June 25, 2026, transitioning 20x from pilot status to a fully available certification path with three classification tiers: Class A (opens August 3, 2026), Class B and C (open August 31, 2026). FedRAMP Ready submissions cease July 28, 2026. The Consolidated Rules become mandatory for all certified systems on **January 1, 2027**. Machine-readable structured rules are available in JSON format via GitHub for AI agent integration. InfoBlox DDI's WAPI REST interface delivers machine-readable KSI evidence — the exact format the 20x framework requires — without manual assembly.
 :::
 
 ![FedRAMP 20x Consolidated Rules for 2026 — Class Timelines and Key Dates](figs/lz-fig-10-fedramp-20x.png){fig-alt="Timeline showing FedRAMP 20x Consolidated Rules key dates: June 25 2026 rules published, July 6 marketplace opens, July 28 FedRAMP Ready ceases, August 3 Class A opens, August 31 Class B and C open, January 1 2027 rules mandatory, June 11 2027 no new Rev5 certifications. Three class description boxes: Class A lowest complexity, Class B mid-tier with InfoBlox DDI pathway, Class C highest complexity multi-cloud." width="100%"}
 
-::: {.callout-important}
+::: {.aan-important}
 **The Core Insight:** DNS, DHCP, and IP address management (DDI) are not optional infrastructure services — they are foundational security controls. Every device that joins a network, every cloud workload that provisions, every certificate that authenticates a service depends on DNS and IP assignment working correctly. A landing zone without unified DDI has a structural security gap at its foundation.
 :::
 
@@ -145,7 +146,7 @@ VMware Cloud Foundation **9.1** (released May 2026) introduced native InfoBlox D
 5. When VMs deploy, NSX-T DHCP assigns IPs; InfoBlox receives assignments via the IPAM plugin
 6. DNS A/PTR records for each VM are created automatically — no manual DNS entry required
 
-::: {.callout-tip}
+::: {.aan-tip}
 **VCF 9.1 Significance:** Before VCF 9.1, NSX-T InfoBlox integration required custom scripts and manual configuration. VCF 9.1 makes InfoBlox the native, default IPAM backend for VMware Cloud Foundation — meaning every new VCF deployment at SSA can have InfoBlox IPAM built in from day one.
 :::
 
@@ -200,7 +201,7 @@ For SSA, the InfoBlox NIOS Grid Master should be deployed as a **virtual machine
 - **No single-cloud dependency** — if any one cloud environment (AWS GovCloud, Azure Government, OCI) experiences an outage or a control-plane incident, the Grid Master continues to function from on-premises
 - **Boundary clarity** — the NIOS Grid falls within SSA's own FedRAMP authorization boundary; the agency controls the ATO evidence rather than inheriting it from a vendor CSO
 
-::: {.callout-important}
+::: {.aan-important}
 **Trust rationale:** DNS poisoning, DHCP scope hijacking, and IPAM record manipulation are among the highest-impact attack vectors against network infrastructure. An adversary who controls the Grid Master can redirect any FQDN, drain any IP subnet, or suppress any workload's DNS record — effectively owning the naming plane for all four SSA environments simultaneously. On-premises VMware deployment keeps this function under SSA's direct institutional control.
 
 **OIS and the CIO Office must validate the trust boundary decision and define the Grid Admin role-holder accountability model before the Grid is deployed.**
@@ -267,7 +268,7 @@ InfoBlox provides the automated enforcement pipeline:
 6. **VPN split-tunnel DNS** — M365 Optimize FQDNs route via local interface, not VPN tunnel
 7. **Sentinel alert** — any DNS query from an in-boundary workload to a commercial M365 endpoint triggers an IR ticket
 
-::: {.callout-warning}
+::: {.aan-warning}
 **Without InfoBlox automation:** Each of Microsoft's 8–12 annual endpoint changes requires four separate change tickets across NSG, Security Groups, RPZ, and VPN config — during which SSA has a boundary gap window. With InfoBlox, all four update within minutes of the next daily poll of Microsoft's API — a worst-case gap of roughly 24 hours rather than the days-to-weeks a manual four-ticket cycle takes.
 :::
 
@@ -277,7 +278,7 @@ InfoBlox provides the automated enforcement pipeline:
 
 The AWS relationship is the deepest of all three cloud vendors: **InfoBlox's own FedRAMP-authorized cloud service (Infoblox Government Cloud, CSO FR2017257053 — verify current scope and date on the FedRAMP Marketplace) is hosted on AWS GovCloud.** This makes AWS the infrastructure foundation for InfoBlox's SaaS control plane.
 
-::: {.callout-tip}
+::: {.aan-tip}
 **Key Point (Path A only):** When SSA uses the cloud-managed control plane, InfoBlox operates it on AWS GovCloud under **InfoBlox's own FedRAMP Moderate authorization** (CSO FR2017257053) — that CSO's authorization already accounts for its AWS hosting. SSA inherits the InfoBlox CSO it consumes; it does **not** separately inherit the underlying AWS IaaS authorization (a consumer inherits the service it consumes, not the provider's own supply chain). Under Path B this inheritance does not apply; the agency operates and carries the component itself.
 :::
 
@@ -289,7 +290,7 @@ AWS-specific InfoBlox capabilities:
 - **AWS IPAM Sync:** AWS IPAM pool allocations are imported into InfoBlox's AWS-GovCloud Network View — cross-cloud CIDR conflict detection includes native AWS IPAM-managed ranges.
 - **AWS GovCloud Marketplace Procurement (Path A):** the cloud-managed offering is procurable via the GovCloud Marketplace against existing EA agreements — no separate IDIQ or procurement action required.
 
-::: {.callout-note}
+::: {.aan-note}
 **Route 53 Private Zone DNSSEC Gap:** AWS Route 53 private hosted zones *cannot* be DNSSEC-signed — this is a documented AWS platform limitation as of 2026. InfoBlox Grid Members sign all internal zones including private SDN segments, closing this gap. This is a key differentiator for FedRAMP SC-20/SC-21 evidence.
 :::
 
@@ -313,7 +314,7 @@ OPM is migrating OPM HRIT (federal HR and benefits processing) to Oracle HCM Clo
 
 : OPM HRIT Integration via InfoBlox {.striped .hover}
 
-::: {.callout-important}
+::: {.aan-important}
 **The OPM HRIT Pattern Repeats:** OPM HRIT on OCI is the first of many federal inter-agency SaaS integrations (OPM, DHS, IRS, VA are all moving shared services to cloud SaaS). InfoBlox gives SSA the monitoring layer it needs for every inter-agency dependency: conditional DNS forwarders, Certificate Tracker, and external host records — from SSA's side, without requiring API access to the partner agency's cloud tenancy.
 :::
 
@@ -350,11 +351,11 @@ The complete certificate lifecycle for a cloud workload follows this sequence:
 
 : Certificate Manager Integrations {.striped .hover}
 
-::: {.callout-tip}
+::: {.aan-tip}
 **Zero Trust Enabler:** Certificate-to-IP binding in InfoBlox is the technical foundation of 'never trust, always verify' at the network layer. When every IP host record carries a certificate thumbprint and expiry date, the network infrastructure itself becomes identity-aware — a core requirement of CISA's Zero Trust Maturity Model Networks pillar at Advanced/Optimal level.
 :::
 
-::: {.callout-note}
+::: {.aan-note}
 **Cross-Book Link — NAC Endpoints and DNS/Certificate Binding (Vol I Books 02 and 03):**
 The DNS A-record + SCEP certificate compound provisioning described above applies to **cloud workloads** (VMs and containers). For **NAC-enrolled endpoint devices** — laptops, workstations, and managed endpoints that authenticate via 802.1X EAP-TLS — the same compound pattern applies but is triggered differently:
 
@@ -551,7 +552,7 @@ The following table maps InfoBlox DDI landing zone capabilities to specific NIST
 
 : NIST SP 800-53 Rev 5 Control Coverage {.striped .hover}
 
-::: {.callout-important}
+::: {.aan-important}
 **Closure Necessity — SC-20 / SC-21 (authoritative DNS).** SC-20 requires the system to *provide* origin authentication and integrity verification artifacts with authoritative name resolution responses; SC-21 requires requesting systems to *perform* validation on the responses they receive. Both controls presuppose an authoritative naming plane, because there is nothing else that can close them: you cannot attest authoritative name resolution without an authoritative resolver. (SC-22 — the fault-tolerant, role-separated resolution architecture — is closed by the same Grid, but its closure-necessity anchor is registered for the cross-cloud build-out in Vol VIII rather than here.) No scanner creates a source of truth — a scanner, a compliance dashboard, or a conformance tool can only measure drift *from* a source of truth that must already exist. The DNSSEC-signed, view-separated Grid described in this document is not one implementation option among several; it is the class of mechanism these controls name.
 :::
 
@@ -614,7 +615,7 @@ InfoBlox DDI enforces the FedRAMP authorization boundary at three layers simulta
 
 **Layer 1 — IP inventory feeds the boundary and asset documentation.** A FedRAMP authorization boundary is defined by its components, services, interconnections, and data flows — **not** by IP address ranges (SaaS components and external services inside the boundary hold no agency IP). What InfoBlox IPAM provides is the authoritative record of every *agency-addressed* asset inside the boundary: the CM-8 IP/asset inventory export is a primary input to the boundary's component inventory and network diagram, reconciled against the service and interconnection catalog rather than standing in for it.
 
-::: {.callout-important}
+::: {.aan-important}
 **Closure Necessity — CM-8 (system component inventory).** CM-8 requires an inventory that accurately reflects the system and includes all components within its boundary. You cannot inventory what you cannot enumerate — and the only layer that observes every component at the moment it joins the network is the addressing plane, because every component must take an address before it can do anything else. Discovery scanners enumerate what answered a probe during a scan window; an IPAM database enumerates what was *allocated*, which is the population the scanner's results must be reconciled against. Without the enumeration substrate, a scan result is a sample with no denominator. DHCP fingerprinting extends the same substrate downward to device identity at the moment of lease — the port-level device inventory built on it is the subject of [Vol I Book 02](Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd).
 :::
 
@@ -668,7 +669,7 @@ FedRAMP 20x replaces periodic evidence collection with continuously-verified Key
 
 : FedRAMP 20x KSI Automation {.striped .hover}
 
-::: {.callout-tip}
+::: {.aan-tip}
 **FedRAMP 20x Positioning:** InfoBlox DDI positions SSA ahead of the FedRAMP 20x transition. The machine-readable IP inventory (WAPI), automated KSI enforcement via IaC, and real-time SIEM integration align directly with FedRAMP 20x's shift from periodic assessment to continuous automated verification.
 :::
 
@@ -719,7 +720,7 @@ SSA currently operates **four asset management surfaces** with no unified coordi
 
 InfoBlox IPAM **bridges these surfaces at the IP layer** — every asset managed by any of the four platforms above will have a DHCP/DNS record in InfoBlox. But correlating IP records to organizational ownership, FedRAMP boundary membership, patch state, and software inventory requires a platform above the addressing layer.
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Open Decision — Asset Manager / CMDB Platform
 
 SSA has not yet selected a unified Asset Manager / CMDB for cross-platform inventory coordination. **This decision must be made by the CIO Office with OIS input** — it is architecturally significant (determines the CM-8 evidence strategy) and has procurement implications. The requirements below define what the selected platform must satisfy. Specific product selection is pending agency review.
