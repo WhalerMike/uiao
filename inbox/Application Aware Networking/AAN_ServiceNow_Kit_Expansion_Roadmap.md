@@ -5,7 +5,7 @@
 > Companion to: `inbox/Federal_Compliance_Automation_Roadmap.md` (lanes A–F, phases 0–5),
 > `AAN_Vol_VII_ServiceNow_Automation_Plan.md`, `AAN-Training-Program/AAN_Identity_Access_Governance_Kit_Requirements.docx`,
 > `AAN_Series_Requirements.md`
-> Date Code: 2026-07-15 21:54 ET
+> Date Code: 2026-07-15 22:19 ET
 
 ## 1. Purpose
 
@@ -68,7 +68,8 @@ and the IAM KSI feed — which is the Phase 2 kit's job.
 ## 4. Kit Phase 2 — Identity & Access Governance Kit (proposed)
 
 Detailed requirements: `AAN-Training-Program/AAN_Identity_Access_Governance_Kit_Requirements.docx`
-(Draft v0.9). Summary of what it adds and where it sits:
+(Draft v0.9). Tracking issue: **#1221** (same pattern as #1139–#1141).
+Summary of what it adds and where it sits:
 
 - **Extends, not duplicates, the Day-2 Kit.** Vol IX Book 01 already governs JML
   *requests*; this kit automates the full lifecycle from **HRIT Org SSOT events**
@@ -138,8 +139,8 @@ Gates, concretely:
    workshop pass; align with the CR26 Indicator Mapping effort).
 3. Finish the Day-2 Kit's remaining steps (issue #1139: ATF XML export, update-set
    assembly, catalog variable sets) so the Phase 1 → 2 gate is testable.
-4. File a tracking issue for the Phase 2 kit (same pattern as #1139–#1141) so the
-   portfolio backlog lives in GitHub, not only in documents.
+4. ~~File a tracking issue for the Phase 2 kit (same pattern as #1139–#1141) so the
+   portfolio backlog lives in GitHub, not only in documents.~~ **Done — #1221.**
 
 ## 8. Cross-references
 
