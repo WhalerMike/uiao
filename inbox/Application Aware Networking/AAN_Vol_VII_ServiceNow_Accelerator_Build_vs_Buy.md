@@ -10,7 +10,7 @@ date: "2026-07-13"
 > external exploration of the **SecurityBricks FedRAMP Accelerator** (a
 > commercial ServiceNow Store app, now Powered by Aprio) and maps it against
 > the doctrine and deliverables Vol VII already locks — the custom
-> `x_ssa_fed_compliance` scoped app (Book VII-05), the coordination-not-
+> `x_fed_compliance` scoped app (Book VII-05), the coordination-not-
 > actuation guardrail, and the native KSI/OSCAL machine-readable output the
 > UIAO substrate already ships. It changes no architecture and binds nothing
 > into the spine; it is advisory surface, same tier as
@@ -80,7 +80,7 @@ build-vs-buy question before any pricing conversation:
    same discipline as `render_authorities_table.py`.
 
 And the deployable artifact already exists in skeleton: **Book VII-05** ships
-`x_ssa_fed_compliance`, a scoped app generalizing the in-repo DDI-provisioning
+`x_fed_compliance`, a scoped app generalizing the in-repo DDI-provisioning
 app (`infoblox-ddi-book/servicenow-app/`) from provisioning to control
 compliance — in-boundary MID Server, least-privilege connector identities,
 importable update set, ATF tests.
@@ -113,7 +113,7 @@ Three honest options, scored against the Vol VII guardrails:
 | Option | What it is | Verdict against Vol VII |
 |---|---|---|
 | **A. Buy the accelerator, retire Book VII-05** | SecurityBricks app becomes the coordination + evidence layer | **Rejected as a full substitute.** Loses the *control-map-as-projection-of-the-spine* invariant (§4.5) and the KSI/OSCAL output; re-introduces a CMDB that presumes authority unless carefully re-reconciled. Buys speed at the cost of the SSOT discipline that is the point of the series. |
-| **B. Build only (status quo)** | `x_ssa_fed_compliance` custom app, no commercial layer | **Viable and doctrine-clean**, but carries the full authoring cost of GRC content, questionnaires, and connector plumbing the accelerator pre-packages. |
+| **B. Build only (status quo)** | `x_fed_compliance` custom app, no commercial layer | **Viable and doctrine-clean**, but carries the full authoring cost of GRC content, questionnaires, and connector plumbing the accelerator pre-packages. |
 | **C. Complementary layering (recommended)** | Accelerator (or native ServiceNow GRC) as the **GRC content + workflow + POA&M** substrate; UIAO/AAN as the **SSOT control map, KSI, OSCAL, and evidence-fabric** spine on top | **Best fit.** The accelerator accelerates the governance/workflow plane it is good at; UIAO owns the machine-readable 20x plane it is built for; the CMDB is explicitly reconciled to IPAM/DDI, not trusted as truth. Preserves every Vol VII guardrail. |
 
 **Recommendation: Option C**, with the substitution rule from guardrail 6

@@ -39,7 +39,7 @@ LANES = {
     "servicenow-day2/appreg-control-map.json": "servicenow-day2",
     "servicenow-day2/telephony-control-map.json": "servicenow-day2",
     "servicenow-day2/saas-control-map.json": "servicenow-day2",
-    "x_ssa_fed_compliance/data/control-map.json": "x_ssa_fed_compliance",
+    "x_fed_compliance/data/control-map.json": "x_fed_compliance",
 }
 
 

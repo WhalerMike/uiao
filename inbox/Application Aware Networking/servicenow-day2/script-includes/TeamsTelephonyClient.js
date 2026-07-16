@@ -1,4 +1,4 @@
-// Script Include: TeamsTelephonyClient  (application scope: x_ssa_day2_ops)
+// Script Include: TeamsTelephonyClient  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // Server-side Microsoft Graph client for the telephony lane — governed Teams
 // voice (Vol IX Book 04). A phone number is not a cosmetic attribute: it is a
@@ -8,10 +8,10 @@
 //
 // Boundary discipline (Vol IX Book 00 / Vol VII):
 //   * All Graph calls route through the in-boundary MID Server
-//     (property x_ssa_day2_ops.mid_server) — credentials/execution never leave
+//     (property x_fed_day2_ops.mid_server) — credentials/execution never leave
 //     the ATO boundary.
 //   * Endpoint + auth come from the Connection & Credential alias
-//     (x_ssa_day2_ops.graph) — no secrets in code.
+//     (x_fed_day2_ops.graph) — no secrets in code.
 //   * LEAST PRIVILEGE: the app registration behind that alias needs the telephony
 //     scopes only — TeamworkDevice/Teams voice configuration read-write for the
 //     assignment paths, and AuditLog.Read.All / CallRecords.Read.All for the
@@ -26,7 +26,7 @@
 // back. Nothing here reaches around the platform to mutate state directly.
 //
 // STARTER SKELETON — pin the Graph API version and validate scopes against your
-// tenant before production use.  test_mode (x_ssa_day2_ops.test_mode = 'true')
+// tenant before production use.  test_mode (x_fed_day2_ops.test_mode = 'true')
 // returns deterministic canned values so the ATF suites drive the Flow in sub-prod
 // with NO live Graph connectivity.  Never enable test_mode in production.
 // -----------------------------------------------------------------------------
@@ -34,11 +34,11 @@ var TeamsTelephonyClient = Class.create();
 TeamsTelephonyClient.prototype = {
 
     initialize: function () {
-        this.graphVersion = gs.getProperty('x_ssa_day2_ops.graph_version', 'v1.0');
-        this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
-        this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
-        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.TeamsTelephonyClient] ' + m); } };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.graphVersion = gs.getProperty('x_fed_day2_ops.graph_version', 'v1.0');
+        this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
+        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
+        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.TeamsTelephonyClient] ' + m); } };
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // --- Change: assign or release a phone number (CM-3). ---------------------
@@ -174,7 +174,7 @@ TeamsTelephonyClient.prototype = {
     // --- Internal: MID-routed Graph call via the credential alias. ------------
     _graph: function (method, path, body) {
         try {
-            var rm = new sn_ws.RESTMessageV2('x_ssa_day2_ops.graph', method);
+            var rm = new sn_ws.RESTMessageV2('x_fed_day2_ops.graph', method);
             rm.setStringParameterNoEscape('graph_version', this.graphVersion);
             rm.setEndpoint('https://graph.microsoft.com/' + this.graphVersion + path);
             if (this.midServer) rm.setMIDServer(this.midServer);   // in-boundary execution

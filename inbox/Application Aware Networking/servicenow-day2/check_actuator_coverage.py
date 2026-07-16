@@ -39,14 +39,14 @@ MIN_REASON = 25  # a gap reason shorter than this is a shrug, not an explanation
 
 # Map discovery MUST match validate_day2_control_maps.py. It globbed two
 # locations; this gate globbed one, so the 7 governed items in the
-# x_ssa_fed_compliance draft app were never checked — and every one of them was a
+# x_fed_compliance draft app were never checked — and every one of them was a
 # silent control claim, exactly what this gate exists to catch. A coverage
 # percentage is only honest if its denominator is every governed item, so the
 # denominator is discovered, not assumed. Adding an app here is how a new app
 # gets gated; forgetting to is how the next blind spot happens.
 MAP_GLOBS = [
     (HERE, "*-control-map.json"),
-    (HERE.parent / "x_ssa_fed_compliance" / "data", "control-map.json"),
+    (HERE.parent / "x_fed_compliance" / "data", "control-map.json"),
 ]
 
 
@@ -96,7 +96,7 @@ def main() -> int:
         # just calls it control-map.json, so fall back to the app directory.
         lane = m.name.replace("-control-map.json", "")
         si_dir = SCRIPT_INCLUDES
-        if lane == "control-map.json":  # x_ssa_fed_compliance/data/control-map.json
+        if lane == "control-map.json":  # x_fed_compliance/data/control-map.json
             lane = m.parent.parent.name
             si_dir = m.parent.parent / "script-includes"
         for key, v in items(m):

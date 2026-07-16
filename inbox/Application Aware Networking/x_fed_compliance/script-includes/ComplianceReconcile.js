@@ -1,4 +1,4 @@
-// Script Include: ComplianceReconcile  (application scope: x_ssa_fed_compliance)
+// Script Include: ComplianceReconcile  (application scope: x_fed_compliance)
 // -----------------------------------------------------------------------------
 // The CM-8 join (Vol VII Book 01): every finding's asset is bound to its
 // authoritative IPAM/DDI-keyed CI BEFORE a task is raised. DDI stays the SSOT;
@@ -16,10 +16,10 @@ ComplianceReconcile.prototype = {
         // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
         // Script Include unprefixed; gs.warn/error always resolve).
         this.log = {
-            logErr: function (m) { gs.error('[x_ssa_fed_compliance.ComplianceReconcile] ' + m); },
-            logWarning: function (m) { gs.warn('[x_ssa_fed_compliance.ComplianceReconcile] ' + m); }
+            logErr: function (m) { gs.error('[x_fed_compliance.ComplianceReconcile] ' + m); },
+            logWarning: function (m) { gs.warn('[x_fed_compliance.ComplianceReconcile] ' + m); }
         };
-        this.testMode = gs.getProperty('x_ssa_fed_compliance.test_mode', 'false') === 'true';
+        this.testMode = gs.getProperty('x_fed_compliance.test_mode', 'false') === 'true';
     },
 
     // Bind one finding to its CI. Returns {ok, ciSysId, reason}.

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   ATF HAPPY PATH — "password reset runs the full governed loop"
-  Scope: x_ssa_day2_ops.  STARTER SKELETON (see atf/README.md).
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
 
   Proves the five-step loop end to end for entra.credential.password_reset (IA-5):
   preflight ok -> approval -> actuate (resetPassword via Graph/MID) -> verify ->
   reconcile -> close with evidence.
 
-  PRECONDITION: x_ssa_day2_ops.test_mode = 'true' — EntraHelpdeskClient returns
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' — EntraHelpdeskClient returns
   deterministic canned values, so the whole flow exercises with NO live Graph
   connectivity and no tenant credentials. NEVER enable test_mode in production.
 
@@ -17,7 +17,7 @@
 <record_update table="sys_atf_test">
   <sys_atf_test action="INSERT_OR_UPDATE">
     <name>Day-2 happy path: password reset closes with evidence</name>
-    <sys_scope>x_ssa_day2_ops</sys_scope>
+    <sys_scope>x_fed_day2_ops</sys_scope>
     <active>true</active>
     <description>Order the password-reset catalog item as a requester with a distinct approver; approve it; assert the client actuated, the gate verified, the target reconciled, and the request closed carrying the evidence record.</description>
   </sys_atf_test>
@@ -28,8 +28,8 @@
     <description>Assert the preconditions this test depends on: test_mode is on (no live Graph) and a MID server is configured. Fail fast and loudly rather than silently exercising a real tenant.</description>
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
-  if (gs.getProperty('x_ssa_day2_ops.test_mode', 'false') !== 'true') {
-    stepResult.setFailed('x_ssa_day2_ops.test_mode must be true — refusing to run against a live tenant');
+  if (gs.getProperty('x_fed_day2_ops.test_mode', 'false') !== 'true') {
+    stepResult.setFailed('x_fed_day2_ops.test_mode must be true — refusing to run against a live tenant');
     return;
   }
   stepResult.setSuccess();
@@ -50,7 +50,7 @@
     <description>Assert the gate's pre-flight passed for a well-formed request (distinct requester/approver, non-privileged).</description>
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
-  var gate = new x_ssa_day2_ops.EntraHelpdeskGate();
+  var gate = new x_fed_day2_ops.EntraHelpdeskGate();
   var verdict = gate.preflight({
     requester_id: gs.getUser().getID(),
     approver_id: 'day2-servicedesk-sysid',
@@ -75,7 +75,7 @@
     <description>Assert the client actuated the reset (test_mode canned response) and the gate's post-actuation verify confirmed it. Actuation is Graph-via-MID; ServiceNow never wrote to the estate.</description>
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
-  var client = new x_ssa_day2_ops.EntraHelpdeskClient();
+  var client = new x_fed_day2_ops.EntraHelpdeskClient();
   var res = client.resetPassword('test-user-0001', {});
   if (!res || !res.ok) { stepResult.setFailed('resetPassword did not report ok in test_mode'); return; }
   if (res.action !== 'password-reset') { stepResult.setFailed('unexpected actuation result: ' + JSON.stringify(res)); return; }

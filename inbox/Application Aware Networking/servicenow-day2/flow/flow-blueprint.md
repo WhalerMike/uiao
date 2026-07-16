@@ -5,7 +5,7 @@ are large opaque XML; this blueprint documents the trigger, steps, and inline
 Action scripts so an admin (or a partner) can rebuild it in Flow Designer exactly.
 It implements the request loop from Vol IX Book 01.
 
-**Scope:** `x_ssa_day2_ops` · **Run as:** the app's least-privilege service account
+**Scope:** `x_fed_day2_ops` · **Run as:** the app's least-privilege service account
 · **Trigger:** Service Catalog — any Day-2 catalog item submitted.
 
 ## Canonical order
@@ -27,7 +27,7 @@ via MID) → verify gate → reconcile to CMDB → close with evidence.** Safety
    refusal the requester can read — before any approval or actuation.
    ```javascript
    (function execute(inputs, outputs) {
-     var g = new x_ssa_day2_ops.EntraHelpdeskGate();
+     var g = new x_fed_day2_ops.EntraHelpdeskGate();
      var v = g.preflight({ requester_id: inputs.requester_id, approver_id: inputs.approver_id,
                            privileged: inputs.privileged, expiry: inputs.expiry });
      outputs.ok = v.ok; outputs.reason = v.reason;
@@ -52,7 +52,7 @@ via MID) → verify gate → reconcile to CMDB → close with evidence.** Safety
    do NOT share one `(target_id, opts)` signature).
    ```javascript
    (function execute(inputs, outputs) {
-     var c = new x_ssa_day2_ops.EntraHelpdeskClient();
+     var c = new x_fed_day2_ops.EntraHelpdeskClient();
      var o = inputs.opts || {};
      // action -> the one call it is allowed to make, with its correct arguments.
      var ACTIONS = {

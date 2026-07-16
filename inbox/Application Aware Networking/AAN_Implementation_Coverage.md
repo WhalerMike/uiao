@@ -57,13 +57,13 @@
 | telephony | tel.number.assign | CM-3 | — | — | specified | — |
 | telephony | tel.scuba.drift | CM-6 | — | — | specified | — |
 | telephony | tel.voicerouting.change | CM-3 | — | — | specified | — |
-| x_ssa_fed_compliance | attest.conmon.rollup | CA-7 | yes | — | blueprinted | — |
-| x_ssa_fed_compliance | attest.control.test | CA-2 | — | — | specified | — |
-| x_ssa_fed_compliance | attest.poam.item | CA-5 | yes | yes | tested | — |
-| x_ssa_fed_compliance | azure.patch.remediation | SI-2 | — | — | specified | — |
-| x_ssa_fed_compliance | azure.vuln.finding | RA-5 | — | — | specified | — |
-| x_ssa_fed_compliance | m365.account.exception | AC-2 | yes | — | blueprinted | — |
-| x_ssa_fed_compliance | m365.baseline.drift | CM-6 | — | — | specified | — |
+| x_fed_compliance | attest.conmon.rollup | CA-7 | yes | — | blueprinted | — |
+| x_fed_compliance | attest.control.test | CA-2 | — | — | specified | — |
+| x_fed_compliance | attest.poam.item | CA-5 | yes | yes | tested | — |
+| x_fed_compliance | azure.patch.remediation | SI-2 | — | — | specified | — |
+| x_fed_compliance | azure.vuln.finding | RA-5 | — | — | specified | — |
+| x_fed_compliance | m365.account.exception | AC-2 | yes | — | blueprinted | — |
+| x_fed_compliance | m365.baseline.drift | CM-6 | — | — | specified | — |
 
 : Implementation coverage by governed catalog item {.striped .hover}
 

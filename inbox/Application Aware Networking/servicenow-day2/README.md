@@ -1,4 +1,4 @@
-# `x_ssa_day2_ops` — ServiceNow Day-2 Operations scoped app
+# `x_fed_day2_ops` — ServiceNow Day-2 Operations scoped app
 
 > Status: DRAFT importable skeleton · Surface: `inbox/` (not canon) · Tracks issue #1139
 > Scope: **FedRAMP Moderate + Microsoft GCC Moderate** only. Date Code: 2026-07-12 15:00 ET

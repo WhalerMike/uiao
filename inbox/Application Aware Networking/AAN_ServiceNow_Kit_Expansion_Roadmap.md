@@ -56,7 +56,7 @@ Every kit in the portfolio — existing and proposed — carries the Vol VII dis
 
 | Kit | Series home | Lanes | What it operates | Status |
 |---|---|---|---|---|
-| **Compliance Kit** (`x_ssa_fed_compliance`) | Vol VII Books 00–05 | A | M365 + Azure control drift → tracked work, CMDB reconciliation (CM-8), attestation/evidence/KSI (CA-2/5/7) | Authored; deploy to sub-prod, wire MID + Graph/ARM connectors, run ATF |
+| **Compliance Kit** (`x_fed_compliance`) | Vol VII Books 00–05 | A | M365 + Azure control drift → tracked work, CMDB reconciliation (CM-8), attestation/evidence/KSI (CA-2/5/7) | Authored; deploy to sub-prod, wire MID + Graph/ARM connectors, run ATF |
 | **DDI Kit** | Vol VIII / `infoblox-ddi-book/servicenow-app/` | B | Catalog → approval/SoD (CM-5) → Terraform → validation gate → CMDB for DDI change | Complete importable exemplar; point at the DDI backend once the InfoBlox decision (compliance-roadmap Task #1) lands |
 | **Day-2 Kit** | Vol IX Books 00–05 / `servicenow-day2/` | C, D, E, §4, F | Helpdesk/ITSM catalog (JML, credential, access), landing-zone front door, app-registration governance, Teams telephony, SaaS integration governance (SA-9 gate) | Books + control maps + flows + ATF spec authored (issues #1139–#1141); remaining: export `sys_atf_test` XML and the assembled update set from a sub-prod build, per-item catalog variable sets |
 

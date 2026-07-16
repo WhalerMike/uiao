@@ -77,7 +77,7 @@ Vol I Book 01 + the spine rows + Vol VIII — say the word.
 Sequence lanes by dependency: A and B exist; C/D/E are the build.
 
 - **Lane A — Compliance automation → *deploy Vol VII.*** The scoped app
-  `x_ssa_fed_compliance` (Vol VII Book 05) coordinates M365 + Azure control drift.
+  `x_fed_compliance` (Vol VII Book 05) coordinates M365 + Azure control drift.
   Action: stand it up in sub-prod, wire the in-boundary MID + least-privilege Graph/ARM
   connectors, load the control map, run the ATF suites.
 - **Lane B — DDI provisioning → *reuse the exemplar.*** `infoblox-ddi-book/servicenow-app/`

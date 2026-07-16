@@ -67,7 +67,7 @@ PROSE_GLOBS = [
     "specs/*.yaml",
     "../../infoblox-ddi-book/*.md",
 ]
-MAP_GLOBS = ["servicenow-day2/*-control-map.json", "x_ssa_fed_compliance/data/control-map.json"]
+MAP_GLOBS = ["servicenow-day2/*-control-map.json", "x_fed_compliance/data/control-map.json"]
 
 
 def _norm(s: str) -> str:

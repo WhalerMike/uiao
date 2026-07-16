@@ -82,7 +82,7 @@ and Vol VI (the artifacts whose state it coordinates); it feeds Vol IV Book 06
    then PPTX→DOCX figure write-back.
 3. **Executive Summary series map + `es-fig-01`** updated to show Volume VII, and
    the datecoded distribution kit rebuilt to include the new volume.
-4. **Scoped-app records.** Book VII-05 specifies the app; the actual `x_ssa_fed_compliance`
+4. **Scoped-app records.** Book VII-05 specifies the app; the actual `x_fed_compliance`
    record skeleton (generalizing `infoblox-ddi-book/servicenow-app/`) is a separate
    build once the control map and connector scopes are confirmed per tenant.
 5. **Other CSPs & higher boundaries.** AWS/OCI/VMware coordination and GCC High / DoD

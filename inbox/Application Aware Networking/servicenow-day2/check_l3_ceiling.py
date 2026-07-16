@@ -47,7 +47,7 @@ ADR_DIR = HERE.parents[2] / "src" / "uiao" / "canon" / "adr"
 # A gate that globs fewer maps than its siblings is how the last blind spot happened.
 MAP_GLOBS = [
     (HERE, "*-control-map.json"),
-    (HERE.parent / "x_ssa_fed_compliance" / "data", "control-map.json"),
+    (HERE.parent / "x_fed_compliance" / "data", "control-map.json"),
 ]
 
 
