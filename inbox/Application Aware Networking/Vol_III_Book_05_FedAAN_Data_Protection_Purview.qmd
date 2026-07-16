@@ -119,7 +119,7 @@ The label taxonomy is created and managed through the Microsoft Purview complian
 
 ```powershell
 # Connect to Security & Compliance PowerShell
-Connect-IPPSSession -UserPrincipalName admin@agency.gov
+Connect-IPPSSession -UserPrincipalName admin@{{< meta agency.domain >}}
 
 # Create parent label: Public
 New-Label `
@@ -152,7 +152,7 @@ New-Label `
   -EncryptionProtectionType "Template" `
   -EncryptionDoNotForward $false `
   -EncryptionEncryptOnly $false `
-  -EncryptionRightsDefinitions "agency.gov:VIEW,VIEWRIGHTSDATA,DOCEDIT,EDIT,PRINT,EXTRACT,REPLY,REPLYALL,FORWARD,OBJMODEL"
+  -EncryptionRightsDefinitions "{{< meta agency.domain >}}:VIEW,VIEWRIGHTSDATA,DOCEDIT,EDIT,PRINT,EXTRACT,REPLY,REPLYALL,FORWARD,OBJMODEL"
 
 # Create parent label: CUI-Specified (container only; child labels carry specific authorities)
 New-Label `
@@ -161,7 +161,7 @@ New-Label `
   -Tooltip "Controlled Unclassified Information — Specified. Cite authorizing law or policy." `
   -EncryptionEnabled $true `
   -EncryptionProtectionType "Template" `
-  -EncryptionRightsDefinitions "agency.gov:VIEW,VIEWRIGHTSDATA,DOCEDIT,EDIT,PRINT,REPLYALL,REPLY,FORWARD,OBJMODEL" `
+  -EncryptionRightsDefinitions "{{< meta agency.domain >}}:VIEW,VIEWRIGHTSDATA,DOCEDIT,EDIT,PRINT,REPLYALL,REPLY,FORWARD,OBJMODEL" `
   -EncryptionContentExpiredOnDateInDaysOrNever 365
 
 # Create child label: CUI-Specified / Privacy Act
@@ -172,7 +172,7 @@ New-Label `
   -Tooltip "Privacy Act records. Authority: 5 U.S.C. 552a." `
   -EncryptionEnabled $true `
   -EncryptionProtectionType "Template" `
-  -EncryptionRightsDefinitions "agency.gov:VIEW,VIEWRIGHTSDATA,DOCEDIT,EDIT,REPLYALL,REPLY,FORWARD,OBJMODEL" `
+  -EncryptionRightsDefinitions "{{< meta agency.domain >}}:VIEW,VIEWRIGHTSDATA,DOCEDIT,EDIT,REPLYALL,REPLY,FORWARD,OBJMODEL" `
   -EncryptionContentExpiredOnDateInDaysOrNever 365
 
 # Publish the label policy to all users
@@ -537,7 +537,7 @@ New-AzRoleAssignment `
 
 # Restrict human access: only Key Vault Administrator role for the break-glass account
 # All other humans get Key Vault Reader (metadata only, no key operations)
-$breakGlassAdmin = "break-glass-admin@agency.gov"
+$breakGlassAdmin = "break-glass-admin@{{< meta agency.domain >}}"
 $breakGlassObjectId = (Get-AzADUser -UserPrincipalName $breakGlassAdmin).Id
 
 New-AzRoleAssignment `
@@ -652,7 +652,7 @@ Get-AzKeyVaultKeyRotationPolicy `
 
 NIST SP 800-53 Rev 5 AU-10 states: "Provide irrefutable evidence that an individual (or process acting on behalf of an individual) performed [Assignment: organization-defined actions to be covered by non-repudiation]."
 
-The word "irrefutable" is load-bearing. A standard audit log entry that records "user@agency.gov accessed file budget-draft.docx at 14:32:07 UTC" satisfies AU-12 (audit generation) — the event was generated. It does not satisfy AU-10 because the record is mutable. A Global Administrator can alter or delete the standard audit log. An attacker who achieves Global Admin scope can cover their tracks. The record is not irrefutable.
+The word "irrefutable" is load-bearing. A standard audit log entry that records "user@{{< meta agency.domain >}} accessed file budget-draft.docx at 14:32:07 UTC" satisfies AU-12 (audit generation) — the event was generated. It does not satisfy AU-10 because the record is mutable. A Global Administrator can alter or delete the standard audit log. An attacker who achieves Global Admin scope can cover their tracks. The record is not irrefutable.
 
 AU-10 is a **High**-baseline control — it is *not* in the NIST SP 800-53B Moderate baseline this series scopes to. An agency whose data or mission warrants it may adopt AU-10 above the Moderate floor; the argument here is conditional on that above-baseline adoption, not a Moderate-baseline mandate. Where an agency does adopt it, Purview Audit Premium is the mechanism that satisfies the irrefutability standard.
 
@@ -813,7 +813,7 @@ if ($crlExtension) {
 }
 
 # Test OCSP responder availability
-$ocspUrl = "http://ocsp.agency.gov"  # Replace with actual OCSP URL from CPS
+$ocspUrl = "http://ocsp.{{< meta agency.domain >}}"  # Replace with actual OCSP URL from CPS
 try {
   $response = Invoke-WebRequest -Uri $ocspUrl -Method Get -TimeoutSec 10
   Write-Host "OCSP responder reachable: HTTP $($response.StatusCode)"

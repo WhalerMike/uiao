@@ -241,7 +241,7 @@ function Convert-ToPimEligible {
 
 # Example usage -- run once per account per role
 Convert-ToPimEligible `
-    -UserUpn "admin.user@agency.gov" `
+    -UserUpn "admin.user@{{< meta agency.domain >}}" `
     -RoleDefinitionId "62e90394-69f5-4237-9190-012177145e10"  # Global Administrator
 ```
 
@@ -349,7 +349,7 @@ Connect-AzAccount
 $subscriptionId  = "00000000-0000-0000-0000-000000000000"
 $resourceGroup   = "rg-arc-servers-prod"
 $arcServerName   = "sql-prod-01"
-$adminUpn        = "admin.user@agency.gov"
+$adminUpn        = "admin.user@{{< meta agency.domain >}}"
 
 # Step 1: Confirm the Arc server is connected
 $arcServer = Get-AzConnectedMachine `
@@ -667,7 +667,7 @@ Two break-glass accounts are required. Two accounts protect against the failure 
 
 **Second factor.** A FIDO2 hardware security key (not TOTP, not push notification) registered as the MFA method. The hardware key is stored alongside the password in the physical safe. The hardware key cannot be phished, replayed over the network, or MFA-fatigued — it requires physical possession of the device and physical proximity to the authentication terminal.
 
-**Naming convention.** Use an account name that does not identify the purpose. `bg-acct-01@agency.gov` is discoverable; a name following the normal account naming convention with no indicator of elevated privilege is less targeted.
+**Naming convention.** Use an account name that does not identify the purpose. `bg-acct-01@{{< meta agency.domain >}}` is discoverable; a name following the normal account naming convention with no indicator of elevated privilege is less targeted.
 
 ```powershell
 # Create break-glass accounts
@@ -680,7 +680,7 @@ Connect-MgGraph -Scopes "User.ReadWrite.All", "RoleManagement.ReadWrite.Director
 function New-BreakGlassAccount {
     param(
         [string]$AccountNumber,       # "01" or "02" -- internal reference only, never embedded in the account name
-        [string]$Domain,              # Agency tenant domain, e.g. "agency.gov"
+        [string]$Domain,              # Agency tenant domain, e.g. "{{< meta agency.domain >}}"
         [string]$AccountName,         # Local part following the agency's NORMAL user-naming convention -- no "bg"/privilege indicator
         [string]$DisplayName          # Display name matching ordinary accounts -- no "Break Glass" indicator
     )
@@ -731,8 +731,8 @@ function New-BreakGlassAccount {
 # The names below follow the agency's normal user-naming convention and are deliberately
 # NOT self-identifying. Substitute names that blend into your directory, and record the
 # mapping (account number -> object ID) offline in the break-glass runbook only.
-$bg01Id = New-BreakGlassAccount -AccountNumber "01" -Domain "agency.gov" -AccountName "svc-ops-a41" -DisplayName "Operations Service A41"
-$bg02Id = New-BreakGlassAccount -AccountNumber "02" -Domain "agency.gov" -AccountName "svc-ops-b72" -DisplayName "Operations Service B72"
+$bg01Id = New-BreakGlassAccount -AccountNumber "01" -Domain "{{< meta agency.domain >}}" -AccountName "svc-ops-a41" -DisplayName "Operations Service A41"
+$bg02Id = New-BreakGlassAccount -AccountNumber "02" -Domain "{{< meta agency.domain >}}" -AccountName "svc-ops-b72" -DisplayName "Operations Service B72"
 
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan

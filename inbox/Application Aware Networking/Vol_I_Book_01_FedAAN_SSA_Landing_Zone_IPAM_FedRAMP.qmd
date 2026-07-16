@@ -225,11 +225,11 @@ The Grid Master holds total administrative authority over DNS, DHCP, and IPAM. T
 
 **DNS function separation applies to sub-functions as well.** Within DNS zone management, component-level zone delegation allows different CIO Components to own their sub-namespaces:
 
-- `aws.agency.gov` sub-zone — delegated to Cloud Infrastructure team (AWS)
-- `azure.agency.gov` sub-zone — delegated to Cloud Infrastructure team (Azure)
-- `oci.agency.gov` sub-zone — delegated to Cloud Infrastructure team (OCI)
-- `onprem.agency.gov` sub-zone — delegated to on-premises Network Infrastructure team
-- `apps.agency.gov` sub-zone — delegated to Application Development / DevOps
+- `aws.{{< meta agency.domain >}}` sub-zone — delegated to Cloud Infrastructure team (AWS)
+- `azure.{{< meta agency.domain >}}` sub-zone — delegated to Cloud Infrastructure team (Azure)
+- `oci.{{< meta agency.domain >}}` sub-zone — delegated to Cloud Infrastructure team (OCI)
+- `onprem.{{< meta agency.domain >}}` sub-zone — delegated to on-premises Network Infrastructure team
+- `apps.{{< meta agency.domain >}}` sub-zone — delegated to Application Development / DevOps
 
 Each delegated zone owner can create, modify, and delete records within their zone without touching any other component's DNS namespace. The Grid Master enforces zone-level access control; cross-zone queries still resolve via Grid Member forwarding, but record modification rights are strictly scoped.
 
@@ -332,7 +332,7 @@ The complete certificate lifecycle for a cloud workload follows this sequence:
 
 1. VM or container provisioned by VCF Automation, Terraform, or cloud-native IaC
 2. InfoBlox IPAM allocates an IP from the correct Network View (cross-cloud conflict-checked)
-3. InfoBlox Grid automatically creates a DNS A record: `workload-name.environment.agency.gov → IP`
+3. InfoBlox Grid automatically creates a DNS A record: `workload-name.environment.{{< meta agency.domain >}} → IP`
 4. Workload bootstrap sends SCEP or EST enrollment to the agency CA using the DNS name as the certificate SAN
 5. CA (ADCS, Azure Key Vault with SCEP, AWS ACM Private CA) issues a certificate binding the SAN to the workload
 6. InfoBlox Certificate Tracker receives the certificate thumbprint, expiry, and issuing CA, binding it to the IP host record
@@ -378,37 +378,37 @@ In modern hybrid multi-cloud environments, DNS is a **control plane** — not me
 
 Legacy DNS was designed for a flat environment: one zone, manual A records, a single trust boundary. {{< meta agency.short >}} now operates across four cloud environments with dynamic workloads, ephemeral IPs, and a security model where every service-to-service call is mutually authenticated by certificate. Three failure modes emerge without namespace governance:
 
-**Certificate chaos.** Wildcard certificates (`*.agency.gov`) match one label to the left of the wildcard per RFC 6125 — they cover `api.agency.gov` but not `prod.api.agency.gov`. Without consistent subdomain depth, every new workload either requires a dedicated SAN certificate or causes a multi-SAN certificate to be manually updated. Structured subdomains enable structured wildcards: `*.api.agency.gov` covers all API workloads at one wildcard.
+**Certificate chaos.** Wildcard certificates (`*.{{< meta agency.domain >}}`) match one label to the left of the wildcard per RFC 6125 — they cover `api.{{< meta agency.domain >}}` but not `prod.api.{{< meta agency.domain >}}`. Without consistent subdomain depth, every new workload either requires a dedicated SAN certificate or causes a multi-SAN certificate to be manually updated. Structured subdomains enable structured wildcards: `*.api.{{< meta agency.domain >}}` covers all API workloads at one wildcard.
 
 **Uncontrolled split-brain.** When internal and external DNS are not deliberately separated, the same FQDN resolves to different addresses by accident. Controlled split-horizon DNS is the same mechanism — intentional. Internal users get private resolution; external users get public resolution; InfoBlox view policy enforces both. Accidental split-brain is a misconfiguration; deliberate split-horizon is a security boundary.
 
-![Split-Brain DNS — Same Query, Different Answers, and Why Process Discipline Can't Fix It](figs/lz-fig-22-split-brain-dns.png){fig-alt="Diagram showing split-brain DNS failure. Left: an on-prem client and a cloud workload both ask for svc.agency.gov. Center: two resolvers with the same zone name but different data. Right: Answer A returns 10.1.4.22, a private IP unreachable from cloud; Answer B returns 20.14.8.55, a public IP that routes over the internet. Red panel below lists three structural reasons runbooks and audits fail: the failure is silent — the query succeeds with the wrong answer and surfaces as a network problem; the change surface is too large — every private endpoint and IP change touches up to five DNS systems; and security policy diverges too — an RPZ block applied in one resolver protects nothing behind the other four. White background. Source: Book 01 InfoBlox DDI Briefing deck, Date Code 2026-07-07 09:11 ET." width="100%"}
+![Split-Brain DNS — Same Query, Different Answers, and Why Process Discipline Can't Fix It](figs/lz-fig-22-split-brain-dns.png){fig-alt="Diagram showing split-brain DNS failure. Left: an on-prem client and a cloud workload both ask for svc.{{< meta agency.domain >}}. Center: two resolvers with the same zone name but different data. Right: Answer A returns 10.1.4.22, a private IP unreachable from cloud; Answer B returns 20.14.8.55, a public IP that routes over the internet. Red panel below lists three structural reasons runbooks and audits fail: the failure is silent — the query succeeds with the wrong answer and surfaces as a network problem; the change surface is too large — every private endpoint and IP change touches up to five DNS systems; and security policy diverges too — an RPZ block applied in one resolver protects nothing behind the other four. White background. Source: Book 01 InfoBlox DDI Briefing deck, Date Code 2026-07-07 09:11 ET." width="100%"}
 
-**Opaque observability.** When all workloads resolve through undifferentiated names, a DNS query log cannot identify the cloud, environment, or service from the FQDN. `prod.api.azure.agency.gov` is self-documenting. `svc-443-node7.agency.gov` is not.
+**Opaque observability.** When all workloads resolve through undifferentiated names, a DNS query log cannot identify the cloud, environment, or service from the FQDN. `prod.api.azure.{{< meta agency.domain >}}` is self-documenting. `svc-443-node7.{{< meta agency.domain >}}` is not.
 
 ### {{< meta agency.short >}} Namespace Structure {#sec-subdomain-structure}
 
 The following hierarchy applies five patterns — functional, geographic, environment, cloud-provider, and hybrid split-horizon — to {{< meta agency.short >}}'s four-environment topology. Each leaf is a separately delegated zone in InfoBlox with its own DNSSEC signing policy, RBAC delegation, and RPZ attachment.
 
 ```
-agency.gov                           (root — public, DNSSEC-signed, minimal records)
-├── internal.agency.gov              (split-view — private resolution only, never public)
-│   ├── vmw.internal.agency.gov     (VMware VCF on-premises workloads)
-│   ├── azure.internal.agency.gov   (Azure Government private endpoints, Arc-enrolled servers)
-│   ├── aws.internal.agency.gov     (AWS GovCloud VPC workloads)
-│   └── oci.internal.agency.gov     (Oracle OCI / OPM HRIT resources)
-├── api.agency.gov                   (backend services — split-view or public)
-│   ├── prod.api.agency.gov
-│   └── staging.api.agency.gov
-├── auth.agency.gov                  (Entra ID, SAML, OIDC endpoints)
-├── vc.agency.gov                    (video conferencing — Pexip, Teams Connector)
-├── mgmt.agency.gov                  (Azure Arc, Intune enrollment, management plane)
-└── mon.agency.gov                   (monitoring — ThousandEyes, Azure Monitor)
+{{< meta agency.domain >}}                           (root — public, DNSSEC-signed, minimal records)
+├── internal.{{< meta agency.domain >}}              (split-view — private resolution only, never public)
+│   ├── vmw.internal.{{< meta agency.domain >}}     (VMware VCF on-premises workloads)
+│   ├── azure.internal.{{< meta agency.domain >}}   (Azure Government private endpoints, Arc-enrolled servers)
+│   ├── aws.internal.{{< meta agency.domain >}}     (AWS GovCloud VPC workloads)
+│   └── oci.internal.{{< meta agency.domain >}}     (Oracle OCI / OPM HRIT resources)
+├── api.{{< meta agency.domain >}}                   (backend services — split-view or public)
+│   ├── prod.api.{{< meta agency.domain >}}
+│   └── staging.api.{{< meta agency.domain >}}
+├── auth.{{< meta agency.domain >}}                  (Entra ID, SAML, OIDC endpoints)
+├── vc.{{< meta agency.domain >}}                    (video conferencing — Pexip, Teams Connector)
+├── mgmt.{{< meta agency.domain >}}                  (Azure Arc, Intune enrollment, management plane)
+└── mon.{{< meta agency.domain >}}                   (monitoring — ThousandEyes, Azure Monitor)
 ```
 
-![{{< meta agency.short >}} Subdomain Namespace Hierarchy — agency.gov Zone Architecture](figs/lz-fig-16-subdomain-hierarchy.svg){fig-alt="Tree diagram showing agency.gov as root with five functional first-level subdomains: internal (split-view, green), api, auth, vc (blue), and mgmt (orange, admin-only). Each L1 zone shows its wildcard cert scope, DNS view assignment, and RPZ policy. Sub-zone pills under internal show cloud platforms vmw/azure/aws/oci; under api show env tiers prod/staging; under vc show geographic nodes us-east and teamsconn." width="100%"}
+![{{< meta agency.short >}} Subdomain Namespace Hierarchy — {{< meta agency.domain >}} Zone Architecture](figs/lz-fig-16-subdomain-hierarchy.svg){fig-alt="Tree diagram showing {{< meta agency.domain >}} as root with five functional first-level subdomains: internal (split-view, green), api, auth, vc (blue), and mgmt (orange, admin-only). Each L1 zone shows its wildcard cert scope, DNS view assignment, and RPZ policy. Sub-zone pills under internal show cloud platforms vmw/azure/aws/oci; under api show env tiers prod/staging; under vc show geographic nodes us-east and teamsconn." width="100%"}
 
-**Depth guideline:** Prefer three labels or fewer. `prod.api.agency.gov` is preferable to `us-east.prod.api.agency.gov` unless geography carries an independent operational meaning (separate certificate, separate RPZ policy, separate routing). Each additional label multiplies certificate scope complexity and diagnostic friction.
+**Depth guideline:** Prefer three labels or fewer. `prod.api.{{< meta agency.domain >}}` is preferable to `us-east.prod.api.{{< meta agency.domain >}}` unless geography carries an independent operational meaning (separate certificate, separate RPZ policy, separate routing). Each additional label multiplies certificate scope complexity and diagnostic friction.
 
 ### Wildcard Certificate Alignment {#sec-subdomain-certs}
 
@@ -416,14 +416,14 @@ The namespace structure directly determines certificate coverage. Each functiona
 
 | Wildcard | Covers | Does Not Cover |
 |---|---|---|
-| `*.agency.gov` | `api.agency.gov`, `vc.agency.gov`, `auth.agency.gov` | `prod.api.agency.gov`, `us-east.vc.agency.gov` |
-| `*.api.agency.gov` | `prod.api.agency.gov`, `staging.api.agency.gov` | deeper labels |
-| `*.internal.agency.gov` | `vmw.internal.agency.gov`, `azure.internal.agency.gov` | deeper labels |
-| `*.vc.agency.gov` | all video conferencing endpoints | deeper labels |
+| `*.{{< meta agency.domain >}}` | `api.{{< meta agency.domain >}}`, `vc.{{< meta agency.domain >}}`, `auth.{{< meta agency.domain >}}` | `prod.api.{{< meta agency.domain >}}`, `us-east.vc.{{< meta agency.domain >}}` |
+| `*.api.{{< meta agency.domain >}}` | `prod.api.{{< meta agency.domain >}}`, `staging.api.{{< meta agency.domain >}}` | deeper labels |
+| `*.internal.{{< meta agency.domain >}}` | `vmw.internal.{{< meta agency.domain >}}`, `azure.internal.{{< meta agency.domain >}}` | deeper labels |
+| `*.vc.{{< meta agency.domain >}}` | all video conferencing endpoints | deeper labels |
 
 : Wildcard certificate scope by namespace level {.striped .hover}
 
-The certificate lifecycle described in [Section -@sec-certs] — SCEP enrollment triggered by InfoBlox IP host record creation — follows this wildcard boundary. When a new workload provisions in `azure.internal.agency.gov`, InfoBlox creates the DNS record and triggers SCEP enrollment against the Azure GCC private CA, issuing a certificate with a SAN valid under `*.azure.internal.agency.gov`. The namespace zone determines the CA path; no per-workload certificate configuration is required.
+The certificate lifecycle described in [Section -@sec-certs] — SCEP enrollment triggered by InfoBlox IP host record creation — follows this wildcard boundary. When a new workload provisions in `azure.internal.{{< meta agency.domain >}}`, InfoBlox creates the DNS record and triggers SCEP enrollment against the Azure GCC private CA, issuing a certificate with a SAN valid under `*.azure.internal.{{< meta agency.domain >}}`. The namespace zone determines the CA path; no per-workload certificate configuration is required.
 
 ### Split-Horizon DNS — InfoBlox View Configuration {#sec-subdomain-split}
 
@@ -433,15 +433,15 @@ InfoBlox DNS views for {{< meta agency.short >}}'s four-environment topology:
 
 | View | Source Networks | Zones Served | Private IPs Exposed |
 |---|---|---|---|
-| `internal-view` | 10.0.0.0/8, VPN pool CIDRs | `internal.agency.gov`, `agency.gov` (private records) | Yes |
-| `cloud-internal-view` | Azure VNet CIDRs, AWS VPC CIDRs, OCI VCN CIDRs | `*.internal.agency.gov`, conditional forwarders to cloud-native DNS | Yes |
-| `external-view` | All other sources (internet) | `agency.gov` public records only, DNSSEC-signed | No |
+| `internal-view` | 10.0.0.0/8, VPN pool CIDRs | `internal.{{< meta agency.domain >}}`, `{{< meta agency.domain >}}` (private records) | Yes |
+| `cloud-internal-view` | Azure VNet CIDRs, AWS VPC CIDRs, OCI VCN CIDRs | `*.internal.{{< meta agency.domain >}}`, conditional forwarders to cloud-native DNS | Yes |
+| `external-view` | All other sources (internet) | `{{< meta agency.domain >}}` public records only, DNSSEC-signed | No |
 
 : InfoBlox DNS view configuration for {{< meta agency.short >}} {.striped .hover}
 
-The `internal.agency.gov` zone exists **only** in the `internal-view`. A request from an internet source hits the `external-view`, which has no `internal.agency.gov` zone — the response is NXDOMAIN. Private IP space never appears in the external view.
+The `internal.{{< meta agency.domain >}}` zone exists **only** in the `internal-view`. A request from an internet source hits the `external-view`, which has no `internal.{{< meta agency.domain >}}` zone — the response is NXDOMAIN. Private IP space never appears in the external view.
 
-**Integration with cloud-native DNS:** Azure Private DNS Zones (e.g., `privatelink.database.windows.net` for SQL managed instances) are reachable from on-premises via conditional forwarders in InfoBlox — queries for `*.privatelink.database.windows.net` are forwarded to the Azure Private DNS Resolver inbound endpoint in {{< meta agency.short >}}'s Azure VNet. AWS Route 53 Resolver inbound endpoints serve the same function for GovCloud VPC private zones. Legacy Active Directory DNS servers forward queries for modern subdomains (`api.agency.gov`, `vc.agency.gov`) to InfoBlox via stub zones — AD DNS remains authoritative only for Kerberos and LDAP SRV records.
+**Integration with cloud-native DNS:** Azure Private DNS Zones (e.g., `privatelink.database.windows.net` for SQL managed instances) are reachable from on-premises via conditional forwarders in InfoBlox — queries for `*.privatelink.database.windows.net` are forwarded to the Azure Private DNS Resolver inbound endpoint in {{< meta agency.short >}}'s Azure VNet. AWS Route 53 Resolver inbound endpoints serve the same function for GovCloud VPC private zones. Legacy Active Directory DNS servers forward queries for modern subdomains (`api.{{< meta agency.domain >}}`, `vc.{{< meta agency.domain >}}`) to InfoBlox via stub zones — AD DNS remains authoritative only for Kerberos and LDAP SRV records.
 
 **M365 GCC boundary enforcement via split-horizon:** The `external-view` resolves M365 endpoints to public Microsoft IPs. The `internal-view` enforces the M365 GCC allow-list via RPZ — clients inside {{< meta agency.short >}}'s network that resolve a Microsoft endpoint not on the current GCC allow-list receive an RPZ block response before any TCP connection is attempted. The split-horizon view is the enforcement boundary; the allow-list is the policy.
 
@@ -454,15 +454,15 @@ The InfoBlox Terraform provider (`infoblox/infoblox`) manages zones, records, an
 ```hcl
 # Functional zone for video conferencing — delegated with RBAC to AV team
 resource "infoblox_zone_auth" "vc_zone" {
-  fqdn    = "vc.agency.gov"
+  fqdn    = "vc.{{< meta agency.domain >}}"
   view    = "external"
   comment = "Pexip and Teams Connector endpoints"
 }
 
 # Blue/green Teams Connector — low TTL for fast cutover
 resource "infoblox_cname_record" "teamsconn_active" {
-  alias     = "teamsconn.vc.agency.gov"
-  canonical = "blue.teamsconn.vc.agency.gov"  # swap to green.teamsconn.vc.agency.gov for cutover
+  alias     = "teamsconn.vc.{{< meta agency.domain >}}"
+  canonical = "blue.teamsconn.vc.{{< meta agency.domain >}}"  # swap to green.teamsconn.vc.{{< meta agency.domain >}} for cutover
   view      = "internal-view"
   ttl       = 60
 }
@@ -472,16 +472,16 @@ resource "infoblox_cname_record" "teamsconn_active" {
 
 | Platform | vDiscovery Template | Zone |
 |---|---|---|
-| VMware vSphere | `{vm_name}.vmw.internal.agency.gov` | `vmw.internal.agency.gov` |
-| Azure Government | `{resource_name}.azure.internal.agency.gov` | `azure.internal.agency.gov` |
-| AWS GovCloud | `{instance_name}.aws.internal.agency.gov` | `aws.internal.agency.gov` |
-| Oracle OCI | `{instance_name}.oci.internal.agency.gov` | `oci.internal.agency.gov` |
+| VMware vSphere | `{vm_name}.vmw.internal.{{< meta agency.domain >}}` | `vmw.internal.{{< meta agency.domain >}}` |
+| Azure Government | `{resource_name}.azure.internal.{{< meta agency.domain >}}` | `azure.internal.{{< meta agency.domain >}}` |
+| AWS GovCloud | `{instance_name}.aws.internal.{{< meta agency.domain >}}` | `aws.internal.{{< meta agency.domain >}}` |
+| Oracle OCI | `{instance_name}.oci.internal.{{< meta agency.domain >}}` | `oci.internal.{{< meta agency.domain >}}` |
 
 : vDiscovery naming templates by cloud platform {.striped .hover}
 
 When a new VM provisions in any environment, InfoBlox creates the DNS record in the correct zone, allocates the IPAM entry in the correct Network View, and triggers SCEP enrollment in the correct CA — all from the zone the record belongs to. The namespace is the configuration.
 
-**Kubernetes `external-dns`:** For Kubernetes workloads on any platform, the `external-dns` controller creates and removes InfoBlox DNS records as services come and go. A Service annotated with `external-dns.alpha.kubernetes.io/hostname: payments.api.agency.gov` results in an A record in `prod.api.agency.gov` pointing to the load balancer IP — created on Service creation, removed on Service deletion, with no manual DNS management required.
+**Kubernetes `external-dns`:** For Kubernetes workloads on any platform, the `external-dns` controller creates and removes InfoBlox DNS records as services come and go. A Service annotated with `external-dns.alpha.kubernetes.io/hostname: payments.api.{{< meta agency.domain >}}` results in an A record in `prod.api.{{< meta agency.domain >}}` pointing to the load balancer IP — created on Service creation, removed on Service deletion, with no manual DNS management required.
 
 ### RPZ Policy Scoping by Subdomain {#sec-subdomain-rpz}
 
@@ -489,14 +489,14 @@ DNS Firewall RPZ policies in InfoBlox attach at the zone level. The subdomain st
 
 | Zone | RPZ Policy |
 |---|---|
-| `agency.gov` external view | CISA threat intelligence feed + M365 GCC allow-list |
-| `vc.agency.gov` | SIP/H.323 federation allow-list; block unapproved conferencing endpoints |
-| `internal.agency.gov` | Internal-only flag — NXDOMAIN for any external resolution attempt |
-| `mgmt.agency.gov` | Strict: allow-list of management-plane destinations only; block all others |
+| `{{< meta agency.domain >}}` external view | CISA threat intelligence feed + M365 GCC allow-list |
+| `vc.{{< meta agency.domain >}}` | SIP/H.323 federation allow-list; block unapproved conferencing endpoints |
+| `internal.{{< meta agency.domain >}}` | Internal-only flag — NXDOMAIN for any external resolution attempt |
+| `mgmt.{{< meta agency.domain >}}` | Strict: allow-list of management-plane destinations only; block all others |
 
 : RPZ policy attachment by subdomain zone {.striped .hover}
 
-A query resolving through `mgmt.agency.gov` that does not match the management-plane allow-list returns an RPZ NXDOMAIN before any TCP connection is attempted. The subdomain boundary is the security boundary — without it, RPZ policy must be applied at the individual record level, which is operationally unmanageable at scale.
+A query resolving through `mgmt.{{< meta agency.domain >}}` that does not match the management-plane allow-list returns an RPZ NXDOMAIN before any TCP connection is attempted. The subdomain boundary is the security boundary — without it, RPZ policy must be applied at the individual record level, which is operationally unmanageable at scale.
 
 ### Additional NIST Controls from Namespace Design {#sec-subdomain-nist}
 
@@ -516,7 +516,7 @@ The subdomain strategy adds one new control — AC-4 — to the NIST mapping in 
 
 Global server load balancing has always been a DNS function wearing an appliance badge. When a hardware GSLB appliance decides which data center or cloud region answers a user's request, the mechanism it uses is a DNS response: the appliance acts as an authoritative name server that answers the same query differently depending on endpoint health, requestor topology, and policy weight. Strip away the chassis, and what remains is health-checked, policy-driven authoritative DNS — a control-plane function of the naming and addressing layer, not a data-plane function of any appliance tier.
 
-![InfoBlox DTC — DNS-Based Traffic Steering Across On-Premises and Multi-Cloud Endpoints](figs/lz-fig-18-dns-traffic-steering.png){fig-alt="Flow diagram showing a DNS client on the left querying api.agency.gov; InfoBlox DTC at center checking ICMP/TCP/HTTPS health monitors against three endpoint pools on the right: On-Premises (healthy, priority 1), AWS GovCloud (healthy, priority 2), and Azure Government (unhealthy, excluded from answer set). The DNS response returns the IP of the highest-priority healthy pool member." width="100%"}
+![InfoBlox DTC — DNS-Based Traffic Steering Across On-Premises and Multi-Cloud Endpoints](figs/lz-fig-18-dns-traffic-steering.png){fig-alt="Flow diagram showing a DNS client on the left querying api.{{< meta agency.domain >}}; InfoBlox DTC at center checking ICMP/TCP/HTTPS health monitors against three endpoint pools on the right: On-Premises (healthy, priority 1), AWS GovCloud (healthy, priority 2), and Azure Government (unhealthy, excluded from answer set). The DNS response returns the IP of the highest-priority healthy pool member." width="100%"}
 
 Modern DDI platforms implement this function natively. InfoBlox DNS Traffic Control (DTC) attaches health monitors (ICMP, TCP, HTTP/S) to pools of service endpoints and computes each A/AAAA response at query time from pool member health, topology rules, and weighted ratios — a degraded endpoint simply stops appearing in answers, within one TTL, with no traffic ever passing through the Grid Member. The cloud providers expose the same function as DNS routing policy: Route 53 weighted, latency-based, geolocation, and failover routing policies; Azure Traffic Manager profiles; OCI Traffic Management steering policies. In every case the steering decision executes in the resolution path, and the "load balancer" is the answer itself.
 
@@ -790,7 +790,7 @@ Until a platform is selected and deployed, InfoBlox IPAM serves as the **best-av
 |---|---|---|---|---|---|
 | **IP Assignment** | NSX-T DHCP Profiles (VCF 9.1) | Azure fabric / ARM API | VPC DHCP Options / Nitro | OCI VNIC / 169.254.169.254 | IPAM SSOT via connectors |
 | **DNS Resolver** | Grid Member (replaces AD DNS) | Azure DNS Private Resolver → Grid | VPC DHCP Options → Grid | OCI resolver → Grid forwarder | Unified recursive + DNSSEC |
-| **DNS Authority** | Grid Master (agency.gov) | Grid Member + Azure Private DNS | Grid Member + Route 53 private | Grid forwarder + OCI DNS | Grid Master as SSOT |
+| **DNS Authority** | Grid Master ({{< meta agency.domain >}}) | Grid Member + Azure Private DNS | Grid Member + Route 53 private | Grid forwarder + OCI DNS | Grid Master as SSOT |
 | **DHCP** | InfoBlox Grid DHCP (HA pair) | Azure fabric (no Grid DHCP) | AWS VPC DHCP | OCI DHCP | On-prem native; cloud via API |
 | **IPAM** | On-Premises Network View | Azure-GCC Network View | AWS-GovCloud Network View | OCI-OPM Network View (RO) | Single DB, 4 Network Views |
 | **Certificates** | ADCS via SCEP/EST | Azure Key Vault; ARM API polling | ACM Private CA; validation CNAMEs | OCI Certs (OPM); cert polling | Certificate Tracker |
@@ -817,7 +817,7 @@ Each phase produces immediately usable compliance evidence and security value �
 
 ### Phase 1 — On-Premises Foundation (Months 1–3) {.unnumbered}
 
-- Deploy Grid Master HA pair; import all AD DNS zones; enable DNSSEC for agency.gov
+- Deploy Grid Master HA pair; import all AD DNS zones; enable DNSSEC for {{< meta agency.domain >}}
 - Submit DS record to .gov TLD registrar (closes SC-20 gap)
 - Migrate Windows Server DHCP scopes to InfoBlox Grid DHCP; enable DHCP fingerprinting (the device-identity feed that [Vol I Book 02](Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd) builds the NAC device inventory on)
 - Configure syslog forwarding from all Grid Members to SIEM (Splunk/Sentinel); verify AU-12 event receipt
