@@ -152,5 +152,5 @@ Source: author exploration conversation on FedRAMP 20x automation tooling
 conventions. Not canon. If this advances, promote the durable parts to a canon
 spec under `src/uiao/canon/specs/` (with a `UIAO_NNN` allocation in
 `document-registry.yaml`) or into an AAN volume under
-`inbox/Application Aware Networking/`, and delete this draft once extraction is
+`docs/customer-documents/federal-aan-series/`, and delete this draft once extraction is
 verified.

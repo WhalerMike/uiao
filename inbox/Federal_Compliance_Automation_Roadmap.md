@@ -8,7 +8,7 @@
 
 Every workstream below hangs off one anchor: **NIST SP 800-53 Rev 5 (Moderate baseline)
 + CISA SCuBA / BOD 25-01 + FedRAMP 20x KSIs**, tied together by the generated
-**compliance spine** (`inbox/Application Aware Networking/aan-compliance-spine.yml`),
+**compliance spine** (`docs/customer-documents/federal-aan-series/aan-compliance-spine.yml`),
 which maps every control → closing mechanism → book → evidence slot → KSI. Do not
 build automation and *then* map it to controls; the spine already says which control
 each mechanism closes, so each task is scoped by "which spine row does this satisfy."

@@ -1,0 +1,718 @@
+# AAN briefing-deck spec — Vol IV Book 01: Federal Business Continuity (CP family)
+# Distilled from docs/customer-documents/federal-aan-series/Vol_IV_Book_01_FedAAN_Business_Continuity.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "docs/customer-documents/federal-aan-series/specs/Vol_IV_Book_01.yaml" \
+#     --out "docs/customer-documents/federal-aan-series/Vol_IV_Book_01_FedAAN_Business_Continuity.pptx" \
+#     --date-code "2026-07-09 09:53 ET"
+deck:
+  title: "Federal Business Continuity: Closing the CP Family"
+  subtitle: "Contingency planning, DR architecture, and recovery validation — why capable infrastructure still fails CP-2 without the authored plan"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOL IV BOOK 01"
+  date_code: "2026-07-09 09:53 ET"
+  journey:
+    - "Analyze impact"
+    - "Author the plan"
+    - "Provision alternates"
+    - "Test and prove"
+  # Book References / authoritative sources → deck link-map (cited per-slide via vendor_sources)
+  sources:
+    nist_800_34: "https://csrc.nist.gov/pubs/sp/800/34/r1/final"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+    fedramp_20x: "https://www.fedramp.gov/20x/"
+    azure_backup: "https://learn.microsoft.com/azure/backup/"
+    azure_site_recovery: "https://learn.microsoft.com/azure/site-recovery/"
+    aws_drs: "https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html"
+    oci_fsdr: "https://docs.oracle.com/en-us/iaas/disaster-recovery/"
+    vmware_srm: "https://docs.vmware.com/en/Site-Recovery-Manager/index.html"
+    m365_multigeo: "https://learn.microsoft.com/microsoft-365/enterprise/multi-geo-capabilities"
+
+slides:
+  # 1 --- title -------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for the continuity book. The through-line to hold from the
+      first slide: an agency can build a technically flawless disaster-recovery
+      architecture and still take a High finding on CP-2, because CP-2 is not
+      satisfied by capable infrastructure — it is satisfied by an authored,
+      approved, distributed, and tested Contingency Plan document. The Volume I,
+      II, and III books already delivered the substrate: DNS Grid replication,
+      SD-WAN dual underlay with automatic path failover, SQL Server Always On
+      Availability Groups with geo-replicated DR replicas, and a geo-redundant
+      logging fabric. A FedRAMP assessor would find that architecture impressive
+      and still write the finding, because the artifact CP-2 requires does not
+      exist. This book assembles those existing components into a NIST SP 800-34
+      Rev 1 Contingency Plan structure, adds the organizational and testing layers
+      infrastructure cannot provide, and closes the full CP family through CP-10.
+      Walk the audience through the four-step journey — analyze impact, author the
+      plan, provision alternates, test and prove — before diving into any one
+      control. Note the draft disclaimer: this is pre-decisional CSI Team material,
+      not an approved Agency position; every RTO, RPO, and vendor selection is subject
+      to formal review. Scope is FedRAMP Moderate throughout.
+    vendor_sources: ["uiao repo: docs/customer-documents/federal-aan-series/Vol_IV_Book_01_FedAAN_Business_Continuity.qmd"]
+
+  # 2 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART ONE — THE GAP"
+    title: "Capable infrastructure still fails CP-2"
+    callout: "CP-2 is closed by a document, not by a working failover. The artifact is the control."
+    callout_accent: navy
+    notes: >
+      This section establishes the structural reason a working DR capability does
+      not close CP-2. CP-2 is an organizational policy artifact: a plan approved by
+      a designated official, distributed to recovery personnel, tested on a defined
+      cycle, and updated after every change or test. A Terraform plan that deploys a
+      geo-redundant replica is a capability; the sentence "Database recovery will be
+      performed by the Database Recovery Lead using the procedure in Appendix B,
+      targeting completion within two hours of plan activation" is the plan artifact
+      CP-2 requires. Frame the distinction the whole book turns on: a runbook
+      documents the middle of a response — the technical steps executed after
+      someone has already declared an outage, notified stakeholders, and authorized
+      the failover. The Contingency Plan provides the beginning (activation,
+      notification, role assembly) and the end (validation, reconstitution,
+      deactivation) that the runbooks assume but do not contain. An agency with only
+      runbooks has documented the middle and left the coordination undocumented.
+      During a real contingency, teams under pressure need explicit authority to
+      act, clear role assignments, and activation criteria — a wiki of technical
+      runbooks does not supply those. Hold this as the claim to be proved; the
+      remaining parts author exactly the artifact that closes the gap.
+
+  # 3 --- content: runbook vs plan ------------------------------------------
+  - type: content
+    kicker: "RUNBOOK VS. PLAN"
+    title: "A DR runbook is Section 5 content — not the plan"
+    layout: grid
+    cards:
+      - title: "What the runbook has"
+        body: "Given a failover decision already made, the ordered technical steps with expected outputs. It picks up when a DBA sits at the console."
+        accent: teal
+      - title: "What the runbook assumes"
+        body: "Someone declared the outage, notified affected parties, assembled the team, and authorized the failover — none of which the runbook contains."
+        accent: amber
+      - title: "What the plan adds"
+        body: "Activation thresholds, notification tree, role authority, recovery sequencing, reconstitution, and deactivation — the coordination around the steps."
+        accent: navy
+      - title: "The assessor's finding"
+        body: "No plan means no amount of correct infrastructure resolves CP-2. An open CP-2 on the POA&M is a High finding regardless of DR quality."
+        accent: red
+    callout:
+      text: "The runbooks from Vol II Books 02–03 become Appendix B. They satisfy Section 5 — they are not the CP-2 document."
+      accent: navy
+    notes: >
+      This slide makes the runbook-versus-plan boundary concrete so the audience
+      can place their existing artifacts correctly. A DR runbook answers: given that
+      a decision to fail over has been made, here are the technical steps to execute
+      it, in order, with expected outputs at each step. It assumes the declaration,
+      notification, team assembly, and authorization have already happened. The
+      Contingency Plan answers the questions the runbook does not: how does the
+      organization know when to activate, who has authority to activate, who is
+      notified and in what order, which systems recover first, what the team does
+      between activation and completion, and how it knows recovery is complete. The
+      practical takeaway for authors: do not rewrite the runbooks — reference them.
+      The tested SQL AG failover procedure from Vol II Book 02 and the point-in-time
+      restore from Vol II Book 03 become Appendix B of the CP-2, satisfying the
+      Section 5 recovery-procedure requirement. The CP-2 owns activation,
+      notification, sequencing, and acceptance criteria; the technical guides own
+      step-by-step execution. The red card is the stakes: an assessor can turn off
+      the screens showing a perfect failover and still write a High finding, because
+      the required artifact does not exist. That asymmetry is the reason this book
+      exists.
+
+  # 4 --- content: what assessors check ------------------------------------
+  - type: content
+    kicker: "WHAT ASSESSORS ACTUALLY CHECK"
+    title: "Three artifact categories, then the technical review"
+    layout: columns
+    cards:
+      - title: "The plan document"
+        body: "A NIST SP 800-34 Rev 1 structured Contingency Plan: system identity, criticality, roles, activation thresholds, recovery, reconstitution, maintenance."
+        accent: navy
+        status: "CP-2"
+      - title: "Test evidence"
+        body: "Proof the plan was exercised: a pre-test plan, an execution record with pass/fail per step, metrics, and a signed after-action report."
+        accent: teal
+        status: "CP-4"
+      - title: "Training records"
+        body: "Evidence personnel know their roles. A tabletop exercise doubles as annual training; the attendance record satisfies the requirement."
+        accent: amber
+        status: "CP-3"
+    callout:
+      text: "The infrastructure review is secondary — assessors use it to verify the plan's claims are real, not fictional."
+      accent: navy
+    notes: >
+      A FedRAMP assessor arriving to evaluate the CP family requests three
+      categories of artifacts before touching the architecture: the Contingency Plan
+      document itself, evidence the plan has been tested, and evidence personnel have
+      been trained. The infrastructure review is secondary — its purpose is to
+      verify the capabilities the plan claims are real. If the plan claims a two-hour
+      RTO for the primary database and the technical review reveals the DR replica
+      sits in the same availability zone as the primary, that is an inconsistency
+      finding. But if no plan exists, no amount of correctly configured
+      infrastructure resolves it. Emphasize that assessors are suspicious of clean
+      test results: a tabletop that produces zero findings usually indicates an
+      inadequate scenario, not a perfectly prepared team, which is why the testing
+      framework later deliberately injects complications. Note the three controls map
+      cleanly: the plan document is CP-2, the test evidence is CP-4, the training
+      record is CP-3, and a single well-run tabletop can generate the CP-3 and CP-4
+      artifacts at once. The organizing message: the plan is the assessor-facing
+      artifact; the monitoring, replication, and failover capabilities from the
+      prior volumes are the automated evidence substrate that proves the plan's
+      claims are not fiction.
+    vendor_sources: ["nist_800_34"]
+
+  # 5 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART TWO — IMPACT ANALYSIS"
+    title: "The BIA anchors every value in the plan"
+    callout: "A DBA can say how long a failover takes. Only the mission owner can say how long the agency can function without the system."
+    callout_accent: teal
+    notes: >
+      This section motivates the Business Impact Analysis as the prerequisite to the
+      Contingency Plan. The BIA cannot be delegated entirely to the technical team,
+      because its critical inputs — tolerable downtime, acceptable data loss, and
+      recovery priority ordering — are business decisions, not technical ones. Set
+      up the four values the BIA produces for each mission-critical system, which the
+      next slide details, and stress that the BIA is where the plan's RTO and RPO
+      numbers come from: they are not invented by architects, they are derived from
+      mission-owner-signed impact judgments and validated against what the
+      architecture can actually achieve. The section also frames the discipline point
+      the book insists on: if a mission owner believes the Maximum Tolerable Downtime
+      is shorter than the technical RTO can meet, the correct response is to
+      re-engineer the RTO to close the gap — not to quietly adjust the MTD downward
+      to match a convenient technical answer. Every downstream artifact — the
+      recovery priority order in Section 2.2, the activation thresholds in Section 4,
+      the acceptance criteria in Section 5 — traces back to values established and
+      signed here. Getting the BIA right is what keeps the rest of the plan honest.
+
+  # 6 --- content: the four BIA values --------------------------------------
+  - type: content
+    kicker: "THE FOUR BIA VALUES"
+    title: "MTD, RTO, RPO, and WRT — and the inequality that binds them"
+    layout: grid
+    cards:
+      - title: "MTD"
+        body: "Maximum Tolerable Downtime — the ceiling. Past it, mission, regulatory, or public consequences cannot be remediated by recovery alone. A mission-owner decision."
+        accent: navy
+      - title: "RTO"
+        body: "Recovery Time Objective — targeted elapsed time from declaration to restoration. Must be less than MTD; the gap is a buffer for complications."
+        accent: teal
+      - title: "RPO"
+        body: "Recovery Point Objective — maximum tolerable data loss, expressed as time. A 15-minute RPO accepts losing up to 15 minutes of transactions."
+        accent: amber
+      - title: "WRT"
+        body: "Work Recovery Time — time after technical restoration to validate integrity, reconcile, and clear backlogs. RTO + WRT must be less than MTD."
+        accent: red
+    callout:
+      text: "The binding constraint: RTO + WRT < MTD. If it fails, re-engineer the RTO — never adjust the MTD to fit."
+      accent: navy
+    notes: >
+      Walk the four values the BIA produces for every mission-critical system, and
+      make the inequality between them the point of the slide. Maximum Tolerable
+      Downtime is the ceiling and a mission decision: the longest the organization
+      can sustain an outage before impact becomes unacceptable in ways recovery alone
+      cannot fix. Recovery Time Objective is the targeted time from incident
+      declaration to full restoration, and it must be strictly less than the MTD —
+      the gap between them is deliberate buffer for complications. Recovery Point
+      Objective is the maximum tolerable data loss expressed as time; its concrete
+      meaning is the number of transactions the agency accepts losing if a failure
+      strikes at peak load, which is why the book computes it from ninety days of
+      peak transaction rates rather than leaving it abstract. Work Recovery Time is
+      the often-forgotten fourth value: after the system is technically back, staff
+      still need time to validate data integrity, reconcile transactions, and clear
+      backlogs. The binding constraint the audience must carry away is that RTO plus
+      WRT must be less than MTD — technical restoration is not mission restoration.
+      When that inequality fails, the discipline rule applies: re-engineer the RTO
+      by improving the architecture, never adjust the MTD downward to make the math
+      work on paper.
+
+  # 7 --- table: BIA summary ------------------------------------------------
+  - type: table
+    kicker: "BIA SUMMARY"
+    title: "Mission-critical systems — MTD / RTO / RPO / WRT"
+    headers: ["System", "MTD", "RTO", "RPO", "WRT"]
+    rows:
+      - cells: ["Emergency Contact Center (telephony)", "4h", "2h", "15 min", "30 min"]
+        accent: red
+      - cells: ["Case Management Database (SQL primary)", "8h", "4h", "5 min", "60 min"]
+      - cells: ["Network Services — DDI", "2h", "1h", "N/A", "15 min"]
+        accent: teal
+      - cells: ["SD-WAN Control Plane", "30 min", "15 min (auto)", "N/A", "5 min"]
+        accent: teal
+      - cells: ["Identity Provider (cloud-hosted)", "4h", "vendor HA", "N/A", "15 min"]
+      - cells: ["Audit Logging Platform", "12h", "6h", "60 min", "30 min"]
+      - cells: ["Application / Deployment Store", "48h", "24h", "24h", "4h"]
+    callout:
+      text: "Every row shows RTO + WRT below the MTD ceiling — the recovery architecture is achievable. Each MTD requires a mission-owner signature."
+      accent: amber
+    notes: >
+      This is the reference table the audience is expected to read, not be walked
+      through step by step — the tightest constraints are tinted so the eye lands on
+      them. The emergency contact center is the sharpest: a four-hour business-hours
+      MTD against a two-hour RTO and a fifteen-minute RPO on call recording, because
+      it is public-facing and carries a statutory mission obligation. The network and
+      SD-WAN layers show the shortest MTDs of all — thirty minutes for the SD-WAN
+      control plane — because every other system depends on network connectivity, so
+      the network must recover first; the SD-WAN row's fifteen-minute automatic RTO
+      is met by overlay path failover, not by manual intervention. The identity
+      provider shows vendor-managed high availability rather than an agency RTO, with
+      break-glass validation as the fifteen-minute work-recovery step. Make two
+      points explicit. First, every row satisfies RTO plus WRT below its MTD ceiling,
+      which is what confirms the recovery architecture is achievable rather than
+      aspirational. Second, the MTD in each row is a mission decision, not a
+      technical estimate — before the BIA is incorporated into the plan, each mission
+      owner must review and sign the row for their system. If they judge the MTD
+      wrong, the technical RTO is re-evaluated to close the gap; the MTD is not
+      adjusted to match a convenient answer.
+
+  # 8 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART THREE — THE PLAN & ALTERNATES"
+    title: "Author the five phases; provision the alternate sites"
+    callout: "Five phases carry a contingency from detection to normal operations. Recovery is only the middle one."
+    callout_accent: navy
+    notes: >
+      This section moves from analysis to authorship. It introduces the concept of
+      operations at the heart of the CP-2 document — the five recovery phases that
+      structure any contingency response — and then the alternate-site controls that
+      the plan documents: CP-6 alternate storage, CP-7 alternate processing, and
+      CP-8 telecommunications redundancy. Frame the build sequence that follows as
+      the spine of Section 2 of the plan: the audience should understand that a
+      contingency is not a single failover event but a sequence of distinct phases,
+      each with its own authority, decisions, and exit criteria, and that the
+      technical recovery everyone thinks of as "the DR" is only the middle phase.
+      The alternate-site slides then show where the substrate from the prior volumes
+      is documented as the CP-6, CP-7, and CP-8 evidence — the geo-replicated SQL
+      replica as alternate storage, the secondary cloud region as alternate
+      processing, and the SD-WAN dual underlay as alternate telecommunications. The
+      recurring message for this part: the plan is authored prose and tables layered
+      on top of capabilities that already exist; the work is documenting activation,
+      sequencing, and acceptance criteria, not rebuilding infrastructure.
+
+  # 9 --- build-sequence: the five recovery phases --------------------------
+  - type: build-sequence
+    kicker: "THE FIVE RECOVERY PHASES"
+    title: "How a contingency runs from detection to normal"
+    notes: "Fallback notes if a phase omits its own."
+    steps:
+      - label: "Activation"
+        sub: "Detect · evaluate · declare"
+        accent: navy
+        detail: >
+          The triggering event is detected and evaluated against activation
+          thresholds — a Priority 1/2 outage past 30 minutes, ransomware, a facility
+          event, a CSP regional outage. The Contingency Plan Coordinator, or the
+          alternate, formally declares the plan active. Management is notified
+          concurrently; they do not approve activation.
+        notes: >
+          Phase one is where a plan earns its keep, because it converts ambiguity
+          into authorized action. The activation thresholds must be written down and
+          objective: an outage affecting Priority 1 or Priority 2 systems that has
+          persisted or is projected to persist beyond thirty minutes without a clear
+          resolution path; a security incident causing data destruction, ransomware
+          encryption, or loss of authentication infrastructure; a physical facility
+          event; a CSP declaration of a regional outage; or direction from the agency
+          COOP. The single decision authority is the Contingency Plan Coordinator —
+          typically the IT Manager or Deputy CIO — and the named alternate holds
+          equal authority when the primary is unavailable. The tabletop scenario
+          deliberately tests this by putting the primary CPC in an external meeting so
+          the alternate must decide: does the alternate know they hold the authority?
+          Management is notified concurrently with activation but does not approve it;
+          building an approval step into activation would defeat the purpose. The
+          verbal declaration is followed by a documented declaration within two hours.
+      - label: "Notification"
+        sub: "Notification tree · 0–60 min"
+        accent: teal
+        detail: >
+          The Coordinator notifies all IT Recovery Team Leads simultaneously via the
+          emergency notification system, or the offline out-of-band roster if it is
+          down. Leads confirm receipt and report status. The Network Recovery Lead
+          reports first because everything downstream depends on connectivity.
+        notes: >
+          Phase two is a timed procedure, not an ad-hoc phone tree. In the first
+          fifteen minutes the Coordinator declares activation verbally and notifies
+          all IT Recovery Team Leads simultaneously through the agency emergency
+          notification system; if that system is itself unavailable, the out-of-band
+          roster stored offline in the CPC's secure binder and as an encrypted file in
+          the alternate Key Vault takes over. Between fifteen and thirty minutes each
+          lead confirms receipt and runs a sixty-second self-check: is my team
+          available, do I have the recovery procedures, do I have the credentials. The
+          Network Recovery Lead reports first by design, because all subsequent
+          recovery work depends on network availability. Between thirty and sixty
+          minutes the Coordinator gives Management an initial situation report — what
+          failed, when, the impact, the projected timeline, and any decisions needed
+          immediately — and thereafter issues updates every two hours in a fixed
+          format. The tabletop injects a wrong phone number into the roster here,
+          because stale contact data is the single most common finding, which is why
+          the roster is reviewed quarterly and maintained separately from the plan
+          body so it can be updated without re-approving the whole document.
+      - label: "Recovery"
+        sub: "Execute Section 5 in priority order"
+        accent: amber
+        detail: >
+          Recovery teams execute the component procedures (Appendices A–E) in the
+          priority order the BIA set: network first, then identity, then the
+          mission-critical applications and databases. Each component has documented
+          acceptance criteria and an estimated duration.
+        notes: >
+          Phase three is the technical recovery — the part most people picture when
+          they hear "disaster recovery," and the only phase the runbooks fully cover.
+          Teams execute the component procedures in the appendices in the recovery
+          priority order the BIA established: network services (DDI and SD-WAN) first
+          because everything depends on connectivity, then the identity provider with
+          break-glass available, then the public-facing emergency contact center,
+          then the case-management database, then logging, collaboration, and the
+          deployment store. Each component carries explicit acceptance criteria and an
+          estimated duration: SD-WAN automatic circuit failover in three to five
+          minutes with all spoke sites showing active BGP on the backup path; DDI Grid
+          failover in fifteen to thirty minutes with resolution functional from all
+          sites; synchronous SQL AG failover in five to fifteen minutes; asynchronous
+          DR failover in thirty to sixty minutes with a data-integrity check and
+          missing transactions logged. Manual workaround procedures run in parallel
+          for Priority 1 systems when technical recovery threatens to exceed the RTO —
+          for the contact center, backup PSTN lines and paper-based call tracking —
+          but the workaround is the Coordinator's decision and never replaces the
+          technical recovery that continues alongside it.
+      - label: "Validation"
+        sub: "Test against acceptance criteria"
+        accent: teal
+        detail: >
+          Each recovered system is tested against its defined acceptance criteria
+          before it is returned to production use. Health checks pass, data integrity
+          is confirmed, and audit logging is verified continuous before the component
+          is declared recovered.
+        notes: >
+          Phase four is the gate between "the system is running" and "the system is
+          trusted," and skipping it is how agencies re-introduce a corrupted or
+          inconsistent system into production under pressure. Before any recovered
+          component is returned to production use it is tested against the acceptance
+          criteria written into Section 5: application health checks pass in the
+          recovery environment, DNS records resolve to the recovered endpoints,
+          read/write is functional on the promoted database, and — critically for the
+          audit family — logging is confirmed continuous with no ingestion gap longer
+          than the RPO threshold. For a database recovered from the asynchronous DR
+          replica, validation includes the data-integrity reconciliation that
+          identifies which transactions written before the failure did not replicate,
+          so the gap is known and logged rather than silently accepted. Validation is
+          performed per component by the responsible Recovery Team Lead, and only a
+          component that meets its criteria is declared recovered. This phase is also
+          where the plan's earlier RPO promises are proven true or false in practice:
+          if the observed data loss exceeds the documented RPO, that is a finding for
+          the after-action review and a trigger to re-examine the replication
+          architecture.
+      - label: "Reconstitution"
+        sub: "Fail back · deactivate · AAR"
+        accent: navy
+        detail: >
+          Once Priority 1–4 systems are stable for an hour, the Coordinator
+          authorizes return to the primary site in reverse order, verifies data
+          synchronization before failback, reverses all temporary workarounds,
+          formally deactivates the plan in writing, and schedules the after-action
+          review.
+        notes: >
+          Phase five closes the loop and is the phase runbooks almost never cover.
+          The Coordinator authorizes transition to reconstitution when all Priority 1
+          through 4 systems have met their acceptance criteria and run for at least
+          one hour in the recovery environment without incident; lower-priority
+          systems may still be recovering. Return to the primary site follows the
+          reverse of the recovery sequence — applications fail back only after DNS,
+          network, database, and identity are confirmed stable at the primary. Before
+          failing back the SQL primary, every transaction written to the DR replica
+          during the contingency must be confirmed replicated back, or reconciled
+          manually if the primary is being restored from backup rather than
+          resynchronized from a live replica. All temporary workarounds — manual call
+          tracking, break-glass accounts, Conditional Access adjustments — are
+          reversed and monitoring thresholds reset to baseline. The Coordinator then
+          declares the plan deactivated in writing with a timestamped notice, and the
+          after-action review follows within five business days, producing the signed
+          report that becomes the CP-4 evidence and drives plan updates within thirty
+          days. Reconstitution and the AAR are what make the plan a living document
+          rather than a static file.
+
+  # 10 --- content: alternate sites -----------------------------------------
+  - type: content
+    kicker: "ALTERNATE SITES"
+    title: "Where the substrate becomes CP-6, CP-7, and CP-8 evidence"
+    layout: columns
+    cards:
+      - title: "CP-6 — Storage"
+        body: "The async SQL DR replica in a separate region is alternate storage; multi-geo covers unstructured data; config baselines and policy exports live in a secondary Key Vault."
+        accent: navy
+        status: "Geographically separate"
+      - title: "CP-7 — Processing"
+        body: "The secondary cloud region is the alternate processing site, covered by the CSP's authorization. Failover must be tested, not just configured — RTO from the last test."
+        accent: teal
+        status: "Tested failover"
+      - title: "CP-8 — Telecom"
+        body: "The SD-WAN dual underlay (MPLS + DIA, separate carriers) is primary and alternate telecommunications, with overlay probe-driven automatic failover."
+        accent: amber
+        status: "Overlay-steered"
+    callout:
+      text: "CP-6(1) and CP-7(1) both demand geographic separation — a different region, not just a different availability zone. Document the region pair and distance."
+      accent: navy
+    notes: >
+      This slide maps the existing substrate onto three alternate-site controls and
+      names the documentation each requires. CP-6 requires an alternate storage site,
+      geographically separated, holding backup copies sufficient for recovery. The
+      asynchronous SQL DR replica in the secondary region satisfies the structured-
+      data component with an RPO bounded by replication lag — under sixty seconds in
+      normal conditions — but CP-6 covers more than the database: unstructured data
+      needs multi-geo replication for the Microsoft 365 Government tenant, and
+      application binaries and configuration baselines (Terraform state, device
+      management policy exports) must live in a secondary-region Key Vault or storage
+      account, exported quarterly. CP-7 requires an alternate processing site: the
+      secondary cloud region, covered by the CSP's FedRAMP authorization, satisfies
+      the "formally authorized environment" requirement — but the control's teeth are
+      in the word tested. Document the RTO from the last actual failover, not a design
+      estimate, and execute at least one real workload failover annually. The
+      recurring documentation demand across both controls is geographic separation:
+      CP-6(1) and CP-7(1) require a different region, not merely a different
+      availability zone within one region, so record the region pair, the physical
+      distance, and the administrative separation from CSP documentation. CP-8 gets
+      its own slide next because it is the one control where the mechanism, not the
+      artifact, carries the burden.
+    vendor_sources: ["azure_backup", "azure_site_recovery", "m365_multigeo"]
+
+  # 11 --- content: CP-8 mechanism ------------------------------------------
+  - type: content
+    kicker: "WHERE THE MECHANISM MATTERS"
+    title: "CP-8: two circuits are not two services"
+    layout: grid
+    cards:
+      - title: "The control's real ask"
+        body: "CP-8 requires alternate telecommunications that support resumption of operations within the RTO — 15 min for the network layer against a 30-min MTD."
+        accent: navy
+      - title: "Why two circuits fail alone"
+        body: "Traditional dual-homing fails over on routing reconvergence — tens of seconds to minutes, all-or-nothing, no per-class policy, no recorded path-health evidence."
+        accent: red
+      - title: "What actually resumes operations"
+        body: "SD-WAN active-active multipath: probe-driven path selection, sub-second steering on brownout, per-class policy that moves voice and transactions first."
+        accent: teal
+      - title: "The documentation"
+        body: "Failover threshold, observed cutover time from the last test, and priority-of-service SLA. The overlay path-quality export is the CP-8 evidence exhibit."
+        accent: amber
+    callout:
+      text: "A second DIA circuit without the overlay adds bandwidth, not resilience. The CP-8 capability lives in the overlay, not the wire."
+      accent: navy
+    notes: >
+      This is the one place in the CP family where the book claims a technology as
+      necessary rather than closing the control with an authored artifact, so the
+      argument has to be airtight. Most of the CP family closes with documents — CP-2
+      is a signed plan, CP-3 a training record, CP-4 a documented test — and no
+      network purchase produces any of those. CP-8 is different: the control requires
+      alternate telecommunications services that support resumption of operations
+      within the RTO, and the network layer here carries a fifteen-minute RTO against
+      a thirty-minute MTD. Two circuits from two carriers satisfy the "alternate
+      services" clause on paper, but by themselves they resume nothing: traditional
+      dual-homing fails over on routing-protocol reconvergence, which takes tens of
+      seconds to minutes, is all-or-nothing, carries no per-class policy, and records
+      no evidence of path health. The mechanism that makes the alternate service
+      actually resume operations inside the budget is SD-WAN active-active multipath —
+      the overlay probes both underlays continuously with liveness detection and
+      per-path loss, latency, and jitter measurement, steers traffic sub-second on
+      brownout, and moves voice and transaction classes first. The circuits beneath
+      the overlay are interchangeable capacity; the failover, resequencing, and
+      per-class policy are overlay functions. For CP-2 documentation, capture the
+      failover threshold, the cutover time observed in the last test (never the
+      datasheet number), and the priority-of-service SLA, and attach the overlay's
+      path-quality export as the CP-8 evidence exhibit. Stating plainly that a bare
+      second circuit adds bandwidth and not resilience is what keeps this necessity
+      claim credible.
+    vendor_sources: ["uiao repo: docs/customer-documents/federal-aan-series/Vol_IV_Book_01_FedAAN_Business_Continuity.qmd"]
+
+  # 12 --- section ----------------------------------------------------------
+  - type: section
+    kicker: "PART FOUR — PROVE IT"
+    title: "Test the plan and keep it living"
+    callout: "Assessors are suspicious of clean test results. A tabletop with zero findings usually means the scenario was too easy."
+    callout_accent: amber
+    notes: >
+      This section covers CP-4 testing and the multi-cloud extension of the backup
+      and recovery controls, and it frames both as the difference between a plan that
+      exists and a plan that is trusted. CP-4 requires annual testing; at Moderate
+      baseline FedRAMP accepts a tabletop as the minimum, with functional testing for
+      critical systems. The key cultural point to land is that assessors are
+      suspicious of clean results — a tabletop producing zero findings more likely
+      indicates an inadequate scenario than a flawless team — which is why every test
+      deliberately injects a complication: a key member unavailable, a wrong number
+      in the notification tree, an expired backup credential. The section then extends
+      the architecture beyond the Microsoft estate: an agency running AWS GovCloud,
+      Oracle OCI, and VMware must satisfy CP-9 and CP-10 for those workloads too, each
+      with its own native DR and backup service. The doctrine to preview: actuation is
+      platform-native, but the evidence contract is unified — RTO/RPO results,
+      backup-success status, and replication-lag records from every platform normalize
+      into one correlated evidence fabric rather than five disconnected dashboards.
+      That is what turns a pile of per-platform tools into a single CP-9/CP-10 story an
+      assessor can read.
+
+  # 13 --- content: CP-4 test cycle -----------------------------------------
+  - type: content
+    kicker: "THE CP-4 TEST CYCLE"
+    title: "Tabletop, functional, full recovery — then repeat"
+    layout: columns
+    cards:
+      - title: "Year 1 — Tabletop"
+        body: "The Moderate minimum and the right start for a new plan. A facilitated ransomware scenario with injected complications; the attendance record also satisfies CP-3."
+        accent: navy
+        status: "Minimum"
+      - title: "Year 2 — Functional"
+        body: "Actually fail over at least one critical system to the alternate site and measure recovery time against the documented RTO. Design estimates no longer count."
+        accent: teal
+        status: "Measure RTO"
+      - title: "Year 3 — Full recovery"
+        body: "Simulate complete loss of the primary site and execute every Section 5 procedure in sequence. Reset to Year 1 after, or after a major architecture change."
+        accent: amber
+        status: "Full sequence"
+    callout:
+      text: "Every test produces four artifacts: a pre-test plan, an execution record, metrics, and a signed after-action report. The AAR is the CP-4 evidence."
+      accent: navy
+    notes: >
+      This slide gives the audience a defensible three-year testing cadence and the
+      artifacts each cycle must produce. Year one is a tabletop exercise — the Moderate
+      baseline minimum and the appropriate starting point for a newly authored plan.
+      The book's worked example is a ransomware scenario that opens at 9:15 on a
+      Tuesday with endpoint alerts and encrypted files, escalates to an unresponsive
+      SQL primary by 9:30, and reaches the Coordinator at 9:45; a two-hour agenda
+      walks activation, notification, recovery sequencing, and the management
+      briefing, with deliberate injects at each stage. Year two is a functional test
+      that actually fails over at least one critical system to the alternate site and
+      measures recovery time against the documented RTO — this is where design
+      estimates are replaced by observed numbers. Year three is a full recovery test
+      that simulates complete primary-site loss and executes every Section 5 procedure
+      in sequence, recommended for agencies with high-criticality systems; after it,
+      the cycle returns to year one, or resets earlier if a major architecture change
+      invalidates the baseline. Whatever the year, four artifacts prove the test
+      happened: a pre-test plan defining scenario, objectives, participants, and
+      metrics; an execution record with pass/fail per step; the metrics collected
+      during the exercise; and a signed after-action report tracking findings to
+      owners and due dates. That signed AAR is the CP-4 evidence artifact, and it is
+      also what demonstrates prior findings are being resolved rather than repeated.
+    vendor_sources: ["nist_800_34"]
+
+  # 14 --- content: multi-cloud CP-9/CP-10 ----------------------------------
+  - type: content
+    kicker: "MULTI-CLOUD CP-9 / CP-10"
+    title: "DR actuation is platform-native; the evidence contract is unified"
+    layout: grid
+    cards:
+      - title: "Microsoft"
+        body: "Azure Backup plus Azure Site Recovery — the default for the Azure estate under the Microsoft-preference doctrine."
+        accent: navy
+      - title: "AWS"
+        body: "AWS Backup plus AWS Elastic Disaster Recovery (DRS) for GovCloud workloads, producing their own RTO/RPO evidence."
+        accent: teal
+      - title: "Oracle OCI"
+        body: "OCI Full Stack Disaster Recovery orchestrates cross-region failover for Oracle workloads and their databases."
+        accent: amber
+      - title: "VMware"
+        body: "Site Recovery Manager with vSphere Replication; the recovery target may be Azure or AWS — a deliberate design choice, not automatic."
+        accent: red
+    callout:
+      text: "RTO/RPO results, backup status, and replication lag from every platform normalize into one evidence fabric — CP-9/CP-10 as one correlated picture."
+      accent: navy
+    notes: >
+      This slide extends the continuity architecture beyond the Microsoft estate and
+      states the doctrine that keeps a multi-cloud agency coherent. A federal agency
+      under FedRAMP Moderate rarely runs one cloud; it commonly runs Azure Government
+      alongside AWS GovCloud, Oracle OCI, and on-premises VMware, and each platform
+      ships its own native backup and disaster-recovery service. Microsoft workloads
+      use Azure Backup and Azure Site Recovery, the default for the Azure estate under
+      the Microsoft-preference doctrine. AWS GovCloud workloads use AWS Backup and AWS
+      Elastic Disaster Recovery. Oracle workloads use OCI Full Stack Disaster Recovery.
+      VMware workloads use Site Recovery Manager with vSphere Replication, and the
+      recovery target may deliberately be Azure or AWS — a design choice made
+      explicitly, not defaulted into. The doctrine to state plainly: DR actuation is
+      platform-native, the same split the management-plane coordination doctrine draws
+      for patching, and forcing every workload under one plane is neither required nor
+      wise. What unifies the estate is the evidence contract, not the tooling: RTO and
+      RPO test results, backup-success status, and replication-lag records from every
+      platform normalize into the multi-cloud evidence fabric, so CP-9 and CP-10
+      evidence is one correlated picture rather than five disconnected dashboards, and
+      those metrics plus the CP-4 test records roll up through the fabric to CISA CDM
+      and the continuity KSIs.
+    vendor_sources: ["azure_backup", "aws_drs", "oci_fsdr", "vmware_srm"]
+
+  # 15 --- table: NIST CP control closure -----------------------------------
+  - type: table
+    kicker: "CONTROL CLOSURE"
+    title: "NIST SP 800-53 Rev 5 — CP family, before and after"
+    headers: ["Control", "Without the framework", "With the framework"]
+    rows:
+      - cells: ["CP-2", "DR runbooks exist but no plan — High finding", "NIST SP 800-34 seven-section plan, BIA sign-off, annual review"]
+        accent: navy
+      - cells: ["CP-3", "No enforced training; roles unclear", "Tabletop doubles as training; attendance record is evidence"]
+      - cells: ["CP-4", "No documented test, plan, or AAR", "Annual tabletop min; test plan, metrics, signed AAR"]
+        accent: teal
+      - cells: ["CP-6 / CP-6(1)", "Replica exists but not documented; same-AZ", "Async DR replica in separate region; multi-geo; Key Vault exports"]
+      - cells: ["CP-7 / CP-7(1)", "Failover capable but undocumented", "Secondary region as alt processing; tested RTO recorded"]
+        accent: teal
+      - cells: ["CP-8 / CP-8(1)", "Single-carrier WAN, no documented alternate", "SD-WAN dual underlay; overlay auto-failover; priority-of-service SLA"]
+        accent: amber
+      - cells: ["CP-9 / CP-10", "Backup exists; reconstitution undocumented", "Multi-cloud native DR; Section 6 reconstitution; unified evidence"]
+    callout:
+      text: "CP-8 is the one row closed by a mechanism. Every other row closes with an authored artifact layered on existing capability."
+      accent: navy
+    notes: >
+      This is the reference matrix that shows an assessor, control by control, what
+      changes between an agency with capable infrastructure and an agency with the
+      authored framework — read it, do not narrate every cell. CP-2 moves from a High
+      finding, where DR runbooks exist but no plan does, to a NIST SP 800-34 Rev 1
+      seven-section plan with documented BIA values, mission-owner sign-off, and a
+      scheduled annual review. CP-3 is satisfied because the tabletop exercise doubles
+      as annual training and the attendance record is the evidence. CP-4 moves from no
+      documented test to an annual tabletop minimum with a test plan, collected
+      metrics, and a signed after-action report. CP-6 and its separation enhancement
+      move from an undocumented same-availability-zone replica to a documented async DR
+      replica in a separate geographic region, plus multi-geo for unstructured data and
+      Key Vault exports for configuration baselines. CP-7 and its enhancement document
+      the secondary region as alternate processing with a tested RTO. CP-8 and its
+      priority-of-service enhancement close through the SD-WAN dual underlay with
+      overlay automatic failover — the one row where a mechanism, not a document, does
+      the work. CP-9 and CP-10 extend backup and reconstitution across the multi-cloud
+      estate with Section 6 reconstitution procedures and the unified evidence fabric.
+      The single sentence to leave them with: every row but CP-8 closes with an
+      authored artifact layered on capability that already existed.
+    vendor_sources: ["nist_800_53", "nist_800_34"]
+
+  # 16 --- closing ----------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "The plan is the artifact; the substrate is the proof"
+    layout: columns
+    cards:
+      - title: "Necessary"
+        body: "No CP-2 closure without the authored plan. Capable infrastructure is the evidence substrate, never the control artifact itself."
+        accent: teal
+        status: "Established"
+      - title: "Living"
+        body: "CP-4 tests and the after-action loop keep the plan connected to operational telemetry — a living document, not a filed PDF."
+        accent: navy
+        status: "CP-4 cycle"
+      - title: "Next"
+        body: "FedRAMP 20x reads backup recency, RPO, and last-test dates as machine-readable KSI evidence exported to continuous monitoring."
+        accent: amber
+        status: "20x KSIs"
+    callout:
+      text: "The Contingency Plan is the assessor-facing artifact; the monitoring, replication, and failover from the prior volumes are the automated evidence substrate that proves it."
+      accent: navy
+    notes: >
+      Close on the through-line the book has defended from the first slide: capable
+      infrastructure is necessary but not sufficient, and CP-2 is closed by an
+      authored plan, not a working failover. The first takeaway is the necessity
+      relationship — there is no CP-2 closure without the document, and the substrate
+      from Volumes I through III is the evidence that proves the plan's claims are
+      real, never a substitute for the plan itself. The second is that the plan must
+      be living: the CP-4 testing cycle and the after-action review loop keep it
+      connected to operational telemetry so it evolves with the system rather than
+      aging into a filed PDF that no longer matches the architecture. The third is the
+      handoff to FedRAMP 20x, which shifts authorization toward continuous, evidence-
+      based assessment against Key Security Indicators. A 20x-ready implementation
+      exposes backup recency, current RPO per critical system, and last-successful-
+      recovery-test dates as machine-readable evidence queried through APIs and
+      exported to the continuous-monitoring system, so the two relevant KSI areas —
+      backup and recovery, and incident response and continuity — are validated
+      programmatically rather than through a point-in-time document review at
+      authorization time. Leave the audience with the single sentence that names both
+      halves: the Contingency Plan is the assessor-facing artifact, and the prior
+      volumes are the automated substrate that proves the floor holds.
+    vendor_sources: ["fedramp_20x"]

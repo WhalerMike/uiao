@@ -1,0 +1,714 @@
+# AAN briefing-deck spec — Vol III Book 07: Multi-Cloud Evidence Fabric.
+# Distills docs/customer-documents/federal-aan-series/Vol_III_Book_07_FedAAN_Multi_Cloud_Evidence_Fabric.qmd
+# Schema: src/uiao/generators/aan_deck.py module docstring.
+# Build:
+#   uiao generate aan-deck \
+#     --spec "docs/customer-documents/federal-aan-series/specs/Vol_III_Book_07.yaml" \
+#     --out "docs/customer-documents/federal-aan-series/Vol_III_Book_07_FedAAN_Multi_Cloud_Evidence_Fabric.pptx" \
+#     --date-code "2026-07-09 08:15 ET"
+deck:
+  title: "Multi-Cloud Evidence Fabric"
+  subtitle: "One compliance picture from many stacks — the unified evidence contract from telemetry to CDM to FedRAMP 20x KSIs"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING"
+  date_code: "2026-07-09 08:15 ET"
+  journey:
+    - "Collect"
+    - "Normalize"
+    - "Correlate"
+    - "Roll up"
+    - "Attest"
+  sources:
+    omb_m2131: "https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Governments-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf"
+    nist_800_137: "https://csrc.nist.gov/pubs/sp/800/137/final"
+    cisa_cdm: "https://www.cisa.gov/cdm"
+    cisa_bod_2301: "https://www.cisa.gov/news-events/directives/bod-23-01-improving-asset-visibility-and-vulnerability-detection-federal-networks"
+    ms_sentinel: "https://learn.microsoft.com/azure/sentinel/connect-data-sources"
+    splunk_cloud: "https://www.fedramp.gov/marketplace/products/F1607197917/"
+    servicenow_fedramp: "https://www.fedramp.gov/marketplace/products/F1305072116/"
+    nist_oscal: "https://pages.nist.gov/OSCAL/"
+
+slides:
+  # --- 1. title -------------------------------------------------------------
+  - type: title
+    notes: |
+      Opening frame for Volume III, Book 07 — the Multi-Cloud Evidence Fabric.
+      This is the unified-governance half of the Management-Plane Coordination
+      Doctrine made real: actuation stays platform-native, but governance is
+      unified into one evidence fabric. A multi-cloud federal agency runs five or
+      more management stacks, and each emits its own telemetry in its own schema.
+      This book's thesis is that coordination across those stacks is not a console
+      you buy — it is a contract every source agrees to emit, correlated on one
+      authoritative asset identity, and delivered up to CISA CDM and the FedRAMP
+      20x KSI pipeline. Walk the audience through the five-step journey on the
+      title strip — collect, normalize, correlate, roll up, attest — because that
+      journey is the whole book in miniature. Stress that this is a truth-plane
+      function (plane 6): the fabric is depended on, not re-platformed. Preview the
+      destinations so the room knows where this lands — the two consumers a federal
+      agency owes are CISA CDM (enterprise asset, vulnerability, and configuration
+      visibility) and the FedRAMP 20x KSI evidence pipeline, and this book closes the
+      AU, CA, and SI controls that only a cross-surface fabric can close. Note the
+      provisional series placement: the book was drafted at a temporary slot and its
+      home is Volume III (Security Operations), after the SIEM/XDR book; cross-
+      references name other books by title and role, not number. Voice the draft-
+      proposal caveat: this is CSI Team pre-decisional material, not yet reviewed by
+      the Agency CIO Office, OIS, or leadership, and SIEM/lake and coordination-hub
+      selections are pending procurement review.
+    vendor_sources: ["cisa_cdm", "fedramp_20x"]
+
+  # --- 2. section: the coordination problem --------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "The coordination problem"
+    callout: "Five stacks, five inventories, five schemas — and no single compliance picture."
+    callout_accent: navy
+    notes: |
+      This section motivates the whole book: why a multi-cloud estate cannot
+      answer a basic compliance question without new machinery. A federal agency
+      does not run one management plane; it runs Azure Update Manager, AWS Systems
+      Manager, vSphere Lifecycle Manager, network-appliance telemetry from Cisco /
+      Palo Alto / Juniper, and OS-native agents on Red Hat and Windows hosts. Each
+      of those produces its own inventory and its own log format. The problem is
+      not that any one stack is weak — each is fine inside its own surface — it is
+      that five partial views do not reconcile into one answer. Set up the assessor
+      scenario on the next slide before naming the mechanism. Keep the framing on
+      the coordination gap, not on tooling: the fix in this book is a contract and
+      a join key, not a bigger console. Remind the audience that this book is the
+      unified-governance half of the Management-Plane Coordination Doctrine — the
+      companion doctrine keeps actuation platform-native (each stack patches and
+      configures its own estate), while governance is unified into one evidence
+      fabric. That split is why the answer is a contract rather than a replacement
+      platform: we are not consolidating five management planes into one, we are
+      making five planes emit into one comparable record set. It is a truth-plane
+      function (plane 6) — the fabric is depended on, not re-platformed. Nothing on
+      this slide is a vendor claim, so no external source line is required.
+
+  # --- 3. content: five stacks, five schemas -------------------------------
+  - type: content
+    kicker: "THE FRAGMENTED ESTATE"
+    title: "Five stacks each speak their own schema"
+    layout: grid
+    cards:
+      - title: "CSP patch stacks"
+        body: "Azure Update Manager, AWS Systems Manager, and vSphere Lifecycle Manager each report patch state in their own inventory and log format."
+        accent: navy
+      - title: "NEM appliances"
+        body: "Cisco, Palo Alto, and Juniper devices emit syslog / CEF telemetry — a fourth schema the CSP consoles never see."
+        accent: teal
+      - title: "OS agents"
+        body: "Red Hat and Windows host agents report a fifth view of patch, baseline, and posture — per host, per OS."
+        accent: amber
+      - title: "No reconciliation"
+        body: "Five inventories, five formats. Aggregating them in one place is not the same as making them comparable."
+        accent: red
+    callout:
+      text: "Each surface is fine alone; together they produce five stories about one estate, not one."
+      accent: navy
+    notes: |
+      This is the concrete shape of the coordination problem. Read the four cards
+      as the four evidence-producing surfaces of a real Agency-scale estate. The CSP
+      patch stacks (Azure Update Manager, AWS Systems Manager, vSphere Lifecycle
+      Manager) are the obvious ones, but they are only three of five schemas. The
+      network appliances add a fourth via syslog / CEF, and the OS-native agents on
+      Red Hat and Windows add a fifth. The red card carries the argument: piling
+      all five into one lake does not solve anything if the records are not
+      comparable — aggregation is not correlation. That distinction is the hinge of
+      the entire book and it recurs on the join-key slide. Make sure the audience
+      leaves this slide understanding that the deficiency is structural (no shared
+      schema, no shared identity), not a gap that more dashboards can close after
+      the fact. A useful way to voice it: an assessor asking "is CVE-X remediated
+      across the whole estate, and prove it" cannot be answered by five partial
+      views that do not reconcile — each of these four cards can answer for its own
+      surface and no further. That is the through-line into the next slide. These
+      are product names used descriptively, not capability or authorization claims,
+      so no source line is needed here.
+
+  # --- 4. content: the assessor's question ---------------------------------
+  - type: content
+    kicker: "THE QUESTION THAT BREAKS"
+    title: "\"Prove CVE-X is remediated across the whole estate\""
+    layout: columns
+    cards:
+      - title: "The ask"
+        body: "An assessor asks a single, reasonable question: is this CVE closed everywhere, and show the evidence."
+        accent: navy
+        status: "One question"
+      - title: "The failure"
+        body: "Five partial views answer for their own surface only. None can speak for the estate, and they do not reconcile with each other."
+        accent: red
+        status: "Five answers"
+      - title: "The need"
+        body: "One normalized record set, correlated on one asset identity, that can be rolled up and attested as a single picture."
+        accent: teal
+        status: "One picture"
+    callout:
+      text: "No amount of after-the-fact dashboarding recovers a schema the sources never agreed on."
+      accent: amber
+    notes: |
+      This slide makes the abstract problem land as an operational one. The
+      assessor's question — is CVE-X remediated across the whole estate, and prove
+      it — is exactly the question five partial views cannot answer. Each stack can
+      report its own surface, but no stack can speak for the estate, and their
+      inventories do not line up because they key on different local identifiers.
+      The amber callout is the doctrine point: this cannot be fixed downstream. If
+      the sources never emitted a common schema keyed to a common identity, no
+      reporting layer can reconstruct one after the fact. Use this to set up the
+      two mechanisms the rest of the deck delivers: the evidence contract (a shared
+      schema, AU-3) and the join key (a shared identity plus time, AU-12(1)). The
+      right-hand card previews the destination — one correlated picture that can be
+      rolled up to CDM and attested as a KSI. Point at the three status pills as the
+      compression of the whole book: one question, five answers today, one picture
+      once the fabric exists. Note for the presenter that "five answers" is not a
+      tooling weakness to be fixed by buying better consoles — it is a schema and
+      identity gap, and the two mechanisms that close it (the AU-3 contract and the
+      AU-12(1) join key) are precisely what the next two sections deliver. This is
+      analysis, not a vendor claim, so no external source line is required.
+
+  # --- 5. section: the evidence contract -----------------------------------
+  - type: section
+    kicker: "PART TWO"
+    title: "The evidence contract (AU-3)"
+    callout: "Coordination across heterogeneous stacks is not a console; it is a contract."
+    callout_accent: teal
+    notes: |
+      Pivot from problem to mechanism. The core claim of this section: the thing
+      that coordinates five stacks is not a product you install on top of them —
+      it is a contract every source agrees to emit into. This is NIST SP 800-53
+      Rev 5 AU-3 (Content of Audit Records) raised from a per-system control to a
+      cross-surface contract: the record's content is standardized so that records
+      from any source are comparable, joinable, and roll-up-able. Frame it as a
+      Closure Necessity — without a common contract, the five stacks cannot ever
+      produce one compliance picture, and that is not recoverable later. The next
+      two slides give the concept and then the literal record fields. Keep the
+      emphasis on "contract, not vendor": the fabric mandates the schema, never who
+      implements it. The reason this framing matters is that it changes the
+      procurement conversation entirely — you are not selecting a single mega-console
+      that every stack must be migrated onto, you are defining a record every stack
+      already can emit and letting the best coordinator aggregate it. That is why the
+      contract is portable across vendors and why the realizations section that
+      follows can name a default and an alternative for each role without weakening
+      the control closure. Set expectations: the next slide gives the concept in four
+      cards, and the slide after it shows the literal eight-field record from the
+      book. No external source line required on a section divider.
+
+  # --- 6. content: the contract concept ------------------------------------
+  - type: content
+    kicker: "AU-3 RAISED TO A CONTRACT"
+    title: "A standardized record every source emits"
+    layout: grid
+    cards:
+      - title: "Same fields, any source"
+        body: "A CSP patch stack, a NEM appliance, or an OS agent must emit a record with the same fields, regardless of what produced it."
+        accent: navy
+      - title: "Comparable"
+        body: "Standardized content makes records from different surfaces directly comparable — the precondition for one picture."
+        accent: teal
+      - title: "Joinable + roll-up-able"
+        body: "Because every record shares a schema, records can be joined on identity and rolled up into an enterprise view."
+        accent: amber
+      - title: "A Closure Necessity"
+        body: "Without a common contract, five stacks cannot produce one compliance picture. Dashboarding after the fact cannot recover it."
+        accent: red
+    callout:
+      text: "The fabric mandates the contract, never the vendor."
+      accent: teal
+    notes: |
+      This slide states the contract as a design principle before the audience
+      sees the field list. The move is to take AU-3 — normally read as "each system
+      writes adequately detailed audit records" — and elevate it to a cross-surface
+      contract: every producing surface, whether a CSP patch stack, a network
+      appliance, or an OS agent, emits a record with an identical field set. Once
+      content is standardized, three properties follow that the fragmented estate
+      lacked: records become comparable across surfaces, joinable on a shared key,
+      and roll-up-able into an enterprise picture. The red card restates the
+      Closure Necessity so it is unmissable — this is a precondition, not an
+      optimization; you cannot bolt it on afterward. Close on the guardrail in the
+      teal callout: the doctrine mandates the contract (the schema), never the
+      product that fills it. That guardrail is what keeps the realizations section
+      honest. Anchor the stakes for the presenter: this is a Closure Necessity, the
+      book's strongest category of claim — it means there is no alternate path to the
+      outcome. If the sources never agree on a common record, there is simply no
+      later step, no analytics layer, and no dashboard that can manufacture one
+      compliance picture out of five incompatible ones. That is why AU-3, normally an
+      unglamorous per-system audit-content control, becomes the coordination
+      mechanism for the entire multi-cloud estate here. This is doctrine, not a vendor
+      claim, so no source line is needed.
+
+  # --- 7. table: the record fields -----------------------------------------
+  - type: table
+    kicker: "THE EVIDENCE RECORD"
+    title: "The contract's fields (AU-3)"
+    headers: ["Field", "Meaning"]
+    rows:
+      - cells: ["asset_id", "Authoritative name/address from the naming plane (IPAM/DDI) — the join key"]
+        accent: teal
+      - cells: ["source", "Which stack, appliance, or agent produced the record"]
+      - cells: ["surface", "CSP / NEM / OS"]
+      - cells: ["control", "The NIST control the record is evidence for (e.g., SI-2, SC-8, CM-6)"]
+      - cells: ["state", "The measured value — patch level, baseline conformance, cipher, posture"]
+      - cells: ["verdict", "pass / warn / fail against the intended state"]
+      - cells: ["observed_at", "Timestamp, for time-correlation"]
+        accent: teal
+      - cells: ["disposition", "Applied / accepted-risk (POA&M ref) / open"]
+    callout:
+      text: "asset_id and observed_at are the join key: authoritative identity plus time."
+      accent: teal
+    notes: |
+      This is the literal contract — the eight fields every source emits, straight
+      from the book. Walk them: asset_id is the authoritative name or address from
+      the naming plane (IPAM/DDI), and it is the join key — highlighted teal here
+      because the next slide is built entirely on it. source and surface say who
+      produced the record and on which of the three surface classes (CSP, NEM, OS).
+      control ties the record to the specific NIST control it is evidence for, so a
+      single schema carries evidence for SI-2, SC-8, CM-6, and more. state is the
+      measured value, verdict is pass / warn / fail against intended state, and
+      disposition records whether the finding is applied, accepted-risk with a
+      POA&M reference, or still open. observed_at — also teal — is the second half
+      of the join key: identity tells you which asset, time lets you assemble a
+      trail. Emphasize that this table IS the coordination mechanism; everything
+      downstream (correlation, CDM rollup, KSI attestation) depends on every source
+      populating these fields faithfully. One more framing point: this is AU-3
+      (Content of Audit Records) raised to a cross-surface contract — the record's
+      content is standardized so records from any source are comparable, joinable,
+      and roll-up-able, which is exactly the property the fragmented estate lacked. It
+      is a Closure Necessity: without a common contract the five stacks cannot produce
+      one compliance picture, and no amount of dashboarding after the fact recovers a
+      schema the sources never agreed on. Fields cite the NIST control catalog, not a
+      vendor.
+    vendor_sources: ["nist_800_53"]
+
+  # --- 8. content: the join key --------------------------------------------
+  - type: content
+    kicker: "THE JOIN KEY — AU-12(1)"
+    title: "Authoritative asset identity + time"
+    layout: grid
+    cards:
+      - title: "Identity, not local IDs"
+        body: "Two records describe the same asset only if they carry the same authoritative asset_id — the naming plane's IP/hostname (CM-8), not each stack's local inventory id."
+        accent: navy
+      - title: "Add time"
+        body: "With observed_at, aggregated records become a system-wide, time-correlated audit trail (AU-12(1))."
+        accent: teal
+      - title: "One asset, three surfaces"
+        body: "As of 06:00, asset A was unpatched for CVE-X, reachable on an unencrypted segment, and out of baseline — one story from three surfaces."
+        accent: amber
+      - title: "Closure Necessity"
+        body: "AU-12(1) is downstream of the naming-plane necessity (IPAM/DDI, CM-8) and CISA BOD 23-01. Aggregation is not correlation."
+        accent: red
+    callout:
+      text: "The fabric and the patch plane share this join key — the same identity SI-2 at scale uses."
+      accent: navy
+    notes: |
+      This is the second mechanism and the reason the contract works. Aggregating
+      records is not correlating them: two records only describe the same asset if
+      they carry the same authoritative asset_id. That identity is the naming
+      plane's IP/hostname under CM-8 — deliberately NOT each stack's local
+      inventory id, which is exactly why the five inventories did not reconcile.
+      Add observed_at and the fabric produces a system-wide, time-correlated audit
+      trail: AU-12(1). The amber card is the payoff example straight from the book —
+      as of 06:00, asset A was unpatched for CVE-X (from the patch stack), reachable
+      on an unencrypted segment (from NEM telemetry), and out of baseline (from the
+      config stack): one correlated story about one asset, assembled from three
+      surfaces. The red card marks this as a Closure Necessity anchored downstream
+      of the naming-plane requirement and the federal asset-visibility mandate,
+      CISA BOD 23-01. Land the navy callout: this is the same join key the Patch &
+      Systems Management book uses for SI-2 at scale — the fabric does not invent a
+      new identity, it depends on the authoritative one.
+    vendor_sources: ["cisa_bod_2301", "nist_800_53"]
+
+  # --- 9. section: realizations --------------------------------------------
+  - type: section
+    kicker: "PART THREE"
+    title: "Realizations — aggregate, coordinate, deliver"
+    callout: "The fabric is a contract, so more than one product can realize each role."
+    callout_accent: navy
+    notes: |
+      Transition to the "who actually builds this" question. Because the fabric is
+      defined as a contract, each role in it can be filled by more than one product
+      — the doctrine mandates the schema and the join key, not the vendor. This
+      section names the FedRAMP-Moderate realizations for three roles: the
+      aggregation / analytics lake, the workflow / correlation hub with its CMDB,
+      and the federal rollup and attestation targets. The critical framing to voice
+      is the Microsoft-preference rule and exactly what it does and does not mean:
+      a Microsoft product is the default only WHEN it genuinely coordinates the
+      multi-vendor surface at FedRAMP Moderate — earned, not automatic. The next
+      slides give the realizations table and then the Microsoft-preference framing
+      explicitly. Voice the guardrail one more time before the table: because the
+      fabric is a contract and not a console, each of these three roles can be filled
+      by more than one product, and the doctrine mandates the schema and the join key
+      rather than the vendor. Preview the Microsoft-preference rule so the audience is
+      primed for it — a Microsoft product is the default only WHEN it genuinely
+      coordinates the multi-vendor surface at FedRAMP Moderate; it is earned, not
+      automatic, and Sentinel earns it by actually ingesting the other clouds' and the
+      network appliances' telemetry. Section divider carries no vendor claim.
+
+  # --- 10. table: realizations ---------------------------------------------
+  - type: table
+    kicker: "FEDRAMP-MODERATE REALIZATIONS"
+    title: "Default earns it; the contract stays vendor-neutral"
+    headers: ["Role", "Default (earns it)", "Moderate alternative", "Notes"]
+    rows:
+      - cells: ["Aggregation / analytics lake", "Microsoft Sentinel — ingests AWS, OCI, GCP, and NEM syslog/CEF", "Splunk Cloud Platform (FedRAMP Moderate)", "Sentinel earns default by genuine cross-vendor ingestion"]
+        accent: navy
+      - cells: ["Workflow / correlation hub / CMDB", "ServiceNow (FedRAMP-authorized)", "BMC Helix", "CMDB reconciles to IPAM/DDI — it does not replace the join key"]
+        accent: teal
+      - cells: ["Federal rollup", "CISA CDM agency dashboard to federal dashboard", "—", "The federal coordination substrate; the fabric feeds it"]
+        accent: amber
+      - cells: ["Attestation", "FedRAMP 20x KSI evidence pipeline + OSCAL bundle", "—", "Consumed by the Authorization Package & ConMon book"]
+        accent: red
+    callout:
+      text: "The fabric mandates the contract, never the vendor — any admissible lake, hub, or pipeline qualifies."
+      accent: navy
+    notes: |
+      This is the realizations matrix, read role by role. Aggregation / analytics
+      lake: Microsoft Sentinel is the default because it genuinely ingests the
+      multi-vendor surface — AWS (Security Hub / GuardDuty / CloudTrail), OCI, GCP,
+      and NEM syslog / CEF — and is FedRAMP-authorized; Splunk Cloud Platform is a
+      first-class FedRAMP Moderate alternative, not an afterthought. Workflow /
+      correlation hub: ServiceNow (FedRAMP-authorized) coordinates workflow and
+      holds the CMDB, with BMC Helix as the alternative — and the load-bearing
+      caveat is that the CMDB RECONCILES to the IPAM/DDI identity, it does not
+      replace the naming-plane join key. Federal rollup is CISA CDM, agency
+      dashboard up to the federal dashboard; the fabric feeds it, it is not
+      optional. Attestation is the FedRAMP 20x KSI evidence pipeline plus the OSCAL
+      bundle, which the Authorization Package and ConMon book consumes. Voice the
+      navy callout as the guardrail: the fabric mandates the contract, never the
+      vendor — any lake that ingests the record set, any hub that correlates on the
+      authoritative asset_id, and any pipeline that emits KSI/OSCAL evidence is
+      admissible. Note that all realization selections are pending agency
+      procurement review; verify every authorization on the FedRAMP Marketplace.
+      Vendor sources: FedRAMP Moderate authorization for the lake and hub.
+    vendor_sources: ["ms_sentinel", "splunk_cloud", "servicenow_fedramp"]
+
+  # --- 11. content: the Microsoft-preference rule --------------------------
+  - type: content
+    kicker: "MICROSOFT-PREFERENCE, PRECISELY"
+    title: "Sentinel earns default — it is not automatic"
+    layout: columns
+    cards:
+      - title: "The rule"
+        body: "A Microsoft product is the default only WHEN it genuinely coordinates the multi-vendor surface at FedRAMP Moderate."
+        accent: navy
+        status: "Earned"
+      - title: "Why Sentinel qualifies"
+        body: "It ingests AWS, OCI, GCP, and NEM syslog/CEF as first-class sources, and is FedRAMP-authorized — genuine cross-vendor coordination."
+        accent: teal
+        status: "Cross-vendor"
+      - title: "The alternative stands"
+        body: "Splunk Cloud Platform is a first-class FedRAMP Moderate alternative. The rule picks the coordinator, not the logo."
+        accent: amber
+        status: "First-class alt"
+    callout:
+      text: "Selections are pending procurement review — verify every authorization on the FedRAMP Marketplace."
+      accent: amber
+    notes: |
+      This slide states the Microsoft-preference rule exactly as the book frames it,
+      because it is easy to caricature and the nuance matters for procurement. The
+      rule is NOT "always pick Microsoft." It is: a Microsoft product is the default
+      when — and only when — it genuinely coordinates the multi-vendor surface at
+      FedRAMP Moderate. Sentinel earns that default because it truly ingests the
+      other clouds' security signal (AWS Security Hub / GuardDuty / CloudTrail, OCI,
+      GCP) and network-appliance syslog / CEF as first-class connectors, and it is
+      FedRAMP-authorized. That is genuine cross-vendor coordination, not a
+      Microsoft-only view. And the alternative is real: Splunk Cloud Platform is a
+      first-class FedRAMP Moderate option, chosen on the same criterion. The rule
+      selects the best coordinator of the heterogeneous surface, not the vendor with
+      the most familiar logo. Voice the amber caveat: SIEM/lake and hub selections
+      are pending agency procurement review, and every authorization must be
+      verified on the FedRAMP Marketplace at procurement time. Vendor sources: the
+      Sentinel multi-cloud connectors documentation and the Splunk FedRAMP Moderate
+      Marketplace listing.
+    vendor_sources: ["ms_sentinel", "splunk_cloud"]
+
+  # --- 12. section: the ConMon pipeline ------------------------------------
+  - type: section
+    kicker: "PART FOUR"
+    title: "The continuous-monitoring pipeline (CA-7)"
+    callout: "The fabric is the ConMon evidence pipeline — collect, normalize, correlate, roll up, attest."
+    callout_accent: teal
+    notes: |
+      Introduce the pipeline as the flow that ties parts one through three together.
+      The fabric IS the continuous-monitoring evidence pipeline: sources emit on
+      their own cadence, records normalize to the contract, correlate on asset
+      identity plus time, aggregate in the lake, roll up to CDM, and attest as
+      KSI/OSCAL. CA-7 (Continuous Monitoring) is closed here as the flow itself.
+      The driving authorities are OMB M-21-31 (event-logging maturity) and NIST SP
+      800-137 (Information Security Continuous Monitoring); AU-6(1) (automated
+      process integration) and SI-4(16) (correlate monitoring information) are
+      closed by the automated aggregation and cross-surface correlation the fabric
+      performs. The next five slides walk the pipeline one step at a time as a
+      build sequence — three or more moving parts, so it is a click-through, not a
+      single dense diagram. Emphasize the framing that CA-7 is closed here as the
+      FLOW itself, not as any one product: the sources emitting, the records
+      normalizing, the correlation running, the CDM rollup, and the KSI/OSCAL
+      attestation together are the continuous-monitoring control. Name the driving
+      authorities out loud — OMB M-21-31 on event-logging maturity and NIST SP 800-137
+      on Information Security Continuous Monitoring — and note that AU-6(1) and
+      SI-4(16) ride along inside the flow, closed by the automated aggregation and the
+      cross-surface correlation respectively. No vendor claim on the divider.
+
+  # --- 13. build-sequence: the ConMon pipeline -----------------------------
+  - type: build-sequence
+    kicker: "THE CONMON PIPELINE"
+    title: "Telemetry to CDM to KSI, one step at a time"
+    notes: "Fallback notes: the five-step continuous-monitoring flow the fabric runs — collect, normalize, correlate, roll up, attest."
+    steps:
+      - label: "Collect"
+        sub: "each source, own cadence"
+        accent: navy
+        detail: >
+          Every producing surface emits on its own schedule — CSP patch stacks, NEM
+          appliances, and OS agents. Nothing is re-platformed; the sources keep
+          running natively. This is where AU-12 (enterprise-wide audit generation)
+          begins.
+        notes: |
+          Step one: collection. The pipeline starts by letting every source emit on
+          its own cadence — Azure Update Manager, AWS Systems Manager, vSphere
+          Lifecycle Manager, network appliances, and OS agents all keep running
+          natively. Nothing here is re-platformed; the fabric is a truth-plane
+          function that depends on the sources, it does not replace them. This step
+          is where AU-12, enterprise-wide audit record generation spanning every
+          CSP, NEM appliance, and OS agent, is anchored. Emphasize the design
+          restraint: the value comes from what happens to the records next, not
+          from centralizing the collectors. Concretely, this is the moment the five
+          schemas from part one exist side by side — Azure Update Manager, AWS Systems
+          Manager, vSphere Lifecycle Manager, the Cisco / Palo Alto / Juniper syslog
+          and CEF feeds, and the Red Hat and Windows OS agents — each still in its own
+          native format. The pipeline does not yet make them comparable; it only
+          ensures every surface is emitting into the fabric on its own cadence, which
+          is the AU-12 obligation of enterprise-wide audit generation spanning every
+          CSP, NEM appliance, and OS agent. The hard work of comparability is the next
+          step. Vendor sources: OMB M-21-31 event-logging maturity.
+        vendor_sources: ["omb_m2131"]
+      - label: "Normalize"
+        sub: "to the contract (AU-3)"
+        accent: teal
+        detail: >
+          Each raw record is mapped into the unified evidence contract — the same
+          eight fields (asset_id, source, surface, control, state, verdict,
+          observed_at, disposition) regardless of origin. This is AU-3 raised to a
+          cross-surface contract.
+        notes: |
+          Step two: normalization to the contract. Each raw record, whatever its
+          native format, is mapped into the unified evidence contract — the eight
+          fields shown earlier: asset_id, source, surface, control, state, verdict,
+          observed_at, disposition. This is the AU-3 coordination mechanism in
+          action; it is what turns five incompatible log formats into one
+          comparable record set. Stress that normalization is where the schema
+          agreement is enforced — if a source cannot populate asset_id with the
+          authoritative naming-plane identity, the downstream correlation will fail,
+          which is why the contract is a Closure Necessity and not a nice-to-have.
+          Make the point that normalization is a mapping problem, not a storage
+          problem: the value is in translating each source's native fields into the
+          shared eight, especially populating asset_id with the authoritative naming-
+          plane identity rather than the source's own local inventory id. Where a
+          source cannot supply that identity, that is a gap to be remediated at the
+          connector, because it is the seam where the whole downstream picture would
+          silently break. This is AU-3 doing the coordinating work — the record's
+          content is standardized so records from any source become comparable,
+          joinable, and roll-up-able. Vendor sources: NIST SP 800-53 AU-3.
+        vendor_sources: ["nist_800_53"]
+      - label: "Correlate"
+        sub: "on asset + time (AU-12(1))"
+        accent: amber
+        detail: >
+          Normalized records are joined on the authoritative asset_id and ordered by
+          observed_at, producing a system-wide, time-correlated audit trail — one
+          asset's story assembled from every surface. SI-4(16) closes here.
+        notes: |
+          Step three: correlation on asset identity plus time. With every record now
+          carrying the authoritative asset_id and an observed_at timestamp, the
+          fabric joins across surfaces and orders by time, producing the system-wide
+          time-correlated audit trail of AU-12(1). This is the step that answers the
+          assessor's question from part one — one asset's full story assembled from
+          the patch stack, the network telemetry, and the config stack. SI-4(16),
+          correlate monitoring information across vendor and surface boundaries, is
+          closed here. Emphasize that this step is impossible without step two's
+          normalization and the naming-plane identity — aggregation alone never gets
+          you here. Use the book's canonical example to make it vivid: as of 06:00,
+          asset A was unpatched for CVE-X (from the patch stack), reachable on an
+          unencrypted segment (from the NEM telemetry), and out of baseline (from the
+          config stack) — three surfaces, one asset, one correlated story, keyed on the
+          authoritative asset_id and ordered by observed_at. Stress the dependency
+          chain: this correlation sits downstream of the naming-plane necessity
+          (IPAM/DDI, CM-8) and the federal asset-visibility mandate CISA BOD 23-01, and
+          it is the same join key the Patch and Systems Management book uses for SI-2
+          at scale. Vendor sources: NIST SP 800-53 SI-4(16) and AU-12(1).
+        vendor_sources: ["nist_800_53"]
+      - label: "Roll up"
+        sub: "to CISA CDM"
+        accent: navy
+        detail: >
+          The correlated record set aggregates in the lake and rolls up to the CISA
+          CDM agency dashboard and onward to the federal dashboard — the federal
+          coordination substrate for asset, vulnerability, and configuration
+          visibility.
+        notes: |
+          Step four: roll up to CISA CDM. The correlated record set aggregates in
+          the analytics lake (Sentinel by default, Splunk as the Moderate
+          alternative) and rolls up to the CISA CDM agency dashboard and onward to
+          the federal dashboard. CDM is the federal coordination substrate for
+          enterprise asset, vulnerability, and configuration visibility, and the
+          fabric feeds it — this is the federal-visibility obligation from CISA BOD
+          23-01 being satisfied by the same machinery that answers the local
+          assessor question. AU-6(1), automated process integration, is closed by
+          the automated aggregation that makes this rollup continuous rather than a
+          manual reporting exercise. Make the two-audience point explicit: the same
+          correlated record set that answered the local assessor's CVE question now
+          satisfies the federal enterprise-visibility obligation without a second data
+          pipeline — one fabric, two consumers. Note the realization for the presenter:
+          the lake is Microsoft Sentinel by default (it earns it by genuinely ingesting
+          AWS, OCI, GCP, and NEM syslog / CEF) with Splunk Cloud Platform as the first-
+          class FedRAMP Moderate alternative, but the CDM rollup obligation is identical
+          regardless of which lake fills the role. Vendor sources: CISA CDM program and
+          NIST SP 800-137 ISCM.
+        vendor_sources: ["cisa_cdm", "nist_800_137"]
+      - label: "Attest"
+        sub: "as KSI / OSCAL"
+        accent: teal
+        detail: >
+          The same correlated evidence is emitted as FedRAMP 20x KSI evidence and an
+          OSCAL bundle. CA-7 is closed as the flow; the Authorization Package & ConMon
+          book freezes a point-in-time OSCAL bundle from this output.
+        notes: |
+          Step five: attestation as KSI and OSCAL. The correlated evidence is emitted
+          into the FedRAMP 20x KSI evidence pipeline (the fabric is the primary
+          KSI-MLA — monitoring, logging, alerting — source for the whole series) and
+          into an OSCAL bundle. CA-7, continuous monitoring, is closed here as the
+          flow itself. Draw the boundary clearly: this book owns the pipeline that
+          produces the evidence; the Authorization Package and ConMon book freezes a
+          point-in-time OSCAL bundle FROM this output, and the SIEM/XDR book runs
+          detection analytics OVER the lake. The fabric is upstream of both. Add the
+          series-level point: the fabric is the primary KSI-MLA evidence source for the
+          WHOLE series — every book that emits a compliance record (identity, patch,
+          network enforcement, posture, data) delivers it through this fabric, where it
+          is normalized, correlated, and rolled up. The fabric does not compete with the
+          SIEM/XDR book for KSI-MLA; it is the substrate that book's analytics run on.
+          And because the evidence is the aggregated, correlated record set rather than
+          a single-tenant snapshot, none of the controls closed here is attestable by a
+          conformance tool alone. Vendor sources: NIST OSCAL and the FedRAMP 20x
+          program.
+        vendor_sources: ["nist_oscal", "fedramp_20x"]
+
+  # --- 14. content: the boundary -------------------------------------------
+  - type: content
+    kicker: "WHAT THIS BOOK IS NOT"
+    title: "The boundary with detection and authorization"
+    layout: columns
+    cards:
+      - title: "This book — the fabric"
+        body: "Gets every source's data into one normalized, correlated contract. The substrate the other two run on. Closes AU-3, AU-12(1), CA-7."
+        accent: teal
+        status: "Upstream"
+      - title: "SIEM / XDR — detection"
+        body: "Owns analytics and response — KQL/correlation rules, UEBA, playbooks — the logic that finds a threat in the data. It analyzes the fabric."
+        accent: navy
+        status: "Analyzes it"
+      - title: "Authorization & ConMon — OSCAL"
+        body: "Assembles the OSCAL AP/AR/POA&M bundle from the fabric's output. It freezes a point-in-time attestation of the fabric."
+        accent: amber
+        status: "Attests it"
+    callout:
+      text: "Detection analyzes the fabric; the OSCAL bundle attests it. The fabric is upstream of both."
+      accent: teal
+    notes: |
+      This slide draws the three-way boundary so the audience does not conflate this
+      book with its neighbors — a frequent point of confusion. This book, the
+      evidence fabric, owns the layer beneath analytics: getting every source's data
+      into one normalized, correlated contract in the first place. It is NOT the
+      detection-engineering book. The SIEM / XDR Detection book owns analytics and
+      response — KQL and correlation rules, UEBA, playbooks — the logic that finds a
+      threat in the data; it runs ON TOP of the fabric. And this is NOT the
+      authorization book: the Authorization Package and ConMon book assembles the
+      OSCAL AP/AR/POA&M bundle FROM the fabric's output, freezing a point-in-time
+      attestation. The through-line in the teal callout: detection analyzes the
+      fabric, the OSCAL bundle attests it, and the fabric is upstream of both. Cross-
+      references name those books by title and role, not number, because this book
+      sits at a provisional series slot pending the Volume III renumber. A crisp way
+      to leave it: this book owns getting the data into one normalized, correlated
+      contract; the SIEM/XDR book owns finding the threat in that data; and the
+      Authorization and ConMon book owns freezing a point-in-time attestation of it.
+      Same evidence, three jobs, one order of operations. No external vendor claim on
+      this slide.
+
+  # --- 15. table: authorities closed here ----------------------------------
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "Controls only a cross-surface fabric can close"
+    headers: ["Control", "Title", "Closing mechanism (function, not product)", "Tool-attestable?"]
+    rows:
+      - cells: ["AU-3 †", "Content of Audit Records", "Unified machine-readable evidence-record contract every native stack emits", "No"]
+        accent: teal
+      - cells: ["AU-12", "Audit Record Generation", "Enterprise-wide audit generation across every CSP, NEM appliance, and OS agent", "No"]
+      - cells: ["AU-12(1) †", "System-Wide / Time-Correlated Audit Trail", "Cross-surface correlation keyed to authoritative asset identity (IPAM/DDI) + time", "No"]
+        accent: teal
+      - cells: ["AU-6(1)", "Automated Process Integration", "Automated aggregation + analysis across CSP/NEM/OS into one lake", "No"]
+      - cells: ["CA-7", "Continuous Monitoring", "The telemetry to evidence to CDM to KSI pipeline; ServiceNow CMDB reconciled to IPAM/DDI", "No"]
+      - cells: ["SI-4(16)", "Correlate Monitoring Information", "Correlation of monitoring data across vendor / surface boundaries in the fabric", "No"]
+    callout:
+      text: "Every row is No — the evidence is the aggregated, correlated record set, not a single-tenant scan. († = Closure-Necessity anchor.)"
+      accent: amber
+    notes: |
+      This is the control-closure spine for the book, distilled from the generated
+      authorities table (rendered from aan-compliance-spine.yml, not hand-kept). Read
+      the pattern, not each cell: six NIST SP 800-53 Rev 5 controls — AU-3, AU-12,
+      AU-12(1), AU-6(1), CA-7, SI-4(16) — all at the FedRAMP Moderate baseline, all
+      in the Telemetry evidence slot, all mapping to KSI-MLA. The single most
+      important column is the last one: Tool-attestable? is uniformly No. That is the
+      whole argument of the series compressed into one column — because the evidence
+      is the aggregated, correlated record set across surfaces, not a single-tenant
+      configuration snapshot, none of these controls can be attested by a per-tenant
+      conformance scan. Only a cross-surface fabric produces this evidence. The two
+      dagger-marked rows, AU-3 and AU-12(1), are Closure-Necessity anchors: there is
+      no alternate closure path — no common contract, no one picture; no authoritative
+      join key, no correlated trail. Add the provenance note for anyone who asks: this
+      table is generated from the series compliance spine (aan-compliance-spine.yml)
+      via render_authorities_table.py, not hand-maintained, so the deck and the book
+      cannot drift on control mappings. And keep the scope discipline in mind — every
+      row is FedRAMP Moderate; the series never claims High, and where an underlying
+      product happens to hold a higher authorization it is referred to simply as
+      FedRAMP-authorized. Vendor sources: the NIST SP 800-53 Rev 5 control catalog.
+    vendor_sources: ["nist_800_53"]
+
+  # --- 16. closing ---------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "One contract, one join key, one compliance picture"
+    layout: columns
+    cards:
+      - title: "The contract"
+        body: "AU-3 raised to a cross-surface record every stack emits — the coordination mechanism, not a console."
+        accent: navy
+        status: "AU-3"
+      - title: "The join key"
+        body: "Authoritative asset identity (IPAM/DDI) plus time — the correlation AU-12(1) depends on."
+        accent: teal
+        status: "AU-12(1)"
+      - title: "The delivery"
+        body: "Collect, normalize, correlate, roll up to CDM, attest as KSI/OSCAL — CA-7 as the flow."
+        accent: amber
+        status: "CA-7"
+    callout:
+      text: "The fabric mandates the contract, never the vendor — and feeds both detection and the OSCAL bundle."
+      accent: navy
+    notes: |
+      Close on the through-line. Three things make one compliance picture from many
+      stacks: a contract, a join key, and a delivery flow. The contract is AU-3
+      raised to a cross-surface record every stack emits — coordination is a
+      contract, not a console. The join key is the authoritative asset identity from
+      the naming plane (IPAM/DDI) plus time, which is what AU-12(1) correlation
+      depends on and what the fragmented estate lacked. The delivery is the five-step
+      ConMon pipeline — collect, normalize, correlate, roll up to CISA CDM, attest as
+      KSI/OSCAL — closing CA-7 as the flow. Restate the guardrail: the fabric
+      mandates the contract, never the vendor; Sentinel earns default by genuine
+      cross-vendor ingestion, Splunk is a first-class Moderate alternative, and
+      ServiceNow's CMDB reconciles to IPAM/DDI rather than replacing it. Leave the
+      audience with the boundary: this fabric is the substrate detection analyzes and
+      the OSCAL bundle attests — upstream of both. If the room takes one sentence
+      away, make it this: coordination across heterogeneous stacks is a contract, not
+      a console, and the contract plus the authoritative join key are what turn five
+      partial views into one attestable compliance picture. Every control this book
+      closes is uniformly not tool-attestable, precisely because the evidence is the
+      aggregated, correlated record set that only a cross-surface fabric can produce.
+      Selections remain pending procurement review; verify authorizations on the
+      FedRAMP Marketplace.
+    vendor_sources: ["cisa_cdm", "fedramp_20x"]

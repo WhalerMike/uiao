@@ -24,8 +24,8 @@ References:
       - ADR-066 (Application-Aware Networking concept — the canonical anchor)
     External companion content (evidence source; NOT canon — canon does not
     depend on inbox/ paths):
-      - inbox/Application Aware Networking/ (AAN document series)
-      - inbox/Application Aware Networking/federal-aan-conmon-gap-roadmap.md (roadmap)
+      - docs/customer-documents/federal-aan-series/ (AAN document series)
+      - docs/customer-documents/federal-aan-series/federal-aan-conmon-gap-roadmap.md (roadmap)
 """
 
 ADAPTER_ID: str = "fedramp-aan-catalog"
