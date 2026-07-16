@@ -21,13 +21,14 @@ fig-align: center
 out-width: "100%"
 execute:
   echo: false
+filters: [aan-callouts.lua]
 ---
 
 ::: {.fouo-banner}
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -35,7 +36,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 **Date Code:** 2026-07-08 16:07 ET
 :::
 
-::: {.callout-important}
+::: {.aan-important}
 **Series Context** — This document is Vol III Book 06 of the Federal Application-Aware Networking series. The Volume I and Volume II books established the most comprehensive structured log pipeline a federal agency is likely to operate: InfoBlox syslog with RPZ/DNSSEC telemetry, SASE per-session flow records, Entra ID sign-in and audit logs, SQL Server continuous monitoring, and Defender for Endpoint device findings. Vol III Book 01 (Privileged Access Management) and Vol III Book 02 (Vulnerability Management) extended that foundation with privileged access management and vulnerability posture. Vol III Book 05 (Data Protection / Purview) addressed data protection and classification. This part converts the aggregate log pipeline into an active detection and response capability — closing the gap between log generation (AU-2, AU-12) and log analysis, anomaly detection, and incident response (AU-6, SI-4, IR-4/6/8).
 :::
 
@@ -49,7 +50,7 @@ A log warehouse that has never generated an alert does not satisfy AU-6. NIST SP
 
 This document closes that gap through four mechanisms: a connected Security Information and Event Management (SIEM) platform — Microsoft Sentinel — that ingests every log source from the series through native data connectors; a curated detection rule library of KQL-based analytics rules targeted at the specific log sources established by the Volume I, Volume II, and Volume III books preceding this one; User and Entity Behavior Analytics (UEBA) that applies machine learning across the aggregate telemetry to surface anomalies no single-source rule can detect; and automated playbooks that convert alert firings into enriched incident records and, for confirmed high-severity detections, trigger automated containment without waiting for analyst action.
 
-::: {.callout-note}
+::: {.aan-note}
 **SIEM vs. Log Aggregator** — A log aggregator (Splunk, Elastic, Azure Log Analytics alone) collects and indexes log data. A SIEM platform — Microsoft Sentinel, Splunk SIEM, IBM QRadar — adds rule-based detection, ML-driven anomaly scoring, incident management workflow, and automation orchestration on top of that indexed data. Microsoft Sentinel is built on Azure Log Analytics as its data store and adds the SIEM detection layer. Both components are required. The distinction matters for assessors: AU-6 does not accept a log aggregator that has no detection rules configured.
 :::
 
@@ -242,7 +243,7 @@ foreach ($Table in $AuditTables) {
 }
 ```
 
-::: {.callout-note}
+::: {.aan-note}
 **AU-11 Minimum** — FedRAMP Moderate AU-11 requires audit record retention for the time period defined in the system's record retention requirements, not less than 3 years for most federal civilian agencies under NARA General Records Schedule (GRS) 3.2. The `TotalRetentionInDays 1095` setting (3 years = 1,095 days) satisfies the GRS 3.2 floor. The 90-day interactive window ensures investigators can query recent events without archive retrieval latency.
 :::
 
@@ -670,7 +671,7 @@ Invoke-RestMethod `
     -Body $IsolateBody
 ```
 
-::: {.callout-warning}
+::: {.aan-warning}
 **Automated Isolation — Authorization Gate Required** — Automated device isolation must be gated on a confirmation signal before execution in production. Do not trigger isolation solely on a vulnerability scan finding — require the Defender for Endpoint alert EventType to equal "Exploit" (active exploitation confirmed, not merely vulnerable). False-positive isolation of a production SQL Server causes an outage. Require a Logic App approval step for all non-workstation device classes before the isolation API call executes.
 :::
 
@@ -724,7 +725,7 @@ FedRAMP assessors evaluating IR-8 request a specific set of documented artifacts
 
 **Artifact 7 — Annual IR Test Record:** FedRAMP requires that the IR plan be tested annually (IR-3). The test can be the tabletop exercise (Artifact 6) or a live-fire drill using Sentinel's testing capabilities (Sentinel analytics rules support a "test rule" function that fires a simulated alert through the full automation chain). Record the test date, method, outcome, and any plan updates resulting from the test.
 
-::: {.callout-note}
+::: {.aan-note}
 **CISA Reporting Threshold** — the current-year OMB FISMA guidance (e.g., OMB M-24-04, carrying forward the requirement first set in earlier annual FISMA memos) requires federal agencies to report major incidents to CISA within 1 hour of discovery. A major incident is defined as an incident that is likely to result in demonstrable harm to the national security interests, foreign relations, or economy of the United States, or is likely to have significant adverse effect on significant agency operations. In practical terms: any confirmed data breach, any successful ransomware deployment, and any confirmed APT access to federal systems are major incidents. The IR plan must document the 1-hour notification pathway explicitly.
 :::
 
@@ -740,7 +741,7 @@ The AU-11 retention requirement — preserve audit records for a period sufficie
 
 **Tier 3 — Immutable WORM Storage (3 years minimum, policy-driven):** Export daily snapshots from the Log Analytics workspace to Azure Blob Storage with legal hold (object immutability, WORM — Write Once Read Many). This tier satisfies the NARA General Records Schedule 3.2 requirement for disposition-controlled federal records. Legal hold prevents deletion even by subscription administrators until the hold is explicitly lifted through a documented process.
 
-::: {.callout-important}
+::: {.aan-important}
 **OMB M-21-31 event-logging maturity (EL1).** Beyond AU-11 and NARA GRS 3.2, OMB M-21-31 sets an EL1 floor of **12 months of active (readily accessible) storage plus 18 months of cold storage** for in-scope logs — a longer active window than the 90-day interactive tier above. Two conformant options exist, and the choice must be recorded per table: (1) extend Tier 1 interactive retention to 12 months for the in-scope tables (SigninLogs, AuditLogs, and the other authentication, EDR, and DNS tables M-21-31 enumerates), accepting the added retention cost; or (2) where the asynchronous query-job latency of the Tier 2 archive is argued to satisfy "readily accessible" for a given table, document that determination and note the residual-risk acceptance explicitly. Map each in-scope table to its chosen option in the per-table retention configuration so an assessor can trace the M-21-31 EL1 decision.
 :::
 
@@ -793,7 +794,7 @@ Log Analytics pricing at scale is a primary budget consideration for SIEM deploy
 
 : Sentinel cost model components {.striped .hover}
 
-::: {.callout-important}
+::: {.aan-important}
 **Commitment Tier Discount** — Microsoft Sentinel offers commitment tier pricing (100 GB/day through 5,000 GB/day tiers) that reduces per-GB ingestion cost by 15–65% compared to pay-as-you-go pricing. Any agency ingesting more than 100 GB/day should evaluate commitment tier pricing before the system reaches steady state. The 12-month commitment tier requires no upfront payment — it is a pricing rate selection, not a prepayment. Evaluate at the 60-day mark after all connectors are live.
 :::
 
@@ -825,7 +826,7 @@ The following table documents the NIST SP 800-53 Rev 5 controls addressed by thi
 
 ---
 
-::: {.callout-important}
+::: {.aan-important}
 ## FedRAMP 20x Key Security Indicator Alignment
 
 FedRAMP 20x replaces the point-in-time assessment model with continuous Key Security Indicators (KSIs) evaluated through machine-readable evidence. The controls this document closes map to two CR26 KSI themes — KSI-MLA (which subsumes both the audit and the detection dimensions) and KSI-INR:

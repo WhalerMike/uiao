@@ -21,13 +21,14 @@ fig-align: center
 out-width: "100%"
 execute:
   echo: false
+filters: [aan-callouts.lua]
 ---
 
 ::: {.fouo-banner}
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -35,7 +36,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 **Date Code:** 2026-07-08 16:07 ET
 :::
 
-::: {.callout-important}
+::: {.aan-important}
 **Series Context** — This document is Vol III Book 05 of the Federal Application-Aware Networking series. The Volume I network-and-identity books and the Volume II database books establish Landing Zone IPAM/DDI/PKI, Network Access Control, Certificates and Tokens, Network Modernization, Telecommunications Modernization, SQL Server Authentication Modernization, SQL Server Implementation, and Database Consolidation and Network Physics. Vol III Book 01 addresses Privileged Access Management. Vol III Book 06 addresses SIEM, XDR, and Detection Engineering. This part addresses the data layer: what the data is, where it is allowed to go, and whether it is cryptographically protected at rest and in transit.
 :::
 
@@ -49,7 +50,7 @@ A Cloud Access Security Broker (CASB) operating at the network boundary can see 
 
 This document closes the payload gap through three coordinated mechanisms: a federal data classification taxonomy enforced via sensitivity labels (information classification and marking); Data Loss Prevention policies that use label-derived signal to enforce movement restrictions at the service, endpoint, and network boundary layers; and cryptographic key management that ensures classified data is protected by keys the agency controls and can rotate or revoke. Together these mechanisms address the data-layer NIST SP 800-53 Rev 5 controls — AC-4, AU-10, the MP family, SC-12, SC-12(1), SC-13, SC-17, and SC-28 — that remain open after the network and identity layers are complete.
 
-::: {.callout-note}
+::: {.aan-note}
 **Enforcement Dimensions** — Network and identity enforcement governs the pipe: who connects, over what path, with what credential, from what device. Data protection governs the payload: what the content is, whether it is marked, whether it is allowed to leave the boundary, and whether it is encrypted under agency-controlled keys. Both dimensions are required for a complete FedRAMP Moderate authorization. Implementing the network and identity layers without the data layer leaves the MP and SC-12 control families unsatisfied.
 :::
 
@@ -184,7 +185,7 @@ New-LabelPolicy `
   -TeamsLocation All
 ```
 
-::: {.callout-note}
+::: {.aan-note}
 **Label Policy Scope** — Publishing labels to all locations (Exchange, SharePoint, OneDrive, Teams) is required for consistent enforcement. A label published only to Exchange will appear in Outlook but not in the SharePoint label picker, causing inconsistent classification behavior. Publish to all locations from the initial deployment.
 :::
 
@@ -270,7 +271,7 @@ For document categories that do not match a pattern — internal policy document
 
 Microsoft provides pre-trained classifiers for categories including: business financial statements, government documents, harassment, and legal affairs. Agency-specific categories require a custom trainable classifier trained on 50–500 sample documents.
 
-::: {.callout-warning}
+::: {.aan-warning}
 **Trainable Classifier Training Data** — The sample documents used to train a custom classifier must be representative of the actual document population. If training samples are drawn from a subset of document types (for example, only formally formatted policy documents), the classifier will underperform on informal documents containing the same category of information. Plan for 3–4 weeks of training and validation before deploying a custom classifier to production auto-labeling.
 :::
 
@@ -325,7 +326,7 @@ Set-AutoSensitivityLabelPolicy `
   -Mode "Enable"
 ```
 
-::: {.callout-note}
+::: {.aan-note}
 **Simulation Mode First** — Always deploy auto-labeling policies in simulation mode before enabling enforcement. The simulation report shows which documents would be labeled and with what label, without modifying any content. Review the simulation output for false positives before switching to enforcement. A false-positive spike can trigger help desk calls at scale if a labeling policy applies CUI-Specified to routine internal documents.
 :::
 
@@ -450,7 +451,7 @@ New-DlpComplianceRule `
   -Severity High
 ```
 
-::: {.callout-warning}
+::: {.aan-warning}
 **Endpoint DLP and Defender for Endpoint Integration** — Endpoint DLP enforcement depends on the Defender for Endpoint sensor being active and reporting device health to the Purview service. A device that has been excluded from Defender for Endpoint onboarding (for example, a legacy industrial control system or a specialized testing workstation) will not receive Endpoint DLP policy. Audit the Defender for Endpoint onboarding coverage report before deploying Endpoint DLP and resolve onboarding gaps first.
 :::
 
@@ -641,7 +642,7 @@ Get-AzKeyVaultKeyRotationPolicy `
   -Name "cmk-sql-tde-prod"
 ```
 
-::: {.callout-important}
+::: {.aan-important}
 **Immediate Rotation on Suspected Compromise** — The rotation policy above handles scheduled rotation. If a key is suspected of compromise — for example, a Key Vault Crypto User Managed Identity is associated with a compromised server — an immediate manual rotation is required. Run `Add-AzKeyVaultKey` to create a new key version, update the TDE protector to the new version, and then file a security incident report documenting the compromise scope and the rotation action taken. Do not delete the compromised key version until all data encrypted under it has been re-encrypted.
 :::
 
@@ -742,7 +743,7 @@ Search-UnifiedAuditLog `
   Export-Csv -Path "C:\AuditExports\LabelChanges_7d.csv" -NoTypeInformation
 ```
 
-::: {.callout-note}
+::: {.aan-note}
 **AU-10 vs AU-12 Distinction** — AU-12 (audit generation) requires the system to generate audit records for defined events. Volumes I and II, together with the Privileged Access Management and Vulnerability Management books of Volume III, satisfy AU-12 through Defender for Endpoint, Azure Monitor, and the Microsoft Sentinel SIEM deployed in Vol III Book 06. AU-10 (non-repudiation) requires that those records be *irrefutable*. Standard audit logs in Log Analytics are mutable by a Global Administrator. Purview Audit Premium's immutable, signed records are required specifically for the AU-10 control. Both controls are needed; they are satisfied by different mechanisms.
 :::
 
@@ -875,13 +876,13 @@ The following table maps the NIST SP 800-53 Rev 5 controls addressed in this doc
 
 : NIST SP 800-53 Rev 5 control closure — Vol III Book 05 Data Protection {.striped .hover}
 
-::: {.callout-note}
+::: {.aan-note}
 **Interpretive note on the MP family.** The MP family (MP-2 through MP-5) governs *system media* — removable media, paper, and output. The rows above map sensitivity-label access, marking, and DLP to MP-2/MP-3/MP-4/MP-5 as a *supporting* interpretation for SaaS-resident files; a 3PAO may prefer to see label-based attribute control anchored to **AC-16 (Security and Privacy Attributes)** and **AC-4**, reserving MP claims for where physical or removable media is actually controlled (endpoint USB and print, MP-5/MP-7). Read the MP rows here as supporting evidence for the data-layer intent rather than as the sole closure of the media-handling controls.
 :::
 
 ---
 
-::: {.callout-note}
+::: {.aan-note}
 ## FedRAMP 20x Key Security Indicator Alignment
 
 FedRAMP 20x shifts authorization from document-heavy assessment to continuous, evidence-based Key Security Indicators (KSIs). The controls established in this document contribute to the following KSIs:

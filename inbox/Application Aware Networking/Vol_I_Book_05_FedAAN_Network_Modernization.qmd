@@ -19,9 +19,10 @@ format:
     fig-width: 6.5
 fig-align: center
 out-width: "100%"
+filters: [aan-callouts.lua]
 ---
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -49,7 +50,7 @@ This document tells the story of how your agency's IT architecture evolved acros
 5. **The cost of not modernizing is not abstract.** Duplicate payments, records that cannot be reconciled, benefits issued against data that cannot be traced to an authoritative source — these are the downstream consequences of accumulated architectural debt.
 :::
 
-::: {.callout-note}
+::: {.aan-note}
 **The one sentence the whole story turns on:** Active Directory conflated **the directory (truth)** with **the domain controller (the in-path enforcer)**. Every act of this story is a consequence of that conflation. NIST SP 800-207 and OMB M-22-09 require agencies to separate these roles: a governance layer holds and reconciles authoritative state; identity providers, network enforcement points, and data platforms remain the runtime data planes beneath it.
 :::
 
@@ -337,7 +338,7 @@ For agencies on the mainframe-to-AAN modernization path, this is not a complianc
 - **January 1, 2027:** Consolidated Rules mandatory for all certified systems — all ConMon evidence must meet machine-readable KSI format
 - **June 11, 2027:** No new Rev5 certification applications accepted
 
-::: {.callout-important}
+::: {.aan-important}
 **The precise alignment:** FedRAMP 20x's demand for "continuous, automated, machine-readable evidence" maps exactly to what the Active Governance control plane produces. A governance substrate that holds desired state, observes actual state, classifies drift, and reconciles toward intent — while generating structured JSON records of every observation and action — IS a FedRAMP 20x-compliant ConMon implementation. The architectural transition IS the compliance posture.
 :::
 
@@ -380,11 +381,11 @@ The following table maps each concept in this narrative to the federal mandate, 
 
 # Appendix A — Cisco Catalyst SD-WAN and Microsoft 365 Informed Network Routing: Federal Implementation Reference {#appendix-cisco-inr}
 
-::: {.callout-note}
+::: {.aan-note}
 **Scope: FedRAMP Moderate civilian agencies using Microsoft 365 GCC.** This appendix is scoped to **FedRAMP Moderate** — civilian federal agencies operating M365 GCC tenants. GCC High, DoD IL4/IL5, and FedRAMP High authorizations are out of scope. Vol I Book 05's main narrative describes SD-WAN in platform-neutral terms. This appendix addresses the specific combination that most FedRAMP Moderate agencies encounter: **Cisco Catalyst SD-WAN** as the branch transport platform and **Microsoft 365 Informed Network Routing (INR)** as the M365 traffic optimization layer.
 :::
 
-::: {.callout-important}
+::: {.aan-important}
 **INR telemetry is a commercial-cloud capability — it is unavailable in this appendix's own scope.** Microsoft 365 Informed Network Routing is not offered in the GCC Moderate cloud. Microsoft Learn states the feature "supports tenants in WW Commercial cloud but not the GCC Moderate, GCC High, DoD, Germany, or China clouds," and the substrate encodes this as a machine-enforced contract fixture — **FINDING-001** (`tests/fixtures/contract/m365/informed-network-routing-unavailable-gcc-moderate.yaml`), which requires the adapter to return a `CapabilityUnavailable` claim rather than assume INR telemetry.
 
 **What this means for the architecture below.** The INR-fed telemetry channel — Microsoft sharing per-endpoint path and performance signals with the SD-WAN fabric — is **not** available to a GCC Moderate agency. Everything else in this appendix holds: the branch still runs **Cloud OnRamp for SaaS**, which probes the published M365 GCC Optimize/Allow endpoints directly and steers to the best local-breakout path from its own measurements. The control table, KSI evidence contracts, and TIC alignment are satisfied by probe-based steering; only the Microsoft-fed telemetry enrichment is lost. Where the sections below reference INR telemetry, read them as the commercial-cloud target state and Cloud OnRamp probe-based steering as the GCC Moderate implementation. Cite FINDING-001 in the boundary documentation so an assessor sees the constraint was designed for, not missed.
@@ -409,7 +410,7 @@ The platform has four functional planes:
 
 **The FedRAMP boundary implication:** Only SD-WAN Manager (the management plane) is a cloud-hosted SaaS component when using the cloud-delivered model. The data plane (cEdge at the branch) is hardware deployed within the agency boundary. The control and orchestration planes operate at the agency-managed FedRAMP boundary or in GovCloud. This boundary partitioning is the first question an Authorizing Official must document.
 
-::: {.callout-important}
+::: {.aan-important}
 **What Cisco Catalyst SD-WAN does not provide by itself.** Like all SD-WAN platforms, Cisco Catalyst SD-WAN does not provide user identity awareness, device posture enforcement, or data classification. It provides application identification (via DPI signatures and FQDN matching), path quality measurement, and application-steered routing. The SASE layer — Cisco Umbrella, or a third-party CASB/SWG — provides the identity and data planes. The two must be present together for the full AAN control stack.
 :::
 
@@ -483,7 +484,7 @@ In a Cisco Catalyst SD-WAN + Microsoft INR deployment, the boundary documentatio
 
 : Cisco Catalyst SD-WAN + INR — FedRAMP Boundary Component Classification {.striped .hover}
 
-::: {.callout-important}
+::: {.aan-important}
 **The most common boundary documentation error.** Agencies document the WAN Edge hardware and stop. They do not document the SD-WAN management plane (SD-WAN Manager) as a separate component with its own authorization surface. If SD-WAN Manager is cloud-hosted by Cisco, it must either be covered by a FedRAMP-authorized Cisco offering or excluded from the boundary with an ISA documenting what data crosses to it — typically configuration and telemetry, not federal mission data. Check Cisco's current FedRAMP authorization status with the FedRAMP Marketplace before designing the boundary.
 :::
 
@@ -528,7 +529,7 @@ The following table maps the AAN evidence layer to FedRAMP 20x KSI themes for th
 
 : Cisco Catalyst SD-WAN + Microsoft INR — FedRAMP 20x KSI Evidence Contracts {.striped .hover}
 
-::: {.callout-note}
+::: {.aan-note}
 **The AAN slot binding for this appendix.** The evidence contracts in the table above are satisfied by AAN slot 03 (network control plane), which binds to Vol I Book 05 (SD-WAN/SASE/UC) in the Conformance Adapter. The Cisco Catalyst SD-WAN + Microsoft INR configuration is a specific implementation of the generic SD-WAN evidence described in slot 03. No additional slot binding is required — the slot-03 controls (KSI-CNA, KSI-MLA, KSI-SVC, KSI-CMT) are already satisfied when the platform-specific configuration in this appendix is in place.
 :::
 
@@ -550,6 +551,6 @@ The following sequence reflects what a Cisco Catalyst SD-WAN + Microsoft INR dep
 
 **Step 6 — FedRAMP 20x KSI evidence validation.** Using the evidence contracts in §A.5, verify that SIEM receives the required structured events for each KSI. Confirm the evidence passes the format and completeness requirements of the `uiao oscal bundle` assessment results generator.
 
-::: {.callout-note}
+::: {.aan-note}
 **This appendix does not substitute for Cisco professional services or a system integrator.** The implementation sequence above is a decision-maker-level orientation, not an engineering runbook. Every agency deployment requires site surveys, carrier qualification (MAPS enrollment), and Cisco SD-WAN Manager template development that must be executed by certified Cisco Catalyst SD-WAN engineers. What this appendix provides is the compliance framing and boundary documentation structure that should govern that engagement from the start — not the configuration commands.
 :::

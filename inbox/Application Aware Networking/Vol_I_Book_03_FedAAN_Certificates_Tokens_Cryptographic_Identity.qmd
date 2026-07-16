@@ -21,13 +21,14 @@ fig-align: center
 out-width: "100%"
 execute:
   echo: false
+filters: [aan-callouts.lua]
 ---
 
 ::: {.fouo-banner}
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -35,7 +36,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 **Date Code:** 2026-07-08 16:07 ET
 :::
 
-::: {.callout-important}
+::: {.aan-important}
 **Series Context** — This document is Vol I Book 03 of the Federal Application-Aware Networking series. [Vol I Book 01](Vol_I_Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — authoritative DNS, DHCP, and IPAM as the landing-zone source of truth. [Vol I Book 02](Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd) established device identity at the network port — 802.1X, EAP-TLS, and the machine certificate as the admission credential. This part completes the identity plane's cryptographic foundation: how certificates are issued, revoked, and automated as a function of the naming plane, and how tokens replace network sessions as the carrier of identity. [Vol II Books 01](Vol_II_Book_01_FedAAN_SQL_Server_Authentication_Modernization.qmd) and [02](Vol_II_Book_02_FedAAN_SQL_Server_Implementation_Guide.qmd) — SQL Server authentication modernization — are direct applications of the doctrine this part establishes.
 :::
 
@@ -69,11 +70,11 @@ The argument proceeds in five movements:
 4. **Token-based identity.** OAuth 2.0/OIDC, certificate-based authentication, and phishing-resistant MFA — the BOD 25-01 and OMB M-22-09 alignment layer.
 5. **Machine and workload identity.** Service principals, managed identities, and workload identity federation — the elimination of stored secrets from the non-human identity estate.
 
-::: {.callout-note}
+::: {.aan-note}
 **Where this sits in the Functional Plane Model** — Certificates and tokens are **identity-plane truth**. The policy enforcement plane (conditional access, ZTNA, SASE PEPs) *consumes* this truth; it does not create it. Per the series hierarchy rule: enforcement planes can be re-platformed or absorbed; truth planes can only be depended on. A conditional access policy evaluating a forged or stale identity assertion enforces the wrong answer very efficiently. This book is about making the assertion true.
 :::
 
-::: {.callout-note}
+::: {.aan-note}
 **What this document does not cover** — Directory rationalization and the authorization data model (which attributes a token should assert) are Vol I Book 05's Principle 1 territory; privileged session management built *on* these credentials is Vol III Book 01 (Privileged Access Management); the SIEM content that consumes identity telemetry is Vol III Book 06 (SIEM/XDR Detection). This document is the credential layer those parts assume: where keys come from, how they are governed, and how identity travels once it no longer rides the network session.
 :::
 
@@ -167,7 +168,7 @@ This framing is not aesthetic — it dictates ownership of function. Because iss
 
 When Vol I Book 01 described a workload spin-up that allocates an IP, creates DNS A/PTR records, and enrolls a machine certificate in one automated transaction, that was this doctrine in motion: **name, address, and key bound together at birth, revoked together at death.** A certificate tracked separately from the naming plane is a certificate whose name can silently stop being true.
 
-::: {.callout-note}
+::: {.aan-note}
 **Cross-Book Link — The Same Binding for NAC-Enrolled Endpoints (Vol I Books 01 and 02):**
 The "name, address, and key bound together" compound guarantee applies equally to **NAC-enrolled endpoint devices**:
 
@@ -254,7 +255,7 @@ Every lifecycle event — enrollment, renewal, revocation, failed challenge, exp
 2. **Issuance outside the pipeline.** A certificate observed on a listener (via the scanning estate of Vol III Book 02, Vulnerability Management) that has no corresponding enrollment record and no IPAM binding is unauthorized issuance or shadow infrastructure — either way, a finding.
 3. **Challenge-failure clustering.** Repeated DNS-01 failures against one zone indicate either DDI API breakage (an availability problem) or an attempt to obtain certificates for names the requester does not control (a security problem). The same signal, triaged by source.
 
-::: {.callout-tip}
+::: {.aan-tip}
 **The operational tell that this is working:** certificate expiry disappears as an incident category, and certificate *questions* become DNS queries. "What is presenting on this name, issued by whom, expiring when?" is answered by the naming plane in one lookup — because issuance was never allowed to happen anywhere else.
 :::
 
@@ -332,7 +333,7 @@ The architecture in this book is not one option among several for satisfying the
 
 : Directive-to-mechanism mapping for the cryptographic identity layer {.striped .hover}
 
-::: {.callout-note}
+::: {.aan-note}
 **Reading the table honestly** — none of these directives names a product, and this book names products only as examples of functions. What the directives *do* name are protocol properties: phishing resistance, per-session decisions, machine-readable evidence, elimination of implicit network trust. Protocol properties are exactly what cannot be procured as adjectives; they exist where the mechanism exists. That is why this table maps each requirement to a mechanism rather than to a purchase.
 :::
 
@@ -436,7 +437,7 @@ The table maps each control this document closes to its state without the archit
 
 > **Closure Necessity — IA-2(1)/(2) phishing resistance.** The MFA controls close only with authenticators that are impossible to relay, not merely inconvenient to phish. Verifier-impersonation resistance is a cryptographic property — a private key that never leaves hardware, signing a challenge bound to the origin or channel it terminates in. Any credential a human can read, forward, or approve can be extracted by deceiving the human; no awareness campaign changes that. The only closure path is a credential with no relayable secret — which is to say, the certificate and key-pair infrastructure this book builds. Phishing-resistant MFA is PKI wearing a usability layer.
 
-::: {.callout-note}
+::: {.aan-note}
 **FedRAMP 20x KSI Alignment — slot-01 identity**
 
 In the series' continuous-monitoring architecture, this book's evidence binds to the **slot-01 identity** evidence slot, which carries the **KSI-IAM** theme rules in the evaluation engine. Slot-01 was previously fed by the identity-plane and privileged-access parts of the original series; under the current series structure it additionally binds this book's certificate-lifecycle and token-issuance evidence — enrollment and renewal logs from the automated CA pipeline, token issuance and conditional-access evaluation records, and the authenticator-strength posture for privileged and non-privileged accounts.
