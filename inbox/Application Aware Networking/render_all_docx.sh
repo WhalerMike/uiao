@@ -16,7 +16,20 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-PANDOC="${PANDOC:-/usr/local/lib/python3.11/dist-packages/pypandoc/files/pandoc}"
+# Prefer the bundled pypandoc binary (pinned, and what CI has); fall back to a
+# pandoc on PATH so a local Windows/macOS checkout can render. The hardcoded
+# Linux path does not exist off-CI, and every render fails without the fallback.
+PANDOC="${PANDOC:-}"
+if [ -z "$PANDOC" ]; then
+  _bundled="/usr/local/lib/python3.11/dist-packages/pypandoc/files/pandoc"
+  if [ -x "$_bundled" ]; then
+    PANDOC="$_bundled"
+  elif command -v pandoc >/dev/null 2>&1; then
+    PANDOC="$(command -v pandoc)"
+  else
+    echo "FATAL: no pandoc found (set PANDOC=/path/to/pandoc)" >&2; exit 1
+  fi
+fi
 REF="aan-reference.docx"
 LUA="aan-callouts.lua"
 OUTDIR="${1:-.}"
