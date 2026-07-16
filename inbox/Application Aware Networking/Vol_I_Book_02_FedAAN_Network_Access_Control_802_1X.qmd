@@ -31,7 +31,7 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 ::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
-This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
+This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive {{< meta agency.short >}}-wide technical roadmap and has not been reviewed or approved by the {{< meta agency.short >}} CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the {{< meta agency.short >}} CIO Office and organizational components.
 
 **Date Code:** 2026-07-15 06:26 ET
 :::
@@ -46,11 +46,11 @@ Vol I Book 01 of this series established the naming and addressing plane: every 
 
 No control laid above it answers the simpler question either: *what is physically plugged into this network port?*
 
-A threat actor with physical access to a conference room, a decommissioned office wing, or an unmonitored wiring closet can connect an unauthorized device to the SSA network and begin reconnaissance, lateral movement, or data exfiltration without presenting any user identity at all. Every identity control the rest of this series builds — the certificate and token plane of Vol I Book 03, the application authentication modernization of Vol II Books 01–02 (SQL Server Authentication and Implementation), the privileged access controls of Vol III Book 01 (Privileged Access Management) — is downstream of network admission. Those controls are effective only after a device has already been granted connectivity; built on unauthenticated ports, they are built on an unverified floor.
+A threat actor with physical access to a conference room, a decommissioned office wing, or an unmonitored wiring closet can connect an unauthorized device to the {{< meta agency.short >}} network and begin reconnaissance, lateral movement, or data exfiltration without presenting any user identity at all. Every identity control the rest of this series builds — the certificate and token plane of Vol I Book 03, the application authentication modernization of Vol II Books 01–02 (SQL Server Authentication and Implementation), the privileged access controls of Vol III Book 01 (Privileged Access Management) — is downstream of network admission. Those controls are effective only after a device has already been granted connectivity; built on unauthenticated ports, they are built on an unverified floor.
 
-Network Access Control (NAC) with 802.1X port-based authentication addresses this at the wire. Before a device receives an IP address and network routing, it must present a cryptographically valid machine certificate to a RADIUS server that can verify the device's identity against the Entra ID device inventory. If the certificate is absent, expired, or does not correspond to an enrolled managed device, the port is placed into a quarantine VLAN with no access to SSA resources.
+Network Access Control (NAC) with 802.1X port-based authentication addresses this at the wire. Before a device receives an IP address and network routing, it must present a cryptographically valid machine certificate to a RADIUS server that can verify the device's identity against the Entra ID device inventory. If the certificate is absent, expired, or does not correspond to an enrolled managed device, the port is placed into a quarantine VLAN with no access to {{< meta agency.short >}} resources.
 
-This document covers the architecture, certificate provisioning pipeline, RADIUS design, policy tier structure, InfoBlox integration, Sentinel logging, and phased implementation for 802.1X NAC across the SSA GCC Moderate boundary. It closes the **IA-3** (Device Identification and Authentication) control family at the only layer where it can be closed — the point of network admission — and lays the **SC-7** (Boundary Protection) and **CM-8** (System Component Inventory) foundations that the books that follow across Volumes I–IV extend upward through certificates, applications, telemetry, and the authorization package.
+This document covers the architecture, certificate provisioning pipeline, RADIUS design, policy tier structure, InfoBlox integration, Sentinel logging, and phased implementation for 802.1X NAC across the {{< meta agency.short >}} GCC Moderate boundary. It closes the **IA-3** (Device Identification and Authentication) control family at the only layer where it can be closed — the point of network admission — and lays the **SC-7** (Boundary Protection) and **CM-8** (System Component Inventory) foundations that the books that follow across Volumes I–IV extend upward through certificates, applications, telemetry, and the authorization package.
 
 ::: {.aan-note}
 **Device Identity vs. User Identity** — NAC and 802.1X operate at the *device* layer, prior to any user authentication event. A device that fails 802.1X admission is quarantined regardless of the user credential that would subsequently be presented. This is a complementary, not redundant, control: Zero Trust requires verifying both *who is the user* and *what is the device*, independently.
@@ -66,15 +66,15 @@ Consider the following two scenarios in the completed architecture this series b
 
 **Scenario A — Credential theft on a managed device.** An attacker phishes a user's FIDO2 hardware key and clones the credential. The attacker can now present a valid Entra ID token. Conditional Access evaluates device compliance — the token is presented from the attacker's unmanaged laptop, which fails the `compliant` device filter. Access is denied. The user identity control and the device compliance check together stop the attack.
 
-**Scenario B — Physical port access on an uncontrolled network.** An attacker connects a laptop to a wired jack in an SSA conference room. Without NAC, the switch port assigns a DHCP lease and routes traffic immediately. The attacker now has Layer 3 connectivity to SSA internal resources — without presenting any user credential at all. All user identity controls are irrelevant until the attacker chooses to attempt authentication. The window for passive reconnaissance, ARP poisoning, DNS poisoning, and lateral movement scanning is open from the moment the cable is plugged in.
+**Scenario B — Physical port access on an uncontrolled network.** An attacker connects a laptop to a wired jack in an {{< meta agency.short >}} conference room. Without NAC, the switch port assigns a DHCP lease and routes traffic immediately. The attacker now has Layer 3 connectivity to {{< meta agency.short >}} internal resources — without presenting any user credential at all. All user identity controls are irrelevant until the attacker chooses to attempt authentication. The window for passive reconnaissance, ARP poisoning, DNS poisoning, and lateral movement scanning is open from the moment the cable is plugged in.
 
-NAC closes Scenario B at the port level. The attacker's laptop presents no machine certificate, 802.1X authentication fails, and the port is placed in the quarantine VLAN. The attacker has Layer 3 connectivity to the quarantine segment only — no routing to SSA resources, no DNS resolution for internal names.
+NAC closes Scenario B at the port level. The attacker's laptop presents no machine certificate, 802.1X authentication fails, and the port is placed in the quarantine VLAN. The attacker has Layer 3 connectivity to the quarantine segment only — no routing to {{< meta agency.short >}} resources, no DNS resolution for internal names.
 
 ## The Federal Physical Access Reality
 
 Federal facilities operate under physical access controls — PIV badge readers, mantrap entries, visitor escort requirements. These controls are strong at building perimeters but are not equivalent to network port authentication:
 
-- **Conference rooms** are routinely accessible to vendors, contractors, and visitors with valid facility badges who do not have SSA IT authorization.
+- **Conference rooms** are routinely accessible to vendors, contractors, and visitors with valid facility badges who do not have {{< meta agency.short >}} IT authorization.
 - **Wiring closets** in older federal buildings frequently lack electronic access control distinct from the floor-level badge reader.
 - **Decommissioned office areas** retain live switch ports until physical decommissioning is completed — often weeks to months after occupancy ends.
 - **Hoteling workstations** in hot-desk environments have live ports by design, and the physical occupant changes daily.
@@ -82,13 +82,13 @@ Federal facilities operate under physical access controls — PIV badge readers,
 
 Each of these is a live network connection with no authentication gate. NAC with 802.1X makes the authentication gate the switch port itself — independent of the physical access regime.
 
-![The federal physical access reality — five exposure classes where a facility badge is the only gate](figs/nac-fig-10-physical-access-reality.png){#fig-nac10 fig-alt="Five cards showing federal facility exposure classes with live, unauthenticated network ports. Conference rooms: routinely accessible to vendors, contractors, and visitors with valid facility badges but no SSA IT authorization. Wiring closets: older federal buildings often lack electronic access control distinct from the floor-level badge reader. Decommissioned areas: live switch ports persist weeks to months after occupancy ends. Hoteling workstations: hot-desk ports are live by design with a different physical occupant daily. IoT/OT devices: printers, badge readers, HVAC, and video endpoints share the same switch fabric as workstations and servers. Banner: each is a live network connection with no authentication gate — NAC makes the gate the switch port itself, independent of the physical access regime. White background. Source: Vol I Book 02 NAC briefing deck, Date Code 2026-07-07 10:15 ET." width="100%"}
+![The federal physical access reality — five exposure classes where a facility badge is the only gate](figs/nac-fig-10-physical-access-reality.png){#fig-nac10 fig-alt="Five cards showing federal facility exposure classes with live, unauthenticated network ports. Conference rooms: routinely accessible to vendors, contractors, and visitors with valid facility badges but no {{< meta agency.short >}} IT authorization. Wiring closets: older federal buildings often lack electronic access control distinct from the floor-level badge reader. Decommissioned areas: live switch ports persist weeks to months after occupancy ends. Hoteling workstations: hot-desk ports are live by design with a different physical occupant daily. IoT/OT devices: printers, badge readers, HVAC, and video endpoints share the same switch fabric as workstations and servers. Banner: each is a live network connection with no authentication gate — NAC makes the gate the switch port itself, independent of the physical access regime. White background. Source: Vol I Book 02 NAC briefing deck, Date Code 2026-07-07 10:15 ET." width="100%"}
 
 ## Before and After: The Structural Comparison
 
-![Before and after NAC deployment showing unauthenticated port access versus 802.1X authenticated admission flow](figs/nac-fig-01-before-after.png){#fig-nac01 fig-alt="Two-panel diagram. Left panel labeled BEFORE shows a laptop connecting to a switch port and immediately receiving a DHCP lease and routing to SSA resources with no authentication gate. Right panel labeled AFTER shows the same laptop initiating 802.1X EAP exchange with the switch acting as authenticator, forwarding the EAP-TLS exchange to a RADIUS server, which validates the machine certificate against Entra ID device inventory, and the switch placing the port into the appropriate VLAN — compliant, non-compliant, or quarantine — before any IP address is issued to a routable segment." width="100%"}
+![Before and after NAC deployment showing unauthenticated port access versus 802.1X authenticated admission flow](figs/nac-fig-01-before-after.png){#fig-nac01 fig-alt="Two-panel diagram. Left panel labeled BEFORE shows a laptop connecting to a switch port and immediately receiving a DHCP lease and routing to {{< meta agency.short >}} resources with no authentication gate. Right panel labeled AFTER shows the same laptop initiating 802.1X EAP exchange with the switch acting as authenticator, forwarding the EAP-TLS exchange to a RADIUS server, which validates the machine certificate against Entra ID device inventory, and the switch placing the port into the appropriate VLAN — compliant, non-compliant, or quarantine — before any IP address is issued to a routable segment." width="100%"}
 
-**Before this document** — a device connecting to any SSA switch port in a managed facility receives network access determined solely by VLAN configuration on the port. No device identity assertion is required. Physical access to the facility is the only gate.
+**Before this document** — a device connecting to any {{< meta agency.short >}} switch port in a managed facility receives network access determined solely by VLAN configuration on the port. No device identity assertion is required. Physical access to the facility is the only gate.
 
 **After this document** — every switch port and wireless access point requires a valid machine certificate issued to an Entra-enrolled device. Devices that cannot present a valid certificate are placed in a quarantine VLAN. Devices that present a valid certificate from a non-compliant device (patch compliance failure, AV disabled) are placed in a remediation VLAN. Only devices that are enrolled, compliant, and certificate-valid receive access to the production VLAN.
 
@@ -137,7 +137,7 @@ This matters structurally: EAP-PEAP/MSCHAPv2, used in many legacy federal wirele
 
 ## RADIUS Server Design for Federal Environments
 
-The RADIUS server is the authentication server in the 802.1X architecture. For SSA GCC Moderate, the RADIUS platform choice is governance decision **D3 (NPS vs. Cisco ISE vs. Aruba ClearPass)** — and D3 is **gated by the Entra-migration timeline (Vol I Book 05, Network Modernization), not by preference**. The deciding criterion is Entra-native device authorization:
+The RADIUS server is the authentication server in the 802.1X architecture. For {{< meta agency.short >}} GCC Moderate, the RADIUS platform choice is governance decision **D3 (NPS vs. Cisco ISE vs. Aruba ClearPass)** — and D3 is **gated by the Entra-migration timeline (Vol I Book 05, Network Modernization), not by preference**. The deciding criterion is Entra-native device authorization:
 
 - **Microsoft Network Policy Server (NPS)** on Windows Server 2025 is viable for the **hybrid-joined phase only**. NPS authorizes a device by resolving its Active Directory computer object; it has no supported path for authorizing cloud-native Entra-joined devices — Microsoft provides no cloud NPS equivalent, and the community workaround (dummy AD computer objects) is unsustainable at fleet scale. NPS works against today's estate precisely because the estate is hybrid-joined and AD objects still exist. **Its viability degrades in direct proportion to Vol I Book 05's AD-to-Entra migration progress.**
 - **Cisco Identity Services Engine (ISE)** and **Aruba ClearPass** — the dominant federal alternatives — both terminate EAP-TLS and authorize against the Entra ID / Intune device inventory without requiring an AD computer object. Either closes the Entra-native gap.
@@ -187,19 +187,19 @@ The `authentication order dot1x mab` line implements the fallback sequence: the 
 
 ## The Certificate Trust Chain
 
-NAC with EAP-TLS requires every managed device to hold a machine certificate trusted by the RADIUS server's CA. This certificate is distinct from the user certificate (used for user authentication to Entra ID). The machine certificate proves device identity — that this physical device is an SSA-enrolled managed endpoint — independently of which user is logged in.
+NAC with EAP-TLS requires every managed device to hold a machine certificate trusted by the RADIUS server's CA. This certificate is distinct from the user certificate (used for user authentication to Entra ID). The machine certificate proves device identity — that this physical device is an {{< meta agency.short >}}-enrolled managed endpoint — independently of which user is logged in.
 
-The certificate trust chain for SSA GCC Moderate NAC:
+The certificate trust chain for {{< meta agency.short >}} GCC Moderate NAC:
 
 ```
 Microsoft Cloud PKI Root CA — or agency AD CS Root
-  └─ SSA Device Identity CA (Intermediate, deployed via Intune)
+  └─ {{< meta agency.short >}} Device Identity CA (Intermediate, deployed via Intune)
        └─ Device Machine Certificates (issued per-device at enrollment)
 ```
 
 Both issuance paths terminate in the same intermediate: **Microsoft Cloud PKI** (the Intune add-on for cloud-issued certificates) can host the issuing CA directly, or the agency's existing **AD CS** issues via the Intune SCEP connector (NDES). The choice is a PKI-operations decision; the RADIUS trust configuration and the EAP-TLS exchange are identical under either.
 
-The RADIUS server (NPS) is configured to trust the SSA Device Identity CA. Any device that presents a certificate signed by this CA and passes the revocation check is recognized as a managed SSA device.
+The RADIUS server (NPS) is configured to trust the {{< meta agency.short >}} Device Identity CA. Any device that presents a certificate signed by this CA and passes the revocation check is recognized as a managed {{< meta agency.short >}} device.
 
 ## Intune SCEP Certificate Enrollment
 
@@ -249,14 +249,14 @@ When a device is decommissioned, stolen, or wiped, the device certificate is rev
 
 The RADIUS server returns a VLAN assignment (and optionally a filter policy and session timeout) for each authenticated device. The VLAN assignment is the enforcement mechanism — it determines which network segment the device enters and therefore which resources it can reach.
 
-![NAC policy tier diagram showing three VLANs and the policy path from 802.1X authentication through RADIUS compliance check to VLAN assignment](figs/nac-fig-04-policy-tiers.png){#fig-nac04 fig-alt="Flowchart starting at switch port. First decision: does the device present a valid EAP-TLS certificate? No leads to Quarantine VLAN (VLAN 999): Internet access only, no SSA resources, DNS resolves to captive portal. Yes leads to second decision: is the device compliant per Intune (patch level current, AV active, encryption enabled)? No leads to Remediation VLAN (VLAN 200): access to Intune, Windows Update, and AV update endpoints only. Yes leads to Production VLAN (VLAN 100, department-specific): full SSA resource access per network ACLs." width="100%"}
+![NAC policy tier diagram showing three VLANs and the policy path from 802.1X authentication through RADIUS compliance check to VLAN assignment](figs/nac-fig-04-policy-tiers.png){#fig-nac04 fig-alt="Flowchart starting at switch port. First decision: does the device present a valid EAP-TLS certificate? No leads to Quarantine VLAN (VLAN 999): Internet access only, no {{< meta agency.short >}} resources, DNS resolves to captive portal. Yes leads to second decision: is the device compliant per Intune (patch level current, AV active, encryption enabled)? No leads to Remediation VLAN (VLAN 200): access to Intune, Windows Update, and AV update endpoints only. Yes leads to Production VLAN (VLAN 100, department-specific): full {{< meta agency.short >}} resource access per network ACLs." width="100%"}
 
 | Tier | VLAN | Condition | Network Access |
 |------|------|-----------|----------------|
-| **Production** | 100–190 (dept) | Valid cert + Intune compliant | Full SSA resource access per ACL |
+| **Production** | 100–190 (dept) | Valid cert + Intune compliant | Full {{< meta agency.short >}} resource access per ACL |
 | **Remediation** | 200 | Valid cert + Intune non-compliant | Intune, Windows Update, AV endpoints only |
 | **Quarantine** | 999 | No valid cert or cert revoked | Internet-only; captive portal |
-| **Guest** | 500 | MAB — unmanaged device | Internet-only; no SSA routing |
+| **Guest** | 500 | MAB — unmanaged device | Internet-only; no {{< meta agency.short >}} routing |
 | **IoT** | 300 | MAB — approved MAC prefix | IoT management VLAN only |
 
 : NAC Policy Tiers {.striped .hover}
@@ -265,7 +265,7 @@ The RADIUS server returns a VLAN assignment (and optionally a filter policy and 
 
 A device reaches the production VLAN by satisfying two independent checks:
 
-1. **Certificate validity** — the machine certificate is valid, not expired, issued by the SSA Device Identity CA, and not revoked (CRL/OCSP check passes).
+1. **Certificate validity** — the machine certificate is valid, not expired, issued by the {{< meta agency.short >}} Device Identity CA, and not revoked (CRL/OCSP check passes).
 2. **Intune compliance** — the NPS Network Policy queries the Intune Compliance API (via the NPS Extension for Azure MFA / Intune, or via a custom RADIUS attribute returned by a NAC-aware proxy) and confirms the device is in the `compliant` state.
 
 The Intune compliance policy for NAC includes at minimum:
@@ -286,16 +286,16 @@ The Remediation VLAN (VLAN 200) has a limited ACL that permits:
 - HTTPS to `*.manage.microsoft.com` (Intune management traffic)
 - HTTPS to `*.update.microsoft.com` and `*.windowsupdate.com` (Windows Update)
 - HTTPS to `*.wdcp.microsoft.com` and `*.wd.microsoft.com` (Defender definition updates)
-- DNS resolution for those names via the SSA DNS forwarder
-- No routing to any SSA internal resource
+- DNS resolution for those names via the {{< meta agency.short >}} DNS forwarder
+- No routing to any {{< meta agency.short >}} internal resource
 
 A device placed in the Remediation VLAN can self-remediate: Windows Update runs automatically, Defender updates its definitions, and Intune re-evaluates compliance on the next check-in cycle (up to 8 hours). When the device returns to `compliant` state in Intune, the NAC policy engine sends a RADIUS CoA to the switch and the port is moved to the production VLAN without requiring manual intervention or a physical reconnect.
 
 ## Quarantine VLAN
 
-The Quarantine VLAN (VLAN 999) receives devices that fail certificate authentication entirely: no certificate presented, certificate from an unknown CA, expired certificate, or certificate revoked. These are devices that are either not SSA-managed or have been decommissioned.
+The Quarantine VLAN (VLAN 999) receives devices that fail certificate authentication entirely: no certificate presented, certificate from an unknown CA, expired certificate, or certificate revoked. These are devices that are either not {{< meta agency.short >}}-managed or have been decommissioned.
 
-A captive portal DNS redirect sends HTTP traffic from the quarantine VLAN to an internal page that explains: *"This device is not authorized for SSA network access. If you believe this is in error, contact the SSA Help Desk."* This prevents the user from believing the network is simply down and generating a flood of unrelated help desk calls.
+A captive portal DNS redirect sends HTTP traffic from the quarantine VLAN to an internal page that explains: *"This device is not authorized for {{< meta agency.short >}} network access. If you believe this is in error, contact the {{< meta agency.short >}} Help Desk."* This prevents the user from believing the network is simply down and generating a flood of unrelated help desk calls.
 
 ## MAC Authentication Bypass (MAB) — Guest and IoT
 
@@ -303,7 +303,7 @@ Devices that cannot participate in 802.1X (IP phones, printers, badge readers, I
 
 The NPS MAB policy matches the MAC address against two lookup tables:
 
-- **Approved IoT/OT MAC prefixes** — manufacturer OUI prefixes for approved device categories (e.g., the OUI prefix for the SSA-standard IP phone model, the badge reader vendor). These receive VLAN 300 (IoT VLAN) with restricted routing to their management systems only.
+- **Approved IoT/OT MAC prefixes** — manufacturer OUI prefixes for approved device categories (e.g., the OUI prefix for the {{< meta agency.short >}}-standard IP phone model, the badge reader vendor). These receive VLAN 300 (IoT VLAN) with restricted routing to their management systems only.
 - **Guest** — any MAC that does not match an approved prefix or an explicitly registered guest MAC receives VLAN 500 (Guest VLAN) with Internet routing only.
 
 ::: {.aan-warning}
@@ -314,7 +314,7 @@ The NPS MAB policy matches the MAC address against two lookup tables:
 
 ## Intune Compliance as the Posture Signal
 
-The posture check in SSA's NAC deployment is driven by Intune device compliance state, not by an inline NAC probe. This architectural choice is intentional:
+The posture check in {{< meta agency.short >}}'s NAC deployment is driven by Intune device compliance state, not by an inline NAC probe. This architectural choice is intentional:
 
 - **Inline NAC posture probes** (agent-based or agentless) add a second management plane that must be kept synchronized with the MDM inventory — creating a reconciliation burden and a potential source of false positives/negatives.
 - **Intune compliance** is the authoritative posture signal for all Windows and macOS endpoints already enrolled in Intune. The compliance policy runs on the device via the Intune Management Extension, evaluates the same controls that would be checked by a NAC probe (patch level, AV, encryption), and reports the result to the Intune service.
@@ -347,16 +347,16 @@ The key operational consideration for wired NAC rollout is the **multi-auth mode
 
 ## Wireless 802.1X — WPA3-Enterprise
 
-Wireless 802.1X uses the same EAP-TLS supplicant and certificate infrastructure as wired, but the authenticator is the Wireless Access Point (WAP) or Wireless LAN Controller (WLC). The SSID for managed SSA devices is configured as WPA3-Enterprise (SAE + EAP-TLS), which provides Protected Management Frames (PMF) and eliminates the KRACK-class attacks that affect WPA2-Enterprise.
+Wireless 802.1X uses the same EAP-TLS supplicant and certificate infrastructure as wired, but the authenticator is the Wireless Access Point (WAP) or Wireless LAN Controller (WLC). The SSID for managed {{< meta agency.short >}} devices is configured as WPA3-Enterprise (SAE + EAP-TLS), which provides Protected Management Frames (PMF) and eliminates the KRACK-class attacks that affect WPA2-Enterprise.
 
-A separate guest SSID (WPA3-Personal or open with a captive portal) is provided for personal devices and visitors on a completely separate VLAN with no routing to SSA resources.
+A separate guest SSID (WPA3-Personal or open with a captive portal) is provided for personal devices and visitors on a completely separate VLAN with no routing to {{< meta agency.short >}} resources.
 
 ```
 # Cisco WLC / Catalyst Center SSID configuration (CLI equivalent)
-wlan SSA-Managed 1 SSA-Managed
+wlan {{< meta agency.short >}}-Managed 1 {{< meta agency.short >}}-Managed
  security wpa wpa3
  security wpa akm dot1x
- security dot1x eap-profile SSA-EAP-TLS
+ security dot1x eap-profile {{< meta agency.short >}}-EAP-TLS
  no security wpa wpa2
  radio policy dot11 6ghz
  radio policy dot11 5ghz
@@ -386,7 +386,7 @@ InfoBlox DDI (deployed in Vol I Book 01) integrates with NAC to provide device p
 
 1. **IoT / OT device identification** — devices that cannot participate in 802.1X are identified by their DHCP fingerprint (e.g., a Cisco IP phone requests specific DHCP options that match its device class). InfoBlox Grid feeds the device classification to the RADIUS server, enabling the NPS MAB policy to assign the correct VLAN based on device type rather than relying solely on MAC OUI lookup.
 
-2. **Anomaly detection** — a device that presents a valid SSA machine certificate but whose DHCP fingerprint does not match any known Windows/macOS pattern (e.g., a Linux system or Android device) generates an alert in Sentinel. This catches cases where a valid certificate has been extracted from a managed device and installed on an unauthorized system.
+2. **Anomaly detection** — a device that presents a valid {{< meta agency.short >}} machine certificate but whose DHCP fingerprint does not match any known Windows/macOS pattern (e.g., a Linux system or Android device) generates an alert in Sentinel. This catches cases where a valid certificate has been extracted from a managed device and installed on an unauthorized system.
 
 ## IPAM-Driven VLAN Assignment
 
@@ -398,7 +398,7 @@ InfoBlox IPAM maintains the authoritative mapping of VLAN → IP address range �
 - Assignment timestamp and lease duration
 - NAC authentication result (certificate SAN, compliance verdict)
 
-This record is the **CM-8 device inventory artifact** for NAC-controlled devices. Every device that has ever connected to the SSA network — managed or not — has a DHCP record in InfoBlox. The NAC authentication result annotates the record with the identity assertion that was presented (or absent).
+This record is the **CM-8 device inventory artifact** for NAC-controlled devices. Every device that has ever connected to the {{< meta agency.short >}} network — managed or not — has a DHCP record in InfoBlox. The NAC authentication result annotates the record with the identity assertion that was presented (or absent).
 
 ::: {.aan-note}
 **Cross-Book Link — DNS Hostname + Certificate Binding at NAC Admission (Vol I Books 01 and 03):**
@@ -508,7 +508,7 @@ Key tasks:
 2. Register all approved IoT/OT devices in the InfoBlox MAC database with device class tags.
 3. Configure the captive portal for the quarantine VLAN.
 4. Enable the CoA agent (Azure Function) and test the compliance-state-change VLAN reassignment.
-5. Enable the Sentinel analytics rules and configure alert routing to the SSA SOC.
+5. Enable the Sentinel analytics rules and configure alert routing to the {{< meta agency.short >}} SOC.
 
 ## Phase 3 — Wireless Enforcement (Weeks 11–14)
 
@@ -537,14 +537,14 @@ The following table maps each NIST control addressed by this document to its sta
 
 | Control | Title | Without This Document | With This Document | Authority |
 |---------|-------|----------------------|-------------------|-----------|
-| **IA-3** | Device Identification and Authentication | Devices connect to SSA network ports without presenting any device identity assertion; the network cannot distinguish a managed SSA workstation from an unauthorized device on the same physical port | Every device must present a valid EAP-TLS machine certificate issued by the SSA Device Identity CA before receiving network access; certificate SAN is validated against the Entra ID device inventory; unauthorized devices are quarantined | NIST SP 800-53 Rev 5 IA-3 |
+| **IA-3** | Device Identification and Authentication | Devices connect to {{< meta agency.short >}} network ports without presenting any device identity assertion; the network cannot distinguish a managed {{< meta agency.short >}} workstation from an unauthorized device on the same physical port | Every device must present a valid EAP-TLS machine certificate issued by the {{< meta agency.short >}} Device Identity CA before receiving network access; certificate SAN is validated against the Entra ID device inventory; unauthorized devices are quarantined | NIST SP 800-53 Rev 5 IA-3 |
 | **IA-3(1)** | Cryptographic Bidirectional Authentication | No device-layer mutual authentication exists; switches do not authenticate to devices and devices do not authenticate to the network | EAP-TLS provides mutual authentication: the RADIUS server presents its certificate to the supplicant (network identity), and the supplicant presents its machine certificate to the RADIUS server (device identity); both are verified cryptographically | NIST SP 800-53 Rev 5 IA-3(1) |
 | **AC-3** | Access Enforcement | Network access policy is enforced only at the IP/application layer (firewalls, Entra Conditional Access); a device that gains Layer 3 connectivity bypasses application-layer controls until it attempts to authenticate | Network access policy is enforced at the port layer before IP connectivity is granted; a device that cannot authenticate never receives a routed IP address in a production segment | NIST SP 800-53 Rev 5 AC-3 |
 | **AC-17** | Remote Access | VPN and remote access require user authentication via Entra ID; device compliance is evaluated by Conditional Access | NAC certificate validation at the physical port and wireless association layer provides an independent device identity assertion that pre-dates any user remote access session; posture verification is consistent across in-office and remote access paths | NIST SP 800-53 Rev 5 AC-17 |
-| **AC-19** | Access Control for Mobile Devices | Mobile devices and personal laptops connecting to SSA wireless receive the same SSID access as managed devices; no device identity check distinguishes them | WPA3-Enterprise with EAP-TLS restricts the managed SSID to Intune-enrolled devices with valid machine certificates; personal devices and unmanaged mobile devices cannot authenticate to the managed SSID and are directed to the guest SSID | NIST SP 800-53 Rev 5 AC-19 |
-| **AC-20** | Use of External Systems | Vendor and contractor devices that connect to SSA conference room ports are treated identically to managed SSA devices by the network | Vendor and contractor devices that cannot present a valid SSA machine certificate are placed in the quarantine VLAN; if vendor NAC access is required, an explicit exception process (MAC registration + IoT VLAN + time-limited ACL) is used with documented approval | NIST SP 800-53 Rev 5 AC-20 |
+| **AC-19** | Access Control for Mobile Devices | Mobile devices and personal laptops connecting to {{< meta agency.short >}} wireless receive the same SSID access as managed devices; no device identity check distinguishes them | WPA3-Enterprise with EAP-TLS restricts the managed SSID to Intune-enrolled devices with valid machine certificates; personal devices and unmanaged mobile devices cannot authenticate to the managed SSID and are directed to the guest SSID | NIST SP 800-53 Rev 5 AC-19 |
+| **AC-20** | Use of External Systems | Vendor and contractor devices that connect to {{< meta agency.short >}} conference room ports are treated identically to managed {{< meta agency.short >}} devices by the network | Vendor and contractor devices that cannot present a valid {{< meta agency.short >}} machine certificate are placed in the quarantine VLAN; if vendor NAC access is required, an explicit exception process (MAC registration + IoT VLAN + time-limited ACL) is used with documented approval | NIST SP 800-53 Rev 5 AC-20 |
 | **SC-7(3)** | Access Points | Network access points (switch ports, WAPs) are open to any physically connected device; the boundary is the building perimeter, not the network port | Every switch port and WAP SSID (managed) is a boundary enforcement point; 802.1X authentication is the access control mechanism at each access point; unauthorized devices cannot traverse the boundary regardless of physical facility access | NIST SP 800-53 Rev 5 SC-7(3) |
-| **SC-7(5)** | Deny by Default — Allow by Exception | Unauthenticated devices receive full network access by VLAN assignment; the default is open | Unauthenticated devices (no 802.1X supplicant, no MAB match) receive VLAN 999 (quarantine) with no routing to SSA resources; the default is deny; access must be explicitly granted by a successful authentication | NIST SP 800-53 Rev 5 SC-7(5) |
+| **SC-7(5)** | Deny by Default — Allow by Exception | Unauthenticated devices receive full network access by VLAN assignment; the default is open | Unauthenticated devices (no 802.1X supplicant, no MAB match) receive VLAN 999 (quarantine) with no routing to {{< meta agency.short >}} resources; the default is deny; access must be explicitly granted by a successful authentication | NIST SP 800-53 Rev 5 SC-7(5) |
 | **CM-6** | Configuration Settings | Device configuration compliance (patch level, AV, encryption) is assessed by Intune but is not enforced at the network admission layer; a non-compliant device can connect to the production network | Intune compliance state is evaluated at every 802.1X authentication and on CoA events (15-minute polling); a device that fails Intune compliance is moved to the Remediation VLAN within ~20 minutes of Intune registering the state change, bounded unconditionally by the 8-hour re-authentication interval | NIST SP 800-53 Rev 5 CM-6 |
 | **CM-7** | Least Functionality | Any device that obtains physical network connectivity receives production VLAN routing; IoT devices and printers have unrestricted lateral movement potential within the VLAN | IoT and OT devices receive VLAN 300 with ACLs restricting them to only the management ports and protocols their function requires; a printer can reach the print server port only, not the file server or Active Directory | NIST SP 800-53 Rev 5 CM-7 |
 | **CM-8** | System Component Inventory | Device inventory is maintained in Intune (enrolled managed devices) and SCCM/MEM, but unmanaged devices that connect to the network are not captured in any authoritative inventory | Every device that connects to a NAC-controlled port generates a RADIUS accounting record linked to an InfoBlox DHCP record; managed and unmanaged devices alike are recorded with MAC address, port, VLAN, authentication result, and timestamp; this is the authoritative network device inventory | NIST SP 800-53 Rev 5 CM-8 |
