@@ -102,6 +102,17 @@ CLASS_OTHER = "other"
 # becomes registration-required.
 REGISTRATION_REQUIRED_GLOBS: list[tuple[str, str]] = [
     (
+        # Bought BEFORE the AAN corpus moves under docs/, on purpose. The series is
+        # ~58 books authored directly as .qmd with no src/uiao/ source, so Pass 1
+        # cannot see them, and docs/_quarto.yml's nav is 773 hand-typed entries with
+        # nothing asserting completeness. Without this, the move could merge 58 pages
+        # that render to the site filesystem and are unreachable from navigation --
+        # with every gate green. Registering the glob first means the move cannot
+        # land unregistered; today it matches nothing and costs nothing.
+        "docs/customer-documents/federal-aan-series/Vol_*_Book_*.qmd",
+        "Federal AAN series book (authored directly as .qmd; must be wired into docs/_quarto.yml)",
+    ),
+    (
         "docs/customer-documents/orgpath-narrative/Book_*.qmd",
         "orgpath-narrative book landing/chapter (authored directly as .qmd; must be wired into docs/_quarto.yml)",
     ),
