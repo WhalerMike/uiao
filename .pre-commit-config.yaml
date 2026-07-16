@@ -226,7 +226,23 @@ repos:
         entry: bash -c 'cd "inbox/Application Aware Networking/servicenow-day2" && python check_actuator_coverage.py'
         language: system
         pass_filenames: false
-        files: ^inbox/Application Aware Networking/servicenow-day2/(check_actuator_coverage\.py|.*-control-map\.json|script-includes/.*\.js)$
+        files: ^inbox/Application Aware Networking/(servicenow-day2/(check_actuator_coverage\.py|.*-control-map\.json|script-includes/.*\.js)|x_ssa_fed_compliance/(data/control-map\.json|script-includes/.*\.js))$
+
+      # ADR-092 s4: the federal production ceiling is L3 — a human approves before
+      # anything changes the estate. `approval: automated` on an estate write is an
+      # L4 claim and needs a Governance-Plane decision behind it. Four such items
+      # once existed with none, justified by an "L4 note" that did not exist. Every
+      # automated item must now declare "estate_write": false (it changes nothing —
+      # reading is not actuating) or an "l4_adr" that resolves on disk.
+      # NOTE: this cannot check L4 conditions 2-5 (blast radius, rollback, dry-run
+      # record, halt_on_critical) — those need human judgment. It makes the claim
+      # explicit and attributable, not true.
+      - id: aan-day2-l3-ceiling
+        name: "AAN day-2 L3 ceiling — no undeclared autonomous estate writes"
+        entry: bash -c 'cd "inbox/Application Aware Networking/servicenow-day2" && python check_l3_ceiling.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(servicenow-day2/(check_l3_ceiling\.py|.*-control-map\.json)|x_ssa_fed_compliance/data/control-map\.json)$
 
       # Lane C "the form is the contract": the catalog variable set must supply
       # every parameter EntraHelpdeskClient/Gate actually read, and a secret
