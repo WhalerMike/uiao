@@ -237,6 +237,21 @@ repos:
       # NOTE: this cannot check L4 conditions 2-5 (blast radius, rollback, dry-run
       # record, halt_on_critical) — those need human judgment. It makes the claim
       # explicit and attributable, not true.
+      # A book's declared reference-doc must be the one the build actually passes.
+      # Every book said `lz-reference.docx` while the render scripts passed
+      # `aan-reference.docx` on the CLI. Pandoc ignores Quarto's nested
+      # format.docx.reference-doc key, so the CLI won and the declaration was
+      # decorative — and wrong. Harmless until Quarto renders these books, at which
+      # point the front matter wins and silently drops the AAN callout/FouoBanner
+      # styles (lz-reference lacks them; aan-reference is lz plus exactly those).
+      # The text would survive, so it would have looked fine.
+      - id: aan-reference-doc-truth
+        name: "AAN books declare the reference doc the build actually uses"
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_reference_doc_truth.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_reference_doc_truth\.py|Vol_.*_Book_.*\.qmd|render_all_docx\.sh|build_distribution_kit\.sh)$
+
       - id: aan-day2-l3-ceiling
         name: "AAN day-2 L3 ceiling — no undeclared autonomous estate writes"
         entry: bash -c 'cd "inbox/Application Aware Networking/servicenow-day2" && python check_l3_ceiling.py'
