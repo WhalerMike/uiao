@@ -20,10 +20,9 @@ Three invariants:
      credential on the catalog record (IA-5). This is the Lane C analogue of the
      DDI kit's vsphere_password / admin_password rule.
 
-  3. EVERY CATALOG ITEM HAS AN ACTUATOR — each key in helpdesk-control-map.json
-     maps to a client method, or is declared in ACTUATOR_GAPS with a reason.
-     An undeclared gap fails: a catalog item that cannot actuate is a control
-     claim with nothing behind it.
+  3. ACTUATOR GAPS ARE DECLARED — items that cannot actuate say so in the control
+     map (actuator_gap). ../check_actuator_coverage.py gates that across every
+     lane; this check simply reports the Lane C gaps alongside the contract.
 
 Actuation stays platform-native and human-approved (L3, ADR-092): the form
 raises and routes, Graph-via-MID actuates, a human approves.
@@ -50,17 +49,6 @@ CONTAINERS = {"payload", "opts", "request"}
 # Values that must NEVER be typed into the catalog form (IA-5).
 SECRET_PARAMS = {"tempPassword"}
 
-# Catalog items with no client actuator, each with a recorded reason. Graph
-# genuinely has no admin account-unlock operation, and a Conditional-Access
-# exception actuates as a CA policy edit rather than a user-object write.
-ACTUATOR_GAPS = {
-    "entra.credential.account_unlock":
-        "Microsoft Graph exposes no admin account-unlock operation; Entra smart "
-        "lockout auto-clears, so this reduces to resetPassword or an Entra-side wait.",
-    "entra.access.ca_exception":
-        "Actuates as a Conditional-Access policy edit (policy object), not a "
-        "user-object write; no dedicated client method.",
-}
 
 
 def client_required_params(path: Path) -> set[str]:
@@ -101,6 +89,9 @@ def main() -> int:
     catalog = json.loads(CONTROL_MAP.read_text(encoding="utf-8"))
     items = catalog.get("catalog", catalog)
     item_keys = {k for k, v in items.items() if isinstance(v, dict) and v.get("control")}
+    # Declared actuator gaps now live in the control map (the lane SSOT) and are
+    # gated by ../check_actuator_coverage.py; read them rather than duplicate them.
+    gaps = {k for k, v in items.items() if isinstance(v, dict) and v.get("actuator_gap")}
 
     problems: list[str] = []
 
@@ -121,10 +112,7 @@ def main() -> int:
         problems.append(f"  secret {s!r} is required but not declared <resolved_by_mid>")
 
     # 3. every catalog item actuates, or declares why it cannot
-    undeclared = sorted(k for k in item_keys if k in ACTUATOR_GAPS) # declared gaps are fine
-    unknown_gap = sorted(k for k in ACTUATOR_GAPS if k not in item_keys)
-    for k in unknown_gap:
-        problems.append(f"  ACTUATOR_GAPS declares {k!r} but no such catalog item exists")
+    undeclared = sorted(gaps)
 
     print("Lane C catalog<->Script-Include contract check")
     print("=" * 52)
