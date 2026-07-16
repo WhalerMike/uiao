@@ -28,7 +28,7 @@ the useful comparison is how the three layers relate.
 | **Role** | Turn compliance into a deterministic pipeline: SSOT canon → drift detection → schema-enforced adapters → canon-anchored OSCAL/KSI evidence | Restore the shared organizational substrate AD's OU tree lost; be the stable key that drives ABAC / Zero-Trust targeting and survives reorgs | Say *which* network mechanisms (IPAM/DDI, SD-WAN, TIC 3.0, 802.1X…) close *which* NIST controls, and produce the evidence |
 | **Addresses…** | (the engine itself) | **principals** — where a user/device sits in the org (`Region=NCR\|Department=IT\|…`) | **hosts/traffic** — the network naming/addressing/transport plane (IP, DNS, circuits) |
 | **Scope** | Vertical-agnostic core; federal is the most-mature *adapter pack* (ADR-085) | UIAO canon; general-enterprise, federal (OPM HRIT) as one instantiation | External **companion content** for the federal vertical — explicitly *"not part of UIAO"* |
-| **Home in repo** | `src/uiao/` (canon, schemas, adapters, ksi, oscal…) | `src/uiao/canon/` (UIAO_007/011/013/151/193/194; ADR-035/048/088/098/102) | `inbox/Application Aware Networking/` + `infoblox-ddi-book/` |
+| **Home in repo** | `src/uiao/` (canon, schemas, adapters, ksi, oscal…) | `src/uiao/canon/` (UIAO_007/011/013/151/193/194; ADR-035/048/088/098/102) | `docs/customer-documents/federal-aan-series/` + `infoblox-ddi-book/` |
 | **Produces** | OSCAL SSP/POA&M, KSI signals, drift findings, evidence bundles / graph | A drift-detectable attribute + dynamic groups feeding Conditional Access / SASE / Intune | Books, a compliance spine, and Terraform/ServiceNow kits — evidence for UIAO's adapter |
 
 ## Where they overlap

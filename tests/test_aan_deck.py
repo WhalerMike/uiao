@@ -1,7 +1,7 @@
 """Tests for uiao.generators.aan_deck — canonical AAN briefing-deck generator.
 
 Asserts the Book_10/Book_11 FedAAN deck DNA measured in
-``inbox/Application Aware Networking/AAN_DECK_STYLE_NOTES.md``:
+``docs/customer-documents/federal-aan-series/AAN_DECK_STYLE_NOTES.md``:
 
 * slide size exactly 10.0 x 5.625 in;
 * every slide carries non-empty speaker notes;

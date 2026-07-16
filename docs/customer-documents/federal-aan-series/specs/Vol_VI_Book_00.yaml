@@ -1,0 +1,484 @@
+# Deck spec — Vol VI Book 00, FedAAN Implementation Overview.
+# Distilled from docs/customer-documents/federal-aan-series/Vol_VI_Book_00_FedAAN_Implementation_Overview.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "docs/customer-documents/federal-aan-series/specs/Vol_VI_Book_00.yaml" \
+#     --out  "docs/customer-documents/federal-aan-series/Vol_VI_Book_00_FedAAN_Implementation_Overview.pptx" \
+#     --date-code "2026-07-09 17:00 ET"
+deck:
+  title: "Implementation Overview"
+  subtitle: "The deployable-artifact layer — how the architecture volumes are stood up, in-boundary and as code"
+  series_kicker: "Federal AAN — Volume VI: Implementation"
+  date_code: "2026-07-09 17:00 ET"
+  journey:
+    - "Design"
+    - "Code"
+    - "Apply"
+    - "Evidence"
+  sources:
+    terraform: "https://developer.hashicorp.com/terraform/docs"
+    azure_bicep: "https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview"
+    github_actions: "https://docs.github.com/actions"
+    oscal: "https://pages.nist.gov/OSCAL/"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+    fedramp_20x: "https://www.fedramp.gov/20x/"
+
+slides:
+  # 1 -----------------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Volume VI — the deployable-artifact layer of the Federal
+      Application-Aware Networking series. Volumes I through IV argue the
+      architecture as what must be true and why, reasoned from control text,
+      physics, and protocol behavior; Volume V handles training and
+      certification. This volume is the operational counterpart: the
+      infrastructure-as-code, identity policy, detection rules, response
+      playbooks, configuration baselines, and evidence wiring that actually stand
+      the architecture up inside the agency boundary. Walk the journey strip —
+      Design, Code, Apply, Evidence — because it is the shape of every artifact in
+      the volume: an architecture book asserts a control is closed by a mechanism,
+      and the matching Volume VI book carries the code that deploys that mechanism
+      and the evidence that it ran. Set scope up front. This is the Moderate-scoped edition
+      and the target is FedRAMP Moderate; the deployed examples lean on the
+      Microsoft cloud because that is the Agency estate, but every artifact preserves
+      a multi-CSP substitution column, because the mechanism is the load-bearing
+      claim and the product is only its realization. Note the draft disclaimer:
+      developed by the CSI Team, not yet reviewed by the Agency CIO Office, OIS, or
+      leadership, and every control-closure claim is a self-assessed design
+      assertion pending assessment.
+
+  # 2 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "From design assertion to operational realization"
+    callout: "A control-closure claim that is not deployed as code, and does not emit evidence, is not assessable."
+    callout_accent: navy
+    notes: >
+      This section motivates the whole volume. The architecture volumes answer
+      what and why — which controls a mechanism closes and why no alternate
+      mechanism closes them — and they deliberately stop short of deployment
+      detail, because architecture entangled with one tenant's wiring ages badly
+      and reads as product advocacy rather than a demonstration of a control.
+      Volume VI answers how. A control-closure claim in an architecture volume is
+      a design assertion; the matching artifact here is its operational
+      realization — the thing an assessor can actually run, inspect, and trace to
+      a control. This is where "the SSP says we do X" becomes "here is the code
+      that does X and the evidence that it ran." Frame the callout as the volume's
+      thesis before enumerating the deploy model: a designed control and an
+      operating control are not the same thing, and the gap between them is
+      exactly what this volume closes.
+
+  # 3 -----------------------------------------------------------------------
+  - type: content
+    kicker: "WHAT THIS VOLUME CARRIES"
+    title: "Eight artifact classes, organized by lifecycle not by domain"
+    layout: grid
+    cards:
+      - title: "Network & identity as code"
+        body: "Landing-zone/IPAM/DDI IaC (VI-01) and Conditional Access/PIM/802.1X policy as code (VI-02)."
+        accent: navy
+      - title: "Detect & respond"
+        body: "The in-boundary analytics rule library (VI-03) and the SOAR containment/enrichment playbooks (VI-04)."
+        accent: teal
+      - title: "Protect & harden"
+        body: "Label/DLP/CMK data-protection packs (VI-05) and SCuBA/CIS/STIG baselines as code (VI-06)."
+        accent: amber
+      - title: "Prove it works"
+        body: "The telemetry-to-evidence-contract-to-KSI pipeline (VI-07) and the validation harnesses (VI-08)."
+        accent: red
+    callout:
+      text: "The volume is organized by artifact class, not by re-mirroring the architecture domains — deployable artifacts share tooling and lifecycle regardless of which domain they serve."
+      accent: navy
+    notes: >
+      This is the map of the volume's deliverables. Each card groups the artifact
+      classes by shared lifecycle rather than by the architecture domain they
+      serve, because a Terraform module and a detection rule are maintained by
+      different disciplines even when they close controls in the same domain.
+      Books VI-01 and VI-02 are the infrastructure and identity code — landing
+      zone, IPAM/DDI, and the enforcement edge, then Conditional Access, PIM,
+      port authentication, and certificate lifecycle. Books VI-03 and VI-04 are
+      the detection-engineering rule library and the response-automation
+      playbooks. Books VI-05 and VI-06 are the data-protection deployment packs
+      and the configuration baselines. Books VI-07 and VI-08 are the evidence and
+      continuous-monitoring pipeline and the validation harnesses that prove the
+      deployment works. The point of the callout: a deployable artifact's tooling
+      and lifecycle — version control, pipeline, review, drift detection — are the
+      same regardless of whether it closes a network control or an identity
+      control, which is why the volume is factored this way.
+
+  # 4 -----------------------------------------------------------------------
+  - type: content
+    kicker: "THE DEPLOY MODEL"
+    title: "Three principles govern every artifact in this volume"
+    layout: columns
+    cards:
+      - title: "Everything as code"
+        body: "No artifact is a click-path. IaC, policy files, and versioned YAML applied through a change-controlled GitOps pipeline — a baseline you cannot re-derive from source is not a baseline."
+        accent: navy
+        status: "CM-2/3/6"
+      - title: "In-boundary by construction"
+        body: "Every artifact that processes identity-attributed or behavioral telemetry runs inside the agency's own FedRAMP-authorized boundary — never an out-of-scope service."
+        accent: teal
+        status: "SI-4 / AU-2/3"
+      - title: "Evidence-emitting"
+        body: "Each artifact emits to the series evidence contract so ConMon (VI-07) binds it to the control it closes. Deployment and evidence are one act, not two."
+        accent: amber
+        status: "CA-7"
+    callout:
+      text: "These three are the precondition for the volume to mean anything — reproducible, in-boundary, and self-evidencing by construction."
+      accent: navy
+    notes: >
+      The deploy model is three principles, and every artifact in the volume is
+      held to all three. First, everything as code: landing zones are Terraform or
+      Bicep, Conditional Access and DLP are declarative policy files, detection
+      rules and playbooks are versioned YAML, and each is applied through a
+      change-controlled GitOps pipeline so the deployed state is reproducible,
+      reviewable, and diffable against intent. This is the precondition for
+      CM-2/CM-3/CM-6 to mean anything — a baseline you cannot re-derive from source
+      is not a baseline. Second, in-boundary by construction: every artifact that
+      processes identity-attributed or behavioral telemetry runs inside the
+      agency's own authorized boundary. The constraint a modern SaaS boundary
+      imposes is about the destination of raw telemetry, not the data itself — the
+      same sign-in, audit, device, and data-protection telemetry that may not be
+      exported to a vendor's commercial multi-tenant analytics service may be
+      analyzed inside the agency's own workspace, because that is exactly the
+      in-boundary monitoring SI-4 and AU-2/AU-3 contemplate. Third,
+      evidence-emitting by default: an artifact that deploys a control but produces
+      no machine-readable evidence has done half the job. Deployment and evidence
+      are one act.
+    vendor_sources: ["terraform", "azure_bicep", "github_actions"]
+
+  # 5 -----------------------------------------------------------------------
+  - type: content
+    kicker: "IN-BOUNDARY BY CONSTRUCTION"
+    title: "The constraint is the destination of telemetry, not the data itself"
+    layout: columns
+    cards:
+      - title: "Analyze in the agency workspace"
+        body: "Sign-in, audit, device, and data-protection telemetry may be analyzed inside the agency's own authorized workspace — exactly the monitoring SI-4 and AU-2/AU-3 contemplate."
+        accent: teal
+        status: "Permitted"
+      - title: "Never a convenience export"
+        body: "The moment an artifact ships raw telemetry to an out-of-scope service for convenience, it recreates the very flow the boundary forbids — as the agency's own finding."
+        accent: red
+        status: "Forbidden"
+      - title: "Commensurate authorization"
+        body: "Every component an artifact depends on must carry an authorization commensurate with the data it handles — the dependency chain is part of the boundary."
+        accent: navy
+        status: "Every dep"
+    callout:
+      text: "In-boundary is a design property of each artifact, verified in the dependency graph — not a deployment-time afterthought."
+      accent: teal
+    notes: >
+      This slide unpacks the in-boundary principle because it is the one most
+      often violated by accident. The boundary constraint is frequently
+      misread as being about the sensitivity of the data, when it is actually
+      about where raw, identity-attributed telemetry is sent. The same records
+      that may not leave for a vendor's commercial multi-tenant analytics service
+      are entirely appropriate to analyze inside the agency's own authorized
+      workspace — that in-boundary analysis is precisely what SI-4 continuous
+      monitoring and AU-2/AU-3 audit generation and content contemplate. The
+      failure mode is convenience: an engineer wires a detection or a dashboard to
+      an out-of-scope SaaS analytics tier because it is easier, and in doing so
+      recreates the exact cross-boundary flow the authorization forbids, now as
+      the agency's own audit finding rather than a vendor's. The defense is
+      structural: every component an artifact depends on must itself carry an
+      authorization commensurate with the data it handles, and that is verified in
+      the dependency graph at design time, not discovered at assessment. In-boundary
+      is therefore a property the artifact is built to have, not a control bolted
+      on afterward.
+
+  # 6 -----------------------------------------------------------------------
+  - type: content
+    kicker: "ARCHITECTURE VS. IMPLEMENTATION"
+    title: "You cannot deploy a function — you deploy a product that realizes it"
+    layout: columns
+    cards:
+      - title: "Architecture: the function"
+        body: "The architecture volumes are mechanism-level and product-neutral — they name the function that closes a control, never a vendor SKU."
+        accent: navy
+        status: "Vol I–IV"
+      - title: "Implementation: the example"
+        body: "This volume names a deployed example — for the Agency estate, most often the Microsoft-cloud realization — because you cannot apply a function to a tenant."
+        accent: teal
+        status: "Vol VI"
+      - title: "Substitution preserved"
+        body: "Every artifact keeps a substitution column: swapping the deployed example changes the syntax, never the control it closes."
+        accent: amber
+        status: "Multi-CSP"
+    callout:
+      text: "The mechanism is the invariant. FedRAMP scope for this series is Moderate; the product is a realization, not the requirement."
+      accent: navy
+    notes: >
+      This slide names the tension the volume lives inside and how it is resolved.
+      The architecture volumes are deliberately product-neutral: they identify the
+      function that closes a control — authoritative name resolution, phishing-
+      resistant authentication, information-flow enforcement — and never a vendor
+      product, because a mechanism argued from control text and protocol behavior
+      does not age and does not read as advocacy. But you cannot deploy a function;
+      you deploy a product that realizes it. So every artifact in Volume VI names a
+      deployed example, and for the Agency estate that is most often the Microsoft-
+      cloud realization, while preserving a substitution column that lists the
+      equivalent AWS, GCP, or third-party form. The rule to state plainly: swapping
+      the deployed example changes the artifact's syntax and its connector estate,
+      never the control it closes. Keep the FedRAMP scope honest for this edition —
+      the target is Moderate, and Microsoft products earn their place only where
+      they genuinely coordinate the multi-vendor surface, not automatically. The
+      mechanism is the load-bearing claim; the product is how it is spelled on one
+      tenant.
+    vendor_sources: ["azure_bicep"]
+
+  # 7 -----------------------------------------------------------------------
+  - type: table
+    kicker: "HOW THIS VOLUME MAPS TO THE ARCHITECTURE"
+    title: "Each implementation book is the deployable realization of an architecture domain"
+    headers: ["Book", "Deployable artifacts", "Implements", "Controls"]
+    rows:
+      - cells: ["VI-00", "Deploy model, in-boundary principle, evidence emission, GitOps pipeline", "All volumes", "CM-2, CM-3"]
+        accent: navy
+      - cells: ["VI-01", "Terraform/Bicep landing zone, IPAM/DDI, SASE/TIC PEP", "Vol I", "SC-7, SC-20/21/22, CM-8"]
+      - cells: ["VI-02", "Conditional Access, PIM, 802.1X/NAC, cert/token automation", "Vol I identity, Vol III PAM", "IA-2, AC-2/5/6, IA-3"]
+      - cells: ["VI-03", "In-boundary analytics rule library (SIEM/XDR)", "Vol III SIEM/XDR", "AU-6, SI-4, IR-4"]
+      - cells: ["VI-04", "SOAR containment/enrichment playbooks", "Vol III SIEM/XDR", "IR-4/6, AC-12"]
+      - cells: ["VI-05", "Label taxonomy, DLP packs, key-vault/CMK IaC", "Vol III Data Protection", "AC-4, SC-12/28, AU-10"]
+      - cells: ["VI-06", "SCuBA/CIS/STIG policy-as-code", "Vol III posture & patch", "CM-2/6/7, SI-2"]
+      - cells: ["VI-07", "Telemetry to evidence-contract to KSI, OSCAL emission", "Vol III Evidence Fabric, Vol IV", "CA-7, AU-6(1)"]
+        accent: teal
+    callout:
+      text: "VI-08 validation harnesses — detection-efficacy tests, telemetry-completeness workbooks, deploy smoke tests — sit across all books and close CA-2 and CA-7(3)."
+      accent: navy
+    notes: >
+      This is the volume's table of contents read as a control map, one row per
+      book. Each implementation book is the deployable counterpart to one or more
+      architecture books, and the last column names the representative controls
+      each operationalizes. Book VI-00, this overview, carries the deploy model
+      itself — the pipeline is the artifact, and CM-2 and CM-3 are closed by the
+      pipeline that makes every other baseline re-derivable and change-controlled.
+      VI-01 realizes Volume I with landing-zone and network infrastructure-as-code.
+      VI-02 realizes the Volume I identity plane and the Volume III privileged-
+      access architecture. VI-03 and VI-04 realize the Volume III security-
+      operations domain as the in-boundary analytics rule library and the SOAR
+      playbooks. VI-05 and VI-06 realize data protection and configuration
+      hardening. VI-07 wires telemetry into the evidence contract and emits OSCAL
+      to the continuous-monitoring pipeline that scores the FedRAMP 20x KSIs.
+      VI-08, called out below the table, is the validation layer that spans every
+      book and closes the assessment controls CA-2 and CA-7(3). Read together, the
+      map shows there is a deployable artifact for every architecture claim — no
+      designed control without an operating one.
+    vendor_sources: ["oscal", "nist_800_53"]
+
+  # 8 -----------------------------------------------------------------------
+  - type: build-sequence
+    kicker: "DEPLOYMENT AND EVIDENCE ARE ONE ACT"
+    title: "How an artifact becomes an assessable control"
+    notes: >
+      Fallback notes: the build sequence is the lifecycle every artifact in the
+      volume travels — authored as code, reviewed in a pull request, applied
+      through the change-controlled pipeline, emitting evidence to the contract,
+      and bound to the control it closes. The through-line is that deployment and
+      evidence are a single act, not two.
+    steps:
+      - label: "Author"
+        sub: "as code"
+        accent: navy
+        detail: >
+          The intended state is expressed as source — Terraform or Bicep, a
+          declarative policy file, or versioned YAML — never a portal click. The
+          artifact is now something that can be re-derived, and CM-2's "baseline"
+          finally has an authority to point at.
+        notes: >
+          Step one: author the intended state as code. Nothing in this volume is a
+          click-path; landing zones are Terraform or Bicep, Conditional Access and
+          DLP are declarative policy files, and detection rules and playbooks are
+          versioned YAML. The moment the intended state is source, it becomes
+          reproducible and diffable — which is the precondition for CM-2 to mean
+          anything, because a baseline you cannot re-derive from source is not a
+          baseline, only a snapshot no one can regenerate. Authoring as code is
+          also what makes the later steps possible: you cannot review, pipeline,
+          or drift-detect a portal setting.
+      - label: "Review"
+        sub: "pull request"
+        accent: teal
+        detail: >
+          The change is proposed in a pull request and reviewed against intent —
+          a human and the required checks can see the diff before it lands. This
+          is where CM-3 change control stops being a policy document and becomes a
+          gate in the path to production.
+        notes: >
+          Step two: review the change in a pull request. The diff is visible, the
+          required checks run, and a reviewer approves against the intended state
+          before anything is applied. This is the concrete realization of CM-3
+          configuration-change control — not a change-advisory-board memo, but an
+          enforced gate in the pipeline that no change bypasses. A pull request
+          also creates the durable record of who proposed what and who approved
+          it, which is itself audit evidence the boundary can retain in-boundary.
+      - label: "Apply"
+        sub: "GitOps pipeline"
+        accent: amber
+        detail: >
+          The change-controlled pipeline applies the approved source to the
+          tenant idempotently. Deployed state now equals reviewed source, so the
+          two can be diffed later — the precondition for detecting out-of-band
+          drift in Book VI-08.
+        notes: >
+          Step three: apply through the GitOps pipeline. The approved source is
+          applied to the tenant idempotently, so the deployed state equals the
+          reviewed source rather than whatever an engineer typed into a portal at
+          two in the morning. Because deployed state now derives from source, it
+          can be diffed against that source, which is exactly what Book VI-08's
+          smoke tests do to catch the out-of-band portal change that still causes
+          drift. The pipeline is the artifact that makes CM-6 configuration-
+          settings enforcement real: settings are enforced by re-application, not
+          hoped to be correct.
+      - label: "Evidence"
+        sub: "to the contract"
+        accent: navy
+        detail: >
+          The artifact emits a normalized record to the series evidence contract
+          as it deploys. Deployment and evidence are the same act — the machine-
+          readable proof is produced by the deployment, not reconstructed after.
+        notes: >
+          Step four: emit evidence to the contract. As the artifact deploys, it
+          writes a normalized record to the series evidence contract — the single
+          shape every deployed mechanism uses so the continuous-monitoring pipeline
+          can consume it. This is the "evidence-emitting by default" principle in
+          action: an artifact that deploys a control but produces no machine-
+          readable proof has done half the job. Producing evidence at deploy time,
+          rather than reconstructing it before an assessment, is what makes the
+          record trustworthy — it was emitted by the act it attests to.
+      - label: "Bind"
+        sub: "control + KSI"
+        accent: teal
+        detail: >
+          Book VI-07 binds the evidence record to the NIST control it closes and
+          the FedRAMP 20x KSI that scores it, then emits OSCAL into the
+          authorization package. The chain from source to control is now traceable
+          end to end.
+        notes: >
+          Step five: bind the evidence to the control and the KSI. Book VI-07 takes
+          the normalized record and joins it to the NIST 800-53r5 control it closes
+          and the FedRAMP 20x Key Security Indicator that scores that closure, then
+          emits OSCAL into the authorization package. This is the payoff of the
+          whole sequence: an assessor can now trace from a line of source, through
+          the pull request that reviewed it and the pipeline that applied it, to
+          the evidence it emitted and the control and KSI it satisfies — an
+          unbroken chain from design to demonstrable, operating control. Remove any
+          step and the closure claim reverts to an assertion no one can exercise.
+    vendor_sources: ["github_actions", "oscal", "fedramp_20x"]
+
+  # 9 -----------------------------------------------------------------------
+  - type: content
+    kicker: "CLOSURE NECESSITY"
+    title: "Implementation operationalizes — it does not re-close"
+    layout: grid
+    cards:
+      - title: "No double-count"
+        body: "Volume VI does not claim to close controls the architecture already claims; its necessity is of a different kind — it makes the closure demonstrable."
+        accent: navy
+      - title: "AU-6 needs rules"
+        body: "AU-6 is not satisfied by a SIEM with no rules. The architecture proves the mechanism is sufficient; the rule library makes it exercise."
+        accent: teal
+      - title: "CM-6 needs a pipeline"
+        body: "CM-6 is not satisfied by a baseline no pipeline enforces. A baseline that is not re-applied is a document, not a control."
+        accent: amber
+      - title: "CA-7 needs evidence"
+        body: "CA-7 is not satisfied by evidence no pipeline emits. Continuous monitoring that emits nothing is monitoring in name only."
+        accent: red
+    callout:
+      text: "Remove this volume and the SSP describes controls no assessor can exercise — the gap between a designed control and an operating one."
+      accent: navy
+    notes: >
+      This is the volume's Closure Necessity argument, and it is deliberately a
+      different kind of claim than the architecture volumes make. Volume VI does
+      not re-close any control — that would double-count what Volumes I through IV
+      already argue. Its necessity is that a control-closure claim which is not
+      deployed as code and does not emit evidence is simply not assessable. The
+      three examples make it concrete. AU-6, audit review and analysis, is not
+      satisfied by a SIEM standing empty — it needs the detection rules of Book
+      VI-03 actually running against in-boundary telemetry. CM-6, configuration-
+      settings enforcement, is not satisfied by a hardening baseline that no
+      pipeline re-applies — a baseline no one enforces is a wish. CA-7, continuous
+      monitoring, is not satisfied by evidence that no pipeline emits — monitoring
+      that produces no machine-readable record is monitoring in name only. The
+      architecture volumes prove each mechanism is sufficient to close its control;
+      this volume is what makes that closure demonstrable — runnable, inspectable,
+      and traceable. Remove it and the system security plan describes a set of
+      controls no assessor can exercise, which is exactly the gap between a control
+      that is designed and one that is operating.
+
+  # 10 ----------------------------------------------------------------------
+  - type: content
+    kicker: "WHAT THIS VOLUME IS AND IS NOT"
+    title: "The agency-side build layer — not a product mandate, not a set-and-forget"
+    layout: columns
+    cards:
+      - title: "It is the build layer"
+        body: "The code and evidence that turn the architecture into an operating, assessable posture inside the agency boundary."
+        accent: teal
+        status: "Is"
+      - title: "Not a product mandate"
+        body: "Not a claim that any single product is the only way to deploy — every artifact names a deployed example and preserves the substitution path."
+        accent: navy
+        status: "Is not"
+      - title: "Not set-and-forget"
+        body: "Detections rot, baselines drift, sources silently stop emitting. The standing engineering capability that maintains these artifacts is the real cost."
+        accent: amber
+        status: "Is not"
+    callout:
+      text: "The operate-and-tune discipline is addressed per-book and validated in Book VI-08 — the harnesses that catch a deployment that has quietly stopped working."
+      accent: navy
+    notes: >
+      Close the overview by bounding the volume honestly. It is the agency-side
+      build layer — the code and the evidence that turn the architecture into an
+      operating, assessable posture that lives inside the authorized boundary. It
+      is not a claim that any single product is the only way to deploy the
+      architecture; every artifact names a deployed example and preserves the
+      substitution path precisely because the mechanism, not the product, is the
+      invariant, and for FedRAMP Moderate throughout. And it is
+      emphatically not a replacement for the operate-and-tune discipline: deployed
+      detections rot as adversary behavior shifts, baselines drift as the estate
+      changes, and telemetry sources silently stop emitting when a connector
+      breaks — the standing engineering capability that maintains these artifacts
+      is the real, recurring cost of the volume, addressed per-book and validated
+      by the harnesses in Book VI-08. A deck that promised a one-time deployment
+      would be selling a fiction; the honest posture is a maintained one.
+
+  # 11 ----------------------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "Every architecture claim has a deployable artifact and emitted evidence"
+    layout: columns
+    cards:
+      - title: "Design realized"
+        body: "Each of Books VI-01 through VI-08 stands up the mechanism an architecture volume designed — as code, in-boundary."
+        accent: teal
+        status: "VI-01 to 08"
+      - title: "Evidence wired"
+        body: "Every artifact emits to the evidence contract; Book VI-07 binds it to the control and the KSI and emits OSCAL."
+        accent: navy
+        status: "VI-07"
+      - title: "Continuously proven"
+        body: "Book VI-08 validation harnesses re-assert intent and catch drift, so the closure stays demonstrable over time."
+        accent: amber
+        status: "VI-08"
+    callout:
+      text: "This is where 'the SSP says we do X' becomes 'here is the code that does X and the evidence that it ran' — the invariant is the mechanism, the product is a realization."
+      accent: navy
+    notes: >
+      Land the through-line. Volume VI is the layer that makes the Federal
+      Application-Aware Networking architecture real: for every control-closure
+      claim the doctrine volumes argue, there is a deployable artifact that stands
+      the mechanism up as code inside the agency boundary, an evidence record it
+      emits as it deploys, and a validation harness that keeps the closure honest
+      over time. Books VI-01 through VI-08 are the artifacts; Book VI-07 is where
+      deployment state becomes bound evidence and OSCAL for the authorization
+      package; Book VI-08 is where the deployment is continuously re-asserted so it
+      does not quietly rot. Leave the audience with the sentence that defines the
+      volume: this is where "the SSP says we do X" becomes "here is the code that
+      does X and the evidence that it ran." Keep the two invariants in view — the
+      mechanism is the load-bearing claim and the deployed product is only its
+      realization, and the FedRAMP scope for this series is Moderate. Next in
+      the volume: Book VI-01 stands up the landing zone, the naming and addressing
+      plane, and the enforcement edge as code.
+    vendor_sources: ["fedramp_20x", "nist_800_53", "oscal"]

@@ -1,0 +1,704 @@
+# AAN briefing-deck spec — Vol III Book 06: SIEM, XDR, and Detection Engineering
+# Distills docs/customer-documents/federal-aan-series/Vol_III_Book_06_FedAAN_SIEM_XDR_Detection.qmd
+# Schema: module docstring in src/uiao/generators/aan_deck.py
+# Build:
+#   uiao generate aan-deck \
+#     --spec "docs/customer-documents/federal-aan-series/specs/Vol_III_Book_06.yaml" \
+#     --out  "docs/customer-documents/federal-aan-series/Vol_III_Book_06_FedAAN_SIEM_XDR_Detection.pptx" \
+#     --date-code "2026-07-09 09:54 ET"
+deck:
+  title: "SIEM, XDR & Detection Engineering"
+  subtitle: "Microsoft Sentinel and Defender — turning the log warehouse into an active detection and response engine"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOL III BOOK 06"
+  date_code: "2026-07-09 09:54 ET"
+  journey:
+    - "Ingest"
+    - "Detect"
+    - "Correlate"
+    - "Respond"
+  sources:
+    ms_sentinel: "https://learn.microsoft.com/azure/sentinel/overview"
+    ms_sentinel_connectors: "https://learn.microsoft.com/azure/sentinel/connect-data-sources"
+    ms_sentinel_ueba: "https://learn.microsoft.com/azure/sentinel/identify-threats-with-entity-behavior-analytics"
+    ms_sentinel_automation: "https://learn.microsoft.com/azure/sentinel/automation/automation"
+    ms_defender_endpoint: "https://learn.microsoft.com/defender-endpoint/microsoft-defender-endpoint"
+    cisa_kev: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+    cisa_aa22_119a: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-119a"
+    nist_800_61: "https://csrc.nist.gov/pubs/sp/800/61/r2/final"
+    omb_m2004: "https://www.whitehouse.gov/wp-content/uploads/2019/11/M-24-04.pdf"
+    nara_grs: "https://www.archives.gov/records-mgmt/grs"
+
+slides:
+  # 1 --- title ---------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Volume III, Book 06. The Volume I and Volume II books built
+      a log pipeline of exceptional depth for a federal agency: InfoBlox structured
+      syslog for every DNS query, RPZ hit, and DNSSEC failure; SASE per-session flow
+      telemetry with full URL, user, device posture, and transfer volume; Entra ID
+      sign-in and audit logs with geolocation and Conditional Access detail; SQL
+      Server continuous auditing; and Defender for Endpoint device findings. The
+      problem this book addresses is blunt: none of that log volume is useful if no
+      one is watching it and nothing fires when something goes wrong. A log warehouse
+      that has never generated an alert does not satisfy AU-6, which requires review
+      and analysis of audit records — not a passive archive. This book closes the gap
+      between log generation and detection through four mechanisms: a connected SIEM,
+      Microsoft Sentinel, ingesting every series log source through native
+      connectors; a curated KQL detection-rule library targeting those specific
+      sources; User and Entity Behavior Analytics applying machine learning across
+      the aggregate telemetry to surface anomalies no single-source rule can catch;
+      and automated playbooks that turn alert firings into enriched incidents and,
+      for confirmed high-severity detections, trigger containment without waiting for
+      an analyst. The series targets FedRAMP Moderate exclusively (Agency GCC Moderate
+      baseline). Walk the journey strip — Ingest, Detect, Correlate, Respond — as the
+      spine. Draft CSI-team proposal, pre-decisional, not an approved Agency position.
+    vendor_sources: ["ms_sentinel", "uiao repo: docs/customer-documents/federal-aan-series/Vol_III_Book_06_FedAAN_SIEM_XDR_Detection.qmd"]
+
+  # 2 --- section -------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "A log warehouse is not a detection engine"
+    callout: "A SIEM with zero configured analytics rules does not pass AU-6. The assessor asks: show me an alert that fired last month and the incident ticket it generated."
+    callout_accent: navy
+    notes: >
+      This section makes the case for the whole book by drawing the line between a
+      log aggregator and a SIEM. A log aggregator — Splunk, Elastic, Azure Log
+      Analytics alone — collects and indexes. A SIEM adds rule-based detection,
+      ML-driven anomaly scoring, incident-management workflow, and automation
+      orchestration on top; Microsoft Sentinel is built on Log Analytics and adds
+      exactly that detection layer. The distinction is not academic — it is the AU-6
+      pass/fail line. AU-6 has three required, ongoing actions: review, analyze, and
+      report, and AU-6(1) requires automated integration of that review with other
+      processes, which explicitly rules out a human manually querying logs on an ad
+      hoc basis as compliance. The presenter should walk the assessor's actual
+      evidence sequence. First, is there log collection? Most agencies pass. Second,
+      are logs in a SIEM? Many have deployed Sentinel or Splunk and pass. Third —
+      where programs fail — is there a configured detection rule set, and can you show
+      an alert that fired, the incident it generated, and the documented response? A
+      SIEM with zero configured rules, or every rule disabled pending tuning, fails
+      this step. The concrete evidence request is: provide an example of an alert
+      that fired in the last 30 days, the incident record, and what action was taken.
+      If nothing fired in 30 days, either the environment has no suspicious activity
+      (unlikely), the rules are misconfigured and producing nothing, or no rules are
+      configured — and the last two are AU-6 findings. That is the gap this book
+      closes.
+
+  # 3 --- table --------------------------------------------------------------
+  - type: table
+    kicker: "WHY DETECTION LATENCY MATTERS"
+    title: "Mean time to detect — without a detection engine vs. with Sentinel"
+    headers: ["Attack pattern", "Log source", "MTTD without SIEM", "MTTD with Sentinel"]
+    rows:
+      - cells: ["DNS C2 beacon via compromised host", "InfoBlox syslog", "Days to weeks", "Minutes — automated rule"]
+        accent: navy
+      - cells: ["Credential stuffing against Entra ID", "Entra sign-in logs", "Days if reviewed", "Minutes — automated rule"]
+        accent: teal
+      - cells: ["Impossible-travel sign-in", "Entra sign-in logs", "Days to weeks", "Minutes — automated rule"]
+        accent: amber
+      - cells: ["SA account re-enabled on SQL instance", "SQL audit log", "Days to never", "Minutes — automated rule"]
+        accent: red
+      - cells: ["KEV CVE exploitation attempt", "Defender for Endpoint", "Hours to days", "Minutes — MDVM alert"]
+        accent: navy
+      - cells: ["Unusual data exfil via SASE", "SASE flow telemetry", "Never — no baseline", "Hours — UEBA"]
+        accent: teal
+    callout:
+      text: "The 'days to never' entries are not hypothetical. Manual log review at agency scale, with no automated rule, produces detection latencies measured in weeks — when detection happens at all."
+      accent: amber
+    notes: >
+      This is a reference table — let the audience read it, then land the point.
+      Each row is a common attack pattern against the log sources the earlier volumes
+      built, with the detection latency before this book's controls and after. DNS
+      command-and-control beaconing via a compromised host, visible in InfoBlox
+      syslog, moves from days-to-weeks to minutes on an automated rule. Credential
+      stuffing and impossible-travel sign-ins in the Entra logs move from days to
+      minutes. An SA account re-enabled on a SQL instance — which should be
+      zero-frequency in a hardened environment — moves from days-to-never to minutes.
+      A KEV catalog CVE showing active exploitation on an enrolled host, from
+      Defender, moves from hours-to-days to minutes via the Microsoft Defender
+      Vulnerability Management alert. Unusual data exfiltration through the SASE
+      egress, which has no threshold rule because it requires a behavioral baseline,
+      moves from effectively never to hours via UEBA. The callout is the sober point
+      the book insists is not rhetorical: the days-to-never entries are real. Manual
+      log review across multiple sources at agency scale, with no automated rule to
+      surface the relevant event, genuinely produces detection latencies in weeks —
+      and the book cites the 2023 CISA/NSA advisory documenting adversaries who held
+      persistent access to federal tenants for months precisely because the log data
+      was present but unmonitored. Detection engineering is what collapses these
+      latencies from the left column to the right.
+    vendor_sources: ["ms_sentinel"]
+
+  # 4 --- section -------------------------------------------------------------
+  - type: section
+    kicker: "PART TWO"
+    title: "Ingest — the Sentinel connector fabric"
+    callout: "Every series log source maps to a native Sentinel connector — no custom integration for the primary sources. One workspace, ASIM-normalized, TI-correlated."
+    callout_accent: teal
+    notes: >
+      Part Two is ingestion. Microsoft Sentinel connects to log sources through
+      named data connectors, each handling authentication to the source,
+      normalization into the Sentinel table schema, and optional parsing into the
+      Advanced Security Information Model — ASIM — so detection rules can operate
+      across sources uniformly. The series' log sources map directly to available
+      connectors with no custom integration for the primary ones. InfoBlox NIOS has
+      no first-party connector, so it forwards CEF over syslog to a Log Analytics
+      forwarder VM and lands in CommonSecurityLog with DeviceVendor Infoblox, mapped
+      to the ASIM DNS and Network Session schemas. Entra ID is a first-party
+      connector pulling sign-in logs, audit logs, risky users, and risk events into
+      SigninLogs, AuditLogs, and the AAD risk tables. The Microsoft 365 Defender
+      connector streams device events, alerts, and vulnerability-assessment events,
+      and is required for the KEV detection rule and the device-isolation playbook.
+      The SASE platform — Zscaler ZIA via Nanolog Streaming or Netskope via Cloud
+      Exchange — brings per-session egress telemetry. SQL audit flows through the
+      Azure Monitor Agent and Defender for SQL. And the InfoBlox TIDE TAXII connector
+      pulls threat-intelligence indicators into ThreatIntelligenceIndicator, where
+      Sentinel's built-in TI-map rules automatically cross-reference every connected
+      source against known-malicious indicators every 15 minutes with no custom KQL.
+      All of it writes to a single Log Analytics workspace, whose per-table retention
+      is configured to satisfy AU-11. The next slide inventories the connectors.
+
+  # 5 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "THE CONNECTOR FABRIC · ONE WORKSPACE"
+    title: "Six source families into one Log Analytics workspace"
+    layout: grid
+    cards:
+      - title: "InfoBlox NIOS + TIDE"
+        body: "DNS/RPZ/DHCP/DNSSEC via CEF syslog to a forwarder (CommonSecurityLog); TIDE IOCs via TAXII auto-correlate all sources every 15 minutes."
+        accent: navy
+      - title: "Entra ID"
+        body: "First-party connector: sign-in, audit, non-interactive, service-principal, managed-identity sign-ins, risky users, and risk events."
+        accent: teal
+      - title: "Defender for Endpoint"
+        body: "M365 Defender connector streams device, alert, vulnerability, network, logon, and process events — required for KEV detection and auto-isolation."
+        accent: amber
+      - title: "SASE + SQL"
+        body: "Zscaler ZIA (NSS) or Netskope (Cloud Exchange) egress telemetry; SQL audit via Azure Monitor Agent and Defender for SQL alerts."
+        accent: red
+    callout:
+      text: "Retention is tiered per table: 90-day interactive (hot), up to 2-year archive, and 3-year WORM Blob with legal hold — meeting AU-11 and NARA GRS 3.2 at sustainable cost."
+      accent: navy
+    notes: >
+      Four cards covering the six source families that feed the single workspace.
+      InfoBlox contributes two connectors: NIOS DNS, RPZ, DHCP, and DNSSEC telemetry
+      forwarded as CEF over syslog to a dedicated Linux forwarder and landing in
+      CommonSecurityLog with DeviceVendor Infoblox, plus the TIDE threat-intelligence
+      feed over TAXII, whose indicators land in ThreatIntelligenceIndicator and drive
+      automatic cross-source correlation by Sentinel's built-in TI-map rules every 15
+      minutes — any DNS query matching a TIDE malicious domain fires an incident with
+      no custom KQL. Entra ID is the first-party connector bringing the full identity
+      picture: interactive and non-interactive sign-ins, service-principal and
+      managed-identity sign-ins, audit logs, and the Identity Protection risky-user
+      and risk-event tables. The Microsoft 365 Defender connector streams device
+      events, alerts, vulnerability-assessment events, network events, logon events,
+      and process events, and it is the connector the KEV exploitation rule and the
+      automated device-isolation playbook both depend on. The SASE and SQL card
+      folds two: Zscaler ZIA via Nanolog Streaming or Netskope via Cloud Exchange for
+      per-session user-egress telemetry with URL, identity, and volume, and SQL
+      Server audit through the Azure Monitor Agent with Defender for SQL surfacing
+      alerts. Everything lands in one Log Analytics workspace, which is what makes
+      cross-source correlation and UEBA possible. The callout is the retention
+      architecture that satisfies AU-11: a 90-day interactive hot tier for active
+      querying and alert evaluation, an archive tier out to two additional years at
+      roughly a twelfth of the hot cost, and an immutable WORM Blob copy with legal
+      hold for the three-year NARA GRS 3.2 minimum — configured per table so
+      high-volume and audit tables get appropriate windows at a sustainable cost.
+    vendor_sources: ["ms_sentinel_connectors", "nara_grs"]
+
+  # 6 --- section -------------------------------------------------------------
+  - type: section
+    kicker: "PART THREE"
+    title: "Detect and correlate — rules, then behavior"
+    callout: "Threshold rules catch the known pattern; UEBA catches deviation from an entity's own baseline. Together they cover the kill chain no single-source rule can see."
+    callout_accent: amber
+    notes: >
+      Part Three is the detection layer, and it has two complementary halves that the
+      presenter should frame as such. The first half is the curated rule library —
+      a 20-rule priority set of KQL analytics rules targeted at the specific series
+      log sources, each passing through a four-phase detection-engineering lifecycle
+      before it produces reliable signal: authoring, testing against 30 days of
+      historical data, production deployment with a mandatory two-week tuning window,
+      and steady-state operation with scheduled review. The tuning window is
+      operationally non-negotiable because every new rule generates false positives
+      in its first two weeks from legitimate activity the author did not anticipate;
+      the correct pattern is to deploy without creating incidents for two weeks,
+      review alert-level output daily, document the false-positive patterns, adjust
+      thresholds, and only then promote to incident creation. Example rules the book
+      ships with full KQL include DNS C2 beacon detection, impossible travel, PIM
+      role activation outside business hours, MFA fatigue, and any NTLM event after
+      the Phase-C block. The second half is UEBA — User and Entity Behavior Analytics
+      — which does not use predefined thresholds at all: it applies ML across all
+      connected sources to build per-entity behavioral baselines and score
+      deviations, producing an investigation-priority score from zero to ten, peer-
+      group deviation flags, anomalous-resource-access signals, and a single entity
+      page that aggregates everything about a user or device. Integrated with Entra
+      ID Identity Protection, UEBA creates a force-multiplier: a medium-risk user who
+      also fires the MFA-fatigue rule and shows anomalous resource access is rapidly
+      escalated to a critical incident even when no single signal was individually
+      high-confidence. The next slides make both halves concrete.
+
+  # 7 --- content columns (3 cards w/ status) --------------------------------
+  - type: content
+    kicker: "THE DETECTION-RULE LIBRARY · SI-4"
+    title: "A curated rule set, tuned before it fires incidents"
+    layout: columns
+    cards:
+      - title: "Engineering lifecycle"
+        body: "Author, test against 30 days of history, deploy with a 2-week tuning window (no incidents yet), then steady-state review. Every new rule generates false positives first."
+        accent: navy
+        status: "4-phase lifecycle"
+      - title: "Priority KQL rules"
+        body: "DNS C2 beacon, impossible travel, PIM activation off-hours, MFA fatigue (CISA AA22-119A), NTLM after Phase-C block, KEV CVE actively exploited — 20-rule set."
+        accent: teal
+        status: "20 rules · SI-4"
+      - title: "TIDE auto-correlation"
+        body: "Built-in TI-map rules cross-reference every connected source against TIDE indicators every 15 minutes — high-value detection with no custom KQL to author."
+        accent: amber
+        status: "Every 15 min"
+    callout:
+      text: "Deploy with createIncident:false for two weeks, review daily, document the false-positive patterns, then promote. A rule that alerts on everything protects nothing."
+      accent: navy
+    notes: >
+      Three cards on the threshold-rule half of detection. The engineering lifecycle
+      card is the discipline that makes rules trustworthy: author the KQL, test it
+      against 30 days of historical Log Analytics data to calibrate the threshold and
+      assess the false-positive rate, deploy to production with a two-week tuning
+      window during which the rule runs but does not create incidents, and then move
+      to steady-state with scheduled quarterly review and a retire-or-update
+      decision. The reason the tuning window is mandatory is that every new rule
+      generates false positives in its first two weeks from legitimate activity the
+      author did not foresee — a monitoring agent that looks like a beacon, a VPN
+      concentrator that looks like impossible travel — and treating those as true
+      positives overloads the SOC while ignoring them defeats the point. The priority
+      KQL rules card names the concrete detections the book ships with full queries:
+      DNS command-and-control beaconing from InfoBlox syslog, impossible travel and
+      MFA fatigue and off-hours PIM activation from Entra, any NTLM authentication
+      after the series' Phase-C block (which should be zero and is a P1 if it fires),
+      and KEV-catalog CVE active exploitation from Defender — part of a 20-rule
+      priority set that closes SI-4 system monitoring. The MFA-fatigue rule is drawn
+      directly from CISA advisory AA22-119A documenting push-bombing against federal
+      agencies by nation-state actors. The TIDE card is the high-value, zero-effort
+      detection: the built-in TI-map rules correlate every connected source against
+      the threat-intelligence indicators every 15 minutes with no custom KQL to
+      author or maintain. Land the callout as the operating rule: deploy silent for
+      two weeks, tune against real output, then promote — a rule that alerts on
+      everything protects nothing.
+    vendor_sources: ["cisa_aa22_119a", "cisa_kev"]
+
+  # 8 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "UEBA · SI-4(2) — BEHAVIOR, NOT THRESHOLDS"
+    title: "Machine learning across every source finds what rules miss"
+    layout: grid
+    cards:
+      - title: "Investigation priority score"
+        body: "Each user and entity carries a continuously updated 0-10 score from weighted anomalies, peer deviation, and Identity Protection risk. Review scores above 7 daily."
+        accent: navy
+      - title: "Peer-group deviation"
+        body: "Users grouped by department and role from Entra attributes. Access no peer has ever made flags an anomaly even before the user's own baseline shifts — insider-threat signal."
+        accent: teal
+      - title: "Entity page"
+        body: "One view per user or device: current score, recent alerts, UEBA anomalies, Identity Protection risk, device compliance, sign-in history. First stop in any incident."
+        accent: amber
+      - title: "Identity Protection force-multiplier"
+        body: "Medium Entra risk + MFA-fatigue rule + anomalous access escalates to 9-10 — a Critical incident from three individually low-confidence signals."
+        accent: red
+    callout:
+      text: "During the hybrid AD transition, Defender for Identity supplies on-prem Kerberos/NTLM lateral-movement signal UEBA cannot see without it — removable only after AD is decommissioned."
+      accent: navy
+    notes: >
+      Four cards on the behavioral half of detection, which covers what threshold
+      rules structurally cannot. UEBA applies machine learning across all connected
+      sources simultaneously to baseline each user's and entity's own behavior and
+      score deviations, with no predefined threshold. The investigation-priority
+      score is a continuously updated zero-to-ten value per entity, weighting
+      behavioral anomalies, peer-group deviations, and Entra ID Identity Protection
+      risk; it rises as anomalous actions accumulate and falls as behavior returns to
+      baseline, and analysts should review any entity scoring above seven daily
+      regardless of whether a specific rule fired. Peer-group deviation is the
+      insider-threat signal: UEBA groups users by department and role from Entra
+      attributes and access patterns, so a user accessing a resource no one in their
+      peer group has ever touched is flagged even before their own historical
+      baseline shifts — the peer comparison catches what a self-baseline would miss.
+      The entity page is the analyst's single pane: for any user or device it
+      aggregates the current priority score, recent alerts, UEBA anomaly signals,
+      Identity Protection risk indicators, device compliance from Defender, and sign-
+      in history, and it is the first place to go when an incident involves that
+      entity. The fourth card is the force-multiplier the book highlights: a user at
+      medium Entra risk from, say, leaked credentials in the threat-intel feed, who
+      also fires the MFA-fatigue rule and shows an anomalous resource access, has
+      their score rapidly driven to nine or ten, producing a critical Sentinel
+      incident from three signals that were each individually low-confidence — the
+      whole exceeding the sum. The callout is the hybrid-transition caveat: while
+      on-premises Active Directory still runs, Defender for Identity supplies the
+      on-prem Kerberos and NTLM lateral-movement, pass-the-hash, and Golden Ticket
+      detection UEBA cannot see without it, and it can be removed only after the AD
+      estate is decommissioned.
+    vendor_sources: ["ms_sentinel_ueba", "ms_defender_endpoint"]
+
+  # 9 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART FOUR"
+    title: "Respond — the alert-to-closure evidence chain"
+    callout: "FedRAMP's AU-6 evidence is a chain, not a log: alert record, incident ticket, response documentation, closure classification. Sentinel automation produces it."
+    callout_accent: red
+    notes: >
+      Part Four is response, and it is framed around the exact artifact a FedRAMP
+      assessor demands. The practical AU-6 evidence standard is not whether logs
+      exist — it is whether the detection-to-response chain produced a documented
+      artifact with four components: an alert record (a timestamped SIEM incident
+      showing what rule fired, on what evidence, and when), an incident ticket (a
+      ServiceNow or equivalent record created in response and linked to the SIEM
+      incident), response documentation (notes, timestamps, and disposition in the
+      ticket), and a closure record (a true-positive or false-positive determination,
+      and for a true positive the remediation and its verification). Sentinel
+      produces the first two natively and supports the last two through analyst
+      discipline. The mechanism is two-tiered automation: automation rules are
+      Sentinel-native constructs that run instantly on incident creation to assign,
+      set severity, and suppress known false positives, and Logic App playbooks
+      execute external actions — querying Entra ID and Defender for enrichment,
+      creating the ServiceNow ticket, posting to the Teams SOC channel, and for
+      confirmed high-severity detections executing containment. The book ships
+      specific playbooks: auto-suppress InfoBlox health-check false positives against
+      a watchlist, auto-enrich every user-involved incident with risk level, PIM
+      eligibility, device compliance, and recent sign-ins before an analyst opens it,
+      auto-isolate a device on confirmed KEV exploitation (gated on the Defender
+      EventType equal to Exploit, not mere vulnerability presence), and auto-disable
+      an account on the compound signal of impossible travel plus a high-severity
+      Identity Protection risk event. The build sequence walks that chain end to end.
+
+  # 10 --- build-sequence (6 steps) ------------------------------------------
+  - type: build-sequence
+    kicker: "THE INCIDENT-TO-RESPONSE CHAIN"
+    title: "How one alert becomes a documented, closed incident"
+    notes: >
+      Fallback notes: the automation chain turns a rule firing into an enriched,
+      ticketed, contained, and classified incident — the four-part artifact a
+      FedRAMP AU-6 assessor asks to be shown.
+    steps:
+      - label: "Rule fires"
+        sub: "Analytics rule → alert"
+        accent: navy
+        detail: >
+          A KQL analytics rule crosses its threshold — say, a KEV CVE with EventType
+          Exploit on an enrolled host — and Sentinel creates an alert with the
+          triggering evidence and a timestamp. This is evidence artifact one.
+        notes: >
+          Step one: the analytics rule fires. A KQL rule evaluated on its configured
+          cadence — every 5 to 60 minutes for threshold rules, every 15 for TI
+          correlation — crosses its threshold, and Sentinel creates an alert
+          capturing what rule fired, the evidence that triggered it, and the
+          timestamp. Use a concrete example the rest of the chain can follow: a
+          Defender for Endpoint event reports a CISA KEV catalog CVE with EventType
+          equal to Exploit on an enrolled host, meaning active exploitation, not just
+          a vulnerable version present. Emphasize that this alert is the first of the
+          four evidence artifacts a FedRAMP assessor asks for — the timestamped
+          record of what fired and why. Nothing has been triaged or contained yet;
+          this is purely the detection event. The point to make is that this artifact
+          exists automatically and continuously, which is exactly what a log warehouse
+          with no rules could never produce, and it is why the environment can answer
+          the assessor's show-me-an-alert-from-last-month question at all. One more
+          framing point: the rule that fired is not a generic vendor signature but
+          one authored against a specific series log source, tested against 30 days
+          of this tenant's own history and tuned through the two-week window, so the
+          alert arrives with a low false-positive rate and a human-readable reason
+          rather than as noise a tired analyst learns to ignore. That authoring
+          discipline is what makes step one's artifact trustworthy enough to drive
+          the automated steps that follow it.
+      - label: "Automation rule"
+        sub: "Incident, severity, suppress"
+        accent: teal
+        detail: >
+          A Sentinel-native automation rule runs instantly: create the incident,
+          assign severity and owner, and run suppression logic — closing known
+          false positives (e.g., health-check IPs on a watchlist) before an analyst sees them.
+        notes: >
+          Step two: the automation rule runs instantly on alert creation. Automation
+          rules are Sentinel-native constructs with no external dependency, so they
+          execute immediately: create the incident from the alert, assign its
+          severity and owner, and run any suppression logic. Suppression is where the
+          book's auto-suppress playbook lives — for example, the DNS C2 beacon rule
+          can be triggered by InfoBlox health-check processes resolving the same
+          monitoring FQDNs at regular intervals, so an automation rule checks the
+          source IP against a watchlist of known infrastructure (monitoring servers,
+          load-balancer health probes, DNS relays) and closes the incident as a
+          benign positive before any analyst time is spent on it. This step is what
+          keeps the SOC queue honest: the true incidents survive to the next step,
+          the known-benign ones are classified and closed automatically with a
+          documented reason. It also produces evidence artifact two in the making —
+          the incident record that the ServiceNow ticket will link to. The discipline
+          to voice: suppression is documented, not silent — a suppressed incident is
+          closed with a classification and reason, so the audit trail shows why it did
+          not proceed. Give the audience the operational payoff: automated suppression
+          against a maintained watchlist is what keeps analysts working real incidents
+          instead of drowning in recurring false positives — the monitoring agent that
+          looks like a beacon, the load-balancer probe that looks like a scan — that
+          would otherwise make the incident queue meaningless within a week of
+          go-live.
+      - label: "Enrichment playbook"
+        sub: "Entra + Defender context"
+        accent: amber
+        detail: >
+          A Logic App queries Graph for the user's Identity Protection risk, PIM
+          eligibility, device compliance, and last sign-ins, and appends it to the
+          incident as comments — full context before an analyst opens the ticket.
+        notes: >
+          Step three: the enrichment playbook. A Logic App triggered by incident
+          creation queries the Microsoft Graph and Defender APIs and appends context
+          to the incident as comments before any analyst opens it: the user's current
+          Entra ID Identity Protection risk level, their PIM role-eligibility list,
+          the device's Defender compliance posture if the sign-in came from a managed
+          device, and the last several sign-ins from the entity history. The value is
+          that the analyst opens an incident that already answers the first questions
+          they would otherwise spend minutes gathering — who is this user, how risky
+          are they right now, is their device healthy, what have they been doing. This
+          is where the UEBA entity page and the automated enrichment converge to
+          collapse triage time. Make the AU-6(1) connection explicit: this automated
+          integration of context from identity and endpoint systems into the incident
+          record is precisely what AU-6(1) automated-process-integration requires —
+          the review process is wired to the other organizational systems rather than
+          depending on an analyst manually copy-pasting between consoles. Enriched,
+          the incident is ready for a fast, informed triage decision. State the
+          measurable benefit: enrichment is the single biggest lever on mean time to
+          respond, because the minutes an analyst would otherwise spend pivoting
+          across the Entra portal, the Defender console, and the sign-in logs are
+          spent instead on judgment, and the context arrives identically formatted on
+          every incident so triage quality does not depend on which analyst happened
+          to pick up the ticket.
+      - label: "Notification playbook"
+        sub: "ServiceNow + Teams"
+        accent: red
+        detail: >
+          A second Logic App creates the ServiceNow incident ticket with a link back
+          to the Sentinel incident and posts to the Teams SOC channel. Evidence
+          artifact two — the linked incident ticket — now exists.
+        notes: >
+          Step four: the notification playbook. A second Logic App creates the
+          incident ticket in ServiceNow — with a link back to the Sentinel incident so
+          the two systems are joined — and posts a notification to the Teams SOC
+          channel so the team sees it in real time. This is where evidence artifact
+          two, the incident ticket linked to the alert, comes into concrete existence,
+          and it is the artifact that carries the response documentation and closure
+          record through to the end. Stress that the ServiceNow integration is what
+          satisfies the assessor's request to see the incident record associated with
+          a fired alert: the link between the Sentinel incident and the ServiceNow
+          ticket is the auditable join between detection and response. Notification
+          also starts the human clock — for a major incident, OMB M-24-04 requires
+          US-CERT notification within one hour of discovery, and the IR plan documents
+          that pathway, so the SOC channel post and the ticket creation are the moment
+          the reporting obligation begins to run. The chain has now produced two of
+          the four evidence artifacts automatically; the last two come from what the
+          analyst does next. Underline the compliance mechanics for the audience: the
+          bidirectional link between the Sentinel incident and the ServiceNow ticket
+          is the auditable join a FedRAMP assessor follows from a fired alert to its
+          documented response, and because both records are timestamped, the same
+          join also proves the response met whatever SLA the IR plan commits to — the
+          evidence chain and the accountability clock are the same artifact.
+      - label: "SOC triage"
+        sub: "True positive or false"
+        accent: navy
+        detail: >
+          The analyst opens the enriched incident, reviews the UEBA score and
+          appended context, and makes the true-positive / false-positive
+          determination — recording the reasoning in the ticket. Evidence artifact three.
+        notes: >
+          Step five: SOC analyst triage. The analyst opens an incident that is already
+          enriched with identity risk, device posture, and sign-in history, reviews
+          the UEBA investigation-priority score on the entity page, and makes the
+          determination: true positive or false positive. The reasoning, the
+          timestamps, and the disposition are recorded in the ServiceNow ticket — that
+          documentation is evidence artifact three, the response documentation the
+          assessor asks for. The point to make about this step is that the automation
+          preceding it is what makes the human decision fast and correct: the analyst
+          is not gathering context, they are judging pre-gathered context, which is
+          the difference between a triage that takes minutes and one that takes an
+          hour. For most incidents the human decision happens here; for the specific
+          high-confidence compound conditions the book defines, an automated response
+          may already have fired in parallel — device isolation on confirmed KEV
+          exploitation, or account disable on impossible-travel-plus-high-risk — which
+          the analyst then reviews rather than initiates. Either way the determination
+          and its rationale are documented, moving the incident toward closure. Make
+          the human-factors point explicit: the reason to invest in enrichment and
+          automation up to this step is that triage is where analyst fatigue does the
+          most damage, and an analyst deciding on pre-gathered, uniformly formatted
+          context makes fewer wrong calls than one improvising across five consoles at
+          the end of a shift — the automation is not there to replace the judgment,
+          it is there to protect it.
+      - label: "Remediation + closure"
+        sub: "Contain, verify, classify"
+        accent: teal
+        detail: >
+          Containment executes (isolate device / disable account, gated on
+          confirmation), remediation is verified, and the incident is closed with a
+          classification. Evidence artifact four — and the loop feeds rule tuning.
+        notes: >
+          Step six: remediation and closure — the last two evidence artifacts and the
+          feedback loop. For a confirmed true positive, containment executes: the
+          auto-isolate playbook removes a device from all network access except the
+          Defender management channel to stop lateral movement while preserving
+          forensic state, gated on the Defender EventType equal to Exploit and, for
+          non-workstation classes, a Logic App approval step so a production SQL Server
+          is never isolated on a false positive; or the auto-disable playbook sets
+          accountEnabled false on the compound impossible-travel-plus-high-risk signal
+          whose false-positive rate is essentially nil. The remediation is then
+          verified — a re-scan, a confirmed credential reset — and the incident is
+          closed with a classification, which is evidence artifact four. Close the
+          sequence on the two things that make this a system rather than a script.
+          First, the four artifacts — alert, ticket, response documentation, closure —
+          are exactly what a FedRAMP AU-6 assessor asks to be shown, and this chain
+          produces them as a byproduct of operating. Second, the closure feeds back:
+          a false positive becomes a tuning-log entry that adjusts the rule, and a
+          post-incident lessons-learned entry maps to the NIST 800-61 post-incident
+          phase. This is the reference state to export back into the Book as the
+          incident-response workflow figure — detection to documented, verified,
+          classified closure, end to end.
+        vendor_sources: ["ms_sentinel_automation"]
+
+  # 11 --- content grid — IR-8 -----------------------------------------------
+  - type: content
+    kicker: "IR-8 · THE DOCUMENTATION ASSESSORS REQUIRE"
+    title: "A deployed SIEM does not pass IR-8 by itself"
+    layout: grid
+    cards:
+      - title: "IR plan + contacts"
+        body: "Written plan across all NIST 800-61 phases; a quarterly-maintained contact list — SOC, ISSO, ISSM, CISO, legal, US-CERT, FBI Cyber. Reviewed annually."
+        accent: navy
+      - title: "Comms templates"
+        body: "Pre-drafted notifications, including US-CERT/CISA per OMB M-24-04's 1-hour major-incident reporting — legally required elements drafted before the pressure, not during."
+        accent: teal
+      - title: "Evidence + lessons learned"
+        body: "Documented forensic-preservation procedure with chain of custody; a lessons-learned template after every P0/P1 capturing timeline, root cause, and detection-gap actions."
+        accent: amber
+      - title: "Tested annually"
+        body: "A tabletop exercise and an annual IR test (IR-3) on record — a DNS C2 beacon leading to lateral movement is a scenario drawn straight from these log sources."
+        accent: red
+    callout:
+      text: "Seven IR artifacts are evaluated separately from the SIEM. An agency can have a fully deployed Sentinel and still fail IR-8 if the documentation is missing."
+      accent: navy
+    notes: >
+      This slide covers IR-8, the incident-response-plan control, and its central
+      caution: the seven required IR artifacts are evaluated separately from the SIEM
+      system, so an agency can have a fully deployed Sentinel environment and still
+      fail IR-8 if the documentation is missing. Four cards fold the seven artifacts.
+      The IR plan and contacts card covers artifacts one and two: a written incident
+      response plan covering all four NIST 800-61 phases — preparation, detection and
+      analysis, containment/eradication/recovery, and post-incident activity — with
+      scope, roles, escalation, and evidence-preservation requirements, reviewed
+      annually and typically 20 to 40 pages for a moderate system; and a
+      quarterly-maintained contact list spanning the SOC escalation chain, system
+      owner, ISSO, ISSM, agency CISO, legal, public affairs, the US-CERT reporting
+      contact, and the FBI Cyber Division for criminal referral. The comms-templates
+      card is artifact three: pre-drafted notification templates including the
+      US-CERT/CISA notification required by OMB M-24-04 within one hour of a major
+      incident, so the legally required elements are drafted before the pressure of a
+      live incident rather than under it. The evidence and lessons-learned card folds
+      artifacts four and five: a documented forensic-preservation procedure with
+      chain of custody — incident export, query-result export, device memory and disk
+      imaging — and a lessons-learned template used after every P0 and P1 capturing
+      timeline reconstruction, root cause, detection-gap assessment, and remediation
+      actions with owners. The tested-annually card folds artifacts six and seven: a
+      tabletop exercise within the past 12 months, ideally a scenario drawn straight
+      from these log sources such as a DNS C2 beacon leading to lateral movement, and
+      the annual IR test IR-3 requires, which Sentinel's test-rule capability can
+      drive through the full automation chain. Land the callout: the SIEM produces
+      machine-readable evidence for the controls that generate automated output, but
+      IR-8 is a documentation control, and the documents must exist, be current, and
+      be shown.
+    vendor_sources: ["nist_800_61", "omb_m2004"]
+
+  # 12 --- table — Authorities Closed Here -----------------------------------
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "NIST SP 800-53 Rev 5 control closure (FedRAMP Moderate)"
+    headers: ["Control", "Title", "Closing mechanism (function, not product)", "KSI"]
+    rows:
+      - cells: ["AU-6 / AU-6(1)", "Audit Review, Analysis & Reporting", "Sentinel analytics rules evaluate all sources continuously; Logic App playbooks integrate incidents into ServiceNow", "KSI-MLA"]
+        accent: navy
+      - cells: ["AU-6(4)", "Central Review and Analysis", "All sources ingest to one Log Analytics workspace; one analytics-rule surface; one incident queue", "KSI-MLA"]
+        accent: teal
+      - cells: ["AU-8 / AU-11", "Time Stamps / Audit Retention", "UTC normalization + ASIM canonical time; three-tier 90-day / 2-year / 3-year WORM retention (NARA GRS 3.2)", "KSI-MLA"]
+        accent: amber
+      - cells: ["SI-4 / SI-4(2)", "System Monitoring / Real-time Analysis", "20-rule detection library + UEBA baseline + TIDE IOC correlation, evaluated continuously", "KSI-MLA"]
+        accent: navy
+      - cells: ["SI-4(4) / SI-4(7)", "Comms Traffic / Automated Response", "DNS + SASE egress monitoring; automated device isolation and account disable on confirmed signals", "KSI-MLA"]
+        accent: teal
+      - cells: ["IR-4 / IR-6", "Incident Handling / Reporting", "Structured Sentinel incident workflow; enrichment + ServiceNow ticket; documented 1-hour US-CERT pathway (OMB M-24-04)", "KSI-INR"]
+        accent: amber
+      - cells: ["IR-8", "Incident Response Plan", "Written plan across all NIST 800-61 phases; seven required artifacts; annual test + tabletop on record", "KSI-INR"]
+        accent: red
+    callout:
+      text: "SI-4(4) has no input without the overlay: application-layer telemetry — URL, user, posture, volume — exists only because the SD-WAN/SASE stack decoded traffic in the path. No decode, no detection."
+      accent: amber
+    notes: >
+      This is the book's Authorities-Closed-Here reference table — twelve NIST SP
+      800-53 Rev 5 controls at the FedRAMP Moderate baseline, folded into seven rows
+      by family and mapped to the FedRAMP 20x Key Security Indicators. AU-6 and
+      AU-6(1) close through Sentinel analytics rules evaluating every source
+      continuously and Logic App playbooks integrating incidents into ServiceNow
+      automatically. AU-6(4) central review closes because all sources ingest to one
+      Log Analytics workspace with one analytics-rule surface and one incident queue,
+      ending the silos. AU-8 and AU-11 close through UTC timestamp normalization with
+      the ASIM canonical time field and the three-tier retention — 90-day
+      interactive, two-year archive, three-year immutable WORM Blob meeting the NARA
+      GRS 3.2 floor. SI-4 and SI-4(2) close through the 20-rule detection library, the
+      UEBA behavioral baseline, and TIDE IOC correlation running continuously. SI-4(4)
+      and SI-4(7) close through DNS and SASE egress monitoring and the automated
+      device-isolation and account-disable responses on confirmed signals. IR-4 and
+      IR-6 close through the structured Sentinel incident workflow with enrichment and
+      ServiceNow ticketing and the documented one-hour US-CERT pathway. IR-8 closes
+      through the written plan across all NIST 800-61 phases with its seven artifacts
+      and annual testing. Each maps to a 20x KSI in the audit, system-integrity, and
+      incident-response families. The callout is the necessity claim the book is
+      careful to make falsifiable: SI-4(4) requires monitoring inbound and outbound
+      communications, and the application-layer telemetry the detection rules consume
+      — full URL, user identity, device posture, transfer volume — exists only because
+      the SD-WAN and SASE stack earlier in the series decoded traffic at an
+      application-aware enforcement point and emitted it. A bare circuit's flow logs
+      show IP pairs and byte counts, not sessions and users; without the overlay, the
+      SI-4 and SI-4(4) rows have no input and the control does not close. No
+      collector or analytics rule can extract fields from traffic that was never
+      decoded in the path. Control mappings use the FedRAMP Moderate baseline.
+    vendor_sources: ["nist_800_53", "nara_grs"]
+
+  # 13 --- closing -----------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "The log pipeline is now a detection-and-response engine"
+    layout: columns
+    cards:
+      - title: "Detection, not archival"
+        body: "Every series log source ingests to one workspace and is watched by 20 tuned rules plus UEBA. AU-6 is met with a fired alert, not a passive log store."
+        accent: teal
+        status: "Ingest + Detect"
+      - title: "Response is a chain"
+        body: "Alert, ticket, response documentation, closure — the four-part artifact a FedRAMP assessor asks for, produced automatically as the SOC operates."
+        accent: navy
+        status: "Correlate + Respond"
+      - title: "Continuously proven"
+        body: "20x KSI-MLA/INR query Sentinel directly — enabled-rule count, last alert, MTTD. A workspace with zero rules or zero alerts fails the automated check."
+        accent: amber
+        status: "FedRAMP 20x"
+    callout:
+      text: "The discipline to pass FedRAMP 20x KSI-MLA and KSI-INR is the same discipline required to operate an effective SIEM — the controls and the operations are now one artifact."
+      accent: navy
+    notes: >
+      Close on the through-line. This book converted the deepest federal log pipeline
+      in the series from a passive warehouse into an active detection-and-response
+      engine. The first takeaway is that shift: every source — InfoBlox, Entra,
+      Defender, SASE, SQL, TIDE — ingests to one Log Analytics workspace and is
+      watched by a 20-rule tuned detection library plus UEBA behavioral analytics, so
+      AU-6 is satisfied by a fired alert and a documented response, not by the mere
+      existence of logs. The second takeaway is that response is a chain, not a log:
+      the alert record, the linked incident ticket, the response documentation, and
+      the closure classification are the exact four-part artifact a FedRAMP assessor
+      requests, and the automation produces them as a byproduct of the SOC simply
+      operating. The third takeaway is continuous proof: FedRAMP 20x replaces the
+      point-in-time assessment with KSIs that query Sentinel directly — the count of
+      analytics rules in enabled state, the last alert-firing timestamp, the MTTD over
+      the last 30 days — so a workspace with zero enabled rules or zero alerts fails
+      the KSI-MLA automated check before the next assessment cycle rather than at it.
+      Land the callout as the unifying insight: the discipline required to pass 20x
+      KSI-MLA and KSI-INR is the same discipline required to run an effective
+      SIEM — the controls and the operations have become the same artifact. The
+      series holds FedRAMP Moderate throughout. Hand the audience forward to the
+      evidence-fabric volume, where these detections join the one compliance picture.
+    vendor_sources: ["nist_800_53", "ms_sentinel"]
