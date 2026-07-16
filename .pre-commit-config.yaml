@@ -275,6 +275,21 @@ repos:
       # not fail at lint, it fails at runtime when a cross-scope constructor cannot
       # resolve. Nothing here executes ServiceNow, so a half-rename would sit in the
       # repo looking correct. The closed sweep register is exempt — see the script.
+      # Every other AAN gate globs Vol_*_Book_*.qmd and reports on what it finds;
+      # none asserts how many books there SHOULD be. So a book that moves, is
+      # renamed, or is deleted fails nothing — every gate just measures a smaller
+      # corpus and says OK. That is the same silent-denominator failure that let
+      # check_actuator_coverage report 96% for a real 84%, and it is the specific
+      # risk of the pending move to docs/ (21 tools glob their own directory).
+      # Both directions: every registered book exists, every book on disk is
+      # registered.
+      - id: aan-book-registry
+        name: "AAN book registry and disk agree (the corpus cannot silently shrink)"
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_book_registry.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/(check_book_registry\.py|aan-compliance-spine\.yml|Vol_.*_Book_.*\.qmd)$
+
       - id: aan-scope-naming
         name: "AAN ServiceNow scopes carry no agency identity"
         entry: bash -c 'cd "inbox/Application Aware Networking" && python check_scope_naming.py'
