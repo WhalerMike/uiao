@@ -4,9 +4,11 @@
 # Uses the bundled Pandoc (pypandoc-binary), the AAN reference doc
 # (aan-reference.docx — carries the callout/banner paragraph styles) and the
 # aan-callouts.lua filter (maps each callout/banner div class to its style).
-# This is the portable substitute for a local `quarto render`: Quarto itself
-# cannot be installed here (its release download is blocked by egress policy),
-# but this reproduces the AAN callout boxes in the docx.
+# This is the FAST batch path, not a fallback: `quarto render <book>.qmd --to docx`
+# also works locally and produces the same docx (since PR #1229/#1230 the front
+# matter and this CLI agree, and the `.aan-*` classes keep both renderers on
+# aan-callouts.lua). Pandoc is kept because it is ~6x faster across the ~56-book
+# batch. See BUILD-DERIVATIVES.md §2.
 #
 # Usage:
 #   ./render_all_docx.sh [OUTDIR]
