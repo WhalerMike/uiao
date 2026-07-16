@@ -21,11 +21,27 @@
 // that could fetch the key would put it in the catalog record's audit trail
 // (IA-5). The MID script (mid/*.sh) owns the key; this client owns the workflow.
 //
-// ROTATION IS AUTONOMOUS BY DESIGN (see the L4 note in appreg-control-map.json /
-// saas-control-map.json): a certificate that expires because a human forgot is a
-// worse outcome than one rotated on a schedule. Rotation is issue-then-swap-then-
-// retire, and it is reversible — the prior credential is retired only after the
-// new one verifies.
+// ROTATION AUTONOMY IS UNDECLARED — DO NOT READ THIS AS APPROVAL.
+// rotateCertificate is bound to items carrying `approval: automated`
+// (appreg.credential.rotate, saas.credential.rotate). Those are autonomous writes
+// to the estate: L4 on the ADR-092 ladder, above the federal L3 default.
+//
+// ADR-092 s4 permits L4 for an operation class only when ALL of: (1) the class is
+// enumerated in a Governance-Plane-approved decision; (2) blast_radius is low;
+// (3) rollback_capable is true; (4) the adapter has a clean dry-run/advisory
+// record over a defined observation window; (5) halt_on_critical is in force.
+// Today (2) and (3) hold — one workload identity, and rotation is reversible
+// (issue-then-verify-then-retire, below: the prior credential is retired only
+// after the new one verifies). (1), (4) and (5) DO NOT: no ADR enumerates these
+// classes, this kit has never run so no observation record can exist, and
+// halt_on_critical is not implemented here.
+//
+// The design argument for autonomy is real — a certificate that expires because a
+// human forgot is a worse outcome than one rotated on a schedule. But a design
+// argument is not a governance decision. Until the Governance Plane enumerates
+// these classes or the items are demoted to L3, this is a KNOWN, TRACKED
+// exceedance, not a justified one. An earlier version of this comment cited an
+// "L4 note" in the control maps; no such note existed.
 //
 // STARTER SKELETON — pin the ACME directory URL and validate the account key +
 // challenge type against your CA before production use.  test_mode

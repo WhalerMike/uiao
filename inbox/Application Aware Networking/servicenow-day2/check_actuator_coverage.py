@@ -37,10 +37,34 @@ HERE = Path(__file__).resolve().parent
 SCRIPT_INCLUDES = HERE / "script-includes"
 MIN_REASON = 25  # a gap reason shorter than this is a shrug, not an explanation
 
+# Map discovery MUST match validate_day2_control_maps.py. It globbed two
+# locations; this gate globbed one, so the 7 governed items in the
+# x_ssa_fed_compliance draft app were never checked — and every one of them was a
+# silent control claim, exactly what this gate exists to catch. A coverage
+# percentage is only honest if its denominator is every governed item, so the
+# denominator is discovered, not assumed. Adding an app here is how a new app
+# gets gated; forgetting to is how the next blind spot happens.
+MAP_GLOBS = [
+    (HERE, "*-control-map.json"),
+    (HERE.parent / "x_ssa_fed_compliance" / "data", "control-map.json"),
+]
 
-def public_methods(client: str) -> set[str] | None:
-    """Public methods of a Script Include, or None if the file does not exist."""
-    path = SCRIPT_INCLUDES / f"{client}.js"
+
+def control_maps() -> list[Path]:
+    found: list[Path] = []
+    for base, pattern in MAP_GLOBS:
+        found.extend(sorted(base.glob(pattern)))
+    return found
+
+
+def public_methods(client: str, si_dir: Path) -> set[str] | None:
+    """Public methods of a Script Include, or None if the file does not exist.
+
+    Resolved against the OWNING APP's script-includes/, not a fixed directory:
+    each ServiceNow scoped app ships its own, and a client is only callable from
+    inside its own scope.
+    """
+    path = si_dir / f"{client}.js"
     if not path.exists():
         return None
     txt = path.read_text(encoding="utf-8")
@@ -61,14 +85,20 @@ def items(path: Path):
 
 def main() -> int:
     backlog_mode = "--backlog" in sys.argv
-    maps = sorted(HERE.glob("*-control-map.json"))
+    maps = control_maps()
     problems: list[str] = []
     backlog: list[tuple[str, str, str, str]] = []
     n_items = n_act = n_gap = 0
     method_cache: dict[str, set[str] | None] = {}
 
     for m in maps:
+        # The day-2 lanes name their map after the lane; the fed-compliance app
+        # just calls it control-map.json, so fall back to the app directory.
         lane = m.name.replace("-control-map.json", "")
+        si_dir = SCRIPT_INCLUDES
+        if lane == "control-map.json":  # x_ssa_fed_compliance/data/control-map.json
+            lane = m.parent.parent.name
+            si_dir = m.parent.parent / "script-includes"
         for key, v in items(m):
             n_items += 1
             act, gap = v.get("actuator"), v.get("actuator_gap")
@@ -98,13 +128,14 @@ def main() -> int:
                 problems.append(f"  {lane}/{key}: actuator {act!r} is not 'ClientName.method'")
                 continue
             client, method = act.split(".", 1)
-            if client not in method_cache:
-                method_cache[client] = public_methods(client)
-            found = method_cache[client]
+            cache_key = f"{si_dir}::{client}"
+            if cache_key not in method_cache:
+                method_cache[cache_key] = public_methods(client, si_dir)
+            found = method_cache[cache_key]
             if found is None:
                 problems.append(
                     f"  {lane}/{key}: actuator names {client!r} but "
-                    f"script-includes/{client}.js does not exist"
+                    f"{si_dir.name}/{client}.js does not exist in that app"
                 )
             elif method not in found:
                 problems.append(
