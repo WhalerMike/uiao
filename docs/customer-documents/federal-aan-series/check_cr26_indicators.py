@@ -36,6 +36,7 @@ import re
 import sys
 from pathlib import Path
 
+
 def _repo_root() -> Path:
     """Walk up to the repository root rather than counting directory levels.
 
@@ -48,7 +49,7 @@ def _repo_root() -> Path:
     for cand in [p, *p.parents]:
         if (cand / ".git").exists():
             return cand
-    raise SystemExit("repo root not found (no .git above %s)" % p)
+    raise SystemExit(f"repo root not found (no .git above {p})")
 
 
 HERE = Path(__file__).resolve().parent

@@ -9,9 +9,9 @@ render when Quarto itself is unavailable. Run once; commit aan-reference.docx.
 """
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
-from docx.shared import RGBColor
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import RGBColor
 
 # AAN palette (ink / tint) per AAN_DECK_STYLE_NOTES.md.
 CALLOUTS = {
@@ -61,7 +61,7 @@ def main():
     styles = doc.styles
     existing = {s.style_id for s in styles}
 
-    for name, (fill, border, title_color) in CALLOUTS.items():
+    for name, (fill, border, _title_color) in CALLOUTS.items():
         if name in existing:
             continue
         st = styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)

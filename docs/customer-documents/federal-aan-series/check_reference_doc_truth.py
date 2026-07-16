@@ -31,7 +31,6 @@ Usage:
 from __future__ import annotations
 
 import glob
-import io
 import re
 import sys
 from pathlib import Path
@@ -44,7 +43,7 @@ def declared(path: Path) -> str | None:
     """The reference-doc a book declares, or None. Handles BOTH front-matter
     styles in this corpus: flow (`docx: {reference-doc: x, ...}`, 17 books) and
     expanded (`docx:` then an indented `reference-doc: x`, 41 books)."""
-    text = io.open(path, encoding="utf-8").read()
+    text = open(path, encoding="utf-8").read()
     fm = text.split("---", 2)
     if len(fm) < 3:
         return None
@@ -53,7 +52,7 @@ def declared(path: Path) -> str | None:
 
 
 def script_ref(path: Path) -> str | None:
-    m = re.search(r'^REF="([^"]+)"', io.open(path, encoding="utf-8").read(), re.M)
+    m = re.search(r'^REF="([^"]+)"', open(path, encoding="utf-8").read(), re.M)
     return m.group(1) if m else None
 
 

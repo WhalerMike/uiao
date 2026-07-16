@@ -38,12 +38,12 @@ Usage:
 from __future__ import annotations
 
 import glob
-import io
 import os
 import sys
 from pathlib import Path
 
 import yaml
+
 
 def _repo_root() -> Path:
     """Walk up to the repository root rather than counting directory levels.
@@ -57,7 +57,7 @@ def _repo_root() -> Path:
     for cand in [p, *p.parents]:
         if (cand / ".git").exists():
             return cand
-    raise SystemExit("repo root not found (no .git above %s)" % p)
+    raise SystemExit(f"repo root not found (no .git above {p})")
 
 
 HERE = Path(__file__).resolve().parent
@@ -67,7 +67,7 @@ SPINE = HERE / "aan-compliance-spine.yml"
 
 def registry() -> list[tuple[str, str]]:
     """(book id, declared source path) for every book the spine registers."""
-    doc = yaml.safe_load(io.open(SPINE, encoding="utf-8").read()) or {}
+    doc = yaml.safe_load(open(SPINE, encoding="utf-8").read()) or {}
     out = []
     for b in doc.get("books", []):
         src = str(b.get("source", "")).strip()

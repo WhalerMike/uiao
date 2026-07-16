@@ -29,7 +29,6 @@ Usage:
 """
 from __future__ import annotations
 
-import io
 import re
 import sys
 from pathlib import Path
@@ -65,7 +64,7 @@ def main() -> int:
         if p.name in HISTORICAL or p.name == SELF:
             continue
         try:
-            text = io.open(p, encoding="utf-8", errors="strict").read()
+            text = open(p, encoding="utf-8", errors="strict").read()
         except (UnicodeDecodeError, OSError):
             continue
         scanned += 1
