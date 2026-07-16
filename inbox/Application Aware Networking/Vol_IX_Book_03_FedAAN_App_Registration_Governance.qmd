@@ -2,7 +2,7 @@
 title: "Vol IX Book 03 — Federal Application-Aware Networking — App Registration Governance"
 subtitle: "The app-registration lifecycle as a governed catalog — request, scoped consent, short-lived credentials, rotation, and attestation"
 author: "SSA Cloud Services Team"
-date: "2026-07-12 15:00 ET"
+date: "2026-07-16 09:48 ET"
 format:
   html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
   docx: {reference-doc: lz-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
@@ -17,11 +17,11 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 
 ::: {.callout-warning}
 ## Draft Proposal — Subject to Review
-Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the SSA CIO Office, OIS, or leadership. **Date Code:** 2026-07-12 15:00 ET
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the SSA CIO Office, OIS, or leadership. **Date Code:** 2026-07-16 09:48 ET
 :::
 
 ::: {.callout-important}
-**Series Context** — Volume IX Book 03. App registrations are the machine analogue of the joiner/mover/leaver lifecycle — and one of the largest sources of long-lived-secret and over-consent risk in an Entra estate. The architecture is set (Vol I Book 03 Certificates & Tokens; Vol VI Book 02 Identity & Access as Code); this book adds the *governed lifecycle*: request, scoped consent, short-lived credentials, automated rotation, and attestation.
+**Series Context** — Volume IX Book 03. App registrations are the machine analogue of the joiner/mover/leaver lifecycle — and one of the largest sources of long-lived-secret and over-consent risk in an Entra estate. The architecture is set (Vol I Book 03 Certificates & Tokens; Vol VI Book 02 Identity & Access as Code); this book adds the *governed lifecycle*: request, scoped consent, short-lived credentials, owner-approved rotation, and attestation.
 :::
 
 # What This Document Addresses
@@ -32,18 +32,18 @@ This book governs the whole lifecycle as catalog work, closing AC-2, IA-5(2), SC
 
 # The Lifecycle
 
-![The app-registration lifecycle — request, scoped consent, short-lived credential, automated rotation, attestation](figs/vol9b03-fig-01-appreg-lifecycle.png){#fig-vol9b03-lifecycle fig-alt="A house-style five-step pipeline titled App Registration Governance (Vol IX Book 03), subtitle 'App registrations as machine JML — request, consent, credential, rotate, attest', on a white background. Five navy-headed cards joined left to right by teal arrows: Step 1 Request — owner, purpose, and the specific scopes needed (AC-2); Step 2 Consent — scoped admin consent, privileged scopes gated by a security approver (AC-6); Step 3 Credential, drawn with a teal header and an amber ring labeled 'short-lived — no long-lived secrets' — a short-lived certificate (ACME) or a secret with a mandatory expiry; Step 4 Rotate — automated rotation before expiry, never dependent on a human remembering; Step 5 Attest — ownership and scope re-attested, orphaned or expired registrations flagged (feeds CA-7). A footer states no long-lived secrets in config — certificate-based, auto-rotated workload identity (IA-5(2) / SC-17), Moderate and GCC Moderate. White background. Authored house-style diagram." width="100%"}
+![The app-registration lifecycle — request, scoped consent, short-lived credential, owner-approved rotation, attestation](figs/vol9b03-fig-01-appreg-lifecycle.png){#fig-vol9b03-lifecycle fig-alt="A house-style five-step pipeline titled App Registration Governance (Vol IX Book 03), subtitle 'App registrations as machine JML — request, consent, credential, rotate, attest', on a white background. Five navy-headed cards joined left to right by teal arrows: Step 1 Request — owner, purpose, and the specific scopes needed (AC-2); Step 2 Consent — scoped admin consent, privileged scopes gated by a security approver (AC-6); Step 3 Credential, drawn with a teal header and an amber ring labeled 'short-lived — no long-lived secrets' — a short-lived certificate (ACME) or a secret with a mandatory expiry; Step 4 Rotate — raised automatically before expiry, the owner approves, not a human's memory; Step 5 Attest — ownership and scope re-attested, orphaned or expired registrations flagged (feeds CA-7). A footer states no long-lived secrets in config — certificate-based, short-lived workload identity (IA-5(2) / SC-17), Moderate and GCC Moderate. White background. Authored house-style diagram." width="100%"}
 
 | Stage | What happens | Control |
 |---|---|---|
 | **1. Request** | An app-registration request captures owner, purpose, and the *specific* scopes needed | AC-2 |
 | **2. Consent** | Scoped, admin-consented permissions only — no blanket delegation; any privileged or write scope requires a **security approver**, least privilege the default | AC-6 |
 | **3. Credential** | A **short-lived certificate (ACME)** or a secret with a **mandatory expiry** — no long-lived secrets in config | IA-5(2), SC-17 |
-| **4. Rotate** | Automated rotation before expiry; the app never depends on a human remembering | IA-5(2) |
+| **4. Rotate** | Rotation is raised automatically before expiry and approved by the owner — the app never depends on a human *remembering* | IA-5(2) |
 | **5. Attest** | Ownership and scope re-attested on a cadence; orphaned or expired registrations flagged | AC-6, CA-7 |
 
 ::: {.callout-important}
-**No long-lived secrets.** The single highest-value rule in this book: credentials are short-lived and rotated automatically. A client secret with a two-year expiry sitting in a pipeline variable is the credential an attacker wants most; certificate-based, auto-rotated identity removes the target. This is the IA-5(2) / SC-17 closure, applied to workload identity.
+**No long-lived secrets.** The single highest-value rule in this book: credentials are short-lived and rotated on schedule. A client secret with a two-year expiry sitting in a pipeline variable is the credential an attacker wants most; certificate-based, short-lived identity removes the target. This is the IA-5(2) / SC-17 closure, applied to workload identity.
 :::
 
 # App Registrations Are Machine JML
@@ -66,7 +66,7 @@ Generated from the compliance spine (`aan-compliance-spine.yml`); not hand-edite
 |---|---|---|---|---|---|---|---|
 | AC-2 | Account Management | App registrations managed as machine joiner/mover/leaver: a governed request captures owner, purpose and the specific scopes needed before any credential exists, and orphaned registrations are retired through attestation | FedRAMP Moderate | NIST SP 800-53 Rev 5 | Identity | KSI-IAM | No |
 | AC-6 | Least Privilege | Scoped admin consent; over-broad/privileged scopes gated by a security approver; orphaned/expired app registrations flagged for attestation | FedRAMP Moderate | NIST SP 800-53 Rev 5 | Identity | KSI-IAM | No |
-| IA-5(2) | Public Key-Based Authentication | App-registration credentials issued as short-lived certs (ACME) with mandatory expiry and automated rotation â€” no long-lived secrets in config | FedRAMP Moderate | NIST SP 800-53 Rev 5; EO 14028 | Identity | KSI-IAM | No |
+| IA-5(2) | Public Key-Based Authentication | App-registration credentials issued as short-lived certs (ACME) with mandatory expiry and scheduled, owner-approved rotation â€” no long-lived secrets in config | FedRAMP Moderate | NIST SP 800-53 Rev 5; EO 14028 | Identity | KSI-IAM | No |
 | SC-17 | Public Key Infrastructure Certificates | Certificate issuance and rotation for service principals via the governed catalog | FedRAMP Moderate | NIST SP 800-53 Rev 5 | Identity | KSI-IAM | No |
 
 : Authorities Closed Here â€” App Registration Governance (request Â· consent Â· secret/cert lifecycle) (â€  = Closure-Necessity anchor: no alternate closure path) {.striped .hover}

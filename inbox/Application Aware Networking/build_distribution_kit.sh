@@ -10,7 +10,22 @@ set -uo pipefail
 cd "$(dirname "$0")"
 HERE="$(pwd)"
 DDI="$HERE/../../infoblox-ddi-book"
-PANDOC="${PANDOC:-/usr/local/lib/python3.11/dist-packages/pypandoc/files/pandoc}"
+# Prefer the bundled pypandoc binary (pinned, and what CI has); fall back to a
+# pandoc on PATH so a local Windows/macOS checkout can build. Without the
+# fallback the hardcoded Linux path simply does not exist: every render fails,
+# and the build still ships a zip full of STALE docx seeded from the prior kit.
+PANDOC="${PANDOC:-}"
+if [ -z "$PANDOC" ]; then
+  _bundled="/usr/local/lib/python3.11/dist-packages/pypandoc/files/pandoc"
+  if [ -x "$_bundled" ]; then
+    PANDOC="$_bundled"
+  elif command -v pandoc >/dev/null 2>&1; then
+    PANDOC="$(command -v pandoc)"
+  else
+    echo "FATAL: no pandoc found (set PANDOC=/path/to/pandoc)" >&2; exit 1
+  fi
+fi
+echo "== pandoc: $PANDOC =="
 REF="aan-reference.docx"; LUA="aan-callouts.lua"
 STAGE="/tmp/aanbuild/kit"
 DATECODE="$(date +'%Y-%m-%d_%H%MET')"
@@ -240,8 +255,79 @@ else
   exit 1
 fi
 
+# The kit must not silently SHRINK. Staging is seeded from the prior zip because
+# most .pptx decks and the governance docs exist nowhere else on disk — so if the
+# prior zip is missing (deleted, renamed, not yet fetched), the build quietly
+# produces a kit without them and still reports "self-check OK". That happened:
+# a seedless run shipped 422 entries instead of 456, dropping the entire
+# servicenow-app-kit, and nothing objected. The file count is the only signal
+# that the seed did its job, so compare it against the prior kit.
+# A legitimate shrink (a book genuinely retired) is declared: ALLOW_SHRINK=1.
+if [ -z "$OLDZIP" ]; then
+  # The dangerous case, and the one that actually bit: NO prior kit at all. There
+  # is nothing to compare against, so a count check cannot catch it — refuse outright.
+  if [ -z "${ALLOW_NO_SEED:-}" ]; then
+    echo "   NO PRIOR KIT to seed from — NOT zipping."
+    echo "   Most .pptx decks and the governance docs exist nowhere else on disk;"
+    echo "   without a seed the kit ships silently incomplete (this dropped 44 files"
+    echo "   once, including the whole servicenow-app-kit, reporting 'self-check OK')."
+    echo "   Restore the prior AAN_Federal_Series_Complete_*.zip, or set ALLOW_NO_SEED=1"
+    echo "   if you really intend to build from loose files only."
+    exit 1
+  fi
+  echo "   (ALLOW_NO_SEED set — building without a prior kit)"
+else
+  old_entries=$(unzip -Z1 "$HERE/$OLDZIP" 2>/dev/null | grep -vc '/$')
+  if [ "$staged_files" -lt "$old_entries" ] && [ -z "${ALLOW_SHRINK:-}" ]; then
+    echo "   KIT SHRANK: $staged_files staged vs $old_entries in $OLDZIP — NOT zipping."
+    echo "   Files that live only in the prior kit are missing. Restore it, or set"
+    echo "   ALLOW_SHRINK=1 if the removal is intended."
+    echo "   Staging left at $STAGE for inspection."
+    exit 1
+  fi
+  echo "   entries vs prior kit: $staged_files (prior: $old_entries)"
+fi
+
+# A kit whose renders failed is a kit of STALE docx: staging is seeded from the
+# prior zip, so a failed render silently leaves last release's file in place.
+# The file count still looks right and the self-check still passes — this build
+# once shipped 455 files with 0 successful renders and printed "self-check OK".
+# BUILD-DERIVATIVES.md is explicit that a stale docx is worse than none, so a
+# render failure blocks the zip exactly as a self-check failure does.
+if [ "$fail" -ne 0 ]; then
+  echo "   $fail RENDER FAILURE(S) — NOT zipping: the kit would carry stale docx"
+  echo "   from the prior release. Fix the renders, or set PANDOC=/path/to/pandoc."
+  echo "   Staging left at $STAGE for inspection."
+  exit 1
+fi
+
 echo "== Zipping -> $ZIP =="
-( cd "$STAGE" && zip -r -q "$HERE/$ZIP" . )
+# Git Bash on Windows ships `unzip` but NOT `zip`, so this last step failed the
+# whole build after every render had already succeeded. Fall back to Python's
+# zipfile rather than lose the run.
+#
+# cygpath -m is load-bearing: Windows Python resolves a bare /tmp/aanbuild/kit
+# as C:\tmp\aanbuild\kit, which does not exist, and writes a valid EMPTY archive
+# instead of failing — a 22-byte zip that looks like a successful build.
+if command -v zip >/dev/null 2>&1; then
+  ( cd "$STAGE" && zip -r -q "$HERE/$ZIP" . )
+else
+  echo "   (zip not found — falling back to python zipfile)"
+  python - "$(cygpath -m "$STAGE")" "$(cygpath -m "$HERE")/$ZIP" <<'PYZIP'
+import os, sys, zipfile
+stage, out = sys.argv[1], sys.argv[2]
+n = 0
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+    for root, _, files in os.walk(stage):
+        for f in files:
+            p = os.path.join(root, f)
+            z.write(p, os.path.relpath(p, stage).replace("\\", "/"))
+            n += 1
+if n == 0:
+    sys.exit(f"refusing to ship an empty kit: no files under {stage}")
+print(f"   python zipfile: {n} entries")
+PYZIP
+fi
 ls -la "$HERE/$ZIP"
 echo "entries: $(unzip -Z1 "$HERE/$ZIP" | wc -l)"
 [ "$fail" -eq 0 ] && echo "BUILD OK" || echo "BUILD had $fail render failures"
