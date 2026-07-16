@@ -5,7 +5,7 @@
 > is the tracking board for the full-ServiceNow-implementation push: every
 > governed catalog item, and how far its implementation has actually gotten.
 
-**55 governed items** — 3 blueprinted (5%), 1 with an ATF spec (1%). 'Scripted' is recorded only via an explicit `impl.method` on the map item — never inferred.
+**55 governed items** — 3 blueprinted (5%), 2 with an ATF spec (3%). 'Scripted' is recorded only via an explicit `impl.method` on the map item — never inferred.
 
 | Lane | Catalog item | Control | Blueprint | ATF | Status | Client method |
 |---|---|---|---|---|---|---|
@@ -20,7 +20,7 @@
 | helpdesk | entra.access.license_assignment | AC-2 | — | — | specified | — |
 | helpdesk | entra.credential.account_unlock | IA-5 | — | — | specified | — |
 | helpdesk | entra.credential.mfa_reset | IA-5 | — | — | specified | — |
-| helpdesk | entra.credential.password_reset | IA-5 | — | — | specified | — |
+| helpdesk | entra.credential.password_reset | IA-5 | — | yes | tested | — |
 | helpdesk | entra.jml.joiner | AC-2 | — | — | specified | — |
 | helpdesk | entra.jml.leaver | AC-2 | — | — | specified | — |
 | helpdesk | entra.jml.mover | AC-6 | — | — | specified | — |

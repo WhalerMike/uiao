@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Catalog variable set — "Day-2 identity request" (Helpdesk / Lane C exemplar)
+  Scope: x_ssa_day2_ops
+  ===========================================================================
+  STARTER SKELETON, but MACHINE-CHECKED. Each <item_option_new> is a catalog
+  variable; its <map_to> names the EntraHelpdeskClient method parameter (or the
+  EntraHelpdeskGate pre-flight field) it feeds. `contract_check.py` asserts that
+  every parameter the client actually requires, and every field the gate's
+  pre-flight reads, is covered here — so the form and the Script Includes
+  cannot silently drift. This is the Lane C form of "the form is the contract".
+
+  SECRETS NEVER APPEAR AS FORM FIELDS. A value the requester must not type
+  (e.g. the temporary password on a reset) is declared <resolved_by_mid> — it is
+  generated on the in-boundary MID Server and never lands in the catalog record.
+  contract_check.py FAILS the build if a declared secret is <map_to>.
+
+  ACTUATION IS PLATFORM-NATIVE AND HUMAN-APPROVED (L3, ADR-092). This form
+  raises and routes; Microsoft Graph (via the in-boundary MID Server) actuates;
+  a human approves. Nothing here writes to the estate.
+
+  On import: set the ServiceNow variable `type` codes and reference qualifiers
+  per instance (defaults: 6=Single Line Text, 5=Select Box, 7=Reference,
+  8=Date/Time, 24=Checkbox, 20=Multi Line Text). Identity fields should be
+  reference lookups (type 7) so requesters cannot free-type directory ids.
+-->
+<record_update table="item_option_new">
+  <sys_variable_set action="INSERT_OR_UPDATE">
+    <title>Day-2 identity request</title>
+    <internal_name>x_ssa_day2_ops_helpdesk_identity</internal_name>
+    <sys_scope>x_ssa_day2_ops</sys_scope>
+    <description>Front-door variable set for the Lane C helpdesk catalog (JML, credential, access). Each variable maps to one EntraHelpdeskClient parameter or EntraHelpdeskGate pre-flight field (see map_to). contract_check.py keeps this a superset of what the client and gate require.</description>
+  </sys_variable_set>
+
+  <!-- ===== Gate pre-flight contract (EntraHelpdeskGate.preflight) ========
+       SoD (CM-5): requester_id and approver_id must both be populated and must
+       differ. An unpopulated pair is INDETERMINATE and fails closed, so these
+       are mandatory here rather than inferred. -->
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>requester_id</name><question_text>Requester</question_text>
+    <type>7</type><mandatory>true</mandatory>
+    <map_to>requester_id</map_to>
+    <help_text>Auto-populated from the submitting user; reference lookup, never free-typed. Half of the CM-5 separation-of-duties pair.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>approver_id</name><question_text>Approver</question_text>
+    <type>7</type><mandatory>true</mandatory>
+    <map_to>approver_id</map_to>
+    <help_text>Must differ from the requester — the gate hard-fails a self-approved request (CM-5).</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>privileged</name><question_text>Privileged grant?</question_text>
+    <type>24</type><mandatory>false</mandatory>
+    <map_to>privileged</map_to>
+    <help_text>Set when the request grants a privileged group/role. The gate refuses a privileged grant with no expiry (AC-6) — no standing elevation from a helpdesk click.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>expiry</name><question_text>Expires at</question_text>
+    <type>8</type><mandatory>false</mandatory>
+    <map_to>expiry</map_to>
+    <help_text>Mandatory in practice whenever `privileged` is set — enforced by the gate, not by the form, so the control holds even if the form is bypassed.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>justification</name><question_text>Justification</question_text>
+    <type>20</type><mandatory>true</mandatory>
+    <map_to>justification</map_to>
+    <help_text>Carried onto the approval and the evidence record; this is what an assessor reads.</help_text>
+  </item_option_new>
+
+  <!-- ===== Client actuator parameters (EntraHelpdeskClient) ==============
+       Each maps to a named parameter of the method the catalog item actuates.
+       contract_check.py asserts none of these is missing. -->
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>target_user</name><question_text>Target user</question_text>
+    <type>7</type><mandatory>false</mandatory>
+    <map_to>userId</map_to>
+    <help_text>The directory object acted on — disableUser / resetPassword / resetMfaMethod / addGroupMember / assignLicense. Reference lookup to the reconciled CI, not a free-typed id.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>user_principal_name</name><question_text>User principal name (joiner)</question_text>
+    <type>6</type><mandatory>false</mandatory>
+    <map_to>upn</map_to>
+    <help_text>createUser payload.upn — the joiner's UPN, derived from the HRIT SSOT (Vol I Book 04) rather than typed where possible.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>group_id</name><question_text>Group</question_text>
+    <type>7</type><mandatory>false</mandatory>
+    <map_to>groupId</map_to>
+    <help_text>addGroupMember — the group receiving the member. Privileged groups drive the `privileged` flag and therefore the expiry requirement.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>license_sku</name><question_text>License SKU</question_text>
+    <type>5</type><mandatory>false</mandatory>
+    <map_to>skuId</map_to>
+    <help_text>assignLicense — pick-list of approved SKUs; group-based licensing preferred where available.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>mfa_method_id</name><question_text>MFA method</question_text>
+    <type>5</type><mandatory>false</mandatory>
+    <map_to>methodId</map_to>
+    <help_text>resetMfaMethod — the authenticator method being reset. Identity-proofing is required before this item is approved (social-engineering target).</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>guest_email</name><question_text>Guest email</question_text>
+    <type>6</type><mandatory>false</mandatory>
+    <map_to>email</map_to>
+    <help_text>inviteGuest — the external identity being sponsored. Sponsor + security approval and an expiry are required.</help_text>
+  </item_option_new>
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>guest_redirect_url</name><question_text>Guest redirect URL</question_text>
+    <type>6</type><mandatory>false</mandatory>
+    <map_to>redirectUrl</map_to>
+    <help_text>inviteGuest — the post-redemption landing URL; constrained to approved agency hosts.</help_text>
+  </item_option_new>
+
+  <!-- ===== MID-resolved secrets — NEVER form fields =====================
+       contract_check.py FAILS if any of these appears as <map_to>. -->
+
+  <item_option_new action="INSERT_OR_UPDATE">
+    <name>__temp_password__</name><question_text>(not collected)</question_text>
+    <type>6</type><mandatory>false</mandatory>
+    <resolved_by_mid>tempPassword</resolved_by_mid>
+    <help_text>resetPassword opts.tempPassword — GENERATED ON THE IN-BOUNDARY MID SERVER and delivered out-of-band. It is never typed into the form and never stored on the catalog record (IA-5). Declared here only so the contract check can prove it is accounted for and MID-resolved.</help_text>
+  </item_option_new>
+</record_update>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - post-actuation verify fails CLOSED on a read failure
+  PRECONDITION: x_ssa_day2_ops.test_mode = 'true' - no live Graph connectivity.
+  Scope: x_ssa_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  If the confirming re-read cannot be performed, closure is UNPROVEN. Unproven
+  must not be reported as closed - that would be evidence of a thing that may
+  not have happened.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: verify returns not-ok when the confirming re-read fails</name>
+    <sys_scope>x_ssa_day2_ops</sys_scope>
+    <active>true</active>
+    <description>When the post-actuation Graph re-read returns non-2xx, verify() must report not-ok so the request cannot close as evidenced.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Force a read failure and assert verify does not report success.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gate = new x_ssa_day2_ops.EntraHelpdeskGate();
+  // Simulate the confirming re-read failing (non-2xx / READ_FAILED).
+  var verdict = gate.verify({ action: 'disableUser', userId: 'test-user-0001', _forceReadFailure: true });
+  if (verdict && verdict.ok) {
+    stepResult.setFailed('verify reported ok despite a failed confirming read - closure would be unproven');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
