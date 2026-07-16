@@ -21,7 +21,22 @@ happy path plus the negative tests that prove the safety gates actually fire.
 
 ## Build
 
-Author these as `sys_atf_test` records in the scoped app (one Test per row above),
-each driving the "Governed Day-2 Request" flow with the catalog inputs that trigger
-the asserted path, then export them into the update set. Keep them `test_mode`-driven
-so CI/sub-prod runs need no tenant credentials.
+The eight tests above are **authored as `sys_atf_test` records** in this folder —
+one file per test, each driving the "Governed Day-2 Request" flow with the catalog
+inputs that trigger the asserted path:
+
+| File | Test |
+|---|---|
+| `atf-happy-path.xml` | happy path — password reset closes with evidence |
+| `atf-negative-self-approve.xml` | requester == approver fails preflight (SoD, CM-5) |
+| `atf-negative-sod-indeterminate.xml` | unpopulated requester/approver fails **closed** |
+| `atf-negative-standing-privilege.xml` | privileged grant with no expiry fails (AC-6) |
+| `atf-negative-privileged-string.xml` | `privileged: 'true'` (string) still triggers the expiry rule |
+| `atf-negative-verify-read-failure.xml` | verify fails closed when the confirming re-read fails |
+| `atf-negative-verify-wrong-state.xml` | verify catches observed != intended |
+| `atf-negative-unreconciled-target.xml` | unreconciled target routes to the exception queue (CM-8) |
+
+They are `test_mode`-driven, so a sub-prod/CI run needs **no tenant credentials**.
+Import them into the scoped app and add them to a Test Suite; the negatives are the
+ones that prove the safety gates actually fire — a suite of only happy paths proves
+nothing about a control.

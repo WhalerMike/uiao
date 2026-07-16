@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - SoD indeterminate fails CLOSED (CM-5)
+  PRECONDITION: x_ssa_day2_ops.test_mode = 'true' - no live Graph connectivity.
+  Scope: x_ssa_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  If either id is unpopulated the gate cannot prove separation of duties. An
+  unprovable control must fail closed, not pass by omission.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: unpopulated requester/approver fails preflight (SoD indeterminate)</name>
+    <sys_scope>x_ssa_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A request with requester_id or approver_id missing is INDETERMINATE for separation of duties and must be refused, not allowed through.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Omit the approver; assert the gate refuses as indeterminate.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gate = new x_ssa_day2_ops.EntraHelpdeskGate();
+  var verdict = gate.preflight({ requester_id: 'day2-requester-sysid', approver_id: '', privileged: false });
+  if (verdict.ok) { stepResult.setFailed('SoD indeterminate (no approver) passed - must fail closed'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Omit the requester; same expectation.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gate = new x_ssa_day2_ops.EntraHelpdeskGate();
+  var verdict = gate.preflight({ requester_id: '', approver_id: 'day2-approver-sysid', privileged: false });
+  if (verdict.ok) { stepResult.setFailed('SoD indeterminate (no requester) passed - must fail closed'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
