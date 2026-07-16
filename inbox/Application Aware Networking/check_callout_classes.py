@@ -18,7 +18,8 @@ This gate keeps that true:
 
   1. NO QUARTO-OWNED CLASSES — a book using `::: {.callout-x}` hands the div back
      to Quarto. Under Pandoc it still looks right (the CLI passes the filter), so
-     the regression is invisible until the site renders it. That is exactly how the
+     the regression is invisible until Quarto renders it — and the batch build is
+     Pandoc, so nothing routine would surface it. That is exactly how the
      reference-doc bug hid for months.
   2. THE FILTER IS DECLARED — `.aan-*` styling depends on aan-callouts.lua. Pandoc
      gets it from the CLI, but Quarto only applies filters a document declares. A

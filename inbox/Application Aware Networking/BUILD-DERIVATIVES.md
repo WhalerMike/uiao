@@ -14,7 +14,7 @@
 | Figures `figs/*.svg` (SSOT) + `*.png` | ✅ | `scripts/render_svg_images.py` (SVG→PNG at 3×, ADR-093) |
 | Deck specs `decks/Vol_*_Book_*.yaml` | ✅ | authored |
 | Briefing decks `Vol_*_Book_*.pptx` | ✅ | `uiao generate aan-deck` (python-pptx) — buildable anywhere |
-| Book renders `Vol_*_Book_*.docx` | ⚠️ allowlisted, **build locally** | `./render_all_docx.sh` — Pandoc + `aan-reference.docx` + `aan-callouts.lua` (AAN callout styling, no Quarto needed) |
+| Book renders `Vol_*_Book_*.docx` | ⚠️ allowlisted, **build locally** | `./render_all_docx.sh` — Pandoc + `aan-reference.docx` + `aan-callouts.lua` (fast batch path; `quarto render` produces the same docx — see §2) |
 | AAN reference doc `aan-reference.docx` | ✅ | `build_aan_reference.py` (adds callout/banner styles to `lz-reference.docx`) |
 | Distribution kit `AAN_Federal_Series_Complete_<DATE>ET.zip` | ✅ (one, datecoded) | local rebuild (authoring-spec §1) |
 
@@ -34,12 +34,46 @@ ride with their books in git.
 > The book `.docx` are rendered with **Pandoc** (`pypandoc-binary`) using the AAN
 > reference doc **`aan-reference.docx`** and the **`aan-callouts.lua`** filter, so
 > text, tables, figures **and the callout/banner boxes** carry house style. The
-> callouts (`.callout-important/note/tip/warning`, the `.fouo-banner`, and the
+> callouts (`.aan-important/note/tip/warning/caution`, the `.fouo-banner`, and the
 > `.exec-summary` block) render as shaded, bordered, palette-colored boxes rather
-> than plain content. This is the **portable substitute for `quarto render`**:
-> Quarto's own installer is a GitHub-release download that this environment's
-> egress policy blocks, so the reference-doc + Lua-filter path reproduces the AAN
-> callout styling without Quarto.
+> than plain content.
+
+**Both renderers work; both are kept on purpose.** Quarto **is** installed locally
+(1.9.37 at the time of writing) and `quarto render <book>.qmd --to docx` succeeds.
+Earlier revisions of this doc described the Pandoc path as a *forced workaround* —
+"Quarto's installer is a GitHub-release download that egress policy blocks." That
+justification is **obsolete**: it described the Claude Code web sandbox, not a
+local checkout. The Pandoc path is kept because it is **faster**, not because
+Quarto is unavailable.
+
+| Renderer | Role | Measured (Book 00, 1,370 lines) |
+|---|---|---|
+| **Pandoc** (`render_all_docx.sh`) | Fast batch `.docx` for the kit rebuild — ~56 books per pass | **~1.6 s/book** |
+| **Quarto** (`quarto render`) | Renders a book from **its own front matter** — the `format:` block (`html` + `docx`) and `filters:` are applied natively, with no CLI flags. The only path to the `html` format (`embed-resources` + `lz-style.css`); `render_all_docx.sh` emits docx only. | **~10.5 s/book** (~6× slower) |
+
+Use Pandoc for the docx loop and the kit; reach for Quarto when you need the HTML
+format, or to confirm a book renders correctly from the front matter alone.
+
+**The two renderers agree.** Since **PR #1230** the AAN callout divs are `.aan-*`,
+**not** Quarto's `.callout-*` — deliberately. Quarto *claims* `.callout-*` and
+rewrites those divs inside its own pipeline **before any user filter runs**, so a
+Quarto render of a `.callout-*` book silently dropped every house style and
+substituted Quarto's own red-bordered widget; pointing the front matter at
+`aan-reference.docx` did not help, because the filter never saw a div Quarto had
+already taken. Quarto has no opinion about `.aan-important`, so renaming the
+classes takes them back: **one filter (`aan-callouts.lua`) plus `lz-style.css` now
+drives both renderers to identical output**, verified across 6 books
+(`pandoc@HEAD == pandoc@renamed == quarto@renamed`, all six styles including
+`ExecSummary`). `check_callout_classes.py` is the pre-commit gate that keeps it
+true. Books are `.aan-*`-only; the `AAN-Training-Program/` pages still use native
+`.callout-*` and are not part of the book render.
+
+**Every book declares its reference doc.** Since **PR #1229** all 58 book `.qmd`
+carry `reference-doc: aan-reference.docx` in front matter. They previously said
+`lz-reference.docx` while `render_all_docx.sh` passed `--reference-doc=aan-reference.docx`
+— Pandoc ignores the *nested* `format: docx:` key, so the CLI silently won and the
+front matter was inert. The bug was invisible under Pandoc and would only have
+surfaced under Quarto, which *does* honor that key. Front matter and CLI now agree.
 
 **How the callout styling works.** Pandoc's docx writer can only paint paragraph
 shading/borders through *named* paragraph styles carried in the reference doc.
@@ -70,10 +104,19 @@ python build_aan_reference.py   # (re)build aan-reference.docx if styles changed
 ./render_all_docx.sh            # renders every Vol_*_Book_*.docx in place
 ```
 
-If **Quarto** ever becomes installable locally, `quarto render <book>.qmd --to docx`
-is the native equivalent and supersedes the Pandoc render; the `docx:` format block
-in each book still pins house style. The `Vol_*_Book_*.docx` outputs are allowlisted,
-so a committed render rides with its source.
+Or render one book with **Quarto**, which reads the `format:`/`filters:` blocks
+straight from the book's front matter (no flags needed):
+
+```bash
+cd "inbox/Application Aware Networking"
+quarto render Vol_0_Book_00_FedAAN_Executive_Summary.qmd --to docx
+```
+
+Quarto does **not** supersede the Pandoc pass — since PR #1229/#1230 the two agree,
+and Pandoc is ~6× faster across a ~56-book batch. Note that `quarto render` will
+not write outside the project directory, so use its default output location rather
+than an absolute `-o` path. The `Vol_*_Book_*.docx` outputs are allowlisted, so a
+committed render rides with its source.
 
 ## 3. Distribution kit (.zip) — local rebuild (authoring-spec §1)
 
@@ -105,10 +148,13 @@ spine (each with an explicit `source:` path).
 ## Why the split
 
 `.pptx` decks are generated from tracked YAML by a pure-Python tool, so they build
-anywhere (including CI) and are committed. `.docx` needs the Quarto+Pandoc
-toolchain, which the web environment does not carry; committing a stale or
-un-rendered docx would be worse than none, so the render is a local step and the
-allowlist simply keeps a locally-produced docx from being silently dropped.
+anywhere (including CI) and are committed. `.docx` needs a Pandoc-or-Quarto
+toolchain that the Claude Code web environment does not carry, and the
+`aan-docx-regen` CI job was removed — so no cloud renderer produces them. This is
+an **environment** split, not a tool limitation: a local checkout has both
+renderers. Committing a stale or un-rendered docx would be worse than none, so the
+render is a local step and the allowlist simply keeps a locally-produced docx from
+being silently dropped.
 
 ## Date-code convention (single source per book)
 
