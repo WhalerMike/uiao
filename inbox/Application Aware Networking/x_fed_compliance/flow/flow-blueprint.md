@@ -1,4 +1,4 @@
-# Flow Designer blueprints — `x_ssa_fed_compliance`
+# Flow Designer blueprints — `x_fed_compliance`
 
 > DRAFT (Vol VII Book 05). Build in Flow Designer per this spec, then export in
 > the update set. Every flow enforces the coordination doctrine: ServiceNow

@@ -1,4 +1,4 @@
-// Script Include: TerraformCpgClient  (application scope: x_ssa_day2_ops)
+// Script Include: TerraformCpgClient  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // Server-side Cloud-Provisioning-Gateway (CPG) Terraform client for Lane D — the
 // Landing Zone Front Door (Vol IX Book 02). The IaC already exists (Vol VI Book
@@ -24,17 +24,17 @@
 //
 // Boundary discipline (Vol IX Book 00 / Vol VII):
 //   * All CPG calls route through the in-boundary MID Server
-//     (property x_ssa_day2_ops.mid_server) — credentials/execution never leave
+//     (property x_fed_day2_ops.mid_server) — credentials/execution never leave
 //     the ATO boundary.
 //   * Endpoint + auth come from the Connection & Credential alias
-//     (x_ssa_day2_ops.cpg) — no secrets in code.
+//     (x_fed_day2_ops.cpg) — no secrets in code.
 //   * LEAST PRIVILEGE: the CPG workspace credential is scoped to the landing-zone
 //     workspaces and the modules they pin — not tenant-wide Owner. A front door
 //     that could deploy anything is not a front door, it is a second back door.
 //
 // STARTER SKELETON — pin the CPG API version and the module source refs, and
 // validate the workspace credential against your subscription, before production
-// use.  test_mode (x_ssa_day2_ops.test_mode = 'true') returns deterministic
+// use.  test_mode (x_fed_day2_ops.test_mode = 'true') returns deterministic
 // canned values so the ATF suites drive the Flow in sub-prod with NO live CPG
 // connectivity.  Never enable test_mode in production.
 // -----------------------------------------------------------------------------
@@ -42,14 +42,14 @@ var TerraformCpgClient = Class.create();
 TerraformCpgClient.prototype = {
 
     initialize: function () {
-        this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
-        this.endpoint = gs.getProperty('x_ssa_day2_ops.cpg_endpoint', '');
-        this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
+        this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
+        this.endpoint = gs.getProperty('x_fed_day2_ops.cpg_endpoint', '');
+        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
         // Workspaces are per-landing-zone, so the prefix is how a run is tied back
         // to the zone it belongs to rather than to whoever launched it.
-        this.workspacePrefix = gs.getProperty('x_ssa_day2_ops.cpg_workspace_prefix', 'lz-');
-        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.TerraformCpgClient] ' + m); } };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.workspacePrefix = gs.getProperty('x_fed_day2_ops.cpg_workspace_prefix', 'lz-');
+        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.TerraformCpgClient] ' + m); } };
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // --- Provision: landing-zone subscription (CM-2). -------------------------
@@ -173,7 +173,7 @@ TerraformCpgClient.prototype = {
     // that could reach the estate directly even if someone wanted one.
     _cpg: function (op, args) {
         try {
-            var rm = new sn_ws.RESTMessageV2('x_ssa_day2_ops.cpg', 'POST');
+            var rm = new sn_ws.RESTMessageV2('x_fed_day2_ops.cpg', 'POST');
             rm.setEndpoint(this.endpoint);
             if (this.midServer) rm.setMIDServer(this.midServer);   // in-boundary execution
             rm.setRequestBody(JSON.stringify({ op: op, args: args, boundary: this.boundary }));

@@ -1,4 +1,4 @@
-// Script Include: ComplianceGate  (application scope: x_ssa_fed_compliance)
+// Script Include: ComplianceGate  (application scope: x_fed_compliance)
 // -----------------------------------------------------------------------------
 // Step 5 of the loop (close + evidence): closure is proven by OBSERVATION, not
 // by the remediation reporting success. After native actuation, the gate
@@ -18,14 +18,14 @@ var ComplianceGate = Class.create();
 ComplianceGate.prototype = {
 
     initialize: function () {
-        this.ingest = new x_ssa_fed_compliance.ComplianceIngest();
+        this.ingest = new x_fed_compliance.ComplianceIngest();
         // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
         // Script Include unprefixed; gs.error/warn always resolve).
         this.log = {
-            err: function (m) { gs.error('[x_ssa_fed_compliance.ComplianceGate] ' + m); },
-            warn: function (m) { gs.warn('[x_ssa_fed_compliance.ComplianceGate] ' + m); }
+            err: function (m) { gs.error('[x_fed_compliance.ComplianceGate] ' + m); },
+            warn: function (m) { gs.warn('[x_fed_compliance.ComplianceGate] ' + m); }
         };
-        this.testMode = gs.getProperty('x_ssa_fed_compliance.test_mode', 'false') === 'true';
+        this.testMode = gs.getProperty('x_fed_compliance.test_mode', 'false') === 'true';
     },
 
     // Safety gate — run BEFORE any task is worked. Returns {ok, reason}. FAIL CLOSED.
@@ -83,7 +83,7 @@ ComplianceGate.prototype = {
             task: task.number, asset: task.asset, verdict: verdict,
             observed: reading ? reading.observed : null,
             retested_at: new GlideDateTime().getValue(),
-            boundary: gs.getProperty('x_ssa_fed_compliance.boundary', 'gcc-moderate')
+            boundary: gs.getProperty('x_fed_compliance.boundary', 'gcc-moderate')
         };
     },
 
@@ -94,7 +94,7 @@ ComplianceGate.prototype = {
     // stub that gave false assurance the identity was read-only. (Sweep H.)
     _identityWriteScopeStatus: function () {
         if (this.testMode) {
-            return gs.getProperty('x_ssa_fed_compliance.test_fixture_write_scopes', 'false') === 'true'
+            return gs.getProperty('x_fed_compliance.test_fixture_write_scopes', 'false') === 'true'
                 ? 'holds-write' : 'confirmed-readonly';
         }
         // Production: implemented per tenant — read the app registration's granted
@@ -103,7 +103,7 @@ ComplianceGate.prototype = {
         // 'confirmed-readonly' or 'holds-write'. Until that read is wired to the
         // tenant (guarded by scope_check_enabled), the status is UNVERIFIED and the
         // gate fails closed — it never assumes read-only it did not confirm.
-        if (gs.getProperty('x_ssa_fed_compliance.scope_check_enabled', 'false') !== 'true') {
+        if (gs.getProperty('x_fed_compliance.scope_check_enabled', 'false') !== 'true') {
             return 'unverified';
         }
         // TODO(per-tenant): perform the Graph scope read here and return the verdict.

@@ -1,7 +1,7 @@
 # ATF tests — Day-2 Operations app
 
-Automated Test Framework coverage for the `x_ssa_day2_ops` scoped app, runnable in
-a **sub-production** instance via `x_ssa_day2_ops.test_mode = 'true'` — the Script
+Automated Test Framework coverage for the `x_fed_day2_ops` scoped app, runnable in
+a **sub-production** instance via `x_fed_day2_ops.test_mode = 'true'` — the Script
 Includes return deterministic canned values, so the whole Flow exercises with **no
 live Microsoft Graph connectivity**. Never enable `test_mode` in production.
 

@@ -1,4 +1,4 @@
-// Script Include: EntraHelpdeskGate  (application scope: x_ssa_day2_ops)
+// Script Include: EntraHelpdeskGate  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // Post-action validation gate for the Day-2 Operations app (Vol IX). After a
 // helpdesk action actuates on Entra, the gate RE-READS the target through Graph
@@ -21,15 +21,15 @@ var EntraHelpdeskGate = Class.create();
 EntraHelpdeskGate.prototype = {
 
     initialize: function () {
-        this.client = new x_ssa_day2_ops.EntraHelpdeskClient();
+        this.client = new x_fed_day2_ops.EntraHelpdeskClient();
         // Scoped logging via gs.* — a scoped app cannot `new GSLog(...)` a global
         // Script Include without the `global.` prefix, and GSLog may not exist on
         // every instance; gs.error/warn always resolve. (Sweep: js-cannot-run.)
         this.log = {
-            err: function (m) { gs.error('[x_ssa_day2_ops.EntraHelpdeskGate] ' + m); },
-            warn: function (m) { gs.warn('[x_ssa_day2_ops.EntraHelpdeskGate] ' + m); }
+            err: function (m) { gs.error('[x_fed_day2_ops.EntraHelpdeskGate] ' + m); },
+            warn: function (m) { gs.warn('[x_fed_day2_ops.EntraHelpdeskGate] ' + m); }
         };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // Coerce a ServiceNow variable (boolean true OR string 'true') to boolean.

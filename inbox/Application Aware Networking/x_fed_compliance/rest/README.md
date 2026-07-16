@@ -1,12 +1,12 @@
-# Outbound REST messages — `x_ssa_fed_compliance`
+# Outbound REST messages — `x_fed_compliance`
 
 Two `sys_rest_message` records, exported per tenant into the update set (the
 XML is environment-specific — endpoint host, credential alias, MID sysid):
 
 | Record | Endpoint | Auth | Used by |
 |---|---|---|---|
-| `x_ssa_fed_compliance.graph` | `https://graph.microsoft.com${path}` | OAuth 2.0 credential alias → app registration (READ-only scopes) | `ComplianceIngest.ingestM365` |
-| `x_ssa_fed_compliance.arm` | `https://management.azure.com${path}` | OAuth 2.0 credential alias → scoped service principal / MI | `ComplianceIngest.ingestAzure` |
+| `x_fed_compliance.graph` | `https://graph.microsoft.com${path}` | OAuth 2.0 credential alias → app registration (READ-only scopes) | `ComplianceIngest.ingestM365` |
+| `x_fed_compliance.arm` | `https://management.azure.com${path}` | OAuth 2.0 credential alias → scoped service principal / MI | `ComplianceIngest.ingestAzure` |
 
 Both: `use_mid_server = <in-boundary MID>`, GET method named `get` with a
 `${path}` string parameter. GCC Moderate rides the commercial endpoints —

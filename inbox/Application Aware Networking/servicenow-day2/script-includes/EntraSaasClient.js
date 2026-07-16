@@ -1,4 +1,4 @@
-// Script Include: EntraSaasClient  (application scope: x_ssa_day2_ops)
+// Script Include: EntraSaasClient  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // Server-side Microsoft Graph client for Lane F — SaaS Integration Governance
 // (Vol IX Book 05). Onboarding a third-party SaaS is not one control event: it is
@@ -9,10 +9,10 @@
 //
 // Boundary discipline (Vol IX Book 00 / Vol VII):
 //   * All Graph calls route through the in-boundary MID Server
-//     (property x_ssa_day2_ops.mid_server) — credentials/execution never leave
+//     (property x_fed_day2_ops.mid_server) — credentials/execution never leave
 //     the ATO boundary.
 //   * Endpoint + auth come from the Connection & Credential alias
-//     (x_ssa_day2_ops.graph) — no secrets in code.
+//     (x_fed_day2_ops.graph) — no secrets in code.
 //   * LEAST PRIVILEGE: the app registration behind that alias needs
 //     Application.ReadWrite.OwnedBy, AppRoleAssignment.ReadWrite.All,
 //     Synchronization.ReadWrite.All and AuditLog.Read.All. Note what is NOT here:
@@ -36,7 +36,7 @@
 // two clients exist.
 //
 // STARTER SKELETON — pin the Graph API version and validate scopes against your
-// tenant before production use.  test_mode (x_ssa_day2_ops.test_mode = 'true')
+// tenant before production use.  test_mode (x_fed_day2_ops.test_mode = 'true')
 // returns deterministic canned values so the ATF suites drive the Flow in sub-prod
 // with NO live Graph connectivity.  Never enable test_mode in production.
 // -----------------------------------------------------------------------------
@@ -44,11 +44,11 @@ var EntraSaasClient = Class.create();
 EntraSaasClient.prototype = {
 
     initialize: function () {
-        this.graphVersion = gs.getProperty('x_ssa_day2_ops.graph_version', 'v1.0');
-        this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
-        this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
-        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.EntraSaasClient] ' + m); } };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.graphVersion = gs.getProperty('x_fed_day2_ops.graph_version', 'v1.0');
+        this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
+        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
+        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.EntraSaasClient] ' + m); } };
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // --- Classify: assertion, or standing replica? (AC-4). --------------------
@@ -312,7 +312,7 @@ EntraSaasClient.prototype = {
     // --- Internal: MID-routed Graph call via the credential alias. ------------
     _graph: function (method, path, body) {
         try {
-            var rm = new sn_ws.RESTMessageV2('x_ssa_day2_ops.graph', method);
+            var rm = new sn_ws.RESTMessageV2('x_fed_day2_ops.graph', method);
             rm.setStringParameterNoEscape('graph_version', this.graphVersion);
             rm.setEndpoint('https://graph.microsoft.com/' + this.graphVersion + path);
             if (this.midServer) rm.setMIDServer(this.midServer);   // in-boundary execution

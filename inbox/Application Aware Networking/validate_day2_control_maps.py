@@ -48,10 +48,10 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 SPINE = HERE / "aan-compliance-spine.yml"
 # Every ServiceNow scoped-app control map in the AAN corpus: the day-2 lanes
-# plus the Vol VII compliance app's map (x_ssa_fed_compliance/data/). One gate,
+# plus the Vol VII compliance app's map (x_fed_compliance/data/). One gate,
 # all apps — a new app's map is covered by adding its glob + MAP_TO_BOOK entry.
 MAPS = sorted((HERE / "servicenow-day2").glob("*-control-map.json")) + sorted(
-    (HERE / "x_ssa_fed_compliance" / "data").glob("control-map.json")
+    (HERE / "x_fed_compliance" / "data").glob("control-map.json")
 )
 
 REQUIRED = {"title", "control", "task_type", "approval", "actuation", "ksi", "slot"}
@@ -67,7 +67,7 @@ MAP_TO_BOOK = {
     "appreg-control-map.json": "book-day2-appreg",
     "telephony-control-map.json": "book-day2-telephony",
     "saas-control-map.json": "book-sn-saas",
-    # x_ssa_fed_compliance operates the Book 02/03/04 surfaces
+    # x_fed_compliance operates the Book 02/03/04 surfaces
     "control-map.json": ["book-sn-m365", "book-sn-azure", "book-sn-attestation"],
 }
 

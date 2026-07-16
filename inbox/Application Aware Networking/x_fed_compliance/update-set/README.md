@@ -1,9 +1,9 @@
-# Update set — `x_ssa_fed_compliance`
+# Update set — `x_fed_compliance`
 
 Assemble in a sub-prod instance and export as one importable XML
-(`x_ssa_fed_compliance-update-set.xml`), exactly as the day-2 app does:
+(`x_fed_compliance-update-set.xml`), exactly as the day-2 app does:
 
-1. Create the scoped app `x_ssa_fed_compliance`; set properties `mid_server`,
+1. Create the scoped app `x_fed_compliance`; set properties `mid_server`,
    `boundary` (fixed `gcc-moderate`), `test_mode` (default `false`).
 2. Import the three Script Includes; create the two REST messages per
    `rest/README.md` with tenant credential aliases.

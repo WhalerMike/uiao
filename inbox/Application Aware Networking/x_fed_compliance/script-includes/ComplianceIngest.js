@@ -1,4 +1,4 @@
-// Script Include: ComplianceIngest  (application scope: x_ssa_fed_compliance)
+// Script Include: ComplianceIngest  (application scope: x_fed_compliance)
 // -----------------------------------------------------------------------------
 // Step 1-2 of the loop (test -> detect): READ-ONLY pull of native control state
 // from the two surfaces that carry most federal control work —
@@ -12,7 +12,7 @@
 // (observed != intended baseline) => a finding record, classified against
 // data/control-map.json by finding class key.
 //
-// test_mode (x_ssa_fed_compliance.test_mode) returns deterministic fixtures so
+// test_mode (x_fed_compliance.test_mode) returns deterministic fixtures so
 // ATF runs with no live tenant. Never enable in production.
 // -----------------------------------------------------------------------------
 var ComplianceIngest = Class.create();
@@ -22,12 +22,12 @@ ComplianceIngest.prototype = {
         // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
         // Script Include unprefixed; gs.error/warn always resolve).
         this.log = {
-            logErr: function (m) { gs.error('[x_ssa_fed_compliance.ComplianceIngest] ' + m); },
-            logWarning: function (m) { gs.warn('[x_ssa_fed_compliance.ComplianceIngest] ' + m); }
+            logErr: function (m) { gs.error('[x_fed_compliance.ComplianceIngest] ' + m); },
+            logWarning: function (m) { gs.warn('[x_fed_compliance.ComplianceIngest] ' + m); }
         };
-        this.testMode = gs.getProperty('x_ssa_fed_compliance.test_mode', 'false') === 'true';
-        this.midServer = gs.getProperty('x_ssa_fed_compliance.mid_server', '');
-        this.boundary = gs.getProperty('x_ssa_fed_compliance.boundary', 'gcc-moderate');
+        this.testMode = gs.getProperty('x_fed_compliance.test_mode', 'false') === 'true';
+        this.midServer = gs.getProperty('x_fed_compliance.mid_server', '');
+        this.boundary = gs.getProperty('x_fed_compliance.boundary', 'gcc-moderate');
     },
 
     // Pull M365 control state. Returns [{class, asset, observed, intended, source}].
@@ -55,7 +55,7 @@ ComplianceIngest.prototype = {
     // so the failure itself is raised as an attest.conmon.rollup finding.
     _rest: function (messageName, path, findingClass) {
         try {
-            var rm = new sn_ws.RESTMessageV2('x_ssa_fed_compliance.' + messageName, 'get');
+            var rm = new sn_ws.RESTMessageV2('x_fed_compliance.' + messageName, 'get');
             rm.setStringParameterNoEscape('path', path);
             if (this.midServer) rm.setMIDServer(this.midServer);
             var resp = rm.execute();
@@ -71,7 +71,7 @@ ComplianceIngest.prototype = {
     },
 
     // Compare observed state to the intended baseline (per-tenant table
-    // x_ssa_fed_compliance_baseline). Skeleton: emit one finding per non-compliant
+    // x_fed_compliance_baseline). Skeleton: emit one finding per non-compliant
     // entry; the baseline compare is completed per tenant before production use.
     _classify: function (body, findingClass, source) {
         var out = [];
