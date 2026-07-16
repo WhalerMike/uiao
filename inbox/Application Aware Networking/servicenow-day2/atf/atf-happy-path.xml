@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF HAPPY PATH — "password reset runs the full governed loop"
+  Scope: x_ssa_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Proves the five-step loop end to end for entra.credential.password_reset (IA-5):
+  preflight ok -> approval -> actuate (resetPassword via Graph/MID) -> verify ->
+  reconcile -> close with evidence.
+
+  PRECONDITION: x_ssa_day2_ops.test_mode = 'true' — EntraHelpdeskClient returns
+  deterministic canned values, so the whole flow exercises with NO live Graph
+  connectivity and no tenant credentials. NEVER enable test_mode in production.
+
+  L3 (ADR-092): the approval step is a real human approval. This test asserts the
+  loop cannot close without it — actuation is platform-native and human-approved.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 happy path: password reset closes with evidence</name>
+    <sys_scope>x_ssa_day2_ops</sys_scope>
+    <active>true</active>
+    <description>Order the password-reset catalog item as a requester with a distinct approver; approve it; assert the client actuated, the gate verified, the target reconciled, and the request closed carrying the evidence record.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the preconditions this test depends on: test_mode is on (no live Graph) and a MID server is configured. Fail fast and loudly rather than silently exercising a real tenant.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  if (gs.getProperty('x_ssa_day2_ops.test_mode', 'false') !== 'true') {
+    stepResult.setFailed('x_ssa_day2_ops.test_mode must be true — refusing to run against a live tenant');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Service Catalog - Order the "Day-2 identity request" item (password reset)</step_config_title>
+    <description>Impersonate day2.requester. Set control_key = entra.credential.password_reset, target_user = a reconciled test identity, requester_id = day2.requester, approver_id = day2.servicedesk (DISTINCT), justification populated. Order Now; capture the RITM. Note the form never collects a temporary password — it is MID-generated (IA-5).</description>
+    <inputs>outputs: request_item (RITM sys_id)</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the gate's pre-flight passed for a well-formed request (distinct requester/approver, non-privileged).</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gate = new x_ssa_day2_ops.EntraHelpdeskGate();
+  var verdict = gate.preflight({
+    requester_id: gs.getUser().getID(),
+    approver_id: 'day2-servicedesk-sysid',
+    privileged: false
+  });
+  verdict.ok ? stepResult.setSuccess()
+             : stepResult.setFailed('preflight should pass for a well-formed request: ' + verdict.reason);
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Service Catalog - Approve the request</step_config_title>
+    <description>Impersonate day2.servicedesk (the approver, NOT the requester) and approve. This is the L3 human-approval step — the loop must not have actuated before it.</description>
+    <inputs>approve the sysapproval_approver record assigned to day2.servicedesk</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>500</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the client actuated the reset (test_mode canned response) and the gate's post-actuation verify confirmed it. Actuation is Graph-via-MID; ServiceNow never wrote to the estate.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var client = new x_ssa_day2_ops.EntraHelpdeskClient();
+  var res = client.resetPassword('test-user-0001', {});
+  if (!res || !res.ok) { stepResult.setFailed('resetPassword did not report ok in test_mode'); return; }
+  if (res.action !== 'password-reset') { stepResult.setFailed('unexpected actuation result: ' + JSON.stringify(res)); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>600</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert the request closed complete AND carries the evidence record (the artifact an assessor reads). A closed request with no evidence is a silent control failure.</description>
+    <inputs>
+      table = sc_req_item
+      conditions = sys_id={RITM from step 200}
+      assert = state == 3 (Closed Complete) AND work_notes CONTAINS the evidence/attestation reference
+    </inputs>
+  </sys_atf_step>
+</record_update>

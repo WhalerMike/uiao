@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - requester cannot approve their own request (SoD, CM-5)
+  PRECONDITION: x_ssa_day2_ops.test_mode = 'true' - no live Graph connectivity.
+  Scope: x_ssa_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  A self-approved privileged request is the classic insider path. The gate must
+  refuse it at PRE-FLIGHT - before approval, before any actuation.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: requester == approver fails preflight (SoD)</name>
+    <sys_scope>x_ssa_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A request whose approver_id equals requester_id must be refused by the gate pre-flight with a CM-5 separation-of-duties reason, and must never actuate.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Submit the identical id as both requester and approver; assert the gate refuses and names CM-5.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gate = new x_ssa_day2_ops.EntraHelpdeskGate();
+  var same = 'day2-requester-sysid';
+  var verdict = gate.preflight({ requester_id: same, approver_id: same, privileged: false });
+  if (verdict.ok) { stepResult.setFailed('SoD violated: gate approved a self-approved request'); return; }
+  if (String(verdict.reason || '').indexOf('CM-5') === -1) {
+    stepResult.setFailed('refused, but not for the SoD/CM-5 reason: ' + verdict.reason); return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert no request advanced to Closed Complete on this path (state != 3).</description>
+  </sys_atf_step>
+</record_update>
