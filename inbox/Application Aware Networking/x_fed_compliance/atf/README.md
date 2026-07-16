@@ -1,6 +1,6 @@
-# ATF test spec — `x_ssa_fed_compliance`
+# ATF test spec — `x_fed_compliance`
 
-Runnable via `x_ssa_fed_compliance.test_mode = true` (deterministic fixtures,
+Runnable via `x_fed_compliance.test_mode = true` (deterministic fixtures,
 no live tenant). Export the `sys_atf_test` XML from a sub-prod build into the
 update set. Negatives are the point:
 

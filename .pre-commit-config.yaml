@@ -226,7 +226,7 @@ repos:
         entry: bash -c 'cd "inbox/Application Aware Networking/servicenow-day2" && python check_actuator_coverage.py'
         language: system
         pass_filenames: false
-        files: ^inbox/Application Aware Networking/(servicenow-day2/(check_actuator_coverage\.py|.*-control-map\.json|script-includes/.*\.js)|x_ssa_fed_compliance/(data/control-map\.json|script-includes/.*\.js))$
+        files: ^inbox/Application Aware Networking/(servicenow-day2/(check_actuator_coverage\.py|.*-control-map\.json|script-includes/.*\.js)|x_fed_compliance/(data/control-map\.json|script-includes/.*\.js))$
 
       # ADR-092 s4: the federal production ceiling is L3 — a human approves before
       # anything changes the estate. `approval: automated` on an estate write is an
@@ -266,6 +266,22 @@ repos:
       # were bylined to a specific agency team. Covers authorship ONLY; agency
       # identity in prose, figures and domains is a larger surface handled
       # separately, so passing this does NOT mean a book is generic.
+      # A ServiceNow scope is `x_<company>_<app>`, so the agency name was baked into
+      # 244 references across six depths: directory name, Script Include headers,
+      # ~41 gs.getProperty() calls, 14 cross-scope constructors, <sys_scope> in the
+      # ATF XML, and six Python gates hardcoding the path. Now x_fed_day2_ops /
+      # x_fed_compliance. This needs a gate rather than a one-time sweep because a
+      # scope string is a pure identifier nothing validates: a PARTIAL rename does
+      # not fail at lint, it fails at runtime when a cross-scope constructor cannot
+      # resolve. Nothing here executes ServiceNow, so a half-rename would sit in the
+      # repo looking correct. The closed sweep register is exempt — see the script.
+      - id: aan-scope-naming
+        name: "AAN ServiceNow scopes carry no agency identity"
+        entry: bash -c 'cd "inbox/Application Aware Networking" && python check_scope_naming.py'
+        language: system
+        pass_filenames: false
+        files: ^inbox/Application Aware Networking/
+
       - id: aan-generic-authorship
         name: "AAN books are not bylined to a specific agency or internal team"
         entry: bash -c 'cd "inbox/Application Aware Networking" && python check_generic_authorship.py'
@@ -285,7 +301,7 @@ repos:
         entry: bash -c 'cd "inbox/Application Aware Networking/servicenow-day2" && python check_l3_ceiling.py'
         language: system
         pass_filenames: false
-        files: ^inbox/Application Aware Networking/(servicenow-day2/(check_l3_ceiling\.py|.*-control-map\.json)|x_ssa_fed_compliance/data/control-map\.json)$
+        files: ^inbox/Application Aware Networking/(servicenow-day2/(check_l3_ceiling\.py|.*-control-map\.json)|x_fed_compliance/data/control-map\.json)$
 
       # Lane C "the form is the contract": the catalog variable set must supply
       # every parameter EntraHelpdeskClient/Gate actually read, and a secret
@@ -398,7 +414,7 @@ repos:
         entry: bash -c 'cd "inbox/Application Aware Networking" && python check_control_citations.py'
         language: system
         pass_filenames: false
-        files: ^inbox/Application Aware Networking/(check_control_citations\.py|reference/.*|aan-compliance-spine\.yml|Vol_.*\.qmd|servicenow-day2/.*\.json|x_ssa_fed_compliance/data/.*\.json|decks/.*\.yaml|specs/.*\.yaml)$
+        files: ^inbox/Application Aware Networking/(check_control_citations\.py|reference/.*|aan-compliance-spine\.yml|Vol_.*\.qmd|servicenow-day2/.*\.json|x_fed_compliance/data/.*\.json|decks/.*\.yaml|specs/.*\.yaml)$
       - id: aan-series-rules
         name: AAN scope ratchet (no new FedRAMP-High) + crossref integrity
         entry: bash -c 'cd "inbox/Application Aware Networking" && python check_series_rules.py'
@@ -416,7 +432,7 @@ repos:
         entry: bash -c 'cd "inbox/Application Aware Networking" && python render_impl_coverage.py --check'
         language: system
         pass_filenames: false
-        files: ^inbox/Application Aware Networking/(render_impl_coverage\.py|AAN_Implementation_Coverage\.md|servicenow-day2/.*|x_ssa_fed_compliance/.*)$
+        files: ^inbox/Application Aware Networking/(render_impl_coverage\.py|AAN_Implementation_Coverage\.md|servicenow-day2/.*|x_fed_compliance/.*)$
 
       - id: aan-cr26-indicators
         name: AAN CR26 indicator ids real + no 29/46 conflation

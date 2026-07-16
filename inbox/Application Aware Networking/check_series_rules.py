@@ -33,9 +33,9 @@ GLOBS = [
     "federal-aan-conmon-gap-roadmap.md",
     "servicenow-day2/**/*.js",
     "servicenow-day2/*.json",
-    "x_ssa_fed_compliance/**/*.js",
-    "x_ssa_fed_compliance/**/*.json",
-    "x_ssa_fed_compliance/**/*.md",
+    "x_fed_compliance/**/*.js",
+    "x_fed_compliance/**/*.json",
+    "x_fed_compliance/**/*.md",
 ]
 
 # --- Gate 3: High-claim patterns. "GCC High" excluded via lookbehind. ---

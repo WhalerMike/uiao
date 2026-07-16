@@ -1,4 +1,4 @@
-// Script Include: Day2NativeActuator  (application scope: x_ssa_day2_ops)
+// Script Include: Day2NativeActuator  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // Server-side actuator for every `servicenow-native` item in the day-2 kit —
 // today the nine Lane F items (Vol IX Book 05) whose closure happens INSIDE
@@ -29,7 +29,7 @@
 //
 // STARTER SKELETON — the table names below are the app's intended scoped tables;
 // create them (or repoint to your instance's equivalents) before production use.
-// test_mode (x_ssa_day2_ops.test_mode = 'true') returns deterministic canned
+// test_mode (x_fed_day2_ops.test_mode = 'true') returns deterministic canned
 // values so the ATF suites drive the Flow in sub-prod with NO record writes.
 // Never enable test_mode in production.
 // -----------------------------------------------------------------------------
@@ -37,15 +37,15 @@ var Day2NativeActuator = Class.create();
 Day2NativeActuator.prototype = {
 
     initialize: function () {
-        this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
-        this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
+        this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
+        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
         // The scoped tables this actuator writes. Held as properties so an
         // instance that already carries an ISA or interconnection table can
         // repoint without a code change.
-        this.tblIntegration = gs.getProperty('x_ssa_day2_ops.tbl_integration', 'x_ssa_day2_ops_saas_integration');
-        this.tblEvidence = gs.getProperty('x_ssa_day2_ops.tbl_evidence', 'x_ssa_day2_ops_evidence');
-        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.Day2NativeActuator] ' + m); } };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.tblIntegration = gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_saas_integration');
+        this.tblEvidence = gs.getProperty('x_fed_day2_ops.tbl_evidence', 'x_fed_day2_ops_evidence');
+        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.Day2NativeActuator] ' + m); } };
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // --- Intake: record the integration request (AC-20). ----------------------

@@ -1,4 +1,4 @@
-# `x_ssa_fed_compliance` — ServiceNow Federal Control-Compliance scoped app
+# `x_fed_compliance` — ServiceNow Federal Control-Compliance scoped app
 
 > Status: DRAFT importable skeleton · Surface: `inbox/` (not canon) · Vol VII Book 05's deployable
 > Scope: **FedRAMP Moderate + Microsoft GCC Moderate** only. Date Code: 2026-07-14 11:55 ET
@@ -13,7 +13,7 @@ exceptions).
 
 Until 2026-07-14 this kit existed only as prose: Book 05 called itself "the
 deployable counterpart" while Volume VII registered no kit and nothing named
-`x_ssa_fed_compliance` was on disk. This skeleton closes that gap and is
+`x_fed_compliance` was on disk. This skeleton closes that gap and is
 registered in `aan-compliance-spine.yml` (`kits:`), so the distribution-kit
 build bundles it — and its self-check *expects* it — automatically from here on.
 
@@ -43,7 +43,7 @@ build bundles it — and its self-check *expects* it — automatically from here
 
 - Every callout runs through a **MID Server registered inside the ATO boundary**; credentials and execution never leave it.
 - The service identity holds **read** over Conditional Access, directory, secure-configuration and Azure posture state — plus task-creation only. **Never standing write** over the estate it governs.
-- `test_mode` (`x_ssa_fed_compliance.test_mode`) returns deterministic fixtures so ATF runs with no live tenant. Never enable in production.
+- `test_mode` (`x_fed_compliance.test_mode`) returns deterministic fixtures so ATF runs with no live tenant. Never enable in production.
 
 ## Status — starter skeleton, not a signed product
 

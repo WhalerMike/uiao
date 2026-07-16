@@ -1,4 +1,4 @@
-// Script Include: EntraHelpdeskClient  (application scope: x_ssa_day2_ops)
+// Script Include: EntraHelpdeskClient  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // Server-side Microsoft Graph client for the ServiceNow Day-2 Operations app
 // (Vol IX). Wraps the common Entra / M365 helpdesk actions as scoped, audited
@@ -7,10 +7,10 @@
 //
 // Boundary discipline (Vol IX Book 00 / Vol VII):
 //   * All Graph calls route through the in-boundary MID Server
-//     (property x_ssa_day2_ops.mid_server) — credentials/execution never leave
+//     (property x_fed_day2_ops.mid_server) — credentials/execution never leave
 //     the ATO boundary.
 //   * Endpoint + auth come from a Connection & Credential alias
-//     (x_ssa_day2_ops.graph) — no secrets in code.
+//     (x_fed_day2_ops.graph) — no secrets in code.
 //   * The app registration behind that alias holds LEAST-PRIVILEGE, individually
 //     consented Graph scopes (e.g. User.ReadWrite.All, Group.ReadWrite.All,
 //     UserAuthenticationMethod.ReadWrite.All) — never Directory-wide admin.
@@ -19,7 +19,7 @@
 //     offered here.
 //
 // STARTER SKELETON — pin the Graph API version and validate scopes against your
-// tenant before production use.  test_mode (x_ssa_day2_ops.test_mode = 'true')
+// tenant before production use.  test_mode (x_fed_day2_ops.test_mode = 'true')
 // returns deterministic canned values so the ATF suites drive the Flow in sub-prod
 // with NO live Graph connectivity.  Never enable test_mode in production.
 // -----------------------------------------------------------------------------
@@ -27,13 +27,13 @@ var EntraHelpdeskClient = Class.create();
 EntraHelpdeskClient.prototype = {
 
     initialize: function () {
-        this.graphVersion = gs.getProperty('x_ssa_day2_ops.graph_version', 'v1.0');
-        this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
-        this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
+        this.graphVersion = gs.getProperty('x_fed_day2_ops.graph_version', 'v1.0');
+        this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
+        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
         // Scoped logging via gs.* (a scoped app cannot `new GSLog(...)` a global
         // Script Include unprefixed; gs.error always resolves).
-        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.EntraHelpdeskClient] ' + m); } };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.EntraHelpdeskClient] ' + m); } };
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // --- Joiner: create a user from the HRIT SSOT baseline (AC-2). ------------
@@ -92,7 +92,7 @@ EntraHelpdeskClient.prototype = {
     // --- Internal: MID-routed Graph call via the credential alias. ------------
     _graph: function (method, path, body) {
         try {
-            var rm = new sn_ws.RESTMessageV2('x_ssa_day2_ops.graph', method);
+            var rm = new sn_ws.RESTMessageV2('x_fed_day2_ops.graph', method);
             rm.setStringParameterNoEscape('graph_version', this.graphVersion);
             rm.setEndpoint('https://graph.microsoft.com/' + this.graphVersion + path);
             if (this.midServer) rm.setMIDServer(this.midServer);   // in-boundary execution

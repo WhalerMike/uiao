@@ -1,4 +1,4 @@
-// Script Include: AcmeCredentialClient  (application scope: x_ssa_day2_ops)
+// Script Include: AcmeCredentialClient  (application scope: x_fed_day2_ops)
 // -----------------------------------------------------------------------------
 // SHARED credential client for every `acme-via-mid` item in the day-2 kit —
 // Lane E (app registrations, Vol IX Book 03) and Lane F (SaaS federation,
@@ -8,10 +8,10 @@
 //
 // Boundary discipline:
 //   * ACME calls route through the in-boundary MID Server
-//     (property x_ssa_day2_ops.mid_server) — the CSR, the key and the issued
+//     (property x_fed_day2_ops.mid_server) — the CSR, the key and the issued
 //     certificate never leave the ATO boundary.
 //   * Directory/endpoint + account key come from the Connection & Credential
-//     alias (x_ssa_day2_ops.acme) — no secrets in code.
+//     alias (x_fed_day2_ops.acme) — no secrets in code.
 //
 // THE PRIVATE KEY NEVER REACHES SERVICENOW. The MID Server generates the key
 // and the CSR, submits the order, and returns only the ISSUED CERTIFICATE and
@@ -45,7 +45,7 @@
 //
 // STARTER SKELETON — pin the ACME directory URL and validate the account key +
 // challenge type against your CA before production use.  test_mode
-// (x_ssa_day2_ops.test_mode = 'true') returns deterministic canned values so the
+// (x_fed_day2_ops.test_mode = 'true') returns deterministic canned values so the
 // ATF suites run in sub-prod with NO live CA connectivity.  Never enable
 // test_mode in production.
 // -----------------------------------------------------------------------------
@@ -53,14 +53,14 @@ var AcmeCredentialClient = Class.create();
 AcmeCredentialClient.prototype = {
 
     initialize: function () {
-        this.midServer = gs.getProperty('x_ssa_day2_ops.mid_server', '');
-        this.directory = gs.getProperty('x_ssa_day2_ops.acme_directory', '');
-        this.boundary = gs.getProperty('x_ssa_day2_ops.boundary', 'gcc-moderate');
+        this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
+        this.directory = gs.getProperty('x_fed_day2_ops.acme_directory', '');
+        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
         // Default lifetime is deliberately short — the point of ACME automation is
         // that a short life is cheap. Long-lived certs are a config smell.
-        this.defaultDays = parseInt(gs.getProperty('x_ssa_day2_ops.acme_default_days', '90'), 10);
-        this.log = { logErr: function (m) { gs.error('[x_ssa_day2_ops.AcmeCredentialClient] ' + m); } };
-        this.testMode = gs.getProperty('x_ssa_day2_ops.test_mode', 'false') === 'true';
+        this.defaultDays = parseInt(gs.getProperty('x_fed_day2_ops.acme_default_days', '90'), 10);
+        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.AcmeCredentialClient] ' + m); } };
+        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
     // --- Issue: a short-lived certificate for a workload identity (SC-17). ----
@@ -110,7 +110,7 @@ AcmeCredentialClient.prototype = {
     // it rather than hand it up to the record.
     _acme: function (op, args) {
         try {
-            var rm = new sn_ws.RESTMessageV2('x_ssa_day2_ops.acme', 'POST');
+            var rm = new sn_ws.RESTMessageV2('x_fed_day2_ops.acme', 'POST');
             rm.setEndpoint(this.directory);
             if (this.midServer) rm.setMIDServer(this.midServer);   // in-boundary execution
             rm.setRequestBody(JSON.stringify({ op: op, args: args, boundary: this.boundary }));
