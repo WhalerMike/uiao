@@ -5,7 +5,7 @@ on a white 10.0 x 5.625 in (16:9) canvas, Arial typography, the exact UIAO
 house palette, full presenter notes on every slide, and the progressive
 build-sequence reveal with the amber-ring active step. The authoritative
 measurements this generator reproduces live in
-``inbox/Application Aware Networking/AAN_DECK_STYLE_NOTES.md``.
+``docs/customer-documents/federal-aan-series/AAN_DECK_STYLE_NOTES.md``.
 
 Design intent
 -------------

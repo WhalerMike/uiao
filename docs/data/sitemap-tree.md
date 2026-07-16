@@ -373,6 +373,75 @@
 
 ### Explanation (understanding-oriented)
 
+- **Federal AAN — Government Moderate Compliance Series**
+  - **Vol 0 — Executive Summary & Program**
+    - [Book 00 — Federal Application-Aware Networking Series](customer-documents/federal-aan-series/Vol_0_Book_00_FedAAN_Executive_Summary.html)
+    - [Vol 0 Book 00a — Federal Application-Aware Networking — Executive Brief](customer-documents/federal-aan-series/Vol_0_Book_00a_FedAAN_Executive_Brief.html)
+    - [Federal Application-Aware Networking — Existing Product Inventory Questionnaire](customer-documents/federal-aan-series/Vol_0_Book_01_FedAAN_Product_Inventory_Questionnaire.html)
+    - [Federal Application-Aware Networking — Series Control Crosswalk](customer-documents/federal-aan-series/Vol_0_Book_02_FedAAN_Control_Crosswalk.html)
+  - **Vol I — Foundation & Transport**
+    - [Vol I Book 00 — Federal Application-Aware Networking — Volume I Overview: Foundation & Transport](customer-documents/federal-aan-series/Vol_I_Book_00_FedAAN_Foundation_Transport_Overview.html)
+    - [Vol I Book 01 — Federal Agency Cloud Landing Zone](customer-documents/federal-aan-series/Vol_I_Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.html)
+    - [Vol I Book 02 — Federal Application-Aware Networking — Network Access Control: 802.1X and Device Identity](customer-documents/federal-aan-series/Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.html)
+    - [Vol I Book 03 — Federal Application-Aware Networking — Certificates & Tokens: Cryptographic Identity](customer-documents/federal-aan-series/Vol_I_Book_03_FedAAN_Certificates_Tokens_Cryptographic_Identity.html)
+    - [Vol I Book 04 — Federal Application-Aware Networking — OPM HRIT and the Identity & Organizational SSOT](customer-documents/federal-aan-series/Vol_I_Book_04_FedAAN_HRIT_Identity_Org_SSOT.html)
+    - [Vol I Book 05 — From Mainframe to Application-Aware Modernization](customer-documents/federal-aan-series/Vol_I_Book_05_FedAAN_Network_Modernization.html)
+    - [Vol I Book 06 — Federal Telecommunications Modernization](customer-documents/federal-aan-series/Vol_I_Book_06_FedAAN_Federal_Telecommunications_Modernization.html)
+    - [Vol I Book 07 — Federal Application-Aware Networking — Network Enforcement Substrate: Cisco, Palo Alto, Juniper and the NIAP/STIG/FIPS Path](customer-documents/federal-aan-series/Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.html)
+  - **Vol II — Data Platform**
+    - [Vol II Book 00 — Federal Application-Aware Networking — Volume II Overview: Data Platform](customer-documents/federal-aan-series/Vol_II_Book_00_FedAAN_Data_Platform_Overview.html)
+    - [Vol II Book 01 — Federal Application-Aware Networking — SQL Server Authentication Modernization](customer-documents/federal-aan-series/Vol_II_Book_01_FedAAN_SQL_Server_Authentication_Modernization.html)
+    - [Vol II Book 02 — Federal Application-Aware Networking — SQL Server Implementation Guide](customer-documents/federal-aan-series/Vol_II_Book_02_FedAAN_SQL_Server_Implementation_Guide.html)
+    - [Vol II Book 03 — Federal Application-Aware Networking — Database Consolidation and Network Physics](customer-documents/federal-aan-series/Vol_II_Book_03_FedAAN_Database_Consolidation_Network_Physics.html)
+  - **Vol III — Security Operations**
+    - [Vol III Book 00 — Federal Application-Aware Networking — Volume III Overview: Security Operations](customer-documents/federal-aan-series/Vol_III_Book_00_FedAAN_Security_Operations_Overview.html)
+    - [Vol III Book 01 — Federal Application-Aware Networking — Privileged Access Management](customer-documents/federal-aan-series/Vol_III_Book_01_FedAAN_Privileged_Access_Management.html)
+    - [Vol III Book 02 — Federal Application-Aware Networking — Vulnerability Management](customer-documents/federal-aan-series/Vol_III_Book_02_FedAAN_Vulnerability_Management.html)
+    - [Vol III Book 03 — Federal Application-Aware Networking — Patch & Systems Management: The SI-2 / CM Closure Plane](customer-documents/federal-aan-series/Vol_III_Book_03_FedAAN_Patch_Systems_Management.html)
+    - [Vol III Book 04 — Federal Application-Aware Networking — Cloud-Native Security Posture & Containers](customer-documents/federal-aan-series/Vol_III_Book_04_FedAAN_Cloud_Native_Posture.html)
+    - [Vol III Book 05 — Federal Application-Aware Networking — Data Protection: Microsoft Purview and Cryptographic Key Management](customer-documents/federal-aan-series/Vol_III_Book_05_FedAAN_Data_Protection_Purview.html)
+    - [Vol III Book 06 — Federal Application-Aware Networking — SIEM, XDR, and Detection Engineering: Microsoft Sentinel and Defender Integration](customer-documents/federal-aan-series/Vol_III_Book_06_FedAAN_SIEM_XDR_Detection.html)
+    - [Vol III Book 07 — Federal Application-Aware Networking — Multi-Cloud Evidence Fabric: One Compliance Picture from Many Stacks](customer-documents/federal-aan-series/Vol_III_Book_07_FedAAN_Multi_Cloud_Evidence_Fabric.html)
+  - **Vol IV — Governance & Assurance**
+    - [Vol IV Book 00 — Federal Application-Aware Networking — Volume IV Overview: Governance & Assurance](customer-documents/federal-aan-series/Vol_IV_Book_00_FedAAN_Governance_Assurance_Overview.html)
+    - [Vol IV Book 01 — Federal Application-Aware Networking](customer-documents/federal-aan-series/Vol_IV_Book_01_FedAAN_Business_Continuity.html)
+    - [Vol IV Book 02 — Federal Application-Aware Networking — Supply Chain Risk Management](customer-documents/federal-aan-series/Vol_IV_Book_02_FedAAN_Supply_Chain_Risk_Management.html)
+    - [Vol IV Book 03 — Federal Application-Aware Networking — Program Management & Governance](customer-documents/federal-aan-series/Vol_IV_Book_03_FedAAN_Program_Management_Governance.html)
+    - [Vol IV Book 04 — Federal Application-Aware Networking — PII Processing and Transparency](customer-documents/federal-aan-series/Vol_IV_Book_04_FedAAN_PII_Processing_Transparency.html)
+    - [Vol IV Book 05 — Federal Application-Aware Networking — Cybersecurity Training & Awareness](customer-documents/federal-aan-series/Vol_IV_Book_05_FedAAN_Cybersecurity_Training_Awareness.html)
+    - [Vol IV Book 06 — Federal Application-Aware Networking — Authorization Package & ConMon](customer-documents/federal-aan-series/Vol_IV_Book_06_FedAAN_Authorization_Package_ConMon.html)
+  - **Vol V — Training & Certification**
+    - [Vol V Book 00 — Federal Application-Aware Networking — Volume V Overview: Training & Certification](customer-documents/federal-aan-series/Vol_V_Book_00_FedAAN_Training_Certification_Overview.html)
+    - [Vol V Book 01 — Federal Application-Aware Networking — The Compliance Track](customer-documents/federal-aan-series/Vol_V_Book_01_FedAAN_Compliance_Track.html)
+    - [Vol V Book 02 — Federal Application-Aware Networking — The Implementation Track](customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.html)
+    - [Vol V Book 03 — Federal Application-Aware Networking — Assessment, Rubrics & Certification](customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.html)
+    - [Vol V Book 04 — Federal Application-Aware Networking — Vendor Training & Lab Environments](customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.html)
+  - **Vol VI — Implementation**
+    - [Vol VI Book 00 — Federal Application-Aware Networking — Implementation Overview](customer-documents/federal-aan-series/Vol_VI_Book_00_FedAAN_Implementation_Overview.html)
+    - [Vol VI Book 01 — Federal Application-Aware Networking — Landing Zone & Network as Code](customer-documents/federal-aan-series/Vol_VI_Book_01_FedAAN_Landing_Zone_Network_as_Code.html)
+    - [Vol VI Book 02 — Federal Application-Aware Networking — Identity & Access as Code](customer-documents/federal-aan-series/Vol_VI_Book_02_FedAAN_Identity_Access_as_Code.html)
+    - [Vol VI Book 03 — Federal Application-Aware Networking — Detection Engineering: The In-Boundary Analytics Rule Library](customer-documents/federal-aan-series/Vol_VI_Book_03_FedAAN_Detection_Engineering.html)
+    - [Vol VI Book 04 — Federal Application-Aware Networking — Response Automation: The SOAR Playbook Library](customer-documents/federal-aan-series/Vol_VI_Book_04_FedAAN_Response_Automation_SOAR.html)
+    - [Vol VI Book 05 — Federal Application-Aware Networking — Data Protection Deployment](customer-documents/federal-aan-series/Vol_VI_Book_05_FedAAN_Data_Protection_Deployment.html)
+    - [Vol VI Book 06 — Federal Application-Aware Networking — Configuration Baselines & Hardening](customer-documents/federal-aan-series/Vol_VI_Book_06_FedAAN_Configuration_Baselines_Hardening.html)
+    - [Vol VI Book 07 — Federal Application-Aware Networking — Evidence & ConMon Pipeline Deployment](customer-documents/federal-aan-series/Vol_VI_Book_07_FedAAN_Evidence_ConMon_Pipeline.html)
+    - [Vol VI Book 08 — Federal Application-Aware Networking — Validation & Test Harnesses](customer-documents/federal-aan-series/Vol_VI_Book_08_FedAAN_Validation_Test_Harnesses.html)
+  - **Vol VII — ServiceNow Automation**
+    - [Vol VII Book 00 — Federal Application-Aware Networking — Volume VII Overview: ServiceNow Automation for Federal Control Compliance](customer-documents/federal-aan-series/Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.html)
+    - [Vol VII Book 01 — Federal Application-Aware Networking — CMDB Reconciliation & Asset Identity](customer-documents/federal-aan-series/Vol_VII_Book_01_FedAAN_CMDB_Reconciliation_Asset_Identity.html)
+    - [Vol VII Book 02 — Federal Application-Aware Networking — M365 Federal Control Compliance Automation](customer-documents/federal-aan-series/Vol_VII_Book_02_FedAAN_M365_Control_Compliance_Automation.html)
+    - [Vol VII Book 03 — Federal Application-Aware Networking — Azure Federal Control Compliance Automation](customer-documents/federal-aan-series/Vol_VII_Book_03_FedAAN_Azure_Control_Compliance_Automation.html)
+    - [Vol VII Book 04 — Federal Application-Aware Networking — Control Attestation, Evidence & KSI](customer-documents/federal-aan-series/Vol_VII_Book_04_FedAAN_Control_Attestation_Evidence_KSI.html)
+    - [Vol VII Book 05 — Federal Application-Aware Networking — The ServiceNow Compliance App](customer-documents/federal-aan-series/Vol_VII_Book_05_FedAAN_ServiceNow_Compliance_App.html)
+  - **Vol VIII — Multi-Cloud DDI**
+    - [Vol VIII Book 00 — Federal Application-Aware Networking — Volume VIII Overview: Multi-Cloud DDI Landing-Zone Automation](customer-documents/federal-aan-series/Vol_VIII_Book_00_FedAAN_DDI_Automation_Overview.html)
+  - **Vol IX — Day-2 Operations**
+    - [Vol IX Book 00 — Federal Application-Aware Networking — Volume IX Overview: ServiceNow Day-2 Operations](customer-documents/federal-aan-series/Vol_IX_Book_00_FedAAN_Day2_Operations_Overview.html)
+    - [Vol IX Book 01 — Federal Application-Aware Networking — Helpdesk & ITSM Catalog](customer-documents/federal-aan-series/Vol_IX_Book_01_FedAAN_Helpdesk_ITSM_Catalog.html)
+    - [Vol IX Book 02 — Federal Application-Aware Networking — Landing Zone Front Door](customer-documents/federal-aan-series/Vol_IX_Book_02_FedAAN_Landing_Zone_Front_Door.html)
+    - [Vol IX Book 03 — Federal Application-Aware Networking — App Registration Governance](customer-documents/federal-aan-series/Vol_IX_Book_03_FedAAN_App_Registration_Governance.html)
+    - [Vol IX Book 04 — Federal Application-Aware Networking — Teams Telephony Catalog & Teams SCuBA Drift](customer-documents/federal-aan-series/Vol_IX_Book_04_FedAAN_Teams_Telephony_Catalog.html)
+    - [Vol IX Book 05 — Federal Application-Aware Networking — SaaS Integration Governance](customer-documents/federal-aan-series/Vol_IX_Book_05_FedAAN_SaaS_Integration_Governance.html)
 - **UIAO OrgPath (16-document reading sequence)**
   - [UIAO OrgPath](customer-documents/orgpath-narrative/index.html)
   - [Book_01 — The Microsoft Identity and Governance Stack](customer-documents/orgpath-narrative/Book_01.html)
