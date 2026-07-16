@@ -21,13 +21,14 @@ fig-align: center
 out-width: "100%"
 execute:
   echo: false
+filters: [aan-callouts.lua]
 ---
 
 ::: {.fouo-banner}
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -35,7 +36,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 **Date Code:** 2026-07-08 16:07 ET
 :::
 
-::: {.callout-important}
+::: {.aan-important}
 **Series Context** — This document is Vol I Book 04 of the Federal Application-Aware Networking series, and the last of the four substrate books. [Vol I Book 01](Vol_I_Book_01_FedAAN_SSA_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — what things are called and where they live. [Vol I Book 02](Vol_I_Book_02_FedAAN_Network_Access_Control_802_1X.qmd) established device identity at the port. [Vol I Book 03](Vol_I_Book_03_FedAAN_Certificates_Tokens_Cryptographic_Identity.qmd) established cryptographic identity — certificates and tokens as the path-independent carriers of every identity claim. This part establishes what none of them can: **the truth those claims assert.** A token proves that an assertion was signed; it cannot prove the assertion describes a real, current employee with a real, current role. That fact originates in exactly one place — the human capital system of record — and this book makes it the authoritative source for the identity and organizational attributes every later part consumes. The modernization tracks from Vol I Book 05 onward depend on this substrate; in particular, the identity-modernization program of [Vol I Book 05](Vol_I_Book_05_FedAAN_Network_Modernization.qmd) executes Principle 1 (single source of truth) against the directory estate, and Vol I Book 03's tokens assert what *this* book makes true.
 :::
 
@@ -69,11 +70,11 @@ The argument proceeds in five movements:
 4. **The organizational SSOT.** Supervisory org, position management, and cost centers as queryable truth; dynamic groups, access packages, and ABAC attributes derived from HR records instead of assigned by hand.
 5. **The integration surface.** Why a SaaS system of record couples to the enterprise exclusively through identity-plane and naming-plane functions — and why that is an architectural feature, not a limitation.
 
-::: {.callout-note}
+::: {.aan-note}
 **Where this sits in the Functional Plane Model** — The HR system of record is **identity-plane truth**: the human and organizational half of plane 3, alongside the cryptographic half Vol I Book 03 established. Per the series hierarchy rule, truth planes can only be depended on. The directory, the dynamic groups, the access packages, and the conditional access policies of later parts are *derivations and enforcements* of what this plane asserts. When a downstream attribute disagrees with the HR record, the HR record wins and the downstream value is corrected — the correction never flows the other way. Fix the record, not the projection.
 :::
 
-::: {.callout-note}
+::: {.aan-note}
 **What this document does not cover** — Credential mechanics (how the identity is *carried*) are [Vol I Book 03](Vol_I_Book_03_FedAAN_Certificates_Tokens_Cryptographic_Identity.qmd); the directory-consolidation program that executes Principle 1 against twelve regional AD silos is [Vol I Book 05](Vol_I_Book_05_FedAAN_Network_Modernization.qmd); privileged access built on these identities is Vol III Book 01 (Privileged Access Management); the privacy controls governing the HR data itself as PII are Vol IV Book 04 (PII Processing & Transparency). This document is the truth layer those parts assume: where the facts about people and organizational structure originate, how they flow, and why no other origin can substitute.
 :::
 
@@ -152,7 +153,7 @@ Every milestone in the program's history moves the same direction: fewer systems
 
 ![Five decades of consolidation — the OPM HRIT timeline](figs/hrit-fig-08-opm-hrit-timeline.png){#fig-hrit08 fig-alt="Vertical timeline with seven milestones. 1972 CPDF: the Central Personnel Data File, OPM's first government-wide personnel data system. 2002 e-Gov era: e-Payroll consolidates 26 federal payroll providers to 4; eOPF begins digitizing the paper personnel folder. 2004 HR Line of Business: OPM-led shared-services program, the federal HR business reference model, agency HR moves to shared service centers. Around 2010 EHRI: Enterprise Human Resources Integration replaces CPDF as the government-wide HR data warehouse plus electronic OPF. 2019 HR QSMO: OMB M-19-16 designates OPM the HR Quality Services Management Office, standards owner and storefront. 2021 QSMO marketplace: the vetted HR IT catalog opens, agencies steered to standards-aligned shared solutions. 2026 SaaS delivery: OPM HRIT modernization delivers the HCM as SaaS (Oracle HCM Cloud, OCI), the system-of-record feed this book builds on. Caveat footer: program milestones and vendor selections evolve — verify current OPM HRIT program status at engagement time. White background. Source: Vol I Book 04 HRIT SSOT briefing deck, Date Code 2026-07-07 11:03 ET." width="100%"}
 
-::: {.callout-note}
+::: {.aan-note}
 **Draft-proposal caveat** — program milestones and vendor selections evolve; verify current OPM HRIT program status, marketplace offerings, and the deployed HCM platform at engagement time. The doctrine of this book is deliberately source-agnostic (see the provisioning pipeline below): if the deployed platform changes, the adapter changes and nothing else does.
 :::
 
@@ -426,7 +427,7 @@ This is the hinge from substrate to application. Every later part consumes this 
 
 : Downstream consumers of the identity and organizational SSOT {.striped .hover}
 
-::: {.callout-warning}
+::: {.aan-warning}
 **The honest caveat, stated once and governing everything:** designating an authoritative source does not make it correct — it makes its errors *authoritative*. A drifted HR feed produces a drifted SSOT with excellent lineage. That is why Phase 1 below is source-data remediation rather than integration, why Phase 2 runs in shadow mode until every difference is explained, and why the data-quality obligation lands on the record's owner rather than on the pipeline. The series' rule that no scanner creates a source of truth has a corollary: no pipeline launders one.
 :::
 
@@ -494,7 +495,7 @@ The table maps each control to its state without the architecture, its state wit
 
 > **Closure Necessity — IA-4 across affiliations.** IA-4's identifier discipline — one person, one identifier, no reuse — must hold across events that *end accounts*: separation, rehire, contractor conversion. Any mechanism that tracks accounts loses its memory at exactly the moment the control is tested, because a deleted account takes its identifier history with it. Preventing reuse and re-linking a returning person to their prior identifier require a durable record of the *person* that persists when every account is gone. The worker record is the only artifact in the enterprise with that lifespan; identifier management is therefore an HR-plane property projected into the directory, and nothing projected can substitute for the projector.
 
-::: {.callout-note}
+::: {.aan-note}
 **FedRAMP 20x KSI Alignment — slot-01 identity**
 
 In the series' continuous-monitoring architecture, this book's evidence binds to the **slot-01 identity** evidence slot, which carries the **KSI-IAM** theme rules in the evaluation engine. Under the volume restructure, slot-01 — already fed by the cryptographic-identity evidence of Vol I Book 03 and the identity-plane parts downstream — additionally binds this book's lifecycle evidence: the middleware's per-event provisioning provenance records, lifecycle-workflow execution logs, the measured separation-to-revocation and transfer-to-review intervals, and the account-to-worker-record correlation state that makes orphan detection a query instead of a hunt.

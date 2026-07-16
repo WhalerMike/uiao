@@ -21,13 +21,14 @@ fig-align: center
 out-width: "100%"
 execute:
   echo: false
+filters: [aan-callouts.lua]
 ---
 
 ::: {.fouo-banner}
 INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 :::
 
-::: {.callout-warning}
+::: {.aan-warning}
 ## Draft Proposal — Subject to Review
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive SSA-wide technical roadmap and has not been reviewed or approved by the SSA CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the SSA CIO Office and organizational components.
@@ -35,7 +36,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 **Date Code:** 2026-07-08 16:07 ET
 :::
 
-::: {.callout-important}
+::: {.aan-important}
 **Series Context** — This document is Vol III Book 01 (Privileged Access Management) of the Federal Application-Aware Networking series. The Volume I network-and-identity books and the Volume II database books establish Landing Zone IPAM/DDI/PKI, Network Access Control, Certificates and Tokens, Network Modernization, Telecommunications Modernization, SQL Server Authentication Modernization, SQL Server Implementation, and Database Consolidation and Network Physics. This part addresses the privileged access layer — the administrative credential surface that remains exploitable even after all token-based authentication controls from the Volume I and Volume II books are in place.
 :::
 
@@ -51,7 +52,7 @@ Standing privilege is the structural problem. "Standing" means the role is alway
 
 This document closes that gap through three mechanisms: Privileged Identity Management (PIM) for just-in-time role activation, Privileged Access Workstations (PAW) for device-scoped session trust, and session policy controls for re-authentication, session lock, and session termination. Together these mechanisms reduce the window of administrative exposure from continuous to bounded and auditable.
 
-::: {.callout-note}
+::: {.aan-note}
 **Authentication vs. Authorization Scope** — Vol I Books 02–03 (Network Access Control and Certificates & Tokens) and Vol II Books 01–02 (SQL Server Authentication Modernization and SQL Server Implementation Guide) addressed authentication quality: who is asserting this identity, and can we verify it cryptographically? This document addresses authorization scope: what can that verified identity do, and for how long? Both axes must be controlled. A strongly-authenticated identity with standing Global Admin scope is not a Zero Trust architecture — it is a strongly-authenticated standing target.
 :::
 
@@ -85,7 +86,7 @@ The confusion between authentication quality and authorization scope is common i
 
 **After this document** — the same administrator holds no standing admin role. The Entra ID Global Admin assignment is *eligible*, not *active*. When the administrator needs to perform an administrative task, they request activation through PIM, present MFA, provide a justification, wait for approver consent (if configured), and receive a time-limited role token valid for 1–8 hours. When the window expires, the role deactivates automatically. A compromised session gives an attacker nothing beyond the standard user scope.
 
-::: {.callout-warning}
+::: {.aan-warning}
 **Compliance Dependency** — OMB M-22-09 (Moving the U.S. Government Toward Zero Trust Cybersecurity Principles) requires agencies to implement least-privilege access controls and time-bound privilege. NIST SP 800-207 (Zero Trust Architecture) — an architecture publication, not an agency mandate — sets out in Tenet 2 that resource access is granted on a per-session basis rather than as standing entitlement. PIM is the Microsoft implementation of these principles. CMMC 2.0 Level 2 and FedRAMP Moderate both require AC-6 Least Privilege and AC-6(5) Privileged Accounts controls; PIM provides the enforcement mechanism agencies use to implement AC-6 and AC-6(5).
 :::
 
@@ -303,7 +304,7 @@ foreach ($rule in $updateRules) {
 Write-Host "PIM policy updated for Global Administrator role" -ForegroundColor Green
 ```
 
-::: {.callout-note}
+::: {.aan-note}
 **Activation Duration by Role Sensitivity** — Global Administrator and Privileged Role Administrator activations should be limited to 4 hours maximum. Security Administrator, Exchange Administrator, and SharePoint Administrator can be configured at 8 hours for operational efficiency. Azure subscription Owner/Contributor for server management tasks can be set to 8 hours. All durations must be reviewed and approved in the agency's PAM policy documentation before implementation.
 :::
 
@@ -453,7 +454,7 @@ az ssh arc --resource-group rg-arc-servers-prod --name sql-prod-01 --rdp
 
 The session credential is derived from the PIM activation token. If the PIM activation window expires while the session is active, the next re-authentication attempt fails. The operator must request a new PIM activation to continue.
 
-::: {.callout-note}
+::: {.aan-note}
 **No Public Ports Required** — Arc JIT sessions route through the Arc connectivity layer to the Azure control plane. The host does not need an exposed SSH port (TCP 22) or RDP port (TCP 3389) on any network interface. The only required egress from the host is HTTPS (TCP 443) to Arc management endpoints. This eliminates the most commonly exploited server attack vector: publicly accessible management ports.
 :::
 
@@ -638,7 +639,7 @@ Write-Host "Conditional Access policy created: $($newCaPolicy.Id)" -ForegroundCo
 Write-Host "IMPORTANT: Policy is in report-only mode. Review sign-in logs for 14 days before enabling." -ForegroundColor Yellow
 ```
 
-::: {.callout-important}
+::: {.aan-important}
 **Report-Only Mode First** — All Conditional Access policies should be deployed in `enabledForReportingButNotEnforced` (report-only) mode for a minimum of 14 days before switching to `enabled`. During the report-only period, monitor the Entra ID sign-in log for any accounts that would be blocked. Blocking a privileged administrator from a critical system without warning creates an outage. The report-only period surfaces unexpected devices and users before enforcement.
 :::
 
@@ -1034,7 +1035,7 @@ The following table maps each NIST control addressed by this document to its sta
 
 : NIST SP 800-53 Rev 5 control closure for Vol III Book 01 — Privileged Access Management {.striped .hover}
 
-::: {.callout-note}
+::: {.aan-note}
 **FedRAMP 20x Key Security Indicator Alignment**
 
 FedRAMP 20x KSI-IAM-JIT (Authorizing Just-in-Time) requires a least-privileged, role- and attribute-based, just-in-time authorization approach for privileged roles, with privileged accounts separately inventoried and monitored. The PIM eligible assignment inventory, PIM activation audit trail, and Sentinel alert rules documented in this part directly satisfy KSI-IAM-JIT.

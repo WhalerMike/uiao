@@ -14,11 +14,11 @@ Only affects the docx writer; for any other target the class-to-style mapping is
 a harmless no-op attribute. ]]
 
 local CLASS_TO_STYLE = {
-  ["callout-warning"]   = "CalloutWarning",
-  ["callout-important"] = "CalloutImportant",
-  ["callout-note"]      = "CalloutNote",
-  ["callout-tip"]       = "CalloutTip",
-  ["callout-caution"]   = "CalloutCaution",
+  ["aan-warning"]   = "CalloutWarning",
+  ["aan-important"] = "CalloutImportant",
+  ["aan-note"]      = "CalloutNote",
+  ["aan-tip"]       = "CalloutTip",
+  ["aan-caution"]   = "CalloutCaution",
   ["exec-summary"]      = "ExecSummary",
   ["fouo-banner"]       = "FouoBanner",
 }
