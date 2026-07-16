@@ -289,7 +289,7 @@ def render_not_closed() -> str:
     rows.sort(key=lambda r: _control_sort_key(r[0]))
 
     by_fam: dict[str, int] = {}
-    for c, _t, f, _w in rows:
+    for _c, _t, f, _w in rows:
         by_fam[f] = by_fam.get(f, 0) + 1
 
     L: list[str] = [NC_BEGIN, ""]

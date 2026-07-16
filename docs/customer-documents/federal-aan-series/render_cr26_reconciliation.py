@@ -26,6 +26,7 @@ import json
 import sys
 from pathlib import Path
 
+
 def _repo_root() -> Path:
     """Walk up to the repository root rather than counting directory levels.
 
@@ -38,7 +39,7 @@ def _repo_root() -> Path:
     for cand in [p, *p.parents]:
         if (cand / ".git").exists():
             return cand
-    raise SystemExit("repo root not found (no .git above %s)" % p)
+    raise SystemExit(f"repo root not found (no .git above {p})")
 
 
 try:
@@ -85,7 +86,8 @@ def walk(groups):
 
 
 def load_catalog(path: Path):
-    cat = json.load(open(path, encoding="utf-8"))["catalog"]
+    with path.open(encoding="utf-8") as f:
+        cat = json.load(f)["catalog"]
     themes: dict[str, dict] = {}
     for kind, cid, title in walk(cat.get("groups", []) or []):
         if kind == "group":
@@ -100,7 +102,8 @@ def load_catalog(path: Path):
 def load_rules():
     rules = {}
     for f in sorted(glob.glob(str(REPO / "src/uiao/ksi/rules/KSI-0*.yaml"))):
-        d = yaml.safe_load(open(f, encoding="utf-8"))
+        with Path(f).open(encoding="utf-8") as rule_file:
+            d = yaml.safe_load(rule_file)
         m = d.get("Mappings", {}) or {}
         rules[d["KSI_ID"]] = {
             "cr26": m.get("CR26", ""),

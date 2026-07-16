@@ -168,7 +168,7 @@ def main() -> int:
                 # is a real control id; otherwise the row is not an id/title row.
                 if len(ids) != len(titles) or not all(CTRL_RE.fullmatch(i) for i in ids):
                     continue
-                for cid, prose in zip(ids, titles):
+                for cid, prose in zip(ids, titles, strict=True):
                     official = catalog.get(cid)
                     if official is None:
                         continue  # id validity handled in part 1

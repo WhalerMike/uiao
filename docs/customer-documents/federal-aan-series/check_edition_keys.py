@@ -22,12 +22,12 @@ Usage:
 from __future__ import annotations
 
 import glob
-import io
 import re
 import sys
 from pathlib import Path
 
 import yaml
+
 
 def _repo_root() -> Path:
     """Walk up to the repository root rather than counting directory levels."""
@@ -59,14 +59,14 @@ def flatten(d, prefix=""):
 
 
 def defined(path: Path) -> set[str]:
-    doc = yaml.safe_load(io.open(path, encoding="utf-8").read()) or {}
+    doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return {k for k in flatten(doc) if k.startswith("agency.")}
 
 
 def main() -> int:
     used: dict[str, list[str]] = {}
     for f in sorted(glob.glob(str(HERE / "Vol_*_Book_*.qmd"))):
-        for m in SHORTCODE.finditer(io.open(f, encoding="utf-8").read()):
+        for m in SHORTCODE.finditer(Path(f).read_text(encoding="utf-8")):
             used.setdefault(m.group(1), []).append(Path(f).name)
 
     fed, ssa = defined(FEDERAL), defined(SSA)

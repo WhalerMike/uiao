@@ -33,7 +33,6 @@ Usage:
 from __future__ import annotations
 
 import glob
-import io
 import re
 import sys
 from pathlib import Path
@@ -44,7 +43,7 @@ FILTER_DECL = "aan-callouts.lua"
 
 
 def mapped_classes() -> set[str]:
-    text = io.open(FILTER, encoding="utf-8").read()
+    text = FILTER.read_text(encoding="utf-8")
     return set(re.findall(r'\["([a-z0-9-]+)"\]\s*=', text))
 
 
@@ -56,7 +55,7 @@ def main() -> int:
 
     for b in books:
         name = Path(b).name
-        text = io.open(b, encoding="utf-8").read()
+        text = Path(b).read_text(encoding="utf-8")
         parts = text.split("---", 2)
         fm = parts[1] if len(parts) > 2 else ""
 

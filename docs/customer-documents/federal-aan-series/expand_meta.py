@@ -27,9 +27,9 @@ SSA build needs a file inside the published tree.
 """
 from __future__ import annotations
 
-import io
 import re
 import sys
+from pathlib import Path
 
 import yaml
 
@@ -62,8 +62,8 @@ def main() -> int:
     if len(sys.argv) != 4:
         return print(__doc__) or 2
     edition, src, dst = sys.argv[1:4]
-    meta = yaml.safe_load(io.open(edition, encoding="utf-8").read()) or {}
-    text = io.open(src, encoding="utf-8").read()
+    meta = yaml.safe_load(Path(edition).read_text(encoding="utf-8")) or {}
+    text = Path(src).read_text(encoding="utf-8")
     out, missing = expand(text, meta)
     if missing:
         print(
@@ -73,7 +73,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    io.open(dst, "w", encoding="utf-8", newline="\n").write(out)
+    Path(dst).write_text(out, encoding="utf-8", newline="\n")
     return 0
 
 

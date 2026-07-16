@@ -30,7 +30,6 @@ Usage:
 from __future__ import annotations
 
 import glob
-import io
 import re
 import sys
 from pathlib import Path
@@ -51,7 +50,7 @@ FORBIDDEN = [
 
 
 def author_of(path: Path) -> str | None:
-    text = io.open(path, encoding="utf-8").read()
+    text = path.read_text(encoding="utf-8")
     parts = text.split("---", 2)
     if len(parts) < 3:
         return None
