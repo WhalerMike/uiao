@@ -434,11 +434,9 @@ Go to <https://github.com/WhalerMike/uiao/actions/workflows/image-gen.yml> and c
 | Input | Default | Effect |
 |-------|---------|--------|
 | `dry_run` | `false` | When `true`, the job scans placeholders and prints the prompts it *would* send to Gemini — no API calls, no quota cost. Useful for verifying that a new `[IMAGE-REF: UIAO-FIG-NNN]` placeholder resolves before paying for a real render. |
-| `commit_back` | `false` | When `true`, the job pushes the rendered PNGs (via Git LFS), their `.png.json` sidecars, and any `image-registry.yaml` updates (`file_sha256`, `generated_at`, fresh `used_by` entries) back to the ref the workflow ran from. When `false`, the PNGs are uploaded as a 30-day workflow artifact and you commit them manually. |
+| `commit_back` | `false` | When `true`, the job pushes the *text* outputs back to the ref the workflow ran from: `[IMAGE-NN:]` placeholder rewrites in `.qmd`/`.md` and any `image-registry.yaml` updates (`generated_at`, fresh `used_by` entries). Rendered PNGs are **never committed** — they are uploaded as a 30-day workflow artifact either way. |
 
-For **canon figures** (anything registered in `image-registry.yaml`), dispatch with `commit_back: true` so the registry's `file_sha256` placeholder zeros are backfilled atomically with the PNG landing. Without `commit_back`, you must download the artifact, copy the PNGs in, and hand-edit the sha256 in a follow-up PR — easy to forget, easy to mismatch.
-
-For **doc-local figures**, `commit_back: false` is usually right: review the artifact ZIP, then bring approved PNGs into your branch PR.
+Rendered PNGs and their `.png.json` sidecars are untracked build artifacts: the committed SVG is the source of truth, and the Quarto site build (`quarto.yml`) rasterizes every SVG before rendering, so the published site always carries fresh PNGs. The `derived-binary-gate` workflow and the `block-tracked-build-artifacts` pre-commit hook reject any attempt to commit a PNG whose sibling SVG is tracked (grandfathered exceptions: `scripts/svg-derived-png-allowlist.txt`). For local authoring or DOCX preview, regenerate on demand with `python scripts/render_svg_images.py`.
 
 Artifacts also download from the run's summary page either way. See [Document Generation Guide](document-generation-guide.html) for details.
 
@@ -639,7 +637,7 @@ These run as advisory-first lint jobs and graduate to blocking once the registry
 Not without a separate adapter. The pipeline is wired for Gemini today. Adding a second generator means a new `generator` enum value, new API integration, and a decision about whether to re-render existing images with the new model (no — `generator` is recorded per entry for reproducibility).
 
 **Q: Can I commit PNGs directly without going through the pipeline?**
-Technically yes (`git add -f`). Operationally no — the pipeline will flag `DRIFT-PROVENANCE` because the hashes won't match and no sidecar exists. Correct path is always: prompt file → pipeline → PNG + sidecar + registry entry.
+No. For SVG-derived figures the `block-tracked-build-artifacts` pre-commit hook and the `derived-binary-gate` CI workflow reject the commit outright — the SVG is the committed source and the PNG is rendered at build time. For legacy AI-generated bitmaps (no SVG source), the pipeline will flag `DRIFT-PROVENANCE` because the hashes won't match and no sidecar exists. Correct path is always: SVG (or prompt file) → pipeline → rendered output.
 
 **Q: What about SVG diagrams authored by hand?**
 Hand-authored SVG/PlantUML/Mermaid/Graphviz diagrams live outside this pipeline. They are source-controlled as text (`.svg`, `.mmd`, `.puml`), rendered by Quarto at build time, and don't carry `UIAO-FIG-NNN` identity unless explicitly registered. The `[IMAGE-REF:]` mechanism is for AI-generated bitmaps; hand diagrams use standard Markdown image syntax.

@@ -1,0 +1,45 @@
+name: Derived binary gate
+
+# ADR-093 closed-world gate: committed SVGs are the figure sources; the
+# sibling PNGs (+ .png.json sidecars) the docs reference are BUILD
+# ARTIFACTS — rendered in CI before every Quarto render (quarto.yml) and
+# locally while authoring (scripts/render_svg_images.py). This workflow
+# asserts that no tracked PNG/sidecar has a tracked sibling SVG, outside
+# the grandfathered allowlist (scripts/svg-derived-png-allowlist.txt).
+#
+# The pre-commit hook (scripts/check_staged_build_artifacts.sh) enforces
+# the same invariant on staged files; this workflow is the backstop for
+# commits made with hooks skipped or from CI automation.
+
+on:
+  pull_request:
+    paths:
+      - '**/*.png'
+      - '**/*.png.json'
+      - '**/*.svg'
+      - 'scripts/check_no_tracked_derived_pngs.sh'
+      - 'scripts/svg-derived-png-allowlist.txt'
+      - '.github/workflows/derived-binary-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.png'
+      - '**/*.png.json'
+      - '**/*.svg'
+      - 'scripts/check_no_tracked_derived_pngs.sh'
+      - 'scripts/svg-derived-png-allowlist.txt'
+      - '.github/workflows/derived-binary-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: No tracked SVG-derived PNGs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Assert no tracked PNG has a tracked sibling SVG
+        run: bash scripts/check_no_tracked_derived_pngs.sh

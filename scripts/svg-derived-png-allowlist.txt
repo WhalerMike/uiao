@@ -1,0 +1,27 @@
+# ADR-093 derived-PNG gate allowlist.
+#
+# Each non-comment line is an extended regex matched against the figure's
+# BASE path — the tracked path with the trailing `.png` / `.png.json` /
+# `.svg` stripped. A match permits the PNG (and its sidecar) to stay
+# tracked even though a sibling SVG source is also tracked.
+#
+# Used by:
+#   scripts/check_staged_build_artifacts.sh   (pre-commit, staged files)
+#   scripts/check_no_tracked_derived_pngs.sh  (CI, whole tree)
+#
+# Keep this list SHRINKING. Every entry is a grandfathered exception, not
+# an invitation.
+
+# Federal AAN series: figure regeneration is mid-flight in a parallel
+# program (see project memory / PR #1245 move). Its PNGs stay tracked
+# until that program adopts CI-side rasterization; do not extend this
+# carve-out to new directories.
+^docs/customer-documents/federal-aan-series/
+
+# These three canonical figures use <foreignObject>, which cairosvg cannot
+# rasterize — they need the Playwright fallback, which CI render jobs do
+# not install. Their PNGs stay tracked until they are redrawn without
+# foreignObject.
+^docs/images/canonical/UIAO-FIG-001-governance-os-overview$
+^docs/images/canonical/UIAO-FIG-005-three-compliance-layers$
+^docs/images/canonical/UIAO-FIG-007-uiao-differentiators$
