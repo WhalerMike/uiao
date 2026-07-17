@@ -48,8 +48,7 @@ SPINE = Path(__file__).with_name("aan-compliance-spine.yml")
 # FedRAMP's own. (Reference data, not UIAO engine code — the series' stand-alone
 # posture is unaffected.)
 _CR26_CATALOG_GLOB = (
-    "src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/"
-    "catalog/json/FedRAMP_CR26_catalog.json"
+    "src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/catalog/json/FedRAMP_CR26_catalog.json"
 )
 
 
@@ -71,6 +70,7 @@ def _valid_ksi_themes() -> set[str]:
     except OSError:
         return set()
     return set(re.findall(r"\bKSI-[A-Z]{3}\b", raw))
+
 
 # Column order for the generated "Authorities Closed Here" table.
 COLUMNS = [
@@ -117,8 +117,7 @@ def validate(spine: dict) -> list[str]:
             for k in c.get("ksi") or []:
                 if k not in ksi_ids:
                     errors.append(
-                        f"{where}: unknown KSI theme '{k}' — not in the CR26 catalog "
-                        f"({', '.join(sorted(ksi_ids))})"
+                        f"{where}: unknown KSI theme '{k}' — not in the CR26 catalog ({', '.join(sorted(ksi_ids))})"
                     )
         if not isinstance(c.get("plane"), int) or not 1 <= c["plane"] <= 7:
             errors.append(f"{where}: plane must be an int 1-7")
@@ -280,7 +279,9 @@ def check_inline(spine: dict, roots: list[Path]) -> int:
             try:
                 ksi_idx = next(k for k, c in enumerate(cols) if "KSI" in c and "20x" in c)
             except StopIteration:
-                errors.append(f"{qmd.name}:{j + 1}: authorities:{book_id} table header missing the 'FedRAMP 20x KSI' column")
+                errors.append(
+                    f"{qmd.name}:{j + 1}: authorities:{book_id} table header missing the 'FedRAMP 20x KSI' column"
+                )
                 continue
             k = j + 2  # skip the |---| separator
             while k < len(lines) and lines[k].lstrip().startswith("|"):
@@ -301,9 +302,7 @@ def check_inline(spine: dict, roots: list[Path]) -> int:
                         f"{ncols} — an unescaped '|' inside a cell (escape it as '\\|')"
                     )
                     continue
-                got_ksi = frozenset(
-                    t.strip() for t in cells[ksi_idx].split(",") if t.strip() and t.strip() != "—"
-                )
+                got_ksi = frozenset(t.strip() for t in cells[ksi_idx].split(",") if t.strip() and t.strip() != "—")
                 if got_ksi != want_ksi:
                     errors.append(
                         f"{qmd.name}:{k}: {ctrl} KSI is {sorted(got_ksi) or ['—']}, "
@@ -340,8 +339,11 @@ def main() -> int:
     ap.add_argument("--book", help="print one book's table to stdout")
     ap.add_argument("--emit-dir", help="write authorities-<book>.md partials into DIR")
     ap.add_argument("--check", metavar="DIR", help="drift gate against committed partials")
-    ap.add_argument("--check-inline", action="store_true",
-                    help="drift gate: inline .qmd authorities tables (control->KSI/title) vs the spine")
+    ap.add_argument(
+        "--check-inline",
+        action="store_true",
+        help="drift gate: inline .qmd authorities tables (control->KSI/title) vs the spine",
+    )
     args = ap.parse_args()
 
     # Windows consoles default to cp1252; the tables carry '†' and '—'.

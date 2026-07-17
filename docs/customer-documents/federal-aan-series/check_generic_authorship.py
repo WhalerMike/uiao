@@ -27,6 +27,7 @@ Passing this does not mean a book is generic.
 Usage:
     python check_generic_authorship.py     # gate; exit 1 on any breach
 """
+
 from __future__ import annotations
 
 import glob
@@ -50,7 +51,7 @@ FORBIDDEN = [
 
 
 def author_of(path: Path) -> str | None:
-    text = open(path, encoding="utf-8").read()
+    text = path.read_text(encoding="utf-8")
     parts = text.split("---", 2)
     if len(parts) < 3:
         return None
@@ -73,16 +74,14 @@ def main() -> int:
         a = author_of(Path(b))
         if not a:
             problems.append(
-                f"  {name}: declares no author — silence is not neutrality; the omission "
-                f"is invisible in review"
+                f"  {name}: declares no author — silence is not neutrality; the omission is invisible in review"
             )
             continue
         authors[a] = authors.get(a, 0) + 1
         hits = offending(a)
         if hits:
             problems.append(
-                f"  {name}: author {a!r} names {hits} — an agency/internal byline is the "
-                f"thing the de-brand removes"
+                f"  {name}: author {a!r} names {hits} — an agency/internal byline is the thing the de-brand removes"
             )
 
     print("AAN generic authorship")
@@ -94,8 +93,7 @@ def main() -> int:
         print(f"\nFAIL — {len(problems)} breach(es):")
         print("\n".join(problems))
         return 1
-    print("\nOK — every book declares an author, and none is bylined to a specific "
-          "agency or internal team.")
+    print("\nOK — every book declares an author, and none is bylined to a specific agency or internal team.")
     return 0
 
 

@@ -210,8 +210,10 @@ def main() -> int:
 
     print("AAN CR26-indicator check")
     print("=" * 44)
-    print(f"Valid CR26 indicators: {len(valid)} | indicator citations: {ids_seen} | "
-          f"number->theme bindings: {bind_seen} | theme codes: {theme_seen}")
+    print(
+        f"Valid CR26 indicators: {len(valid)} | indicator citations: {ids_seen} | "
+        f"number->theme bindings: {bind_seen} | theme codes: {theme_seen}"
+    )
     if errors:
         print("\nERRORS:")
         for e in errors:

@@ -19,6 +19,7 @@ Either way it ships.
 Usage:
     python check_edition_keys.py     # gate; exit 1 on any breach
 """
+
 from __future__ import annotations
 
 import glob
@@ -59,14 +60,14 @@ def flatten(d, prefix=""):
 
 
 def defined(path: Path) -> set[str]:
-    doc = yaml.safe_load(open(path, encoding="utf-8").read()) or {}
+    doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return {k for k in flatten(doc) if k.startswith("agency.")}
 
 
 def main() -> int:
     used: dict[str, list[str]] = {}
     for f in sorted(glob.glob(str(HERE / "Vol_*_Book_*.qmd"))):
-        for m in SHORTCODE.finditer(open(f, encoding="utf-8").read()):
+        for m in SHORTCODE.finditer(Path(f).read_text(encoding="utf-8")):
             used.setdefault(m.group(1), []).append(Path(f).name)
 
     fed, ssa = defined(FEDERAL), defined(SSA)
@@ -90,16 +91,14 @@ def main() -> int:
 
     print("AAN edition keys")
     print("=" * 68)
-    print(f"keys used by books: {len(used)} | federal defines: {len(fed)} | "
-          f"SSA defines: {len(ssa)}")
+    print(f"keys used by books: {len(used)} | federal defines: {len(fed)} | SSA defines: {len(ssa)}")
     if dead:
         print(f"defined but unused ({len(dead)}): {', '.join(dead)}")
     if problems:
         print(f"\nFAIL — {len(problems)} breach(es):")
         print("\n".join(problems))
         return 1
-    print("\nOK — every key a book uses resolves in both editions, and neither "
-          "edition defines a key the other lacks.")
+    print("\nOK — every key a book uses resolves in both editions, and neither edition defines a key the other lacks.")
     return 0
 
 

@@ -15,6 +15,7 @@ FedRAMP-Moderate *scope* prose is never touched.
 
 Usage:  python check_vendor_authorization_sources.py     # exit 1 on any gap
 """
+
 from __future__ import annotations
 
 import re
@@ -50,8 +51,7 @@ def main() -> int:
     print("=" * 44)
     print(f"Vendor authorization-level cells checked: {checked}")
     if not problems:
-        print("\nOK — every vendor FedRAMP/GCC authorization cell carries a "
-              "Marketplace source.")
+        print("\nOK — every vendor FedRAMP/GCC authorization cell carries a Marketplace source.")
         return 0
     print(f"\nFAIL — {len(problems)} authorization assertion(s) missing a source:")
     print("\n".join(problems))
