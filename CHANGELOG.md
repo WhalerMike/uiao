@@ -4,6 +4,25 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+### Security
+
+- **BREAKING: the on-prem API's bearer auth now fails closed
+  (`uiao.api.routes._auth`).** Previously `require_auditor` accepted any
+  non-empty bearer token, decoded the JWT payload without verifying the
+  signature, expiry, audience, or issuer, and silently defaulted the subject
+  to `"auditor"` on parse failure — on live enforcement, CQL, and auditor
+  routes. The dependency now verifies inbound Entra ID JWTs (RS256 via the
+  issuing tenant's JWKS, plus `exp`/`nbf`/`aud`/`iss`/`tid` claim checks)
+  through `uiao.saas.auth.EntraTokenVerifier` by default
+  (`UIAO_API_AUTH_MODE=entra`). Deployments must set
+  `UIAO_API_AUTH_AUDIENCE` (optionally `UIAO_API_AUTH_TENANTS`,
+  `UIAO_API_AUTH_CLOUD`, `UIAO_API_AUTH_REQUIRED_ROLES`); the previous
+  accept-anything behavior requires an explicit
+  `UIAO_API_AUTH_MODE=insecure-dev` opt-in and must not be used outside
+  local development. `uiao.api.routes.auditor` now shares this dependency
+  instead of carrying its own unverified copy, and `pyjwt[crypto]` moved
+  into the `[api]` extra.
+
 ### Added
 
 - **ADR-097 — SQL Server transformation placement.** Settles the SQL Server

@@ -23,46 +23,17 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from uiao.api.routes._auth import require_auditor
 
 router = APIRouter()
-_bearer = HTTPBearer(auto_error=False)
 
 
 # ---------------------------------------------------------------------------
-# Auth dependency — Bearer token with role check
+# Auth dependency — shared fail-closed verifier (see routes/_auth.py)
 # ---------------------------------------------------------------------------
 
-
-def _require_auditor(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
-) -> str:
-    """
-    Validates Bearer token and returns the subject claim.
-    In production: validates JWT signature against Entra ID JWKS.
-    In development/test: accepts any non-empty Bearer token.
-    """
-    if credentials is None or not credentials.credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Bearer token required. Role: UIAO.Viewer or UIAO.Auditor",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    token = credentials.credentials
-    # Production: validate JWT with python-jose or msal
-    # For now: extract sub from token if it is a real JWT, else use token as subject
-    try:
-        import base64
-        import json as _json
-
-        parts = token.split(".")
-        if len(parts) == 3:
-            padded = parts[1] + "=" * (4 - len(parts[1]) % 4)
-            payload = _json.loads(base64.urlsafe_b64decode(padded))
-            return payload.get("sub", payload.get("oid", "auditor"))  # type: ignore[no-any-return]
-    except Exception:
-        pass
-    return "auditor"
+_require_auditor = require_auditor
 
 
 # ---------------------------------------------------------------------------

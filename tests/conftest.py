@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import contextlib
+import os
 from pathlib import Path
 
 import pytest
 
 from canon_paths import CANON_ROOT, DATA_DIR, GENERATION_INPUTS_DIR
+
+# The API tests exercise routers with placeholder bearer tokens. The auth
+# dependency fails closed by default (UIAO_API_AUTH_MODE=entra), so the suite
+# opts into the explicit insecure development mode here; tests covering the
+# hardened path override this per-test (tests/test_api_auth.py).
+os.environ.setdefault("UIAO_API_AUTH_MODE", "insecure-dev")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
