@@ -4,6 +4,27 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- **SVG-derived PNGs are no longer tracked (repo −66 MB, 865 files).** For
+  every figure whose committed `.svg` source sits beside a committed `.png`,
+  the PNG and its `.png.json` sidecar are now build artifacts, exactly as
+  ADR-093 always declared: `quarto.yml` rasterizes all SVGs (cairosvg)
+  before each of its seven render jobs, `link-check.yml` materializes empty
+  stand-ins so lychee can resolve local image paths on PRs, and
+  `image-gen.yml`'s commit-back now pushes only text outputs (placeholder
+  rewrites + registry updates) — its stale Git-LFS wiring is gone (LFS was
+  retired per `.gitattributes`). Two gates keep the invariant closed-world:
+  the `block-tracked-build-artifacts` pre-commit hook now rejects staging
+  any PNG/sidecar whose sibling SVG is tracked, and the new
+  `derived-binary-gate.yml` workflow asserts tree-wide that no such pair
+  exists. Grandfathered exceptions live in
+  `scripts/svg-derived-png-allowlist.txt`: the `federal-aan-series/` tree
+  (figure work mid-flight in a parallel program) and three canonical
+  figures whose `<foreignObject>` SVGs need the Playwright rasterizer.
+  Local authoring: `python scripts/render_svg_images.py` regenerates
+  everything on demand.
+
 ### Security
 
 - **BREAKING: the on-prem API's bearer auth now fails closed

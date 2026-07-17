@@ -41,6 +41,21 @@ jobs:
         with:
           pattern: '(\.md$|\.qmd$|^\.lychee\.toml$|^\.lycheeignore$|^\.github/workflows/link-check\.yml$|^\.github/actions/pr-relevant/)'
 
+      - name: Materialize SVG-derived PNG stand-ins
+        # lychee resolves relative image links against the checkout, but
+        # SVG-derived PNGs are untracked build artifacts (ADR-093 — rendered
+        # by quarto.yml at site-build time, see derived-binary-gate.yml).
+        # Link checking only needs the paths to EXIST, so create empty
+        # stand-ins for every tracked SVG's sibling PNG instead of paying a
+        # full rasterize on each PR.
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          set -euo pipefail
+          git ls-files -- '*.svg' | while IFS= read -r s; do
+            p="${s%.svg}.png"
+            [ -e "$p" ] || : > "$p"
+          done
+
       - name: Run lychee link checker
         if: steps.changes.outputs.relevant == 'true'
         uses: lycheeverse/lychee-action@v2
