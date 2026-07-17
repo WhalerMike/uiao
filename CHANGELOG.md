@@ -9,8 +9,11 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 - **SVG-derived PNGs are no longer tracked (repo −66 MB, 865 files).** For
   every figure whose committed `.svg` source sits beside a committed `.png`,
   the PNG and its `.png.json` sidecar are now build artifacts, exactly as
-  ADR-093 always declared: `quarto.yml` rasterizes all SVGs (cairosvg)
-  before each of its seven render jobs, `link-check.yml` materializes empty
+  ADR-093 always declared: `quarto.yml` rasterizes every untracked-PNG
+  figure (cairosvg, via `scripts/ci_render_untracked_figures.sh`) before
+  each of its seven render jobs — with a same-command canary in
+  `derived-binary-gate.yml` so a cairosvg-incompatible SVG fails on its PR,
+  not post-merge on main — `link-check.yml` materializes empty
   stand-ins so lychee can resolve local image paths on PRs, and
   `image-gen.yml`'s commit-back now pushes only text outputs (placeholder
   rewrites + registry updates) — its stale Git-LFS wiring is gone (LFS was
@@ -20,8 +23,9 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
   `derived-binary-gate.yml` workflow asserts tree-wide that no such pair
   exists. Grandfathered exceptions live in
   `scripts/svg-derived-png-allowlist.txt`: the `federal-aan-series/` tree
-  (figure work mid-flight in a parallel program) and three canonical
-  figures whose `<foreignObject>` SVGs need the Playwright rasterizer.
+  (figure work mid-flight in a parallel program), three canonical figures
+  whose `<foreignObject>` SVGs need the Playwright rasterizer, and two
+  orgpath-narrative figures that trip a cairosvg parse bug.
   Local authoring: `python scripts/render_svg_images.py` regenerates
   everything on demand.
 
