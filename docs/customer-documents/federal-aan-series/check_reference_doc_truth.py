@@ -28,6 +28,7 @@ Three invariants:
 Usage:
     python check_reference_doc_truth.py     # gate; exit 1 on any divergence
 """
+
 from __future__ import annotations
 
 import glob
@@ -43,7 +44,7 @@ def declared(path: Path) -> str | None:
     """The reference-doc a book declares, or None. Handles BOTH front-matter
     styles in this corpus: flow (`docx: {reference-doc: x, ...}`, 17 books) and
     expanded (`docx:` then an indented `reference-doc: x`, 41 books)."""
-    text = open(path, encoding="utf-8").read()
+    text = path.read_text(encoding="utf-8")
     fm = text.split("---", 2)
     if len(fm) < 3:
         return None
@@ -52,7 +53,7 @@ def declared(path: Path) -> str | None:
 
 
 def script_ref(path: Path) -> str | None:
-    m = re.search(r'^REF="([^"]+)"', open(path, encoding="utf-8").read(), re.M)
+    m = re.search(r'^REF="([^"]+)"', path.read_text(encoding="utf-8"), re.M)
     return m.group(1) if m else None
 
 
@@ -103,15 +104,16 @@ def main() -> int:
 
     print("AAN reference-doc truth")
     print("=" * 68)
-    print(f"books: {len(books)} | declaring: {len(decls)} | "
-          f"distinct declarations: {len(set(decls.values()))} | "
-          f"scripts checked: {len(refs)}")
+    print(
+        f"books: {len(books)} | declaring: {len(decls)} | "
+        f"distinct declarations: {len(set(decls.values()))} | "
+        f"scripts checked: {len(refs)}"
+    )
     if problems:
         print(f"\nFAIL — {len(problems)} divergence(s):")
         print("\n".join(problems))
         return 1
-    print("\nOK — every book declares the reference doc the build actually passes, "
-          "and it exists.")
+    print("\nOK — every book declares the reference doc the build actually passes, and it exists.")
     return 0
 
 

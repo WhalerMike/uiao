@@ -34,6 +34,7 @@ explicit and attributable; it does not make it true.
 Usage:
     python check_l3_ceiling.py     # gate; exit 1 on any undeclared exceedance
 """
+
 from __future__ import annotations
 
 import json
@@ -130,10 +131,7 @@ def main() -> int:
 
     print("Day-2 L3 ceiling (ADR-092 s4)")
     print("=" * 68)
-    print(
-        f"automated items: {n_auto} | declared reads/records: {n_read} | "
-        f"enumerated L4 writes: {n_l4}"
-    )
+    print(f"automated items: {n_auto} | declared reads/records: {n_read} | enumerated L4 writes: {n_l4}")
     if problems:
         print(f"\nFAIL — {len(problems)} undeclared exceedance(s):")
         print("\n".join(problems))

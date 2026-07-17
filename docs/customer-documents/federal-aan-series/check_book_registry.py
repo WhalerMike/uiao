@@ -35,6 +35,7 @@ wherever they live.
 Usage:
     python check_book_registry.py     # gate; exit 1 on any disagreement
 """
+
 from __future__ import annotations
 
 import glob
@@ -67,7 +68,7 @@ SPINE = HERE / "aan-compliance-spine.yml"
 
 def registry() -> list[tuple[str, str]]:
     """(book id, declared source path) for every book the spine registers."""
-    doc = yaml.safe_load(open(SPINE, encoding="utf-8").read()) or {}
+    doc = yaml.safe_load(SPINE.read_text(encoding="utf-8")) or {}
     out = []
     for b in doc.get("books", []):
         src = str(b.get("source", "")).strip()
@@ -84,8 +85,7 @@ def main() -> int:
     missing = [(bid, src) for bid, src in reg if not (REPO_ROOT / src).exists()]
     for bid, src in missing:
         problems.append(
-            f"  spine registers {bid!r} at {src!r} — that file does not exist. A "
-            f"closure claim pointing at nothing."
+            f"  spine registers {bid!r} at {src!r} — that file does not exist. A closure claim pointing at nothing."
         )
 
     # 2. disk -> registry (scoped to this directory's books; Vol VIII lives at the
@@ -98,10 +98,7 @@ def main() -> int:
         if key not in declared:
             orphans.append(os.path.basename(p))
     for o in orphans:
-        problems.append(
-            f"  {o} is on disk but no spine book registers it — it renders, ships, "
-            f"and closes nothing."
-        )
+        problems.append(f"  {o} is on disk but no spine book registers it — it renders, ships, and closes nothing.")
 
     qmd_registered = sum(1 for _, s in reg if s.endswith(".qmd"))
     print("AAN book registry vs disk")

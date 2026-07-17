@@ -16,6 +16,7 @@ currently prove, so we only assert spine ⊆ master.
 
 Usage:  python check_crosswalk_superset.py        # exit 1 on any gap
 """
+
 from __future__ import annotations
 
 import re
@@ -82,19 +83,23 @@ def main() -> int:
         book = books_by_id[book_id]
         if not _is_canonical_series_book(book):
             continue
-        roman, short = labels[book_id]              # short = "Vol X Bk NN"
+        roman, short = labels[book_id]  # short = "Vol X Bk NN"
         want_row = f"Vol {roman} Book {short.rsplit(' ', 1)[-1]}"
         if want_row not in design:
             missing_books.append(f"  {want_row} ({book_id}) has spine closures but no designation-table row")
 
     print("AAN crosswalk-superset check")
     print("=" * 44)
-    print(f"Spine controls: {len(want)} | master rows: {len(have)} | "
-          f"canonical closing books: {sum(_is_canonical_series_book(books_by_id[b]) for b in closing)} | "
-          f"designation rows: {len(design)}")
+    print(
+        f"Spine controls: {len(want)} | master rows: {len(have)} | "
+        f"canonical closing books: {sum(_is_canonical_series_book(books_by_id[b]) for b in closing)} | "
+        f"designation rows: {len(design)}"
+    )
     if not missing and not missing_books:
-        print("\nOK — master crosswalk has a row for every spine control; "
-              "designation table lists every canonical series book with closures.")
+        print(
+            "\nOK — master crosswalk has a row for every spine control; "
+            "designation table lists every canonical series book with closures."
+        )
         return 0
     if missing:
         print(f"\nFAIL — {len(missing)} spine control(s) have no master crosswalk row:")

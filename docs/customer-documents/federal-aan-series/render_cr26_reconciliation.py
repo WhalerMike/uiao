@@ -57,17 +57,22 @@ SCUBA_THEMES = {"KSI-IAM", "KSI-SVC", "KSI-MLA", "KSI-CNA"}
 
 # Presentation order: ScuBA-touched themes first, then the fully-mapped themes.
 THEME_ORDER = [
-    "KSI-IAM", "KSI-CNA", "KSI-SVC", "KSI-MLA",
-    "KSI-CMT", "KSI-PIY", "KSI-SCR", "KSI-CED", "KSI-INR", "KSI-RPL",
+    "KSI-IAM",
+    "KSI-CNA",
+    "KSI-SVC",
+    "KSI-MLA",
+    "KSI-CMT",
+    "KSI-PIY",
+    "KSI-SCR",
+    "KSI-CED",
+    "KSI-INR",
+    "KSI-RPL",
 ]
 
 
 def find_catalog() -> Path:
     matches = sorted(
-        REPO.glob(
-            "src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/"
-            "catalog/json/FedRAMP_CR26_catalog.json"
-        )
+        REPO.glob("src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/catalog/json/FedRAMP_CR26_catalog.json")
     )
     if not matches:
         sys.exit("CR26 catalog not found under src/uiao/canon/compliance/reference/fedramp-cr26/")
@@ -86,7 +91,7 @@ def walk(groups):
 
 
 def load_catalog(path: Path):
-    cat = json.load(open(path, encoding="utf-8"))["catalog"]
+    cat = json.loads(path.read_text(encoding="utf-8"))["catalog"]
     themes: dict[str, dict] = {}
     for kind, cid, title in walk(cat.get("groups", []) or []):
         if kind == "group":
@@ -101,7 +106,7 @@ def load_catalog(path: Path):
 def load_rules():
     rules = {}
     for f in sorted(glob.glob(str(REPO / "src/uiao/ksi/rules/KSI-0*.yaml"))):
-        d = yaml.safe_load(open(f, encoding="utf-8"))
+        d = yaml.safe_load(Path(f).read_text(encoding="utf-8"))
         m = d.get("Mappings", {}) or {}
         rules[d["KSI_ID"]] = {
             "cr26": m.get("CR26", ""),
@@ -121,9 +126,7 @@ def render() -> str:
 
     order = [t for t in THEME_ORDER if t in themes]
     tot = sum(len(themes[t]["ind"]) for t in order)
-    mapped = sum(
-        1 for t in order for cid, _ in themes[t]["ind"] if cid in cr26_to_rule
-    )
+    mapped = sum(1 for t in order for cid, _ in themes[t]["ind"] if cid in cr26_to_rule)
 
     L = []
     L.append("# ADR-111 Rule Set → CR26 Moderate Indicator Reconciliation")
@@ -137,7 +140,7 @@ def render() -> str:
     L.append(
         "> **Provenance.** Internal rule set: the 29 "
         "`src/uiao/ksi/rules/KSI-0NN.yaml` files (the series' \"ADR-111 rule "
-        "set\"). CR26 catalog: the authoritative FedRAMP CR26 OSCAL catalog "
+        'set"). CR26 catalog: the authoritative FedRAMP CR26 OSCAL catalog '
         "committed in-repo at "
         f"`src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/{snap}/"
         "catalog/json/FedRAMP_CR26_catalog.json`. Each rule's declared "
@@ -201,16 +204,9 @@ def render() -> str:
         inds = themes[th]["ind"]
         n = len(inds)
         m = sum(1 for cid, _ in inds if cid in cr26_to_rule)
-        cov = (
-            "fully mapped"
-            if m == n
-            else ("partial (ScuBA baseline)" if th in SCUBA_THEMES else "not yet mapped")
-        )
+        cov = "fully mapped" if m == n else ("partial (ScuBA baseline)" if th in SCUBA_THEMES else "not yet mapped")
         L.append(f"| {th} — {themes[th]['title']} | {n} | {m} | {cov} |")
-    L.append(
-        f"| **Total** | **{tot}** | **{mapped}** | "
-        f"**{mapped}/{tot} explicitly mapped** |"
-    )
+    L.append(f"| **Total** | **{tot}** | **{mapped}** | **{mapped}/{tot} explicitly mapped** |")
     L.append("")
 
     # Remediation plan for the not-yet-mapped indicators.

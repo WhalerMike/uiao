@@ -13,6 +13,7 @@ Book 06's "7" already follows).
 
 Usage:  python check_control_closed_counts.py      # exit 1 on any mismatch
 """
+
 from __future__ import annotations
 
 import re
@@ -45,10 +46,7 @@ def main() -> int:
             stated = int(m.group(1))
             actual = group_count(m.group(2))
             if stated != actual:
-                problems.append(
-                    f"  {qmd.name}:{i}: headline says {stated}, enumeration has "
-                    f"{actual} comma-groups"
-                )
+                problems.append(f"  {qmd.name}:{i}: headline says {stated}, enumeration has {actual} comma-groups")
 
     print("AAN control-closed count check")
     print("=" * 44)

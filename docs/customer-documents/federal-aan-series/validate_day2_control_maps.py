@@ -106,10 +106,7 @@ def valid_slots() -> set[str]:
 
 def valid_themes() -> set[str]:
     matches = sorted(
-        REPO.glob(
-            "src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/"
-            "catalog/json/FedRAMP_CR26_catalog.json"
-        )
+        REPO.glob("src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/*/catalog/json/FedRAMP_CR26_catalog.json")
     )
     if not matches:
         sys.exit("CR26 catalog not found — cannot validate KSI themes")
@@ -214,8 +211,11 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     errors, warnings = validate(strict_projection=args.strict_projection)
     if warnings:
-        print("PRE-EXISTING MAP/SPINE DELTAS (not blocking; need an owner decision):",
-              *(f"  {w}" for w in warnings), sep="\n")
+        print(
+            "PRE-EXISTING MAP/SPINE DELTAS (not blocking; need an owner decision):",
+            *(f"  {w}" for w in warnings),
+            sep="\n",
+        )
         print()
     if errors:
         print("DAY-2 CONTROL-MAP DRIFT:", *(f"  {e}" for e in errors), sep="\n")

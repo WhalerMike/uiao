@@ -29,6 +29,7 @@ raises and routes, Graph-via-MID actuates, a human approves.
 
 Usage:  python contract_check.py          # exit 1 on any breach
 """
+
 from __future__ import annotations
 
 import json
@@ -48,7 +49,6 @@ CONTAINERS = {"payload", "opts", "request"}
 
 # Values that must NEVER be typed into the catalog form (IA-5).
 SECRET_PARAMS = {"tempPassword"}
-
 
 
 def client_required_params(path: Path) -> set[str]:
@@ -98,8 +98,7 @@ def main() -> int:
     # 1. coverage
     for miss in sorted(required - covered):
         problems.append(
-            f"  {miss!r} is required by the client/gate but is neither <map_to> nor "
-            f"<resolved_by_mid> in {VARSET.name}"
+            f"  {miss!r} is required by the client/gate but is neither <map_to> nor <resolved_by_mid> in {VARSET.name}"
         )
 
     # 2. secrets must be MID-resolved, never a form field
@@ -116,8 +115,10 @@ def main() -> int:
 
     print("Lane C catalog<->Script-Include contract check")
     print("=" * 52)
-    print(f"client/gate required: {len(required)} | form-collected: {len(form)} | "
-          f"MID-resolved: {len(mid)} | catalog items: {len(item_keys)}")
+    print(
+        f"client/gate required: {len(required)} | form-collected: {len(form)} | "
+        f"MID-resolved: {len(mid)} | catalog items: {len(item_keys)}"
+    )
     if undeclared:
         print(f"declared actuator gaps ({len(undeclared)}): " + ", ".join(undeclared))
 
@@ -125,8 +126,10 @@ def main() -> int:
         print(f"\nFAIL — {len(problems)} contract breach(es):")
         print("\n".join(problems))
         return 1
-    print("\nOK — the form supplies every client/gate parameter; secrets are "
-          "MID-resolved; every catalog item actuates or declares its gap.")
+    print(
+        "\nOK — the form supplies every client/gate parameter; secrets are "
+        "MID-resolved; every catalog item actuates or declares its gap."
+    )
     return 0
 
 

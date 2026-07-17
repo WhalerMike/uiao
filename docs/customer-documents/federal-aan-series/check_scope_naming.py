@@ -27,6 +27,7 @@ executes ServiceNow, so a half-renamed scope would sit here looking correct.
 Usage:
     python check_scope_naming.py     # gate; exit 1 on any survivor
 """
+
 from __future__ import annotations
 
 import re
@@ -64,7 +65,7 @@ def main() -> int:
         if p.name in HISTORICAL or p.name == SELF:
             continue
         try:
-            text = open(p, encoding="utf-8", errors="strict").read()
+            text = p.read_text(encoding="utf-8", errors="strict")
         except (UnicodeDecodeError, OSError):
             continue
         scanned += 1
@@ -72,8 +73,7 @@ def main() -> int:
         if hits:
             rel = p.relative_to(HERE)
             problems.append(
-                f"  {rel}: {hits} — a partial rename does not fail at lint, it fails "
-                f"at runtime in a tenant"
+                f"  {rel}: {hits} — a partial rename does not fail at lint, it fails at runtime in a tenant"
             )
 
     print("AAN ServiceNow scope naming")
