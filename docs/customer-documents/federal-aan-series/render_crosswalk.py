@@ -143,8 +143,14 @@ def aggregate(spine: dict) -> list[dict]:
         ctrl = c["control"]
         row = by_control.setdefault(
             ctrl,
-            {"control": ctrl, "title": c["title"], "family": _family(ctrl),
-             "books": set(), "ksi": set(), "necessity": False},
+            {
+                "control": ctrl,
+                "title": c["title"],
+                "family": _family(ctrl),
+                "books": set(),
+                "ksi": set(),
+                "necessity": False,
+            },
         )
         row["books"].add(labels[c["book"]][1])
         row["ksi"].update(c.get("ksi") or [])
@@ -261,8 +267,7 @@ def render() -> str:
     title_of = {b["id"]: b["title"] for b in spine["books"]}
     L.append("| Book | Volume/Book | Title |")
     L.append("|---|---|---|")
-    for book_id in sorted(books_with_closures, key=lambda b: (
-            ROMAN_RANK.get(labels[b][0], 99), labels[b][1])):
+    for book_id in sorted(books_with_closures, key=lambda b: (ROMAN_RANK.get(labels[b][0], 99), labels[b][1])):
         L.append(f"| {book_id} | {labels[book_id][1]} | {title_of[book_id]} |")
     L.append("")
     return "\n".join(L)
@@ -289,7 +294,7 @@ def render_not_closed() -> str:
     rows.sort(key=lambda r: _control_sort_key(r[0]))
 
     by_fam: dict[str, int] = {}
-    for c, _t, f, _w in rows:
+    for _c, _t, f, _w in rows:
         by_fam[f] = by_fam.get(f, 0) + 1
 
     L: list[str] = [NC_BEGIN, ""]
@@ -309,8 +314,8 @@ def render_not_closed() -> str:
         "hand-maintained index and the spine — **not** a gap analysis against the "
         "FedRAMP Moderate baseline. A control absent from *both* is invisible here: "
         "the series does not carry an authoritative Moderate control list, so "
-        "\"addressed nowhere\" cannot be enumerated from repo data. Read this as "
-        "*\"claimed in prose, not yet proven by the spine\"* — the larger question "
+        '"addressed nowhere" cannot be enumerated from repo data. Read this as '
+        '*"claimed in prose, not yet proven by the spine"* — the larger question '
         "of baseline completeness is the SSP's, and is open (see the Vol 0 Book 00 "
         "residual-risk section)."
     )
@@ -328,10 +333,7 @@ def render_not_closed() -> str:
     for c, t, f, w in rows:
         L.append(f"| {c} | {t} | {f} | {w} |")
     L.append("")
-    L.append(
-        ": Controls addressed in the series with no spine closure yet — the "
-        "back-fill queue {.striped .hover}"
-    )
+    L.append(": Controls addressed in the series with no spine closure yet — the back-fill queue {.striped .hover}")
     L.append("")
     L.append(NC_END)
     return "\n".join(L)

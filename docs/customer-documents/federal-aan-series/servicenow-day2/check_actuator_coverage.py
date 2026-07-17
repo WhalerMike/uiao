@@ -26,6 +26,7 @@ Usage:
     python check_actuator_coverage.py            # gate; exit 1 on any breach
     python check_actuator_coverage.py --backlog  # list the unimplemented items
 """
+
 from __future__ import annotations
 
 import json
@@ -160,14 +161,15 @@ def main() -> int:
     print("Day-2 actuator coverage")
     print("=" * 68)
     pct = (n_act / n_items * 100) if n_items else 0
-    print(f"maps: {len(maps)} | governed items: {n_items} | actuated: {n_act} ({pct:.0f}%) | "
-          f"declared gaps: {n_gap}")
+    print(f"maps: {len(maps)} | governed items: {n_items} | actuated: {n_act} ({pct:.0f}%) | declared gaps: {n_gap}")
     if problems:
         print(f"\nFAIL — {len(problems)} coverage breach(es):")
         print("\n".join(problems))
         return 1
-    print("\nOK — every item either names a method that exists, or declares why it "
-          "cannot actuate. Run with --backlog for the unimplemented list.")
+    print(
+        "\nOK — every item either names a method that exists, or declares why it "
+        "cannot actuate. Run with --backlog for the unimplemented list."
+    )
     return 0
 
 

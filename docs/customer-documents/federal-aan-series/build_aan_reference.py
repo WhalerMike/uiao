@@ -7,6 +7,7 @@ in the reference doc — so the `aan-callouts.lua` filter maps each Quarto callo
 banner div to one of these styles. This gives the AAN callout boxes in a pandoc
 render when Quarto itself is unavailable. Run once; commit aan-reference.docx.
 """
+
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement
@@ -16,12 +17,12 @@ from docx.shared import RGBColor
 # AAN palette (ink / tint) per AAN_DECK_STYLE_NOTES.md.
 CALLOUTS = {
     # style name       fill(tint)  border(ink)  bold-title-color
-    "CalloutWarning":   ("FBF3E4", "D4860B", "8A6210"),  # amber (draft/caution)
+    "CalloutWarning": ("FBF3E4", "D4860B", "8A6210"),  # amber (draft/caution)
     "CalloutImportant": ("EDF3F9", "1F3A5F", "1F3A5F"),  # navy
-    "CalloutNote":      ("F3F5F8", "5A6B7B", "1F3A5F"),  # neutral
-    "CalloutTip":       ("E6F5F2", "1A9E8F", "1A9E8F"),  # teal (closure-necessity)
-    "CalloutCaution":   ("F9EAE8", "C0392B", "C0392B"),  # red
-    "ExecSummary":      ("EDF3F9", "1F3A5F", "1F3A5F"),  # navy (executive summary box)
+    "CalloutNote": ("F3F5F8", "5A6B7B", "1F3A5F"),  # neutral
+    "CalloutTip": ("E6F5F2", "1A9E8F", "1A9E8F"),  # teal (closure-necessity)
+    "CalloutCaution": ("F9EAE8", "C0392B", "C0392B"),  # red
+    "ExecSummary": ("EDF3F9", "1F3A5F", "1F3A5F"),  # navy (executive summary box)
 }
 
 
@@ -90,8 +91,12 @@ def main():
         _spacing(pPr)
 
     doc.save("aan-reference.docx")
-    print("wrote aan-reference.docx with", len(CALLOUTS) + 1, "AAN callout/banner styles:",
-          ", ".join(sorted(CALLOUTS) + ["FouoBanner"]))
+    print(
+        "wrote aan-reference.docx with",
+        len(CALLOUTS) + 1,
+        "AAN callout/banner styles:",
+        ", ".join(sorted(CALLOUTS) + ["FouoBanner"]),
+    )
 
 
 if __name__ == "__main__":

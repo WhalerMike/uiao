@@ -30,6 +30,7 @@ This gate keeps that true:
 Usage:
     python check_callout_classes.py     # gate; exit 1 on any breach
 """
+
 from __future__ import annotations
 
 import glob
@@ -43,7 +44,7 @@ FILTER_DECL = "aan-callouts.lua"
 
 
 def mapped_classes() -> set[str]:
-    text = open(FILTER, encoding="utf-8").read()
+    text = FILTER.read_text(encoding="utf-8")
     return set(re.findall(r'\["([a-z0-9-]+)"\]\s*=', text))
 
 
@@ -55,7 +56,7 @@ def main() -> int:
 
     for b in books:
         name = Path(b).name
-        text = open(b, encoding="utf-8").read()
+        text = Path(b).read_text(encoding="utf-8")
         parts = text.split("---", 2)
         fm = parts[1] if len(parts) > 2 else ""
 
@@ -84,14 +85,15 @@ def main() -> int:
 
     print("AAN callout class ownership")
     print("=" * 68)
-    print(f"books: {len(books)} | aan-* divs: {n_divs} | classes mapped by the filter: "
-          f"{len(mapped)}")
+    print(f"books: {len(books)} | aan-* divs: {n_divs} | classes mapped by the filter: {len(mapped)}")
     if problems:
         print(f"\nFAIL — {len(problems)} breach(es):")
         print("\n".join(problems))
         return 1
-    print("\nOK — no Quarto-owned callout classes; every book that uses the AAN classes "
-          "declares the filter, and every class it uses is mapped.")
+    print(
+        "\nOK — no Quarto-owned callout classes; every book that uses the AAN classes "
+        "declares the filter, and every class it uses is mapped."
+    )
     return 0
 
 

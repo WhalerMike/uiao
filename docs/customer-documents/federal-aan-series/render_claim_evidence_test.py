@@ -65,7 +65,7 @@ def render() -> str:
         f"- **{with_test} of {len(closures)}** claims carry a named falsifying "
         f"test; **{with_kit} of {len(closures)}** name an implementing kit. A "
         "claim with no bound test is not disproven — it is **unverified** (Vol VI "
-        "Book 08: \"a control dimension no test covers is still unverified\")."
+        'Book 08: "a control dimension no test covers is still unverified").'
     )
     L.append("")
     L.append("## Matrix")
