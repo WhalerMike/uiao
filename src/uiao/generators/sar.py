@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from uiao.evidence.bundle import EvidenceBundle
 from uiao.evidence.graph import EvidenceGraph
 from uiao.ir.models.core import Evidence
+from uiao.oscal.version import OSCAL_VERSION
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
 _UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
@@ -295,7 +296,7 @@ def build_sar(
             "published": now,
             "last-modified": now,
             "version": bundle.provenance.version or "1.0",
-            "oscal-version": "1.0.4",
+            "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
                 {"name": "run-id", "value": bundle.run_id, "ns": _FEDRAMP_NS},

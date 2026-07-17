@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 
 from uiao.dashboard.ksi import KSICalculator
+from uiao.oscal.version import OSCAL_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class DashboardExporter:
         return {
             "title": "UIAO KSI Dashboard — FedRAMP 20x Phase 2 ConMon",
             "generated_at": now,
-            "oscal_version": "1.0.4",
+            "oscal_version": OSCAL_VERSION,
             "fedramp_impact_level": "moderate",
             "ksi_summary": {
                 "total": score["total"],

@@ -1,7 +1,7 @@
 """OSCAL Plan of Action and Milestones (POA&M) generator for AAN KSI gaps.
 
 Reads an OSCAL Assessment Results document (produced by ksi_ar.py) and
-generates an OSCAL 1.0.4 POA&M with one item per non-satisfied KSI finding.
+generates an OSCAL POA&M with one item per non-satisfied KSI finding.
 
 Mapping of AR states to POA&M disposition:
   "satisfied"     → no POA&M item (control is closed)
@@ -24,6 +24,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from uiao.oscal.version import OSCAL_VERSION
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
 _AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
@@ -258,7 +260,7 @@ def build_ksi_poam(
             "published": now,
             "last-modified": now,
             "version": "0.1.0",
-            "oscal-version": "1.0.4",
+            "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
                 {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},

@@ -12,6 +12,8 @@ Covers:
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 import tempfile
 from pathlib import Path
@@ -119,7 +121,7 @@ def test_build_ksi_ap_tasks_cover_themes() -> None:
 def test_build_ksi_ap_metadata_has_oscal_version() -> None:
     doc = build_ksi_ap(mapping=_MINIMAL_MAPPING)
     meta = doc["assessment-plan"]["metadata"]
-    assert meta["oscal-version"] == "1.0.4"
+    assert meta["oscal-version"] == OSCAL_VERSION
 
 
 def test_build_ksi_ap_system_name_in_title() -> None:
@@ -226,7 +228,7 @@ def test_build_ksi_poam_metadata_oscal_version() -> None:
     ar_doc = build_ksi_ar(mapping=_MINIMAL_MAPPING, now="2026-07-03T00:00:00+00:00")
     doc = build_ksi_poam(ar_doc=ar_doc)
     meta = doc["plan-of-action-and-milestones"]["metadata"]
-    assert meta["oscal-version"] == "1.0.4"
+    assert meta["oscal-version"] == OSCAL_VERSION
 
 
 def test_build_ksi_poam_summary_is_string() -> None:

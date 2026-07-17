@@ -17,6 +17,8 @@ Test layers
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 import warnings
 from datetime import datetime, timezone
@@ -97,7 +99,7 @@ class TestCustomerIdentityRecordEmitter:
         ar = payload["assessment-results"]
         assert "uuid" in ar
         assert ar["metadata"]["title"].startswith("Customer Identity Record")
-        assert ar["metadata"]["oscal-version"] == "1.0.4"
+        assert ar["metadata"]["oscal-version"] == OSCAL_VERSION
 
     def test_filename_anchored_on_canonical_identifier(self, tmp_path: Path) -> None:
         out = emit_customer_identity_record(_sample_cir(), tmp_path, now_dt=_FIXED_NOW)

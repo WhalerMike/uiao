@@ -25,6 +25,14 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Fixed
 
+- **All OSCAL emitters now declare one OSCAL version.** Emitters variously
+  declared `1.0.4` (SSP/SAR/POA&M/AP/AR generators, dashboard export,
+  adapter component-definitions) and `1.1.2` (ServiceNow, CyberArk,
+  reciprocity component-definitions) across a single authorization
+  package's documents. Every emitter now imports
+  `uiao.oscal.version.OSCAL_VERSION`, which is derived from
+  compliance-trestle's pin (currently 1.2.1) — the declared version can no
+  longer disagree with the models the payloads are validated against.
 - **KSI library loaders no longer silently drop rules.**
   `uiao.ir.mapping.ksi_to_ir` and `uiao.evidence.ksi_linker` globbed
   lowercase `ksi-*.yaml` only, dropping the 28 adapter-scoped uppercase

@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 
+from uiao.oscal.version import OSCAL_VERSION
+
 logger = logging.getLogger(__name__)
 
 
@@ -176,7 +178,7 @@ class OngoingAuthGenerator:
                     "published": now,
                     "last-modified": now,
                     "version": "1.0",
-                    "oscal-version": "1.0.4",
+                    "oscal-version": OSCAL_VERSION,
                     "props": [
                         {
                             "name": "impact-level",

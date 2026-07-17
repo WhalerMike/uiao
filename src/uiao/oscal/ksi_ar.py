@@ -53,6 +53,8 @@ from typing import Any
 
 import yaml
 
+from uiao.oscal.version import OSCAL_VERSION
+
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
 _AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
 
@@ -523,7 +525,7 @@ def build_ksi_ar(
             "published": now,
             "last-modified": now,
             "version": str(mapping.get("version", "0.1.0")),
-            "oscal-version": "1.0.4",
+            "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
                 {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},

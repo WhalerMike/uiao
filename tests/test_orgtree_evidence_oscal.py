@@ -28,6 +28,8 @@ except the golden-file overwrite when ``--update-golden`` is passed).
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -321,7 +323,7 @@ class TestEmitOrgTreeEvidence:
         path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path)
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         meta = ar["metadata"]
-        assert meta["oscal-version"] == "1.0.4"
+        assert meta["oscal-version"] == OSCAL_VERSION
         assert "last-modified" in meta
         assert "title" in meta
 

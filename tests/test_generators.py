@@ -262,7 +262,7 @@ class TestSSPBuilder:
         assert any("NIST" in t for t in titles)
 
     def test_build_ssp_information_type_has_uuid(self, tmp_path):
-        """Section 2: information-types must include a uuid (OSCAL 1.0.4 requirement)."""
+        """Section 2: information-types must include a uuid (OSCAL metadata requirement)."""
         from uiao.generators.ssp import build_ssp_skeleton
 
         ssp = build_ssp_skeleton({}, data_dir=tmp_path)
