@@ -10,6 +10,8 @@ Covers:
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 from pathlib import Path
 
@@ -379,6 +381,6 @@ class TestDashboardExporter:
 
         exporter = DashboardExporter(ksi_mappings_yml)
         report = exporter._build_report()
-        assert report["oscal_version"] == "1.0.4"
+        assert report["oscal_version"] == OSCAL_VERSION
         assert report["fedramp_impact_level"] == "moderate"
         assert "readiness_percentage" in report["ksi_summary"]

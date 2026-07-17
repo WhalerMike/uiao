@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 
 from uiao.evidence.graph import EvidenceGraph
+from uiao.oscal.version import OSCAL_VERSION
 from uiao.utils.context import get_settings, load_context
 
 _UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
@@ -287,7 +288,7 @@ def build_ssp_skeleton(
     now_iso = datetime.now(timezone.utc).isoformat()
     now_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    oscal_version = template.get("oscal_version", "1.0.4")
+    oscal_version = template.get("oscal_version", OSCAL_VERSION)
     profile_href = template.get(
         "profile_href",
         "https://raw.githubusercontent.com/GSA/fedramp-automation/refs/heads/develop/src/content/rev5/baselines/json/FedRAMP_rev5_MODERATE-baseline_profile.json",

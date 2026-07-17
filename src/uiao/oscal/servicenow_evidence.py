@@ -1,6 +1,6 @@
 """uiao.oscal.servicenow_evidence -- ServiceNow claims -> OSCAL component-definition.
 
-Emits a signed, OSCAL 1.1.2 component-definition document that maps ServiceNow
+Emits a signed, OSCAL component-definition document that maps ServiceNow
 incident/change/problem claims to NIST control implementations for IR-4, IR-5,
 IR-6, and CM-3.
 
@@ -28,7 +28,7 @@ Schema note
 -----------
 compliance-trestle's ``ComponentDefinition`` model is used for best-effort
 validation when available.  If the import fails (e.g., trestle is not installed
-or its model rejects the payload), a plain dict matching the OSCAL 1.1.2
+or its model rejects the payload), a plain dict matching the OSCAL
 component-definition JSON schema is returned.  Both paths are schema-correct;
 the trestle path adds Pydantic-level structural validation as a bonus.
 
@@ -66,11 +66,13 @@ import uuid as _uuid_mod
 from datetime import datetime, timezone
 from typing import Any
 
+from uiao.oscal.version import OSCAL_VERSION
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_OSCAL_VERSION = "1.1.2"
+_OSCAL_VERSION = OSCAL_VERSION
 _UIAO_NS = "https://uiao.gov/ns/servicenow-evidence"
 
 _PROVENANCE_SOURCE = "UIAO-CANON-003"
@@ -246,7 +248,7 @@ def emit_servicenow_component_definition(
     signer: str,
     signing_key: bytes,
 ) -> dict[str, Any]:
-    """Emit a signed OSCAL 1.1.2 component-definition for ServiceNow evidence.
+    """Emit a signed OSCAL component-definition for ServiceNow evidence.
 
     Parameters
     ----------
@@ -270,7 +272,7 @@ def emit_servicenow_component_definition(
     Returns
     -------
     dict
-        Complete OSCAL 1.1.2 component-definition dict including top-level
+        Complete OSCAL component-definition dict including top-level
         ``signature`` and ``provenance`` blocks.  Required keys at the top
         level: ``uuid``, ``metadata``, ``components``, ``signature``,
         ``provenance``.
@@ -358,7 +360,7 @@ def emit_servicenow_component_definition(
         ComponentDefinition(**component_def)  # type: ignore[arg-type]
     except Exception:  # noqa: BLE001
         # trestle.oscal.component.ComponentDefinition import/validation failed.
-        # The returned dict is schema-compliant plain OSCAL 1.1.2 JSON but has
+        # The returned dict is schema-compliant plain OSCAL JSON but has
         # not been validated by the trestle Pydantic model.
         pass
 

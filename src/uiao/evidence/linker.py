@@ -4,7 +4,7 @@ UIAO-MEMORY correction rule (2026-03-23):
   ALWAYS add prop:id on every link, generate fresh UUIDv4.
 
 OSCAL schema validation is performed externally via ``make validate-oscal``
-(compliance-trestle) against the OSCAL 1.0.4 baseline used by this repo.
+(compliance-trestle) against the OSCAL version pinned by uiao.oscal.version (from compliance-trestle).
 This module generates conformant structures; it does not invoke the validator
 itself.
 """

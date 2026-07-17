@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 import contextlib
 import re
@@ -352,7 +354,7 @@ class TestConmonDashboard:
         assert out.exists()
         data = json.loads(out.read_text())
         assert "ksi_summary" in data
-        assert data["oscal_version"] == "1.0.4"
+        assert data["oscal_version"] == OSCAL_VERSION
 
     def test_exports_yaml_format(self, ksi_mappings_yml: Path, tmp_path: Path) -> None:
         out = tmp_path / "dashboard.yml"

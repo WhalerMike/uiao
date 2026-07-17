@@ -148,7 +148,7 @@ def ksi_ar_command(
     \\b
     Output
     ------
-    A single OSCAL 1.0.4 Assessment Results JSON file at --output.
+    A single OSCAL Assessment Results JSON (version per uiao.oscal.version) file at --output.
 
     \\b
     Examples
@@ -216,7 +216,7 @@ def ksi_ap_command(
     \\b
     Output
     ------
-    A single OSCAL 1.0.4 Assessment Plan JSON file at --output.
+    A single OSCAL Assessment Plan JSON (version per uiao.oscal.version) file at --output.
 
     \\b
     Examples
@@ -290,7 +290,7 @@ def ksi_poam_command(
     \\b
     Output
     ------
-    A single OSCAL 1.0.4 POA&M JSON file at --output.
+    A single OSCAL POA&M JSON (version per uiao.oscal.version) file at --output.
 
     \\b
     Examples

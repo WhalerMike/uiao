@@ -16,6 +16,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from uiao.oscal.version import OSCAL_VERSION
+
 from ..adapters.database_base import ClaimSet, DriftReport
 from ..evidence.bundle import EvidenceBundle
 from ..ir.models.core import (
@@ -328,7 +330,7 @@ def _minimal_ssp_skeleton(
         "metadata": {
             "title": system_name,
             "version": "1.0",
-            "oscal-version": "1.0.4",
+            "oscal-version": OSCAL_VERSION,
             "last-modified": now,
             "published": now,
         },

@@ -23,6 +23,8 @@ References
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import copy
 import json
 import re
@@ -103,7 +105,7 @@ class TestEmptyClaimsList:
 
     def test_metadata_oscal_version(self) -> None:
         cd = _emit(claims=[])
-        assert cd["metadata"]["oscal-version"] == "1.1.2"
+        assert cd["metadata"]["oscal-version"] == OSCAL_VERSION
 
 
 # ---------------------------------------------------------------------------
