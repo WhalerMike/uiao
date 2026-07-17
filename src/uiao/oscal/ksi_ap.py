@@ -1,6 +1,6 @@
 """OSCAL Assessment Plan generator for FedRAMP AAN KSI coverage.
 
-Produces an OSCAL 1.0.4 Assessment Plan (AP) that describes what will be
+Produces an OSCAL Assessment Plan (AP) that describes what will be
 assessed, how, and when for the AAN KSI conformance corpus.  The AP UUID
 is written into the output file; pass ``--ap-href`` to ``uiao oscal ksi-ar``
 to link AR documents back to this AP.
@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from uiao.oscal.version import OSCAL_VERSION
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
 _AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
@@ -125,7 +127,7 @@ def build_ksi_ap(
             "published": now,
             "last-modified": now,
             "version": str(mapping.get("version", "0.1.0")),
-            "oscal-version": "1.0.4",
+            "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
                 {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},

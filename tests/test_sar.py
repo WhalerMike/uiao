@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 import uuid
 from pathlib import Path
@@ -147,7 +149,7 @@ class TestBuildSar:
 
     def test_metadata_oscal_version(self, minimal_bundle: EvidenceBundle) -> None:
         ar = build_sar(minimal_bundle)["assessment-results"]
-        assert ar["metadata"]["oscal-version"] == "1.0.4"
+        assert ar["metadata"]["oscal-version"] == OSCAL_VERSION
 
     def test_import_ap_present(self, minimal_bundle: EvidenceBundle) -> None:
         ar = build_sar(minimal_bundle)["assessment-results"]

@@ -11,6 +11,8 @@ Covers:
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import json
 import tempfile
 from pathlib import Path
@@ -257,7 +259,7 @@ def test_ar_metadata_required_fields() -> None:
     meta = ar["assessment-results"]["metadata"]
     for key in ("title", "published", "last-modified", "version", "oscal-version", "roles", "parties"):
         assert key in meta, f"missing metadata key: {key}"
-    assert meta["oscal-version"] == "1.0.4"
+    assert meta["oscal-version"] == OSCAL_VERSION
 
 
 def test_ar_reviewed_controls_contains_cr26_ids() -> None:

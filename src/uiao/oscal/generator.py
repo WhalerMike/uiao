@@ -65,6 +65,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+from uiao.oscal.version import OSCAL_VERSION
+
 # ---------------------------------------------------------------------------
 # Status / severity mappings
 # ---------------------------------------------------------------------------
@@ -249,7 +251,7 @@ def _build_poam_envelope(
     system_name: str = cfg.get("system_name", "UIAO-Managed System")
     return {
         "schema_version": "1.0",
-        "oscal_version": "1.0.4",
+        "oscal_version": OSCAL_VERSION,
         "plane": "evidence-to-oscal",
         "artifact": "poam",
         "generated_at": generated_at,
@@ -313,7 +315,7 @@ def _build_ssp_envelope(
     coverage = round(impl / total, 4) if total else 0.0
     return {
         "schema_version": "1.0",
-        "oscal_version": "1.0.4",
+        "oscal_version": OSCAL_VERSION,
         "plane": "evidence-to-oscal",
         "artifact": "ssp",
         "generated_at": generated_at,

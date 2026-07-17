@@ -4,6 +4,56 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+### Security
+
+- **BREAKING: the on-prem API's bearer auth now fails closed
+  (`uiao.api.routes._auth`).** Previously `require_auditor` accepted any
+  non-empty bearer token, decoded the JWT payload without verifying the
+  signature, expiry, audience, or issuer, and silently defaulted the subject
+  to `"auditor"` on parse failure — on live enforcement, CQL, and auditor
+  routes. The dependency now verifies inbound Entra ID JWTs (RS256 via the
+  issuing tenant's JWKS, plus `exp`/`nbf`/`aud`/`iss`/`tid` claim checks)
+  through `uiao.saas.auth.EntraTokenVerifier` by default
+  (`UIAO_API_AUTH_MODE=entra`). Deployments must set
+  `UIAO_API_AUTH_AUDIENCE` (optionally `UIAO_API_AUTH_TENANTS`,
+  `UIAO_API_AUTH_CLOUD`, `UIAO_API_AUTH_REQUIRED_ROLES`); the previous
+  accept-anything behavior requires an explicit
+  `UIAO_API_AUTH_MODE=insecure-dev` opt-in and must not be used outside
+  local development. `uiao.api.routes.auditor` now shares this dependency
+  instead of carrying its own unverified copy, and `pyjwt[crypto]` moved
+  into the `[api]` extra.
+
+### Fixed
+
+- **All OSCAL emitters now declare one OSCAL version.** Emitters variously
+  declared `1.0.4` (SSP/SAR/POA&M/AP/AR generators, dashboard export,
+  adapter component-definitions) and `1.1.2` (ServiceNow, CyberArk,
+  reciprocity component-definitions) across a single authorization
+  package's documents. Every emitter now imports
+  `uiao.oscal.version.OSCAL_VERSION`, which is derived from
+  compliance-trestle's pin (currently 1.2.1) — the declared version can no
+  longer disagree with the models the payloads are validated against.
+- **KSI library loaders no longer silently drop rules.**
+  `uiao.ir.mapping.ksi_to_ir` and `uiao.evidence.ksi_linker` globbed
+  lowercase `ksi-*.yaml` only, dropping the 28 adapter-scoped uppercase
+  `KSI-*.yaml` rules (cyberark, hrit-reciprocity, orgtree-readiness,
+  servicenow) — the pipeline mapped 163 of 191 rules. Both now load through
+  the shared `uiao.ksi.library` helpers, which also read the control list
+  under either rule dialect (`controls` / `related_controls`), so the 84
+  older-dialect rules stop producing empty NIST mappings in IR Controls.
+- **`rules/ksi/index.yaml` is now a derived artifact.** The hand-maintained
+  index had drifted in both directions (173 entries vs 191 rule files, four
+  category directories missing, phantom entries). It is regenerated from
+  the rule files by `scripts/rebuild_ksi_index.py` and gated by a
+  regen-and-diff test (`tests/test_ksi_index_sync.py`).
+- **KSI claims corrected across README / site / docs.** The advertised
+  "163 cryptographically signed" KSIs are actually 191 UIAO-native
+  indicator rules (not the official FedRAMP 20x KSI taxonomy) whose
+  evaluation artifacts are integrity-protected with HMAC-SHA256 — a
+  symmetric MAC, not a digital signature; wording now says so explicitly
+  (README, `docs/index.qmd`, glossary, Evidence Fabric appendix,
+  RFC-0026 roadmap, quickstart, ScuBA technical spec).
+
 ### Added
 
 - **ADR-097 — SQL Server transformation placement.** Settles the SQL Server

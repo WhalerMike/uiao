@@ -54,6 +54,8 @@ import uuid as _uuid_mod
 from datetime import datetime, timezone
 from typing import Any
 
+from uiao.oscal.version import OSCAL_VERSION
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -64,7 +66,7 @@ _PROVENANCE_VERSION = "1.0"
 _PROVENANCE_DERIVED_BY = "uiao.oscal.reciprocity_record.emit_reciprocity_record"
 
 #: OSCAL component-definition version emitted by this module.
-_OSCAL_VERSION = "1.1.2"
+_OSCAL_VERSION = OSCAL_VERSION
 
 #: Namespace UUID for deterministic UUIDs in OSCAL artifacts.
 _UUID_NS = _uuid_mod.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
@@ -244,7 +246,7 @@ def verify_signature(record: dict[str, Any], signing_key: bytes) -> bool:
 
 
 def emit_scoped_component_definition(record: dict[str, Any]) -> dict[str, Any]:
-    """Return an OSCAL 1.1.2 component-definition skeleton scoped to the consuming agency.
+    """Return an OSCAL component-definition skeleton (version per uiao.oscal.version) scoped to the consuming agency.
 
     The component-definition cites the reciprocity record in its metadata.props,
     establishing a machine-readable link between the OSCAL artifact and the
@@ -258,7 +260,7 @@ def emit_scoped_component_definition(record: dict[str, Any]) -> dict[str, Any]:
     Returns
     -------
     dict
-        OSCAL 1.1.2 component-definition as a plain dict.  When
+        OSCAL component-definition as a plain dict.  When
         ``compliance-trestle`` is available the dict is validated against
         its Pydantic model; if the import fails the raw dict is returned
         with a TODO comment noting the caveat.
@@ -374,9 +376,9 @@ def emit_scoped_component_definition(record: dict[str, Any]) -> dict[str, Any]:
         ComponentDefinition(**inner)  # type: ignore[arg-type]
     except Exception:  # noqa: BLE001
         # TODO: trestle.oscal.component.ComponentDefinition import/validation
-        # failed.  The returned dict is schema-compliant plain OSCAL 1.1.2 JSON
+        # failed.  The returned dict is schema-compliant plain OSCAL JSON
         # but has not been validated by the trestle Pydantic model.  Re-enable
-        # once compliance-trestle publishes 1.1.2 model stubs or when WS-A6
+        # once compliance-trestle publishes component-definition model stubs or when WS-A6
         # wires the full bundle aggregator.
         pass
 

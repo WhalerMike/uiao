@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from uiao.evidence.graph import EvidenceGraph
+from uiao.oscal.version import OSCAL_VERSION
 from uiao.utils.context import get_settings, load_context
 
 _UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
@@ -103,7 +104,7 @@ def build_component_definition(
                 "UIAO Unified Identity-Addressing-Overlay Architecture",
             ),
             "version": "1.0",
-            "oscal-version": "1.0.4",
+            "oscal-version": OSCAL_VERSION,
             "last-modified": now_iso,
             "published": now_iso,
             "props": [

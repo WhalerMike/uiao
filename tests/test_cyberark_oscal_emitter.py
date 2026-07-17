@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uiao.oscal.version import OSCAL_VERSION
+
 import copy
 import json
 from datetime import datetime, timezone
@@ -72,7 +74,7 @@ def test_component_definition_shape() -> None:
     doc = _emit()
     for key in ("uuid", "metadata", "components", "signature", "provenance"):
         assert key in doc
-    assert doc["metadata"]["oscal-version"] == "1.1.2"
+    assert doc["metadata"]["oscal-version"] == OSCAL_VERSION
 
 
 def test_rotation_props_include_cause_and_verification() -> None:

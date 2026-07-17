@@ -62,7 +62,9 @@ class KsiEvidenceLinker:
         Returns the number of KSI files successfully loaded.
         """
         loaded = 0
-        for ksi_path in sorted(self.ksi_root.rglob("ksi-*.yaml")):
+        from uiao.ksi.library import iter_rule_files
+
+        for ksi_path in iter_rule_files(self.ksi_root):
             category = ksi_path.parent.name
             if self.category_filter and category not in self.category_filter:
                 continue

@@ -10,7 +10,9 @@ import uuid as _uuid_mod
 from datetime import datetime, timezone
 from typing import Any
 
-_OSCAL_VERSION = "1.1.2"
+from uiao.oscal.version import OSCAL_VERSION
+
+_OSCAL_VERSION = OSCAL_VERSION
 _UIAO_NS = "https://uiao.gov/ns/cyberark-evidence"
 
 _PROVENANCE_SOURCE = "UIAO-CANON-003"
