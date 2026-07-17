@@ -23,6 +23,29 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
   instead of carrying its own unverified copy, and `pyjwt[crypto]` moved
   into the `[api]` extra.
 
+### Fixed
+
+- **KSI library loaders no longer silently drop rules.**
+  `uiao.ir.mapping.ksi_to_ir` and `uiao.evidence.ksi_linker` globbed
+  lowercase `ksi-*.yaml` only, dropping the 28 adapter-scoped uppercase
+  `KSI-*.yaml` rules (cyberark, hrit-reciprocity, orgtree-readiness,
+  servicenow) — the pipeline mapped 163 of 191 rules. Both now load through
+  the shared `uiao.ksi.library` helpers, which also read the control list
+  under either rule dialect (`controls` / `related_controls`), so the 84
+  older-dialect rules stop producing empty NIST mappings in IR Controls.
+- **`rules/ksi/index.yaml` is now a derived artifact.** The hand-maintained
+  index had drifted in both directions (173 entries vs 191 rule files, four
+  category directories missing, phantom entries). It is regenerated from
+  the rule files by `scripts/rebuild_ksi_index.py` and gated by a
+  regen-and-diff test (`tests/test_ksi_index_sync.py`).
+- **KSI claims corrected across README / site / docs.** The advertised
+  "163 cryptographically signed" KSIs are actually 191 UIAO-native
+  indicator rules (not the official FedRAMP 20x KSI taxonomy) whose
+  evaluation artifacts are integrity-protected with HMAC-SHA256 — a
+  symmetric MAC, not a digital signature; wording now says so explicitly
+  (README, `docs/index.qmd`, glossary, Evidence Fabric appendix,
+  RFC-0026 roadmap, quickstart, ScuBA technical spec).
+
 ### Added
 
 - **ADR-097 — SQL Server transformation placement.** Settles the SQL Server

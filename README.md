@@ -52,8 +52,13 @@ The substrate defines:
   classes (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`,
   `DRIFT-IDENTITY`) at four severities (`P1`–`P4`). Taxonomy defined in
   [`docs/docs/16_DriftDetectionStandard.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/docs/16_DriftDetectionStandard.qmd).
-- **KSI** — Key Security Indicators. 163 continuous-compliance signals,
-  cryptographically signed.
+- **KSI** — Key Security Indicators. 191 continuous-compliance indicator
+  rules in the UIAO-native library (`src/uiao/rules/ksi/`, regen-gated
+  index), keyed to NIST 800-53 families. This is UIAO's own catalog, not
+  the official FedRAMP 20x KSI taxonomy (KSI-CNA/IAM/MLA/…) — the 20x set
+  is a separate mapping surface in `uiao.models.fedramp`. Evaluation
+  results are integrity-protected with HMAC-SHA256 (a symmetric MAC;
+  asymmetric digital signatures with non-repudiation are on the roadmap).
 
 The **v0.6.0 mission theme** is [HRIT Single-ATO Productization](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-065-hrit-productization-mission.md) (ADR-065): runtime emission of signed, OSCAL-mapped reciprocity records per consuming agency, with ConMon SLA enforcement and configuration-latitude drift detection.
 

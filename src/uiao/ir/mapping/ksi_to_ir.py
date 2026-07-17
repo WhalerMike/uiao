@@ -12,16 +12,20 @@ from uiao.ir.models.core import (
 
 
 def load_ksi_library() -> Dict[str, dict]:
-    """Load all KSI files from the 7 category subdirectories.
+    """Load every KSI rule file in the library (all category subdirectories).
 
     Resolves the rules directory via :class:`uiao.config.Settings`,
-    which points at the packaged ``uiao/rules/`` by default.
+    which points at the packaged ``uiao/rules/`` by default. Uses
+    :func:`uiao.ksi.library.iter_rule_files` so both filename conventions
+    load — a lowercase-only ``ksi-*.yaml`` glob here previously dropped the
+    28 adapter-scoped ``KSI-*.yaml`` rules.
     """
     from uiao.config import Settings
+    from uiao.ksi.library import iter_rule_files
 
     ksi_root = Settings().rules_dir / "ksi"
     ksi_dict = {}
-    for ksi_file in ksi_root.rglob("ksi-*.yaml"):
+    for ksi_file in iter_rule_files(ksi_root):
         with open(ksi_file, encoding="utf-8") as f:
             ksi_data = yaml.safe_load(f)
             ksi_dict[ksi_data["ksi_id"]] = ksi_data
@@ -30,14 +34,17 @@ def load_ksi_library() -> Dict[str, dict]:
 
 def ksi_to_ir_control(ksi: dict, provenance: ProvenanceRecord) -> Control:
     """Convert a single KSI to IR Control object."""
+    from uiao.ksi.library import rule_controls
+
+    controls = rule_controls(ksi)
     return Control(
         id=ksi["ksi_id"],
         source="ksi",
         description=ksi.get("description") or ksi.get("title"),
         parameters=ksi.get("parameters") or {},
         mappings={
-            "nist80053": ksi.get("related_controls", []),
-            "fedramp": ksi.get("related_controls", []),
+            "nist80053": controls,
+            "fedramp": controls,
             "ztmm": ksi.get("tags", []),
         },
         provenance=provenance,
@@ -67,7 +74,7 @@ def ksi_to_ir_policy(ksi: dict, control: Control, tenant_boundary_id: str) -> Po
 def build_ksi_ir_mapping(
     tenant_boundary_id: str = "boundary:tenant:m365:contoso",
 ) -> Tuple[List[Control], List[Policy]]:
-    """Full deterministic mapping: All 163 KSIs -> IR Controls + Policies."""
+    """Full deterministic mapping: every KSI rule in the library -> IR Controls + Policies."""
     ksi_library = load_ksi_library()
     controls: List[Control] = []
     policies: List[Policy] = []
