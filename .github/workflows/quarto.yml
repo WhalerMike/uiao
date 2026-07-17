@@ -11,6 +11,7 @@ on:
       - 'docs/**'
       - 'scripts/bundle_section_docx.py'
       - 'scripts/build_scubadrift_download.py'
+      - 'scripts/build_aan_download.py'
       - 'tools/scubadrift/**'
       - '.github/workflows/quarto.yml'
   workflow_dispatch:
@@ -558,8 +559,11 @@ jobs:
           sparse-checkout: |
             scripts/bundle_section_docx.py
             scripts/build_scubadrift_download.py
+            scripts/build_aan_download.py
             tools/scubadrift
             .github/maintenance
+            docs/customer-documents/federal-aan-series
+            infoblox-ddi-book
           sparse-checkout-cone-mode: false
           path: _repo
 
@@ -648,6 +652,23 @@ jobs:
         run: |
           python _repo/scripts/build_scubadrift_download.py --out _site/download \
             || echo "::warning::ScubaDrift download build failed (non-fatal)"
+
+      - name: Build Federal AAN series download kit
+        # Same no-committed-binary posture as ScubaDrift. Assembles the FEDERAL kit
+        # into _site/download/ on every deploy: the book .docx come from the freshly
+        # rendered _site (Quarto resolved {{< meta >}} to the federal values and
+        # dropped the FOUO banner — raw Pandoc would ship neither), the .pptx decks
+        # and operator kits come from the sparse-checked source (_repo). The stale
+        # committed AAN_Federal_Series_Complete_*.zip was removed; this replaces it,
+        # fresh and edition-correct. Non-fatal, and skipped in maintenance mode.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: |
+          python _repo/scripts/build_aan_download.py \
+              --site-root _site \
+              --src-root _repo \
+              --out _site/download \
+              --date-code "$(date -u +%Y-%m-%d)" \
+            || echo "::warning::Federal AAN kit build failed (non-fatal)"
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
