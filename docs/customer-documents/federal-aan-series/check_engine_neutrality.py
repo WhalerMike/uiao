@@ -46,8 +46,12 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 FORBIDDEN = re.compile(r"\buiao\b", re.IGNORECASE)
+# Full URLs into the host repository — including deep paths like
+# .../tree/main/src/uiao/adapters/fedramp_aan_catalog/ — are CITATIONS
+# (hosting reality / published contract wiring), not engine naming.
+# Prose naming remains forbidden.
 HOSTING_URLS = re.compile(
-    r"(github\.com/WhalerMike/uiao|whalermike\.github\.io/uiao|github\.io/uiao)",
+    r"(github\.com/WhalerMike/uiao\S*|whalermike\.github\.io/uiao\S*|github\.io/uiao\S*)",
     re.IGNORECASE,
 )
 
@@ -102,58 +106,9 @@ RATCHET = {
     "validate_day2_control_maps.py",
     # Figures that render the engine name INSIDE the diagram — need SVG
     # redraw + PNG/sidecar regen alongside their host book.
-    "figs/mf-fig-13-fedramp-20x-mainframe.svg",
-    "figs/mf-fig-14-ssot-restoration.svg",
     # Heavy books — 20+ mentions each and/or paired dirty deck specs;
     # clean qmd + spec + figs together (see pairing note).
-    "Vol_V_Book_01_FedAAN_Compliance_Track.qmd",
-    "Vol_V_Book_02_FedAAN_Implementation_Track.qmd",
-    "Vol_V_Book_03_FedAAN_Assessment_Certification.qmd",
-    "Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd",
     # Deck specs (drive PPTX slide content) — pair with their book's scrub.
-    "decks/Vol_IX_Book_00.yaml",
-    "decks/Vol_IX_Book_01.yaml",
-    "decks/Vol_IX_Book_02.yaml",
-    "decks/Vol_IX_Book_03.yaml",
-    "decks/Vol_IX_Book_04.yaml",
-    "decks/Vol_IX_Book_05.yaml",
-    "decks/Vol_VII_Book_00.yaml",
-    "decks/Vol_VII_Book_01.yaml",
-    "decks/Vol_VII_Book_02.yaml",
-    "decks/Vol_VII_Book_03.yaml",
-    "decks/Vol_VII_Book_04.yaml",
-    "decks/Vol_VII_Book_05.yaml",
-    "specs/Vol_0_Book_01.yaml",
-    "specs/Vol_0_Book_02.yaml",
-    "specs/Vol_I_Book_00.yaml",
-    "specs/Vol_I_Book_07.yaml",
-    "specs/Vol_II_Book_00.yaml",
-    "specs/Vol_II_Book_02.yaml",
-    "specs/Vol_III_Book_00.yaml",
-    "specs/Vol_III_Book_03.yaml",
-    "specs/Vol_III_Book_04.yaml",
-    "specs/Vol_III_Book_05.yaml",
-    "specs/Vol_III_Book_06.yaml",
-    "specs/Vol_III_Book_07.yaml",
-    "specs/Vol_IV_Book_00.yaml",
-    "specs/Vol_IV_Book_01.yaml",
-    "specs/Vol_IV_Book_02.yaml",
-    "specs/Vol_IV_Book_03.yaml",
-    "specs/Vol_IV_Book_04.yaml",
-    "specs/Vol_V_Book_00.yaml",
-    "specs/Vol_V_Book_01.yaml",
-    "specs/Vol_V_Book_02.yaml",
-    "specs/Vol_V_Book_03.yaml",
-    "specs/Vol_V_Book_04.yaml",
-    "specs/Vol_VI_Book_00.yaml",
-    "specs/Vol_VI_Book_01.yaml",
-    "specs/Vol_VI_Book_02.yaml",
-    "specs/Vol_VI_Book_03.yaml",
-    "specs/Vol_VI_Book_04.yaml",
-    "specs/Vol_VI_Book_05.yaml",
-    "specs/Vol_VI_Book_06.yaml",
-    "specs/Vol_VI_Book_07.yaml",
-    "specs/Vol_VI_Book_08.yaml",
 }
 
 
