@@ -318,21 +318,9 @@
   - [Chapter 08 — Access Plane: SASE, Zero Trust, MFA, Certificate-Based Auth](customer-documents/operational-guides/client-server-to-hybrid-cloud/08-access-plane.html)
   - [Chapter 09 — Migration Roadmap: Phased Plan, Gates, Rollback](customer-documents/operational-guides/client-server-to-hybrid-cloud/09-migration-roadmap.html)
   - [Chapter 10 — Leadership Takeaway: Instruments vs. Orchestra](customer-documents/operational-guides/client-server-to-hybrid-cloud/10-executive-summary.html)
-- **Compliance Procedures**
+- **Compliance**
   - [Compliance](customer-documents/compliance/index.html)
-  - [UIAO Compliance Mapping and Gap Analysis](customer-documents/compliance/controls-testing/compliance-mapping.html)
-  - [UIAO SCuBA Compliance Pipeline — Technical Specification](customer-documents/compliance/evidence-telemetry/scuba-technical-spec.html)
-  - [UIAO SCuBA Value Proposition — Two-Way Governance](customer-documents/compliance/evidence-telemetry/scuba-value-proposition.html)
-  - [UIAO FedRAMP and CISA Enhancement Recommendations](customer-documents/compliance/federal-mandates/fedramp-cisa-update.html)
-  - [UIAO Master Document Specification](customer-documents/compliance/governance-canon/master-document-spec.html)
-- **Compliance — sub-category landing pages**
-  - [A. Federal Mandates](customer-documents/compliance/federal-mandates/index.html)
   - [B. Boundary + Authorization](customer-documents/compliance/boundary-authorization/index.html)
-  - [C. Evidence + Telemetry](customer-documents/compliance/evidence-telemetry/index.html)
-  - [D. Policy Libraries](customer-documents/compliance/policy-libraries/index.html)
-  - [E. Controls + Testing](customer-documents/compliance/controls-testing/index.html)
-  - [F. Incident + Response](customer-documents/compliance/incident-response/index.html)
-  - [G. Governance Canon](customer-documents/compliance/governance-canon/index.html)
 - **Validation Suites**
   - [Validation Suites](customer-documents/validation-suites/index.html)
 - **Modernization Specs**
@@ -486,6 +474,13 @@
   - [Book 06 — Federal Continuous-Monitoring Reporting — Requirements Reference](customer-documents/uiao-aan-integration/06-federal-conmon-reporting-reference.html)
   - [Book 07 — UIAO Reporting-Egress Actuator — Feature Documentation](customer-documents/uiao-aan-integration/07-reporting-egress-actuator.html)
   - [Book 08 — CR26 KSI Reconciliation — Findings & Spine Write-Back](customer-documents/uiao-aan-integration/08-cr26-reconciliation-findings.html)
+  - **The engine's compliance documentation**
+    - [UIAO Compliance Mapping and Gap Analysis](customer-documents/uiao-aan-integration/09-compliance-mapping.html)
+    - [UIAO SCuBA Compliance Pipeline — Technical Specification](customer-documents/uiao-aan-integration/10-scuba-technical-spec.html)
+    - [UIAO SCuBA Value Proposition — Two-Way Governance](customer-documents/uiao-aan-integration/11-scuba-value-proposition.html)
+    - [A.9 NIST + FICAM Cross-Walk — UIAO Substrate Alignment with Federal ICAM Standards](customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.html)
+    - [UIAO Master Document Specification](customer-documents/uiao-aan-integration/13-master-document-spec.html)
+    - [UIAO FedRAMP and CISA Enhancement Recommendations](customer-documents/uiao-aan-integration/14-fedramp-cisa-update.html)
 - **UIAO OrgPath (16-document reading sequence)**
   - [UIAO OrgPath](customer-documents/orgpath-narrative/index.html)
   - [Book_01 — The Microsoft Identity and Governance Stack](customer-documents/orgpath-narrative/Book_01.html)

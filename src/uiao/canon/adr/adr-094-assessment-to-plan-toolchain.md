@@ -29,7 +29,7 @@ Today those "specifications" are not governed canon. They exist only as an **API
 
 - **No `UIAO_NNN` allocation** for any of the three modules, so they are invisible to `document-registry.yaml`, the substrate walker, and the drift engine.
 - **No declared build order**, even though UIAOPlanGenerators is functionally downstream of the other two (it consumes their assessment output).
-- **No shared non-functional contract** — the compliance gap analysis ([`compliance-mapping.qmd §7.3`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd)) already requires Authenticode signing (SI-7 / SA-10) and OSCAL-formatted output across these modules, but nothing binds them to it.
+- **No shared non-functional contract** — the compliance gap analysis ([`compliance-mapping.qmd §7.3`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd)) already requires Authenticode signing (SI-7 / SA-10) and OSCAL-formatted output across these modules, but nothing binds them to it.
 
 Per **AGENTS.md invariant I5**, anything under `src/uiao/canon/` — including a module specification that will govern an implementation — must flow through the canon-change process: a `UIAO_NNN` allocation plus, for a doctrinal decision like "these three modules form a toolchain with a fixed dependency order," an ADR. Implementation cannot legitimately start until that scaffolding exists. This ADR is that scaffolding.
 

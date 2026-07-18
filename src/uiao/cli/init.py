@@ -101,7 +101,7 @@ _CANON_REFS = [
         "Reference deployment pattern",
         "docs/customer-documents/case-studies/reference-deployment-fedciv-ad-to-entra.qmd",
     ),
-    ("NIST + FICAM cross-walk", "docs/customer-documents/compliance/federal-mandates/nist-icam-crosswalk.qmd"),
+    ("NIST + FICAM cross-walk", "docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd"),
     (
         "GCC-Moderate boundary model",
         "docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd",

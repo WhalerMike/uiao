@@ -12,7 +12,7 @@ publication_style: include
 
 # UIAO System Security Plan (SSP) Template
 
-> **Status: Current — authoritative template.** This is the foundational FedRAMP-authorization artifact identified as the single most critical gap in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). UIAO-canonical fields are pre-filled for the reference deployment (the **UIAO Governance OS**, v0.7.0, within the GCC-Moderate boundary); bracketed `[…]` fields are **agency-ATO instantiation parameters** completed by the authorizing agency (system owner, authorizing official, agency policy references). It addresses `PL-2` (System Security Plan) and provides the control-implementation framework that maps all 323 FedRAMP Moderate controls to a UIAO implementation, a shared-responsibility statement, or an inheritance declaration.
+> **Status: Current — authoritative template.** This is the foundational FedRAMP-authorization artifact identified as the single most critical gap in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) and tracked in the gap-closure register [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). UIAO-canonical fields are pre-filled for the reference deployment (the **UIAO Governance OS**, v0.7.0, within the GCC-Moderate boundary); bracketed `[…]` fields are **agency-ATO instantiation parameters** completed by the authorizing agency (system owner, authorizing official, agency policy references). It addresses `PL-2` (System Security Plan) and provides the control-implementation framework that maps all 323 FedRAMP Moderate controls to a UIAO implementation, a shared-responsibility statement, or an inheritance declaration.
 
 ## Purpose
 
@@ -91,6 +91,6 @@ Every control not marked **I**, **H**, or **A**-satisfied is a gap. Each gap is 
 
 ## References
 
-- [`compliance-mapping.qmd`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) — gap analysis and §7 remediation roadmap
+- [`compliance-mapping.qmd`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) — gap analysis and §7 remediation roadmap
 - [UIAO_184](UIAO_184_Gap_Closure_Register.md) — gap-closure register (Workstream A)
 - [UIAO_186](UIAO_186_Incident_Response_Plan.md) — Incident Response Plan (`IR` family)
