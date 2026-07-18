@@ -435,6 +435,8 @@
     - [Vol IX Book 03 — Federal Application-Aware Networking — App Registration Governance](customer-documents/federal-aan-series/Vol_IX_Book_03_FedAAN_App_Registration_Governance.html)
     - [Vol IX Book 04 — Federal Application-Aware Networking — Teams Telephony Catalog & Teams SCuBA Drift](customer-documents/federal-aan-series/Vol_IX_Book_04_FedAAN_Teams_Telephony_Catalog.html)
     - [Vol IX Book 05 — Federal Application-Aware Networking — SaaS Integration Governance](customer-documents/federal-aan-series/Vol_IX_Book_05_FedAAN_SaaS_Integration_Governance.html)
+  - **Vol X — Governance-Substrate Integration**
+    - [Vol X Book 00 — Federal Application-Aware Networking — Volume X Overview: The Series on the Governance Substrate](customer-documents/federal-aan-series/Vol_X_Book_00_FedAAN_Governance_Substrate_Integration_Overview.html)
 - **Federal Compliance AAN Series — Training Academy**
   - [AAN Training Program](customer-documents/federal-aan-series/AAN-Training-Program/index.html)
   - [AAN Track A — Compliance](customer-documents/federal-aan-series/AAN-Training-Program/compliance-track.html)

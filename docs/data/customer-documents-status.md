@@ -240,6 +240,7 @@
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.qmd) | 286 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.qmd) | 272 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd) | 262 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/federal-aan-series/Vol_X_Book_00_FedAAN_Governance_Substrate_Integration_Overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_X_Book_00_FedAAN_Governance_Substrate_Integration_Overview.qmd) | 134 | Authored | ✅ | — | — |
 | [`docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd) | 352 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/B1-2-teams-phone-tic2-centralized-dia.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-2-teams-phone-tic2-centralized-dia.qmd) | 301 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 574 | Substantial | ✅ | 5/5 | — |
@@ -859,7 +860,7 @@
 | [`docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd) | 321 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/uiao-aan-integration/13-master-document-spec.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-aan-integration/13-master-document-spec.qmd) | 347 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/uiao-aan-integration/14-fedramp-cisa-update.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-aan-integration/14-fedramp-cisa-update.qmd) | 265 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/uiao-aan-integration/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-aan-integration/index.qmd) | 57 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/uiao-aan-integration/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-aan-integration/index.qmd) | 64 | Navigation hub | ✅ | — | — |
 
 ### `validation-suites/`
 
