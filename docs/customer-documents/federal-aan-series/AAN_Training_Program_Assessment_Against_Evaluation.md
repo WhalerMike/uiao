@@ -73,8 +73,9 @@ A0–A8) and its capstone requires **all eight slots**
 exhaustive. Greps for "core pathway," "minimum path," "fast track," and
 "quick start" across `AAN-Training-Program/` and `Vol_V_*` return nothing.
 The evaluation's proposed subset (Books 00, 01, 03–05, 10–11, 13, 19 +
-selected labs) is a coherent spine — it covers seven of the eight slots
-and both capstone surfaces — and nothing at HEAD offers it.
+selected labs) is a coherent spine — it feeds six of the eight slots
+directly (all but slot 7/continuity/Book 14 and slot 8/training/Book 18)
+and covers both capstone surfaces — and nothing at HEAD offers it.
 
 ### 1b. Progressive disclosure — **Partially addressed**
 
@@ -195,8 +196,10 @@ sign-in/audit exports a Tier-F learner could bind without a tenant).
 lab hub (`labs/index.qmd:66-75`) and three of the four lab pages end by
 regenerating verdicts and scoring against a slot rubric
 (`lab-b1-ddi.qmd`, `lab-b6-sentinel.qmd`, `lab-b6-purview.qmd`). The
-exception is exactly one file: **`labs/lab-b5-pim.qmd` ends at teardown
-with no bind-the-evidence close** and no rubric pointer. One-page fix.
+exception is exactly one file: **`labs/lab-b5-pim.qmd` names its slot-01
+artifacts and scores against the slot 1/5 rubrics but never regenerates
+verdicts** — the `<engine> oscal ksi-ar` close the other three labs end
+with is missing. One-line fix.
 
 ## Concern 5 — GCC-Moderate boundary content — **Partially addressed**
 
