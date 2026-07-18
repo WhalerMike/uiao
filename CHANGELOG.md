@@ -255,7 +255,7 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
   could publish its own equivalent volume against the Evidence &
   Authorization Contract.
 - **The AAN Evidence & Authorization Contract is published
-  (`AAN_Evidence_Contract_Spec.md`).** The open specification every
+  (`AAN_Evidence_Contract_Spec.qmd`).** The open specification every
   engine-neutral reference in the series points at — compliance spine +
   eight evidence slots + cadence/disposition rules in, OSCAL AP/AR/POA&M
   bundle + ConMon stream out, five conformance invariants — authored in
