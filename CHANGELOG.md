@@ -4,6 +4,21 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+### Removed
+
+- **Root-level clutter from the pre-consolidation era.** The 19 one-shot
+  site-migration PowerShell scripts at the repository root
+  (`01-fix-link-extensions.ps1` … `16-fix-warn-gaps.ps1`,
+  `UIAO-DocAudit*.ps1`) are deleted — they were referenced only by each
+  other and by historical provenance comments; git history preserves them.
+  `RELEASE_NOTES.md` no longer carries the stale March 2026
+  "Modernization Atlas v1.0" content (a pre-ADR-032 product identity
+  presented as current on the published release-notes page); it is now a
+  pointer to `CHANGELOG.md` and GitHub Releases so it cannot rot again.
+  `SECURITY.md` stops referencing the `core/` and `impl/` directories
+  retired by the ADR-032 consolidation (now `src/uiao/` and root
+  `pyproject.toml`/`uv.lock`).
+
 ### Changed
 
 - **SVG-derived PNGs are no longer tracked (repo −66 MB, 865 files).** For
