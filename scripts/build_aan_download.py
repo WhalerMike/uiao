@@ -137,7 +137,7 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
 
 def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int:
     members, notes = collect(site_root, src_root)
-    print("Federal AAN kit — build inputs")
+    print("Federal Compliance AAN Series kit — build inputs")
     print("=" * 60)
     for n in notes:
         print(" ", n)
@@ -149,7 +149,7 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
     out_dir.mkdir(parents=True, exist_ok=True)
     zip_path = out_dir / ZIP_NAME
     readme = (
-        "Federal Application-Aware Networking Series — complete kit\n"
+        "Federal Compliance AAN Series (Federal Application-Aware Networking) — complete kit\n"
         f"Build date: {date_code}\n\n"
         "FEDERAL EDITION. Written for any federal agency; no agency is named. The\n"
         "agency-specific edition is not distributed here.\n\n"
