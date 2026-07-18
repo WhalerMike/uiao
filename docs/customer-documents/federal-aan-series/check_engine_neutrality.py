@@ -15,9 +15,10 @@ text file under this directory, after stripping repository-hosting URLs
 in that repository, so links to itself are hosting reality, not engine naming.
 
 RATCHET, not sweep: 79 files predate this gate and still name the engine —
-heavy books whose figures render "UIAO" inside the diagram, deck/spec YAMLs
-that drive PPTX slides, the training subtree pending relocation, internal
-planning docs, and gate tooling whose docstrings compare against UIAO canon.
+internal planning docs and gate tooling whose docstrings compare against
+UIAO canon. (The books, deck/spec YAMLs, figures, and training subtree were
+all cleaned; the training subtree stays in the series — it is kit content
+registered in the compliance spine — scrubbed per the Vol V precedent.)
 They are enumerated below and may ONLY leave this list, never join it:
 
   1. NO NEW NAMING — a file not listed here must contain no match.
@@ -73,19 +74,6 @@ SELF = Path(__file__).name
 # Every entry is a file that named the engine when this gate landed
 # (2026-07-18). Grouped by what cleaning it takes. Shrink-only (invariant 2).
 RATCHET = {
-    # Training subtree — engine-side training content; disposition is
-    # RELOCATION out of the series (it is already lychee-excluded), not a
-    # scrub. Entries fall off as the move lands.
-    "AAN-Training-Program/assessment-rubrics.qmd",
-    "AAN-Training-Program/compliance-track.qmd",
-    "AAN-Training-Program/implementation-track.qmd",
-    "AAN-Training-Program/index.qmd",
-    "AAN-Training-Program/labs/index.qmd",
-    "AAN-Training-Program/labs/lab-b1-ddi.qmd",
-    "AAN-Training-Program/labs/lab-b5-pim.qmd",
-    "AAN-Training-Program/labs/lab-b6-purview.qmd",
-    "AAN-Training-Program/labs/lab-b6-sentinel.qmd",
-    "AAN-Training-Program/vendor-training-catalog.qmd",
     # Internal planning / meta docs — not book corpus; each needs a
     # keep-here-and-scrub vs move-to-engine-side decision.
     "AAN_CR26_Reconciliation.md",
