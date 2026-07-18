@@ -156,7 +156,7 @@ training page defines the token**. The definition exists one level up, on
 the series index —
 "The series is engine-neutral by design … it speaks to the **AAN Evidence
 & Authorization Contract** … that any conformant evidence engine can
-satisfy" (`index.qmd:29-34`, linking `AAN_Evidence_Contract_Spec.md`) —
+satisfy" (`index.qmd:29-34`, linking `AAN_Evidence_Contract_Spec.qmd`) —
 but no training page links to it, and there is no tooling-stack note,
 no sample output, and no fixture pointer for a learner who wants to run
 the capstone "walk" (`compliance-track.qmd:164-179`) end-to-end. A new
@@ -300,7 +300,7 @@ in.
 
 1. **Define `<engine>` where it is used** (Concern 3) — a short
    "tooling stack" note on the program index and both track pages: what
-   the token stands for, a link to `AAN_Evidence_Contract_Spec.md`, the
+   the token stands for, a link to `AAN_Evidence_Contract_Spec.qmd`, the
    three commands the capstones need, and what Tier F actually runs.
    Highest leverage; pure addition.
 2. **Close the PIM lab like the other three** (4c) — add the
