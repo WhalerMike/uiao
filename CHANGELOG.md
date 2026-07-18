@@ -4,6 +4,23 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+### Added
+
+- **AAN Training Program — external evaluation, graded.** A third-party
+  review of the standalone training program (2026-07-18, scored 8.7/10)
+  is committed verbatim as
+  `docs/customer-documents/federal-aan-series/AAN_Training_Program_External_Evaluation.md`,
+  and every finding is verified against the tree at HEAD in the companion
+  `AAN_Training_Program_Assessment_Against_Evaluation.md` — same
+  verdict-with-file-and-line-evidence format as the series-level
+  `AAN_Series_Assessment_Against_Critique.md`. Tally: 3 Confirmed
+  (no `<engine>` tooling definition on the training pages, no Core AAN
+  Pathway, no post-implementation KPIs) · 9 Partially addressed ·
+  4 Already addressed (lab tiering, template rigidity, Book 19 residual
+  risks, alternative-stack catalog rows) · 1 Not reproduced (figures are
+  embedded in the rendered pages; the reviewer read a flattened export).
+  The assessment closes with a six-item priority action list.
+
 ### Removed
 
 - **Root-level clutter from the pre-consolidation era.** The 19 one-shot
