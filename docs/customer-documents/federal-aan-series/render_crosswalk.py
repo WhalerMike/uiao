@@ -73,6 +73,7 @@ ROMAN = {
     "vol-7": "VII",
     "vol-8": "VIII",
     "vol-9": "IX",
+    "vol-10": "X",
 }
 # Roman -> sort rank so "Where addressed" and the coverage table order by volume.
 ROMAN_RANK = {r: i for i, r in enumerate(ROMAN.values())}

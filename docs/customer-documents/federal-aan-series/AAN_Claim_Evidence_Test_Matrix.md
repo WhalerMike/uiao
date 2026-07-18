@@ -4,7 +4,7 @@
 
 ## Coverage (stated honestly)
 
-- The spine records **91 control-closure claims** across **17 of 67 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
+- The spine records **91 control-closure claims** across **17 of 68 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
 - **11 of 91** claims carry a named falsifying test; **17 of 91** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
 
 ## Matrix
