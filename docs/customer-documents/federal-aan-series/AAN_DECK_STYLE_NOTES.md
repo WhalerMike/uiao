@@ -2,7 +2,7 @@
 
 Measured from the committed hand-built AAN briefing decks with `python-pptx`
 1.0.2 on 2026-07-08. These are the exact numbers the canonical generator
-(`src/uiao/generators/aan_deck.py`) reproduces.
+(the host repo's `generators/aan_deck.py`) reproduces.
 
 Decks introspected:
 
@@ -119,7 +119,7 @@ One slide **per active step**. Geometry per step slide:
 
 - **Every** slide carries full presenter prose (Book_11: 25/25, ~1000–2800 ch).
 - Slides that state vendor claims end notes with a single line:
-  `Vendor sources: <url> | <url> | uiao repo: <path>`.
+  `Vendor sources: <url> | <url> | host repo: <path>`.
 - The generator keeps the URL link-map in one `SRC` constant (deck spec may
   extend it via a `sources:` map); `vendor_sources` entries are either full
   URLs or `SRC` keys resolved against the merged map.
