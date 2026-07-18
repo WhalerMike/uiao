@@ -117,6 +117,16 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Added
 
+- **The AAN Evidence & Authorization Contract is published
+  (`AAN_Evidence_Contract_Spec.md`).** The open specification every
+  engine-neutral reference in the series points at — compliance spine +
+  eight evidence slots + cadence/disposition rules in, OSCAL AP/AR/POA&M
+  bundle + ConMon stream out, five conformance invariants — authored in
+  the series and left untracked by an earlier session; now committed,
+  Date-Coded, linked from the series index and the Executive Summary,
+  and covered by the engine-neutrality gate (it names no engine, by
+  construction). Closes the dangling "per the series evidence contract"
+  citation the Phase 0 scrubs introduced.
 - **AAN engine-neutrality gate (ratchet).** The Federal AAN series is a
   standalone compliance offering: an agency must be able to adopt it without
   adopting — or hearing about — any particular automation engine, UIAO
