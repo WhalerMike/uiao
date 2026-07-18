@@ -600,11 +600,11 @@ Scans every `[text](relative-path)` link in `*.qmd`/`*.md` files under `docs/**`
 | `docs/data/sitemap-tree.md` | 269 | `customer-documents/operational-guides/client-server-to-hybrid-cloud/09-migration-roadmap.html` | — |
 | `docs/data/sitemap-tree.md` | 270 | `customer-documents/operational-guides/client-server-to-hybrid-cloud/10-executive-summary.html` | — |
 | `docs/data/sitemap-tree.md` | 272 | `customer-documents/compliance/index.html` | — |
-| `docs/data/sitemap-tree.md` | 273 | `customer-documents/compliance/controls-testing/compliance-mapping.html` | — |
-| `docs/data/sitemap-tree.md` | 274 | `customer-documents/compliance/evidence-telemetry/scuba-technical-spec.html` | — |
-| `docs/data/sitemap-tree.md` | 275 | `customer-documents/compliance/evidence-telemetry/scuba-value-proposition.html` | — |
-| `docs/data/sitemap-tree.md` | 276 | `customer-documents/compliance/federal-mandates/fedramp-cisa-update.html` | — |
-| `docs/data/sitemap-tree.md` | 277 | `customer-documents/compliance/governance-canon/master-document-spec.html` | — |
+| `docs/data/sitemap-tree.md` | 273 | `customer-documents/uiao-aan-integration/09-compliance-mapping.html` | — |
+| `docs/data/sitemap-tree.md` | 274 | `customer-documents/uiao-aan-integration/10-scuba-technical-spec.html` | — |
+| `docs/data/sitemap-tree.md` | 275 | `customer-documents/uiao-aan-integration/11-scuba-value-proposition.html` | — |
+| `docs/data/sitemap-tree.md` | 276 | `customer-documents/uiao-aan-integration/14-fedramp-cisa-update.html` | — |
+| `docs/data/sitemap-tree.md` | 277 | `customer-documents/uiao-aan-integration/13-master-document-spec.html` | — |
 | `docs/data/sitemap-tree.md` | 279 | `customer-documents/compliance/federal-mandates/index.html` | — |
 | `docs/data/sitemap-tree.md` | 280 | `customer-documents/compliance/boundary-authorization/index.html` | — |
 | `docs/data/sitemap-tree.md` | 281 | `customer-documents/compliance/evidence-telemetry/index.html` | — |
@@ -1042,7 +1042,7 @@ Scans every `[text](relative-path)` link in `*.qmd`/`*.md` files under `docs/**`
 | `src/uiao/canon/adr/adr-087-findings-reorganization.md` | 211 | `adr-068-canon-publication-policy.qmd` | — |
 | `src/uiao/canon/adr/adr-094-assessment-to-plan-toolchain.md` | 26 | `../../../docs/customer-documents/orgpath-narrative/Book_15_CPT_23.qmd` | — |
 | `src/uiao/canon/adr/adr-094-assessment-to-plan-toolchain.md` | 28 | `../../../docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd` | — |
-| `src/uiao/canon/adr/adr-094-assessment-to-plan-toolchain.md` | 32 | `../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd` | — |
+| `src/uiao/canon/adr/adr-094-assessment-to-plan-toolchain.md` | 32 | `../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd` | — |
 | `src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/c31eb04c082d6d578a26a00de9a482707ab7a00c/PROVENANCE.md` | 4 | `../../../../adr/adr-061-fedramp-cr26-catalog-vendoring.md` | — |
 | `src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/c31eb04c082d6d578a26a00de9a482707ab7a00c/PROVENANCE.md` | 75 | `../../../../specs/fedramp-20x-integration.md` | — |
 | `src/uiao/canon/compliance/reference/fedramp-rev5/README.md` | 17 | `../../../NOTICE` | — |

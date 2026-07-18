@@ -239,14 +239,14 @@ Refreshes the 2026-04-17 substrate-status triage with current-tree counts and pe
 | 12 | `docs/narrative/program-project-plans.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 11 | `docs/customer-documents/compliance/boundary-authorization/B1-2-teams-phone-tic2-centralized-dia.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 11 | `docs/docs/uiao-rfc-0026-e1-connect-gov-design.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
-| 10 | `docs/customer-documents/compliance/federal-mandates/fedramp-cisa-update.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
+| 10 | `docs/customer-documents/uiao-aan-integration/14-fedramp-cisa-update.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 9 | `docs/customer-documents/modernization/network-transformation/dns-modernization.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 9 | `docs/customer-documents/orgpath-narrative/03-proposed-governance-substrate.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 9 | `docs/customer-documents/orgpath-narrative/15-uiao-governance-os-complete-narrative.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 9 | `docs/findings/README.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 9 | `docs/governance/CONMON.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 8 | `docs/customer-documents/adapter-specs/terraform/terraform.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
-| 8 | `docs/customer-documents/compliance/evidence-telemetry/scuba-value-proposition.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
+| 8 | `docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 8 | `docs/customer-documents/modernization/ad-interaction-guide.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 8 | `docs/customer-documents/orgpath-narrative/04-implementing-orgtree-and-orgpath.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 8 | `docs/findings/fedramp-rfcs-substrate-assessment.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
@@ -261,7 +261,7 @@ Refreshes the 2026-04-17 substrate-status triage with current-tree counts and pe
 | 7 | `docs/customer-documents/adapter-specs/entra-workload-identity/entra-workload-identity.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 7 | `docs/customer-documents/adapter-specs/purview-audit/purview-audit.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 7 | `docs/customer-documents/adapter-specs/vdr-bir/vdr-bir.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
-| 7 | `docs/customer-documents/compliance/governance-canon/master-document-spec.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
+| 7 | `docs/customer-documents/uiao-aan-integration/13-master-document-spec.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 7 | `docs/customer-documents/modernization/pki-modernization.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 7 | `docs/customer-documents/platform/platform-modernization-overview.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 7 | `docs/customer-documents/validation-suites/adapters/azure-migrate/azure-migrate.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
@@ -328,7 +328,7 @@ Refreshes the 2026-04-17 substrate-status triage with current-tree counts and pe
 | 5 | `docs/customer-documents/validation-suites/adapters/va-veteran-attribute-service/va-veteran-attribute-service.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 5 | `docs/customer-documents/validation-suites/adapters/vitals-attribute-service/vitals-attribute-service.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 4 | `docs/customer-documents/adapter-specs/infoblox/infoblox.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
-| 4 | `docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
+| 4 | `docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 4 | `docs/customer-documents/orgpath-narrative/08-orgpath-and-application-identity.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 4 | `docs/customer-documents/orgpath-narrative/13-orgpath-and-power-bi-reporting.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 4 | `docs/customer-documents/substrate/execution-patterns/cli-operations-guide.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
@@ -357,7 +357,7 @@ Refreshes the 2026-04-17 substrate-status triage with current-tree counts and pe
 | 2 | `docs/.github/PULL_REQUEST_TEMPLATE/remediation-metadata.md` | needs author judgment — frontmatter present, no flag, not draft status |
 | 2 | `docs/academy/index.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 2 | `docs/appendices/Appendix-D-ADR-Index.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
-| 2 | `docs/customer-documents/compliance/evidence-telemetry/scuba-technical-spec.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
+| 2 | `docs/customer-documents/uiao-aan-integration/10-scuba-technical-spec.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 2 | `docs/customer-documents/executive-briefs/modernization-overview.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 2 | `docs/customer-documents/executive-governance-series/ch07-operational-tempo/index.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
 | 2 | `docs/customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd` | needs author judgment — frontmatter present, no flag, not draft status |
@@ -661,4 +661,3 @@ Refreshes the 2026-04-17 substrate-status triage with current-tree counts and pe
 | 1 | `docs/docs/session-logs/scripts/stage-4-batch-4.2-strip-uiao-core.ps1` | no action — file is a scratch / log surface |
 | 1 | `docs/docs/session-logs/scripts/stage-4-batch-4.4-reindent-canon-tools.ps1` | no action — file is a scratch / log surface |
 | 1 | `docs/docs/session-logs/scripts/stage-4-batch-5.1.7-canon-backfill.ps1` | no action — file is a scratch / log surface |
-

@@ -47,7 +47,7 @@ UIAOImportAdapters has **no upstream toolchain dependency** and is one of the tw
 - Authenticode-signed; SHA-256 hashes published in a signed manifest (`SI-7` / `SA-10`).
 - Output round-trips through the UIAO IR / OSCAL pipeline so imported assessments become canon-anchored evidence.
 - Authored as `.psd1` + `.psm1` + Pester tests under `tools/powershell/UIAOImportAdapters/`, following the `OrgPathTools` / `OrgTreeValidation` pattern.
-- Input data validation and sanitization are documented as a control surface (`SI-10`), per [`compliance-mapping.qmd §7.3`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd).
+- Input data validation and sanitization are documented as a control surface (`SI-10`), per [`compliance-mapping.qmd §7.3`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd).
 
 ## Drift and provenance anchoring
 
