@@ -325,12 +325,55 @@ the alternatives impossible, never with an adjective.
 | Required technology | Controls with no alternate closure path | Why no alternative exists |
 |---|---|---|
 | **IPAM/DDI** — authoritative naming and addressing plane | SC-20, SC-20(1), SC-21, SC-22 (authoritative/recursive DNS); CM-8, CM-8(1) (component inventory); IA-9 (service identification) | You cannot attest authoritative name resolution without an authoritative resolver, and you cannot inventory what you cannot enumerate. No scanner creates a source of truth — a scanner can only measure drift from one. |
-| **SD-WAN** — encrypted, application-aware transport overlay | SC-8, SC-8(1) on DIA circuits (network-layer encryption); SC-5 (traffic-class separation); SI-4 (application-layer telemetry on transport) | A pipe has no encryption, no path intelligence, and no telemetry. Physics gives DIA lower latency; only the overlay gives it a control surface. FIPS-validated application-layer TLS closes SC-8 per flow, but only a network-layer overlay closes it for *every* flow on the circuit at once — and among overlay classes SD-WAN is the one that also delivers the SC-5 traffic-class and SI-4 telemetry closures. (On a field-office circuit egressing over the public internet, the SC-8(5) physical path and intra-boundary inheritance do not apply, so per-flow TLS coverage is the gap the overlay fills.) |
+| **SD-WAN** — encrypted, application-aware transport overlay | SC-8, SC-8(1) on DIA circuits (network-layer encryption); SC-5 (traffic-class separation); SI-4 (application-layer telemetry on transport) | A pipe has no encryption, no path intelligence, and no telemetry. Physics gives DIA lower latency; only the overlay gives it a control surface. FIPS-validated application-layer TLS closes SC-8 per flow, but only a network-layer overlay closes it for *every* flow on the circuit at once — and among overlay classes SD-WAN is the one that also delivers the SC-5 traffic-class and SI-4 telemetry closures. (On a field-office circuit egressing over the public internet, the SC-8(5) physical path and intra-boundary inheritance do not apply, so the flows TLS does not reach are the gap the overlay fills.) |
 | **TIC 3.0** — distributed policy enforcement for the pipes | SC-7, SC-7(7) (boundary protection on distributed egress); AC-4 (information flow enforcement outside the legacy TIC access point) | Under TIC 3.0, DIA requires a distributed enforcement point (the SASE stack) providing protection *commensurate with the agency's risk tolerance* — in practice the applicable security-capabilities catalog entries. An ungoverned DIA circuit is not a modernization; it is a finding. |
 
 : The Three Necessity Anchors {.striped .hover}
 
 > **Baseline caveat:** These closure claims are made against the NIST SP 800-53 Rev 5 control baseline and FedRAMP 20x CR26 rules published June 25, 2026 (optional adoption July 4, 2026; mandatory January 1, 2027). Changes to the control baseline, new FedRAMP-authorized product entries, or revised assessment guidance may alter these closure paths. Validate with OIS and the agency's independent assessor before using these claims as the basis for authorization decisions.
+
+::: {.aan-important}
+## The SC-8 Row Against Its Strongest Counter-Sources
+
+The SC-8 row above is a **coverage-completeness** claim, not an exclusivity
+claim, and it is written to survive the two objections a well-sourced
+reviewer will raise.
+
+**"FedRAMP accepts TLS."** Correct. FedRAMP's Rev 5 data-in-transit guidance
+("The Rev. 5 Approach to SC-8, and Protecting Data-in-Transit," fedramp.gov,
+July 2023) requires FIPS 140-validated encryption and names no protocol:
+FIPS-validated TLS closes SC-8 for the flow that negotiates it, Rev 5 moved
+physical protection to SC-8(5) (a Controlled Access Area path satisfiable
+through PE-family controls), and SC-8 / SC-8(1) are inheritable when traffic
+originates and terminates inside an authorized boundary. None of those paths
+reaches a field-office DIA circuit: the traffic originates outside every
+authorized boundary, no Controlled Access Area encloses the public internet,
+and TLS closure must then be demonstrated **flow by flow** — while DNS
+lookups, legacy protocols, and misconfigured applications ride the same
+circuit bare. The overlay is the mechanism that converts an unbounded set of
+per-flow attestations into one circuit-level attestation.
+
+**"Our traffic is M365, and M365 is already encrypted."** Also correct —
+Microsoft's service endpoints negotiate TLS with FIPS-validated cryptography
+available, and Microsoft's network connectivity principles recommend that
+Optimize-category traffic (Teams media above all) egress locally and bypass
+tunnels and inspection, for exactly the ITU-T G.114 latency reasons this
+series cites. Neither fact rebuts the row; both are instances of it. M365's
+TLS is the conceded per-flow closure, and the circuit still carries the DNS
+queries that resolve those very endpoints plus every non-M365 flow. Where
+the agency follows Microsoft's bypass guidance, the SD-WAN edge is what
+makes the exemption **deliberate and attestable**: application-aware
+steering records which flows ride the IPsec overlay and which rest on the
+application's own FIPS-validated TLS, turning a split-tunnel exception from
+an invisible gap into per-flow evidence — the same SI-4 telemetry closure
+the row already claims.
+
+Mechanism-class honesty cuts both ways: plain site-to-site IPsec, ZTNA
+tunnels, and other network-layer overlays also encrypt every flow on the
+circuit without being SD-WAN. The necessity claim is the bundle — among
+overlay classes, SD-WAN is the one that co-delivers the SC-5 traffic-class
+separation and SI-4 application-layer telemetry closures alongside SC-8.
+:::
 
 ::: {.aan-important}
 ## Mechanism, Not Product — Read the Necessity Claims Correctly
