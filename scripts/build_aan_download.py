@@ -135,6 +135,45 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
     return members, notes
 
 
+def _index_md(members: dict[str, Path], date_code: str) -> str:
+    """Render the kit's master index — the zip-root INDEX.md.
+
+    Groups the archive members by volume folder (each book listed once per
+    stem, with the formats present) and by operator kit (file counts), so a
+    reader can navigate the kit from the root instead of spelunking folders.
+    """
+    vols: dict[str, dict[str, set[str]]] = {}
+    kits: dict[str, int] = {}
+    for arc in members:
+        top, _, rest = arc.partition("/")
+        if top == "kits":
+            kits[rest.partition("/")[0]] = kits.get(rest.partition("/")[0], 0) + 1
+        elif _VOL_RE.match(Path(rest).stem):
+            vols.setdefault(top, {}).setdefault(Path(rest).stem, set()).add(Path(rest).suffix)
+    lines = [
+        "# Federal Compliance AAN Series — kit index",
+        "",
+        f"Build date: {date_code}. Edition and scope notes: README.txt.",
+        "",
+        "## Volumes",
+        "",
+    ]
+    for folder in VOL_FOLDER.values():
+        books = vols.get(folder)
+        if not books:
+            continue
+        lines += [f"### {folder.replace('_', ' ')}", ""]
+        for stem in sorted(books):
+            fmts = " + ".join(sorted(s.lstrip(".") for s in books[stem]))
+            lines.append(f"- `{folder}/{stem}` ({fmts})")
+        lines.append("")
+    lines += ["## Operator kits (`kits/`)", ""]
+    for kit in sorted(kits):
+        lines.append(f"- `kits/{kit}/` — {kits[kit]} file(s)")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int:
     members, notes = collect(site_root, src_root)
     print("Federal Compliance AAN Series kit — build inputs")
@@ -157,10 +196,12 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
         "(.pptx), plus the deployable operator kits (ServiceNow day-2 catalog, the\n"
         "compliance scoped app, detection rules, the multi-cloud DDI landing-zone\n"
         "automation, and the training academy).\n\n"
+        "A master index of every volume, book, and kit is in INDEX.md.\n\n"
         "Rebuilt from source on every site deploy — no fixed SHA-256 is published.\n"
     )
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("README.txt", readme)
+        z.writestr("INDEX.md", _index_md(members, date_code))
         for arc, src in sorted(members.items()):
             z.write(src, arc)
 
