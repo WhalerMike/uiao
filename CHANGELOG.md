@@ -38,6 +38,24 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **AAN series — kit-reassessment wave 2 ships the three tractable open
+  items.** (1) Vol VII Book 00 gains an explicit "ServiceNow is the
+  recommended coordination platform — not a mandatory one" callout: the
+  requirement is the four-property coordination contract, with named
+  alternatives (an authorized workflow/CMDB platform such as Atlassian
+  Government Cloud, or a composed Azure DevOps/GitHub + Logic Apps +
+  Sentinel-automation pipeline); Vol IX Book 00 inherits the statement
+  alongside the High-on-Moderate treatment; both books' Date Codes bump.
+  (2) The series index opens with "Three ways in" — Executive Brief /
+  Practitioner Quickstart (Core AAN Pathway + labs + deployable kits) /
+  Full Academy — the tiered entry points the reassessment asked for.
+  (3) `scripts/build_aan_download.py` writes a master `INDEX.md` into the
+  kit zip root enumerating every volume, book (with formats), and
+  operator kit. The reassessment's disposition table gains a wave-2
+  update listing what shipped and what remains open (visual dependency
+  graph, ROI sensitivity, brownfield retrofit guidance, and the
+  build-pipeline polish items).
+
 - **AAN Training Program — the graded evaluation response ships.** The
   six-item priority list from the training-program evaluation assessment
   is implemented: (1) a "Core AAN Pathway" nine-book spine on the program
