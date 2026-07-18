@@ -47,11 +47,11 @@ def _plane_ids() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def test_manifest_is_non_federal_proposed_vertical() -> None:
+def test_manifest_is_active_non_federal_vertical() -> None:
     assert soc2_trust_services_catalog.ADAPTER_ID == "soc2-trust-services-catalog"
-    # Registered + ADR-backed (ADR-129) but not yet operational — proposed, not
-    # active. Promotion to active is gated on an operational gate / customer.
-    assert soc2_trust_services_catalog.STATUS == "proposed"
+    # Registered, ADR-backed (ADR-129 ACCEPTED), and operational (emitter + CI
+    # conformance coverage) — active, matching the federal pack's usage.
+    assert soc2_trust_services_catalog.STATUS == "active"
     assert soc2_trust_services_catalog.VERTICAL == "commercial-regulated"
     assert soc2_trust_services_catalog.SURFACE_SLOTS_BOUND == (1, 2, 3, 4, 5, 6)
 
@@ -81,7 +81,7 @@ def test_mapping_binds_the_matching_substrate_plane(slot_id: int) -> None:
     mapping = soc2_trust_services_catalog.load_slot_mapping(slot_id)
     assert mapping["slot_id"] == slot_id
     assert mapping["slot"] == _SLOT_PLANE[slot_id]
-    assert mapping["status"] == "proposed"
+    assert mapping["status"] == "active"
     assert mapping["vertical"] == "commercial-regulated"
     # Every binding names a TSC criterion + a substrate capability + rationale.
     assert mapping["bindings"], f"slot {slot_id} has no bindings"
@@ -144,7 +144,7 @@ def _registry_entry() -> dict:
 def test_pack_is_registered_with_the_non_federal_boundary() -> None:
     entry = _registry_entry()
     assert entry["class"] == "conformance"
-    assert entry["status"] == "proposed"
+    assert entry["status"] == "active"
     # The ADR-129 boundary value — non-federal, regime-scoped.
     assert entry["gcc-boundary"] == "commercial-general"
     # In lockstep with the module + mapping status markers.
@@ -156,3 +156,49 @@ def test_registry_status_matches_module_and_mappings() -> None:
     assert status == soc2_trust_services_catalog.STATUS
     for slot_id in soc2_trust_services_catalog.SURFACE_SLOTS_BOUND:
         assert soc2_trust_services_catalog.load_slot_mapping(slot_id)["status"] == status
+
+
+# ---------------------------------------------------------------------------
+# Operational surface (ADR-129 D3) — the evidence-bindings emitter
+# ---------------------------------------------------------------------------
+
+
+def test_emitter_produces_the_declared_output_shape() -> None:
+    out = soc2_trust_services_catalog.emit_evidence_bindings()
+    assert out["adapter_id"] == "soc2-trust-services-catalog"
+    assert out["vertical"] == "commercial-regulated"
+    assert out["status"] == soc2_trust_services_catalog.STATUS
+    assert out["surface_slots_bound"] == list(soc2_trust_services_catalog.SURFACE_SLOTS_BOUND)
+    # One rendered slot per bound surface slot, in order.
+    assert [s["slot_id"] for s in out["slots"]] == list(soc2_trust_services_catalog.SURFACE_SLOTS_BOUND)
+    for s in out["slots"]:
+        assert s["bindings"], f"slot {s['slot_id']} emitted no bindings"
+        assert s["tsc_anchor"]
+        assert s["substrate_source"]
+
+
+def test_emitter_criteria_union_is_sorted_and_complete() -> None:
+    out = soc2_trust_services_catalog.emit_evidence_bindings()
+    covered = out["criteria_covered"]
+    assert covered == sorted(covered)
+    assert out["criteria_count"] == len(covered)
+    # Every criterion is a Trust Services Common Criterion, and the union equals
+    # the per-slot bindings flattened.
+    flat = {b["tsc_criterion"] for s in out["slots"] for b in s["bindings"]}
+    assert set(covered) == flat
+    assert all(c.startswith("CC") for c in covered)
+
+
+def test_emitter_output_is_json_serializable() -> None:
+    import json
+
+    out = soc2_trust_services_catalog.emit_evidence_bindings()
+    # The declared output is a JSON file; the structure must round-trip.
+    assert json.loads(json.dumps(out)) == out
+    assert soc2_trust_services_catalog.EVIDENCE_BINDINGS_OUTPUT == "soc2-evidence-bindings.json"
+
+
+def test_emitter_is_deterministic() -> None:
+    a = soc2_trust_services_catalog.emit_evidence_bindings()
+    b = soc2_trust_services_catalog.emit_evidence_bindings()
+    assert a == b

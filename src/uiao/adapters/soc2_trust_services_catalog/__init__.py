@@ -40,12 +40,14 @@ top — they are not a substrate concern.
 
 STATUS
 ------
-``proposed`` — registered in ``adapter-registry.yaml`` and ADR-backed
-(ADR-129), but not yet operational. It is intentionally NOT ``active``: there is
-no SOC 2 CI gate, no evidence emitter, and no customer engagement. Promotion to
-``active`` is gated on operational reality (an operational SOC 2 conformance
-gate and/or a real commercial engagement) plus ratification of ADR-129 from
-PROPOSED to ACCEPTED — a separate, small follow-up.
+``active`` — registered in ``adapter-registry.yaml`` and ADR-backed
+(ADR-129, ACCEPTED). The two ADR-129 D3 conditions for promotion are met: an
+operational conformance gate exists (``emit_evidence_bindings`` renders the
+pack's declared ``soc2-evidence-bindings.json`` output, exercised by the
+conformance suite that runs in the adapter-conformance CI gate), and ADR-129 is
+ratified. "Active" here matches the federal pack's usage — operational and
+CI-covered — not "has a paying customer"; a real SOC 2 engagement would deepen
+the bindings' confidence, not change this status.
 
 Registry admission (ADR-129 resolved the finding)
 -------------------------------------------------
@@ -56,8 +58,8 @@ commercial-product exceptions), with no value for a genuinely non-federal
 vertical. The substrate was vertical-agnostic, but the *registry schema carried
 residual federal coupling*. ADR-129 resolved it in lockstep with the schema
 change ADR-085 D3 anticipated: it added ``commercial-general`` (the boundary for
-non-federal, regime-scoped packs) and registered this pack at status
-``proposed``. A *second* coupling remains noted, not yet fixed: the registry's
+non-federal, regime-scoped packs) and registered this pack. A *second* coupling
+remains noted, not yet fixed: the registry's
 ``controls`` field is NIST-patterned and cannot hold SOC 2 Trust Services
 Criteria, so the registry entry omits it and the criteria live in
 ``mappings/slot-0N-*.yaml``; the field's vertical-neutral redesign travels with
@@ -85,10 +87,12 @@ except ImportError:  # pragma: no cover
     yaml = None  # type: ignore[assignment]
 
 ADAPTER_ID: str = "soc2-trust-services-catalog"
-STATUS: str = "proposed"
+STATUS: str = "active"
 VERTICAL: str = "commercial-regulated"
 STANDARD: str = "AICPA SOC 2 Type II — Trust Services Criteria (2017/2022)"
 SURFACE_SLOTS_BOUND: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
+# The registry's declared output (adapter-registry.yaml → outputs:).
+EVIDENCE_BINDINGS_OUTPUT: str = "soc2-evidence-bindings.json"
 
 _MAPPINGS_DIR = Path(__file__).with_name("mappings")
 
@@ -111,3 +115,47 @@ def load_slot_mapping(slot_id: int) -> dict:
     if not matches:
         raise KeyError(f"no SOC 2 mapping file for surface slot {slot_id}")
     return cast(dict, yaml.safe_load(matches[0].read_text(encoding="utf-8")))
+
+
+def emit_evidence_bindings() -> dict:
+    """Render the adapter's declared output: the consolidated SOC 2 evidence-bindings.
+
+    This is the pack's operational surface (ADR-129 D3): it deterministically
+    consolidates the six per-slot mapping files into the single
+    ``soc2-evidence-bindings.json`` structure the registry declares as this
+    adapter's output, mirroring how the federal pack renders its evidence
+    bindings. It is side-effect free — it returns the structure; the caller
+    (a CI job, a report step) decides where to write it.
+
+    Each slot contributes its TSC anchor, substrate source, and per-criterion
+    bindings; the top level carries the sorted union of Trust Services Criteria
+    the pack covers, so a consumer can answer "which criteria does this vertical
+    bind, and to what substrate evidence?" without re-reading six files.
+    """
+    slots: list[dict] = []
+    criteria: set[str] = set()
+    for slot_id in SURFACE_SLOTS_BOUND:
+        m = load_slot_mapping(slot_id)
+        bindings = m.get("bindings", [])
+        for b in bindings:
+            criteria.add(b["tsc_criterion"])
+        slots.append(
+            {
+                "slot_id": m["slot_id"],
+                "slot": m["slot"],
+                "tsc_anchor": m.get("tsc_anchor", ""),
+                "substrate_source": m.get("substrate_source", ""),
+                "bindings": bindings,
+                "out_of_scope": m.get("out_of_scope", {}).get("note", ""),
+            }
+        )
+    return {
+        "adapter_id": ADAPTER_ID,
+        "standard": STANDARD,
+        "vertical": VERTICAL,
+        "status": STATUS,
+        "surface_slots_bound": list(SURFACE_SLOTS_BOUND),
+        "criteria_covered": sorted(criteria),
+        "criteria_count": len(criteria),
+        "slots": slots,
+    }

@@ -1,8 +1,8 @@
 ---
 adr_id: adr-129
 title: "Non-Federal Vertical Registration and the Commercial Governance Boundary"
-status: PROPOSED
-decided: null
+status: ACCEPTED
+decided: 2026-07-14
 deciders: Michael Stratton
 updated: 2026-07-14
 next_review: 2027-01-14
@@ -19,9 +19,11 @@ impact: 'Authorizes the first non-federal boundary value on the adapter registry
 
 ## Status
 
-**PROPOSED** — 2026-07-14.
+**ACCEPTED** — 2026-07-14.
 
 This ADR realizes a piece of [ADR-085](adr-085-universal-enterprise-positioning.md)'s "future work": it gives a non-federal vertical adapter pack a place in the registry. It changes the adapter-registry schema (one enum value + a description) and adds one registry entry. It changes no runtime behavior, no canon concept, and no existing adapter.
+
+On acceptance, the SOC 2 pack advances from `proposed` to **`active`**: D3's promotion conditions are met — the pack now has an operational conformance surface (`emit_evidence_bindings()` renders its declared `soc2-evidence-bindings.json` output, exercised by the adapter-conformance CI suite) and this ADR is ratified.
 
 ## Context
 
@@ -48,13 +50,13 @@ Add `commercial-general` to the `gcc-boundary` enum. It denotes the governance b
 
 This does not weaken the existing discipline. The description's warning — *"never as a generic cloud descriptor"* — was aimed at preventing the field from becoming a loose "which cloud" tag **for federal adapters**, to stop federal-boundary scope creep. `commercial-general` is not a cloud descriptor; it is the boundary marker for the class of packs that sit *outside* the federal boundary regime entirely. Federal adapters remain constrained to `gcc-moderate` and named exceptions.
 
-### D2. The SOC 2 vertical pack is registered at status `proposed`
+### D2. The SOC 2 vertical pack is registered and, on acceptance, promoted to `active`
 
-Register `soc2-trust-services-catalog` in `adapter-registry.yaml` with `class: conformance`, `status: proposed`, `gcc-boundary: commercial-general`, and controls expressed as SOC 2 Trust Services Criteria (`CC6.x`/`CC7.x`/`CC8.x`) rather than NIST controls. `proposed` is the honest lifecycle marker: the pack is now registered and ADR-backed, but it is **not** operational — there is no SOC 2 CI gate, no evidence emitter, and no customer engagement.
+Register `soc2-trust-services-catalog` in `adapter-registry.yaml` with `class: conformance`, `gcc-boundary: commercial-general`, and its Trust Services Criteria (`CC6.x`/`CC7.x`/`CC8.x`) carried in the pack's mapping files rather than the NIST-patterned `controls` field. It lands at `proposed`; on this ADR's acceptance it advances to **`active`** under the D3 conditions below.
 
-### D3. Promotion to `active` is gated on operational reality, not on this ADR
+### D3. Promotion to `active` requires an operational surface plus ratification
 
-The pack advances to `active` only when an operational SOC 2 conformance gate exists (mirroring the federal pack's CI coverage) **and/or** a real commercial engagement consumes it — and when this ADR itself is ratified from PROPOSED to ACCEPTED. That promotion is a separate, small follow-up; this ADR deliberately stops at `proposed` so the registry never overclaims.
+The pack advances to `active` when an operational SOC 2 conformance gate exists (mirroring the federal pack's CI coverage) **and/or** a real commercial engagement consumes it — **and** when this ADR is ratified from PROPOSED to ACCEPTED. Both are now satisfied: the pack ships `emit_evidence_bindings()`, which renders its declared `soc2-evidence-bindings.json` output and is exercised by the conformance suite that runs in the adapter-conformance CI gate; and this ADR is ACCEPTED. `active` here matches the federal pack's own usage — operational and CI-covered — not "has a paying customer"; a real engagement would deepen the bindings' confidence, not change the status. Absent the operational surface, the pack would have stayed at `proposed` so the registry never overclaims.
 
 ### D4. `verticals-registry.yaml` remains deferred
 
@@ -65,16 +67,16 @@ ADR-085 also anticipated a `verticals-registry.yaml` that catalogs vertical *pac
 **Changed in this ADR's landing PR:**
 
 - `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` — `gcc-boundary` enum gains `commercial-general`; description updated for the federal/non-federal split.
-- `src/uiao/canon/adapter-registry.yaml` — new `soc2-trust-services-catalog` entry (status `proposed`, boundary `commercial-general`).
-- `src/uiao/adapters/soc2_trust_services_catalog/__init__.py` — `STATUS` advances `scaffold` → `proposed`; the "registry admission" note is updated from *"deliberately not registered"* to *"registered per ADR-129"*.
-- `tests/conformance/test_soc2_vertical_scaffold.py` — asserts the new `proposed` status and that the pack now resolves in the registry with a `commercial-general` boundary.
+- `src/uiao/canon/adapter-registry.yaml` — new `soc2-trust-services-catalog` entry (status `active`, boundary `commercial-general`).
+- `src/uiao/adapters/soc2_trust_services_catalog/__init__.py` — `STATUS` → `active`; the "registry admission" note reflects the resolved finding; adds `emit_evidence_bindings()`, the operational renderer for the declared `soc2-evidence-bindings.json` output.
+- `tests/conformance/test_soc2_vertical_scaffold.py` — asserts the `active` status, registry resolution with a `commercial-general` boundary, and the emitter's output shape.
 
 **Not changed (deliberate):**
 
 - No existing adapter, and no federal boundary value, is touched. Adding an enum value is backward-compatible: every existing registry row still validates.
-- No runtime code path reads `commercial-general` yet; there is no SOC 2 collector or emitter. The value is a catalog marker.
 - `verticals-registry.yaml` is not created (D4).
 - The registry's `controls` field remains NIST-patterned (`^[A-Z]{2}-[0-9]+…`), which cannot express SOC 2 Trust Services Criteria (`CC6.1` etc.). This is a *second* residual federal coupling in the schema, surfaced by registering a non-federal pack. Rather than widen the shared pattern in this pass, the SOC 2 entry omits the (optional) `controls` field and carries its Trust Services Criteria in the pack's `mappings/slot-0N-*.yaml`; the field's vertical-neutral redesign travels with the deferred `verticals-registry.yaml` work (D4).
+- The substrate walker asks every `active` adapter to declare `ztmm-pillars:` for CISA ZTMM v2.0 attribution — a *third* federal-flavored field. A non-federal vertical does not claim CISA ZTMM attribution, so the SOC 2 entry declares an explicit empty list (`ztmm-pillars: []`), which the walker accepts as a valid informational declaration. Same disposition as the `controls` field: honest empty/omitted marker now, vertical-neutral redesign deferred to the verticals-registry work.
 
 **Reversal cost:** Low. Removing the enum value and the one registry row reverts the change; no runtime or data migration is involved.
 
