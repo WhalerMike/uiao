@@ -12,7 +12,7 @@ publication_style: include
 
 # UIAO Continuous Monitoring Strategy
 
-> **Status: Current — authoritative template.** Formal ConMon strategy identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `CA-7` and links to the FedRAMP 20x KSI framework. It defines what is monitored, how often, how it is reported, and when it escalates — the operational counterpart to the point-in-time SSP assessment.
+> **Status: Current — authoritative template.** Formal ConMon strategy identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses `CA-7` and links to the FedRAMP 20x KSI framework. It defines what is monitored, how often, how it is reported, and when it escalates — the operational counterpart to the point-in-time SSP assessment.
 
 ## Purpose
 
@@ -59,4 +59,4 @@ This strategy addresses `CA-7`; until adopted it remains an open item. Once adop
 - [UIAO_185](UIAO_185_System_Security_Plan_Template.md) — SSP (`CA` disposition)
 - [UIAO_186](UIAO_186_Incident_Response_Plan.md) — Incident Response Plan (escalation)
 - [UIAO_184](UIAO_184_Gap_Closure_Register.md) — gap-closure register (Workstream A)
-- [`compliance-mapping.qmd`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) — `CA-7` gap analysis
+- [`compliance-mapping.qmd`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) — `CA-7` gap analysis

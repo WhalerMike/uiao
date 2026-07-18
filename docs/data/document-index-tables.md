@@ -166,12 +166,6 @@ _No sub-categories._
 | Sub-Category | Description | Status |
 |--------------|-------------|--------|
 | [Boundary Authorization](compliance/boundary-authorization/index.html) | GCC-Moderate boundary model, data classification, ATO / OSCAL, 3PAO engagement | Active |
-| [Controls Testing](compliance/controls-testing/index.html) | Validation suites, test frameworks, continuous monitoring, DR testing | Active |
-| [Evidence Telemetry](compliance/evidence-telemetry/index.html) | Drift engine, telemetry, KSI, ScubaGear, signed provenance chain | Active |
-| [Federal Mandates](compliance/federal-mandates/index.html) | FedRAMP, SCuBA, Executive Orders, NIST — the authorities UIAO maps to | Active |
-| [Governance Canon](compliance/governance-canon/index.html) | Master Document Spec, metadata blocks, ADRs, contributor workflow, error taxonomy | Active |
-| [Incident Response](compliance/incident-response/index.html) | DR playbook (IR-8), SLA escalation, runbooks, break-glass, active-passive replication | Stub |
-| [Policy Libraries](compliance/policy-libraries/index.html) | Conditional Access, Intune, Azure Arc, STIG, SCuBA baselines, Defender | Stub |
 
 ### Substrate
 

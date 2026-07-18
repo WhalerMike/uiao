@@ -60,4 +60,4 @@ Until the agency formally adopts this program, AT-family controls remain a **gap
 - [UIAO_185](UIAO_185_System_Security_Plan_Template.md) — SSP (`AT` disposition, §4)
 - [UIAO_188](UIAO_188_Personnel_Security_Program.md) — Personnel Security Program (paired PS family)
 - [UIAO_184](UIAO_184_Gap_Closure_Register.md) — gap-closure register (Workstream A)
-- [`compliance-mapping.qmd`](../../../docs/customer-documents/compliance/controls-testing/compliance-mapping.qmd) — `AT-1`…`AT-4` gap analysis
+- [`compliance-mapping.qmd`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) — `AT-1`…`AT-4` gap analysis

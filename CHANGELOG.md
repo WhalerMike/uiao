@@ -21,6 +21,19 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **Compliance-tree consolidation (Phase 3-A): the series IS the
+  compliance offering.** The six "UIAO …" pages of
+  `docs/customer-documents/compliance/` — the engine's own compliance
+  documentation (control mapping & gap analysis, SCuBA technical spec +
+  value proposition, NIST/FICAM crosswalk, master document spec,
+  FedRAMP/CISA recommendations) — moved into the engine-side companion
+  volume as Books 09–14 with Quarto aliases redirecting the old URLs and
+  23 inbound references updated (canon ADRs/specs, the site front page,
+  a whitepaper, a case study, and `uiao.cli.init`). Six empty section
+  shells deleted; the Compliance landing is now a signpost to the
+  Federal Compliance AAN Series (the offering) and the engine volume
+  (the implementation). Only B. Boundary + Authorization remains,
+  pending series absorption coordinated with the boundary workstream.
 - **The series is renamed "Federal Compliance AAN Series" (Phase 1).**
   The offering-level surfaces carry the new name — site nav sections,
   the series landing page (title + H1, with "Federal Application-Aware
