@@ -31,4 +31,4 @@ Section 13.3.
   Query API and emits per-symptom drift findings (`DRIFT-BOUNDARY` class).
 - `src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml` — gap-matrix rows
   cross-reference these queries via the symptom mapping above.
-- Customer doc: `docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`.
+- Customer doc: `docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`.

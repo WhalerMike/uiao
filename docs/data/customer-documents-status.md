@@ -11,10 +11,10 @@
 | `adapter-specs/` | 0 | 3 | 43 | 0 | 1 | 47 |
 | `architecture-series/` | 0 | 0 | 6 | 0 | 1 | 7 |
 | `case-studies/` | 0 | 0 | 3 | 2 | 1 | 6 |
-| `compliance/` | 0 | 0 | 1 | 3 | 2 | 6 |
+| `compliance/` | 0 | 0 | 0 | 0 | 1 | 1 |
 | `executive-briefs/` | 0 | 3 | 7 | 0 | 1 | 11 |
 | `executive-governance-series/` | 0 | 0 | 0 | 1 | 10 | 11 |
-| `federal-aan-series/` | 0 | 13 | 44 | 29 | 3 | 89 |
+| `federal-aan-series/` | 0 | 13 | 45 | 32 | 4 | 94 |
 | `learning/` | 0 | 0 | 0 | 2 | 1 | 3 |
 | `modernization-specs/` | 0 | 0 | 6 | 0 | 1 | 7 |
 | `operational-guides/` | 0 | 1 | 16 | 33 | 17 | 67 |
@@ -120,12 +120,7 @@
 
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
-| [`docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd) | 349 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/compliance/boundary-authorization/B1-2-teams-phone-tic2-centralized-dia.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/boundary-authorization/B1-2-teams-phone-tic2-centralized-dia.qmd) | 298 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 571 | Substantial | ✅ | 5/5 | — |
-| [`docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd) | 205 | Authored | ✅ | 3/3 | — |
-| [`docs/customer-documents/compliance/boundary-authorization/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/boundary-authorization/index.qmd) | 33 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/compliance/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/index.qmd) | 50 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/compliance/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/compliance/index.qmd) | 49 | Navigation hub | ✅ | — | — |
 
 ### `executive-briefs/`
 
@@ -251,6 +246,11 @@
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.qmd) | 286 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.qmd) | 272 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd) | 262 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd) | 352 | Substantial | ✅ | 3/3 | — |
+| [`docs/customer-documents/federal-aan-series/boundary/B1-2-teams-phone-tic2-centralized-dia.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-2-teams-phone-tic2-centralized-dia.qmd) | 301 | Substantial | ✅ | 3/3 | — |
+| [`docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 574 | Substantial | ✅ | 5/5 | — |
+| [`docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 208 | Authored | ✅ | 3/3 | — |
+| [`docs/customer-documents/federal-aan-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/index.qmd) | 36 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 73 | Navigation hub | ✅ | — | — |
 
 ### `learning/`
