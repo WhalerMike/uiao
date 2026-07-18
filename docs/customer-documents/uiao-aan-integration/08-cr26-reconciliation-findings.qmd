@@ -1,0 +1,140 @@
+---
+title: "Book 08 — CR26 KSI Reconciliation — Findings & Spine Write-Back"
+subtitle: "UIAO — Reference Engine for the Federal Compliance AAN Series"
+doc-type: reference
+audience: "Program owners · ISSOs · assessors evaluating an evidence engine"
+family: uiao-aan-integration
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-18
+---
+
+# CR26 KSI Reconciliation — Findings & Spine Write-Back
+
+**Date Code:** 2026-07-09 15:39 ET
+**Status:** Draft (UIAO-side; executes the reconciliation framed in companion #3)
+**Ground truth:** official FedRAMP CR26 JSON `2026.06.24.01` (`src/uiao/canon/compliance/reference/fedramp-cr26/official/fedramp-consolidated-rules.json`)
+**Resolves:** AAN evidence-layer open item #1 · decision-gate #1
+
+---
+
+## 0. What was done
+
+This is the *executed* reconciliation (companion #3 was the framework). Every
+number below is derived from the official CR26 JSON, the canonical KSI-rule corpus
+(UIAO_137 / UIAO_207), and the AAN compliance spine — not from summary claims. It
+also applies one correctness fix to the spine (§4).
+
+---
+
+## 1. The three-way count — settled
+
+| Source | Claim | Ground-truth reality |
+|---|---|---|
+| **AAN roadmap / Book 06** | "29 ADR-111 rules; **29/29 satisfied**" | The "29" is AAN's ADR-111 *decomposition*. Only **14** exist as canonical rule files (KSI-001…014, UIAO_207 §7). **KSI-015…029 have no rule file** — they are aspirational scaffolds. "29/29" counts 15 rules that don't exist. |
+| **UIAO_137** | "14 local rules → **21/46** (~46%)" | 14 rules is correct. The **21** is a forward-map touch count that (a) includes a stale indicator ID and (b) counts differently from the official catalog — see §3. |
+| **CR26 official JSON** | — | **46 KSI indicators**, 10 themes. This is the authority. (Not the "~56–63" the AAN roadmap guessed.) |
+
+**One-line settlement:** *the catalog is 46 indicators; UIAO has 14 rule files; "29/29 satisfied" is not a true statement.*
+
+---
+
+## 2. The authoritative 46 CR26 indicators (by theme)
+
+Extracted verbatim from the official JSON:
+
+| Theme | # | Indicators |
+|---|---:|---|
+| KSI-CED Cybersecurity Education | 1 | RAT |
+| KSI-CMT Change Management | 4 | LMC, RMV, RVP, VTD |
+| KSI-CNA Cloud Native Architecture | 8 | DFP, EIS, IBP, MAT, OFA, RNT, RVP, ULN |
+| KSI-IAM Identity & Access Mgmt | 6 | AAM, APM, ELP, JIT, SNU, SUS |
+| KSI-INR Incident Response | 3 | AAR, RIR, RPI |
+| KSI-MLA Monitoring/Logging/Auditing | 5 | ALA, EVC, LET, OSM, RVL |
+| KSI-PIY Policy & Inventory | 5 | GIV, RES, RIS, RSD, RVD |
+| KSI-RPL Recovery Planning | 4 | ABO, ARP, RRO, TRC |
+| KSI-SCR Supply Chain Risk | 2 | MIT, MON |
+| KSI-SVC Service Configuration | 8 | ACM, ASM, EIS, PRR, RUD, SIN, VCM, VRI |
+| **Total** | **46** | |
+
+---
+
+## 3. Coverage — the 14 rules against the official 46
+
+Mapping the canonical rules (UIAO_137 §3) to the official indicators above:
+
+| Theme | Covered (evaluable) | Indicators hit | Gap |
+|---|---|---|---|
+| KSI-IAM | **6 / 6 ✅ full** | APM, SNU, ELP, AAM, JIT, SUS (KSI-001…009) | — |
+| KSI-MLA | 2 / 5 | LET, RVL (KSI-005) | ALA, EVC, OSM |
+| KSI-CNA | 2 / 8 | RNT, MAT (KSI-007/008) | DFP, EIS, IBP, OFA, RVP, ULN |
+| KSI-SVC | 2 / 8 | RUD, VCM (KSI-004/006/007/008/010) | ACM, ASM, EIS, PRR, SIN, VRI |
+| KSI-CMT | 4 / 4 ⚠ **scaffold** (not evaluable) | LMC, RMV, RVP, VTD (KSI-011…014) | — (evidence binding pending) |
+| KSI-CED / INR / PIY / RPL / SCR | **0** | none | all 15 |
+
+**Honest coverage numbers:**
+- **12 of 46** indicators are covered by an *evaluable* rule today (**26%**) — IAM 6, MLA 2, CNA 2, SVC 2.
+- **+4** (CMT) are mapped but scaffold-only (not yet evaluable).
+- **30 remain**: 15 in partially-covered themes (CNA 6, MLA 3, SVC 6), and **15 in five themes with zero rules** (CED 1, INR 3, PIY 5, RPL 4, SCR 2).
+
+This is more conservative than UIAO_137's self-reported "21/46," for two reasons in §3.1.
+
+### 3.1 New finding — a stale indicator in UIAO_137
+
+UIAO_137 §3 maps **KSI-004** to `KSI-SVC-SNT`. **`SNT` is not an official CR26 indicator** — the official SVC theme is ACM/ASM/EIS/PRR/RUD/SIN/VCM/VRI (no SNT). It is a Palladium-snapshot artifact that did not survive to the official launch. Consequence: KSI-004's SVC mapping should be re-pinned (to `RUD` alone, or to a renamed successor), and UIAO_137's "21/46" should be recomputed against the official catalog. **Action:** advance UIAO_137 to v0.3 with the official pin (UIAO_207 already vendored it) and drop/replace `SVC-SNT`.
+
+---
+
+## 4. Spine write-back — applied (one correctness fix to AAN)
+
+Validating every KSI theme code in `aan-compliance-spine.yml` against the official
+10 themes surfaced a real bug:
+
+- **`KSI-CM` (×4) is not a CR26 theme.** The catalog has no "CM" theme (CM is the
+  NIST *control family*, not a KSI theme). Applied fix:
+
+| Closure row | Was | Now | Rationale |
+|---|---|---|---|
+| CM-2 Baseline Configuration | `KSI-CM` | **`KSI-CMT`** | config baseline = change management |
+| CM-6 Configuration Settings (patch-sysmgmt) | `KSI-CM` | **`KSI-CMT`** | config settings = change management |
+| CM-6 Configuration Settings (cloudnative) | `KSI-CM` | **`KSI-CMT`** | (paired with KSI-SVC) |
+| CM-8 System Component Inventory | `KSI-CM` | **`KSI-PIY`** | inventory = Policy & Inventory |
+
+After the fix, **all spine theme codes are valid CR26 themes** (verified). This is
+the *only* change to the AAN corpus — a pure invalid→valid correctness fix, made
+because you asked for the spine write-back. It is **not committed** — left in the
+working tree for your review (the AAN series is otherwise untouched).
+
+### 4.1 Second finding — the spine is partially populated
+
+The spine's `closures:` list currently holds **~30 rows, covering only the newer
+books** (Network Enforcement, Patch/Systems Mgmt, Evidence Fabric, Cloud-Native
+Posture, plus two Book-01 anchors). The original books (02–19) have no closure rows
+yet. So the spine is an *emerging* SSOT, not the full control-closure picture — the
+KSI theme distribution it shows (CNA/IAM/MLA/SVC/CMT/PIY) reflects only those books.
+
+---
+
+## 5. What this unblocks, and what remains
+
+**Unblocked now (the honesty fix):** external reporting can state the *true* posture
+— "46-indicator catalog; 12 evaluable-covered (IAM complete); 4 CMT scaffolds; 30
+residual, 15 in five zero-coverage themes" — instead of "29/29 satisfied." That is a
+defensible ConMon baseline; the false 100% is retired.
+
+**Residual work (ordered):**
+1. **Re-pin UIAO_137 → v0.3** to the official catalog; fix the `SVC-SNT` mapping; recompute coverage. *(bounded; the pin already exists in UIAO_207)*
+2. **Author the 15 zero-coverage indicators** (CED 1, INR 3, PIY 5, RPL 4, SCR 2) — decision-gate #2. These five themes were never wired (authored against the SCuBA/M365 surface).
+3. **Make KSI-011…014 evaluable** — bind the CMT scaffolds to substrate change/drift telemetry.
+4. **Fill the 15 partial-theme gaps** (CNA 6, MLA 3, SVC 6).
+5. **Complete the spine** — closure rows for books 02–19 (an AAN-owner task; not done here to respect the corpus).
+
+---
+
+## 6. Bottom line
+
+The count conflict is settled: **46 indicators, 14 rule files, 12 evaluable-covered
+— not 29/29.** One invalid theme code was corrected in the spine. The remaining work
+is authoring (the 15 zero-coverage indicators) and a bounded UIAO_137 re-pin — both
+now precisely scoped. This closes decision-gate #1 with an honest number and hands
+gate #2 a concrete backlog.
