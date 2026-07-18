@@ -21,6 +21,17 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **AAN corpus engine-neutrality: ratchet 73 → 24.** The four Vol V
+  training books (scrubbed in place as engine-agnostic training, Date
+  Codes refreshed), all 39 remaining deck/spec YAMLs (speaker notes,
+  vendor-source citations → "host repo"/"reference implementation", build
+  headers → `BUILD-DERIVATIVES.md §1`; editorial — no Date Code cascade),
+  and the two mainframe figures (`mf-fig-13/14` — diagram text no longer
+  names the engine; PNGs regenerated) are engine-neutral. The gate's
+  hosting-URL exemption now covers full deep-path URLs into the host
+  repository — URL citations are references, prose naming stays
+  forbidden. Remaining ratchet: the training subtree (relocation
+  pending), 9 planning docs, 5 gate scripts.
 - **AAN Vol IV Books 05 and 06 are engine-neutral.** The two heaviest
   engine-naming books (Cybersecurity Training & Awareness; Authorization
   Package & ConMon — 46 mentions between them) now speak evidence-contract
