@@ -21,6 +21,23 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **Compliance consolidation COMPLETE (Phase 3-B): the boundary analyses
+  join the series.** The B section — the GCC-Moderate boundary model and
+  B.1.1–B.1.3 analyses — moved into the series at
+  `federal-aan-series/boundary/` with a nav subsection, aliases on every
+  old URL, and full engine-neutrality: canon-SSOT references became
+  hosting-URL citations (also fixing their previously broken-on-site
+  relative form), cross-links whose paths carry the engine name became
+  site-absolute URLs, and prose adopted the contract vocabulary. B.1.3's
+  fix-coverage matrix stays drift-gated from the canon telemetry-gaps
+  SSOT — the `rebuild-coverage-drift` hook and generator paths moved
+  with it. 25 inbound references updated (whitepapers, case studies,
+  OrgPath books, findings, canon reference READMEs, the telemetry-gaps
+  SSOT's back-references, `uiao.cli.init`, and a test). The Compliance
+  landing is now a pure signpost; the old tree is empty. Noted for
+  local cleanup: the untracked `detection-rules/` residue in the old
+  location is a superseded draft of the series'
+  `impl/detection-rules/` (which evolved from it in #1245).
 - **Compliance-tree consolidation (Phase 3-A): the series IS the
   compliance offering.** The six "UIAO …" pages of
   `docs/customer-documents/compliance/` — the engine's own compliance
@@ -536,7 +553,7 @@ landed via PRs #307 and #308 (the seven KQL queries, `sentinel_probe.py`
   (boundary-inference framework over SI-4 / AU-2 / AU-3 / SC-7),
   capabilities (per-feature dispositions), MITRE Chains A & B,
   resolved-positions on previously disputed questions.
-- **`docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`**
+- **`docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`**
   — fills the B.1 leaf of the boundary-authorization scaffold with
   the ZTMM ceiling table, BOD 25-01 / M-22-09 / M-21-31 / NIST 800-207
   posture, and MAS 2026 forward path.

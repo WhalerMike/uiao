@@ -49,7 +49,7 @@ AWS GovCloud is excluded (FedRAMP High + DoD SRG IL2/4/5 + ITAR).
 - `src/uiao/rules/ksi/monitoring-logging/` — KSI realizations of the SI-4 / AU-2 / AU-3 constraints.
 - `src/uiao/adapters/modernization/gcc_boundary_probe/` — runtime collection harness; the §13.3 KQL queries land under `queries/` here.
 - `docs/findings/fedramp-gcc-moderate-*.md` — per-row findings extracted from the gap matrix.
-- `docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd` — customer-facing rendering of this content.
+- `docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd` — customer-facing rendering of this content.
 
 ## Stewardship
 

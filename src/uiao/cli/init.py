@@ -104,11 +104,11 @@ _CANON_REFS = [
     ("NIST + FICAM cross-walk", "docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd"),
     (
         "GCC-Moderate boundary model",
-        "docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd",
+        "docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd",
     ),
     (
         "Three-way GCC-Moderate compliance conflict",
-        "docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd",
+        "docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd",
     ),
 ]
 
