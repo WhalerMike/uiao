@@ -20,7 +20,7 @@ Use GitHub's [private vulnerability reporting](https://github.com/WhalerMike/uia
 
 ### What to include
 
-- **Affected component** — `core/`, `docs/`, `impl/`, CI workflow, or specific adapter
+- **Affected component** — `src/uiao/`, `docs/`, CI workflow, or specific adapter
 - **Affected version** — commit SHA or release tag
 - **Description** — what the vulnerability is and its potential impact
 - **Reproduction steps** — minimal steps to trigger the issue
@@ -38,9 +38,9 @@ Fix velocity depends on severity, reproduction complexity, and whether the affec
 
 ### In scope
 
-- Any code, canon document, schema, workflow, or configuration under `core/`, `docs/`, `impl/`, or `.github/`
+- Any code, canon document, schema, workflow, or configuration under `src/uiao/`, `docs/`, `scripts/`, or `.github/`
 - Published artifacts: wheels, sdists, releases, rendered documentation site
-- Supply-chain: dependencies declared in `impl/pyproject.toml`, GitHub Actions used in workflows
+- Supply-chain: dependencies declared in `pyproject.toml` (locked in `uv.lock`), GitHub Actions used in workflows
 
 ### Out of scope
 
