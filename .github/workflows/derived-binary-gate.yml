@@ -18,6 +18,8 @@ on:
       - '**/*.png.json'
       - '**/*.svg'
       - 'scripts/check_no_tracked_derived_pngs.sh'
+      - 'scripts/ci_render_untracked_figures.sh'
+      - 'scripts/render_svg_images.py'
       - 'scripts/svg-derived-png-allowlist.txt'
       - '.github/workflows/derived-binary-gate.yml'
   push:
@@ -27,6 +29,8 @@ on:
       - '**/*.png.json'
       - '**/*.svg'
       - 'scripts/check_no_tracked_derived_pngs.sh'
+      - 'scripts/ci_render_untracked_figures.sh'
+      - 'scripts/render_svg_images.py'
       - 'scripts/svg-derived-png-allowlist.txt'
       - '.github/workflows/derived-binary-gate.yml'
 
@@ -43,3 +47,28 @@ jobs:
 
       - name: Assert no tracked PNG has a tracked sibling SVG
         run: bash scripts/check_no_tracked_derived_pngs.sh
+
+  render-canary:
+    # Site-build parity check: run the exact rasterize step quarto.yml runs
+    # before every render, so an SVG that cairosvg cannot rasterize fails
+    # HERE, on the PR that introduces it — not post-merge on main, where it
+    # would block the site deploy. (quarto.yml deliberately does not run on
+    # pull_request; this canary is the pre-merge coverage for its rasterize
+    # step. cairosvg-incompatible figures found this way get their PNG
+    # tracked + allowlisted — see scripts/svg-derived-png-allowlist.txt.)
+    name: Render untracked figures (site-build parity)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Render every figure whose PNG is untracked
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet cairosvg Pillow pyyaml
+          bash scripts/ci_render_untracked_figures.sh
