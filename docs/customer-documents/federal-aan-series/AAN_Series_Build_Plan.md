@@ -29,18 +29,21 @@ For every control/KSI a book claims to close, the book must show three columns:
 block used in every book:
 
 > **Closure Necessity — SC-8 on DIA circuits.** A DIA circuit carries traffic
-> unencrypted at the network layer. Application-layer TLS provides no
-> network-layer guarantee and no coverage for non-TLS flows. The only mechanism
-> that encrypts *all* traffic on a DIA path regardless of application behavior is
-> an IPsec overlay — i.e., SD-WAN. There is no configuration setting, scanner
-> finding, or policy document that closes SC-8 on a bare pipe.
+> unencrypted at the network layer. FIPS-validated application-layer TLS closes
+> SC-8 per flow, but covers only the flows that negotiate it — DNS, legacy
+> protocols, and misconfigured applications ride bare. The only mechanism class
+> that encrypts *all* traffic on a DIA path regardless of application behavior
+> is a network-layer overlay; among overlay classes, SD-WAN is the one that
+> also delivers the SC-5 traffic-class and SI-4 telemetry closures. There is no
+> configuration setting, scanner finding, or policy document that closes SC-8
+> for every flow on a bare pipe.
 
 The three necessity anchors:
 
 | Required technology | Controls with no alternate closure path | Why no alternative |
 |---|---|---|
 | **IPAM/DDI** (authoritative naming + addressing plane) | SC-20, SC-20(1), SC-21, SC-22 (DNS authority/resolution); CM-8 (authoritative component inventory keyed to addresses); IA-3 device-to-address binding | You cannot attest authoritative name resolution without an authoritative resolver, and you cannot inventory what you cannot enumerate. No scanner creates a source of truth; it can only measure drift from one. |
-| **SD-WAN** (encrypted, application-aware overlay) | SC-8/SC-8(1) on DIA; SC-5 (traffic-class separation); SI-4 (application-layer telemetry on transport); CA-7 transport evidence | A pipe has no encryption, no path intelligence, no telemetry. Physics gives DIA lower latency; only the overlay gives it a control surface. |
+| **SD-WAN** (encrypted, application-aware overlay) | SC-8/SC-8(1) on DIA; SC-5 (traffic-class separation); SI-4 (application-layer telemetry on transport); CA-7 transport evidence | A pipe has no encryption, no path intelligence, no telemetry. Physics gives DIA lower latency; only the overlay gives it a control surface. FIPS-validated application-layer TLS closes SC-8 per flow, but only a network-layer overlay closes it for *every* flow on the circuit at once — and among overlay classes SD-WAN is the one that also delivers the SC-5 traffic-class and SI-4 telemetry closures. |
 | **TIC 3.0** (distributed policy enforcement for the pipes) | SC-7, SC-7(7) boundary protection on distributed egress; AC-4 information-flow enforcement outside the TIC access point | Under TIC 3.0, DIA is *permissible only when* the security-capabilities catalog is satisfied at the distributed PEP (SASE stack). An ungoverned DIA circuit is not a modernization — it is a compliance finding. |
 
 ### Theme B — "DIA Fixes Nothing" (Physics + Policy)
