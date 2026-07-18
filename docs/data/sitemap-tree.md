@@ -476,6 +476,16 @@
     - [Lab environment — PIM & privileged access (Module B5)](customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b5-pim.html)
     - [Lab environment — Purview data protection (Module B6)](customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b6-purview.html)
     - [Lab environment — Sentinel detection (Module B6)](customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b6-sentinel.html)
+- **UIAO — Reference Engine for the Federal Compliance AAN Series**
+  - [UIAO — Reference Engine for the Federal Compliance AAN Series](customer-documents/uiao-aan-integration/index.html)
+  - [Book 01 — UIAO — Control Continuation & Closure for the AAN Evidence Contract](customer-documents/uiao-aan-integration/01-control-continuation-and-closure.html)
+  - [Book 02 — UIAO — Active-Participant Map for the AAN Architecture](customer-documents/uiao-aan-integration/02-active-participant-map.html)
+  - [Book 03 — ADR-111 Rule Set ↔ FedRAMP CR26 KSI Catalog — Reconciliation](customer-documents/uiao-aan-integration/03-adr111-cr26-ksi-reconciliation.html)
+  - [Book 04 — Decision-Gate Memo — Is UIAO the Correct Evidence Engine for Federal AAN?](customer-documents/uiao-aan-integration/04-decision-gate-memo.html)
+  - [Book 05 — UIAO — ConMon Continuation Map for Vol IV Book 06 (Authorization Package & ConMon)](customer-documents/uiao-aan-integration/05-conmon-continuation-map.html)
+  - [Book 06 — Federal Continuous-Monitoring Reporting — Requirements Reference](customer-documents/uiao-aan-integration/06-federal-conmon-reporting-reference.html)
+  - [Book 07 — UIAO Reporting-Egress Actuator — Feature Documentation](customer-documents/uiao-aan-integration/07-reporting-egress-actuator.html)
+  - [Book 08 — CR26 KSI Reconciliation — Findings & Spine Write-Back](customer-documents/uiao-aan-integration/08-cr26-reconciliation-findings.html)
 - **UIAO OrgPath (16-document reading sequence)**
   - [UIAO OrgPath](customer-documents/orgpath-narrative/index.html)
   - [Book_01 — The Microsoft Identity and Governance Stack](customer-documents/orgpath-narrative/Book_01.html)

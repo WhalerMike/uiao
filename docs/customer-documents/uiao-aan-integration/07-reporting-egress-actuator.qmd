@@ -1,0 +1,153 @@
+---
+title: "Book 07 — UIAO Reporting-Egress Actuator — Feature Documentation"
+subtitle: "UIAO — Reference Engine for the Federal Compliance AAN Series"
+doc-type: reference
+audience: "Program owners · ISSOs · assessors evaluating an evidence engine"
+family: uiao-aan-integration
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-18
+---
+
+# UIAO Reporting-Egress Actuator — Feature Documentation
+
+**Date Code:** 2026-07-09 10:48 ET
+**Status:** Draft (UIAO-side; feature is built as a dry-run-safe scaffold)
+**Feature:** gated outward submission of ConMon evidence to external federal destinations
+**Canon:** ADR-128 · UIAO_208 (spec) · UIAO_008 §3.4 (CLI) · `src/uiao/reporting_egress/`
+
+---
+
+## 0. What this document is
+
+Complete, shareable documentation for the **reporting-egress actuator** — the
+capability that lets the UIAO platform *file / transport* already-generated
+continuous-monitoring evidence to the external federal destinations that consume
+it (CDM, CyberScope, FedRAMP repository, CISA SBOM inbox, CISA incident portal).
+
+It closes the gap identified in the Federal ConMon Reporting Reference (#6): UIAO
+generated evidence but did not transport it. This feature adds the transport —
+*correctly*, as a governed actuation, never as a network-data-plane position and
+never autonomously.
+
+![UIAO as a gated reporting actuator: the evidence core has a read-only serve path (KSI status over an API, continuous at L1–L2, no approval) and a gated submission path (reporting-egress adapters through an L3 gate where a human approves each outward submission to CDM, CyberScope, the FedRAMP repository, the CISA SBOM inbox, and the CISA incident portal); CLAW telemetry is attest-only and stays native; a bottom band contrasts an in-boundary Platform Server with a UIAO-operated SaaS that must carry its own FedRAMP authorization, over a note that all feeds use TLS 1.2+ / FIPS 140 and outward submissions are gated at L3. Blueprint diagram, FedAAN house style.](figs/uiao-diagram-07-reporting-actuator.png)
+
+---
+
+## 1. What it is, and why it is safe
+
+Generating evidence and *submitting* it are different acts. A submission to CISA or
+OMB is a **write to an external system** — an *actuation* in ADR-092 terms. The
+feature governs that actuation with three hard rules:
+
+1. **Dry-run is the default.** Nothing transmits unless explicitly told to go live.
+2. **Every live submission is L3-gated.** A live submission requires a human
+   **approval token** (approver, timestamp, operation). No approval → *blocked*.
+3. **No autonomous path.** There is no code path that transmits without both a live
+   flag and a valid approval. Outward submission is permanently L3-capped at
+   Moderate.
+
+Two deliberate exclusions keep it inside the lane discipline (ADR-066): **serving
+read-only status** over an API writes nothing and is a separate, ungated, continuous
+L1–L2 function; and **raw telemetry to NCPS/CLAW** stays on the native cloud pipe —
+UIAO attests that feed, it does not carry it.
+
+---
+
+## 2. The gate model
+
+| Condition | Disposition | Transmits? |
+|---|---|---|
+| `live=False` (default) | `PLANNED` | no — validate and plan only |
+| `live=True`, no/invalid approval | `BLOCKED` | no — **L3 gate** |
+| `live=True` + approval, validation problems | `BLOCKED` | no — refuse malformed |
+| `live=True` + approval, endpoint unwired | `BLOCKED` | no — never simulates a send |
+| `live=True` + approval + configured + valid | `SUBMITTED` | **yes — the only path** |
+
+The engine always *returns* a result (never raises on a gate/validation outcome),
+so every attempt yields an auditable disposition. This maps directly to the L3
+ceiling: monitoring/serving run continuously at L1–L2; the *submission* is the
+L3-gated actuation.
+
+---
+
+## 3. CLI
+
+```bash
+# discover destinations and their wiring state
+uiao report list-destinations
+
+# dry-run (default) — validates, transmits nothing
+uiao report submit -d cisa-sbom -a out/sbom.json -t cyclonedx-sbom
+
+# live — requires an approver (the L3 gate); blocked unless an endpoint is wired
+UIAO_CISA_SBOM_ENDPOINT=https://sbom.example.gov/intake \
+  uiao report submit -d cisa-sbom -a out/sbom.json -t cyclonedx-sbom \
+    --live --approver "jane.isso"
+```
+
+Exit codes: `0` planned/submitted · `1` blocked (gate/validation/endpoint) · `2`
+unknown destination.
+
+---
+
+## 4. Destinations and the driver contract
+
+Five destinations, each a pluggable driver that declares the artifact types it
+accepts and validates every submission:
+
+| id | destination | accepts |
+|---|---|---|
+| `cdm` | CDM Agency Dashboard | cdm-object, asset-inventory, vuln-findings |
+| `cyberscope` | CyberScope (FISMA / OMB) | fisma-metrics, cyberscope-xml |
+| `fedramp-repo` | FedRAMP repository | oscal-ar, oscal-bundle, poam, monthly-conmon |
+| `cisa-sbom` | CISA SBOM inbox (BOD 26-04) | cyclonedx-sbom, openvex |
+| `cisa-incident` | CISA incident portal | incident-report |
+
+A driver becomes live by implementing `transmit()` against a real endpoint and
+returning `configured = True` only when an endpoint is set. `CLAW` is intentionally
+not a destination.
+
+---
+
+## 5. Current status — built and demonstrated
+
+- **Built** as a dry-run-safe scaffold: `src/uiao/reporting_egress/` (models,
+  drivers, engine) + the `uiao report` CLI, wired into the CLI app.
+- **Reference live driver:** `cisa-sbom` POSTs to `UIAO_CISA_SBOM_ENDPOINT`; unset
+  by default (so it is unwired and blocks live submissions).
+- **Demonstrated:** the live `SUBMITTED` path was exercised against a local test
+  server — dry-run → *blocked* (endpoint unset) → *submitted* (endpoint set +
+  approver), returning the server's receipt.
+- **Tested:** 14 tests pass (engine + CLI invariants; live-path demo via
+  `http.server`); ruff-clean.
+- **Safe by default:** the other four drivers ship unwired; no live government
+  endpoint is configured.
+
+---
+
+## 6. Landing checklist (out of scaffold scope)
+
+Turning any destination live is a reviewed, boundary-gated step — not a code change
+alone:
+
+- [ ] **Boundary decision** — Platform Server (in-boundary) vs. SaaS (own FedRAMP
+  authorization). A Server holds agency credentials and files on the agency's
+  behalf; its own integrity (SA-family, immutable audit, break-glass) enters
+  assessment scope. A SaaS transiting agency evidence must carry its own FedRAMP ATO.
+- [ ] Register the drivers in the modernization (integration) registry.
+- [ ] Credential handling **outside** canon (canon stays read-only).
+- [ ] Wire each live endpoint behind security review; flip `configured` per destination.
+- [ ] Record the approval token in the immutable audit trail.
+- [ ] Publish ADR-128 to the site once a driver is live under review.
+
+---
+
+## 7. References
+
+- **ADR-128** — Reporting-Egress Actuator (doctrine)
+- **UIAO_208** — Reporting-Egress Actuator: Design & Contract
+- **UIAO_008 §3.4** — `report` CLI reference
+- **`src/uiao/reporting_egress/README.md`** — developer guide
+- Integration companions: **#6** Federal ConMon Reporting Reference · **#5** ConMon
+  Continuation · **#4** Decision-Gate Memo (the in/out-of-boundary gate this feature lands on)

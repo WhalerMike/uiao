@@ -142,6 +142,20 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Added
 
+- **New engine-side companion volume: "UIAO — Reference Engine for the
+  Federal Compliance AAN Series"**
+  (`docs/customer-documents/uiao-aan-integration/`, Books 01–08 + index).
+  The eight UIAO↔AAN integration documents — control continuation &
+  closure, active-participant map, ADR-111↔CR26 reconciliation (+ its
+  executed findings), the decision-gate memo, the ConMon continuation
+  map, the federal ConMon reporting reference, and the reporting-egress
+  actuator — previously existed only as untracked drafts; they are now a
+  published volume with nav registration, SVG-source figures (PNGs
+  rendered at build per ADR-093), and derived tables regenerated. The
+  dependency stays one-way by doctrine: this volume names and consumes
+  the series; the series never names the engine — any conformant engine
+  could publish its own equivalent volume against the Evidence &
+  Authorization Contract.
 - **The AAN Evidence & Authorization Contract is published
   (`AAN_Evidence_Contract_Spec.md`).** The open specification every
   engine-neutral reference in the series points at — compliance spine +
