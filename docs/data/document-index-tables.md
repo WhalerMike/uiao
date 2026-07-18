@@ -163,9 +163,7 @@ _No sub-categories._
 
 ### Compliance
 
-| Sub-Category | Description | Status |
-|--------------|-------------|--------|
-| [Boundary Authorization](compliance/boundary-authorization/index.html) | GCC-Moderate boundary model, data classification, ATO / OSCAL, 3PAO engagement | Active |
+_No sub-categories._
 
 ### Substrate
 

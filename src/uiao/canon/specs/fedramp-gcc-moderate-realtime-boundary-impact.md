@@ -498,18 +498,18 @@ re-deriving:
   telemetry the agency already holds; it neither regenerates the
   boundary-blocked Microsoft signals (§2) nor returns analytics to the agency.
   It restores CISA's visibility, not the agency's. See
-  [`B1-1` §2.4](../../../../docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd).
+  [`B1-1` §2.4](../../../../docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd).
 - **EO 14117 location overlay.** Precise-geolocation and government-related
   location telemetry carry a regulatory handling ceiling (DOJ rule, effective
   April 8 2025) independent of the boundary — re-routing or exporting it does
   not change who may access it. See
-  [`B1-1` §2.5](../../../../docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd).
+  [`B1-1` §2.5](../../../../docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd).
 - **The compensation ceiling.** Agency-side rebuild reaches functional coverage
   and ZTMM Advanced, but **full compensation is not achievable**: cross-tenant
   global threat intelligence and suppressed-at-source telemetry are irreducible,
   and Optimal / commercial fidelity stays a MAS 2026 dependency. The detailed
   per-signal fix-coverage and ceiling analysis is
-  [`B1-3` §6.1 and §11](../../../../docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd).
+  [`B1-3` §6.1 and §11](../../../../docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd).
 
 ---
 
@@ -591,10 +591,10 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 - [`UIAO_133`](./fedramp-20x-integration.md) — FedRAMP 20x operational mechanics
 - [`UIAO_137`](./fedramp-cr26-ksi-mapping.md) — KSI rule ↔ CR26 catalog mapping
 - [`UIAO_138`](./fedramp-3pao-evidence-interface.md) — 3PAO evidence interface
-- `docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`
-- `docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd`
-- `docs/customer-documents/compliance/boundary-authorization/B1-2-teams-phone-tic2-centralized-dia.qmd`
-- `docs/customer-documents/compliance/boundary-authorization/B1-3-rebuilding-boundary-blocked-analytics.qmd` — in-boundary rebuild plan, full 26-row fix-coverage matrix, and compensation-ceiling assessment
+- `docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`
+- `docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd`
+- `docs/customer-documents/federal-aan-series/boundary/B1-2-teams-phone-tic2-centralized-dia.qmd`
+- `docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd` — in-boundary rebuild plan, full 26-row fix-coverage matrix, and compensation-ceiling assessment
 
 ### Federal mandates
 - [CISA BOD 25-01](https://cyber.dhs.gov/bod/25-01/)

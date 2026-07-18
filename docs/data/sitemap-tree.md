@@ -320,7 +320,6 @@
   - [Chapter 10 — Leadership Takeaway: Instruments vs. Orchestra](customer-documents/operational-guides/client-server-to-hybrid-cloud/10-executive-summary.html)
 - **Compliance**
   - [Compliance](customer-documents/compliance/index.html)
-  - [B. Boundary + Authorization](customer-documents/compliance/boundary-authorization/index.html)
 - **Validation Suites**
   - [Validation Suites](customer-documents/validation-suites/index.html)
 - **Modernization Specs**
@@ -363,6 +362,12 @@
 
 - **Federal Compliance AAN Series — Government Moderate**
   - [Federal Compliance AAN Series](customer-documents/federal-aan-series/index.html)
+  - **Boundary + Authorization**
+    - [B. Boundary + Authorization](customer-documents/federal-aan-series/boundary/index.html)
+    - [B.1 GCC-Moderate Boundary Model](customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.html)
+    - [B.1.1 The Three-Way GCC-Moderate Compliance Conflict (TIC 3.0 × Zero Trust × FedRAMP 20x)](customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.html)
+    - [B.1.2 Teams Phone Under TIC 2.0 Centralized DIA, F5 Removed, No SD-WAN](customer-documents/federal-aan-series/boundary/B1-2-teams-phone-tic2-centralized-dia.html)
+    - [B.1.3 Rebuilding Boundary-Blocked Analytics In-Boundary](customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.html)
   - **Vol 0 — Executive Summary & Program**
     - [Book 00 — Federal Application-Aware Networking Series](customer-documents/federal-aan-series/Vol_0_Book_00_FedAAN_Executive_Summary.html)
     - [Vol 0 Book 00a — Federal Application-Aware Networking — Executive Brief](customer-documents/federal-aan-series/Vol_0_Book_00a_FedAAN_Executive_Brief.html)
