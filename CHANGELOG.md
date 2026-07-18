@@ -21,6 +21,16 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **AAN Vol IV Books 05 and 06 are engine-neutral.** The two heaviest
+  engine-naming books (Cybersecurity Training & Awareness; Authorization
+  Package & ConMon — 46 mentions between them) now speak evidence-contract
+  language: "the governance substrate", "the governance engine's
+  conformance adapter", `<engine> oscal …` reference-implementation CLI
+  placeholders, and vendor-source citations to "reference implementation
+  (host repo)". Their deck specs, both `ced-` figures (which rendered
+  "UIAO" inside the diagram — SVGs redrawn, PNGs regenerated), and Date
+  Codes moved in the same change; the engine-neutrality ratchet shrank
+  79 → 73.
 - **SVG-derived PNGs are no longer tracked (repo −66 MB, 865 files).** For
   every figure whose committed `.svg` source sits beside a committed `.png`,
   the PNG and its `.png.json` sidecar are now build artifacts, exactly as
