@@ -38,6 +38,24 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **AAN Training Program — the graded evaluation response ships.** The
+  six-item priority list from the training-program evaluation assessment
+  is implemented: (1) a "Core AAN Pathway" nine-book spine on the program
+  index; (2) an `<engine>` tooling note defining the substitution token,
+  linking the AAN Evidence & Authorization Contract, tabling the three
+  capstone commands, and stating what the Tier F fixture path actually
+  runs — with pointers from both tracks, the lab hub, and the rubrics;
+  (3) the PIM lab gains the bind-the-evidence close the other three labs
+  end with; (4) boundary-context cross-links from module pages 05/06
+  (→ B.1.1/B.1.2) and 11/12/13 (→ B.1.3); (5) a post-implementation KPI
+  table on the rubrics page (orphan-account rate, standing privileged
+  assignments, KEV SLA, training/phishing trend, evidence freshness,
+  satisfied-KSI trend), linked from Book 19's module; (6) all 30 training
+  pages trade render-time `date: today` for stable Date Codes. The
+  reviewer's second pass — a kit-level reassessment scoring 9.2/10 (up
+  from 8.7) — is committed verbatim with a disposition table as
+  `docs/customer-documents/federal-aan-series/AAN_Kit_External_Reassessment.md`.
+
 - **Phase 4 — the compliance tree is retired.** `docs/customer-documents/
   compliance/` no longer exists: the signpost landing is deleted with its
   URL (and the six section-landing URLs deleted in 3-A) carried as

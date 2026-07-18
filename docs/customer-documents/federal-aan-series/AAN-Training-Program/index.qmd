@@ -1,7 +1,7 @@
 ---
 title: "AAN Training Program"
 subtitle: "Two-track curriculum over the 20 core books (Book 00-19) of the Federal Application-Aware Networking series — compliance and implementation"
-date: today
+date: "2026-07-18"
 date-format: "MMMM D, YYYY"
 description: "Program charter for the Application-Aware Networking (AAN) Training Program: Track A trains compliance staff against the 20 core books (Book 00-19) of the Federal AAN series (FedRAMP 20x KSI categories, NIST SP 800-53 Rev 5 anchors, evidence slots); Track B trains engineers to implement the architectures the books describe. Includes a living catalog of external vendor training."
 ---
@@ -140,6 +140,60 @@ plus the prior bindings translated to the new numbering.
 
 ![Figure 2 — The evidence flow both capstones exercise: a book artifact is bound by a slot mapping, evaluated against KSI rules, and lands as per-KSI verdicts in the OSCAL Assessment Results.](figs/tp-fig-06-evidence-flow.png){fig-alt="Evidence flow: book artifact to slot mapping to KSI evaluation to OSCAL assessment results"}
 
+## The Core AAN Pathway {#core-aan-pathway}
+
+The full program walks all 20 books; most ISSOs and engineers should
+**start with the nine-book spine** below, which feeds six of the eight
+evidence slots directly and exercises both capstone surfaces:
+
+| Book | Module page | Why it is in the spine | Slot(s) fed |
+|---|---|---|---|
+| 00 | [Executive Summary](books/book-00.html) | The argument and the deadline map | — (orientation) |
+| 01 | [SSA Landing Zone, IPAM & FedRAMP](books/book-01.html) | Addressing is the dependency everything else assumes | 2 |
+| 03 | [Certificates, Tokens & Cryptographic Identity](books/book-03.html) | The credential plane | 1 |
+| 04 | [HRIT Identity & Org SSOT](books/book-04.html) | The lifecycle source of truth | 1 |
+| 05 | [Network Modernization](books/book-05.html) | The application-aware transport argument | 3 |
+| 10 | [Privileged Access Management](books/book-10.html) | The highest-blast-radius identity surface | 1, 5 |
+| 11 | [Vulnerability Management](books/book-11.html) | The KEV-driven telemetry spine | 4, 5, 6 |
+| 13 | [SIEM / XDR Detection](books/book-13.html) | Detection engineering closes the telemetry loop | 4, 6 |
+| 19 | [Authorization Package & ConMon](books/book-19.html) | Assembles everything into the package | (assembles all) |
+
+Pair the spine with the four scripted labs
+([DDI](labs/lab-b1-ddi.html), [PIM](labs/lab-b5-pim.html),
+[Sentinel](labs/lab-b6-sentinel.html), [Purview](labs/lab-b6-purview.html)).
+
+The pathway is a **starting sequence, not a credential path**: slots 7
+(continuity — Book 14) and 8 (training — Book 18), the supply-chain depth
+of Book 15, and the full capstones still come from the complete tracks,
+and the Track A pass bar remains all eight slots. Read the spine, run the
+labs, then finish the track you belong to.
+
+## The `<engine>` token — what the commands run {#tooling-stack}
+
+Every command block in this program writes `<engine>` where a CLI name
+would go. It is a **substitution token, not a product**: the program is
+engine-neutral, and the commands are defined by the
+[AAN Evidence & Authorization Contract](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/AAN_Evidence_Contract_Spec.md)
+— the open specification (compliance spine + eight evidence slots + OSCAL
+AP/AR/POA&M boundary) that any conformant evidence engine can satisfy.
+Substitute the CLI name of whichever conformant engine your agency runs.
+
+The three commands the capstones need:
+
+| Command | What it does | What you get |
+|---|---|---|
+| `<engine> ksi evaluate --ir <file> --out <file>` | Evaluates a machine-readable evidence (IR) file against the KSI rules | Per-rule verdicts (the raw scoring pass) |
+| `<engine> oscal ksi-ar --output <file>` | Builds Assessment Results from the eight AAN slot evidence bindings | Per-KSI satisfied / not-satisfied / not-evaluated verdicts — the artifact both capstones require |
+| `<engine> oscal generate` | Generates the OSCAL package documents from an evidence bundle | SSP / POA&M material for the Book 19 assembly |
+
+**What Tier F actually runs:** the host repository that publishes these
+pages ships a reference engine satisfying the contract, alongside the
+[slot mapping files](https://github.com/WhalerMike/uiao/tree/main/src/uiao/adapters/fedramp_aan_catalog/mappings)
+the curriculum is derived from. The fixture path is: clone the
+repository, install the reference engine per its README, substitute its
+CLI name for `<engine>`, and run the three commands above — no cloud
+footprint required (see the [lab tiers](labs/index.html#lab-tiers)).
+
 ## Completion criteria
 
 Borrowing the pattern of the reference implementation's training program (no parallel
@@ -186,6 +240,15 @@ directory):
   03 Certificates/Tokens, 04 HRIT Identity & Org SSOT), all downstream
   books renumbered (+3), filenames moved to the `FedAAN_` scheme, module
   pages/tracks/figures/rubrics/bundle regenerated.
+- ✅ **External-evaluation response (July 2026)** — the program was
+  independently reviewed (see the evaluation and its graded assessment in
+  the series directory); this wave shipped the graded response: the
+  [Core AAN Pathway](#core-aan-pathway), the
+  [`<engine>` tooling note](#tooling-stack), the PIM lab's
+  bind-the-evidence close, boundary-context cross-links from Books
+  05/06/11/12/13, the
+  [post-implementation KPIs](assessment-rubrics.html#post-implementation-kpis),
+  and stable Date Codes replacing render-time dates on every page.
 - **A permanent home** — this material is not the governance engine's and will not be
   canonized as a `UIAO_NNN` spec; if the AAN corpus moves to its own
   repo/product, the program moves with it.
