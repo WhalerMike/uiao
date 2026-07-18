@@ -76,6 +76,7 @@ ADR-085 also anticipated a `verticals-registry.yaml` that catalogs vertical *pac
 - No existing adapter, and no federal boundary value, is touched. Adding an enum value is backward-compatible: every existing registry row still validates.
 - `verticals-registry.yaml` is not created (D4).
 - The registry's `controls` field remains NIST-patterned (`^[A-Z]{2}-[0-9]+…`), which cannot express SOC 2 Trust Services Criteria (`CC6.1` etc.). This is a *second* residual federal coupling in the schema, surfaced by registering a non-federal pack. Rather than widen the shared pattern in this pass, the SOC 2 entry omits the (optional) `controls` field and carries its Trust Services Criteria in the pack's `mappings/slot-0N-*.yaml`; the field's vertical-neutral redesign travels with the deferred `verticals-registry.yaml` work (D4).
+- The substrate walker asks every `active` adapter to declare `ztmm-pillars:` for CISA ZTMM v2.0 attribution — a *third* federal-flavored field. A non-federal vertical does not claim CISA ZTMM attribution, so the SOC 2 entry declares an explicit empty list (`ztmm-pillars: []`), which the walker accepts as a valid informational declaration. Same disposition as the `controls` field: honest empty/omitted marker now, vertical-neutral redesign deferred to the verticals-registry work.
 
 **Reversal cost:** Low. Removing the enum value and the one registry row reverts the change; no runtime or data migration is involved.
 
