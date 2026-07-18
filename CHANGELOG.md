@@ -21,6 +21,21 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **Phase 4 — the compliance tree is retired.** `docs/customer-documents/
+  compliance/` no longer exists: the signpost landing is deleted with its
+  URL (and the six section-landing URLs deleted in 3-A) carried as
+  aliases on their successors — the series index inherits
+  `compliance/`, `federal-mandates/`, `policy-libraries/`, and
+  `incident-response/`; the engine volume inherits `evidence-telemetry/`,
+  `controls-testing/`, and `governance-canon/`. The site front page's
+  Compliance-pillar tile and the customer-documents hub (listing + prose)
+  now present the Federal Compliance AAN Series and the engine volume;
+  the two whitepapers' related-links point at their real successors; the
+  substrate roadmap's scaffold item is marked resolved. Known debt left
+  in place: six `canon_source` metadata values in two operational guides
+  reference policy-library pages that never existed (pre-dating the
+  consolidation), and ADR-089's narrative mentions the old path as
+  history.
 - **Compliance consolidation COMPLETE (Phase 3-B): the boundary analyses
   join the series.** The B section — the GCC-Moderate boundary model and
   B.1.1–B.1.3 analyses — moved into the series at

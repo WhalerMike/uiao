@@ -318,8 +318,6 @@
   - [Chapter 08 — Access Plane: SASE, Zero Trust, MFA, Certificate-Based Auth](customer-documents/operational-guides/client-server-to-hybrid-cloud/08-access-plane.html)
   - [Chapter 09 — Migration Roadmap: Phased Plan, Gates, Rollback](customer-documents/operational-guides/client-server-to-hybrid-cloud/09-migration-roadmap.html)
   - [Chapter 10 — Leadership Takeaway: Instruments vs. Orchestra](customer-documents/operational-guides/client-server-to-hybrid-cloud/10-executive-summary.html)
-- **Compliance**
-  - [Compliance](customer-documents/compliance/index.html)
 - **Validation Suites**
   - [Validation Suites](customer-documents/validation-suites/index.html)
 - **Modernization Specs**
