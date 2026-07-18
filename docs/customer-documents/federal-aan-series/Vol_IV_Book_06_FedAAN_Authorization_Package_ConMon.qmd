@@ -2,7 +2,7 @@
 title: "Vol IV Book 06 — Federal Application-Aware Networking — Authorization Package & ConMon"
 subtitle: "Agency Authorization Package (20x KSI Evidence Schema), Continuous Monitoring, and BOD 26-04 Submission"
 author: "Federal Cloud Services"
-date: "2026-07-15 06:26 ET"
+date: "2026-07-18 00:56 ET"
 format:
   docx:
     reference-doc: aan-reference.docx
@@ -18,7 +18,7 @@ filters: [aan-callouts.lua]
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive {{< meta agency.short >}}-wide technical roadmap and has not been reviewed or approved by the {{< meta agency.short >}} CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the {{< meta agency.short >}} CIO Office and organizational components.
 
-**Date Code:** 2026-07-15 06:26 ET
+**Date Code:** 2026-07-18 00:56 ET
 :::
 
 # Preface
@@ -61,7 +61,7 @@ self-assessed evidence for all **29 rules in the series' internal KSI decomposit
 
 ::: {.aan-important}
 **Self-Assessment Notice.** All KSI verdicts in this document are produced by
-the UIAO Conformance Adapter — an automated self-assessment tool. They are
+the governance engine's conformance adapter — an automated self-assessment tool. They are
 advisory and do not constitute a formal authorization. Results must be
 independently validated through a security control assessment (SCA) — {{< meta agency.short >}} may
 engage a FedRAMP-recognized 3PAO as its independent assessor — and accepted by
@@ -105,7 +105,7 @@ by an independent SCA.
 
 ## 1.2 KSI Scorecard
 
-The UIAO Conformance Adapter evaluates all 29 internal KSI rules against the
+The governance engine's conformance adapter evaluates all 29 internal KSI rules against the
 AAN slot evidence. As of July 4, 2026 (self-assessment — pending independent SCA):
 
 | Evaluation Path | Count | KSI IDs | Verdict |
@@ -140,7 +140,7 @@ into the authorization package.
 
 ## 2.1 Bundle Architecture
 
-The `uiao oscal bundle` command generates three interlinked OSCAL 1.0.4 documents
+The `<engine> oscal bundle` command generates three interlinked OSCAL 1.0.4 documents
 that constitute the machine-readable KSI evidence package:
 
 | Document | File | NIST Control | Purpose |
@@ -161,7 +161,7 @@ The three documents are linked by UUID reference:
 
 ```bash
 # Generate AP + AR + POA&M for the {{< meta agency.short >}} GCC Moderate boundary
-uiao oscal bundle \
+<engine> oscal bundle \
   --system-name "{{< meta agency.short >}} GCC Moderate" \
   --output-dir output/artifacts/ksi-bundle
 
@@ -244,17 +244,17 @@ strategy that includes:
 The Federal AAN series provides the evidence generation layer. The ConMon
 program operationalizes it on a recurring cadence.
 
-![Continuous Monitoring Calendar — Annual Cadence](figs/ato-fig-02-conmon-calendar.png){fig-alt="Timeline diagram showing the annual continuous monitoring cadence for {{< meta agency.short >}} GCC Moderate FedRAMP 20x. Monthly activities (every month): OSCAL AR refresh via uiao oscal bundle; CISA ScuBA assessment run against M365; Sentinel ConMon dashboard review; POA&M status check — zero-item target. Quarterly activities (Q1/Q2/Q3/Q4): KSI evidence quality review; slot binding confidence review; training completion review for AT-4 (KSI-022); vulnerability management review for RA-5 (KSI-015/016). Semi-annual activities: IR drill (IR-2, Vol IV Book 05); Contingency plan tabletop exercise (CP-3, Vol IV Book 01); SBOM freshness review for BOD 26-04 VDR/VEX pipeline (Vol IV Book 02). Annual activities: Full KSI re-assessment; AT-2 annual security awareness training refresh; CP-2 contingency plan update; PM-14 T-and-T-and-M plan update; ATO renewal package preparation." width="100%"}
+![Continuous Monitoring Calendar — Annual Cadence](figs/ato-fig-02-conmon-calendar.png){fig-alt="Timeline diagram showing the annual continuous monitoring cadence for {{< meta agency.short >}} GCC Moderate FedRAMP 20x. Monthly activities (every month): OSCAL AR refresh via <engine> oscal bundle; CISA ScuBA assessment run against M365; Sentinel ConMon dashboard review; POA&M status check — zero-item target. Quarterly activities (Q1/Q2/Q3/Q4): KSI evidence quality review; slot binding confidence review; training completion review for AT-4 (KSI-022); vulnerability management review for RA-5 (KSI-015/016). Semi-annual activities: IR drill (IR-2, Vol IV Book 05); Contingency plan tabletop exercise (CP-3, Vol IV Book 01); SBOM freshness review for BOD 26-04 VDR/VEX pipeline (Vol IV Book 02). Annual activities: Full KSI re-assessment; AT-2 annual security awareness training refresh; CP-2 contingency plan update; PM-14 T-and-T-and-M plan update; ATO renewal package preparation." width="100%"}
 
 ## 3.2 Monthly ConMon Activities
 
 | Activity | Owner | Tool | Evidence |
 |----------|-------|------|---------|
-| OSCAL AR refresh | ISSO | `uiao oscal bundle` | Updated `ksi-ar.json` |
+| OSCAL AR refresh | ISSO | `<engine> oscal bundle` | Updated `ksi-ar.json` |
 | ScuBA assessment | ISSO | ScuBAGear | M365 baseline assessment report |
 | ScuBA drift triage + gate | ISSO | ScubaDrift | `scubadrift-verdicts.json` (dispositions + POA&M linkage) |
 | Sentinel ConMon dashboard review | SOC Lead | Microsoft Sentinel | ConMon dashboard export |
-| POA&M status review | ISSO + ISSM | `uiao oscal bundle` | `ksi-poam.json` (zero-item target) |
+| POA&M status review | ISSO + ISSM | `<engine> oscal bundle` | `ksi-poam.json` (zero-item target) |
 | Vulnerability scan | Defender VM team | Defender for Endpoint | RA-5 scan record |
 | SBOM delta check | SR team | Syft + Grype | CycloneDX BOM diff |
 
@@ -281,7 +281,7 @@ exactly three dispositions:
 The monthly loop: ScuBAGear assesses the tenant → `scubadrift triage --json`
 produces dispositions → `scubadrift gate` runs in the pipeline (exit non-zero
 *only* on new drift or a lapsed acceptance — governed exceptions never break
-the build) → `uiao oscal scuba-verdicts` writes
+the build) → `<engine> oscal scuba-verdicts` writes
 `output/artifacts/ksi-bundle/scubadrift-verdicts.json` with full provenance →
 the AR refresh consumes it. `scubadrift conmon-record` appends each run to the
 history ledger, and `scubadrift conmon-report` emits the posture trend and
@@ -373,7 +373,7 @@ months of AR snapshots:
 
 ```bash
 # Compare current AR with previous quarter's snapshot
-uiao oscal ksi-ar --output-path output/artifacts/ksi-bundle/ksi-ar-$(date +%Y%m).json
+<engine> oscal ksi-ar --output-path output/artifacts/ksi-bundle/ksi-ar-$(date +%Y%m).json
 
 # Historical ARs accumulate in output/artifacts/ksi-bundle/history/
 # Trend: satisfied count should be stable at 29; any drop triggers POA&M entry
@@ -397,7 +397,7 @@ agency's own ConMon evidence. The authorization package consists of:
 
 | Component | Format | Source |
 |-----------|--------|--------|
-| System Security Plan (SSP) | OSCAL JSON | `uiao generate ssp` (Vol I Book 01 architecture as baseline) |
+| System Security Plan (SSP) | OSCAL JSON | `<engine> generate ssp` (Vol I Book 01 architecture as baseline) |
 | KSI Assessment Plan (AP) | OSCAL JSON | `output/artifacts/ksi-bundle/ksi-ap.json` |
 | KSI Assessment Results (AR) | OSCAL JSON | `output/artifacts/ksi-bundle/ksi-ar.json` |
 | Plan of Action & Milestones | OSCAL JSON | `output/artifacts/ksi-bundle/ksi-poam.json` |
@@ -520,17 +520,17 @@ print('Training record: PASS')
 
 ## 6.1 ConMon Data Flow
 
-After ATO is granted, the ConMon program feeds back into the UIAO governance
+After ATO is granted, the ConMon program feeds back into the governance
 substrate on a recurring basis:
 
 ```
 [M365 ScuBA Assessment]
          ↓ monthly
-[uiao adapter-run-scuba]
+[<engine> adapter-run-scuba]
          ↓
-[UIAO Governance Substrate] ←—— [AAN Slot Evidence YAMLs]
+[Governance Substrate] ←—— [AAN Slot Evidence YAMLs]
          ↓                                   ↑
-[uiao oscal bundle]            [Slot confidence upgrades
+[<engine> oscal bundle]            [Slot confidence upgrades
          ↓                      when new evidence artifacts
 [ksi-ar.json]                   are produced or confidence
          ↓                      changes]
@@ -574,7 +574,7 @@ dashboard. The following workbooks are required for CA-7(3) trend analysis:
 | Role | CA-7 Responsibility |
 |------|---------------------|
 | **Authorizing Official (AO)** | Reviews monthly AR; accepts or escalates open risks; approves ATO renewal |
-| **ISSO** | Runs monthly `uiao oscal bundle`; reviews Sentinel dashboard; owns POA&M |
+| **ISSO** | Runs monthly `<engine> oscal bundle`; reviews Sentinel dashboard; owns POA&M |
 | **ISSM** | Chairs quarterly KSI review; escalates trend anomalies to AO |
 | **SOC Lead** | Maintains Sentinel workbooks; conducts IR drills; owns detection rule cadence |
 | **SR / Supply Chain** | Maintains SBOM pipeline; files VDR/VER; owns BOD 26-04 compliance |
@@ -628,7 +628,7 @@ Complete in order before the November 2026 AO review window.
 
 **OSCAL Bundle (CA-2, CA-5):**
 
-- [ ] Run `uiao oscal bundle --system-name "{{< meta agency.short >}} GCC Moderate"` and confirm 29/29 self-assessed satisfied against the series' internal KSI decomposition (not the CR26 catalog)
+- [ ] Run `<engine> oscal bundle --system-name "{{< meta agency.short >}} GCC Moderate"` and confirm 29/29 self-assessed satisfied against the series' internal KSI decomposition (not the CR26 catalog)
 - [ ] Confirm POA&M has zero open items *in the internal rule set* — expect it to become non-empty once the internal-rules → CR26 diff and independent SCA are complete
 - [ ] Archive bundle with timestamp to `output/artifacts/ksi-bundle/history/YYYYMM/`
 - [ ] Present bundle (AP + AR + POA&M) to the {{< meta agency.short >}} AO for the RMF authorization decision
@@ -665,9 +665,9 @@ Complete in order before the November 2026 AO review window.
 
 ```bash
 # 1. Generate final OSCAL bundle
-uiao oscal bundle \
+<engine> oscal bundle \
   --system-name "{{< meta agency.short >}} GCC Moderate" \
-  --ssp-href "#<ssp-uuid-from-uiao-generate-ssp>"
+  --ssp-href "#<ssp-uuid-from-engine-ssp-generator>"
 
 # 2. Archive with date stamp
 cp -r output/artifacts/ksi-bundle/ \
@@ -693,14 +693,14 @@ zip -r ssa-gcc-moderate-authpkg-$(date +%Y%m%d).zip \
 
 | Control | Title | Closure Mechanism |
 |---------|-------|-------------------|
-| **CA-2** | Control Assessments | OSCAL AR (`ksi-ar.json`) is the formal security assessment record for all 29 internal KSI-decomposition rules; generated by `uiao oscal bundle` on a monthly cadence |
+| **CA-2** | Control Assessments | OSCAL AR (`ksi-ar.json`) is the formal security assessment record for all 29 internal KSI-decomposition rules; generated by `<engine> oscal bundle` on a monthly cadence |
 | **CA-5** | Plan of Action and Milestones | OSCAL POA&M (`ksi-poam.json`) is the formal POA&M; auto-populated from AR findings; zero items in current run |
 | **CA-6** | Authorization | Agency ATO package structure documented in §4; assembly checklist in §8; AO review roles in §6.4; leveraged FedRAMP authorizations documented as inherited controls in the SSP |
-| **CA-7** | Continuous Monitoring | Monthly `uiao oscal bundle` → Sentinel dashboard; quarterly KSI trend review; evidence freshness rules per slot in §6.2 |
+| **CA-7** | Continuous Monitoring | Monthly `<engine> oscal bundle` → Sentinel dashboard; quarterly KSI trend review; evidence freshness rules per slot in §6.2 |
 | **CA-7(1)** | Independent Assessment | Independent security control assessment (SCA) of the OSCAL AR — {{< meta agency.short >}} may engage a FedRAMP-recognized 3PAO as its assessor — constitutes the independent assessment; ScuBAGear is run by the {{< meta agency.short >}} ISSO as agency self-assessment against the external CISA ScuBA baseline, feeding the same M365 evidence into that engagement |
 | **CA-7(3)** | Trend Analyses | Sentinel KSI Status Workbook; AR history archive in `output/artifacts/ksi-bundle/history/`; quarterly trend briefing to AO |
 | **RA-3** | Risk Assessment | OSCAL AR risk entries feed PM-9 risk register; residual risk taxonomy in §7.2 |
-| **SA-15** | Development Process, Standards, and Tools | The slot evaluator, series origin, and diagram pipeline are documented design decisions of record covering the development process used to build the evidence pipeline; the `uiao` CI/CD gate (ruff, mypy, pytest 5109 tests) is the SA-15 toolchain evidence |
+| **SA-15** | Development Process, Standards, and Tools | The slot evaluator, series origin, and diagram pipeline are documented design decisions of record covering the development process used to build the evidence pipeline; the engine's CI/CD gate (lint, type-check, and unit-test suite) is the SA-15 toolchain evidence |
 
 : Controls Closed by Vol IV Book 06 {.striped .hover}
 
@@ -749,7 +749,7 @@ run (self-assessment). All 29 are evaluated as satisfied pending independent SCA
 
 ---
 
-*This document is an internal UIAO working artifact. It does not constitute an
+*This document is an internal working artifact. It does not constitute an
 authorization package or official assessment. All control closure claims are
 advisory pending formal ATO review by the Agency Authorizing Official and the
 Office of Information Security — {{< meta agency.short >}} is a consuming agency, so nothing here is

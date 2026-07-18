@@ -102,14 +102,10 @@ RATCHET = {
     "validate_day2_control_maps.py",
     # Figures that render the engine name INSIDE the diagram — need SVG
     # redraw + PNG/sidecar regen alongside their host book.
-    "figs/ced-fig-01-training-dimensions.svg",
-    "figs/ced-fig-02-evidence-pipeline.svg",
     "figs/mf-fig-13-fedramp-20x-mainframe.svg",
     "figs/mf-fig-14-ssot-restoration.svg",
     # Heavy books — 20+ mentions each and/or paired dirty deck specs;
     # clean qmd + spec + figs together (see pairing note).
-    "Vol_IV_Book_05_FedAAN_Cybersecurity_Training_Awareness.qmd",
-    "Vol_IV_Book_06_FedAAN_Authorization_Package_ConMon.qmd",
     "Vol_V_Book_01_FedAAN_Compliance_Track.qmd",
     "Vol_V_Book_02_FedAAN_Implementation_Track.qmd",
     "Vol_V_Book_03_FedAAN_Assessment_Certification.qmd",
@@ -144,8 +140,6 @@ RATCHET = {
     "specs/Vol_IV_Book_02.yaml",
     "specs/Vol_IV_Book_03.yaml",
     "specs/Vol_IV_Book_04.yaml",
-    "specs/Vol_IV_Book_05.yaml",
-    "specs/Vol_IV_Book_06.yaml",
     "specs/Vol_V_Book_00.yaml",
     "specs/Vol_V_Book_01.yaml",
     "specs/Vol_V_Book_02.yaml",
