@@ -96,6 +96,21 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Added
 
+- **AAN engine-neutrality gate (ratchet).** The Federal AAN series is a
+  standalone compliance offering: an agency must be able to adopt it without
+  adopting — or hearing about — any particular automation engine, UIAO
+  included; where a book needs an engine it speaks in evidence-contract
+  terms. `check_engine_neutrality.py` (pre-commit hook
+  `aan-engine-neutrality` + a CI step in `aan-authorities-drift.yml`) now
+  forbids word-boundary `uiao` in the corpus outside repository-hosting
+  URLs, with a 79-file shrink-only ratchet of pre-existing naming (heavy
+  books, deck/spec YAMLs, four figures that render the engine name inside
+  the diagram, the training subtree pending relocation, planning docs, gate
+  tooling) — a cleaned file must leave the list or the gate fails. First
+  scrub in the same change: the Vol 0 Executive Summary and Product
+  Inventory, Vol I Book 05, Vol VII Book 05, and `_metadata.yml` are now
+  engine-neutral, with refreshed Date Codes.
+
 - **ADR-097 — SQL Server transformation placement.** Settles the SQL Server
   Identity Transformation vertical against the Azure SaaS: its governance runs
   in the **same** UIAO control + evidence plane; its host-level execution

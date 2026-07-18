@@ -168,6 +168,13 @@ def _image_refs(path: Path, text: str) -> tuple[int, list[str]]:
     Skips absolute URLs (``http://``, ``https://``, ``/``-rooted). All other
     refs are resolved relative to the file's parent directory, matching
     Quarto's default behavior.
+
+    ADR-093: a ``.png`` ref whose sibling ``.svg`` source exists counts as
+    PRESENT even when the PNG file does not — SVG-derived PNGs are untracked
+    build artifacts, rasterized in CI before every Quarto render (see
+    scripts/ci_render_untracked_figures.sh), so the ref resolves in the
+    built site. Without this rule the count depends on whether a checkout
+    happens to carry leftover build artifacts.
     """
     total = 0
     missing: list[str] = []
@@ -180,8 +187,11 @@ def _image_refs(path: Path, text: str) -> tuple[int, list[str]]:
             continue
         total += 1
         target = (path.parent / ref).resolve()
-        if not target.exists():
-            missing.append(ref)
+        if target.exists():
+            continue
+        if target.suffix.lower() == ".png" and target.with_suffix(".svg").exists():
+            continue
+        missing.append(ref)
     return total, missing
 
 
