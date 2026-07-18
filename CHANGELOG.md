@@ -21,6 +21,14 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **The series is renamed "Federal Compliance AAN Series" (Phase 1).**
+  The offering-level surfaces carry the new name — site nav sections,
+  the series landing page (title + H1, with "Federal Application-Aware
+  Networking" retained as the subtitle's formal expansion), the
+  Downloads page, and the kit's build banner + README. Deliberately
+  unchanged: the `federal-aan-series` URL slug, file names, and the
+  58 book titles' formal "Federal Application-Aware Networking"
+  convention — the technical name remains; the offering name changes.
 - **AAN engine-neutrality COMPLETE: the ratchet is retired.** The final
   planning-doc dispositions (per the approved table): the ConMon gap
   roadmap, series requirements, deck style notes, and kit-expansion

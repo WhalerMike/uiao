@@ -373,8 +373,8 @@
 
 ### Explanation (understanding-oriented)
 
-- **Federal AAN — Government Moderate Compliance Series**
-  - [Federal Application-Aware Networking Series](customer-documents/federal-aan-series/index.html)
+- **Federal Compliance AAN Series — Government Moderate**
+  - [Federal Compliance AAN Series](customer-documents/federal-aan-series/index.html)
   - **Vol 0 — Executive Summary & Program**
     - [Book 00 — Federal Application-Aware Networking Series](customer-documents/federal-aan-series/Vol_0_Book_00_FedAAN_Executive_Summary.html)
     - [Vol 0 Book 00a — Federal Application-Aware Networking — Executive Brief](customer-documents/federal-aan-series/Vol_0_Book_00a_FedAAN_Executive_Brief.html)
@@ -443,7 +443,7 @@
     - [Vol IX Book 03 — Federal Application-Aware Networking — App Registration Governance](customer-documents/federal-aan-series/Vol_IX_Book_03_FedAAN_App_Registration_Governance.html)
     - [Vol IX Book 04 — Federal Application-Aware Networking — Teams Telephony Catalog & Teams SCuBA Drift](customer-documents/federal-aan-series/Vol_IX_Book_04_FedAAN_Teams_Telephony_Catalog.html)
     - [Vol IX Book 05 — Federal Application-Aware Networking — SaaS Integration Governance](customer-documents/federal-aan-series/Vol_IX_Book_05_FedAAN_SaaS_Integration_Governance.html)
-- **Federal AAN — Training Academy**
+- **Federal Compliance AAN Series — Training Academy**
   - [AAN Training Program](customer-documents/federal-aan-series/AAN-Training-Program/index.html)
   - [AAN Track A — Compliance](customer-documents/federal-aan-series/AAN-Training-Program/compliance-track.html)
   - [AAN Track B — Implementation](customer-documents/federal-aan-series/AAN-Training-Program/implementation-track.html)
