@@ -79,7 +79,7 @@ Summary of what it adds and where it sits:
 - **Feeds the Compliance Kit's evidence loop.** Campaign completion, MFA/conditional
   access coverage, SSOT-vs-Entra least-privilege comparison, and JML audit trails
   become IAM KSI evidence (FR-EVD-001..006), exported OSCAL-compatibly via the
-  `uiao oscal bundle` path into Vol VII Book 04 attestation.
+  `<engine> oscal bundle` path into Vol VII Book 04 attestation.
 - **Dependencies:** Vol I Book 04 (HRIT Identity & Org SSOT) implemented and reliable;
   Vol I Book 05 (Entra ID modernization) on at least a parallel path; foundation kits
   deployed (the requirements doc assumes the Day-2 and DDI kits are live).
