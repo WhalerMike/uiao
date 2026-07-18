@@ -1,6 +1,6 @@
 # Federal Application-Aware Networking (AAN) Series
 
-> Detailed Requirements Document  |  Draft v0.1  |  Date Code: 2026-07-15 21:39 ET
+> Detailed Requirements Document  |  Draft v0.1  |  Date Code: 2026-07-18 10:02 ET
 
 > Related Volumes: Vol 0 (Program & Executive), Vols I–IV (Architecture), Vol V (Training & Certification), Vol VI (Implementation), Vol VII (ServiceNow Automation), Vol VIII (Multi-Cloud DDI), Vol IX (Day-2 Operations)
 
@@ -99,7 +99,7 @@ FR-EVD-002: Maintain the compliance spine (aan-compliance-spine.yml) as the mach
 
 FR-EVD-003: Track the series control crosswalk — 146 distinct controls — in Vol 0's appendix, reconciling every volume's contribution.
 
-FR-EVD-004: Export evidence packages via the uiao oscal bundle or native OSCAL JSON/XML emitter for authorization packages and ConMon.
+FR-EVD-004: Export evidence packages via the `<engine> oscal bundle` export or native OSCAL JSON/XML emitter for authorization packages and ConMon.
 
 FR-EVD-005: Stamp every deliverable with a Date Code accurate to the minute (YYYY-MM-DD HH:MM ET); newest code wins, and source and derived artifacts must never carry the same code with different content.
 
@@ -114,7 +114,7 @@ FR-EVD-005: Stamp every deliverable with a Date Code accurate to the minute (YYY
 | Azure (GCC Moderate boundary) | Landing zones, Azure Policy, Defender, Update Manager state | Read + platform-native actuation |
 | SIEM/XDR (Sentinel) | Detections, telemetry, evidence & telemetry plane | Read + alert-driven workflow |
 | SD-WAN / SASE stack | Encrypted overlay, TIC 3.0 PEP policy, transport telemetry | Managed via enforcement plane |
-| uiao oscal bundle / OSCAL Emitter | Evidence packaging for authorization packages and ConMon | Export |
+| `<engine> oscal bundle` / OSCAL emitter | Evidence packaging for authorization packages and ConMon | Export |
 
 ## 5. Non-Functional Requirements
 
@@ -165,7 +165,7 @@ Learners / Trainers (Vol V): complete the compliance and implementation tracks; 
 - InfoBlox BloxOne DDI Federal (or equivalent FedRAMP Moderate DDI) is procured and deployed as the naming/addressing truth plane.
 - ServiceNow Government Cloud instance is available and appropriately licensed, with MID Server placement inside the ATO boundary.
 - OPM HRIT provides reliable identity and organizational data (Vol I Book 04 path).
-- uiao tooling (compliance spine checks, OSCAL bundle, derivative builders) is available and maintained.
+- host-repo tooling (compliance spine checks, OSCAL bundle, derivative builders) is available and maintained.
 - Formal review by the CIO Office, OIS, organizational leaders, and program offices proceeds; this series and its requirements will be revised by that process.
 - Vendor FedRAMP authorization claims are re-verified against the FedRAMP Marketplace at procurement time.
 

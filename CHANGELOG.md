@@ -21,6 +21,23 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **AAN engine-neutrality COMPLETE: the ratchet is retired.** The final
+  planning-doc dispositions (per the approved table): the ConMon gap
+  roadmap, series requirements, deck style notes, and kit-expansion
+  roadmap scrubbed in place with derivatives regenerated (docx via the
+  pandoc house path, the roadmap deck via in-place notes/body rewrite —
+  its speaker-note vendor-source footers also cited dead pre-move inbox
+  paths, now fixed); the CR26 reconciliation's generator now displays
+  host-repo-relative provenance and the register regenerated; the three
+  engine-subject analyses (Vol V academy plan, Vol VII build-vs-buy,
+  Book06 critique) moved to `inbox/UIAO-AAN-Integration/` per doctrine;
+  the identity-kit requirements docx and a stray feedback docx moved to
+  `inbox/`; the browser-duplicate docx deleted. The gate's allowlist is
+  now a CLOSED PERMANENT REGISTER of six functional exemptions
+  (`BUILD-DERIVATIVES.md` — operators must paste real build commands —
+  and five gate scripts that functionally read engine paths); additions
+  require a documented functional justification, and a registered file
+  that goes clean must still leave.
 - **AAN corpus engine-neutrality: ratchet 73 → 24.** The four Vol V
   training books (scrubbed in place as engine-agnostic training, Date
   Codes refreshed), all 39 remaining deck/spec YAMLs (speaker notes,

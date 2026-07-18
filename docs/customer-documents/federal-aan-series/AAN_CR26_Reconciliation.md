@@ -2,7 +2,7 @@
 
 > **Generated file — do not hand-edit.** Produced by `render_cr26_reconciliation.py`. Regenerate when the internal rules or the CR26 catalog snapshot change.
 
-> **Provenance.** Internal rule set: the 29 `src/uiao/ksi/rules/KSI-0NN.yaml` files (the series' "ADR-111 rule set"). CR26 catalog: the authoritative FedRAMP CR26 OSCAL catalog committed in-repo at `src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/c31eb04c082d6d578a26a00de9a482707ab7a00c/catalog/json/FedRAMP_CR26_catalog.json`. Each rule's declared `Mappings.CR26` indicator ID is matched against the catalog's leaf indicators — no IDs are invented.
+> **Provenance.** Internal rule set: the host repo's 29 `ksi/rules/KSI-0NN.yaml` files (the series' "ADR-111 rule set"). CR26 catalog: the authoritative FedRAMP CR26 OSCAL catalog committed in the host repo at `.../compliance/reference/fedramp-cr26/snapshot/c31eb04c082d6d578a26a00de9a482707ab7a00c/catalog/json/FedRAMP_CR26_catalog.json`. Each rule's declared `Mappings.CR26` indicator ID is matched against the catalog's leaf indicators — no IDs are invented.
 
 ## Headline delta
 

@@ -14,18 +14,22 @@ text file under this directory, after stripping repository-hosting URLs
 (github.com/WhalerMike/uiao, whalermike.github.io/uiao) — the series is hosted
 in that repository, so links to itself are hosting reality, not engine naming.
 
-RATCHET, not sweep: 79 files predate this gate and still name the engine —
-internal planning docs and gate tooling whose docstrings compare against
-UIAO canon. (The books, deck/spec YAMLs, figures, and training subtree were
-all cleaned; the training subtree stays in the series — it is kit content
-registered in the compliance spine — scrubbed per the Vol V precedent.)
-They are enumerated below and may ONLY leave this list, never join it:
+THE CLEANUP IS COMPLETE. The 79-file ratchet this gate launched with
+(2026-07-18) is fully burned down: books, deck/spec YAMLs, figures, the
+training subtree (scrubbed in place — it is kit content registered in the
+compliance spine), and the planning docs are all engine-neutral; the
+UIAO-subject analyses moved to inbox/UIAO-AAN-Integration/. What remains
+below is a CLOSED PERMANENT REGISTER of functional exemptions — files whose
+engine references are load-bearing, not naming debt:
 
   1. NO NEW NAMING — a file not listed here must contain no match.
-  2. THE LIST ONLY SHRINKS — when a listed file is cleaned, this gate FAILS
-     until its entry is removed. A clean file cannot quietly remain
-     grandfathered; every cleanup permanently narrows the exemption.
-  3. THE HISTORICAL RECORD IS EXEMPT — AAN_Corpus_Sweep_Findings.{json,md} is
+  2. THE REGISTER IS CLOSED — additions require a documented functional
+     justification of the same kind as the entries below (an operator must
+     paste a real command, or a tool must state what it functionally reads).
+     "It mentions the engine" is naming debt, not a justification.
+  3. A REGISTERED FILE THAT GOES CLEAN MUST LEAVE — the gate fails until
+     its entry is removed, so the register can still only shrink.
+  4. THE HISTORICAL RECORD IS EXEMPT — AAN_Corpus_Sweep_Findings.{json,md} is
      a CLOSED audit register; rewriting its hits would falsify what was
      audited. Exempt by name, not pattern, so no new file inherits it.
 
@@ -70,33 +74,22 @@ SKIP_DIRS = {".git", ".claude", "node_modules", "__pycache__"}
 # state what it forbids is a worse gate.
 SELF = Path(__file__).name
 
-# ── The ratchet ─────────────────────────────────────────────────────────────
-# Every entry is a file that named the engine when this gate landed
-# (2026-07-18). Grouped by what cleaning it takes. Shrink-only (invariant 2).
+# ── The permanent register (see invariant 2 — closed; shrink-only) ─────────
 RATCHET = {
-    # Internal planning / meta docs — not book corpus; each needs a
-    # keep-here-and-scrub vs move-to-engine-side decision.
-    "AAN_CR26_Reconciliation.md",
-    "AAN_DECK_STYLE_NOTES.md",
-    "AAN_Series_Requirements.md",
-    "AAN_ServiceNow_Kit_Expansion_Roadmap.md",
-    "AAN_Vol_V_Training_Academy_Plan.md",
-    "AAN_Vol_VII_ServiceNow_Accelerator_Build_vs_Buy.md",
-    "Book06_Track4_Constructive_Critique.md",
+    # Build instructions — operators must be able to paste the REAL build
+    # commands (`uiao generate aan-deck`, the batch docx path). Scrubbing
+    # them would make the doc non-functional; every spec header points here
+    # (§1) precisely so this is the ONE sanctioned home of those commands.
     "BUILD-DERIVATIVES.md",
-    "federal-aan-conmon-gap-roadmap.md",
-    # Gate tooling — docstrings compare series claims against engine canon;
-    # rewording must not weaken what the gates explain.
+    # Gate tooling — these scripts functionally READ the host repo's rule
+    # files and canon catalog (real `src/…` code paths) and their docstrings
+    # must state what they compare against to stay honest. Tooling is not
+    # published prose.
     "check_cr26_indicators.py",
     "render_authorities_table.py",
     "render_cr26_reconciliation.py",
     "servicenow-day2/check_l3_ceiling.py",
     "validate_day2_control_maps.py",
-    # Figures that render the engine name INSIDE the diagram — need SVG
-    # redraw + PNG/sidecar regen alongside their host book.
-    # Heavy books — 20+ mentions each and/or paired dirty deck specs;
-    # clean qmd + spec + figs together (see pairing note).
-    # Deck specs (drive PPTX slide content) — pair with their book's scrub.
 }
 
 
