@@ -262,7 +262,7 @@
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_02_FedAAN_Implementation_Track.qmd) | 286 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_03_FedAAN_Assessment_Certification.qmd) | 272 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_V_Book_04_FedAAN_Vendor_Training_Lab_Environments.qmd) | 262 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 67 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 73 | Navigation hub | ✅ | — | — |
 
 ### `learning/`
 
