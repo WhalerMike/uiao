@@ -52,6 +52,31 @@ recommendation to its state at this commit:
 The open items above are candidates for the next wave; nothing in this
 disposition table is a commitment.
 
+### Wave 2 update (2026-07-18, same day)
+
+Three of the open items shipped in the follow-up wave:
+
+- **ServiceNow "recommended, not mandatory"** — now an explicit callout in
+  Vol VII Book 00 ("ServiceNow is the recommended coordination platform —
+  not a mandatory one"): the requirement is the four-property coordination
+  contract; named alternatives are another authorized workflow/CMDB
+  platform (Atlassian Government Cloud, per the Product Inventory
+  Questionnaire) or a composed Azure DevOps/GitHub + Logic Apps +
+  Sentinel-automation pipeline. Vol IX Book 00 inherits the statement the
+  same way it inherits the High-on-Moderate treatment.
+- **Tiered entry points** — the series index now opens with "Three ways
+  in": Executive Brief, Practitioner Quickstart (Core AAN Pathway + labs +
+  deployable kits), and Full Academy.
+- **Master index at zip root** — `build_aan_download.py` now writes an
+  `INDEX.md` into the kit root enumerating every volume, book (with
+  formats), and operator kit.
+
+Still open after wave 2: the visual roadmap/dependency graph (house-style
+SVG authoring), non-ServiceNow appendix examples beyond the callout, pptx
+speaker-notes/branding pass, docx cross-volume hyperlinks, Vol VI
+multi-cloud patterns, ROI sensitivity analysis, Vol VI Book 08 test-harness
+flesh-out, brownfield retrofit guidance, and kit-folder sample data.
+
 ---
 
 **Reassessment of the New Standalone AAN Kit (aan-federal-series-latest.zip)**

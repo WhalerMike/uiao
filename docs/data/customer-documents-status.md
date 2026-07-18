@@ -219,7 +219,7 @@
 | [`docs/customer-documents/federal-aan-series/Vol_I_Book_06_FedAAN_Federal_Telecommunications_Modernization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_I_Book_06_FedAAN_Federal_Telecommunications_Modernization.qmd) | 452 | Substantial | ✅ | 17/17 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_I_Book_07_FedAAN_Network_Enforcement_Substrate.qmd) | 328 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_VIII_Book_00_FedAAN_DDI_Automation_Overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_VIII_Book_00_FedAAN_DDI_Automation_Overview.qmd) | 126 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/federal-aan-series/Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd) | 159 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/federal-aan-series/Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_VII_Book_00_FedAAN_ServiceNow_Automation_Overview.qmd) | 186 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_VII_Book_01_FedAAN_CMDB_Reconciliation_Asset_Identity.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_VII_Book_01_FedAAN_CMDB_Reconciliation_Asset_Identity.qmd) | 109 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_VII_Book_02_FedAAN_M365_Control_Compliance_Automation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_VII_Book_02_FedAAN_M365_Control_Compliance_Automation.qmd) | 135 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/federal-aan-series/Vol_VII_Book_03_FedAAN_Azure_Control_Compliance_Automation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/Vol_VII_Book_03_FedAAN_Azure_Control_Compliance_Automation.qmd) | 132 | Authored | ✅ | 1/1 | — |
@@ -244,7 +244,7 @@
 | [`docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 574 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 208 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/index.qmd) | 36 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 79 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 90 | Navigation hub | ✅ | — | — |
 
 ### `learning/`
 
