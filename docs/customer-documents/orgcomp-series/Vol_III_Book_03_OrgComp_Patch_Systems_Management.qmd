@@ -2,7 +2,7 @@
 title: "Vol III Book 03 — Federal Organization Compliance — Patch & Systems Management: The SI-2 / CM Closure Plane"
 subtitle: "Flaw Remediation and Configuration State Across Microsoft, AWS, Oracle, VMware, and Red Hat — One Contract, Many Stacks"
 author: "Federal Cloud Services"
-date: "2026-07-19 12:10 ET"
+date: "2026-07-19 17:40 ET"
 format:
   html:
     embed-resources: true
@@ -38,7 +38,7 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive {{< meta agency.short >}}-wide technical roadmap and has not been reviewed or approved by the {{< meta agency.short >}} CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the {{< meta agency.short >}} CIO Office and organizational components.
 
-**Date Code:** 2026-07-19 12:10 ET
+**Date Code:** 2026-07-19 17:40 ET
 :::
 
 ::: {.aan-important}
@@ -265,6 +265,56 @@ Satellite and Ansible run in-boundary on customer infrastructure; Red Hat
 Insights is SaaS and enters only after an authorization review; AWS GovCloud
 and each Red Hat product's authorization status are verified at procurement,
 holding the series' Moderate scope throughout.
+
+## The 5.1 emission contract — one record shape into the one SI-2 queue
+
+The Satellite + Ansible Automation Platform + SSM stacks close SI-2 on the
+RedHat-on-AWS estate only when their remediation results land in the **same
+queue** the rest of the estate reports to, keyed the same way. The emission
+contract is deliberately small — five fields, the same shape every other
+actuation stack emits:
+
+| Field | Content | Why it is load-bearing |
+|---|---|---|
+| **Join key** | The asset's authoritative identity from the IPAM/DDI naming plane (CM-8) | An unreconciled record proves nothing about any real asset — the 5.3 estate gate runs *first* |
+| **Source stack** | `satellite`, `aap`, or `ssm` | Which platform-native orchestrator performed the remediation |
+| **Finding reference** | Patch/erratum id, CVE, and KEV flag where applicable | Joins the record back to the Book 02 assessment queue entry it closes |
+| **SLA class** | The remediation-SLA class assigned at assessment (SI-2(3), BOD 26-04 model) | Whether the closure beat its clock is a fact, not a recollection |
+| **Status + evidence pointer** | success / failed / deferred, with the job or association id | The pointer the evidence contract lifts into attestation |
+
+Three emitters realize the contract, none of them new architecture:
+**Satellite/AAP** job and remediation callbacks post completion records
+through the coordination layer's existing inbound integration (the Vol VII
+pattern — IntegrationHub via the in-boundary MID); **SSM Patch Manager**
+patch-compliance state changes surface through EventBridge to the same
+inbound lane; and either path lands as an update to the open SI-2 remediation
+task rather than a new record type. **CM-2/CM-6 baseline recording** rides
+the same rails: the SSM State Manager association and the Ansible playbook
+version that define the estate's desired state are recorded as the baseline
+artifacts the configuration-state section above requires, so drift is judged
+against a versioned baseline, not a console memory.
+
+**The Insights decision, recorded:** Red Hat Insights remains **excluded**
+from the boundary until an authorization review admits it — the SaaS
+telemetry path is the accreditation-substrate exception noted above, and
+exclusion-by-default is the documented posture, not an oversight. Satellite
+and AAP, running in-boundary, carry the full contract without it.
+
+## The 5.2 assessment feed — Inspector into the Book 02 queue
+
+The assessment half stays where the doctrine put it: the Vulnerability
+Management book's queue is the *only* RA-5 priority queue, and the AWS estate
+feeds it rather than growing one of its own. **AWS Inspector** findings for
+the RedHat instances (and Insights advisories, if and when admitted) enter
+the same KEV-weighted, SLA-ranked queue keyed to the CM-8 join key — the
+per-CSP scanner is an assessment *source*, never a second prioritization
+authority. Aggregation rides what Volume III already runs: Inspector findings
+consolidate through **Security Hub**, whose feed — with GuardDuty and
+CloudTrail — the **Multi-Cloud Evidence Fabric** book already ingests via the
+analytics lake. Closure flows back through this book's actuation matrix and
+the 5.1 emission contract above, so assessment-to-closure is one loop across
+both clouds, not two parallel programs.
+
 
 # Closure Necessity — Remediation Has No Substitute
 
