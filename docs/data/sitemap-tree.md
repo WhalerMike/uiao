@@ -439,10 +439,10 @@
     - [Vol X Book 00 — Federal Organization Compliance — Volume X Overview: The Series on the Governance Substrate](customer-documents/federal-aan-series/Vol_X_Book_00_FedAAN_Governance_Substrate_Integration_Overview.html)
 - **Federal Organization Compliance Series — Training Academy**
   - [OrgComp Training Program](customer-documents/federal-aan-series/AAN-Training-Program/index.html)
-  - [AAN Track A — Compliance](customer-documents/federal-aan-series/AAN-Training-Program/compliance-track.html)
-  - [AAN Track B — Implementation](customer-documents/federal-aan-series/AAN-Training-Program/implementation-track.html)
-  - [AAN Track A — Assessment Rubrics](customer-documents/federal-aan-series/AAN-Training-Program/assessment-rubrics.html)
-  - [AAN Vendor Training Catalog](customer-documents/federal-aan-series/AAN-Training-Program/vendor-training-catalog.html)
+  - [OrgComp Track A — Compliance](customer-documents/federal-aan-series/AAN-Training-Program/compliance-track.html)
+  - [OrgComp Track B — Implementation](customer-documents/federal-aan-series/AAN-Training-Program/implementation-track.html)
+  - [OrgComp Track A — Assessment Rubrics](customer-documents/federal-aan-series/AAN-Training-Program/assessment-rubrics.html)
+  - [OrgComp Vendor Training Catalog](customer-documents/federal-aan-series/AAN-Training-Program/vendor-training-catalog.html)
   - **Courseware — per book**
     - [Book 00 — Executive Summary](customer-documents/federal-aan-series/AAN-Training-Program/books/book-00.html)
     - [Book 01 — SSA Landing Zone, IPAM & FedRAMP](customer-documents/federal-aan-series/AAN-Training-Program/books/book-01.html)
@@ -465,7 +465,7 @@
     - [Book 18 — Cybersecurity Training & Awareness](customer-documents/federal-aan-series/AAN-Training-Program/books/book-18.html)
     - [Book 19 — Authorization Package & ConMon](customer-documents/federal-aan-series/AAN-Training-Program/books/book-19.html)
   - **Vendor labs**
-    - [AAN Lab Environments](customer-documents/federal-aan-series/AAN-Training-Program/labs/index.html)
+    - [OrgComp Lab Environments](customer-documents/federal-aan-series/AAN-Training-Program/labs/index.html)
     - [Lab environment — DDI (Module B1)](customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b1-ddi.html)
     - [Lab environment — PIM & privileged access (Module B5)](customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b5-pim.html)
     - [Lab environment — Purview data protection (Module B6)](customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b6-purview.html)
@@ -473,7 +473,7 @@
 - **UIAO — Reference Engine for the Federal Organization Compliance Series**
   - [UIAO — Reference Engine for the Federal Organization Compliance Series](customer-documents/uiao-aan-integration/index.html)
   - [Book 01 — UIAO — Control Continuation & Closure for the OrgComp Evidence Contract](customer-documents/uiao-aan-integration/01-control-continuation-and-closure.html)
-  - [Book 02 — UIAO — Active-Participant Map for the AAN Architecture](customer-documents/uiao-aan-integration/02-active-participant-map.html)
+  - [Book 02 — UIAO — Active-Participant Map for the OrgComp Architecture](customer-documents/uiao-aan-integration/02-active-participant-map.html)
   - [Book 03 — ADR-111 Rule Set ↔ FedRAMP CR26 KSI Catalog — Reconciliation](customer-documents/uiao-aan-integration/03-adr111-cr26-ksi-reconciliation.html)
   - [Book 04 — Decision-Gate Memo — Is UIAO the Correct Evidence Engine for OrgComp?](customer-documents/uiao-aan-integration/04-decision-gate-memo.html)
   - [Book 05 — UIAO — ConMon Continuation Map for Vol IV Book 06 (Authorization Package & ConMon)](customer-documents/uiao-aan-integration/05-conmon-continuation-map.html)
