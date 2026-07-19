@@ -338,7 +338,7 @@
 | [`docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 575 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 209 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/orgcomp-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/index.qmd) | 37 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/orgcomp-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/index.qmd) | 108 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/orgcomp-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/index.qmd) | 113 | Navigation hub | ✅ | — | — |
 
 ### `orgpath-multicloud/`
 
