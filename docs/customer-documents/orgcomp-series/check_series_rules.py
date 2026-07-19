@@ -41,11 +41,11 @@ GLOBS = [
 # --- Gate 3: High-claim patterns. "GCC High" excluded via lookbehind. ---
 HIGH_RE = re.compile(r"(?<!GCC )(?<!GCC-)\bFedRAMP High\b|\bHigh baseline\b|\bHigh impact level\b|\bHigh-on-Moderate\b")
 
-# Pre-existing High mentions are BASELINED per file (aan-high-claim-baseline.yml,
+# Pre-existing High mentions are BASELINED per file (orgcomp-high-claim-baseline.yml,
 # captured 2026-07-14: 44 occurrences / 16 files awaiting the owner's ruling —
 # spec §2 as written forbids them all). The gate is a RATCHET: a file exceeding
 # its baseline fails; a file dropping below it warns to lower the baseline.
-BASELINE_FILE = HERE / "aan-high-claim-baseline.yml"
+BASELINE_FILE = HERE / "orgcomp-high-claim-baseline.yml"
 
 # --- Gate 5: cross-reference pattern ---
 XREF_RE = re.compile(r"\bVol(?:ume)?[ _]([0IVX]+)[ _](?:Book|Bk)[ _](\d{1,2}[a-zA-Z]?|[A-Z])\b")

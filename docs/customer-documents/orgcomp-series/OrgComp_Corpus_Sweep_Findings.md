@@ -9,7 +9,7 @@
 
 # AAN Corpus Sweep Findings
 
-> **Generated sweep report** — produced by an automated adversarial consistency sweep of the Federal Application-Aware Networking corpus. Scope: **68 series books, 30 training-program pages, 45 deck/spec YAMLs, and 2 deployable ServiceNow kits**, reviewed against in-repo SSOTs (`orgcomp-compliance-spine.yml`, `aan-authority-deadlines.yml`, `reference/nist-800-53r5-controls.json` v5.2.0, `OrgComp_CR26_Reconciliation.md`, `OrgComp_Evidence_Contract_Spec.md`, shipped code artifacts). All HIGH findings were **dual-adversarially verified** (independently re-derived from the cited SSOT before confirmation); MED findings that failed dual confirmation were demoted and are marked as such. The input finding stream was truncated mid-record on the final MED entry (Vol III Book 06, line 109); counts below reflect the findings as received.
+> **Generated sweep report** — produced by an automated adversarial consistency sweep of the Federal Application-Aware Networking corpus. Scope: **68 series books, 30 training-program pages, 45 deck/spec YAMLs, and 2 deployable ServiceNow kits**, reviewed against in-repo SSOTs (`orgcomp-compliance-spine.yml`, `orgcomp-authority-deadlines.yml`, `reference/nist-800-53r5-controls.json` v5.2.0, `OrgComp_CR26_Reconciliation.md`, `OrgComp_Evidence_Contract_Spec.md`, shipped code artifacts). All HIGH findings were **dual-adversarially verified** (independently re-derived from the cited SSOT before confirmation); MED findings that failed dual confirmation were demoted and are marked as such. The input finding stream was truncated mid-record on the final MED entry (Vol III Book 06, line 109); counts below reflect the findings as received.
 
 ---
 
@@ -271,7 +271,7 @@
 
 #### H-046 — `Vol_IV_Book_02_OrgComp_Supply_Chain_Risk_Management.qmd:357` — scope-violation
 - **Claim:** Vendor Disclosure Matrix: Microsoft — FedRAMP Authorization "Yes — GCC High".
-- **Problem:** Load-bearing High claim in SR-6 evidence, not baselined in `aan-high-claim-baseline.yml`, and contradicting the corpus GCC-Moderate scope doctrine: SSA's Microsoft services run in GCC, not GCC High.
+- **Problem:** Load-bearing High claim in SR-6 evidence, not baselined in `orgcomp-high-claim-baseline.yml`, and contradicting the corpus GCC-Moderate scope doctrine: SSA's Microsoft services run in GCC, not GCC High.
 - **Fix:** State the authorization in series-scope terms (GCC / FedRAMP Moderate posture) or cite the actual Marketplace authorization for the SSA tenancy; never anchor SR-6 evidence to GCC High.
 
 #### H-047 — `Vol_IV_Book_02_OrgComp_Supply_Chain_Risk_Management.qmd:358` — factual-error
@@ -624,7 +624,7 @@
 | `Vol_0_Book_00...:1211` | count-not-reproducible | OSCAL AP row "10 themes, 32 CR26 controls" — 32 reproduces from nothing; "CR26 controls" is off-terminology | Recompute from emitter output; restate in consistent units |
 | `Vol_0_Book_00...:188` | internal-contradiction | Series figure caption says "five volumes, 23 implementation books"; line 86 says ten volumes; alt text repeats the wrong 16/12 counts | Regenerate es-fig-01 caption/alt for the ten-volume structure |
 | `Vol_0_Book_00...:1289` | book-registry-mismatch | Document References table omits 5 spine-registered books (Vol I Bk 07; Vol III Bks 03/04/07; Vol VII Bk 06) | Add the five rows with links |
-| `Vol_0_Book_00a...Executive_Brief.qmd:39` | internal-contradiction | Designates the ConMon Gap Roadmap as "the single source of truth for dates" while `aan-authority-deadlines.yml` is the declared, gated SSOT — and the roadmap carries the Jan 1, 2027 error | Point the SSOT designation at the deadlines yml; describe the roadmap as the derived narrative timeline |
+| `Vol_0_Book_00a...Executive_Brief.qmd:39` | internal-contradiction | Designates the ConMon Gap Roadmap as "the single source of truth for dates" while `orgcomp-authority-deadlines.yml` is the declared, gated SSOT — and the roadmap carries the Jan 1, 2027 error | Point the SSOT designation at the deadlines yml; describe the roadmap as the derived narrative timeline |
 | `Vol_0_Book_00a...:50` | needs-external-verification | ServiceNow Gov Cloud "FedRAMP High... (a conservative delta)" — external claim + unsupported inference pre-judging the AO determination | Verify on Marketplace; drop or reframe "(a conservative delta)"; follow the spine's "refer as authorized" convention |
 | `Vol_0_Book_01...Questionnaire.qmd:76` | deadline-date-mismatch | Attributes "FedRAMP Certified"/class nomenclature adoption to May 4, 2026 — the CR26 **public preview** date; launch was Jun 25, 2026, mandatory Jan 1, 2027 | Phrase as introduced-in-preview / launched / mandatory |
 | `Vol_0_Book_01...:102` | anachronistic-class-labels | §3 presents "Class C/D" as statuses "verified 2026-07-08" — before the 20x class pipelines open (Aug 2026); Marketplace would show Rev5 designations | Record actual Marketplace designations; move the class mapping to the §2 nomenclature note |
@@ -715,7 +715,7 @@ These cannot be adjudicated from in-repo SSOTs and must be verified against the 
 
 **Registry/schema question:** "KSI-022"-style numeric ids used consistently across ~10 files (`Vol_0_Book_02:155`) — verify against the CR26 indicator registry; if wrong, it is a corpus-wide rename.
 
-**Timeline rows without SSOT backing:** CNSA 2.0 / 800-53 cadence / M-23-02 dates (`Vol_0_Book_00:267`) — add to `aan-authority-deadlines.yml` or mark as projections.
+**Timeline rows without SSOT backing:** CNSA 2.0 / 800-53 cadence / M-23-02 dates (`Vol_0_Book_00:267`) — add to `orgcomp-authority-deadlines.yml` or mark as projections.
 
 ---
 
@@ -728,7 +728,7 @@ These cannot be adjudicated from in-repo SSOTs and must be verified against the 
 3. **KSI vocabulary lint.** Enforce the 10 CR26 theme ids + 46 indicator ids + 29 internal rule ids as the only permissible KSI tokens. Would have caught KSI-CM (×6 files), KSI-EDR, KSI-AU/SI/IR, KSI-DAT/IDM, "Privacy Inventory", "Backup and Recovery", the fabricated Appendix A indicator IDs, and the four "Alerting" mis-expansions. Prerequisite: add KSI family names to an in-repo reference SSOT (none exists today — that absence is why nothing gated H-042).
 4. **"29 CR26" collocation lint.** Forbid "29 CR26 KSIs/rules/indicators" and "all 29 CR26" outside the reconciliation file itself. Ten-plus files carry the conflation; a trivial regex gate ends the class.
 5. **Extend `orgcomp-authorities-drift.yml` / `render_authorities_table.py --check` to embedded .qmd copies.** Five books shipped stale embeds that the partial-only gate could not see (Vol IX Bks 01/03, Vol III Bks 03/04, Vol VIII Bk 00).
-6. **Deadline-claims gate.** Any sentence binding an obligation to a date should be checkable against `aan-authority-deadlines.yml` event text, not just the date. Three HIGHs (H-006, H-045, H-058) had the right date with the wrong obligation attached — the current date-only check passes them.
+6. **Deadline-claims gate.** Any sentence binding an obligation to a date should be checkable against `orgcomp-authority-deadlines.yml` event text, not just the date. Three HIGHs (H-006, H-045, H-058) had the right date with the wrong obligation attached — the current date-only check passes them.
 7. **Hardcoded book-count lint.** Forbid "N-part", "final book", "six books", "nineteenth" style counts in prose (spine header already mandates this pending Phase G). Caught in Vol I Bk 04, Vol IV Bk 06, Vol VII Bk 00, decks.
 8. **High-claim gate pattern fix.** The gate missed "Moderate or High" (`Vol_III_Book_01:249`) and unbaselined GCC-High claims (`Vol_IV_Book_02:357`); widen the pattern and re-baseline.
 

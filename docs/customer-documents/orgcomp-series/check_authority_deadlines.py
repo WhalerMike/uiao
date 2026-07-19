@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gate 1 — federal deadline claims vs the authority registry.
 
-aan-authority-deadlines.yml is the SSOT for every binding federal date the
+orgcomp-authority-deadlines.yml is the SSOT for every binding federal date the
 series cites, each entry carrying the issuing-agency source and last_verified.
 This checker enforces two things:
 
@@ -38,7 +38,7 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML required: pip install pyyaml")
 
 HERE = Path(__file__).resolve().parent
-REGISTRY = HERE / "aan-authority-deadlines.yml"
+REGISTRY = HERE / "orgcomp-authority-deadlines.yml"
 
 # Files that carry deadline prose. Generated artifacts are excluded (they are
 # projections of sources already scanned); kit code is excluded (no dates).
