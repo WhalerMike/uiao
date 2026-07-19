@@ -18,7 +18,11 @@
 #             itself is a SEPARATE pipeline; this job only CONSUMES its outputs.
 #   ddi       terraform init/plan/apply of ../terraform. Gated on the
 #             deployment_model / acknowledge_saas_boundary contract rule (§1).
-#   validate  runs validation/*.sh; any non-zero exit fails the pipeline.
+#   validate  runs the three per-apply checks (dns-validation, discovery-sync,
+#             ipam-conflict); any non-zero exit fails the pipeline.
+#   reconcile Phase 5.3 estate cadence (scheduled, issue #1286): the CM-8
+#             join-key reconciliation and shadow-zone audits over the WHOLE
+#             discovered estate — not tied to any single apply.
 # ---------------------------------------------------------------------------
 
 name: aws-ddi
@@ -32,6 +36,10 @@ on:
       - "infoblox-ddi-book/aws-lz-automation/pipelines/github-actions-aws-ddi.yml"
   pull_request:
     branches: [main]
+  schedule:
+    # Phase 5.3 estate cadence: the CM-8 reconciliation + shadow-zone audits
+    # (the `reconcile` job below) run daily, independent of any deploy.
+    - cron: "17 6 * * *"
   workflow_dispatch:
     inputs:
       environment:
@@ -271,3 +279,46 @@ jobs:
           GRID_MASTER: ${{ needs.ddi.outputs.grid_master_ip }}
           NETWORK_VIEW: "default"
         run: bash ipam-conflict-check.sh
+
+  # ---------------------------------------------------------------------------
+  # reconcile — Phase 5.3 estate cadence (issue #1286). NOT a per-request gate:
+  # the three checks above gate each apply; these two audit the WHOLE estate on
+  # a schedule, proving (a) every discovered AWS asset reconciles to the CM-8
+  # join key in the CMDB and (b) no shadow Route 53-only zones exist. Secrets
+  # (WAPI + ServiceNow read creds) come from Secrets Manager exactly as in the
+  # validate job; the Route 53 listing reuses the discovery role's read actions.
+  # ---------------------------------------------------------------------------
+  reconcile:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # OIDC federation, same as ddi/validate — no stored keys
+      contents: read
+    steps:
+      - uses: actions/checkout@v4   # pin to a SHA in production
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4   # pin to a SHA
+        with:
+          role-to-assume: ${{ vars.RECONCILE_ROLE_ARN }}   # discovery-role read actions suffice
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Export WAPI + ServiceNow read credentials from Secrets Manager
+        run: |
+          echo "::add-mask::$(aws secretsmanager get-secret-value --secret-id "$INFOBLOX_SECRET_ID" --query SecretString --output text | jq -r .password)"
+          # export INFOBLOX_USERNAME/INFOBLOX_PASSWORD and SN_USERNAME/SN_PASSWORD
+          # here, following the validate job's pattern for your secret layout.
+        env:
+          INFOBLOX_SECRET_ID: ${{ vars.INFOBLOX_SECRET_ID }}
+      - name: CM-8 estate reconciliation check
+        working-directory: infoblox-ddi-book/aws-lz-automation/validation
+        env:
+          GRID_MASTER: ${{ vars.GRID_MASTER }}
+          NETWORK_VIEW: "default"
+          SN_INSTANCE: ${{ vars.SN_INSTANCE }}
+          # SCOPE_CIDRS / SN_TABLE / SN_QUERY / thresholds per your estate — see script header.
+        run: bash cm8-reconciliation-check.sh
+      - name: Shadow-zone audit (Route 53 vs the naming plane)
+        working-directory: infoblox-ddi-book/aws-lz-automation/validation
+        env:
+          GRID_MASTER: ${{ vars.GRID_MASTER }}
+          ALLOWLIST_FILE: shadow-zone-allowlist.txt   # recorded decisions, not silent skips
+        run: bash shadow-zone-check.sh

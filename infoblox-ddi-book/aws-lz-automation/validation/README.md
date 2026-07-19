@@ -21,6 +21,17 @@ are identical for cross-cloud parity.
 | `discovery-sync-check.sh` | Infoblox cloud-discovery / vDiscovery (the AWS→IPAM sync using the least-privilege cross-account discovery role, contract §5) completed successfully and recently. | A task is in `ERROR`/`WARNING`/`FAILED` state, or the last successful run is older than `STALE_THRESHOLD_MIN`. |
 | `ipam-conflict-check.sh` | The networks in IPAM (including freshly-discovered AWS VPCs/subnets) do not overlap — no two teams or clouds claiming the same CIDR. | Any overlapping or duplicate `network` object is found (server-side candidate query or whole-view pairwise scan). |
 
+## Estate-cadence checks (Phase 5.3 — issue #1286)
+
+Two further checks audit the **whole discovered estate on a schedule** (the
+pipeline's `reconcile` job, or a ServiceNow scheduled flow) rather than gating
+a single apply:
+
+| Script | Proves | Fails when |
+|---|---|---|
+| `cm8-reconciliation-check.sh` | Every in-scope AWS address the truth plane (Infoblox IPAM, fed by vDiscovery) knows has a CMDB record carrying the same address — the **CM-8 join key** — and the CMDB claims nothing IPAM disavows. | Unregistered addresses (IPAM-discovered, no CMDB record) or stale CMDB addresses (unknown to IPAM) exceed their thresholds (default 0). |
+| `shadow-zone-check.sh` | No **shadow Route 53-only zones**: every in-scope private hosted zone is represented in the authoritative naming plane (authoritative, synced, delegated, or forwarded on the Infoblox side) or is an explicit allowlisted decision. | Any private hosted zone is found only in Route 53, unrepresented and not allowlisted. |
+
 ## Grid vs. Universal DDI (boundary-aware)
 
 - **`deployment_model = grid`** (default, boundary-clean for GCC-Moderate):
@@ -57,6 +68,22 @@ contract.
 - `GRID_MASTER`, `INFOBLOX_USERNAME`, `INFOBLOX_PASSWORD` (req)
 - `WAPI_VERSION` (opt), `NETWORK_VIEW` (opt), `CANDIDATE_NETWORK` (opt),
   `WAPI_CA_BUNDLE` (opt)
+
+**`cm8-reconciliation-check.sh`**
+- WAPI: `GRID_MASTER`, `INFOBLOX_USERNAME`, `INFOBLOX_PASSWORD` (req);
+  `WAPI_VERSION`, `NETWORK_VIEW`, `WAPI_CA_BUNDLE` (opt)
+- ServiceNow: `SN_INSTANCE`, `SN_USERNAME`, `SN_PASSWORD` (req);
+  `SN_TABLE` (opt, `cmdb_ci_ip_address`), `SN_IP_FIELD` (opt, `ip_address`),
+  `SN_QUERY` (opt)
+- Scope/policy: `SCOPE_CIDRS` (opt), `UNREGISTERED_THRESHOLD` (opt, 0),
+  `STALE_THRESHOLD` (opt, 0)
+
+**`shadow-zone-check.sh`**
+- AWS CLI credentials in the environment (the discovery role's read actions:
+  `route53:ListHostedZones`); `HOSTED_ZONE_SCOPE` (opt, `private`)
+- WAPI: `GRID_MASTER`, `INFOBLOX_USERNAME`, `INFOBLOX_PASSWORD` (req);
+  `WAPI_VERSION`, `DNS_VIEW`, `WAPI_CA_BUNDLE` (opt)
+- `ALLOWLIST_FILE` (opt) — recorded Route 53-native decisions, one zone per line
 
 ## Invocation from the pipeline `validate` stage
 
