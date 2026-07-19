@@ -19,7 +19,7 @@ The ``.pptx`` decks and the deployable operator-kit directories are static sourc
 (no shortcodes), read from ``--src-root``.
 
 Produces, into ``--out`` (the deploy calls it with ``--out _site/download``):
-  * ``aan-federal-series-latest.zip`` — per-volume folders of book .docx + .pptx,
+  * ``orgcomp-federal-series-latest.zip`` — per-volume folders of book .docx + .pptx,
     plus the operator kits, plus a README stating the edition and build date.
 
 Federal edition ONLY. This script never reads inbox/aan-ssa-edition/; the .docx it
@@ -46,7 +46,7 @@ from pathlib import Path
 # .pptx and in-series kit (source side) — caught in a local test.
 SERIES_SITE_REL = "customer-documents/orgcomp-series"
 SERIES_SRC_REL = "docs/customer-documents/orgcomp-series"
-ZIP_NAME = "aan-federal-series-latest.zip"
+ZIP_NAME = "orgcomp-federal-series-latest.zip"
 
 # Map a Vol_<V>_Book_* filename to its distribution folder. Mirrors the volume
 # names build_distribution_kit.sh uses so the two kits are organised alike.
