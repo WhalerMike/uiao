@@ -322,6 +322,7 @@
   - [Vol IX Book 03 — Federal Organization Compliance — App Registration Governance](customer-documents/orgcomp-series/Vol_IX_Book_03_OrgComp_App_Registration_Governance.html)
   - [Vol IX Book 04 — Federal Organization Compliance — Teams Telephony Catalog & Teams SCuBA Drift](customer-documents/orgcomp-series/Vol_IX_Book_04_OrgComp_Teams_Telephony_Catalog.html)
   - [Vol IX Book 05 — Federal Organization Compliance — SaaS Integration Governance](customer-documents/orgcomp-series/Vol_IX_Book_05_OrgComp_SaaS_Integration_Governance.html)
+  - [Vol IX Book 06 — Federal Organization Compliance — Identity & Access Governance](customer-documents/orgcomp-series/Vol_IX_Book_06_OrgComp_Identity_Access_Governance.html)
 - **Vol X — Governance-Substrate Integration**
   - [Vol X Book 00 — Federal Organization Compliance — Volume X Overview: The Series on the Governance Substrate](customer-documents/orgcomp-series/Vol_X_Book_00_OrgComp_Governance_Substrate_Integration_Overview.html)
 
@@ -745,6 +746,7 @@
     - [Shadow AI — Deployed Without Inventory](customer-documents/orgpath-narrative/Book_21_CPT_06.html)
     - [OrgPath as the Authorization Spine for AI](customer-documents/orgpath-narrative/Book_21_CPT_07.html)
     - [The Machine-Identity Lifecycle for Federal AI](customer-documents/orgpath-narrative/Book_21_CPT_08.html)
+    - [The Centralized Deployment Model — CDM for the AI Identity Surface](customer-documents/orgpath-narrative/Book_21_CPT_08a.html)
     - [Appendix — Glossary and References](customer-documents/orgpath-narrative/Book_21_CPT_09.html)
   - [Book_22 — OrgPath and Customer Identity](customer-documents/orgpath-narrative/Book_22.html)
     - [The Identity Surface Agencies Actually Serve](customer-documents/orgpath-narrative/Book_22_CPT_01.html)

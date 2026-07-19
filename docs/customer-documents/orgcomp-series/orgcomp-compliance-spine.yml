@@ -15,7 +15,7 @@
 # the series folder (Volume VIII → infoblox-ddi-book/). Non-prose implementation
 # and scoped-app kits are registered in the `kits:` section. Closures are still
 # back-filled per book (sequential, author-in-the-loop).
-# Date Code: 2026-07-13 01:20 ET
+# Date Code: 2026-07-19 12:10 ET
 # =============================================================================
 
 meta:
@@ -23,7 +23,7 @@ meta:
   baseline: NIST SP 800-53 Rev 5 — FedRAMP Moderate (800-53B Moderate baseline)
   scope: FedRAMP Moderate only
   edition: SSA          # SSA-first; federal-agnostic edition extracted later
-  date_code: "2026-07-13 01:20 ET"
+  date_code: "2026-07-19 12:10 ET"
 
 # -----------------------------------------------------------------------------
 # Volumes. The series is ONE program with ONE spine, presented as named volumes,
@@ -59,7 +59,7 @@ volumes:
   # helpdesk tasks, the landing-zone front door, app-registration governance, and
   # Teams telephony. Same discipline: Graph via in-boundary MID, no standing admin,
   # every action audited and reconciled to the CM-8 join key. GCC Moderate only.
-  - {id: vol-9, title: "ServiceNow Day-2 Operations", books: [book-day2-intro, book-day2-helpdesk, book-day2-landingzone, book-day2-appreg, book-day2-telephony, book-sn-saas]}
+  - {id: vol-9, title: "ServiceNow Day-2 Operations", books: [book-day2-intro, book-day2-helpdesk, book-day2-landingzone, book-day2-appreg, book-day2-telephony, book-sn-saas, book-day2-iam]}
   # Volume X — Governance-Substrate Integration. The integration layer: how the
   # series' evidence binds to the vertical-agnostic governance substrate that
   # scores and gates it. Overview book only (no new control closures — it routes
@@ -182,6 +182,7 @@ books:
   - {id: book-sn-attestation, temp_slot: "VII-04", target_slot: "VII-04", title: "Control Attestation, Evidence & KSI", source: "docs/customer-documents/orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd"}
   - {id: book-sn-app,         temp_slot: "VII-05", target_slot: "VII-05", title: "The ServiceNow Compliance App (scoped app, Flows, ATF, Update Set)", source: "docs/customer-documents/orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.qmd"}
   - {id: book-sn-saas,        temp_slot: "IX-05", target_slot: "IX-05", title: "SaaS Integration Governance (the Entra app gallery as a governed SA-9 event)", source: "docs/customer-documents/orgcomp-series/Vol_IX_Book_05_OrgComp_SaaS_Integration_Governance.qmd"}
+  - {id: book-day2-iam,       temp_slot: "IX-06", target_slot: "IX-06", title: "Identity & Access Governance (JML automation · certification campaigns · IAM evidence)", source: "docs/customer-documents/orgcomp-series/Vol_IX_Book_06_OrgComp_Identity_Access_Governance.qmd"}
 
   # Volume X — Governance-Substrate Integration (overview; no control closures).
   - {id: book-vol10-intro,    temp_slot: "X-00",  target_slot: "X-00",  title: "Volume X Overview — The Series on the Governance Substrate", source: "docs/customer-documents/orgcomp-series/Vol_X_Book_00_OrgComp_Governance_Substrate_Integration_Overview.qmd"}
@@ -389,6 +390,19 @@ closures:
   - {control: "CM-6",     title: "Configuration Settings",                      book: book-day2-telephony, plane: 5, mechanism: "Teams SCuBA / secure-baseline drift raised as a ServiceNow Change/Incident, extending the Vol VII Book 02 M365 loop to the Teams surface", gate: fedramp, drivers: [nist-800-53r5, cisa-scuba, cisa-bod-25-01], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false, kit: kit-day2-servicenow, test: "Vol VI Book 08 — baseline conformance re-check (scheduled re-scan vs intended baseline)"}
   - {control: "CM-3",     title: "Configuration Change Control",                book: book-day2-telephony, plane: 5, mechanism: "Number assignment, calling-policy, and voice-routing/SBC changes as change-controlled catalog items with E911 emergency-address validation", gate: fedramp, drivers: [nist-800-53r5, omb-a-130], slot: slot-06-security, ksi: [KSI-CMT], tool: false, necessity: false, kit: kit-day2-servicenow}
   - {control: "AU-2",     title: "Event Logging",                               book: book-day2-telephony, plane: 6, mechanism: "Call-detail and telephony admin actions audited into the evidence contract", gate: fedramp, drivers: [nist-800-53r5, omb-m-21-31], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false, kit: kit-day2-servicenow}
+
+  # --- book-day2-iam : Identity & Access Governance (Vol IX Book 06 — Kit Expansion Phase 2) ---
+  # The governance layer over the Book 01 request lane: event-driven JML from the
+  # HRIT Org SSOT (Vol I Book 04 is the truth plane), scheduled access-certification
+  # campaigns, and the IAM evidence feed into Vol VII Book 04 attestation. The kit
+  # realization is gated on the requirements sign-off (Draft v0.9 -> v1.0); closures
+  # below are the book's contract, not yet kit-bound.
+  - {control: "AC-2",     title: "Account Management",                          book: book-day2-iam, plane: 3, mechanism: "Joiner/mover/leaver executed as lifecycle automation from effective-dated HR events — joiner provisioning, mover access re-derivation, leaver de-provisioning within SLA — with approval gates on high-risk events; extends the Book 01 request lane from operator-requested to event-driven", gate: fedramp, drivers: [nist-800-53r5, omb-m-22-09], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "AC-5",     title: "Separation of Duties",                        book: book-day2-iam, plane: 3, mechanism: "Requester, approver, and certifier are distinct roles enforced by the campaign and JML workflows; high-risk lifecycle events require a second-party approval gate", gate: fedramp, drivers: [nist-800-53r5], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "AC-6",     title: "Least Privilege",                             book: book-day2-iam, plane: 3, mechanism: "Scheduled user / manager / application-owner / privileged access-certification campaigns with SSOT context; every revocation decision triggers a tracked remediation workflow", gate: fedramp, drivers: [nist-800-53r5, omb-m-22-09], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "IA-4",     title: "Identifier Management",                       book: book-day2-iam, plane: 3, mechanism: "Identifiers issued, re-derived, and retired as consequences of the authoritative worker-record lifecycle — no orphaned identifiers because retirement is an HR event, not a hygiene sweep", gate: fedramp, drivers: [nist-800-53r5], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "IA-5",     title: "Authenticator Management",                    book: book-day2-iam, plane: 3, mechanism: "Authenticators disabled on the leaver event within the de-provisioning SLA and re-scoped on mover events, closing the ghost-credential window the request lane alone leaves open", gate: fedramp, drivers: [nist-800-53r5, eo-14028], slot: slot-01-identity, ksi: [KSI-IAM], tool: false, necessity: false}
+  - {control: "AU-2",     title: "Event Logging",                               book: book-day2-iam, plane: 6, mechanism: "Every JML action and certification decision an immutable, audited change record reconciled to the join key and exported OSCAL-compatibly into the attestation loop", gate: fedramp, drivers: [nist-800-53r5, omb-m-21-31], slot: slot-04-telemetry, ksi: [KSI-MLA], tool: false, necessity: false}
 
   # --- book-04 : HRIT Identity & Org SSOT (identity lifecycle from the HR system of record) ---
   # Transcribed from the book's own "NIST SP 800-53 Rev 5 Control Closure" table

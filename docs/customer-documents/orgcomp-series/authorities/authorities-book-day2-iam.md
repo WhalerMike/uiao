@@ -1,0 +1,11 @@
+<!-- authorities:book-day2-iam — generated from orgcomp-compliance-spine.yml; do not hand-edit -->
+| Control | Title | Closing mechanism (function, not product) | Accreditation gate | Authority drivers | Evidence slot | FedRAMP 20x KSI | Tool-attestable? |
+|---|---|---|---|---|---|---|---|
+| AC-2 | Account Management | Joiner/mover/leaver executed as lifecycle automation from effective-dated HR events — joiner provisioning, mover access re-derivation, leaver de-provisioning within SLA — with approval gates on high-risk events; extends the Book 01 request lane from operator-requested to event-driven | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB M-22-09 | Identity | KSI-IAM | No |
+| AC-5 | Separation of Duties | Requester, approver, and certifier are distinct roles enforced by the campaign and JML workflows; high-risk lifecycle events require a second-party approval gate | FedRAMP Moderate | NIST SP 800-53 Rev 5 | Identity | KSI-IAM | No |
+| AC-6 | Least Privilege | Scheduled user / manager / application-owner / privileged access-certification campaigns with SSOT context; every revocation decision triggers a tracked remediation workflow | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB M-22-09 | Identity | KSI-IAM | No |
+| IA-4 | Identifier Management | Identifiers issued, re-derived, and retired as consequences of the authoritative worker-record lifecycle — no orphaned identifiers because retirement is an HR event, not a hygiene sweep | FedRAMP Moderate | NIST SP 800-53 Rev 5 | Identity | KSI-IAM | No |
+| IA-5 | Authenticator Management | Authenticators disabled on the leaver event within the de-provisioning SLA and re-scoped on mover events, closing the ghost-credential window the request lane alone leaves open | FedRAMP Moderate | NIST SP 800-53 Rev 5; EO 14028 | Identity | KSI-IAM | No |
+| AU-2 | Event Logging | Every JML action and certification decision an immutable, audited change record reconciled to the join key and exported OSCAL-compatibly into the attestation loop | FedRAMP Moderate | NIST SP 800-53 Rev 5; OMB M-21-31 | Telemetry | KSI-MLA | No |
+
+: Authorities Closed Here — Identity & Access Governance (JML automation · certification campaigns · IAM evidence) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
