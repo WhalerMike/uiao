@@ -270,6 +270,39 @@ Validation checklist:
 > `ipam-conflict-check.sh`) as the post-apply gate in §8's ServiceNow loop —
 > validation is identical whether an engineer runs it or the catalog flow does.
 
+### CM-8 estate reconciliation & the shadow-zone audit (scheduled)
+
+The per-request gate above proves each *provisioned* change landed cleanly.
+Phase 5.3 of the program roadmap adds the **estate-cadence** discipline: before
+any compliance claim is made about an AWS asset, the asset must reconcile to
+the **CM-8 join key** — and the whole estate is re-proven on a schedule, not
+once. Two further checks in
+[`aws-lz-automation/validation/`](./aws-lz-automation/validation/README.md)
+carry this (run daily by the pipeline's scheduled `reconcile` job, or a
+ServiceNow scheduled flow):
+
+- **`cm8-reconciliation-check.sh`** — three-way audit of the join key. The
+  vDiscovery-fed IPAM database (§8) is the truth plane; the check proves every
+  in-scope discovered address has a CMDB record carrying the same address, and
+  that the CMDB claims nothing IPAM disavows. A discovered address with no
+  CMDB record is an **unregistered asset** (no compliance claim can be keyed to
+  it); a CMDB address unknown to IPAM is a **stale record** (the CMDB reconciles
+  the truth planes — it never replaces them).
+- **`shadow-zone-check.sh`** — no **shadow Route 53-only zones**. Every
+  in-scope private hosted zone must be represented in the authoritative naming
+  plane — Infoblox-authoritative, synced via the Route 53 sync (§7), delegated,
+  or conditionally forwarded — or be an explicit, allowlisted decision. The
+  Route 53 listing reuses the discovery role's existing read actions (§6); no
+  new IAM surface.
+
+Findings route into the same ServiceNow queues as everything else in this
+chapter: an unregistered asset or shadow zone raises a tracked task keyed to
+the estate, exactly the reconcile-into-existing-queues invariant the Phase 5
+landing shape requires. This closes the loop the epic states as its first
+acceptance criterion: **AWS assets resolve against the authoritative naming
+plane and reconcile to the CM-8 join key before anything downstream (patch,
+vulnerability, evidence) claims them.**
+
 Day-2: schedule **NIOS upgrades** Grid-wide (Master first, then members), monitor
 member health/query rates via SNMP (161/udp) and CloudWatch, keep **threat feeds**
 current, re-run/scheduled **vDiscovery** as accounts are added under Control Tower,
