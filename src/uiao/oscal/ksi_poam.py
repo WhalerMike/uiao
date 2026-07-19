@@ -28,7 +28,7 @@ from typing import Any
 from uiao.oscal.version import OSCAL_VERSION
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
-_AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
+_OrgComp_NS = "https://uiao.gov/ns/oscal/aan-evidence"
 
 # BOD 26-04 VDR/VER deadline — hard milestone for supply-chain / change-mgmt KSIs.
 _BOD_2604_DEADLINE = "2026-12-07"
@@ -263,7 +263,7 @@ def build_ksi_poam(
             "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
-                {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},
+                {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _OrgComp_NS},
                 {"name": "tool", "value": "UIAO AAN Conformance Adapter / ksi_poam", "ns": _FEDRAMP_NS},
                 {"name": "open-items", "value": str(len(poam_items)), "ns": _FEDRAMP_NS},
             ],
@@ -294,7 +294,7 @@ def build_ksi_poam(
                     "uuid": str(uuid.uuid4()),
                     "title": "Source Assessment Results",
                     "props": [
-                        {"name": "type", "value": "oscal-ar", "ns": _AAN_NS},
+                        {"name": "type", "value": "oscal-ar", "ns": _OrgComp_NS},
                     ],
                     "rlinks": [{"href": ar_href or "#"}] if ar_href else [],
                     "remarks": "The OSCAL AR document from which these POA&M items were derived.",
@@ -303,8 +303,8 @@ def build_ksi_poam(
                     "uuid": str(uuid.uuid4()),
                     "title": "BOD 26-04 VDR/VER Requirements",
                     "props": [
-                        {"name": "type", "value": "external-reference", "ns": _AAN_NS},
-                        {"name": "deadline", "value": _BOD_2604_DEADLINE, "ns": _AAN_NS},
+                        {"name": "type", "value": "external-reference", "ns": _OrgComp_NS},
+                        {"name": "deadline", "value": _BOD_2604_DEADLINE, "ns": _OrgComp_NS},
                     ],
                     "remarks": (
                         "Binding Operational Directive 26-04: SBOM/VDR/VER submission "

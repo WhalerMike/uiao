@@ -1,0 +1,137 @@
+{
+  "_comment": "Lane C helpdesk / ITSM catalog control map (Roadmap §3). Each catalog item binds to the NIST control it satisfies, its task type, approval gate, actuation path, KSI theme, and evidence slot. Projection of orgcomp-compliance-spine.yml, CI-validated against it (slots, KSI themes, boundary, schema) by validate_day2_control_maps.py. Scope: FedRAMP Moderate + Microsoft GCC Moderate.",
+  "_discipline": "Actuate via Microsoft Graph through the in-boundary MID Server. Never standing tenant admin — scoped, logged, individually-approved write only. Every action carries a change/approval record (CM-3/AU-2) and reconciles to the IPAM/DDI-keyed CMDB (CM-8).",
+  "boundary": "gcc-moderate",
+  "catalog": {
+    "entra.jml.joiner": {
+      "title": "New account (Joiner)",
+      "control": "AC-2",
+      "task_type": "request",
+      "approval": "manager+identity",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Provision from the HRIT SSOT (Vol I Book 04); assign owner + least-privilege baseline.",
+      "actuator": "EntraHelpdeskClient.createUser"
+    },
+    "entra.jml.mover": {
+      "title": "Role/scope change (Mover)",
+      "control": "AC-6",
+      "task_type": "request",
+      "approval": "manager+identity",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Access review on change; remove stale entitlements, do not just add.",
+      "actuator": "EntraHelpdeskClient.addGroupMember"
+    },
+    "entra.jml.leaver": {
+      "title": "De-provision (Leaver)",
+      "control": "AC-2",
+      "task_type": "request",
+      "approval": "manager+identity",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "De-provisioning is an evidenced obligation; disable + revoke sessions + reassign owned objects.",
+      "actuator": "EntraHelpdeskClient.disableUser"
+    },
+    "entra.credential.password_reset": {
+      "title": "Password reset",
+      "control": "IA-5",
+      "task_type": "request",
+      "approval": "self-service|servicedesk",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Self-service via SSPR where policy allows; else identity-verified service-desk gate.",
+      "actuator": "EntraHelpdeskClient.resetPassword"
+    },
+    "entra.credential.mfa_reset": {
+      "title": "MFA method reset",
+      "control": "IA-5",
+      "task_type": "request",
+      "approval": "servicedesk+verify",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Identity-proofing required; high-value target for social engineering — log + alert.",
+      "actuator": "EntraHelpdeskClient.resetMfaMethod"
+    },
+    "entra.credential.account_unlock": {
+      "title": "Account unlock",
+      "control": "IA-5",
+      "task_type": "request",
+      "approval": "self-service|servicedesk",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Repeated unlocks are a Vol VI Book 03 detection signal (lockout/spray). Microsoft Graph exposes no admin account-unlock operation — Entra smart lockout auto-clears — so this reduces to a password reset (EntraHelpdeskClient.resetPassword) or an Entra-side wait; there is no dedicated unlock actuator in the client.",
+      "actuator_gap": "Microsoft Graph exposes no admin account-unlock operation; Entra smart lockout auto-clears, so this reduces to resetPassword or an Entra-side wait."
+    },
+    "entra.access.group_assignment": {
+      "title": "Group membership request",
+      "control": "AC-6",
+      "task_type": "request",
+      "approval": "owner+approver",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Least privilege; time-bound where the group grants elevated access; access-review linked.",
+      "actuator": "EntraHelpdeskClient.addGroupMember"
+    },
+    "entra.access.license_assignment": {
+      "title": "License assignment",
+      "control": "AC-2",
+      "task_type": "request",
+      "approval": "manager",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Group-based licensing preferred; reconcile to entitlement policy.",
+      "actuator": "EntraHelpdeskClient.assignLicense"
+    },
+    "entra.access.ca_exception": {
+      "title": "Conditional Access exception",
+      "control": "AC-3",
+      "task_type": "change",
+      "approval": "security_approver",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "REUSE Vol VII Book 02 pattern — mandatory expiry + access review; an exception weakens a blocking control. Actuates as a Conditional-Access policy edit (Vol VII Book 02 pattern); EntraHelpdeskClient has no dedicated method for this.",
+      "actuator_gap": "Actuates as a Conditional-Access policy edit (policy object), not a user-object write; no dedicated client method."
+    },
+    "entra.access.guest_invite": {
+      "title": "Guest / B2B invite",
+      "control": "AC-2",
+      "task_type": "request",
+      "approval": "sponsor+security",
+      "actuation": "graph-via-mid",
+      "ksi": [
+        "KSI-IAM"
+      ],
+      "slot": "slot-01-identity",
+      "note": "Sponsor + expiry; external identity governed under the non-employee branch.",
+      "actuator": "EntraHelpdeskClient.inviteGuest"
+    }
+  }
+}

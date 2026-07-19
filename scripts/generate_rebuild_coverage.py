@@ -22,7 +22,7 @@ from ruamel.yaml import YAML
 
 REPO = Path(__file__).resolve().parents[1]
 YML = REPO / "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
-DOC = REPO / ("docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd")
+DOC = REPO / ("docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd")
 
 BEGIN = (
     "<!-- BEGIN: rebuild-coverage (generated from "

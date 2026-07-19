@@ -1,0 +1,780 @@
+# AAN briefing-deck spec — Vol II Book 02: SQL Server Implementation Guide
+# Distills docs/customer-documents/orgcomp-series/Vol_II_Book_02_OrgComp_SQL_Server_Implementation_Guide.qmd
+# Schema + build command: BUILD-DERIVATIVES.md §1 (the host repo's deck generator).
+# Build:
+#   <deck generator> \
+#     --spec "docs/customer-documents/orgcomp-series/specs/Vol_II_Book_02.yaml" \
+#     --out  "docs/customer-documents/orgcomp-series/Vol_II_Book_02_OrgComp_SQL_Server_Implementation_Guide.pptx" \
+#     --date-code "2026-07-09 09:54 ET"
+deck:
+  title: "SQL Server Implementation Guide"
+  subtitle: "Ten sequential runbooks — Arc enrollment, login migration, NTLM elimination, and zero-trust SQL authentication"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOL II BOOK 02"
+  date_code: "2026-07-09 09:54 ET"
+  journey:
+    - "Discover"
+    - "Enroll"
+    - "Migrate"
+    - "Prove"
+  sources:
+    ms_sql_entra_auth: "https://learn.microsoft.com/sql/relational-databases/security/authentication-access/azure-ad-authentication-sql-server-overview"
+    ms_arc_servers: "https://learn.microsoft.com/azure/azure-arc/servers/overview"
+    ms_arc_sql: "https://learn.microsoft.com/sql/sql-server/azure-arc/overview"
+    ms_managed_identity: "https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview"
+    ms_conditional_access: "https://learn.microsoft.com/entra/identity/conditional-access/overview"
+    ms_kerberos_spn: "https://learn.microsoft.com/sql/database-engine/configure-windows/register-a-service-principal-name-for-kerberos-connections"
+    ms_ntlm_lmcompat: "https://learn.microsoft.com/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/jj852207(v=ws.11)"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+
+slides:
+  # 1 --- title ---------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Volume II, Book 02 — the operational companion to Vol II
+      Book 01 (SQL Server Authentication Modernization). Book 01 supplies the
+      conceptual framework and the doctrine; this book is the runbook — the
+      command references, configuration templates, and completion gates a DBA team
+      executes against a real estate. Set two expectations up front. First, this is
+      a sequenced program, not a menu: the guide is ten books that must run in
+      order because later books depend on state that earlier books establish, and
+      a consolidation gate at Book 02 decides which instances are even worth
+      migrating. Second, it is deliberately reversible: every destructive action
+      has a documented undo path, and the first irreversible action — DROP LOGIN
+      in Book 05 — is gated behind a 30-day observation window. The series targets
+      FedRAMP Moderate exclusively (Agency GCC Moderate baseline); nothing here claims
+      or requires a High baseline. The through-line the whole deck returns to is
+      the IA-2 closure the final book asserts: on SD-WAN multipath transport,
+      session- and location-bound Kerberos silently falls back to NTLM, and only
+      token-based Entra authentication closes IA-2 for SQL Server on modern
+      transport. Walk the four-word journey strip — Discover, Enroll, Migrate,
+      Prove — as the spine of the talk before diving into the runbooks. This is a
+      draft CSI-team proposal, pre-decisional, not an approved Agency position.
+    vendor_sources: ["ms_sql_entra_auth", "host repo: docs/customer-documents/orgcomp-series/Vol_II_Book_02_OrgComp_SQL_Server_Implementation_Guide.qmd"]
+
+  # 2 --- section -------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "Ten books, run in order"
+    callout: "Books must run in sequence — later books depend on state established by earlier ones. The consolidation gate at Book 02 is a real gate, not a formality."
+    callout_accent: navy
+    notes: >
+      This section sets the shape of the program before any command runs. The guide
+      is organized as ten sequential books, each with a defined scope,
+      prerequisites, and measurable completion criteria, and they are not
+      independent modules a team can cherry-pick. Book 05's login migration depends
+      on the audit baseline Book 03 produces; Book 04's Arc enrollment must be in
+      place before the Entra logins of Book 05 can exist; the monitoring in Book 09
+      only means something once Books 03 through 06 have actually changed the
+      authentication posture. The single most important structural point is the
+      consolidation gate at Book 02: before the program spends migration effort on
+      an instance, it decides whether that instance should be retained,
+      consolidated onto another target, or retired outright. An instance that is
+      retired is turned off, its databases archived per records policy, and it is
+      removed from the estate inventory — you do not migrate what you are about to
+      decommission. Two operational guardrails run through every book and the
+      presenter should name them here. The safety model: every destructive action
+      has a documented undo path, so everything before the Book 05 drop step is
+      reversible, and the first irreversible action, DROP LOGIN in Book 05, is explicitly gated
+      behind a 30-day zero-failure observation window. The test-environment
+      requirement: Books 03 through 06 are validated in an Arc-enrolled SQL Server
+      2022 test environment before they touch production, because login migration
+      in particular must be proven against 2022 before it is trusted against the
+      real estate.
+
+  # 3 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "WHAT THE RUNBOOK DELIVERS"
+    title: "Four transformations across the SQL estate"
+    layout: grid
+    cards:
+      - title: "Arc enrollment"
+        body: "Every retained server enrolled in Azure Arc, SQL extension installed, Managed Identity issued — the hybrid hook that lets on-prem SQL Server speak Entra."
+        accent: navy
+      - title: "Login migration"
+        body: "Every legacy SQL and Windows login replaced by an Entra login through a four-phase parallel run, tracked in a per-instance migration log."
+        accent: teal
+      - title: "NTLM elimination"
+        body: "SPN gaps fixed, linked servers re-credentialed, NTLMv1 blocked by GPO — the fallback paths that break Kerberos closed off one root cause at a time."
+        accent: amber
+      - title: "Zero-trust SQL auth"
+        body: "Token-based authentication behind Entra groups and Conditional Access — compliant device, MFA for admins, sign-in frequency bound."
+        accent: red
+    callout:
+      text: "The end state is the transformed posture Vol II Book 01 describes — this book is how an estate actually gets there."
+      accent: navy
+    notes: >
+      This is the map of the deliverable. Four transformations, each the concrete
+      output of a cluster of the ten books. Arc enrollment (Book 04) is the hybrid
+      hook: enroll the Windows server in Azure Arc, install the SQL Server Arc
+      extension, and give the server a Managed Identity so an on-premises SQL
+      instance can acquire an Entra token and speak modern authentication without
+      being a cloud PaaS database. Login migration (Book 05) is the core action —
+      every legacy SQL login and Windows login on every retained instance is
+      replaced by an Entra login through a disciplined four-phase parallel run, and
+      the whole thing is recorded in a per-instance migration tracking table so the
+      state of every login is auditable. NTLM elimination (Book 06) closes the
+      fallback paths that quietly defeat Kerberos: register the missing SPNs,
+      re-credential linked servers off passthrough authentication, and block NTLMv1
+      by Group Policy. Zero-trust SQL authentication (Books 07 and 08) wraps the
+      migrated logins in Entra groups and Conditional Access — a compliant device
+      requirement for all access, MFA and a one-hour sign-in frequency for admins.
+      Land the callout: Vol II Book 01 describes the destination posture in the
+      abstract; this book is the sequence of concrete, reversible steps by which a
+      real estate arrives there.
+
+  # 4 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "THE SAFETY MODEL"
+    title: "Reversible until Book 05 — and even then, gated"
+    layout: grid
+    cards:
+      - title: "Documented undo path"
+        body: "ALTER LOGIN DISABLE reverses with ENABLE; setspn -D removes an SPN; Arc enrollment can be unenrolled. Everything before the Book 05 drop step is reversible; Book 05's DROP LOGIN is the gated exception."
+        accent: navy
+      - title: "First irreversible action"
+        body: "DROP LOGIN in Book 05 is the first one-way door — and it is explicitly gated behind a 30-day observation period with zero traceable auth failures."
+        accent: red
+      - title: "Disable, don't drop"
+        body: "The parallel-run pattern disables legacy logins and watches. Only after the observation window proves nothing broke does the login get dropped."
+        accent: amber
+      - title: "Test before production"
+        body: "Books 03-06 are validated in an Arc-enrolled SQL Server 2022 test environment first. Book 05 in particular must be tested against 2022, not 2019."
+        accent: teal
+    callout:
+      text: "Migration risk is managed by making almost every step reversible and gating the one step that is not."
+      accent: teal
+    notes: >
+      This slide exists because the number-one reason a database team resists an
+      authentication migration is fear of locking themselves — or an application —
+      out of a production instance. The guide answers that fear structurally rather
+      than with reassurance. Every destructive action in Books 01 through 07 is
+      preceded by a documented undo path: ALTER LOGIN DISABLE is reversed by ALTER
+      LOGIN ENABLE, an SPN registered with setspn -S is removed with setspn -D, and
+      an Arc enrollment can be unenrolled. That means the entire program up to the
+      login-drop step is a set of changes you can walk back. The first genuinely
+      irreversible action is DROP LOGIN in Book 05, and the guide treats it with
+      corresponding caution: a legacy login is not dropped when its Entra
+      replacement is created — it is disabled, and then watched for 30 days, and
+      only dropped after the observation window records zero authentication
+      failures traceable to that disabled login. The disable-observe-drop cadence
+      is the safety valve. The fourth card is the other discipline: Books 03
+      through 06 are proven in an Arc-enrolled SQL Server 2022 test environment
+      before they run against production, and login migration specifically must be
+      validated against 2022 because the 2019-with-Entra-extension path does not
+      exercise the same code. Emphasize that this safety model is what makes the
+      program approvable — the risk is engineered down, not accepted.
+
+  # 5 --- section -------------------------------------------------------------
+  - type: section
+    kicker: "PART TWO"
+    title: "Estate discovery and the consolidation gate"
+    callout: "Discover every instance by its SPN registration, audit its authentication, then decide: retain, consolidate, or retire. Only retained instances proceed."
+    callout_accent: navy
+    notes: >
+      Part Two is Books 02 and 03 — find the estate, understand how it
+      authenticates, and decide what is worth migrating. Discovery is driven off
+      Active Directory: an SPN scan enumerates every SQL Server instance registered
+      as MSSQLSvc in the domain, cross-referenced against Azure Migrate output
+      where available, and instances that appear in the SPN inventory but no longer
+      answer connection attempts become zombie candidates. On top of discovery sits
+      the authentication-type audit — a query against each instance's active
+      sessions that classifies every connection as KERBEROS, NTLM, SQL, or
+      CERTIFICATE, so NTLM sources are flagged for Book 06 remediation and SQL
+      logins are flagged for Book 05 migration. Then the consolidation gate forces
+      a disposition decision on every instance before a single migration resource
+      is spent: retain it and run it through the full program, consolidate its
+      databases onto another instance or a cloud platform and decommission the
+      source, or retire it outright because it has no live workloads. The gate is
+      the point of the section — it is where the estate stops being a sprawling
+      inventory and becomes a scoped, dispositioned worklist with an authorizing
+      manager and a completion date on every line. The next slide makes the
+      three-way decision concrete.
+
+  # 6 --- content columns (3 cards w/ status) --------------------------------
+  - type: content
+    kicker: "THE CONSOLIDATION GATE · BOOK 02"
+    title: "Every instance gets one of three dispositions"
+    layout: columns
+    cards:
+      - title: "Retain"
+        body: "Active workloads, supportable version path. Migrated through Books 03-10. This is the population everything downstream is scoped to."
+        accent: teal
+        status: "Proceed to Book 03"
+      - title: "Consolidate"
+        body: "Databases migrated to another instance or a cloud platform (Azure SQL MI, PostgreSQL). Books 03-10 apply to the target; the source is decommissioned."
+        accent: amber
+        status: "Migrate then retire source"
+      - title: "Retire"
+        body: "No active workloads, no live databases, no pending dependencies. Decommissioned immediately; databases archived per records-management policy."
+        accent: red
+        status: "Decommission now"
+    callout:
+      text: "Document the disposition, the authorizing manager, and the expected completion date for every instance before Book 03 begins."
+      accent: navy
+    notes: >
+      This is the gate slide — present it as a forcing decision, not a
+      classification exercise. Every discovered instance leaves Book 02 with exactly
+      one of three dispositions and a name attached to the decision. Retain: the
+      instance has active workloads and sits on a supportable version path, so it
+      is carried through Books 03 to 10 — this is the population that scopes every
+      downstream book, and getting it right is why discovery and the audit come
+      first. Consolidate: the instance's databases will move to another instance
+      (lateral consolidation) or to a cloud platform such as Azure SQL Managed
+      Instance or PostgreSQL; Books 03 to 10 are then applied to the target, and
+      the source instance is decommissioned once the migration completes — you do
+      not modernize authentication on a box you are about to turn off. Retire: the
+      instance has no active workloads, no live databases, and no pending
+      dependencies, so it is decommissioned immediately and its databases archived
+      per records-management policy. The discipline the callout captures is the
+      part assessors and program managers care about: the disposition decision, the
+      authorizing manager, and the expected completion date are documented for
+      every instance before Book 03 starts. That record is what turns a technical
+      migration into a governed program — nothing proceeds on an undocumented
+      assumption about whether an instance even belongs in scope.
+
+  # 7 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "AUTHENTICATION AUDIT · BOOK 03 — FIVE CLOSURE CONDITIONS"
+    title: "The audit is done when five things are documented"
+    layout: grid
+    cards:
+      - title: "Login + user inventory"
+        body: "Every instance-level login enumerated and typed; every database user mapped to its login and roles. The pre-migration baseline for Book 05."
+        accent: navy
+      - title: "NTLM sources classified"
+        body: "Every NTLM authentication event classified by root cause: missing SPN, cross-site, linked server, or non-domain host. Feeds Book 06."
+        accent: amber
+      - title: "Dependency map complete"
+        body: "Every application, ODBC source, linked server, and scheduled job that authenticates to the instance is identified before anything changes."
+        accent: teal
+      - title: "Migration plan approved"
+        body: "Which Entra identity replaces each legacy login, documented and approved by the data owner — the authorization to proceed to Book 05."
+        accent: red
+    callout:
+      text: "No login is touched until the audit is closed — the baseline is the reference document the entire migration is measured against."
+      accent: navy
+    notes: >
+      Book 03 produces the pre-migration baseline, and the guide defines its
+      completion crisply: five closure conditions, all documented, before Book 04
+      begins. The first two cards fold the inventory work together — a complete
+      instance-level login inventory (every login enumerated, typed, and exported)
+      and a complete database-user mapping (every database user tied to its login
+      and its database roles). That inventory is the reference document the login
+      migration in Book 05 is measured against; you cannot safely replace what you
+      have not first fully enumerated. The third closure condition is NTLM source
+      classification: every NTLM authentication event, pulled from SQL audit or the
+      Windows Security log, classified by root cause — missing SPN, cross-site
+      authentication, linked-server passthrough, or a non-domain host — because
+      Book 06 remediates NTLM by root cause, not in bulk. The fourth is the
+      dependency map: every application, ODBC data source, linked server, and
+      scheduled job that authenticates to the instance, identified before anything
+      changes, so nothing breaks silently when a login is disabled. The fifth is
+      the approved migration plan — which Entra identity replaces each legacy login,
+      signed off by the data owner. That approval is the authorization gate into
+      Book 05. Stress the sequencing discipline in the callout: no login is
+      disabled or dropped until all five conditions are closed. The audit is not
+      paperwork; it is the map that makes the irreversible steps safe.
+
+  # 8 --- section -------------------------------------------------------------
+  - type: section
+    kicker: "PART THREE"
+    title: "Arc deployment and Managed Identity (Book 04)"
+    callout: "Arc enrollment is the hybrid hook: it gives an on-premises SQL Server a Managed Identity so it can acquire an Entra token — no cloud migration required."
+    callout_accent: teal
+    notes: >
+      Part Three is Book 04, and it is the pivot that makes everything downstream
+      possible. On-premises SQL Server cannot natively speak Entra authentication;
+      Azure Arc is the bridge. Arc enrollment is performed per server, not per
+      instance — a Windows host running several SQL instances needs only one Arc
+      agent — and the sequence is deliberate: install and connect the Arc agent so
+      the server appears as an Arc-enabled machine, install the SQL Server Arc
+      extension to light up Entra authentication, validate that the server can
+      actually acquire a Managed Identity token from the local identity endpoint,
+      and only then enable external authentication on the instance and make an Entra
+      DBA group the first sysadmin. The Managed Identity is the crucial artifact:
+      it is a server identity Azure issues and rotates, with no secret a human ever
+      holds, and it is what the SQL instance presents to acquire tokens and to reach
+      Key Vault later in the series. Frame the operational reassurance the book
+      builds in — the token-acquisition validation step exists so the team confirms
+      the plumbing works before flipping external authentication on, and Arc
+      enrollment itself is reversible (the server can be unenrolled), keeping Book
+      04 inside the reversible half of the program. The next slide walks the four
+      concrete milestones of the enrollment.
+
+  # 9 --- content columns (3 cards w/ status) --------------------------------
+  - type: content
+    kicker: "ARC ENROLLMENT MILESTONES · BOOK 04"
+    title: "Agent, extension, token, then Entra auth"
+    layout: columns
+    cards:
+      - title: "Agent + extension"
+        body: "Install the Azure Connected Machine agent (one per server), connect it, then install the WindowsAgent.SqlServer extension to enable Entra authentication."
+        accent: navy
+        status: "Reversible · unenroll"
+      - title: "Managed Identity token"
+        body: "Validate the server can acquire a Managed Identity token from the local identity endpoint before flipping anything — confirm the plumbing works first."
+        accent: teal
+        status: "Validate before enable"
+      - title: "Enable Entra auth"
+        body: "Set the external authentication provider on, then create the Entra DBA group as the first sysadmin. The first Entra login must be an admin."
+        accent: amber
+        status: "DBA group = sysadmin"
+    callout:
+      text: "No human secret is issued — the server authenticates as its Managed Identity, which Azure rotates automatically."
+      accent: navy
+    notes: >
+      Three milestones, in order, each with a completion signal. First, agent plus
+      extension: install the Azure Connected Machine agent on the server — one agent
+      per host regardless of how many SQL instances it carries — connect it to the
+      subscription and resource group with a principal holding the Azure Connected
+      Machine Onboarding role, then install the WindowsAgent.SqlServer extension
+      from Microsoft.AzureData that turns on Entra authentication capability. This
+      whole step is reversible; the server can be unenrolled, which is why Book 04
+      still sits in the reversible half of the program. Second, the Managed Identity
+      token validation: before enabling anything on the instance, confirm the
+      Arc-enrolled server can actually acquire a Managed Identity token from the
+      local identity endpoint. This is the plumbing check — if the token comes back,
+      the identity path works end to end; if it does not, you fix it now rather than
+      discovering it mid-migration. Third, enable Entra authentication: set the
+      external authentication provider on for the instance and create the agency's
+      Entra ID DBA group as the first sysadmin, because the first Entra login on the
+      instance must be an administrator or you can lock yourself out. Land the
+      callout as the security payoff: at no point is a human-held secret issued —
+      the server authenticates as its Managed Identity, and Azure rotates that
+      identity's credentials automatically, removing an entire class of standing
+      secret from the estate.
+    vendor_sources: ["ms_arc_servers", "ms_arc_sql", "ms_managed_identity"]
+
+  # 10 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART FOUR"
+    title: "Login migration — the core action (Book 05)"
+    callout: "Every legacy login on every retained instance moves to an Entra login through a four-phase parallel run: create, validate, disable, then drop after observation."
+    callout_accent: amber
+    notes: >
+      Part Four is Book 05, the heart of the program and the one book that contains
+      the single irreversible action. The pattern is a four-phase parallel run
+      applied to every legacy login on every retained instance, and the word
+      parallel is the safety principle: the new Entra login is stood up and proven
+      alongside the legacy login before the legacy login is weakened, so at no point
+      is authentication running on an untested path. The next slide walks the four
+      phases as a build sequence, but frame the shape here: create the Entra
+      replacement, validate that it actually authenticates and carries the right
+      access, disable (not drop) the legacy login and watch, and only after a 30-day
+      zero-failure observation window drop the legacy login for good. The migration
+      is recorded in a per-instance tracking table capturing the legacy login, its
+      type, the Entra login that replaced it, and the created, validated, disabled,
+      and dropped timestamps — so the state of every login is auditable at any
+      moment and the compliance record in Book 09 has something concrete to report.
+      The sa account gets special handling in this book: it is disabled and renamed
+      rather than left as a known target. Present Part Four as the moment the estate
+      actually changes hands from legacy authentication to token-based identity,
+      executed one login at a time under a pattern engineered so that a mistake at
+      any phase before the drop is fully recoverable.
+
+  # 11 --- build-sequence (4 steps) ------------------------------------------
+  - type: build-sequence
+    kicker: "THE FOUR-PHASE PARALLEL RUN · BOOK 05"
+    title: "How one legacy login becomes an Entra login"
+    notes: >
+      Fallback notes: the parallel-run pattern stands up and proves the Entra
+      replacement before the legacy login is disabled, and gates the one
+      irreversible step behind a 30-day observation window.
+    steps:
+      - label: "Create Entra login"
+        sub: "FROM EXTERNAL PROVIDER"
+        accent: navy
+        detail: >
+          Create the Entra login (user or group) with CREATE LOGIN ... FROM EXTERNAL
+          PROVIDER, create the database user for it, and grant the same roles the
+          legacy login held. The new path now exists alongside the old one.
+        notes: >
+          Phase one: create the Entra replacement. For a user, CREATE LOGIN
+          [firstname.lastname@agency.gov] FROM EXTERNAL PROVIDER; for a group, the
+          same with the group's Object ID for reliable nested-group resolution.
+          Then create the matching database user and grant it the same database
+          roles the legacy login carried — db_datareader, db_datawriter, or whatever
+          the audit baseline recorded. The essential property of this phase is that
+          it is purely additive: the Entra login now exists alongside the legacy
+          login, both can authenticate, and nothing has been taken away. That is
+          what parallel run means — you build and prove the new path before you
+          touch the old one, so there is never a moment where authentication depends
+          on something untested. Emphasize that the role grants come straight from
+          the Book 03 inventory; this is why the audit had to close first. If the
+          baseline is wrong here, the Entra login is under- or over-privileged, and
+          the least-privilege intent of the whole migration is compromised at step
+          one. Nothing in this phase is irreversible — the new login can simply be
+          dropped if the mapping is wrong — which is exactly why the risky work is
+          deferred to phase four. Note the group-versus-user distinction for the
+          audience: migrating a Windows group login to an Entra group carries the
+          same additive property but touches many users at once, so the object-ID
+          form is used for reliable nested-group resolution and the blast radius of a
+          correct migration is the whole team, which is precisely why validation in
+          the next phase must exercise a real member of the group, not just confirm
+          the login object exists.
+      - label: "Validate"
+        sub: "Confirm auth + access"
+        accent: teal
+        detail: >
+          Connect as the new Entra identity and confirm the authentication scheme
+          and that the login reaches the databases it should. Prove the replacement
+          works before removing the fallback.
+        notes: >
+          Phase two: validate. Connect to the instance using the new Entra identity
+          — Active Directory Interactive from a workstation, or the Managed Identity
+          path for an application server — and confirm two things: the connection
+          authenticates, and it reaches exactly the databases and objects it should.
+          The book notes the server-side auth_scheme will read KERBEROS for
+          token-based interactive connections or NONE for Managed Identity
+          connections that bypass the scheme column, so the presenter should not let
+          an audience misread NONE as a failure. This phase is the proof gate: the
+          legacy login is still enabled and still the working fallback, so if the
+          Entra login does not behave, you fix the grant or the Conditional Access
+          scoping with zero production impact. Only a validated Entra login earns
+          the right to move to phase three. The discipline to stress: teams that
+          skip real validation and jump straight to disabling the legacy login are
+          the ones who cause outages — the parallel run only protects you if you
+          actually exercise the new path while the old one is still there to catch a
+          miss. One concrete validation tactic worth naming: run the same application
+          query or job through the Entra path that the legacy login served, not just a
+          bare connection test, because a login can authenticate successfully and
+          still lack a database-level grant the application depends on — proving the
+          workload, not merely the credential, is what makes the disable in phase
+          three safe to start the clock on.
+      - label: "Disable legacy"
+        sub: "ALTER LOGIN ... DISABLE"
+        accent: amber
+        detail: >
+          Disable — not drop — the legacy login and log the action. Disable is fully
+          reversible with ENABLE; this begins the 30-day observation clock.
+        notes: >
+          Phase three: disable the legacy login with ALTER LOGIN [DOMAIN\\username]
+          DISABLE and record the action in the migration log. This is the moment the
+          old path is taken out of service — but note the deliberate choice of
+          disable rather than drop. Disable is fully reversible: if some forgotten
+          dependency turns out to have been using that login, ALTER LOGIN ... ENABLE
+          brings it straight back, and the log tells you exactly what happened and
+          when. Disabling the login is also what starts the 30-day observation
+          clock. During that window the monitoring queries from Book 09 watch for
+          any authentication failure traceable to the disabled login — a scheduled
+          job, an ODBC source, a linked server that the dependency map missed. The
+          sa account is handled in this same phase but more aggressively: it is
+          disabled and then renamed, so that even a re-enable attempt does not
+          restore a login sitting at the well-known sa name that attackers probe
+          for. The design principle to voice: the observation window converts an
+          irreversible decision into a reversible one for 30 days, which is what
+          makes the final phase safe. Make the monitoring dependency explicit: the
+          observation window is only as good as the queries watching it, so this phase
+          presumes the Book 09 drift detection is already running and alerting on
+          authentication failures traceable to the disabled login — disabling a login
+          without that instrumentation in place is flying blind, and the guide
+          sequences monitoring ahead of the drops for exactly this reason.
+      - label: "Drop after observation"
+        sub: "30-day zero-failure gate"
+        accent: red
+        detail: >
+          Only after 30 days with zero authentication failures traceable to the
+          disabled login: DROP LOGIN. This is the first and only irreversible action
+          in the program — and it is gated.
+        notes: >
+          Phase four: drop the legacy login — the first and only irreversible action
+          in the entire ten-book program, and the one every safety mechanism has
+          been protecting. DROP LOGIN [DOMAIN\\username] executes only after the
+          30-day observation window has closed with zero authentication failures
+          traceable to that disabled login, and the migration log is updated with
+          the dropped timestamp. Frame why the gate is 30 days and not a token
+          delay: it is long enough to catch the monthly scheduled job, the
+          quarter-end report, the rarely-used ODBC integration that a dependency map
+          can genuinely miss. If anything had failed during observation, the login
+          would have been re-enabled and the failure root-caused before proceeding —
+          the drop happens only against a login the environment has demonstrably
+          stopped needing. This is the reference state to export back into Book 05
+          as the migration-lifecycle figure: create, validate, disable, drop, with
+          the observation gate between the last two. Close the sequence on the
+          program-level point — the guide makes almost every action reversible and
+          then gates the single action that is not, which is precisely why a
+          database team can run this migration against production with confidence
+          rather than dread.
+
+  # 12 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART FIVE"
+    title: "NTLM elimination and the zero-trust perimeter (Books 06-08)"
+    callout: "Kerberos only holds if its fallback paths are closed. Fix SPNs, re-credential linked servers, block NTLMv1 — then wrap the migrated logins in Entra CA."
+    callout_accent: red
+    notes: >
+      Part Five covers Books 06 through 08 — closing the NTLM fallback paths and
+      then building the zero-trust perimeter around the migrated logins. The insight
+      driving Book 06 is that eliminating SQL logins does not by itself eliminate
+      NTLM: Kerberos silently falls back to NTLM whenever it cannot complete, and
+      the guide fixes that by root cause rather than in bulk. Missing SPNs, the most
+      common cause, are registered with setspn for both hostname and FQDN variants,
+      with and without port, and verified by confirming the next connection lands on
+      Kerberos. Linked servers using passthrough authentication are moved to
+      explicit Entra service-account credential mappings. And once the SPN hygiene
+      is verified, NTLMv1 is blocked estate-wide by Group Policy — the LAN Manager
+      authentication level set to send NTLMv2 only and refuse LM and NTLM, which is
+      LmCompatibilityLevel 5. Books 07 and 08 then wrap the migrated logins in the
+      authorization and access perimeter: a consistent Entra group naming
+      convention for SQL authorization, dynamic group membership driven off
+      HR-derived attributes, Conditional Access requiring a compliant device for all
+      SQL access and MFA plus a tightened sign-in frequency for admins, and the
+      application chain re-pointed from Integrated Security and SQL passwords to
+      token-based connection strings and the Managed Identity path. The next two
+      slides make the NTLM remediation and the CA perimeter concrete.
+
+  # 13 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "NTLM REMEDIATION BY ROOT CAUSE · BOOK 06"
+    title: "Close the fallback paths one cause at a time"
+    layout: grid
+    cards:
+      - title: "Missing SPN"
+        body: "Register MSSQLSvc SPNs for the service account — hostname and FQDN, with and without port — then confirm the next connection uses Kerberos, not NTLM."
+        accent: navy
+      - title: "Linked servers"
+        body: "Move linked servers off passthrough (uses_self_credential) to an explicit Entra service-account credential mapping with token authentication."
+        accent: teal
+      - title: "NTLMv1 block"
+        body: "GPO across all SQL hosts: LAN Manager authentication level = send NTLMv2 only, refuse LM and NTLM (LmCompatibilityLevel 5). Applied after SPNs verified."
+        accent: amber
+      - title: "Dedicated service accounts"
+        body: "Every SQL service runs under a named domain account — never NETWORK SERVICE, LOCAL SYSTEM, or a shared account. The prerequisite for clean SPNs."
+        accent: red
+    callout:
+      text: "Order matters: fix and verify SPNs first, then block NTLMv1 — blocking before SPNs are clean turns silent fallback into hard authentication failures."
+      accent: amber
+    notes: >
+      Book 06 is where the estate stops silently falling back to NTLM, and the guide
+      is emphatic that this is root-cause work sequenced in a specific order.
+      Missing SPN is the dominant cause: when a SQL Server service account has no
+      correctly registered MSSQLSvc SPN, Kerberos cannot complete and the client
+      falls back to NTLM without anyone noticing. The fix is to register the SPNs
+      for the service account across all four variants — hostname and fully
+      qualified name, each with and without the port — restart the service, and then
+      prove the remediation by confirming the next connection's auth_scheme reads
+      KERBEROS. Linked servers are the second cause: those using passthrough
+      authentication (uses_self_credential set) are re-credentialed to an explicit
+      Entra service-account mapping with token authentication and no stored
+      password. The dedicated-service-account card is the prerequisite that makes
+      SPN registration clean in the first place — every SQL service must run under a
+      named domain account, never NETWORK SERVICE, LOCAL SYSTEM, or a shared
+      account, because SPNs bind to the account identity. The callout carries the
+      one sequencing rule a presenter must not skip: fix and verify the SPNs first,
+      then block NTLMv1 by GPO. Blocking NTLM before the SPNs are clean does not
+      improve security — it converts silent Kerberos-to-NTLM fallback into hard
+      authentication failures across the estate, which is an outage, not a
+      remediation.
+    vendor_sources: ["ms_kerberos_spn", "ms_ntlm_lmcompat"]
+
+  # 14 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "ZERO-TRUST PERIMETER · BOOKS 07-08"
+    title: "Entra groups, Conditional Access, and the application chain"
+    layout: grid
+    cards:
+      - title: "Entra group model"
+        body: "Consistent naming for SQL authorization (SQL-{db}-ReadWrite, SQL-{instance}-Admin). Access is granted to groups, never to individual logins."
+        accent: navy
+      - title: "Dynamic membership"
+        body: "User-access groups populate from HR-derived Entra attributes — department, job title, account status. Membership follows role change with no manual provisioning."
+        accent: teal
+      - title: "Conditional Access"
+        body: "Require a compliant device for all SQL access; MFA plus a 1-hour sign-in frequency for admin groups. The perimeter around the migrated logins."
+        accent: amber
+      - title: "Application chain"
+        body: "Connection strings moved from Integrated Security / SQL passwords to Authentication=Active Directory Default; ODBC DSNs and apps use the Managed Identity path."
+        accent: red
+    callout:
+      text: "Authorization is expressed as group membership bound to identity attributes — not as per-login grants a DBA maintains by hand."
+      accent: navy
+    notes: >
+      Books 07 and 08 build the perimeter that makes the migrated logins a
+      zero-trust posture rather than just a different credential. The Entra group
+      model comes first: a consistent naming convention for SQL authorization — for
+      example SQL-FinancialDB-ReadWrite for a database role group and
+      SQL-SQLPROD01-Admin for an instance-admin group — and the rule that access is
+      granted to groups, never to individual logins, so authorization is legible and
+      revocable at the group level. Dynamic membership is what keeps that model
+      current without human toil: user-access groups populate from HR-derived Entra
+      attributes such as department, job title, and account-enabled status, so when
+      a user changes roles their SQL access follows automatically and no DBA
+      provisions or de-provisions by hand. Conditional Access is the enforcement
+      perimeter — require a compliant device for all SQL access, and for admin
+      groups require MFA and tighten the sign-in frequency to one hour with
+      persistent browser disabled, so an elevated session cannot ride indefinitely.
+      The application chain (Book 08) is the part teams most often forget: every
+      connection string, ODBC DSN, SSIS package, and service is re-pointed from
+      Integrated Security or a SQL password to Authentication=Active Directory
+      Default, and applications on Arc-enrolled servers use the Managed Identity
+      path so no application secret is stored at all. Land the callout: authorization
+      is now group membership bound to identity attributes, not a sprawl of per-login
+      grants a human maintains — which is what makes it auditable and what closes the
+      least-privilege intent of the migration.
+    vendor_sources: ["ms_conditional_access"]
+
+  # 15 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART SIX"
+    title: "Continuous monitoring and the IA-2 closure (Books 09-10)"
+    callout: "Kerberos is session- and location-bound; SD-WAN multipath removes both guarantees. Token-based authentication is the only mechanism that closes IA-2 on modern transport."
+    callout_accent: navy
+    notes: >
+      Part Six is Books 09 and 10, and it is where the runbook connects to the
+      series' central authentication doctrine. The compliance record Book 09
+      produces is not a preference artifact — it is closure evidence for IA-2, and
+      the reasoning is the load-bearing argument of the whole book. Kerberos is
+      session- and location-bound: it needs a reachable KDC and a stable path
+      between client, KDC, and server. SD-WAN multipath transport, deployed
+      elsewhere in this series, removes both guarantees, and the failure mode is not
+      a clean error — it is silent NTLM fallback. No amount of SPN hygiene, KDC
+      placement, or clock discipline makes session-bound authentication
+      path-independent; the token-based authentication these runbooks deploy is the
+      only mechanism that closes IA-2 for SQL Server on modern transport. That is
+      why the monitoring queries exist — run daily, they detect any surviving SQL
+      login, any active NTLM connection, and confirm sa is disabled and renamed —
+      and why their output is exported as a structured daily compliance record into
+      the agency's evidence repository. Book 10 closes the loop on the cryptographic
+      dependencies the new posture rests on: inventory the TLS certificate each
+      instance uses, flag ADCS-issued certificates that must be re-enrolled from a
+      FedRAMP-authorized CA before any domain unjoin, and clear certificate pinning
+      in connection strings. The next slide is the control-closure table; this
+      section is the argument for why the program was necessary rather than
+      optional.
+
+  # 16 --- content grid --------------------------------------------------------
+  - type: content
+    kicker: "PROVING THE POSTURE HOLDS · BOOKS 09-10"
+    title: "Monitoring queries, the compliance record, and cert hygiene"
+    layout: grid
+    cards:
+      - title: "Drift detection"
+        body: "Daily queries alert on any surviving SQL login, any active NTLM connection, and any sa login not disabled — the posture is watched, not assumed."
+        accent: navy
+      - title: "Compliance record"
+        body: "A structured JSON export produced daily and stored in the evidence repository — the machine-readable artifact IA-2 closure rests on."
+        accent: teal
+      - title: "IA-2 on multipath"
+        body: "Token-based auth is path-independent where Kerberos is not. This is the necessity claim: the runbook closes IA-2 that session-bound auth cannot."
+        accent: amber
+      - title: "Certificate + ADCS"
+        body: "Inventory TLS certs; re-enroll ADCS-issued certs from a FedRAMP-authorized CA before domain unjoin; clear certificate pinning in connection strings."
+        accent: red
+    callout:
+      text: "The compliance record is closure evidence, not documentation for its own sake — it is what an assessor is shown to prove IA-2 is met continuously."
+      accent: navy
+    notes: >
+      This slide turns the doctrine of the previous section into the concrete
+      artifacts Books 09 and 10 produce. Drift detection: the monitoring queries run
+      on at least a daily schedule and alert on any surviving enabled SQL login
+      outside the known system accounts, any active NTLM connection reaching the
+      instance, and any sa login that is not disabled — so the transformed posture
+      is continuously watched rather than assumed to hold after migration. The
+      compliance record is the output that matters for authorization: a structured
+      JSON export produced daily, capturing the instance's login state, NTLM
+      sessions, sa status, and Entra logins, and stored in the agency's compliance
+      evidence repository. That record is the machine-readable evidence that IA-2 is
+      satisfied continuously, not just at a point-in-time assessment. The third card
+      states the necessity claim plainly for the audience — token-based
+      authentication is path-independent where session-bound Kerberos is not, so the
+      runbook closes an IA-2 gap that no SPN or KDC tuning could close on multipath
+      transport. The fourth card is Book 10's cryptographic hygiene: inventory the
+      TLS certificate each instance uses, identify ADCS-issued certificates and
+      re-enroll their replacements from a FedRAMP-authorized CA before any domain
+      unjoin (or revocation breaks silently), and clear any certificate thumbprint
+      pinning left in connection strings. Land the callout: the compliance record is
+      closure evidence an assessor is actually shown, which is why the program treats
+      monitoring as part of the control, not an afterthought.
+    vendor_sources: ["nist_800_53"]
+
+  # 17 --- table — Authorities operationalized -------------------------------
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "Controls this runbook operationalizes (FedRAMP Moderate)"
+    headers: ["Control", "Title", "Closing mechanism (function, not product)", "Book"]
+    rows:
+      - cells: ["IA-2", "Identification & Authentication (Org Users)", "Token-based Entra authentication replacing session-bound Kerberos/NTLM — path-independent on multipath transport", "05, 09"]
+        accent: navy
+      - cells: ["IA-2(1)", "MFA to Privileged Accounts", "Conditional Access: MFA + compliant device + 1-hour sign-in frequency for SQL admin groups", "07"]
+        accent: teal
+      - cells: ["AC-2", "Account Management", "Login lifecycle — inventory, create, validate, disable, drop-after-observation — recorded in a per-instance migration log", "03, 05"]
+        accent: amber
+      - cells: ["AC-6", "Least Privilege", "Authorization expressed as Entra group membership bound to HR-derived attributes; no standing per-login grants", "07, 08"]
+        accent: red
+      - cells: ["CM-6", "Configuration Settings", "NTLMv1 blocked by GPO (NTLMv2-only, refuse LM/NTLM); sa disabled and renamed; dedicated service accounts", "06"]
+        accent: navy
+      - cells: ["SC-17", "PKI Certificates", "TLS certificate inventory; ADCS-issued certs re-enrolled from a FedRAMP-authorized CA before domain unjoin; pinning cleared", "10"]
+        accent: teal
+      - cells: ["CA-7", "Continuous Monitoring", "Daily drift queries + structured JSON compliance record exported to the evidence repository", "09"]
+        accent: amber
+    callout:
+      text: "IA-2 is the anchor the book asserts; the account-management, configuration, PKI, and monitoring controls are the concrete steps the runbook advances to make that closure real and provable."
+      accent: navy
+    notes: >
+      This is the Authorities-Closed-Here table for the runbook, and the presenter
+      should frame it honestly: the book's explicit closure claim is IA-2, and the
+      surrounding controls are the account-management, configuration, PKI, and
+      monitoring work the concrete steps advance to make that IA-2 closure real and
+      provable at FedRAMP Moderate. IA-2 is the anchor — token-based Entra
+      authentication replacing session-bound Kerberos and NTLM, which is
+      path-independent on multipath transport where the legacy schemes are not, and
+      it is closed by Books 05 and 09. IA-2(1) is deepened by the admin Conditional
+      Access from Book 07 — MFA, compliant device, and a one-hour sign-in frequency
+      for privileged SQL groups. AC-2 Account Management is exactly what the login
+      lifecycle is: inventory, create, validate, disable, and drop-after-observation,
+      recorded in the per-instance migration log. AC-6 Least Privilege is advanced by
+      expressing authorization as Entra group membership bound to HR-derived
+      attributes rather than standing per-login grants. CM-6 Configuration Settings
+      is advanced by the NTLMv1 GPO block, the disable-and-rename of sa, and the
+      dedicated-service-account baseline. SC-17 PKI Certificates is advanced by Book
+      10's certificate inventory, ADCS re-enrollment from a FedRAMP-authorized CA
+      before domain unjoin, and pinning cleanup. CA-7 Continuous Monitoring is the
+      daily drift queries and the exported compliance record. Control mappings use
+      the FedRAMP Moderate baseline; nothing here claims or requires FedRAMP High.
+      The one sentence to leave the audience with is the callout: IA-2 is the claim,
+      and everything else in the table is how the runbook makes that claim
+      defensible.
+    vendor_sources: ["nist_800_53", "ms_sql_entra_auth"]
+
+  # 18 --- closing -----------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "A governed, reversible path from legacy logins to token-based identity"
+    layout: columns
+    cards:
+      - title: "Sequenced + gated"
+        body: "Ten books in order, a consolidation gate that scopes the work, and the one irreversible step gated behind a 30-day observation window."
+        accent: teal
+        status: "Runbook complete"
+      - title: "IA-2 closed"
+        body: "Token-based authentication closes IA-2 on multipath transport where session-bound Kerberos silently falls back to NTLM. The necessity claim, proven."
+        accent: navy
+        status: "FedRAMP Moderate"
+      - title: "Continuously proven"
+        body: "Daily drift queries and a structured compliance record turn the migrated posture into evidence an assessor can be shown at any moment."
+        accent: amber
+        status: "ConMon live"
+    callout:
+      text: "The estate arrives at the transformed posture Vol II Book 01 describes — reached one reversible, documented, gated step at a time."
+      accent: navy
+    notes: >
+      Close on the through-line. This book took the doctrine of Vol II Book 01 and
+      turned it into a program a database team can actually run: ten sequential
+      books, a consolidation gate that decides what is even worth migrating, a
+      safety model that makes almost every action reversible, and a single
+      irreversible step — DROP LOGIN — gated behind a 30-day zero-failure
+      observation window. The first takeaway card is that structure: sequenced and
+      gated, so the migration is governed rather than heroic. The second card is the
+      necessity claim the whole book rests on and the presenter should state
+      plainly: token-based Entra authentication closes IA-2 for SQL Server on
+      SD-WAN multipath transport, where session- and location-bound Kerberos loses
+      both its guarantees and silently falls back to NTLM — no SPN hygiene or KDC
+      placement can close that gap, only token-based identity can, and the series
+      holds FedRAMP Moderate throughout. The third card is the proof: daily drift
+      queries and a structured JSON compliance record make the transformed posture
+      continuously auditable, which is what an assessor is actually shown. End on the
+      callout — the estate arrives at the destination posture Vol II Book 01
+      describes, reached one reversible, documented, gated step at a time — and hand
+      the audience back to the conceptual volume that framed why the destination
+      mattered.
+    vendor_sources: ["nist_800_53", "ms_sql_entra_auth"]

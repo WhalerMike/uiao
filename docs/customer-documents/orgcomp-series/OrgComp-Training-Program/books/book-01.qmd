@@ -1,0 +1,106 @@
+---
+title: "Book 01 — SSA Landing Zone, IPAM & FedRAMP"
+subtitle: "OrgComp module: DDI (DNS · DHCP · IPAM · PKI) as a foundational security control"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Module page for OrgComp Book 01: unified Infoblox DDI control plane across four cloud environments, atomic provisioning, split-horizon DNS, and the 16-control closure that anchors evidence slot 2."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/books/book-01.html
+
+---
+
+**Source:** [Book_01 SSA Landing Zone IPAM FedRAMP](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd)
+· **Evidence slot:** 2 — addressing (KSI-PIY, CM-8 / AC-4) · **Track modules:** [A2](../compliance-track.html#module-a2-addressing-control-plane-slot-2), [B1](../implementation-track.html#module-b1-landing-zone-ipam-ddi-book-01)
+
+## Scope
+
+DDI (DNS, DHCP, IPAM) is a foundational security control, not plumbing. The
+agency's four cloud environments (VMware VCF, Azure Government GCC, AWS
+GovCloud, Oracle OCI) — none of which uses broadcast DHCP — require a
+unified Infoblox DDI control plane. The gap roadmap credits one deployment
+with closing 16 NIST controls, enforcing the M365 GCC boundary, and producing
+machine-readable FedRAMP 20x KSI evidence via WAPI.
+
+## Learning objectives
+
+- Explain why SDN fabrics (NSX-T DHCP profiles, Azure fabric IP injection,
+  AWS Nitro/DHCP options sets, OCI VNIC) break broadcast DHCP and demand an
+  IPAM overlay.
+- Describe the atomic provisioning lifecycle: IP allocation → DNS A/PTR →
+  SCEP/EST certificate enrollment → certificate-tracker binding →
+  90/30/7-day expiry alerts.
+- Design a namespace hierarchy (functional/environment/cloud/split-horizon,
+  ≤3 labels) that aligns wildcard certificate scope, RPZ policy, and DNS
+  views.
+- Configure split-horizon views so private zones return NXDOMAIN
+  externally.
+- Map Infoblox capabilities to the 16 NIST controls and their evidence
+  artifacts.
+- Explain M365 GCC endpoint lifecycle automation (daily API poll → RPZ
+  allow/block, NSG, security-group, split-tunnel updates).
+
+## Key concepts
+
+- Infoblox BloxOne DDI Federal (FedRAMP CSO, hosted on AWS GovCloud;
+  inherited ATO for PL-8).
+- Four network views over four environments; cross-cloud CIDR conflict
+  detection.
+- Route 53 private-zone DNSSEC gap closed by Grid signing.
+- RPZ + CISA Protective DNS + TIDE threat intel; RPZ scoping by zone.
+- Certificate-to-IP binding as zero-trust machine identity ("certificate
+  possession = boundary membership").
+- Three-layer boundary enforcement: IPAM defines, DNS enforces egress,
+  certificates carry identity.
+
+## Implementation sequence
+
+1. Phase 0 (month 1): marketplace procurement; CIDR audit and network-view
+   design.
+2. Phase 1 (months 1–3): Grid Master HA, AD zone import, DNSSEC + DS
+   record, DHCP migration, syslog to SIEM, SCEP connector, first CM-8
+   export.
+3. Phase 2 (months 2–4): VCF WAPI IPAM backend; NSX-T DNS to Grid.
+4. Phase 3 (months 3–5): Azure Grid member, Key Vault polling, M365 GCC
+   endpoint automation.
+5. Phase 4 (months 5–7): AWS Grid member, DHCP options, ACM CNAME
+   automation, Security Hub integration.
+6. Phase 5 (months 7–9): OPM HRIT external host records, conditional
+   forwarders, SA-9 documentation.
+7. Phase 6 (months 9–12): SSP ATO inheritance, scheduled evidence exports,
+   atomic IaC pipeline, 20x KSI checks as CI/CD tests.
+
+## Compliance hooks
+
+SC-20/20(1), SC-21, SC-22, SC-7/7(7), SC-8/8(1), CM-8/8(1), CM-2, CM-6,
+SA-9, IA-5(2), IA-9, AU-2, AU-12, IR-4, IR-5, SI-3/3(1); PL-8 is inherited
+program-wide, leaving the 16 closed here. FedRAMP 20x
+KSI table (DNSSEC, protective DNS, inventory currency, no CIDR overlap,
+cert auto-renewal, machine identity, auditable DNS changes); CISA ZTMM v2.0
+Networks pillar at Advanced.
+
+## Labs
+
+1. Terraform the namespace: delegated zones plus a low-TTL blue/green CNAME
+   with the `infoblox/infoblox` provider.
+2. Split-horizon lab: three DNS views returning private IP / cloud endpoint
+   / NXDOMAIN for the same FQDN; verify external NXDOMAIN.
+3. Simulate the M365 GCC pipeline: poll the Microsoft 365 IP & URL web
+   service, diff versions, emit RPZ and NSG updates.
+
+## Pitfalls the book calls out
+
+- Manual M365 endpoint handling: 8–12 changes/year × four enforcement
+  layers = multi-day boundary-gap windows.
+- Relying on Route 53 private zones for SC-20 — they cannot be
+  DNSSEC-signed.
+- Undisciplined namespace depth: `*.example.gov` covers only one label
+  (RFC 6125); accidental split-brain from unmanaged duplication.
+- Applying RPZ at record level instead of zone level.
+
+## Vendor training
+
+[Infoblox Education](../vendor-training-catalog.html#networking-ddi),
+[BlueCat Training](../vendor-training-catalog.html#networking-ddi),
+[AZ-700](../vendor-training-catalog.html#microsoft).
+
+**Previous:** [Book 00](book-00.html) · **Next:** [Book 02 — Network Access Control: 802.1X](book-02.html)

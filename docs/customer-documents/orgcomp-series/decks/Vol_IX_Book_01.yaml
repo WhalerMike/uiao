@@ -1,0 +1,143 @@
+# AAN deck spec — Vol IX Book 01 (Helpdesk & ITSM Catalog).
+# Scope: FedRAMP Moderate & Microsoft GCC Moderate only. Never cite High.
+deck:
+  title: "Helpdesk & ITSM Catalog"
+  subtitle: "Vol IX Book 01 — the common Entra · M365 · Azure operator tasks as governed, control-mapped catalog items"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOLUME IX"
+  date_code: "2026-07-12 15:00 ET"
+  journey:
+    - "Request"
+    - "Approve"
+    - "Actuate"
+    - "Close"
+  sources:
+    ms_graph: "https://learn.microsoft.com/graph/"
+
+slides:
+  - type: title
+    notes: >
+      Book 01 is the highest-volume day-2 surface: the everyday Entra/M365 help-desk requests —
+      joiner/mover/leaver, credential resets, group and license grants, guest invites. This book turns
+      each into a typed, control-mapped ServiceNow catalog item actuated through the in-boundary MID.
+      The machine-readable binding lives in servicenow-day2/helpdesk-control-map.json. GCC Moderate
+      boundary throughout.
+    vendor_sources: ["host repo: docs/customer-documents/orgcomp-series/servicenow-day2/helpdesk-control-map.json"]
+
+  - type: section
+    kicker: "PART ONE"
+    title: "A hundred small clicks a week"
+    callout: "Each portal-clicked account, reset, or group add is a change to an identity-attributed surface a control governs — ungoverned, it erodes AC-2, IA-5, and AC-6 one click at a time."
+    callout_accent: navy
+    notes: >
+      Frame the problem. A service desk performs hundreds of identity changes a week; done by a
+      standing-admin operator in a portal, each is unlogged and least-privilege by hope. The catalog
+      does not add a new control — it stops the highest-frequency operations from quietly dismantling
+      the ones already claimed.
+
+  - type: content
+    kicker: "THREE FAMILIES"
+    title: "One loop, three request families"
+    layout: grid
+    cards:
+      - title: "Lifecycle (AC-2)"
+        body: "Joiner/mover/leaver + guest invite — provisioned from the HRIT SSOT; leaver de-provisioning is evidenced."
+        accent: navy
+      - title: "Credential (IA-5)"
+        body: "Password reset, MFA-method reset, account unlock — self-service via SSPR where policy allows, else approver-gated."
+        accent: teal
+      - title: "Access (AC-6)"
+        body: "Group and license grants — least-privilege, time-bound where elevated, access-review linked."
+        accent: amber
+      - title: "Reuse — CA exception"
+        body: "The Conditional-Access exception item invokes the Vol VII Book 02 pattern; it does not fork a second path."
+        accent: navy
+    callout:
+      text: "The leaver is the one that fails audits — disable, revoke sessions, reassign owned objects, with evidence."
+      accent: amber
+    notes: >
+      The three families each run the identical loop. Voice the leaver warning: de-provisioning is an
+      evidenced obligation, not a courtesy — a leaver marked done with no trail is an orphaned-credential
+      finding waiting to happen. Card four reuses the Vol VII CA-exception rather than reinventing it.
+    vendor_sources: ["ms_graph"]
+
+  - type: build-sequence
+    kicker: "THE REQUEST LOOP"
+    title: "Request to closure to evidence"
+    notes: "Fallback notes if a step omits its own."
+    steps:
+      - label: "Preflight"
+        sub: "safety gate"
+        accent: navy
+        detail: >
+          Separation of duties (requester != approver, CM-5) and least-privilege expiry (AC-6) are
+          checked before anything — a bad request fails fast, before approval or actuation.
+        notes: "Step one is the safety gate: self-approval and standing-privilege requests are refused up front."
+      - label: "Approve"
+        sub: "the control's gate"
+        accent: teal
+        detail: >
+          The gate the control requires — self-service, manager, identity, owner, or a security
+          approver for a Conditional-Access exception or any privileged grant.
+        notes: "Step two: the approval gate is a property of the control, not a workflow convenience."
+      - label: "Actuate"
+        sub: "Graph via MID"
+        accent: amber
+        detail: >
+          The one client method for the request actuates on Entra via Graph through the in-boundary
+          MID Server. ServiceNow never holds standing tenant admin.
+        notes: >
+          Step three is platform-native and least-privilege: scoped, logged, individually-approved
+          write only. Standing admin over the estate the help desk serves is itself a control weakness.
+      - label: "Close"
+        sub: "verify + evidence"
+        accent: teal
+        detail: >
+          The gate re-reads the target and confirms the intended state took; the request, approval, and
+          Graph result become a change record (CM-3 / AU-2) reconciled to the CM-8 CMDB.
+        notes: "Step four: closure proven by re-read, and the whole trail becomes the evidence feeding Vol VII Book 04."
+    vendor_sources: ["ms_graph"]
+
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "The helpdesk closures"
+    headers: ["Control", "Title", "Mechanism"]
+    rows:
+      - cells: ["AC-2", "Account Management", "JML, guest, license/group as governed catalog items; leaver de-provisioning evidenced"]
+        accent: teal
+      - cells: ["IA-5", "Authenticator Management", "Password/MFA reset and unlock as identity-verified items"]
+      - cells: ["AC-6", "Least Privilege", "Group/privileged requests time-bound and access-reviewed; no standing elevation"]
+        accent: teal
+      - cells: ["AC-3", "Access Enforcement", "Conditional Access exceptions only as governed catalog items with mandatory expiry and scheduled access review"]
+    callout:
+      text: "Routine exercise of identity controls, made governed and evidenced — not a new control, but the one that keeps the others true."
+      accent: amber
+    notes: >
+      Mirror the book's generated Authorities-Closed-Here rows. The point for assessors: these operate
+      the existing identity controls as owned, evidenced work; they do not re-close the mechanisms
+      Volumes I and VII already own. FedRAMP Moderate.
+    vendor_sources: ["host repo: docs/customer-documents/orgcomp-series/orgcomp-compliance-spine.yml"]
+
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "The service desk, now a control surface"
+    layout: columns
+    cards:
+      - title: "Governed"
+        body: "Every request typed, control-mapped, and gated by the approval the control requires."
+        accent: teal
+        status: "This book"
+      - title: "Least-privilege"
+        body: "Graph via the in-boundary MID; no standing tenant admin."
+        accent: navy
+        status: "Guardrail"
+      - title: "Evidenced"
+        body: "Every action audited, reconciled to CM-8, fed to attestation."
+        accent: navy
+        status: "Book 04 / Vol VII"
+    callout:
+      text: "Next: the landing-zone front door (Book 02) — the same discipline, applied to provisioning."
+      accent: navy
+    notes: >
+      Close on the honest limit: self-service items are only as strong as the tenant's authentication
+      policy, and a global admin can still act out of band — Vol VII detections and access reviews
+      catch that. Hand off to Book 02.

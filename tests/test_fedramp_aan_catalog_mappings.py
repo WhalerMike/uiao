@@ -73,6 +73,6 @@ def test_declared_paths_are_current_series_books(mapping: Path) -> None:
     stale = [p for p in declared_paths(mapping) if "Book_" in p and "_Federal_Application_Aware_Networking_" in p]
     assert not stale, (
         f"{mapping.name} uses pre-volume book names: {stale}. The current series is "
-        f"Vol_<V>_Book_<NN>_FedAAN_<Name>.qmd; match on the descriptive suffix, never "
+        f"Vol_<V>_Book_<NN>_OrgComp_<Name>.qmd; match on the descriptive suffix, never "
         f"on the book number."
     )

@@ -1,0 +1,108 @@
+---
+title: "Lab environment — PIM & privileged access (Module B5)"
+subtitle: "Break-glass first, then eligible-only roles, activation ceremony, and the audit trail"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Lab setup for Book 10: a disposable Entra tenant with a break-glass account, a PIM-eligible role with approval, report-only Conditional Access, and the PIM audit export bound as slot-01/slot-05 evidence."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b5-pim.html
+
+---
+
+> Part of the [OrgComp Training Program](../index.html) — companion material for
+> the OrgComp book series, not part of any governance engine. Read the
+> [lab hub safety rules](index.html#safety-rules-read-before-any-lab) first.
+> **Tier T: disposable tenant with Entra ID P2 only. Never production.**
+
+**Supports:** [Book 10 labs](../books/book-10.html#labs) ·
+[Module B5](../implementation-track.html#module-b5-privileged-access-book-10) ·
+slots 1 — identity (KSI-IAM) and 5 — endpoint (KSI-PIY)
+
+## Prerequisites
+
+- A trial/developer Microsoft 365 tenant with Entra ID P2 (PIM requires P2).
+- Microsoft Graph PowerShell:
+
+```powershell
+Install-Module Microsoft.Graph -Scope CurrentUser
+Connect-MgGraph -Scopes "RoleManagement.ReadWrite.Directory","Directory.Read.All","AuditLog.Read.All"
+```
+
+## Step 1 — break-glass account FIRST (Book 10's ordering)
+
+```powershell
+$pw = @{ Password = (-join ((65..90)+(97..122)+(48..57) | Get-Random -Count 24 | % {[char]$_})) ; ForceChangePasswordNextSignIn = $false }
+$bg = New-MgUser -DisplayName "EA-BreakGlass-01" -UserPrincipalName "ea-breakglass-01@$((Get-MgDomain | ? IsDefault).Id)" `
+       -MailNickname "eabreakglass01" -AccountEnabled -PasswordProfile $pw
+# Standing Global Administrator — the ONLY standing one in this lab
+$gaRole = Get-MgDirectoryRole -Filter "displayName eq 'Global Administrator'"
+New-MgDirectoryRoleMemberByRef -DirectoryRoleId $gaRole.Id -OdataId "https://graph.microsoft.com/v1.0/users/$($bg.Id)"
+```
+
+Record the password offline (in production: FIDO2 keys + physical safe).
+Exclude this account from every Conditional Access policy you create below.
+
+## Step 2 — enumerate standing assignments (the "before" evidence)
+
+```powershell
+Get-MgRoleManagementDirectoryRoleAssignment -ExpandProperty Principal -All |
+  Select-Object @{n='Role';e={(Get-MgRoleManagementDirectoryRoleDefinition -UnifiedRoleDefinitionId $_.RoleDefinitionId).DisplayName}},
+                @{n='Principal';e={$_.Principal.AdditionalProperties.userPrincipalName}} |
+  Export-Csv standing-assignments-before.csv -NoTypeInformation
+```
+
+## Step 3 — convert a test admin to PIM eligible-only
+
+Create a test user, grant an **eligible** (not active) Security
+Administrator assignment with an 8-hour cap:
+
+```powershell
+$u = New-MgUser -DisplayName "Lab Admin" -UserPrincipalName "lab-admin@$((Get-MgDomain | ? IsDefault).Id)" `
+      -MailNickname "labadmin" -AccountEnabled -PasswordProfile $pw
+$secAdmin = Get-MgRoleManagementDirectoryRoleDefinition -Filter "displayName eq 'Security Administrator'"
+New-MgRoleManagementDirectoryRoleEligibilityScheduleRequest -Action "adminAssign" `
+  -PrincipalId $u.Id -RoleDefinitionId $secAdmin.Id -DirectoryScopeId "/" `
+  -ScheduleInfo @{ startDateTime = (Get-Date).ToUniversalTime(); expiration = @{ type = "afterDuration"; duration = "P90D" } }
+```
+
+In the portal (Entra ID → PIM → Roles → Security Administrator → Settings),
+set: activation max 8 hours, require MFA, require justification, require
+approval. Then, as `lab-admin`, walk the **activation ceremony**: request →
+MFA → justification → (approve as yourself) → time-boxed activation →
+automatic deactivation.
+
+## Step 4 — report-only Conditional Access (14-day discipline)
+
+Create one policy — "PIM activation requires compliant device" — targeting
+directory-role activation, in **report-only** mode, with the break-glass
+account excluded. Book 10's rule: 14+ days report-only before enforcement;
+in the lab, inspect the report-only results in sign-in logs instead.
+
+## Step 5 — the evidence: PIM audit export
+
+```powershell
+Get-MgAuditLogDirectoryAudit -Filter "loggedByService eq 'PIM'" -All |
+  Select-Object ActivityDateTime, ActivityDisplayName,
+    @{n='Initiator';e={$_.InitiatedBy.User.UserPrincipalName}},
+    @{n='Target';e={$_.TargetResources[0].UserPrincipalName}} |
+  ConvertTo-Json -Depth 4 | Out-File pim-audit-trail.json
+```
+
+`pim-audit-trail.json` plus `standing-assignments-before.csv` (and an
+"after" run showing eligible-only) are the slot-01 artifacts; the device
+compliance requirement is the slot-05 angle.
+
+Then the [common final step](index.html#bind-the-evidence):
+place the exports where the slot-01/slot-05 mappings can reference them
+and regenerate: `<engine> oscal ksi-ar --output exports/oscal/ksi-ar.json`.
+Score against the
+[slot 1](../assessment-rubrics.html#slot-1) and
+[slot 5](../assessment-rubrics.html#slot-5) rubrics.
+
+## Teardown
+
+```powershell
+Remove-MgUser -UserId $u.Id
+Remove-MgUser -UserId $bg.Id          # lab only — production break-glass is permanent
+# Delete the report-only CA policy in the portal, or let the trial tenant expire.
+```

@@ -1,11 +1,11 @@
 """Canonical AAN (Application-Aware Networking) PowerPoint briefing-deck generator.
 
-Reproduces the *Book_10 / Book_11 FedAAN* deck DNA — native-shape composition
+Reproduces the *Book_10 / Book_11 OrgComp* deck DNA — native-shape composition
 on a white 10.0 x 5.625 in (16:9) canvas, Arial typography, the exact UIAO
 house palette, full presenter notes on every slide, and the progressive
 build-sequence reveal with the amber-ring active step. The authoritative
 measurements this generator reproduces live in
-``docs/customer-documents/federal-aan-series/AAN_DECK_STYLE_NOTES.md``.
+``docs/customer-documents/orgcomp-series/OrgComp_DECK_STYLE_NOTES.md``.
 
 Design intent
 -------------
@@ -149,7 +149,7 @@ SLIDE_W_EMU = 9144000  # 10.0 in
 SLIDE_H_EMU = 5143500  # 5.625 in
 
 # ---------------------------------------------------------------------------
-# Palette (exact hex from AAN_DECK_STYLE_NOTES.md)
+# Palette (exact hex from OrgComp_DECK_STYLE_NOTES.md)
 # ---------------------------------------------------------------------------
 NAVY = "1F3A5F"  # primary ink, titles, table header fill
 TEAL = "1A9E8F"  # accent / affirmative

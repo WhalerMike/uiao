@@ -1,0 +1,345 @@
+# AAN deck spec — Vol IX Book 05 (SaaS Integration Governance).
+# Scope: FedRAMP Moderate & Microsoft GCC Moderate only. Never cite High.
+#
+# This deck presents the IMPLEMENTATION: the governed catalog that closes 24
+# controls during SaaS provisioning. The vendor-corpus measurement motivates one
+# slide; it is not the subject. An earlier draft inverted that.
+#
+# The build-sequence steps mirror the seven phases of
+# servicenow-day2/saas-control-map.json (Lane F). The map is the SSOT for the
+# item/approval/control detail and the Book's tables are RENDERED from it by
+# render_book_catalog.py; this deck carries presenter framing and is a briefing
+# projection. If the map's phases change, update these steps with them.
+#
+# Figure disposition (authoring-spec §4): SKIP. The aan-deck generator draws
+# visuals natively as pptx shapes and carries no raster images, so this deck
+# produces no slide image to flow back into the Book. Its build sequence covers
+# the same phases as the Book's fig-01
+# (figs/vol7b06-fig-01-saas-integration-gate.svg). Date Codes match.
+deck:
+  title: "SaaS Integration Governance"
+  subtitle: "Vol IX Book 05 — onboarding a third-party SaaS as the moment 24 controls are closed: verify authorization, then configure, never the reverse"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOLUME VII"
+  date_code: "2026-07-16 09:48 ET"
+  journey:
+    - "Verify"
+    - "Agree"
+    - "Configure"
+    - "Attest"
+  sources:
+    ms_tutorial_list: "https://learn.microsoft.com/en-us/entra/identity/saas-apps/tutorial-list"
+    ms_gallery: "https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/overview-application-gallery"
+    ms_gov_feature_availability: "https://learn.microsoft.com/en-us/entra/identity/authentication/feature-availability"
+    ms_graph: "https://learn.microsoft.com/graph/"
+    ms_app_template: "https://learn.microsoft.com/en-us/graph/api/resources/applicationtemplate"
+    fedramp_marketplace: "https://www.fedramp.gov/marketplace/"
+    cisa_scuba_aad: "https://github.com/cisagov/ScubaGear/blob/main/PowerShell/ScubaGear/baselines/aad.md"
+    aan_lane_f: "host repo: docs/customer-documents/orgcomp-series/servicenow-day2/saas-control-map.json"
+    engine_track4: "host repo: inbox/entra-assessment/04-saas-integration-authorization/"
+
+slides:
+  - type: title
+    notes: >
+      This deck is about an implementation, not a complaint. The one-line thesis: onboarding a SaaS is
+      the densest control-closure opportunity in the identity estate, and today we take none of it.
+      SCIM provisioning IS automated account management. The leaver event reaching the vendor IS
+      account disablement. The signing certificate IS an authenticator with a lifecycle. The service
+      principal IS a component to inventory. Every one of those is either closed during provisioning
+      or silently skipped there — and skipped is the default, because the vendor's path has nowhere to
+      put them. Lane F is twenty-four governed catalog items closing twenty-four controls at the
+      moment of integration. The ordering is the whole control: verify before configure, never the
+      reverse. GCC Moderate throughout.
+    vendor_sources: ["aan_lane_f"]
+
+  - type: section
+    kicker: "THE OPPORTUNITY"
+    title: "Twenty-four controls, closed or skipped, in one fifteen-minute act"
+    callout: "The instinct is to read this as one missing gate — SA-9. That reading is too small. The provisioning moment touches two dozen controls spread across the baseline."
+    callout_accent: navy
+    notes: >
+      Set the frame before any numbers. An administrator opens the admin centre, follows a vendor
+      tutorial, and fifteen minutes later a continuous replica of the agency directory lives in a
+      vendor cloud. The obvious reading is that we forgot a gate. The better reading is that we walked
+      past two dozen closures. Every control in the list on the next slides is one we already owe
+      somewhere in the baseline — this is simply the moment it is cheapest to close and most expensive
+      to miss, because the integration is being built anyway. If the audience takes one thing: we are
+      not adding bureaucracy to a fifteen-minute task, we are collecting controls we otherwise pay for
+      twice.
+    vendor_sources: ["aan_lane_f"]
+
+  - type: content
+    kicker: "WHY THE GATE IS OURS"
+    title: "There is no technical backstop to inherit"
+    layout: grid
+    cards:
+      - title: "GCC Moderate rides Commercial Entra"
+        body: "FedRAMP Moderate for M365 means GCC Moderate, paired with Commercial Entra ID on Azure Commercial. Only GCC High and DoD sit on Azure Government. The full commercial gallery is reachable."
+        accent: navy
+      - title: "Nothing is marked"
+        body: "No FedRAMP status, no boundary indicator, no impact level, no cloud filter. Every tutorial reads identically whether the CSO is authorized or not."
+        accent: red
+      - title: "12,940 pages, zero mentions"
+        body: "The complete tutorial corpus carries 50,172 mentions of single sign-on and zero of FedRAMP, authorization boundary, ISA, CUI or impact level."
+        accent: amber
+      - title: "The one built-in aid misses"
+        body: "Gallery risk scores name SOC 2, ISO 27001, HIPAA and PCI — not FedRAMP — and sit behind additional licensing."
+        accent: amber
+    callout:
+      text: "An administrator following the vendor's own guidance end-to-end never encounters the authorization question. That is the finding — not that the vendor did anything wrong."
+      accent: navy
+    notes: >
+      Deliver this carefully; it is the slide that can be misheard as vendor-bashing and discredit
+      everything after it. Say plainly: this is not a criticism of Microsoft's documentation. The
+      tutorials are accurate, thorough and correctly scoped to their purpose, which is making an
+      integration work. Authorization is a customer responsibility and does not travel across a
+      federation trust to a third party's service. The corpus is silent on the boundary because the
+      boundary is not its subject. The only claim we draw from the measurement is the callout: the
+      operator path never surfaces the question, so the gate has to be ours. If challenged on the
+      zero, the one thing they can point at is availability boilerplate in eighteen tutorials —
+      one-point-four percent — saying the app is also in the US Government Cloud gallery. That is an
+      availability note, it raises no authorization question, and it points at Azure Government, which
+      is out of our scope anyway.
+    vendor_sources: ["ms_tutorial_list", "ms_gallery", "ms_gov_feature_availability"]
+
+  - type: content
+    kicker: "THE MODELLING ERROR TO AVOID"
+    title: "SSO and SCIM are not the same control event"
+    layout: grid
+    cards:
+      - title: "SSO — an assertion"
+        body: "SAML, OIDC or password. Passes at sign-in and is gone. Transient. The question is only: is the service authorized?"
+        accent: teal
+      - title: "SCIM — a standing replica"
+        body: "A durable, continuously synced copy of directory data: names, work emails, employee IDs, manager chains, org structure. It persists until someone disables the job."
+        accent: red
+      - title: "Different control weight"
+        body: "SSO raises SA-9 alone. SCIM raises SA-9 and CA-3 — it is an interconnection, and an interconnection needs an agreement."
+        accent: navy
+      - title: "The gate fires on SCIM only"
+        body: "SSO-only integrations skip the ISA and must not wait for one. Over-gating the cheap path is how a control gets routed around."
+        accent: amber
+    callout:
+      text: "The tutorial list presents them as adjacent columns in one table. Collapsing them is the most expensive modelling error available here."
+      accent: red
+    notes: >
+      Slow down here. The vendor documentation actively encourages the error: the tutorial list puts
+      the single-sign-on article and the user-provisioning article side by side in the same row, as if
+      they were two flavours of one task. They are not. An assertion at sign-in and a continuously
+      synced replica of the agency directory are different exposures with different control weights,
+      and Lane F classifies every integration into one or the other before anything is configured —
+      derived from the attributes captured at request, not judged ad hoc. Be honest when asked: the
+      line is a judgement, not a derivation. A password-SSO app stores credentials in Entra and
+      replays them, arguably a standing flow of secrets rather than directory data. That is recorded
+      as an open question in the Book's Honest Limits, and CA-3's closure currently encodes the
+      SCIM-only answer.
+    vendor_sources: ["ms_tutorial_list"]
+
+  - type: build-sequence
+    kicker: "THE CATALOG"
+    title: "Seven phases, 24 governed items, 24 controls"
+    steps:
+      - label: "Intake"
+        detail: "Intake & authorize — six items. Request with its attribute list, record the FedRAMP verdict, record the CSO's endpoints, classify the flow, attach an ISA on the SCIM path, separate requester from approver. AC-20, SA-9, SA-9(2), AC-4, CA-3, AC-5."
+        accent: teal
+        notes: >
+          Nothing is configured in this phase. It exists to answer whether the integration may happen
+          at all, and to record the answer before anyone can act on the opposite. The gate is
+          saas.verify.authorization: a FedRAMP Marketplace verdict at or above the Moderate baseline
+          recorded against the request. No verdict, no progression. Say why the ordering matters — a
+          verdict collected after configuration is a rationalization, not a gate, because the data has
+          already left. Note the verdict is a human ISSO decision: the inventory tooling narrows the
+          queue and deliberately never emits an "unauthorized" finding, because name-matching a
+          gallery display name against a marketplace offering is permanently unreliable.
+        vendor_sources: ["fedramp_marketplace", "engine_track4"]
+      - label: "Setup"
+        detail: "Register & configure — four items. The service principal becomes a CMDB CI reconciled to the IPAM/DDI join key; an approved change record gates actuation; federation is configured and SaaS-local credentials disabled; the enterprise identifier is bound. CM-8, CM-3, IA-2, IA-4."
+        accent: navy
+        notes: >
+          The integration becomes a governed object before it becomes a federation trust. CM-8 is the
+          quiet keystone: the service principal, its gallery template id, SSO mode and sync-job state
+          reconciled to the authoritative IPAM/DDI asset identity — which is what makes an un-governed
+          portal click detectable at all. An integration absent from the CI register is drift. On
+          IA-2, make the distinction out loud: "SSO available" is not "SSO required", and only the
+          second closes anything — so the catalog records that SaaS-local credentials are disabled or
+          explicitly exception-approved.
+      - label: "Certs"
+        detail: "Credentials — three items. The SAML signing certificate and SCIM bearer token issued short-lived, rotated on a schedule with owner approval, governed under the agency certificate policy. IA-5(2), IA-5, SC-17."
+        accent: navy
+        notes: >
+          The signing certificate and the SCIM token are authenticators with lifecycles, not setup
+          steps — the rule Lane E applies to app registrations, applied here to the federation trust.
+          This phase has the strongest operational ally: an expiring signing certificate is the single
+          most common cause of a federation outage, so scheduled rotation sells itself to the people
+          who carry the pager. Certificate-based where the SaaS supports it; a secret with a mandatory
+          expiry where it does not; never a long-lived secret in config.
+      - label: "Sync"
+        detail: "Provision & authorize — three items. The sync job is created only after the ISA; assignment is required rather than open-to-all; app roles are mapped from the authoritative org model. AC-2(1), AC-3, AC-6."
+        accent: navy
+        notes: >
+          Only now does directory data move. Creating the synchronization job IS automated account
+          management — that is the AC-2(1) closure, not a metaphor. The scoping filter and attribute
+          mapping ride inside the approved change record, so "which attributes leave" is reviewable up
+          front rather than discovered during an assessment. On AC-3: the assignment is the last
+          enforcement point the agency still controls once the trust exists — never "available to all
+          users".
+        vendor_sources: ["ms_graph"]
+      - label: "JML"
+        detail: "Lifecycle (joiner/mover/leaver) — two items. The HR separation event drives disable/remove in the SaaS on the effective date; a transfer re-derives entitlements and reviews the residual. AC-2(3), PS-5."
+        accent: red
+        notes: >
+          This is the phase that makes the others matter, and the one to dwell on. Without it the
+          directory is clean and the vendor still holds a live account — the precise failure an
+          assessor probes, and the one an ungoverned portal-click integration guarantees. Separation
+          is not network-observable: absence of logins is indistinguishable from leave. Only an
+          event-driven feed from the owner of the fact — the HR system, Vol I Book 04 — starts the
+          revocation on time. Separation-to-revocation interval inside the SaaS becomes a ConMon
+          metric, which is how we prove it rather than assert it.
+      - label: "Logs"
+        detail: "Evidence — three items. Account lifecycle events emit audit records automatically; provisioning and sign-in telemetry route to the SIEM at onboarding; a named reviewer works them on a cadence. AC-2(4), AU-2, AU-6."
+        accent: navy
+        notes: >
+          Collection is not review. AU-2 is the logs reaching the SIEM; AU-6 is somebody actually
+          looking, and only an owned task with a cadence and a closure record produces evidence of
+          that. Both are catalog items for exactly that reason. State the boundary caveat honestly
+          when asked: this collects what the tenant can see, it does not conjure what the boundary
+          withholds — GCC-Moderate telemetry limits bound what reaches the SIEM in the first place,
+          and a ConMon claim built on this must say so rather than imply completeness.
+      - label: "Attest"
+        detail: "Attest & exit — three items. The marketplace verdict, owner and attribute scope re-verified on cadence; attribute lineage and vendor retention recorded; offboarding revokes the trust and the credential. CA-7, SI-12, AC-2."
+        accent: teal
+        notes: >
+          Authorization is not a one-time fact: a CSO can lose its authorization and an integration can
+          outlive the business need that justified it. Cadence re-verification is the machine-identity
+          equivalent of an access review, and it feeds Book 04's attestation and the KSI evidence
+          pipeline. Close on saas.offboard, the step most often skipped — an integration nobody uses
+          still holds a live directory replica and a valid signing certificate. Triggered by
+          attestation failure, business-need lapse, or a withdrawn authorization.
+        vendor_sources: ["fedramp_marketplace"]
+    notes: >
+      The seven phases of Lane F, walked one at a time. Item-level detail lives in the control map.
+
+  - type: content
+    kicker: "THE IMPLEMENTATION"
+    title: "Lane F of the existing day-2 app — not a new one"
+    layout: grid
+    cards:
+      - title: "One new data file"
+        body: "saas-control-map.json binds 24 catalog items to (control, task type, approval, actuation, KSI, slot). The Book's tables are generated from it."
+        accent: teal
+      - title: "Validated for free"
+        body: "validate_day2_control_maps.py globs the lane maps — Lane F was picked up with zero wiring and is CI-checked against the spine from its first commit."
+        accent: teal
+      - title: "Nine new Graph methods"
+        body: "Instantiate the gallery template, set SSO mode, add the signing cert, create the sync job, assign roles, offboard. Routed through the in-boundary MID Server."
+        accent: navy
+      - title: "Least privilege, not convenience"
+        body: "Application.ReadWrite.OwnedBy and Synchronization.ReadWrite.All — never Application.ReadWrite.All. The app acts only on integrations it owns."
+        accent: amber
+    callout:
+      text: "Reuse over fork: the Script Includes, Flow, ATF harness and update set already exist. A lane costs one data file and a set of methods."
+      accent: navy
+    notes: >
+      Explain the architectural choice: this book and its implementation now live together in
+      Volume IX. The day-2 scoped app already
+      carries the Graph-via-MID plumbing and the SoD pre-flight gate, and Lane E — app registration —
+      is the same catalog grammar. Forking a second app to satisfy a volume label would duplicate the
+      Script Includes, Flow, ATF harness and update set for one lane, which is exactly what Vol VII Book 05
+      warns against. Reuse wins; the cross-volume pointer is the price. Acknowledge it is a signal
+      this book may architecturally belong in Volume IX. Book 05's own deployable, the
+      x_fed_compliance skeleton, now exists on disk and is spine-registered — so the reuse
+      decision here is about not duplicating plumbing, not about a missing alternative.
+    vendor_sources: ["aan_lane_f", "ms_graph", "ms_app_template"]
+
+  - type: content
+    kicker: "WHAT WOULD FALSIFY IT"
+    title: "The tests are mostly negatives"
+    layout: grid
+    cards:
+      - title: "configure_without_verdict_is_refused"
+        body: "SSO and SCIM configuration refuse when no authorization verdict is recorded. The ordering rule, mechanically."
+        accent: teal
+      - title: "scim_without_isa_is_refused"
+        body: "Provisioning refuses on the SCIM path with no approved ISA — and sso_only_does_not_require_isa proves the cheap path is not over-gated."
+        accent: teal
+      - title: "self_approval / standing_admin refused"
+        body: "Approver may not equal requester; actuation refuses if the service identity holds Application.ReadWrite.All."
+        accent: navy
+      - title: "unreconciled_integration_is_flagged"
+        body: "A service principal in the tenant with no CI raises drift — this is what catches the un-governed portal click."
+        accent: amber
+    callout:
+      text: "A catalog that only tests the happy path proves nothing. Eight ATF cases; six of them are refusals."
+      accent: navy
+    notes: >
+      This is the slide separating a governed catalog from a described one. Anyone can draw a six-box
+      process diagram; the question an assessor asks is what stops step five happening before step
+      two, and the answer has to be a test, not a paragraph. Walk the first card slowly — it is the
+      whole book expressed as an assertion. The unreconciled-integration test is worth lingering on
+      for an operations audience: it is how an integration created outside the catalog becomes
+      visible, which means the catalog does not depend on everyone using the catalog.
+    vendor_sources: ["aan_lane_f"]
+
+  - type: content
+    kicker: "CLOSURE NECESSITY"
+    title: "Consent restriction governs who approves — not what they approve"
+    layout: grid
+    cards:
+      - title: "The alternative a reviewer will propose"
+        body: "SCuBA's consent baseline: MS.AAD.5.1v1 admin-only registration, 5.2v1 restricted user consent, 5.3v1 admin consent workflow."
+        accent: navy
+      - title: "Why it does not close SA-9"
+        body: "Those govern WHO approves an integration. They say nothing about whether the service on the far end is authorized to hold federal data."
+        accent: red
+      - title: "The failure mode"
+        body: "A fully SCuBA-compliant tenant. An administrator, correctly and within policy, consents to a CSO with no FedRAMP authorization. Every gate passes."
+        accent: amber
+      - title: "A scope gap, not a config gap"
+        body: "No configuration hardening reaches it. Only an authorization verdict recorded against the integration, before configuration, closes SA-9."
+        accent: teal
+    callout:
+      text: "This series endorses the SCuBA consent baseline. It is a good control. It is not this control."
+      accent: navy
+    notes: >
+      The necessity anchor, and the argument an assessor will actually test — so present the
+      alternative as the steel-man it is rather than a straw man. The SCuBA consent policies are
+      genuinely good controls and we do endorse them; say so before dismantling them as an
+      alternative. The distinction is clean: consent restriction is about authorization of the
+      approver, not authorization of the service. A tenant can be one hundred percent clean on SCuBA
+      section five and still have an administrator do everything right and consent to an unauthorized
+      CSO. Every check passes; the boundary still leaks. Note also that the other twenty-three
+      closures are coordination-and-evidence closures per the Vol 0 Book 02 convention — the
+      architecture volumes own the primary closure and this lane operates it. SA-9 is the exception:
+      no other book in the series carries the SA-9 closure — the Vol I books treat SA-9 as SSP
+      coverage, not as a closure claim.
+    vendor_sources: ["cisa_scuba_aad"]
+
+  - type: closing
+    kicker: "HONEST LIMITS"
+    title: "What this does not do, and what happens next"
+    layout: grid
+    cards:
+      - title: "The population is unmeasured"
+        body: "No inventory has been run. We specify a gate for a problem whose size is unknown — how many gallery integrations exist, and how many carry SCIM."
+        accent: red
+      - title: "The Graph surface is specified, not built"
+        body: "The nine methods are what the catalog requires; EntraHelpdeskClient does not yet carry them. The map and the closures are real; the Script Include is work."
+        accent: amber
+      - title: "It governs new requests"
+        body: "It does not retroactively legitimize the existing estate. An inventory will find integrations predating any governance — those are POA&M items, not catalog rejects."
+        accent: amber
+      - title: "Two open questions"
+        body: "Password-SSO may be a standing flow of secrets. Li-SaaS is not yet distinguished from full Moderate authorization."
+        accent: navy
+    callout:
+      text: "Next: run the read-only inventory. Every recommendation here is cheaper or dearer depending on a number we do not yet have."
+      accent: teal
+    notes: >
+      Close on the limits, not the claim — this is a draft proposal going to review, and the
+      credibility of the necessity argument depends on not overselling the rest. The first card is the
+      most important thing in the deck: we have argued for a gate on a population nobody has counted.
+      If the tenant has three gallery integrations and all three are authorized, this is a good
+      doctrine chapter and a bad use of a catalog lane. The honest next step is small, cheap and
+      read-only: enumerate the gallery integrations, find how many carry SCIM, join against the
+      marketplace, and take the SCIM-with-no-match cell to the ISSO first. Ask for that, not for a
+      commitment to the whole lane.
+    vendor_sources: ["engine_track4", "fedramp_marketplace"]

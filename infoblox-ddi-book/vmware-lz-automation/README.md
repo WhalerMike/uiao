@@ -1,6 +1,6 @@
 # Automating VMware (VCF / vSphere / NSX-T) Landing Zones with Infoblox DDI
 
-A companion to **Vol VII / FedAAN — Infoblox Multi-Cloud DDI** (specifically the VMware
+A companion to **Vol VII / OrgComp — Infoblox Multi-Cloud DDI** (specifically the VMware
 chapter, [`05-vmware.md`](../05-vmware.md)). Where the VMware chapter is the
 **deploy-oriented runbook**, this package is the **automation-grade layer**: how to add
 Infoblox DDI to a VMware Cloud Foundation private cloud as a modular, IaC-driven,

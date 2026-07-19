@@ -1,0 +1,99 @@
+---
+title: "Lab environment — Purview data protection (Module B6)"
+subtitle: "Label taxonomy, simulation-first auto-labeling and DLP, and a CMK in Key Vault Premium"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Lab setup for Book 12: the four-tier CUI label taxonomy via Security & Compliance PowerShell, a custom SIT + DLP policy in simulation, Key Vault Premium with a rotating CMK, and slot-04 evidence."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b6-purview.html
+
+---
+
+> Part of the [OrgComp Training Program](../index.html) — companion material for
+> the OrgComp book series, not part of any governance engine. Read the
+> [lab hub safety rules](index.html#safety-rules-read-before-any-lab) first.
+> **Tier T: trial M365 E5 tenant + trial Azure subscription. Never production —
+> DLP enforcement and label publishing are tenant-wide behaviors.**
+
+**Supports:** [Book 12 labs](../books/book-12.html#labs) ·
+[Module B6](../implementation-track.html#module-b6-detect-protect-books-1113) ·
+slot 4 — telemetry (KSI-MLA)
+
+## Prerequisites
+
+```powershell
+Install-Module ExchangeOnlineManagement -Scope CurrentUser
+Connect-IPPSSession   # Security & Compliance PowerShell
+```
+
+## Step 1 — the four-tier label taxonomy (Book 12's CUI mapping)
+
+```powershell
+New-Label -Name "Public"        -DisplayName "Public"        -Tooltip "Approved for release"
+New-Label -Name "Internal"      -DisplayName "Internal"      -Tooltip "Business data, not for release"
+New-Label -Name "CUI-Basic"     -DisplayName "CUI Basic"     -Tooltip "NARA CUI Registry - basic" `
+          -EncryptionEnabled $true -EncryptionProtectionType Template
+New-Label -Name "CUI-Specified" -DisplayName "CUI Specified" -Tooltip "NARA CUI Registry - specified" `
+          -EncryptionEnabled $true -EncryptionProtectionType Template
+
+# Publish EVERYWHERE from day one — Book 12's first pitfall is single-location publishing
+New-LabelPolicy -Name "OrgComp-Lab-Labels" -Labels "Public","Internal","CUI-Basic","CUI-Specified" `
+                -ExchangeLocation All -SharePointLocation All -OneDriveLocation All
+```
+
+## Step 2 — built-in SSN SIT + DLP in simulation mode
+
+A DLP policy keyed on the built-in **U.S. Social Security Number (SSN)**
+sensitive-information type that starts in **simulation**, per Book 12's
+discipline:
+
+```powershell
+New-DlpCompliancePolicy -Name "OrgComp-Lab-CUI-DLP" -Mode TestWithNotifications `
+    -ExchangeLocation All -SharePointLocation All -OneDriveLocation All
+New-DlpComplianceRule -Name "Block external CUI share" -Policy "OrgComp-Lab-CUI-DLP" `
+    -ContentContainsSensitiveInformation @{Name="U.S. Social Security Number (SSN)"; minCount="1"} `
+    -BlockAccess $true -BlockAccessScope PerUser -NotifyUser Owner
+```
+
+Seed SharePoint with test documents containing fake SSNs (`078-05-1120`
+style test values), wait for the simulation report, and review false
+positives **before** switching `-Mode` to `Enforce` — mislabeling at scale
+is the pitfall Book 12 calls out.
+
+## Step 3 — Key Vault Premium + rotating CMK
+
+```bash
+az group create -n rg-aan-purview-lab -l eastus
+az keyvault create -n kv-aan-lab-$RANDOM -g rg-aan-purview-lab --sku premium \
+    --enable-purge-protection true --enable-rbac-authorization true
+az keyvault key create --vault-name <vault> -n cmk-sql-tde --kty RSA-HSM --size 2048
+az keyvault key rotation-policy update --vault-name <vault> -n cmk-sql-tde --value '{
+  "lifetimeActions": [{"trigger": {"timeBeforeExpiry": "P30D"}, "action": {"type": "Rotate"}}],
+  "attributes": {"expiryTime": "P12M"}
+}'
+```
+
+Optional extension: point an Azure SQL test server's TDE protector at the
+key (`az sql server tde-key set --server-key-type AzureKeyVault`) and
+confirm key operations land in the vault's diagnostic logs — Book 12's
+AU-12-vs-AU-10 distinction made concrete.
+
+## Bind the evidence
+
+Three artifacts: the label policy export
+(`Get-LabelPolicy | ConvertTo-Json`), the DLP simulation report, and the
+vault's key-rotation policy JSON. Together they evidence the MP/SC-12/28
+closures Book 12 claims; score against the
+[slot 4 rubric](../assessment-rubrics.html#slot-4).
+
+## Teardown
+
+```powershell
+Remove-DlpCompliancePolicy -Identity "OrgComp-Lab-CUI-DLP"
+Remove-LabelPolicy -Identity "OrgComp-Lab-Labels"
+"Public","Internal","CUI-Basic","CUI-Specified" | ForEach-Object { Remove-Label -Identity $_ }
+```
+
+```bash
+az group delete -n rg-aan-purview-lab --yes --no-wait   # purge-protected vault ages out on its own
+```

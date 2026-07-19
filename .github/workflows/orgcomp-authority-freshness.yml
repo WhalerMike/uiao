@@ -1,0 +1,38 @@
+name: AAN Authority Freshness
+
+# The authority-deadline registry (docs/customer-documents/orgcomp-series/
+# orgcomp-authority-deadlines.yml) carries every binding federal date the AAN
+# series cites, each with its issuing-agency source and a last_verified date.
+#
+# Verification is a human/agent act against the issuing agency — it cannot be
+# automated reliably (agency pages move, redirect, and bot-wall). What CAN be
+# automated is making SKIPPED verification visible: this weekly job fails when
+# any entry's last_verified is older than 30 days. A red run means: open each
+# flagged source URL, confirm (or correct) the date, bump last_verified.
+# Corrections then propagate through check_authority_deadlines.py, which fails
+# any book still citing the old date.
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # Mondays 12:00 UTC
+  workflow_dispatch:
+
+jobs:
+  authority-freshness:
+    name: Fail if any federal deadline is unverified for >30 days
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Registry freshness (strict)
+        working-directory: 'docs/customer-documents/orgcomp-series'
+        run: python check_authority_deadlines.py --strict-fresh --max-age 30

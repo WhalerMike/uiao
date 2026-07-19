@@ -1,6 +1,6 @@
 # Automating AWS Landing Zones with Infoblox DDI
 
-A companion to **Vol VII / FedAAN — Infoblox Multi-Cloud DDI** (specifically
+A companion to **Vol VII / OrgComp — Infoblox Multi-Cloud DDI** (specifically
 `Vol_VII_Book_02` / [`02-aws.md`](../02-aws.md), the AWS chapter). Where the AWS
 chapter is the **deploy-oriented runbook**, this package is the **automation-grade
 layer**: how to add Infoblox DDI to an AWS Landing Zone as a modular, IaC-driven,
