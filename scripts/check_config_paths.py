@@ -46,6 +46,13 @@ SCAN_GLOBS: list[str] = [
 RETIRED_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("core/", re.compile(r"(?<![\w-])core/")),
     ("impl/", re.compile(r"(?<![\w-])impl/")),
+    # OrgComp rename (2026-07): the series tree moved to orgcomp-series/,
+    # the engine volume to uiao-orgcomp-integration/, and the training
+    # program to OrgComp-Training-Program/. Old roots must not reappear
+    # in config; published-site URLs redirect via per-page aliases.
+    ("federal-aan-series/", re.compile(r"federal-aan-series/")),
+    ("uiao-aan-integration/", re.compile(r"uiao-aan-integration/")),
+    ("AAN-Training-Program/", re.compile(r"AAN-Training-Program/")),
 ]
 
 

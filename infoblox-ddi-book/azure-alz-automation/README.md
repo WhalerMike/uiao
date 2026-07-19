@@ -1,6 +1,6 @@
 # Automating Azure Landing Zones with Infoblox DDI
 
-A companion to **Vol VII / FedAAN — Infoblox Multi-Cloud DDI** (specifically
+A companion to **Vol VII / OrgComp — Infoblox Multi-Cloud DDI** (specifically
 `Vol_VII_Book_02` / [`01-azure.md`](../01-azure.md), the Azure chapter). Where the Azure
 chapter is the **deploy-oriented runbook**, this package is the **automation-grade layer**:
 how to add Infoblox DDI to an Azure Landing Zone (ALZ) as a modular, IaC-driven,

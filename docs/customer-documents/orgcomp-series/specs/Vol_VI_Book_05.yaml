@@ -1,0 +1,393 @@
+# Deck spec — Vol VI Book 05, OrgComp Data Protection Deployment.
+# Distilled from docs/customer-documents/orgcomp-series/Vol_VI_Book_05_OrgComp_Data_Protection_Deployment.qmd
+# Schema + build command: BUILD-DERIVATIVES.md §1 (the host repo's deck generator).
+# Build:
+#   <deck generator> \
+#     --spec "docs/customer-documents/orgcomp-series/specs/Vol_VI_Book_05.yaml" \
+#     --out  "docs/customer-documents/orgcomp-series/Vol_VI_Book_05_OrgComp_Data_Protection_Deployment.pptx" \
+#     --date-code "2026-07-09 17:00 ET"
+deck:
+  title: "Data Protection Deployment"
+  subtitle: "The CUI sensitivity-label taxonomy, DLP policy packs, and agency-controlled key management — expressed as code"
+  series_kicker: "Federal AAN — Volume VI: Implementation"
+  date_code: "2026-07-09 17:00 ET"
+  journey:
+    - "Classify"
+    - "Restrict"
+    - "Encrypt"
+    - "Audit"
+  sources:
+    ms_purview_labels: "https://learn.microsoft.com/purview/sensitivity-labels"
+    ms_purview_dlp: "https://learn.microsoft.com/purview/dlp-learn-about-dlp"
+    ms_purview_powershell: "https://learn.microsoft.com/powershell/module/exchange/new-label"
+    ms_key_vault_cmk: "https://learn.microsoft.com/purview/double-key-encryption"
+    ms_purview_audit: "https://learn.microsoft.com/purview/audit-solutions-overview"
+    aws_macie: "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html"
+    aws_kms: "https://docs.aws.amazon.com/kms/latest/developerguide/overview.html"
+    nist_800_53: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+    nist_800_171: "https://csrc.nist.gov/pubs/sp/800/171/r3/final"
+    fedramp_20x: "https://www.fedramp.gov/20x/"
+
+slides:
+  # 1 -----------------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Data Protection Deployment — Volume VI Book 05, the
+      deployable realization of the Volume III Data Protection architecture. Frame
+      the core problem Volume III establishes: the payload, not the pipe, is the
+      unprotected surface. A network boundary can see a file move but cannot tell
+      whether it is a press release or a Privacy Act record, so it cannot enforce
+      "block external sharing of CUI." Classification, movement restriction, and
+      agency-controlled encryption are the closing mechanisms, and this book
+      deploys all three as code: the CUI label taxonomy, DLP policies as versioned
+      packs, and key management — customer-managed keys, rotation, revocation — as
+      infrastructure. Walk the journey strip — Classify, Restrict, Encrypt,
+      Audit — because it is the shape of the deployment: a machine-readable label
+      that travels with the payload, DLP that acts on the label, agency-held keys
+      that back the encryption, and an audit tier that proves it. Stress the
+      insight that makes deploying-as-code load-bearing rather than stylistic:
+      declaring the taxonomy as code is what makes the classification travel with
+      the payload and the enforcement reproducible — the label is the
+      machine-readable signal every downstream control, the DLP engine, the CASB,
+      and the Book VI-03 detections, acts on. Keep FedRAMP scope at Moderate. Note
+      the draft disclaimer: CSI Team work, not yet reviewed by the Agency CIO Office
+      or OIS, and the PowerShell shown is an illustrative pattern to adapt.
+
+  # 2 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE — THE PAYLOAD PROBLEM"
+    title: "The pipe can see the move but cannot read the payload"
+    callout: "A network boundary sees a file move but cannot tell a press release from a Privacy Act record. The label that travels with the payload is what makes 'block external sharing of CUI' enforceable."
+    callout_accent: navy
+    notes: >
+      This section establishes why data protection is a payload problem the
+      network layer cannot solve, and therefore why this book exists. Volume III's
+      argument is that the boundary constrains the pipe but the sensitive surface
+      is the payload: the boundary can observe that a file moved but has no way to
+      read whether the content is a public press release or a Privacy Act record,
+      so it cannot enforce a rule as basic as "block external sharing of CUI."
+      Three mechanisms close that gap — classification that attaches a
+      machine-readable label to the content, movement restriction driven by that
+      label, and encryption whose keys the agency alone controls. The deploy-as-
+      code discipline is what makes those mechanisms real rather than aspirational:
+      a taxonomy declared as code travels with the payload and reproduces
+      identically across the estate, where a set of portal-clicked labels drifts
+      per administrator and cannot be reviewed as a whole. The label is the signal
+      every downstream control consumes — the DLP engine that restricts movement,
+      the CASB that inspects sharing, and the Book VI-03 rules 05 and 06 that
+      watch for label removal and DLP override. Get the label right and the whole
+      payload-protection chain has something to act on; get it wrong and AC-4 and
+      SC-12 are policy statements no control enforces.
+
+  # 3 -----------------------------------------------------------------------
+  - type: table
+    kicker: "THE CUI TAXONOMY AS CODE"
+    title: "A declared hierarchy — reviewable, consistent across the estate"
+    headers: ["Tier", "Label", "Encryption / Access"]
+    rows:
+      - cells: ["Public", "none / Public", "none · unrestricted"]
+      - cells: ["Internal", "Internal", "none · agency domain (informational)"]
+      - cells: ["CUI-Basic", "CUI-Basic", "BYOK · agency domain (enforced)"]
+        accent: teal
+      - cells: ["CUI-Specified", "CUI-Specified — [Category]", "BYOK · named holders, time-limited · premium audit"]
+        accent: amber
+    callout:
+      text: "The taxonomy is a declared hierarchy, not a set of portal-created labels — so the protection settings at each tier are reviewable and consistent across the estate."
+      accent: navy
+    notes: >
+      This is the federal CUI taxonomy the book deploys, expressed as a declared
+      hierarchy so that the protection settings at each tier are reviewable and
+      consistent rather than clicked into a portal one label at a time. Read the
+      tiers as an escalation of protection. Public and Internal carry no
+      encryption; Internal scopes to the agency domain informationally. The two
+      CUI tiers are where the enforcement lives. CUI-Basic encrypts with
+      agency-held keys — bring-your-own-key — and enforces agency-domain access,
+      so the content is cryptographically bound to holders inside the boundary.
+      CUI-Specified is the sensitive tier: it carries a category qualifier, encrypts
+      with BYOK, scopes access to named holders on a time-limited basis, and
+      raises the audit level to premium so every access is recorded for the
+      long-tail forensics the detection layer depends on. The parent/child
+      structure — CUI-Specified as a parent with per-category children — is what
+      lets the agency express the NIST SP 800-171 CUI category set without
+      exploding the label list. Emphasize that declaring this as code is what
+      makes it auditable as a whole: an assessor can read the taxonomy and its
+      protection settings in one artifact, not reconstruct it from portal state.
+    vendor_sources: ["ms_purview_labels", "nist_800_171"]
+
+  # 4 -----------------------------------------------------------------------
+  - type: build-sequence
+    kicker: "DEPLOYMENT ORDER"
+    title: "Keys first, then labels, then DLP, then audit"
+    notes: "Fallback notes; each step carries its own presenter prose."
+    steps:
+      - label: "Keys"
+        sub: "CMK / BYOK"
+        accent: navy
+        detail: >
+          Deploy the key vault and customer-managed keys first — the labels'
+          encryption depends on them. Set the rotation policy and restrict key
+          access to a minimal, audited set (SC-12).
+        notes: >
+          Step one is keys, and the order is not arbitrary: the label encryption
+          for the CUI tiers binds to agency-held keys, so the key vault and its
+          customer-managed keys must exist before any encrypting label is
+          published. Deploy the vault, the CMKs, the rotation policy, and a
+          minimal, audited access policy as infrastructure — this is the SC-12
+          cryptographic key establishment and management control
+          operationalized as code. The reason agency-held keys matter is control:
+          the agency can rotate or revoke them, for instance after an
+          administrator with access departs, which a platform-managed key does not
+          allow. Getting keys first also prevents the failure mode where a label
+          is published pointing at a key that does not yet exist.
+      - label: "Labels"
+        sub: "taxonomy as code"
+        accent: teal
+        detail: >
+          Apply the label taxonomy as code, then the auto-labeling / publishing
+          policy scoped to a pilot before tenant-wide. The label is the signal
+          every downstream control reads (AC-4 / SC-28).
+        notes: >
+          Step two applies the label taxonomy as code and then the auto-labeling
+          and publishing policy, scoped to a pilot before it goes tenant-wide. The
+          label is the machine-readable classification that travels with the
+          payload — it is what the DLP engine, the CASB, and the Book VI-03
+          detections all read, so publishing it correctly is the linchpin of the
+          whole chain. Pilot scoping matters because auto-labeling accuracy is
+          bounded by the classifier, so a tenant-wide publish without a measured
+          pilot risks mislabeling at scale. The encrypting CUI labels bind to the
+          keys from step one, which is why this step cannot come first. This is the
+          AC-4 information-flow and SC-28 protection-at-rest foundation the later
+          steps build on.
+      - label: "DLP"
+        sub: "test / notify → enforce"
+        accent: amber
+        detail: >
+          Apply DLP policy packs in test/notify mode, measure false positives,
+          then enforce. The Book VI-03 rule 06 watches for abuse of the override
+          path once enforcing (AC-4 movement restriction).
+        notes: >
+          Step three applies the DLP policy packs, and the ramp mirrors the
+          detection library's tuning discipline: deploy in test/notify mode first,
+          measure the false-positive rate, and only then move to enforce. DLP that
+          enforces on an unmeasured policy pack blocks legitimate work and trains
+          users to route around it, so the notify-first ramp is mandatory. Once
+          the packs are enforcing, the Book VI-03 rule 06 — the DLP-override
+          pattern detection — watches for abuse of the override path, which is the
+          near-miss richness the behavioral commercial DLP would have flagged,
+          reconstructed in-boundary. This is the AC-4 information-flow enforcement
+          control: the label from step two is what the DLP acts on to restrict
+          movement of matched CUI content.
+      - label: "Audit"
+        sub: "premium tier + export"
+        accent: red
+        detail: >
+          Set the audit tier and immutable export so retention meets the
+          OMB M-21-31 event-logging tier and the Volume III audit-retention
+          rationale — the retention-cliff fix the detection layer depends on
+          for long-tail forensics (AU-10 non-repudiation).
+        notes: >
+          Step four sets the audit tier and the immutable export so retention
+          meets the OMB M-21-31 event-logging tier and the Volume III
+          audit-retention rationale. This is AU-10 non-repudiation and the
+          retention configuration the whole program depends on: the premium audit
+          tier records label and key events, and the immutable export is what
+          fixes the retention cliff the detection layer relies on for long-tail
+          forensics — a detection that fires today may need audit data from months
+          ago to investigate. Without the export and retention configuration, the
+          audit trail ages out before an investigation can use it, which silently
+          undermines both the data-protection closure and the Book VI-03 rules
+          that join against historical events. Audit is last in deployment order
+          but it is what makes every prior step provable.
+
+  # 5 -----------------------------------------------------------------------
+  - type: table
+    kicker: "DEPLOYABLE ARTIFACTS"
+    title: "Four artifacts, each with a multi-CSP substitution"
+    headers: ["Artifact", "Deployed example", "Multi-CSP substitution"]
+    rows:
+      - cells: ["Sensitivity-label taxonomy (CUI tiers, protection settings)", "Purview labels via PowerShell/Graph as code", "AWS Macie classifications; data-tagging policy"]
+        accent: navy
+      - cells: ["DLP policy packs (service/endpoint/network)", "Purview DLP as code", "Symantec / Forcepoint DLP policy-as-code"]
+      - cells: ["Key management (CMK/BYOK, rotation, access)", "Key Vault + CMK (Terraform)", "AWS KMS + CloudHSM as code"]
+        accent: teal
+      - cells: ["Audit-retention configuration", "Purview Audit tier + export as code", "CloudTrail Lake retention config"]
+        accent: amber
+    callout:
+      text: "Products are deployed examples; the substitution columns preserve the mechanism. Microsoft Purview is the Agency estate's coordinated surface, not an automatic default."
+      accent: navy
+    notes: >
+      These are the four deployable artifacts, each shown as its deployed example
+      on the Agency estate alongside a multi-CSP substitution that preserves the
+      mechanism. The sensitivity-label taxonomy is deployed as Purview labels via
+      PowerShell and Graph as code, substitutable with AWS Macie classifications
+      and a data-tagging policy. The DLP policy packs cover the service, endpoint,
+      and network vectors as code, substitutable with Symantec or Forcepoint
+      policy-as-code. Key management — the customer-managed keys, rotation, and
+      access policy — is deployed as Key Vault with CMK in Terraform, substitutable
+      with AWS KMS and CloudHSM. The audit-retention configuration is the Purview
+      Audit tier plus export as code, substitutable with CloudTrail Lake retention.
+      The framing to stress for an Agency audience: products are deployed examples of
+      a portable mechanism, and Microsoft Purview is a valid choice here because it
+      genuinely coordinates the label, DLP, key, and audit surface the estate
+      already runs — it is the coordinated surface, not an automatic default. The
+      substitution columns are what keep this a mechanism specification rather than
+      a vendor recommendation.
+    vendor_sources: ["ms_purview_dlp", "aws_macie", "aws_kms"]
+
+  # 6 -----------------------------------------------------------------------
+  - type: content
+    kicker: "THE KEY IS THE OTHER HALF"
+    title: "Agency-held keys turn a label into control the agency owns"
+    layout: columns
+    cards:
+      - title: "Agency rotates and revokes"
+        body: "CUI-tier label encryption binds to agency-held keys, so the agency can rotate or revoke them — for instance after an administrator with access departs."
+        accent: navy
+        status: "SC-12"
+      - title: "Declared as infrastructure"
+        body: "The key vault, its CMKs, rotation policy, and access policy are declared as infrastructure — the audit trail SC-28 and AU-10 expect."
+        accent: teal
+        status: "SC-28 / AU-10"
+      - title: "Custody is the trade"
+        body: "Agency-held keys shift the operational burden of key custody to the agency — rotation and recovery become the agency's responsibility, not the platform's."
+        accent: amber
+        status: "Honest limit"
+    callout:
+      text: "The label carries the classification with the file; the agency-held key is what makes the protection something the agency alone can rotate, revoke, and prove."
+      accent: navy
+    notes: >
+      The key material is the half of data protection that turns a classification
+      into control the agency actually owns. Sensitivity-label encryption for the
+      CUI tiers binds to agency-held keys, which is what lets the agency rotate or
+      revoke them independently of the platform — the canonical case is revoking
+      access after an administrator who held it departs, which platform-managed
+      keys cannot express. Declaring the key vault, its customer-managed keys, the
+      rotation policy, and the access policy as infrastructure is what gives the
+      SC-12 key-management closure and the SC-28 and AU-10 audit
+      trail an assessor expects — key events are recorded, not assumed. Be honest
+      about the trade in the third card: agency-held keys shift the operational
+      burden of key custody to the agency, so rotation and recovery become the
+      agency's responsibility rather than the platform's, and a lost or
+      mismanaged key is now an agency failure mode. That burden is the price of
+      control, and it is a deliberate acceptance, not an oversight — the whole
+      point of BYOK is that the agency, not the vendor, holds the ability to make
+      the protected content unreadable.
+    vendor_sources: ["ms_key_vault_cmk", "nist_800_53"]
+
+  # 7 -----------------------------------------------------------------------
+  - type: table
+    kicker: "CONTROLS OPERATIONALIZED"
+    title: "What each artifact proves, and the KSI that scores it"
+    headers: ["Control", "How this book deploys it", "KSI"]
+    rows:
+      - cells: ["AC-4", "Label-derived DLP movement restriction", "KSI-CNA"]
+        accent: navy
+      - cells: ["SC-12", "CMK/BYOK, rotation, revocation as code", "KSI-SVC"]
+      - cells: ["SC-28", "CMK-backed encryption of classified stores", "KSI-SVC"]
+        accent: teal
+      - cells: ["AU-10", "Premium audit tier + immutable export (agency-elected, above the Moderate baseline)", "KSI-MLA"]
+      - cells: ["MP-3", "Label-driven electronic marking of CUI; physical-media controls (MP-2/4/5) out of scope", "KSI-CNA"]
+        accent: amber
+    callout:
+      text: "Closure Necessity: without a machine-readable label and agency-held keys, AC-4 and SC-12 are policy statements no control enforces — and the CASB has no payload signal to act on."
+      accent: navy
+    notes: >
+      This mapping is the assessor-facing spine of the data-protection deployment.
+      AC-4 information-flow enforcement is operationalized by label-derived DLP
+      movement restriction — the DLP acts on the label to block CUI from leaving.
+      SC-12 and SC-12(1) key establishment and management are operationalized by
+      the CMK/BYOK rotation and revocation as code. SC-28 protection at rest is
+      operationalized by CMK-backed encryption of the classified stores. AU-10
+      non-repudiation is operationalized by the premium audit tier and immutable
+      export. MP-2 through MP-5 media protection are operationalized by
+      label-driven handling and marking. The Closure Necessity argument is the one
+      to leave with the audience: Volume III shows a network boundary cannot
+      enforce "block external sharing of CUI" because it cannot read the payload,
+      so without a machine-readable label taxonomy and agency-held keys, AC-4 and
+      SC-12 are policy statements no control enforces and the CASB has no payload
+      signal to act on. In FedRAMP 20x terms these roll up to KSI-CNA for the
+      flow-enforcement and media controls, KSI-SVC for the cryptographic service
+      configuration, and KSI-MLA where the audit tier lands. All closures are
+      self-assessed at FedRAMP Moderate pending SCA and PMO/AO review.
+    vendor_sources: ["nist_800_53", "fedramp_20x"]
+
+  # 8 -----------------------------------------------------------------------
+  - type: content
+    kicker: "HONEST LIMITS"
+    title: "Classifier accuracy, custody burden, and matched-only DLP"
+    layout: grid
+    cards:
+      - title: "Classifier-bounded"
+        body: "Auto-labeling accuracy is bounded by the classifier; manual-label discipline and the Book VI-03 mass-label-removal detection are the compensations."
+        accent: amber
+      - title: "Custody shifts to the agency"
+        body: "Agency-held keys make rotation and recovery the agency's responsibility, not the platform's — control bought with operational burden."
+        accent: amber
+      - title: "Matched content only"
+        body: "DLP pattern packs restrict movement of matched content; they do not reconstruct a content-fingerprint behavioral model (Book VI-03 rule 06 residual)."
+        accent: red
+      - title: "Illustrative, not drop-in"
+        body: "The PowerShell is a pattern to adapt — validate against current cmdlet schemas and the agency's CUI category set before deploying."
+        accent: neutral
+    callout:
+      text: "The label travels and the keys are the agency's — but classification accuracy, key custody, and matched-only DLP are the residuals the detection layer and manual discipline compensate for."
+      accent: amber
+    notes: >
+      Carry these limits into any assessment. First, auto-labeling accuracy is
+      bounded by the classifier, so mislabeled or unlabeled content is a real
+      failure mode; the compensations are manual-label discipline and the
+      Book VI-03 mass-label-removal detection, rule 05, which watches for content
+      being stripped of its protection. Second, agency-held keys shift the
+      operational burden of custody to the agency — rotation and recovery are now
+      the agency's responsibility, and this is control bought with operational
+      burden, a deliberate trade rather than a gap. Third, DLP pattern packs
+      restrict movement of matched content only; they do not reconstruct the
+      content-fingerprint behavioral model a commercial behavioral-DLP offers,
+      which is the residual Book VI-03 rule 06 partially covers by watching
+      override behavior. Fourth, the PowerShell in this book is an illustrative
+      pattern to adapt, not a drop-in script — the cmdlet schemas and the agency's
+      specific CUI category set must be validated before deployment. Be candid
+      that the deployment gives the agency a label that travels and keys it alone
+      holds, but classification accuracy, key custody, and matched-only DLP are
+      genuine residuals the detection layer and manual discipline compensate for
+      rather than eliminate.
+
+  # 9 -----------------------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "From a boundary that can't read the payload to a label that carries the classification"
+    layout: columns
+    cards:
+      - title: "Deploys Volume III"
+        body: "The taxonomy, DLP packs, and key management are the deployable realization of the Volume III Data Protection architecture."
+        accent: teal
+        status: "Volume III"
+      - title: "Watched by Book VI-03"
+        body: "Rules 05 and 06 watch this deployment for mass-label removal and DLP-override abuse — the label events are their signal."
+        accent: navy
+        status: "→ Book VI-03"
+      - title: "Placed and evidenced"
+        body: "Book VI-01 provides the landing zone and authorized boundary the key vault is deployed inside; label and key events emit to the Book VI-07 evidence contract."
+        accent: amber
+        status: "VI-01 / VI-07"
+    callout:
+      text: "The pipe cannot read the payload — so the agency deploys the label that carries the classification with the file and the keys it alone can rotate. That is payload control the agency owns."
+      accent: navy
+    notes: >
+      Close on the through-line. Data Protection Deployment turns the Volume III
+      argument — the payload, not the pipe, is the unprotected surface — into a
+      deployed reality: a machine-readable CUI label taxonomy that travels with
+      the content, DLP policy packs that act on the label to restrict movement,
+      and agency-held keys the agency alone can rotate and revoke, all expressed
+      as code and applied through the Book VI-00 pipeline. The deployment is the
+      deployable realization of the Volume III Data Protection architecture, it is
+      watched by the Book VI-03 rules 05 and 06 for mass-label removal and
+      DLP-override abuse — the label events are their signal — the key vault is
+      placed inside the authorized boundary by Book VI-01, and the label and key
+      events emit to the Book VI-07 evidence contract. Leave the audience with the
+      Closure Necessity: the pipe cannot read the payload, so the agency deploys
+      the label that carries the classification with the file and the keys it
+      alone holds, which is payload control the agency owns rather than inherits.
+      Keep scope at FedRAMP Moderate; every closure claim here is self-assessed
+      pending SCA and PMO/AO review.
+    vendor_sources: ["fedramp_20x", "nist_800_53"]

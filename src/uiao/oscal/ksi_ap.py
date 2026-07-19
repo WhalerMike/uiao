@@ -24,7 +24,7 @@ import yaml
 from uiao.oscal.version import OSCAL_VERSION
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
-_AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
+_OrgComp_NS = "https://uiao.gov/ns/oscal/aan-evidence"
 
 _MAPPING_PACKAGE = "uiao.adapters.fedramp_cr26_catalog"
 _MAPPING_FILE = "mappings/ksi-mapping.yaml"
@@ -130,8 +130,8 @@ def build_ksi_ap(
             "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
-                {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},
-                {"name": "mapping-snapshot-sha", "value": str(mapping.get("snapshot_sha", "")), "ns": _AAN_NS},
+                {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _OrgComp_NS},
+                {"name": "mapping-snapshot-sha", "value": str(mapping.get("snapshot_sha", "")), "ns": _OrgComp_NS},
                 {"name": "tool", "value": "UIAO AAN Conformance Adapter / ksi_ap", "ns": _FEDRAMP_NS},
                 {"name": "ksi-rule-count", "value": str(len(mapping_rows)), "ns": _FEDRAMP_NS},
             ],
@@ -201,7 +201,7 @@ def build_ksi_ap(
                 "include-all": {},
                 "props": [
                     {"name": "assessment-scope", "value": "fedramp-20x-gcc-moderate", "ns": _FEDRAMP_NS},
-                    {"name": "aan-series-parts", "value": "1-14", "ns": _AAN_NS},
+                    {"name": "aan-series-parts", "value": "1-14", "ns": _OrgComp_NS},
                 ],
             }
         ],
@@ -211,8 +211,8 @@ def build_ksi_ap(
                     "uuid": str(uuid.uuid4()),
                     "title": "UIAO AAN Conformance Adapter",
                     "props": [
-                        {"name": "tool-name", "value": "uiao oscal ksi-ar / ksi-ap / ksi-poam", "ns": _AAN_NS},
-                        {"name": "tool-version", "value": str(mapping.get("version", "0.1.0")), "ns": _AAN_NS},
+                        {"name": "tool-name", "value": "uiao oscal ksi-ar / ksi-ap / ksi-poam", "ns": _OrgComp_NS},
+                        {"name": "tool-version", "value": str(mapping.get("version", "0.1.0")), "ns": _OrgComp_NS},
                     ],
                     "uses-components": [],
                 }
@@ -239,8 +239,8 @@ def build_ksi_ap(
                     "uuid": str(uuid.uuid4()),
                     "title": "UIAO_137 KSI Mapping Companion",
                     "props": [
-                        {"name": "governing-doc", "value": str(mapping.get("governing_doc", "")), "ns": _AAN_NS},
-                        {"name": "adr", "value": str(mapping.get("adr", "")), "ns": _AAN_NS},
+                        {"name": "governing-doc", "value": str(mapping.get("governing_doc", "")), "ns": _OrgComp_NS},
+                        {"name": "adr", "value": str(mapping.get("adr", "")), "ns": _OrgComp_NS},
                     ],
                     "remarks": "Machine-readable KSI mapping companion (ksi-mapping.yaml) per ADR-061.",
                 },

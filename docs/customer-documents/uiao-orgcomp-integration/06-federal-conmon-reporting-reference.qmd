@@ -1,0 +1,264 @@
+---
+title: "Book 06 — Federal Continuous-Monitoring Reporting — Requirements Reference"
+subtitle: "UIAO — Reference Engine for the Federal Organization Compliance Series"
+doc-type: reference
+audience: "Program owners · ISSOs · assessors evaluating an evidence engine"
+family: uiao-orgcomp-integration
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-18
+aliases:
+  - /customer-documents/uiao-aan-integration/06-federal-conmon-reporting-reference.html
+
+---
+
+# Federal Continuous-Monitoring Reporting — Requirements Reference
+
+**Date Code:** 2026-07-09 10:48 ET
+**Status:** Draft reference (UIAO-side; for understanding and sharing)
+**Scope:** FCEB agency continuous-monitoring *reporting* obligations — what is reported, to whom, how fast, by what mechanism, and how it is protected.
+**Boundary lens:** FedRAMP / GCC Moderate, but the reporting landscape below is government-wide.
+
+---
+
+## 0. How to read this document
+
+"Continuous monitoring" is not one report to one place. A federal agency has a
+**fan-out of reporting obligations**, each with its own recipient, cadence,
+format, interface, and encryption expectation. This reference enumerates them and
+answers, per obligation: **what data · to whom · how fast · how (mechanism +
+interface + format) · to what destination · how encrypted.**
+
+A note on the words "real-time." Almost nothing in federal ConMon reporting is
+truly real-time. Be precise:
+
+| Term used here | Practical meaning | Where it actually applies |
+|---|---|---|
+| **Real-time** | seconds–minutes, streaming | Rare. Internal SIEM; the closest external case is telemetry streamed to CISA (≈15-min windows) |
+| **Near-real-time** | minutes–72 hours, automated | CDM object data to the agency dashboard; BOD 23-01 (72 h); FedRAMP 20x KSI (API-served latest status; 3-day machine validation) |
+| **Event-driven** | on occurrence, hard clock | Incident reporting (**1 hour** to CISA) |
+| **Periodic** | monthly / quarterly / annual | FedRAMP monthly ConMon deliverables; FISMA quarterly + annual (CyberScope) |
+
+The honest headline: **the ConMon *reporting* an agency owes is overwhelmingly
+near-real-time (72 h) or periodic (monthly/quarterly) — with a 1-hour event clock
+reserved for incidents.** True continuous streaming exists only for telemetry to
+CISA and as the FedRAMP 20x aspiration.
+
+![Federal ConMon reporting fan-out: an agency continuous-monitoring core (assessment results, POA&M, asset and vulnerability data, telemetry) reports outward to multiple destinations — the Authorizing Official internally, the CDM Agency Dashboard then the CISA Federal Dashboard, the CISA-operated CyberScope for FISMA, CISA NCPS/CLAW for TIC telemetry, CISA for incidents on a one-hour clock, the FedRAMP repository for 20x KSI evidence, and the CISA SBOM inbox for BOD 26-04 — each labeled with its cadence (one hour, fifteen minutes, seventy-two hours, monthly, quarterly) over a transport band marked TLS 1.2+ and FIPS 140-validated encryption. Blueprint diagram, OrgComp house style.](figs/uiao-diagram-06-federal-conmon-reporting.png)
+
+---
+
+## 1. Master reference — the federal ConMon reporting obligations
+
+| Requirement | Data reported | Destination (to whom) | Timing | Mechanism · interface · format | Encryption |
+|---|---|---|---|---|---|
+| **NIST 800-53 CA-7 / 800-137 ISCM** | Security/privacy status; control effectiveness; POA&M | **Authorizing Official** (internal) | Periodic (org-defined; typically monthly) | ConMon report / dashboard; increasingly OSCAL AR + POA&M JSON | Agency-internal; TLS 1.2+, FIPS 140 at rest |
+| **CDM Program** | Asset (HWAM/SWAM), config (CSM), vuln (VUL), identity (TRUST/BEHAVE/CRED/PRIV), network (BOUND, MNGEVT) | **CDM Agency Dashboard → CISA Federal Dashboard** (summarized) | Near-real-time to agency dashboard; summarized roll-up to CISA | Automated tool feeds → Elastic-based dashboard; object-level records | TLS in transit; FIPS 140 modules; agency-controlled |
+| **BOD 23-01** (asset visibility) | Asset discovery + vulnerability enumeration results | **CDM Agency Dashboard** (→ Federal Dashboard) | Discovery **≤7 days**; vuln enum **≤14 days**; ingest **≤72 h**; on-demand ≤72 h / results ≤7 days | Automated ingestion into the CDM dashboard | Same as CDM (TLS / FIPS 140) |
+| **FISMA CIO / IG / SAOP Metrics** | CIO metrics (ZT, MFA, logging, asset coverage), IG maturity, privacy | **OMB**, via the **CISA-operated CyberScope** application | Periodic — **quarterly + annual** | CyberScope web app: live data feeds *or* OMB-template **XML upload** | TLS to CyberScope; FIPS 140 |
+| **FISMA incident reporting** | Incident details; major-incident determination | **CISA** (and OMB OFCIO for major) | **Event — ≤1 hour** to CISA; major incident ≤1 h to CISA+OMB; Congress ≤7 days | CISA incident reporting portal / Federal Incident Notification Guidelines | TLS; FIPS 140 |
+| **TIC 3.0 telemetry** | Network/security logs; EINSTEIN sensor data | **CISA NCPS → CLAW** (Cloud Log Aggregation Warehouse) | Near-real-time streaming (**≈15-min** windows) | **Push model** — cloud-native (e.g., S3 push, Dataflow sink) to CLAW | **FIPS 140-2 in transit *and* at rest** (mandated) |
+| **OMB M-21-31** (event logging) | Event logs at maturity tiers EL0–EL3 | Retained at agency; **available to CISA/FBI on request** | Retention + on-request; advanced tiers enable sharing | Centralized log store; log formats per tier | FIPS 140 at rest; TLS in transit |
+| **FedRAMP traditional ConMon** | Monthly vuln scans (raw + POA&M), updated inventory, deviation requests | **Authorizing agency** (and FedRAMP repository) | Periodic — **monthly** | Deliverable package to the agency / FedRAMP repository | TLS 1.2+; FIPS 140 |
+| **FedRAMP 20x / CR26** (M-24-15 §V–VI) | Machine-readable **KSI** validations; POA&M; inventory | **FedRAMP** + authorizing agency | Near-real-time — **API-served latest status**; Moderate machine validation **≤3 days** | **API** (or static-URL status endpoint); **OSCAL / JSON**, "3PAO-validated" assertion | TLS 1.2+; FIPS 140-validated modules |
+| **BOD 25-01** (SCuBA) | Secure-cloud-baseline configuration assessment; deviations | **CISA** (+ agency governance) | Periodic + automated config assessment | ScubaGear/automated assessment output; config-deviation reporting | TLS; FIPS 140 |
+| **BOD 26-04** (VDR/VER) | SBOM (component inventory) + VEX (exploitability) | **CISA** (`sbom@cisa.dhs.gov`) | Event/periodic — by **Dec 7, 2026**, then continuous SBOM monitoring | Email/portal submission; **CycloneDX 1.6** SBOM + **OpenVEX** JSON | TLS in transit; FIPS 140 |
+| **BOD 22-01** (KEV) | Remediation status of Known Exploited Vulnerabilities | **CISA**, via CDM / agency | Near-real-time via CDM; KEV due dates | CDM vulnerability feed | Same as CDM |
+
+*Cell brevity is deliberate — the detail notes in §2 expand the load-bearing rows.*
+
+---
+
+## 2. Detail notes on the load-bearing destinations
+
+**CDM Agency Dashboard → Federal Dashboard.** CDM tools feed an agency-operated
+(Elastic-based) dashboard that holds *object-level* records near-real-time; the
+agency dashboard then pushes **summarized** data to CISA's **Federal Dashboard**
+for government-wide situational awareness. This is the backbone most other
+obligations ride on — BOD 23-01 asset/vuln data and BOD 22-01 KEV status both land
+here, and CDM now also feeds FISMA metrics.
+
+**CyberScope (FISMA).** A CISA-operated web application collecting each agency's
+FISMA data **quarterly and annually**, via **live data feeds** where the agency's
+tools support them, or an OMB-template **XML upload** where they don't. It carries
+the CIO metrics (zero trust, MFA, logging, asset coverage), the IG maturity
+assessment, and SAOP privacy metrics. Destination of record is **OMB**.
+
+**NCPS / CLAW (TIC 3.0 telemetry).** As TIC 3.0 moves traffic off the legacy
+EINSTEIN sensors, agencies must **push security telemetry to CISA's CLAW** (Cloud
+Log Aggregation Warehouse, managed by NCPS). CISA recommends a **push** model so
+the agency controls ingest rate; cloud-native patterns (AWS S3 push, GCP Dataflow
+sink on ≈15-minute windows) are documented. **FIPS 140-2 encryption is mandated
+both in transit and at rest** — this is the one obligation with an explicit
+at-rest crypto requirement in its reference architecture.
+
+**FedRAMP 20x (M-24-15).** The direction of travel: **machine-readable evidence
+through APIs**, OSCAL/JSON not PDFs, with KSI validations for Moderate running **at
+least every 3 days** and continuous reporting implemented as an **API endpoint or a
+static URL that serves the system's latest security status**. M-24-15 §V
+(automation) and §VI (continuous monitoring) are the authority; a FedRAMP
+authorization now carries only a "presumption of adequacy" sustained by a monthly
+continuous-compliance program.
+
+**Incident reporting.** The one hard, near-real-time external clock: agencies
+report incidents to **CISA within one hour** of identification by the CSIRT/SOC,
+and a **major incident within one hour** to CISA and OMB OFCIO, with a **7-day**
+report to Congress.
+
+---
+
+## 3. Encryption & transport — the cross-cutting rules
+
+Across every obligation above, the crypto expectations converge:
+
+- **In transit:** TLS **1.2 or higher** (FedRAMP baseline), using **FIPS
+  140-validated** cryptographic modules. CLAW/NCPS explicitly requires **FIPS
+  140-2** in transit.
+- **At rest:** FIPS 140-validated encryption (AES-256 typical), agency- or
+  CSP-managed keys (KMS). CLAW mandates FIPS 140-2 **at rest** as well.
+- **Module validation transition:** FIPS **140-2** certificates move to the NIST
+  **Historical List on Sep 21, 2026** — new procurement should rely on **FIPS
+  140-3**-validated modules (SC-13). Verify module status at procurement time.
+- **Mutual authentication:** feeds to CISA destinations (CLAW, CDM) use
+  agency-provisioned roles/credentials and mutual TLS where the interface supports
+  it; least-privilege service identities are the norm.
+
+The single sentence to remember: **TLS 1.2+ over FIPS 140-validated modules in
+transit, FIPS 140-validated encryption at rest — moving from 140-2 to 140-3 by
+late September 2026.**
+
+---
+
+## 4. OrgComp only vs. OrgComp + UIAO — per reporting requirement
+
+For each obligation: what the OrgComp architecture alone contributes toward the report,
+and what OrgComp + UIAO adds. The pattern is consistent — **OrgComp alone defines the
+program and produces the source data; UIAO makes it continuous, machine-readable,
+and reproducible.** Where transport, submission, or an incident clock is a human or
+data-plane act, UIAO *governs and emits* but does not perform it — noted in italics.
+
+| Requirement | OrgComp only | OrgComp + UIAO |
+|---|---|---|
+| **CA-7 / 800-137** | ConMon program + closed controls defined; AR assembled by hand, point-in-time | `uiao oscal bundle` auto-generates AR + POA&M each cycle; drift loop re-checks; AO brief generated; trend auto-flags (CA-7(3)) |
+| **CDM Program** | Supplies the source data — IPAM asset inventory (CM-8), Defender vuln, config baseline | Reconciles + normalizes object-level asset/config/vuln to canon, drift-detected — *ready for the agency's CDM feed; UIAO does not replace CDM ingestion* |
+| **BOD 23-01** | IPAM authoritative inventory + vulnerability-enumeration capability | Continuous inventory/vuln reconciliation; drives the ≤72 h ingestion deterministically — *rides the CDM Agency Dashboard* |
+| **FISMA / CyberScope** | Produces the underlying facts (ZT, MFA, logging, asset coverage) | Slot evidence + KSI verdicts supply the metric inputs continuously — *the quarterly/annual CyberScope submission stays an agency act* |
+| **FISMA incident (≤1 h)** | SIEM/XDR detection + IR playbooks (Vol III Bk 06; IR book) | Captures IR-drill + detection posture as slot-07/04 evidence — *UIAO is not in the notification path; the 1-hour report is a human SOC action* |
+| **TIC 3.0 / CLAW** | SD-WAN / SASE / SIEM generate the telemetry and TIC-3.0 PEP logs | Governs + attests the telemetry feed's config and health as evidence — *does not stream; the CLAW push is agency cloud-native tooling (ADR-066 lane discipline)* |
+| **M-21-31 logging** | Logging maturity (EL1–EL3) + retention architecture | Attests logging coverage/maturity as slot-04 evidence — *the logs live in the SIEM, not UIAO* |
+| **FedRAMP traditional ConMon** | Defines the monthly deliverables (vuln scans, POA&M, inventory) | Auto-produces the monthly POA&M / inventory / scan roll-up from evidence — *submission to the agency / repository stays a human act* |
+| **FedRAMP 20x / CR26** | KSI evidence model + rule set defined | **UIAO's core competency**: emits machine-readable KSI AR (OSCAL/JSON) servable via API / static URL; ≤3-day drift validation; + the CR26 46-indicator reconciliation (companion #3) |
+| **BOD 25-01 (SCuBA)** | SCuBA baseline defined; a ScubaGear scan is point-in-time | **ScubaDrift** dispositions (governed-exception / actionable / lapsed, with expiry), deterministic `--as-of` verdicts, gate semantics |
+| **BOD 26-04 (VDR/VER)** | SBOM pipeline defined (Vol IV Bk 02) | Syft → Grype → OpenVEX chain + `vdr-submission-record` auto-generated — *submission to CISA stays a human act* |
+| **BOD 22-01 (KEV)** | KEV remediation mapping (vulnerability-management book) | Reconciles KEV hits + computes remediation SLA aging, feeds CDM — *the remediation itself is gated at L3* |
+
+**The two honest patterns in this table:**
+
+1. **Reporting is read-only (L1–L2)** — it emits status and writes nothing to
+   production, so it runs continuously and automatically without touching the **L3
+   remediation ceiling**. An agency reports continuously and still keeps every
+   change human-approved.
+2. **By default, UIAO governs and emits; it does not file or stream.** For the CDM
+   feed, the CyberScope submission, the CLAW push, and the incident report, UIAO
+   supplies or normalizes the *data* and attests *posture* — but the
+   transport/submission stays the agency's data-plane tooling or a human action.
+   That boundary is deliberate (ADR-066 / ADR-092): the governance plane never
+   becomes the network data plane. **§5 explores whether a UIAO platform deployment
+   could take on the filing/transport itself — and it can, gated, for evidence
+   reports (though not for raw telemetry).**
+
+---
+
+## 5. Could UIAO file, stream, and transport? — current vs. OrgComp vs. UIAO Platform
+
+**Short answer: yes — for evidence and reports — with three conditions.** Filing an
+OSCAL package, submitting SBOM/VEX, pushing object-level data to CDM, serving KSI
+status over an API, or auto-filing an incident report are all *writes about the
+system to an external system*. On the actuation ladder that is an **actuation**, so
+a UIAO **Platform Server** or **SaaS** can perform it — it does **not** violate the
+lane discipline, because that discipline is about the **network** data plane
+(tunnels, routes, packets), not about transporting evidence. Three conditions:
+
+1. **Outward submissions are gated at L3.** Filing to CISA / OMB / a repository is
+   outward-facing and hard to reverse, so it is human-approved per submission — not
+   autonomous. (Serving read-only status over an API is different: it writes nothing,
+   so it runs continuously at L1–L2.)
+2. **Raw telemetry to CLAW stays native.** High-volume SIEM/EINSTEIN log streaming is
+   data-plane plumbing; UIAO should **govern and attest** that feed, not *become* the
+   pipe. This is the one row where "UIAO transports it" is the wrong answer.
+3. **The deployment model changes the accreditation lift** (see the note after the
+   table): a Server sits in-boundary; a SaaS must carry its own authorization.
+
+![UIAO as a gated reporting actuator: the UIAO evidence core has two outward paths — a read-only serve path (serving KSI status via API, continuous at L1–L2 with no approval) and a gated submission path (reporting-egress adapters for CDM, CyberScope, FedRAMP repository, CISA SBOM, and CISA incident) that passes through an L3 gate where a human approves each outward submission; CLAW telemetry is marked attest-only and stays on the native cloud pipe, not routed through UIAO; a bottom band contrasts a Platform Server (in-boundary, holds agency credentials, its own integrity in scope) with a SaaS (must carry its own FedRAMP authorization because agency evidence transits it), over a note that all feeds use TLS 1.2+ / FIPS 140 and outward submissions are gated at L3. Blueprint diagram, OrgComp house style.](figs/uiao-diagram-07-reporting-actuator.png)
+
+| Function (file / stream / transport) | Currently done (today) | Done with OrgComp | Potentially done with UIAO Platform |
+|---|---|---|---|
+| **Serve 20x KSI status (API)** | CSP hand-builds a bespoke status endpoint | KSI evidence model defined; static OSCAL produced | `uiao oscal` **serves** machine-readable KSI AR via API / static URL — **continuous, L1–L2**. Native fit; Server or SaaS |
+| **File monthly ConMon package** | Staff compile + upload the package monthly | Produces the artifacts (scans, POA&M, inventory) | Auto-assembles + **files** the OSCAL package to the repository/agency — **L3-gated**. Server preferred |
+| **Feed CDM Agency Dashboard** | CDM integrator tooling feeds object data | Supplies source data (IPAM asset, Defender vuln, config) | **Pushes** reconciled object-level records to the CDM API — scheduled/near-RT; complements the CDM integrator. Server |
+| **Submit FISMA metrics (CyberScope)** | Staff compile metrics, XML upload / data entry quarterly | Produces the underlying facts (ZT/MFA/logging/asset) | Generates the metric feed + **submits** via CyberScope feed/API — **L3-gated**, quarterly. Server |
+| **Stream telemetry (NCPS/CLAW)** | Native cloud forwarders (S3 push / Dataflow) / SIEM shippers | Generates the telemetry (SD-WAN / SASE / SIEM) | **Governs + attests** the feed's config/health — *keep the pipe native*. Operating the forwarder is possible but off-role (edges toward a data-plane position) |
+| **File incident report (≤1 h)** | SOC analyst manually reports to CISA via portal/email | Detection (SIEM/XDR) + IR playbooks | **Auto-files** the report to CISA once the SOC *declares* — **L3-gated** (human triggers; UIAO completes within the clock). Determination stays human. Server |
+| **Submit SBOM/VEX (BOD 26-04)** | Staff email CycloneDX + OpenVEX to `sbom@cisa.dhs.gov` | SBOM pipeline (Syft/Grype/OpenVEX) | Assembles + **files** the package to CISA — **L3-gated**. Server |
+
+> **Status update (2026-07-09).** The "Potentially done with UIAO Platform" column
+> is no longer purely hypothetical. The **reporting-egress actuator** is now built
+> as a dry-run-safe scaffold (ADR-128 · UIAO_208 · `uiao report` CLI): dry-run is the
+> default, every live submission is L3-gated, and there is no autonomous path. All
+> five destinations ship *unwired* (a live submission to an unwired endpoint is
+> blocked), and the `cisa-sbom` reference driver was demonstrated end-to-end against
+> a local test server (dry-run → blocked → **submitted**). Wiring a real government
+> endpoint remains gated on the boundary decision below. Full feature documentation:
+> integration companion **#7**.
+
+**Platform Server vs. SaaS — the deciding factor is where the evidence and the
+credentials live:**
+
+- **UIAO Platform Server (self-hosted, in the agency boundary).** The clean path to
+  enable filing/transport: UIAO runs *inside* the ATO boundary, holds the agency's
+  submission credentials, and files to CISA/OMB on the agency's behalf. The cost is
+  the risk already named in the decision-gate memo (companion #4, R2): an in-boundary
+  actuator's own integrity (SA-family, immutable audit, break-glass) is in assessment
+  scope, and must be designed before any submission op class goes live.
+- **UIAO SaaS (multi-tenant, UIAO-operated).** Also possible for evidence generation
+  and API-serving, but the moment agency ConMon evidence *transits* the SaaS on its
+  way to CISA, the SaaS is handling federal ConMon data and holding submission keys —
+  so it must carry **its own FedRAMP authorization** (a CSO in its own right, per the
+  roadmap's own framing), with data-residency and boundary controls. Higher lift;
+  best reserved for the read-only functions (generate, serve) unless/until it holds
+  that authorization.
+
+**The through-line:** enabling "file / stream / transport" turns UIAO from a pure
+governance/evidence plane into a **gated reporting actuator**. That is a legitimate,
+ladder-consistent extension — *for evidence reports, at L3, with the deployment's own
+accreditation handled* — and explicitly **not** an invitation to carry raw network
+telemetry or to file autonomously.
+
+---
+
+## 6. Honest caveats
+
+- **"Continuous" ≠ "real-time."** Most of these are near-real-time (72 h) or
+  periodic (monthly/quarterly). Do not promise a destination faster than its
+  interface actually runs.
+- **Self-assessment.** KSI/ConMon status an agency reports is self-assessed until
+  an independent assessor validates it; reporting cadence does not confer
+  independence.
+- **KSI count.** The FedRAMP 20x KSI set is **46 indicators in the official CR26
+  catalog**; some public guides cite ~61–63 across the same themes depending on
+  counting method. Report against the official catalog, and reconcile the internal
+  rule set to it (integration companion #3) before asserting coverage.
+- **Interfaces evolve.** CDM dashboard versions, CyberScope templates, CLAW
+  onboarding, and 20x API shapes change; verify the current interface spec at
+  reporting time rather than trusting a cached format.
+
+---
+
+## Sources
+
+- [CISA BOD 23-01 — Improving Asset Visibility and Vulnerability Detection](https://www.cisa.gov/news-events/directives/bod-23-01-improving-asset-visibility-and-vulnerability-detection-federal-networks) · [Implementation guidance](https://www.cisa.gov/news-events/directives/bod-23-01-implementation-guidance-improving-asset-visibility-and-vulnerability-detection-federal)
+- [CISA — CDM Agency and Federal Dashboards](https://www.cisa.gov/resources-tools/resources/cdm-agency-and-federal-dashboards) · [CDM Program](https://www.cisa.gov/resources-tools/programs/continuous-diagnostics-and-mitigation-cdm-program) · [CDM Technical Capabilities Vol 2](https://www.cisa.gov/sites/default/files/2023-08/CDM_Tech%20Volume2_v2.5.pdf)
+- [CISA — Federal Incident Notification Guidelines](https://www.cisa.gov/federal-incident-notification-guidelines)
+- [CISA TIC 3.0 Program Guidebook](https://www.cisa.gov/sites/default/files/2025-07/CISA%20TIC%203.0%20Program%20Guidebook%20v1.1.pdf) · [NCPS Cloud Interface Reference Architecture](https://www.cisa.gov/sites/default/files/publications/CISA_NCPS_Cloud_Interface_RA_Volume-1.pdf) · [Transferring data to CLAW (AWS)](https://aws.amazon.com/blogs/publicsector/how-to-transfer-data-to-the-cisa-cloud-log-aggregation-warehouse-claw-using-amazon-s3/) · [Reporting logs to NCPS (Google Cloud)](https://cloud.google.com/blog/topics/public-sector/reporting-google-cloud-logs-cisa-ncps)
+- [FedRAMP — M-24-15 §V Automation](https://www.fedramp.gov/2026/authority/m-24-15/automation/) · [§VI Continuous Monitoring](https://www.fedramp.gov/2026/authority/m-24-15/monitoring/) · [RFC-0006 20x Phase One KSIs](https://www.fedramp.gov/rfcs/0006/)
+- [FY25 CIO FISMA Metrics](https://www.cisa.gov/sites/default/files/2025-01/FY25-FISMA-CIO-Metrics-v1.1.pdf) · [OMB M-25-04 FY25 FISMA Guidance](https://bidenwhitehouse.archives.gov/wp-content/uploads/2025/01/M-25-04-Fiscal-Year-2025-Guidance-on-Federal-Information-Security-and-Privacy-Management-Requirements.pdf)

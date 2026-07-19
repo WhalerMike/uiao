@@ -109,7 +109,7 @@ REGISTRATION_REQUIRED_GLOBS: list[tuple[str, str]] = [
         # that render to the site filesystem and are unreachable from navigation --
         # with every gate green. Registering the glob first means the move cannot
         # land unregistered; today it matches nothing and costs nothing.
-        "docs/customer-documents/federal-aan-series/Vol_*_Book_*.qmd",
+        "docs/customer-documents/orgcomp-series/Vol_*_Book_*.qmd",
         "Federal AAN series book (authored directly as .qmd; must be wired into docs/_quarto.yml)",
     ),
     (

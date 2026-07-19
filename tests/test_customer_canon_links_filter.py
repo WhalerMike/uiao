@@ -16,7 +16,7 @@ REPO = Path(__file__).resolve().parents[1]
 FILTER = REPO / "docs" / "filters" / "customer-canon-links.lua"
 
 MARKDOWN = """\
-- [a](docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd)
+- [a](docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd)
 - [b](B1-3-rebuilding-boundary-blocked-analytics.qmd)
 - [c](src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/methodology.md)
 - [d](src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml)
@@ -29,7 +29,7 @@ MARKDOWN = """\
 """
 
 SITE = "https://whalermike.github.io/uiao/"
-BA = "customer-documents/federal-aan-series/boundary/"
+BA = "customer-documents/orgcomp-series/boundary/"
 BLOB = "https://github.com/WhalerMike/uiao/blob/main/"
 
 EXPECTED = [

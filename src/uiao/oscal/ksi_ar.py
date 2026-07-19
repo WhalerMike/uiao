@@ -56,7 +56,7 @@ import yaml
 from uiao.oscal.version import OSCAL_VERSION
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
-_AAN_NS = "https://uiao.gov/ns/oscal/aan-evidence"
+_OrgComp_NS = "https://uiao.gov/ns/oscal/aan-evidence"
 
 _SLOTS_PACKAGE = "uiao.adapters.fedramp_aan_catalog"
 _SLOTS_SUBPATH = "mappings"
@@ -284,7 +284,7 @@ def _build_ksi_observation(
         subject_props.append({"name": "nist-control", "value": nist, "ns": _FEDRAMP_NS})
     for art in artifact_refs:
         prop_name = "aan-artifact" if art.startswith("aan-") else "evidence-artifact"
-        subject_props.append({"name": prop_name, "value": art, "ns": _AAN_NS})
+        subject_props.append({"name": prop_name, "value": art, "ns": _OrgComp_NS})
 
     return {
         "uuid": str(uuid.uuid4()),
@@ -343,7 +343,7 @@ def _build_ksi_finding(
         "props": [
             {"name": "verdict", "value": state, "ns": _FEDRAMP_NS},
             {"name": "mapping-confidence", "value": confidence, "ns": _FEDRAMP_NS},
-            {"name": "evidence-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},
+            {"name": "evidence-basis", "value": "aan-conformance-adapter", "ns": _OrgComp_NS},
         ],
     }
 
@@ -503,11 +503,11 @@ def build_ksi_ar(
                 "uuid": str(uuid.uuid4()),
                 "title": f"AAN Slot {slot_id}: {slot_name}",
                 "props": [
-                    {"name": "slot-id", "value": str(slot_id), "ns": _AAN_NS},
-                    {"name": "slot-name", "value": slot_name, "ns": _AAN_NS},
-                    {"name": "ksi-category", "value": str(slot.get("ksi_category", "")), "ns": _AAN_NS},
-                    {"name": "nist-anchor", "value": str(slot.get("nist_anchor", "")), "ns": _AAN_NS},
-                    {"name": "artifact-count", "value": str(len(artifacts)), "ns": _AAN_NS},
+                    {"name": "slot-id", "value": str(slot_id), "ns": _OrgComp_NS},
+                    {"name": "slot-name", "value": slot_name, "ns": _OrgComp_NS},
+                    {"name": "ksi-category", "value": str(slot.get("ksi_category", "")), "ns": _OrgComp_NS},
+                    {"name": "nist-anchor", "value": str(slot.get("nist_anchor", "")), "ns": _OrgComp_NS},
+                    {"name": "artifact-count", "value": str(len(artifacts)), "ns": _OrgComp_NS},
                 ],
                 "remarks": (
                     f"AAN slot {slot_id} ({slot_name}) evidence binding file. "
@@ -528,10 +528,10 @@ def build_ksi_ar(
             "oscal-version": OSCAL_VERSION,
             "props": [
                 {"name": "fedramp-impact", "value": "Moderate", "ns": _FEDRAMP_NS},
-                {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _AAN_NS},
-                {"name": "mapping-snapshot-sha", "value": str(mapping.get("snapshot_sha", "")), "ns": _AAN_NS},
+                {"name": "assessment-basis", "value": "aan-conformance-adapter", "ns": _OrgComp_NS},
+                {"name": "mapping-snapshot-sha", "value": str(mapping.get("snapshot_sha", "")), "ns": _OrgComp_NS},
                 {"name": "tool", "value": "UIAO AAN Conformance Adapter / ksi_ar", "ns": _FEDRAMP_NS},
-                {"name": "slots-bound", "value": str(len(slots)), "ns": _AAN_NS},
+                {"name": "slots-bound", "value": str(len(slots)), "ns": _OrgComp_NS},
             ],
             "roles": [
                 {"id": "assessor", "title": "UIAO AAN Conformance Adapter (Automated)"},
@@ -567,7 +567,7 @@ def build_ksi_ar(
                     {"name": "not-satisfied-count", "value": str(not_satisfied_count), "ns": _FEDRAMP_NS},
                     {"name": "not-evaluated-count", "value": str(not_evaluated_count), "ns": _FEDRAMP_NS},
                     {"name": "total-ksi-rules", "value": str(len(mapping_rows)), "ns": _FEDRAMP_NS},
-                    {"name": "slots-bound", "value": str(len(slots)), "ns": _AAN_NS},
+                    {"name": "slots-bound", "value": str(len(slots)), "ns": _OrgComp_NS},
                 ],
                 "reviewed-controls": reviewed_controls,
                 "observations": observations,

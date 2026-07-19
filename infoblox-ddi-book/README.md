@@ -15,8 +15,8 @@ runbooks are directly comparable across platforms.
 > **Series membership:** this kit is also **Volume VIII — Multi-Cloud DDI
 > Landing-Zone Automation** of the Federal Application-Aware Networking series.
 > It is bound to the series through the compliance spine
-> (`aan-compliance-spine.yml`, `vol-8`) and the volume overview at
-> `docs/customer-documents/federal-aan-series/Vol_VIII_Book_00_FedAAN_DDI_Automation_Overview.qmd`,
+> (`orgcomp-compliance-spine.yml`, `vol-8`) and the volume overview at
+> `docs/customer-documents/orgcomp-series/Vol_VIII_Book_00_OrgComp_DDI_Automation_Overview.qmd`,
 > without relocating this kit — it remains independently distributable. The kit is
 > intentionally multi-CSP (a deliberate breadth exception to the series' current
 > GCC-Moderate scope); federal control closure is operated at the GCC-Moderate

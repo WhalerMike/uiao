@@ -1,0 +1,114 @@
+---
+title: "Book 11 — Vulnerability Management"
+subtitle: "OrgComp module: Defender VM scanning, KEV-driven prioritization, and the daily machine-readable evidence stream"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Module page for OrgComp Book 11: MDVM over the Arc agent channel, CISA KEV cross-reference with BOD 22-01 SLAs, Intune update rings, and the daily RA-5/SI-2 compliance record."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/books/book-11.html
+
+---
+
+**Source:** [Book_11 Vulnerability Management](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_11_OrgComp_Vulnerability_Management.qmd)
+· **Evidence slots:** 4 — telemetry (KSI-MLA); 5 — endpoint (KSI-PIY); 6 — security (KSI-CMT) · **Track modules:** [A4](../compliance-track.html#module-a4-telemetry-control-plane-slot-4), [A5](../compliance-track.html#module-a5-endpoint-control-plane-slot-5), [A6](../compliance-track.html#module-a6-security-configuration-change-control-plane-slot-6), [B6](../implementation-track.html#module-b6-detect-protect-books-1113)
+
+## Scope
+
+Turns the Arc-enrolled asset inventory into continuous vulnerability
+posture management: Microsoft Defender Vulnerability Management (MDVM)
+scanning over the existing Azure Monitor Agent channel, daily CISA KEV
+catalog cross-reference, BOD 22-01 SLA-prioritized patch queues, Intune
+Windows Update for Business rings, and a daily machine-readable compliance
+record. Thesis: federal vulnerability management fails at **enumeration,
+prioritization, and evidence** — earlier books fixed enumeration; this book
+fixes prioritization (KEV, not just CVSS) and evidence (continuous RA-5
+KSI artifacts).
+
+## Learning objectives
+
+- Explain the three FedRAMP assessor probes (scanner existence, documented
+  SLA, machine-readable proof of SLA adherence per CVE/machine) and why
+  evidence is the usual failure.
+- Apply BOD 22-01 timelines (remediate KEV-catalog CVEs by CISA's per-entry due date — no internet-facing/internal split) and explain why CVSS-only prioritization under-prioritizes
+  exploited vulnerabilities.
+- Describe how MDVM piggybacks on the Arc AMA channel so scan scope always
+  equals inventory — no new agents.
+- Script the daily KEV JSON pull, Defender VM API cross-reference, and
+  P0–P5 SLA-assigned patch queue.
+- Configure Intune WUfB rings (pilot/broad/production) with a KEV
+  expedited-update bypass and a patch-currency compliance policy tied to
+  Conditional Access.
+- Produce and archive the daily compliance-summary JSON as the RA-5/SI-2
+  evidence stream (Blob Storage, 90-day trend, Log Analytics workbook).
+
+## Key concepts
+
+- CISA KEV catalog JSON feed; BOD 22-01 mandatory timelines.
+- P0–P5 patch SLA tier table (BOD 22-01, NIST SP 800-40 Rev 4).
+- MDVM over Arc AMA; MMA fallback for Windows Server 2012 R2 (ESU via
+  Arc).
+- WUfB ring model plus expedited updates; WSUS coexistence.
+- SQL Server CU vs. GDR lifecycle; Arc `WindowsAgent.SqlServer`
+  auto-patching in maintenance windows.
+- Daily compliance JSON: `SLABreachedKEV` must be zero;
+  `PatchComplianceRate` ≥ 95%.
+
+## Implementation sequence
+
+1. Verify MDE onboarding for all Arc-enrolled machines (allow 24–48 hours
+   after enrollment).
+2. Stand up the daily KEV pull + Defender VM cross-reference producing the
+   prioritized patch queue and compliance summary.
+3. Configure three WUfB rings via Graph; define the KEV expedited path.
+4. Deploy the patch-currency compliance policy linked to Conditional
+   Access (30-day grace period).
+5. Inventory SQL Server versions/CUs; enable Arc auto-patching.
+6. Archive daily summaries to Blob Storage; 90-day trends; Log Analytics
+   workbook.
+
+## Compliance hooks
+
+RA-5, RA-5(2), RA-5(5), SI-2, SI-2(2), SI-5, CM-7, CM-7(1). CISA
+BOD 22-01; NIST SP 800-40 Rev 4. FedRAMP 20x KSI evidence targets for this
+implementation: scan currency (24-hour scan, 72-hour coverage-gap alert),
+patch SLA compliance ≥95%, KEV remediation timeliness.
+
+**Boundary context:** where the analytics this telemetry feeds are blocked
+at the boundary, see
+[B.1.3 — rebuilding boundary-blocked analytics in-boundary](../../boundary/B1-3-rebuilding-boundary-blocked-analytics.html)
+for the in-boundary rebuild patterns.
+
+## Prerequisites
+
+Book 01 (IPAM inventory), Books 06–08 (Arc enrollment/AMA, SQL
+inventory), Book 10's Sentinel/Log Analytics context. PowerShell, Graph
+API, Azure Automation.
+
+## Labs
+
+1. Download the live KEV JSON feed; cross-reference against a sample
+   finding set; assign P0–P5 priorities; verify a CVSS 7.5 KEV outranks a
+   CVSS 9.0 non-KEV.
+2. Build the three WUfB rings in a test Intune tenant; simulate an
+   expedited KEV update bypassing the ring schedule.
+3. Run the SQL version-inventory script; flag behind-CU and
+   end-of-support instances.
+
+## Pitfalls the book calls out
+
+- Assuming scanners flag KEV status automatically — NVD/CVSS and KEV are
+  unlinked; the cross-reference must be explicit.
+- Prioritizing solely by CVSS.
+- Enabling the Conditional Access non-compliance block on day one against
+  accumulated patch debt.
+- Declaring Arc enrollment complete without verifying MDE onboarding 48
+  hours later.
+
+## Vendor training
+
+[SC-200](../vendor-training-catalog.html#microsoft),
+[Tenable / Qualys](../vendor-training-catalog.html#security-operations)
+(alternative stacks),
+[CISA training](../vendor-training-catalog.html#federal-compliance).
+
+**Previous:** [Book 10](book-10.html) · **Next:** [Book 12 — Data Protection (Purview)](book-12.html)

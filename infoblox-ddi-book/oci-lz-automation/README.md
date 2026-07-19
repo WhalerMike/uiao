@@ -1,6 +1,6 @@
 # Automating OCI Landing Zones with Infoblox DDI
 
-A companion to **Vol VII / FedAAN — Infoblox Multi-Cloud DDI** (specifically the OCI
+A companion to **Vol VII / OrgComp — Infoblox Multi-Cloud DDI** (specifically the OCI
 chapter, [`04-oci.md`](../04-oci.md)). Where the OCI chapter is the **deploy-oriented
 runbook**, this package is the **automation-grade layer**: how to add Infoblox DDI to an
 OCI landing zone as a modular, Terraform-driven, drift-resistant component that layers
