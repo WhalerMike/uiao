@@ -338,7 +338,7 @@
 | [`docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 575 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 209 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/orgcomp-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/index.qmd) | 37 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/orgcomp-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/index.qmd) | 113 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/orgcomp-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/index.qmd) | 115 | Navigation hub | ✅ | 1/1 | — |
 
 ### `orgpath-multicloud/`
 
@@ -693,7 +693,7 @@
 | [`docs/customer-documents/reference-architecture/adapters.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/adapters.qmd) | 239 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/codebook.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/codebook.qmd) | 186 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/delegation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/delegation.qmd) | 134 | Authored | ✅ | — | — |
-| [`docs/customer-documents/reference-architecture/directory-migration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/directory-migration.qmd) | 140 | Authored | ✅ | — | — |
+| [`docs/customer-documents/reference-architecture/directory-migration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/directory-migration.qmd) | 142 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/reference-architecture/drift-walkthrough.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/drift-walkthrough.qmd) | 222 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/reference-architecture/dynamic-groups.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/dynamic-groups.qmd) | 132 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/gpo-cloud-governance-gaps.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/gpo-cloud-governance-gaps.qmd) | 232 | Authored | ✅ | — | — |
@@ -860,7 +860,7 @@
 | [`docs/customer-documents/uiao-orgcomp-integration/12-nist-icam-crosswalk.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-orgcomp-integration/12-nist-icam-crosswalk.qmd) | 322 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/uiao-orgcomp-integration/13-master-document-spec.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-orgcomp-integration/13-master-document-spec.qmd) | 348 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/uiao-orgcomp-integration/14-fedramp-cisa-update.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-orgcomp-integration/14-fedramp-cisa-update.qmd) | 266 | Substantial | ✅ | 1/1 | — |
-| [`docs/customer-documents/uiao-orgcomp-integration/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-orgcomp-integration/index.qmd) | 65 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/uiao-orgcomp-integration/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/uiao-orgcomp-integration/index.qmd) | 67 | Navigation hub | ✅ | 1/1 | — |
 
 ### `validation-suites/`
 
