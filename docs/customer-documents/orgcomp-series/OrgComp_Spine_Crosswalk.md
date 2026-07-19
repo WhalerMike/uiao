@@ -4,25 +4,25 @@
 
 ## Coverage (stated honestly)
 
-- This crosswalk is rendered from the **91 closure rows** the spine carries across **17 of 68 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
+- This crosswalk is rendered from the **97 closure rows** the spine carries across **18 of 69 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
 - It aggregates those closures into **53 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
 
 ## Crosswalk
 
 | Control | Title | Family | Where addressed (spine) | FedRAMP 20x KSI |
 |---|---|---|---|---|
-| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
+| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
 | AC-2(1) | Account Management | Automated System Account Management | AC | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
 | AC-2(3) | Account Management | Disable Accounts | AC | Vol IX Bk 05 | KSI-IAM |
 | AC-2(4) | Account Management | Automated Audit Actions | AC | Vol IX Bk 05 | KSI-MLA |
 | AC-3 | Access Enforcement | AC | Vol IX Bk 01, Vol IX Bk 05 | KSI-IAM |
 | AC-4 | Information Flow Enforcement | AC | Vol I Bk 07, Vol IX Bk 05 | KSI-CNA, KSI-IAM |
-| AC-5 | Separation of Duties | AC | Vol IX Bk 05 | KSI-IAM |
-| AC-6 | Least Privilege | AC | Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
+| AC-5 | Separation of Duties | AC | Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
+| AC-6 | Least Privilege | AC | Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
 | AC-17 | Remote Access | AC | Vol I Bk 07 | KSI-CNA |
 | AC-19 | Access Control for Mobile Devices | AC | Vol I Bk 07 | KSI-IAM |
 | AC-20 | Use of External Systems | AC | Vol IX Bk 05 | KSI-IAM |
-| AU-2 | Event Logging | AU | Vol VIII Bk 07, Vol IX Bk 04, Vol IX Bk 05 | KSI-MLA |
+| AU-2 | Event Logging | AU | Vol VIII Bk 07, Vol IX Bk 04, Vol IX Bk 05, Vol IX Bk 06 | KSI-MLA |
 | AU-3 † | Content of Audit Records | AU | Vol III Bk 07 | KSI-MLA |
 | AU-6 | Audit Record Review, Analysis, and Reporting | AU | Vol IX Bk 05 | KSI-MLA |
 | AU-6(1) | Automated Process Integration | AU | Vol III Bk 07 | KSI-MLA |
@@ -40,8 +40,8 @@
 | CM-8 † | System Component Inventory | CM | Vol III Bk 03, Vol VII Bk 01, Vol VIII Bk 06, Vol IX Bk 02, Vol IX Bk 05 | KSI-PIY |
 | IA-2 | Identification and Authentication (Organizational Users) | IA | Vol IX Bk 05 | KSI-IAM |
 | IA-3 † | Device Identification and Authentication | IA | Vol I Bk 07 | KSI-IAM |
-| IA-4 † | Identifier Management | IA | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
-| IA-5 | Authenticator Management | IA | Vol IX Bk 01, Vol IX Bk 05 | KSI-IAM |
+| IA-4 † | Identifier Management | IA | Vol I Bk 04, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
+| IA-5 | Authenticator Management | IA | Vol IX Bk 01, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
 | IA-5(2) | Authenticator Management | Public Key-Based Authentication | IA | Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
 | PS-4 † | Personnel Termination | PS | Vol I Bk 04 | — |
 | PS-5 † | Personnel Transfer | PS | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
@@ -117,3 +117,4 @@ Distinct controls the spine closes within each volume (a control closed in sever
 | book-day2-appreg | Vol IX Bk 03 | App Registration Governance (request · consent · secret/cert lifecycle) |
 | book-day2-telephony | Vol IX Bk 04 | Teams Telephony Catalog & Teams SCuBA Drift |
 | book-sn-saas | Vol IX Bk 05 | SaaS Integration Governance (the Entra app gallery as a governed SA-9 event) |
+| book-day2-iam | Vol IX Bk 06 | Identity & Access Governance (JML automation · certification campaigns · IAM evidence) |

@@ -4,8 +4,8 @@
 
 ## Coverage (stated honestly)
 
-- The spine records **91 control-closure claims** across **17 of 68 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
-- **11 of 91** claims carry a named falsifying test; **17 of 91** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
+- The spine records **97 control-closure claims** across **18 of 69 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
+- **11 of 97** claims carry a named falsifying test; **17 of 97** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
 
 ## Matrix
 
@@ -33,6 +33,12 @@
 | AC-3 | book-day2-helpdesk | 3 | Identity | kit-day2-servicenow | — *(no falsifying test bound yet)* |
 | AC-6 | book-day2-helpdesk | 3 | Identity | kit-day2-servicenow | — *(no falsifying test bound yet)* |
 | IA-5 | book-day2-helpdesk | 3 | Identity | kit-day2-servicenow | — *(no falsifying test bound yet)* |
+| AC-2 | book-day2-iam | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-5 | book-day2-iam | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-6 | book-day2-iam | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-4 | book-day2-iam | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| IA-5 | book-day2-iam | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AU-2 | book-day2-iam | 6 | Telemetry | — | — *(no falsifying test bound yet)* |
 | CM-8 | book-day2-landingzone | 2 | Network | kit-day2-servicenow | — *(no falsifying test bound yet)* |
 | CM-3 | book-day2-landingzone | 6 | Security / supply chain | kit-day2-servicenow | — *(no falsifying test bound yet)* |
 | CM-2 | book-day2-landingzone | 7 | Security / supply chain | kit-day2-servicenow | — *(no falsifying test bound yet)* |
