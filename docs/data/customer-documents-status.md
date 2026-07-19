@@ -38,7 +38,7 @@
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/TREE.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/TREE.qmd) | 228 | Authored | ✅ | — | — |
-| [`docs/customer-documents/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/index.qmd) | 180 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/index.qmd) | 182 | Navigation hub | ✅ | — | — |
 
 ### `adapter-specs/`
 
@@ -668,7 +668,7 @@
 | [`docs/customer-documents/orgpath-narrative/Book_29_CPT_05.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_29_CPT_05.qmd) | 68 | Brief | ✅ | ⚠️ 0/1 | 1 missing image ref(s) |
 | [`docs/customer-documents/orgpath-narrative/Book_29_CPT_06.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_29_CPT_06.qmd) | 93 | Brief | ✅ | ⚠️ 0/1 | 1 missing image ref(s) |
 | [`docs/customer-documents/orgpath-narrative/Book_29_CPT_07.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/Book_29_CPT_07.qmd) | 99 | Brief | ✅ | — | — |
-| [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 133 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/orgpath-narrative/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-narrative/index.qmd) | 138 | Navigation hub | ✅ | — | — |
 
 ### `platform/`
 
