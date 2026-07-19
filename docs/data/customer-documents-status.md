@@ -246,7 +246,7 @@
 | [`docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 574 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 208 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/index.qmd) | 36 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 106 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 107 | Navigation hub | ✅ | — | — |
 
 ### `learning/`
 
@@ -693,7 +693,7 @@
 | [`docs/customer-documents/reference-architecture/adapters.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/adapters.qmd) | 239 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/codebook.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/codebook.qmd) | 186 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/delegation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/delegation.qmd) | 134 | Authored | ✅ | — | — |
-| [`docs/customer-documents/reference-architecture/directory-migration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/directory-migration.qmd) | 134 | Authored | ✅ | — | — |
+| [`docs/customer-documents/reference-architecture/directory-migration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/directory-migration.qmd) | 140 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/drift-walkthrough.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/drift-walkthrough.qmd) | 222 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/reference-architecture/dynamic-groups.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/dynamic-groups.qmd) | 132 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/gpo-cloud-governance-gaps.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/gpo-cloud-governance-gaps.qmd) | 232 | Authored | ✅ | — | — |
