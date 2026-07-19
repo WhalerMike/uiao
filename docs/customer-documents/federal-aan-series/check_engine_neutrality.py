@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The published AAN corpus names no governance engine — UIAO included.
 
-Doctrine (2026-07-18, series owner): the Federal Compliance AAN Series is a
+Doctrine (2026-07-18, series owner): the Federal Organization Compliance (OrgComp) Series is a
 standalone offering. An agency that needs compliance now must be able to adopt
 the series without adopting — or even hearing about — any particular
 automation engine. Where a book needs an engine, it speaks in evidence-contract
