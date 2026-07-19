@@ -9,8 +9,7 @@
   - [OrgPath governance golden path](docs/orgpath-golden-path.html)
   - [Adapter authoring tutorial (30 min)](docs/adapter-authoring-tutorial.html)
   - [Substrate status](docs/substrate-status.html)
-- **Governance · OrgPath**
-  - [OrgPath governance golden path](docs/orgpath-golden-path.html)
+- [Governance · OrgPath](orgpath/index.html)
 - [Download](download/index.html)
 
 ## Findings
