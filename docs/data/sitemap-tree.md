@@ -496,7 +496,7 @@
 
 ### Explanation (understanding-oriented)
 
-- **UIAO OrgPath (16-document reading sequence)**
+- **UIAO OrgPath (29-book reading sequence)**
   - [UIAO OrgPath](customer-documents/orgpath-narrative/index.html)
   - [Book_01 — The Microsoft Identity and Governance Stack](customer-documents/orgpath-narrative/Book_01.html)
     - [The Governance Gap at the Center of the Microsoft Cloud](customer-documents/orgpath-narrative/Book_01_CPT_01.html)
