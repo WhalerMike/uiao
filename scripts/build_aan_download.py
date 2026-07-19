@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Federal AAN series download kit — at deploy time, never committed.
+"""Build the OrgComp (Federal Organization Compliance) series download kit — at deploy time, never committed.
 
 Mirrors build_scubadrift_download.py: the kit binary is assembled on site deploy
 into ``_site/download/`` and is not a committed artifact (AGENTS.md: no committed
@@ -151,7 +151,7 @@ def _index_md(members: dict[str, Path], date_code: str) -> str:
         elif _VOL_RE.match(Path(rest).stem):
             vols.setdefault(top, {}).setdefault(Path(rest).stem, set()).add(Path(rest).suffix)
     lines = [
-        "# Federal Compliance AAN Series — kit index",
+        "# Federal Organization Compliance (OrgComp) Series — kit index",
         "",
         f"Build date: {date_code}. Edition and scope notes: README.txt.",
         "",
@@ -176,7 +176,7 @@ def _index_md(members: dict[str, Path], date_code: str) -> str:
 
 def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int:
     members, notes = collect(site_root, src_root)
-    print("Federal Compliance AAN Series kit — build inputs")
+    print("Federal Organization Compliance (OrgComp) Series kit — build inputs")
     print("=" * 60)
     for n in notes:
         print(" ", n)
@@ -188,7 +188,7 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
     out_dir.mkdir(parents=True, exist_ok=True)
     zip_path = out_dir / ZIP_NAME
     readme = (
-        "Federal Compliance AAN Series (Federal Application-Aware Networking) — complete kit\n"
+        "Federal Organization Compliance (OrgComp) Series — complete kit\n"
         f"Build date: {date_code}\n\n"
         "FEDERAL EDITION. Written for any federal agency; no agency is named. The\n"
         "agency-specific edition is not distributed here.\n\n"
