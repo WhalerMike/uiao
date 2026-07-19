@@ -1,5 +1,5 @@
 ---
-title: "Book 02 — UIAO — Active-Participant Map for the AAN Architecture"
+title: "Book 02 — UIAO — Active-Participant Map for the OrgComp Architecture"
 subtitle: "UIAO — Reference Engine for the Federal Organization Compliance Series"
 doc-type: reference
 audience: "Program owners · ISSOs · assessors evaluating an evidence engine"
@@ -9,21 +9,21 @@ tiers_adopted: [1]
 lifecycle_review: 2027-01-18
 ---
 
-# UIAO — Active-Participant Map for the AAN Architecture
+# UIAO — Active-Participant Map for the OrgComp Architecture
 
 **Date Code:** 2026-07-09 10:48 ET
-**Status:** Draft (UIAO-side; not part of the AAN corpus)
+**Status:** Draft (UIAO-side; not part of the OrgComp corpus)
 **Boundary:** FedRAMP Moderate / GCC Moderate (Class C)
 
 ---
 
 ## 0. The question this answers
 
-The evidence contract (deliverable #1) lets UIAO be a *passive* consumer — AAN
+The evidence contract (deliverable #1) lets UIAO be a *passive* consumer — OrgComp
 emits, UIAO turns it into OSCAL. This document maps the other posture: where the
-UIAO **platform** can become an *active participant* in an AAN plane — observing
+UIAO **platform** can become an *active participant* in an OrgComp plane — observing
 live state, reconciling it against intended state, and (at a human-approved rung)
-acting on drift — **without becoming the AAN data plane.**
+acting on drift — **without becoming the OrgComp data plane.**
 
 That last clause is the whole discipline. Per `adr-092` / `adr-066`, UIAO is a
 governance OS: its adapters *observe, reconcile, emit*. They do **not** terminate
@@ -36,9 +36,9 @@ participation means governing the plane, never being it.
 
 ## 1. The participation model (three dials)
 
-Every UIAO ↔ AAN touchpoint is described by three dials:
+Every UIAO ↔ OrgComp touchpoint is described by three dials:
 
-1. **Adapter** — the registered connector to the AAN mechanism. AAN already has
+1. **Adapter** — the registered connector to the OrgComp mechanism. OrgComp already has
    reserved adapter slots waiting for exactly this:
    - `sdwan-fabric`, `service-mesh`, `token-issuer`, `sase-egress`,
      `flow-telemetry`, `posture-telemetry` (`adr-066`)
@@ -54,9 +54,9 @@ Every UIAO ↔ AAN touchpoint is described by three dials:
 
 ---
 
-## 2. The map — where UIAO plugs into each AAN plane
+## 2. The map — where UIAO plugs into each OrgComp plane
 
-| AAN plane / book | UIAO adapter | Mode | What UIAO does (active) | Rung | Data-plane line UIAO does NOT cross |
+| OrgComp plane / book | UIAO adapter | Mode | What UIAO does (active) | Rung | Data-plane line UIAO does NOT cross |
 |---|---|---|---|---|---|
 | **Transport / SD-WAN** (Vol I Bk 05/06) | `sdwan-fabric`, `flow-telemetry` | Observe→Reconcile→Emit | Read overlay/route state, reconcile to intended policy, emit `DRIFT-OVERLAY`, propose steering-policy change | L2 | Never terminates a tunnel or programs a route |
 | **Naming / addressing / IPAM** (Vol I Bk 01) | `ipam` / addressing-plane gate (`adr-108`) | Observe→Reconcile→Gated-actuate | Reconcile DNS/IPAM records to canon; propose record correction on drift | L3 | Never becomes the authoritative resolver |
@@ -71,7 +71,7 @@ Every UIAO ↔ AAN touchpoint is described by three dials:
 
 ## 3. OrgPath / LocPath — the two injection points that make participation *identity-aware*
 
-This is where UIAO's addressing planes turn AAN from network-aware into
+This is where UIAO's addressing planes turn OrgComp from network-aware into
 *application-and-identity-aware*. Two concrete seams already specified in canon:
 
 - **OrgPath → NAC admission (`UIAO_012` + `adr-073`).** OrgPath is the *third
@@ -79,14 +79,14 @@ This is where UIAO's addressing planes turn AAN from network-aware into
   OrgPath in `subjectAltName.OtherName`; the AAA server maps the OrgTree-* group
   to a RADIUS Access-Accept with VLAN + dACL + TrustSec SGT + posture profile.
   **Active participation:** UIAO reconciles the OrgPath→VLAN/SGT policy and, at
-  L3, proposes admission-policy corrections. AAN's NAC book gains a governed,
+  L3, proposes admission-policy corrections. OrgComp's NAC book gains a governed,
   identity-derived policy subject it does not currently name.
 - **LocPath → transport/TIC classification (`adr-102` / `UIAO_194`).** LocPath
   nodes carry `diaApproved`, `sdwanBreakoutType`, `ticCapabilityTier`,
   `networkZone`, `legacyMplsStatus`. **Active participation:** UIAO predicates
   transport policy on the `OrgPath × LocPath` matrix (who + where), reconciles a
   site's actual breakout against its `diaApproved` classification, and emits drift
-  when a site breaks out in a way its LocPath does not sanction. AAN's "DIA is a
+  when a site breaks out in a way its LocPath does not sanction. OrgComp's "DIA is a
   pipe" doctrine gains a governed site-classification source.
 
 Guardrail (`adr-102` §D7): UIAO *classifies*; it never programs SD-WAN controllers
@@ -96,7 +96,7 @@ and never sits in the 911 path. LocPath is a governance dimension, not a routing
 
 ## 4. A worked example — one admission decision, actively governed
 
-1. A device presents at a port (AAN Vol I Bk 02, EAP-TLS).
+1. A device presents at a port (OrgComp Vol I Bk 02, EAP-TLS).
 2. Its cert carries OrgPath in the SAN (`UIAO_012`).
 3. UIAO's `network-aaa` adapter **observes** the admission event and **reconciles**
    the requested VLAN/SGT against the OrgTree group the OrgPath resolves to.
@@ -124,8 +124,8 @@ A safe sequence that respects the L3 ceiling and lets an AO accredit each step:
 
 ## 6. Summary
 
-UIAO can be an active participant in **every** AAN plane, because AAN already
+UIAO can be an active participant in **every** OrgComp plane, because OrgComp already
 reserved the adapter slots and UIAO already specified the two identity-aware
 injection points (OrgPath at admission, LocPath at transport). "Active" tops out
 at L3 — propose, a human disposes — which is precisely what keeps UIAO a
-governance plane and not a second, ungoverned data plane inside AAN.
+governance plane and not a second, ungoverned data plane inside OrgComp.
