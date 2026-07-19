@@ -1,0 +1,740 @@
+# AAN briefing-deck spec — Vol III Book 03: Patch & Systems Management (multi-CSP SI-2/CM)
+# Distilled from docs/customer-documents/orgcomp-series/Vol_III_Book_03_OrgComp_Patch_Systems_Management.qmd
+# Schema + build command: BUILD-DERIVATIVES.md §1 (the host repo's deck generator).
+# Build:
+#   <deck generator> \
+#     --spec "docs/customer-documents/orgcomp-series/specs/Vol_III_Book_03.yaml" \
+#     --out "docs/customer-documents/orgcomp-series/Vol_III_Book_03_OrgComp_Patch_Systems_Management.pptx" \
+#     --date-code "2026-07-09 08:15 ET"
+deck:
+  title: "Patch & Systems Management: The SI-2 / CM Closure Plane"
+  subtitle: "Flaw remediation and configuration state across Microsoft, AWS, Oracle, VMware, and Red Hat — one contract, many stacks"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOL III BOOK 03"
+  date_code: "2026-07-09 08:15 ET"
+  journey:
+    - "Scope by service model"
+    - "Actuate platform-native"
+    - "Emit one record"
+    - "Prove on the join key"
+  # Book References table → deck source link-map (cited per-slide via vendor_sources)
+  sources:
+    cisa_bod_22_01: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+    cisa_bod_23_01: "https://www.cisa.gov/news-events/directives/bod-23-01-improving-asset-visibility-and-vulnerability-detection-federal-networks"
+    cisa_cdm: "https://www.cisa.gov/cdm"
+    fedramp_marketplace: "https://marketplace.fedramp.gov/"
+    azure_update_manager: "https://learn.microsoft.com/azure/update-manager/"
+    intune: "https://learn.microsoft.com/mem/intune/"
+    aws_ssm_patch: "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-patch.html"
+    aws_inspector: "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html"
+    oci_os_mgmt_hub: "https://docs.oracle.com/en-us/iaas/osmh/doc/home.htm"
+    oracle_ksplice: "https://docs.oracle.com/en-us/iaas/oracle-linux/ksplice/index.htm"
+    vmware_vlcm: "https://docs.vmware.com/en/VMware-vSphere/"
+    vmware_workspace_one: "https://docs.omnissa.com/"
+    redhat_satellite: "https://docs.redhat.com/en/documentation/red_hat_satellite"
+    redhat_ansible: "https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform"
+
+slides:
+  # 1 --- title -------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for the remediation half of the vulnerability program. The
+      Vulnerability Management book answered "what is unpatched" — continuous
+      scanning, CISA KEV cross-reference, risk-based SLAs, the machine-readable
+      compliance record — worked on the Microsoft/Defender estate. This book
+      answers the other half: "close it, and keep it closed," and it does so
+      across every FedRAMP Moderate platform the agency actually runs, not just
+      the Azure/Intune stack. Set the audience's expectation up front: a federal
+      agency under FedRAMP Moderate typically runs Azure Government / M365 GCC,
+      AWS GovCloud, Oracle Cloud Infrastructure, on-prem VMware, and Red Hat
+      across all of them. Each ships its own patch and systems-management stack.
+      The governing question the coordination doctrine poses is whether SI-2 is
+      closed by forcing every workload under one Microsoft plane, or by each
+      platform's native stack coordinated through a common contract — and if the
+      latter, what the contract is. The book's answer, which this deck walks:
+      actuation is platform-native; governance is unified. Note the draft
+      disclaimer — this is pre-decisional CSI Team material, not an approved Agency
+      position, and every stack selection is pending procurement review.
+    vendor_sources: ["host repo: docs/customer-documents/orgcomp-series/Vol_III_Book_03_OrgComp_Patch_Systems_Management.qmd"]
+
+  # 2 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART ONE — SCOPE"
+    title: "Scope SI-2 before you actuate it"
+    callout: "Actuation is platform-native; governance is unified. But first, decide where SI-2 even applies."
+    callout_accent: navy
+    notes: >
+      This section establishes the two scoping rules that must be settled before
+      any patch tool is even discussed. First, the shared-responsibility line
+      decides which layer the agency's SI-2 obligation even touches — it moves by
+      service model, and it carries the obligation with it, so the same control
+      applies to a whole guest OS in one deployment and to nothing at all in
+      another. Second, the handoff from the Vulnerability Management book fixes the
+      boundary between assessment and remediation — a scanner measures the gap; it
+      does not close it. Frame both as prerequisites the audience must accept
+      before the matrix makes sense: getting the tooling right on the wrong scope
+      wastes the effort and, worse, produces false compliance evidence, either by
+      over-claiming SI-2 on a layer the CSP owns or by leaving a real flaw open on
+      a layer the agency owns. The doctrine line the whole book defends —
+      actuation is platform-native, governance is unified — is the thesis; hold it
+      up here as the claim to be proved, and return to it at the close once the
+      actuation matrix and the evidence contract have earned it. Everything that
+      follows is either the actuation half or the governance half of that one
+      sentence.
+
+  # 3 --- content: shared-responsibility as SI-2 scoping rule ----------------
+  - type: content
+    kicker: "THE SI-2 SCOPING RULE"
+    title: "The shared-responsibility line is the SI-2 scoping rule"
+    layout: columns
+    cards:
+      - title: "IaaS"
+        body: "VM on any CSP: the agency patches the guest OS; the CSP patches hypervisor and host. Full guest-OS remediation is the agency's SI-2 scope."
+        accent: navy
+        status: "Agency patches OS"
+      - title: "PaaS"
+        body: "Managed DB, functions: the CSP patches OS and platform. The agency remediates only the app/config layers it controls."
+        accent: teal
+        status: "CSP patches platform"
+      - title: "SaaS"
+        body: "M365, managed apps: the CSP patches everything. The agency's SI-2 scope is tenant configuration, not patching."
+        accent: amber
+        status: "Config, not patch"
+    callout:
+      text: "Enumerate the estate by service model first. The line, not the location, decides — SI-2 falls only where the agency operates the OS or application."
+      accent: navy
+    notes: >
+      SI-2 (Flaw Remediation) does not apply uniformly to every layer of a cloud
+      service — it applies to the layer the customer operates, and the
+      shared-responsibility line moves that layer by service model. In IaaS the
+      agency owns full guest-OS remediation; the CSP owns the hypervisor and
+      host. In PaaS the CSP patches the OS and platform, and the agency remediates
+      only the app and config layers it actually controls. In SaaS the agency's
+      SI-2 scope collapses to tenant configuration — there is nothing for the
+      agency to patch. The scoping rule that falls out: enumerate the estate by
+      service model first, and assign SI-2 only where the agency operates the OS
+      or the application. Two symmetric assessment errors follow from ignoring
+      this. One is claiming SI-2 evidence for a fully managed PaaS database that
+      the CSP patches — over-claiming. The other, worse, is failing to claim SI-2
+      for an IaaS VM because "it's in the cloud," when the agency in fact owns
+      that patching — under-claiming, which leaves a real flaw open. Emphasize the
+      slogan: the line, not the location, decides.
+
+  # 4 --- content: scanner != remediation handoff ---------------------------
+  - type: content
+    kicker: "THE HANDOFF"
+    title: "Scanner ≠ remediation — the handoff from Vulnerability Management"
+    layout: grid
+    cards:
+      - title: "Assessment (RA-5) — the other book"
+        body: "Continuous scan measures the gap: which asset is missing which patch, cross-referenced to CISA KEV, ranked by a risk-based SLA. A scanner authors no state; it measures drift from one."
+        accent: teal
+      - title: "Actuation (SI-2) — this book"
+        body: "Closing the gap is platform-specific work performed by a patch-orchestration stack, not by the scanner. SI-2 is the act of applying the fix the scanner found."
+        accent: navy
+      - title: "The queue is the interface"
+        body: "Vulnerability Management emits a prioritized, KEV-weighted patch queue keyed to authoritative asset identity."
+        accent: amber
+      - title: "A contract, not a merge"
+        body: "This book's actuation stacks consume that queue per platform and emit a remediation-status record back. Neither book duplicates the other."
+        accent: red
+    callout:
+      text: "A scanner authors no state; it measures drift from one. SI-2 closes the gap the scanner found."
+      accent: navy
+    notes: >
+      This is the seam between the two books, and getting it wrong collapses two
+      distinct control families into one confused claim. The Vulnerability
+      Management book covers RA-5: continuous scanning that measures which asset
+      is missing which patch, cross-referenced to the KEV catalog and ranked by a
+      risk-based SLA. That is assessment, and it does not, by itself, apply a
+      single patch. The load-bearing sentence: a scanner authors no state, it
+      measures drift from one. SI-2 is the separate act of closing the gap the
+      scanner found, and closing it is platform-specific work performed by a
+      patch-orchestration stack. The handoff is deliberately a contract and not a
+      merge — Vulnerability Management emits a prioritized, KEV-weighted patch
+      queue keyed to authoritative asset identity; the actuation stacks in this
+      book consume that queue on their platforms and emit a remediation-status
+      record back the other way. Neither book duplicates the other's mechanism.
+      Present this as clean division of labor: one book measures, this book acts,
+      and the queue and the status record are the two directions of the interface.
+
+  # 5 --- content: the two load-bearing matrix facts ------------------------
+  - type: content
+    kicker: "TWO LOAD-BEARING FACTS"
+    title: "Why one Microsoft plane cannot close SI-2 everywhere"
+    layout: grid
+    cards:
+      - title: "No cross-platform tool below the OS"
+        body: "The hypervisor/firmware column has no OS-agnostic tool. ESXi is patched by vSphere Lifecycle Manager and nothing else; appliance firmware is patched by its vendor tooling. \"Everything under Arc\" cannot reach this column."
+        accent: red
+      - title: "Ksplice is a capability, not a brand"
+        body: "Oracle Ksplice applies kernel and user-space patches without a reboot — a genuine capability difference that changes the remediation-SLA math for high-availability workloads, because the gating maintenance window shrinks or disappears."
+        accent: teal
+      - title: "An OS overlay cannot patch below the OS"
+        body: "A cross-CSP overlay (Tanium/BigFix/Ivanti) normalizes OS-level output, but it does not replace the hypervisor/firmware column — vLCM and vendor firmware tooling remain."
+        accent: amber
+      - title: "So: coordinate, don't consolidate"
+        body: "The estate is genuinely multi-stack below the guest OS. The doctrine follows from physics, not preference: patch each platform natively, unify the evidence."
+        accent: navy
+    callout:
+      text: "You cannot patch an ESXi hypervisor with a guest-OS agent. Forcing an overlay past a support boundary breaks support and, often, physics."
+      accent: red
+    notes: >
+      These are the two properties of the actuation matrix that the book calls
+      load-bearing, because they are what defeats the "force everything under one
+      Microsoft plane" alternative. First, the hypervisor and firmware column has
+      no cross-platform tool: ESXi is patched by vSphere Lifecycle Manager and
+      nothing else, and a network appliance's firmware is patched by its own
+      vendor tooling — an "everything under Azure Arc" strategy simply cannot
+      reach below the guest OS. Second, Oracle Ksplice is a genuine capability
+      difference, not a branding one: it applies kernel and user-space patches
+      without a reboot, which changes the remediation-SLA math for
+      high-availability workloads because the maintenance window that normally
+      gates patching is smaller or absent. Both facts push the same conclusion:
+      the estate is genuinely multi-stack below the OS, so the doctrine to
+      coordinate rather than consolidate follows from physics, not preference. Be
+      precise on the overlay caveat we return to later — even a cross-CSP OS
+      overlay cannot patch below the OS, so vLCM and vendor firmware tooling
+      remain regardless. Ksplice and vLCM are vendor capability claims; the notes
+      cite Oracle's and VMware's own documentation.
+    vendor_sources: ["oracle_ksplice", "vmware_vlcm"]
+
+  # 6 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART TWO — ACTUATION"
+    title: "Actuation is platform-native"
+    callout: "Each platform patches with the stack its support model requires — Windows, Linux, macOS, hypervisor, firmware, and managed services."
+    callout_accent: navy
+    notes: >
+      Part Two is the actuation matrix itself: which stack closes SI-2 on which
+      platform, at which layer. The organizing claim is that each platform must
+      patch with the stack its own support model requires; forcing an overlay past
+      that boundary breaks the support relationship and, for the layers below the
+      guest OS, is physically impossible — you cannot patch an ESXi hypervisor with
+      a guest-OS agent. That is why the doctrine is to coordinate native stacks
+      rather than consolidate onto one plane: the multi-stack reality is imposed by
+      the platforms and by physics, not chosen for convenience. The next slide is a
+      reference table the audience is meant to read, not be walked through — this
+      is exactly the "dense reference table" case the authoring convention reserves
+      for reading rather than a click-through build. Orient them to read it two
+      ways: by platform row to see one CSP's full patch surface across every OS and
+      service layer, and by layer column to see how a single layer is handled
+      across platforms. Flag the two special cells they just saw motivated — the
+      hypervisor/firmware column that has no cross-platform tool, and the Ksplice
+      cell that changes the SLA math — so the table confirms the argument rather
+      than restating it cold.
+
+  # 7 --- table: the actuation matrix ---------------------------------------
+  - type: table
+    kicker: "THE ACTUATION MATRIX"
+    title: "SI-2 mechanism per CSP × OS × service model"
+    headers: ["Platform", "Windows", "Linux", "macOS / mobile", "Hypervisor / firmware", "Managed service"]
+    rows:
+      - cells: ["Microsoft", "WUfB / Autopatch; MECM/WSUS (legacy)", "Azure Update Manager (+ Arc)", "Intune", "—", "M365 / managed DB — CSP-patched"]
+      - cells: ["AWS", "SSM Patch Manager", "SSM Patch Manager", "—", "EC2 Image Builder (golden AMI)", "RDS / Lambda — CSP-patched"]
+      - cells: ["Oracle (OCI)", "OS Management Hub", "OS Mgmt Hub; Ksplice (zero-downtime)", "—", "—", "Autonomous DB — self-patching"]
+      - cells: ["VMware", "Workspace ONE", "Workspace ONE", "Workspace ONE", "vSphere Lifecycle Mgr (ESXi + firmware)", "—"]
+        accent: teal
+      - cells: ["Red Hat", "—", "Satellite; Ansible Automation Platform; Insights", "—", "—", "—"]
+      - cells: ["Cross-CSP overlay", "Tanium / BigFix / Ivanti — OS-agnostic, runs on any platform above; does NOT reach the hypervisor/firmware column", "", "", "", ""]
+        accent: amber
+    callout:
+      text: "Two cells are load-bearing: the hypervisor/firmware column (no cross-platform tool) and the Ksplice cell (zero-downtime kernel patching)."
+      accent: navy
+    notes: >
+      This is the reference core of the book — the SI-2 mechanism for each
+      combination of platform, guest OS, and service model. Read it by row for a
+      platform's full surface, or by column for a layer across platforms. On
+      Microsoft, Windows Update for Business and Autopatch handle Windows (MECM /
+      WSUS legacy), Azure Update Manager handles Linux over the Arc channel, and
+      Intune handles macOS and mobile. On AWS, SSM Patch Manager covers both
+      Windows and Linux, and golden-AMI rebuilds via EC2 Image Builder cover the
+      image layer. On Oracle OCI, OS Management Hub covers Windows and Linux, with
+      Ksplice adding zero-downtime kernel patching, and Autonomous Database
+      self-patches. On VMware, Workspace ONE handles the endpoint OS layer while
+      vSphere Lifecycle Manager owns ESXi and firmware. On Red Hat, Satellite plus
+      Ansible Automation Platform plus Insights actuate across whichever platform
+      Red Hat runs on. The cross-CSP overlay row — Tanium, BigFix, or Ivanti — is
+      an OS-agnostic option that runs on top of any platform above but explicitly
+      does not reach the hypervisor/firmware column. Every product here is a
+      vendor capability claim; the notes cite each vendor's own documentation and
+      the FedRAMP Marketplace for authorization status.
+    vendor_sources: ["azure_update_manager", "intune", "aws_ssm_patch", "oci_os_mgmt_hub", "oracle_ksplice", "vmware_vlcm", "vmware_workspace_one", "redhat_satellite", "redhat_ansible", "fedramp_marketplace"]
+
+  # 8 --- section -----------------------------------------------------------
+  - type: section
+    kicker: "PART THREE — GOVERNANCE"
+    title: "Governance is unified — the evidence contract"
+    callout: "Coordination is not a console; it is a record every stack must emit."
+    callout_accent: navy
+    notes: >
+      Part Three is the other half of the doctrine: governance is unified even
+      though actuation is not. The reframing to land here is that coordination is
+      not a shared console or a single pane of glass — the instinct to buy one
+      dashboard that "sees everything" is exactly the consolidation trap Part Two
+      ruled out. Coordination is instead a record every native stack must be able
+      to emit: a common contract, not a common tool. The next three slides build
+      that idea in order — first the record's fields (the eight-field compliance
+      contract), then the join key that turns five separate inventories into one
+      estate-wide compliance picture, then the coordination flow that carries a
+      remediation from native actuation all the way to CDM and the KSI pipeline.
+      Stress the property that makes this durable: the series mandates the record,
+      never a single vendor's tool, which is what keeps the doctrine tool-neutral
+      and procurement-flexible — any stack that can emit the contract qualifies,
+      and no stack is privileged for being able to. That neutrality is also what
+      lets the agency change vendors later without reopening the compliance
+      architecture.
+
+  # 9 --- table: the unified evidence-record contract -----------------------
+  - type: table
+    kicker: "THE EVIDENCE CONTRACT"
+    title: "The unified compliance record — fields every stack emits"
+    headers: ["Field", "Meaning"]
+    rows:
+      - cells: ["asset_id", "Authoritative name/address from the naming plane (IPAM/DDI) — the join key"]
+        accent: navy
+      - cells: ["platform", "Which CSP/stack produced the record"]
+      - cells: ["os", "Guest OS or appliance class"]
+      - cells: ["patch_state", "Current vs. required patch level"]
+      - cells: ["baseline_conformance", "Pass/fail against the CM-2 desired-state baseline"]
+      - cells: ["last_scan", "Timestamp of the assessment that produced the gap"]
+      - cells: ["sla_class", "Remediation SLA tier (KEV/exposure-weighted, BOD 26-04 model)"]
+      - cells: ["remediation_status", "Applied / scheduled / deferred (with POA&M reference)"]
+    callout:
+      text: "Every native stack — SSM, Update Manager, OS Management Hub, vLCM, Satellite — can produce these fields. The series mandates the record, never a vendor's tool."
+      accent: navy
+    notes: >
+      The unified compliance record is the contract that makes coordination real.
+      Every native stack must be able to emit these eight fields: asset_id, the
+      authoritative name or address from the naming plane, which is the join key;
+      platform, identifying which CSP stack produced the record; os, the guest OS
+      or appliance class; patch_state, current versus required patch level;
+      baseline_conformance, pass or fail against the CM-2 desired-state baseline;
+      last_scan, the timestamp of the assessment that produced the gap; sla_class,
+      the remediation SLA tier, KEV and exposure-weighted on the BOD 26-04 model;
+      and remediation_status — applied, scheduled, or deferred, with a POA&M
+      reference where deferred. The point to land: SSM, Azure Update Manager,
+      Oracle OS Management Hub, vSphere Lifecycle Manager, and Red Hat Satellite
+      can each produce these fields, so the contract does not privilege any one
+      vendor. The record lands in one evidence lake — Sentinel / Log Analytics —
+      flows into CISA CDM, and becomes the SI-2 / SI-2(2) evidence in the FedRAMP
+      20x KSI pipeline. Reiterate: the series mandates the record, never a single
+      vendor's console.
+    vendor_sources: ["cisa_bod_22_01", "cisa_cdm"]
+
+  # 10 --- content: the join key / CM-8 precondition ------------------------
+  - type: content
+    kicker: "THE JOIN KEY"
+    title: "CM-8 is the precondition for SI-2 at scale"
+    layout: grid
+    cards:
+      - title: "Five stacks, five inventories"
+        body: "Each native stack produces its own inventory. They become one compliance picture only when every remediation_status record is keyed to the same authoritative asset_id."
+        accent: navy
+      - title: "The IPAM/DDI key (CM-8)"
+        body: "The join key is the IP/hostname from the naming plane. Without it, an agency can answer 'is CVE-X remediated?' only per stack — which is not asset visibility."
+        accent: teal
+      - title: "This is the BOD 23-01 obligation"
+        body: "Asset visibility across the estate is a CISA directive, not an optional nicety. The join key is what turns per-stack answers into an estate answer."
+        accent: amber
+      - title: "SI-2 is downstream of the naming plane"
+        body: "Multi-platform SI-2 is a consequence of the naming-plane necessity argument, not an independent problem. Remove the join key and SI-2 becomes unprovable."
+        accent: red
+    callout:
+      text: "Five stacks produce five inventories; one authoritative asset_id makes them one compliance picture."
+      accent: navy
+    notes: >
+      This slide carries the book's central dependency: multi-platform SI-2 is a
+      downstream consequence of the naming-plane necessity argument, not an
+      independent problem. Five native stacks produce five inventories. They only
+      become one compliance picture if every remediation_status record is keyed to
+      the same authoritative asset_id — the IP or hostname from the naming plane,
+      which is CM-8. Without that join key an agency cannot answer "is CVE-X
+      remediated across the whole estate?"; it can only answer it per stack, and
+      per-stack answers are not asset visibility. This is precisely the CISA BOD
+      23-01 obligation on asset visibility and vulnerability enumeration, so it is
+      a directive, not a nicety. The consequence to voice clearly: remove the
+      actuation and SI-2 is open; remove the join key and SI-2 is unprovable. The
+      naming plane is therefore a precondition for provable remediation at scale,
+      which is why this book sits downstream of the IPAM/DDI necessity argument
+      the series makes elsewhere.
+    vendor_sources: ["cisa_bod_23_01"]
+
+  # 11 --- build-sequence: the coordination flow ----------------------------
+  - type: build-sequence
+    kicker: "THE COORDINATION FLOW"
+    title: "From native actuation to KSI evidence"
+    notes: >
+      Fallback notes: the coordination flow shows how platform-native actuation
+      becomes unified, provable SI-2 evidence in four steps — actuate, emit,
+      correlate, and route to CDM/KSI.
+    steps:
+      - label: "Actuate platform-native"
+        sub: "SI-2 per CSP × OS"
+        accent: navy
+        detail: >
+          Each platform's own orchestration stack applies the patch on its own
+          platform — SSM on AWS, Azure Update Manager on Azure, OS Management Hub
+          (and Ksplice) on OCI, vLCM on ESXi, Satellite/Ansible on Red Hat. The
+          flaw is closed by actuation, not by a scan or a policy document.
+        notes: >
+          Step one is the actuation itself. Each platform's native orchestration
+          stack applies the patch on its own platform: SSM Patch Manager on AWS,
+          Azure Update Manager over Arc on Azure, Oracle OS Management Hub and
+          Ksplice on OCI, vSphere Lifecycle Manager on ESXi, and Satellite or
+          Ansible on Red Hat. The doctrinal point: the flaw is closed only when the
+          platform-native stack applies the patch — no conformance scan, no policy
+          document, and no single-vendor console closes SI-2 on a genuinely
+          multi-cloud estate. This is the "remediation has no substitute" claim in
+          concrete form. Each stack named is a vendor capability; cite the vendor
+          docs and verify authorization on the FedRAMP Marketplace.
+        vendor_sources: ["aws_ssm_patch", "azure_update_manager", "oci_os_mgmt_hub", "oracle_ksplice", "vmware_vlcm", "redhat_satellite", "fedramp_marketplace"]
+      - label: "Emit normalized record"
+        sub: "the evidence contract"
+        accent: teal
+        detail: >
+          Each stack emits the unified compliance record — asset_id, platform, os,
+          patch_state, baseline_conformance, last_scan, sla_class,
+          remediation_status. Five different tools produce one identical field set.
+        notes: >
+          Step two normalizes the output. Immediately after actuation, each stack
+          emits the unified compliance record — the eight-field contract from the
+          evidence-contract slide: asset_id, platform, os, patch_state,
+          baseline_conformance, last_scan, sla_class, and remediation_status. This
+          is where five heterogeneous tools converge on one identical field set,
+          and it is the single most important design move in the book, because it
+          is what makes governance uniform without making actuation uniform. The
+          record is the coordination mechanism, not a shared console: SSM, Azure
+          Update Manager, Oracle OS Management Hub, vSphere Lifecycle Manager, and
+          Red Hat Satellite each speak the same record even though they share no
+          code and no vendor. Make the acceptance test explicit for the audience —
+          if a candidate stack cannot emit these fields, it is not a candidate,
+          full stop; the contract, not the console, is the gate. This is also what
+          lets the configuration-state mechanisms later feed the very same record
+          through baseline_conformance, so patch and config evidence arrive on one
+          spine.
+      - label: "Correlate on the join key"
+        sub: "IPAM/DDI asset_id (CM-8)"
+        accent: amber
+        detail: >
+          Records land in one evidence lake (Sentinel / Log Analytics) and are
+          correlated on the authoritative asset_id — the IP/hostname from the
+          naming plane. Five inventories become one estate-wide compliance picture.
+        notes: >
+          Step three is correlation, and it is where the join key earns its keep.
+          All the records from step two land in one evidence lake — Sentinel and
+          Log Analytics — and are correlated on the authoritative asset_id, the IP
+          or hostname from the naming plane, which is control CM-8. This is the step
+          that turns five separate inventories into a single estate-wide compliance
+          picture and lets the agency answer "is CVE-X remediated everywhere?" as
+          one question rather than five. Make the failure mode vivid: without a
+          shared asset_id this step is simply impossible — the records cannot be
+          joined, and the estate answer degrades to five per-stack answers that
+          nobody can reconcile, which is exactly the CISA BOD 23-01 asset-visibility
+          failure mode. This is also why the book frames multi-platform SI-2 as a
+          downstream consequence of the naming-plane necessity argument: the join
+          key is not a reporting convenience bolted on at the end, it is the
+          precondition that makes the whole coordination flow produce a single
+          truth. Remove the actuation and SI-2 is open; remove this join key and
+          SI-2 is unprovable.
+        vendor_sources: ["cisa_bod_23_01"]
+      - label: "Route to CDM / KSI"
+        sub: "SI-2 / SI-2(2) evidence"
+        accent: red
+        detail: >
+          The correlated record flows into CISA CDM and becomes the SI-2 / SI-2(2)
+          evidence in the FedRAMP 20x KSI pipeline (KSI-SVC, KSI-MLA; CM feeds
+          KSI-CMT) — attested from the record, not a single-tenant scan.
+        notes: >
+          Step four routes the correlated evidence to its destinations, closing the
+          loop from a native patch action to federal attestation. The single
+          correlated record flows into CISA CDM and becomes the SI-2 and SI-2(2)
+          evidence in the FedRAMP 20x KSI pipeline. Map the controls to the KSIs so
+          the audience can trace it: SI-2 and its enhancements feed KSI-SVC, Service
+          Configuration, and KSI-MLA, Monitoring, Logging, and Alerting; the CM
+          family — CM-2 and CM-6 feed KSI-CMT (Change Management), CM-8 feeds KSI-PIY (Policy and Inventory). The
+          critical property, and the reason the source book marks these controls as
+          not tool-attestable, is that each KSI is attested from the unified
+          compliance record and CDM, not from a single-tenant scanner output — the
+          evidence is a correlated cross-estate record, which no one scanner can
+          produce. Frame this as the payoff of the whole flow: platform-native
+          actuation in step one becomes provable, estate-wide, machine-readable
+          compliance here in step four, without ever forcing the estate onto one
+          plane. It is the multi-CSP generalization of the machine-readable
+          RA-5/SI-2 artifact the Vulnerability Management book produces for the
+          Microsoft estate. Keep the scope at FedRAMP Moderate throughout; never
+          claim a higher baseline even where a CSP region happens to hold one.
+        vendor_sources: ["cisa_cdm"]
+
+  # 12 --- content: configuration state (CM-2 / CM-6) -----------------------
+  - type: content
+    kicker: "CONFIGURATION STATE"
+    title: "SI-2 closes flaws; CM-2 / CM-6 keep them closed"
+    layout: grid
+    cards:
+      - title: "The desired-state analogue"
+        body: "Each platform has a desired-state mechanism that is the analogue of a patch baseline: Azure Machine Configuration, AWS SSM State Manager, VMware Aria Automation, Red Hat Ansible."
+        accent: navy
+      - title: "Identical discipline across platforms"
+        body: "Declare a baseline, detect drift, reconcile, and emit a baseline_conformance record. The mechanism differs by platform; the discipline does not."
+        accent: teal
+      - title: "Same evidence contract"
+        body: "The baseline_conformance field feeds the same unified compliance record as patch_state — configuration state is the other half of the closure plane."
+        accent: amber
+      - title: "Why it matters"
+        body: "A host patched and then drifted out of its hardened baseline has not stayed remediated. Patch level alone is not closure."
+        accent: red
+    callout:
+      text: "A patch applied to a host that then drifts out of its hardened baseline has not stayed remediated."
+      accent: navy
+    notes: >
+      SI-2 closes flaws, but CM-2 and CM-6 hold the configuration that keeps them
+      closed — this is the "keep it closed" half of the book's thesis. Each
+      platform has a desired-state mechanism that is the direct analogue of a
+      patch baseline: Azure Machine Configuration (guest configuration) on
+      Microsoft, SSM State Manager on AWS, Aria Automation on VMware, and Ansible
+      on Red Hat. The discipline is identical across all of them — declare a
+      baseline, detect drift, reconcile, and emit a baseline_conformance record —
+      and that record feeds the same unified evidence contract as patch_state. The
+      argument to make: a patch applied to a host that then drifts out of its
+      hardened baseline has not stayed remediated, so patch level alone is not
+      closure. Configuration state is the other half of the plane, and it is why
+      the evidence contract carries baseline_conformance alongside patch_state.
+      These are vendor capabilities; cite the platform docs.
+    vendor_sources: ["azure_update_manager", "aws_ssm_patch", "redhat_ansible"]
+
+  # 13 --- content: the cross-CSP overlay decision --------------------------
+  - type: content
+    kicker: "THE OVERLAY DECISION"
+    title: "Native stacks or a single cross-CSP overlay?"
+    layout: grid
+    cards:
+      - title: "Native per-platform"
+        body: "No extra license; inherits each CSP's support model and boundary. Cost: the evidence contract must normalize five separate outputs."
+        accent: teal
+      - title: "Single overlay (Tanium / BigFix / Ivanti)"
+        body: "One console, one normalized output. Cost: an added FedRAMP-authorized product in the boundary, an agent on every host, a support-model seam with each platform's own tooling."
+        accent: amber
+      - title: "Neither is doctrinally required"
+        body: "Both satisfy the coordination doctrine as long as the evidence contract is met. The choice follows the agency's footprint and procurement, not doctrine."
+        accent: navy
+      - title: "The overlay does not reach below the OS"
+        body: "An OS-level overlay cannot patch the hypervisor or firmware — vLCM and vendor firmware tooling remain regardless of the overlay decision."
+        accent: red
+    callout:
+      text: "Both paths satisfy the doctrine as long as the evidence contract is met. The overlay does not replace the hypervisor/firmware column."
+      accent: navy
+    notes: >
+      An agency may choose to run a single OS-agnostic management plane — Tanium,
+      BigFix, or Ivanti — on top of every platform instead of stitching native
+      stacks together, and the book presents this as an explicit trade rather than
+      a recommendation. Native per-platform costs no extra license and inherits
+      each CSP's support model and boundary, but requires the evidence contract to
+      normalize five separate outputs. A single overlay gives one console and one
+      normalized output, but adds a FedRAMP-authorized product to the boundary, an
+      agent on every host, and a support-model seam with each platform's own
+      tooling. Neither is doctrinally required; both satisfy the coordination
+      doctrine as long as the evidence contract is met, so the decision follows the
+      agency's platform footprint and procurement posture, not doctrine. Stress the
+      hard limit that recurs throughout the book: even with an overlay, an OS-level
+      agent cannot patch below the OS, so vLCM and vendor firmware tooling remain
+      regardless. The overlay is an alternative, not a requirement, and its
+      authorization must be verified on the FedRAMP Marketplace.
+    vendor_sources: ["fedramp_marketplace"]
+
+  # 14 --- content: accreditation substrate / hybrid-agent boundary ---------
+  - type: content
+    kicker: "THE ACCREDITATION SUBSTRATE"
+    title: "Every stack is a CSP service — its gate is FedRAMP"
+    layout: grid
+    cards:
+      - title: "FedRAMP is the gate"
+        body: "Every stack in the matrix is a CSP service, so its gate is FedRAMP. Verify each stack's authorization on the FedRAMP Marketplace at procurement."
+        accent: navy
+      - title: "Moderate is the ceiling"
+        body: "Never claim above Moderate. Where a CSP region holds a higher authorization, refer to it simply as FedRAMP-authorized — the series claims only what Agency's boundary targets."
+        accent: teal
+      - title: "The hybrid-agent boundary nuance"
+        body: "Azure Arc reaching an on-prem or AWS host, or SSM reaching a non-AWS host, creates an interconnection the authorization boundary must document — the agent channel crosses a boundary edge."
+        accent: amber
+      - title: "Document the interconnection"
+        body: "Note it as an external-service connection with its own agreement. Do not treat a reached host as silently in-boundary because a management agent touches it."
+        accent: red
+    callout:
+      text: "A management agent crossing a boundary edge is an interconnection to document — not a reason to treat the reached host as in-boundary."
+      accent: navy
+    notes: >
+      Every stack in the actuation matrix is a CSP service, so its accreditation
+      gate is FedRAMP: verify each stack's authorization status on the FedRAMP
+      Marketplace at procurement, and never claim above Moderate. This is the hard
+      scope parameter for the whole series — where an underlying CSP region or
+      service happens to hold a higher authorization, refer to it simply as
+      "FedRAMP-authorized" without naming the level, because the series claims
+      only what Agency's boundary targets, which is Moderate. Then the boundary nuance
+      that recurs and is easy to get wrong: a hybrid agent — Azure Arc reaching an
+      on-prem or AWS host, or SSM reaching a non-AWS host — creates an
+      interconnection the authorization boundary must document, because the agent
+      channel crosses a boundary edge. Note it as an external-service connection
+      with its own agreement; do not treat the reached host as silently in-boundary
+      just because a management agent touches it. This is the accreditation
+      discipline that keeps the multi-CSP estate honest about where its boundary
+      actually runs.
+    vendor_sources: ["fedramp_marketplace"]
+
+  # 15 --- content: closure necessity ---------------------------------------
+  - type: content
+    kicker: "CLOSURE NECESSITY"
+    title: "Remediation has no substitute"
+    layout: columns
+    cards:
+      - title: "No scan closes it"
+        body: "No conformance scan, no policy document, and no single-vendor console closes SI-2 on a genuinely multi-cloud estate."
+        accent: navy
+        status: "Assessment ≠ closure"
+      - title: "Actuation closes it"
+        body: "The flaw is closed only when the platform-native orchestration stack applies the patch on its own platform."
+        accent: teal
+        status: "SI-2 actuated"
+      - title: "The key makes it provable"
+        body: "The estate is provably closed only when each stack emits a status record keyed to authoritative asset identity."
+        accent: amber
+        status: "SI-2 provable"
+    callout:
+      text: "Remove the actuation and SI-2 is open; remove the join key and SI-2 is unprovable."
+      accent: navy
+    notes: >
+      This is the book's closure-necessity statement — the argument that no
+      alternate path substitutes for the two named mechanisms, presented here as a
+      three-card progression from "assessment is not closure" through "actuation
+      closes it" to "the key makes it provable." Say it plainly: no conformance
+      scan, no policy document, and no single-vendor console closes SI-2 on a
+      genuinely multi-cloud estate. Scanning, policy, and dashboards all describe
+      the gap; none of them apply a patch. The flaw is closed only when the
+      platform-native orchestration stack applies the patch on its own platform,
+      and the estate is provably closed only when each stack emits a
+      remediation-status record keyed to authoritative asset identity. The two-part
+      slogan to leave the audience with is the spine of the whole book: remove the
+      actuation and SI-2 is open; remove the join key and SI-2 is unprovable —
+      openness and unprovability are two different failures, and the estate needs
+      both mechanisms to avoid them. This is exactly why CM-8, the join key, and
+      SI-2, the actuation, are the two closure-necessity anchors — the dagger rows
+      — in the authorities table on the next slide: each is a mechanism with no
+      alternate closure path, so neither can be waived or compensated. Keep the
+      scope at FedRAMP Moderate throughout.
+
+  # 16 --- table: authorities closed here -----------------------------------
+  - type: table
+    kicker: "AUTHORITIES CLOSED HERE"
+    title: "NIST SP 800-53 Rev 5 control closure"
+    headers: ["Control", "Title", "Closing mechanism (function, not product)", "KSI"]
+    rows:
+      - cells: ["CM-8 †", "System Component Inventory", "IPAM-keyed asset identity as the join key correlating all native-stack inventories", "KSI-PIY"]
+        accent: navy
+      - cells: ["RA-5", "Vulnerability Monitoring & Scanning", "Assessment handoff FROM the Vulnerability Management book (scan measures the gap; this book actuates)", "KSI-MLA"]
+        accent: teal
+      - cells: ["CM-2", "Baseline Configuration", "Desired-state baseline per platform (Azure Machine Config, SSM State Manager, Aria, Ansible)", "KSI-CMT"]
+      - cells: ["CM-6", "Configuration Settings", "Drift detection + reconciliation against the baseline; drift record to the evidence contract", "KSI-CMT"]
+      - cells: ["SI-2 †", "Flaw Remediation", "Platform-native patch orchestration per CSP × OS (Intune/Arc, SSM, OS Mgmt Hub/Ksplice, vLCM, Satellite/Ansible)", "KSI-SVC, KSI-MLA"]
+        accent: navy
+      - cells: ["SI-2(2)", "Automated Flaw Remediation Status", "Machine-readable remediation-status record emitted by each native stack into the unified evidence contract", "KSI-SVC, KSI-MLA"]
+      - cells: ["SI-2(3)", "Time to Remediate Flaws and Benchmarks for Corrective Actions", "Remediation-SLA class per asset, keyed to KEV/exposure (BOD 26-04 four-variable model)", "KSI-SVC"]
+    callout:
+      text: "All rows are FedRAMP Moderate. † = closure-necessity anchor — no alternate closure path. RA-5 is a handoff row, not closed here."
+      accent: navy
+    notes: >
+      This is the control-closure ledger, generated from the series compliance
+      spine, not hand-maintained. Walk the anchors first: CM-8 and SI-2 both carry
+      the dagger, meaning they are closure-necessity anchors with no alternate
+      closure path — the join key and the actuation, exactly the two mechanisms
+      from the previous slide. CM-8 is the IPAM-keyed asset identity that
+      correlates all native-stack inventories. SI-2 is platform-native patch
+      orchestration per CSP and OS. SI-2(2) is the machine-readable status record
+      each stack emits into the evidence contract; SI-2(3) is the remediation-SLA
+      class per asset, keyed to KEV and exposure on the BOD 26-04 four-variable
+      model. CM-2 and CM-6 are the configuration-state half — baseline and drift
+      reconciliation. RA-5 appears deliberately as a handoff row: the assessment
+      is the Vulnerability Management book's, and this book closes the SI-2 and CM
+      families that act on it. Every row is FedRAMP Moderate — do not read any of
+      this as a High claim. The KSI column shows how each control feeds the
+      FedRAMP 20x pipeline, attested from the record rather than a scan.
+    vendor_sources: ["cisa_bod_22_01"]
+
+  # 17 --- content: FedRAMP 20x KSI alignment -------------------------------
+  - type: content
+    kicker: "FEDRAMP 20x KSI ALIGNMENT"
+    title: "Attested from the record, not a single-tenant scan"
+    layout: columns
+    cards:
+      - title: "SI-2 family → KSI-SVC, KSI-MLA"
+        body: "Flaw remediation and its enhancements feed Service Configuration and Monitoring/Logging/Alerting KSIs."
+        accent: navy
+        status: "Service + telemetry"
+      - title: "CM family → KSI-CMT"
+        body: "CM-2 and CM-6 feed KSI-CMT (Change Management); CM-8 feeds KSI-PIY (Policy and Inventory) — from the same unified compliance record."
+        accent: teal
+        status: "Config mgmt"
+      - title: "Why 'not tool-attestable'"
+        body: "Each KSI is attested from the coordination record and CDM, not a single-tenant scan — the multi-CSP generalization of the Microsoft-estate artifact."
+        accent: amber
+        status: "Record, not scan"
+    callout:
+      text: "Same record every native stack emits — routed through the coordination contract and CDM into the KSI pipeline. Scope stays FedRAMP Moderate."
+      accent: navy
+    notes: >
+      This slide ties the control closure to the FedRAMP 20x KSI pipeline. SI-2
+      and its enhancements feed KSI-SVC, Service Configuration, and KSI-MLA,
+      Monitoring, Logging, and Auditing; CM-2 and CM-6 feed KSI-CMT (Change
+      Management) and CM-8 feeds KSI-PIY (Policy and Inventory). In every case the KSI is attested from the
+      unified compliance record, the same record every native stack emits, and not
+      from a single-tenant scan — which is precisely why the source book marks
+      these controls as not tool-attestable, and why the evidence routes through
+      the coordination contract and CDM rather than a scanner output. This is the
+      multi-CSP generalization of the machine-readable RA-5/SI-2 artifact the
+      Vulnerability Management book produces for the Microsoft estate: same idea,
+      generalized from one stack to five. Hold the scope at FedRAMP Moderate;
+      never map any KSI to a High baseline. Stack selections remain pending
+      procurement review and each stack's authorization must be verified on the
+      FedRAMP Marketplace.
+    vendor_sources: ["cisa_cdm", "fedramp_marketplace"]
+
+  # 18 --- closing ----------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "One contract, many stacks — SI-2 closed and provable"
+    layout: columns
+    cards:
+      - title: "Actuate natively"
+        body: "SI-2 is closed by each platform's native stack, because no single plane reaches below every guest OS. Physics, not preference."
+        accent: navy
+        status: "Platform-native"
+      - title: "Govern uniformly"
+        body: "One evidence contract, keyed to authoritative asset identity, turns five inventories into one provable compliance picture."
+        accent: teal
+        status: "One record"
+      - title: "Prove into CDM / KSI"
+        body: "The record flows to CDM and the FedRAMP 20x KSI pipeline — SI-2 / SI-2(2) attested from the record, at Moderate."
+        accent: amber
+        status: "Provable"
+    callout:
+      text: "Remove the actuation and SI-2 is open; remove the join key and SI-2 is unprovable. Stack selections remain pending procurement review."
+      accent: navy
+    notes: >
+      Close on the through-line the whole book defends, restated as three
+      takeaways: actuate natively, govern uniformly, prove into CDM and KSI.
+      Actuation first — SI-2 is closed by each platform's own stack because no
+      single management plane reaches below every guest OS, and that is physics,
+      not preference: an "everything under one plane" strategy cannot patch ESXi,
+      firmware, or a self-patching managed database. Governance second — the estate
+      becomes one provable compliance picture only through a single evidence
+      contract keyed to authoritative asset identity, the eight-field record that
+      five different stacks all emit and that is correlated on the IPAM/DDI join
+      key. Proof third — that record flows into CISA CDM and the FedRAMP 20x KSI
+      pipeline, where SI-2 and SI-2(2) are attested from the record rather than a
+      single-tenant scan, all held at FedRAMP Moderate with no High claim anywhere.
+      Leave the audience with the closure-necessity pair that anchors the book:
+      remove the actuation and SI-2 is open; remove the join key and SI-2 is
+      unprovable. Then set expectations honestly — this is pre-decisional CSI Team
+      material, not an approved Agency position; stack selections follow the agency's
+      platform footprint and remain pending procurement review, and every stack's
+      authorization must be verified on the FedRAMP Marketplace before it is
+      relied upon.
+    vendor_sources: ["cisa_cdm", "fedramp_marketplace"]

@@ -1,6 +1,6 @@
 # Automating Google Cloud Landing Zones with Infoblox DDI
 
-A companion to **Vol VII / FedAAN — Infoblox Multi-Cloud DDI** (specifically the
+A companion to **Vol VII / OrgComp — Infoblox Multi-Cloud DDI** (specifically the
 Google Cloud chapter, [`03-gcp.md`](../03-gcp.md)). Where the GCP chapter is the
 **deploy-oriented runbook**, this package is the **automation-grade layer**: how to
 add Infoblox DDI to a Google Cloud landing zone as a modular, IaC-driven,

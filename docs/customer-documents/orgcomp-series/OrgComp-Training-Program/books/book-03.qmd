@@ -1,0 +1,119 @@
+---
+title: "Book 03 — Certificates, Tokens & Cryptographic Identity"
+subtitle: "OrgComp module: retiring session-bound authentication — the PKI naming plane, 47-day certificates, and token-based identity"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Module page for OrgComp Book 03: why Kerberos-style session binding fails on multipath networks, the offline-root/name-constrained PKI hierarchy, ACME/CAA lifecycle automation at 47-day lifetimes, OAuth 2.0/OIDC tokens, phishing-resistant MFA, and workload identity."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/books/book-03.html
+
+---
+
+**Source:** [Book_03 Certificates Tokens Cryptographic Identity](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.qmd)
+· **Evidence slot:** 1 — identity (KSI-IAM, IA-2 / IA-5) · **Track modules:** [A1](../compliance-track.html#module-a1-identity-control-plane-slot-1), [B2](../implementation-track.html#module-b2-access-identity-foundations-books-0204)
+
+## Scope
+
+The doctrinal core of the early series: **session-bound, location-bound
+authentication (Kerberos's three bindings) cannot survive an
+application-aware, multipath network — identity must be credential-bound
+and cryptographic.** The book rebuilds the credential plane: PKI as a
+naming-plane function with an offline HSM-backed root and name-constrained
+issuing CAs; certificate lifecycle automation (ACME, CAA) sized for the
+industry's 47-day maximum lifetimes; OAuth 2.0 / OIDC token identity with
+deliberate lifetime design; certificate-based authentication and
+phishing-resistant MFA; and machine/workload identity federation to
+retire long-lived secrets.
+
+## Learning objectives
+
+- State the three bindings a Kerberos ticket makes and demonstrate why
+  multipath transport breaks them structurally (not fixably).
+- Explain a certificate as a naming claim, and the one-substrate /
+  three-consumers model (users, devices, workloads).
+- Design the internal trust hierarchy: offline HSM root, name-constrained
+  issuing CAs, and the blast-radius argument for the constraints.
+- Operate lifecycle automation: ACME issuance, CAA records restricting
+  who may issue, and why 47-day lifetimes make manual renewal
+  arithmetically impossible — automation is the control.
+- Contrast revocation in a short-lived-certificate world with CRL/OCSP
+  dependence, and use certificate telemetry as compliance evidence.
+- Describe the token layer's anatomy (authorization server, access/
+  refresh/ID tokens, lifetimes) and why the token inverts the trust
+  model relative to the session.
+- Implement certificate-based authentication and phishing-resistant MFA,
+  and argue why token theft is a smaller problem than credential theft.
+- Convert workload secrets to federated workload identity (no stored
+  keys), and state where keys are allowed to live.
+
+## Key concepts
+
+- Session-bound vs. credential-bound identity; "the fallback nobody
+  chose" (NTLM) as the cost of un-retired session auth.
+- PKI as naming plane — the certificate substrate underneath Books 01
+  (DDI/PKI issuance), 02 (device certs), and 06 (Entra CBA).
+- The spreadsheet-CA failure mode and its retirement.
+- 47-day certificate lifetimes; issuance telemetry as evidence.
+- Access-token/refresh-token lifetime design; Conditional Access as the
+  token-issuance policy point.
+- Phishing-resistant MFA (FIDO2 / certificate-based) as the IA-2
+  enhancement surface.
+- The non-human majority: workload identities outnumber humans; workload
+  identity federation replaces stored secrets.
+
+## Implementation sequence (phased, per the book)
+
+1. **Phase 1 — certificate estate discovery (weeks 1–4):** find every
+   certificate and its issuer; build the inventory the automation will
+   own.
+2. **Phase 2 — issuance automation (weeks 5–12):** ACME/SCEP pipelines,
+   CAA records, offline-root + name-constrained issuing hierarchy.
+3. **Phase 3 — token migration and phishing-resistant enforcement
+   (weeks 13–24):** OIDC/OAuth conversion, CBA/FIDO2 rollout,
+   Conditional Access enforcement.
+4. **Phase 4 — workload identity conversion (weeks 25–40):** federate
+   service credentials; eliminate long-lived stored keys.
+
+## Compliance hooks
+
+IA-5 (+2 PKI-based authentication), SC-12 key establishment/management,
+SC-17 PKI certificates, IA-2 (+1)(+2) MFA for privileged and
+non-privileged accounts. FedRAMP 20x: **binds evidence slot 1 — identity
+(KSI-IAM)** — certificate issuance telemetry and token policy state are
+the evidence artifacts.
+
+## Prerequisites
+
+Book 01 (the PKI issuance point lives in the DDI layer); Book 02 shows
+the port-level consumer of this hierarchy. No prior PKI depth assumed —
+the book builds the trust-chain argument from first principles.
+
+## Labs
+
+1. Stand up a lab two-tier hierarchy (offline root simulated, one
+   name-constrained issuing CA); publish CAA records and demonstrate an
+   out-of-policy issuance being refused.
+2. Automate one certificate through ACME DNS-01 at a short lifetime;
+   capture the issuance/renewal telemetry as slot-01 evidence.
+3. Register an OIDC application, inspect access/refresh token lifetimes,
+   then enforce phishing-resistant MFA via Conditional Access and verify
+   the token-issuance policy change in the sign-in log.
+
+## Pitfalls the book calls out
+
+- Treating 47-day lifetimes as a burden to negotiate down rather than
+  the forcing function for automation.
+- Standing up issuing CAs without name constraints — one compromised
+  issuer then speaks for the whole namespace.
+- Migrating to tokens while leaving Kerberos/NTLM fallback enabled: the
+  attacker uses the fallback, not the upgrade.
+- Storing workload secrets in code/config after the human credential
+  plane is modernized — the non-human majority is the larger surface.
+
+## Vendor training
+
+[SC-300, AZ-500](../vendor-training-catalog.html#microsoft) (Entra CBA,
+Conditional Access, workload identity),
+[identity & zero trust](../vendor-training-catalog.html#identity-zero-trust).
+
+**Previous:** [Book 02](book-02.html) · **Next:** [Book 04 — HRIT Identity & Organizational SSOT](book-04.html)

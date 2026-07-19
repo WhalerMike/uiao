@@ -1,0 +1,156 @@
+---
+title: "Book 05 — UIAO — ConMon Continuation Map for Vol IV Book 06 (Authorization Package & ConMon)"
+subtitle: "UIAO — Reference Engine for the Federal Organization Compliance Series"
+doc-type: reference
+audience: "Program owners · ISSOs · assessors evaluating an evidence engine"
+family: uiao-orgcomp-integration
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-18
+aliases:
+  - /customer-documents/uiao-aan-integration/05-conmon-continuation-map.html
+
+---
+
+# UIAO — ConMon Continuation Map for Vol IV Book 06 (Authorization Package & ConMon)
+
+**Date Code:** 2026-07-09 10:48 ET
+**Status:** Draft (UIAO-side companion; the OrgComp series is not modified)
+**Companion to:** `Vol_IV_Book_06_OrgComp_Authorization_Package_ConMon` (OrgComp corpus — unchanged)
+**Boundary:** FedRAMP Moderate / GCC Moderate (Class C)
+
+---
+
+## 0. What this document is — and what it is not
+
+OrgComp Vol IV Book 06 defines the **continuous-monitoring program** for SSA's GCC
+Moderate boundary: the CA-7 strategy, the recurring cadence, the required
+artifacts, the RACI, and the control closure (CA-2/5/6/7, RA-3, SA-15). This
+companion adds one thing Book 06 deliberately leaves to the evidence engine: a
+side-by-side of **what ConMon looks like with the OrgComp architecture alone versus
+with the OrgComp architecture plus UIAO as the engine.**
+
+It follows the project rule: **the OrgComp series is kept UIAO-free and is not edited.**
+Book 06 stands exactly as written. This UIAO-side companion joins the OrgComp-UIAO
+Integration set (alongside the evidence contract, control-continuation table,
+active-participant map, CR26 reconciliation, and decision-gate memo) and maps
+Book 06's ConMon program onto the engine that runs it.
+
+The distinction throughout:
+
+- **OrgComp alone** — the program is fully *specified* and the controls are
+  *architecturally closed*, but the evidence is produced and maintained by hand,
+  point-in-time. You can pass an assessment at a moment; keeping it current is
+  labor, and it drifts between cycles.
+- **OrgComp + UIAO** — the same program, produced *continuously and deterministically*:
+  drift-detected, disposition-governed, and emitted as machine-readable OSCAL on
+  the CA-7 cadence.
+
+![Continuous monitoring, AAN alone vs. AAN + UIAO: on the left the AAN architecture alone specifies the CA-7 program (strategy, cadence, artifact list, RACI) but produces evidence point-in-time and assembles it by hand, so posture drifts between assessment cycles; on the right AAN plus UIAO runs the same program as a closed monthly loop (ScuBAGear to ScubaDrift dispositions to uiao oscal bundle to auto-populated POA&M to Sentinel dashboard to the AO brief), continuously and deterministically; a bottom bar shows what is unchanged either way — the AO authorization decision, the independent assessment, RA-3 risk acceptance, and non-compensable boundary gaps. Blueprint diagram, OrgComp house style.](figs/uiao-diagram-05-conmon-continuation.png)
+
+---
+
+## 1. ConMon mapping — OrgComp alone vs. OrgComp + UIAO
+
+Rows are the ConMon dimensions Book 06 defines; the section reference is to Book 06.
+
+| ConMon dimension (Book 06 §) | OrgComp alone | OrgComp + UIAO | What UIAO adds |
+|---|---|---|---|
+| **CA-7 strategy** — metrics, frequency, AO reporting (§3.1) | Program specified on paper; metrics = KSI verdicts; cadence + AO reporting defined | Metrics computed and emitted every cycle against the same strategy | The strategy becomes a running system, not a document |
+| **OSCAL AP + AR + POA&M** (§2, §4.1) | Required artifact list; assembled by hand from books and spreadsheets | `uiao oscal bundle` generates all four deterministically | Machine-readable, reproducible, zero-hand-edit bundle |
+| **KSI scorecard** (§1.2) | 29 rules asserted satisfied — static, self-declared | `slot_evaluator` produces per-rule verdicts each run | Live verdicts + the CR26 46-indicator reconciliation (see companion #3) |
+| **Config-surface KSI-001..010** (§3.2) | A ScuBAGear scan answers "what passes today" — point-in-time | ScubaDrift splits each failure into `actionable_new_drift` / `lapsed_acceptance` / `governed_exception` with expiry | Disposition lifecycle, deterministic `--as-of`, gate semantics — no silent pass |
+| **Monthly activities** (§3.2) | Checklist a human runs each month | Pipeline runs AR refresh, drift triage + gate, POA&M check | Repeatable monthly loop instead of a manual checklist |
+| **Trend analysis, CA-7(3)** (§3.6) | Compare AR snapshots by hand | AR history diff; downward trend auto-creates a POA&M entry | Early-warning signal to the AO, computed not eyeballed |
+| **POA&M management** (§2.5) | Tracked manually; status open/closed/deferred | Auto-populated from verdicts/drift; aging computed; zero-item target verifiable | Provenance-linked POA&M with SLA aging (ISCM/BOD 25-01 expect it) |
+| **Evidence freshness by slot** (§6.2) | Freshness rules defined; humans track staleness | Slot-confidence upgrades on new artifacts; staleness surfaces as drift | Freshness becomes a monitored signal, not a calendar reminder |
+| **BOD 26-04 VDR/VER** (§5) | SBOM pipeline defined; VEX + submission assembled manually | Syft → Grype → OpenVEX chain + `vdr-submission-record` auto-generated | Machine-readable SBOM/VEX; *submission to CISA stays a human action* |
+| **AO dashboard / reporting** (§6.3) | Sentinel workbooks specified | KSI / drift / vuln / training workbooks fed from the bundle | The monthly AO brief is generated, not compiled |
+| **Authorization decision (CA-6), independent SCA, RA-3 acceptance** (§4, §7) | Human governance acts | **Unchanged** — UIAO supplies evidence only | *Nothing* — and that is correct (see §3) |
+
+**How to read it:** OrgComp alone gets you a defensible ConMon *program design* and
+architecturally closed controls. What it does not get you is *continuity* — the
+evidence is a series of point-in-time snapshots someone must re-produce and
+re-assemble each cycle, which is exactly where drift hides. UIAO supplies the
+continuity: the same program, run as a loop, with every failure dispositioned and
+every artifact reproducible.
+
+---
+
+## 2. The cadence — manual vs. automated
+
+Book 06's recurring cadence (§3.2–3.5), split by what changes when UIAO is the engine.
+
+| Cadence | Book 06 activities | OrgComp alone | OrgComp + UIAO |
+|---|---|---|---|
+| **Monthly** (§3.2) | AR refresh · ScuBA assessment · drift triage · dashboard review · POA&M check · vuln scan · SBOM delta | 7 manual activities, evidence attached by hand | Pipeline-run; humans review exceptions, not raw output |
+| **Quarterly** (§3.3) | KSI evidence-quality + slot-confidence + training + privileged-access reviews | Reviews scheduled; trend compiled manually | Trend report auto-generated (CA-7(3)); reviews focus on judgment |
+| **Semi-annual** (§3.4) | IR drill · CP-3 tabletop · SBOM/VDR review | Exercises run; records filed manually | Exercise records ingested as slot-07 evidence automatically |
+| **Annual** (§3.5) | Full 29-rule re-assessment · AT-2 refresh · CP-2 update · PM-14 · ATO renewal · SBOM cert | Full manual re-assessment | Re-assessment reproduces from slots; renewal package regenerates |
+
+The pattern: UIAO does not remove the cadence — the exercises, drills, and reviews
+still happen. It removes the **manual re-production and re-assembly** at each tick,
+so human effort moves from compiling evidence to exercising judgment on exceptions.
+
+---
+
+## 3. Reporting — how CA-7's report leg is met
+
+CA-7 requires reporting the system's security status to defined roles at a defined
+frequency; NIST 800-137 adds an *Analyze & Report* phase; CA-7(3) requires *trend*
+reporting. Reporting is a **read-only L1–L2 activity** — it emits status and writes
+nothing to production — which is why it runs continuously and automatically and
+**never touches the L3 remediation ceiling**. (Precisely: *monitoring and reporting
+run continuously at L1–L2; only the remediation they trigger is gated at L3.*)
+
+| Reporting requirement | OrgComp alone | OrgComp + UIAO | Book 06 § |
+|---|---|---|---|
+| **Status content** (CA-7) | AR + POA&M assembled by hand | `uiao oscal bundle` regenerates `ksi-ar.json` + `ksi-poam.json` each cycle | §2.4, §2.5 |
+| **To the AO** | AO reviews the monthly AR | Sentinel dashboard → generated AO monthly brief | §6.1, §6.4 |
+| **Frequency** (CA-7) | Cadence defined on paper | Cadence executed as a pipeline | §3.2–3.5 |
+| **Machine-readable** (20x) | OSCAL specified as the format | Deterministic OSCAL AP/AR/POA&M | §2 |
+| **Trend** (CA-7(3)) | Snapshots compared by hand | AR history diff; a downward verdict count auto-creates a POA&M | §3.6 |
+| **Report integrity** | Point-in-time, manual | `--as-of` reproducible; every failure carries disposition + ticket + expiry, with SLA aging | §3.2 |
+| **External feeds** | Obligations named | VDR/VER (CycloneDX + OpenVEX) and ScuBA/KSI feeds generated | §5, §3.2 |
+
+The federal reporting *destinations* these feed — the AO, CDM/Federal Dashboard,
+CyberScope/OMB, CISA NCPS/CLAW, the FedRAMP repository, and the CISA SBOM inbox —
+each with its own cadence, interface, and encryption, are enumerated in the
+companion **Federal ConMon Reporting Reference (#6)**. The one line for a reviewer:
+Book 06 §3.2 states that `scubadrift conmon-report` emits *"the posture trend and
+remediation SLA aging that CA-7, NIST SP 800-137 (ISCM), and BOD 25-01 expect."*
+
+What reporting does **not** do: make the risk decision. The AO consumes the report
+and accepts or escalates — a human act (see §4).
+
+---
+
+## 4. The honest boundary — what OrgComp + UIAO does *not* change
+
+Adding UIAO to Book 06's ConMon program changes how evidence is produced. It does
+**not** change who decides:
+
+- **The AO authorization decision (CA-6)** and **RA-3 risk acceptance** remain human
+  governance acts. UIAO assembles the package; it does not sign the ATO.
+- **The independent SCA** is still required — the KSI verdicts are self-assessed
+  regardless of engine; independence is the point.
+- **Non-compensable GCC-Moderate boundary gaps** can be *continuously registered* as
+  governed exceptions, but a gap the service level does not emit a signal for
+  cannot be monitored into existence.
+- **The KSI count** must be reconciled (companion #3): Book 06 asserts "29/29
+  satisfied," but the official CR26 catalog is 46 indicators with 21 covered today.
+  UIAO makes this *visible and honest* — it does not make it 100%.
+
+So the value UIAO adds to Book 06's ConMon is precisely **continuity and honesty**:
+the same program, produced continuously, with every claim reproducible and every
+exception aging — and the human decisions left exactly where they belong.
+
+---
+
+## 5. Bottom line
+
+Book 06 is a complete ConMon *program*. Read the two columns and the split is clean:
+**OrgComp alone specifies and closes; OrgComp + UIAO continuously produces and proves.**
+This companion records that mapping without touching the book — the OrgComp series stays
+UIAO-free, and the engine choice remains the reversible, OSCAL-bounded decision the
+integration set's decision-gate memo (companion #4) frames.

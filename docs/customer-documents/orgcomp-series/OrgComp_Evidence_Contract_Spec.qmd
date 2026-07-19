@@ -1,0 +1,198 @@
+---
+title: "OrgComp — Evidence & Authorization Contract"
+subtitle: "The open specification any conformant evidence engine can satisfy — the seam that keeps the Federal Organization Compliance Series engine-neutral"
+doc-type: specification
+audience: "Program owners · ISSOs · evidence-engine implementers · assessors"
+family: orgcomp-series
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-18
+aliases:
+  - /customer-documents/federal-aan-series/AAN_Evidence_Contract_Spec.html
+
+---
+
+# OrgComp — Evidence & Authorization Contract {.unnumbered}
+
+**Date Code:** 2026-07-18 06:37 ET
+**Status:** Published (series-owned specification)
+**Scope:** FedRAMP Moderate (GCC Moderate / Class C) — SSA consuming-agency RMF/FISMA posture
+
+---
+
+## 0. Why this document exists
+
+The Federal Organization Compliance (OrgComp) series is two separable things:
+
+1. **The architecture corpus** — the books, the control-closure narrative, the
+   "mechanism, not product" doctrine, the seven functional planes, and the
+   coordinated-native management model. This layer is already vendor-neutral and
+   framework-anchored (NIST SP 800-53 Rev 5, FedRAMP 20x / CR26, the CISA/OMB
+   directive timeline). It stands on its own.
+
+2. **The evidence-and-authorization layer** — the machine-readable artifacts that
+   prove which mechanism closes which control, on a continuous cadence, in a form
+   an Authorizing Official and a ConMon program can consume.
+
+This specification defines layer 2 **as a contract, not as a tool.** The series
+emits to this contract. *Any* conformant evidence engine — a purpose-built
+governance platform, a FedRAMP-authorized COTS GRC product, or native OSCAL
+tooling — may satisfy it. The series names none of them, exactly as it names no
+single DDI, SD-WAN, or SIEM product: mechanism classes are mandatory; the product
+that implements a class is a per-layer selection the agency makes.
+
+This is the artifact that lets the OrgComp series stand alone. Nothing here depends on
+any specific downstream implementation.
+
+---
+
+## 1. The three-part contract
+
+An evidence engine is **OrgComp-conformant** if it accepts the three inputs in §2–§4
+and produces the two outputs in §5–§6, honoring the invariants in §7.
+
+![The OrgComp Evidence & Authorization Contract: the AAN books emit three inputs (compliance spine, evidence slot records, cadence and dispositions) to any conformant evidence engine across an open OSCAL boundary, which produces two outputs — the OSCAL AP+AR+POA&M authorization bundle and a continuous-monitoring stream — governed by five conformance invariants. Blueprint diagram, OrgComp house style.](figs/evc-diagram-01-evidence-contract.png)
+
+---
+
+## 2. Input 1 — The compliance spine
+
+A single generated data artifact (`orgcomp-compliance-spine.yml`) is the series'
+single source of truth. Every book's control table renders from it; it is
+CI drift-gated so no book can assert a closure the spine does not carry.
+
+Each row is one `(authority, requirement, mechanism, book, slot, KSI)` tuple:
+
+| Field | Meaning | Example |
+|---|---|---|
+| `authority` | Framework the requirement comes from | `NIST SP 800-53 Rev 5` |
+| `requirement_id` | Control / indicator identifier | `IA-3` |
+| `requirement_text` | Verbatim requirement statement | "The information system uniquely identifies and authenticates …" |
+| `mechanism_class` | The protocol/behavior that closes it (never a product) | `port-based network authentication (802.1X EAP-TLS)` |
+| `book` | Series book that demonstrates the mechanism | `Vol I Book 02` |
+| `evidence_slot` | Which evidence slot carries the proof (§3) | `slot-03-network` |
+| `ksi_ref` | FedRAMP 20x KSI indicator(s) the row contributes to | `KSI-CNA-*` |
+| `attestable_by_tooling` | `true` if a conformance scanner alone can attest; `false` if the architecture must exist first | `false` |
+
+**Invariant:** `mechanism_class` is falsifiable and names no vendor. "Only
+port-based authentication closes IA-3" is a claim about protocol behavior. The
+deployed product that realizes the mechanism is recorded elsewhere (the agency's
+selection record), never in the spine.
+
+---
+
+## 3. Input 2 — Evidence slot records
+
+Evidence is organized into **eight numbered slots**. A slot is a stable evidence
+category; books bind their proofs into slots, and the engine evaluates per slot.
+
+| Slot | Category | Representative books |
+|---|---|---|
+| slot-01 | identity | Certs/Tokens; HRIT SSOT; Entra/ZTNA; PAM |
+| slot-02 | data | Data Protection (Purview / CMK) |
+| slot-03 | network | DDI/IPAM; NAC/802.1X; SD-WAN/SASE |
+| slot-04 | telemetry | Vuln mgmt; Data protection; SIEM/XDR |
+| slot-05 | endpoint | NAC posture; PAM; Vuln mgmt; PII |
+| slot-06 | security | Vuln mgmt; SIEM; SCRM; PM governance |
+| slot-07 | continuity | Business Continuity / Contingency |
+| slot-08 | training | Cybersecurity Awareness & Training |
+
+Each slot record is machine-readable and carries, per evidenced item:
+
+```yaml
+slot: slot-03-network
+evidence:
+  - id: <stable-evidence-id>
+    requirement_ids: [SC-8, CA-7]        # controls this item supports
+    ksi_refs: [KSI-CNA-*]
+    source: <named mechanism/system class>   # e.g. "SD-WAN telemetry"
+    collected_at: <timestamp>
+    result: pass | fail | inconclusive
+    disposition: null | governed_exception | actionable_drift | lapsed_acceptance
+    poam_ref: <optional POA&M ticket id>
+    expiry: <optional review-by date>
+```
+
+**Invariant:** a slot record is the *only* thing the engine trusts. Prose in a
+book is narrative; the slot record is evidence. If the two disagree, the slot
+record governs and the disagreement is itself a drift finding.
+
+---
+
+## 4. Input 3 — Cadence and disposition rules
+
+The contract requires a defined continuous-monitoring cadence and a disposition
+vocabulary so "satisfied" is never a static claim.
+
+- **Cadence** (CA-7): monthly evidence refresh; quarterly evidence-quality review;
+  semi-annual IR/CP exercise; annual full re-assessment. VDR machine-resource
+  verification cadence follows the applicable class window.
+- **Disposition vocabulary** — every evidence item that could fail resolves to one
+  of: `actionable_drift` (new deviation, POA&M-bound), `governed_exception`
+  (deviation backed by a registered boundary/compensating-control decision, with
+  expiry), or `lapsed_acceptance` (a governed exception whose expiry passed —
+  reverts to actionable). **No item may be "always satisfied."**
+
+---
+
+## 5. Output A — The OSCAL bundle
+
+The engine produces a NIST OSCAL **Assessment Plan + Assessment Results + POA&M**
+bundle. OSCAL is an open NIST format; this is the deliberate exit-ramp that keeps
+the series independent of any one engine.
+
+- **AP** — the assessment plan: which controls, which evidence slots, which cadence.
+- **AR** — assessment results with per-KSI verdicts derived from slot records.
+- **POA&M** — open items, each with a disposition, mitigating factors drawn from
+  slot evidence, and characterizations.
+
+Acceptance test: `29/29` (or the reconciled indicator count — see §8) satisfied
+**must** be reproducible from the spine + slot records alone, with zero manual
+edits, and must survive re-generation.
+
+---
+
+## 6. Output B — The continuous-monitoring stream
+
+The same engine, on the §4 cadence, re-emits the AR and updates POA&M dispositions.
+The ConMon stream is not a separate reporting chore — it is the monitoring output.
+This output feeds agency FISMA/CDM reporting and the CA-7 program described in the
+Authorization Package book.
+
+---
+
+## 7. Conformance invariants (the whole contract in five rules)
+
+1. **Spine is SSOT.** No book asserts a closure the spine does not carry; CI gates this.
+2. **Mechanism, not product.** Closure claims name protocol behavior, never a vendor.
+3. **Slot record is truth.** Narrative never overrides a machine-readable slot record.
+4. **Nothing is always satisfied.** Every failable item carries a live disposition.
+5. **OSCAL is the boundary.** Outputs are open-format so the engine is swappable.
+
+An engine that honors these five is conformant. The series does not care which
+engine it is — only that the contract holds.
+
+---
+
+## 8. Known open — the KSI-count reconciliation
+
+The "29 KSI rules" cited throughout the series are an internal rule decomposition,
+**not** the published FedRAMP CR26 Moderate KSI catalog. Until the internal rule
+set is diffed indicator-by-indicator against the finalized CR26 Moderate list and
+the mapping is stated explicitly, "29/29 satisfied" is a claim about the internal
+rule set — not about coverage of the full CR26 indicator surface. Closing this is a
+precondition for the authorization-package claim and is tracked as the series' #1
+evidence-layer open item. **This reconciliation is the responsibility of whatever
+engine implements this contract**, and its result must be reflected back into the
+spine (`ksi_ref` column) before the AR count is asserted externally.
+
+---
+
+## 9. What this buys the series
+
+With this contract in hand, the OrgComp corpus is complete and self-standing: an
+architecture that demonstrates control closure, plus a precise, open-format
+specification of the evidence it emits. The choice of evidence engine becomes a
+downstream procurement decision on the same footing as the choice of DDI or SIEM —
+evaluated on its merits, swappable by the OSCAL boundary, and named nowhere in the
+books.

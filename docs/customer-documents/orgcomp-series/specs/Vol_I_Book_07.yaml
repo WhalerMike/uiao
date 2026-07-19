@@ -1,0 +1,761 @@
+# Deck spec — Vol I Book 07, OrgComp Network Enforcement Substrate.
+# Distilled from docs/customer-documents/orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.qmd
+# Schema + build command: BUILD-DERIVATIVES.md §1 (the host repo's deck generator).
+# Build:
+#   <deck generator> \
+#     --spec "docs/customer-documents/orgcomp-series/specs/Vol_I_Book_07.yaml" \
+#     --out  "docs/customer-documents/orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.pptx" \
+#     --date-code "2026-07-09 08:15 ET"
+deck:
+  title: "Network Enforcement Substrate"
+  subtitle: "How customer-owned Cisco, Palo Alto, and Juniper gear closes NIST controls at the edge — and the NIAP/STIG/FIPS/APL gate that governs it"
+  series_kicker: "FEDERAL APPLICATION-AWARE NETWORKING · VOL I · BOOK 07"
+  date_code: "2026-07-09 08:15 ET"
+  journey:
+    - "NIAP CC"
+    - "DISA STIG"
+    - "FIPS 140-3"
+    - "DoDIN APL"
+  sources:
+    niap_pcl: "https://www.niap-ccevs.org/Product/"
+    cmvp_fips: "https://csrc.nist.gov/projects/cryptographic-module-validation-program/validated-modules"
+    disa_stig: "https://public.cyber.mil/stigs/"
+    dodin_apl: "https://aplits.disa.mil/"
+    fedramp_marketplace: "https://marketplace.fedramp.gov/"
+    cisa_tic3: "https://www.cisa.gov/resources-tools/programs/trusted-internet-connections-tic"
+    cisco_ise: "https://www.cisco.com/site/us/en/products/security/identity-services-engine/index.html"
+    cisco_secure_firewall: "https://www.cisco.com/site/us/en/products/security/firewalls/index.html"
+    cisco_sdwan: "https://www.cisco.com/site/us/en/solutions/networking/sdwan/index.html"
+    palo_ngfw: "https://www.paloaltonetworks.com/network-security/next-generation-firewall"
+    palo_prisma_access: "https://www.paloaltonetworks.com/sase/access"
+    juniper_srx: "https://www.juniper.net/us/en/products/security/srx-series.html"
+    juniper_mist: "https://www.juniper.net/us/en/products/cloud-services/access-assurance.html"
+    juniper_apstra: "https://www.juniper.net/us/en/products/network-automation/apstra.html"
+
+slides:
+  # 1 -----------------------------------------------------------------------
+  - type: title
+    notes: >
+      Opening frame for Book 07 of the Federal Application-Aware Networking
+      series. Every earlier book in this series ends its control-closure
+      argument in a cloud service — InfoBlox DDI, Entra ID, Sentinel, a SASE
+      point of presence — and inherits federal authorization cleanly from that
+      provider's FedRAMP package, right up to the edge of the provider's
+      boundary. This book is about what happens past that edge. The switch in
+      the wiring closet, the firewall at the branch, the router terminating the
+      DIA circuit, and the NAC appliance authenticating a port are all
+      customer-premises equipment: no cloud provider's FedRAMP authorization
+      covers them, because the provider does not operate them. Yet this gear is
+      exactly what closes a specific, enumerable set of NIST SP 800-53 Rev 5
+      controls at the edge. Set expectations up front: this is the gear book —
+      the realization layer for the network side of the Functional Plane Model
+      (transport, identity, policy-enforcement made of metal). Walk the four-part
+      journey strip — NIAP Common Criteria, DISA STIG, FIPS 140-3, DoDIN APL —
+      because that composed accreditation gate (Theme F of the series) is the
+      spine of the whole deck. Note the draft disclaimer: this is pre-decisional
+      CSI Team material, not an approved Agency position; vendor selections are
+      illustrative pending procurement review. Keep FedRAMP scope at Moderate
+      throughout — the series never claims a level above Moderate.
+
+  # 2 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART ONE"
+    title: "The edge the cloud's authorization does not reach"
+    callout: "FedRAMP inheritance is clean — right up to the provider's boundary. It stops there, and the network to that boundary is the agency's to accredit."
+    callout_accent: navy
+    notes: >
+      This section motivates the entire book: the gap between where cloud FedRAMP
+      inheritance ends and where the agency's own accreditation obligation
+      begins. FedRAMP answers one question — "is this cloud service authorized
+      for federal use?" It does not, and structurally cannot, answer "is the
+      firewall in your branch office hardened and validated?" The network path
+      from a field office to the cloud boundary — the branch, the WAN edge, the
+      DIA circuit, the access layer — is customer-premises equipment the agency
+      bought, configured, and operates. Its control evidence lives in the
+      equipment's own accreditation, not in any provider's package. The framing
+      to land here is that this is not a gap to be apologized for; it is a
+      structural property of the shared-responsibility model, and the rest of
+      the deck gives the audience the vocabulary (Theme F) and the vendor map to
+      close it deliberately. Preview that the next two content slides enumerate
+      the exact controls that cannot be inherited and draw the
+      shared-responsibility line that assigns each layer's evidence source.
+
+  # 3 -----------------------------------------------------------------------
+  - type: content
+    kicker: "WHAT MUST BE CLOSED BY GEAR"
+    title: "Six edge controls no cloud package covers"
+    layout: grid
+    cards:
+      - title: "SC-7 / SC-7(8)"
+        body: "Boundary protection and forced-proxy egress, enforced at the branch by an appliance the agency owns."
+        accent: navy
+      - title: "SC-8 / SC-8(1)"
+        body: "Network-layer encryption on the circuit itself — an overlay terminated on customer edge gear, not application TLS."
+        accent: teal
+      - title: "AC-4 / IA-3"
+        body: "Information-flow enforcement where traffic egresses, and device identity at the physical port before any user authenticates."
+        accent: amber
+      - title: "AC-17 / SI-4"
+        body: "Remote-access termination, and the telemetry that proves any of the above actually happened."
+        accent: red
+    callout:
+      text: "These controls cannot be inherited — they are closed by gear the agency owns, accredited on a different registry than a cloud service."
+      accent: navy
+    notes: >
+      This slide enumerates the concrete NIST SP 800-53 Rev 5 controls that the
+      customer-owned network edge closes and a cloud FedRAMP package cannot.
+      Walk each card. SC-7 and SC-7(8) are boundary protection and forced-proxy
+      egress at the branch — an assessor asking for SC-7 evidence at a field
+      office will not accept "our cloud provider is FedRAMP-authorized," because
+      the boundary protection there is an appliance the agency operates. SC-8
+      and SC-8(1) are network-layer encryption on the circuit; application-layer
+      TLS is not a substitute because it covers only TLS-aware flows and gives
+      no network-layer integrity for the rest. AC-4 is information-flow
+      enforcement at the actual egress, and IA-3 is device identity at the
+      physical port — the network must know what is connected before any user
+      authenticates. AC-17 is remote-access termination, and SI-4 is the
+      telemetry that produces the evidence any of these controls fired. The
+      through-line: none of these appears in a cloud provider's authorization
+      boundary, so each is closed by gear the agency owns and accredited through
+      a different, gear-specific gate — which the next section formalizes as
+      Theme F. Emphasize that this is an enumerable, finite list, not an
+      open-ended liability: the agency knows exactly which controls it owns at
+      the edge.
+
+  # 4 -----------------------------------------------------------------------
+  - type: table
+    kicker: "SHARED RESPONSIBILITY"
+    title: "The line decides who closes the control"
+    headers: ["Layer", "Who operates it", "How the control is attested"]
+    rows:
+      - cells:
+          - "SaaS / PaaS control implementation"
+          - "Cloud provider"
+          - "Inherited from the provider's FedRAMP package (leveraged authorization)"
+        accent: teal
+      - cells:
+          - "IaaS guest OS and workload"
+          - "Agency"
+          - "Agency ConMon evidence (identity, patch, telemetry books)"
+      - cells:
+          - "Network path to the cloud boundary — branch, WAN edge, DIA circuit, access layer"
+          - "Agency"
+          - "The equipment's own NIAP evaluation, DISA STIG compliance, and FIPS 140-3 module — not a FedRAMP package"
+        accent: amber
+    callout:
+      text: "An assessor asking for SC-7 evidence at a field office will not accept a cloud provider's authorization. The evidence lives in the appliance's own accreditation."
+      accent: amber
+    notes: >
+      This is the reference table for the shared-responsibility model — the
+      audience should read it, not be walked through it as a build. Three
+      layers, three evidence sources. At the SaaS/PaaS layer the cloud provider
+      operates the control and the agency inherits attestation from the
+      provider's FedRAMP package through a leveraged authorization; this is the
+      clean inheritance the series has relied on throughout. At the IaaS layer
+      the agency operates the guest OS and workload and produces its own
+      continuous-monitoring evidence — covered in the identity, patch, and
+      telemetry books. The bottom row, tinted amber because it is the subject of
+      this book, is the network path to the cloud boundary: the branch, the WAN
+      edge, the DIA circuit, and the access layer. The agency operates this
+      equipment, so its attestation comes not from any FedRAMP package but from
+      the equipment's own NIAP evaluation, DISA STIG compliance, and FIPS 140-3
+      module. The line matters operationally: it tells an authorizing official
+      and an assessor precisely where to look for evidence for each control, and
+      it prevents the common error of pointing at a cloud provider's ATO to
+      answer for an on-premises appliance. Hold FedRAMP scope at Moderate — the
+      inheritance column claims only leveraged Moderate authorization.
+    vendor_sources: ["fedramp_marketplace", "niap_pcl"]
+
+  # 5 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART TWO"
+    title: "Theme F — the accreditation gate for network gear"
+    callout: "A cloud service passes one gate: FedRAMP. Network and endpoint gear passes a composed gate of four federal mechanisms, each certifying a different property."
+    callout_accent: navy
+    notes: >
+      This section formalizes Theme F of the series — the composed accreditation
+      gate that governs customer-owned network gear. The single most important
+      idea to land is the asymmetry: a cloud service clears exactly one federal
+      gate, FedRAMP, and inherits cleanly from it; network and endpoint gear
+      clears a composed gate of four distinct mechanisms, each certifying a
+      different security property, and none of which appears in any cloud
+      provider's FedRAMP package. Set up the next slide, which shows the four
+      mechanisms side by side, and the build-sequence after it, which walks how
+      they compose into a single body of control evidence. Emphasize that Theme F
+      is not bureaucratic overhead — it is the vocabulary that lets an agency
+      say exactly what assurance it holds for a given appliance and exactly which
+      registry an assessor should check. Note for the presenter: keep the four
+      mechanisms distinct in the audience's mind — design evaluation, hardened
+      baseline, validated crypto module, and fielding approval are four
+      different questions with four different authorities and four different
+      evidence artifacts.
+
+  # 6 -----------------------------------------------------------------------
+  - type: content
+    kicker: "THE FOUR-PART GATE"
+    title: "NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL"
+    layout: grid
+    cards:
+      - title: "NIAP Common Criteria"
+        body: "NIAP Product Compliant List. Certifies the product was independently evaluated against a federal Protection Profile — its security functions work as claimed in an evaluated configuration."
+        accent: navy
+      - title: "DISA STIG"
+        body: "DoD Cyber Exchange. The hardened configuration baseline the device must run in; STIG-compliance scans are the operational evidence."
+        accent: teal
+      - title: "FIPS 140-3"
+        body: "NIST CMVP. The cryptographic module performing SC-8/SC-13 encryption is validated — not merely 'AES-capable.'"
+        accent: amber
+      - title: "DoDIN APL"
+        body: "DISA Approved Products List. The product is approved to connect to DoD networks — the strictest fielding gate; civilian agencies treat listing as an assurance signal."
+        accent: red
+    callout:
+      text: "An agency's edge-control evidence is assembled from four sources: the NIAP validation report, the STIG scan output, the CMVP certificate number, and the APL listing."
+      accent: navy
+    notes: >
+      This is the heart of Theme F: the four mechanisms that compose the
+      accreditation gate for network gear. Take them one card at a time. NIAP
+      Common Criteria, tracked on the NIAP Product Compliant List against
+      Protection Profiles (Network Devices, Stateful Firewalls, and others),
+      certifies that the product was independently evaluated and its security
+      functions work as claimed in a specific evaluated configuration — this is
+      a design-and-implementation assurance. DISA STIG, published on the DoD
+      Cyber Exchange, is the hardened configuration baseline the device must
+      actually run in; STIG-compliance scans are the operational evidence that
+      it does. FIPS 140-3, validated through NIST's Cryptographic Module
+      Validation Program, certifies that the cryptographic module doing the
+      SC-8/SC-13 encryption is validated — a crucial distinction from merely
+      being "AES-capable," because validation is a property of the module, not
+      the protocol. DoDIN APL, the DISA Approved Products List, is the fielding
+      gate: approval to connect to DoD networks, the strictest of the four, and
+      even civilian agencies commonly treat an APL listing as an assurance
+      signal. The key composition point: an agency assembles its edge-control
+      evidence from all four artifacts — the NIAP validation report, the STIG
+      scan output, the CMVP certificate number, and the APL listing — none of
+      which lives in any cloud provider's FedRAMP package. This slide states a
+      certification framework; the sources line points to each registry.
+    vendor_sources: ["niap_pcl", "disa_stig", "cmvp_fips", "dodin_apl"]
+
+  # 7 -----------------------------------------------------------------------
+  - type: build-sequence
+    kicker: "COMPOSING THE GATE"
+    title: "How four mechanisms become one body of evidence"
+    notes: "Fallback presenter notes: the four accreditation mechanisms compose in sequence into a single control-evidence package for customer-owned edge gear."
+    steps:
+      - label: "Evaluate the design"
+        sub: "NIAP Common Criteria"
+        accent: navy
+        detail: >
+          The product is independently evaluated against a federal Protection
+          Profile and listed on the NIAP Product Compliant List. The artifact is
+          the NIAP validation report: proof the security functions work as
+          claimed in an evaluated configuration.
+        notes: >
+          Step one of composing the gate: design assurance. Before an appliance
+          can carry any federal edge-control claim, its security design and
+          implementation are independently evaluated against a NIAP Protection
+          Profile — for network devices, stateful firewalls, and related device
+          classes — and the result is published on the NIAP Product Compliant
+          List. The evidence artifact the agency captures is the NIAP validation
+          report. Stress the phrase "evaluated configuration": the assurance
+          holds only for the specific configuration that was evaluated, which is
+          why this step alone is not sufficient and must be paired with the
+          hardened baseline in step two. This is the "was it built right?"
+          question, answered by an independent lab, not the vendor.
+        vendor_sources: ["niap_pcl"]
+      - label: "Harden the baseline"
+        sub: "DISA STIG"
+        accent: teal
+        detail: >
+          The device is configured to the DISA Security Technical Implementation
+          Guide baseline and scanned for compliance. The artifact is the STIG
+          scan output: operational evidence the hardened configuration is
+          actually in force.
+        notes: >
+          Step two: operational hardening. A NIAP-evaluated design running in a
+          loose configuration is not accredited; the device must run in the
+          hardened baseline defined by the applicable DISA STIG, published on
+          the DoD Cyber Exchange. The evidence artifact is the STIG-compliance
+          scan output, which converts the paper baseline into operational proof
+          that the hardened settings are actually in force on the running box.
+          This is where evaluated-configuration assurance from step one becomes
+          a live, verifiable state. Note that STIG compliance is not a one-time
+          event — it is a continuous posture that ConMon scanning re-verifies,
+          which is why it also feeds the SI-4 telemetry story later in the deck.
+        vendor_sources: ["disa_stig"]
+      - label: "Validate the crypto"
+        sub: "FIPS 140-3 (CMVP)"
+        accent: amber
+        detail: >
+          The cryptographic module performing SC-8/SC-13 encryption is validated
+          through NIST's CMVP. The artifact is the CMVP certificate number —
+          validation is a property of the module, not of the protocol.
+        notes: >
+          Step three: cryptographic validation. The overlay encryption that
+          closes SC-8 and SC-8(1) is only as strong as the module performing it,
+          and federal policy requires that module to be FIPS 140-3 validated
+          through NIST's Cryptographic Module Validation Program. The evidence
+          artifact is the CMVP certificate number. The critical teaching point:
+          "AES-capable" is not "validated" — validation is a property of the
+          specific cryptographic module in the specific appliance, established by
+          CMVP testing, not an attribute of the IPsec or MACsec protocol in the
+          abstract. When an assessor asks how SC-8 is met on a DIA circuit, the
+          answer is a CMVP certificate number tied to the edge device, not a
+          statement that the protocol supports strong ciphers.
+        vendor_sources: ["cmvp_fips"]
+      - label: "Approve to field"
+        sub: "DoDIN APL"
+        accent: red
+        detail: >
+          The product is listed on the DISA Approved Products List — approval to
+          connect to DoD networks, the strictest fielding gate. Civilian
+          agencies frequently treat an APL listing as an assurance signal.
+        notes: >
+          Step four completes the composed gate: fielding approval. The DoDIN
+          Approved Products List is the strictest federal fielding mechanism —
+          approval for a product to connect to DoD networks — and it typically
+          presupposes the prior three (evaluated design, hardened baseline,
+          validated crypto). Even outside DoD, civilian agencies frequently
+          treat an APL listing as an assurance signal at procurement. With all
+          four artifacts in hand — the NIAP validation report, the STIG scan
+          output, the CMVP certificate number, and the APL listing — the agency
+          holds a complete, defensible evidence package for the edge controls the
+          gear closes, assembled entirely outside any cloud FedRAMP package.
+          Close the sequence by reminding the audience that this is the evidence
+          an authorizing official signs against for the customer-owned half of
+          the boundary.
+        vendor_sources: ["dodin_apl"]
+
+  # 8 -----------------------------------------------------------------------
+  - type: section
+    kicker: "PART THREE"
+    title: "The enforcement substrate — vendor realization"
+    callout: "Mechanism, not product. The function is the control; the vendor product is a deployed example. Every cell is a candidate, validated against NIAP PCL, CMVP, and DoDIN APL at time of buy."
+    callout_accent: teal
+    notes: >
+      This section maps the edge functions onto the three network-equipment
+      manufacturers a federal agency is most likely to field — Cisco, Palo Alto
+      Networks, and Juniper Networks. The governing rule of the whole series must
+      be stated before the matrix appears: mechanism, not product. The function
+      is the control; a named vendor product is only a deployed example of the
+      mechanism. Nothing on the next slide is a recommendation — every cell is a
+      candidate implementation, and final selection is a procurement decision
+      validated at time of buy against the current NIAP Product Compliant List,
+      the NIST CMVP validated-modules list, the applicable DISA STIG, and the
+      DoDIN APL, plus agency-specific environment testing. Set up the audience to
+      read the matrix as a map of how each manufacturer realizes a common set of
+      functions, not as a scorecard ranking vendors. Also flag that other
+      NIAP-evaluated, APL-listed manufacturers (Fortinet, Arista, and others)
+      satisfy the same mechanism classes; the three shown reflect federal
+      fielding prevalence and Protection-Profile coverage at time of writing.
+
+  # 9 -----------------------------------------------------------------------
+  - type: table
+    kicker: "MECHANISM → PRODUCT → CONTROL"
+    title: "Cisco / Palo Alto / Juniper realization matrix"
+    headers: ["Function / NIST control", "Cisco", "Palo Alto Networks", "Juniper Networks"]
+    rows:
+      - cells:
+          - "Boundary protection — SC-7, SC-7(8), AC-4"
+          - "Secure Firewall (Firepower)"
+          - "NGFW / PAN-OS + Panorama"
+          - "SRX Series / Junos + Security Director"
+      - cells:
+          - "Encrypted overlay — SC-8, SC-8(1)"
+          - "Catalyst SD-WAN (Viptela)"
+          - "Prisma SD-WAN"
+          - "Session Smart Router (128T)"
+      - cells:
+          - "Distributed PEP / TIC 3.0 — SC-7, AC-4"
+          - "Secure Access / Umbrella (cloud)"
+          - "Prisma Access (cloud SASE)"
+          - "— (partners for SASE)"
+      - cells:
+          - "Device identity / NAC — IA-3, AC-19"
+          - "ISE + TrustSec"
+          - "— (integrates 802.1X)"
+          - "Mist Access Assurance"
+      - cells:
+          - "Config-as-truth — CM-2, CM-6"
+          - "Catalyst Center"
+          - "—"
+          - "Apstra (intent-based)"
+      - cells:
+          - "Detection / telemetry — SI-4, AU-6"
+          - "Secure Network Analytics, XDR"
+          - "Cortex XDR / XSIAM"
+          - "— (flow export to SIEM)"
+      - cells:
+          - "Remote access — AC-17"
+          - "Secure Client (AnyConnect)"
+          - "GlobalProtect"
+          - "—"
+    notes: >
+      This is the vendor-realization matrix — a reference table the audience
+      reads, not a walk-through. Rows are edge functions with their NIST
+      controls; columns are the three manufacturers. Read it as: for each
+      function the agency needs, here is how each vendor realizes the mechanism,
+      and dashes mark where a vendor does not offer a first-party product for
+      that function (for example, Palo Alto integrates with third-party 802.1X
+      rather than shipping its own NAC, and Juniper partners for SASE rather than
+      operating a first-party cloud PEP). Every cell is a candidate example of
+      the mechanism, never a recommendation; the series rule is mechanism, not
+      product. Reinforce that final selection is a procurement decision validated
+      against the NIAP PCL, the CMVP validated-modules list, the applicable DISA
+      STIG, and the DoDIN APL at time of buy — the matrix tells you what to shop
+      for, not what to buy. Because this slide names specific vendor products,
+      the notes carry vendor documentation links for each manufacturer's boundary,
+      overlay, NAC, and remote-access lines so the claims are traceable to the
+      vendors' own documentation.
+    vendor_sources:
+      - "cisco_secure_firewall"
+      - "cisco_sdwan"
+      - "cisco_ise"
+      - "palo_ngfw"
+      - "palo_prisma_access"
+      - "juniper_srx"
+      - "juniper_mist"
+      - "juniper_apstra"
+
+  # 10 ----------------------------------------------------------------------
+  - type: content
+    kicker: "NECESSITY CLOSURES"
+    title: "Three functions that must be gear"
+    layout: columns
+    cards:
+      - title: "SC-8 encryption"
+        body: "A DIA/MPLS circuit is unencrypted at the network layer unless an IPsec/MACsec overlay on FIPS-validated customer edge gear encrypts it. TLS covers only TLS-aware flows."
+        accent: teal
+        status: "No cloud substitute"
+      - title: "IA-3 device identity"
+        body: "Before any user authenticates, an 802.1X authenticator on customer-owned access gear plus a NAC service must know what is on the wire. No cloud IdP reaches the switchport."
+        accent: navy
+        status: "On the wire"
+      - title: "SC-7 at the branch"
+        body: "Under TIC 3.0, Direct Internet Access is permissible only where the security-capabilities catalog is satisfied at a distributed PEP — an on-prem NGFW or a cloud SASE."
+        accent: amber
+        status: "PEP required"
+    callout:
+      text: "Inherit nothing here — these controls are closed by gear the agency owns, or they are open."
+      accent: red
+    notes: >
+      Three functions in the matrix are necessity closures: no cloud inheritance
+      and no scanner finding can substitute for the equipment. First, SC-8
+      network-layer encryption on the circuit — a DIA or MPLS circuit carries
+      traffic that is unencrypted at the network layer unless an overlay
+      encrypts it, and application-layer TLS is not a substitute because it
+      covers only TLS-aware flows and gives no network-layer integrity for the
+      rest. The only mechanism that encrypts all traffic on the path is an IPsec
+      (or hop-by-hop MACsec) overlay terminated on customer edge equipment, and
+      the cipher must be a FIPS 140-3 validated module — a property of the
+      appliance, not the protocol. Second, IA-3 device identity at the port —
+      before any user authenticates, the network must know what is physically
+      connected, which is an 802.1X authenticator function on the access switch
+      plus a NAC policy service such as ISE or Mist Access Assurance; no cloud
+      identity provider authenticates a switchport. Third, SC-7 boundary
+      protection at the branch under TIC 3.0 — a branch running Direct Internet
+      Access is permissible only when the security-capabilities catalog is
+      satisfied at a distributed enforcement point, which is either an
+      on-premises NGFW or a cloud-delivered SASE service. Which one it is
+      determines which accreditation gate applies — the subject of the next
+      section. The takeaway to voice: inherit nothing here.
+    vendor_sources: ["cisa_tic3", "cmvp_fips"]
+
+  # 11 ----------------------------------------------------------------------
+  - type: section
+    kicker: "PART FOUR"
+    title: "Where gear becomes a cloud service"
+    callout: "Name the enforcement point's location, and the accreditation gate follows from it. On-prem PEP → NIAP/STIG/FIPS/APL. Cloud SASE PEP → FedRAMP."
+    callout_accent: amber
+    notes: >
+      This section addresses the FedRAMP-to-NIAP crossover — the single most
+      common source of federal boundary confusion, and the reason Theme F exists.
+      Two of the edge functions have both an on-premises appliance form and a
+      cloud-delivered form. The same control, SC-7, is closed by different
+      equipment with different accreditation depending on where the enforcement
+      point physically sits. When the distributed PEP is an on-premises appliance
+      it passes the NIAP/STIG/FIPS/APL gate; when it is a cloud-delivered SASE
+      service — Cisco Secure Access, Palo Alto Prisma Access — it passes the
+      FedRAMP gate instead, and the boundary documentation treats it as an
+      external service with an interconnection agreement and Marketplace
+      verification. The rule that resolves the confusion, and the point of Theme
+      F, is stated on the banner: name the enforcement point's location, and the
+      accreditation gate follows from it. Prepare the audience for the next slide,
+      which shows the practical consequence: an agency running both on-prem NGFW
+      branches and cloud-SASE remote users carries both kinds of evidence and
+      must not conflate them in its authorization package. Keep FedRAMP scope at
+      Moderate when discussing the SASE services — verify the CSO's actual
+      authorization on the FedRAMP Marketplace at procurement and never claim a
+      level above Moderate.
+
+  # 12 ----------------------------------------------------------------------
+  - type: content
+    kicker: "THE CROSSOVER"
+    title: "Same control, two gates — location decides"
+    layout: grid
+    cards:
+      - title: "On-prem NGFW PEP"
+        body: "Secure Firewall, PAN-OS NGFW, or SRX at the branch. Closes SC-7 through the NIAP/STIG/FIPS/APL gate; evidence is the appliance's own accreditation."
+        accent: navy
+      - title: "Cloud SASE PEP"
+        body: "Cisco Secure Access or Prisma Access. Closes the same SC-7 through FedRAMP; evidence is a Marketplace listing and an interconnection agreement."
+        accent: teal
+      - title: "Both at once"
+        body: "An agency mixing on-prem branches and cloud-SASE remote users carries both kinds of evidence — NIAP reports and FedRAMP listings — and must not conflate them."
+        accent: amber
+      - title: "The Theme F rule"
+        body: "Name where the enforcement point physically sits, and the accreditation gate follows. The boundary package documents each PEP by its location."
+        accent: red
+    callout:
+      text: "The authorization package must not conflate NIAP validation reports for appliances with FedRAMP Marketplace listings for services."
+      accent: amber
+    notes: >
+      This slide makes the crossover concrete. The first card: when the
+      distributed policy-enforcement point is an on-premises NGFW — Cisco Secure
+      Firewall, Palo Alto PAN-OS NGFW, or Juniper SRX at the branch — it closes
+      SC-7 through the four-part NIAP/STIG/FIPS/APL gate, and the evidence is the
+      appliance's own accreditation artifacts. The second card: when the same
+      enforcement function is delivered as a cloud SASE service — Cisco Secure
+      Access or Palo Alto Prisma Access — it closes the identical SC-7 control
+      through FedRAMP instead, and the evidence is a FedRAMP Marketplace listing
+      plus an interconnection agreement documenting it as an external service.
+      The third card is the operational reality: most agencies run both — on-prem
+      NGFW branches and cloud-SASE remote users — and therefore carry both kinds
+      of evidence simultaneously; the authorization package must keep them
+      distinct and never conflate a NIAP validation report with a FedRAMP
+      listing. The fourth card restates the Theme F rule that resolves it all:
+      name where the enforcement point physically sits, and the accreditation
+      gate follows deterministically. Because this slide names cloud SASE
+      services with FedRAMP authorizations, verify each CSO's actual level on the
+      Marketplace at procurement and hold the claim to Moderate.
+    vendor_sources: ["palo_prisma_access", "fedramp_marketplace", "cisco_secure_firewall"]
+
+  # 13 ----------------------------------------------------------------------
+  - type: content
+    kicker: "INTEROP SEAMS"
+    title: "Why multi-vendor is the normal case"
+    layout: columns
+    cards:
+      - title: "802.1X"
+        body: "Separates the authenticator (any vendor's access switch) from the authentication server (RADIUS — ISE, Mist, or third-party). Supplicant, authenticator, and server need not share a vendor."
+        accent: navy
+        status: "IEEE 802.1X"
+      - title: "MACsec"
+        body: "Encrypts link-by-link at Layer 2 between compliant devices (SC-8, hop-by-hop). Standardized as IEEE 802.1AE, so a mixed-vendor access layer can still encrypt every hop."
+        accent: teal
+        status: "IEEE 802.1AE"
+      - title: "RADIUS / TACACS+"
+        body: "Carry policy and device-administration authentication across vendors, binding the substrate to the identity plane established earlier in the series."
+        accent: amber
+        status: "Cross-vendor"
+    callout:
+      text: "The functions compose across manufacturers because they rest on open protocols, not a proprietary controller — a substrate, not a platform."
+      accent: navy
+    notes: >
+      Federal networks are rarely single-vendor, and this slide explains why the
+      enforcement substrate is designed around open seams rather than one
+      manufacturer's fabric. 802.1X separates the authenticator role — any
+      vendor's access switch — from the authentication server role — a RADIUS
+      service such as ISE, Mist, or a third party. A Cisco switch can
+      authenticate against a policy service that also serves Juniper access
+      points; the supplicant, authenticator, and server need not share a vendor.
+      MACsec provides SC-8 encryption hop-by-hop at Layer 2 between compliant
+      devices, and because it is standardized as IEEE 802.1AE a mixed-vendor
+      access layer can still encrypt every hop. RADIUS and TACACS+ carry policy
+      and device-administration authentication across vendors, binding the whole
+      substrate back to the identity plane established earlier in the series.
+      The reason the series deliberately says "substrate" rather than "platform"
+      is exactly this: the functions compose across manufacturers precisely
+      because they rest on open, standardized protocols rather than a proprietary
+      controller. For the presenter, the practical consequence is that an agency
+      is not locked into a single vendor to achieve edge enforcement, which also
+      widens the pool of NIAP-evaluated, APL-listed products that can satisfy any
+      given mechanism class. This slide references open IEEE standards rather than
+      vendor products, so no vendor-authorization claim is being made.
+
+  # 14 ----------------------------------------------------------------------
+  - type: section
+    kicker: "PART FIVE"
+    title: "Authorities closed here"
+    callout: "Edge-gear evidence is assembled from NIAP/STIG/FIPS/APL sources — not a SCuBA-style tenant scan. The Tool-attestable column is uniformly No."
+    callout_accent: navy
+    notes: >
+      This section presents the book's formal control-closure register — the
+      "Authorities Closed Here" table — and its FedRAMP 20x KSI alignment. The
+      framing to set: this table in the source book is generated from the series
+      compliance spine and regenerated by tooling, not hand-maintained, so it is
+      the authoritative statement of which NIST SP 800-53 Rev 5 controls this
+      book's customer-owned gear closes and how. The distinguishing feature is
+      the Tool-attestable column, which is uniformly No for this book — unlike a
+      SCuBA-style tenant-configuration scan that can attest cloud controls
+      automatically, edge-gear evidence is assembled by hand from four
+      accreditation sources: the NIAP validation report, the STIG scan output,
+      the CMVP certificate, and the APL listing. Prepare the audience to read the
+      next slide as a reference table and the slide after it as the KSI mapping
+      that routes this evidence into the FedRAMP 20x themes. Emphasize the two
+      Closure-Necessity anchors — SC-8 and IA-3 — which have no alternate closure
+      path at all.
+
+  # 15 ----------------------------------------------------------------------
+  - type: table
+    kicker: "NIST SP 800-53 REV 5 CLOSURE"
+    title: "Authorities closed by customer-owned edge gear"
+    headers: ["Control", "Closing mechanism (function, not product)", "Gate", "Tool?"]
+    rows:
+      - cells:
+          - "SC-8 †"
+          - "IPsec/MACsec overlay on customer-premises transport"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+        accent: teal
+      - cells:
+          - "SC-8(1)"
+          - "FIPS 140-3 validated cipher suite on the overlay"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+      - cells:
+          - "IA-3 †"
+          - "802.1X authenticator + NAC at the port"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+        accent: navy
+      - cells:
+          - "AC-19"
+          - "NAC posture gating at the access layer"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+      - cells:
+          - "AC-17"
+          - "Vendor ZTNA / remote-access gateway"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+      - cells:
+          - "AC-4"
+          - "Application-aware flow policy at the NGFW/SASE PEP"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+      - cells:
+          - "SC-7"
+          - "NGFW boundary enforcement at the customer-owned edge"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+      - cells:
+          - "SC-7(8)"
+          - "Forced-proxy egress through the SASE/SWG PEP"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+      - cells:
+          - "SI-4"
+          - "Network detection/telemetry export to the evidence contract"
+          - "NIAP+STIG+FIPS+APL"
+          - "No"
+    callout:
+      text: "† = Closure-Necessity anchor: no alternate closure path. Every row is attested from the gear's own accreditation, never a tenant scan."
+      accent: navy
+    notes: >
+      This is the book's control-closure register, presented as a reference table
+      the audience reads. Nine controls, each with the closing mechanism stated
+      as a function rather than a product, the composed accreditation gate
+      (uniformly NIAP + STIG + FIPS + APL for this book's customer-owned gear),
+      and the Tool-attestable answer, which is uniformly No. Walk the daggered
+      rows: SC-8 (network-layer encryption via an IPsec/MACsec overlay on
+      customer-premises transport) and IA-3 (device identity via an 802.1X
+      authenticator plus NAC at the port) are the two Closure-Necessity anchors —
+      there is no alternate closure path for them, so they are marked with a
+      dagger. The rest follow the same pattern: SC-8(1) is the FIPS 140-3
+      validated cipher suite on the overlay; AC-19 is NAC posture gating; AC-17
+      is the ZTNA or remote-access gateway; AC-4 is application-aware flow policy
+      at the PEP; SC-7 is NGFW boundary enforcement; SC-7(8) is forced-proxy
+      egress through the SASE/SWG PEP; and SI-4 is the network detection and
+      telemetry export into the evidence contract. The uniform No in the
+      Tool-attestable column is the whole point of this book: edge-gear evidence
+      is assembled from NIAP/STIG/FIPS/APL artifacts, not produced by a
+      tenant-configuration scanner. In the source book this table is generated
+      from orgcomp-compliance-spine.yml and is not hand-maintained; the slide
+      reproduces its substance for the briefing.
+    vendor_sources: ["niap_pcl", "cmvp_fips", "disa_stig", "dodin_apl"]
+
+  # 16 ----------------------------------------------------------------------
+  - type: content
+    kicker: "FEDRAMP 20x KSI ALIGNMENT"
+    title: "How edge evidence feeds three KSI themes"
+    layout: columns
+    cards:
+      - title: "KSI-CNA"
+        body: "Cloud Native Architecture — network segmentation and boundary. Draws edge evidence from the boundary, overlay, and flow-enforcement controls (SC-7, SC-8, AC-4, AC-17)."
+        accent: navy
+        status: "Boundary + overlay"
+      - title: "KSI-IAM"
+        body: "Identity and Access Management. Gains device-identity evidence (IA-3, AC-19) from the NAC substrate, complementing user- and workload-identity from the identity books."
+        accent: teal
+        status: "Device identity"
+      - title: "KSI-MLA"
+        body: "Monitoring, Logging, and Alerting. Receives the SI-4 network-telemetry export from the enforcement substrate into the unified compliance contract."
+        accent: amber
+        status: "Telemetry"
+    callout:
+      text: "In every case the KSI is attested from the gear's own accreditation and telemetry — not a tenant-configuration scan."
+      accent: navy
+    notes: >
+      This slide maps the edge substrate's control evidence onto the FedRAMP 20x
+      Key Security Indicators. The edge substrate feeds three KSI themes.
+      KSI-CNA — Cloud Native Architecture, covering network segmentation and
+      boundary — draws its edge evidence from the boundary, overlay, and
+      flow-enforcement controls (SC-7, SC-7(8), SC-8, SC-8(1), AC-4, AC-17); this
+      is the on-premises half of the same theme the cloud SASE service serves on
+      the cloud side. KSI-IAM — Identity and Access Management — gains its
+      device-identity evidence, IA-3 and AC-19, from the NAC substrate,
+      complementing the user- and workload-identity evidence the identity books
+      provide; device identity at the wire is a distinct assurance from user
+      identity in the cloud. KSI-MLA — Monitoring, Logging, and Alerting —
+      receives the SI-4 network-telemetry export from the enforcement substrate.
+      The unifying point, which the presenter should voice explicitly, is that in
+      every case the KSI is attested from the gear's own accreditation and
+      telemetry rather than from a tenant-configuration scan — which is precisely
+      why the Tool-attestable column on the prior table is uniformly No, and why
+      this evidence routes through the unified compliance contract described in
+      the series coordination doctrine rather than through an automated tenant
+      scanner.
+    vendor_sources: []
+
+  # 17 ----------------------------------------------------------------------
+  - type: closing
+    kicker: "WHERE THIS LEAVES US"
+    title: "The gear book closes the edge the cloud cannot"
+    layout: columns
+    cards:
+      - title: "The edge is the agency's"
+        body: "Six controls — SC-7, SC-8, AC-4, IA-3, AC-17, SI-4 — are closed by customer-owned gear, not inherited from any FedRAMP package."
+        accent: navy
+        status: "Owned, not inherited"
+      - title: "One composed gate"
+        body: "NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL. Four artifacts assemble the evidence a cloud package cannot supply."
+        accent: teal
+        status: "Theme F"
+      - title: "Location decides the gate"
+        body: "Name where the enforcement point sits, and the accreditation path follows — on-prem to NIAP/STIG/FIPS/APL, cloud SASE to FedRAMP."
+        accent: amber
+        status: "Crossover rule"
+    callout:
+      text: "Draft proposal — vendor selections illustrative, pending procurement validation against the NIAP PCL, CMVP, DISA STIG, and DoDIN APL. FedRAMP scope: Moderate."
+      accent: navy
+    notes: >
+      Close on the through-line of the gear book. First takeaway: the network
+      edge is the agency's own responsibility — six enumerable controls (SC-7,
+      SC-8, AC-4, IA-3, AC-17, SI-4) are closed by customer-owned equipment and
+      cannot be inherited from any cloud provider's FedRAMP package. Second: that
+      gear passes a single composed accreditation gate, Theme F — NIAP Common
+      Criteria plus DISA STIG plus FIPS 140-3 plus DoDIN APL — whose four
+      artifacts assemble exactly the evidence a FedRAMP package cannot supply.
+      Third: the crossover rule resolves the most common federal boundary
+      confusion — name where the enforcement point physically sits and the
+      accreditation path follows deterministically, on-premises appliances to the
+      four-part gate and cloud SASE services to FedRAMP. Voice the standing
+      caveats: this is a draft CSI Team proposal, the Cisco/Palo Alto/Juniper
+      selections are illustrative and pending procurement validation against the
+      current NIAP Product Compliant List, the CMVP validated-modules list, the
+      applicable DISA STIG, and the DoDIN APL, and other NIAP-evaluated,
+      APL-listed manufacturers satisfy the same mechanism classes. Hold FedRAMP
+      scope at Moderate. Hand off: the edge substrate feeds KSI-CNA, KSI-IAM, and
+      KSI-MLA through the unified compliance contract, tying this gear book back
+      into the series-wide evidence fabric.
+    vendor_sources: ["niap_pcl", "cmvp_fips", "disa_stig", "dodin_apl"]

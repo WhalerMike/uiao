@@ -77,7 +77,7 @@ DEFAULT_SECTIONS = [
     "compliance",
     "executive-briefs",
     "executive-governance-series",
-    "federal-aan-series",
+    "orgcomp-series",
     "modernization-specs",
     "operational-guides",
     # Nested sub-section: a focused bundle of just the OrgPath Intune/Arc

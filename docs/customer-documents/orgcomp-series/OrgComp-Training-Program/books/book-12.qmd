@@ -1,0 +1,115 @@
+---
+title: "Book 12 — Data Protection (Purview)"
+subtitle: "OrgComp module: closing the payload gap — CUI labeling, three-surface DLP, and agency-controlled keys"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Module page for OrgComp Book 12: federal CUI taxonomy in Purview sensitivity labels, DLP across service/endpoint/CASB surfaces, Key Vault Premium CMK, and Audit Premium non-repudiation."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/books/book-12.html
+
+---
+
+**Source:** [Book_12 Data Protection Purview](https://github.com/WhalerMike/uiao/blob/main/inbox/Application%20Aware%20Networking/Book_12_OrgComp_Data_Protection_Purview.qmd)
+· **Evidence slot:** 4 — telemetry (KSI-MLA, CA-7 / SI-4) · **Track modules:** [A4](../compliance-track.html#module-a4-telemetry-control-plane-slot-4), [B6](../implementation-track.html#module-b6-detect-protect-books-1113)
+
+## Scope
+
+Closes the "payload gap" left after network/identity hardening: the pipe is
+regulated but the content is opaque. A federal CUI classification taxonomy
+enforced via Purview sensitivity labels, DLP across three enforcement
+surfaces, and agency-controlled cryptographic key management in Azure Key
+Vault. **Both pipe and payload controls are required for FedRAMP
+Moderate.**
+
+## Learning objectives
+
+- Explain why CASB/network controls alone cannot prevent exfiltration of
+  unclassified-but-sensitive content.
+- Map the federal CUI framework (EO 13556, NARA CUI Registry) — Public,
+  Internal, CUI-Basic, CUI-Specified — to a parent/child Purview label
+  taxonomy created via Security & Compliance PowerShell.
+- Build automatic labeling with pre-built and custom Sensitive Information
+  Types and trainable classifiers, deployed in simulation mode first.
+- Implement the DLP baseline across service-layer
+  (SharePoint/OneDrive/Exchange/Teams), Endpoint DLP (print/USB/clipboard/
+  upload), and CASB network-layer surfaces.
+- Deploy Key Vault Premium (HSM, FIPS 140-2 Level 2) with CMK for SQL TDE
+  and SharePoint BYOK, Managed Identity RBAC, and a 12-month rotation
+  policy.
+- Distinguish AU-12 (audit generation) from AU-10 (non-repudiation) and
+  configure Purview Audit Premium tiered retention.
+- Structure a Certificate Practice Statement per RFC 3647 (SC-17).
+
+## Key concepts
+
+- Four-tier CUI label taxonomy with escalating protections.
+- The Purview-labels-feed-the-CASB integration pattern (payload signal for
+  network enforcement).
+- Three DLP enforcement surfaces; custom SITs; trainable classifiers
+  (50–500 samples).
+- Four-level key hierarchy: offline root CA HSM → issuing CA in Key Vault
+  → CMK → wrapped DEKs.
+- Audit Premium events: MailItemsAccessed, SearchQueryInitiated,
+  SensitivityLabel* (downgrade detection).
+- Infoblox IPAM/DNS underpinning CRL/OCSP reliability.
+
+## Implementation sequence
+
+1. Create and publish the four-tier label taxonomy to all locations.
+2. Build custom SITs and trainable classifiers; auto-labeling in
+   simulation → review → enforce.
+3. Deploy service-layer DLP baseline (block external share/send of CUI).
+4. Verify Defender for Endpoint onboarding, then deploy Endpoint DLP.
+5. Create Key Vault Premium (soft-delete, purge protection, RBAC); mint
+   HSM CMKs.
+6. Migrate SQL TDE protector to CMK; automatic rotation (P12M).
+7. Enable Audit Premium with tiered retention (10-year privileged /
+   1-year default).
+8. Author the CPS per RFC 3647; verify CRL/OCSP reachability.
+
+## Compliance hooks
+
+AC-4, AU-10, MP-2, MP-3, MP-4, MP-5, SC-12, SC-12(1), SC-13, SC-17,
+SC-28. NIST SP 800-171, SP 800-57 Part 1, FIPS 140-2 Level 2, NARA CUI
+Marking Handbook, RFC 3647. FedRAMP 20x KSIs: data protection, key
+management, non-repudiation, boundary protection.
+
+**Boundary context:** for data-plane services a GCC-Moderate boundary
+blocks outright, see
+[B.1.3 — rebuilding boundary-blocked analytics in-boundary](../../boundary/B1-3-rebuilding-boundary-blocked-analytics.html)
+for the rebuild patterns this book's protection controls then apply to.
+
+## Prerequisites
+
+Books 01–13: PKI (03), SASE/CASB (05–06), Conditional Access (05), SQL
+TDE (07–08), PAM (10), SIEM context (13). Security & Compliance
+PowerShell and Az modules.
+
+## Labs
+
+1. Build the label taxonomy and an auto-labeling policy in simulation
+   mode; seed SharePoint with SSN-containing test docs; review the
+   simulation report for false positives before enforcing.
+2. Create a custom SIT with keyword corroboration and a DLP rule blocking
+   external email of matching content; verify the policy tip.
+3. Stand up Key Vault Premium, migrate an Azure SQL TDE protector to CMK,
+   apply a rotation policy, and confirm key operations in Log Analytics.
+
+## Pitfalls the book calls out
+
+- Publishing labels to only one location causes inconsistent
+  classification — publish everywhere from day one.
+- Enforcing auto-labeling without a simulation review can mislabel at
+  scale and flood the help desk.
+- Trainable classifiers trained on unrepresentative samples underperform
+  (budget 3–4 weeks).
+- Endpoint DLP silently misses devices not onboarded to Defender for
+  Endpoint; never delete a compromised key version until data is
+  re-encrypted.
+
+## Vendor training
+
+[SC-401](../vendor-training-catalog.html#microsoft),
+[AZ-500](../vendor-training-catalog.html#microsoft).
+
+**Previous:** [Book 11](book-11.html) · **Next:** [Book 13 — SIEM / XDR Detection](book-13.html)

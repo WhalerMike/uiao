@@ -101,14 +101,14 @@ _CANON_REFS = [
         "Reference deployment pattern",
         "docs/customer-documents/case-studies/reference-deployment-fedciv-ad-to-entra.qmd",
     ),
-    ("NIST + FICAM cross-walk", "docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd"),
+    ("NIST + FICAM cross-walk", "docs/customer-documents/uiao-orgcomp-integration/12-nist-icam-crosswalk.qmd"),
     (
         "GCC-Moderate boundary model",
-        "docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd",
+        "docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd",
     ),
     (
         "Three-way GCC-Moderate compliance conflict",
-        "docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd",
+        "docs/customer-documents/orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd",
     ),
 ]
 

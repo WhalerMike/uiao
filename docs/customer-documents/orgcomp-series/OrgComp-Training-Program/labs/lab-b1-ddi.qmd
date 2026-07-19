@@ -1,0 +1,133 @@
+---
+title: "Lab environment — DDI (Module B1)"
+subtitle: "Split-horizon DNS, atomic provisioning, and the slot-02 addressing fixture"
+date: "2026-07-18"
+date-format: "MMMM D, YYYY"
+description: "Lab setup for Book 01: a containerized BIND/Kea split-horizon lab (Tier F/P), the M365 endpoint poll exercise, and an IPAM inventory fixture bound as slot-02 addressing evidence."
+aliases:
+  - /customer-documents/federal-aan-series/AAN-Training-Program/labs/lab-b1-ddi.html
+
+---
+
+> Part of the [OrgComp Training Program](../index.html) — companion material for
+> the OrgComp book series, not part of any governance engine. Read the
+> [lab hub safety rules](index.html#safety-rules-read-before-any-lab) first.
+
+**Supports:** [Book 01 labs](../books/book-01.html#labs) ·
+[Module B1](../implementation-track.html#module-b1-landing-zone-ipam-ddi-book-01) ·
+slot 2 — addressing (KSI-PIY)
+
+## Option A (Tier P) — vendor eval
+
+If you have an Infoblox or BlueCat evaluation, use it: create three DNS
+views (internal / cloud-internal / external), enable DNSSEC on one zone,
+and run the vendor's IPAM export — then skip to
+[Bind the evidence](#bind-the-evidence). The
+[vendor catalog](../vendor-training-catalog.html#networking-ddi) lists both
+vendors' training portals, which include lab guides for their own products.
+
+## Option B (Tier F) — containerized split-horizon lab
+
+No license needed: two BIND views + Kea DHCP in containers approximate the
+Book 01 split-horizon exercise.
+
+```bash
+mkdir -p ddi-lab/{internal,external} && cd ddi-lab
+
+# internal view zone: returns a private address
+cat > internal/db.app.example.test <<'EOF'
+$TTL 300
+@ IN SOA ns1.example.test. admin.example.test. (1 3600 900 604800 300)
+@ IN NS  ns1.example.test.
+app IN A 10.20.0.15
+EOF
+
+# external view zone: same name does NOT exist (NXDOMAIN goal),
+# only public names are present
+cat > external/db.example.test <<'EOF'
+$TTL 300
+@ IN SOA ns1.example.test. admin.example.test. (1 3600 900 604800 300)
+@ IN NS  ns1.example.test.
+www IN A 203.0.113.10
+EOF
+```
+
+`named.conf` with two views keyed by client subnet (the lab's stand-in for
+Book 01's internal vs. external resolvers):
+
+```text
+view "internal" {
+  match-clients { 127.0.0.0/8; 10.0.0.0/8; };   # loopback = internal (exec into container); docker bridge source falls to external
+  zone "app.example.test" { type primary; file "/etc/bind/internal/db.app.example.test"; };
+};
+view "external" {
+  match-clients { any; };
+  zone "example.test" { type primary; file "/etc/bind/external/db.example.test"; };
+};
+```
+
+Run it and verify the split:
+
+```bash
+docker run -d --name ddi-bind -v "$PWD:/etc/bind" -p 5353:53/udp internetsystemsconsortium/bind9:9.18
+
+# internal client (simulate with source routing or exec into the container):
+docker exec ddi-bind dig @127.0.0.1 app.app.example.test A +short   # → 10.20.0.15
+# external client:
+dig @127.0.0.1 -p 5353 app.app.example.test A                      # → NXDOMAIN  ✅ Book 01's requirement
+```
+
+## Exercise — the M365 endpoint poll pipeline
+
+Book 01's automation lab, runnable anywhere with Python:
+
+```python
+# m365_endpoints_diff.py — poll the Microsoft 365 IP & URL web service,
+# diff versions, and emit the allow/block artifacts Book 01 automates.
+import json, urllib.request, uuid, pathlib
+
+CLIENT = uuid.uuid4()
+SERVICE = "endpoints.office.com"  # M365 IP & URL web service host
+url = "https://" + SERVICE + "/endpoints/worldwide?clientrequestid=" + str(CLIENT)
+data = json.load(urllib.request.urlopen(url))
+
+prev = pathlib.Path("m365-endpoints.json")
+old = json.loads(prev.read_text()) if prev.exists() else []
+old_urls = {u for e in old for u in e.get("urls", [])}
+new_urls = {u for e in data for u in e.get("urls", [])}
+
+print("ADD  →", sorted(new_urls - old_urls)[:10])
+print("DROP →", sorted(old_urls - new_urls)[:10])
+prev.write_text(json.dumps(data, indent=1))
+# In production these diffs drive RPZ allow/block, NSG, and split-tunnel updates.
+```
+
+## Bind the evidence {#bind-the-evidence}
+
+Produce the CM-8-shaped inventory artifact (from the vendor export in
+Option A, or hand-built from the lab's address plan in Option B):
+
+```json
+{
+  "generated_at": "<timestamp>",
+  "source": "ddi-lab",
+  "networks": [
+    {"cidr": "10.20.0.0/24", "view": "internal", "purpose": "app tier"},
+    {"cidr": "203.0.113.0/24", "view": "external", "purpose": "public"}
+  ],
+  "records": [
+    {"fqdn": "app.app.example.test", "ip": "10.20.0.15", "view": "internal"}
+  ]
+}
+```
+
+Reference it from a copy of the slot-02 mapping
+([`slot-02-addressing-evidence.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/fedramp_aan_catalog/mappings/slot-02-addressing-evidence.yaml))
+and regenerate: `<engine> oscal ksi-ar --output exports/oscal/ksi-ar.json`.
+Score yourself against the [slot 2 rubric](../assessment-rubrics.html#slot-2).
+
+## Teardown
+
+```bash
+docker rm -f ddi-bind && rm -rf ddi-lab
+```

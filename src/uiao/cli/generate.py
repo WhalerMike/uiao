@@ -211,7 +211,7 @@ def generate_aan_deck(
 ) -> None:
     """Generate a canonical AAN (Application-Aware Networking) briefing deck.
 
-    Reproduces the Book_10/Book_11 FedAAN deck DNA (white 10x5.625 in canvas,
+    Reproduces the Book_10/Book_11 OrgComp deck DNA (white 10x5.625 in canvas,
     Arial, house palette, full speaker notes, amber-ring build sequence) from a
     YAML deck spec. The schema is documented in
     ``src/uiao/generators/aan_deck.py``.
