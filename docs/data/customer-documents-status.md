@@ -246,7 +246,7 @@
 | [`docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 574 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 208 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/federal-aan-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/boundary/index.qmd) | 36 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 90 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/federal-aan-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/federal-aan-series/index.qmd) | 106 | Navigation hub | ✅ | — | — |
 
 ### `learning/`
 
