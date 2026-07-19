@@ -1,45 +1,71 @@
 {
-  "_comment": "Lane D landing-zone front-door control map (Vol IX Book 02). Each catalog item binds to the NIST control it satisfies. Actuation is the CPG Terraform Connector via the in-boundary MID; every change is speculative-plan → approve/SoD → apply → validation gate → IPAM/DDI reconcile → close. Projection of orgcomp-compliance-spine.yml, CI-validated against it (slots, KSI themes, boundary, schema) by validate_day2_control_maps.py. Scope: FedRAMP Moderate + GCC Moderate.",
-  "boundary": "gcc-moderate",
-  "catalog": {
-    "lz.subscription.provision": {
-      "title": "Provision landing-zone subscription",
-      "control": "CM-2",
-      "task_type": "change",
-      "approval": "platform+security_sod",
-      "actuation": "terraform-cpg-via-mid",
-      "ksi": [
-        "KSI-CMT"
-      ],
-      "slot": "slot-06-security",
-      "note": "Change-controlled IaC; deployed state equals reviewed source.",
-      "actuator": "TerraformCpgClient.provisionSubscription"
-    },
-    "lz.vnet.provision": {
-      "title": "Provision virtual network",
-      "control": "CM-3",
-      "task_type": "change",
-      "approval": "platform+security_sod",
-      "actuation": "terraform-cpg-via-mid",
-      "ksi": [
-        "KSI-CMT"
-      ],
-      "slot": "slot-06-security",
-      "note": "Speculative plan reviewed before apply (CM-3).",
-      "actuator": "TerraformCpgClient.provisionVnet"
-    },
-    "lz.subnet.allocate": {
-      "title": "Allocate subnet (DDI-backed)",
-      "control": "CM-8",
-      "task_type": "change",
-      "approval": "platform",
-      "actuation": "terraform-cpg-via-mid",
-      "ksi": [
-        "KSI-PIY"
-      ],
-      "slot": "slot-03-network",
-      "note": "Address block reconciled to the authoritative IPAM/DDI record at allocation time — no allocation outside the naming plane.",
-      "actuator": "TerraformCpgClient.allocateSubnet"
-    }
+ "_comment": "Lane D landing-zone front-door control map (Vol IX Book 02). Each catalog item binds to the NIST control it satisfies. Actuation is the CPG Terraform Connector via the in-boundary MID; every change is speculative-plan → approve/SoD → apply → validation gate → IPAM/DDI reconcile → close. Projection of orgcomp-compliance-spine.yml, CI-validated against it (slots, KSI themes, boundary, schema) by validate_day2_control_maps.py. Scope: FedRAMP Moderate + GCC Moderate.",
+ "boundary": "gcc-moderate",
+ "catalog": {
+  "lz.subscription.provision": {
+   "title": "Provision landing-zone subscription",
+   "control": "CM-2",
+   "task_type": "change",
+   "approval": "platform+security_sod",
+   "actuation": "terraform-cpg-via-mid",
+   "ksi": [
+    "KSI-CMT"
+   ],
+   "slot": "slot-06-security",
+   "note": "Change-controlled IaC; deployed state equals reviewed source.",
+   "actuator": "TerraformCpgClient.provisionSubscription"
+  },
+  "lz.vnet.provision": {
+   "title": "Provision virtual network",
+   "control": "CM-3",
+   "task_type": "change",
+   "approval": "platform+security_sod",
+   "actuation": "terraform-cpg-via-mid",
+   "ksi": [
+    "KSI-CMT"
+   ],
+   "slot": "slot-06-security",
+   "note": "Speculative plan reviewed before apply (CM-3).",
+   "actuator": "TerraformCpgClient.provisionVnet"
+  },
+  "lz.subnet.allocate": {
+   "title": "Allocate subnet (DDI-backed)",
+   "control": "CM-8",
+   "task_type": "change",
+   "approval": "platform",
+   "actuation": "terraform-cpg-via-mid",
+   "ksi": [
+    "KSI-PIY"
+   ],
+   "slot": "slot-03-network",
+   "note": "Address block reconciled to the authoritative IPAM/DDI record at allocation time — no allocation outside the naming plane.",
+   "actuator": "TerraformCpgClient.allocateSubnet"
+  },
+  "lz.aws.instance.provision": {
+   "title": "Provision RedHat EC2 instance (AWS landing-zone front door)",
+   "control": "CM-2",
+   "task_type": "change",
+   "approval": "platform+security_sod",
+   "actuation": "terraform-cpg-via-mid",
+   "ksi": [
+    "KSI-CMT"
+   ],
+   "slot": "slot-06-security",
+   "note": "Phase 5.4 (RedHat-on-AWS estate): the same speculative-plan -> approve/SoD -> apply -> validate loop as the Azure front door, applied to the AWS landing-zone pattern; the instance reconciles to IPAM/DDI and the CM-8 join key at provisioning, before anything downstream claims it.",
+   "actuator_gap": "Phase 5.4 build-out (issue #1289): the AWS catalog->tfvars->CPG Terraform Connector wiring for EC2 provisioning lands with the RedHat-on-AWS estate work; declared here so the claim is visible backlog, not silent."
+  },
+  "lz.aws.patchschedule.change": {
+   "title": "Change AWS patch schedule (SSM Patch Manager / Ansible)",
+   "control": "CM-3",
+   "task_type": "change",
+   "approval": "platform+security_sod",
+   "actuation": "ssm-ansible-via-mid",
+   "ksi": [
+    "KSI-CMT"
+   ],
+   "slot": "slot-06-security",
+   "note": "Phase 5.4: maintenance-window / patch-baseline / AAP job-template changes for the RedHat-on-AWS estate as change-controlled catalog items feeding the Vol III Book 03 SI-2 queue — never an ad-hoc console edit.",
+   "actuator_gap": "Phase 5.4 build-out (issue #1289): SSM maintenance-window and Ansible job-template actuation through the in-boundary MID lands with the RedHat-on-AWS estate work; until then the schedule change is a documented, approval-gated manual runbook."
   }
+ }
 }
