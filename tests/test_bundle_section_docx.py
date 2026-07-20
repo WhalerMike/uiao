@@ -58,3 +58,40 @@ def test_bundle_filename_matches_skip_filter() -> None:
     (endswith '-bundle.docx') so a re-run never folds a bundle into itself."""
     for section in ("operational-guides", "operational-guides/orgpath-implementation"):
         assert bsd._bundle_filename(section).endswith("-bundle.docx")
+
+
+def test_orgcomp_series_registered_for_volume_bundles() -> None:
+    assert "orgcomp-series" in bsd.VOLUME_BUNDLE_SECTIONS
+
+
+def test_vol_id_regex_extracts_roman_token() -> None:
+    assert bsd.VOL_ID_RE.match("Vol_IX_Book_03_OrgComp_X").group(1) == "IX"
+    assert bsd.VOL_ID_RE.match("Vol_0_Book_00a_OrgComp_Y").group(1) == "0"
+    assert bsd.VOL_ID_RE.match("OrgComp_Evidence_Contract_Spec") is None
+
+
+def test_roman_rank_orders_volumes_in_reading_order() -> None:
+    vols = ["X", "IX", "V", "0", "VIII", "I"]
+    assert sorted(vols, key=bsd._ROMAN_RANK.get) == ["0", "I", "V", "VIII", "IX", "X"]
+
+
+def test_orgcomp_series_key_puts_books_first_training_last(tmp_path: Path) -> None:
+    sec = tmp_path / "orgcomp-series"
+    paths = [
+        sec / "OrgComp-Training-Program" / "assessment-rubrics.docx",
+        sec / "OrgComp_Evidence_Contract_Spec.docx",
+        sec / "Vol_IX_Book_00_OrgComp_Overview.docx",
+        sec / "Vol_V_Book_01_OrgComp_Track.docx",
+        sec / "boundary" / "B1-model.docx",
+        sec / "Vol_0_Book_00_OrgComp_Summary.docx",
+    ]
+    ordered = sorted(paths, key=lambda d: bsd._orgcomp_series_key(sec, d))
+    names = [p.name for p in ordered]
+    assert names == [
+        "Vol_0_Book_00_OrgComp_Summary.docx",
+        "Vol_V_Book_01_OrgComp_Track.docx",
+        "Vol_IX_Book_00_OrgComp_Overview.docx",
+        "B1-model.docx",
+        "OrgComp_Evidence_Contract_Spec.docx",
+        "assessment-rubrics.docx",
+    ]
