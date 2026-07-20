@@ -3,96 +3,66 @@ from __future__ import annotations
 """
 InfoBlox DNS/IPAM evidence collector.
 
-This collector is responsible for:
+STATUS: RESERVED — no real InfoBlox WAPI integration exists yet.
+
+This collector will be responsible for:
 - Retrieving DNS and IPAM records
 - Validating that overlay identities map correctly to IP/DNS entries
 - Providing evidence for KSIs related to name/address integrity and segmentation
+
+Until the WAPI integration ships, any attempt to instantiate this
+collector raises :class:`InfobloxCollectorNotYetAvailable` so that
+misconfigured pipelines fail fast rather than emitting fabricated
+(``simulated``) evidence into the evidence fabric. This mirrors the
+reserved-adapter pattern in :mod:`uiao.adapters.ccm_bir_adapter` and
+:mod:`uiao.adapters.vdr_adapter`.
+
+The class stays importable and keeps its ``COLLECTOR_ID`` so the
+collector registry still lists the ID as a known-but-unavailable
+integration surface.
 """
 
 from typing import Any, Dict
 
 from ..base_collector import BaseCollector, EvidenceObject
 
+STATUS: str = "reserved"
+
+
+class InfobloxCollectorNotYetAvailable(NotImplementedError):
+    """Raised on any attempt to instantiate the InfoBlox collector.
+
+    The InfoBlox WAPI integration has not been implemented; there is no
+    real evidence source behind this collector. Instantiation fails fast
+    instead of returning simulated payloads.
+    """
+
 
 class InfobloxCollector(BaseCollector):
     """
-    Collector for InfoBlox DNS/IPAM records and validation.
+    Collector for InfoBlox DNS/IPAM records and validation — reserved stub.
+
+    Any attempt to instantiate raises
+    :class:`InfobloxCollectorNotYetAvailable`. The class exists so the
+    registry can list the ID and so the eventual implementation has a
+    stable home; it never emits evidence.
     """
 
     COLLECTOR_ID: str = "infoblox"
+    STATUS: str = STATUS
 
     def __init__(self, config: Dict[str, Any]) -> None:
-        """
-        Initialize the InfoBlox collector.
-
-        Expected configuration keys (illustrative):
-        - base_url: str (e.g., 'https://infoblox.example.com/wapi/v2.11')
-        - username: str
-        - password: str or credential reference
-        - verify_ssl: bool
-        - view: Optional[str] (DNS view)
-        - network_filter: Optional[str]
-        """
-        super().__init__(config=config)
-        self._base_url: str = self._config.get("base_url", "")
-        self._verify_ssl: bool = bool(self._config.get("verify_ssl", True))
+        raise InfobloxCollectorNotYetAvailable(
+            "The InfoBlox DNS/IPAM collector has no real WAPI integration yet "
+            "and no longer returns simulated evidence. Remove 'infoblox' from "
+            "collector_configs (KSIs sourced from InfoBlox will report "
+            "missing evidence) or implement the WAPI calls before enabling it."
+        )
 
     def collect(self, ksi_id: str) -> EvidenceObject:
-        """
-        Collect InfoBlox DNS/IPAM evidence for the given KSI.
-
-        This stub implementation demonstrates the structure and should be
-        replaced with real InfoBlox WAPI calls.
-
-        Parameters
-        ----------
-        ksi_id:
-            Identifier of the KSI for which evidence is being collected.
-
-        Returns
-        -------
-        EvidenceObject
-            Canonical evidence object containing raw and normalized InfoBlox data.
-        """
-        # ---------------------------------------------------------------------
-        # Placeholder: simulate InfoBlox API responses
-        # ---------------------------------------------------------------------
-        raw_data: Dict[str, Any] = {
-            "simulated": True,
-            "source": "InfoBlox",
-            "base_url": self._base_url,
-            "dns_records": [],
-            "ipam_networks": [],
-        }
-
-        normalized_data: Dict[str, Any] = {
-            "records_valid": False,
-            "invalid_records": [],
-            "overlay_identity_mismatches": [],
-        }
-
-        provenance = self._build_provenance(raw_data=raw_data)
-
-        evidence = EvidenceObject(
-            ksi_id=ksi_id,
-            source="InfoBlox",
-            timestamp=self._now(),
-            raw_data=raw_data,
-            normalized_data=normalized_data,
-            provenance=provenance,
-            freshness_valid=False,
-        )
-        return evidence
+        """Unreachable — instantiation always raises. Kept to satisfy the ABC."""
+        raise InfobloxCollectorNotYetAvailable(ksi_id)
 
     def health_check(self) -> bool:
-        """
-        Perform a basic health check for the InfoBlox collector.
-
-        This stub implementation only checks for presence of minimal configuration.
-        A real implementation might:
-        - Authenticate to the WAPI endpoint
-        - Call a lightweight endpoint (e.g., list DNS views)
-        """
-        if not self._base_url:
-            return False
-        return True
+        """Unreachable — instantiation always raises. Kept to satisfy the ABC."""
+        raise InfobloxCollectorNotYetAvailable()
