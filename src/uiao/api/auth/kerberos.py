@@ -27,9 +27,21 @@ from __future__ import annotations
 import os
 import platform
 from dataclasses import dataclass
-from typing import Optional
 
 from fastapi import HTTPException, Request, status
+
+# The identity headers below are ordinary request headers: any client that
+# can reach the Python process directly (uvicorn port, port-forward, dev
+# box) can forge them. They are only trustworthy when IIS terminates every
+# request, performs Windows Authentication, and overwrites the headers —
+# i.e. the deploy/windows-server topology. The deployment must therefore
+# opt in explicitly; without the opt-in the identity extraction fails
+# closed and every require_windows_auth route returns 401.
+_TRUST_ENV = "UIAO_API_WINDOWS_AUTH_TRUSTED"
+
+
+def _headers_trusted() -> bool:
+    return os.environ.get(_TRUST_ENV, "").strip().lower() in {"1", "true", "yes"}
 
 
 @dataclass
@@ -42,7 +54,7 @@ class WindowsIdentity:
     is_service: bool  # True if this is a service account or machine account
 
 
-def get_windows_identity(request: Request) -> Optional[WindowsIdentity]:
+def get_windows_identity(request: Request) -> WindowsIdentity | None:
     """
     Extract the Windows identity from the request.
 
@@ -51,9 +63,17 @@ def get_windows_identity(request: Request) -> Optional[WindowsIdentity]:
       - REMOTE_USER                 (standard CGI variable)
       - HTTP_AUTH_USER              (fallback)
 
+    The headers are only read when ``UIAO_API_WINDOWS_AUTH_TRUSTED`` is
+    set (the IIS web.config sets it) — otherwise they are
+    client-forgeable and are ignored, so the function returns None and
+    callers fail closed.
+
     Returns None if no Windows identity is present (anonymous or
     non-Windows auth).
     """
+    if not _headers_trusted():
+        return None
+
     # Header name after IIS HttpPlatformHandler forwarding
     raw = (
         request.headers.get("x-iis-windowsauthuser")
@@ -98,8 +118,10 @@ def require_windows_auth(request: Request) -> WindowsIdentity:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Windows authentication required. "
-            "Ensure IIS Windows Authentication is enabled "
-            "and caller is domain-joined.",
+            "Ensure IIS Windows Authentication is enabled, the caller is "
+            "domain-joined, and the service sets "
+            f"{_TRUST_ENV}=1 (deploy/windows-server/web.config does; "
+            "never set it when the Python port is directly reachable).",
             headers={"WWW-Authenticate": "Negotiate"},
         )
     # Reject pure machine accounts ($) — these shouldn't call the API directly
