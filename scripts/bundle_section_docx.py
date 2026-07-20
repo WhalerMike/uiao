@@ -74,7 +74,6 @@ DEFAULT_SECTIONS = [
     "adapter-specs",
     "architecture-series",
     "case-studies",
-    "compliance",
     "executive-briefs",
     "executive-governance-series",
     "orgcomp-series",
@@ -127,6 +126,18 @@ SKIP_STEMS = {"index", "ROADMAP", "document-index", "TREE"}
 # bundle, emit one Book_NN-bundle.docx per book so a reader can download
 # a single book as one Word file. Keyed by section directory name.
 BOOK_BUNDLE_SECTIONS = {"orgpath-narrative", "sql-server-narrative", "sql-server-narrative-standalone"}
+
+# Sections organized as roman-numbered volumes of books (Vol_<N>_Book_NN_*).
+# For these, in addition to the whole-section bundle, emit one
+# Vol_<N>-bundle.docx per volume — the whole-series bundle spans ~90+ page
+# documents and is unwieldy as a single Word file; a per-volume download is
+# the unit a reader actually works with.
+VOLUME_BUNDLE_SECTIONS = {"orgcomp-series"}
+
+# Leading volume identifier in a series page filename,
+# e.g. "Vol_IX_Book_03_..." -> "IX". Top-level series books only — the
+# training-program and boundary subtrees don't carry the Vol_ prefix.
+VOL_ID_RE = re.compile(r"^Vol_([0IVX]+)_")
 
 # Leading book identifier in a page filename, e.g. "Book_07a_CPT_03" ->
 # "Book_07a" and "Book_07a" (the landing page) -> "Book_07a". Used to
@@ -255,12 +266,43 @@ def _bundle_filename(section: str) -> str:
     return f"{Path(section).name}-bundle.docx"
 
 
+# Roman-numeral volume ranks for the OrgComp series reading order. Plain
+# lexicographic sort misplaces IX before V and, worse, puts the
+# OrgComp-Training-Program/ subtree FIRST (ASCII '-' < '_' < letters), so the
+# series bundle used to open with ~28 academy pages before any book — reading
+# like a training document rather than the series.
+_ROMAN_RANK = {"0": 0, "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
+_VOL_BOOK_RE = re.compile(r"^Vol_([0IVX]+)_Book_(\w+?)_")
+
+
+def _orgcomp_series_key(section_dir: Path, docx: Path):
+    """Reading-order sort key for the orgcomp-series bundle.
+
+    Group 0: the Vol 0–X books, in volume order (roman-aware) then book
+    number. Group 1: the boundary annexes. Group 2: top-level companion
+    specs (Evidence Contract, etc.). Group 3: the Training Program — the
+    academy belongs at the END of the series bundle, not the front.
+    """
+    rel = docx.relative_to(section_dir)
+    top = rel.parts[0]
+    m = _VOL_BOOK_RE.match(rel.name)
+    if len(rel.parts) == 1 and m and m.group(1) in _ROMAN_RANK:
+        return (0, _ROMAN_RANK[m.group(1)], m.group(2), str(rel))
+    if top == "boundary":
+        return (1, 0, "", str(rel))
+    if top == "OrgComp-Training-Program":
+        return (3, 0, "", str(rel))
+    return (2, 0, "", str(rel))
+
+
 def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
     """Return the sorted list of page .docx files to include in a bundle.
 
     Walks the section tree, applies the SKIP_STEMS filter, and excludes
     the bundle's own output file so a re-run doesn't fold the previous
-    bundle into itself.
+    bundle into itself. The orgcomp-series section sorts in reading order
+    (books → boundary → specs → training program) instead of raw path
+    order — see _orgcomp_series_key.
     """
     out: list[Path] = []
     for docx in sorted(section_dir.rglob("*.docx")):
@@ -271,6 +313,8 @@ def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
         if docx.stem in SKIP_STEMS:
             continue
         out.append(docx)
+    if section_dir.name == "orgcomp-series":
+        out.sort(key=lambda d: _orgcomp_series_key(section_dir, d))
     return out
 
 
@@ -392,6 +436,67 @@ def _bundle_books(site_root: Path, section: str) -> list[tuple[bool, str]]:
     return results
 
 
+def _bundle_volumes(site_root: Path, section: str) -> list[tuple[bool, str]]:
+    """Emit one ``Vol_<N>-bundle.docx`` per volume of a volume-structured section.
+
+    Groups the section's TOP-LEVEL ``Vol_<N>_Book_NN_*.docx`` pages by their
+    roman volume token, concatenates each volume's books in filename order
+    (Book_00, Book_00a, Book_01, ...), and writes ``Vol_<N>-bundle.docx``
+    beside them. Subtrees (training program, boundary annexes) don't carry
+    the ``Vol_`` prefix and are deliberately excluded — a volume bundle is
+    the volume's books, nothing else. Mirrors :func:`_bundle_books`'s
+    TOC-strip, page-break, and header-stamp behavior.
+    """
+    from docx import Document
+    from docx.enum.text import WD_BREAK
+    from docxcompose.composer import Composer
+
+    section_dir = site_root / section
+    if not section_dir.is_dir():
+        return [(False, f"{section}: directory not found at {section_dir}")]
+
+    volumes: dict[str, list[Path]] = {}
+    for docx in sorted(section_dir.glob("*.docx")):
+        if docx.name.endswith("-bundle.docx"):
+            continue
+        if docx.stem in SKIP_STEMS:
+            continue
+        m = VOL_ID_RE.match(docx.stem)
+        if not m or m.group(1) not in _ROMAN_RANK:
+            continue
+        volumes.setdefault(m.group(1), []).append(docx)
+
+    results: list[tuple[bool, str]] = []
+    for vol_id in sorted(volumes, key=_ROMAN_RANK.get):
+        pages = volumes[vol_id]
+        bundle_path = section_dir / f"Vol_{vol_id}-bundle.docx"
+
+        master = Document(str(pages[0]))
+        tocs_stripped = _strip_toc_blocks(master)
+        composer = Composer(master)
+        for page in pages[1:]:
+            master.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+            chapter = Document(str(page))
+            tocs_stripped += _strip_toc_blocks(chapter)
+            composer.append(chapter)
+        composer.save(str(bundle_path))
+
+        vol_label = "Volume 0" if vol_id == "0" else f"Volume {vol_id}"
+        stamped = _stamp_book_header(bundle_path, f"Federal Organization Compliance — {vol_label}")
+
+        results.append(
+            (
+                True,
+                f"{section}/Vol_{vol_id}: bundled {len(pages)} book(s) "
+                f"(stripped {tocs_stripped} per-book TOC block(s); "
+                f"stamped {stamped} header part(s)) -> {bundle_path.name}",
+            )
+        )
+    if not results:
+        results.append((False, f"{section}: no Vol_<N> page .docx found for per-volume bundles"))
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
@@ -439,6 +544,12 @@ def main(argv: list[str] | None = None) -> int:
         if section in BOOK_BUNDLE_SECTIONS:
             for ok_b, msg_b in _bundle_books(site_root, section):
                 print(f"{'OK   ' if ok_b else 'WARN '} {msg_b}")
+
+        # Volume-structured sections also get one Vol_<N>-bundle.docx per
+        # volume — same non-fatal treatment as the per-book pass.
+        if section in VOLUME_BUNDLE_SECTIONS:
+            for ok_v, msg_v in _bundle_volumes(site_root, section):
+                print(f"{'OK   ' if ok_v else 'WARN '} {msg_v}")
 
     # --canon-modernization is a deprecated no-op per ADR-083 (canon
     # modernization pages now live at customer-documents/reference-architecture/
