@@ -4,6 +4,23 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking (evidence integrity): the InfoBlox and Cisco SD-WAN
+  collectors fail fast instead of simulating.** Both collectors
+  previously returned fabricated `{"simulated": True, ...}` payloads
+  through the normal `collect()` path. They are now reserved stubs on
+  the same pattern as `uiao.adapters.ccm_bir_adapter` /
+  `vdr_adapter`: instantiation raises
+  `InfobloxCollectorNotYetAvailable` / `SdwanCollectorNotYetAvailable`
+  (`NotImplementedError` subclasses), and the KSI validator engine
+  degrades to missing-evidence rather than ingesting simulated data.
+  Both subpackages also gain the `__init__.py` they were missing, which
+  had silently excluded them from collector auto-discovery — the
+  registry now lists `infoblox` and `sdwan` as
+  known-but-unavailable (`STATUS = "reserved"`) integration surfaces.
+  Covered by `tests/test_collectors_fail_fast.py`.
+
 ### Added
 
 - **AAN Training Program — external evaluation, graded.** A third-party
