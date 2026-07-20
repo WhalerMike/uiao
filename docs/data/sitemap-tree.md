@@ -10,6 +10,7 @@
   - [Adapter authoring tutorial (30 min)](docs/adapter-authoring-tutorial.html)
   - [Substrate status](docs/substrate-status.html)
 - [Governance · OrgPath](orgpath/index.html)
+- [Modernization · OrgMod](orgmod/index.html)
 - [Download](download/index.html)
 
 ## Findings
@@ -804,7 +805,7 @@
     - [Privileged Session Management and the Audit Chain](customer-documents/orgpath-narrative/Book_28_CPT_05.html)
     - [The DRIFT Surface for PAM — Ungoverned Privileged Accounts and the Actuation Ladder](customer-documents/orgpath-narrative/Book_28_CPT_06.html)
     - [Glossary and References](customer-documents/orgpath-narrative/Book_28_CPT_07.html)
-  - [Book_29: CrowdStrike Falcon — EDR, OrgPath-Scoped Endpoint Policy, and the Threat-Detection Surface That AD Left Ungoverned](customer-documents/orgpath-narrative/Book_29.html)
+  - [Book_29 — CrowdStrike Falcon — EDR, OrgPath-Scoped Endpoint Policy, and the Threat-Detection Surface That AD Left Ungoverned](customer-documents/orgpath-narrative/Book_29.html)
     - [The Endpoint Governance Gap](customer-documents/orgpath-narrative/Book_29_CPT_01.html)
     - [Falcon Sensor Policy and OrgPath-Scoped Endpoint Profiles](customer-documents/orgpath-narrative/Book_29_CPT_02.html)
     - [CrowdStrike Falcon as the EDR Data Plane UIAO Governs](customer-documents/orgpath-narrative/Book_29_CPT_03.html)
