@@ -74,7 +74,6 @@ DEFAULT_SECTIONS = [
     "adapter-specs",
     "architecture-series",
     "case-studies",
-    "compliance",
     "executive-briefs",
     "executive-governance-series",
     "orgcomp-series",
@@ -255,12 +254,43 @@ def _bundle_filename(section: str) -> str:
     return f"{Path(section).name}-bundle.docx"
 
 
+# Roman-numeral volume ranks for the OrgComp series reading order. Plain
+# lexicographic sort misplaces IX before V and, worse, puts the
+# OrgComp-Training-Program/ subtree FIRST (ASCII '-' < '_' < letters), so the
+# series bundle used to open with ~28 academy pages before any book — reading
+# like a training document rather than the series.
+_ROMAN_RANK = {"0": 0, "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
+_VOL_BOOK_RE = re.compile(r"^Vol_([0IVX]+)_Book_(\w+?)_")
+
+
+def _orgcomp_series_key(section_dir: Path, docx: Path):
+    """Reading-order sort key for the orgcomp-series bundle.
+
+    Group 0: the Vol 0–X books, in volume order (roman-aware) then book
+    number. Group 1: the boundary annexes. Group 2: top-level companion
+    specs (Evidence Contract, etc.). Group 3: the Training Program — the
+    academy belongs at the END of the series bundle, not the front.
+    """
+    rel = docx.relative_to(section_dir)
+    top = rel.parts[0]
+    m = _VOL_BOOK_RE.match(rel.name)
+    if len(rel.parts) == 1 and m and m.group(1) in _ROMAN_RANK:
+        return (0, _ROMAN_RANK[m.group(1)], m.group(2), str(rel))
+    if top == "boundary":
+        return (1, 0, "", str(rel))
+    if top == "OrgComp-Training-Program":
+        return (3, 0, "", str(rel))
+    return (2, 0, "", str(rel))
+
+
 def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
     """Return the sorted list of page .docx files to include in a bundle.
 
     Walks the section tree, applies the SKIP_STEMS filter, and excludes
     the bundle's own output file so a re-run doesn't fold the previous
-    bundle into itself.
+    bundle into itself. The orgcomp-series section sorts in reading order
+    (books → boundary → specs → training program) instead of raw path
+    order — see _orgcomp_series_key.
     """
     out: list[Path] = []
     for docx in sorted(section_dir.rglob("*.docx")):
@@ -271,6 +301,8 @@ def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
         if docx.stem in SKIP_STEMS:
             continue
         out.append(docx)
+    if section_dir.name == "orgcomp-series":
+        out.sort(key=lambda d: _orgcomp_series_key(section_dir, d))
     return out
 
 
