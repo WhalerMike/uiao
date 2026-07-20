@@ -2,6 +2,15 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+> **Versioning note.** The engine's release line is **pre-1.0** — current
+> `uiao.__version__` is the source of truth and matches the newest section
+> below. A stray `v1.0.0` git tag exists (2026-04-22, from an early tagging
+> scheme abandoned the next day when the 0.x line resumed at `v0.4.0`); it is
+> **not** a GA release, has no section here, and is kept only because
+> deleting a published tag is its own decision. The `*-kit-v*` and
+> `uiao-cli-v*` tags version their downloadable artifacts independently and
+> are unrelated to the engine line.
+
 ## [Unreleased]
 
 ### Added
@@ -598,7 +607,11 @@ OK — all ADR refs resolve
 
 ---
 
-## [Unreleased]
+## [Unversioned block — 2026-05, absorbed by the 0.5.x–0.6.x releases]
+
+<!-- Historical: this section was written as "[Unreleased]" and never
+     retitled when its content shipped. Retitled 2026-07-20 so the file
+     has exactly one [Unreleased] anchor; entries kept verbatim. -->
 
 **Theme: GCC-Moderate boundary integration — completion.** Lands the
 remaining canonical, customer-doc, and adapter-data artifacts derived
@@ -926,7 +939,11 @@ $ python -m pytest -q
 
 ---
 
-## [Unreleased]
+## [Unversioned block — 2026-04, repo-foundation era (#6–#37)]
+
+<!-- Historical: this section was written as "[Unreleased]" and never
+     retitled when its content shipped. Retitled 2026-07-20 so the file
+     has exactly one [Unreleased] anchor; entries kept verbatim. -->
 
 ### Added
 - Contributor foundation at repo root: `CONTRIBUTING.md`, `SECURITY.md`, `CLAUDE.md`, PR template, four structured issue templates (bug, canon-change, adapter-activation, governance-drift) (#37).
