@@ -27,8 +27,17 @@ import uvicorn
 # C:\srv\uiao\impl\src and import uiao.impl.api.app:app; both the
 # directory and the namespace have been retired.
 
+
+def resolve_port(env: dict[str, str] | None = None) -> int:
+    """Resolve the bind port: UIAO_API_PORT wins, then IIS's
+    HTTP_PLATFORM_PORT, then 8000. Extracted so the fallback chain is
+    testable without launching uvicorn."""
+    e = os.environ if env is None else env
+    return int(e.get("UIAO_API_PORT", e.get("HTTP_PLATFORM_PORT", "8000")))
+
+
 if __name__ == "__main__":
-    port = int(os.environ.get("UIAO_API_PORT", os.environ.get("HTTP_PLATFORM_PORT", "8000")))
+    port = resolve_port()
     log_level = os.environ.get("UIAO_LOG_LEVEL", "info").lower()
 
     uvicorn.run(

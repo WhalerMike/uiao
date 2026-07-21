@@ -279,8 +279,13 @@ def run_governance(payload: dict[str, Any] = Body(...)) -> JSONResponse:
 
     Sets the posted snapshot as the console's active snapshot (so the
     dashboard and principal views reflect it) and returns the
-    ``GovernanceReport`` as JSON. No writes occur — this is the read-only
-    analysis surface, analogous to the codebook ``/validate`` probe.
+    ``GovernanceReport`` as JSON. "Read-only" here means no writes to
+    external systems (Graph/ARM) — the call DOES replace the
+    process-global active snapshot every other console viewer renders
+    (deliberate; pinned by test_orgpath_console.py). In the documented
+    deployment IIS Windows Auth fronts this endpoint; anywhere the
+    Python port is directly reachable, an anonymous caller can swap the
+    view state (never persisted; resets on restart).
     """
     try:
         snapshot = snapshot_from_dict(payload)
