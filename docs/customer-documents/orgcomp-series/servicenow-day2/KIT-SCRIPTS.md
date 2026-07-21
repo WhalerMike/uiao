@@ -100,6 +100,9 @@ Beyond the [Variables Reference](./KIT-VARIABLES-REFERENCE.md):
 ## Cross-references
 
 - `KIT-VARIABLES-REFERENCE.md` — the configuration contract every script reads.
+- `KIT-IMPLEMENTATION-GUIDE.md` — step-by-step stand-up (sub-prod → ATF → promote).
+- `KIT-USAGE-OPERATOR.md` — running the catalog tasks day to day.
+- `KIT-USAGE-SAM-INTEGRATION.md` — operating the IIQ-push integration.
 - `README.md` — the scoped-app overview and the closure-provenance rules.
 - `../OrgComp_Operator_Runbook_Day2_Compliant.qmd` — the eight tasks these scripts automate.
 - `atf/` — the happy-path + negative ATF suites the fail-closed guarantees are asserted by.
