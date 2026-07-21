@@ -250,6 +250,7 @@
 
 - [Federal Organization Compliance (OrgComp) Series](customer-documents/orgcomp-series/index.html)
 - [OrgComp — Evidence & Authorization Contract](customer-documents/orgcomp-series/OrgComp_Evidence_Contract_Spec.html)
+- [OrgComp — Day-2 Operator Runbook (Compliant Rewrite)](customer-documents/orgcomp-series/OrgComp_Operator_Runbook_Day2_Compliant.html)
 - **Boundary + Authorization**
   - [B. Boundary + Authorization](customer-documents/orgcomp-series/boundary/index.html)
   - [B.1 GCC-Moderate Boundary Model](customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.html)

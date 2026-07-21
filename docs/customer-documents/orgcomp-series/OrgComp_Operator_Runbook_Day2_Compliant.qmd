@@ -1,0 +1,375 @@
+---
+title: "OrgComp — Day-2 Operator Runbook (Compliant Rewrite)"
+subtitle: "Eight everyday identity-operations tasks, each rewritten as its governed, control-mapped, evidence-emitting OrgComp process"
+doc-type: runbook
+audience: "Service-desk operators · CST/CSO teams · ISSOs · assessors"
+family: orgcomp-series
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-21
+format:
+  html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: orgcomp-reference.docx, toc: true, toc-depth: 3, number-sections: true}
+filters: [orgcomp-callouts.lua]
+---
+
+::: {.aan-warning}
+## Draft Proposal — Subject to Review
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the {{< meta agency.short >}} CIO Office, the Office of Information Security, or leadership. **Date Code:** 2026-07-21 15:20 ET
+:::
+
+::: {.aan-important}
+**What this is.** A set of common service-desk tasks — password and
+authenticator resets, admin-consent requests, tenant account creation,
+scripted-command execution, the morning sync check, and event-log
+handling — each written **the way OrgComp requires it to run**. Each task
+below states, briefly, the ungoverned "as-found" shape most estates
+inherit, then gives the exact compliant process: the catalog item that
+carries it, the source of truth it originates from, the authorization
+gate, the just-in-time elevation, the actuation path, the closure probe,
+and the control and KSI evidence it emits. The compliant steps are the
+five-verb Identity MACD-R matrix (Vol IX Book 01), the SaaS-integration
+gate (Book 05), and the identity-governance layer (Book 06), applied to
+real tasks. No agency, tenant, host, or person is named; substitute your
+own environment's identifiers where the steps say *the production tenant*,
+*the sync host*, and so on.
+:::
+
+# The One Rule Every Task Obeys
+
+Every task in this runbook is one operation in the **MACD-R Lifecycle**
+(Vol 0 Book 00). It must:
+
+1. **originate with the source of truth** for the object's class — an HR
+   joiner/mover/leaver event for a person, the non-human identity registry
+   for a service account, a governed request resolved against the SSOT
+   record for everything else. *An email is not a source of truth.* The
+   email opens a ticket; the ticket resolves against the SSOT.
+2. **carry an authoritative authorization in the path** — the approver
+   the control requires, resolved from the SSOT-derived routing, never the
+   requester acting on their own word. Requester ≠ approver, always.
+3. **execute under least privilege, elevated just-in-time** — a scoped,
+   time-boxed role activated at execution (PIM), actuated through the
+   in-boundary MID Server via Microsoft Graph; **never standing tenant or
+   portal admin**.
+4. **close with provenance** — the closing record carries the verification
+   payload (the probe result proving the state took), not a "done" reply.
+5. **emit verified evidence automatically** — the request, approval, PIM
+   activation, actuation result, and closure probe become a change record
+   (CM-3 / AU-2) reconciled to the CM-8 join key, feeding attestation
+   (Vol VII Book 04) and the KSI evidence pipeline. No hand-compiled report.
+
+If any of the five is missing, the task is unauthorized by construction —
+the finished action is un-attestable no matter how correctly the estate
+change itself was made.
+
+# Task 1 — Password Reset
+
+**Verb:** Reset · **Catalog item:** `entra.credential.password_reset` ·
+**Control:** IA-5 · **KSI:** KSI-IAM
+
+**As-found gap.** An email arrives; the operator, on standing portal
+admin, resets the password and emails a temporary password back to the
+same mailbox that made the request. No identity re-proofing; account
+status is disclosed to an unverified requester; the temporary credential
+and the request share one channel — if that mailbox is compromised, the
+reset hands the account to the attacker.
+
+**The OrgComp process.**
+
+1. **Originate.** The email opens a `password_reset` catalog request
+   against the reconciled identity record — not a portal action. The
+   request resolves the target against the HR/identity source of truth; if
+   the account is disabled, the request halts and routes to the security
+   office rather than silently proceeding.
+2. **Authorize.** Self-service where policy allows (the user proves
+   identity through the self-service portal's own factors); otherwise a
+   service-desk gate that performs **identity re-proofing against the SSOT
+   record** (IA-4) — knowledge derived from the authoritative record, never
+   caller-supplied facts.
+3. **Elevate & actuate.** The catalog actuator resets the credential via
+   Graph through the in-boundary MID under a just-in-time scoped role. The
+   operator holds no standing admin.
+4. **Deliver out-of-band.** Issue a **Temporary Access Pass** (or an
+   out-of-band channel distinct from the request channel) — not a password
+   emailed to the requesting mailbox. The two-message instinct is right;
+   the fix is a *different channel*, not two messages to one inbox.
+5. **Close with provenance.** The closure probe confirms the temporary
+   credential is active and the prior credential is dead; the change record
+   captures who requested, who approved, what re-proofing occurred, and the
+   probe result. IA-5 evidence lands in KSI-IAM automatically.
+
+# Task 2 — Authenticator (MFA) Reset
+
+**Verb:** Reset · **Catalog item:** `entra.credential.mfa_reset` ·
+**Control:** IA-5 (with IA-2 / IA-12) · **KSI:** KSI-IAM
+
+::: {.aan-warning}
+**This is the account-takeover primitive — treat it as the highest-risk
+task on the desk.** After an MFA reset, the next person to enroll an
+authenticator controls the account. An MFA reset performed on an emailed
+request with no verification is the classic help-desk social-engineering
+entry. It must never be a look-up-and-click.
+:::
+
+**As-found gap.** Email arrives, operator looks up the user, clicks
+"require re-register MFA," replies "done." Zero verification of the
+requester against the account owner.
+
+**The OrgComp process.**
+
+1. **Originate.** The request opens an `mfa_reset` catalog item against the
+   identity record.
+2. **Authorize — the gate is the point.** `servicedesk+verify`:
+   the operator performs **identity-proofing to policy** (IA-12) before
+   anything is actuated — verified against the authoritative identity
+   record and, for privileged or sensitive accounts, a second-party
+   approval. High-assurance re-proofing (e.g., a supervisor-confirmed or
+   in-person/video step) is required where the account's risk tier demands
+   it.
+3. **Elevate & actuate.** Require re-registration via Graph through the MID
+   under a just-in-time role.
+4. **Log and alert.** Every MFA reset raises an audit event **and a
+   security alert** (SI-4) — repeated resets on one identity are a
+   detection signal, not routine.
+5. **Close with provenance.** The closure record carries the re-proofing
+   evidence and the confirmation that the old method is removed and a new
+   enrollment is pending under the user's control.
+
+# Task 3 — Admin Consent Request (Third-Party App)
+
+**Verb:** Change (application integration) · **Catalog items:** Book 05
+Lane F, Phases 1–2 · **Controls:** AC-20, SA-9, AC-6 · **KSI:** KSI-IAM,
+KSI-SCR
+
+**As-found gap.** An app-consent email arrives; the operator checks an
+approved-software list (good instinct), eyeballs whether the requested
+permissions look "limited to what's required," and clicks Accept. No
+recorded authorization verdict on the *service* at the far end; a single
+approver; a subjective permission judgment.
+
+::: {.aan-note}
+**The gap this closes is exact.** Consent restriction governs *who*
+approves an integration; it does not govern *whether the service is
+authorized to hold federal data*. An administrator correctly consenting
+to an **unauthorized** cloud service passes every consent gate and still
+leaks the boundary. Only a recorded authorization verdict closes SA-9.
+:::
+
+**The OrgComp process.**
+
+1. **Originate.** The consent email opens a Lane F SaaS-integration request
+   recording the app, its business owner, and the directory attributes it
+   will receive (AC-20 — what identity data leaves the boundary, to which
+   external system).
+2. **Authorize — verdict before configuration.** Record a
+   **marketplace/authorization verdict at or above the required baseline**
+   against the request *before* consent is granted (SA-9). A missing or
+   lapsed authorization halts the request. The approved-software list is
+   necessary but not sufficient; the authorization verdict is the gate.
+3. **Least privilege on the grant.** Consent is scoped to the minimum the
+   application requires; the reviewing approver is distinct from the
+   requester; the grant is actuated through the MID, not a portal click by
+   a standing admin.
+4. **Declare the endpoints.** The app's SSO/SCIM endpoints, ports, and
+   protocols are recorded (SA-9(2)) so the network allow-list and DDI
+   records derive from the declaration and an undeclared endpoint shows as
+   drift.
+5. **Close and re-attest.** Closure records the verdict, the scoped
+   consent, and the endpoint declaration; the authorization is re-checked
+   on cadence and a lapse raises a task (CA-7). Evidence lands in KSI-SCR.
+
+# Task 4 — Creating a Tenant Account
+
+**Verb:** Add · **Catalog item:** `entra.jml.joiner` · **Control:** AC-2
+(with AC-6, IA-5) · **KSI:** KSI-IAM
+
+**As-found gap.** An operator on global admin creates the account from a
+request, emails the username and password to the user (credentials in
+cleartext), and assigns one of two groups by hand. Origination is an ask,
+not an HR event; privilege is global admin for a routine create;
+entitlements are a binary choice, not SSOT-derived.
+
+**The OrgComp process.**
+
+1. **Originate from the joiner event.** The account is provisioned from the
+   **HR joiner event** (the org/identity source of truth), not from an
+   ad-hoc request. Provisioning that must happen before the HR record
+   exists is the exception path, flagged and time-boxed, not the norm.
+2. **Authorize.** `manager+identity` — the manager of record (SSOT-derived)
+   plus the identity team.
+3. **Least privilege by derivation.** Group, license, and role membership
+   are **derived from the identity's attributes** (department, role,
+   location) against the codebook — not a hand-picked group. The
+   least-privilege baseline is the derivation, not the operator's judgment.
+   Usage-location and sync-filter attributes are set from the record so the
+   account is well-formed on creation.
+4. **Elevate & actuate.** Create via Graph through the MID under a
+   just-in-time scoped role — **never standing global admin** for a routine
+   joiner.
+5. **Deliver credentials out-of-band.** A Temporary Access Pass or
+   out-of-band channel; never username and password in cleartext email.
+6. **Close with provenance.** The closure probe confirms the account exists
+   with exactly the derived entitlements and the owner anchored; the change
+   record feeds attestation. AC-2 evidence lands in KSI-IAM.
+
+# Task 5 — Scripted Command Execution ("Capstone")
+
+**Verb:** Change (bulk/attribute) · **Catalog item:** a typed Lane
+extension, not free-form script · **Controls:** AC-2, AC-6, CM-3 ·
+**KSI:** KSI-IAM
+
+::: {.aan-warning}
+**Never run a command pasted from a request.** In the as-found procedure
+the requester authors a PowerShell command and the operator runs it under
+admin Graph privileges — the requester is the author, the operator is the
+execution engine. A spoofed or compromised requesting mailbox obtains
+arbitrary tenant execution. This is exactly the pattern the "the form is
+the contract" rule exists to prevent.
+:::
+
+**As-found gap.** Operator connects to Graph on an admin host, copy/pastes
+the requester's command, runs it, replies "run successfully." No record of
+what ran, no before/after state, no change record.
+
+**The OrgComp process.**
+
+1. **Parameters travel; commands do not.** The request supplies **validated
+   inputs** to a **pre-approved, version-controlled Script Include** — never
+   a free-form command. The form is the contract: it can only submit the
+   parameters the Script Include declares, and the Script Include is the
+   only thing that runs. A secret is MID-resolved, never a form field.
+2. **Originate & authorize.** The request resolves against the SSOT record
+   for the objects it changes; the approval gate the change type requires
+   holds it.
+3. **Elevate & actuate.** The Script Include actuates via Graph through the
+   MID under a just-in-time scoped role.
+4. **Close with provenance.** The closing record captures the **exact
+   parameters submitted, the before/after state of each changed object, and
+   the probe** confirming the intended change and nothing broader — a
+   CM-3 change record, not a "run successfully" reply. If a bulk change is
+   genuinely one-off and outside the catalog, it is a change-managed,
+   peer-reviewed, logged operation — never an emailed command.
+
+# Task 6 — Morning Synchronization Check
+
+**Verb:** Evidence (continuous monitoring) · **Home:** Book 06 governance
+loop + the evidence fabric · **Controls:** CA-7, SI-4, AU-6, CP-9 ·
+**KSI:** KSI-MLA, KSI-CM
+
+**As-found gap.** An operator RDPs daily to the Tier-0 directory-sync
+hosts, eyeballs the most recent import/sync/export results, notes errors
+by hand, and pastes them into an email where "changes from yesterday must
+be bolded" — a human diffing yesterday's email. Errors found do not become
+tracked remediation. This is the manual-compilation anti-pattern in its
+purest form, performed with daily privileged logon to the most sensitive
+hosts in the estate.
+
+**The OrgComp process.**
+
+1. **Probe, don't RDP.** A scheduled read-only probe collects sync run
+   status, sync/export error counts, connector health, service-health
+   advisories, and backup success from the sync service and connect-health
+   surfaces — via API, under a scoped read-only identity. Daily interactive
+   logon to Tier-0 sync hosts is eliminated (AC-6, and the privileged-access
+   discipline of Vol III Book 01).
+2. **Derive the report, never compile it.** The morning report is
+   **generated** from the probe output — re-runnable and diffable, so
+   "what changed since yesterday" is a computed delta, not a human bolding
+   fields. Reports are derivations, never compilations (Vol 0 Book 00).
+3. **Errors become tracked work.** Each sync/export error or unhealthy
+   connector opens a remediation task with an owner and an SLA (CA-7) —
+   not a line in an email that scrolls away. A failed nightly backup is a
+   CP-9 finding, not a note.
+4. **Emit to the fabric.** The probe result and the derived report flow
+   into the evidence fabric and feed KSI-MLA (monitoring) and KSI-CM
+   automatically; the attestation loop reads posture that is *actioned*,
+   not eyeballed.
+
+# Task 7 — Event-Log Handling
+
+**Verb:** Evidence (audit integrity) · **Home:** the SIEM / evidence
+pipeline (Vol III Book 06) · **Controls:** AU-2, AU-6, AU-9 · **KSI:**
+KSI-MLA
+
+**As-found gap.** A scheduled script writes event-log output to an
+administrative file share (`\\host\d$\...`) — writable by anyone with
+server-admin rights, so the audit record can be altered by the very
+population it is meant to hold accountable (an AU-9 audit-integrity
+failure). No SIEM feed, no retention policy, no review procedure; the
+document itself ends "Review Monday to see if this is enough."
+
+**The OrgComp process.**
+
+1. **Ship to the SIEM, not a share.** Event logs are forwarded to the
+   central SIEM / log pipeline (Vol III Book 06) — write-once to a store the
+   monitored administrators cannot alter (AU-9). A `d$` admin share is never
+   an evidence destination.
+2. **Retain to policy.** Retention and protection follow the audit-record
+   policy (AU-11), not the free space on a server.
+3. **Review is a procedure, not a maybe.** Log review (AU-6) is a scheduled,
+   owned activity that raises findings into the same remediation stream as
+   everything else — replacing "review Monday to see if this is enough"
+   with a defined cadence and owner.
+4. **Emit to the fabric.** Collection status and review completion feed
+   KSI-MLA automatically.
+
+# Task 8 — Privileged Role Definition (Custom Roles)
+
+**Verb:** the standing posture under every task above · **Home:** Book 06
++ Vol III Book 01 (PAM) · **Controls:** AC-6, AC-2(7) · **KSI:** KSI-IAM
+
+**As-found gap.** One scoped custom role exists (a good instinct — a
+helpdesk role limited to a narrow device action) while the rest of the
+operation runs on standing global and portal admin. The scoped role has no
+enumerated permission set, no PIM activation policy, and no review cadence
+recorded.
+
+**The OrgComp process.**
+
+1. **Least privilege by default, everywhere.** Every operator task above
+   actuates under a **scoped role activated just-in-time**; standing
+   global/portal admin is removed from day-to-day operations (AC-6). The
+   one good scoped role becomes the pattern, not the exception.
+2. **Enumerate and bind.** Each custom role declares its exact permission
+   set, its backing group, and the tasks it exists to serve — a governed
+   record, not a spreadsheet row.
+3. **PIM on activation.** Elevation into any privileged role is
+   time-boxed, approved, and logged; the activation record is part of every
+   task's evidence, binding *who could act* to *what was done*.
+4. **Review on cadence.** Privileged-role membership is a standing
+   access-certification target (AC-2(7)) — reviewed on a calendar, with
+   revocations becoming tracked remediation.
+
+# What Changes, in One Table
+
+| Task | As-found origin | As-found auth | As-found privilege | As-found closure | Compliant catalog item |
+|---|---|---|---|---|---|
+| Password reset | Email | None (requester's word) | Standing portal admin | "Done" + temp pw to same inbox | `entra.credential.password_reset` |
+| MFA reset | Email | None | Standing portal admin | "Done" reply | `entra.credential.mfa_reset` |
+| Admin consent | Email | Single operator's judgment | Standing admin | "Accept" | Book 05 Lane F P1–2 |
+| Tenant account | Request | None from HR | Standing global admin | Cleartext creds emailed | `entra.jml.joiner` |
+| Scripted command | Email w/ pasted command | None | Admin Graph | "Run successfully" | Typed Script Include + params |
+| Morning check | Manual RDP | n/a | Daily Tier-0 logon | Hand-bolded email | Scheduled probe → fabric |
+| Event logs | Scheduled script | n/a | Admin share write | Unprotected `d$` | SIEM feed (Vol III Book 06) |
+| Custom roles | Ad-hoc | n/a | Mostly standing admin | Undocumented | PIM + enumerated role record |
+
+Every "as-found" column is a control eroded a click at a time and a KSI
+that reads empty from work that happens every day. Every "compliant" column
+is the same task producing the evidence its control and KSI require — no
+extra work invented, the routine operation simply routed through the path
+that makes it attestable.
+
+# Cross-References
+
+- **Vol 0 Book 00** — the MACD-R Lifecycle, Closure Provenance, and the
+  per-class SSOT Registry these procedures obey.
+- **Vol IX Book 01** — the five-verb Identity MACD-R matrix and the ten
+  helpdesk catalog items (Tasks 1–5 above).
+- **Vol IX Book 05** — the SaaS-integration gate (Task 3).
+- **Vol IX Book 06** — the identity-governance layer, certification, and the
+  evidence feed (Tasks 6 and 8).
+- **Vol III Book 01 / Book 06** — privileged access management and the SIEM
+  evidence pipeline (Tasks 6–8).
+- **Vol VII Book 04** — where every closure above becomes attested control
+  state and KSI evidence.
