@@ -1,4 +1,4 @@
-# Building the AAN derivatives (.docx, .pptx, .zip)
+# Building the OrgComp derivatives (.docx, .pptx, .zip)
 
 > How the rendered/binary deliverables are produced. The `.qmd`/`.md` sources, the
 > figures (`figs/*.svg` + `*.png`), the deck specs (`decks/*.yaml`), and the

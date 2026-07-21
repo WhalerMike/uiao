@@ -40,13 +40,11 @@ HERE = Path(__file__).resolve().parent
 SPINE = HERE / "orgcomp-compliance-spine.yml"
 MATRIX = HERE / "OrgComp_Claim_Evidence_Test_Matrix.md"
 
-# Files whose prose quotes spine counts. Add to this list, not to the regexes,
-# when a new book starts quoting them.
-SCANNED = [
-    "Vol_0_Book_00_OrgComp_Executive_Summary.qmd",
-    "Vol_0_Book_00a_OrgComp_Executive_Brief.qmd",
-    "Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd",
-]
+# Every book is scanned (repo-review round 3 widened this from a 3-book
+# whitelist: the identical drift class exists wherever prose quotes spine
+# counts, and the pattern-driven design makes scanning all 60 books free —
+# files with no count-shaped sentences simply match nothing).
+SCANNED = sorted(p.name for p in HERE.glob("Vol_*_Book_*.qmd"))
 
 
 def truth() -> dict[str, int]:

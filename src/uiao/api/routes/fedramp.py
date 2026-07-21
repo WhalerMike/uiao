@@ -15,7 +15,8 @@ Routes:
     GET  /3pao/package             Generate + return a 3PAO evidence package
     GET  /orgpath/scope            Derive MAS scope from an OrgPath context
 
-Authentication: Windows Authentication (Kerberos) — same as boundary.py.
+Authentication: bearer token via require_auditor, applied at the mount in
+app.py (same fail-closed gate as /api/auditor).
 """
 
 from __future__ import annotations
