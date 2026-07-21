@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the AAN distribution kit (.zip): rendered book .docx + .pptx decks,
+# Build the OrgComp distribution kit (.zip): rendered book .docx + .pptx decks,
 # per-volume folders, governance docs. This rebuild ADDS the full Volume VIII
 # chapter set (infoblox-ddi-book/) and the ServiceNow app kit, which the prior
 # kit omitted (it shipped only the Vol VIII overview shim).
