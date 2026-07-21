@@ -110,6 +110,25 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
     if n_docx == 0:
         notes.append("  WARNING: no book .docx in _site — did the Quarto render run first?")
 
+    # 1b. Non-book series .docx from _site — the operator runbook and the day-2
+    # kit reference/usage docs. These are registered .qmd that render to .docx
+    # but are not Vol_*_Book_* files, so the book collector above skips them.
+    # They ship in a "Runbooks_and_Kit_Docs" folder alongside the volumes.
+    n_extra = 0
+    for stem in (
+        "OrgComp_Operator_Runbook_Day2_Compliant",
+        "OrgComp_Day2_Kit_1_Variables_Reference",
+        "OrgComp_Day2_Kit_2_Scripts_Manifest",
+        "OrgComp_Day2_Kit_3_Implementation_Guide",
+        "OrgComp_Day2_Kit_4_Usage_Operator",
+        "OrgComp_Day2_Kit_5_Usage_SAM_Integration",
+    ):
+        docx = series_site / f"{stem}.docx"
+        if docx.is_file():
+            members[f"Runbooks_and_Kit_Docs/{docx.name}"] = docx
+            n_extra += 1
+    notes.append(f"runbook + kit .docx (from _site): {n_extra}")
+
     # 2. Committed .pptx decks from source.
     n_pptx = 0
     for pptx in sorted(series_src.glob("Vol_*_Book_*.pptx")):

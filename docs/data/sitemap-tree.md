@@ -251,6 +251,11 @@
 - [Federal Organization Compliance (OrgComp) Series](customer-documents/orgcomp-series/index.html)
 - [OrgComp — Evidence & Authorization Contract](customer-documents/orgcomp-series/OrgComp_Evidence_Contract_Spec.html)
 - [OrgComp — Day-2 Operator Runbook (Compliant Rewrite)](customer-documents/orgcomp-series/OrgComp_Operator_Runbook_Day2_Compliant.html)
+- [OrgComp Day-2 Automation Kit — Variables Reference](customer-documents/orgcomp-series/OrgComp_Day2_Kit_1_Variables_Reference.html)
+- [OrgComp Day-2 Automation Kit — Scripts Manifest](customer-documents/orgcomp-series/OrgComp_Day2_Kit_2_Scripts_Manifest.html)
+- [OrgComp Day-2 Automation Kit — Implementation Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_3_Implementation_Guide.html)
+- [OrgComp Day-2 Automation Kit — Operator Usage Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_4_Usage_Operator.html)
+- [OrgComp Day-2 Automation Kit — SAM Integration Usage Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_5_Usage_SAM_Integration.html)
 - **Boundary + Authorization**
   - [B. Boundary + Authorization](customer-documents/orgcomp-series/boundary/index.html)
   - [B.1 GCC-Moderate Boundary Model](customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.html)
