@@ -21,7 +21,10 @@
 
 - **SAM** originates the higher-tier access decision (Tier 1/2, privileged) and
   fires a ServiceNow request item (RITM). It is the authoritative approval
-  origin — MACD-R clause 2.
+  origin — MACD-R clause 2. **Primary implementation: SailPoint IdentityIQ**
+  (on-prem, inside the boundary; LCM originates the request, its ServiceNow SDIM
+  raises the RITM). **Secondary: Identity Security Cloud (SaaS)** over the same
+  contract.
 - **ServiceNow** (`x_fed_day2_ops` scoped app) receives the RITM (or raises the
   lower-tier request itself), routes the approval the control requires, actuates
   through the in-boundary MID Server, and writes the evidence — MACD-R clauses
@@ -50,8 +53,9 @@ fall back to a default credential or a standing admin.
 | `x_fed_day2_ops.tbl_integration` | scoped table name, `x_fed_day2_ops_integration` | Integration/correlation records (RITM ↔ estate object ↔ SAM request) | AU-2 |
 | `x_fed_day2_ops.arm_subscription` | GUID, `<azure-subscription-id>` | Default Azure subscription for ARM actuation | CM-8 |
 | `x_fed_day2_ops.arm_version` | `2022-04-01` | Pinned ARM API version | CM-2 |
-| `x_fed_day2_ops.sam_base_url` | `https://<sam-tenant>.api.identitynow.com` (or on-prem IGA base URL) | SAM/IGA API base for correlation callbacks and status | AC-2 |
-| `x_fed_day2_ops.sam_source_id` | SAM source/correlation id for the Entra source | Ties a SAM request back to the Entra object it governs | AC-2 |
+| `x_fed_day2_ops.sam_flavor` | `identityiq` (primary) \| `isc` (secondary) | Selects the SAM API dialect the `sam` client speaks | CM-2 |
+| `x_fed_day2_ops.sam_base_url` | IIQ: `https://<iiq-host>/identityiq` · ISC: `https://<tenant>.api.identitynow.com` | SAM/IGA API base for correlation callbacks and status | AC-2 |
+| `x_fed_day2_ops.sam_source_id` | IIQ Application name/id for the Entra connector · ISC source id | Ties a SAM request back to the Entra object it governs | AC-2 |
 | `x_fed_day2_ops.acme` | Connection & Credential alias | ACME cert-issuance client (credential lifecycle) | IA-5 |
 | `x_fed_day2_ops.acme_directory` | ACME directory URL | ACME endpoint | IA-5 |
 | `x_fed_day2_ops.acme_default_days` | integer, `90` | Default cert validity | IA-5 |
@@ -66,7 +70,7 @@ Aliases hold the endpoint + credential together; scripts name the alias, never t
 |---|---|---|---|
 | `x_fed_day2_ops.graph` | `https://graph.microsoft.com` (GCC-Moderate) | OAuth2 client-credentials (certificate preferred) | All Entra Graph actuation |
 | `x_fed_day2_ops.arm` | `https://management.azure.com` | OAuth2 client-credentials (managed identity or cert) | Azure ARM actuation |
-| `x_fed_day2_ops.sam` | `x_fed_day2_ops.sam_base_url` | OAuth2 client-credentials or PAT | ServiceNow ↔ SAM correlation/status API |
+| `x_fed_day2_ops.sam` | `x_fed_day2_ops.sam_base_url` | IIQ: API-Client OAuth2 or Basic (least-priv service account) · ISC: OAuth2 PAT | ServiceNow ↔ SAM correlation/status API |
 
 ### 1c. Platform objects the kit expects to exist
 
@@ -152,34 +156,56 @@ SAM is the authoritative origin for higher-tier access (Tier 1/2, privileged) an
 the approval authority chain (IGO / Application Owner / Departmental Owner). It
 does not actuate the estate — it **decides and requests**; ServiceNow executes.
 
+> **Primary: SailPoint IdentityIQ (on-prem IGA).** SAM is implemented on
+> **IdentityIQ** first — an on-premises IGA that already sits **inside the ATO
+> boundary** (agency data center), which is why its integration needs no MID hop
+> for egress: the ServiceNow MID and the IIQ host are on the same protected
+> network. IdentityIQ's Lifecycle Manager (LCM) originates the access request and
+> its approval chain; its **ServiceNow Service Desk Integration Module (SDIM)**
+> raises and tracks the RITM. **Secondary: Identity Security Cloud (ISC / SaaS)**
+> — the same integration contract over ISC's cloud API, offered as the alternate
+> `sam_flavor`. The kit's `sam` client branches on `sam_flavor`.
+>
 > **Canon status.** The SailPoint slot in the adapter registry today is
 > `sailpoint-nerm` (Non-Employee Risk Management), reserved as a FedRAMP-Moderate
-> commercial-exception carve-out (ADR-059). The **SAM (IGA) access-governance
-> integration** below is documented in the Help Desk operations guide but is a
-> *distinct* SailPoint surface; activating it as a conformance adapter needs its
-> own slot and ADR (an ISC/IGA boundary-expansion decision). Treat the variable
-> names below as the integration contract; hold the canon designation for the
-> follow-up ADR.
+> commercial-exception carve-out (ADR-059). This **SAM/IGA access-governance
+> integration** (IdentityIQ primary, ISC secondary) is a *distinct* SailPoint
+> surface; activating it as a conformance adapter needs its own slot and ADR.
+> Treat the variable names below as the integration contract; hold the canon
+> designation for the follow-up ADR.
 
-### 4a. SAM API connection (behind `x_fed_day2_ops.sam`)
+### 4a-P. IdentityIQ (PRIMARY) — API connection behind `x_fed_day2_ops.sam`
 
 | Variable | Format / example | Where stored | Purpose |
 |---|---|---|---|
-| `sam_base_url` | `https://<sam-tenant>.api.identitynow.com` (or on-prem IGA URL) | `sam_base_url` property | SAM API base |
-| `sam_client_id` | client id / PAT id | Credential record | ServiceNow ↔ SAM auth |
-| `sam_client_secret` | secret / PAT secret | ServiceNow Credential (never in script) | ServiceNow ↔ SAM auth |
-| `sam_token_url` | `<sam_base_url>/oauth/token` | Alias/endpoint | OAuth2 token endpoint |
-| `sam_api_version` | e.g. `v3` | Alias | Pinned SAM API version |
+| `sam_base_url` | `https://<iiq-host>/identityiq` | `sam_base_url` property | IIQ application base URL |
+| `iiq_scim_base` | `<sam_base_url>/scim/v2` | derived | SCIM 2.0 resource API (`/Users`, `/Entitlements`, `/Roles`) |
+| `iiq_rest_base` | `<sam_base_url>/rest` | derived | IIQ custom REST (LCM requests, workflows) |
+| auth mode | **API Client (OAuth2 client-credentials)** preferred; Basic (least-priv service account) fallback | Credential record | ServiceNow ↔ IIQ auth (IIQ 8.x API Client) |
+| `iiq_client_id` / `iiq_client_secret` | API Client id + secret | ServiceNow Credential (never in script) | OAuth2 client-credentials |
+| `iiq_token_url` | `<sam_base_url>/oauth2/token` | Alias/endpoint | IIQ OAuth2 token endpoint |
+| `iiq_service_account` | least-privilege IIQ identity (SCIM/LCM scope only) | IIQ | The identity the integration acts as — never `spadmin` |
 
-### 4b. Correlation + approval mapping
+### 4a-S. Identity Security Cloud (SECONDARY / SaaS) — same contract, cloud dialect
 
-| Variable | Format / example | Purpose | Control |
+| Variable | Format / example | Where stored | Purpose |
 |---|---|---|---|
-| `sam_source_id` | SAM source id for the Entra source | Correlate a SAM identity/request to the Entra object | AC-2 |
-| `sam_access_profile_id(s)` | id(s) | The access profile(s) a request grants — maps to Entra group(s)/app role(s) | AC-6 |
-| `sam_request_correlation_key` | RITM number ↔ SAM request id | Ties the ServiceNow RITM to the SAM request end to end (evidence lineage) | AU-2 |
-| approval authority map | IGO → Level 1; App Owner → Level 3; Dept Owner → Level 4 | The SAM approval chain depth by Risk Tier | AC-2, AC-5 |
-| `sam_event_channel` | webhook URL or scheduled pull config | How a SAM-approved request fires the ServiceNow RITM | AC-2 |
+| `sam_base_url` | `https://<tenant>.api.identitynow.com` | `sam_base_url` property | ISC API base |
+| `isc_scim_base` | `<sam_base_url>/v2` | derived | ISC SCIM/v2 (`/Sources`, `/access-profiles`, `/roles`) |
+| `isc_client_id` / `isc_client_secret` | Personal Access Token id + secret | ServiceNow Credential | OAuth2 client-credentials |
+| `isc_token_url` | `<sam_base_url>/oauth/token` | Alias/endpoint | ISC OAuth2 token endpoint |
+| `isc_api_version` | `v3` | Alias | Pinned ISC API version |
+
+### 4b. Correlation + approval mapping (both flavors)
+
+| Variable | IdentityIQ | ISC | Purpose · Control |
+|---|---|---|---|
+| access-request id | IIQ **IdentityRequest** id | ISC **access-request** id | The SAM-side request key · AU-2 |
+| RITM correlation | `IdentityRequest.externalTicketId` ↔ RITM number (set by SDIM) | ISC request id ↔ RITM number | End-to-end lineage SAM ↔ ServiceNow ↔ estate · AU-2 |
+| source / connector | `sam_source_id` = IIQ **Application** (Entra connector) name | ISC **source** id | Correlate the request to the Entra object · AC-2 |
+| grantable access | IIQ **Role** / **Entitlement** (ManagedAttribute) → Entra group/app role | ISC **access profile** / **role** → Entra group/app role | What the request grants · AC-6 |
+| approval authority map | IGO → Level 1 (final); App Owner → Level 3; Dept Owner → Level 4 | (same authority model) | Chain depth by Risk Tier · AC-2, AC-5 |
+| `sam_event_channel` | IIQ **SDIM** raises the RITM (workflow → ServiceNow); status polled back | ISC event trigger / webhook fires the RITM | How a SAM-approved request reaches ServiceNow · AC-2 |
 
 ### 4c. Risk-tier → approval-depth (drives which chain a request travels)
 
