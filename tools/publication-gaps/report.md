@@ -12,13 +12,19 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
 uiao-spec             63           56         56      0
-adr                  131          126        126      0
-modernization         24           21         21      0
+adr                  132          127        127      0
+modernization         27           21         21      0
 schema                38           37         37      0
-other                142            2          2      0
+other                143            3          2      1
 ---------------- ------- ------------ ---------- ------
-TOTAL                398          242        242      0
+TOTAL                403          244        243      1
 ```
+
+## Gaps — Other (1)
+
+| Source | Intent source | Style | Expected .qmd candidates |
+|---|---|---|---|
+| [`src/uiao/canon/specs/Spec3-D2.1-NonHumanIdentityRegistry.md`](src/uiao/canon/specs/Spec3-D2.1-NonHumanIdentityRegistry.md) | frontmatter | include | _(none derived)_ |
 
 ## Methodology
 
