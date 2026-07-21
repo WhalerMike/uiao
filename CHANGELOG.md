@@ -6,6 +6,21 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ### Changed
 
+- **Breaking (API security): router-level auth posture hardened.**
+  (1) The FedRAMP 20x router (`/api/v1/fedramp` — evidence records,
+  drift events, gate-3 dry-run, 3PAO package generation) now carries the
+  shared fail-closed bearer gate (`require_auditor`) at the mount, the
+  same posture as `/api/auditor`. (2) The IIS Windows-identity headers
+  (`X-IIS-WindowsAuthUser` / `Remote-User` / `X-Auth-User`) consumed by
+  `require_windows_auth` were client-forgeable whenever the Python port
+  was reachable directly; they are now ignored — failing closed to 401 —
+  unless the deployment opts in via `UIAO_API_WINDOWS_AUTH_TRUSTED=1`
+  (set by `deploy/windows-server/web.config` and
+  `Install-UIAOService.ps1`, where IIS terminates every request).
+  (3) The never-mounted `routes/boundary.py` dead router is deleted.
+  The OrgPath router's app-layer anonymity is now documented as
+  intentional (read-only per ADR-084 §C7). Covered by
+  `tests/test_api_router_auth.py`.
 - **Breaking (evidence integrity): the InfoBlox and Cisco SD-WAN
   collectors fail fast instead of simulating.** Both collectors
   previously returned fabricated `{"simulated": True, ...}` payloads
