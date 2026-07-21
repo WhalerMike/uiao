@@ -35,8 +35,15 @@ YYYY-MM-DD HH:MM ET
 
 ### Update discipline
 
-1. **Bump on every content change** — set the Date Code to the moment of the
-   edit session's final save, before rendering or distributing.
+1. **Bump on every substantive content change** — set the Date Code to the
+   moment of the edit session's final save, before rendering or distributing.
+   *Ruling (2026-07-20, repo-review round 2):* repo-wide **mechanical
+   sweeps** — renames, brand sweeps (e.g. AAN→OrgComp), link/alias fixes,
+   formatting-only passes — do **not** bump the Date Code. The code answers
+   "when did the substance of this deliverable last change," and a mechanical
+   sweep that leaves the substance intact would otherwise erase that signal
+   across the whole corpus at once. A sweep that *does* alter meaning in a
+   book (changed claims, counts, controls) bumps that book like any edit.
 2. **Render immediately after bumping** so source and derived artifacts carry
    the same code. Never distribute two artifacts with the same Date Code but
    different content.
@@ -45,6 +52,19 @@ YYYY-MM-DD HH:MM ET
    should be replaced, not merged.
 4. Generator scripts (e.g., pptx build scripts) must take the Date Code from
    the clock at build time — never hard-code a stale value into a template.
+
+### Scope of the convention
+
+The Date Code convention (and its CI freshness gate,
+`check_derivative_freshness.py`) is **deliberately scoped to the OrgComp
+series** — measured 2026-07-20, no other customer-document series carries
+Date Codes (0 of 522 `.qmd` across the eight other series), so there is
+nothing there to gate. Extending the convention to another series is a
+per-series adoption decision, not a gate change: add the codes first, then
+widen the gate. Known intra-series gaps: `Vol_0_Book_00a` (Executive
+Brief), `Vol_II_Book_02` (SQL Server Implementation Guide), and
+`Vol_IV_Book_01` (Business Continuity) predate the convention and carry no
+Date Code yet.
 
 ## 2. FedRAMP scope parameter — Moderate only
 
