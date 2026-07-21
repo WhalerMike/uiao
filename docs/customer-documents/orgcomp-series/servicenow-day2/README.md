@@ -45,7 +45,28 @@ break-glass exclusion + expiry + access review) rather than re-inventing it.
 ## Closure provenance — the closure rules (doctrine: Vol 0 Book 00)
 
 Every lane's task closure enforces the **Closure Provenance Doctrine** — no
-closure counts unless it carries its proof:
+closure counts unless it carries its proof — and every task travels the full
+**MACD-R lifecycle** (Vol 0 Book 00): SSOT-originated → authoritatively
+authorized → least-privilege executed → provenance-closed → evidence-emitted.
+The upstream clauses, in scoped-app terms:
+
+- **Work originates with the SSOT.** Catalog tasks are created from
+  divergence — drift detection, joiner/mover/leaver events from the HR
+  system of record, control gaps against the compliance spine. A
+  direct-to-catalog human request still resolves against the SSOT record it
+  claims to change, or the form does not validate (there is nothing
+  authoritative to verify the closure against).
+- **The authorization is authoritative.** Approvals resolve from the
+  owner/manager routing derived from the HR SSOT — not from a hand-picked
+  approver field — and the A0/A1 pre-authorized lanes are recorded standing
+  grants with scope and expiry.
+- **Execution elevates just-in-time.** The executing identity (human or the
+  MID-server automation account) activates a time-boxed, scoped PIM role
+  for the task's verb set (Move, Add, Change, Deletion, Reset); no standing
+  privilege. The activation id is stamped on the task and rides into the
+  closure evidence, binding *who could act* to *what was done*.
+
+The closure clauses:
 
 - **The close is the contract.** A closing update must carry a verification
   payload — the probe/re-test output that justified the close, its timestamp,

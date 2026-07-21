@@ -274,7 +274,7 @@
 | [`docs/customer-documents/orgcomp-series/OrgComp-Training-Program/labs/lab-b6-sentinel.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/OrgComp-Training-Program/labs/lab-b6-sentinel.qmd) | 104 | Authored | ✅ | — | — |
 | [`docs/customer-documents/orgcomp-series/OrgComp-Training-Program/vendor-training-catalog.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/OrgComp-Training-Program/vendor-training-catalog.qmd) | 131 | Authored | ✅ | — | — |
 | [`docs/customer-documents/orgcomp-series/OrgComp_Evidence_Contract_Spec.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/OrgComp_Evidence_Contract_Spec.qmd) | 198 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd) | 1497 | Substantial | ✅ | 7/7 | — |
+| [`docs/customer-documents/orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd) | 1538 | Substantial | ✅ | 7/7 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_0_Book_00a_OrgComp_Executive_Brief.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_0_Book_00a_OrgComp_Executive_Brief.qmd) | 116 | Authored | ✅ | — | — |
 | [`docs/customer-documents/orgcomp-series/Vol_0_Book_01_OrgComp_Product_Inventory_Questionnaire.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_0_Book_01_OrgComp_Product_Inventory_Questionnaire.qmd) | 254 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd) | 491 | Substantial | ✅ | — | — |
@@ -339,7 +339,7 @@
 | [`docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) | 575 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd) | 209 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/orgcomp-series/boundary/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/boundary/index.qmd) | 37 | Navigation hub | ✅ | — | aspirational |
-| [`docs/customer-documents/orgcomp-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/index.qmd) | 116 | Navigation hub | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgcomp-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/index.qmd) | 131 | Navigation hub | ✅ | 1/1 | — |
 
 ### `orgpath-multicloud/`
 
