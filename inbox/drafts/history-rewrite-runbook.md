@@ -1,8 +1,25 @@
 # History rewrite runbook — purge deleted binaries from git history
 
-**Status: DRY-RUN VERIFIED, awaiting a scheduled cutover window.**
+**Status: EXECUTED 2026-07-20 (per owner's "run now").** Results:
+
+- Server pack 1.49 GiB → fresh clone `.git` **582 MB**; purge set was
+  **2,191 paths** at cutover (2,189 deleted binaries + 2 Windows-invalid
+  junk paths).
+- Rewritten `main` = `7696b68c…`, tree `a8a5f931…` — **byte-identical**
+  to the pre-rewrite tree (verified before push and on a fresh clone).
+- All heads + tags force-pushed; GitHub Releases intact by tag name;
+  PR #1302 survived on its rewritten branch; CI green on rewritten main.
+- Pre-rewrite backup mirror parked at
+  `C:\Users\whale\git\uiao-backup-preRewrite.git` (main was
+  `bd05e021…`, tree `a8a5f931…`).
+- **Stale-clone rule is now live:** any clone or worktree from before
+  2026-07-20 (including `copilot-worktrees/*` and `uiao-wt-dems`) is
+  read-only — re-clone before pushing anything.
+
+The procedure below is retained for reference and for any future
+rewrite (e.g. the legacy AI PNGs once an SVG-regeneration story exists).
 Repo-review round 2 follow-through (2026-07-20). Executing this is a
-one-way door for every existing clone — do not run outside the window.
+one-way door for every existing clone — do not run outside a window.
 
 ## Dry-run result (2026-07-20, mirror clone, main @ `a2680e30` era)
 
