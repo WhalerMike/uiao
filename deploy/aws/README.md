@@ -25,6 +25,18 @@ evidence bucket. IaC is **AWS CDK (Python)**.
   accessible, reachable only from the service security group. The evidence
   bucket enforces TLS, blocks public access, and is encrypted + versioned.
 
+## Data-plane API auth (`UIAO_API_AUTH_*`) — must be set
+
+The mounted data-plane routers (`/api/auditor`, `/api/v1/fedramp`, …) use
+the fail-closed bearer gate in `uiao.api.routes._auth`, which reads its
+own env namespace (**not** `UIAO_SAAS_*`): set `UIAO_API_AUTH_AUDIENCE`
+(required — unset means those routes return **503**, fail-closed by
+design), and optionally `UIAO_API_AUTH_TENANTS` /
+`UIAO_API_AUTH_CLOUD` / `UIAO_API_AUTH_REQUIRED_ROLES`. Never set
+`UIAO_API_AUTH_MODE=insecure-dev` or `UIAO_API_WINDOWS_AUTH_TRUSTED` in
+cloud — the latter is only legitimate behind IIS Kerberos
+(deploy/windows-server); the Windows-auth routes correctly 401 here.
+
 ## Deploy
 
 ```bash

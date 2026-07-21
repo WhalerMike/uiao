@@ -73,6 +73,26 @@ secrets; the relevant ones:
 | `UIAO_SAAS_STAMP_EXECUTION_ENABLED` | `true` to execute per-tenant stamps (default off = dry-run) |
 | `AZURE_CLIENT_ID` | Managed identity client id (Graph/ARM + Postgres tokens) |
 
+### Data-plane API auth (`UIAO_API_AUTH_*`) — separate namespace, must be set
+
+The mounted data-plane routers (`/api/auditor`, `/api/v1/fedramp`,
+`/api/v1/ztmm`, …) use the **fail-closed bearer gate** in
+`uiao.api.routes._auth`, which reads its own env namespace — **not**
+`UIAO_SAAS_*`:
+
+| Variable | Meaning |
+|---|---|
+| `UIAO_API_AUTH_AUDIENCE` | **Required.** The API's App ID URI / audience for inbound Entra JWTs. Unset → those routes return **503** (fail-closed, by design). |
+| `UIAO_API_AUTH_TENANTS` | Optional comma-separated tenant-id allowlist. |
+| `UIAO_API_AUTH_CLOUD` | `commercial` (default) / `gcc-high` / `dod`. |
+| `UIAO_API_AUTH_REQUIRED_ROLES` | Optional app roles (e.g. `UIAO.Auditor`). |
+| `UIAO_API_AUTH_MODE` | Leave unset (`entra`). `insecure-dev` is local-dev only — never in cloud. |
+
+The Windows-auth routes (`/api/v1/survey`) additionally require
+`UIAO_API_WINDOWS_AUTH_TRUSTED=1`, which is **only** legitimate behind
+IIS Kerberos (deploy/windows-server) — never set it in cloud; those
+routes correctly 401 here.
+
 ### Passwordless Postgres (ADR-116)
 
 The PostgreSQL Flexible Server runs **Entra-only** (password auth disabled).

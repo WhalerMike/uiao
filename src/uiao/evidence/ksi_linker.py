@@ -19,6 +19,7 @@ File: src/uiao/impl/evidence/ksi_linker.py
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,8 @@ import yaml
 from uiao.models.evidence import EvidenceArtifact
 
 from .linker import FEDRAMP_NS, EvidenceLinker  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 #: Default KSI root relative to project root
 DEFAULT_KSI_ROOT = Path("rules/ksi")
@@ -75,8 +78,13 @@ class KsiEvidenceLinker:
                     artifact = self._ksi_to_artifact(ksi, ksi_path, category)
                     self._artifacts.append(artifact)
                     loaded += 1
-            except Exception:  # noqa: BLE001
-                pass
+                else:
+                    logger.warning("KSI file %s is not a mapping; skipped from evidence linkage", ksi_path)
+            except Exception as exc:  # noqa: BLE001
+                # A malformed KSI must not take the whole load down, but it
+                # must never vanish silently either — a skipped file is a
+                # hole in the evidence-linkage artifact set.
+                logger.warning("KSI file %s failed to load and was skipped: %s", ksi_path, exc)
         self._linker = EvidenceLinker(self._artifacts)
         return loaded
 
@@ -93,8 +101,8 @@ class KsiEvidenceLinker:
                 if self._linker is not None:
                     self._linker.artifacts.append(artifact)
                 return artifact
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("KSI file %s failed to load: %s", ksi_path, exc)
         return None
 
     # ------------------------------------------------------------------
