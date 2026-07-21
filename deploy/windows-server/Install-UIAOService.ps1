@@ -54,6 +54,15 @@ Write-Step "Setting UIAO_SERVICE_PORT=$ServicePort..."
 [System.Environment]::SetEnvironmentVariable("UIAO_SERVICE_PORT", $ServicePort, "Machine")
 Write-OK "UIAO_SERVICE_PORT=$ServicePort"
 
+# The service listens on 127.0.0.1 behind IIS ARR, which performs Windows
+# Authentication and owns the forwarded identity headers. Only in that
+# topology are the headers trustworthy; the API ignores them (fails
+# closed, 401) unless this opt-in is present. Never set it on a host
+# where the service port is reachable from the network directly.
+Write-Step "Setting UIAO_API_WINDOWS_AUTH_TRUSTED=1 (IIS fronts every request)..."
+[System.Environment]::SetEnvironmentVariable("UIAO_API_WINDOWS_AUTH_TRUSTED", "1", "Machine")
+Write-OK "UIAO_API_WINDOWS_AUTH_TRUSTED=1"
+
 # -----------------------------------------------------------------------
 # 3. Register the Windows Service
 # -----------------------------------------------------------------------

@@ -17,7 +17,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
@@ -34,6 +34,7 @@ from .routes import (
     survey,
     ztmm,
 )
+from .routes._auth import require_auditor
 from .web import console as orgpath_console
 
 
@@ -104,6 +105,10 @@ app.include_router(survey.router, prefix="/api/v1/survey", tags=["AD Survey"])
 app.include_router(orgpath.router, prefix="/api/v1/orgpath", tags=["OrgPath (UIAO_151 v4.0 / ADR-084)"])
 # Per ADR-084 §C7, the route is read-only — remediation flows via the
 # drift engine's apply() so the Evidence Fabric records every write.
+# Deliberately unauthenticated at the app layer (same posture as the
+# /orgpath web console it backs): read-only reference data, gated by IIS
+# Windows Auth in the documented deployment. Revisit if the codebook is
+# ever classified as sensitive.
 app.include_router(auditor.router, prefix="/api/auditor", tags=["Auditor API"])
 # §3.1 Auditor API surface for the Phase 3 governance modules.
 app.include_router(ztmm.router, prefix="/api/v1/ztmm", tags=["ZTMM (UIAO_120)"])
@@ -118,6 +123,9 @@ app.include_router(cql.router, prefix="/api/v1/cql", tags=["CQL (UIAO_108)"])
 app.include_router(
     fedramp.router,
     prefix="/api/v1/fedramp",
+    # Evidence records, drift events, dry-run execution, and 3PAO package
+    # generation are auditor surface — same bearer gate as /api/auditor.
+    dependencies=[Depends(require_auditor)],
     tags=["FedRAMP 20x (UIAO_138 / ADR-106)"],
 )
 
