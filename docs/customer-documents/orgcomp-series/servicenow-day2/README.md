@@ -42,6 +42,32 @@ each mapped to its NIST control and KSI in `helpdesk-control-map.json`. The
 Conditional-Access exception item **reuses the Vol VII Book 02 pattern** (mandatory
 break-glass exclusion + expiry + access review) rather than re-inventing it.
 
+## Closure provenance — the closure rules (doctrine: Vol 0 Book 00)
+
+Every lane's task closure enforces the **Closure Provenance Doctrine** — no
+closure counts unless it carries its proof:
+
+- **The close is the contract.** A closing update must carry a verification
+  payload — the probe/re-test output that justified the close, its timestamp,
+  and the checking mechanism — mirroring the Lane C rule that the form
+  supplies every parameter the Script Include reads. A data policy rejects a
+  `Closed Complete` whose closure-evidence field is empty.
+- **A0/A1 auto-close on probe pass.** For the pre-authorized lanes the
+  closing actor is the probe itself: when the verification query confirms
+  target state, the task closes with the payload attached. Full automation is
+  lawful here because verification is a **read** — the L3 ceiling governs
+  autonomous estate *writes*, not evidence reads (`check_l3_ceiling.py`
+  stays the gate for the write side).
+- **Human-only closure is a flagged exception.** A manual close remains
+  possible (operations need the escape hatch) but carries a
+  `closed_manually` flag into every roll-up; control tests and KSI emission
+  count probe-backed closures only, and the manual-closure rate is itself a
+  reported indicator — expected to trend toward zero.
+- **Reports are derivations, never compilations.** SLA attainment, patch
+  conformance, POA&M aging, and the attestation roll-ups are generated from
+  the closure stream (re-runnable, diffable) — the same
+  generated-and-gated discipline the series applies to its own tables.
+
 ## Status — promoted to Volume IX
 
 This scaffold is now the data layer of **Volume IX — ServiceNow Day-2 Operations**
