@@ -39,6 +39,13 @@ MD_DOCX = {
     "KIT-USAGE-OPERATOR": "OrgComp_Day2_Kit_4_Usage_Operator",
     "KIT-USAGE-SAM-INTEGRATION": "OrgComp_Day2_Kit_5_Usage_SAM_Integration",
     "KIT-BUILD-SPEC": "OrgComp_Day2_Kit_6_Build_Specification",
+    # Remaining .md — a .docx sibling for every document in the kit. Keys are
+    # paths relative to servicenow-day2/, so subfolder READMEs land in place.
+    "README": "OrgComp_Day2_Kit_Overview_README",
+    "flow/flow-blueprint": "OrgComp_Day2_Kit_Flow_Blueprint",
+    "catalog/README": "OrgComp_Day2_Kit_Catalog_README",
+    "atf/README": "OrgComp_Day2_Kit_ATF_README",
+    "update-set/README": "OrgComp_Day2_Kit_UpdateSet_README",
 }
 
 # Rendered .docx (in _site) → reading-order name in the top-level docx/ folder.

@@ -125,6 +125,11 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
         "OrgComp_Day2_Kit_4_Usage_Operator",
         "OrgComp_Day2_Kit_5_Usage_SAM_Integration",
         "OrgComp_Day2_Kit_6_Build_Specification",
+        "OrgComp_Day2_Kit_Overview_README",
+        "OrgComp_Day2_Kit_Flow_Blueprint",
+        "OrgComp_Day2_Kit_Catalog_README",
+        "OrgComp_Day2_Kit_ATF_README",
+        "OrgComp_Day2_Kit_UpdateSet_README",
         "OrgComp_ServiceNow_Kit_Expansion_Roadmap_page",
     ):
         docx = series_site / f"{stem}.docx"
