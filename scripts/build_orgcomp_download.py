@@ -117,6 +117,7 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
     # They ship in a "Runbooks_and_Kit_Docs" folder alongside the volumes.
     n_extra = 0
     for stem in (
+        "OrgComp_Day2_Kit_0_Start_Here",
         "OrgComp_Operator_Runbook_Day2_Compliant",
         "OrgComp_Day2_Kit_1_Variables_Reference",
         "OrgComp_Day2_Kit_2_Scripts_Manifest",
