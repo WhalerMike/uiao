@@ -1,0 +1,105 @@
+# Day-2 Automation Kit — CURRENT STATE edition — Scripts
+
+> What this edition adds to the base script set: **one new Script Include**
+> (`AdHybridClient`) and a **routing decision**. Everything else — the gate, the
+> orchestrator, the PIM client, the Graph/ARM clients, the SAM correlation — is
+> reused unchanged. The two editions are the same scripts with `hybrid_mode`
+> deciding the path, not a fork.
+
+**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Audience:** ServiceNow platform admins
+
+## 1. `AdHybridClient` — the AD leg
+
+`AdHybridClient` (`script-includes/AdHybridClient.js`) is the sibling of
+`EntraHelpdeskClient`: where the Graph client writes to Entra, this one writes to
+**Active Directory** for synced objects, on a **domain-joined, in-boundary MID
+Server** pinned to a **writable domain controller**. It follows the house pattern
+exactly — `Class.create`, config from `gs.getProperty`, MID-routed transport,
+`test_mode` canned values, scoped `gs.error` logging with the
+`[x_fed_day2_ops.AdHybridClient]` prefix, and fail-closed returns.
+
+| Method | Cmdlet (skeleton) | Serves |
+|---|---|---|
+| `createUserAd(payload)` | `New-ADUser` | Joiner — create in the role OU; sync projects into Entra |
+| `disableUserAd(id)` | `Disable-ADAccount` + `Move-ADObject` | Leaver — disable + move to the disabled OU |
+| `setPasswordAd(id, opts)` | `Set-ADAccountPassword -Reset` + `Set-ADUser -ChangePasswordAtLogon` | Password reset (synced user) |
+| `setUserAttributesAd(id, attrs)` | `Set-ADUser` | Mover — on-prem-mastered attributes |
+| `moveUserOuAd(id, ou)` | `Move-ADObject` | Mover — OU change |
+| `addGroupMemberAd(g, m)` / `removeGroupMemberAd(g, m)` | `Add-/Remove-ADGroupMember` | AD-sourced group membership |
+| `isAdMastered(entraUser)` | — | The routing predicate: `onPremisesSyncEnabled === true` |
+
+**Transport (starter skeleton).** `_ps(cmdlet, params)` renders the cmdlet with
+its parameters, pins the preferred DC (`-Server`), and dispatches it to the AD MID
+via an `ecc_queue` output record (topic `PowerShell`). The ECC output is
+asynchronous, so a successful return means **dispatched**, not **verified** — the
+Flow's VERIFY clause re-reads AD state on the same DC to confirm the post-state.
+Replace this with your hardened PowerShell activity or Integration Hub AD spoke
+for production; keep the fail-closed contract (any error → `ok:false`).
+
+**Boundary discipline.** The MID runs inside the ATO boundary; its service account
+holds **delegated, least-privilege AD rights** on the specific OUs it manages —
+never Domain Admin. The write and the verify re-read hit the same DC
+(`x_fed_day2_ops.ad_dc`) to avoid replication-lag false reads.
+
+## 2. The router — choosing the leg
+
+Routing sits between MACD-R clause 3 (Elevate) and clause 4 (Actuate). The Flow
+resolves, for the target object:
+
+```
+if (hybrid_mode == true && AdHybridClient.isAdMastered(entraUser)) {
+    // lifecycle / attribute / password / AD-sourced-group writes -> AD leg
+} else {
+    // cloud-only object, OR hybrid_mode == false -> Graph / ARM leg
+}
+```
+
+Two refinements the Flow applies:
+
+1. **Group membership branches on the *group* source, not the user.** A synced
+   user can still be added to a cloud-only group in Entra; the router checks
+   whether the *group* originates on-prem before choosing the AD leg.
+2. **Cloud-native verbs never route to AD.** MFA reset, Azure RBAC, license, guest
+   invite, and admin consent are cloud-only by nature; the router sends them to
+   Graph/ARM regardless of `hybrid_mode`.
+
+If the classifying Entra read fails, the router **fails closed** with clause
+`route` — an unclassified object is not actuated.
+
+## 3. `hybrid_mode` — the edition switch
+
+`x_fed_day2_ops.hybrid_mode` is the single property that distinguishes the two
+editions:
+
+- **`true` (Current State):** synced-object lifecycle / attribute / password /
+  AD-group writes go to the AD leg, then sync to Entra.
+- **`false` (2027 Target State):** the AD leg is dormant; everything actuates
+  cloud-native in Entra, matching the base kit's original assumption.
+
+Flipping to `false` while identities are still AD-mastered is a **correctness
+bug**: Entra Connect silently reverts cloud writes to synced attributes on the next
+cycle. Flip it only when OPM-HRIT provisioning has made Entra the master.
+
+## 4. What is unchanged from the base kit
+
+`EntraHelpdeskGate` (Authorize + Verify), `MacdrOrchestrator` (the five-clause
+chain — it is actuation-agnostic, so it takes whichever leg's closure the router
+selected), `PimActivationClient`, `EntraHelpdeskClient`, `AzureArmClient`,
+`Day2NativeActuator`, `EntraSaasClient`, `EntraAppRegClient`, `AcmeCredentialClient`,
+`SamCorrelationClient`, and `scripted-rest/sam_inbound_ritm.js` are all reused
+verbatim. The MACD-R guarantees, the closure-provenance rules, the fail-closed
+behavior, and the evidence contract are identical across both editions — only the
+write *path* for synced objects changes.
+
+## 5. Config properties added by this edition
+
+| Property | Purpose |
+|---|---|
+| `x_fed_day2_ops.hybrid_mode` | `true` = Current State (AD leg live); `false` = 2027 Target |
+| `x_fed_day2_ops.ad_mid_server` | The domain-joined, in-boundary MID that reaches a writable DC |
+| `x_fed_day2_ops.ad_dc` | The preferred writable DC (write + verify hit the same one) |
+| `x_fed_day2_ops.ad_disabled_ou` | The OU leavers are moved to on disable |
+
+See `CURRENT-STATE-BUILD-DELTA.md` for how these are provisioned and the delegated
+AD rights the MID service account needs.

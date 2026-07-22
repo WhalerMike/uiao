@@ -1,5 +1,13 @@
 # Day-2 Automation Kit — START HERE
 
+> **Edition note.** This base kit describes the **2027 Target State** — identities
+> originating cloud-native from the **OPM-HRIT** SSOT, actuated directly in Entra.
+> If your Entra ID users are today **synced from Active Directory** (Entra
+> Connect), run the **Current State edition** instead — it adds the AD write leg
+> and routes each task to the path that is authoritative on a hybrid estate.
+> Start at `CURRENT-STATE-START-HERE.md`; the two editions are the same scripts
+> switched by `x_fed_day2_ops.hybrid_mode`.
+
 > The implementer's on-ramp. Read this first: it names the order of the steps,
 > points at the document that details each one, states what these scripts are (and
 > are not), gives you the debug levers, and sets the one rule that keeps you
