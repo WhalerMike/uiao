@@ -61,6 +61,7 @@ VOL_FOLDER = {
     "VII": "Vol_VII_ServiceNow_Automation",
     "VIII": "Vol_VIII_Multi_Cloud_DDI",
     "IX": "Vol_IX_Day2_Operations",
+    "X": "Vol_X_Governance_Substrate_Integration",
 }
 _VOL_RE = re.compile(r"^Vol_([0-9IVX]+)_Book_")
 
@@ -122,6 +123,7 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
         "OrgComp_Day2_Kit_3_Implementation_Guide",
         "OrgComp_Day2_Kit_4_Usage_Operator",
         "OrgComp_Day2_Kit_5_Usage_SAM_Integration",
+        "OrgComp_ServiceNow_Kit_Expansion_Roadmap_page",
     ):
         docx = series_site / f"{stem}.docx"
         if docx.is_file():

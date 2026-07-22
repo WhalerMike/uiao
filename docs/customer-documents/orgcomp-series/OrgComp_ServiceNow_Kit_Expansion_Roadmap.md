@@ -1,4 +1,4 @@
-# AAN ServiceNow Kit Expansion Roadmap
+# OrgComp ServiceNow Kit Expansion Roadmap
 
 > Status: DRAFT for author review · Surface: `inbox/` (not canon)
 > Scope parameter: **FedRAMP Moderate + Microsoft GCC Moderate** (per the series rule).
@@ -9,8 +9,8 @@
 
 ## 1. Purpose
 
-Name the **AAN ServiceNow kit portfolio** — the scoped applications that operate the
-AAN architecture — and sequence its expansion beyond what the series already carries.
+Name the **OrgComp ServiceNow kit portfolio** — the scoped applications that operate the
+OrgComp architecture — and sequence its expansion beyond what the series already carries.
 The `OrgComp_Identity_Access_Governance_Kit_Requirements.docx` cites this roadmap as the
 document that proposes that kit "as a Phase 2 deliverable"; this file is that roadmap,
 reconciled against the lanes and phases the repo already tracks in
