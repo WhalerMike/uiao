@@ -89,7 +89,7 @@ def main() -> int:
     maps = control_maps()
     problems: list[str] = []
     backlog: list[tuple[str, str, str, str]] = []
-    n_items = n_act = n_gap = 0
+    n_items = n_act = n_gap = n_ad = 0
     method_cache: dict[str, set[str] | None] = {}
 
     for m in maps:
@@ -144,6 +144,31 @@ def main() -> int:
                     f"(available: {', '.join(sorted(found)) or 'none'})"
                 )
 
+            # 4. CURRENT-STATE AD leg — actuator_ad, when present, names the
+            # hybrid (AD-mastered) actuator and must resolve just like the base
+            # one. Otherwise the current-state edition claims an AD write path
+            # with nothing behind it — the same silent claim, one edition over.
+            ad = v.get("actuator_ad")
+            if ad:
+                n_ad += 1
+                if "." not in ad:
+                    problems.append(f"  {lane}/{key}: actuator_ad {ad!r} is not 'ClientName.method'")
+                    continue
+                adc, adm = ad.split(".", 1)
+                ck = f"{si_dir}::{adc}"
+                if ck not in method_cache:
+                    method_cache[ck] = public_methods(adc, si_dir)
+                adf = method_cache[ck]
+                if adf is None:
+                    problems.append(
+                        f"  {lane}/{key}: actuator_ad names {adc!r} but "
+                        f"{si_dir.name}/{adc}.js does not exist in that app"
+                    )
+                elif adm not in adf:
+                    problems.append(
+                        f"  {lane}/{key}: {adc}.{adm}() does not exist (available: {', '.join(sorted(adf)) or 'none'})"
+                    )
+
     if backlog_mode:
         print("Day-2 actuator backlog — control claims with no code behind them")
         print("=" * 68)
@@ -161,7 +186,10 @@ def main() -> int:
     print("Day-2 actuator coverage")
     print("=" * 68)
     pct = (n_act / n_items * 100) if n_items else 0
-    print(f"maps: {len(maps)} | governed items: {n_items} | actuated: {n_act} ({pct:.0f}%) | declared gaps: {n_gap}")
+    print(
+        f"maps: {len(maps)} | governed items: {n_items} | actuated: {n_act} ({pct:.0f}%) | "
+        f"declared gaps: {n_gap} | current-state AD-leg actuators: {n_ad}"
+    )
     if problems:
         print(f"\nFAIL — {len(problems)} coverage breach(es):")
         print("\n".join(problems))

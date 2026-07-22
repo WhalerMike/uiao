@@ -262,6 +262,7 @@
 - [OrgComp Day-2 Automation Kit — Current State — Operator Usage](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_1_Operator_Usage.html)
 - [OrgComp Day-2 Automation Kit — Current State — Scripts](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_2_Scripts.html)
 - [OrgComp Day-2 Automation Kit — Current State — Build Delta](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_3_Build_Delta.html)
+- [OrgComp Day-2 Automation Kit — Current State — Pilot Rollout & Update-Set Export](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_4_Pilot_Rollout.html)
 - [OrgComp Day-2 Automation Kit — Scoped-App Overview (README)](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Overview_README.html)
 - [OrgComp Day-2 Automation Kit — Governed Day-2 Request — Flow Blueprint](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Flow_Blueprint.html)
 - [OrgComp ServiceNow Kit Expansion Roadmap](customer-documents/orgcomp-series/OrgComp_ServiceNow_Kit_Expansion_Roadmap_page.html)

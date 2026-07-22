@@ -103,3 +103,71 @@ write *path* for synced objects changes.
 
 See `CURRENT-STATE-BUILD-DELTA.md` for how these are provisioned and the delegated
 AD rights the MID service account needs.
+
+## 6. The control-map AD actuators and the hybrid tests
+
+The AD leg is bound to the control maps and proven by ATF, the same way the
+cloud-native path is:
+
+- **`actuator_ad` in the control map.** Every helpdesk item whose synced-object
+  write lands in AD carries an `actuator_ad` naming the `AdHybridClient` method
+  alongside the base (cloud) `actuator` — `entra.jml.joiner` →
+  `AdHybridClient.createUserAd`, `entra.jml.mover` →
+  `setUserAttributesAd`, `entra.jml.leaver` → `disableUserAd`,
+  `entra.credential.password_reset` → `setPasswordAd`, and
+  `entra.access.group_assignment` → `addGroupMemberAd`. Items with no
+  `actuator_ad` are cloud-native in both editions.
+- **`check_actuator_coverage.py` validates it.** The gate now resolves every
+  `actuator_ad` to a real public method on `AdHybridClient` — a current-state AD
+  write path with nothing behind it fails the build, exactly as a missing cloud
+  actuator does.
+- **Four hybrid ATF suites** (see `atf/README.md`) prove the routing and the AD
+  leg with `test_mode = true` — synced → AD leg, cloud-only → Graph leg, an
+  unclassifiable object failing closed to clause `route`, and the AD-leg write
+  flagging `synced:true` so verify allows for sync latency.
+
+## 7. Production: migrating the AD leg to the Integration Hub AD Spoke
+
+`AdHybridClient._ps` is a **starter skeleton** — it renders a PowerShell command
+string and dispatches it to the AD MID through the ECC queue. For production,
+replace that transport with the **Integration Hub Active Directory (v2) spoke**,
+which ServiceNow builds and maintains. The client's method surface does not
+change; only `_ps` is swapped for spoke-action calls, so the router, the control
+maps, and the ATF suites all stand.
+
+| `AdHybridClient` method | Skeleton cmdlet | Integration Hub AD spoke action |
+|---|---|---|
+| `createUserAd` | `New-ADUser` | **Create Object** (objectClass user, in the role OU) |
+| `disableUserAd` | `Disable-ADAccount` + `Move-ADObject` | **Update Object** (disable) + **Move Object** (to the disabled OU) |
+| `setPasswordAd` | `Set-ADAccountPassword -Reset` + `Set-ADUser -ChangePasswordAtLogon` | **Reset Password** (+ set `pwdLastSet = 0`) |
+| `setUserAttributesAd` | `Set-ADUser` | **Update Object** |
+| `moveUserOuAd` | `Move-ADObject` | **Move Object** |
+| `addGroupMemberAd` | `Add-ADGroupMember` | **Add to Group** |
+| `removeGroupMemberAd` | `Remove-ADGroupMember` | **Remove from Group** |
+
+**Why the spoke for production**
+
+- **No command-string rendering.** The spoke takes structured inputs, so the
+  `_render` step (and its quoting/injection surface) disappears — you pass fields,
+  not an interpolated PowerShell line.
+- **Supported and versioned.** The spoke actions are maintained by ServiceNow and
+  travel with platform upgrades; the skeleton is yours to keep working.
+- **Same boundary discipline.** The spoke still runs over the **domain-joined,
+  in-boundary MID** against the pinned writable DC (`ad_dc`), under the same
+  delegated, least-privilege service account — never Domain Admin.
+- **Structured outputs for verify.** Spoke actions return typed results, so the
+  Flow's VERIFY re-read and the evidence record capture the AD post-state without
+  parsing stdout.
+
+**What stays the same**
+
+The `hybrid_mode` switch, the router predicate (`isAdMastered`), the MACD-R
+ordering, the fail-closed contract, and every `actuator_ad` binding are unchanged
+— the spoke is a transport swap inside the AD leg, not a redesign. Keep
+`test_mode` returning canned values so the ATF suites still run with no live AD.
+
+**Trade-off to weigh.** The spoke needs an **IntegrationHub entitlement** (and the
+AD spoke's spoke-specific licensing); the ECC/PowerShell skeleton does not. If
+IntegrationHub is unavailable, harden the skeleton instead — parameterize the
+command (no string interpolation of untrusted input), pin the module version, and
+add explicit error/timeout handling — but treat that as the fallback, not the goal.

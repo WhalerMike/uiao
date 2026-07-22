@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - an unclassifiable object never defaults to the AD leg (fails closed).
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' - no live AD/Graph connectivity.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  If the classifying Entra read fails or returns no sync flag, the router cannot
+  know which master owns the object. It must FAIL CLOSED - escalate to clause
+  'route' - not silently pick a leg. The predicate must therefore never return
+  true for a null/undefined/empty/indeterminate object; a false-positive here
+  would write to Active Directory for an object that may be cloud-only.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: an unclassifiable object is not treated as AD-mastered</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>isAdMastered returns false for null/undefined/empty/indeterminate input so the router fails closed (clause 'route') instead of writing to the wrong master.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert no unclassifiable shape classifies as AD-mastered.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var unclassified = [null, undefined, {}, { onPremisesSyncEnabled: null }, { onPremisesSyncEnabled: 'true' }];
+  for (var i = 0; i < unclassified.length; i++) {
+    if (ad.isAdMastered(unclassified[i]) !== false) {
+      stepResult.setFailed('an unclassifiable object was treated as AD-mastered (case ' + i + ') - must fail closed, not write to AD');
+      return;
+    }
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
