@@ -105,6 +105,12 @@ This scaffold is now the data layer of **Volume IX — ServiceNow Day-2 Operatio
 - `Vol_IX_Book_03_OrgComp_App_Registration_Governance.qmd` — Lane E (issue #1140)
 - `Vol_IX_Book_04_OrgComp_Teams_Telephony_Catalog.qmd` — §4 (issue #1141)
 
+## New here? Read [`START-HERE.md`](./START-HERE.md) first
+
+It gives the ordered install path (which document for which step), the script
+disclaimers, the debug options, and the sandbox-first rule. This README is the
+scoped-app overview; START-HERE is the implementer's on-ramp.
+
 ## Remaining steps (issue #1139)
 
 1. ~~Author the scoped-app records (Script Includes, Flows, ATF) mirroring the DDI app.~~ **Done** (this skeleton).

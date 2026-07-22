@@ -32,6 +32,7 @@ SITE_SERIES_REL = f"{SERIES}"
 
 # Rendered .docx (in _site) → name to place BESIDE the matching .md in the kit.
 MD_DOCX = {
+    "START-HERE": "OrgComp_Day2_Kit_0_Start_Here",
     "KIT-VARIABLES-REFERENCE": "OrgComp_Day2_Kit_1_Variables_Reference",
     "KIT-SCRIPTS": "OrgComp_Day2_Kit_2_Scripts_Manifest",
     "KIT-IMPLEMENTATION-GUIDE": "OrgComp_Day2_Kit_3_Implementation_Guide",
@@ -42,6 +43,7 @@ MD_DOCX = {
 
 # Rendered .docx (in _site) → reading-order name in the top-level docx/ folder.
 DOCX_SET = {
+    "OrgComp_Day2_Kit_0_Start_Here": "0_START_HERE.docx",
     "OrgComp_Operator_Runbook_Day2_Compliant": "1_Operator_Runbook.docx",
     "OrgComp_Day2_Kit_1_Variables_Reference": "2_Variables_Reference.docx",
     "OrgComp_Day2_Kit_2_Scripts_Manifest": "3_Scripts_Manifest.docx",

@@ -250,6 +250,7 @@
 
 - [Federal Organization Compliance (OrgComp) Series](customer-documents/orgcomp-series/index.html)
 - [OrgComp — Evidence & Authorization Contract](customer-documents/orgcomp-series/OrgComp_Evidence_Contract_Spec.html)
+- [OrgComp Day-2 Automation Kit — START HERE](customer-documents/orgcomp-series/OrgComp_Day2_Kit_0_Start_Here.html)
 - [OrgComp — Day-2 Operator Runbook (Compliant Rewrite)](customer-documents/orgcomp-series/OrgComp_Operator_Runbook_Day2_Compliant.html)
 - [OrgComp Day-2 Automation Kit — Variables Reference](customer-documents/orgcomp-series/OrgComp_Day2_Kit_1_Variables_Reference.html)
 - [OrgComp Day-2 Automation Kit — Scripts Manifest](customer-documents/orgcomp-series/OrgComp_Day2_Kit_2_Scripts_Manifest.html)
