@@ -12,6 +12,7 @@ on:
       - 'scripts/bundle_section_docx.py'
       - 'scripts/build_scubadrift_download.py'
       - 'scripts/build_orgcomp_download.py'
+      - 'scripts/build_day2_kit_download.py'
       - 'tools/scubadrift/**'
       - '.github/workflows/quarto.yml'
   workflow_dispatch:
@@ -656,6 +657,7 @@ jobs:
             scripts/bundle_section_docx.py
             scripts/build_scubadrift_download.py
             scripts/build_orgcomp_download.py
+            scripts/build_day2_kit_download.py
             tools/scubadrift
             .github/maintenance
             docs/customer-documents/orgcomp-series
@@ -765,6 +767,20 @@ jobs:
               --out _site/download \
               --date-code "$(date -u +%Y-%m-%d)" \
             || echo "::warning::Federal AAN kit build failed (non-fatal)"
+
+      - name: Build standalone Day-2 kit download
+        # The day-2 kit as its own zip (orgcomp-day2-kit-latest.zip) — source +
+        # the rendered kit .docx — so an implementation team has a stable URL
+        # instead of the kit only inside the 48 MB federal bundle. Non-fatal,
+        # skipped in maintenance mode.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: |
+          python _repo/scripts/build_day2_kit_download.py \
+              --site-root _site \
+              --src-root _repo \
+              --out _site/download \
+              --date-code "$(date -u +%Y-%m-%d)" \
+            || echo "::warning::Day-2 kit build failed (non-fatal)"
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
