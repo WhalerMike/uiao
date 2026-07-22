@@ -28,11 +28,9 @@
 If any step fails, the request stops there and records why. That is correct — a
 task that skipped a step is not something you should force through.
 
-> **Edition note.** The diagrams below show each task's **2027 Target State**
-> write path — cloud-native, actuated directly in Entra Graph / Azure ARM, with
-> joiner/mover/leaver originating from the OPM-HRIT SSOT. For the **current**
-> hybrid, AD-mastered write path of each task (the AD leg for synced objects), see
-> the Current State edition's Operator Usage guide.
+> **How each task actuates.** The diagram under each task shows its cloud-native
+> write path — actuated directly in Entra Graph / Azure ARM, with
+> joiner/mover/leaver originating from the OPM-HRIT SSOT.
 
 ## What you never do
 

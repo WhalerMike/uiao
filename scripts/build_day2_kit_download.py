@@ -3,12 +3,12 @@
 
 The kit ships in two editions (same scripts, switched by x_fed_day2_ops.hybrid_mode):
 
-  * ``orgcomp-day2-kit-current-state-latest.zip`` — CURRENT STATE (run today): a
+  * ``orgcomp-day2-kit-active-directory-latest.zip`` — CURRENT STATE (run today): a
     hybrid, AD-mastered estate (Entra Connect syncs AD->Entra). Includes the AD
     write leg (AdHybridClient) and the CURRENT-STATE-* docs + current-state figures.
-  * ``orgcomp-day2-kit-2027-target-latest.zip`` — 2027 TARGET STATE: OPM-HRIT as
-    SSOT, cloud-native provisioning into Entra. The base KIT-* docs + the overview
-    and target-state per-task figures.
+  * ``orgcomp-day2-kit-hrit-latest.zip`` — 2027 TARGET STATE: OPM-HRIT as SSOT,
+    cloud-native provisioning into Entra. The base KIT-* docs + the overview and
+    target-state per-task figures.
 
 Each zip is a complete, deployable kit for its edition: the shared ServiceNow
 source (Script Includes, scripted REST, control maps, ATF, catalog/flow/update-set
@@ -107,12 +107,12 @@ def _is_target_only(rel: str) -> bool:
 
 
 ROOTS = {
-    "current": "OrgComp-Day2-Kit-Current-State",
-    "target": "OrgComp-Day2-Kit-2027-Target",
+    "current": "OrgComp-Day2-Kit-Active-Directory",
+    "target": "OrgComp-Day2-Kit-HRIT",
 }
 ZIP_NAMES = {
-    "current": "orgcomp-day2-kit-current-state-latest.zip",
-    "target": "orgcomp-day2-kit-2027-target-latest.zip",
+    "current": "orgcomp-day2-kit-active-directory-latest.zip",
+    "target": "orgcomp-day2-kit-hrit-latest.zip",
 }
 
 README_CURRENT = """OrgComp Day-2 Automation Kit — CURRENT STATE edition
@@ -126,8 +126,10 @@ synced object, lifecycle / attribute / password / AD-group writes land in AD (th
 added AD leg, AdHybridClient) and flow to Entra; cloud-native objects (MFA, Azure
 RBAC, license, guest, app consent) stay on Graph/ARM. Property hybrid_mode = true.
 
-The 2027 Target State edition (OPM-HRIT SSOT, cloud-native) ships as a separate
-download: orgcomp-day2-kit-2027-target-latest.zip. Same scripts, hybrid_mode = false.
+UPGRADE PATH. When identity mastering moves to the OPM-HRIT SSOT and provisioning
+goes cloud-native into Entra, upgrade to the HRIT edition
+(orgcomp-day2-kit-hrit-latest.zip): the same scripts with hybrid_mode = false, so
+the AD leg retires. It is a configuration change, not a rebuild.
 
 CONTENTS
   servicenow-day2/   the deployable kit source (Script Includes incl. AdHybridClient,
@@ -157,10 +159,6 @@ Build date: {date}
 THE 2027 GOAL. Identities originate cloud-native from the OPM-HRIT SSOT and are
 actuated directly in Entra Graph / Azure ARM — no on-prem AD write leg. Property
 hybrid_mode = false.
-
-If your Entra ID users are synced from Active Directory today (most likely), run
-the Current State edition instead — a separate download:
-orgcomp-day2-kit-current-state-latest.zip. Same scripts, hybrid_mode = true.
 
 CONTENTS
   servicenow-day2/   the deployable kit source (Script Includes, scripted-rest,
