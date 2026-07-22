@@ -258,6 +258,8 @@
 - [OrgComp Day-2 Automation Kit — Operator Usage Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_4_Usage_Operator.html)
 - [OrgComp Day-2 Automation Kit — SAM Integration Usage Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_5_Usage_SAM_Integration.html)
 - [OrgComp Day-2 Automation Kit — Build Specification](customer-documents/orgcomp-series/OrgComp_Day2_Kit_6_Build_Specification.html)
+- [OrgComp Day-2 Automation Kit — Scoped-App Overview (README)](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Overview_README.html)
+- [OrgComp Day-2 Automation Kit — Governed Day-2 Request — Flow Blueprint](customer-documents/orgcomp-series/OrgComp_Day2_Kit_Flow_Blueprint.html)
 - [OrgComp ServiceNow Kit Expansion Roadmap](customer-documents/orgcomp-series/OrgComp_ServiceNow_Kit_Expansion_Roadmap_page.html)
 - **Boundary + Authorization**
   - [B. Boundary + Authorization](customer-documents/orgcomp-series/boundary/index.html)
