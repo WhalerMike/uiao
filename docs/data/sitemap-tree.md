@@ -256,6 +256,7 @@
 - [OrgComp Day-2 Automation Kit — Implementation Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_3_Implementation_Guide.html)
 - [OrgComp Day-2 Automation Kit — Operator Usage Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_4_Usage_Operator.html)
 - [OrgComp Day-2 Automation Kit — SAM Integration Usage Guide](customer-documents/orgcomp-series/OrgComp_Day2_Kit_5_Usage_SAM_Integration.html)
+- [OrgComp Day-2 Automation Kit — Build Specification](customer-documents/orgcomp-series/OrgComp_Day2_Kit_6_Build_Specification.html)
 - [OrgComp ServiceNow Kit Expansion Roadmap](customer-documents/orgcomp-series/OrgComp_ServiceNow_Kit_Expansion_Roadmap_page.html)
 - **Boundary + Authorization**
   - [B. Boundary + Authorization](customer-documents/orgcomp-series/boundary/index.html)
