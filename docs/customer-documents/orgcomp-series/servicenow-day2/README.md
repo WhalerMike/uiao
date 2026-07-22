@@ -109,9 +109,9 @@ This scaffold is now the data layer of **Volume IX — ServiceNow Day-2 Operatio
 
 1. ~~Author the scoped-app records (Script Includes, Flows, ATF) mirroring the DDI app.~~ **Done** (this skeleton).
 2. ~~Add per-lane control maps (landing-zone, app-reg, telephony).~~ **Done.**
-3. Export the actual `sys_atf_test` XML and the assembled update-set XML from a sub-prod build.
+3. Export the actual `sys_atf_test` XML and the assembled update-set XML from a sub-prod build — **fully specified in [`KIT-BUILD-SPEC.md`](./KIT-BUILD-SPEC.md)** (tables, ACLs, roles, the 50-item catalog roster, the Flow call, and the export order), so the implementation team can build and export without guesswork. These are ServiceNow platform *exports* (machine-serialized), so the spec is authored here and the export produced on an instance.
 4. ~~Wire the control-map CI check (regen-and-diff vs `orgcomp-compliance-spine.yml`) into the book CI.~~ **Done** (`validate_day2_control_maps.py`, wired in `.pre-commit-config.yaml` and `.github/workflows/orgcomp-authorities-drift.yml`).
-5. Add catalog variable-set XMLs per item (mirroring the DDI app's `catalog/` variable sets).
+5. Add catalog variable-set XMLs per lane (the helpdesk exemplar ships; the build rule for the other four lanes is [`KIT-BUILD-SPEC.md`](./KIT-BUILD-SPEC.md) §6a).
 
 ## References
 
