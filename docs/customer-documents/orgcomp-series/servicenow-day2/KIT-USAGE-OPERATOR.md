@@ -28,6 +28,12 @@
 If any step fails, the request stops there and records why. That is correct — a
 task that skipped a step is not something you should force through.
 
+> **Edition note.** The diagrams below show each task's **2027 Target State**
+> write path — cloud-native, actuated directly in Entra Graph / Azure ARM, with
+> joiner/mover/leaver originating from the OPM-HRIT SSOT. For the **current**
+> hybrid, AD-mastered write path of each task (the AD leg for synced objects), see
+> the Current State edition's Operator Usage guide.
+
 ## What you never do
 
 - Reset a password or MFA on an emailed request **without identity re-proofing**.
@@ -50,6 +56,8 @@ task that skipped a step is not something you should force through.
 - **Done when:** the request closes with the verify confirming the old credential
   is dead and a one-time credential is issued out of band.
 
+![Password reset target-state write path.](servicenow-day2/figs/day2kit-target-task-01-password-reset.png){fig-alt="Password reset 2027 target task card: cloud-native, reset directly in Entra; emits NIST IA-5, feeds KSI-IAM." width="100%"}
+
 ### MFA method reset — `entra.credential.mfa_reset` (IA-5, the takeover verb)
 
 - **Catalog item:** MFA method reset.
@@ -60,6 +68,8 @@ task that skipped a step is not something you should force through.
   identity are a detection signal, not routine.
 - **Done when:** the old method is removed and a new enrollment is pending under
   the user's control, with the re-proofing captured.
+
+![MFA method reset target-state write path.](servicenow-day2/figs/day2kit-target-task-02-mfa-reset.png){fig-alt="MFA method reset 2027 target task card: cloud-native, no AD leg — Graph deletes the method, re-enrollment required, log and alert; emits NIST IA-5, feeds KSI-IAM." width="100%"}
 
 ### Account unlock — `entra.credential.account_unlock` (IA-5)
 
@@ -78,6 +88,8 @@ task that skipped a step is not something you should force through.
 - **Done when:** the account exists with exactly the derived entitlements and an
   owner anchored.
 
+![Joiner target-state write path.](servicenow-day2/figs/day2kit-target-task-03-joiner.png){fig-alt="Joiner 2027 target task card: OPM-HRIT origin, cloud-native provisioning into Entra with derived entitlements; emits NIST AC-2 and IA-4, feeds KSI-IAM." width="100%"}
+
 ### De-provision / leaver — `entra.jml.leaver` (AC-2)
 
 - **Catalog item:** De-provision (Leaver). Originates from the HR leaver event.
@@ -87,12 +99,16 @@ task that skipped a step is not something you should force through.
 - **Done when:** the account is unusable everywhere, zero live sessions, and no
   orphaned objects or ownerless non-human identities remain.
 
+![Leaver target-state write path.](servicenow-day2/figs/day2kit-target-task-05-leaver.png){fig-alt="Leaver 2027 target task card: OPM-HRIT origin, cloud-native disable in Entra, sessions revoked, owned objects reassigned; emits NIST AC-2, feeds KSI-IAM." width="100%"}
+
 ### Role / scope change (mover) — `entra.jml.mover` (AC-6)
 
 - **Catalog item:** Role/scope change. Originates from the HR mover event.
 - **What it does:** re-derive group/license/app access to the new role **and remove
   stale entitlements from the old one**.
 - **Done when:** the derivation matches the record and stale access is gone.
+
+![Mover target-state write path.](servicenow-day2/figs/day2kit-target-task-04-mover.png){fig-alt="Mover 2027 target task card: OPM-HRIT origin, cloud-native re-derivation of access in Entra with stale grants removed; emits NIST AC-6 and AC-2, feeds KSI-IAM." width="100%"}
 
 ### Group membership / RBAC grant — `entra.access.group_assignment` (AC-6)
 
@@ -106,11 +122,17 @@ task that skipped a step is not something you should force through.
 - **Done when:** the membership/assignment is present and, if privileged,
   time-bound; the verify re-read confirms it.
 
+![Group membership target-state write path.](servicenow-day2/figs/day2kit-target-task-06-group-membership.png){fig-alt="Group membership 2027 target task card: cloud-native, membership managed directly in Entra with expiry on privileged grants; emits NIST AC-6, feeds KSI-IAM." width="100%"}
+
+![Azure RBAC grant target-state write path.](servicenow-day2/figs/day2kit-target-task-07-azure-rbac.png){fig-alt="Azure RBAC 2027 target task card: cloud-native ARM, custom least-privilege role at a scoped level; emits NIST AC-6, feeds KSI-IAM." width="100%"}
+
 ### License assignment — `entra.access.license_assignment` (AC-2)
 
 - **Catalog item:** License assignment. Group-based licensing preferred.
 - **Approval:** manager (or a SAM-originated RITM with departmental-owner approval
   for governed licenses).
+
+![License assignment target-state write path.](servicenow-day2/figs/day2kit-target-task-08-license.png){fig-alt="License assignment 2027 target task card: cloud-native, assign the SKU in Entra or via a cloud licensing group; emits NIST AC-2, feeds KSI-IAM." width="100%"}
 
 ### Conditional-Access exception — `entra.access.ca_exception` (AC-3)
 
@@ -124,12 +146,27 @@ task that skipped a step is not something you should force through.
 - **Catalog item:** Guest / B2B invite.
 - **Approval:** sponsor + security; the invite carries a sponsor and an expiry.
 
+![Guest invite target-state write path.](servicenow-day2/figs/day2kit-target-task-09-guest.png){fig-alt="Guest invite 2027 target task card: cloud-native only, Graph invitation with sponsor and expiry; emits NIST AC-2, feeds KSI-IAM." width="100%"}
+
 ### Admin consent (third-party app) — Lane F (AC-20, SA-9)
 
 - **Do not** approve consent by judgment. Submit the Lane F integration request;
   the **authorization verdict is recorded before consent is configured**, consent
   is scoped to the minimum the app needs, and the app's endpoints are declared.
   See `KIT-USAGE-SAM-INTEGRATION.md` and Vol IX Book 05 for the governed path.
+
+![SaaS admin consent target-state write path.](servicenow-day2/figs/day2kit-target-task-10-admin-consent.png){fig-alt="SaaS admin consent 2027 target task card: cloud-native only, record the SA-9 authorization verdict before scoping app consent; emits NIST SA-9 and AC-20, feeds KSI-SCR." width="100%"}
+
+### Morning check / log review — `saas.audit.review` (CA-7 / AU-6)
+
+- **Not a request** — a scheduled, read-only routine. It queries recent
+  lifecycle / auth events, reconciles the estate to the evidence table and the
+  CMDB, and opens tasks / findings from the deltas. It writes nothing.
+- **Done when:** the run is recorded with what was read and the work opened from
+  it — the continuous-monitoring heartbeat. Silence is not assurance until it is
+  observed.
+
+![Morning check target-state read path.](servicenow-day2/figs/day2kit-target-task-11-morning-check.png){fig-alt="Morning check 2027 target task card: read-only across the cloud estate, reconcile to the evidence store, open work from deltas; emits NIST CA-7 and AU-6, feeds KSI-MLA." width="100%"}
 
 ## When a request stops
 
