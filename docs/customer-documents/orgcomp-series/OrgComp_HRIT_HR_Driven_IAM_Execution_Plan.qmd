@@ -14,7 +14,7 @@ format:
 
 # OrgComp — HRIT to HR-Driven IAM — Execution Plan {.unnumbered}
 
-**Date Code:** 2026-07-23 06:46 ET
+**Date Code:** 2026-07-23 10:22 ET
 **Status:** Published (execution companion to [Vol I Book 04](Vol_I_Book_04_OrgComp_HRIT_Identity_Org_SSOT.qmd))
 **Scope:** FedRAMP Moderate (GCC Moderate) · Executive Branch civilian workforce under Federal HR 2.0
 
@@ -117,18 +117,22 @@ what prevents duplicate identities at go-live.
 
 ### 3.2 Middleware: the ADR-003 layer (substrate-owned)
 
-Azure Functions or Logic Apps, in-boundary, doing four things per event:
+Azure Functions or Logic Apps, in-boundary, doing five things per event:
 
 1. **Validate** — required attributes present; unknown worker types refused
    (fail closed, consistent with the MACD-R discipline of Vol IX).
-2. **Normalize to SCIM** — construct the `bulkRequest` payload
+2. **Sequence and retry** — ATOM feed events are applied **in order**, and
+   failures are handled explicitly: an out-of-order mover/leaver pair is a
+   correctness bug, and a dropped event is a silent drift source. A failed
+   transform retries and is recorded — never skipped.
+3. **Normalize to SCIM** — construct the `bulkRequest` payload
    (`urn:ietf:params:scim:api:messages:2.0:BulkRequest`), enterprise user schema,
    plus the custom extension attributes `HireDate` / `TermDate` that trigger
    Lifecycle Workflows.
-3. **Calculate OrgPath** — derive the OrgPath value from the HR organizational
+4. **Calculate OrgPath** — derive the OrgPath value from the HR organizational
    hierarchy (supervisory org, department, division) so **every identity carries
    OrgPath before it exists in Entra**. The crosswalk is §4.
-4. **Write provenance** — one record per event (source event id, payload hash,
+5. **Write provenance** — one record per event (source event id, payload hash,
    derivation inputs, outcome) to the governance engine's evidence stream (per
    the series Evidence & Authorization Contract). HR-driven
    provisioning is a closure like any other: no record, no closure.
@@ -149,6 +153,21 @@ same property governs both:
 Governance** (Lifecycle Workflows). Government SKUs exist; exact GCC-Moderate
 feature availability is an open verification item (§6) — confirm in-tenant before
 Phase 2 exit.
+
+### 3.4 Writeback (optional, one-way per attribute)
+
+Once inbound provisioning is live, an **optional outbound job** can write the
+identity-plane-mastered attributes the HR platform wants to display — username,
+work email, work phone — back to Oracle HCM via its SCIM APIs, using the **Oracle
+Fusion ERP gallery connector** with target actions restricted to **Update** only.
+Two rules keep it safe:
+
+- **One master per attribute.** An attribute is authoritative in exactly one
+  plane (Vol I Book 04's authoritative-vs-derived discipline). Writeback carries
+  only identity-plane-mastered values *to* HR for display; it never touches an
+  HR-mastered fact, and no attribute is writable in both directions.
+- **Writeback is not required for the plan to close.** Phases 0–4 stand without
+  it; adopt it as a post-Phase-3 enhancement once the inbound feed is proven.
 
 ## 4. The attribute crosswalk (Oracle → SCIM → AD/Entra → OrgPath)
 
