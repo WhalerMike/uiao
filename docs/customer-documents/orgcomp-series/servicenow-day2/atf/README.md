@@ -18,10 +18,19 @@ happy path plus the negative tests that prove the safety gates actually fire.
 | **negative — verify read failure** | When the post-actuation Graph re-read returns non-2xx, `verify()` returns **ok:false (inconclusive)** and the request does **not** close — a failed read is never treated as closure. |
 | **negative — verify wrong state** | `disableUser` whose re-read shows `accountEnabled:true` returns **ok:false** — a 2xx on the read is not closure; the property must be observed. |
 | **negative — unreconciled target** | An action whose target does not match an authoritative identity routes to the reconcile-exception queue (CM-8), not to closure. |
+| **hybrid — synced → AD leg** | A synced object (`onPremisesSyncEnabled = true`) classifies as AD-mastered and the AD-leg disable reports an AD-mastered, syncing write. Current State edition. |
+| **hybrid — cloud-only → Graph leg** | A cloud-only object (`onPremisesSyncEnabled = false`) does **not** classify as AD-mastered — the write stays on the Graph leg. |
+| **negative — unclassified route** | An unclassifiable object (null / empty / no sync flag / stringified flag) is **never** treated as AD-mastered — the router fails closed to clause `route` instead of writing to the wrong master. |
+| **hybrid — sync-projection verify** | The AD-leg create flags `synced:true` so the Flow's verify allows for Entra Connect latency on the cloud-side re-read — a dispatch, or an un-synced read, is not closure. |
+
+The four **hybrid** rows cover the Current State (AD-mastered) edition's router and
+AD leg (`AdHybridClient`). They **ship only with the Active Directory (Current
+State) download** — the HRIT (2027 Target) edition has no AD leg, so the eight base
+suites are all it carries.
 
 ## Build
 
-The eight tests above are **authored as `sys_atf_test` records** in this folder —
+The twelve tests above are **authored as `sys_atf_test` records** in this folder —
 one file per test, each driving the "Governed Day-2 Request" flow with the catalog
 inputs that trigger the asserted path:
 
@@ -35,6 +44,10 @@ inputs that trigger the asserted path:
 | `atf-negative-verify-read-failure.xml` | verify fails closed when the confirming re-read fails |
 | `atf-negative-verify-wrong-state.xml` | verify catches observed != intended |
 | `atf-negative-unreconciled-target.xml` | unreconciled target routes to the exception queue (CM-8) |
+| `atf-hybrid-route-synced-to-ad.xml` | synced object → AD leg; AD-leg disable is AD-mastered + syncing |
+| `atf-hybrid-route-cloudonly-to-graph.xml` | cloud-only object stays on the Graph leg |
+| `atf-negative-route-unclassified.xml` | unclassifiable object never routes to AD — fails closed (clause `route`) |
+| `atf-hybrid-verify-sync-projection.xml` | AD-leg write flags sync projection for latency-aware verify |
 
 They are `test_mode`-driven, so a sub-prod/CI run needs **no tenant credentials**.
 Import them into the scoped app and add them to a Test Suite; the negatives are the

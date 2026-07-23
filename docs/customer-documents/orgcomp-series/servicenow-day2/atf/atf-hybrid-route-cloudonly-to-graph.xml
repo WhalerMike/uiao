@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF HYBRID - a cloud-only object stays on the Graph leg (CURRENT STATE).
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' - no live AD/Graph connectivity.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  A cloud-only object (onPremisesSyncEnabled = false) has no on-prem master, so it
+  must NOT classify as AD-mastered: its write stays on the Graph/ARM leg in both
+  editions. This is the other half of the routing contract - the AD leg must not
+  capture objects that were never mastered in Active Directory.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 hybrid: a cloud-only object stays on the Graph leg</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>onPremisesSyncEnabled=false does not classify as AD-mastered, so the router keeps the write on Graph.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert a cloud-only object is not routed to the AD leg.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  if (ad.isAdMastered({ onPremisesSyncEnabled: false }) !== false) {
+    stepResult.setFailed('a cloud-only object (onPremisesSyncEnabled=false) was wrongly classified as AD-mastered');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

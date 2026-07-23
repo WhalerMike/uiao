@@ -1,6 +1,7 @@
 {
   "_comment": "Lane C helpdesk / ITSM catalog control map (Roadmap §3). Each catalog item binds to the NIST control it satisfies, its task type, approval gate, actuation path, KSI theme, and evidence slot. Projection of orgcomp-compliance-spine.yml, CI-validated against it (slots, KSI themes, boundary, schema) by validate_day2_control_maps.py. Scope: FedRAMP Moderate + Microsoft GCC Moderate.",
   "_discipline": "Actuate via Microsoft Graph through the in-boundary MID Server. Never standing tenant admin — scoped, logged, individually-approved write only. Every action carries a change/approval record (CM-3/AU-2) and reconciles to the IPAM/DDI-keyed CMDB (CM-8).",
+  "_hybrid": "actuator_ad names the CURRENT-STATE (hybrid, AD-mastered) actuator for items whose synced-object write must land in Active Directory and sync to Entra (property hybrid_mode = true, router keyed on onPremisesSyncEnabled). The base actuator is the 2027 Target (cloud-native Graph) path. Items with no actuator_ad are cloud-native in both editions. Validated by check_actuator_coverage.py against AdHybridClient.",
   "boundary": "gcc-moderate",
   "catalog": {
     "entra.jml.joiner": {
@@ -14,7 +15,8 @@
       ],
       "slot": "slot-01-identity",
       "note": "Provision from the HRIT SSOT (Vol I Book 04); assign owner + least-privilege baseline.",
-      "actuator": "EntraHelpdeskClient.createUser"
+      "actuator": "EntraHelpdeskClient.createUser",
+      "actuator_ad": "AdHybridClient.createUserAd"
     },
     "entra.jml.mover": {
       "title": "Role/scope change (Mover)",
@@ -27,7 +29,8 @@
       ],
       "slot": "slot-01-identity",
       "note": "Access review on change; remove stale entitlements, do not just add.",
-      "actuator": "EntraHelpdeskClient.addGroupMember"
+      "actuator": "EntraHelpdeskClient.addGroupMember",
+      "actuator_ad": "AdHybridClient.setUserAttributesAd"
     },
     "entra.jml.leaver": {
       "title": "De-provision (Leaver)",
@@ -40,7 +43,8 @@
       ],
       "slot": "slot-01-identity",
       "note": "De-provisioning is an evidenced obligation; disable + revoke sessions + reassign owned objects.",
-      "actuator": "EntraHelpdeskClient.disableUser"
+      "actuator": "EntraHelpdeskClient.disableUser",
+      "actuator_ad": "AdHybridClient.disableUserAd"
     },
     "entra.credential.password_reset": {
       "title": "Password reset",
@@ -53,7 +57,8 @@
       ],
       "slot": "slot-01-identity",
       "note": "Self-service via SSPR where policy allows; else identity-verified service-desk gate.",
-      "actuator": "EntraHelpdeskClient.resetPassword"
+      "actuator": "EntraHelpdeskClient.resetPassword",
+      "actuator_ad": "AdHybridClient.setPasswordAd"
     },
     "entra.credential.mfa_reset": {
       "title": "MFA method reset",
@@ -91,8 +96,9 @@
         "KSI-IAM"
       ],
       "slot": "slot-01-identity",
-      "note": "Least privilege; time-bound where the group grants elevated access; access-review linked.",
-      "actuator": "EntraHelpdeskClient.addGroupMember"
+      "note": "Least privilege; time-bound where the group grants elevated access; access-review linked. Current state: AD-sourced (synced) groups route to the AD leg; cloud-only groups stay on Graph.",
+      "actuator": "EntraHelpdeskClient.addGroupMember",
+      "actuator_ad": "AdHybridClient.addGroupMemberAd"
     },
     "entra.access.license_assignment": {
       "title": "License assignment",

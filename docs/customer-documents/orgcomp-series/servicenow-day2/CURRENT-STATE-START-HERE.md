@@ -66,6 +66,7 @@ documents unchanged; the **Current-State docs** cover only the delta.
 | 5 | Know the current-state scripts — the AD leg and how routing works | **`CURRENT-STATE-SCRIPTS`** |
 | 6 | Operate it: the day-to-day catalog tasks, each with its current-state write path | **`CURRENT-STATE-OPERATOR-USAGE`** |
 | 7 | Operate the SAM (IdentityIQ-push) integration (unchanged) | base `KIT-USAGE-SAM-INTEGRATION` |
+| 8 | **Go live on a pilot** — the sequenced enablement, the evidence review, and the update-set export/promotion | **`CURRENT-STATE-PILOT-ROLLOUT`** |
 
 ## 4. Current-state prerequisites (added to the base list)
 

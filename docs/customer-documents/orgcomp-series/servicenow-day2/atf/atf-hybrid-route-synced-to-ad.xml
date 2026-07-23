@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF HYBRID - a synced object routes to the AD leg (CURRENT STATE, hybrid_mode = true).
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' - no live AD/Graph connectivity.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  On a hybrid, AD-mastered estate a synced object (onPremisesSyncEnabled = true)
+  must classify as AD-mastered so the router sends its lifecycle/attribute/
+  password/AD-group write to the AD leg (AdHybridClient), which actuates the
+  on-prem master and lets it sync to Entra. Writing it directly in Entra would be
+  reverted by Entra Connect on the next cycle.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 hybrid: a synced object routes to the AD leg</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>onPremisesSyncEnabled=true classifies as AD-mastered and the AD-leg disable reports an AD-mastered, syncing write.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the router predicate + the AD-leg actuation contract for a synced object.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  // 1. A synced object must classify as AD-mastered.
+  if (ad.isAdMastered({ onPremisesSyncEnabled: true }) !== true) {
+    stepResult.setFailed('a synced object (onPremisesSyncEnabled=true) did not classify as AD-mastered');
+    return;
+  }
+  // 2. The AD-leg disable must actuate the on-prem master and flag that it syncs.
+  var r = ad.disableUserAd('test-user-0001');
+  if (!(r && r.ok && r.accountEnabled === false && r.synced === true)) {
+    stepResult.setFailed('AD-leg disableUserAd did not report an AD-mastered, syncing disable: ' + JSON.stringify(r));
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

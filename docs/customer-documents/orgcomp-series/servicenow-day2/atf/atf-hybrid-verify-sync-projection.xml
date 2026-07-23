@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF HYBRID - the AD leg flags sync projection so verify allows for latency.
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' - no live AD/Graph connectivity.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  An AD-leg write is authoritative in Active Directory immediately (on the pinned
+  DC) but only PROJECTS into Entra on the next Entra Connect cycle. The AD-leg
+  result must flag synced:true so the Flow's VERIFY clause re-reads AD for the
+  immediate on-prem post-state and allows for sync latency on the Entra-side
+  re-read. A create/disable that did not signal it syncs would let verify check
+  Entra too early and close falsely - a dispatch, or an un-synced read, is not
+  closure.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 hybrid: the AD leg flags sync projection for latency-aware verify</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>AD-leg createUserAd reports synced:true so the Flow verify allows for Entra Connect latency on the cloud-side re-read.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the AD-leg create signals that its result projects into Entra via sync.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var r = ad.createUserAd({ samAccountName: 'jdoe', upn: 'jdoe@tenant.onmicrosoft.com', displayName: 'J Doe', ou: 'OU=Users' });
+  if (!(r && r.ok && r.synced === true)) {
+    stepResult.setFailed('AD-leg createUserAd did not flag synced projection - Entra verify could close before sync lands: ' + JSON.stringify(r));
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

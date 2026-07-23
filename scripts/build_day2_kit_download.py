@@ -58,6 +58,7 @@ CURRENT_MD_DOCX = {
     "CURRENT-STATE-OPERATOR-USAGE": "OrgComp_Day2_Kit_Current_1_Operator_Usage",
     "CURRENT-STATE-SCRIPTS": "OrgComp_Day2_Kit_Current_2_Scripts",
     "CURRENT-STATE-BUILD-DELTA": "OrgComp_Day2_Kit_Current_3_Build_Delta",
+    "CURRENT-STATE-PILOT-ROLLOUT": "OrgComp_Day2_Kit_Current_4_Pilot_Rollout",
 }
 
 # --- Numbered docx/ reading-order sets, per edition. ----------------------------
@@ -82,6 +83,7 @@ CURRENT_DOCX_SET = {
     "OrgComp_Day2_Kit_5_Usage_SAM_Integration": "6_Usage_SAM_Integration.docx",
     "OrgComp_Day2_Kit_6_Build_Specification": "7_Build_Specification.docx",
     "OrgComp_Operator_Runbook_Day2_Compliant": "8_Operator_Runbook.docx",
+    "OrgComp_Day2_Kit_Current_4_Pilot_Rollout": "9_Pilot_Rollout.docx",
 }
 
 
@@ -93,6 +95,10 @@ def _is_current_only(rel: str) -> bool:
         or rel.startswith("CURRENT-STATE-")
         or rel.startswith("figs/day2kit-current-fig-")
         or rel.startswith("figs/day2kit-task-")
+        # Hybrid ATF suites exercise AdHybridClient (the AD leg) — meaningless in
+        # the HRIT edition, which has no AD leg. They ship with Current State only.
+        or rel.startswith("atf/atf-hybrid-")
+        or rel == "atf/atf-negative-route-unclassified.xml"
     )
 
 
