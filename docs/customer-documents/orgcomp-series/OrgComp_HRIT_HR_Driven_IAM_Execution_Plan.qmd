@@ -1,0 +1,291 @@
+---
+title: "OrgComp — HRIT to HR-Driven IAM — Execution Plan"
+subtitle: "How to build the HR-driven identity pipeline against the awarded program: Federal HR 2.0 / Oracle Core HCM, on the wave clock the OMB/OPM memo already set"
+doc-type: implementation-plan
+audience: "The implementation lead · identity engineering · the ISSO · the HR 2.0 agency POCs"
+family: orgcomp-series
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-23
+format:
+  html: {embed-resources: true, css: lz-style.css, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: orgcomp-reference.docx, toc: true, toc-depth: 3}
+---
+
+# OrgComp — HRIT to HR-Driven IAM — Execution Plan {.unnumbered}
+
+**Date Code:** 2026-07-23 06:46 ET
+**Status:** Published (execution companion to [Vol I Book 04](Vol_I_Book_04_OrgComp_HRIT_Identity_Org_SSOT.qmd))
+**Scope:** FedRAMP Moderate (GCC Moderate) · Executive Branch civilian workforce under Federal HR 2.0
+
+---
+
+## 0. Why this document exists
+
+Until mid-2026, the HR side of this architecture had to be planned *agnostically*:
+the government-wide HCM vendor was undecided, so [ADR-003](../../adr/adr-003-api-driven-inbound-provisioning.qmd)
+deliberately chose an integration path that works with any source, and the
+governance substrate's transformation project plan (**Spec 2 — HR-Agnostic
+Provisioning Architecture**) was written without naming a product.
+
+That uncertainty is over. This document is the **concretization of Spec 2 against
+the awarded program** — the HOW, with the facts filled in:
+
+- **The program:** *Federal HR 2.0*, directed by the joint OMB/OPM memorandum of
+  **December 10, 2025** (Vought/Kupor) — one Core HCM platform for the Executive
+  Branch civilian workforce, government-wide by FY 2028.
+- **The platform:** **Oracle Fusion Cloud HCM**, awarded June 11, 2026 (Federal
+  HRIT Modernization Core HCM contract 24322625C0006, ~$395.8M, 10-year).
+- **The clock:** two transition waves — Wave 1 begins FY 2026; **Wave 2, which
+  includes SSA, completes in FY 2027**; an agency onboarding runs ~8 months with
+  **interconnections live at roughly month 5**.
+- **The decision record:** ADR-003 (API-driven inbound provisioning as the
+  canonical path), **reaffirmed at its 2026-07-23 review** — the Oracle award made
+  the chosen path the *only* Microsoft-supported one, since Entra ID has native HR
+  connectors for Workday and SuccessFactors but not Oracle HCM.
+
+One caution stated up front, because it forecloses a class of error: **no OPM
+document mandates or specifies Entra ID integration.** Federal guidance is
+deliberately product-neutral — OMB M-19-17 makes HR systems authoritative for
+identity, and the GSA/FICAM Identity Lifecycle Management Playbook (best practice,
+explicitly not policy) supplies the joiner-mover-leaver doctrine. The Entra
+specifics in this plan come from Microsoft's own Oracle HCM integration guidance
+and from ADR-003 — they are the agency's implementation decision, not an OPM
+requirement. Do not cite this plan as OPM guidance for the Entra leg.
+
+![The execution pipeline on the Federal HR 2.0 clock: the program milestones, the ADR-003 pipe from Oracle Fusion Cloud HCM through the middleware to the two provisioning targets, and the five plan phases with their gates.](figs/hrit-plan-fig-01-execution-pipeline.png){fig-alt="Three-band house-style diagram on white. Top band: the program clock — Dec 10 2025 Federal HR 2.0 memo, Jun 11 2026 Oracle Fusion Cloud HCM award, FY 2026 Wave 1, FY 2027 Wave 2 including SSA with interconnections live at about month five, FY 2028 government-wide adoption with eOPF and EHRI decommissioned. Middle band: the pipe — Oracle Fusion Cloud HCM with HCM Extracts and ATOM feeds, into the ADR-003 middleware layer doing schema normalization to SCIM, OrgPath calculation, and provenance, into the Entra provisioning service with Lifecycle Workflows, splitting to two targets: hybrid AD-mastered today (the Day-2 kit Active Directory edition, hybrid_mode true) and cloud-native at target (the HRIT edition, hybrid_mode false). Bottom band: phases 0 through 4 — memo Appendix C prep, schema and mapping, middleware build, hybrid go-live, wave cutover — each with an exit gate." width="100%"}
+
+## 1. The program facts this plan stands on
+
+| Fact | Value | Source |
+|---|---|---|
+| Directing instrument | OMB/OPM memo, *Creating "Federal HR 2.0" by Consolidating Core Human Capital Management Across the Federal Government* | Dec 10, 2025 (Vought/Kupor) |
+| Platform | **Oracle Fusion Cloud HCM** (SaaS) | Award announced Jun 11, 2026 |
+| Wave 1 (begins FY26, concludes FY27) | DHS, USDA, HHS, DOI, OPM, DOT, VA, EPA (~900K FTE) | Memo, Appendix A |
+| Wave 2 (fully in FY27) | **SSA**, DOC, ED, HUD, DOL, SBA, State, DOE, DoW, NASA, GSA, DOJ, Treasury, other (~1.1M FTE) | Memo, Appendix A |
+| Agency onboarding shape | ~8 months; **interconnection(s) go-live ≈ month 5**; legacy systems discontinued at cutover | Memo, Appendix B |
+| Government-wide adoption goal | FY 2028 | Memo |
+| Standing systems | eOPF and EHRI continue near-term, then are made **redundant and decommissioned** by Core HCM | Memo |
+| Agency obligation now | **Pause own Core HCM modernization**; execute the Appendix C preparation actions | Memo, §II |
+| Interface requirement (procurement) | PWS Appendix A Requirements Checklist Req #5: **SCIM 2.0 near-real-time provisioning** | Solicitation 24322626R0007 (verified 2026-04-30) |
+
+Two planning consequences follow directly:
+
+1. **The deadline is not ours to set.** For a Wave 2 agency the provisioning feed
+   must be integration-ready when the agency's onboarding reaches its
+   interconnection slot (~month 5 of the wave window). Build backward from that.
+2. **EHRI-shaped thinking has an expiry date.** Anything that treats the EHRI/eOPF
+   feeds as the durable HR data interface is building against a system the memo
+   has already scheduled for decommissioning. The durable interface is the Core
+   HCM platform's own surface: HCM Extracts, ATOM feeds, REST/SCIM.
+
+## 2. The decision record: why this pipe and no other
+
+[ADR-003](../../adr/adr-003-api-driven-inbound-provisioning.qmd) (Accepted
+2026-04-28; reaffirmed 2026-07-23) fixes the canonical path: **API-driven inbound
+provisioning via Microsoft Graph `bulkUpload`, fed by a substrate-owned middleware
+layer.** The award resolved the ADR's central uncertainty in the direction that
+strengthens it:
+
+- Entra ID ships native HR connectors for **Workday and SAP SuccessFactors only**.
+  Oracle Fusion Cloud HCM has **no native connector** — Microsoft's own
+  integration guidance for Oracle HCM *is* the API-driven pattern.
+- The government's own procurement requires **SCIM 2.0 near-real-time
+  provisioning** (PWS Req #5) — the same protocol the ADR-003 pipe speaks.
+- The middleware obligations the ADR imposed for governance reasons — schema
+  normalization, **OrgPath calculation before any identity reaches Entra**, and
+  provenance records for the governance engine — are unchanged and non-negotiable.
+
+Native-connector envy is therefore not a live tradeoff: there is nothing to defect
+to. If Microsoft later ships a native Oracle HCM connector (an ADR-003 watch
+item), it becomes an optimization inside this architecture, not a replacement.
+
+## 3. The pipe, end to end
+
+### 3.1 Source: Oracle Fusion Cloud HCM
+
+| Sync | Mechanism | Notes |
+|---|---|---|
+| Initial / full | **HCM Extracts** (or BI Publisher) → CSV | Full worker population; scoped by the filter rules in §5 Phase 1 |
+| Delta | **ATOM feeds** — `newhire`, `empassignment`, `empupdate`, `termination`, `cancelworkrelship`, `workrelshipupdate` | Turn on immediately after initial sync — a gap loses changes |
+| Delta (alternative) | Periodic HCM Extract deltas | Simpler; latency = extract cadence |
+| Enrichment | `workers` / `employees` REST endpoints | When a feed event needs attributes it does not carry |
+
+**Match key:** Oracle `PersonNumber` ↔ Entra/AD `employeeId`. The employee ID must
+be populated on existing accounts **before** the first full sync — matching is
+what prevents duplicate identities at go-live.
+
+### 3.2 Middleware: the ADR-003 layer (substrate-owned)
+
+Azure Functions or Logic Apps, in-boundary, doing four things per event:
+
+1. **Validate** — required attributes present; unknown worker types refused
+   (fail closed, consistent with the MACD-R discipline of Vol IX).
+2. **Normalize to SCIM** — construct the `bulkRequest` payload
+   (`urn:ietf:params:scim:api:messages:2.0:BulkRequest`), enterprise user schema,
+   plus the custom extension attributes `HireDate` / `TermDate` that trigger
+   Lifecycle Workflows.
+3. **Calculate OrgPath** — derive the OrgPath value from the HR organizational
+   hierarchy (supervisory org, department, division) so **every identity carries
+   OrgPath before it exists in Entra**. The crosswalk is §4.
+4. **Write provenance** — one record per event (source event id, payload hash,
+   derivation inputs, outcome) to the governance engine's evidence stream (per
+   the series Evidence & Authorization Contract). HR-driven
+   provisioning is a closure like any other: no record, no closure.
+
+### 3.3 Target: the two-edition split
+
+The provisioning target is **the same fork the Day-2 kit already models**, and the
+same property governs both:
+
+| | Today — hybrid (AD-mastered) | Target — cloud-native (HRIT) |
+|---|---|---|
+| Provisioning target | **on-prem AD** via the Entra provisioning agent (HA pair, gMSA, delegated OU rights); Entra Connect projects to Entra | **Entra ID directly** — no AD leg, no sync latency |
+| Day-2 operations | Day-2 kit **Active Directory edition** (`hybrid_mode = true`, `AdHybridClient`) | Day-2 kit **HRIT edition** (`hybrid_mode = false`) |
+| JML automation | Lifecycle Workflows on `employeeHireDate` / `employeeLeaveDateTime` (both editions) | same |
+| Cutover | — | **A configuration change, not a rebuild**: retarget the provisioning app and flip `hybrid_mode`, per population, evidence-gated |
+
+**Licensing:** Entra ID P1 (minimum, API-driven provisioning) + **Entra ID
+Governance** (Lifecycle Workflows). Government SKUs exist; exact GCC-Moderate
+feature availability is an open verification item (§6) — confirm in-tenant before
+Phase 2 exit.
+
+## 4. The attribute crosswalk (Oracle → SCIM → AD/Entra → OrgPath)
+
+The load-bearing subset; the full canonical schema is Spec 2 deliverable D1.1.
+
+| Oracle HCM | SCIM | On-prem AD (hybrid) | Entra ID | Used for |
+|---|---|---|---|---|
+| `PersonNumber` | `externalId` / `employeeNumber` | `employeeID` | `employeeId` | **Match key**, lifetime identifier |
+| Assignment status | `active` | `accountDisabled` | `accountEnabled` | Joiner/leaver state |
+| `DepartmentId` | `…enterprise:2.0:User:department` | `department` | `department` | **OrgPath derivation**, dynamic groups |
+| `BusinessUnitId` | `…enterprise:2.0:User:division` | `division` | `EmployeeOrgData.division` | **OrgPath derivation** |
+| Legal employer | `…enterprise:2.0:User:organization` | `company` | `companyName` | **OrgPath derivation** |
+| `ManagerPersonNumber` | `…enterprise:2.0:User:manager` | `manager` | `manager` | Supervisory chain, **approval routing** |
+| `JobName` | `title` | `title` | `jobTitle` | Role-derived entitlements |
+| Worker type | `userType` | (mapped) | `employeeType` | Employee/contractor branch |
+| `EffectiveStartDate` | custom ext. `HireDate` | `extensionAttribute2` | `employeeHireDate` | **Joiner Lifecycle Workflow trigger** |
+| `EffectiveDate` (termination) | custom ext. `TermDate` | `extensionAttribute3` | `employeeLeaveDateTime` | **Leaver Lifecycle Workflow trigger** |
+
+Two doctrine notes:
+
+- **OrgPath is derived, never hand-set.** The middleware computes it from the HR
+  hierarchy fields above; nothing downstream may edit it in place (Vol I Book 04's
+  authoritative-vs-derived discipline).
+- **Approval routing is rebuilt from `manager`.** The supervisory chain the AD
+  org-structure loss removed comes back through this feed — the HR manager
+  attribute is what ServiceNow and SAM route approvals on.
+
+## 5. The phase plan
+
+Phases map to Spec 2 deliverables (D-numbers) so the two documents stay
+one program. Each phase ends at a gate; a phase that cannot pass its gate stops
+the plan, not the standard.
+
+### Phase 0 — Program alignment (the memo's own Appendix C)
+
+*This phase is directed by OPM/OMB — executing it is compliance, not overhead.*
+
+- Name the Integrated Project Team POC (full-time PM for CFO Act agencies), the
+  Policy/Data/Learning/Super-User working-group POCs, and the distribution POCs.
+- Inventory **integration points, interfacing systems, and data flows** — the
+  identity provisioning feed of this plan is submitted as one of them.
+- Identify legacy identity-relevant data to retain; define the preservation
+  strategy for what does not migrate.
+- Confirm the pause on any competing Core HCM-adjacent procurement.
+
+**Gate:** integration-point inventory signed by the ISSO and submitted to the
+agency HR 2.0 team (memo addresses: `workforce@omb.eop.gov`, `CoreHCM@opm.gov`).
+
+### Phase 1 — Schema and mapping (Spec 2 D1.x)
+
+- Canonical HR attribute schema (D1.1) — finalized against Oracle HCM field
+  names; the §4 crosswalk validated against a sandbox extract.
+- Worker-type classification taxonomy (D1.6) — employee, contractor, intern,
+  volunteer, vendor, external; each mapped to license, group scope, retention.
+- Unique-ID and transformation rules — `userPrincipalName`, `SamAccountName`
+  (hybrid), OU container assignment (hybrid).
+- Scoping filter rules (D2.8) — which HR records provision at all; LOA,
+  secondment, and historic-record exclusions.
+- ~~Connector comparison (D1.7)~~ — **resolved by the award**: API-driven, no
+  native Oracle connector exists.
+
+**Gate:** crosswalk + scoping rules validated against a real sandbox extract;
+match-key population ≥ 99% on the pilot cohort.
+
+### Phase 2 — Middleware build and test (Spec 2 D2.x/D3.x)
+
+- Build the transform (CSV/ATOM → SCIM `bulkRequest`), the OrgPath calculator,
+  and the provenance writer; host in-boundary (Functions/Logic Apps).
+- Configure the API-driven provisioning app(s); grant least-privilege Graph
+  permissions to the client (D3.8 security review).
+- Define JML Lifecycle Workflows (D2.x) and their `HireDate`/`TermDate` triggers.
+- Prove the chain end-to-end in the **test tenant** with canned ATOM payloads and
+  a sandbox extract — the same sandbox-first rule the Day-2 kit enforces.
+- **Verify GCC feature availability in-tenant** (API-driven provisioning +
+  Lifecycle Workflows) — this is the licensing/availability gate, not an
+  assumption.
+
+**Gate:** joiner, mover, and leaver each run end-to-end in the test tenant with a
+provenance record and a Lifecycle Workflow firing; GCC availability confirmed.
+
+### Phase 3 — Hybrid go-live (the estate as it is)
+
+- Deploy the provisioning agent pair (HA, gMSA, delegated OU rights — never
+  Domain Admin) (D3.3); map SCIM → AD attributes (D3.4).
+- Pre-populate `employeeID` on existing AD accounts; run the initial full sync
+  with scoping filters; reconcile mismatches **before** enabling deltas.
+- Enable ATOM deltas immediately after initial sync; monitoring and alerting to
+  Azure Monitor (D3.7).
+- Run a pilot cohort (the Day-2 kit's pilot-rollout doc pattern applies:
+  phased, evidence-gated, ISSO-reviewed).
+
+**Gate:** a full JML cycle on the pilot cohort closes with evidence — HR event →
+AD write → Entra projection → Day-2 operations under the Active Directory
+edition — with zero unmatched-record creations.
+
+### Phase 4 — Wave cutover (the agency's Wave 2 slot)
+
+- Align this plan's cutover to the agency's Core HCM onboarding schedule; the
+  provisioning feed must be ready when **interconnections go live (~month 5)**.
+- As populations become cloud-mastered: retarget provisioning from the AD app to
+  the Entra app, flip `hybrid_mode = false` for those populations, and let the
+  Day-2 kit's HRIT edition take over — per population, evidence-gated, with the
+  AD leg dormant but intact until nothing remains synced.
+- Decommission-watch: retire EHRI/eOPF-shaped integrations as the program
+  decommissions those systems, not before.
+
+**Gate:** wave exit criteria — cloud-mastered populations run full JML
+cloud-native with evidence; no AD-leg writes for migrated populations; rollback
+path tested once.
+
+## 6. Open verification register
+
+Tracked here, reviewed with ADR-003's triggers (next review 2026-11-30):
+
+| Item | Why it matters | Status |
+|---|---|---|
+| **GCC (Moderate) availability** of API-driven inbound provisioning + Lifecycle Workflows | Phase 2 gate; licensing plan | Open — public docs confirm Government SKUs, not the per-feature matrix; verify in-tenant |
+| **Post-award PWS Appendix A** interface requirements | May constrain or enrich the feed contract | Open — pre-award version verified 2026-04-30 (Req #5 SCIM 2.0) |
+| **HR-services consolidation memo** (Federal HR 2.0 memo, footnote 4) | May reshape the service-delivery side | Open — the *OPM HR Shared Service Center* memo may be it; confirm |
+| **eOPF / EHRI decommission schedule** | Times the retirement of EHRI-shaped integrations | Open — "eventually," per the memo |
+| **Native Oracle HCM Entra connector** | Would become an in-architecture optimization | Watch (ADR-003 trigger; Ignite Nov 2026) |
+| Wave 2 schedule movement | The month-5 interconnection slot is the deadline | Watch — program communications |
+
+## 7. Roles
+
+| Role | Owns |
+|---|---|
+| **Agency HR 2.0 IPT POC** (Phase 0) | Memo Appendix C actions; the interface inventory; the wave schedule |
+| **Identity engineering** | Middleware, provisioning apps, agent pair, mappings, Lifecycle Workflows |
+| **Oracle HCM admin** (post-onboarding) | Extracts, ATOM feed enablement, REST access, sandbox data |
+| **ISSO** | Phase gates, evidence review, the D3.8 security assessment, GCC verification sign-off |
+| **Service desk / CST** | Day-2 operations under the kit edition in force (`hybrid_mode`) |
+
+---
+
+**Draft-proposal caveat** — program milestones, wave assignments, and platform
+integration surfaces evolve; verify current Federal HR 2.0 program status and the
+post-award PWS at engagement time. The pipe is deliberately source-shaped, not
+source-bound (ADR-003): if the program changes again, the middleware adapter
+changes and nothing else does.

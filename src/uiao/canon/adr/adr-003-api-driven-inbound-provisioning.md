@@ -4,9 +4,9 @@ title: "API-Driven Inbound Provisioning as HR-Agnostic Canonical Path"
 status: ACCEPTED
 decided: 2026-04-28
 deciders: Michael Stratton
-updated: 2026-04-30
-next_review: 2026-07-01
-review_trigger: OPM GAO protest decisions (expected June 2026); any Entra ID provisioning announcement
+updated: 2026-07-23
+next_review: 2026-11-30
+review_trigger: Microsoft Ignite 2026 (native Oracle HCM connector watch); post-award PWS Appendix A changes; OPM HR-services consolidation memo; GCC provisioning-feature confirmation
 impact: UIAO_136 Spec 2 (HR-Agnostic Provisioning Architecture)
 supersedes: null
 superseded_by: null
@@ -19,7 +19,42 @@ published_at: docs/adr/adr-003-api-driven-inbound-provisioning.html
 
 ## Status
 
-**ACCEPTED** — April 28, 2026
+**ACCEPTED** — April 28, 2026 · **Reaffirmed at scheduled review** — July 23, 2026
+
+## Review 2026-07-23 — the review triggers fired; the decision is vindicated
+
+Two of this ADR's review triggers fired, and both resolved in the direction that
+strengthens the decision:
+
+1. **OPM selected Oracle.** The Federal HRIT Modernization Core HCM contract
+   (24322625C0006, ~$395.8M, 10-year) was awarded to **Oracle** and announced
+   June 11, 2026; the platform is **Oracle Fusion Cloud HCM**. (The May 2025
+   sole-source Workday award had been withdrawn and re-competed.) Because Entra ID
+   still ships native HR connectors only for Workday and SAP SuccessFactors —
+   **not Oracle HCM** — the API-driven path this ADR chose is no longer merely the
+   vendor-agnostic hedge; it is **the only Microsoft-supported integration path**
+   for the selected government-wide HCM. Rationale #3 resolved to its harder branch.
+
+2. **The program acquired its governing directive.** The joint OMB/OPM memorandum
+   *"Creating 'Federal HR 2.0' by Consolidating Core Human Capital Management
+   Across the Federal Government"* (December 10, 2025 — Vought/Kupor) directs the
+   consolidation this ADR anticipated: two transition waves (Wave 1 begins FY26;
+   Wave 2 — **including SSA** — completes in FY 2027), government-wide adoption by
+   FY 2028, agencies pausing their own Core HCM modernization, and the eventual
+   decommissioning of eOPF and EHRI. The memo's sample onboarding timeline puts
+   **interconnection go-live at roughly month 5 of an 8-month transition** — the
+   slot a provisioning feed must be ready for.
+
+Microsoft's own integration guidance for Oracle HCM (*Configure Oracle HCM for
+automatic user provisioning*, updated June 2026) implements exactly this ADR's
+pattern: HCM Extracts / ATOM feeds → middleware transform → SCIM `bulkUpload` →
+Entra ID (cloud-only) or on-prem AD via the provisioning agent (hybrid), with
+Lifecycle Workflows keyed on `employeeHireDate` / `employeeLeaveDateTime`.
+
+**Decision unchanged.** The middleware obligations (schema normalization, OrgPath
+calculation, provenance logging) stand. Execution against the now-known program is
+specified in *OrgComp — HRIT to HR-Driven IAM Execution Plan* (orgcomp-series),
+which concretizes UIAO_136 Spec 2.
 
 ## Context
 
@@ -101,6 +136,9 @@ Microsoft Entra ID supports three distinct inbound provisioning paths:
 
 | Source | URL | Last Verified |
 |---|---|---|
+| OMB/OPM memo — *Creating "Federal HR 2.0" by Consolidating Core HCM Across the Federal Government* (Dec 10, 2025; waves, FY 2028 goal, eOPF/EHRI decommissioning) | https://content.govdelivery.com/attachments/USOPM/2025/12/10/file_attachments/3489280/HR%202.0%20memo%2012-10-2025.pdf | 2026-07-23 |
+| OPM news release — Core HCM contract award to Oracle (Oracle Fusion Cloud HCM; contract 24322625C0006) | https://www.opm.gov/news/news-releases/opm-awards-contract-for-first-ever-governmentwide-hr-platform/ | 2026-07-23 |
+| Microsoft Learn — Configure Oracle HCM for automatic user provisioning (ATOM feeds → SCIM → bulkUpload; Entra + on-prem AD targets) | https://learn.microsoft.com/en-us/entra/identity/saas-apps/oracle-hcm-provisioning-tutorial | 2026-07-23 |
 | OPM Federal HRIT Modernization — Solicitation 24322626R0007 (Amendments 2, 3, 4); Appendix A Requirements Checklist Req #5 (SCIM 2.0 near-real-time provisioning) | sam.gov solicitation 24322626R0007 | 2026-04-30 |
 | Microsoft Learn — API-driven inbound provisioning concepts | https://learn.microsoft.com/en-us/entra/identity/app-provisioning/inbound-provisioning-api-concepts | 2026-04-28 |
 | GitHub — AzureAD/entra-id-inbound-provisioning samples | https://github.com/AzureAD/entra-id-inbound-provisioning | 2026-04-28 |
@@ -110,16 +148,21 @@ Microsoft Entra ID supports three distinct inbound provisioning paths:
 
 This ADR must be re-evaluated when any of the following occur:
 
-- [ ] OPM announces HR vendor selection (Workday or Oracle)
-- [ ] GAO protest decisions issued (expected June 2026)
-- [ ] Microsoft builds a native Oracle HCM provisioning connector
+- [x] OPM announces HR vendor selection (Workday or Oracle) — **fired: Oracle, June 11, 2026; reviewed 2026-07-23, decision reaffirmed**
+- [x] GAO protest decisions issued (expected June 2026) — **fired: award announced June 11, 2026; reviewed 2026-07-23**
+- [x] July 2026 — scheduled review (post-GAO decision window) — **completed 2026-07-23**
+- [ ] Microsoft builds a native Oracle HCM provisioning connector (would make middleware optional; architecture unchanged)
 - [ ] Microsoft announces changes to the bulkUpload API or SCIM provisioning endpoints
 - [ ] Entra ID Lifecycle Workflows adds new JML automation capabilities
-- [ ] July 2026 — scheduled review (post-GAO decision window)
+- [ ] Post-award PWS Appendix A interface changes surface (agency-visible requirements)
+- [ ] OPM issues the promised HR-services consolidation memorandum (Federal HR 2.0 memo, footnote 4)
+- [ ] GCC (Moderate) availability of API-driven inbound provisioning + Lifecycle Workflows confirmed for the target tenant
 - [ ] Microsoft Ignite 2026 (November) — scheduled review
 
 ## Related Documents
 
 - UIAO_135 — Identity & Directory Transformation Inventory (Transformation #10: HR-Driven Provisioning)
 - UIAO_136 — Spec 2: HR-Agnostic Provisioning Architecture (all phases)
+- OrgComp — HRIT to HR-Driven IAM Execution Plan (orgcomp-series) — the execution of this decision against the awarded program (Federal HR 2.0 / Oracle Core HCM)
+- Vol I Book 04 — OPM HRIT and the Identity & Organizational SSOT (orgcomp-series)
 - ADR-003 supplements the HR system discussion in UIAO_135 Section 2
