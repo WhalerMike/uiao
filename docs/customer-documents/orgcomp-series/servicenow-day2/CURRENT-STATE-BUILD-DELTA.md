@@ -7,7 +7,7 @@
 > switched by one property, so the same instance can become the 2027 Target
 > edition later by setting `hybrid_mode = false`.
 
-**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementation team — ServiceNow + Active Directory + Entra/Azure
 
 ## 1. Infrastructure — the AD leg's transport
@@ -67,7 +67,9 @@ Build in the sandbox with `test_mode = true`, then assert:
 ## 4. The path to 2027
 
 This edition is built so the migration to the target state is a **configuration
-change, not a rebuild.** When OPM-HRIT becomes the joiner/mover/leaver SSOT and
+change, not a rebuild.** When OPM-HRIT — the Federal HR 2.0 Core HCM platform
+(Oracle Fusion Cloud HCM; Wave 2 agency transitions complete in FY 2027) —
+becomes the joiner/mover/leaver SSOT and
 provisioning goes cloud-native into Entra:
 
 1. Cut over provisioning so Entra is the master for the affected populations.

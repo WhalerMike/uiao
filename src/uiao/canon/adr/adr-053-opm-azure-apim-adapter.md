@@ -28,7 +28,20 @@ published_at: docs/adr/adr-053-opm-azure-apim-adapter.html
 
 ## Status
 
-Accepted.
+Accepted. **Premise re-checked 2026-07-23** — the HRIT Modernization procurement
+this ADR traces to has been awarded: the Federal HRIT Modernization Core HCM
+contract (24322625C0006) went to **Oracle (Oracle Fusion Cloud HCM)**, announced
+June 11, 2026, under the Federal HR 2.0 program (OMB/OPM memo, December 10,
+2025). The APIM-gateway mandate cited below derives from the **pre-award
+solicitation PWS** (24322626R0007 Amd 4, Appendix B); whether the awarded
+contract carries the same integration-layer requirements unchanged is an open
+item tracked with ADR-003's review triggers ("post-award PWS Appendix A
+changes") and the OrgComp HRIT Execution Plan's verification register. The
+`opm-azure-apim` slot remains **reserved** — activation was always gated on an
+OPM-issued service principal, which remains the correct gate; no change to the
+decision. Note the vendor mix the award implies: an Oracle SaaS platform behind
+an OPM-operated **Azure** APIM gateway — the reserved slot's `vendor: Microsoft`
+(APIM as the underlying service) is unaffected by the HCM award.
 
 ## Context
 

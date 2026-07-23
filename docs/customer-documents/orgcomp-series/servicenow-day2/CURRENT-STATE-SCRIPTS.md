@@ -6,7 +6,7 @@
 > reused unchanged. The two editions are the same scripts with `hybrid_mode`
 > deciding the path, not a fork.
 
-**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** ServiceNow platform admins
 
 ## 1. `AdHybridClient` — the AD leg
@@ -79,7 +79,8 @@ editions:
 
 Flipping to `false` while identities are still AD-mastered is a **correctness
 bug**: Entra Connect silently reverts cloud writes to synced attributes on the next
-cycle. Flip it only when OPM-HRIT provisioning has made Entra the master.
+cycle. Flip it only when OPM-HRIT provisioning — the Federal HR 2.0 Core HCM
+feed (Oracle Fusion Cloud HCM) — has made Entra the master.
 
 ## 4. What is unchanged from the base kit
 

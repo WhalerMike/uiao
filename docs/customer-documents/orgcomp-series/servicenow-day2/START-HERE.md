@@ -1,6 +1,8 @@
 # Day-2 Automation Kit — START HERE
 
-> This kit provisions identities **cloud-native from the OPM-HRIT SSOT**, actuated
+> This kit provisions identities **cloud-native from the OPM-HRIT SSOT** — now
+> concretely the **Federal HR 2.0 Core HCM platform (Oracle Fusion Cloud HCM)**,
+> per the OMB/OPM memo of December 10, 2025 and the June 11, 2026 award — actuated
 > directly in Entra Graph / Azure ARM (`x_fed_day2_ops.hybrid_mode = false`).
 
 > The implementer's on-ramp. Read this first: it names the order of the steps,
@@ -8,7 +10,7 @@
 > are not), gives you the debug levers, and sets the one rule that keeps you
 > safe — **install into a sandbox / test environment first, never production.**
 
-**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementer standing this up for the first time
 
 ## 0. The one rule: sandbox first
