@@ -3,13 +3,15 @@
 > The on-ramp for running this kit against the estate **as it is today**: a
 > **hybrid, AD-mastered** identity plane where Active Directory is the source and
 > **Entra Connect syncs AD → Entra**. This edition corrects one assumption the
-> base kit makes — that identities originate cloud-native from OPM-HRIT — and
+> base kit makes — that identities originate cloud-native from OPM-HRIT (now
+> concretely the Federal HR 2.0 Core HCM platform: Oracle Fusion Cloud HCM,
+> awarded June 2026) — and
 > routes each task to the write path that is actually authoritative today.
 >
 > **The base kit is the [2027 Target State edition](#the-two-editions).** Keep it
 > as the goal; run *this* edition now.
 
-**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementer and operators running day-2 tasks on today's hybrid estate
 
 ## 0. What changed, in one paragraph
@@ -41,7 +43,7 @@ you set `test_mode = false`. Do not skip this.
 
 | | **Current State** (this edition) | **2027 Target State** (base kit) |
 |---|---|---|
-| Identity master | **Active Directory**; Entra Connect syncs AD → Entra | **OPM-HRIT** as SSOT; cloud-native provisioning into Entra |
+| Identity master | **Active Directory**; Entra Connect syncs AD → Entra | **OPM-HRIT** (Federal HR 2.0 Core HCM — Oracle Fusion Cloud HCM) as SSOT; cloud-native provisioning into Entra |
 | `x_fed_day2_ops.hybrid_mode` | **`true`** | `false` |
 | Synced-object lifecycle / attributes / password / AD-group | **AD leg** (`AdHybridClient`, domain-joined MID → writable DC), then sync | Graph, cloud-native |
 | MFA · Azure RBAC · license · guest · app consent · cloud groups | Graph / ARM (unchanged) | Graph / ARM (unchanged) |

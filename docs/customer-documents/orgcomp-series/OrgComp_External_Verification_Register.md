@@ -216,3 +216,17 @@
 | EV-L083 | Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd:141 | NPS has no path to authorize cloud-native Entra-joined devices; Cisco ISE and Aruba ClearPass terminate EAP-TLS and authorize against Entra/Intune inventory without an AD computer object (load-bearing for the D3 platform decision) | Microsoft / Cisco / Aruba product docs | ☐ unverified |  |
 | EV-L084 | Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd:327 | "NPS has no RFC 5176 support. ISE and ClearPass issue CoA natively from their own session state; NPS cannot." | Microsoft Learn (NPS RFC 5176 / CoA) | ☐ unverified |  |
 | EV-L085 | Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd:349 | WPA3-Enterprise "provides Protected Management Frames (PMF) and eliminates the KRACK-class attacks that affect WPA2-Enterprise" | Wi-Fi Alliance / IEEE 802.11 docs | ☐ unverified |  |
+
+## Program watch — Federal HR 2.0 / Core HCM (non-sweep rows, added 2026-07-23)
+
+Not sweep findings — **program facts that will change under our feet** and must be
+re-verified on a cadence. The tracking SSOT for these is the
+[HRIT to HR-Driven IAM Execution Plan](OrgComp_HRIT_HR_Driven_IAM_Execution_Plan.qmd)
+§6 open-verification register (mirrored in ADR-003's review triggers, next review
+2026-11-30); this section exists so the register's readers know those items are
+tracked without duplicating the rows. The four watch items: **post-award PWS
+Appendix A** interface requirements (pre-award Req #5 = SCIM 2.0 near-real-time,
+verified 2026-04-30); the promised **OPM HR-services consolidation memo** (Federal
+HR 2.0 memo, footnote 4); **GCC (Moderate) feature availability** of API-driven
+inbound provisioning + Lifecycle Workflows (Government SKUs confirmed; feature
+matrix verify in-tenant); and the **eOPF / EHRI decommission schedule**.

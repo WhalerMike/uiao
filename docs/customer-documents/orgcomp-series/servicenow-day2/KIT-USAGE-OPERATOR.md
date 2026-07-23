@@ -8,7 +8,7 @@
 > This is the [Operator Runbook](../OrgComp_Operator_Runbook_Day2_Compliant.qmd)
 > in the operator's chair, with the catalog item and the fields for each task.
 
-**Date Code:** 2026-07-21 16:30 ET · **Audience:** Service-desk / CST operators ·
+**Date Code:** 2026-07-23 06:46 ET · **Audience:** Service-desk / CST operators ·
 **Scope:** FedRAMP Moderate / GCC Moderate
 
 ## The one loop every task follows
@@ -30,7 +30,8 @@ task that skipped a step is not something you should force through.
 
 > **How each task actuates.** The diagram under each task shows its cloud-native
 > write path — actuated directly in Entra Graph / Azure ARM, with
-> joiner/mover/leaver originating from the OPM-HRIT SSOT.
+> joiner/mover/leaver originating from the OPM-HRIT SSOT (the Federal HR 2.0
+> Core HCM platform — Oracle Fusion Cloud HCM).
 
 ## What you never do
 

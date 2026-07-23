@@ -132,8 +132,10 @@ synced object, lifecycle / attribute / password / AD-group writes land in AD (th
 added AD leg, AdHybridClient) and flow to Entra; cloud-native objects (MFA, Azure
 RBAC, license, guest, app consent) stay on Graph/ARM. Property hybrid_mode = true.
 
-UPGRADE PATH. When identity mastering moves to the OPM-HRIT SSOT and provisioning
-goes cloud-native into Entra, upgrade to the HRIT edition
+UPGRADE PATH. When identity mastering moves to the OPM-HRIT SSOT (the Federal
+HR 2.0 Core HCM platform — Oracle Fusion Cloud HCM; Wave 2 agency transitions
+complete in FY 2027) and provisioning goes cloud-native into Entra, upgrade to
+the HRIT edition
 (orgcomp-day2-kit-hrit-latest.zip): the same scripts with hybrid_mode = false, so
 the AD leg retires. It is a configuration change, not a rebuild.
 
@@ -162,9 +164,10 @@ README_TARGET = """OrgComp Day-2 Automation Kit — 2027 TARGET STATE edition
 FedRAMP Moderate / GCC Moderate. De-branded (no agency names).
 Build date: {date}
 
-THE 2027 GOAL. Identities originate cloud-native from the OPM-HRIT SSOT and are
-actuated directly in Entra Graph / Azure ARM — no on-prem AD write leg. Property
-hybrid_mode = false.
+THE 2027 GOAL. Identities originate cloud-native from the OPM-HRIT SSOT — the
+Federal HR 2.0 Core HCM platform (Oracle Fusion Cloud HCM, awarded June 2026;
+OMB/OPM memo of December 10, 2025) — and are actuated directly in Entra Graph /
+Azure ARM, no on-prem AD write leg. Property hybrid_mode = false.
 
 CONTENTS
   servicenow-day2/   the deployable kit source (Script Includes, scripted-rest,
