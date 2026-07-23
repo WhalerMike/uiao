@@ -283,6 +283,7 @@
   - [Vol I Book 02 — Federal Organization Compliance — Network Access Control: 802.1X and Device Identity](customer-documents/orgcomp-series/Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.html)
   - [Vol I Book 03 — Federal Organization Compliance — Certificates & Tokens: Cryptographic Identity](customer-documents/orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.html)
   - [Vol I Book 04 — Federal Organization Compliance — OPM HRIT and the Identity & Organizational SSOT](customer-documents/orgcomp-series/Vol_I_Book_04_OrgComp_HRIT_Identity_Org_SSOT.html)
+  - [OrgComp — HRIT to HR-Driven IAM — Execution Plan](customer-documents/orgcomp-series/OrgComp_HRIT_HR_Driven_IAM_Execution_Plan.html)
   - [Vol I Book 05 — From Mainframe to Application-Aware Modernization](customer-documents/orgcomp-series/Vol_I_Book_05_OrgComp_Network_Modernization.html)
   - [Vol I Book 06 — Federal Telecommunications Modernization](customer-documents/orgcomp-series/Vol_I_Book_06_OrgComp_Federal_Telecommunications_Modernization.html)
   - [Vol I Book 07 — Federal Organization Compliance — Network Enforcement Substrate: Cisco, Palo Alto, Juniper and the NIAP/STIG/FIPS Path](customer-documents/orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.html)
