@@ -24,6 +24,19 @@
 ### UIAO Academy
 
 - [UIAO Academy](academy/index.html)
+- [Academy — The Comic Tour](academy/comics.html)
+
+### Contributor path
+
+- [Academy — Contributor Track](academy/contributor-track.html)
+- [Academy — Setting up a tier-1 test environment (Microsoft 365 Developer Program)](academy/contributor-tier-1-setup.html)
+- [Adapter Integration Guide — Entra ID](academy/adapters/entra-id.html)
+
+### Pre-rebuild pages (ADR-131 D4)
+
+- [Academy — Operator Track](academy/operator-track.html)
+- [User's Guide — Document Generation & Image Pipeline](academy/document-generation-guide.html)
+- [Image Pipeline & Registry — Author and Operator Guide](academy/image-pipeline-guide.html)
 
 ## Reference Architecture
 
