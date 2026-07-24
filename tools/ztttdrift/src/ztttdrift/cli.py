@@ -20,7 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import __version__
@@ -34,7 +34,8 @@ from .triage import Disposition, triage
 
 def _as_of(value: str | None) -> date:
     if not value:
-        return date.today()
+        # Operator-local "as of" date, tz-aware (DTZ011).
+        return datetime.now(timezone.utc).astimezone().date()
     try:
         return date.fromisoformat(value)
     except ValueError:
@@ -64,13 +65,15 @@ _ICON = {
 }
 
 
-def _triage_text(report) -> str:  # noqa: ANN001 - internal formatter
+def _triage_text(report) -> str:
     s = report.summary()
     lines = [
         f"ZTTTdrift triage (as of {report.as_of.isoformat()}, target {report.target.value})",
-        f"  below target: {s['failing_total']}  |  actionable: {s['actionable_total']}  "
-        f"(new drift {s['actionable_new_drift']}, lapsed {s['lapsed_acceptance']})  |  "
-        f"governed: {s['governed_exception']}",
+        (
+            f"  below target: {s['failing_total']}  |  actionable: {s['actionable_total']}  "
+            f"(new drift {s['actionable_new_drift']}, lapsed {s['lapsed_acceptance']})  |  "
+            f"governed: {s['governed_exception']}"
+        ),
     ]
     for t in report.actionable:
         lines.append(f"  {_ICON[t.disposition]} {t.item.item_id:<12} {t.disposition.value:<22} {t.reason}")
@@ -97,8 +100,10 @@ def _cmd_drift(args: argparse.Namespace) -> int:
     s = report.summary()
     text = [
         "ZTTTdrift run-to-run diff",
-        f"  regressions: {s['regression']} ({s['regressions_below_target']} below target)  |  "
-        f"progressions: {s['progression']}  |  target changes: {s['target_change']}",
+        (
+            f"  regressions: {s['regression']} ({s['regressions_below_target']} below target)  |  "
+            f"progressions: {s['progression']}  |  target changes: {s['target_change']}"
+        ),
         f"  scope churn: +{s['new_item']} new / -{s['removed_item']} removed",
     ]
     for i in report.regressions:

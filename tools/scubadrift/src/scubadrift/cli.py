@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import __version__
@@ -28,7 +28,8 @@ from .triage import Disposition, triage
 
 def _as_of(value: str | None) -> date:
     if not value:
-        return date.today()
+        # Operator-local "as of" date, tz-aware (DTZ011).
+        return datetime.now(timezone.utc).astimezone().date()
     try:
         return date.fromisoformat(value)
     except ValueError:
@@ -50,13 +51,15 @@ _ICON = {
 }
 
 
-def _triage_text(report) -> str:  # noqa: ANN001 - internal formatter
+def _triage_text(report) -> str:
     s = report.summary()
     lines = [
         f"ScubaDrift triage (as of {report.as_of.isoformat()})",
-        f"  failing: {s['failing_total']}  |  actionable: {s['actionable_total']}  "
-        f"(new drift {s['actionable_new_drift']}, lapsed {s['lapsed_acceptance']})  |  "
-        f"governed: {s['governed_exception']}",
+        (
+            f"  failing: {s['failing_total']}  |  actionable: {s['actionable_total']}  "
+            f"(new drift {s['actionable_new_drift']}, lapsed {s['lapsed_acceptance']})  |  "
+            f"governed: {s['governed_exception']}"
+        ),
     ]
     for t in report.actionable:
         lines.append(f"  {_ICON[t.disposition]} {t.policy.policy_id:<16} {t.disposition.value:<22} {t.reason}")
@@ -83,8 +86,10 @@ def _cmd_drift(args: argparse.Namespace) -> int:
     s = report.summary()
     text = [
         "ScubaDrift run-to-run diff",
-        f"  regressions (new failures): {s['new_failure']}  |  resolved: {s['resolved']}  |  "
-        f"persistent: {s['persistent_failure']}",
+        (
+            f"  regressions (new failures): {s['new_failure']}  |  resolved: {s['resolved']}  |  "
+            f"persistent: {s['persistent_failure']}"
+        ),
         f"  baseline churn: +{s['new_policy']} new / -{s['removed_policy']} removed",
     ]
     for i in report.regressions:

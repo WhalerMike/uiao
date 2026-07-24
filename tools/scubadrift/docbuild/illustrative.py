@@ -21,8 +21,8 @@ from figures import (
     SANS,
     TEAL,
     WHITE,
-    W,
     H,
+    W,
 )
 
 # Illustrative-register tokens (palette.json -> "illustrative")

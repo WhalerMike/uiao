@@ -36,8 +36,10 @@ def _open(title: str, subtitle: str = "") -> list[str]:
     s = [
         f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" font-family="{SANS}">',
         f'<rect width="{W}" height="{H}" fill="{WHITE}"/>',
-        f'<text x="{W // 2}" y="58" text-anchor="middle" font-family="{HDR}" '
-        f'font-size="32" font-weight="bold" fill="{NAVY}">{title}</text>',
+        (
+            f'<text x="{W // 2}" y="58" text-anchor="middle" font-family="{HDR}" '
+            f'font-size="32" font-weight="bold" fill="{NAVY}">{title}</text>'
+        ),
         f'<line x1="120" y1="78" x2="{W - 120}" y2="78" stroke="{TEAL}" stroke-width="2"/>',
     ]
     if subtitle:

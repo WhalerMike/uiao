@@ -26,7 +26,7 @@ class Result(str, Enum):
     UNKNOWN = "Unknown"
 
     @classmethod
-    def parse(cls, raw: str | None) -> "Result":
+    def parse(cls, raw: str | None) -> Result:
         text = (raw or "").strip().lower()
         if text in ("pass", "passed"):
             return cls.PASS
