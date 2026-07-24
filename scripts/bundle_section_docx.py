@@ -129,10 +129,44 @@ BOOK_BUNDLE_SECTIONS = {"orgpath-narrative", "sql-server-narrative", "sql-server
 
 # Sections organized as roman-numbered volumes of books (Vol_<N>_Book_NN_*).
 # For these, in addition to the whole-section bundle, emit one
-# Vol_<N>-bundle.docx per volume — the whole-series bundle spans ~90+ page
-# documents and is unwieldy as a single Word file; a per-volume download is
-# the unit a reader actually works with.
+# Vol_<N>-<Theme>-Bundle.docx per volume — the whole-series bundle spans ~90+
+# page documents and is unwieldy as a single Word file; a per-volume download
+# is the unit a reader actually works with.
 VOLUME_BUNDLE_SECTIONS = {"orgcomp-series"}
+
+# Volume themes, keyed by roman volume token. Carried in the bundle filename
+# ("Vol_I-Foundation & Transport-Bundle.docx") and the stamped running header
+# so a downloaded file identifies its subject without opening it. Must match
+# the Series-structure tables on docs/download/index.qmd and
+# docs/customer-documents/orgcomp-series/index.qmd. Vol X's "(optional
+# binding)" table annotation is deliberately not part of the theme.
+VOLUME_THEMES = {
+    "0": "Executive Summary, Questionnaire & Control Crosswalk",
+    "I": "Foundation & Transport",
+    "II": "Data Platform",
+    "III": "Security Operations",
+    "IV": "Governance & Assurance",
+    "V": "Training & Certification",
+    "VI": "Implementation",
+    "VII": "ServiceNow Automation",
+    "VIII": "Multi-Cloud DDI",
+    "IX": "Day-2 Operations",
+    "X": "Governance-Substrate Integration",
+}
+
+
+def _volume_bundle_filename(vol_id: str) -> str:
+    """Per-volume bundle filename: ``Vol_<N>-<Theme>-Bundle.docx``.
+
+    A volume with no registered theme falls back to the themeless
+    ``Vol_<N>-bundle.docx`` form so an unmapped volume still bundles.
+    Either form is recognised by the case-insensitive bundle-skip filter.
+    """
+    theme = VOLUME_THEMES.get(vol_id)
+    if theme is None:
+        return f"Vol_{vol_id}-bundle.docx"
+    return f"Vol_{vol_id}-{theme}-Bundle.docx"
+
 
 # Leading volume identifier in a series page filename,
 # e.g. "Vol_IX_Book_03_..." -> "IX". Top-level series books only — the
@@ -306,9 +340,11 @@ def _collect_docx(section_dir: Path, bundle_name: str) -> list[Path]:
     """
     out: list[Path] = []
     for docx in sorted(section_dir.rglob("*.docx")):
-        # Skip the section bundle and any per-book bundle so a re-run (or
-        # the per-book pass below) never folds a prior bundle into itself.
-        if docx.name.endswith("-bundle.docx"):
+        # Skip the section bundle and any per-book/per-volume bundle so a
+        # re-run (or the per-book/per-volume pass below) never folds a prior
+        # bundle into itself. Case-insensitive: per-volume bundles end with
+        # "-Bundle.docx" (capital B, from the themed filename form).
+        if docx.name.lower().endswith("-bundle.docx"):
             continue
         if docx.stem in SKIP_STEMS:
             continue
@@ -391,7 +427,7 @@ def _bundle_books(site_root: Path, section: str) -> list[tuple[bool, str]]:
     # qualify; section/per-book bundles and skip-stems are excluded.
     books: dict[str, list[Path]] = {}
     for docx in sorted(section_dir.rglob("*.docx")):
-        if docx.name.endswith("-bundle.docx"):
+        if docx.name.lower().endswith("-bundle.docx"):
             continue
         if docx.stem in SKIP_STEMS:
             continue
@@ -437,12 +473,12 @@ def _bundle_books(site_root: Path, section: str) -> list[tuple[bool, str]]:
 
 
 def _bundle_volumes(site_root: Path, section: str) -> list[tuple[bool, str]]:
-    """Emit one ``Vol_<N>-bundle.docx`` per volume of a volume-structured section.
+    """Emit one ``Vol_<N>-<Theme>-Bundle.docx`` per volume of a volume-structured section.
 
     Groups the section's TOP-LEVEL ``Vol_<N>_Book_NN_*.docx`` pages by their
     roman volume token, concatenates each volume's books in filename order
-    (Book_00, Book_00a, Book_01, ...), and writes ``Vol_<N>-bundle.docx``
-    beside them. Subtrees (training program, boundary annexes) don't carry
+    (Book_00, Book_00a, Book_01, ...), and writes the themed bundle filename
+    (see :func:`_volume_bundle_filename`) beside them. Subtrees (training program, boundary annexes) don't carry
     the ``Vol_`` prefix and are deliberately excluded — a volume bundle is
     the volume's books, nothing else. Mirrors :func:`_bundle_books`'s
     TOC-strip, page-break, and header-stamp behavior.
@@ -457,7 +493,7 @@ def _bundle_volumes(site_root: Path, section: str) -> list[tuple[bool, str]]:
 
     volumes: dict[str, list[Path]] = {}
     for docx in sorted(section_dir.glob("*.docx")):
-        if docx.name.endswith("-bundle.docx"):
+        if docx.name.lower().endswith("-bundle.docx"):
             continue
         if docx.stem in SKIP_STEMS:
             continue
@@ -469,7 +505,7 @@ def _bundle_volumes(site_root: Path, section: str) -> list[tuple[bool, str]]:
     results: list[tuple[bool, str]] = []
     for vol_id in sorted(volumes, key=_ROMAN_RANK.get):
         pages = volumes[vol_id]
-        bundle_path = section_dir / f"Vol_{vol_id}-bundle.docx"
+        bundle_path = section_dir / _volume_bundle_filename(vol_id)
 
         master = Document(str(pages[0]))
         tocs_stripped = _strip_toc_blocks(master)
@@ -482,7 +518,11 @@ def _bundle_volumes(site_root: Path, section: str) -> list[tuple[bool, str]]:
         composer.save(str(bundle_path))
 
         vol_label = "Volume 0" if vol_id == "0" else f"Volume {vol_id}"
-        stamped = _stamp_book_header(bundle_path, f"Federal Organization Compliance — {vol_label}")
+        theme = VOLUME_THEMES.get(vol_id)
+        title = f"Federal Organization Compliance — {vol_label}"
+        if theme:
+            title = f"{title} — {theme}"
+        stamped = _stamp_book_header(bundle_path, title)
 
         results.append(
             (

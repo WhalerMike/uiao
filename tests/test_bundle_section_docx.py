@@ -64,6 +64,33 @@ def test_orgcomp_series_registered_for_volume_bundles() -> None:
     assert "orgcomp-series" in bsd.VOLUME_BUNDLE_SECTIONS
 
 
+def test_volume_bundle_filename_carries_theme() -> None:
+    """Per-volume bundles are named ``Vol_<N>-<Theme>-Bundle.docx`` so a
+    downloaded file identifies its subject without opening it."""
+    assert bsd._volume_bundle_filename("I") == "Vol_I-Foundation & Transport-Bundle.docx"
+    assert bsd._volume_bundle_filename("IX") == "Vol_IX-Day-2 Operations-Bundle.docx"
+    assert bsd._volume_bundle_filename("0") == "Vol_0-Executive Summary, Questionnaire & Control Crosswalk-Bundle.docx"
+
+
+def test_volume_bundle_filename_falls_back_without_theme() -> None:
+    """An unmapped volume id still bundles, under the themeless legacy name."""
+    assert bsd._volume_bundle_filename("XI") == "Vol_XI-bundle.docx"
+
+
+def test_every_ranked_volume_has_a_theme() -> None:
+    """Every volume the bundler can emit carries a theme, so no deployed
+    bundle silently regresses to the themeless filename."""
+    assert set(bsd.VOLUME_THEMES) == set(bsd._ROMAN_RANK)
+
+
+def test_volume_bundle_filename_matches_skip_filter() -> None:
+    """Volume bundle names (capital-B ``-Bundle.docx``) must be recognised by
+    the case-insensitive bundle-skip filter so a re-run never folds a volume
+    bundle into the section bundle or into itself."""
+    for vol_id in bsd.VOLUME_THEMES:
+        assert bsd._volume_bundle_filename(vol_id).lower().endswith("-bundle.docx")
+
+
 def test_vol_id_regex_extracts_roman_token() -> None:
     assert bsd.VOL_ID_RE.match("Vol_IX_Book_03_OrgComp_X").group(1) == "IX"
     assert bsd.VOL_ID_RE.match("Vol_0_Book_00a_OrgComp_Y").group(1) == "0"
