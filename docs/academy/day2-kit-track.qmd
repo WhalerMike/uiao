@@ -1,0 +1,171 @@
+---
+title: "Academy — Day-2 Kit Operator Track (Current State / Active Directory edition)"
+subtitle: "Stand up, pilot, and operate the hybrid Day-2 automation kit — read, do, verify from sandbox to governed go-live"
+date: today
+date-format: "MMMM D, YYYY"
+description: "The staged operator track for the OrgComp Day-2 Kit's Current State edition: the hybrid_mode router, the AdHybridClient AD leg, the split write paths, the four hybrid ATF suites, the phased pilot with evidence review, and the governed flip to the 2027 cloud-native target. Sequenced over the kit's own documents per ADR-131."
+---
+
+This track takes an implementer or service-desk lead from *knowing the kit
+exists* to **standing it up, piloting it on real objects, and operating it**
+— the depth the [OrgMod path](orgmod-path.qmd) Stage 4 deliberately leaves
+to the kit itself. Like every Academy path, it invents nothing
+([ADR-131](../adr/adr-131-academy-org-family-umbrella.qmd)): each stage
+sequences the kit's own published documents and tells you what to **read**,
+what to **do**, and how to **verify**. The kit's docs remain the
+authoritative how-to; this track is the guided route through them.
+
+**Scope:** the **Current State edition** — a hybrid, AD-mastered estate
+where Entra Connect syncs AD → Entra. The base kit is the **2027 Target
+State edition** (cloud-native, OPM-HRIT-mastered); the two are the *same*
+scripts switched by one property, and the last stage of this track treats
+that switch as what it is: a governed change.
+
+---
+
+## Stage 1 — Orientation: two editions, one router, one rule
+
+**Read:** the Current State
+[Start Here](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_0_Start_Here.qmd)
+— why the base kit's cloud-native assumption is wrong for today's estate,
+and what this edition adds: an **AD leg** and a **router** that sends each
+task to the write path that is actually authoritative. The one rule is
+unchanged: **sandbox first**, with `x_fed_day2_ops.test_mode = true`
+throughout, plus (for this edition) a test AD domain and a domain-joined
+test MID Server.
+
+**Do:** determine which edition your estate needs today: are your Entra
+users synced from AD (`onPremisesSyncEnabled = true`)? If yes, Current
+State (`hybrid_mode = true`) is the only correct choice.
+
+**Verify:** you can explain, without notes, why flipping
+`hybrid_mode = false` while identities are still AD-mastered is a
+**correctness bug**, not a preference — Entra Connect silently reverts
+cloud writes to synced attributes on the next sync cycle.
+
+## Stage 2 — The base platform (shared by both editions)
+
+**Read:** the base kit's
+[Start Here](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_0_Start_Here.qmd),
+[Variables Reference](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_1_Variables_Reference.qmd)
+(the config contract — every property, alias, credential, and scope), and
+[Build Specification](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_6_Build_Specification.qmd)
+(tables, roles, ACLs, Scripted REST, catalog, Flow).
+
+**Do:** build the base platform in sub-production with
+`test_mode = true` — and **inside a single named update set** from the
+first record, because the promotion artifact in Stage 5 is captured from
+the instance, not authored as text.
+
+**Verify:** the build-time gates pass — `check_actuator_coverage.py`,
+`check_l3_ceiling.py`, and `catalog/contract_check.py` — and the eight
+base ATF suites are green in `test_mode`.
+
+## Stage 3 — The delta: the AD leg and the router
+
+**Read:** the
+[Build Delta](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_3_Build_Delta.qmd)
+(what the implementation team builds *differently*: the domain-joined
+in-boundary MID, the `hybrid_mode` / `ad_mid_server` / `ad_dc` /
+`ad_disabled_ou` properties, and the delegated AD rights model), then the
+[Scripts guide](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_2_Scripts.qmd)
+— `AdHybridClient` and its method surface (`createUserAd`,
+`disableUserAd`, `setPasswordAd`, `setUserAttributesAd`, `moveUserOuAd`,
+group membership, and the `isAdMastered` routing predicate).
+
+**Do:** build the delta, then trace the router by hand for four objects:
+a synced user's password reset, a cloud-only user's MFA reset, a synced
+user added to a *cloud-only* group, and an object whose classifying Entra
+read fails. The router sits between MACD-R clause 3 (Elevate) and clause 4
+(Actuate); its two refinements — group membership branches on the
+**group's** source, not the user's, and cloud-native verbs never route to
+AD — plus its fail-closed `route` clause are the whole exercise.
+
+**Verify:** `check_actuator_coverage.py` resolves every `actuator_ad`
+binding in the control map to a real `AdHybridClient` method, and the
+**four hybrid ATF suites** are green in `test_mode`: synced → AD leg,
+cloud-only → Graph leg, unclassifiable → fail-closed at clause `route`,
+and the AD-leg write flagging `synced:true` so verify allows for sync
+latency. Also verify your understanding of the boundary discipline: the
+MID service account holds delegated, least-privilege rights on specific
+OUs — **never Domain Admin** — and write and verify re-read hit the same
+pinned DC.
+
+## Stage 4 — Operate: the split write paths
+
+**Read:** the
+[Operator Usage guide](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_1_Operator_Usage.qmd)
+— every catalog task with its current-state write path and diagram — and,
+for the SAM (IdentityIQ-push) integration, the base
+[SAM Integration guide](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_5_Usage_SAM_Integration.qmd)
+(unchanged across editions).
+
+**Do:** with `test_mode` still on, run each lifecycle event end to end —
+joiner, mover, leaver, password reset, and a group membership change on
+one AD-sourced and one cloud-only group — and read the evidence record
+each produces.
+
+**Verify:** for every task, the evidence trail shows the five MACD-R
+clauses in order, the **leg that actuated matches the object's**
+`onPremisesSyncEnabled`, and no closure exists without a verify verdict.
+Remember what a successful `AdHybridClient` return means: **dispatched,
+not verified** — the ECC transport is asynchronous, and only the Flow's
+VERIFY re-read of AD post-state (same DC) closes the clause.
+
+## Stage 5 — Pilot, evidence review, and promotion
+
+**Read:** the
+[Pilot Rollout guide](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_4_Pilot_Rollout.qmd)
+— entry criteria, the phased enablement, the ISSO evidence review, and the
+update-set export.
+
+**Do:** run the pilot as written: a cohort of 10–50 synced users in a
+dedicated pilot OU plus 2–3 cloud-only accounts (both router legs on real
+objects), phases P0 (read-only morning check) → P1 (password reset) → P2
+(group membership, both sources) → P3 (mover) → P4 (joiner + leaver), each
+phase at least one business day, each ending at an **evidence checkpoint,
+not a green write**. Then export the named update set (confirm the
+`sys_properties` rows made it in — a common miss), and promote by
+import → preview → commit.
+
+**Verify:** the exit criteria hold — ≥ 95% of pilot tasks closed with
+complete evidence, **zero closed-without-verify**, no AD-leg write to a
+cloud-only object, no Graph write to a synced attribute, and the rollback
+path tested at least once (deactivate the catalog items or Flow — *not*
+`hybrid_mode`, which flips editions rather than disabling anything). A
+phase that stops at a clause (`authorize` / `elevate` / `route` /
+`actuate` / `verify`) is a stop-and-diagnose, not a retry.
+
+## Stage 6 — The governed flip: retiring the AD leg
+
+**Read:** the
+[HRIT to HR-Driven IAM Execution Plan](../customer-documents/orgcomp-series/OrgComp_HRIT_HR_Driven_IAM_Execution_Plan.qmd)
+(the provisioning pipeline that makes Entra the master on the program's
+wave clock), and the
+[MACD-R Lifecycle Doctrine](../customer-documents/orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd#macdr-lifecycle).
+
+**Do:** draft the `hybrid_mode = true → false` transition as a MACD-R
+**Change** in its own right, on paper: its SSOT origin (the HRIT program's
+wave reaching your population), its authoritative authorization, its
+execution window, its closure evidence, and its verification (a synced
+attribute written cloud-native that *stays* written).
+
+**Verify:** you can state the precondition precisely — the flip is
+legitimate only when OPM-HRIT provisioning (the Federal HR 2.0 Core HCM
+feed) has made Entra the master for the population in scope — and you can
+explain why the kit needs **no other change** to become the 2027 Target
+edition: same Script Includes, same control maps, same ATF suites; one
+property retires the AD leg.
+
+---
+
+## Where this track leads
+
+Production hardening is the kit's own last mile: migrating the
+`AdHybridClient` transport from the ECC/PowerShell starter skeleton to the
+Integration Hub AD spoke (a transport swap, not a redesign — the
+[Scripts guide](../customer-documents/orgcomp-series/OrgComp_Day2_Kit_Current_2_Scripts.qmd)
+maps every method to its spoke action). For the doctrine this kit is the
+operational embodiment of, return to the [OrgMod path](orgmod-path.qmd)
+Stage 4; for the compliance evidence its closures feed, continue to the
+[OrgComp Training Program](../customer-documents/orgcomp-series/OrgComp-Training-Program/index.qmd).
