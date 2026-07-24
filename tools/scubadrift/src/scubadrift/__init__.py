@@ -33,9 +33,8 @@ from .parser import ParseError, load_exceptions, load_run, parse_run
 from .triage import Disposition, TriageReport, triage
 
 __all__ = [
-    "__version__",
-    "ConMonReport",
     "DEFAULT_SLA_WINDOWS",
+    "ConMonReport",
     "Disposition",
     "DriftKind",
     "DriftReport",
@@ -50,6 +49,7 @@ __all__ = [
     "SlaFinding",
     "SlaStatus",
     "TriageReport",
+    "__version__",
     "build_report",
     "diff_runs",
     "evaluate_gate",

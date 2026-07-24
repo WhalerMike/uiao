@@ -91,7 +91,7 @@ class HistoryEntry:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "HistoryEntry":
+    def from_dict(cls, d: dict) -> HistoryEntry:
         return cls(
             as_of=date.fromisoformat(d["as_of"]),
             run_timestamp=d.get("run_timestamp", ""),
@@ -155,7 +155,7 @@ class History:
         p.write_text("".join(json.dumps(e.to_dict(), sort_keys=True) + "\n" for e in self.entries), encoding="utf-8")
 
     @classmethod
-    def load(cls, path: str | Path) -> "History":
+    def load(cls, path: str | Path) -> History:
         p = Path(path)
         if not p.exists():
             return cls()

@@ -39,7 +39,7 @@ class Stage(str, Enum):
         return _STAGE_RANK[self]
 
     @classmethod
-    def parse(cls, raw: str | None) -> "Stage":
+    def parse(cls, raw: str | None) -> Stage:
         text = (raw or "").strip().lower()
         try:
             return cls(text)

@@ -14,15 +14,14 @@ import sys
 from pathlib import Path
 
 import cairosvg
+import figures
+import illustrative
 from docx import Document
 from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
-
-import figures
-import illustrative
 
 HERE = Path(__file__).resolve().parent
 PKG = HERE.parent  # tools/scubadrift (build/ lives inside the package)
