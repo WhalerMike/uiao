@@ -201,6 +201,7 @@
 - [FedRAMP CR26 Official Rules Adoption — Authority Upgrade and Coexistence with Palladium OSCAL Snapshot](adr/adr-126-fedramp-cr26-official-rules-adoption.html)
 - [Hybrid OrgPath Model — Model C Facets Plus Derived Canonical Path with Trailing Delimiter](adr/adr-127-orgpath-hybrid-derived-path.html)
 - [Non-Human SSOT Registry — Class SSOT Designations and the Human-Anchor Rule](adr/adr-130-nonhuman-ssot-registry.html)
+- [UIAO Academy — Umbrella Learning Entry Point for the Org Family](adr/adr-131-academy-org-family-umbrella.html)
 
 ## Schema Reference
 
