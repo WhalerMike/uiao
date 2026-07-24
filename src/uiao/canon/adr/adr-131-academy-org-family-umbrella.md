@@ -1,7 +1,7 @@
 ---
 adr_id: adr-131
 title: "UIAO Academy — Umbrella Learning Entry Point for the Org Family"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-07-24
 deciders: Michael Stratton
 updated: 2026-07-24
@@ -19,7 +19,7 @@ published_at: docs/adr/adr-131-academy-org-family-umbrella.html
 
 ## Status
 
-**PROPOSED** — 2026-07-24.
+**ACCEPTED** — 2026-07-24.
 
 ## Context
 
