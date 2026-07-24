@@ -26,6 +26,11 @@
 - [UIAO Academy](academy/index.html)
 - [Academy — The Comic Tour](academy/comics.html)
 
+### Pillar paths
+
+- [Academy — OrgPath Path (Governance)](academy/orgpath-path.html)
+- [Academy — OrgMod Path (Modernization)](academy/orgmod-path.html)
+
 ### Contributor path
 
 - [Academy — Contributor Track](academy/contributor-track.html)
