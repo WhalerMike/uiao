@@ -3,7 +3,7 @@ title: "Adapter Integration Guide — Entra ID"
 subtitle: "Step-by-step. One item at a time. Production-grade."
 date: today
 date-format: "MMMM D, YYYY"
-description: "Complete integration walkthrough for the Entra ID adapter: vendor-side setup, certificate acquisition, UIAO-side configuration, first call, fixture capture, conformance verification."
+description: "Complete integration walkthrough for the Entra ID adapter: vendor-side setup, certificate acquisition, UIAO-side configuration, first call, fixture capture, conformance verification — with a variant for agency-provided Federal GCC-Moderate tenants."
 aspirational: true
 ---
 
@@ -259,6 +259,17 @@ Open a canon PR with:
 
 ---
 
+## Variant — running this guide against a Federal GCC-Moderate tenant
+
+Every step above also works against a **Federal GCC-Moderate tenant**. There is no self-serve GCC-Moderate developer program — the tenant is agency-provided, behind Microsoft's government eligibility validation — so this variant assumes you already hold authorized access. The full authorization and eligibility context lives in the shared walkthrough: [Using a Federal GCC-Moderate tenant](../contributor-tier-1-setup.html#using-a-federal-gcc-moderate-tenant). The per-step deltas:
+
+- **Step 1 (tenant):** skip the Developer Program sign-up. The tenant comes from the agency, licensed with G-SKUs (e.g., G5). Written authorization naming you, the scope, and the time window comes first; non-production tenant only.
+- **Steps 3–5 (app registration, certificate, permissions):** the portals are the same (`https://entra.microsoft.com`), but app-registration creation and admin consent are typically restricted to the agency's tenant admins — expect a change-control step rather than a self-service click. The certificate-based auth this guide already uses (Step 2) is the right fit: `certificate-anchored: true` is the canon invariant, and agencies generally prohibit client secrets outright.
+- **Steps 6–7 (configuration and token flow):** **unchanged.** GCC-Moderate uses the same `login.microsoftonline.com` and `graph.microsoft.com` hosts as WW Commercial — UIAO's sovereign-cloud resolver (`uiao.adapters._graph_clouds`) serves GCC-Moderate from the `commercial` entry. Only GCC-High and DoD use `*.microsoft.us` hosts, and those are out of UIAO scope per ADR-028. No adapter endpoint configuration differs.
+- **Step 8 (tier-1 run):** the same pytest suite runs, but expect boundary differences in the results — that is the point. The [GCC-Moderate boundary findings](../../findings/index.html) (FINDING-001 INR unavailable, FINDING-005 Identity Protection ML risk scoring inferred blocked, and family) predict where responses will diverge from the commercial tenant. A divergence that matches a finding confirms it; one that doesn't is a new finding for `docs/findings/`.
+- **Step 9 (fixtures):** name captures with the `-gcc-moderate` suffix (e.g., `list-users-gcc-moderate.yaml`), set `cloud_variant: [gcc-moderate]`, and record agency consent in the provenance block. A live capture upgrades the existing Learn-sourced `-gcc-moderate` fixtures from `source: "microsoft-learn"` to `source: "live-capture"`.
+- **Step 10 (registry):** a run under the reference-deployment program ([UIAO_131 §3.3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md) — named agency, point of contact, scope agreement; executed inside the agency boundary under its ATO; exported as a signed OSCAL evidence bundle) is **tier-3** evidence, the gate for `beta → active`. UIAO's CI never holds federal credentials — the evidence bundle travels, the credentials never do.
+
 ## Troubleshooting — top three failure modes
 
 1. **Certificate thumbprint mismatch.** The thumbprint env var must match the thumbprint Entra shows in the portal. If you regenerated the cert without re-uploading, they diverge. Re-upload from Step 4.
@@ -273,7 +284,7 @@ Open a canon PR with:
 |---|---|---|
 | `status: draft` | `status: beta` | Tier 1 + Tier 2 both green |
 
-To advance `beta → active`: requires a Tier-3 reference-deployment run against a partner agency's non-production GCC-Moderate tenant. Out of scope for this guide; gated on agency engagement.
+To advance `beta → active`: requires a Tier-3 reference-deployment run against a partner agency's non-production GCC-Moderate tenant — gated on agency engagement. If you hold authorized access to such a tenant, the [GCC-Moderate variant section](#variant-running-this-guide-against-a-federal-gcc-moderate-tenant) above maps this guide's steps onto it.
 
 ## Cross-references
 

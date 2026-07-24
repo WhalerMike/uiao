@@ -3,7 +3,7 @@ title: "Academy — Setting up a tier-1 test environment (Microsoft 365 Develope
 subtitle: "Contributor-track prerequisite: one free tenant, one API credential, one fixture-ready pipeline"
 date: today
 date-format: "MMMM D, YYYY"
-description: "Step-by-step setup for the UIAO_131 Tier 1 live-commercial-tenant tests. Walks from zero to a working Microsoft 365 Developer Program tenant with recorded first evidence under tests/fixtures/contract/."
+description: "Step-by-step setup for the UIAO_131 Tier 1 live-commercial-tenant tests. Walks from zero to a working Microsoft 365 Developer Program tenant with recorded first evidence under tests/fixtures/contract/ — plus the deltas for running the same setup against an agency-provided Federal GCC-Moderate tenant."
 aspirational: true
 ---
 
@@ -13,7 +13,7 @@ This page is the opinionated setup for the **recommended first target: the Micro
 
 ::: {.callout-warning}
 ## Commercial cloud, not GCC-Moderate
-The Developer Program tenant is **WW Commercial cloud**. Tests against it validate common-plane adapter logic, not GCC-Moderate-specific behavior. For the GCC-Moderate side — including the documented [FINDING-001 INR unavailability](../findings/fedramp-gcc-moderate-informed-network-routing.html) — you record tier-2 contract fixtures from Microsoft Learn sources, not from this tenant.
+The Developer Program tenant is **WW Commercial cloud**. Tests against it validate common-plane adapter logic, not GCC-Moderate-specific behavior. For the GCC-Moderate side — including the documented [FINDING-001 INR unavailability](../findings/fedramp-gcc-moderate-informed-network-routing.html) — you record tier-2 contract fixtures from Microsoft Learn sources, not from this tenant. If you have authorized access to an agency-provided GCC-Moderate tenant, see [Using a Federal GCC-Moderate tenant](#using-a-federal-gcc-moderate-tenant) below.
 :::
 
 ## Prerequisites
@@ -134,6 +134,40 @@ A successful tier-1 run produces:
 
 The Developer Program subscription lasts **90 days** and renews automatically on qualified developer activity (e.g., running tests against it, making Graph calls). If you stop using it for 90 days, it expires. A calendar reminder at day 60 to run `pytest tests/integration/` once is enough to maintain it.
 
+## Using a Federal GCC-Moderate tenant
+
+The steps above also work against a **Federal GCC-Moderate tenant** — with the differences below. There is no developer program for GCC-Moderate: Microsoft gates sign-up behind government eligibility validation, so the tenant is always **provided by an agency or a government-serving organization**, never self-provisioned. This section is for contributors who already have (or can be granted) authorized access to one.
+
+::: {.callout-important}
+## Authorization first
+A GCC-Moderate tenant is a federal boundary. Before touching it: **written authorization** from the tenant owner naming you, the scope, and the time window; a **non-production** tenant only; and every credential handled under the agency's policy, not just this page's. UIAO's CI infrastructure never holds federal credentials ([UIAO_131 §3.3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md)) — anything you capture runs from inside the agency's boundary, under its rules.
+:::
+
+### What changes, step by step
+
+| Step | Developer Program (commercial) | Federal GCC-Moderate |
+|---|---|---|
+| 1 — Tenant | Self-serve, free, ~15 minutes | Agency-provided; eligibility-validated sign-up via Microsoft; licensing is G-SKU (e.g., G5) rather than E5 |
+| 2 — App registration | You are the admin | Agency tenant admins create it (or delegate); app-registration creation is commonly restricted by policy |
+| 3 — API permissions | You grant admin consent | Agency Global Administrator grants consent; expect a change-control step |
+| 4 — Client secret | 90-day secret is fine | Follow agency credential policy; prefer certificate auth ([UIAO_129 §2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/application-identity-model.md)) |
+| 5–6 — Endpoints | `login.microsoftonline.com` / `graph.microsoft.com` | **Identical.** GCC-Moderate rides the WW Commercial endpoints — see below |
+| 7 — Evidence | Tier-1 fixtures, `-commercial` naming | Live `-gcc-moderate` fixture capture and, via the reference-deployment program, tier-3 evidence |
+
+### Endpoints: same hosts, different boundary
+
+GCC-Moderate uses the **same** sign-in and Graph hosts as WW Commercial — `https://login.microsoftonline.com` and `https://graph.microsoft.com`. In UIAO's sovereign-cloud resolver (`uiao.adapters._graph_clouds`), the `commercial` cloud entry serves GCC-Moderate too; only GCC-High (`graph.microsoft.us`) and DoD (`dod-graph.microsoft.us`) use different hosts, and those are outside UIAO scope per ADR-028. So the token-flow verification in Step 6 works unchanged against a GCC-Moderate tenant — no endpoint configuration differs. What differs is **feature availability inside the boundary**, which is exactly what the capture below documents.
+
+### What a GCC-Moderate run buys the substrate
+
+1. **Live `-gcc-moderate` tier-2 fixtures.** The contract fixtures under `tests/fixtures/contract/entra-id/` and `tests/fixtures/contract/m365/` that carry the `-gcc-moderate` suffix are today authored from Microsoft Learn citations. A live capture upgrades their provenance from `microsoft-learn` to `live-capture` (sanitized per `tests/fixtures/contract/README.md`, with agency consent recorded in the provenance block, and `cloud_variant: [gcc-moderate]` set).
+2. **Confirmation (or refutation) of documented findings.** The [findings register](../findings/index.html) carries a family of GCC-Moderate boundary findings — FINDING-001 (Informed Network Routing unavailable), FINDING-003 (Adoption Score unavailable), FINDING-004 (Endpoint Analytics Advanced inferred unavailable), FINDING-005 (Entra Identity Protection ML risk scoring inferred blocked), among others. Several are *inferred* from documentation; a live run converts inference to observation, either way.
+3. **Tier-3 evidence.** A run against an agency's non-production GCC-Moderate tenant under the reference-deployment program ([UIAO_131 §3.3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md)) — gated on a named agency, point of contact, and scope agreement — produces the signed OSCAL evidence bundle that advances an adapter `beta → active`. That is the only path to `active`; commercial tier-1 tests deliberately do not count ([UIAO_131 §3.1](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md)).
+
+### What a GCC-Moderate tenant does **not** replace
+
+A GCC-Moderate tenant is a complement to the Developer Program tenant, not a substitute. Tier-1 conformance runs stay on the commercial developer tenant — it is disposable, renewable, and holds no federal data, which is what makes nightly CI against it acceptable. Keep both: commercial for iteration speed, GCC-Moderate for boundary truth.
+
 ## Alternate vendors (when not testing Microsoft adapters)
 
 | Adapter | Alternate tier-1 target | Sign-up |
@@ -151,5 +185,7 @@ The Developer Program subscription lasts **90 days** and renews automatically on
 - [Academy — Contributor Track](contributor-track.html) — where this setup slots in (Stage 4: Adapter development)
 - [Substrate Status](../docs/substrate-status.html) — current tier-1/2/3 evidence state per adapter
 - [FINDING-001 — M365 INR unavailability in GCC-Moderate](../findings/fedramp-gcc-moderate-informed-network-routing.html) — why Developer Program tier-1 tests don't prove GCC-M behavior
+- [B1 — GCC-Moderate boundary model](../customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.html) — the boundary a Federal GCC-Moderate tenant lives inside
+- [Findings register](../findings/index.html) — the GCC-Moderate boundary findings a live GCC-Moderate run can confirm or refute
 - [Microsoft 365 Developer Program — Microsoft Learn](https://learn.microsoft.com/en-us/office/developer-program/microsoft-365-developer-program-faq)
 - [Set up your application's Microsoft Entra test environment — Microsoft Learn](https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment)
