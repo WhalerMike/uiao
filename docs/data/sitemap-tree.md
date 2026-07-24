@@ -30,6 +30,7 @@
 
 - [Academy — OrgPath Path (Governance)](academy/orgpath-path.html)
 - [Academy — OrgMod Path (Modernization)](academy/orgmod-path.html)
+- [Academy — Day-2 Kit Operator Track (Current State / Active Directory edition)](academy/day2-kit-track.html)
 
 ### Contributor path
 
