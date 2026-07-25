@@ -1,7 +1,7 @@
 ---
 adr_id: adr-132
 title: "OrgLink — Link Object Class for External Interconnection Governance; Candidate Fourth Org-Family Pillar"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-07-25
 deciders: Michael Stratton
 updated: 2026-07-25
@@ -19,7 +19,7 @@ published_at: null
 
 ## Status
 
-**PROPOSED** — 2026-07-25.
+**ACCEPTED** — 2026-07-25.
 
 This ADR is doctrine. It establishes a substrate object class and reserves a
 candidate pillar name; it changes no runtime behavior, no schema, and no
