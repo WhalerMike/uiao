@@ -51,14 +51,14 @@ jobs:
 
           report = walk_substrate()
           print(json.dumps(report.as_dict(), indent=2))
-          # Gate on P1 (blocking) findings — the same semantics as
-          # `uiao substrate drift`. This is deliberately NOT the
-          # any-finding gate the previous comment claimed: that claim
-          # was never true in practice (see pipefail note above), and
-          # enforcing it now would hard-fail every PR on the inherited
-          # advisory baseline. Tighten to `report.findings` once the
-          # P2/P3 burn-down lands and the baseline is genuinely zero.
-          sys.exit(1 if report.blocking else 0)
+          # Gate on P1 + P2 findings. The inherited P2 baseline was
+          # burned down (dangling citations fixed; historical-record
+          # ADRs 060/062 documented as walker exemptions), so any new
+          # P2 is genuinely new drift and fails CI. P3 stays advisory:
+          # the link registry's intentional unrecorded-agreement
+          # markers (UIAO_145 / ADR-132 Phase 2 migration debt) are P3
+          # by design and are tracked by scan_link_gaps.py instead.
+          sys.exit(1 if any(f["severity"] in ("P1", "P2") for f in report.as_dict()["findings"]) else 0)
           EOF
 
       # Advisory: reports link-governance gaps (unrecorded agreements,

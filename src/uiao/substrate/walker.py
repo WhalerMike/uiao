@@ -48,6 +48,18 @@ CANON_ROOT = "src/uiao/canon"
 DOCS_ROOT = "docs"
 CODE_REF_PATTERN = re.compile(r"\b(?:src/uiao|impl)/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b")
 
+# Files exempt from the dangling-code-ref scan because they narrate
+# intentionally-absent paths as part of an immutable historical record
+# (CR-003): editing them to satisfy the scanner would rewrite history.
+# adr-062's supersession note explicitly documents that its two cited
+# Phase 1 deletion targets are "intentionally absent under Model C".
+# Same disposition as the adr-060 retired-slug exclusion below.
+CODE_REF_EXEMPT_FILES: frozenset[str] = frozenset(
+    {
+        "src/uiao/canon/adr/adr-062-orgpath-depth-extension.md",
+    }
+)
+
 
 @dataclass
 class DriftFinding:
@@ -824,6 +836,10 @@ def _scan_prose_for_code_refs(
         except (OSError, UnicodeDecodeError):
             continue
 
+        file_rel_early = md_file.relative_to(root).as_posix()
+        if file_rel_early in CODE_REF_EXEMPT_FILES:
+            continue
+
         for match in CODE_REF_PATTERN.finditer(text):
             code_rel = match.group(0)
             report.code_refs_checked += 1
@@ -941,8 +957,15 @@ def _scan_retired_slugs(
         if file_rel.endswith("substrate-manifest.yaml"):
             continue
         # ADR-060 references retired slugs by construction; it's the
-        # rename's source-of-truth artifact. Skip it.
-        if "adr-060-mod-namespace-flatten-into-uiao-canon.md" in file_rel:
+        # rename's source-of-truth artifact. Skip it. ADR-062 is the same
+        # class: written against the pre-flatten MOD_* namespace and
+        # explicitly preserved "for historical reference" by its own
+        # supersession note (CR-003 immutability) — its slug citations
+        # are the historical record, not drift.
+        if (
+            "adr-060-mod-namespace-flatten-into-uiao-canon.md" in file_rel
+            or "adr-062-orgpath-depth-extension.md" in file_rel
+        ):
             continue
 
         for pat, replacement, rationale in slug_patterns:

@@ -506,3 +506,46 @@ def test_cli_walk_retired_slugs_only_clean_when_no_retired_refs(tmp_path: Path) 
     assert "PASS" in result.stdout
     assert "no retired-slug references" in result.stdout
     assert "filtered to --retired-slugs-only" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Historical-record exemptions (CR-003): adr-060 / adr-062
+# ---------------------------------------------------------------------------
+
+
+def test_code_ref_scan_exempts_adr062_historical_record(tmp_path: Path) -> None:
+    """adr-062's supersession note narrates intentionally-absent paths;
+    the code-ref scan must not flag them (CODE_REF_EXEMPT_FILES)."""
+    from uiao.substrate.walker import SubstrateReport, _scan_canon_code_refs
+
+    canon_adr = tmp_path / "src" / "uiao" / "canon" / "adr"
+    canon_adr.mkdir(parents=True)
+    (canon_adr / "adr-062-orgpath-depth-extension.md").write_text(
+        "Historic: `src/uiao/adapters/modernization/active_directory/orgpath.py` is intentionally absent."
+    )
+    (canon_adr / "adr-999-other.md").write_text("Cites `src/uiao/does/not/exist.py` and should be flagged.")
+
+    report = SubstrateReport(workspace_root=tmp_path, manifest_present=True, contract_present=True)
+    _scan_canon_code_refs(tmp_path, report)
+    flagged_files = {f.detail.split(" cites ")[0] for f in report.findings}
+    assert not any("adr-062" in f for f in flagged_files)
+    assert any("adr-999-other.md" in f for f in flagged_files)
+
+
+def test_retired_slug_scan_exempts_adr062(tmp_path: Path) -> None:
+    """adr-062 is preserved for historical reference and cites MOD_*
+    slugs by construction — same exemption class as adr-060."""
+    from uiao.substrate.walker import SubstrateReport, _scan_retired_slugs
+
+    canon_adr = tmp_path / "src" / "uiao" / "canon" / "adr"
+    canon_adr.mkdir(parents=True)
+    (canon_adr / "adr-062-orgpath-depth-extension.md").write_text("Historic MOD_A discussion.")
+    (canon_adr / "adr-777-fresh.md").write_text("New doc citing MOD_A wrongly.")
+
+    report = SubstrateReport(workspace_root=tmp_path, manifest_present=True, contract_present=True)
+    _scan_retired_slugs(
+        tmp_path, report, [{"slug": "MOD_A", "replacement": "UIAO_151", "rationale": "ADR-060 flatten"}]
+    )
+    paths = {f.path for f in report.findings}
+    assert not any("adr-062" in p for p in paths)
+    assert any("adr-777-fresh.md" in p for p in paths)
