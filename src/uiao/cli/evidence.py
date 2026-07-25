@@ -255,3 +255,59 @@ def graph_command(
                 Path(output).parent.mkdir(parents=True, exist_ok=True)
                 Path(output).write_text(json.dumps(stats, indent=2, ensure_ascii=False), encoding="utf-8")
                 _console.print(f"[green]Graph stats written to {output}[/green]")
+
+
+@evidence_app.command("links")
+def links_command(
+    control: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--control",
+        help="Control(s) to render (CA-3, CA-9, SA-9, AC-20). Default: all four.",
+    ),
+    fmt: EvidenceFormat = typer.Option(  # noqa: B008
+        EvidenceFormat.table,
+        "--format",
+        help="Output format: table (markdown appendix) or json.",
+    ),
+    output: str = typer.Option(  # noqa: B008
+        "",
+        "--output",
+        help="Optional path to write the rendered inventory.",
+    ),
+    include_inactive: bool = typer.Option(  # noqa: B008
+        False,
+        "--include-inactive",
+        help="Include proposed/retired links in the inventory.",
+    ),
+) -> None:
+    """Render the external-interconnection inventory from the link registry.
+
+    The registry (UIAO_145 / ADR-132) is the authoritative CA-3 evidence
+    source; this command renders the per-control inventory that replaces
+    the retired document-library pointer pattern.
+    """
+    from uiao.evidence.links import link_evidence_inventory, render_markdown
+
+    try:
+        inventory = link_evidence_inventory(
+            tuple(control) if control else None,
+            include_inactive=include_inactive,
+        )
+    except ValueError as exc:
+        _console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except OSError as exc:
+        _console.print(f"[red]Error loading link registry:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if fmt is EvidenceFormat.json:
+        rendered = json.dumps(inventory, indent=2, ensure_ascii=False)
+    else:
+        rendered = render_markdown(inventory)
+
+    if output:
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
+        Path(output).write_text(rendered + "\n", encoding="utf-8")
+        _console.print(f"[green]Link evidence inventory written to {output}[/green]")
+    else:
+        typer.echo(rendered)

@@ -13,6 +13,8 @@ on:
       - 'src/uiao/schemas/substrate-manifest/**'
       - 'src/uiao/schemas/workspace-contract/**'
       - 'src/uiao/substrate/**'
+      - 'src/uiao/canon/link-registry.yaml'
+      - 'scripts/scan_link_gaps.py'
       - '.github/workflows/substrate-drift.yml'
 
 jobs:
@@ -48,6 +50,14 @@ jobs:
           # dangling citations.
           sys.exit(1 if report.findings else 0)
           EOF
+
+      # Advisory: reports link-governance gaps (unrecorded agreements,
+      # unanchored artifacts, past-due reviews, overlay/pack mismatches)
+      # per UIAO_145 §7 / ADR-132 Phase 2. Never fails the job — the
+      # registry intentionally carries declared migration debt; flip to
+      # --strict when the Phase 2 migration completes.
+      - name: Link-gap scan (advisory)
+        run: python scripts/scan_link_gaps.py
 
       - name: Upload substrate report
         if: always()
