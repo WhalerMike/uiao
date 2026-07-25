@@ -28,7 +28,7 @@ class CQLExecutionError(RuntimeError):
 
 
 _SHOW_RE = re.compile(
-    r"SHOW\s+(CONTROLS|EVIDENCE|DRIFT|POAM)"
+    r"SHOW\s+(CONTROLS|EVIDENCE|DRIFT|POAM|LINKS)"
     r"(?:\s+FOR\s+CONTROL\s+'([^']+)')?"
     r"(?:\s+WHERE\s+(.+?))?"
     r"(?:\s+SINCE\s+'([^']+)')?"
@@ -157,11 +157,12 @@ class CQLResult:
 
 
 class CQLEngine:
-    def __init__(self, controls=None, evidence=None, drift=None, poam=None):  # type: ignore[no-untyped-def]
+    def __init__(self, controls=None, evidence=None, drift=None, poam=None, links=None):  # type: ignore[no-untyped-def]
         self._controls = controls or []
         self._evidence = evidence or []
         self._drift = drift or []
         self._poam = poam or []
+        self._links = links or []
 
     def execute(self, cql: str) -> CQLResult:
         q = parse(cql)
@@ -184,6 +185,19 @@ class CQLEngine:
             records = [r for r in self._poam if _matches(r, q.filters)]
             if q.since:
                 records = _apply_since(records, q.since, "detected_at")
+        elif q.query_type == "LINKS":
+            # UIAO_145 / ADR-132: rows come from the canon link registry,
+            # not the evidence bundle. FOR CONTROL is membership in the
+            # link's bound controls; SINCE keys on next_review (the only
+            # date a link carries).
+            records = self._links
+            if q.for_control:
+                records = [
+                    r for r in records if q.for_control.upper() in [str(c).upper() for c in r.get("controls", [])]
+                ]
+            records = [r for r in records if _matches(r, q.filters)]
+            if q.since:
+                records = _apply_since(records, q.since, "next_review")
         else:
             raise CQLExecutionError(f"Unknown query type: {q.query_type}")
         if q.order_by:

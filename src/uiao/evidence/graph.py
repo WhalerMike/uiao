@@ -151,6 +151,29 @@ class ReciprocityRecordNode:
 
 
 @dataclass
+class LinkNode:
+    """Node Type 14 — link (UIAO_145 / ADR-132 Phase 2).
+
+    One governed external interconnection from the canon link registry:
+    counterparty + direction + SSOT stance + agreement state. Link nodes
+    let provenance queries answer "which external parties evidence this
+    control, under what agreement?" without leaving the graph.
+    """
+
+    id: str
+    name: str = ""
+    counterparty: str = ""
+    counterparty_class: str = ""
+    direction: str = ""
+    ssot_stance: str = ""
+    status: str = ""
+    agreement_type: str = ""
+    provenance_anchored: bool = False
+    extra: Dict[str, Any] = field(default_factory=dict)
+    node_type: str = "link"
+
+
+@dataclass
 class Edge:
     from_id: str
     to_id: str
@@ -196,6 +219,10 @@ class EvidenceGraph:
         """Add a Reciprocity Record node (UIAO_113 v1.2 — node type 13)."""
         self._add(node)
 
+    def add_link_node(self, node: LinkNode) -> None:
+        """Add a Link node (UIAO_145 / ADR-132 — node type 14)."""
+        self._add(node)
+
     def _link(self, from_id: str, to_id: str, edge_type: str, **props: Any) -> None:
         edge = Edge(from_id=from_id, to_id=to_id, edge_type=edge_type, properties=props)
         self._edges.append(edge)
@@ -228,6 +255,14 @@ class EvidenceGraph:
     def link_derives_from_ssp(self, record_id: str, ssp_id: str, **p: Any) -> None:
         """Reciprocity Record → SSP (UIAO_113 v1.2 edge: derives-from-ssp)."""
         self._link(record_id, ssp_id, "derives-from-ssp", **p)
+
+    def link_evidences(self, link_id: str, control_id: str, **p: Any) -> None:
+        """Link → Control (UIAO_145 / ADR-132 edge: evidences).
+
+        The link registry supplies interconnection evidence for the
+        control (CA-3, CA-9, SA-9, AC-20).
+        """
+        self._link(link_id, control_id, "evidences", **p)
 
     def get(self, node_id: str) -> Optional[Any]:
         return self._nodes.get(node_id)

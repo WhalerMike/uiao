@@ -322,6 +322,7 @@ SHOW CONTROLS  [WHERE field OP 'value' [AND ...]] [SINCE 'ISO-date'] [ORDER BY f
 SHOW EVIDENCE  [FOR CONTROL 'control-id'] [WHERE ...] [SINCE '...'] [ORDER BY ...]
 SHOW DRIFT     [WHERE ...] [SINCE '...'] [ORDER BY ...]
 SHOW POAM      [WHERE ...] [SINCE '...'] [ORDER BY ...]
+SHOW LINKS     [FOR CONTROL 'CA-3'] [WHERE ...] [ORDER BY ...]
 ```
 
 Supported operators: `=`, `!=`, `>=`, `<=`, `>`, `<`, `LIKE` (substring match).
@@ -339,6 +340,10 @@ uiao cql query "SHOW DRIFT WHERE drift_class = 'DRIFT-SEMANTIC'" --bundle bundle
 # High-severity open POA&M items, most critical first
 uiao cql query "SHOW POAM WHERE severity >= 'High' ORDER BY severity DESC" \
     --bundle bundle.json --output poam-high.json
+
+# External interconnections whose agreements are not yet provenance-anchored
+# (SHOW LINKS reads the canon link registry — UIAO_145 / ADR-132 — not the bundle)
+uiao cql query "SHOW LINKS WHERE provenance_anchored = 'false'" --bundle bundle.json
 ```
 
 ---
@@ -350,6 +355,7 @@ The Evidence Graph is a directed property graph that links controls, IR objects,
 | Command | Description | Pipeline Role |
 |---------|-------------|---------------|
 | `evidence graph` | Build and inspect an Evidence Graph from a SCuBA run. | Provenance tracing; compliance claim lineage. |
+| `evidence links` | Render the external-interconnection inventory from the canon link registry (UIAO_145 / ADR-132). | Registry-sourced CA-3/CA-9/SA-9/AC-20 evidence appendix. |
 
 ```bash
 # Print graph statistics
@@ -360,6 +366,15 @@ uiao evidence graph --input normalized.json --trace KSI-IA-02
 
 # Trace a control and export the full chain as JSON
 uiao evidence graph --input normalized.json --trace AC-2 --format json --output trace.json
+
+# Augment the graph with Link nodes from the canon link registry (node type 14)
+uiao evidence graph --input normalized.json --include-links
+
+# Render the CA-3 interconnection inventory as a markdown evidence appendix
+uiao evidence links --control CA-3
+
+# Full inventory as JSON, written to a file
+uiao evidence links --format json --output link-inventory.json
 ```
 
 ---

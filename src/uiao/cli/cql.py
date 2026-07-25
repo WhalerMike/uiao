@@ -25,6 +25,14 @@ CQL syntax
     SHOW EVIDENCE [FOR CONTROL 'ksi-id'] [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
     SHOW DRIFT [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
     SHOW POAM [WHERE ...] [SINCE 'ISO-date'] [ORDER BY ...]
+    SHOW LINKS [FOR CONTROL 'CA-3'] [WHERE ...] [ORDER BY ...]
+
+``SHOW LINKS`` queries the canon link registry (UIAO_145 / ADR-132) —
+external interconnections are substrate facts, so the rows come from
+canon rather than the bundle:
+
+    uiao cql query "SHOW LINKS WHERE counterparty_class = 'federal-agency'" --bundle bundle.json
+    uiao cql query "SHOW LINKS FOR CONTROL 'CA-3' WHERE provenance_anchored = 'false'" --bundle bundle.json
 """
 
 from __future__ import annotations
@@ -200,6 +208,7 @@ _TABLE_COLUMNS: dict[str, list[str]] = {
     "EVIDENCE": ["id", "control_id", "verdict", "status", "source"],
     "DRIFT": ["id", "control", "drift_class", "classification"],
     "POAM": ["id", "status", "severity", "control_id"],
+    "LINKS": ["id", "counterparty_class", "direction", "ssot_stance", "agreement_type", "provenance_anchored"],
 }
 
 _STATUS_STYLES: dict[str, str] = {
@@ -311,11 +320,24 @@ def query_cmd(
         raise typer.Exit(code=1) from exc
 
     cql_data = _bundle_to_cql_data(bundle_data)
+
+    # SHOW LINKS rows come from the canon link registry (UIAO_145 /
+    # ADR-132), not the bundle: interconnections are substrate facts.
+    # A packaging problem loading the registry must not break
+    # bundle-scoped queries, so it degrades to an empty LINKS domain.
+    from uiao.evidence.links import cql_link_rows
+
+    try:
+        link_rows = cql_link_rows()
+    except (OSError, ValueError):
+        link_rows = []
+
     engine = CQLEngine(
         controls=cql_data["controls"],
         evidence=cql_data["evidence"],
         drift=cql_data["drift"],
         poam=cql_data["poam"],
+        links=link_rows,
     )
 
     # ── Execute query ─────────────────────────────────────────────────────────
