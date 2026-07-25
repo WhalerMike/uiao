@@ -151,6 +151,15 @@ def graph_command(
         "-f",
         help="Output format: table | json",
     ),
+    include_links: bool = typer.Option(  # noqa: B008
+        False,
+        "--include-links",
+        help=(
+            "Augment the graph with Link nodes from the canon link registry "
+            "(UIAO_145 / ADR-132): external interconnections and their "
+            "`evidences` edges onto CA-3/CA-9/SA-9/AC-20."
+        ),
+    ),
 ) -> None:
     """Build and inspect an Evidence Graph (UIAO_113) from a SCuBA run.
 
@@ -194,6 +203,17 @@ def graph_command(
     except (ValueError, KeyError) as exc:
         _console.print(f"[red]Failed to build evidence graph: {exc}[/red]")
         raise typer.Exit(code=1) from exc
+
+    if include_links:
+        from uiao.evidence.links import augment_graph_with_links
+
+        try:
+            added = augment_graph_with_links(graph)
+        except (OSError, ValueError) as exc:
+            _console.print(f"[red]Failed to augment graph from link registry: {exc}[/red]")
+            raise typer.Exit(code=1) from exc
+        _console.print(f"[dim]Added {added} link node(s) from the canon link registry (UIAO_145)[/dim]")
+
     stats = graph.stats()
 
     # ── Trace or stats ────────────────────────────────────────────────────────

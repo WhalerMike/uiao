@@ -148,3 +148,19 @@ SDKs, so the blocking CI job covers the new application code.
 | **AWS per-tenant stamp executor** | `uiao.saas.aws_stamp`, `uiao.saas.aws_provisioners` | library | **`[api]` extra** (provisioners: `[aws]`) | `AwsStampExecutor` mirrors `AzureStampExecutor` across RDS schema / S3 prefix / Secrets Manager scope, reusing the cloud-neutral `Provisioner` protocol + `require_safe_namespace` guard. Dry-run unless `UIAO_SAAS_STAMP_EXECUTION_ENABLED`; orchestration is dependency-free + fake-tested, the boto3 provisioners lazy-import |
 | **AWS CDK IaC** | `deploy/aws/` (`app.py`, `uiao_saas_stack.py`) | server | **CDK (`[aws]` runtime)** | `UiaoSaasStack`: VPC · RDS PostgreSQL (IAM auth, private, encrypted) · ECS Fargate + ALB running `uiao.saas.asgi:app` · S3 evidence bucket · IAM task role. Image referenced from ECR (cloud-neutral `uiao-saas`) |
 | **CDK synthesis gate** | `.github/workflows/cdk-synth.yml` | CI | n/a | `cdk synth` on every `deploy/aws/**` change — credential-free, no account. The AWS analogue of `bicep-validate` |
+
+## Public surface additions (OrgLink Link object class — ADR-132 Phases 1–2)
+
+External interconnections became first-class governed substrate objects
+(UIAO_145): the link registry, its schema and walker scan (Phase 1), then
+evidence rendering, graph/CQL surfacing, and the link-gap scanner (Phase 2).
+No site surface ships — the OrgLink publication posture is deferred to pillar
+elevation per ADR-132 D6.
+
+| Feature | Module | Surface | Tier | Notes |
+|---|---|---|---|---|
+| **Link registry** | `src/uiao/canon/link-registry.yaml` + `src/uiao/schemas/link-registry/` | canon + CI | n/a | Pair registry of external interconnections (counterparty class, direction, SSOT stance, agreement artifact, regime overlays, control bindings). Schema-validated in CI; scanned by the substrate walker (UIAO_145 §4) |
+| **Link evidence renderer** | `uiao.evidence.links` | `evidence links` | CLI | Deterministic per-control (CA-3/CA-9/SA-9/AC-20) interconnection inventory from the packaged canon registry; markdown appendix or JSON. CA-3's control-library evidence now cites the registry instead of document-library pointers |
+| **Graph link nodes** | `uiao.evidence.graph` (`LinkNode`, `evidences` edge) | `evidence graph --include-links` | CLI | Node type 14: link registry augmentation onto the Evidence Graph (UIAO_113) — "which external parties evidence this control, under what agreement?" |
+| **CQL `SHOW LINKS`** | `uiao.cql` | `cql query "SHOW LINKS …"` | CLI | UIAO_108 grammar gains the LINKS domain, sourced from canon (not the bundle); `FOR CONTROL` is membership in the link's bound controls |
+| **Link-gap scanner** | `scripts/scan_link_gaps.py` | CI (advisory step in substrate-drift.yml) | n/a | GAP-AGREEMENT-UNRECORDED / GAP-NOT-ANCHORED / GAP-REVIEW-MISSING / GAP-REVIEW-PAST-DUE / GAP-OVERLAY-NO-PACK / GAP-CONTROL-UNKNOWN / GAP-EVIDENCE-DOC-LIBRARY; advisory until the declared migration debt burns down, then `--strict` |

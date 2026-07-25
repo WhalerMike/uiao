@@ -117,6 +117,93 @@ def link_evidence_inventory(
     return inventory
 
 
+def augment_graph_with_links(
+    graph: Any,
+    *,
+    registry: dict[str, Any] | None = None,
+    include_inactive: bool = False,
+) -> int:
+    """Add Link nodes + `evidences` edges to an Evidence Graph (UIAO_113).
+
+    For every (active, by default) link in the registry: add a LinkNode,
+    ensure a ControlNode exists for each bound control (creating a bare
+    one when the bundle didn't carry it), and draw the
+    link --evidences--> control edge. Returns the number of link nodes
+    added. Deterministic: links are processed in id order.
+    """
+    from uiao.evidence.graph import ControlNode, LinkNode
+
+    doc = registry if registry is not None else load_link_registry()
+    links = doc.get("links") or []
+    added = 0
+    for link in sorted(
+        (entry for entry in links if isinstance(entry, dict)), key=lambda entry: str(entry.get("id", ""))
+    ):
+        status = str(link.get("status", "")).strip().lower()
+        if status != "active" and not include_inactive:
+            continue
+        row = _link_row(link)
+        node = LinkNode(
+            id=str(row["id"]),
+            name=str(row["name"] or ""),
+            counterparty=str(row["counterparty"] or ""),
+            counterparty_class=str(row["counterparty-class"] or ""),
+            direction=str(row["direction"] or ""),
+            ssot_stance=str(row["ssot-stance"] or ""),
+            status=status,
+            agreement_type=str(row["agreement-type"] or ""),
+            provenance_anchored=bool(row["provenance-anchored"]),
+            extra={
+                "agreement-location": row["agreement-location"],
+                "regime-overlays": row["regime-overlays"],
+                "authorized-by": row["authorized-by"],
+            },
+        )
+        graph.add_link_node(node)
+        added += 1
+        for control in link.get("controls") or []:
+            control_id = str(control).strip()
+            if not control_id:
+                continue
+            if graph.get(control_id) is None:
+                graph.add_control(ControlNode(id=control_id, family=control_id.split("-")[0]))
+            graph.link_evidences(node.id, control_id)
+    return added
+
+
+def cql_link_rows(registry: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Flatten the registry into CQL-queryable rows (UIAO_108 `SHOW LINKS`).
+
+    Keys are snake_case for CQL WHERE filters; booleans render as
+    'true'/'false' strings so `provenance_anchored = 'false'` matches.
+    Includes every status — CQL filters narrow as needed.
+    """
+    doc = registry if registry is not None else load_link_registry()
+    rows: list[dict[str, Any]] = []
+    for link in sorted(
+        (entry for entry in (doc.get("links") or []) if isinstance(entry, dict)),
+        key=lambda entry: str(entry.get("id", "")),
+    ):
+        row = _link_row(link)
+        rows.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "counterparty": row["counterparty"],
+                "counterparty_class": row["counterparty-class"],
+                "direction": row["direction"],
+                "ssot_stance": row["ssot-stance"],
+                "status": row["status"],
+                "agreement_type": row["agreement-type"],
+                "provenance_anchored": "true" if row["provenance-anchored"] else "false",
+                "next_review": row["next-review"] or "",
+                "regime_overlays": ",".join(row["regime-overlays"]),
+                "controls": list(link.get("controls") or []),
+            }
+        )
+    return rows
+
+
 def render_markdown(inventory: dict[str, list[dict[str, Any]]]) -> str:
     """Render the inventory as a deterministic markdown evidence appendix."""
     lines: list[str] = ["# External Interconnection Inventory (link registry, UIAO_145)", ""]
