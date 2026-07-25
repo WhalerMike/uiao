@@ -43,7 +43,7 @@ reconciles, it does not replace the HR system of record).
 
 ### D1. Adapter identity and registration
 
-The adapter is registered in `src/uiao/adapters/locpath-hr-duty-station/` and
+The adapter is implemented in `src/uiao/modernization/locpath/` (shipped location) and
 declared in `src/uiao/canon/adapter-registry.yaml` as:
 
 ```yaml
@@ -84,7 +84,7 @@ canon-steward. A duty-station code with no mapping entry is treated as
 `DRIFT-LOCPATH-UNMAPPED` (see ADR-125).
 
 The LocPath node referenced in each mapping entry must exist in the LocPath
-node registry at `src/uiao/canon/data/locpath/nodes.yaml` (established in
+node registry at `src/uiao/canon/data/locpath/location-registry.yaml` (established in
 ADR-102 D6 item 1). A mapping that references a non-existent node is itself
 a schema violation that blocks the adapter from starting.
 
@@ -162,12 +162,12 @@ duty-station assignment as the authoritative record.
 
 ## Implementation notes
 
-- Adapter entry point: `src/uiao/adapters/locpath-hr-duty-station/__init__.py`
+- Adapter entry point: `src/uiao/modernization/locpath/hr_assign.py` (shipped location)
 - Mapping table: `src/uiao/canon/data/locpath/duty-station-map.yaml`
-- Node registry: `src/uiao/canon/data/locpath/nodes.yaml` (ADR-102 D6 item 1)
+- Node registry: `src/uiao/canon/data/locpath/location-registry.yaml` (ADR-102 D6 item 1)
 - Test fixture: at least one `DRIFT-LOCPATH-UNMAPPED` case and one conformant case
   must be covered in the adapter's test suite.
-- The adapter is inactive until `src/uiao/canon/data/locpath/nodes.yaml` exists
+- The adapter is inactive until `src/uiao/canon/data/locpath/location-registry.yaml` exists
   with at least one node entry; it raises `LocPathRegistryEmpty` otherwise.
 
 ## Related

@@ -89,7 +89,7 @@ the HR record itself.
 
 **Meaning.** The mapping table resolves the HR code to a LocPath node path,
 but that node path does not exist in the LocPath node registry
-(`src/uiao/canon/data/locpath/nodes.yaml`). The mapping table has an entry but
+(`src/uiao/canon/data/locpath/location-registry.yaml`). The mapping table has an entry but
 it points to a non-existent node — typically a stale mapping after a site is
 renamed or decommissioned.
 
@@ -235,9 +235,10 @@ addressing-plane events without an explicit ADR amendment.
 
 ### D4. Drift class registration
 
-All six classes are registered in the UIAO drift class registry at
-`src/uiao/canon/data/drift/locpath-drift-classes.yaml`. The registry entry
-for each class includes the fields defined in D2 plus an `introduced_by`
+All six classes ship as executable canon in
+`src/uiao/modernization/locpath/drift.py` (the planned standalone YAML
+registry was folded into the module at implementation). Each class
+definition carries the fields defined in D2 plus an `introduced_by`
 reference to this ADR.
 
 ## Consequences

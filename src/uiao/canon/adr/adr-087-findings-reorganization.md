@@ -147,7 +147,7 @@ The §5.2 artifact-class definition (the five-section contract and ownership-tra
 
 | Surface | Count | Examples |
 |---|---|---|
-| Canon ADRs | 4 | [adr-030](src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md), [adr-047](src/uiao/canon/adr/adr-047-fedramp-20x-integration.md), [adr-058](src/uiao/canon/adr/adr-058-microsoft-purview-conformance-adapter-coverage.md), [adr-061](src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md) |
+| Canon ADRs | 4 | [adr-030](src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md), [adr-047](src/uiao/canon/adr/adr-106-fedramp-20x-integration.md), [adr-058](src/uiao/canon/adr/adr-058-microsoft-purview-conformance-adapter-coverage.md), [adr-061](src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md) |
 | Canon specs | 5 | fedramp-20x-integration, application-identity-onboarding-runbook, adapter-test-strategy, GCC-Moderate capabilities + README |
 | Customer-documents pages | 6 | operational-guides (3 phase pages), validation-suites, compliance boundary-authorization, adapter-specs (purview-audit, infoblox, bluecat) |
 | Academy pages | 4 | entra-id, operator-track, document-generation-guide, contributor-tier-1-setup |
