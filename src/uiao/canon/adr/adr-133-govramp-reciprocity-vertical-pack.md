@@ -1,7 +1,7 @@
 ---
 adr_id: adr-133
 title: "GovRAMP Reciprocity Vertical Pack — State/Local Eligibility as a Crosswalk, and the state-local Boundary"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-07-25
 deciders: Michael Stratton
 updated: 2026-07-25
@@ -19,7 +19,7 @@ published_at: null
 
 ## Status
 
-**PROPOSED** — 2026-07-25.
+**ACCEPTED** — 2026-07-25.
 
 This ADR is doctrine: it authorizes a vertical adapter pack and fixes its
 boundary treatment. It changes no runtime behavior, no schema, and no
