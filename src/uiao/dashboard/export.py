@@ -55,6 +55,53 @@ class DashboardExporter:
             },
             "controls_covered": self._calculator.controls_covered(),
             "ksi_items": score["items"],
+            "external_interconnections": self._links_panel(),
+        }
+
+    @staticmethod
+    def _links_panel() -> dict[str, Any]:
+        """External-interconnections panel (UIAO_145 / ADR-132 Phase 2).
+
+        Sourced from the canon link registry: every governed external
+        interconnection with its agreement state, plus live gap counts
+        from the link-gap detector. A registry load failure degrades to
+        an explicit unavailable marker rather than sinking the KSI
+        dashboard export.
+        """
+        try:
+            from uiao.evidence.link_gaps import gap_summary, scan
+            from uiao.evidence.links import cql_link_rows
+
+            rows = cql_link_rows()
+            gaps = scan()
+        except (OSError, ValueError) as exc:
+            return {"available": False, "reason": str(exc)}
+
+        by_class: dict[str, int] = {}
+        for row in rows:
+            cls = str(row.get("counterparty_class") or "unknown")
+            by_class[cls] = by_class.get(cls, 0) + 1
+
+        return {
+            "available": True,
+            "source": "src/uiao/canon/link-registry.yaml (UIAO_145 / ADR-132)",
+            "total_links": len(rows),
+            "active_links": sum(1 for row in rows if row.get("status") == "active"),
+            "by_counterparty_class": dict(sorted(by_class.items())),
+            "gap_counts": gap_summary(gaps),
+            "links": [
+                {
+                    "id": row["id"],
+                    "counterparty_class": row["counterparty_class"],
+                    "direction": row["direction"],
+                    "ssot_stance": row["ssot_stance"],
+                    "status": row["status"],
+                    "agreement_type": row["agreement_type"],
+                    "provenance_anchored": row["provenance_anchored"],
+                    "next_review": row["next_review"],
+                }
+                for row in rows
+            ],
         }
 
     # ------------------------------------------------------------------
