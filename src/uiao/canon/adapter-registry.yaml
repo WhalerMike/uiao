@@ -956,6 +956,70 @@ adapters:
         slot-01-identity-evidence.yaml … slot-06-security-evidence.yaml
     implementation:
       python_module: src/uiao/adapters/soc2_trust_services_catalog
+
+  - id: govramp-reciprocity-catalog
+    name: GovRAMP Reciprocity Catalog (Surface Slots 1–6) — state/local vertical
+    class: conformance
+    mission-class: policy
+    status: active
+    phase: phase-planning
+    vendor: UIAO (native)
+    license: per-repo
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    policy-engine: none
+    scope:
+      - govramp-identity-slot-1
+      - govramp-addressing-slot-2
+      - govramp-network-slot-3
+      - govramp-telemetry-slot-4
+      - govramp-endpoint-slot-5
+      - govramp-security-slot-6
+    outputs:
+      - govramp-submission-bindings.json
+    triggers:
+      - workflow_dispatch
+    evidence-class: point-in-time
+    retention-years: 3
+    freshness-window-hours: 8760
+    # `controls` intentionally omitted, mirroring the SOC 2 precedent: the
+    # crosswalk's Rev 5 anchors live in the pack's mappings/slot-0N-*.yaml
+    # rather than being re-asserted here; the field's vertical-neutral
+    # redesign travels with the deferred verticals-registry work (ADR-129 D4).
+    automation-domain:
+      - configuration-management
+      - event-management
+    gcc-boundary: state-local
+    # Explicit empty list, mirroring the SOC 2 precedent: ztmm-pillars is a
+    # federal maturity-model attribution a state/local vertical does not
+    # claim; the empty declaration is the walker-accepted informational form.
+    ztmm-pillars: []
+    ssot-mutation: never
+    certificate-anchored: false
+    object-identity-only: true
+    references:
+      - src/uiao/canon/adr/adr-133-govramp-reciprocity-vertical-pack.md
+      - src/uiao/canon/adr/adr-085-universal-enterprise-positioning.md
+      - src/uiao/canon/specs/single-ato-reciprocity-model.md
+      - src/uiao/canon/data/control-planes.yml
+    notes: >-
+      Third vertical adapter pack and the first state/local one (ADR-133):
+      a reciprocity CROSSWALK, not a new stack. GovRAMP (formerly StateRAMP)
+      assesses the same NIST 800-53 Rev 5 baseline the substrate already
+      evidences, and its intake accepts FedRAMP-derived artifacts, so the
+      pack maps existing evidence onto GovRAMP submission surfaces riding
+      the UIAO_140 single-ATO reciprocity model. Status `active` (ADR-133
+      ACCEPTED): operational and CI-covered — emit_submission_bindings()
+      renders the declared govramp-submission-bindings.json output,
+      exercised by the adapter-conformance gate. Boundary `state-local`
+      (added in lockstep with ADR-133 per ADR-085 D3): state/local/education
+      acceptance scope, program-neutral. GovRAMP eligibility is procurement
+      machinery adopted state-by-state, never a regulatory mandate.
+      Binding files: src/uiao/adapters/govramp_reciprocity_catalog/mappings/
+        slot-01-identity-evidence.yaml … slot-06-security-evidence.yaml
+    implementation:
+      python_module: src/uiao/adapters/govramp_reciprocity_catalog
       tests: tests/conformance/test_soc2_vertical_scaffold.py
 
   # ──────────────────────────────────────────────────────────────────
