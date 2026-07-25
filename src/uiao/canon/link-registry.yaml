@@ -1,0 +1,160 @@
+# UIAO Link Registry
+# ===================
+# Governed record of every interconnection between the org and an
+# outside party (ADR-132 Phase 1; object model in UIAO_145).
+#
+# A Link = interface + agreement artifact + regime overlay, one per
+# external relationship. This registry holds METADATA about exchanges,
+# never exchanged payload data, and performs no entity resolution
+# (ADR-132 D1 boundaries).
+#
+# Schema: src/uiao/schemas/link-registry/link-registry.schema.json
+# Validated in CI by schema-validation.yml; scanned by the substrate
+# walker (DRIFT-SCHEMA / DRIFT-PROVENANCE registry hygiene).
+#
+# `agreement.type: unrecorded` + `provenance-anchored: false` mark the
+# CA-3 SharePoint-pointer state honestly; ADR-132 Phase 2 migrates
+# these to substrate-governed artifacts and renders CA-3/CA-9/SA-9/
+# AC-20 evidence from this registry.
+
+schema-version: "1.0.0"
+updated: "2026-07-25"
+
+links:
+  - id: opm-apim-federal-gateway
+    name: OPM Azure APIM federal API gateway interconnection
+    counterparty:
+      name: U.S. Office of Personnel Management
+      class: federal-agency
+    direction: inbound
+    ssot-stance: they-are-source
+    status: active
+    interface:
+      transport: https-rest
+      identity-binding: workload-identity-federation
+      description: >-
+        Centralized federal API gateway authority (Azure APIM) fronting
+        OPM-published APIs consumed by the substrate.
+    agreement:
+      type: unrecorded
+      artifact-location: "SharePoint > UIAO Compliance > Interconnection Agreements"
+      provenance-anchored: false
+      review-cadence: annual
+    regime-overlays: []
+    controls:
+      - CA-3
+      - SA-9
+    authorized-by:
+      - src/uiao/canon/adr/adr-053-opm-azure-apim-adapter.md
+
+  - id: hr-inbound-provisioning
+    name: API-driven inbound HR provisioning feed (HR-agnostic canonical path)
+    counterparty:
+      name: Federal HR authority of record (OPM-shaped; HR-agnostic by design)
+      class: federal-agency
+    direction: inbound
+    ssot-stance: they-are-source
+    status: active
+    interface:
+      transport: https-rest
+      identity-binding: workload-identity-federation
+      description: >-
+        The canonical inbound provisioning path; HR is the OrgTree truth
+        source per ADR-088, so the counterparty holds SSOT for the
+        person-lifecycle attributes this feed carries.
+    agreement:
+      type: unrecorded
+      artifact-location: "SharePoint > UIAO Compliance > Interconnection Agreements"
+      provenance-anchored: false
+      review-cadence: annual
+    regime-overlays: []
+    controls:
+      - CA-3
+    authorized-by:
+      - src/uiao/canon/adr/adr-003-api-driven-inbound-provisioning.md
+      - src/uiao/canon/adr/adr-088-hr-as-orgtree-truth-source.md
+
+  - id: federal-hrit-integration
+    name: Federal HRIT platform integration (single-ATO reciprocity consumption)
+    counterparty:
+      name: Consuming CFO-Act agencies under the controlling ATO
+      class: federal-agency
+    direction: bidirectional
+    ssot-stance: we-are-source
+    status: active
+    interface:
+      transport: https-rest
+      identity-binding: workload-identity-federation
+      description: >-
+        The HRIT platform-of-record surface consumed by multiple
+        agencies under the single-ATO reciprocity model (UIAO_140);
+        per-agency consumption is recorded in the reciprocal-consumption
+        registry.
+    agreement:
+      type: interagency-mou
+      artifact-location: src/uiao/canon/reciprocal-consumption-registry.yaml
+      provenance-anchored: true
+      review-cadence: annual
+    regime-overlays: []
+    controls:
+      - CA-3
+      - CA-9
+    authorized-by:
+      - src/uiao/canon/specs/single-ato-reciprocity-model.md
+      - src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md
+      - src/uiao/canon/specs/hrit-productization.md
+
+  - id: conmon-reporting-egress
+    name: ConMon evidence reporting egress to federal destinations
+    counterparty:
+      name: Federal ConMon reporting destinations
+      class: federal-agency
+    direction: outbound
+    ssot-stance: we-are-source
+    status: active
+    interface:
+      transport: https-rest
+      identity-binding: workload-identity-federation
+      description: >-
+        Gated outward submission of already-generated ConMon evidence;
+        dry-run default with an L3 human-approval gate on every live
+        submission per ADR-128.
+    agreement:
+      type: unrecorded
+      artifact-location: "SharePoint > UIAO Compliance > Interconnection Agreements"
+      provenance-anchored: false
+      review-cadence: annual
+    regime-overlays: []
+    controls:
+      - CA-3
+    authorized-by:
+      - src/uiao/canon/adr/adr-128-reporting-egress-actuator.md
+
+  - id: sailpoint-nerm-nonemployee
+    name: SailPoint NERM non-employee identity lifecycle exchange
+    counterparty:
+      name: SailPoint Non-Employee Risk Management (SaaS)
+      class: general-commercial
+    direction: bidirectional
+    ssot-stance: they-are-source
+    status: active
+    interface:
+      transport: https-rest
+      identity-binding: workload-identity-federation
+      description: >-
+        Non-employee identity lifecycle exchange; NERM carries the
+        non-employee class SSOT designation per the non-human SSOT
+        registry doctrine (ADR-130) and the customer identity canon
+        block (ADR-055).
+    agreement:
+      type: contract
+      artifact-location: "SharePoint > UIAO Compliance > Interconnection Agreements"
+      provenance-anchored: false
+      review-cadence: annual
+    regime-overlays: []
+    controls:
+      - CA-3
+      - SA-9
+    authorized-by:
+      - src/uiao/canon/adr/adr-059-sailpoint-adapter-family.md
+      - src/uiao/canon/adr/adr-130-nonhuman-ssot-registry.md

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.example.org/schemas/link-registry/link-registry.schema.json",
+  "title": "UIAO Link Registry Schema",
+  "description": "Constrains src/uiao/canon/link-registry.yaml (UIAO_145, ADR-132 Phase 1). A Link is the governed record of one interconnection between the org and one outside party: interface + agreement artifact + regime overlay. The registry holds metadata about exchanges, never exchanged payload data, and performs no entity resolution (ADR-132 D1 boundaries).",
+  "type": "object",
+  "required": ["schema-version", "updated", "links"],
+  "additionalProperties": false,
+  "properties": {
+    "schema-version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "links": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/link" }
+    }
+  },
+  "$defs": {
+    "link": {
+      "type": "object",
+      "required": ["id", "name", "counterparty", "direction", "ssot-stance", "status", "authorized-by"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Stable kebab-case link identifier, unique within the registry."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable name of the interconnection."
+        },
+        "counterparty": {
+          "type": "object",
+          "required": ["name", "class"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "class": {
+              "type": "string",
+              "enum": [
+                "federal-agency",
+                "federal-branch",
+                "state",
+                "local",
+                "tribal",
+                "regulated-commercial",
+                "general-commercial",
+                "consortium",
+                "public"
+              ],
+              "description": "Counterparty taxonomy per ADR-132 D1. regulated-commercial covers regime-bound sectors (banks, hospitals, insurers); consortium covers membership bodies (AAMVA-shaped); public covers citizen/customer-facing surfaces."
+            }
+          }
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["inbound", "outbound", "bidirectional"],
+          "description": "Primary data-flow direction relative to the org."
+        },
+        "ssot-stance": {
+          "type": "string",
+          "enum": ["we-are-source", "they-are-source", "contended"],
+          "description": "Declared authority relationship for the exchanged data domain. A counterparty asserting authority over data the org stewards surfaces as DRIFT-SSOT-CONTENTION (ADR-074); 'contended' declares that state honestly instead of hiding it."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["proposed", "active", "retired"]
+        },
+        "interface": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "transport": { "type": "string", "minLength": 1 },
+            "identity-binding": {
+              "type": "string",
+              "minLength": 1,
+              "description": "How the counterparty authenticates (workload-identity-federation per ADR-004 where applicable)."
+            },
+            "description": { "type": "string" }
+          }
+        },
+        "agreement": {
+          "type": "object",
+          "required": ["type", "artifact-location", "provenance-anchored"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["isa", "mou", "interagency-mou", "cma", "baa", "dua", "contract", "consortium-membership", "unrecorded"],
+              "description": "Agreement artifact class (ISA/MOU per CA-3, CMA per the Computer Matching and Privacy Protection Act, BAA per HIPAA, DUA for data sharing). 'unrecorded' declares honestly that no agreement artifact is registered yet — the CA-3 gap ADR-132 Phase 2 retires."
+            },
+            "artifact-location": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Where the agreement artifact lives today. A repo-relative path when provenance-anchored; a document-library locator string when not yet migrated."
+            },
+            "provenance-anchored": {
+              "type": "boolean",
+              "description": "True when the artifact is substrate-governed (repo-relative, hash-anchored). False marks the SharePoint-pointer state Phase 2 migrates."
+            },
+            "review-cadence": {
+              "type": "string",
+              "enum": ["annual", "semiannual", "quarterly", "on-change"],
+              "description": "Declared review cycle (CA-3 parameter PARAM-CA-003-001 is annual)."
+            },
+            "next-review": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        },
+        "regime-overlays": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Boundary-attached regimes riding this link (e.g. hipaa, cjis, irs-1075, glba, govramp), each satisfied by a vertical adapter pack per ADR-132 D5."
+          }
+        },
+        "controls": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}-[0-9]+(\\([0-9]+\\))?$",
+            "description": "Control bindings this link evidences (CA-3, CA-9, SA-9, AC-20, ...)."
+          }
+        },
+        "authorized-by": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Repo-relative paths of the ADR(s)/spec(s) authorizing this interconnection. The substrate walker verifies these resolve (DRIFT-PROVENANCE)."
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

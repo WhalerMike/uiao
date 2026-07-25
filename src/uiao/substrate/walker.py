@@ -30,6 +30,7 @@ WORKSPACE_CONTRACT = "src/uiao/canon/workspace-contract.yaml"
 DOCUMENT_REGISTRY = "src/uiao/canon/document-registry.yaml"
 MODERNIZATION_REGISTRY = "src/uiao/canon/modernization-registry.yaml"
 ADAPTER_REGISTRY = "src/uiao/canon/adapter-registry.yaml"
+LINK_REGISTRY = "src/uiao/canon/link-registry.yaml"
 
 # Paths inside document-registry.yaml are workspace-relative (e.g.
 # `src/uiao/canon/UIAO-SSOT.md`), so the resolve base is the workspace root.
@@ -226,6 +227,7 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
     _scan_ztmm_pillars(root, report)
     _scan_tenants(root, report)
     _scan_feature_flags(root, report)
+    _scan_link_registry(root, report)
 
     return report
 
@@ -311,6 +313,187 @@ def _scan_tenants(root: Path, report: SubstrateReport) -> None:
                     ),
                 )
             )
+
+
+_VALID_LINK_SSOT_STANCES: frozenset[str] = frozenset({"we-are-source", "they-are-source", "contended"})
+_VALID_LINK_DIRECTIONS: frozenset[str] = frozenset({"inbound", "outbound", "bidirectional"})
+_VALID_LINK_COUNTERPARTY_CLASSES: frozenset[str] = frozenset(
+    {
+        "federal-agency",
+        "federal-branch",
+        "state",
+        "local",
+        "tribal",
+        "regulated-commercial",
+        "general-commercial",
+        "consortium",
+        "public",
+    }
+)
+
+
+def _scan_link_registry(root: Path, report: SubstrateReport) -> None:
+    """UIAO_145 / ADR-132 link-registry hygiene scan.
+
+    Every link in ``src/uiao/canon/link-registry.yaml`` is the governed
+    record of one interconnection with an outside party. The scan holds
+    active links to the UIAO_145 §4 rules; the file itself is
+    **optional** (a deployment with no external interconnections needs
+    no registry), so absence is not a finding.
+
+    Severity policy (UIAO_145 §4):
+        - active link, missing/empty ``ssot-stance`` → P2 (an undeclared
+          stance is a latent DRIFT-SSOT-CONTENTION per ADR-074)
+        - unknown ``ssot-stance`` / ``direction`` / counterparty class
+          → P3 (schema hygiene; the CI schema gate is the blocking check)
+        - active link, no ``agreement:`` block → P2 (CA-3 evidence
+          cannot render for this link)
+        - active link, ``agreement.type: unrecorded`` → P3 (advisory;
+          ADR-132 Phase 2 migration target)
+        - malformed ``agreement.next-review`` date → P3
+        - ``authorized-by`` path does not resolve → DRIFT-PROVENANCE P2
+          (the link claims an authorization the repo cannot produce)
+
+    Past-due ``next-review`` detection is deliberately not scanned here:
+    the walker stays deterministic (no wall-clock comparisons); review
+    currency belongs to the Phase 2 link-gap scanner.
+    """
+    path = root / LINK_REGISTRY
+    if not path.is_file():
+        return
+    try:
+        doc = _load_yaml(path)
+    except yaml.YAMLError:
+        return
+    if not doc:
+        return
+    rel = str(path.relative_to(root))
+    links = doc.get("links") if isinstance(doc, dict) else None
+    if not isinstance(links, list):
+        return
+    for entry in links:
+        if not isinstance(entry, dict):
+            continue
+        link_id = str(entry.get("id", "")).strip()
+        if not link_id:
+            continue
+        status = str(entry.get("status", "")).strip().lower()
+        active = status == "active"
+
+        stance = str(entry.get("ssot-stance", "")).strip().lower()
+        if not stance and active:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P2",
+                    path=f"{rel}#{link_id}",
+                    detail=(
+                        f"active link '{link_id}' declares no ssot-stance; an undeclared "
+                        "stance is a latent DRIFT-SSOT-CONTENTION (UIAO_145 §2.2)"
+                    ),
+                )
+            )
+        elif stance and stance not in _VALID_LINK_SSOT_STANCES:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P3",
+                    path=f"{rel}#{link_id}",
+                    detail=(
+                        f"link '{link_id}' carries unknown ssot-stance '{stance}'; expected "
+                        "one of we-are-source / they-are-source / contended (UIAO_145)"
+                    ),
+                )
+            )
+
+        direction = str(entry.get("direction", "")).strip().lower()
+        if direction and direction not in _VALID_LINK_DIRECTIONS:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P3",
+                    path=f"{rel}#{link_id}",
+                    detail=(
+                        f"link '{link_id}' carries unknown direction '{direction}'; "
+                        "expected inbound / outbound / bidirectional (UIAO_145)"
+                    ),
+                )
+            )
+
+        counterparty = entry.get("counterparty")
+        if isinstance(counterparty, dict):
+            cls = str(counterparty.get("class", "")).strip().lower()
+            if cls and cls not in _VALID_LINK_COUNTERPARTY_CLASSES:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{link_id}",
+                        detail=(
+                            f"link '{link_id}' carries unknown counterparty class '{cls}' (UIAO_145 §2.1 taxonomy)"
+                        ),
+                    )
+                )
+
+        agreement = entry.get("agreement")
+        if active and not isinstance(agreement, dict):
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P2",
+                    path=f"{rel}#{link_id}",
+                    detail=(
+                        f"active link '{link_id}' has no agreement: block; CA-3 evidence "
+                        "cannot render for this link (UIAO_145 §2.3)"
+                    ),
+                )
+            )
+        elif isinstance(agreement, dict):
+            if active and str(agreement.get("type", "")).strip().lower() == "unrecorded":
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{link_id}",
+                        detail=(
+                            f"active link '{link_id}' has agreement.type: unrecorded; ADR-132 Phase 2 migration target"
+                        ),
+                    )
+                )
+            next_review = str(agreement.get("next-review", "")).strip()
+            if next_review:
+                try:
+                    from datetime import date as _date
+
+                    _date.fromisoformat(next_review)
+                except ValueError:
+                    report.findings.append(
+                        DriftFinding(
+                            drift_class="DRIFT-SCHEMA",
+                            severity="P3",
+                            path=f"{rel}#{link_id}",
+                            detail=(
+                                f"link '{link_id}' has malformed agreement.next-review "
+                                f"'{next_review}'; expected ISO-8601 date (YYYY-MM-DD)"
+                            ),
+                        )
+                    )
+
+        authorized_by = entry.get("authorized-by") or []
+        if isinstance(authorized_by, list):
+            for ref in authorized_by:
+                ref_str = str(ref).strip()
+                if not ref_str:
+                    continue
+                if not (root / ref_str).exists():
+                    report.findings.append(
+                        DriftFinding(
+                            drift_class="DRIFT-PROVENANCE",
+                            severity="P2",
+                            path=f"{rel}#{link_id}",
+                            detail=(f"link '{link_id}' cites authorized-by path {ref_str} which does not exist"),
+                        )
+                    )
 
 
 _VALID_FEATURE_FLAG_DIMENSIONS: frozenset[str] = frozenset({"dev", "stage", "prod"})
