@@ -186,6 +186,12 @@ def default_publish_intent(path: pathlib.Path) -> tuple[bool, str]:
         return (False, "exclusion: README/INDEX not published as standalone page")
     if name == "adr-000-adr-process.md":
         return (False, "exclusion: ADR process meta-document is internal")
+    if rel == "src/uiao/schemas/link-registry/link-registry.schema.json":
+        # JSON schemas carry no frontmatter to declare publish_to_site, so
+        # the OrgLink publication posture is encoded here: nothing on the
+        # OrgLink surface publishes until pillar elevation (ADR-132 D6).
+        # Remove this exclusion when the elevation ADR flips the surface on.
+        return (False, "exclusion: OrgLink surface unpublished until pillar elevation (ADR-132 D6)")
 
     # Path-pattern defaults from ADR-068.
     if rel.startswith("src/uiao/canon/adr/") and name.startswith("adr-"):
