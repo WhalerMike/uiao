@@ -124,3 +124,34 @@ jobs:
                   print(f"  [{loc}] {e.message}")
               sys.exit(1)
           EOF
+
+      - name: Validate link registry against schema
+        run: |
+          python - <<'EOF'
+          import json, sys, yaml
+          from jsonschema import Draft202012Validator
+
+          schema = json.load(open('src/uiao/schemas/link-registry/link-registry.schema.json'))
+          validator = Draft202012Validator(schema)
+
+          path = 'src/uiao/canon/link-registry.yaml'
+          data = yaml.safe_load(open(path))
+          errors = list(validator.iter_errors(data))
+
+          links = data.get('links', [])
+          print(f"[{path}] {'PASS' if not errors else 'FAIL'} ({len(links)} links)")
+
+          # Registry-level invariant not expressible in the item schema:
+          # link ids must be unique.
+          ids = [entry.get('id') for entry in links if isinstance(entry, dict)]
+          dupes = sorted({i for i in ids if ids.count(i) > 1})
+          if dupes:
+              print(f"  duplicate link ids: {dupes}")
+              sys.exit(1)
+
+          if errors:
+              for e in errors[:10]:
+                  loc = '.'.join(str(p) for p in e.absolute_path)
+                  print(f"  [{loc}] {e.message}")
+              sys.exit(1)
+          EOF
