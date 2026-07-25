@@ -41,6 +41,7 @@ from uiao.evidence.links import load_link_registry
 # each pack's authorizing ADR (ADR-132 D5).
 OVERLAY_PACK_MAP: dict[str, str] = {
     "soc2": "soc2-trust-services-catalog",
+    "govramp": "govramp-reciprocity-catalog",
 }
 
 DOC_LIBRARY_MARKER = "SharePoint >"
