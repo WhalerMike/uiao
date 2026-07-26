@@ -6,7 +6,7 @@ status: Current
 owner: "Michael Stratton"
 created_at: "2026-07-25"
 updated_at: "2026-07-25"
-publish_to_site: false
+publish_to_site: true
 ---
 
 # UIAO Link Object Class — External Interconnection Governance
@@ -127,9 +127,9 @@ Per ADR-132 D1, restated here as operating constraints:
 2. **Metadata, never payload.** No person-level payload attributes enter
    the registry. A proposal that would put exchanged data content here is
    out of scope for this class and requires its own ADR.
-3. **Unpublished until developed.** This spec carries
-   `publish_to_site: false` per ADR-132 D6; the OrgLink site surface lands
-   at pillar elevation, not before.
+3. **Published at elevation.** This spec published when ADR-134 elevated
+   the OrgLink pillar; its narrative rendering is the OrgLink shelf's
+   first work, which cites this spec as its object-model authority.
 
 ## 6. Backfilled links (Phase 1 worked examples)
 
