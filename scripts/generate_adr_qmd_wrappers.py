@@ -214,17 +214,34 @@ def generate_sidebar_snippet(stems: list[str]) -> str:
 
 
 def render_adr_index(adr_metadata: list[dict[str, str]]) -> str:
-    """Build a docs/adr/adr-index.qmd aggregate index page."""
+    """Build a docs/adr/adr-index.qmd aggregate index page.
+
+    ADRs without a published wrapper page (``publish_to_site: false`` in the
+    canon frontmatter) are listed for completeness but link to the
+    authoritative GitHub source instead of a wrapper .qmd that does not
+    exist on the site — a relative page link would 404.
+    """
     rows = []
     for meta in sorted(adr_metadata, key=lambda m: m["adr_id"]):
         escaped_title = meta["title"].replace("|", "\\|")
-        rows.append(f"| [{meta['adr_id']}]({meta['stem']}.qmd) | {escaped_title} | {meta['status']} | {meta['date']} |")
+        if meta.get("published", True):
+            target = f"{meta['stem']}.qmd"
+        else:
+            target = f"https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/{meta['stem']}.md"
+        rows.append(f"| [{meta['adr_id']}]({target}) | {escaped_title} | {meta['status']} | {meta['date']} |")
     table = "\n".join(rows)
     return f"""---
 title: "Architecture Decision Records — Index"
 subtitle: "All UIAO ADRs (canonical decisions and their rationale)"
 date: 2026-05-14
 ---
+
+::: {{.callout-tip}}
+## Download the full section
+**[adr-bundle.docx](adr-bundle.docx)** — every ADR in this section concatenated
+into one Word document. Regenerated on every site deploy. Each ADR below is also
+downloadable individually as its own `.docx` from its page.
+:::
 
 ::: {{.callout-note}}
 The UIAO Architecture Decision Records (ADRs) are the canonical
@@ -233,7 +250,7 @@ consequences. Each ADR is published verbatim from its canonical
 source under [`src/uiao/canon/adr/`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/canon/adr).
 
 The publication mechanism — `{{{{< include >}}}}` wrappers + this index
-— is governed by [ADR-068](adr-068-canon-publication-policy.qmd).
+— is governed by [ADR-072](adr-072-canon-publication-policy.qmd).
 :::
 
 | ADR | Title | Status | Decided |
@@ -283,11 +300,19 @@ def main() -> int:
         fm, _ = parse_frontmatter(text)
         meta = extract_adr_metadata(fm, adr_path.stem)
         meta["stem"] = adr_path.stem
-        metadata.append(meta)
 
         wrapper_path = ADR_OUTPUT_DIR / f"{adr_path.stem}.qmd"
 
-        if wrapper_path.exists() and not args.force:
+        # publish_to_site: false (ADR-072) means no wrapper page — unless a
+        # wrapper already exists on disk, in which case the committed state
+        # wins and the flag mismatch is for a human to reconcile.
+        publish = fm.get("publish_to_site") is not False or wrapper_path.exists()
+        meta["published"] = publish
+        metadata.append(meta)
+
+        if not publish:
+            skipped.append((adr_path.name, "publish_to_site: false (no wrapper page)"))
+        elif wrapper_path.exists() and not args.force:
             skipped.append((adr_path.name, "wrapper exists (use --force to overwrite)"))
         else:
             if not args.dry_run:
@@ -307,7 +332,7 @@ def main() -> int:
         index_path = ADR_OUTPUT_DIR / "adr-index.qmd"
         index_path.write_text(render_adr_index(metadata), encoding="utf-8")
         SIDEBAR_SNIPPET.write_text(
-            generate_sidebar_snippet([m["stem"] for m in metadata]),
+            generate_sidebar_snippet([m["stem"] for m in metadata if m.get("published", True)]),
             encoding="utf-8",
         )
 
