@@ -9,7 +9,7 @@ status: Active
 canon-source: "inbox/Posted/AODIM_Executive_Whitepaper.docx"
 repo-path: docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd
 created-at: 2026-04-26
-updated-at: 2026-04-26
+updated-at: 2026-07-26
 format:
   html:
     toc: true
@@ -23,18 +23,12 @@ lifecycle_review: 2026-11-22
 
 # Executive Summary
 
-![HR-to-access attribute flow pipeline](images/zero-trust-governance-whitepaper-image-01-ztmm-five-pillar-bridge-diagram.png){#fig-aodim-executive-whitepaper-image-01 fig-alt="HR-to-access attribute flow pipeline. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="100%"}
-
-![OrgPath hierarchical decomposition](images/zero-trust-governance-whitepaper-image-02-identity-as-root-namespace-tree.png){#fig-aodim-executive-whitepaper-image-02 fig-alt="OrgPath hierarchical decomposition. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="100%"}
-
-![Dynamic-group rule model (node/branch/functional)](images/zero-trust-governance-whitepaper-image-03-ztmm-maturity-progression-chart.png){#fig-aodim-executive-whitepaper-image-03 fig-alt="Dynamic-group rule model (node/branch/functional). Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="100%"}
-
-![Before-after access-decision comparison](images/uiao-vs-native-tools-image-04-consume-vs-build-decision-tree.png){#fig-aodim-executive-whitepaper-image-04 fig-alt="Before-after access-decision comparison. Engineering blueprint style, neutral slate background, federal navy (#1F3A5F) for primary structural elements, teal (#1A9E8F) for secondary/integration elements, amber (#D4A017) for governance/audit/registry overlays, monospace labels for identifiers, no human figures, 16:9 landscape." width="100%"}
-
-
 Enterprises transitioning to cloud identity platforms face a structural mismatch between dynamic organizational models and static access control systems. AODIM (Attribute-Oriented Directory & Identity Model) resolves this by making identity attributes the authoritative driver of access, policy, and governance.
 
 This approach enables automated access alignment, reduces operational overhead, and strengthens security through continuous least privilege.
+
+This paper summarizes the canonical AODIM specification,
+[UIAO_006 — AODIM Architecture (v1.1)](../../../src/uiao/canon/UIAO_006_AODIM_Architecture_v1.0.md).
 
 # Problem Statement
 
@@ -58,35 +52,60 @@ Identity attributes define organizational structure; access is computed, not ass
 
 # Attribute Model
 
-- orgPath (hierarchical structure)
+OrgPath is not a single hierarchical string. Under Model C
+([ADR-078](../../../src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md))
+the organizational position of every principal is decomposed into 10 named
+facets, each bound to exactly one Entra `extensionAttribute` slot:
 
-- orgCode (normalized identifier)
+- Region, Department, Division, Role (organizational placement)
 
-- department
+- CostCenter, Classification (financial and workforce context)
 
-- costCenter
+- HireDate, TermDate (lifecycle anchors)
 
-- manager
+- ClearanceLevel, AccountType (security context)
 
-Example: orgPath = CORP/US/EAST/BALTIMORE/IT
+Four further slots are reserved for tenant-declared facets. The native
+`manager` relationship is consumed alongside these facets but is a
+standard directory attribute, not an OrgPath facet. See the
+[OrgPath Codebook (UIAO_151)](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md)
+for the canonical facet-to-slot map.
+
+Example (per-facet values on one principal):
+
+```
+extensionAttribute1 = EASTUS        # Region
+extensionAttribute2 = IT            # Department
+extensionAttribute3 = InfraOps      # Division
+extensionAttribute4 = Engineer      # Role
+```
 
 # Dynamic Group Model
 
-- Node groups (exact match)
+Groups are defined by boolean composition over facet predicates — not by
+text-parsing a composite path:
 
-- Branch groups (hierarchical match)
+- Single-facet rules (`-eq` / `-in`) — all principals carrying a value in one facet
 
-- Functional groups (department/role)
+- Multi-facet AND rules — principals matching every clause across multiple facets
+
+- Multi-facet OR / set rules — cross-cutting groupings
 
 Example Rules:
 
-user.orgPath -startsWith \"CORP/US/EAST\"
+```
+(attr2 -eq "IT")                              # All IT department users
+(attr2 -eq "IT") and (attr3 -eq "InfraOps")   # IT / Infrastructure division
+(attr1 -in ["NCR","EASTUS","WESTUS"])         # All US-region users
+```
 
-user.orgPath -eq \"CORP/US/EAST/BALTIMORE/IT\"
+See the [Dynamic Group Library (UIAO_152)](../../../src/uiao/canon/UIAO_152_Dynamic_Group_Library.md)
+for the canonical rule inventory.
 
 # Delegation Model
 
-Administrative Units and scoped roles replace traditional OU-based delegation.
+Administrative Units and scoped roles replace traditional OU-based delegation. AU membership is driven by the same canonical facets, per the
+[Delegation Matrix (UIAO_154)](../../../src/uiao/canon/UIAO_154_Delegation_Matrix_AUs_Roles.md).
 
 # Operational Flow
 

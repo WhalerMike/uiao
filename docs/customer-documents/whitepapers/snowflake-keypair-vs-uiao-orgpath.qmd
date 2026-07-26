@@ -9,7 +9,7 @@ status: Draft
 canon-source: "src/uiao/canon/adr/adr-004-workload-identity-federation-default.md + src/uiao/canon/adr/adr-091-sql-server-authentication-transformation.md"
 repo-path: docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd
 created-at: 2026-06-07
-updated-at: 2026-06-07
+updated-at: 2026-07-26
 format:
   html:
     toc: true
@@ -26,9 +26,11 @@ This whitepaper reads Snowflake's authentication migration through the UIAO and
 OrgPath governance doctrine. It is an **architecture comparison**, not a claim
 that UIAO ships a Snowflake adapter today. Snowflake is a **Commercial-cloud
 SaaS platform outside the current GCC-Moderate deployment boundary** and is not
-one of the two named Commercial exceptions (Amazon Connect, SailPoint); any
-real Snowflake coverage would require a gating boundary ADR in the pattern of
-`ADR-059` / `ADR-033`. Treat the patterns here as *how the substrate would
+one of the named Commercial exceptions (Amazon Connect, SailPoint); for a
+federal deployment, real Snowflake coverage would require a gating boundary
+ADR in the pattern of `ADR-059` / `ADR-033`. (For non-federal engagements the
+registration path now exists without a new enum value: ADR-129 added the
+`commercial-general` boundary and ADR-133 added `state-local`.) Treat the patterns here as *how the substrate would
 govern this class of problem*, not as accepted normative coverage of Snowflake.
 The Snowflake product facts are cited to Snowflake's own documentation; the
 UIAO/OrgPath positions are cited to canon.
@@ -242,8 +244,9 @@ role membership in a spreadsheet has solved the smaller half of the problem.
 ### OrgPath is the access-authority, not another authenticator
 
 OrgPath is the organizational coordinate system Microsoft's identity stack does
-not supply on its own: a multi-facet schema (`ADR-078`, the 15-facet model)
-materialized across Entra `extensionAttribute` slots — region, division,
+not supply on its own: a vendor-neutral multi-facet schema (`ADR-078`, the
+15-facet model; `ADR-098` defines per-IdP binding profiles, with the Entra
+`extensionAttribute` slot table as the reference binding) — region, division,
 department, account-type, clearance, and the rest — populated from HR data and
 bound to a governed **Codebook** (`UIAO_151`, `ADR-035`) that defines the legal
 values for each facet. It is not a packed path string in a single attribute and
@@ -360,10 +363,15 @@ This section is a *placement sketch*, not an authorization to build.
 Snowflake is **Commercial-cloud SaaS, outside the current GCC-Moderate
 deployment boundary**, and it is not one of the two named Commercial exceptions
 (Amazon Connect, SailPoint). Before any Snowflake adapter could exist, the
-boundary question is a **gating ADR decision**: a Snowflake exception would need
-its own `gcc-boundary` enum value added in lockstep with an authorizing ADR — the
-pattern `ADR-059` set for SailPoint and `ADR-033` defines for boundary drift.
-Nothing in this whitepaper authorizes that step.
+boundary question is a **gating ADR decision**. For a GCC-Moderate federal
+deployment, a Snowflake exception would need its own `gcc-boundary` enum value
+added in lockstep with an authorizing ADR — the pattern `ADR-059` set for
+SailPoint and `ADR-033` defines for boundary drift. Since this paper was first
+drafted, the enum has also gained `commercial-general` (ADR-129) and
+`state-local` (ADR-133); a non-federal Snowflake engagement would register
+under `commercial-general` rather than minting a new value, but the
+authorizing-ADR requirement stands either way. Nothing in this whitepaper
+authorizes that step.
 
 *If* authorized, the natural shape follows the existing adapter taxonomy
 (UIAO_003): a **modernization / identity** adapter that reads the Snowflake user

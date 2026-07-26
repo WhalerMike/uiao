@@ -112,7 +112,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Federal AI Governance — Submission Readiness Brief](whitepapers/federal-ai-governance-submission-readiness.html) | Active | Executive, Customer |
 | [Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization](whitepapers/federal-hrit-productization.html) | Active | Executive, Customer, Assessor |
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
-| [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Active | Executive, Customer, Technical |
+| [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Draft | Executive, Customer, Technical |
 | [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](whitepapers/hybrid-join-without-governance.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Next Generation DNS](whitepapers/infoblox-hybrid-dns-unified-ddi.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
 | [Modernization Governance — Whitepaper](whitepapers/modernization-governance-whitepaper.html) | Active | Executive, Customer, Architect |

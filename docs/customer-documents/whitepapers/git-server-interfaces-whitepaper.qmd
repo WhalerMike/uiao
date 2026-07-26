@@ -5,12 +5,12 @@ doc-type: whitepaper
 audience: [Executive, Customer, Technical]
 author: UIAO Platform Engineering
 date: "May 2026"
-status: Active
-canon-source: "src/uiao/canon/adr/adr-041-uiao-git-infrastructure.md + src/uiao/canon/release-manifests/platform-server-v1.2.yaml + docs/customer-documents/platform/platform-server-build.qmd@v1.3"
-derived-from: "ADR-041 + UIAO_SBG_001 v1.3 + uiao-git-server adapter spec + deploy/windows-server/web.config"
+status: Draft
+canon-source: "src/uiao/canon/adr/adr-041-uiao-git-infrastructure.md + src/uiao/canon/adr/adr-090-substrate-high-availability.md + src/uiao/canon/release-manifests/platform-server-v1.2.yaml + docs/customer-documents/platform/platform-server-build.qmd@v1.5"
+derived-from: "ADR-041 + UIAO_SBG_001 v1.5 + uiao-git-server adapter spec + deploy/windows-server/web.config"
 repo-path: docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd
 created-at: 2026-05-14
-updated-at: 2026-05-14
+updated-at: 2026-07-26
 format:
   html:
     toc: true
@@ -65,7 +65,7 @@ interface families**:
 | **C. Cloud management plane** | Azure Arc agent, Azure Policy + Guest Configuration, Intune compliance attestation, Azure Monitor Agent, Azure Blob (backup target) | Platform engineering, security operations |
 | **D. Governance & telemetry** | Server-side Git hooks (pre-receive / update / post-receive), Gitea webhooks, UIAO_163 drift reporter, `uiao-git-server` conformance adapter, IIS W3C access logs | UIAO governance pipeline + ConMon |
 | **E. Local management** | PowerShell 7.4 (signed-only via WDAC + AppLocker), Windows PowerShell 5.1 (legacy IIS cmdlets), Gitea CLI, IIS Manager / `appcmd`, NTFS storage on `D:\GitRepos\` and `D:\Gitea\` | Tier-0 administrators |
-| **F. Outbound integrations** | GitHub upstream pull-mirror (`api.github.com`), PostgreSQL relational backend (`pg01.corp.contoso.com:5432`), PSGallery / Microsoft-CDN / GitHub-Releases (build only) | Substrate canon ingest, supply chain |
+| **F. Outbound integrations** | GitHub upstream pull-mirror (`api.github.com`), PostgreSQL relational backend (`pg01.corp.contoso.com:5432`; or embedded SQLite on-host in the ADR-041 v1.3 single-host profile), PSGallery / Microsoft-CDN / GitHub-Releases (build only) | Substrate canon ingest, supply chain |
 
 **Canonical claim.** Every plane in the table above is enforced by the
 operational PowerShell in
@@ -97,9 +97,17 @@ The interfaces below inherit that posture; nothing on the host is
 
 Two hosts cannot both be authoritative for the canon — they would
 diverge. The interface inventory below describes a **single-instance
-service**; a passive replica exists for the 4-hour RTO target and shares
-the interface contract identically, but only the active node terminates
-client traffic. Horizontal scale, where required, is delegated to the
+service**. In the baseline (cold) DR posture, a passive replica exists
+for the 24-hour-RPO / 4-hour-RTO cold-restore target and shares the
+interface contract identically, but only the active node terminates
+client traffic.
+[ADR-090 — Substrate High Availability](../../../src/uiao/canon/adr/adr-090-substrate-high-availability.md)
+(accepted 2026-06-02) adds an **opt-in hot-standby** posture on top of
+that baseline: a synchronously-replicated standby with split-brain-safe
+(witness-gated) automatic failover, raising the recovery target to
+near-zero RPO and single-digit-minutes RTO while preserving the
+single-logical-authority invariant — exactly one node binds commits at
+any instant. Horizontal scale, where required, is delegated to the
 target-surface adapters (Entra, Intune, Arc), not to the substrate
 authority. This is the same architectural claim asserted by
 [`01-platform-foundation.qmd:19-26`](../operational-guides/client-server-to-hybrid-cloud/01-platform-foundation.qmd).
@@ -223,10 +231,10 @@ Key contract:
 | Process | `python.exe C:\inetpub\uiao-api\run.py` (uvicorn, single worker, loopback) | `deploy/windows-server/run.py` |
 | Bind | `127.0.0.1:%HTTP_PLATFORM_PORT%` (ephemeral) | same |
 | TLS | Terminated at IIS — same enterprise cert as Gitea or a sibling cert | `web.config` |
-| Auth | `windowsAuthentication enabled="true"`, providers `Negotiate, NTLM` (Kerberos preferred); anonymous **disabled** | `web.config:62-75` |
+| Auth | `windowsAuthentication enabled="true"`, providers `Negotiate, NTLM` (Kerberos preferred); anonymous **disabled** | `web.config:67-85` |
 | Token forwarding | `forwardWindowsAuthToken="true"` — Python sees the impersonated principal | `web.config:33` |
-| Headers | HSTS, `X-Frame-Options DENY`, `X-Content-Type-Options nosniff`, `X-XSS-Protection`, `X-Powered-By` removed | `web.config:99-109` |
-| Logging | IIS W3C log is authoritative; uvicorn `access_log=False` deliberately | `run.py:40` |
+| Headers | HSTS, `X-Frame-Options DENY`, `X-Content-Type-Options nosniff`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`, `X-Powered-By` removed | `web.config:120-135` |
+| Logging | IIS W3C log is authoritative; uvicorn `access_log=False` deliberately | `run.py:49` |
 
 The FastAPI plane is **off by default** — Phase 4 does not install it,
 and the canonical interface contract (`pip install uiao` without
@@ -378,9 +386,23 @@ downstream SIEM the customer has wired to that workspace.
 Phase 12's `Backup-UIAOGitea` function uploads the nightly `gitea dump`
 plus the zipped `D:\GitRepos\` to a storage account
 (`stuiaogovernance`, container `gitea-backups`) using the managed
-identity assigned to the Arc resource. RPO 24 h, RTO 4 h, retention
-30 days. The blob endpoint is the only outbound "data" path on the
-host; everything else outbound is control-plane traffic.
+identity assigned to the Arc resource, with 30-day retention. This is
+the default backup path for the full-production (PostgreSQL) profile.
+Deployments on the single-host SQLite profile sanctioned by ADR-041
+v1.3 — and any deployment without reachable Azure Blob (lab,
+air-gapped) — instead run
+`scripts/deploy/Backup-GiteaDatabase.ps1`, which quiesces Gitea, takes
+a Volume Shadow Copy–consistent snapshot of `gitea.db`, and ships the
+timestamped archive to on-prem local + SMB targets under the same
+30-day retention.
+
+Both paths satisfy the cold-restore baseline of RPO 24 h / RTO 4 h;
+deployments that opt into the ADR-090 hot-standby posture (§1.2) raise
+that to near-zero RPO and single-digit-minutes RTO via split-brain-safe
+automatic failover. In the full-production profile the blob endpoint is
+the only outbound "data" path on the host — everything else outbound is
+control-plane traffic; in the single-host SQLite profile backups stay
+on-prem (local + SMB targets), so no outbound data path exists at all.
 
 ## 5. Interface family D — Governance and telemetry
 
@@ -430,7 +452,9 @@ Gitea with exponential backoff and surface in the Web UI under
 ### 5.3 UIAO_163 drift reporter — scheduled task
 
 Phase 14.4 registers a scheduled task that runs under the Arc service
-principal (no interactive credentials on the host). The task collects:
+principal (no interactive credentials on the host) — a Phase 14 OrgTree
+capability that is canonically declared but still under operational
+validation per the build guide's own status warning. The task collects:
 
 - Entra device `extensionAttribute1` value
 - Azure Arc resource `OrgPath` tag value
@@ -514,8 +538,11 @@ lives under one of two roots:
 | `D:\Gitea\` | gMSA (Modify, OI/CI) | `gitea.exe`, `custom\conf\app.ini`, `data\`, `data\lfs\`, `log\` |
 | `E:\Backups\Staging\` | Service-account-owned, opt-in | `Backup-UIAOGitea` staging area before Blob upload |
 
-NTFS ACLs are the only authorization boundary inside the host;
-Postgres metadata lives off-host on `pg01.corp.contoso.com:5432`.
+NTFS ACLs are the only authorization boundary inside the host. In the
+full-production profile, Postgres metadata lives off-host on
+`pg01.corp.contoso.com:5432`; in the ADR-041 v1.3 single-host SQLite
+profile it lives on-host in `D:\Gitea\data\gitea.db`, under the same
+gMSA-owned ACL as the rest of `D:\Gitea\` (see §7.2).
 
 ## 7. Interface family F — Outbound integrations
 
@@ -533,15 +560,30 @@ GitHub is the **source of canon ingest**; the on-prem Gitea is the
 until the pull-mirror has fetched it and the hook chain has accepted
 it.
 
-### 7.2 PostgreSQL relational backend — `pg01.corp.contoso.com:5432`
+### 7.2 Relational backend — PostgreSQL (full production) or embedded SQLite (single-host profile)
 
+ADR-041 v1.3 (2026-06-20) sanctions **two database profiles** for
 Gitea's metadata (users, teams, OAuth apps, issue/PR state, webhook
-delivery history) lives in the database `uiao_gitea` on a separate
-PostgreSQL host, not in the host's local SQLite. Connection details
-(user, password from `Microsoft.PowerShell.SecretManagement`) live in
-the `[database]` section of `app.ini`. Backup is the responsibility of
-the database team; the Gitea-side `gitea dump` includes a logical
-dump of this database for cold-restore use.
+delivery history):
+
+- **Full production (default).** The database `uiao_gitea` on a
+  separate PostgreSQL host, `pg01.corp.contoso.com:5432`. Connection
+  details (user, password from
+  `Microsoft.PowerShell.SecretManagement`) live in the `[database]`
+  section of `app.ini`. Backup is the responsibility of the database
+  team; the Gitea-side `gitea dump` includes a logical dump of this
+  database for cold-restore use.
+- **Single-host SQLite (lab / air-gapped / small-footprint).** Gitea's
+  embedded SQLite backend (`DB_TYPE = sqlite3`,
+  `D:\Gitea\data\gitea.db`) on the same host — no separate relational
+  tier and no outbound database connection. Backup is
+  `scripts/deploy/Backup-GiteaDatabase.ps1` (VSS-consistent snapshot of
+  `gitea.db`, shipped to on-prem local + SMB targets, 30-day
+  retention; see §4.5).
+
+Only the full-production profile contributes an outbound plane to this
+interface family; under the single-host SQLite profile the database is
+local state under `D:\Gitea\` governed by the §6.4 storage posture.
 
 ### 7.3 Build-time supply chain — pinned to `platform-server-v1.2.yaml`
 
@@ -629,7 +671,9 @@ customer's documented VPN / Privileged Access Workstation path.
 
 Every interface above is gated by membership in one of three OrgTree
 dynamic groups, defined in
-[`platform-server-build.qmd` §14.3](../platform/platform-server-build.qmd):
+[`platform-server-build.qmd` §14.3](../platform/platform-server-build.qmd)
+— a Phase 14 OrgTree integration that is canonically declared but still
+under operational validation per the build guide's own status warning:
 
 | Gitea role | Dynamic group | Membership rule |
 |---|---|---|
