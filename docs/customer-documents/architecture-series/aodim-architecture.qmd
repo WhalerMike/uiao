@@ -9,7 +9,7 @@ status: Active
 canon-source: "inbox/Posted/AODIM_Architecture_Document.docx"
 repo-path: docs/customer-documents/architecture-series/aodim-architecture.qmd
 created-at: 2026-04-26
-updated-at: 2026-04-26
+updated-at: 2026-07-26
 format:
   html:
     toc: true
@@ -26,6 +26,9 @@ AODIM --- Attribute-Oriented Directory & Identity Model
 Executive Summary
 
 Modern enterprises using cloud identity platforms face a mismatch between dynamic organizational structures and static access control models. AODIM addresses this by making identity attributes the authoritative driver of access, enabling automated, deterministic, and scalable identity governance.
+
+This document tracks the canonical AODIM specification,
+[UIAO_006 — AODIM Architecture (v1.1)](../../../src/uiao/canon/UIAO_006_AODIM_Architecture_v1.0.md).
 
 Core Principle
 
@@ -52,44 +55,64 @@ HR System → Identity Attributes → Dynamic Groups → Access & Policy Enforce
 
 Attribute Model
 
-Key attributes include:
+OrgPath is not a single hierarchical string. Under Model C
+([ADR-078](../../../src/uiao/canon/adr/adr-078-orgpath-attribute-schema-15-facet.md))
+the organizational position of every principal is decomposed into 10 named
+facets, each bound to exactly one Entra `extensionAttribute` slot:
 
-\- orgPath (hierarchical string)
+\- Region (`extensionAttribute1`), Department (`extensionAttribute2`), Division (`extensionAttribute3`), Role (`extensionAttribute4`)
 
-\- orgCode (normalized identifier)
+\- CostCenter (`extensionAttribute5`), Classification (`extensionAttribute6`)
 
-\- department
+\- HireDate (`extensionAttribute7`), TermDate (`extensionAttribute8`)
 
-\- costCenter
+\- ClearanceLevel (`extensionAttribute9`), AccountType (`extensionAttribute10`)
 
-\- manager
+Slots `extensionAttribute11`–`14` are reserved for tenant-declared facets
+introduced via governed PR. The native `manager` relationship is consumed
+alongside these facets but is a standard directory attribute, not an
+OrgPath facet. See the
+[OrgPath Codebook (UIAO_151)](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md)
+for the canonical facet-to-slot map.
 
-Example:
+Example (per-facet values on one principal):
 
-orgPath = CORP/US/EAST/BALTIMORE/IT
+```
+extensionAttribute1 = EASTUS        # Region
+extensionAttribute2 = IT            # Department
+extensionAttribute3 = InfraOps      # Division
+extensionAttribute4 = Engineer      # Role
+```
 
 Dynamic Group Model
 
-Groups are defined by rules:
+Groups are defined by boolean composition over facet predicates — not by
+text-parsing a composite path:
 
-\- Node groups (exact match)
+\- Single-facet rules (`-eq` / `-in`) — all principals carrying a value in one facet
 
-\- Branch groups (hierarchical match)
+\- Multi-facet AND rules — principals matching every clause across multiple facets
 
-\- Functional groups (role/department)
+\- Multi-facet OR / set rules — cross-cutting groupings
 
 Example Rules:
 
-user.orgPath -startsWith \"CORP/US/EAST\"
+```
+(attr2 -eq "IT")                              # All IT department users
+(attr2 -eq "IT") and (attr3 -eq "InfraOps")   # IT / Infrastructure division
+(attr1 -in ["NCR","EASTUS","WESTUS"])         # All US-region users
+```
 
-user.orgPath -eq \"CORP/US/EAST/BALTIMORE/IT\"
+See the [Dynamic Group Library (UIAO_152)](../../../src/uiao/canon/UIAO_152_Dynamic_Group_Library.md)
+for the canonical rule inventory.
 
 Delegation Model
 
 ![Side-by-side comparison diagram: Left panel labeled 'Legacy OU-Based...](images/aodim-architecture-image-02-side-by-side-comparison-diagram.png){#fig-aodim-architecture-image-02 fig-alt="Side-by-side comparison diagram: Left panel labeled 'Legacy OU-Based..." width="100%"}
 
 
-Administrative Units and scoped roles replace OU-based delegation.
+Administrative Units and scoped roles replace OU-based delegation. AU membership is driven by the same canonical facets, per the
+[Delegation Matrix (UIAO_154)](../../../src/uiao/canon/UIAO_154_Delegation_Matrix_AUs_Roles.md).
 
 Operational Flow
 
@@ -130,11 +153,19 @@ CLI Example
 
 Commands:
 
-orgtree explain
+```shell
+# Assign per-facet OrgPath values from an AD export and report findings
+uiao orgtree assess --from-export ad-users.json --out assignments.json
 
-orgtree move CORP/US/WEST/SEATTLE/HR
+# Run one governance pass over a tenant snapshot (dry-run by default):
+# detects per-facet drift and reports the remediation it would apply
+uiao orgtree govern snapshot.json --out report.json
+```
 
-Demonstrates automatic access recalculation.
+`uiao orgtree govern` in its default dry-run mode is the simulation and
+explanation surface: it recomputes per-facet assignments against the
+codebook and reports the access recalculation a transfer or role change
+would produce, without writing.
 
 Strategic Impact
 

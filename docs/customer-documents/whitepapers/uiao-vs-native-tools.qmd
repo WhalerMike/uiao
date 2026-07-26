@@ -9,7 +9,7 @@ status: Active
 canon-source: "inbox/Posted/UIAO vs Microsoft Native Tools — AD Assessment and Modernization Gap Analysis.docx"
 repo-path: docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd
 created-at: 2026-04-26
-updated-at: 2026-04-26
+updated-at: 2026-07-26
 format:
   html:
     toc: true
@@ -39,12 +39,12 @@ Microsoft offers excellent point solutions for specific assessment and migration
 UIAO's positioning is identical to UIAO SCuBA's relationship with CISA ScubaGear: **complementary orchestration layer, not competitive replacement.** UIAO consumes the outputs of Microsoft's native tools and provides the governance fabric that connects them.
 
 ::: {.callout-important title="Key Finding"}
-Microsoft's tools collectively cover approximately **65%** of what the UIAO Assessment Module captures in raw technical discovery. The remaining **35%** --- governance provenance, canonical artifact management, drift detection, cross-domain correlation, and pipeline orchestration --- is where UIAO provides unique value. When governance requirements are factored in, Microsoft's effective coverage drops to approximately **22%** of the total UIAO assessment surface.
+Microsoft's tools collectively cover approximately **30%** of what the UIAO Assessment Module captures in raw technical discovery. The remaining **70%** of the discovery surface --- OU hierarchy, DNS, PKI health, trusts, delegation --- plus governance provenance, canonical artifact management, drift detection, cross-domain correlation, and pipeline orchestration is where UIAO provides unique value. When governance requirements are factored in, Microsoft's effective coverage drops to approximately **22%** of the total UIAO assessment surface. These percentages are illustrative estimates derived from this paper's own domain coverage matrix (Section 4); the canonical gap doctrine deliberately carries no coverage percentages.
 :::
 
 ## 2. The Microsoft Native Tool Landscape
 
-The following inventory catalogs every Microsoft tool that touches Active Directory assessment, migration, or modernization. For each tool, we document its current status, capabilities, limitations, licensing requirements, and output format --- with specific attention to governance pipeline compatibility.
+The following inventory catalogs every Microsoft tool that touches Active Directory assessment, migration, or modernization. For each tool, we document its current status, capabilities, limitations, licensing requirements, and output format --- with specific attention to governance pipeline compatibility. Product statuses and version details in this inventory reflect the June--July 2026 snapshot and move quickly; verify current status before relying on any individual entry.
 
 ### 2.1 Microsoft Assessment and Planning (MAP) Toolkit
 
@@ -304,7 +304,7 @@ The following matrix maps every UIAO assessment domain against the Microsoft too
   --------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ::: {.callout-important title="Overall Assessment"}
-Microsoft tools cover approximately **22%** of the total UIAO assessment surface when governance pipeline, cross-correlation, and drift detection requirements are factored in. For pure technical discovery without governance, Microsoft covers approximately **40%**.
+Microsoft tools cover approximately **22%** of the total UIAO assessment surface when governance pipeline, cross-correlation, and drift detection requirements are factored in (the unweighted average of all ten categories above). For pure technical discovery without governance, Microsoft covers approximately **30%** (the unweighted average of the seven discovery categories, excluding cross-domain correlation, governance pipeline, and drift detection). Both figures are illustrative estimates derived from this paper's domain matrix, not canonical measurements.
 :::
 
 ## 5. Third-Party Tool Landscape
@@ -484,61 +484,44 @@ Strategic recommendations for each assessment domain --- whether UIAO should con
 
 ## 9. Integration Architecture
 
-### 9.1 Import Adapters (Future Development)
+### 9.1 Import Adapters (Implemented)
 
-Import adapter specifications for each Microsoft tool UIAO should consume:
+The import adapters described conceptually in earlier revisions of this paper are now implemented as the **UIAOImportAdapters** PowerShell module (`tools/powershell/UIAOImportAdapters/`, shipped as `.psd1` + `.psm1` with Pester tests wired into CI), governed by the canon specification **UIAO_182** and positioned by ADR-094 as a producer in the assessment-to-plan toolchain. The module normalizes heterogeneous third-party assessment output into the UIAO schema so that downstream correlation, drift detection, and plan generation operate over one canonical assessment shape rather than vendor-specific exports.
 
-  --------------------------------------------------------------------------------------------------------------------------------------
-  **Adapter**                       **Source Format**                                 **UIAO Target**                     **Priority**
-  --------------------------------- ------------------------------------------------- ----------------------------------- --------------
-  Azure Migrate Adapter             Azure Resource Graph / CSV export                 ComputerInventory.json supplement   P2
+The architectural contract is deliberately file-path-based: every importer consumes an already-produced report via `-ReportPath` and writes normalized JSON via `-OutputPath`. **The module never reaches a live API.** An operator (or another tool) exports the report from Azure Migrate, Intune, Defender for Identity, ScubaGear, or ADRecon; the adapter ingests the exported file. This keeps the ingestion surface read-only, credential-free, and auditable within the M365 GCC-Moderate boundary.
 
-  Group Policy Analytics Adapter    Intune Graph API / CSV export                     GPOMigrationTracker.json            P1
+The canonical function roster (per UIAO_182):
 
-  Defender for Identity Adapter     Microsoft Graph Security API / Secure Score API   SecurityAssessment.json overlay     P2
+| **Function** | **Source Consumed** | **Normalized Target** |
+|---|---|---|
+| Import-UIAOAzureMigrateReport | Azure Migrate assessment export | UIAO ComputerInventory |
+| Import-UIAOGPOAnalyticsReport | Intune Group Policy Analytics export | GPOMigrationTracker |
+| Import-UIAODefenderFindings | Defender for Identity Secure Score export | SecurityAssessment overlay |
+| Import-UIAOSCuBAReport | CISA ScubaGear compliance output | UIAO conformance evidence |
+| Import-UIAOADReconReport | ADRecon Excel output | UIAO ComputerInventory / identity |
+| Merge-UIAOAssessmentSources | Multiple normalized sources | Correlated assessment bundle |
 
-  SCT PolicyAnalyzer Adapter        Excel/CSV baseline comparison                     GPOComplianceScore.json             P3
+SCT PolicyAnalyzer, Entra Connect Health, and Azure Policy compliance output remain candidates for future adapters; the consumption patterns in Section 6.2 describe where their exports would land.
 
-  Entra Connect Health Adapter      Graph API health data                             SyncHealthStatus.json               P3
+### 9.2 Import Module Specification
 
-  Azure Policy Compliance Adapter   Azure Resource Graph                              ArcComplianceStatus.json            P2
-  --------------------------------------------------------------------------------------------------------------------------------------
+Each importer wraps its normalized records in a sealed provenance envelope (`schema: uiao.import.v1`) whose provenance block carries:
 
-### 9.2 PowerShell Import Module Specification
+- **source** --- name of the third-party tool consumed
 
-Conceptual module definition for **UIAOImportAdapters.psm1**:
+- **version** --- source export version (recorded when supplied, "unknown" otherwise)
 
-  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  **Function**                         **Source**                     **Target Schema**        **Description**
-  ------------------------------------ ------------------------------ ------------------------ ----------------------------------------------------------------------------------------------------------------------------------------------
-  Import-AzureMigrateDiscovery         Azure Resource Graph           UIAO ComputerInventory   Pulls discovered servers from Azure Migrate project, normalizes to UIAO ComputerInventory schema with AD-specific attribute enrichment.
+- **timestamp** --- ISO 8601 UTC timestamp of import execution
 
-  Import-GPOAnalyticsReport            Intune Graph API               GPOMigrationTracker      Pulls MDM readiness analysis from Group Policy Analytics, normalizes to GPOMigrationTracker schema with per-GPO migration status tracking.
+- **content_hash** --- integrity seal over the normalized data, computed by the canonical hasher so it is byte-identical to the Python `canonical_hash` --- making every imported artifact directly `DRIFT-PROVENANCE`-classifiable by `src/uiao/governance/drift.py`
 
-  Import-DefenderForIdentityFindings   Microsoft Graph Security API   SecurityAssessment       Pulls Secure Score identity recommendations and security alerts, normalizes to SecurityAssessment schema as overlay to UIAO native findings.
+- **source_file** --- path of the ingested report
 
-  Import-PolicyAnalyzerResults         SCT PolicyAnalyzer CSV         GPOComplianceScore       Parses SCT PolicyAnalyzer CSV output, maps baseline deviation counts to GPOComplianceScore schema.
+- **actor**, **import_module**, **import_module_version** --- adapter identity for the provenance chain
 
-  Import-EntraConnectHealthStatus      Graph API health endpoints     SyncHealthStatus         Pulls sync health, connector status, and error counts from Entra Connect Health API endpoints.
+`Merge-UIAOAssessmentSources` correlates multiple normalized envelopes (`-SourcePaths`, `-MergeStrategy`) into a single assessment bundle, validating each source's provenance completeness and integrity seal first: an envelope that is incomplete, or whose hash no longer matches its data, is a `DRIFT-PROVENANCE` finding by definition (UIAO_182).
 
-  Import-AzurePolicyCompliance         Azure Resource Graph           ArcComplianceStatus      Queries Azure Resource Graph for policy compliance state of Arc-enrolled servers, normalizes to ArcComplianceStatus schema.
-  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-Each function produces UIAO-standard JSON with the following metadata headers:
-
-- **assessment_id** --- Unique identifier for the import run
-
-- **timestamp** --- ISO 8601 timestamp of import execution
-
-- **domain** --- Source domain identifier
-
-- **classification** --- "Controlled"
-
-- **boundary** --- "GCC-Moderate"
-
-- **source_tool** --- Name and version of the Microsoft tool consumed
-
-- **adapter_version** --- Version of the UIAO import adapter used
+Outputs are UIAO-schema JSON artifacts suitable as input to UIAOPlanGenerators and as canon-anchored evidence through the UIAO IR / OSCAL pipeline. Consistent with the program's `classification: Public` posture, the envelope carries provenance metadata rather than a classification marking; Authenticode signing occurs at release packaging.
 
 ## 10. Conclusions and Recommendations
 
@@ -552,9 +535,9 @@ No single Microsoft tool --- and no feasible combination of Microsoft tools with
 
 1. **Do not position UIAO as competing with Microsoft's tools** --- the SCuBA pattern (complementary orchestration) is the correct positioning.
 
-2. **Build import adapters for the top 3 Microsoft tools first** --- Group Policy Analytics (P1), Defender for Identity (P2), Azure Migrate (P2).
+2. **Route Microsoft and third-party tool output through the implemented UIAOImportAdapters module** --- Azure Migrate, Group Policy Analytics, Defender for Identity, ScubaGear, and ADRecon exports all normalize through its file-based importers (Section 9, canon UIAO_182).
 
-3. **Maintain the PowerShell-first assessment module** --- it provides the 60% coverage that no Microsoft tool offers (OU, DNS, PKI, trusts, cross-correlation).
+3. **Maintain the PowerShell-first assessment module** --- it provides the roughly 70% of technical discovery coverage that no Microsoft tool offers (OU, DNS, PKI, trusts, cross-correlation; an illustrative estimate per the Section 4 matrix).
 
 4. **Leverage Defender for Identity as a "good enough" security layer** --- focus UIAO's unique value on governance, not security tooling.
 
@@ -672,6 +655,6 @@ This document is part of the UIAO Governance OS documentation corpus. The follow
   **UIAO Git Server Implementation Guide**      Implementation details for the Gitea server that stores governance artifacts and enables drift detection                  Section 3, Rows 11--12 (Governance Pipeline, Drift Detection); Section 9 (Integration Architecture)
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-UIAO vs. Microsoft Native Tools --- AD Assessment and Modernization Gap Analysis | Version 1.0 | April 2026\
+UIAO vs. Microsoft Native Tools --- AD Assessment and Modernization Gap Analysis | Version 1.1 | July 2026\
 Classification: Public | Boundary: GCC-Moderate\
 UIAO Governance OS --- Architecture Team | github.com/WhalerMike/uiao
