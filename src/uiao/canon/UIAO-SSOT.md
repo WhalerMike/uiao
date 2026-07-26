@@ -82,7 +82,7 @@ version it was derived from:
 
 ## Drift baseline
 
-The five-class drift taxonomy defined in
+The six-class drift taxonomy defined in
 [`docs/docs/16_DriftDetectionStandard.qmd`](../../../docs/docs/16_DriftDetectionStandard.qmd)
 is evaluated against SSOT:
 
@@ -93,6 +93,7 @@ is evaluated against SSOT:
 | `DRIFT-PROVENANCE` | Canon cites a code or document path that does not resolve |
 | `DRIFT-AUTHZ` | Role assignments, delegation scopes, or privilege claims diverge from canon |
 | `DRIFT-IDENTITY` | Identity objects (users, service principals, computers) cannot be reconciled to a canonical OrgPath |
+| `DRIFT-SSOT-CONTENTION` | A write is directed at a canonically-demoted instance after the SSOT roster has been ratified (ADR-074) |
 
 Severities `P1`–`P4`. The substrate-drift CI gate fires on any P1 blocker
 against canon content; `uiao substrate walk` prints the full report with

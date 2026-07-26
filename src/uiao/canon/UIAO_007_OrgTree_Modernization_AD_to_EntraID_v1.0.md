@@ -1,19 +1,36 @@
 ---
 document_id: UIAO_007
 title: "OrgTree Modernization — Active Directory to Entra ID Migration Guide"
-version: "1.0"
+version: "1.1"
 status: Current
 owner: "Michael Stratton"
 created_at: "2026-04-18"
-updated_at: "2026-04-18"
+updated_at: "2026-07-26"
 provenance:
   source: "inbox/EntraID Governance/AD to EntraID Tree.docx"
   version: "1.0"
   derived_at: "2026-04-18"
   derived_by: "Copilot Tasks docx extraction; source document truncated during extraction, Section 4 (Delegation) tail is partial, core content complete. Promoted to canon in ADR-044 shadow-canon cleanup on 2026-04-23"
+  reconciled_at: "2026-07-26"
+  reconciled_by: "v1.1 — org-path encoding, dynamic-group rules, and AU membership rules reconciled from the retired composite-path orgPath (Model A/B) to the 15-facet Model C schema per ADR-078 plus the ADR-127 derived canonical path on extensionAttribute15. Drift-class count updated to six per ADR-074. Core migration pattern preserved unchanged."
 ---
 
 # OrgTree Modernization — Active Directory to Entra ID Migration Guide
+
+> **Data-model note (v1.1).** The migration pattern below — attributes +
+> dynamic groups + Administrative Units replacing the OU tree — is
+> unchanged. The concrete encoding has evolved: the original single
+> composite path string (`CORP/US/EAST/BALTIMORE/IT`) was **Model B
+> (composite-slash)**, which [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md)
+> superseded with **Model C** (10 named facets on
+> `extensionAttribute1`–`10`, 4 reserved), and
+> [ADR-127](adr/adr-127-orgpath-hybrid-derived-path.md) completed as the
+> **Hybrid-C+Path model**: facets remain the governance layer, and a
+> **derived canonical OrgPath** on `extensionAttribute15` (every segment
+> terminated by `|`) restores collision-free subtree-prefix targeting.
+> The encoding, group-rule, and AU examples below reflect Hybrid-C+Path.
+> See the [OrgPath Codebook (UIAO_151)](UIAO_151_OrgPath_Codebook.md) for
+> the canonical facet→slot map.
 
 ## Overview
 
@@ -48,7 +65,7 @@ Dynamic groups replace OUs as the scoping mechanism:
 
 ```
 user.department -eq "Finance"
-user.extensionAttribute1 -eq "OU=MD,OU=East,DC=contoso,DC=com"
+user.extensionAttribute2 -eq "IT"          # Department facet (Model C)
 ```
 
 These groups become "virtual OUs" for:
@@ -64,42 +81,52 @@ These groups become "virtual OUs" for:
 
 Hierarchy is encoded into attributes, then layered with groups.
 
-### 2.1 Encode the Org Path
+### 2.1 Encode the Org Position (Hybrid-C+Path)
 
-Select a canonical attribute (or extension attribute) to hold the organizational path:
+The organizational position is carried in two layers (ADR-127):
 
-```
-OrgPath = "CORP/US/EAST/BALTIMORE/IT"
-```
-
-Or in X.500-style notation:
+**Governance layer — named facets** on `extensionAttribute1`–`10`
+(ADR-078 Model C), populated from HR data against the UIAO_151 codebook:
 
 ```
-OrgDnCode = "OU=IT,OU=Baltimore,OU=East,OU=US,DC=corp,DC=contoso,DC=com"
+extensionAttribute1 = NCR          # Region
+extensionAttribute2 = IT           # Department
+extensionAttribute3 = CyberOps     # Division
+```
+
+**Inheritance layer — derived canonical OrgPath** on
+`extensionAttribute15`, never hand-authored, always regenerated from the
+hierarchy facets, with every segment (including the last) terminated by
+`|` so prefix matches are collision-free:
+
+```
+extensionAttribute15 = "Region=NCR|Department=IT|Division=CyberOps|"
 ```
 
 This encoding enables two query patterns:
 
-**Exact node match:**
+**Exact node match** (facet conjunction):
 
 ```
-user.extensionAttribute1 -eq "CORP/US/EAST/BALTIMORE/IT"
+(user.extensionAttribute1 -eq "NCR") and (user.extensionAttribute2 -eq "IT") and (user.extensionAttribute3 -eq "CyberOps")
 ```
 
-**Branch / subtree match:**
+**Branch / subtree match** (derived-path prefix — the trailing `|` on the
+prefix is mandatory per ADR-127):
 
 ```
-user.extensionAttribute1 -startsWith "CORP/US/EAST"
+user.extensionAttribute15 -startsWith "Region=NCR|"
 ```
 
 ### 2.2 Example Dynamic Group Definitions
 
 | Group Name | Rule | Scope |
 |------------|------|-------|
-| `US-East-All` | `user.extensionAttribute1 -startsWith "CORP/US/EAST"` | All users in US-East subtree |
-| `Baltimore-IT` | `user.extensionAttribute1 -eq "CORP/US/EAST/BALTIMORE/IT"` | Exact node: Baltimore IT only |
+| `NCR-All` | `user.extensionAttribute15 -startsWith "Region=NCR\|"` | All users in the NCR subtree |
+| `NCR-IT-CyberOps` | `user.extensionAttribute15 -eq "Region=NCR\|Department=IT\|Division=CyberOps\|"` | Exact node: CyberOps division only |
 
-This is the organizational tree — expressed as string hierarchy + group rules.
+This is the organizational tree — expressed as governed facets, a derived
+path, and group rules.
 
 ## 3. Manager-Based Org Tree for HR Workflows
 
@@ -112,7 +139,7 @@ HR System → Entra ID (via HR connector / provisioning) → populates:
   - manager
   - department
   - jobTitle
-  - OrgPath / OrgDnCode
+  - OrgPath facets (extensionAttribute1-10) + derived path (extensionAttribute15)
 ```
 
 ### Entra ID Governance Integration
@@ -133,17 +160,17 @@ AUs scope helpdesk and admin roles to a subset of users:
 
 | AU Name | Membership Rule | Equivalent AD Scope |
 |---------|----------------|-------------------|
-| `US-East AU` | `OrgPath -startsWith "CORP/US/EAST"` | East region OU subtree |
-| `Baltimore AU` | `OrgPath -eq "CORP/US/EAST/BALTIMORE"` | Baltimore OU |
+| `NCR AU` | `user.extensionAttribute15 -startsWith "Region=NCR\|"` | Region OU subtree |
+| `NCR-IT AU` | `user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|"` | Department OU |
 
 Membership can be:
 
 - **Static** — manually assigned
-- **Dynamic** — using the same org attributes (e.g., `OrgPath -startsWith "CORP/US/EAST"`)
+- **Dynamic** — using the same derived-path prefix rules (trailing `|` mandatory per ADR-127)
 
 ### Entra ID Roles + AU Scope
 
-"User Administrator" scoped to "Baltimore AU" is equivalent to delegated admin on the Baltimore OU in Active Directory.
+"User Administrator" scoped to "NCR-IT AU" is equivalent to delegated admin on the corresponding department OU in Active Directory.
 
 **Mapping:** OU for delegation → AU + dynamic membership rules + scoped Entra ID role.
 
@@ -152,7 +179,7 @@ Membership can be:
 | AD Concept | Entra ID Equivalent |
 |------------|-------------------|
 | Organizational Unit (OU) | Dynamic group with attribute-matching rule |
-| OU hierarchy / tree | `OrgPath` string attribute with `-startsWith` queries |
+| OU hierarchy / tree | Model C facets + ADR-127 derived OrgPath (`extensionAttribute15`) with trailing-delimiter `-startsWith` queries |
 | OU-scoped delegation | Administrative Unit + scoped Entra ID role |
 | Group Policy scoping | Conditional Access policy + dynamic group targeting |
 | Manager chain | `manager` attribute populated by HR connector |
@@ -194,7 +221,7 @@ For each input stream:
 2. The adapter id MUST resolve to an entry in either `adapter-registry.yaml` or `modernization-registry.yaml`.
 3. The adapter's `outputs` field MUST include the stream's evidence filename(s).
 4. The adapter's `evidence-class` (interval / baseline / incident) MUST be appropriate to the stream's nature (continuous telemetry vs. point-in-time snapshot vs. ticket-driven event).
-5. Drift findings derived from the stream MUST classify into one of the five canonical drift classes (per [ADR-040](adr/adr-040-drift-engine.md): SCHEMA, SEMANTIC, PROVENANCE, AUTHZ, IDENTITY).
+5. Drift findings derived from the stream MUST classify into one of the six canonical drift classes (per [ADR-040](adr/adr-040-drift-engine.md) and [ADR-074](adr/adr-074-drift-ssot-contention.md): SCHEMA, SEMANTIC, PROVENANCE, AUTHZ, IDENTITY, SSOT-CONTENTION).
 
 ### Substrate walker enforcement
 
