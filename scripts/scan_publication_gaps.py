@@ -116,6 +116,15 @@ REGISTRATION_REQUIRED_GLOBS: list[tuple[str, str]] = [
         "docs/customer-documents/orgpath-narrative/Book_*.qmd",
         "orgpath-narrative book landing/chapter (authored directly as .qmd; must be wired into docs/_quarto.yml)",
     ),
+    (
+        # Whitepapers are authored directly as .qmd with no src/uiao/ source,
+        # so Pass 1 never considers them. Seven of the seventeen papers sat
+        # rendered-but-unregistered (unreachable from the sidebar) until
+        # 2026-07-26 with every gate green — the same failure mode as
+        # PRs #746/#747/#748.
+        "docs/customer-documents/whitepapers/*.qmd",
+        "whitepaper (authored directly as .qmd; must be wired into docs/_quarto.yml)",
+    ),
 ]
 
 

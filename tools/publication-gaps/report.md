@@ -11,20 +11,14 @@ _None. Every registration-required `.qmd` is wired into `docs/_quarto.yml`._
 ```
 Class              Total  Publishable  Published    Gap
 ---------------- ------- ------------ ---------- ------
-uiao-spec             64           56         56      0
-adr                  134          128        128      0
+uiao-spec             64           57         57      0
+adr                  136          131        131      0
 modernization         27           21         21      0
-schema                39           38         37      1
+schema                39           38         38      0
 other                143            3          3      0
 ---------------- ------- ------------ ---------- ------
-TOTAL                407          246        245      1
+TOTAL                409          250        250      0
 ```
-
-## Gaps — Schemas (1)
-
-| Source | Intent source | Style | Expected .qmd candidates |
-|---|---|---|---|
-| [`src/uiao/schemas/link-registry/link-registry.schema.json`](src/uiao/schemas/link-registry/link-registry.schema.json) | default | reference | `docs/reference/schemas/link-registry.schema.qmd` |
 
 ## Methodology
 
