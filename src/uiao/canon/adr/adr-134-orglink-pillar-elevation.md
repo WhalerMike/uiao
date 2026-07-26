@@ -1,7 +1,7 @@
 ---
 adr_id: adr-134
 title: "OrgLink Pillar Elevation — The Fourth Org-Family Pillar Goes Live"
-status: PROPOSED
+status: ACCEPTED
 decided: 2026-07-25
 deciders: Michael Stratton
 updated: 2026-07-25
@@ -19,7 +19,7 @@ published_at: docs/adr/adr-134-orglink-pillar-elevation.html
 
 ## Status
 
-**PROPOSED** — 2026-07-25.
+**ACCEPTED** — 2026-07-25.
 
 This is the short elevation ADR that [ADR-132](adr-132-orglink-link-object-class.md)
 D3 anticipated. It elevates a candidate pillar whose conditions are met and
