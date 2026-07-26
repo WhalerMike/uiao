@@ -10,9 +10,9 @@ review_trigger: The govramp_reciprocity_catalog pack is authored (verify the D1 
 impact: "Authorizes the GovRAMP (formerly StateRAMP) vertical adapter pack — the substrate's second non-federal conformance pack and the first for the state/local vertical ADR-085 reserved. The pack is chartered as a CROSSWALK, not a new stack: GovRAMP assesses against the same NIST 800-53 Rev 5 baseline the substrate already generates evidence for, and its reciprocity intake accepts FedRAMP-derived authorization artifacts, so the pack maps existing evidence outputs and the UIAO_140 single-ATO reciprocity model onto GovRAMP submission surfaces. Decides the boundary treatment per the ADR-085 D3 lockstep rule: a new `state-local` value on the gcc-boundary enum (added in the pack's registration PR, not this ADR), because ADR-129's `commercial-general` is defined as commercial-sector and misdescribes a state/local government scope — the exact positioning-truthfulness rule that motivated ADR-129 itself. Registers nothing today: pack directory (src/uiao/adapters/govramp_reciprocity_catalog/), registry row (status proposed), enum value, and the `govramp` OVERLAY_PACK_MAP entry all land with the pack's own PR; promotion to active follows the ADR-129 D3 pattern. On promotion, the pack satisfies the ADR-132 D3 elevation condition requiring one active boundary-attached regime pack. Doctrine only; unpublished until OrgLink elevation (publish_to_site: false)."
 supersedes: null
 superseded_by: null
-publish_to_site: false
+publish_to_site: true
 publication_style: include
-published_at: null
+published_at: docs/adr/adr-133-govramp-reciprocity-vertical-pack.html
 ---
 
 # ADR-133: GovRAMP Reciprocity Vertical Pack — State/Local Eligibility as a Crosswalk, and the state-local Boundary

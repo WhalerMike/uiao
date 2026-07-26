@@ -10,9 +10,9 @@ review_trigger: The Link-class canon spec (UIAO_NNN) is authored (verify the D1 
 impact: "Establishes the Link — interface + agreement artifact + regime overlay, one per external relationship — as a first-class governed substrate object class for every interconnection between the governed org and an outside party: federal agency, branch of government, state, local, tribal, regulated-commercial (banks, hospitals), general-commercial, consortium, or the public. Follows the LocPath (ADR-102) and non-human SSOT registry (ADR-130) overlay pattern: new object class + registry + drift integration, surfaced through the existing pillars, no new pillar today. Reserves the OrgLink name as the candidate fourth Org-family pillar, with elevation earned via explicit conditions rather than declared (the ADR-129 proposed-to-active pattern applied to pillar status). Motivated by a concrete SSOT violation: CA-3 (Information Exchange) evidence today consists of DOCX/PDF pointers into SharePoint folders — unmanaged, undrifted, provenance-free — in a substrate whose thesis is provenance-anchored evidence. Organizes the existing but scattered external-interconnection surface (CHARTER-003 FILE 4 inter-agency source-of-authority doctrine; the Federal HRIT Integration Runbook and UIAO_144; UIAO_140 reciprocity; UIAO_141/142/143 customer identity; ADR-003/053 inbound, ADR-128 outbound, ADR-059 non-employee; ADR-074 SSOT contention) under one object model. The statutory precedent is the Computer Matching and Privacy Protection Act's written-agreement regime. Boundary-attached compliance regimes (HIPAA via NIST SP 800-66, GovRAMP formerly StateRAMP) ship as vertical adapter packs per ADR-085/ADR-129, each under its own future ADR. Doctrine only: no runtime, schema, or registry change in this ADR. Not published to the site until the OrgLink surface is developed (publish_to_site: false)."
 supersedes: null
 superseded_by: null
-publish_to_site: false
+publish_to_site: true
 publication_style: include
-published_at: null
+published_at: docs/adr/adr-132-orglink-link-object-class.html
 ---
 
 # ADR-132: OrgLink — Link Object Class for External Interconnection Governance; Candidate Fourth Org-Family Pillar

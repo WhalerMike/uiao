@@ -216,6 +216,9 @@
 - [Hybrid OrgPath Model — Model C Facets Plus Derived Canonical Path with Trailing Delimiter](adr/adr-127-orgpath-hybrid-derived-path.html)
 - [Non-Human SSOT Registry — Class SSOT Designations and the Human-Anchor Rule](adr/adr-130-nonhuman-ssot-registry.html)
 - [UIAO Academy — Umbrella Learning Entry Point for the Org Family](adr/adr-131-academy-org-family-umbrella.html)
+- [OrgLink — Link Object Class for External Interconnection Governance; Candidate Fourth Org-Family Pillar](adr/adr-132-orglink-link-object-class.html)
+- [GovRAMP Reciprocity Vertical Pack — State/Local Eligibility as a Crosswalk, and the state-local Boundary](adr/adr-133-govramp-reciprocity-vertical-pack.html)
+- [OrgLink Pillar Elevation — The Fourth Org-Family Pillar Goes Live](adr/adr-134-orglink-pillar-elevation.html)
 
 ## Schema Reference
 
@@ -238,6 +241,7 @@
 - [SCIM 2.0 Group Resource (RFC 7643 §4.2)](reference/schemas/group.schema.html)
 - [UIAO Image Registry Schema](reference/schemas/image-registry.schema.html)
 - [UIAO Unified Key Security Indicator (KSI) Schema](reference/schemas/ksi.schema.html)
+- [UIAO Link-Registry Schema](reference/schemas/link-registry.schema.html)
 - [UIAO LocPath Location Registry](reference/schemas/location-registry.schema.html)
 - [UIAO Location Node](reference/schemas/location.schema.html)
 - [UIAO MS SQL Estate Inventory Schema](reference/schemas/mssql-inventory.schema.html)
@@ -258,6 +262,12 @@
 - [UDC Templates Schema](reference/schemas/udc_templates.schema.html)
 - [SCIM 2.0 User Resource (RFC 7643 §4.1)](reference/schemas/user.schema.html)
 - [UIAO Workspace Contract Schema](reference/schemas/workspace-contract.schema.html)
+
+## OrgLink — External Interconnection
+
+### OrgLink Narrative
+
+- [Governed Links: External Interconnection, the Federal Identity Mesh, and SSOT with Due Process](customer-documents/orglink-narrative/governed-links-external-interconnection.html)
 
 ## OrgComp — Federal Organization Compliance
 
