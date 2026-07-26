@@ -66,7 +66,7 @@ Principle 1: Single Source of Truth (SSOT). Canonical governance artifacts under
 
 Principle 2: Canon-Anchored Evidence. Every artifact the substrate produces — SSP, POA&M, KSI dashboards, component definitions — cites the canon document ID and version it derives from. Every change to every governance artifact is attributable to a source: a human operator identified by role, an automation engine identified by service principal, or the governance engine itself. Unsigned, unattributed changes are drift by definition.
 
-Principle 3: Drift Is Explicit. Five-class taxonomy (DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE, DRIFT-AUTHZ, DRIFT-IDENTITY) surfaces structural and provenance mismatch as first-class findings, not exception reports. The drift detection engine (Appendix M) runs continuously, classifies drift by category and severity, and triggers remediation workflows (Appendix E) or escalation playbooks (Appendix Q) as appropriate.
+Principle 3: Drift Is Explicit. Six-class taxonomy (DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE, DRIFT-AUTHZ, DRIFT-IDENTITY, DRIFT-SSOT-CONTENTION) surfaces structural, provenance, and stewardship-authority mismatch as first-class findings, not exception reports. The drift detection engine (Appendix M) runs continuously, classifies drift by category and severity, and triggers remediation workflows (Appendix E) or escalation playbooks (Appendix Q) as appropriate.
 
 3.2 Tier-Specific Principles
 

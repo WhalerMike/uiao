@@ -181,12 +181,13 @@ or the canonical taxonomy. A drift in OrgPath that propagates through
 dynamic-group → admin-unit → policy assignment cannot be observed as a
 single causal chain by any Microsoft tool.
 
-**UIAO fills with:** the OrgTree drift engine and the five-class
+**UIAO fills with:** the OrgTree drift engine and the six-class
 canonical drift taxonomy.
 
 - **Anchor canon:** [ADR-040 — OrgTree Drift Detection Engine — Six-Phase Orchestrator](adr/adr-040-drift-engine.md).
 - **Taxonomy:** DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE,
-  DRIFT-AUTHZ, DRIFT-IDENTITY (per ADR-040 §Decision and ADR-012).
+  DRIFT-AUTHZ, DRIFT-IDENTITY, DRIFT-SSOT-CONTENTION (per ADR-040
+  §Decision, ADR-012, and [ADR-074](adr/adr-074-drift-ssot-contention.md)).
 - **Executable canon:** [`canon/data/orgpath/drift-engine-config.yaml`](data/orgpath/drift-engine-config.yaml).
 - **Implementation:** [`src/uiao/governance/drift_engine.py`](../governance/drift_engine.py).
 - **Adapter declaration:** [`orgtree-drift-engine`](modernization-registry.yaml) (active).
@@ -278,10 +279,11 @@ extension.
 ### 4.2 For drift-engine classification
 
 Findings the OrgTree drift engine produces MUST be classifiable into
-one of the five drift classes (per ADR-040 / ADR-012). If a finding
-doesn't fit any class, the discrepancy is between this doctrine and
-the drift taxonomy — file an ADR; don't add a sixth class without
-governance review.
+one of the six drift classes (per ADR-040 / ADR-012 / ADR-074). If a
+finding doesn't fit any class, the discrepancy is between this doctrine
+and the drift taxonomy — file an ADR; don't extend the taxonomy without
+governance review (DRIFT-SSOT-CONTENTION entered exactly this way, via
+ADR-074).
 
 ### 4.3 For canon expansion decisions
 

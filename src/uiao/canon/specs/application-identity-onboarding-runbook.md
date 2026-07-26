@@ -18,7 +18,7 @@ object. It is the operational counterpart to UIAO_129
 (Application Identity Model). Onboarding produces one fully-bound
 application identity with all six bindings required by
 UIAO_129 §2, a signed state-change event in the evidence graph
-(UIAO_113), and a green drift scan across all five drift classes.
+(UIAO_113), and a green drift scan across all five application-identity drift classes (UIAO_129 §7).
 
 The runbook is used by agency operators following the Operator
 track of UIAO_125, and by contributors testing a new adapter
@@ -163,8 +163,9 @@ uiao app retire --name payroll.agency.gov --confirm
 ```
 
 Each command returns exit 0 on success and a non-zero drift-class
-code on failure; the codes map to the five drift classes in
-UIAO_129 §7.
+code on failure; the codes map to the five application-identity
+drift classes defined in UIAO_129 §7 (the domain subset of the
+six-class canonical taxonomy).
 
 ## 7. Failure modes and handling
 

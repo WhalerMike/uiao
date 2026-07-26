@@ -12,7 +12,7 @@ publication_style: include
 
 # UIAOImportAdapters — Module Specification
 
-> **Status: Draft / unimplemented.** This specification governs a planned PowerShell module named in [`Book_15_CPT_23`](../../../docs/customer-documents/orgpath-narrative/Book_15_CPT_23.qmd) ("The Gap That Remains") and scaffolded by [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md). It promotes the API-preview roster in [`powershell-module-reference.qmd §7.2`](../../../docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) into governed canon. No implementation exists yet; this document is the contract an implementation PR must satisfy.
+> **Status: implemented against this contract.** This specification governs the PowerShell module named in [`Book_15_CPT_23`](../../../docs/customer-documents/orgpath-narrative/Book_15_CPT_23.qmd) ("The Gap That Remains") and scaffolded by [ADR-094](adr/adr-094-assessment-to-plan-toolchain.md). It promotes the API-preview roster in [`powershell-module-reference.qmd §7.2`](../../../docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd) into governed canon. The implementation ships at `tools/powershell/UIAOImportAdapters/` and is wired into the Pester CI (see §Implementation status); this document remains the contract that implementation must satisfy.
 
 ## Purpose
 
