@@ -22,7 +22,7 @@ Model). It defines the canonical sequences for:
 3. **Reciprocity provisioning** — establishing a new
    reciprocal-consumption entitlement between an authority of record and
    a consumer.
-4. **Drift detection and remediation** — applying the five drift classes
+4. **Drift detection and remediation** — applying the five KYC-domain drift classes
    to KYC flows.
 
 The runbook is used by agency operators following the Operator track of
@@ -227,7 +227,7 @@ uiao kyc cir retire --identifier ssa.ssn-XXX-XX-XXXX --confirm
 ```
 
 Each command returns exit 0 on success and a non-zero drift-class code on
-failure; codes map to the five drift classes in UIAO_141 §7.
+failure; codes map to the five KYC-domain drift classes in UIAO_141 §7 (the domain subset of the six-class canonical taxonomy).
 
 ## 7. Failure modes and handling
 
