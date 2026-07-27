@@ -1,4 +1,4 @@
-# AAN Claim → Evidence → Test Traceability Matrix
+# OrgComp Claim → Evidence → Test Traceability Matrix
 
 > **Generated file — do not hand-edit.** Produced by `render_claim_evidence_test.py` from `orgcomp-compliance-spine.yml`. Regenerate when closures change; CI-gated.
 

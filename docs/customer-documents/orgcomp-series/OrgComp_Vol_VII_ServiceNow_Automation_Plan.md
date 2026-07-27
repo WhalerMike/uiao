@@ -1,6 +1,12 @@
-# AAN Volume VII Plan — ServiceNow Automation for Federal Control Compliance
+# OrgComp Volume VII Plan — ServiceNow Automation for Federal Control Compliance
 
-> Status: DRAFT for author review · Surface: `inbox/` (not canon)
+> Status: **EXECUTED** — historical decision record, not an open proposal.
+> The six-book Volume VII lineup this plan specifies (VII-00 through VII-05)
+> now exists on disk exactly as proposed. Retained for citation provenance —
+> cited by line number from `OrgComp_Series_Assessment_Against_Critique_v4.md`
+> and as a companion from `OrgComp_ServiceNow_Kit_Expansion_Roadmap.md`. Left
+> otherwise unedited so it reads as it did when the decision was live.
+> Surface: `inbox/` (not canon)
 > Scope: new volume in `docs/customer-documents/orgcomp-series/` book series
 > Companion to: `OrgComp_Series_Build_Plan.md`, `OrgComp_Series_Expansion_Plan_Substrate_Accreditation.md`
 > Date Code: 2026-07-12 15:00 ET

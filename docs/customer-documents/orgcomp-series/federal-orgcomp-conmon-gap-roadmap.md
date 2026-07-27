@@ -1,14 +1,14 @@
-# Federal AAN / ConMon Compliance Gap Roadmap
+# Federal OrgComp / ConMon Compliance Gap Roadmap
 **As of July 7, 2026 — Internal Working Document (governance-engine program)**
 
-**Date Code:** 2026-07-18 10:02 ET
+**Date Code:** 2026-07-27 10:06 ET
 
 ---
 
 ## Executive Finding
 
-The Federal Application-Aware Networking (AAN) series (Parts 1–19, all delivered
-as of July 5, 2026) provides the **complete evidence and authorization-package
+The Federal Organization Compliance (OrgComp) series (formerly Application-Aware
+Networking, AAN; Parts 1–19, all delivered as of July 5, 2026) provides the **complete evidence and authorization-package
 layer** for the agency's RMF authorization, with continuous-monitoring evidence
 modeled on the FedRAMP 20x KSI schema. The Conformance Adapter / OSCAL Emitter
 framework provides the **evidence governance layer** — tracking which evidence
@@ -63,7 +63,7 @@ source of truth for federal dates; the Books cite subsets of it.*
 
 ### Already in force — the elapsed baseline
 
-| Effective | Mandate | What it requires | NIST families | AAN coverage |
+| Effective | Mandate | What it requires | NIST families | OrgComp coverage |
 |-----------|---------|------------------|---------------|--------------|
 | Feb 16, 2020 / Jan 6, 2021 | **Kari's Law / RAY BAUM'S Act §506** | Direct 911 dialing; dispatchable location for MLTS incl. non-fixed devices | (telecom; PE/SC-adjacent) | Part 6 |
 | Sep 23, 2021 | **NIST SP 800-53 Rev 5** (Rev 4 withdrawn) | Current control catalog; FedRAMP Moderate baseline drawn from it | All | Series-wide |
@@ -110,7 +110,7 @@ source of truth for federal dates; the Books cite subsets of it.*
 > **⚠ New exposure from Release 5.2.0 (action item):** NIST SP 800-53 Release
 > 5.2.0 (Aug 27, 2025) added **SA-15(13)** (secure update process), **SA-24**
 > (root-of-trust for software updates), and **SI-2(7)** (update integrity
-> verification), plus discussion changes across SA-4/5/8 and SI-2. The AAN
+> verification), plus discussion changes across SA-4/5/8 and SI-2. The OrgComp
 > series control-closure tables (Parts 11, 15) predate the additions and do not
 > yet map them. When FedRAMP incorporates 5.2.0 deltas into baselines, these
 > three land in the Part 11 / Part 15 closure scope — track and map before the
@@ -223,7 +223,7 @@ finding.
 
 ---
 
-## AAN Series Control Closure (Parts 1–19, All Delivered)
+## OrgComp Series Control Closure (Parts 1–19, All Delivered)
 
 ### Parts 1, 5–9 (34 Controls)
 
@@ -264,13 +264,13 @@ finding.
 
 **As of 2026-07-04 (post Part 18 / all 29 KSIs active):**
 
-| Layer | Status |
-|-------|--------|
-| All 8 surface slots bound to AAN evidence | ✓ complete |
-| OSCAL Emitter: AP + AR + POAM bundle | ✓ complete (`<engine> oscal bundle`) |
-| KSI mapping (KSI-001..029) | ✓ complete |
-| Evaluation engine wired for active rules | ✓ all 29 KSI rules active (0 scaffold) |
-| Remaining scaffolds | **None** — KSI-022 was the last scaffold (closed July 4, 2026) |
+The maturity-graded status of the adapter and the OSCAL bundle — Authored /
+Ref-impl / Deployed / Assessed, with the CR26-pending and independent-SCA
+caveat every component carries — is maintained as the single current copy in
+`Vol_0_Book_00_OrgComp_Executive_Summary.qmd`, section "Conformance Adapter
+and OSCAL Emitter Framework." This roadmap does not duplicate that table; the
+Part-level detail below (which series Part binds which evidence slot, and the
+internal-rule-set activation status) is this document's own contribution.
 
 ### Slot bindings (all 8 slots):
 
@@ -308,7 +308,7 @@ Matrix."
 ### Phase 0 — Immediate (July 2026) ✓ Complete
 - [x] Parts 1, 5–9 delivered (34 controls)
 - [x] Parts 10–14 delivered (~55 controls)
-- [x] Conformance Adapter surface slots 1–4 bound to AAN evidence
+- [x] Conformance Adapter surface slots 1–4 bound to OrgComp evidence
 
 ### Phase 1 — Completed 2026-07-03 ✓
 - [x] Part 15: SR / SBOM / VDR framework (Book_15 — BOD 26-04 tiers, Syft, Grype, OpenVEX)
@@ -386,13 +386,13 @@ Matrix."
 
 ## Technology Recommendations by Gap
 
-| Gap Area | Recommended Technology / Approach |
-|----------|----------------------------------|
-| SBOM generation | Syft (Anchore) or Trivy — integrated into CI/CD pipeline |
-| VDR format | CycloneDX 1.6 (XML or JSON) — CISA-preferred |
-| VER submission | CISA VEX Portal or email per BOD 26-04 guidance |
-| AT-4 evidence export | Microsoft Viva Learning Graph API → training-effectiveness-record JSON |
-| OSCAL AP/AR/POAM | `<engine> oscal bundle` — complete AP+AR+POAM via Python emitter |
+The per-gap technology table (SBOM generation, VDR format, VER submission,
+OSCAL AP/AR, plus the PII-mapping and PM-metrics rows added since) is
+maintained as the single current copy in
+`Vol_0_Book_00_OrgComp_Executive_Summary.qmd`, section "Technology
+Recommendations by Gap." The AT-4 evidence-export path it omits is documented
+in full in `Vol_IV_Book_06_OrgComp_Authorization_Package_ConMon.qmd`, section
+5.3, "AT-4 Evidence Contract Currency."
 
 ---
 

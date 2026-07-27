@@ -15,7 +15,7 @@
 | Deck specs `decks/Vol_*_Book_*.yaml` | ✅ | authored |
 | Briefing decks `Vol_*_Book_*.pptx` | ✅ | `uiao generate aan-deck` (python-pptx) — buildable anywhere |
 | Book renders `Vol_*_Book_*.docx` | ⚠️ allowlisted, **build locally** | `./render_all_docx.sh` — Pandoc + `orgcomp-reference.docx` + `orgcomp-callouts.lua` (fast batch path; `quarto render` produces the same docx — see §2) |
-| AAN reference doc `orgcomp-reference.docx` | ✅ | `build_orgcomp_reference.py` (adds callout/banner styles to `lz-reference.docx`) |
+| OrgComp reference doc `orgcomp-reference.docx` | ✅ | `build_orgcomp_reference.py` (adds callout/banner styles to `lz-reference.docx`) |
 | Distribution kit `OrgComp_Federal_Series_Complete_<DATE>ET.zip` | ✅ (one, datecoded) | local rebuild (authoring-spec §1) |
 
 ## 1. Briefing decks (.pptx) — buildable in CI/cloud
@@ -31,7 +31,7 @@ ride with their books in git.
 
 ## 2. Book renders (.docx)
 
-> The book `.docx` are rendered with **Pandoc** (`pypandoc-binary`) using the AAN
+> The book `.docx` are rendered with **Pandoc** (`pypandoc-binary`) using the OrgComp
 > reference doc **`orgcomp-reference.docx`** and the **`orgcomp-callouts.lua`** filter, so
 > text, tables, figures **and the callout/banner boxes** carry house style. The
 > callouts (`.aan-important/note/tip/warning/caution`, the `.fouo-banner`, and the
@@ -79,7 +79,7 @@ surfaced under Quarto, which *does* honor that key. Front matter and CLI now agr
 shading/borders through *named* paragraph styles carried in the reference doc.
 `build_orgcomp_reference.py` extends `lz-reference.docx` with the `CalloutWarning`,
 `CalloutImportant`, `CalloutNote`, `CalloutTip`, `CalloutCaution`, `ExecSummary`,
-and `FouoBanner` styles (AAN palette shading + left accent border) → saves
+and `FouoBanner` styles (OrgComp palette shading + left accent border) → saves
 `orgcomp-reference.docx`. `orgcomp-callouts.lua` then maps each callout/banner div class to
 the matching style via the `custom-style` attribute the docx writer honors.
 

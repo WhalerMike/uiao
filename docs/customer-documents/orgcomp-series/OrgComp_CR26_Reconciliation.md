@@ -86,10 +86,10 @@ The **27 not-yet-mapped indicators** fall entirely in the 4 themes below, each a
 
 | Theme | Unmapped indicators | Disposition | Owner (role) | Target |
 |---|---|---|---|---|
-| KSI-IAM — Identity and Access Management | 6 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
-| KSI-CNA — Cloud Native Architecture | 8 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
-| KSI-SVC — Service Configuration | 8 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
-| KSI-MLA — Monitoring, Logging, and Auditing | 5 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | AAN compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-IAM — Identity and Access Management | 6 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | OrgComp compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-CNA — Cloud Native Architecture | 8 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | OrgComp compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-SVC — Service Configuration | 8 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | OrgComp compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
+| KSI-MLA — Monitoring, Logging, and Auditing | 5 | Bind each indicator to a rule, **or** record an explicit ScuBA-baseline attestation decision | OrgComp compliance authoring lead (OIS ConMon lead accountable) | Before independent SCA; no later than the Class B+C window (Aug 31, 2026) |
 | **Total** | **27** | — | — | — |
 
 Until these are dispositioned, the POA&M is expected to be non-empty: each unmapped indicator is a candidate POA&M item pending the binding decision and the independent SCA verdict.

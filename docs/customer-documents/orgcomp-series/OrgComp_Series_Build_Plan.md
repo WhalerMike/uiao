@@ -1,6 +1,14 @@
-# AAN Series Build Plan — Necessity Doctrine, Series Expansion to 18, and Cross-Book Sharpening
+# OrgComp Series Build Plan — Necessity Doctrine, Series Expansion to 18, and Cross-Book Sharpening
 
-> Status: DRAFT for author review · Surface: `inbox/` (not canon)
+> Status: **EXECUTED** — historical decision record, not an open proposal.
+> The restructure and expansion this plan specifies (five doctrine themes;
+> growth to Books 00–18) shipped and was later superseded again by the
+> volume restructure; the series is now 60 books across 11 volumes. Retained
+> for citation provenance — cited as a companion by
+> `OrgComp_Series_Expansion_Plan_Substrate_Accreditation.md` and
+> `OrgComp_Vol_VII_ServiceNow_Automation_Plan.md`. Left otherwise unedited so
+> it reads as it did when the decision was live.
+> Surface: `inbox/` (not canon)
 > Scope: `docs/customer-documents/orgcomp-series/` book series + `federal-orgcomp-conmon-gap-roadmap.md`
 
 ## 1. Objective
