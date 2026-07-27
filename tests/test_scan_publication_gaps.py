@@ -108,6 +108,45 @@ def test_custom_globs_extend_coverage(tmp_path: Path) -> None:
     assert [o.rel_path for o in orphans] == ["docs/customer-documents/whitepapers/new-paper.qmd"]
 
 
+def _make_adr_wrapper(root: Path, name: str) -> Path:
+    """Create a stub ADR wrapper .qmd on disk."""
+    d = root / "docs" / "adr"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / name
+    p.write_text("---\ntitle: stub\n---\n\nbody\n", encoding="utf-8")
+    return p
+
+
+def test_unregistered_adr_wrapper_is_flagged(tmp_path: Path) -> None:
+    """An ADR wrapper on disk but absent from the sidebar is reported.
+
+    This is the PR #1372 failure mode: eight wrappers rendered to the site
+    but were unreachable from navigation, and Pass 1's link-back-id
+    detection kept every gate green because the sidebar-listed ADR index
+    mentions every ADR ID.
+    """
+    _make_adr_wrapper(tmp_path, "adr-084-phase5-consumer-architecture.qmd")
+    _make_adr_wrapper(tmp_path, "adr-index.qmd")
+    sidebar = {"docs/adr/adr-index.qmd"}
+
+    orphans = spg.find_unregistered_docs(tmp_path, sidebar)
+
+    assert [o.rel_path for o in orphans] == ["docs/adr/adr-084-phase5-consumer-architecture.qmd"]
+    assert "ADR wrapper" in orphans[0].rule
+
+
+def test_registered_adr_wrappers_produce_no_orphans(tmp_path: Path) -> None:
+    """When every ADR wrapper is in the sidebar, there are no orphans."""
+    _make_adr_wrapper(tmp_path, "adr-084-phase5-consumer-architecture.qmd")
+    _make_adr_wrapper(tmp_path, "adr-index.qmd")
+    sidebar = {
+        "docs/adr/adr-084-phase5-consumer-architecture.qmd",
+        "docs/adr/adr-index.qmd",
+    }
+
+    assert spg.find_unregistered_docs(tmp_path, sidebar) == []
+
+
 # ---------------------------------------------------------------------------
 # Regression — the live repo must stay clean, and the default globs must
 # actually point at on-disk orgpath-narrative content.

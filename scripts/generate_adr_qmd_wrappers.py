@@ -228,7 +228,10 @@ def render_adr_index(adr_metadata: list[dict[str, str]]) -> str:
             target = f"{meta['stem']}.qmd"
         else:
             target = f"https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/{meta['stem']}.md"
-        rows.append(f"| [{meta['adr_id']}]({target}) | {escaped_title} | {meta['status']} | {meta['date']} |")
+        # A PROPOSED ADR legitimately has decided: null — show an em dash
+        # rather than the extraction fallback string "unknown".
+        date = meta["date"] if meta["date"] not in ("unknown", "None") else "—"
+        rows.append(f"| [{meta['adr_id']}]({target}) | {escaped_title} | {meta['status']} | {date} |")
     table = "\n".join(rows)
     return f"""---
 title: "Architecture Decision Records — Index"

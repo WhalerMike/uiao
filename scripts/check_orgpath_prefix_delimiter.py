@@ -53,7 +53,6 @@ EXCLUDE_SEGMENTS = (
     "/inbox/",
     "/downloads/",
     "/session-logs/",
-    "/TedTalk/",
     "/models/",
     "/out/",
     "/output/",

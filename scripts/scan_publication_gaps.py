@@ -125,6 +125,19 @@ REGISTRATION_REQUIRED_GLOBS: list[tuple[str, str]] = [
         "docs/customer-documents/whitepapers/*.qmd",
         "whitepaper (authored directly as .qmd; must be wired into docs/_quarto.yml)",
     ),
+    (
+        # ADR wrapper pages. Pass 1 cannot catch a wrapper that exists on
+        # disk but is missing from the sidebar: its link-back-id detection
+        # counts an ADR as published because the sidebar-listed ADR index
+        # mentions every ADR ID. Eight wrappers (ADR-084/085/087-090/112/113)
+        # sat rendered-but-unregistered that way until PR #1372 with every
+        # gate green. A wrapper on disk means the ADR publishes to the site
+        # (generate_adr_qmd_wrappers.py skips publish_to_site: false ADRs),
+        # so every wrapper must be wired into the sidebar. Matches
+        # adr-index.qmd too, which is likewise sidebar-registered.
+        "docs/adr/adr-*.qmd",
+        "ADR wrapper page (wrapper on disk implies publish_to_site; must be wired into docs/_quarto.yml)",
+    ),
 ]
 
 
