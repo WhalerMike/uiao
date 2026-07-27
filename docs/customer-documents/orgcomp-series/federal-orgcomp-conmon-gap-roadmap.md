@@ -1,7 +1,7 @@
 # Federal OrgComp / ConMon Compliance Gap Roadmap
 **As of July 7, 2026 — Internal Working Document (governance-engine program)**
 
-**Date Code:** 2026-07-27 09:38 ET
+**Date Code:** 2026-07-27 10:06 ET
 
 ---
 
@@ -264,13 +264,13 @@ finding.
 
 **As of 2026-07-04 (post Part 18 / all 29 KSIs active):**
 
-| Layer | Status |
-|-------|--------|
-| All 8 surface slots bound to OrgComp evidence | ✓ complete |
-| OSCAL Emitter: AP + AR + POAM bundle | ✓ complete (`<engine> oscal bundle`) |
-| KSI mapping (KSI-001..029) | ✓ complete |
-| Evaluation engine wired for active rules | ✓ all 29 KSI rules active (0 scaffold) |
-| Remaining scaffolds | **None** — KSI-022 was the last scaffold (closed July 4, 2026) |
+The maturity-graded status of the adapter and the OSCAL bundle — Authored /
+Ref-impl / Deployed / Assessed, with the CR26-pending and independent-SCA
+caveat every component carries — is maintained as the single current copy in
+`Vol_0_Book_00_OrgComp_Executive_Summary.qmd`, section "Conformance Adapter
+and OSCAL Emitter Framework." This roadmap does not duplicate that table; the
+Part-level detail below (which series Part binds which evidence slot, and the
+internal-rule-set activation status) is this document's own contribution.
 
 ### Slot bindings (all 8 slots):
 
@@ -386,13 +386,13 @@ Matrix."
 
 ## Technology Recommendations by Gap
 
-| Gap Area | Recommended Technology / Approach |
-|----------|----------------------------------|
-| SBOM generation | Syft (Anchore) or Trivy — integrated into CI/CD pipeline |
-| VDR format | CycloneDX 1.6 (XML or JSON) — CISA-preferred |
-| VER submission | CISA VEX Portal or email per BOD 26-04 guidance |
-| AT-4 evidence export | Microsoft Viva Learning Graph API → training-effectiveness-record JSON |
-| OSCAL AP/AR/POAM | `<engine> oscal bundle` — complete AP+AR+POAM via Python emitter |
+The per-gap technology table (SBOM generation, VDR format, VER submission,
+OSCAL AP/AR, plus the PII-mapping and PM-metrics rows added since) is
+maintained as the single current copy in
+`Vol_0_Book_00_OrgComp_Executive_Summary.qmd`, section "Technology
+Recommendations by Gap." The AT-4 evidence-export path it omits is documented
+in full in `Vol_IV_Book_06_OrgComp_Authorization_Package_ConMon.qmd`, section
+5.3, "AT-4 Evidence Contract Currency."
 
 ---
 
