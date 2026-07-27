@@ -365,6 +365,7 @@
   - [Vol VII Book 03 — Federal Organization Compliance — Azure Federal Control Compliance Automation](customer-documents/orgcomp-series/Vol_VII_Book_03_OrgComp_Azure_Control_Compliance_Automation.html)
   - [Vol VII Book 04 — Federal Organization Compliance — Control Attestation, Evidence & KSI](customer-documents/orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.html)
   - [Vol VII Book 05 — Federal Organization Compliance — The ServiceNow Compliance App](customer-documents/orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.html)
+  - [Vol VII Book 06 — Federal Organization Compliance — AWS Federal Control Compliance Automation](customer-documents/orgcomp-series/Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.html)
 - **Vol VIII — Multi-Cloud DDI**
   - [Vol VIII Book 00 — Federal Organization Compliance — Volume VIII Overview: Multi-Cloud DDI Landing-Zone Automation](customer-documents/orgcomp-series/Vol_VIII_Book_00_OrgComp_DDI_Automation_Overview.html)
 - **Vol IX — Day-2 Operations**

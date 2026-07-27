@@ -1,0 +1,142 @@
+---
+title: "Vol VII Book 06 — Federal Organization Compliance — AWS Federal Control Compliance Automation"
+subtitle: "AWS Config, Security Hub CSPM, and Systems Manager Patch Manager control state, operated as ServiceNow work"
+author: "Federal Cloud Services"
+date: "2026-07-27 16:00 ET"
+format:
+  html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: orgcomp-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
+fig-align: center
+out-width: "100%"
+execute: {echo: false}
+filters: [orgcomp-callouts.lua]
+
+---
+
+:::: {.content-hidden unless-profile="ssa"}
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+::::
+
+::: {.aan-warning}
+## Draft Proposal — Subject to Review
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the {{< meta agency.short >}} CIO Office, OIS, or leadership. **Date Code:** 2026-07-27 16:00 ET
+:::
+
+::: {.aan-important}
+**Series Context** — Volume VII Book 06. The AWS lane of the coordination layer, anticipated by Vol VII Book 03 §"The Azure Control Engines and Their Coordination Role" as a later follow-up reconciling into the same ServiceNow queues. AWS is a boundary the agency both configures and populates with its own workloads — the same posture as Azure, on a different native stack. This book operates that surface's control state as ServiceNow work, on the identical loop as the M365 and Azure books. **Actuation stays platform-native** — AWS Config remediation actions, Security Hub CSPM findings, and Systems Manager Patch Manager runs make the change; ServiceNow governs ownership, SLA, approval, and evidence.
+:::
+
+# What This Document Addresses
+
+Where M365 is a SaaS boundary the agency configures but does not host, AWS — like Azure — is a boundary the agency both configures and populates with its own workloads, so it carries the resource-configuration, vulnerability, and patch obligations directly: baseline configuration and settings (CM-2, CM-6), flaw remediation (SI-2), and vulnerability monitoring (RA-5). AWS's native stack *actuates* all three; the coordination role is to make each one owned, clocked, approved where it changes state, and evidenced. CM-2's registered closure sits in Vol III Book 03 (Patch & Systems Management); this book touches CM-2 only through AWS Config's actuation of that baseline, so its *Authorities Closed Here* table registers the coordination closures CM-6, SI-2, and RA-5 — the identical registration pattern Vol VII Book 03 uses for Azure.
+
+This book runs the same five-step loop as Vol VII Books 02 and 03 — **test → detect drift → raise a typed task against the reconciled CI → actuate on the native surface → close with evidence** — over the three AWS control engines. The loop is deliberately identical across surfaces: one coordination pattern, three clouds, so the evidence and the assessor-facing story are uniform.
+
+![The five-step compliance loop, identical for AWS — test, detect drift, raise task, actuate on the native surface, close with evidence — with actuation marked platform-native](figs/vol7b06-fig-01-aws-compliance-loop.png){#fig-vol7-loop-aws fig-alt="A house-style five-step pipeline titled The AWS Compliance Loop (Vol VII Book 06), subtitle 'One coordination pattern, three clouds — actuation stays platform-native', on a white background. Five navy-headed cards are joined left to right by teal arrows: Step 1 Test — read the native control state (AWS Config, Security Hub CSPM, Systems Manager); Step 2 Detect Drift — compare to the intended baseline, a deviation is a candidate finding; Step 3 Raise Task — a typed Change, Incident, or Request against the reconciled CI with control id, severity, and SLA; Step 4 Actuate (native), drawn with a teal header and an amber ring and labeled 'platform-native — not ServiceNow' — for AWS this is a Config remediation action (SSM Automation document), a Security Hub CSPM finding fix, or a Patch Manager scan-and-install run; Step 5 Close plus Evidence — re-test confirms closure, and the task, approval trail, and re-test become the evidence record. A dashed teal return arrow runs from Step 5 back to Step 1, labeled 'Continuous — the loop re-runs each cycle; results roll up to attestation (Book 04) and the KSI evidence pipeline'. A footer band states the scope is FedRAMP Moderate and AWS GovCloud (US), and that ServiceNow coordinates owner, SLA, approval, and evidence while the platform actuates. White background. Authored house-style diagram." width="100%"}
+
+# The AWS Control Engines and Their Coordination Role
+
+| AWS engine | Owns (actuation) | Control | ServiceNow coordination role |
+|---|---|---|---|
+| **AWS Config** | Resource configuration compliance (managed rules, conformance packs); remediation via SSM Automation documents | CM-2, CM-6 | Non-compliant resource → Change/remediation task against the CI; track native remediation to closure |
+| **Security Hub CSPM** | Posture control findings (FSBP/NIST 800-53/CIS standards) plus aggregated GuardDuty and Inspector findings | CM-6, RA-5 | Finding → prioritized Vulnerability-Response task; SLA by exposure |
+| **Systems Manager Patch Manager** | Managed-node patch scan and scan-and-install, guest-OS and application patches | SI-2, SI-2(2/3) | Patch compliance result → Change/Incident; SLA-class task keyed to KEV/exposure |
+
+::: {.aan-note}
+**SSM hybrid activation is bounded, by doctrine — and this volume's scope is AWS + hybrid-activated guest OS.** Systems Manager's hybrid activation extends Patch Manager and Config-adjacent management to on-premises servers and edge devices registered as managed nodes inside the GCC Moderate boundary; it does not patch a hypervisor, firmware, or a managed database service (Management-Plane Coordination Doctrine, Vol 0 Book 00) — the identical bound Arc carries for Azure. **This volume coordinates the AWS and hybrid-activated-managed-node surface only.** OCI and VMware reconcile into the same ServiceNow SI-2 queue in a later follow-up (their native stacks are catalogued in Vol III Book 03); ServiceNow already coordinates a single queue, so adding those surfaces later needs no rework here.
+:::
+
+# Control Engine 1 — AWS Config (CM-2 / CM-6)
+
+AWS Config continuously evaluates resource configuration against managed rules and conformance packs — including the published NIST SP 800-53 Rev 5 and FedRAMP conformance-pack templates — and can remediate a subset natively through remediation actions bound to SSM Automation documents. The coordination role covers the rest — and the change control around all of it.
+
+- **Test:** rule/conformance-pack compliance state is read per resource (compliant / non-compliant / not-applicable).
+- **Detect + Raise:** a non-compliant resource becomes a ServiceNow **Change** (for a controlled configuration change) tagged with the Config rule, the mapped control (CM-2/CM-6), severity, and the reconciled resource CI. An *exemption* is not silent — it is a request with an approver and an expiry, so a rule exception is reviewable (the same discipline as an M365 CA exception and an Azure Policy exemption).
+- **Actuate:** a Config remediation action invokes its bound SSM Automation document — set up as auto-remediation or triggered manually — or the owning team applies the configuration through infrastructure-as-code (Vol VI Book 01/06). ServiceNow does not write the resource. Unlike Azure Policy's deployIfNotExists, Config remediation is a distinct, explicitly configured action rather than an inline effect of the policy assignment — a difference in mechanism, not in the coordination pattern.
+- **Close:** the next evaluation flips the resource to compliant; ServiceNow closes and stamps the evidence.
+
+# Control Engine 2 — Security Hub CSPM (CM-6 / RA-5)
+
+Security Hub CSPM is the AWS posture engine within the GCC Moderate boundary; Vol III Book 04 owns the posture architecture and Vol III Book 02 owns the assessment doctrine. It runs continuous control checks against the AWS Foundational Security Best Practices (FSBP) standard and external frameworks (NIST 800-53, CIS), and separately aggregates findings from GuardDuty (threat detection) and Inspector (workload/image vulnerability scanning) into a single normalized format (ASFF). (Security Hub CSPM's cross-account/cross-Region aggregation and third-party product integrations are a later follow-up, out of scope here.) The coordination role turns its AWS findings into prioritized, owned remediation work.
+
+- **Test + Detect:** Security Hub CSPM control findings (misconfiguration against FSBP/NIST 800-53) and aggregated GuardDuty/Inspector findings (threat/vulnerability) are read via the Security Hub API.
+- **Raise:** each finding becomes a ServiceNow **Vulnerability Response** task against the reconciled CI, with a severity and an SLA class derived from exposure and KEV status — the risk-based prioritization CISA BOD 22-01 and the four-variable model (BOD 26-04) call for.
+- **Actuate:** the owning team remediates on the native surface — a configuration fix, an image rebuild (Vol VI Book 01), or a patch (Systems Manager Patch Manager, below).
+- **Close:** the finding clears on the next Security Hub CSPM check; ServiceNow closes the task, and the mean-time-to-remediate becomes an SI-2(3) / KSI metric.
+
+::: {.aan-caution}
+**Security Hub CSPM does not backfill history.** It only detects and consolidates findings generated after it is enabled in a Region, and only processes findings in the Region where it was enabled — a newly-onboarded account or Region starts with a clean slate, not a retroactive posture assessment. The reconciliation loop's first cycle in any new scope is a baseline, not a backlog.
+:::
+
+# Control Engine 3 — Systems Manager Patch Manager (SI-2)
+
+Systems Manager Patch Manager assesses and deploys patches across Amazon EC2 instances and, via hybrid activation, on-premises/edge managed nodes inside the GCC Moderate boundary. It is the SI-2 actuation engine for the guest OS and supported applications; the coordination role reconciles its results into change/incident work with the SLA discipline SI-2(3) requires.
+
+- **Test:** a Patch Manager `Scan` operation reports missing patches per managed node against the organization's patch baseline (a *Scan* is a report-only pass; the baseline — not AWS, an OS vendor, or a third party — defines what "compliant" means for the fleet).
+- **Raise:** a missing patch meeting the baseline's approval criteria becomes a ServiceNow **Change** (scheduled maintenance window) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the BOD 26-04 model. The same SLA discipline is what the OCI and VMware patch queues will reconcile into when they are added later (Vol III Book 03).
+- **Actuate:** Patch Manager runs `Scan and install` in the approved maintenance window (or an on-demand `Patch now`); ServiceNow does not push the patch, it schedules and governs it.
+- **Close + evidence:** the compliance report from the next scan confirms the patch landed; the Change record, approval, window, and re-scan become the SI-2(2) machine-readable remediation-status evidence. Patch Manager can also forward compliance data to Security Hub CSPM, giving the posture engine visibility into patch state alongside its own findings.
+
+::: {.aan-note}
+**Scan is not remediation, patch-baseline compliance is not "secure," and remediation is not the record.** Vol III Book 02 measures the gap (RA-5); Patch Manager closes it against the fleet's own baseline (SI-2) — AWS is explicit that baseline compliance and actual security are not the same claim; this book is the *record and clock* — the owned task, the approved window, the SLA, and the closure evidence. Three distinct jobs; conflating them is how a "patched" estate still fails an assessment for want of evidence.
+:::
+
+# Continuous Monitoring Roll-Up (CA-7)
+
+Each engine's loop emits its result into the continuous-monitoring feed: Config rule/conformance-pack compliance percentage, open Security Hub CSPM findings by severity and age, patch SLA conformance. ServiceNow rolls these into a per-control AWS posture that Vol VII Book 04 turns into attestation and KSI evidence, keyed to the same reconciled asset identity the M365 and Azure postures use — so all three clouds produce *one* compliance picture, not three.
+
+# Closure Necessity
+
+::: {.aan-tip}
+## Closure Necessity — AWS actuates; the estate still needs an owner and a clock
+AWS Config remediates, Security Hub CSPM surfaces, Patch Manager patches — the native stack is genuinely sufficient to *change state*. What it does not supply is the governance wrapper: who owns this finding, by when, under whose approval, with what evidence. Strip the coordination layer and AWS's own consoles show green while the authorization package has no owned-and-evidenced record an assessor can trace. CM-6, SI-2, and RA-5 are closed by AWS; they are *operated* — owned, clocked, evidenced — here.
+:::
+
+# NIST SP 800-53 Rev 5 Control Closure — Authorities Closed Here
+
+Generated from the series compliance spine (`orgcomp-compliance-spine.yml`) by `render_authorities_table.py`; not hand-edited here. Coordination closures — the AWS control state operated as tracked work — not a re-closure of the posture/patch mechanisms Volumes III and VI own.
+
+<!-- authorities:book-sn-aws — generated from orgcomp-compliance-spine.yml; do not hand-edit -->
+| Control | Title | Closing mechanism (function, not product) | Accreditation gate | Authority drivers | Evidence slot | FedRAMP 20x KSI | Tool-attestable? |
+|---|---|---|---|---|---|---|---|
+| CM-6 | Configuration Settings | AWS Config / Security Hub CSPM findings raised as ServiceNow remediation tasks; Config-native remediation actuates, ServiceNow tracks to closure | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA SCuBA | Security / supply chain | KSI-CMT | No |
+| RA-5 | Vulnerability Monitoring and Scanning | Security Hub CSPM / GuardDuty / Inspector findings on AWS workloads flow to ServiceNow Vulnerability Response as prioritized remediation tasks | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 22-01 | Security / supply chain | KSI-MLA | No |
+| SI-2 | Flaw Remediation | AWS Systems Manager Patch Manager patch results reconciled into ServiceNow Change/Incident with SLA-class tasks keyed to KEV/exposure (actuation platform-native) | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 26-04 | Endpoint | KSI-SVC, KSI-MLA | No |
+
+: Authorities Closed Here — AWS Federal Control Compliance Automation († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+
+# Honest Limits
+
+- A task closes when the native re-evaluation passes; Config/Security Hub CSPM assessment latency means "closed" can lag actual state by an evaluation cycle. Evidence timestamps record the cycle, not the instant.
+- Patch compliance data is a point-in-time snapshot from the latest successful patching operation, not a continuous state — the capture time on each compliance report, not "now," is what the evidence trail actually attests to.
+- SSM hybrid activation governs guest OS and supported applications only; hypervisor, firmware, and managed-service patching reconcile in from their own native stacks (Vol III Book 03). Treating hybrid activation as the whole management plane is a doctrine violation the reconcile-exception queue is meant to catch — the identical failure mode the Arc note in Vol VII Book 03 guards against.
+- Native AWS Config auto-remediation still carries a Change record — automated actuation does not waive change control (CM-3); it makes the change record's *actuator* the SSM Automation document rather than a person.
+- AWS Config remediation actions are only available in a defined set of Regions — including both AWS GovCloud (US-East) and AWS GovCloud (US-West) — so a region-scoping check belongs in the reconcile-exception queue alongside the Arc/hybrid-activation bound above.
+
+# Cross-References
+
+- **Vol III Book 02 (Vulnerability Management)** — the assessment half whose findings this book routes to remediation tasks.
+- **Vol III Book 03 (Patch & Systems Management)** — the SI-2 queue this book's Patch Manager results reconcile into (AWS/hybrid now; OCI and VMware in a later follow-up).
+- **Vol III Book 04 (Cloud-Native Posture)** — the Security Hub CSPM posture architecture this book coordinates findings from.
+- **Vol III Book 07 (Multi-Cloud Evidence Fabric)** — where AWS Config/Security Hub feeds join the cross-environment evidence fabric; this book is the AWS-native coordination source for that fabric, not a re-statement of it.
+- **Vol VI Book 01/06 (Landing Zone / Baselines as Code)** — the IaC that actuates many AWS remediations.
+- **Vol VII Book 01** — the reconciled CIs every AWS task is raised against; **Vol VII Book 04** — where the AWS posture roll-up becomes attestation.
+- **Vol VII Book 03 (Azure Federal Control Compliance Automation)** — the sibling coordination book this one mirrors structurally; Azure and AWS now both reconcile into the same ServiceNow queues.
+
+# Provenance
+
+Draft. AWS Config, Security Hub CSPM, GuardDuty, Inspector, and Systems Manager Patch Manager are deployed examples; the detect→raise→actuate-native→close→evidence loop is the invariant, identical to the M365 and Azure books. Vendor claims cite vendor documentation (see References). The compliance-loop figure is authored as committed house-style SVG.
+
+# References
+
+| Claim | Source |
+|---|---|
+| AWS Config managed rules and conformance packs | AWS documentation — <https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config_use-managed-rules.html>, <https://docs.aws.amazon.com/config/latest/developerguide/conformance-packs.html> |
+| AWS Config remediation actions (SSM Automation documents) | AWS documentation — <https://docs.aws.amazon.com/config/latest/developerguide/remediation.html> |
+| NIST SP 800-53 Rev 5 Config conformance pack | AWS documentation — <https://docs.aws.amazon.com/config/latest/developerguide/operational-best-practices-for-nist-800-53_rev_5.html> |
+| AWS Security Hub CSPM (standards, finding aggregation, ASFF) | AWS documentation — <https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html> |
+| AWS Systems Manager Patch Manager (baselines, scan/install, compliance reporting) | AWS documentation — <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-patch.html> |
+| Risk-based remediation prioritization (KEV; four-variable model) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
+| ServiceNow as workflow/CMDB/evidence coordination hub | Expansion Plan §16 — `docs/customer-documents/orgcomp-series/OrgComp_Series_Expansion_Plan_Substrate_Accreditation.md` |

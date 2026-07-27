@@ -4,8 +4,8 @@
 
 ## Coverage (stated honestly)
 
-- The spine records **97 control-closure claims** across **18 of 69 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
-- **11 of 97** claims carry a named falsifying test; **17 of 97** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
+- The spine records **100 control-closure claims** across **19 of 70 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
+- **12 of 100** claims carry a named falsifying test; **17 of 100** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
 
 ## Matrix
 
@@ -76,6 +76,9 @@
 | CA-2 | book-sn-attestation | 6 | Telemetry | — | Vol VI Book 08 — detection-efficacy + deploy smoke tests |
 | CA-5 | book-sn-attestation | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
 | CA-7 | book-sn-attestation | 6 | Telemetry | — | Vol VI Book 08 — telemetry-completeness workbook (CA-7(3)) |
+| CM-6 | book-sn-aws | 6 | Security / supply chain | — | Vol VI Book 08 — baseline conformance re-check (scheduled re-scan vs intended baseline) |
+| RA-5 | book-sn-aws | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
+| SI-2 | book-sn-aws | 7 | Endpoint | — | — *(no falsifying test bound yet)* |
 | CM-6 | book-sn-azure | 6 | Security / supply chain | — | Vol VI Book 08 — baseline conformance re-check (scheduled re-scan vs intended baseline) |
 | RA-5 | book-sn-azure | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
 | SI-2 | book-sn-azure | 7 | Endpoint | — | — *(no falsifying test bound yet)* |
