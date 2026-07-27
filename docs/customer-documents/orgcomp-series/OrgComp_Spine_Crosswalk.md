@@ -4,7 +4,7 @@
 
 ## Coverage (stated honestly)
 
-- This crosswalk is rendered from the **97 closure rows** the spine carries across **18 of 69 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
+- This crosswalk is rendered from the **100 closure rows** the spine carries across **19 of 70 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
 - It aggregates those closures into **53 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
 
 ## Crosswalk
@@ -35,7 +35,7 @@
 | CM-2 | Baseline Configuration | CM | Vol III Bk 03, Vol IX Bk 02 | KSI-CMT |
 | CM-3 | Configuration Change Control | CM | Vol VII Bk 01, Vol VIII Bk 07, Vol IX Bk 02, Vol IX Bk 04, Vol IX Bk 05 | KSI-CMT |
 | CM-5 | Access Restrictions for Change | CM | Vol VIII Bk 07 | KSI-IAM |
-| CM-6 | Configuration Settings | CM | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 02, Vol VII Bk 03, Vol IX Bk 04 | KSI-CMT, KSI-SVC |
+| CM-6 | Configuration Settings | CM | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 02, Vol VII Bk 03, Vol VII Bk 06, Vol IX Bk 04 | KSI-CMT, KSI-SVC |
 | CM-7 | Least Functionality | CM | Vol III Bk 04 | KSI-SVC |
 | CM-8 † | System Component Inventory | CM | Vol III Bk 03, Vol VII Bk 01, Vol VIII Bk 06, Vol IX Bk 02, Vol IX Bk 05 | KSI-PIY |
 | IA-2 | Identification and Authentication (Organizational Users) | IA | Vol IX Bk 05 | KSI-IAM |
@@ -45,7 +45,7 @@
 | IA-5(2) | Authenticator Management | Public Key-Based Authentication | IA | Vol IX Bk 03, Vol IX Bk 05 | KSI-IAM |
 | PS-4 † | Personnel Termination | PS | Vol I Bk 04 | — |
 | PS-5 † | Personnel Transfer | PS | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
-| RA-5 | Vulnerability Monitoring and Scanning | RA | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 03 | KSI-MLA |
+| RA-5 | Vulnerability Monitoring and Scanning | RA | Vol III Bk 03, Vol III Bk 04, Vol VII Bk 03, Vol VII Bk 06 | KSI-MLA |
 | SA-9 † | External System Services | SA | Vol IX Bk 05 | KSI-SCR |
 | SA-9(2) | External System Services | Identification of Functions, Ports, Protocols, and Services | SA | Vol IX Bk 05 | KSI-SCR |
 | SA-11 | Developer Testing and Evaluation | SA | Vol III Bk 04 | KSI-SVC |
@@ -57,7 +57,7 @@
 | SC-20 † | Secure Name/Address Resolution Service (Authoritative Source) | SC | Vol I Bk 01, Vol VIII Bk 06 | KSI-CNA |
 | SC-21 † | Secure Name/Address Resolution Service (Recursive or Caching Resolver) | SC | Vol I Bk 01 | KSI-CNA |
 | SC-22 | Architecture and Provisioning for Name/Address Resolution Service | SC | Vol VIII Bk 06 | KSI-CNA |
-| SI-2 † | Flaw Remediation | SI | Vol III Bk 03, Vol VII Bk 03 | KSI-MLA, KSI-SVC |
+| SI-2 † | Flaw Remediation | SI | Vol III Bk 03, Vol VII Bk 03, Vol VII Bk 06 | KSI-MLA, KSI-SVC |
 | SI-2(2) | Automated Flaw Remediation Status | SI | Vol III Bk 03 | KSI-MLA, KSI-SVC |
 | SI-2(3) | Time to Remediate Flaws and Benchmarks for Corrective Actions | SI | Vol III Bk 03 | KSI-SVC |
 | SI-3 | Malicious Code Protection | SI | Vol III Bk 04 | KSI-MLA |
@@ -110,6 +110,7 @@ Distinct controls the spine closes within each volume (a control closed in sever
 | book-sn-m365 | Vol VII Bk 02 | M365 Federal Control Compliance Automation |
 | book-sn-azure | Vol VII Bk 03 | Azure Federal Control Compliance Automation |
 | book-sn-attestation | Vol VII Bk 04 | Control Attestation, Evidence & KSI |
+| book-sn-aws | Vol VII Bk 06 | AWS Federal Control Compliance Automation |
 | book-ddi-xplat | Vol VIII Bk 06 | Cross-Platform Operations & Multi-Cloud Governance |
 | book-ddi-servicenow | Vol VIII Bk 07 | ServiceNow Orchestration — Governed Front Door for DDI |
 | book-day2-helpdesk | Vol IX Bk 01 | Helpdesk & ITSM Catalog (Entra · M365 · Azure) |
