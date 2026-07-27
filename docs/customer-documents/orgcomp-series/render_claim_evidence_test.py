@@ -43,7 +43,7 @@ def render() -> str:
     with_kit = sum(1 for c in closures if c.get("kit"))
 
     L = []
-    L.append("# AAN Claim → Evidence → Test Traceability Matrix")
+    L.append("# OrgComp Claim → Evidence → Test Traceability Matrix")
     L.append("")
     L.append(
         "> **Generated file — do not hand-edit.** Produced by "

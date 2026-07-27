@@ -1,4 +1,4 @@
-# AAN Series Expansion Plan — The Accreditation Substrate (Multi-CSP Patch/Management + Network Enforcement)
+# OrgComp Series Expansion Plan — The Accreditation Substrate (Multi-CSP Patch/Management + Network Enforcement)
 
 > Status: DRAFT for author review · Surface: `inbox/` (not canon)
 > Scope: `docs/customer-documents/orgcomp-series/` book series
@@ -436,7 +436,7 @@ ServiceNow Gov Cloud FedRAMP High; Tanium TC-USG FedRAMP Moderate
 ## 17. Product Inventory Questionnaire (companion instrument)
 
 `OrgComp_Product_Inventory_Questionnaire.qmd` — a discovery instrument that maps an
-agency's **already-deployed** tools onto the AAN planes/books, so the plan can
+agency's **already-deployed** tools onto the OrgComp planes/books, so the plan can
 be tailored to what exists rather than executed blind. Structure: scope rule
 (§2, SSA = exclusively FedRAMP **Class C / Moderate**, with a flag convention
 for High-only / gear / unauthorized), a **pre-filled Known-SSA block** (§3,

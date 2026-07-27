@@ -1,4 +1,4 @@
-# AAN Volume VII Plan — ServiceNow Automation for Federal Control Compliance
+# OrgComp Volume VII Plan — ServiceNow Automation for Federal Control Compliance
 
 > Status: DRAFT for author review · Surface: `inbox/` (not canon)
 > Scope: new volume in `docs/customer-documents/orgcomp-series/` book series

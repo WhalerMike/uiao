@@ -1,12 +1,12 @@
-# Federal Application-Aware Networking (AAN) Series
+# Federal Organization Compliance (OrgComp) Series
 
-> Detailed Requirements Document  |  Draft v0.1  |  Date Code: 2026-07-18 10:02 ET
+> Detailed Requirements Document  |  Draft v0.1  |  Date Code: 2026-07-27 09:38 ET
 
 > Related Volumes: Vol 0 (Program & Executive), Vols I–IV (Architecture), Vol V (Training & Certification), Vol VI (Implementation), Vol VII (ServiceNow Automation), Vol VIII (Multi-Cloud DDI), Vol IX (Day-2 Operations)
 
 ## 1. Overview & Purpose
 
-This document defines the detailed functional and non-functional requirements for the Federal Application-Aware Networking (AAN) program — the architectural substrate SSA requires to satisfy NIST SP 800-53 Rev 5 controls (FedRAMP Moderate baseline) and FedRAMP 20x Key Security Indicators under the Consolidated Rules (CR26) effective January 1, 2027. The AAN Federal Series documents this program as ten volumes (Vol 0–IX): a program volume, four architecture volumes, a training volume, and four volumes that make the architecture buildable and operable (implementation-as-code, ServiceNow coordination, multi-cloud DDI automation, and Day-2 operations).
+This document defines the detailed functional and non-functional requirements for the Federal Organization Compliance (OrgComp) program (formerly Application-Aware Networking, AAN) — the architectural substrate SSA requires to satisfy NIST SP 800-53 Rev 5 controls (FedRAMP Moderate baseline) and FedRAMP 20x Key Security Indicators under the Consolidated Rules (CR26) effective January 1, 2027. The OrgComp Federal Series documents this program as ten volumes (Vol 0–IX): a program volume, four architecture volumes, a training volume, and four volumes that make the architecture buildable and operable (implementation-as-code, ServiceNow coordination, multi-cloud DDI automation, and Day-2 operations).
 
 The unifying thesis of the series: TIC 3.0, SD-WAN, and IPAM/DDI are not preferred technologies — they are the only closure mechanisms for a specific, enumerable set of NIST SP 800-53 Rev 5 controls and FedRAMP 20x KSIs. Every requirement below traces to that closure arithmetic: 146 distinct controls series-wide and the internal 29-rule KSI decomposition, of which 19 rules bind to evidence slots that exist only because the architecture is built.
 
@@ -180,4 +180,4 @@ Explicit follow-ups, deliberately out of scope now:
 - Organizational assignment, budgeting, and procurement execution — established through the formal alignment process, not by this document.
 ---
 
-This is a draft requirements document aligned with the AAN Federal Series (July 2026), developed by the CSI Team as a draft proposal. It has not been reviewed or approved by the SSA CIO Office, OIS, or organizational leadership; all recommendations are subject to revision pending formal review. It is intended for review by CSI, OIS, and ServiceNow stakeholders, and will be refined through workshops and alignment with the CR26 Indicator Mapping effort.
+This is a draft requirements document aligned with the OrgComp Federal Series (July 2026), developed by the CSI Team as a draft proposal. It has not been reviewed or approved by the SSA CIO Office, OIS, or organizational leadership; all recommendations are subject to revision pending formal review. It is intended for review by CSI, OIS, and ServiceNow stakeholders, and will be refined through workshops and alignment with the CR26 Indicator Mapping effort.

@@ -1,13 +1,13 @@
-# Federal AAN — Governance & Ownership Model (Adoption Artifact)
+# Federal OrgComp — Governance & Ownership Model (Adoption Artifact)
 **Internal CSI Team Working Document — Draft for SSA ratification**
 
-**Date Code:** 2026-07-07 15:05 ET
+**Date Code:** 2026-07-27 09:38 ET
 
 ---
 
 ## Purpose and Status
 
-The AAN series deliberately describes **functions, not organizations**
+The OrgComp series deliberately describes **functions, not organizations**
 (series doctrine theme D): the books name no owners, because the
 architectural facts are true regardless of how any agency's org chart divides
 them. Book 16 supplies the governance *templates* — the ISPP, the program
@@ -133,6 +133,6 @@ recorded per enforcement phase and retained as authorization evidence.
 ---
 
 *Internal CSI Team working artifact — draft pending CIO Office / OIS
-ratification. Component names reflect the roles used throughout the AAN
+ratification. Component names reflect the roles used throughout the OrgComp
 series; the CIO Office maps them to current organizational designations at
 ratification.*

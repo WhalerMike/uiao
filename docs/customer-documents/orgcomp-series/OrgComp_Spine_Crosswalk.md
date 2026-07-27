@@ -1,4 +1,4 @@
-# AAN Spine-Derived Control Crosswalk
+# OrgComp Spine-Derived Control Crosswalk
 
 > **Generated file — do not hand-edit.** Produced by `render_crosswalk.py` from `orgcomp-compliance-spine.yml`. Regenerate when closures change; CI-gated by `orgcomp-authorities-drift.yml`.
 

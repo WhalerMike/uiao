@@ -1,4 +1,4 @@
-# AAN ServiceNow Implementation Coverage
+# OrgComp ServiceNow Implementation Coverage
 
 > **Generated file — do not hand-edit.** Produced by `render_impl_coverage.py`
 > from the six lane control maps and the kit artifacts on disk; CI-gated. This

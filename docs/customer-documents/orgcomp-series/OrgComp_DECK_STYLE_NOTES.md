@@ -1,4 +1,4 @@
-# AAN Deck Style Notes — reverse-engineering record
+# OrgComp Deck Style Notes — reverse-engineering record
 
 Measured from the committed hand-built AAN briefing decks with `python-pptx`
 1.0.2 on 2026-07-08. These are the exact numbers the canonical generator

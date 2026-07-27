@@ -1,4 +1,4 @@
-# AAN Series Build Plan — Necessity Doctrine, Series Expansion to 18, and Cross-Book Sharpening
+# OrgComp Series Build Plan — Necessity Doctrine, Series Expansion to 18, and Cross-Book Sharpening
 
 > Status: DRAFT for author review · Surface: `inbox/` (not canon)
 > Scope: `docs/customer-documents/orgcomp-series/` book series + `federal-orgcomp-conmon-gap-roadmap.md`

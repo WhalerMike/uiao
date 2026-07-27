@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the ADR-111 rule set → CR26 Moderate indicator reconciliation.
 
-Closes the "KSI-count reconciliation (open item)" the AAN series flagged in the
+Closes the "KSI-count reconciliation (open item)" the OrgComp series flagged in the
 Executive Summary and Vol IV Book 06: the series headlines "29/29" against the
 internal ADR-111 rule set, which is NOT the CR26 Moderate indicator catalog.
 This script produces the rule-ID-by-rule-ID diff by matching each internal
@@ -233,7 +233,7 @@ def render() -> str:
     for th, title, n in unmapped:
         L.append(
             f"| {th} — {title} | {n} | Bind each indicator to a rule, **or** record "
-            "an explicit ScuBA-baseline attestation decision | AAN compliance "
+            "an explicit ScuBA-baseline attestation decision | OrgComp compliance "
             "authoring lead (OIS ConMon lead accountable) | Before independent SCA; "
             "no later than the Class B+C window (Aug 31, 2026) |"
         )

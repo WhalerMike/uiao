@@ -182,7 +182,7 @@ def render() -> str:
     labels = book_labels(spine)
 
     L: list[str] = []
-    L.append("# AAN Spine-Derived Control Crosswalk")
+    L.append("# OrgComp Spine-Derived Control Crosswalk")
     L.append("")
     L.append(
         "> **Generated file — do not hand-edit.** Produced by "

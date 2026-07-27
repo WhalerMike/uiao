@@ -1,4 +1,4 @@
-# AAN External-Verification Register
+# OrgComp External-Verification Register
 
 > **Owner-maintained tracking register — NOT auto-generated.** Seeded from the
 > 2026-07-14 corpus sweep (run `wf_e275cbcc-660`), which flagged these
