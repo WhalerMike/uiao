@@ -1217,7 +1217,7 @@ release, Universal DDI manages:
 | Infoblox NIOS-X | Native |
 | Microsoft Windows Server DNS | Agent-based |
 | Amazon Route 53 | API integration |
-| Microsoft Azure DNS | API integration (with noted limitations) |
+| Microsoft Azure DNS | API integration ([noted limitations](https://docs.infoblox.com/space/BloxOneDDI/365461729/Limitations+of+Azure+DNS+Integration)) |
 | Google Cloud DNS | API integration |
 | Cloudflare DNS | API integration (added late 2025) |
 | Akamai DNS | API integration (added late 2025) |
@@ -1498,6 +1498,15 @@ it is a documented technique in red team playbooks and has been observed
 in federal network incidents. Unified DHCP governance, with rogue DHCP
 detection and option-6 consistency enforcement, closes this attack surface.
 
+**The management-plane authorization gap has just closed.** On 2026-07-22,
+Infoblox Government Cloud achieved FedRAMP Moderate certification, delivering
+Universal DDI Management, NIOS-X Servers, and Universal Asset Insights through
+AWS GovCloud (US). Agencies that previously had to run the SaaS management
+plane described in §7.4 outside an authorized boundary — or defer adopting it
+until an authorization existed — no longer have that constraint as a reason to
+wait. The architecture this paper argues for is now authorizable, not just
+directionally correct.
+
 ---
 
 ## Part 8 — Cisco Catalyst SD-WAN DNS Interception
@@ -1682,24 +1691,37 @@ from cloud-originating queries.
 | [Infoblox Innovations Blog, Nov 2025 – Jan 2026](https://www.infoblox.com/blog/company/november-2025-january-2026-innovations-whats-new-in-infoblox-ddi/) | Vendor blog | Cloudflare / Akamai integration additions |
 | [Infoblox Security Blog — Unified Interception Point](https://www.infoblox.com/blog/security/unified-security-interception-point-for-hybrid-cloud-environments/) | Vendor blog | Single management plane |
 | [Network World — Infoblox Universal DDI Nov 2025](https://www.networkworld.com/article/4083475/infoblox-bolsters-universal-ddi-platform-with-multi-cloud-integrations.html) | Trade press | Independent confirmation of edge integrations |
+| [Infoblox Government Cloud Achieves FedRAMP Moderate Certification (2026-07-22)](https://www.infoblox.com/blog/company/infoblox-universal-ddi-comes-to-infoblox-government-cloud/) | Primary vendor | Universal DDI Management + NIOS-X + Universal Asset Insights authorized in AWS GovCloud (US) |
 | [Microsoft Learn — INR CPE Documentation](https://learn.microsoft.com/en-us/microsoft-365/enterprise/office-365-network-mac-perf-cpe?view=o365-worldwide) | Primary (Microsoft) | Cisco-only INR table; GCC/DoD exclusion (2026-03-10) |
 | [Cisco Blog — INR First Vendor](https://blogs.cisco.com/networking/cisco-is-the-first-sd-wan-vendor-with-informed-network-routing-for-microsoft-365) | Vendor blog | INR integration context |
 | [Cisco Blog — INR Teams/SharePoint](https://blogs.cisco.com/networking/cisco-sd-wan-expands-microsoft-365-integration-with-informed-network-routing-for-microsoft-teams-and-sharepoint) | Vendor blog | 20.4.x starting version |
 | RFC 1034 / RFC 1035 | IETF | DNS specification and wildcard behavior |
 | RFC 5625 | IETF | DNS forwarder behavior in policy chain |
 | NIST SP 800-207 | NIST | Zero Trust Architecture — FQDN as service identity |
-| Infoblox DDI-for-SD-WAN PDF (`docs.infoblox.com/space/BloxOneCloud/2096169083`) | Primary vendor | *Unreachable during research* |
-| Cisco redirect-dns config guide (`cisco.com` IOS XE 17 policies) | Primary vendor | *Unreachable during research — mechanics derived from RFC 5625* |
+| [Cisco — Redirect DNS in Cisco Catalyst SD-WAN Service-Side VPNs](https://www.cisco.com/c/en/us/td/docs/routers/sdwan/configuration/policies/ios-xe-17/policies-book-xe/redirect-dns.html) | Primary vendor | §8.2 `redirect-dns` mechanics: data policy match/action syntax, NAT dependency, restrictions (IPv4-only, UDP-only, no overlay-tunnel source) — confirms the interception model in the text |
+| [Infoblox — Limitations of Azure DNS Integration](https://docs.infoblox.com/space/BloxOneDDI/365461729/Limitations+of+Azure+DNS+Integration) | Primary vendor | §7.4 "noted limitations" footnote: no Azure DNS tag support, no non-simple routing policy records, NS/SOA/MNAME sync constraints — answers Appendix B Q2 |
+| [Infoblox — Managing Endpoint](https://docs.infoblox.com/space/BloxOneThreatDefense/35374260/Managing+Endpoint) | Primary vendor | Current-gen Infoblox Endpoint architecture: DoT on TCP/443 to a loopback stub resolver (127.0.0.1, or 127.0.0.2 on macOS) — informs but does not fully resolve Appendix B Q1 |
+| ~~Infoblox DDI-for-SD-WAN PDF~~ (`docs.infoblox.com/space/BloxOneCloud/2096169083`) | Primary vendor | *Citation error, corrected 2026-07-27: this URL is reachable but is [Cisco Catalyst SD-WAN Credentials](https://docs.infoblox.com/space/BloxOneCloud/2096169083), a Universal Asset Insights (device-discovery) credential-setup page — unrelated to DNS/DDI resolution behavior. It does not support any claim in this paper and should not have been cited as a DDI-for-SD-WAN source.* |
 
 ## Appendix B — Open Questions for Vendor Engagement
 
 1. **Infoblox:** Does BloxOne Endpoint support transparent DNS proxy mode
    compatible with Cisco Catalyst SD-WAN `redirect-dns`? Or must the workstation
-   explicitly configure BloxOne Endpoint as its resolver?
+   explicitly configure BloxOne Endpoint as its resolver? — *Partially informed
+   2026-07-27: [Managing Endpoint](https://docs.infoblox.com/space/BloxOneThreatDefense/35374260/Managing+Endpoint)
+   describes Infoblox Endpoint as a loopback stub resolver (device queries
+   127.0.0.1/127.0.0.2 on port 53, agent forwards over DoT/443) rather than a
+   network-addressable proxy. That architecture is not obviously the target of
+   a network-level `redirect-dns` redirect, which points at an IP address — still
+   needs vendor confirmation.*
 
 2. **Infoblox:** What are the specific Azure DNS integration limitations in
    `docs.infoblox.com`? Do they affect private endpoint FQDN resolution or
-   conditional forwarding for Azure-managed namespaces?
+   conditional forwarding for Azure-managed namespaces? — *Answered 2026-07-27
+   for the limitation list: see [Limitations of Azure DNS Integration](https://docs.infoblox.com/space/BloxOneDDI/365461729/Limitations+of+Azure+DNS+Integration)
+   (no Azure DNS tags, no non-simple routing policy records, NS/SOA/MNAME sync
+   constraints). The page does not address private-endpoint FQDN resolution or
+   conditional forwarding specifically — that half of the question is still open.*
 
 3. **Infoblox:** Does Universal DDI IPAM track wildcard DNS records and
    subdomain namespace occupancy, or only host-level A/AAAA records?
@@ -1722,12 +1744,26 @@ from cloud-originating queries.
 
 This whitepaper is **DRAFT v0.3** (July 2026; external claims re-verified
 2026-07-27 — the INR sovereign-cloud restriction is unchanged on Microsoft
-Learn, and the April 2026 Infoblox release is now reflected in §7.4).
+Learn, the April 2026 Infoblox release is reflected in §7.4, and the
+2026-07-22 Infoblox Government Cloud FedRAMP Moderate certification is now
+reflected in §7.8). The two Appendix A sources originally marked unreachable
+were re-checked on 2026-07-27: both return only a bare page title to a plain
+HTTP fetch (Infoblox's docs portal and Cisco's guide are both JS-rendered and
+require a real browser), but both render full content in a browser. The Cisco
+redirect-dns guide is now cited directly and grounds §8.2. The Infoblox URL
+turned out to be a Universal Asset Insights credential-setup page unrelated to
+DNS/DDI behavior — that citation was a research-time error and has been
+replaced in Appendix A with two on-topic Infoblox sources (Azure DNS
+integration limitations, current Endpoint architecture) found while
+re-verifying. Appendix B Q2 is now substantially answered; Q1 and Q4 are
+better informed but still open, and Q3/Q5/Q6 remain fully open. Vendor
+technical review is still recommended, but the "unreachable source" gate
+itself is closed.
 Parts 4 (AD DNS departure),
 5 (Kerberos → token / certificate DNS surface), and 6 (Layer 7 wildcard DNS)
 are synthesized from first principles, RFC behavior, and Microsoft product
 documentation — not from Infoblox or Cisco publications, which do not address
 these topics. The SD-WAN interception chain analysis in Part 8 is similarly
-synthesized. Before customer distribution, verify against the two unreachable
+synthesized. Before customer distribution, resolve the remaining open Appendix B questions and obtain
 sources in Appendix A and obtain Infoblox and Cisco technical review.
 :::
