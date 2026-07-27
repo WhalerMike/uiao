@@ -1,6 +1,17 @@
 # OrgComp Series Expansion Plan — The Accreditation Substrate (Multi-CSP Patch/Management + Network Enforcement)
 
-> Status: DRAFT for author review · Surface: `inbox/` (not canon)
+> Status: **EXECUTED** — historical decision record, not an open proposal.
+> Theme F is now canonical in `Vol_0_Book_00_OrgComp_Executive_Summary.qmd`;
+> the two gap-closing book clusters this plan proposed now exist as
+> `Vol_III_Book_03_OrgComp_Patch_Systems_Management.qmd` and
+> `Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.qmd`. Retained for
+> citation provenance — cited by filename from the published
+> `Vol_VII_Book_02_OrgComp_M365_Control_Compliance_Automation.qmd` and
+> `Vol_VII_Book_03_OrgComp_Azure_Control_Compliance_Automation.qmd` (§16, the
+> ServiceNow-as-coordination-hub decision), and by line number from
+> `OrgComp_Series_Assessment_Against_Critique_v4.md`. Left otherwise unedited
+> so it reads as it did when the decision was live.
+> Surface: `inbox/` (not canon)
 > Scope: `docs/customer-documents/orgcomp-series/` book series
 > Companion to: `OrgComp_Series_Build_Plan.md` (the 00–19 restructure this builds on)
 > Constraint: **Book 11 (Vulnerability Management) is under active edit.** No
