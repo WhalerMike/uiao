@@ -19,8 +19,11 @@ The ``.pptx`` decks and the deployable operator-kit directories are static sourc
 (no shortcodes), read from ``--src-root``.
 
 Produces, into ``--out`` (the deploy calls it with ``--out _site/download``):
-  * ``orgcomp-federal-series-latest.zip`` — per-volume folders of book .docx + .pptx,
+  * ``orgcomp-federal-series-latest.zip`` — per-volume folders holding ONE Word
+    file per volume (the ``Vol_<N>-<Theme>-Bundle.docx`` the bundler's volume
+    pass concatenated from the volume's books) plus the per-book .pptx decks,
     plus the operator kits, plus a README stating the edition and build date.
+    Individual per-book .docx are not shipped — the site offers those per page.
 
 Federal edition ONLY. This script never reads inbox/aan-ssa-edition/; the .docx it
 collects are the federal renders and the .pptx/kits carry no agency facts, so the
@@ -65,6 +68,11 @@ VOL_FOLDER = {
 }
 _VOL_RE = re.compile(r"^Vol_([0-9IVX]+)_Book_")
 
+# Per-volume Word bundle produced by bundle_section_docx.py's volume pass —
+# themed form "Vol_I-Foundation & Transport-Bundle.docx", themeless fallback
+# "Vol_<N>-bundle.docx". Both live at the series root in _site.
+_VOL_BUNDLE_RE = re.compile(r"^Vol_([0-9IVX]+)-.*[Bb]undle\.docx$")
+
 # Operator kit source directories, relative to --src-root. These are static
 # deployable source (Terraform, ServiceNow Script Includes, detection rules,
 # courseware) — no agency facts, no shortcodes.
@@ -98,18 +106,26 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
     series_site = site_root / SERIES_SITE_REL
     series_src = src_root / SERIES_SRC_REL
 
-    # 1. Federal book .docx from _site (the only correct edition source).
+    # 1. Per-volume Word bundles from _site (the only correct edition source).
+    # One Word file per volume — bundle_section_docx.py's volume pass already
+    # concatenated the volume's books, so the kit ships eleven volume files
+    # instead of ~90 per-book .docx. The site still offers per-book downloads
+    # on each page.
     n_docx = 0
-    for docx in sorted(series_site.rglob("Vol_*_Book_*.docx")):
-        if docx.name.endswith("-bundle.docx"):
+    for docx in sorted(series_site.glob("Vol_*.docx")):
+        m = _VOL_BUNDLE_RE.match(docx.name)
+        if not m:
             continue
-        folder = _vol_folder(docx.stem)
+        folder = VOL_FOLDER.get(m.group(1))
         if folder:
             members[f"{folder}/{docx.name}"] = docx
             n_docx += 1
-    notes.append(f"book .docx (federal, from _site): {n_docx}")
-    if n_docx == 0:
-        notes.append("  WARNING: no book .docx in _site — did the Quarto render run first?")
+    notes.append(f"per-volume bundle .docx (federal, from _site): {n_docx}")
+    if n_docx != len(VOL_FOLDER):
+        notes.append(
+            f"  WARNING: expected {len(VOL_FOLDER)} volume bundles, found {n_docx} — "
+            "did the bundler's volume pass run before this build?"
+        )
 
     # 1b. Non-book series .docx from _site — the operator runbook and the day-2
     # kit reference/usage docs. These are registered .qmd that render to .docx
@@ -180,7 +196,9 @@ def _index_md(members: dict[str, Path], date_code: str) -> str:
         top, _, rest = arc.partition("/")
         if top == "kits":
             kits[rest.partition("/")[0]] = kits.get(rest.partition("/")[0], 0) + 1
-        elif _VOL_RE.match(Path(rest).stem):
+        elif top in VOL_FOLDER.values():
+            # Volume folders hold the volume's Word bundle plus the per-book
+            # .pptx decks; group by stem so each lists once with its formats.
             vols.setdefault(top, {}).setdefault(Path(rest).stem, set()).add(Path(rest).suffix)
     lines = [
         "# Federal Organization Compliance (OrgComp) Series — kit index",
@@ -214,7 +232,7 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
         print(" ", n)
 
     if not any(k.endswith(".docx") for k in members):
-        print("\nFATAL: no book documents collected — refusing to ship an empty kit.")
+        print("\nFATAL: no Word documents collected — refusing to ship an empty kit.")
         return 1
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -224,10 +242,11 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
         f"Build date: {date_code}\n\n"
         "FEDERAL EDITION. Written for any federal agency; no agency is named. The\n"
         "agency-specific edition is not distributed here.\n\n"
-        "Contents: every book as Word (.docx, per-volume folders) and PowerPoint\n"
-        "(.pptx), plus the deployable operator kits (ServiceNow day-2 catalog, the\n"
-        "compliance scoped app, detection rules, the multi-cloud DDI landing-zone\n"
-        "automation, and the training academy).\n\n"
+        "Contents: one Word file per volume (.docx volume bundles, per-volume\n"
+        "folders) and every book as PowerPoint (.pptx), plus the deployable\n"
+        "operator kits (ServiceNow day-2 catalog, the compliance scoped app,\n"
+        "detection rules, the multi-cloud DDI landing-zone automation, and the\n"
+        "training academy).\n\n"
         "A master index of every volume, book, and kit is in INDEX.md.\n\n"
         "Rebuilt from source on every site deploy — no fixed SHA-256 is published.\n"
     )
