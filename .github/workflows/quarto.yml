@@ -740,6 +740,31 @@ jobs:
             echo "Packed ${#bundles[@]} section bundle(s) into uiao-all-docx-bundles.zip ($size)"
           fi
 
+      - name: Pack the per-volume Series-structure Word bundles into one zip
+        # The Series-structure table on the Download page lists one Word file
+        # per volume (Vol_0 … Vol_X, eleven files, themed form
+        # "Vol_I-Foundation & Transport-Bundle.docx"). Collect the per-volume
+        # bundles the volume pass just produced into
+        # _site/download/orgcomp-series-volumes-docx-latest.zip so a reader can
+        # grab all eleven in one click without pulling the full 48 MB kit.
+        # Regenerated on every deploy, same as uiao-all-docx-bundles.zip above.
+        run: |
+          set -euo pipefail
+          mkdir -p _site/download
+          shopt -s nullglob
+          vols=(_site/customer-documents/orgcomp-series/Vol_*-[Bb]undle.docx)
+          if [ "${#vols[@]}" -eq 0 ]; then
+            echo "No per-volume bundles found — skipping series-volumes zip."
+          else
+            ( cd _site/customer-documents/orgcomp-series \
+              && zip -q -X ../../download/orgcomp-series-volumes-docx-latest.zip Vol_*-[Bb]undle.docx )
+            size=$(du -h _site/download/orgcomp-series-volumes-docx-latest.zip | cut -f1)
+            echo "Packed ${#vols[@]} per-volume bundle(s) into orgcomp-series-volumes-docx-latest.zip ($size)"
+            if [ "${#vols[@]}" -ne 11 ]; then
+              echo "::warning::orgcomp-series-volumes zip holds ${#vols[@]} volume bundles, not the 11 the Series-structure table advertises (docs/download/index.qmd)"
+            fi
+          fi
+
       - name: Build ScubaDrift standalone download set
         # 2b (no committed binary): generate the ScubaDrift standalone zip + the
         # rendered ScubaDrift-Documentation.docx from committed source
