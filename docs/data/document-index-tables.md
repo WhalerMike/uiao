@@ -120,6 +120,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Choose Your Partners — The OrgPath Composability Matrix](whitepapers/orgpath-composability-matrix.html) | Active | Executive, Customer, Technical |
 | [SCuBAGear Integration — Whitepaper](whitepapers/scubagear-integration-whitepaper.html) | Active | Customer, Assessor, Architect |
 | [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](whitepapers/snowflake-keypair-vs-uiao-orgpath.html) | Draft | Executive, Technical, Customer |
+| [SD-WAN vs. DIA Under TIC 3.0](whitepapers/tic3-sdwan-vs-dia.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
 | [UIAO Governance OS — Whitepaper](whitepapers/uiao-governance-os-whitepaper.html) | Active | Executive, Customer, Assessor |
 | [UIAO vs Microsoft Native Tools — Gap Analysis](whitepapers/uiao-vs-native-tools.html) | Active | Executive, Customer, Technical |
 | [Zero Trust Governance — Whitepaper](whitepapers/zero-trust-governance-whitepaper.html) | Active | Executive, Customer, Assessor |

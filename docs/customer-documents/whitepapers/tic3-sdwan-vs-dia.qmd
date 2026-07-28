@@ -1,0 +1,432 @@
+---
+title: "SD-WAN vs. DIA Under TIC 3.0"
+subtitle: "Why Direct Internet Access is a physics decision, SD-WAN is a compliance decision, and TIC 3.0 is the policy that forbids making only the first — across fiber, MPLS, LEO satellite, and 5G/6G transports"
+doc-type: whitepaper
+audience: [Executive, Architect, Engineer, Technical-Lead]
+author: Michael Stratton
+date: "July 2026"
+status: Draft
+canon-source: "src/uiao/canon/"
+derived-from: "Synthesized from the Federal Organization Compliance (OrgComp) series — Vol 0 Book 00 (Executive Summary), Vol I Book 05 (Network Modernization), Vol I Book 06 (Federal Telecommunications Modernization), Vol I Book 07 (Network Enforcement Substrate), Vol II Book 03 (Database Consolidation and Network Physics) — plus CISA TIC 3.0 guidance and use cases, OMB M-19-26, ITU-T G.114, FedRAMP's Rev 5 SC-8 data-in-transit guidance, Microsoft 365 network connectivity principles, and ITU-R IMT-2030 / 3GPP 6G roadmap material. This paper owns the transport-versus-governance argument; the OrgComp volumes own the builds and the NIST control closures."
+repo-path: docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd
+created-at: 2026-07-28
+updated-at: 2026-07-28
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: draft
+tiers_adopted: []
+lifecycle_review: 2027-01-28
+---
+
+# SD-WAN vs. DIA Under TIC 3.0 {.unnumbered}
+
+::: {.callout-tip appearance="simple"}
+**[Download this whitepaper as DOCX](tic3-sdwan-vs-dia.docx)** — a Word copy of
+this page, regenerated on every site deploy. (Also available from the
+**Other Formats** link in the page sidebar.)
+:::
+
+::: {.callout-note}
+## In this whitepaper
+
+Federal network modernization conversations keep framing a decision as
+"SD-WAN vs. DIA" — as if the two were competing answers to the same question.
+They are answers to different questions, and agencies that treat them as
+alternatives end up with one of two failure modes: a governed network that is
+too slow for voice, or a fast network that is a compliance finding.
+
+This paper makes seven arguments, one per part:
+
+1. **The versus is false.** DIA is a pipe; SD-WAN is the control surface that
+   governs pipes. DIA solves exactly one problem (the geographic hairpin),
+   satisfies exactly zero NIST SP 800-53 controls, and — deployed bare —
+   breaks the one boundary control the MPLS/TIC architecture it replaced did
+   provide.
+
+2. **DIA exists because of physics, not preference.** Light in fiber travels
+   at roughly 200,000 km/s, ITU-T G.114 budgets 150 ms one-way for voice, and
+   no security product shortens a fiber path. Local breakout is the only
+   latency fix that exists; everything else in the stack is there to make
+   that fix lawful and evidenced.
+
+3. **Every transport is a pipe.** Fiber DIA, MPLS, LEO satellite (Starlink),
+   and 5G differ enormously in physics — propagation medium, path geometry,
+   breakout architecture — and not at all in compliance contribution, which
+   is zero for all four. 6G will extend the physics menu without changing
+   that conclusion.
+
+4. **TIC 3.0 is the policy gate.** OMB M-19-26 replaced mandatory TIC
+   consolidation with a use-case model: branch traffic may egress locally
+   *only when* the security-capabilities catalog is satisfied at a
+   distributed policy enforcement point. TIC 3.0 does not choose between
+   SD-WAN and DIA — it forbids DIA *without* the governance layer SD-WAN
+   and SASE provide.
+
+5. **SD-WAN is what turns four dissimilar pipes into one governed
+   transport.** The overlay contributes the three closures no pipe can:
+   circuit-wide IPsec encryption (SC-8), traffic-class separation (SC-5),
+   and application-layer path telemetry (SI-4) — plus active-active
+   multipath, which structurally removes asymmetric-routing failures and
+   30–90-second failover outages.
+
+6. **The SC-8 claim is coverage-completeness, not exclusivity.**
+   FIPS-validated application-layer TLS closes SC-8 per flow — M365 traffic
+   included — and FedRAMP's own Rev 5 guidance is protocol-agnostic. What
+   only a network-layer overlay provides is closure for *every* flow on the
+   circuit at once, and an attestable record of which flows ride the tunnel
+   and which rest on their own encryption.
+
+7. **The decision sequence is knowable.** Buy the pipe for physics, deploy
+   the overlay for control, satisfy TIC 3.0 at the distributed PEP, and let
+   the OrgComp series carry the control-by-control build. This paper owns
+   the argument; the volumes own the build and the control closure.
+:::
+
+---
+
+## Part 1 — The False Versus
+
+When a modernization proposal says "we will add Direct Internet Access at
+field offices," it has answered a connectivity question. When a reviewer asks
+"SD-WAN or DIA?", the question itself is malformed — like asking "highway or
+traffic law?" One is infrastructure; the other is the regime that makes the
+infrastructure usable at scale.
+
+The [OrgComp Executive Summary](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd)
+states the three-step argument every DIA conversation must survive, and this
+paper adopts it as its frame:
+
+1. **What DIA solves: exactly one thing** — the geographic hairpin. The
+   latency budget is a physics constraint, and local breakout is the only
+   fix. No security product shortens a fiber path.
+
+2. **What DIA satisfies: exactly zero NIST controls.** Information-flow
+   enforcement, boundary protection, transmission confidentiality, malware
+   inspection, monitoring, and audit — every control claimed near a DIA
+   circuit (SC-7, SC-8, AC-4, SI-3, SI-4, AU-12, CA-7) is satisfied by the
+   SD-WAN, SASE, and TIC 3.0 stack that governs the pipe, never by the pipe.
+
+3. **What bare DIA breaks: the boundary it replaced.** A field office moved
+   from the MPLS/TIC 2.0 hairpin to ungoverned DIA has *lost* SC-7 boundary
+   protection relative to its starting point. From the assessor's chair,
+   bare DIA is not modernization — it is a compliance regression with better
+   latency.
+
+Everything that follows elaborates one of those three steps: Part 2 and
+Part 3 are step one (the physics), Part 4 is step three (the policy), and
+Parts 5–6 are step two (the control stack).
+
+---
+
+## Part 2 — The Physics That Created DIA
+
+Light travels through optical fiber at approximately 200,000 km/s —
+two-thirds of its vacuum speed, a consequence of the refractive index of
+glass. For any physical path between two points there is therefore a minimum
+round-trip latency set purely by distance, before a single switch, firewall,
+or proxy adds a microsecond.
+[Vol II Book 03](../orgcomp-series/Vol_II_Book_03_OrgComp_Database_Consolidation_Network_Physics.qmd)
+derives this floor for database replication; the same floor governs voice.
+
+Voice makes the floor a compliance number. **ITU-T G.114 budgets 150 ms
+one-way delay** for acceptable conversational quality. A field office in
+Portland whose traffic hairpins over MPLS through a Washington-area data
+center before reaching a West-Coast cloud region spends 100–130 ms one-way
+on the detour alone — the budget is gone before the contact-center platform
+answers. The same office breaking out locally to a nearby cloud region
+measures 5–15 ms. That difference is not a product feature; it is geometry.
+
+Two properties of this problem shape everything downstream:
+
+- **Distance is the only latency variable a buyer controls.** Direct
+  Internet Access — local breakout — shortens the physical path by
+  eliminating the geographic hairpin. There is no second latency fix, which
+  is why every transport conversation eventually arrives at DIA.
+
+- **Carrier topology is not geometry.** MPLS routes traffic along paths
+  determined by the carrier's peering points, not the shortest physical
+  path. A packet from Virginia to Oregon may transit Chicago and Denver
+  because those are where the carrier interconnects. Buying a faster circuit
+  does not straighten the path.
+
+The trap is what leadership concludes next: that adding the DIA circuit
+solved "the network problem." It solved the *latency* problem.
+[Vol I Book 05](../orgcomp-series/Vol_I_Book_05_OrgComp_Network_Modernization.qmd)
+is blunt about the remainder: DIA is a better-positioned pipe than the MPLS
+circuit it supplements, but it is still a single, unintelligent pipe — no
+visibility into what is happening on it, no ability to respond when it
+degrades, no way to know whether it is currently the best available path.
+
+---
+
+## Part 3 — The Transport Menu: Fiber, MPLS, LEO, 5G — and 6G
+
+The overlay doctrine of Part 5 only makes sense once the transport menu is
+seen for what it is: four pipes with radically different physics and
+identical compliance contribution — zero.
+
+| Transport | Propagation physics | Path geometry | Typical one-way figure (OrgComp reference case) | What it contributes to NIST closure |
+|---|---|---|---|---|
+| **Fiber DIA (broadband)** | ~200,000 km/s in glass | ISP routing; locally short | 5–15 ms Portland → nearby cloud region | Nothing — a pipe |
+| **MPLS** | Same glass, same speed | Carrier peering topology; often geographically indirect, plus the agency hairpin | 100–130 ms Portland → cloud via East-Coast DC | Nothing — a pipe with a contract |
+| **LEO satellite (Starlink-class)** | ~299,792 km/s in vacuum — 50% faster than glass per km | Up 550 km, across the constellation, down | 20–40 ms end-to-end long-haul, and improving | Nothing — a pipe |
+| **5G (mid-band / MEC)** | Radio to the tower, then fiber | CUPS + MEC allow breakout at or near the cell edge | 5–10 ms across the air interface | Nothing — a pipe |
+
+: The transport menu — physics varies, compliance contribution does not {.striped .hover}
+
+Three of these deserve a word beyond the table:
+
+**LEO is not the satellite you rejected.** The satellite ruling most federal
+IT professionals carry — unusable latency — was earned by geostationary
+birds parked at 35,786 km, where physics charges roughly 238 ms one-way
+before anything else happens. Low Earth Orbit constellations at ~550 km
+change the geometry entirely, and vacuum propagation beats glass by half
+again per kilometer: for long-haul paths, the sky can be *faster* than the
+ground. Current practical end-to-end latency of 20–40 ms puts LEO in the
+same competitive range as broadband DIA — a real transport, not a last
+resort.
+
+**5G is an architecture story, not just a radio story.** The radio mechanism
+is real — 0.5 ms slot duration at mid-band 30 kHz numerology, 0.125 ms at
+mmWave, versus 1 ms in LTE — but the federally interesting mechanism is
+**Control and User Plane Separation (CUPS)** with **Multi-access Edge
+Computing (MEC)**: user-plane traffic can break out of the carrier network
+at or near the tower instead of backhauling to a central core. For rural
+field offices with thin broadband markets, 5G local breakout is often the
+best-performing DIA on the menu.
+
+**6G will extend the menu, not the doctrine.** As of this writing, 6G is
+roadmap, not product: ITU-R's IMT-2030 framework defines the target usage
+scenarios, 3GPP's study work aims at first 6G specifications in the
+Release 21 timeframe, and commercial deployment expectations cluster around
+2030. Two roadmap directions matter for this paper's argument. First,
+native **non-terrestrial network (NTN) integration** — satellite and
+terrestrial radio as one standardized fabric — will blur the LEO/cellular
+row boundary in the table above. Second, sub-millisecond air-interface
+targets do not repeal propagation physics: the speed of light in glass and
+vacuum still sets the floor for any path long enough to matter. Whatever
+pipe 6G delivers, it arrives as exactly that — a pipe — and the overlay
+absorbs it the way it absorbed the last four transports, as one more path
+to probe, measure, encrypt, and steer. An agency whose compliance
+architecture is transport-agnostic today does not re-architect for 6G; an
+agency whose compliance story is welded to one transport does.
+
+The punchline of the menu: **transport diversity is a reason for the
+overlay, not a substitute for it.** Four pipes with different failure modes,
+different loss profiles, and different best-use windows are an asset only if
+something measures all four continuously and steers per-application — and a
+liability if a human is expected to do it with static routes.
+
+---
+
+## Part 4 — TIC 3.0: The Policy That Makes DIA Lawful
+
+The Trusted Internet Connections program began as consolidation: force
+agency traffic through a small number of heavily instrumented TIC access
+points. That architecture is precisely the geographic hairpin Part 2
+condemned — the compliance design and the latency pathology were the same
+design.
+
+**OMB M-19-26** and CISA's **TIC 3.0** guidance replaced mandatory
+consolidation with a use-case model. Two use cases govern the field-office
+patterns in this paper, as
+[Vol I Book 06](../orgcomp-series/Vol_I_Book_06_OrgComp_Federal_Telecommunications_Modernization.qmd)
+lays out for agency voice:
+
+- **Branch Office**: field-office traffic egresses locally over DIA, with
+  the policy enforcement point (PEP) at or near the branch egress — the
+  SD-WAN edge plus SASE services.
+- **Remote User**: teleworker traffic reaches cloud platforms from home
+  networks, with the cloud-delivered SASE PoP as the PEP and ZTNA replacing
+  VPN.
+
+The permissibility rule is the entire point: **both use cases permit traffic
+to leave without hairpinning through a TIC access point, and neither permits
+it to leave ungoverned.** The applicable entries of the TIC security
+capabilities catalog must be satisfied at the distributed PEP,
+commensurate with the agency's risk tolerance. TIC 3.0 never asks "SD-WAN
+or DIA?" — it asks "where is the PEP on this DIA circuit, and which catalog
+capabilities does it satisfy?" An agency that cannot answer has not
+modernized; it has opened a finding.
+
+This is why the OrgComp series calls an ungoverned DIA circuit a *step
+backward*: the MPLS hairpin it replaced was slow, but it did pass through a
+boundary. Bare DIA has better latency and no boundary — an SC-7 regression
+wearing a modernization badge. The formal treatment of boundary controls on
+distributed egress — SC-7, SC-7(7), AC-4 — is anchored in
+[Vol I Book 07](../orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.qmd)
+and the [Executive Summary's](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd)
+necessity-anchor table.
+
+---
+
+## Part 5 — SD-WAN: The Governor of Pipes
+
+SD-WAN is the mechanism class that turns the Part 3 menu into one governed
+transport. Its contributions divide into the three control closures no pipe
+can provide, plus one availability property that changed field-office
+operations.
+
+### 5.1 Circuit-wide encryption (SC-8)
+
+The SD-WAN overlay encrypts at the network layer — IPsec tunnels between
+WAN edges, with cipher suites configurable to FIPS 140-3 validated
+AES-256-GCM on the platforms the OrgComp series references. Every packet the
+overlay carries is encrypted regardless of what application generated it and
+regardless of whether that application negotiated TLS. Part 6 states
+precisely what this does and does not claim.
+
+### 5.2 Traffic-class separation (SC-5)
+
+A pipe carries whatever arrives. The overlay classifies: voice marked and
+prioritized, bulk transfer kept out of the way of interactive traffic —
+and, in the database estate,
+[Vol II Book 03's](../orgcomp-series/Vol_II_Book_03_OrgComp_Database_Consolidation_Network_Physics.qmd)
+lean/fat lane separation, where consensus heartbeats and quorum
+acknowledgments ride a protected class that backup and async-replication
+streams cannot starve. Denial-of-service protection through class
+separation is a per-class path policy, and only the overlay has classes.
+
+### 5.3 Application-layer path telemetry (SI-4, AU-12, CA-7)
+
+A bare circuit reports link state and byte counts. Flow records see
+five-tuples. Neither can distinguish authorized use from exfiltration on
+port 443, and neither records *why* traffic took the path it took. The
+overlay's DPI classifies the application per flow; its steering decisions
+are logged events; and the SASE stack above it records identity, posture,
+and action per session. This is the telemetry that feeds the series'
+continuous-monitoring evidence pipeline — the machine-readable per-session
+records that CA-7 expects and that no collector can extract from a pipe
+that never carried the information.
+
+### 5.4 Active-active multipath — the availability property
+
+Traditional WAN design is active-passive: MPLS primary, broadband standby,
+and a 30–90-second switchover during which VPN tunnels drop, sessions time
+out, and field offices report the "45-second logon." Active-active
+multipath carries traffic on all available paths — MPLS, fiber DIA, 5G,
+LEO — simultaneously, resequencing at the far edge, applying forward error
+correction per transport, and absorbing a path failure within milliseconds:
+the user experiences a ~50 ms pause, not a re-authentication.
+
+Two structural consequences matter beyond user experience. First,
+**asymmetric routing is removed by construction**: both directions of a
+conversation enter and exit the same edge devices, so the
+stateful-middlebox failure mode — SYN out one path, SYN-ACK back another,
+handshake never completes — cannot occur above the overlay. Second, **every
+path decision is a logged event**, which converts multipath from an audit
+liability (four uncorrelated pipes) into an audit asset (one decision log).
+[Vol I Book 05](../orgcomp-series/Vol_I_Book_05_OrgComp_Network_Modernization.qmd)
+develops both, including the corrected Kerberos-under-failover analysis in
+[Vol I Book 03](../orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.qmd).
+
+### 5.5 The M365 case — steering *around* the overlay, on purpose
+
+Microsoft's network connectivity principles instruct agencies to egress
+M365 traffic locally, avoid hairpins, and give **Optimize**-category
+endpoints (Teams media above all) no inspection, no proxy, no detour. An
+SD-WAN deployment honoring that guidance — Cloud OnRamp probing the M365
+front door across every transport and steering Teams media to the
+best-measured local path — may carry Optimize flows *outside* the IPsec
+overlay entirely.
+
+That is not a contradiction of Section 5.1; it is the per-flow concession
+of Part 6 made deliberate. Optimize flows carry their own FIPS-validated
+encryption (TLS; SRTP for media). The overlay continues to encrypt every
+flow that does not. And the WAN edge's DPI steering records are the
+per-flow evidence of which is which — the split-tunnel exception becomes an
+attested design decision instead of an invisible gap.
+[Vol I Book 05's M365 appendix](../orgcomp-series/Vol_I_Book_05_OrgComp_Network_Modernization.qmd)
+carries the build, including the GCC Moderate caveat that Microsoft's
+Informed Network Routing telemetry is unavailable in that cloud and
+probe-based steering is the implementation.
+
+---
+
+## Part 6 — The Compliance Ledger
+
+The control-by-control ledger for the field-office path, stated as the
+OrgComp series registers it (closures anchored per book; this table is a
+reader's map, not a claims register):
+
+| NIST SP 800-53 Rev 5 control | Bare DIA provides | Provided on a governed DIA circuit by | Closure anchored in |
+|---|---|---|---|
+| SC-8 / SC-8(1) Transmission Confidentiality and Integrity | Nothing — unencrypted at the network layer | SD-WAN IPsec overlay (circuit-wide), with per-flow TLS/SRTP for flows that carry it | [Vol I Book 07](../orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.qmd) |
+| SC-7 Boundary Protection | Nothing — and a regression vs. the TIC hairpin | SASE SWG/FWaaS at the distributed PEP | Vol I Book 07 |
+| AC-4 Information Flow Enforcement | Nothing | SASE CASB — application, tenant, data type, action | Vol I Book 07 |
+| SC-5 Denial of Service Protection | Nothing | SD-WAN traffic classes and per-class path policy | [Vol II Book 03](../orgcomp-series/Vol_II_Book_03_OrgComp_Database_Consolidation_Network_Physics.qmd) |
+| SI-3 Malicious Code Protection | Nothing | SWG inline SSL inspection at the nearest PoP | [Vol I Book 06](../orgcomp-series/Vol_I_Book_06_OrgComp_Federal_Telecommunications_Modernization.qmd) cross-references |
+| SI-4 System Monitoring | Link state and byte counts | Overlay DPI + SASE per-session telemetry | Vol I Books 05–07 |
+| AU-12 Audit Record Generation | IP flow logs | Per-session records: user, device, app, action, data type | Vol I Books 05–07 |
+| CA-7 Continuous Monitoring | Nothing machine-readable | Per-session evidence into the series' ConMon pipeline | Evidence-fabric books |
+
+: The ledger — what the pipe provides vs. what the governor provides {.striped .hover}
+
+**The honesty clause.** The SC-8 row above is a **coverage-completeness
+claim, not an exclusivity claim**, and the series states it that way on
+purpose. FedRAMP's Rev 5 data-in-transit guidance ("The Rev. 5 Approach to
+SC-8, and Protecting Data-in-Transit," 2023) requires FIPS 140-validated
+encryption and names no protocol: FIPS-validated TLS closes SC-8 for the
+flow that negotiates it, physical protection moved to SC-8(5) as a
+Controlled Access Area path, and SC-8 is inheritable for traffic that
+originates and terminates inside an authorized boundary. None of those
+paths reaches a field-office DIA circuit egressing over the public
+internet — traffic originates outside every authorized boundary, no
+Controlled Access Area encloses the internet, and per-flow TLS closure must
+be demonstrated flow by flow while DNS lookups, legacy protocols, and
+misconfigured applications ride the same circuit bare. The overlay's
+contribution is uniform coverage of *all* flows and a single circuit-level
+attestation; among overlay classes (site-to-site IPsec, ZTNA tunnels,
+WireGuard-class), SD-WAN is the one that also delivers the SC-5 and SI-4
+closures of Part 5. The
+[Executive Summary's rebuttal box](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd)
+carries the full counter-source treatment, including the "our traffic is
+M365 and M365 is already encrypted" objection resolved in Section 5.5.
+
+---
+
+## Part 7 — The Decision Sequence
+
+For a decision maker, the whole paper compresses to an ordered checklist:
+
+1. **Buy the pipe for physics.** Choose DIA transports — fiber, 5G, LEO,
+   retained MPLS — on measured latency to the destinations that matter
+   (M365 front door, contact-center region), on the G.114 budget, and on
+   path diversity. No transport choice earns compliance credit; make it on
+   physics alone.
+
+2. **Deploy the governor before the pipe carries production traffic.** The
+   SD-WAN overlay (encryption, classes, telemetry, multipath) and the SASE
+   stack (SWG, CASB, FWaaS, ZTNA) are where the TIC 3.0 security
+   capabilities live. A DIA circuit lit before its PEP exists is a
+   finding with good latency. Vendor selections for both layers are
+   agency-procurement decisions; the OrgComp series names deployed examples
+   of each mechanism class, with alternatives enumerated per layer.
+
+3. **Steer M365 by Microsoft's categories, and attest the split.**
+   Optimize-category traffic egresses locally on its own validated
+   encryption; everything else rides the overlay; the steering log is the
+   evidence that the split is design, not drift.
+
+4. **Register the closures where the series anchors them.** The
+   control-by-control builds, KSI evidence contracts, and ConMon wiring are
+   owned by the OrgComp volumes:
+   [Vol 0 Book 00](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd)
+   for the doctrine and its counter-sources,
+   [Vol I Book 05](../orgcomp-series/Vol_I_Book_05_OrgComp_Network_Modernization.qmd)
+   for transport physics, multipath, and the M365/Cloud OnRamp build,
+   [Vol I Book 06](../orgcomp-series/Vol_I_Book_06_OrgComp_Federal_Telecommunications_Modernization.qmd)
+   for voice, G.114, and the TIC 3.0 use cases,
+   [Vol I Book 07](../orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.qmd)
+   for the enforcement-substrate closure anchors, and
+   [Vol II Book 03](../orgcomp-series/Vol_II_Book_03_OrgComp_Database_Consolidation_Network_Physics.qmd)
+   for the physics floor and traffic-class doctrine.
+
+The one-sentence version: **physics buys you the pipe, the overlay buys you
+the controls, TIC 3.0 is why you may not stop at the pipe — and no future
+transport, 6G included, changes which of those three you are allowed to
+skip: none.**
