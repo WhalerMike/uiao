@@ -80,7 +80,7 @@
 
 The Social Security Administration operates four distinct cloud environments --- on-premises VMware Cloud Foundation, Microsoft Azure Government (GCC Moderate), AWS GovCloud, and Oracle Cloud Infrastructure (OCI) for OPM HRIT integration. Each environment uses a different Software Defined Networking fabric that replaces traditional broadcast DHCP with fabric-native IP assignment. Without a unified control layer, SSA has no cross-environment IP visibility, no unified DNS security policy, no automated certificate lifecycle, and must collect FedRAMP compliance evidence from four separate sources.
 
-**InfoBlox DDI** --- the market-leading platform for DNS, DHCP, and IP Address Management --- solves all four problems from a single FedRAMP-authorized control plane (CSO FR2017257053, authorized January 2023, hosted on AWS GovCloud).
+**InfoBlox DDI** --- the market-leading platform for DNS, DHCP, and IP Address Management --- solves all four problems from a single FedRAMP-authorized control plane. **This is a six-day-old fact, not a three-year-old one:** CSO FR2017257053 was authorized December 15, 2022 (Census/Commerce sponsored) for BloxOne Threat Defense Federal Cloud --- a DNS-security/threat-intelligence service, not DDI. Only on July 22, 2026 did the same CSO, rebranded Infoblox Government Cloud and hosted on AWS GovCloud, get recertified FedRAMP Moderate with an expanded boundary covering Universal DDI Management, NIOS-X Servers, and Universal Asset Insights.
 
 **The three business outcomes this document demonstrates:**
 
@@ -260,12 +260,12 @@ InfoBlox provides the automated enforcement pipeline:
 
 ![AWS GovCloud × InfoBlox --- BloxOne DDI Federal Hosted on AWS, LZA DNS Alignment](media/image8.png){width="5.833333333333333in" height="3.111111111111111in"}
 
-The AWS relationship is the deepest of all three cloud vendors: **InfoBlox's own FedRAMP-authorized cloud service (BloxOne DDI Federal, CSO FR2017257053) is hosted on AWS GovCloud.** This makes AWS the infrastructure foundation for InfoBlox's SaaS control plane.
+The AWS relationship is the deepest of all three cloud vendors: **InfoBlox's own FedRAMP-authorized cloud service (Infoblox Government Cloud, CSO FR2017257053) is hosted on AWS GovCloud.** This makes AWS the infrastructure foundation for InfoBlox's SaaS control plane. Note the DDI-specific scope of this authorization is new: FR2017257053 was authorized December 15, 2022 for BloxOne Threat Defense Federal Cloud (DNS security only); Universal DDI Management was added to its boundary July 22, 2026.
 
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   ![](media/image4.png){width="0.16666666666666666in" height="0.16666666666666666in"} **Tip**
 
-  **Key Point:** When SSA uses BloxOne DDI Federal, the control plane is hosted on AWS GovCloud infrastructure with its own FedRAMP High authorization. SSA inherits both the InfoBlox DDI CSO (FR2017257053) and the AWS GovCloud infrastructure authorization --- layered FedRAMP coverage.
+  **Key Point:** When SSA uses Infoblox Government Cloud, the control plane is hosted on AWS GovCloud infrastructure. SSA inherits the InfoBlox DDI CSO (FR2017257053) at Moderate; AWS GovCloud's own (higher) authorization is a leveraged authorization inside InfoBlox's package, not a second, separate inheritance for SSA.
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 AWS-specific InfoBlox capabilities:
@@ -584,8 +584,8 @@ Each phase produces immediately usable compliance evidence and security value --
 
 ### Phase 0 --- Procurement and Architecture (Month 1)
 
-- Procure InfoBlox BloxOne DDI Federal via **AWS GovCloud Marketplace** against existing EA (no new IDIQ)
-- Reference FedRAMP Marketplace CSO **FR2017257053** in procurement documentation
+- Procure Infoblox Government Cloud (Universal DDI) via **AWS GovCloud Marketplace** against existing EA (no new IDIQ)
+- Reference FedRAMP Marketplace CSO **FR2017257053** in procurement documentation --- confirm at procurement time that the DDI scope (added July 22, 2026) is still current and check for an agency-specific ATO vs. a P-ATO/JAB designation
 - Design Network View CIDR allocation plan: audit all existing IP ranges across on-prem, Azure VNet, AWS VPC, OCI VCN for overlaps
 - Engage InfoBlox Professional Services for VCF 9.1 DDI integration workshop
 
@@ -628,7 +628,7 @@ Each phase produces immediately usable compliance evidence and security value --
 
 ### Phase 6 --- FedRAMP Continuous Monitoring (Months 9--12)
 
-- Complete InfoBlox FedRAMP ATO documentation in SSP; reference CSO FR2017257053 for DDI layer control inheritance
+- Complete InfoBlox FedRAMP ATO documentation in SSP; reference CSO FR2017257053 for DDI layer control inheritance, citing the July 22, 2026 boundary expansion (Universal DDI Management) as the specific authorization event --- not the December 2022 BloxOne Threat Defense authorization
 - Configure all eight FedRAMP control evidence exports as scheduled reports
 - Implement IaC Terraform pipeline: IP allocation → DNS record → SCEP cert enrollment as single atomic pipeline
 - Configure FedRAMP 20x KSI automation checks (DNSSEC status, RPZ coverage, cert expiry, CIDR conflict) as CI/CD pipeline tests
@@ -640,7 +640,11 @@ Each phase produces immediately usable compliance evidence and security value --
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Source**                                                  **URL**
   ----------------------------------------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  InfoBlox FedRAMP Marketplace (CSO FR2017257053)             [fedramp.gov/marketplace/products/FR2017257053](https://www.fedramp.gov/marketplace/products/FR2017257053/)
+  InfoBlox FedRAMP Marketplace (CSO FR2017257053) --- authorized Dec 15, 2022 for BloxOne Threat Defense Federal Cloud; Universal DDI Management added to the boundary July 22, 2026             [fedramp.gov/marketplace/products/FR2017257053](https://www.fedramp.gov/marketplace/products/FR2017257053/)
+
+  Infoblox's BloxOne Threat Defense Federal Cloud Clears FedRAMP Authorization (Jan 26, 2023 press release; scopes the Dec 2022 authorization to threat-defense, not DDI)   [infoblox.com/news](https://www.infoblox.com/news/news-events/press-releases/infobloxs-bloxone-threat-defense-federal-cloud-clears-fedramp-authorization-for-data-security/)
+
+  Infoblox Government Cloud Achieves FedRAMP Moderate Certification (Jul 22, 2026; Universal DDI Management, NIOS-X Servers, Universal Asset Insights)   [infoblox.com/blog](https://www.infoblox.com/blog/company/infoblox-universal-ddi-comes-to-infoblox-government-cloud/)
 
   VMware VCF 9.1 InfoBlox DDI Integration (May 2026)          [blogs.vmware.com/cloud-foundation](https://blogs.vmware.com/cloud-foundation/2026/05/15/vcf-networking-9-1-seamless-ddi-integration-with-infoblox/)
 
