@@ -98,7 +98,7 @@ the necessity claim survives; the absolutist phrasing does not.
 | E4 | "Consolidated Rules … effective June 25, 2026" | **IMPRECISE** — launched Jun 24 (patch 2026.06.25.01 on Jun 25); optional adoption Jul 4, 2026; mandatory effect Jan 1, 2027 | [3-0 voted] |
 | E5 | BOD 26-04 exists; Aug 7, 2026 agency-policy deadline | **CONFIRMED** — issued Jun 10, 2026, "Prioritizing Security Updates Based on Risk"; Aug 7 verbatim in CISA guidance | [3-0 voted] |
 | E6 | Dec 7, 2026 = "BOD 26-04 VDR/VER deadline — SBOM + vendor disclosure required" | **WRONG AS STATED** — Dec 7 is (a) agencies begin risk-tiered remediation and (b) FedRAMP VDR/VER rules become mandatory (NTC-0014). VDR = Vulnerability *Detection and Response*, VER = Vulnerability *Evaluation and Reporting*. **No SBOM/VEX requirement found in the BOD** | [3-0 voted] |
-| E7 | Infoblox FedRAMP Moderate DDI, "CSO FR2017257053, authorized January 2023, AWS GovCloud" | **PARTLY TRUE** — CSO ID, Moderate level, DDI SaaS, GovCloud all confirmed; authorization date is **Dec 15, 2022** (Agency: US Census/Commerce), not January 2023 | [3-0 voted] |
+| E7 | Infoblox FedRAMP Moderate DDI, "CSO FR2017257053, authorized January 2023, AWS GovCloud" | **SUPERSEDED — the DDI scope wasn't authorized in 2022/2023 at all.** CSO ID, Moderate level, and GovCloud hosting are confirmed for FR2017257053, and the correct original authorization date is Dec 15, 2022 (Agency: US Census/Commerce) — but that action covered **BloxOne Threat Defense Federal Cloud** (a DNS-security/threat-intel product: CSP, TIDE, Dossier), not DDI/IPAM, per Infoblox's own Jan 26, 2023 press release. The v3 "DDI SaaS ... confirmed" verdict below was reading the *current* FedRAMP Marketplace page, which now reflects a **July 22, 2026** boundary expansion (Universal DDI Management, NIOS-X Servers, Universal Asset Insights added to the same CSO, rebranded Infoblox Government Cloud) — an event three weeks after this critique was written. Every downstream doc citing "FR2017257053" for DDI closure must anchor to the July 2026 event, not the 2022/2023 one. | [correction 2026-07-28] |
 | E8 | FIPS 140-2 certificates → CMVP Historical List Sept 21, 2026 | **CONFIRMED** | [primary-source] |
 | E9 | SC-8/SC-8(1) on DIA "can only be closed by an IPsec overlay; TLS provides no closure" | **OVERSTATED** — see Concern 4. FedRAMP's Rev 5 SC-8 guidance requires "FIPS 140 validated encryption," names no protocol, admits a physical path (SC-8(5)/CAA) and inheritance | [primary-source] |
 | E10 | TIC 3.0: DIA "permissible only when the security-capabilities catalog is satisfied at the distributed enforcement point" | **DIRECTIONALLY CONFIRMED, slightly stronger than the text** — the guidance standard is "commensurate level of protection based on the agency's risk tolerance"; also, Branch Office Use Case **v3.0 (July 2025)** exists and should be the cited version | [primary-source] |
@@ -318,7 +318,11 @@ capabilities catalog entries," and re-cite against v3.0 after checking it.
   "Effective" is the one word a FedRAMP-literate reader will snag on. [3-0 voted]
 - **Infoblox authorization date** → December 15, 2022 (FedRAMP Marketplace
   dataset; agency authorization via Census/Commerce), not "January 2023" —
-  the doc echoes the vendor press-release date. [3-0 voted]
+  the doc echoes the vendor press-release date. [3-0 voted] **Superseded
+  2026-07-28: the Dec 2022 action authorized BloxOne Threat Defense Federal
+  Cloud, not DDI — see the E7 correction above. DDI (Universal DDI
+  Management) was added to the CSO's boundary July 22, 2026; that is the
+  date every DDI-closure claim in this series should cite.**
 - **"~Aug 2027 next NIST SP 800-53 release (2-year cadence)"** → NIST
   announces no cadence. Label it an assumption or drop it; everything else in
   that row (5.2.0 date, SA-15(13)/SA-24/SI-2(7)) verified exactly. [primary-source]
