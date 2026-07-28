@@ -22,7 +22,7 @@
 > major-release cadence) and no TIC "Branch Office Use Case v3.0" (the doc is
 > v1.0). Those rows record the correction, not #1185's version.
 
-**3 HIGH · 91 MED · 85 LOW** (179 rows) — full finding text in `OrgComp_Corpus_Sweep_Findings.json`. The last 4 LOW rows (EV-L082–L085) come from the 2026-07-15 Vol I Book 02 re-review, not the original sweep; EV-M091 comes from the 2026-07-28 SD-WAN/DIA/TIC 3.0 whitepaper (6G roadmap claims), not the original sweep.
+**3 HIGH · 93 MED · 85 LOW** (181 rows) — full finding text in `OrgComp_Corpus_Sweep_Findings.json`. The last 4 LOW rows (EV-L082–L085) come from the 2026-07-15 Vol I Book 02 re-review, not the original sweep; EV-M091–M093 come from the 2026-07-28 SD-WAN/DIA/TIC 3.0 whitepaper work (6G roadmap claims, the FedRAMP Rev 5 SC-8 post, and the M365 connectivity principles the coverage-completeness doctrine leans on), not the original sweep.
 
 ## HIGH (3)
 
@@ -127,6 +127,8 @@
 | EV-M089 | 05-vmware.md:61 | "There is no VMware Marketplace SKU that auto-deploys the Grid" and the Aria plug-in "carries no separate per-VM license beyond the underlying Grid";  | Infoblox product docs | ☐ unverified |  |
 | EV-M090 | 07-servicenow-orchestration.md:9 | Load-bearing vendor claims: (a) 'this is assembly of certified products' — ServiceNow ships a Terraform connector and Infoblox ships a *certified* Ser | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
 | EV-M091 | whitepapers/tic3-sdwan-vs-dia.qmd (Part 3, "6G will extend the menu") | 6G roadmap claims: ITU-R IMT-2030 framework defines the target usage scenarios; 3GPP study work aims at first 6G specifications in the Release 21 timeframe; commercial deployment expectations cluster around 2030; native non-terrestrial network (NTN) integration is a roadmap direction. Only whitepaper material not sourced from the series | ITU-R IMT-2030 framework / 3GPP release schedule | ☐ unverified |  |
+| EV-M092 | Vol_0_Book_00 ("The SC-8 Row Against Its Strongest Counter-Sources") · Vol_I_Book_05 (Closure Necessity — SC-8 callout + co-located rebuttal) · whitepapers/tic3-sdwan-vs-dia.qmd (Part 6 honesty clause) | The coverage-completeness doctrine's load-bearing citation: FedRAMP's "The Rev. 5 Approach to SC-8, and Protecting Data-in-Transit" (fedramp.gov, 2023-07-13) requires FIPS 140-validated encryption and names no protocol; Rev 5 moved physical protection to SC-8(5) as a Controlled Access Area; SC-8 / SC-8(1) are inheritable for traffic originating and terminating inside an authorized boundary. Marked [primary-source] in Critique v3 Concern 4 but never independently re-verified against the live post | fedramp.gov blog / Rev 5 transition guidance | ☐ unverified |  |
+| EV-M093 | Vol_0_Book_00 ("Our traffic is M365…" rebuttal) · Vol_I_Book_05 (M365 connectivity principles + Optimize-bypass reconciliation callout) · whitepapers/tic3-sdwan-vs-dia.qmd (§5.5) | Microsoft 365 network connectivity principles as cited: local egress for M365 traffic; avoid hairpins; three endpoint categories (Optimize / Allow / Default) with Optimize (Teams media, SharePoint Online) carrying "no inspection, no proxy, no detour"; recommendation that Optimize-category traffic bypass tunnels and inspection. Load-bearing for the Optimize↔SC-8 reconciliation | Microsoft Learn (M365 network connectivity principles / endpoint categories) | ☐ unverified |  |
 
 ## LOW (85)
 
