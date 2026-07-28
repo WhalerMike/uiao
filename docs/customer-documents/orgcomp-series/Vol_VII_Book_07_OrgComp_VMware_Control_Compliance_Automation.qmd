@@ -2,7 +2,7 @@
 title: "Vol VII Book 07 — Federal Organization Compliance — VMware Federal Control Compliance Automation"
 subtitle: "vSphere Configuration Profiles, VCF Operations, NSX Distributed Firewall, and vSphere Lifecycle Manager control state, operated as ServiceNow work"
 author: "Federal Cloud Services"
-date: "2026-07-27 19:57 ET"
+date: "2026-07-28 08:45 ET"
 format:
   html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
   docx: {reference-doc: orgcomp-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
@@ -21,7 +21,7 @@ INTERNAL — NOT FOR PUBLIC DISTRIBUTION
 
 ::: {.aan-warning}
 ## Draft Proposal — Subject to Review
-Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the {{< meta agency.short >}} CIO Office, OIS, or leadership. **Date Code:** 2026-07-27 19:57 ET
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the {{< meta agency.short >}} CIO Office, OIS, or leadership. **Date Code:** 2026-07-28 08:45 ET
 :::
 
 ::: {.aan-important}
@@ -62,7 +62,7 @@ vSphere Configuration Profiles is the current desired-state configuration mechan
 VCF Operations is the VMware Cloud Foundation posture engine within the GCC Moderate boundary; Vol III Book 04 owns the posture architecture and Vol III Book 02 owns the assessment doctrine. It continuously monitors the VCF fleet against industry benchmarks and custom policies, surfaces violations and risk areas, and — through the VMware Advanced Cyber Compliance service — layers continuous compliance enforcement on top of that visibility. NSX Distributed Firewall (DFW) is the micro-segmentation policy engine for east-west traffic between workloads; its rule state and rule hygiene (including stale/inactive rules) are visible through the same VCF Operations for Networks telemetry this engine consumes. (VCF Operations' broader AIOps/capacity-management capabilities are a later follow-up, out of scope here.) The coordination role turns both engines' findings into prioritized, owned remediation work.
 
 - **Test + Detect:** VCF Operations compliance-benchmark violations (misconfiguration against a declared standard) and NSX DFW policy/rule-hygiene findings (segmentation drift, stale rules) are read via the respective management APIs.
-- **Raise:** each finding becomes a ServiceNow **Vulnerability Response** task against the reconciled CI, with a severity and an SLA class derived from exposure and KEV status — the risk-based prioritization CISA BOD 22-01 and the four-variable model (BOD 26-04) call for.
+- **Raise:** each finding becomes a ServiceNow **Vulnerability Response** task against the reconciled CI, with a severity and an SLA class derived from exposure and KEV status — the risk-based prioritization CISA BOD 22-01 and the PAIN-rating model (BOD 26-04; FedRAMP VDR-TFR-PVR) call for, detailed under Control Engine 3 below.
 - **Actuate:** the owning team remediates on the native surface — a configuration fix, an NSX DFW rule correction, or a patch (vSphere Lifecycle Manager, below).
 - **Close:** the finding clears on the next VCF Operations assessment; ServiceNow closes the task, and the mean-time-to-remediate becomes an SI-2(3) / KSI metric.
 
@@ -71,9 +71,22 @@ VCF Operations is the VMware Cloud Foundation posture engine within the GCC Mode
 vSphere Lifecycle Manager assesses and remediates ESXi host image and patch compliance across the cluster. It is the SI-2 actuation engine for the hypervisor; the coordination role reconciles its results into change/incident work with the SLA discipline SI-2(3) requires.
 
 - **Test:** vLCM reports each host's image/patch compliance against the cluster's desired image (compliant / non-compliant, with the specific component that drifted).
-- **Raise:** a non-compliant host becomes a ServiceNow **Change** (scheduled maintenance window) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the BOD 26-04 model. The same SLA discipline is what the OCI patch queue will reconcile into when it is added later (Vol III Book 03).
+- **Raise:** a non-compliant host becomes a ServiceNow **Change** (scheduled maintenance window) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the PAIN-rating model (BOD 26-04; FedRAMP VDR-TFR-PVR), detailed below. The same SLA discipline is what the OCI patch queue will reconcile into when it is added later (Vol III Book 03).
 - **Actuate:** vLCM remediates the host in the approved maintenance window — evacuating VMs via DRS, entering maintenance mode, applying the desired image, and exiting maintenance mode; ServiceNow does not push the image, it schedules and governs it.
 - **Close + evidence:** the post-remediation compliance check confirms the host matches the desired image; the Change record, approval, window, and re-check become the SI-2(2) machine-readable remediation-status evidence.
+
+::: {.aan-note}
+**"SLA by exposure" has a name and a published table — the Potential Agency Impact (PAIN) rating.** FedRAMP's Vulnerability Detection and Response ruleset (VDR-TFR-PVR) sets mitigation/remediation timeframes by PAIN rating crossed with exploitability and internet-reachability:
+
+| PAIN rating | Likely-exploitable, internet-reachable | Likely-exploitable, not internet-reachable | Not likely exploitable |
+|---|---|---|---|
+| PAIN-5 | 4 days | 8 days | 32 days |
+| PAIN-4 | 8 days | 32 days | 64 days |
+| PAIN-3 | 32 days | 64 days | 192 days |
+| PAIN-2 | 96 days | 160 days | 192 days |
+
+A CISA-catalogued KEV must be remediated by the KEV catalog's own due date regardless of PAIN rating (VDR-TFR-KEV), even after full mitigation. These are the actual numbers a ServiceNow SLA-class task should encode — "SLA by exposure" is this table, not a general-purpose severity field.
+:::
 
 ::: {.aan-caution}
 **Baseline-based patching is being retired — this book targets vLCM Images.** VMware deprecated baseline-based patching starting with vSphere 8.0, with full removal in a later major release; the desired-state Images model is the forward path and the one this coordination pattern targets. An estate still running baseline-managed clusters reconciles through the same ServiceNow SI-2 queue, but the reconcile-exception queue should track the Images migration itself as a tracked closure item, not treat baseline mode as a permanent parallel path.
@@ -134,5 +147,6 @@ Draft. vSphere Configuration Profiles, VCF Operations, VMware Advanced Cyber Com
 | VMware Advanced Cyber Compliance (continuous compliance enforcement, VCF advanced service) | VMware Cloud Foundation Blog — <https://blogs.vmware.com/cloud-foundation/2025/11/03/vmware-advanced-cyber-compliance-is-now-available-to-vcf-customers/> |
 | NSX Distributed Firewall (microsegmentation, licensing tier) | VMware NSX Datasheet — <https://www.vmware.com/docs/vmware-nsx-datasheet> |
 | vSphere Lifecycle Manager (vLCM) baselines, images, and the baseline deprecation path | Broadcom TechDocs — <https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/managing-host-and-cluster-lifecycle/about-vsphere-lifecycle-manager-new/vlcm-baselines-and-images/vlcm-baselines-and-image-0.html> |
-| Risk-based remediation prioritization (KEV; four-variable model) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
+| Risk-based remediation prioritization (KEV catalog) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
+| PAIN-rating remediation timeframes (VDR-TFR-PVR) | FedRAMP — <https://www.fedramp.gov/2026/reference/vulnerability-detection-and-response/> |
 | ServiceNow as workflow/CMDB/evidence coordination hub | Expansion Plan §16 — `docs/customer-documents/orgcomp-series/OrgComp_Series_Expansion_Plan_Substrate_Accreditation.md` |
