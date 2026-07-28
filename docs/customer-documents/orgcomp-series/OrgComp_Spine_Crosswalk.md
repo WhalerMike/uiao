@@ -4,21 +4,21 @@
 
 ## Coverage (stated honestly)
 
-- This crosswalk is rendered from the **103 closure rows** the spine carries across **20 of 71 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
+- This crosswalk is rendered from the **106 closure rows** the spine carries across **21 of 72 books**. It is the machine-derived slice of the series control crosswalk — **not** series-wide coverage. The hand-maintained master table in `Vol_0_Book_02_OrgComp_Control_Crosswalk.qmd` indexes the full 149 controls across all books; that superset is author-maintained until the spine back-fill reaches every book.
 - It aggregates those closures into **53 distinct controls**. A control closed in several books lists each volume/book. As the spine is back-filled book by book, this table grows toward the full master automatically and cannot silently drift from the spine.
 
 ## Crosswalk
 
 | Control | Title | Family | Where addressed (spine) | FedRAMP 20x KSI |
 |---|---|---|---|---|
-| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
+| AC-2 † | Account Management | AC | Vol I Bk 04, Vol VII Bk 02, Vol VII Bk 08, Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
 | AC-2(1) | Account Management | Automated System Account Management | AC | Vol I Bk 04, Vol IX Bk 05 | KSI-IAM |
 | AC-2(3) | Account Management | Disable Accounts | AC | Vol IX Bk 05 | KSI-IAM |
 | AC-2(4) | Account Management | Automated Audit Actions | AC | Vol IX Bk 05 | KSI-MLA |
-| AC-3 | Access Enforcement | AC | Vol IX Bk 01, Vol IX Bk 05 | KSI-IAM |
+| AC-3 | Access Enforcement | AC | Vol VII Bk 08, Vol IX Bk 01, Vol IX Bk 05 | KSI-IAM |
 | AC-4 | Information Flow Enforcement | AC | Vol I Bk 07, Vol IX Bk 05 | KSI-CNA, KSI-IAM |
 | AC-5 | Separation of Duties | AC | Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
-| AC-6 | Least Privilege | AC | Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
+| AC-6 | Least Privilege | AC | Vol VII Bk 08, Vol IX Bk 01, Vol IX Bk 03, Vol IX Bk 05, Vol IX Bk 06 | KSI-IAM |
 | AC-17 | Remote Access | AC | Vol I Bk 07 | KSI-CNA |
 | AC-19 | Access Control for Mobile Devices | AC | Vol I Bk 07 | KSI-IAM |
 | AC-20 | Use of External Systems | AC | Vol IX Bk 05 | KSI-IAM |
@@ -75,7 +75,7 @@ Distinct controls the spine closes within each volume (a control closed in sever
 |---|---|
 | Vol I | 17 |
 | Vol III | 17 |
-| Vol VII | 9 |
+| Vol VII | 11 |
 | Vol VIII | 6 |
 | Vol IX | 26 |
 | **Series total (distinct)** | **53** |
@@ -112,6 +112,7 @@ Distinct controls the spine closes within each volume (a control closed in sever
 | book-sn-attestation | Vol VII Bk 04 | Control Attestation, Evidence & KSI |
 | book-sn-aws | Vol VII Bk 06 | AWS Federal Control Compliance Automation |
 | book-sn-vmware | Vol VII Bk 07 | VMware Federal Control Compliance Automation |
+| book-sn-iam-rbac | Vol VII Bk 08 | Native Cloud IAM/RBAC Access-Governance Automation |
 | book-ddi-xplat | Vol VIII Bk 06 | Cross-Platform Operations & Multi-Cloud Governance |
 | book-ddi-servicenow | Vol VIII Bk 07 | ServiceNow Orchestration — Governed Front Door for DDI |
 | book-day2-helpdesk | Vol IX Bk 01 | Helpdesk & ITSM Catalog (Entra · M365 · Azure) |

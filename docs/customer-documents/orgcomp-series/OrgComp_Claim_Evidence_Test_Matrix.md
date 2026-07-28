@@ -4,8 +4,8 @@
 
 ## Coverage (stated honestly)
 
-- The spine records **103 control-closure claims** across **20 of 71 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
-- **13 of 103** claims carry a named falsifying test; **17 of 103** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
+- The spine records **106 control-closure claims** across **21 of 72 books**. The generated, CI-gated authorities tables cover only those closure-bearing books; the remaining books' NIST control tables are **hand-authored inline in the `.qmd` and are not spine-gated**. Do not read this matrix as series-wide control coverage — it is the coverage the spine can prove.
+- **13 of 106** claims carry a named falsifying test; **17 of 106** name an implementing kit. A claim with no bound test is not disproven — it is **unverified** (Vol VI Book 08: "a control dimension no test covers is still unverified").
 
 ## Matrix
 
@@ -84,6 +84,9 @@
 | SI-2 | book-sn-azure | 7 | Endpoint | — | — *(no falsifying test bound yet)* |
 | CM-8 | book-sn-cmdb | 2 | Network | — | — *(no falsifying test bound yet)* |
 | CM-3 | book-sn-cmdb | 6 | Security / supply chain | — | — *(no falsifying test bound yet)* |
+| AC-2 | book-sn-iam-rbac | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-3 | book-sn-iam-rbac | 3 | Identity | — | — *(no falsifying test bound yet)* |
+| AC-6 | book-sn-iam-rbac | 3 | Identity | — | — *(no falsifying test bound yet)* |
 | AC-2 | book-sn-m365 | 3 | Identity | — | — *(no falsifying test bound yet)* |
 | CA-7 | book-sn-m365 | 6 | Telemetry | — | Vol VI Book 08 — telemetry-completeness workbook (CA-7(3)) |
 | CM-6 | book-sn-m365 | 6 | Security / supply chain | — | Vol VI Book 08 — baseline conformance re-check (scheduled re-scan vs intended baseline) |

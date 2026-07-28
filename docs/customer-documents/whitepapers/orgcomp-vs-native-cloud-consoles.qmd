@@ -1,0 +1,232 @@
+---
+title: "OrgComp vs. Native Cloud Consoles — Why Changing State Isn't Compliance Evidence"
+subtitle: "Azure, AWS, and VMware's own tools remediate; ServiceNow — with SailPoint ISC Governance feeding it for access governance — supplies the owner, the clock, and the evidence NIST, CISA, and FedRAMP actually require"
+doc-type: whitepaper
+audience: [Executive, Customer, Technical, Assessor]
+author: Michael Stratton
+date: "July 2026"
+status: Draft
+canon-source: "docs/customer-documents/orgcomp-series/Vol_VII_Book_03_OrgComp_Azure_Control_Compliance_Automation.qmd, Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd, Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.qmd, Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.qmd, Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd; orgcomp-compliance-spine.yml"
+derived-from: "Synthesis of the OrgComp series' recurring Closure Necessity argument, consolidated into a single standalone paper for readers who want the claim without reading all four platform books"
+repo-path: docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd
+created-at: 2026-07-28
+updated-at: 2026-07-28
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-28
+---
+
+# OrgComp vs. Native Cloud Consoles — Why Changing State Isn't Compliance Evidence {.unnumbered}
+
+## 1. Executive Summary
+
+The question this paper answers: **if the agency already has Azure Portal, the AWS Console, vCenter/CPS, and a ServiceNow + SailPoint stack, why not just let the native tools handle compliance directly?**
+
+The short answer is that native cloud and virtualization consoles are excellent at one job — changing state — and structurally incapable of a second, different job: producing the evidence an assessor can trace. Azure Policy, AWS Config, and VMware's vSphere Configuration Profiles all genuinely remediate. None of them, on their own, can answer the four questions a FedRAMP assessor or an authorizing official actually asks about a finding: **who owns it, by when, under whose approval, and with what evidence.** That is not a criticism of the native tools — it is a recognition that "the console shows green" and "the authorization package has a traceable, owned, evidenced record" are different claims, and only one of them is what NIST SP 800-53, CISA directives, and FedRAMP require.
+
+::: {.callout-important}
+## Key Finding
+Across every platform examined in this paper — Microsoft 365, Azure, AWS, and VMware — the OrgComp series' own control-closure tables mark **CM-6 (Configuration Settings), RA-5 (Vulnerability Monitoring and Scanning), and SI-2 (Flaw Remediation) as `Tool-attestable: No`**, without exception, regardless of vendor. This is not an oversight or a gap waiting to be closed by the next product release — it is the structural finding of this paper: no native console, by itself, produces the ownership/clock/approval/evidence record FedRAMP evidence requires. That record comes from a coordination layer — ServiceNow, with SailPoint ISC Governance feeding it detection findings for the adjacent access-governance domain — sitting in front of the native tools, not replacing them.
+:::
+
+## 2. The Question, Precisely
+
+"Does the native cloud portal already do this?" is really three separate questions that get collapsed into one:
+
+1. **Can the native tool detect drift and change state?** Yes — this paper does not dispute that Azure Policy, AWS Config, and vSphere Configuration Profiles genuinely remediate.
+2. **Can the native tool's own dashboard show current compliance posture?** Yes, for its own boundary — Defender for Cloud, Security Hub, and VCF Operations all show a live posture picture.
+3. **Can the native tool's dashboard, by itself, serve as the evidence artifact an assessor relies on for an ATO decision?** No. This is the question this paper is actually about, and the answer is the same across every platform surveyed.
+
+The reason the answer is uniformly "no" is not a per-vendor product gap; it is structural. A console shows *current state*. An evidence record has to show *who owns the finding, the clock they are working against, the approval trail for any exception, and a re-test that proves closure* — a governance wrapper, not a dashboard, and none of the three platforms' native consoles are built to be a system of record for ownership and approval across an organization's workflow.
+
+## 3. One Coordination Pattern, Four Platforms
+
+The OrgComp series documents this pattern once and applies it identically across Microsoft 365 (Vol VII Book 02), Azure (Book 03), AWS (Book 06), and VMware (Book 07) — the same five-step loop over each platform's native control engines:
+
+**Test → Detect drift → Raise a typed task against the reconciled CI → Actuate on the native surface → Close with evidence.**
+
+![The compliance loop, identical across M365, Azure, AWS, and VMware — actuation always stays platform-native](images/orgcomp-vs-native-cloud-consoles-diagram-01-five-step-loop.png){#fig-orgcomp-loop fig-alt="A five-step pipeline titled The Compliance Loop — One Pattern, Four Platforms, on a white background. Five navy-headed cards joined by teal arrows: Step 1 Test — read the native control state (Policy/Defender, Config/Security Hub, vSphere Profiles, or Purview/CA); Step 2 Detect Drift — compare to the intended baseline; Step 3 Raise Task — typed Change/Incident against the reconciled CI with control id, severity, SLA, and an approver; Step 4 Actuate (native), ringed in amber and labeled platform-native not ServiceNow — Azure Policy, AWS Config, vSphere Profiles, or M365 CA/Purview make the change; Step 5 Close plus Evidence — re-test confirms closure, task and approval trail become the evidence record. A dashed return arrow labeled Continuous loops back to Step 1. A footer band reads: same loop, four platforms — M365 (Book 02), Azure (Book 03), AWS (Book 06), VMware (Book 07); ServiceNow coordinates owner, SLA, approval, and evidence, the platform always actuates. White background, navy/teal/amber palette." width="100%"}
+
+Actuation always stays platform-native. ServiceNow's role is never to write the configuration, apply the patch, or fix the firewall rule — it is to make sure every drift becomes an owned, clocked, approved, evidenced piece of work, whichever native engine ultimately does the actuating.
+
+| Platform | Native engines (actuate) | Controls covered | What the console alone cannot show |
+|---|---|---|---|
+| **Microsoft 365** | Conditional Access, Purview, Secure Score | CM-6, SI-2, RA-5 | Owner, SLA, approval trail, exception review |
+| **Azure** | Azure Policy, Defender for Cloud, MDVM, Update Manager (+ Arc for hybrid) | CM-6, RA-5, SI-2 | Same |
+| **AWS** | AWS Config, Security Hub CSPM (+ GuardDuty, Inspector), Systems Manager Patch Manager | CM-2/CM-6, CM-6/RA-5, SI-2 | Same |
+| **VMware** | vSphere Configuration Profiles, VCF Operations + NSX Distributed Firewall, vSphere Lifecycle Manager (vLCM) | CM-2/CM-6, CM-6/RA-5, SI-2 | Same |
+
+VMware is worth calling out specifically, because it breaks the pattern people expect: unlike M365, Azure, and AWS — boundaries reached over a cloud provider's API — VMware is the agency's **own** on-premises or agency-operated virtualization estate, racked and patched directly. The same evidence gap exists anyway. Owning the hardware does not produce an owner, a clock, or an approval trail any more than renting a CSP subscription does; vCenter's own console shows green on exactly the same terms Azure's and AWS's consoles do.
+
+## 4. Closure Necessity — the Argument, in the Vendors' Own Terms
+
+Each platform book states the same finding, in the same words, changing only the vendor name. Quoting all three side by side makes the structural (not vendor-specific) nature of the claim concrete:
+
+::: {.callout-tip}
+## Azure
+"Azure Policy remediates, Defender recommends, Update Manager patches — the native stack is genuinely sufficient to *change state*. What it does not supply is the governance wrapper: who owns this finding, by when, under whose approval, with what evidence. Strip the coordination layer and Azure's own consoles show green while the authorization package has no owned-and-evidenced record an assessor can trace." — [Vol VII Book 03](../orgcomp-series/Vol_VII_Book_03_OrgComp_Azure_Control_Compliance_Automation.qmd)
+:::
+
+::: {.callout-tip}
+## AWS
+"AWS Config remediates, Security Hub CSPM surfaces, Patch Manager patches — the native stack is genuinely sufficient to *change state*. What it does not supply is the governance wrapper... Strip the coordination layer and AWS's own consoles show green while the authorization package has no owned-and-evidenced record an assessor can trace." — [Vol VII Book 06](../orgcomp-series/Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.qmd)
+:::
+
+::: {.callout-tip}
+## VMware
+"vSphere Configuration Profiles remediates, VCF Operations and NSX DFW surface, vLCM patches — the native stack is genuinely sufficient to *change state*, on the agency's own hardware exactly as it is on a hyperscaler's. What it does not supply is the governance wrapper... Strip the coordination layer and vCenter's own console shows green while the authorization package has no owned-and-evidenced record an assessor can trace." — [Vol VII Book 07](../orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd)
+:::
+
+In each case: **CM-6, SI-2, and RA-5 are closed by the platform; they are *operated* — owned, clocked, evidenced — by the coordination layer.**
+
+## 5. The Rollup — Every Platform, Same Verdict
+
+The table below consolidates the `Tool-attestable?` column verbatim from each book's generated "Authorities Closed Here" table (source: `orgcomp-compliance-spine.yml`), plus the attestation-stage controls from Book 04. Every row reads **No** — not because the tooling is immature, but because "tool-attestable" and "evidence the platform console alone can produce" are the same test, applied consistently.
+
+| Control | Title | Platforms it recurs across | Tool-attestable? |
+|---|---|---|---|
+| CM-2 / CM-6 | Baseline Configuration / Configuration Settings | M365, Azure, AWS, VMware | No |
+| RA-5 | Vulnerability Monitoring and Scanning | Azure, AWS, VMware | No |
+| SI-2 | Flaw Remediation | M365, Azure, AWS, VMware | No |
+| CA-2 | Control Assessments | Attestation layer (Book 04), fed by all four platforms | No |
+| CA-5 | Plan of Action and Milestones | Attestation layer (Book 04) | No |
+| CA-7 | Continuous Monitoring | Attestation layer (Book 04) | No |
+
+![Four platforms, one verdict — every native engine actuates, every control still reads Tool-attestable: No](images/orgcomp-vs-native-cloud-consoles-diagram-02-platform-rollup.png){#fig-orgcomp-rollup fig-alt="A table titled Four Platforms, One Verdict, on a white background, subtitle: every native engine actuates, every control still reads Tool-attestable No. Four rows — M365 (Conditional Access, Purview, Secure Score; CM-6/SI-2/RA-5), Azure (Azure Policy, Defender for Cloud, MDVM, Update Manager plus Arc; CM-6/RA-5/SI-2), AWS (AWS Config, Security Hub CSPM plus GuardDuty/Inspector, Patch Manager; CM-2/CM-6, CM-6/RA-5, SI-2), VMware (vSphere Configuration Profiles, VCF Operations plus NSX DFW, vSphere Lifecycle Manager; CM-2/CM-6, CM-6/RA-5, SI-2) — each row ending in a red No badge under Tool-attestable. A footer band reads: four vendors, four native stacks, one identical column — a structural finding, not a per-vendor gap. White background, navy header row, red badges." width="100%"}
+
+Four different vendors, four different native stacks, one identical column of verdicts. That consistency is the evidence for the paper's central claim: this is a structural property of "console-only" compliance, not a product deficiency any single vendor's next release fixes.
+
+## 6. The Front Door: What ServiceNow Actually Supplies
+
+Books 02, 03, 06, and 07 all reconcile into the identical ServiceNow-side pattern, deployable today as the scoped app `x_fed_compliance` ([Vol VII Book 05](../orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.qmd)):
+
+- **`ComplianceIngest`** reads each platform's native control state (Graph/SCuBA/Purview for M365; Resource Graph/Defender/Update Manager for Azure; Config/Security Hub/Patch Manager for AWS; equivalent VMware APIs) through an in-boundary MID Server — read-only against the ATO boundary.
+- **`ComplianceReconcile`** matches every finding to the authoritative CMDB CI before a task is raised, so nothing routes to an orphaned or unowned asset.
+- **`ComplianceGate`** re-reads the native surface after actuation and stamps the re-test evidence on the task — the mechanism that makes "closed" mean "verified," not "claimed."
+
+![The ServiceNow front door — Ingest, Reconcile, and Gate sit between the native platforms and the governed record; actuation never moves into ServiceNow](images/orgcomp-vs-native-cloud-consoles-diagram-03-servicenow-coordination.png){#fig-orgcomp-servicenow fig-alt="A diagram titled The Front Door — What ServiceNow Supplies, on a white background. Left card: Native Platforms — M365, Azure, AWS, VMware, each actuates on its own console. Arrow into a large ServiceNow x_fed_compliance container holding three sub-cards: ComplianceIngest (reads each platform's native control state via an in-boundary MID Server, read-only), ComplianceReconcile (binds the finding to the reconciled CMDB CI before a task is raised), ComplianceGate (re-reads the native surface after actuation, stamps re-test evidence). Arrow out to a right card, Governed Record, amber-headed — owner, PAIN-rated SLA, approval trail, re-test evidence, the assessor's record. A footer band reads: ServiceNow never writes the resource, it writes the record; feeds the attestation pipeline (Book 04). White background, navy/teal/amber palette." width="100%"}
+
+Actuation never moves into ServiceNow. The native platform still remediates; ServiceNow's entire job is the four things a console cannot do — assign an owner, attach a clock (the FedRAMP PAIN-rating SLA table, keyed to exploitability and internet-reachability, drives the SLA class), require an approval on anything that changes state or grants an exception, and capture the re-test as the evidence record.
+
+From there, [Vol VII Book 04](../orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd) lifts the closed task stream into an *assessed* control: a scheduled IRM/GRC control test reads the actioned posture and renders pass/fail/partial with evidence attached (CA-2); any fail becomes an owned POA&M item (CA-5); the roll-up is emitted as OSCAL assessment-results and FedRAMP 20x KSI evidence (CA-7) into the authorization package.
+
+![From task stream to assessed control — Map, Test, Gap to POA&M, Emit — feeding the authorization package](images/orgcomp-vs-native-cloud-consoles-diagram-04-attestation-pipeline.png){#fig-orgcomp-attestation fig-alt="A four-step pipeline titled From Task Stream to Assessed Control, on a white background, subtitle: a closed task is operational hygiene, an assessed control is what an authorizing official signs. Step 1 Map (CA-2) — control to the platform tests/tasks that evidence it, the compliance-spine binding; Step 2 Test (CA-2) — scheduled control test reads the actioned posture roll-up, pass/fail/partial with evidence attached; Step 3 Gap to POA&M (CA-5) — any fail/partial becomes an owned POA&M item with milestone, owner, required closure evidence; Step 4 Emit (CA-7) — OSCAL assessment-results plus FedRAMP 20x KSI evidence into the ConMon package. An amber-ringed destination card labeled Authorization Package follows: signed by the authorizing official, generated and diffable, not hand-assembled. White background, navy/teal/amber palette." width="100%"}
+
+**A closed remediation task is operational hygiene; an assessed control is what an authorizing official signs** — the distinction Book 04 exists to close.
+
+## 7. The Adjacent Domain: Access Governance and SailPoint ISC Governance
+
+Everything above concerns configuration, vulnerability, and patch controls (CM-6, RA-5, SI-2) — the domain the ServiceNow-fronting pattern is built and deployed for today. The user's premise widens the claim to a second domain: **access governance** — who has an identity, who granted it, and who periodically recertifies it — resting on a different set of controls (principally AC-2 Account Management, AC-3 Access Enforcement, and AC-6 Least Privilege).
+
+The same structural argument extends cleanly to this domain: Azure RBAC role assignments and AWS IAM policies can be inspected and even remediated natively, but a native IAM console has the identical evidence gap the configuration-drift argument describes — a role binding is not, by itself, a record of who requested it, who approved it, and when it was last reviewed. **SailPoint ISC Governance (the CIEM add-on)** performs exactly the detection function this domain needs — over-privileged accounts, entitlements idle 90+ days, over-broad role bindings — natively across Azure, AWS, and GCP.
+
+::: {.callout-tip}
+## Closed, 2026-07-28 — [ADR-135](../../../src/uiao/canon/adr/adr-135-sailpoint-isc-governance-option-b-ratification.md) + [Vol VII Book 08](../orgcomp-series/Vol_VII_Book_08_OrgComp_Native_IAM_RBAC_Access_Governance.qmd)
+This was an open gap as of this paper's first draft, earlier the same day: the series had a reserved SailPoint slot (`sailpoint-isc-governance`, landed in PR #924 citing ADR-059's deferred Option B) but no ADR had ever ratified it, and no book documented the coordination pattern. **ADR-135 ratifies the Option-B decision and binds `sailpoint-isc-governance` to ADR-092's Active Governance identity control-plane slot** at rung L1 (Observe); **Vol VII Book 08 closes AC-2/AC-3/AC-6** for Azure RBAC and AWS IAM entitlements using the identical test → detect drift → raise task → actuate-native → close-with-evidence loop as Books 03/06/07. Consistent with this paper's own §10 finding — SailPoint's own architecture routes findings into ServiceNow rather than around it — Book 08 explicitly does **not** stand up a second, SailPoint-fronted coordination layer; SailPoint ISC Governance is one more detection engine feeding the same ServiceNow pipeline every other control family in this paper uses. One front door.
+:::
+
+::: {.callout-caution}
+## Honest limit that remains — VMware/vCenter identity governance
+No evidence was found, after direct research, that SailPoint's CIEM add-on reaches VMware/vCenter permissions — every source describes AWS/Azure/GCP coverage only. Book 08 states this plainly rather than implying coverage that doesn't exist. This is a genuinely open gap, not a scope deferred by choice.
+:::
+
+## 8. The Certificates Exception — Why PKI Doesn't Take the Same Path
+
+Certificates are a large share of the actual operational work in this estate, which makes it tempting to assume they belong on the same ServiceNow-fronted path as everything else in this paper. They don't — not for the routine lifecycle, and the reason is a deliberate, already-documented doctrine call, not an oversight.
+
+[Vol I Book 03](../orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.qmd) covers certificate and token lifecycle (IA-5(2), SC-12, SC-17) and states the opposite pattern from this paper's core argument, explicitly:
+
+::: {.callout-tip}
+## Certificates — the deliberate exception
+*"There is no staffing level at which manual key custody closes SC-12 for a machine-scale estate; the arithmetic, not the ambition, is the constraint."* ... *"No owner is named anywhere in this book, because none needs to be."* — Vol I Book 03, Theme D
+:::
+
+The reasoning is volume, not principle. A CM-6 configuration-drift finding happens occasionally and each one is worth a human decision. A certificate estate with 30–90 day validity periods generates **thousands of issuance and renewal events a week** — routing each through a ServiceNow approval ticket would not add rigor, it would make the queue meaningless and train reviewers to rubber-stamp it. So Book 03 closes IA-5(2)/SC-12/SC-17 with **protocol-enforced automation** instead: ACME/SCEP/EST issuance gates, CAA records making issuance policy machine-enforced at the DNS layer, and short-lived certificates with non-renewal replacing revocation as the normal end-of-life path. This is the same underlying principle as the rest of this paper — evidence has to come from something stronger than "trust me it's fine" — just applied correctly to a domain where the volume math rules out ticket-per-event.
+
+**What still needs the front door.** The exceptions and anomalies in the certificate estate are structurally identical to a CM-6 finding and belong on the same ServiceNow path as everything else: onboarding a new CA, approving a non-standard certificate lifetime, a trust-anchor change, or — the important one — a **drift finding from the certificate inventory**: an unknown-issuer certificate discovered, or a CAA-violation attempt. Those are rare, high-stakes, human-decision events. Routine issuance within policy is not one of them.
+
+**Recommended tool: CyberArk Certificate Manager (Venafi).** The agency already runs CyberArk for privileged access management (ADR-059 names CyberArk as a candidate incorporated provider); CyberArk acquired Venafi in 2024, so **CyberArk Certificate Manager is the same vendor relationship extended to certificates, not a new one.** It is FedRAMP authorized, discovers and orchestrates certificates across CAs without needing to be the issuing CA itself, and integrates with ServiceNow for the CMDB/exception side. The competing option, **Keyfactor for Government CLAaaS**, achieved FedRAMP Moderate authorization in May 2026 and has a deeper native ServiceNow ITOM/ACME integration plus its own issuing CA (EJBCA) — a stronger single-vendor pick if there were no existing relationship, but consolidating onto the vendor already in the estate outweighs that for an agency that already has a CyberArk contract, support relationship, and operational familiarity. Neither vendor's VMware/vCenter certificate coverage could be confirmed externally — treat that as an open question, consistent with the VMware blind spot found across every tool surveyed in this paper (SailPoint CIEM, the CNAPP vendors) — not an assumption of coverage.
+
+## 9. What "Just Use the Console" Actually Costs
+
+![Same starting drift, two paths, two different assessor outcomes — only one produces a record an assessor can trace](images/orgcomp-vs-native-cloud-consoles-diagram-05-console-only-vs-coordinated.png){#fig-orgcomp-cost fig-alt="A branching diagram titled What Just Use the Console Costs, on a white background, subtitle: same starting drift, two paths, two different assessor outcomes. A shared origin card, Native console detects drift (Azure Policy, AWS Config, vSphere Profiles, CA), branches into Path A — console only (red) and Path B — console plus coordination layer (teal). Path A: native auto-remediation fixes the resource, then console shows green with no owner/clock/approval, ending in a red card: no traceable record an assessor can rely on — a finding at ATO review. Path B: same native remediation, actuation identical, then a ServiceNow task with owner, PAIN-rated SLA, and approval on any exception, ending in a teal card: assessed control, re-test evidence attached, ATO-package ready. A footer band reads: both paths change the same bit of state, only one produces a record an assessor can trace; automated does not mean unowned, CM-3 still applies either way. White background, navy/red/teal palette." width="100%"}
+
+For a customer or assessor weighing whether to skip the coordination layer and rely on native tools alone:
+
+- **The finding is real, but the record is not.** Azure Policy, AWS Config, and vSphere Configuration Profiles will detect and often auto-remediate drift with no ServiceNow involvement at all. What disappears without the coordination layer is the *durable, owned, approved, evidenced* record of that event — the thing a 3PAO or an authorizing official is actually assessing.
+- **"Automated" does not mean "unowned."** Native auto-remediation (Azure's `deployIfNotExists`, an AWS Config remediation action, a VMware Configuration Profiles remediation run) still requires a change record under CM-3 — automation changes who the *actuator* is, not whether change control applies.
+- **SLA-by-exposure is a specific published table, not a vague policy.** FedRAMP's Vulnerability Detection and Response ruleset (VDR-TFR-PVR) sets exact remediation timeframes by PAIN rating crossed with exploitability and reachability (4 to 192 days), plus KEV-catalog-driven due dates regardless of PAIN rating. A native console has no mechanism to enforce that clock against an owner; ServiceNow's SLA-class task is where that enforcement actually lives.
+- **One coordination pattern, not one per cloud.** Because the loop is identical across M365, Azure, AWS, and VMware, an organization does not need a separate governance story per platform — the evidence and the assessor-facing narrative are uniform regardless of where a given workload runs.
+
+## 10. External Validation and Build-vs-Buy (2026-07-28)
+
+This paper's core claim — that a native console cannot be the evidence system of record — is not just an OrgComp position. Independent research outside this repo, done the same week this paper was drafted, backs it directly and updates two of the paper's own assumptions:
+
+- **The market agrees on the structural claim.** *"CSPM complements GRC — findings need owners and closure proof"* and *"no single tool covers everything inside a FedRAMP boundary... programs rely on a coordinated stack"* (Continuum GRC; Knox Systems, 2026) — independent confirmation of §1's Key Finding, not a restatement of it.
+- **ServiceNow↔VMware integration is not greenfield.** Contrary to Book 07's framing, real vendor-built connectors exist today: the **VMware Aria Operations Management Pack for ServiceNow** and the **VCF Automation ITSM plugin** — CMDB mapping and Day-2 catalog operations out of the box. Book 07 should be corrected to cite these rather than imply the ServiceNow-VMware surface is unbuilt.
+- **A commercial FedRAMP 20x KSI product already exists.** **C1Secure SmartRAMP 20x** (launched July 2026) runs natively on the ServiceNow platform, validates KSI evidence on FedRAMP's own cadence, and auto-opens Integrated Risk Management remediation — a real alternative to Book 05's custom `x_fed_compliance` app for the KSI-attestation slice specifically. Worth a build-vs-buy pass before further custom investment there.
+- **SailPoint's own architecture confirms §7's framing, not the SAM-as-second-front-door version of it.** SailPoint ISC + its CIEM add-on natively governs AWS/Azure/GCP cloud IAM entitlements (over-privileged accounts, idle entitlements, over-broad roles) — genuinely strong. But SailPoint's own integration docs route findings *into* ServiceNow's Service Desk for ticketing and audit tracking — even SailPoint does not claim to be a standalone evidence/ticketing system. No evidence was found of SailPoint CIEM reaching VMware/vCenter permissions specifically — that gap is confirmed, not assumed.
+- **Alternative architectures a critical reviewer will raise.** **Wiz** is the only major CNAPP with explicit native VMware vSphere support alongside AWS/Azure/GCP/OCI — a candidate to replace three separate native per-CSP posture engines with one, without changing the ServiceNow-front-door architecture. **Vanta / RegScale / Paramify** represent a different bet entirely: an OSCAL-first, FedRAMP-20x-native compliance platform that self-generates the KSI package, bypassing ServiceNow/SailPoint coordination altogether (Vanta is FedRAMP 20x Moderate Authorized as of April 2026). Neither is adopted by this paper's recommendation, but both are the alternatives a sharp reviewer will name — see them cited so the paper isn't caught flat-footed by the question.
+
+**The consistency implication.** Because SailPoint's own architecture already routes through ServiceNow rather than around it, the identity/access-governance domain (§7) should extend the *same* ServiceNow-fronted loop this paper documents for CM-6/RA-5/SI-2 — SailPoint CIEM as one more detection engine feeding ServiceNow, structurally identical to how Security Hub, Defender, and Aria Operations feed it — rather than standing up SailPoint as a second, parallel coordination layer. One front door, not two — implemented in [Vol VII Book 08](../orgcomp-series/Vol_VII_Book_08_OrgComp_Native_IAM_RBAC_Access_Governance.qmd).
+
+## 11. Honest Limits
+
+- This paper's CM-6/RA-5/SI-2 argument is well-established across four platform books and their generated control-closure tables; the AC-2/AC-3/AC-6 extension (§7) is now likewise a documented OrgComp closure (Vol VII Book 08, ADR-135) — but VMware/vCenter identity governance remains genuinely open within it, per §7's caution.
+- Native-tool assessment latency (Azure Policy/Defender, AWS Config/Security Hub, VMware Configuration Profiles/VCF Operations) means "closed" in ServiceNow can lag the native platform's own evaluation cycle by one cycle; evidence timestamps record the cycle, not the instant.
+- Two of the four cited platform books (AWS, VMware) are current-dated Draft Proposals, not yet reviewed or approved by agency leadership — this paper inherits that draft status and should be read accordingly.
+- This paper does not evaluate whether ServiceNow's own native product modules (Configuration Compliance, Vulnerability Response/USEM, GRC: Continuous Authorization and Monitoring) already ship equivalent coordination out of the box versus requiring the custom `x_fed_compliance` app — that is a separate build-vs-buy question, orthogonal to this paper's claim that *some* coordination layer, not the native console alone, is what produces the evidence.
+
+## 12. Cross-References
+
+- [Vol VII Book 02 — M365 Control Compliance Automation](../orgcomp-series/Vol_VII_Book_02_OrgComp_M365_Control_Compliance_Automation.qmd) — the first platform book in the series; the loop this paper describes originates here.
+- [Vol VII Book 03 — Azure Control Compliance Automation](../orgcomp-series/Vol_VII_Book_03_OrgComp_Azure_Control_Compliance_Automation.qmd)
+- [Vol VII Book 04 — Control Attestation, Evidence & KSI](../orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd) — how a closed task becomes an assessed control.
+- [Vol VII Book 05 — The ServiceNow Compliance App](../orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.qmd) — the deployable artifact implementing the coordination loop.
+- [Vol VII Book 06 — AWS Control Compliance Automation](../orgcomp-series/Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.qmd)
+- [Vol VII Book 07 — VMware Control Compliance Automation](../orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd)
+- [Vol III Book 07 — Multi-Cloud Evidence Fabric](../orgcomp-series/Vol_III_Book_07_OrgComp_Multi_Cloud_Evidence_Fabric.qmd) — where the coordination layer's output joins the cross-environment evidence fabric.
+- [Vol I Book 03 — Certificates, Tokens & Cryptographic Identity](../orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.qmd) — the deliberate exception (§8): why routine PKI lifecycle closes through protocol automation, not a ServiceNow task.
+
+## Provenance
+
+This paper is a synthesis, not a new closure claim: every control-closure row and quoted Closure Necessity passage is reproduced from the four cited Vol VII books, which are in turn generated against `orgcomp-compliance-spine.yml`. It carries no independent Authorities Closed Here table of its own — reopening or re-deriving those closures is out of scope; this paper exists to state their shared argument once, for a reader who wants the claim without reading all four platform books end to end.
+
+::: {.callout-important}
+## Vendor currency caveat — read before building a Project Plan on this paper
+This paper names specific, dated vendor capabilities — SmartRAMP 20x, the VMware Aria/ServiceNow connectors, SailPoint CIEM's cloud coverage, Wiz, Vanta, CyberArk/Keyfactor — and this market moves in weeks, not review cycles: §10's own findings corrected two assumptions this same series made only days earlier (VMware↔ServiceNow integration; FedRAMP 20x KSI tooling availability). Per the [OrgComp series' Vendor Currency Doctrine](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd#vendor-currency), every vendor claim here is a dated snapshot, not a standing commitment. **Confirming current roadmaps directly with ServiceNow, SailPoint, VMware/Broadcom, and each CSP (Microsoft, AWS, GCP) is essential before this paper's claims become the basis of an implementation Project Plan, procurement action, or acquisition decision.**
+:::
+
+## References
+
+| Claim | Source |
+|---|---|
+| CM-6/RA-5/SI-2 `Tool-attestable: No` across M365/Azure/AWS/VMware | `orgcomp-compliance-spine.yml`, rendered per-book by `render_authorities_table.py` |
+| Closure Necessity argument (Azure/AWS/VMware) | Vol VII Books 03, 06, 07 (this repo) |
+| Attestation pipeline (CA-2/CA-5/CA-7, OSCAL/KSI emit) | Vol VII Book 04 (this repo) |
+| ServiceNow Compliance App record model (`x_fed_compliance`) | Vol VII Book 05 (this repo) |
+| PAIN-rating remediation timeframes (VDR-TFR-PVR) | FedRAMP — <https://www.fedramp.gov/2026/reference/vulnerability-detection-and-response/> |
+| Risk-based remediation prioritization (KEV catalog) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
+| SAM (SailPoint IGA) canon status — distinct from reserved `sailpoint-nerm` slot (ADR-059) | `docs/customer-documents/orgcomp-series/servicenow-day2/START-HERE.md` |
+| "CSPM complements GRC — findings need owners and closure proof"; no single tool covers a FedRAMP boundary alone | Continuum GRC — <https://continuumgrc.com/audit-compliance-solutions-fedramp/> |
+| Coordinated-stack requirement; ticketing/SLA ownership as a FedRAMP necessity | Knox Systems — <https://knoxsystems.com/resources/continuous-compliance-fedramp> |
+| C1Secure SmartRAMP 20x — ServiceNow-native FedRAMP 20x KSI platform (build-vs-buy context for Book 05) | PR Newswire — <https://www.prnewswire.com/news-releases/c1secure-launches-smartramp-20x-a-servicenow-native-platform-built-for-the-fedramp-20x-model-302824168.html> |
+| VMware Aria Operations Management Pack for ServiceNow (native connector, corrects Book 07's "unbuilt" framing) | Broadcom TechDocs — <https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-operations-for-integrations/9-0/management-pack-for-servicenow-9-0/management-pack-for-servicenow.html> |
+| VCF Automation ITSM plugin for ServiceNow | ServiceNow Store — <https://store.servicenow.com/store/app/0349abae1be06a50a85b16db234bcbbb> |
+| ServiceNow AWS Integration for Security Exposure Management (Inspector + Security Hub) | ServiceNow Store — <https://store.servicenow.com/store/app/fc71081b47804f90040ae738436d43e0> |
+| SailPoint CIEM — native AWS/Azure/GCP cloud IAM entitlement governance | SailPoint — <https://www.sailpoint.com/products/identity-security-cloud/atlas/add-ons/cloud-infrastructure-entitlement-management> |
+| SailPoint routes findings into ServiceNow's Service Desk for ticketing/audit tracking | SailPoint — <https://www.sailpoint.com/products/connectivity-and-integrations/catalog/servicenow> |
+| Wiz native multi-cloud + VMware vSphere coverage (alternative single-engine architecture) | Reintech — <https://reintech.io/blog/wiz-vs-orca-vs-prisma-cloud-comparison-2026> |
+| Vanta FedRAMP 20x Moderate Authorization; OSCAL/KSI self-generation (alternative architecture) | Vanta — <https://www.vanta.com/products/fedramp-20x> |
+| Certificates as the deliberate volume-driven exception ("no owner is named... because none needs to be") | `docs/customer-documents/orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.qmd`, Theme D |
+| Keyfactor for Government CLAaaS — FedRAMP Moderate authorization (May 2026) | Keyfactor — <https://www.keyfactor.com/press-releases/keyfactor-attains-fedramp-moderate-authorization/> |
+| CyberArk Certificate Manager (Venafi) — CA-agnostic discovery/orchestration, ServiceNow integration | Venafi/CyberArk — <https://pki.venafi.com/venafi-cloud-beta/> |
+| Keyfactor/DigiCert/AppViewX native ServiceNow CMDB and ITOM integrations for certificate lifecycle | Keyfactor — <https://www.keyfactor.com/blog/keyfactor-simplifies-enterprise-pki-certificate-management-with-new-servicenow-integrations/>; DigiCert — <https://docs.digicert.com/en/trust-lifecycle-manager/build-your-inventory-and-ecosystem/connectors/it-service-management/link-to-servicenow.html>; ServiceNow — <https://www.servicenow.com/products/certificate-management.html> |
+
+OrgComp vs. Native Cloud Consoles — Why Changing State Isn't Compliance Evidence | Draft | July 2026
