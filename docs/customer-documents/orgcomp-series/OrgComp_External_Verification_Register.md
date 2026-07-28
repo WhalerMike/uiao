@@ -22,7 +22,7 @@
 > major-release cadence) and no TIC "Branch Office Use Case v3.0" (the doc is
 > v1.0). Those rows record the correction, not #1185's version.
 
-**3 HIGH · 90 MED · 85 LOW** (178 rows) — full finding text in `OrgComp_Corpus_Sweep_Findings.json`. The last 4 LOW rows (EV-L082–L085) come from the 2026-07-15 Vol I Book 02 re-review, not the original sweep.
+**3 HIGH · 91 MED · 85 LOW** (179 rows) — full finding text in `OrgComp_Corpus_Sweep_Findings.json`. The last 4 LOW rows (EV-L082–L085) come from the 2026-07-15 Vol I Book 02 re-review, not the original sweep; EV-M091 comes from the 2026-07-28 SD-WAN/DIA/TIC 3.0 whitepaper (6G roadmap claims), not the original sweep.
 
 ## HIGH (3)
 
@@ -126,6 +126,7 @@
 | EV-M088 | 04-oci.md:137 | Failover option: 'anycast (advertise a /32 service IP via BGP over the DRG)' / §9 'advertise the DNS service /32 via BGP over the DRG v2, equal routes | Cisco product docs | ☐ unverified |  |
 | EV-M089 | 05-vmware.md:61 | "There is no VMware Marketplace SKU that auto-deploys the Grid" and the Aria plug-in "carries no separate per-VM license beyond the underlying Grid";  | Infoblox product docs | ☐ unverified |  |
 | EV-M090 | 07-servicenow-orchestration.md:9 | Load-bearing vendor claims: (a) 'this is assembly of certified products' — ServiceNow ships a Terraform connector and Infoblox ships a *certified* Ser | Microsoft Learn (Graph / Entra / Azure docs) | ☐ unverified |  |
+| EV-M091 | whitepapers/tic3-sdwan-vs-dia.qmd (Part 3, "6G will extend the menu") | 6G roadmap claims: ITU-R IMT-2030 framework defines the target usage scenarios; 3GPP study work aims at first 6G specifications in the Release 21 timeframe; commercial deployment expectations cluster around 2030; native non-terrestrial network (NTN) integration is a roadmap direction. Only whitepaper material not sourced from the series | ITU-R IMT-2030 framework / 3GPP release schedule | ☐ unverified |  |
 
 ## LOW (85)
 
