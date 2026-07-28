@@ -30,7 +30,7 @@ aliases:
 
 This document is a **draft proposal** developed by the **CSI Team (Cloud Services Infrastructure)**. It is an attempt at a comprehensive {{< meta agency.short >}}-wide technical roadmap and has not been reviewed or approved by the {{< meta agency.short >}} CIO Office, the Office of Information Security (OIS), or organizational leadership. All recommendations, vendor selections, control mappings, and implementation timelines are subject to revision pending formal review by the {{< meta agency.short >}} CIO Office and organizational components.
 
-**Date Code:** 2026-07-18 00:33 ET
+**Date Code:** 2026-07-28 09:05 ET
 :::
 
 ::: {.aan-note}
@@ -270,7 +270,7 @@ When agencies present DIA as a modernization achievement, they have solved a con
 |---|---|---|
 | AC-4 Information Flow Enforcement | Application-layer enforcement identifying the destination application, not just the destination IP | CASB in SASE stack |
 | SC-7 Boundary Protection | Application-layer inspection; detect C2 on port 443, exfiltration in DNS | SWG / FWaaS in SASE stack |
-| SC-8 Transmission Confidentiality and Integrity | Network-layer encryption | SD-WAN IPsec tunnel — DIA alone encrypts nothing |
+| SC-8 Transmission Confidentiality and Integrity | Confidentiality and integrity for every flow the circuit carries — per-flow TLS covers only the flows that negotiate it | SD-WAN IPsec tunnel — DIA alone encrypts nothing |
 | SI-3 Malicious Code Protection | Inline malware inspection at appropriate locations | SWG with SSL inspection in SASE stack |
 | SI-4 System Monitoring | Application-layer telemetry — user, device, app, data, behavioral pattern | AAN application telemetry |
 | AU-2 / AU-12 Event Logging / Audit Record Generation | User Z on device D accessed application A, performed action V on data type C — not just IP flows | Application-layer logging via AAN |
@@ -449,6 +449,8 @@ The model works as follows:
 2. **Avoid network hairpins.** Traffic must not flow through an agency proxy or security stack that introduces geographic detours. FedRAMP-compliant proxy inspection must occur at or very near the local breakout point, not at a central scrubbing center. In Cisco Catalyst SD-WAN, this is typically handled by integrating Cisco Umbrella at the branch or in the SASE PoP geographically nearest the breakout point.
 
 3. **Differentiate M365 traffic categories.** Microsoft publishes three endpoint categories — **Optimize** (Teams media, SharePoint Online), **Allow** (general M365), and **Default** (non-M365). The **Optimize** category carries the strictest routing requirements: no inspection, no proxy, no detour. Cisco Catalyst SD-WAN DPI signatures for the Optimize category steer that traffic directly to the best available local path with maximum priority.
+
+> **Optimize-category bypass and SC-8 — reconciled, not in tension.** The Optimize category's "no inspection, no proxy, no detour" requirement means Teams media steered by Cloud OnRamp may egress outside the IPsec overlay entirely. That is not an SC-8 gap; it is the per-flow closure the coverage-completeness doctrine already concedes — Teams media is SRTP-encrypted and M365 sessions ride FIPS-validated TLS — while the overlay continues to close SC-8 for every flow that does not carry its own validated encryption. What the WAN Edge adds is that the exemption is **deliberate and attestable**: the DPI classification that steers an Optimize flow around the overlay is itself a logged, per-flow record of which traffic rests on application-layer encryption and which rides the IPsec tunnel — SI-4 telemetry over flows the overlay does not carry. State the split this way in the boundary documentation and Microsoft's connectivity principles and the SC-8 closure claim never collide.
 
 ![Microsoft 365 Informed Network Routing — Local Breakout vs. Backhaul](figs/mf-fig-16-inr-routing.png){fig-alt="Side-by-side comparison of two routing paths for M365 traffic. Left panel (Legacy Backhaul): Portland field office sends traffic via MPLS to Agency DC in Washington DC, then to internet, entering Microsoft network at suboptimal Ashburn PoP — 80ms+ total latency. Right panel (AAN Local Breakout): Portland field office sends traffic directly via DIA or 5G to Microsoft's nearest Seattle front door PoP — 18ms total latency. Bottom section shows M365 endpoint categories: Optimize (Teams media, no proxy, maximum priority), Allow (general M365, proxy OK), Default (standard inspection). Satisfies SC-8, AC-4, TIC 3.0 Use Case E." width="100%"}
 
