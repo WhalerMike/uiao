@@ -1,0 +1,138 @@
+---
+title: "Vol VII Book 07 — Federal Organization Compliance — VMware Federal Control Compliance Automation"
+subtitle: "vSphere Configuration Profiles, VCF Operations, NSX Distributed Firewall, and vSphere Lifecycle Manager control state, operated as ServiceNow work"
+author: "Federal Cloud Services"
+date: "2026-07-27 19:57 ET"
+format:
+  html: {embed-resources: true, css: lz-style.css, number-sections: true, toc: true, toc-depth: 3, toc-title: "Contents"}
+  docx: {reference-doc: orgcomp-reference.docx, toc: true, toc-depth: 3, number-sections: true, fig-width: 6.5}
+fig-align: center
+out-width: "100%"
+execute: {echo: false}
+filters: [orgcomp-callouts.lua]
+
+---
+
+:::: {.content-hidden unless-profile="ssa"}
+::: {.fouo-banner}
+INTERNAL — NOT FOR PUBLIC DISTRIBUTION
+:::
+::::
+
+::: {.aan-warning}
+## Draft Proposal — Subject to Review
+Developed by the **CSI Team (Cloud Services Infrastructure)**; not yet reviewed or approved by the {{< meta agency.short >}} CIO Office, OIS, or leadership. **Date Code:** 2026-07-27 19:57 ET
+:::
+
+::: {.aan-important}
+**Series Context** — Volume VII Book 07. The VMware lane of the coordination layer, anticipated by Vol VII Book 03 §"The Azure Control Engines and Their Coordination Role" and Vol VII Book 06 as a later follow-up reconciling into the same ServiceNow queues. Unlike M365, Azure, and AWS, VMware is not a CSP boundary the agency reaches over a provider API from outside — it is the agency's own on-premises (or agency-operated private-cloud) virtualization estate: ESXi hosts, vCenter, and NSX, running under the agency's physical control inside the GCC Moderate boundary. This book operates that surface's control state as ServiceNow work, on the identical loop as the M365, Azure, and AWS books. **Actuation stays platform-native** — vSphere Configuration Profiles remediation, VCF Operations findings, NSX Distributed Firewall policy fixes, and vSphere Lifecycle Manager (vLCM) remediations make the change; ServiceNow governs ownership, SLA, approval, and evidence.
+:::
+
+# What This Document Addresses
+
+Where M365, Azure, and AWS are boundaries the agency reaches through a cloud provider, VMware is the agency's own virtualization layer — the hypervisor, network-virtualization, and cluster-management estate the agency owns, racks, and patches directly. It carries the identical class of obligations the CSP books carry, at the virtualization plane instead of the provider plane: baseline configuration and settings (CM-2, CM-6), flaw remediation (SI-2), and vulnerability monitoring (RA-5). VMware's native stack *actuates* all three; the coordination role is to make each one owned, clocked, approved where it changes state, and evidenced. CM-2's registered closure sits in Vol III Book 03 (Patch & Systems Management); this book touches CM-2 only through vSphere Configuration Profiles' actuation of that baseline, so its *Authorities Closed Here* table registers the coordination closures CM-6, SI-2, and RA-5 — the identical registration pattern Vol VII Books 03 and 06 use for Azure and AWS.
+
+This book runs the same five-step loop as Vol VII Books 02, 03, and 06 — **test → detect drift → raise a typed task against the reconciled CI → actuate on the native surface → close with evidence** — over the three VMware control engines. The loop is deliberately identical across surfaces: one coordination pattern, four platforms, so the evidence and the assessor-facing story are uniform regardless of whether the workload sits in a hyperscaler or on the agency's own racks.
+
+![The five-step compliance loop, identical for VMware — test, detect drift, raise task, actuate on the native surface, close with evidence — with actuation marked platform-native](figs/vol7b07-fig-01-vmware-compliance-loop.png){#fig-vol7-loop-vmware fig-alt="A house-style five-step pipeline titled The VMware Compliance Loop (Vol VII Book 07), subtitle 'One coordination pattern, four platforms — actuation stays platform-native', on a white background. Five navy-headed cards are joined left to right by teal arrows: Step 1 Test — read the native control state (vSphere Configuration Profiles, VCF Operations, NSX DFW); Step 2 Detect Drift — compare to the intended baseline, a deviation is a candidate finding; Step 3 Raise Task — a typed Change, Incident, or Request against the reconciled CI with control id, severity, and SLA; Step 4 Actuate (native), drawn with a teal header and an amber ring and labeled 'platform-native — not ServiceNow' — for VMware this is a Configuration Profiles remediation, an NSX Distributed Firewall policy fix, or a vSphere Lifecycle Manager remediation; Step 5 Close plus Evidence — re-test confirms closure, and the task, approval trail, and re-test become the evidence record. A dashed teal return arrow runs from Step 5 back to Step 1, labeled 'Continuous — the loop re-runs each cycle; results roll up to attestation (Book 04) and the KSI evidence pipeline'. A footer band states the scope is FedRAMP Moderate and the agency's own VMware Cloud Foundation estate, and that ServiceNow coordinates owner, SLA, approval, and evidence while the platform actuates. White background. Authored house-style diagram." width="100%"}
+
+# The VMware Control Engines and Their Coordination Role
+
+| VMware engine | Owns (actuation) | Control | ServiceNow coordination role |
+|---|---|---|---|
+| **vSphere Configuration Profiles** | Host/cluster desired-state configuration compliance and drift remediation | CM-2, CM-6 | Non-compliant host/cluster → Change/remediation task against the CI; track native remediation to closure |
+| **VCF Operations + NSX Distributed Firewall** | Continuous compliance/benchmark posture across the VCF fleet; segmentation-policy (DFW) drift and rule hygiene | CM-6, RA-5 | Violation/finding → prioritized Vulnerability-Response task; SLA by exposure |
+| **vSphere Lifecycle Manager (vLCM)** | ESXi image/patch compliance assessment and remediation | SI-2, SI-2(2/3) | Non-compliant image state → Change/Incident; SLA-class task keyed to KEV/exposure |
+
+::: {.aan-note}
+**This volume governs the virtualization layer, by doctrine — not the guest OS, firmware, or physical hardware.** vSphere Configuration Profiles, VCF Operations, NSX Distributed Firewall, and vLCM operate ESXi, vCenter, and NSX — the hypervisor and network-virtualization control plane. They do not patch the operating system running *inside* a VMware-hosted VM (that guest OS reconciles through its own native stack, Vol III Book 03, on the identical SI-2 discipline this book uses for the hypervisor), and they do not manage server firmware or physical hardware lifecycle (a separate, vendor-specific management-plane surface, Management-Plane Coordination Doctrine, Vol 0 Book 00). **This volume coordinates the ESXi/vCenter/NSX virtualization surface only.** OCI reconciles into the same ServiceNow SI-2 queue in a later follow-up (its native stack is catalogued in Vol III Book 03); ServiceNow already coordinates a single queue, so adding that surface later needs no rework here.
+:::
+
+# Control Engine 1 — vSphere Configuration Profiles (CM-2 / CM-6)
+
+vSphere Configuration Profiles is the current desired-state configuration mechanism for ESXi hosts and clusters, superseding the older Host Profiles model. It checks hosts against a declared cluster-level desired configuration, reports drift, and can remediate a subset natively. The coordination role covers the rest — and the change control around all of it.
+
+- **Test:** cluster/host compliance state is read against the desired configuration (compliant / non-compliant, with the specific setting that drifted).
+- **Detect + Raise:** a non-compliant host or cluster becomes a ServiceNow **Change** (for a controlled configuration change) tagged with the drifted setting, the mapped control (CM-2/CM-6), severity, and the reconciled host/cluster CI. An *exemption* is not silent — it is a request with an approver and an expiry, so a configuration exception is reviewable (the same discipline as an M365 CA exception, an Azure Policy exemption, and an AWS Config exemption).
+- **Actuate:** vSphere Configuration Profiles remediation runs against the cluster (a pre-check confirms hosts can enter maintenance mode and DRS can evacuate VMs where needed), or the owning team applies the configuration through infrastructure-as-code (Vol VI Book 01/06). ServiceNow does not write the host configuration.
+- **Close:** the next compliance check flips the host/cluster to compliant; ServiceNow closes and stamps the evidence.
+
+# Control Engine 2 — VCF Operations + NSX Distributed Firewall (CM-6 / RA-5)
+
+VCF Operations is the VMware Cloud Foundation posture engine within the GCC Moderate boundary; Vol III Book 04 owns the posture architecture and Vol III Book 02 owns the assessment doctrine. It continuously monitors the VCF fleet against industry benchmarks and custom policies, surfaces violations and risk areas, and — through the VMware Advanced Cyber Compliance service — layers continuous compliance enforcement on top of that visibility. NSX Distributed Firewall (DFW) is the micro-segmentation policy engine for east-west traffic between workloads; its rule state and rule hygiene (including stale/inactive rules) are visible through the same VCF Operations for Networks telemetry this engine consumes. (VCF Operations' broader AIOps/capacity-management capabilities are a later follow-up, out of scope here.) The coordination role turns both engines' findings into prioritized, owned remediation work.
+
+- **Test + Detect:** VCF Operations compliance-benchmark violations (misconfiguration against a declared standard) and NSX DFW policy/rule-hygiene findings (segmentation drift, stale rules) are read via the respective management APIs.
+- **Raise:** each finding becomes a ServiceNow **Vulnerability Response** task against the reconciled CI, with a severity and an SLA class derived from exposure and KEV status — the risk-based prioritization CISA BOD 22-01 and the four-variable model (BOD 26-04) call for.
+- **Actuate:** the owning team remediates on the native surface — a configuration fix, an NSX DFW rule correction, or a patch (vSphere Lifecycle Manager, below).
+- **Close:** the finding clears on the next VCF Operations assessment; ServiceNow closes the task, and the mean-time-to-remediate becomes an SI-2(3) / KSI metric.
+
+# Control Engine 3 — vSphere Lifecycle Manager / vLCM (SI-2)
+
+vSphere Lifecycle Manager assesses and remediates ESXi host image and patch compliance across the cluster. It is the SI-2 actuation engine for the hypervisor; the coordination role reconciles its results into change/incident work with the SLA discipline SI-2(3) requires.
+
+- **Test:** vLCM reports each host's image/patch compliance against the cluster's desired image (compliant / non-compliant, with the specific component that drifted).
+- **Raise:** a non-compliant host becomes a ServiceNow **Change** (scheduled maintenance window) or **Incident** (an out-of-cycle KEV exposure), with an SLA class keyed to KEV/exposure — the BOD 26-04 model. The same SLA discipline is what the OCI patch queue will reconcile into when it is added later (Vol III Book 03).
+- **Actuate:** vLCM remediates the host in the approved maintenance window — evacuating VMs via DRS, entering maintenance mode, applying the desired image, and exiting maintenance mode; ServiceNow does not push the image, it schedules and governs it.
+- **Close + evidence:** the post-remediation compliance check confirms the host matches the desired image; the Change record, approval, window, and re-check become the SI-2(2) machine-readable remediation-status evidence.
+
+::: {.aan-caution}
+**Baseline-based patching is being retired — this book targets vLCM Images.** VMware deprecated baseline-based patching starting with vSphere 8.0, with full removal in a later major release; the desired-state Images model is the forward path and the one this coordination pattern targets. An estate still running baseline-managed clusters reconciles through the same ServiceNow SI-2 queue, but the reconcile-exception queue should track the Images migration itself as a tracked closure item, not treat baseline mode as a permanent parallel path.
+:::
+
+# Continuous Monitoring Roll-Up (CA-7)
+
+Each engine's loop emits its result into the continuous-monitoring feed: Configuration Profiles compliance percentage, open VCF Operations/NSX DFW findings by severity and age, vLCM image-compliance conformance. ServiceNow rolls these into a per-control VMware posture that Vol VII Book 04 turns into attestation and KSI evidence, keyed to the same reconciled asset identity the M365, Azure, and AWS postures use — so all four platforms produce *one* compliance picture, not four.
+
+# Closure Necessity
+
+::: {.aan-tip}
+## Closure Necessity — VMware actuates; the estate still needs an owner and a clock
+vSphere Configuration Profiles remediates, VCF Operations and NSX DFW surface, vLCM patches — the native stack is genuinely sufficient to *change state*, on the agency's own hardware exactly as it is on a hyperscaler's. What it does not supply is the governance wrapper: who owns this finding, by when, under whose approval, with what evidence. Strip the coordination layer and vCenter's own console shows green while the authorization package has no owned-and-evidenced record an assessor can trace. CM-6, SI-2, and RA-5 are closed by VMware; they are *operated* — owned, clocked, evidenced — here.
+:::
+
+# NIST SP 800-53 Rev 5 Control Closure — Authorities Closed Here
+
+Generated from the series compliance spine (`orgcomp-compliance-spine.yml`) by `render_authorities_table.py`; not hand-edited here. Coordination closures — the VMware control state operated as tracked work — not a re-closure of the posture/patch mechanisms Volumes III and VI own.
+
+<!-- authorities:book-sn-vmware — generated from orgcomp-compliance-spine.yml; do not hand-edit -->
+| Control | Title | Closing mechanism (function, not product) | Accreditation gate | Authority drivers | Evidence slot | FedRAMP 20x KSI | Tool-attestable? |
+|---|---|---|---|---|---|---|---|
+| CM-6 | Configuration Settings | vSphere Configuration Profiles / VCF Operations findings raised as ServiceNow remediation tasks; Configuration-Profiles-native remediation actuates, ServiceNow tracks to closure | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA SCuBA | Security / supply chain | KSI-CMT | No |
+| RA-5 | Vulnerability Monitoring and Scanning | VCF Operations / NSX Distributed Firewall findings on the VMware estate flow to ServiceNow Vulnerability Response as prioritized remediation tasks | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 22-01 | Security / supply chain | KSI-MLA | No |
+| SI-2 | Flaw Remediation | vSphere Lifecycle Manager (vLCM) image/patch results reconciled into ServiceNow Change/Incident with SLA-class tasks keyed to KEV/exposure (actuation platform-native) | FedRAMP Moderate | NIST SP 800-53 Rev 5; CISA BOD 26-04 | Endpoint | KSI-SVC, KSI-MLA | No |
+
+: Authorities Closed Here — VMware Federal Control Compliance Automation († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
+
+# Honest Limits
+
+- A task closes when the native re-evaluation passes; Configuration Profiles/VCF Operations assessment latency means "closed" can lag actual state by an evaluation cycle. Evidence timestamps record the cycle, not the instant.
+- This book governs ESXi/vCenter/NSX only; guest-OS patching inside a VMware-hosted VM, physical-server firmware, and hardware lifecycle reconcile in from their own native stacks (Vol III Book 03). Treating this book as the whole management plane is a doctrine violation the reconcile-exception queue is meant to catch — the identical failure mode the Arc note in Vol VII Book 03 and the hybrid-activation note in Vol VII Book 06 guard against.
+- Native vSphere Configuration Profiles remediation still carries a Change record — automated actuation does not waive change control (CM-3); it makes the change record's *actuator* the Configuration Profiles engine rather than a person.
+- NSX Distributed Firewall's microsegmentation capability requires NSX Advanced edition or higher; an estate licensed below that tier does not have DFW policy state to reconcile, and that licensing gap belongs in the reconcile-exception queue rather than being silently absent from the posture roll-up.
+- Baseline-managed clusters (the pre-vLCM-Images patching model) are on a deprecation path; see the caution under Control Engine 3.
+
+# Cross-References
+
+- **Vol III Book 02 (Vulnerability Management)** — the assessment half whose findings this book routes to remediation tasks.
+- **Vol III Book 03 (Patch & Systems Management)** — the SI-2 queue this book's vLCM results reconcile into (VMware/hybrid now; OCI in a later follow-up).
+- **Vol III Book 04 (Cloud-Native Posture)** — the VCF Operations posture architecture this book coordinates findings from.
+- **Vol III Book 07 (Multi-Cloud Evidence Fabric)** — where VMware VCF Operations/NSX feeds join the cross-environment evidence fabric; this book is the VMware-native coordination source for that fabric, not a re-statement of it.
+- **Vol VI Book 01/06 (Landing Zone / Baselines as Code)** — the IaC that actuates many VMware remediations.
+- **Vol VII Book 01** — the reconciled CIs every VMware task is raised against; **Vol VII Book 04** — where the VMware posture roll-up becomes attestation.
+- **Vol VII Book 03 (Azure) / Vol VII Book 06 (AWS)** — the sibling coordination books this one mirrors structurally; all three now reconcile into the same ServiceNow queues.
+
+# Provenance
+
+Draft. vSphere Configuration Profiles, VCF Operations, VMware Advanced Cyber Compliance, NSX Distributed Firewall, and vSphere Lifecycle Manager are deployed examples; the detect→raise→actuate-native→close→evidence loop is the invariant, identical to the M365, Azure, and AWS books. Vendor claims cite vendor documentation (see References). The compliance-loop figure is authored as committed house-style SVG.
+
+# References
+
+| Claim | Source |
+|---|---|
+| vSphere Configuration Profiles (desired-state config, drift, remediation) | Broadcom TechDocs — <https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/managing-host-and-cluster-lifecycle/using-vsphere-config-profiles-to-manage-host-configuration-at-a-cluster-level.html> |
+| VCF Operations (compliance management, benchmark violations) | Broadcom TechDocs — <https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/overview-of-vmware-cloud-foundation-9/what-is-vmware-cloud-foundation-and-vmware-vsphere-foundation/vcf-operations-overview.html> |
+| VMware Advanced Cyber Compliance (continuous compliance enforcement, VCF advanced service) | VMware Cloud Foundation Blog — <https://blogs.vmware.com/cloud-foundation/2025/11/03/vmware-advanced-cyber-compliance-is-now-available-to-vcf-customers/> |
+| NSX Distributed Firewall (microsegmentation, licensing tier) | VMware NSX Datasheet — <https://www.vmware.com/docs/vmware-nsx-datasheet> |
+| vSphere Lifecycle Manager (vLCM) baselines, images, and the baseline deprecation path | Broadcom TechDocs — <https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/managing-host-and-cluster-lifecycle/about-vsphere-lifecycle-manager-new/vlcm-baselines-and-images/vlcm-baselines-and-image-0.html> |
+| Risk-based remediation prioritization (KEV; four-variable model) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
+| ServiceNow as workflow/CMDB/evidence coordination hub | Expansion Plan §16 — `docs/customer-documents/orgcomp-series/OrgComp_Series_Expansion_Plan_Substrate_Accreditation.md` |
