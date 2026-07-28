@@ -996,6 +996,7 @@
   - [Federal AI Governance — Submission Readiness Brief](customer-documents/whitepapers/federal-ai-governance-submission-readiness.html)
   - [UIAO Git Server Interfaces — Windows Server 2025 Deployment](customer-documents/whitepapers/git-server-interfaces-whitepaper.html)
   - [Next Generation DNS](customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.html)
+  - [SD-WAN vs. DIA Under TIC 3.0](customer-documents/whitepapers/tic3-sdwan-vs-dia.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)
   - [AODIM Architecture Document](customer-documents/architecture-series/aodim-architecture.html)
