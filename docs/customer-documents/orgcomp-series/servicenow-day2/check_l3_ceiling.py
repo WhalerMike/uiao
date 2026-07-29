@@ -32,31 +32,61 @@ that a human checked them -- it does not prove it. This gate makes the claim
 explicit and attributable; it does not make it true.
 
 Usage:
-    python check_l3_ceiling.py     # gate; exit 1 on any undeclared exceedance
+    python check_l3_ceiling.py                          # gate; exit 1 on any undeclared exceedance
+    python check_l3_ceiling.py --adr-dir /path/to/adr    # standalone run (e.g. extracted kit zip)
+
+The ADR directory is only needed when a control-map item actually declares an
+`l4_adr` reference. It is resolved lazily -- a run where nothing needs an ADR
+lookup completes without ever touching the filesystem for it. Resolution order:
+`--adr-dir` > `X_FED_DAY2_OPS_ADR_DIR` env var > walk-up-to-.git auto-detection
+(works inside the canon repo checkout; not inside an extracted kit zip, which has
+no .git ancestor -- pass --adr-dir or set the env var in that case).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 
-def _repo_root() -> Path:
+def _repo_root(start: Path) -> Path | None:
     """Walk up to the repository root rather than counting directory levels.
 
     A hardcoded `parents[N]` encodes this file's depth, which silently resolves to
     the WRONG directory after a move instead of failing. Walking to .git survives.
+    Returns None (does not raise) when no .git ancestor exists -- e.g. a standalone
+    run from an extracted kit zip -- so callers can fall back or report a clear,
+    actionable error instead of the whole process crashing at import time.
     """
-    p = Path(__file__).resolve()
-    for cand in [p, *p.parents]:
+    for cand in [start, *start.parents]:
         if (cand / ".git").exists():
             return cand
-    raise SystemExit(f"repo root not found (no .git above {p})")
+    return None
+
+
+def _resolve_adr_dir(cli_arg: str | None) -> Path | None:
+    """Resolve the ADR directory. Only called when an l4_adr lookup is actually
+    needed -- never at import time or unconditionally at the top of main().
+
+    Precedence: --adr-dir CLI flag > X_FED_DAY2_OPS_ADR_DIR env var > walk-up-to-.git
+    auto-detection. Returns None if none of those resolve, so the caller can report
+    a fail-closed gate problem with actionable guidance rather than crashing.
+    """
+    if cli_arg:
+        return Path(cli_arg).resolve()
+    env = os.environ.get("X_FED_DAY2_OPS_ADR_DIR")
+    if env:
+        return Path(env).resolve()
+    root = _repo_root(Path(__file__).resolve())
+    if root is None:
+        return None
+    return root / "src" / "uiao" / "canon" / "adr"
 
 
 HERE = Path(__file__).resolve().parent
-ADR_DIR = _repo_root() / "src" / "uiao" / "canon" / "adr"
 
 # Map discovery must match check_actuator_coverage.py / validate_day2_control_maps.py.
 # A gate that globs fewer maps than its siblings is how the last blind spot happened.
@@ -81,14 +111,38 @@ def items(path: Path):
             yield k, v
 
 
-def adr_exists(ref: str) -> bool:
+def adr_exists(ref: str, adr_dir: Path) -> bool:
     stem = ref.strip().lower().replace("adr-", "")
-    return any(ADR_DIR.glob(f"adr-{stem}*.md")) if ADR_DIR.is_dir() else False
+    return any(adr_dir.glob(f"adr-{stem}*.md")) if adr_dir.is_dir() else False
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--adr-dir",
+        default=None,
+        help=(
+            "Path to the ADR directory (e.g. src/uiao/canon/adr). Takes precedence "
+            "over the X_FED_DAY2_OPS_ADR_DIR env var and the .git-walk auto-detection. "
+            "Only needed if a control-map item declares an l4_adr reference."
+        ),
+    )
+    args = parser.parse_args()
+
     problems: list[str] = []
     n_auto = n_read = n_l4 = 0
+
+    # Resolved lazily, at most once, the first time an l4_adr lookup is actually
+    # needed -- a run where nothing needs an ADR lookup never touches this.
+    adr_dir: Path | None = None
+    adr_dir_resolved = False
+
+    def get_adr_dir() -> Path | None:
+        nonlocal adr_dir, adr_dir_resolved
+        if not adr_dir_resolved:
+            adr_dir = _resolve_adr_dir(args.adr_dir)
+            adr_dir_resolved = True
+        return adr_dir
 
     for m in control_maps():
         lane = m.name.replace("-control-map.json", "")
@@ -122,7 +176,17 @@ def main() -> int:
                 )
                 continue
             n_l4 += 1
-            if not adr_exists(adr):
+            dir_ = get_adr_dir()
+            if dir_ is None:
+                problems.append(
+                    f"  {lane}/{key}: l4_adr names {adr!r} but the ADR directory could not be "
+                    f"resolved — no --adr-dir given, no X_FED_DAY2_OPS_ADR_DIR set, and no "
+                    f".git ancestor found (this looks like a standalone run outside the canon "
+                    f"repo, e.g. from an extracted kit zip). Pass --adr-dir <path-to-adr-dir> "
+                    f"or set X_FED_DAY2_OPS_ADR_DIR to check this reference."
+                )
+                continue
+            if not adr_exists(adr, dir_):
                 problems.append(
                     f"  {lane}/{key}: l4_adr names {adr!r} but no such ADR exists on disk — "
                     f"an L4 claim citing a decision that cannot be read is the defect this "

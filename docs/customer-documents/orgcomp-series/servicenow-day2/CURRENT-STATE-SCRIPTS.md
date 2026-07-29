@@ -63,10 +63,21 @@ resolves, for the target object:
 ```
 if (hybrid_mode == true && AdHybridClient.isAdMastered(entraUser)) {
     // lifecycle / attribute / password / AD-sourced-group writes -> AD leg
+    request.actuation_leg = 'ad';
 } else {
     // cloud-only object, OR hybrid_mode == false -> Graph / ARM leg
+    request.actuation_leg = 'graph';
 }
 ```
+
+The Flow must set `request.actuation_leg` before calling `MacdrOrchestrator.run()` —
+`'ad'` when routing to the AD leg, `'graph'` (or omitted, for backward
+compatibility) for the cloud-only leg. `MacdrOrchestrator` reads this field to
+know whether to skip the PIM elevate/deactivate clause: AD-leg writes execute
+under the MID Server's service identity, not the elevated approver's token, so
+activating PIM for a human is not the operative authorization for that leg and
+is skipped by design, with the reason recorded in the evidence trail (see
+`script-includes/MacdrOrchestrator.js`, clause 3).
 
 Two refinements the Flow applies:
 
@@ -114,6 +125,8 @@ write *path* for synced objects changes.
 | `x_fed_day2_ops.ad_mid_server` | The domain-joined, in-boundary MID that reaches a writable DC |
 | `x_fed_day2_ops.ad_dc` | The preferred writable DC (write + verify hit the same one) |
 | `x_fed_day2_ops.ad_disabled_ou` | The OU leavers are moved to on disable |
+| `x_fed_day2_ops.ad_managed_ous` | Comma-separated allowlist of target OU distinguished names `moveUserOuAd` may move an object into; empty/unset fails closed (no moves permitted) |
+| `x_fed_day2_ops.ad_protected_groups` | Comma-separated deny-list of tier-0/protected AD group names (substring match) `addGroupMemberAd` refuses to modify; defaults to the built-in AD privileged-group set |
 
 See `CURRENT-STATE-BUILD-DELTA.md` for how these are provisioned and the delegated
 AD rights the MID service account needs.

@@ -79,3 +79,43 @@ provisioning goes cloud-native into Entra:
 
 The `AdHybridClient` remains in place, dormant, until the last AD-mastered
 population is migrated. Retire it only when nothing is synced anymore.
+
+## 5. Trust boundary — the `ecc_queue` dispatch is a second door into AD
+
+`AdHybridClient._ps` (`script-includes/AdHybridClient.js`) dispatches every AD
+write by inserting a `GlideRecord('ecc_queue')` with `topic = 'PowerShell'` and
+`agent = 'mid.server.' + ad_mid_server`, which the domain-joined AD MID picks up
+asynchronously and executes against the pinned writable DC (`ad_dc`) under the
+delegated service account (§1). That queue insert **is** the write channel to AD
+once the AD leg is configured — `MacdrOrchestrator.run`'s `actuate` clause is one
+caller of it, but not the only possible one. **Anyone who can insert a record
+into `ecc_queue` with that `topic`/`agent` pair can drive AD writes directly**,
+bypassing the Flow's router, the `elevate` clause (PIM), and the evidence write
+entirely — the orchestrator never sees the request. `ecc_queue` is a global
+platform table; the scoped-app ACLs this kit ships govern `x_fed_day2_ops`'s own
+tables (e.g. `x_fed_day2_ops_evidence`), not `ecc_queue`. So whether this is
+exploitable on a given instance is purely a question of that instance's
+`ecc_queue` insert ACL — a platform-configuration fact this kit does not control
+and, until now, did not document.
+
+This does not defeat the design: a change that reaches AD through the governed
+path is evidenced, and an operator's interactive AD console session was never
+evidenced either — so the `ecc_queue` path is not a regression against the
+pre-kit baseline in that narrow sense. But it does widen who is "in the trust
+path" for AD writes. Under Microsoft's AD tiering model, any principal able to
+write a `topic = 'PowerShell'` / `agent = 'mid.server.<x>'` record to
+`ecc_queue` is effectively Tier-0-adjacent for this domain, which makes the
+ServiceNow instance (and the AD MID) a materially different trust posture than
+"the MID is in-boundary" conveys on its own — and arguably a **wider** trust
+path than an operator working from a PAW, not narrower, since it substitutes a
+table-ACL question on a shared platform table for a hardened, single-purpose
+endpoint. That is not a decision this kit should make implicitly; it needs to
+be explicit and reviewed.
+
+**Pre-production must-do:** review and restrict the `ecc_queue` insert ACL on
+the target instance — who can write `topic = 'PowerShell'` records at all, and
+ideally scope further to this kit's own `agent = 'mid.server.' + ad_mid_server`
+value — before go-live. Track this alongside the delegated-rights verification
+already called out as open in `CURRENT-STATE-SCRIPTS.md` §1 (the
+effective-permissions dump), and carry both into the pilot's entry criteria
+(`CURRENT-STATE-PILOT-ROLLOUT.md` §0).

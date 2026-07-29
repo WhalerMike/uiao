@@ -100,15 +100,42 @@ AdHybridClient.prototype = {
 
     moveUserOuAd: function (samOrDn, targetOu) {
         if (this.testMode) return { ok: true, id: samOrDn, targetOu: targetOu };
+        if (!this._isAllowedOu(targetOu)) {
+            return { ok: false, error: 'refusing to move to an OU outside the managed allowlist: ' + targetOu };
+        }
         return this._ps('Move-ADObject', { Identity: samOrDn, TargetPath: targetOu });
+    },
+    _isAllowedOu: function (targetOu) {
+        var allow = gs.getProperty('x_fed_day2_ops.ad_managed_ous', '');
+        if (!allow) return false;   // fail closed: no allowlist configured means no moves permitted
+        var ous = allow.split(',');
+        var norm = ('' + targetOu).trim().toLowerCase();
+        for (var i = 0; i < ous.length; i++) { if (norm === ous[i].trim().toLowerCase()) return true; }
+        return false;
     },
 
     // --- Access: AD-SOURCED (synced) group membership (AC-6). ------------------
     // Only for groups that originate in AD and sync to Entra. Cloud-only / M365
     // groups are managed on the Graph leg — the router decides by group source.
+    // The deny-list below is defense-in-depth ONLY — it is not a substitute for
+    // verifying the MID service account's actual AD delegation, which remains a
+    // separate, still-open pre-production item (see CURRENT-STATE-SCRIPTS.md §1).
     addGroupMemberAd: function (groupSamOrDn, memberSamOrDn) {
         if (this.testMode) return { ok: true, groupId: groupSamOrDn, memberId: memberSamOrDn, synced: true };
+        if (this._isProtectedGroup(groupSamOrDn)) {
+            return { ok: false, error: 'refusing to modify a protected/tier-0 group via the AD leg: ' + groupSamOrDn };
+        }
         return this._ps('Add-ADGroupMember', { Identity: groupSamOrDn, Members: memberSamOrDn });
+    },
+    _isProtectedGroup: function (groupSamOrDn) {
+        var defaults = 'Domain Admins,Enterprise Admins,Schema Admins,Administrators,Account Operators,Backup Operators,Server Operators,Print Operators,Domain Controllers,Read-only Domain Controllers,Group Policy Creator Owners,Cert Publishers,Key Admins,Enterprise Key Admins,DnsAdmins';
+        var denyList = gs.getProperty('x_fed_day2_ops.ad_protected_groups', defaults).split(',');
+        var name = ('' + groupSamOrDn).toLowerCase();
+        for (var i = 0; i < denyList.length; i++) {
+            var entry = denyList[i].trim().toLowerCase();
+            if (entry && name.indexOf(entry) !== -1) return true;
+        }
+        return false;
     },
 
     removeGroupMemberAd: function (groupSamOrDn, memberSamOrDn) {

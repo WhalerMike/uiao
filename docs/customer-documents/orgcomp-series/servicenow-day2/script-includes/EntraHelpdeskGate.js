@@ -12,7 +12,13 @@
 //     fails — the check is fail-CLOSED, never skipped.
 //   * LEAST PRIVILEGE — a privileged group/role grant must carry an expiry
 //     (AC-6); a standing elevation from a helpdesk click is refused. `privileged`
-//     is coerced (ServiceNow catalog variables arrive as the string 'true').
+//     is coerced (ServiceNow catalog variables arrive as the string 'true'), and
+//     is ALSO derived server-side from the target against the allowlists in
+//     x_fed_day2_ops.privileged_role_template_ids / .privileged_group_ids — a
+//     client-supplied false can never override a derived-true classification.
+//     Limitation: a request with no role_template_id/group_id/target_id can't be
+//     classified against the allowlists and falls back to the self-declared flag
+//     alone; the caller must populate one of those fields for full coverage.
 //
 // test_mode returns deterministic PASS verdicts so ATF can drive the Flow with no
 // live Graph. Never enable in production.
@@ -43,10 +49,32 @@ EntraHelpdeskGate.prototype = {
             return { ok: false, reason: 'SoD indeterminate: requester/approver not populated (CM-5)' };
         if (request.requester_id === request.approver_id)
             return { ok: false, reason: 'SoD violation: requester == approver (CM-5)' };
-        // AC-6: privileged grant must be time-bound. Coerce string variables.
-        if (this._truthy(request.privileged) && !request.expiry)
+        // AC-6: privileged grant must be time-bound. Coerce string variables, and
+        // OR in the server-derived classification — a self-declared-false flag
+        // must never suppress a target that the allowlists say IS privileged.
+        var privileged = this._truthy(request.privileged) || this._classifyPrivileged(request);
+        if (privileged && !request.expiry)
             return { ok: false, reason: 'Least privilege: privileged grant requires an expiry (AC-6)' };
         return { ok: true, reason: 'preflight ok' };
+    },
+
+    // Server-side privilege classification — do not trust the client flag alone.
+    // Checks the request's target against the configured allowlists so a caller
+    // can't dodge the AC-6 expiry requirement by leaving `privileged` unticked.
+    _classifyPrivileged: function (request) {
+        var roleIds = gs.getProperty('x_fed_day2_ops.privileged_role_template_ids', '');
+        var groupIds = gs.getProperty('x_fed_day2_ops.privileged_group_ids', '');
+        // groupId (camelCase) reuses the SAME catalog field the client actuates
+        // with (variable-set-helpdesk-identity.xml's group_id -> groupId); the
+        // other two are gate-only fields with their own snake_case mappings.
+        var target = request.role_template_id || request.groupId || request.target_id || '';
+        if (!target) return false;   // nothing to classify against; self-declared flag still applies
+        var ids = (roleIds + ',' + groupIds).split(',');
+        for (var i = 0; i < ids.length; i++) {
+            var id = ids[i].trim();
+            if (id && id === ('' + target).trim()) return true;
+        }
+        return false;
     },
 
     // Verify gate — run AFTER actuation. Re-reads state and asserts the intended
@@ -87,9 +115,17 @@ EntraHelpdeskGate.prototype = {
     },
 
     _isMember: function (groupId, userId) {
-        // Affirmative membership check; a failed read is NOT membership.
-        var r = this.client._graph('GET', '/groups/' + groupId + '/members/' + userId, null);
-        return r.ok;
+        // Affirmative membership check via Graph's checkMemberGroups action — a
+        // 2xx status is NOT membership; the returned group id set must actually
+        // contain groupId. A failed or unparseable read is NOT membership.
+        var r = this.client._graph('POST', '/users/' + userId + '/checkMemberGroups', { groupIds: [groupId] });
+        if (!r.ok) return false;
+        try {
+            var body = JSON.parse(r.body) || {};
+            var ids = body.value || [];
+            for (var i = 0; i < ids.length; i++) { if (ids[i] === groupId) return true; }
+            return false;
+        } catch (e) { return false; }
     },
 
     type: 'EntraHelpdeskGate'

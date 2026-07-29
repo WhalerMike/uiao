@@ -59,6 +59,7 @@ AcmeCredentialClient.prototype = {
         // Default lifetime is deliberately short — the point of ACME automation is
         // that a short life is cheap. Long-lived certs are a config smell.
         this.defaultDays = parseInt(gs.getProperty('x_fed_day2_ops.acme_default_days', '90'), 10);
+        if (isNaN(this.defaultDays) || this.defaultDays <= 0) { this.defaultDays = 90; }
         this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.AcmeCredentialClient] ' + m); } };
         this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
@@ -72,7 +73,9 @@ AcmeCredentialClient.prototype = {
         if (this.testMode)
             return { ok: true, thumbprint: 'TEST0000THUMBPRINT0001', subject: subject,
                      notAfter: '2026-12-31T00:00:00Z', keyReturned: false };
-        var days = Math.min(parseInt(opts.days || this.defaultDays, 10), this.defaultDays);
+        var days = parseInt(opts.days || this.defaultDays, 10);
+        if (isNaN(days) || days <= 0) { days = 90; }
+        days = Math.min(days, this.defaultDays);
         return this._acme('issue', { subject: subject, days: days, keyType: opts.keyType || 'ec-p256' });
     },
 
@@ -123,7 +126,7 @@ AcmeCredentialClient.prototype = {
             }
             return out;
         } catch (e) {
-            this.log.logErr('_acme ' + op + ' failed: ' + e);
+            this.log.logErr('_acme ' + op + ' failed: ' + ('' + e).replace(/[\r\n]+/g, ' ').slice(0, 500));
             return { ok: false, error: '' + e };
         }
     },

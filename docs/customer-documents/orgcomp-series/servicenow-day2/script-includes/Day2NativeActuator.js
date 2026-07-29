@@ -311,7 +311,7 @@ Day2NativeActuator.prototype = {
             }
             return { ok: true, status: 201, sys_id: '' + sysId, table: table };
         } catch (e) {
-            this.log.logErr('_insert into ' + table + ' failed: ' + e);
+            this.log.logErr('_insert into ' + table + ' failed: ' + ('' + e).replace(/[\r\n]+/g, ' ').slice(0, 500));
             return { ok: false, error: '' + e };
         }
     },

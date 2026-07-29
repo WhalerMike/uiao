@@ -115,7 +115,7 @@ EntraAppRegClient.prototype = {
             var code = resp.getStatusCode();
             return { ok: code >= 200 && code < 300, status: code, body: resp.getBody() };
         } catch (e) {
-            this.log.logErr('_graph ' + method + ' ' + path + ' failed: ' + e);
+            this.log.logErr('_graph ' + method + ' ' + path + ' failed: ' + ('' + e).replace(/[\r\n]+/g, ' ').slice(0, 500));
             return { ok: false, error: '' + e };
         }
     },

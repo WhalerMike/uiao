@@ -14,7 +14,16 @@
 //   clause 2  AUTHORIZE     EntraHelpdeskGate.preflight — SoD (requester != approver)
 //                           and least-privilege expiry. FAIL CLOSED.
 //   clause 3  ELEVATE       PimActivationClient.activate — JIT PAG; no activation
-//                           id, no actuation. The id becomes evidence.
+//                           id, no actuation. The id becomes evidence. EXCEPTION:
+//                           AD-leg requests (request.actuation_leg === 'ad') skip
+//                           this clause — the actual write executes under the MID
+//                           Server's service identity, never the elevated human's
+//                           token, so activating PIM for the approver/requester is
+//                           not the operative authorization for that leg and would
+//                           only hand out a spurious privileged window. This is a
+//                           documented gap (no workload-identity PIM integration
+//                           exists in this kit), not a silent skip — it is recorded
+//                           in the evidence trail.
 //   clause 4  ACTUATE+VERIFY the caller-supplied actuation runs, then
 //                           EntraHelpdeskGate.verify RE-READS state — a 2xx is not
 //                           closure; the post-state must be observed.
@@ -45,27 +54,36 @@ MacdrOrchestrator.prototype = {
     // verifyArgs : { action, target }             for EntraHelpdeskGate.verify
     run: function (request, actuate, verifyArgs) {
         var trail = { verb: request.verb, control: request.control, ksi: request.ksi };
+        var skipPim = (request.actuation_leg === 'ad');
 
         // clause 2 — AUTHORIZE (fail closed)
         var pre = this.gate.preflight(request);
         trail.authorize = pre;
         if (!pre.ok) return this._stop('authorize', trail, request);
 
-        // clause 3 — ELEVATE (no activation id, no actuation)
-        var act = this.pim.activate(request.approver_id || request.requester_id, request.justification || ('MACD-R ' + request.verb));
-        trail.elevate = { ok: act.ok, activationId: act.activationId, reason: act.reason };
-        if (!act.ok) return this._stop('elevate', trail, request);
+        // clause 3 — ELEVATE (no activation id, no actuation) — skipped for the
+        // AD leg; see the header comment above for why.
+        var act;
+        if (skipPim) {
+            act = { ok: true, activationId: null, skipped: true,
+                     reason: 'AD-leg actuation runs under the MID service identity, not the elevated approver — PIM activation of a human is not the operative authorization for this leg and is skipped by design (documented gap, no workload-identity PIM integration exists in this kit)' };
+            trail.elevate = act;
+        } else {
+            act = this.pim.activate(request.approver_id || request.requester_id, request.justification || ('MACD-R ' + request.verb));
+            trail.elevate = { ok: act.ok, activationId: act.activationId, reason: act.reason };
+            if (!act.ok) return this._stop('elevate', trail, request);
+        }
 
         // clause 4 — ACTUATE then VERIFY (re-read; a 2xx is not closure)
         var result;
         try { result = (typeof actuate === 'function') ? actuate() : { ok: false, reason: 'no actuation supplied' }; }
         catch (e) { result = { ok: false, error: '' + e }; }
         trail.actuate = { ok: !!(result && result.ok) };
-        if (!result || !result.ok) { this.pim.deactivate(request.approver_id || request.requester_id); return this._stop('actuate', trail, request); }
+        if (!result || !result.ok) { if (!skipPim) this.pim.deactivate(request.approver_id || request.requester_id); return this._stop('actuate', trail, request); }
 
         var ver = this.gate.verify(verifyArgs.action, verifyArgs.target);
         trail.verify = ver;
-        this.pim.deactivate(request.approver_id || request.requester_id);   // give the window back
+        if (!skipPim) this.pim.deactivate(request.approver_id || request.requester_id);   // give the window back
         if (!ver.ok) return this._stop('verify', trail, request);
 
         // clause 5 — EVIDENCE (the closure the attestation pipeline reads)

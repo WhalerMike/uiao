@@ -20,6 +20,12 @@
 - The **domain-joined AD MID** reaches the pinned writable DC (`ad_dc`), and its
   service account holds only the **delegated, least-privilege rights** on the
   pilot OUs (never Domain Admin).
+- The instance's **`ecc_queue` insert ACL has been reviewed and restricted** —
+  who can write `topic = 'PowerShell'` / `agent = 'mid.server.' + ad_mid_server`
+  records, ideally scoped to this kit's own MID/agent identifiers. This queue
+  insert is the AD leg's actual write channel (`AdHybridClient._ps`,
+  `CURRENT-STATE-BUILD-DELTA` §5); an unreviewed ACL is a way to drive AD writes
+  that bypasses the Flow, PIM, and the evidence record.
 - A **rollback owner** and a **go/no-go approver** (ISSO) are named.
 
 ## 1. Choose the pilot cohort

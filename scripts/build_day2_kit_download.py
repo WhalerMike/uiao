@@ -28,6 +28,7 @@ Usage (called from the Quarto assemble job, after the site renders):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import zipfile
 from pathlib import Path
 
@@ -156,7 +157,10 @@ START HERE
   3. docx/5_Operator_Usage   — each task's current-state write path
   Build the base platform first: docx/7_Build_Specification, then the delta.
 
-Rebuilt from source on every site deploy — no fixed SHA-256 is published.
+Rebuilt from source on every site deploy — no fixed SHA-256 is published for the
+kit as a whole (it changes on every rebuild), but MANIFEST-SHA256.txt inside this
+archive gives you a per-file SHA-256, generated at this exact build, so you can
+verify nothing was altered in transit or storage after download.
 """
 
 README_TARGET = """OrgComp Day-2 Automation Kit — 2027 TARGET STATE edition
@@ -182,7 +186,10 @@ START HERE
   2. docx/7_Build_Specification — tables, ACLs, roles, the 50-item catalog, export
   3. docx/2_Variables_Reference — fill in your environment's values
 
-Rebuilt from source on every site deploy — no fixed SHA-256 is published.
+Rebuilt from source on every site deploy — no fixed SHA-256 is published for the
+kit as a whole (it changes on every rebuild), but MANIFEST-SHA256.txt inside this
+archive gives you a per-file SHA-256, generated at this exact build, so you can
+verify nothing was altered in transit or storage after download.
 """
 
 READMES = {"current": README_CURRENT, "target": README_TARGET}
@@ -251,13 +258,30 @@ def build_one(site_root: Path, src_root: Path, out_dir: Path, date_code: str, ed
     out_dir.mkdir(parents=True, exist_ok=True)
     root = ROOTS[edition]
     zip_path = out_dir / ZIP_NAMES[edition]
+    readme_bytes = READMES[edition].format(date=date_code).encode("utf-8")
+    hashes: list[tuple[str, str]] = [(f"{root}/README.txt", hashlib.sha256(readme_bytes).hexdigest())]
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr(f"{root}/README.txt", READMES[edition].format(date=date_code))
+        z.writestr(f"{root}/README.txt", readme_bytes)
         for arc, src in sorted(members.items()):
-            z.write(src, f"{root}/{arc}")
+            arcname = f"{root}/{arc}"
+            z.write(src, arcname)
+            hashes.append((arcname, hashlib.sha256(src.read_bytes()).hexdigest()))
+        # Per-file integrity check for this exact build — the kit as a whole has
+        # no fixed hash (it's rebuilt on every deploy), but a recipient can verify
+        # no individual file was altered after this build produced it.
+        manifest_lines = [f"{h}  {arc}" for arc, h in sorted(hashes)]
+        manifest = (
+            f"SHA-256 manifest — OrgComp Day-2 Automation Kit — {label} edition\n"
+            f"Build date: {date_code}\n"
+            f"Generated at build time by scripts/build_day2_kit_download.py — verify with\n"
+            f"'sha256sum -c' (strip the archive-relative prefix first) or equivalent.\n\n"
+            + "\n".join(manifest_lines)
+            + "\n"
+        )
+        z.writestr(f"{root}/MANIFEST-SHA256.txt", manifest)
 
     size_kb = zip_path.stat().st_size / 1024
-    print(f"Wrote {zip_path}  ({len(members) + 1} files, {size_kb:.1f} KB)\n")
+    print(f"Wrote {zip_path}  ({len(members) + 2} files, {size_kb:.1f} KB)\n")
     return 0
 
 

@@ -81,6 +81,10 @@ documents unchanged; the **Current-State docs** cover only the delta.
 - A **preferred writable DC** (`x_fed_day2_ops.ad_dc`) so the write and the
   verify re-read hit the same DC (no replication-lag false reads), and a
   **disabled-accounts OU** (`x_fed_day2_ops.ad_disabled_ou`) for leavers.
+- A **managed-OU allowlist** (`x_fed_day2_ops.ad_managed_ous`) — the comma-separated
+  distinguished names `moveUserOuAd` is permitted to move an object into. Unset
+  or empty means no OU moves are permitted at all (fail closed) — this keeps a
+  Mover task from escaping the OUs your GPO/LAPS/delegation/audit scoping covers.
 - **Entra Connect** configured and healthy, with **password writeback** enabled if
   you intend to actuate password resets in Entra rather than AD.
 
