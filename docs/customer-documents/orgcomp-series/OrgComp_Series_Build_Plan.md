@@ -61,9 +61,11 @@ DIA appears (Books 04, 05, 08, 13 in new numbering):
 
 1. **What DIA solves:** exactly one thing — the geographic hairpin. G.114's 150ms
    one-way budget is a physics constraint; local breakout is the only fix.
-2. **What DIA satisfies:** exactly zero NIST controls. DIA is a pipe. Every
-   control claimed near it (SC-7, SC-8, AC-4, SI-4, CA-7) is satisfied by the
-   SD-WAN/SASE/TIC 3.0 stack that governs the pipe — never by the pipe.
+2. **What DIA satisfies:** none of the protection controls. DIA is a pipe.
+   Every protection control claimed near it (SC-7, SC-8, AC-4, SI-4, CA-7) is
+   satisfied by the SD-WAN/SASE/TIC 3.0 stack that governs the pipe — never by
+   the pipe. Transport selection itself closes exactly one family: CP-8
+   (Telecommunications Services), through provider and path diversity.
 3. **What DIA breaks if deployed bare:** the TIC boundary (SC-7 regression vs.
    the MPLS/TIC 2.0 baseline it replaced). Bare DIA is *worse* than the hairpin
    it fixed, from the assessor's chair.
