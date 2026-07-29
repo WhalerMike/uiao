@@ -367,6 +367,7 @@
   - [Vol VII Book 05 — Federal Organization Compliance — The ServiceNow Compliance App](customer-documents/orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.html)
   - [Vol VII Book 06 — Federal Organization Compliance — AWS Federal Control Compliance Automation](customer-documents/orgcomp-series/Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.html)
   - [Vol VII Book 07 — Federal Organization Compliance — VMware Federal Control Compliance Automation](customer-documents/orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.html)
+  - [Vol VII Book 08 — Federal Organization Compliance — Native Cloud IAM/RBAC Access-Governance Automation](customer-documents/orgcomp-series/Vol_VII_Book_08_OrgComp_Native_IAM_RBAC_Access_Governance.html)
 - **Vol VIII — Multi-Cloud DDI**
   - [Vol VIII Book 00 — Federal Organization Compliance — Volume VIII Overview: Multi-Cloud DDI Landing-Zone Automation](customer-documents/orgcomp-series/Vol_VIII_Book_00_OrgComp_DDI_Automation_Overview.html)
 - **Vol IX — Day-2 Operations**
@@ -987,6 +988,7 @@
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [AODIM — Attribute-Oriented Directory & Identity Model](customer-documents/whitepapers/aodim-executive-whitepaper.html)
   - [UIAO vs Microsoft Native Tools — Gap Analysis](customer-documents/whitepapers/uiao-vs-native-tools.html)
+  - [OrgComp vs. Native Cloud Consoles — Why Changing State Isn't Compliance Evidence](customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.html)
   - [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.html)
   - [Choose Your Partners — The OrgPath Composability Matrix](customer-documents/whitepapers/orgpath-composability-matrix.html)
   - [SCuBAGear Integration — Whitepaper](customer-documents/whitepapers/scubagear-integration-whitepaper.html)
