@@ -83,6 +83,13 @@ The gap described above has an obvious-looking fix that is itself a trap: raise 
 
 **Where no machine actuator exists yet, the fallback is a declared exception, not a silent one.** VMware/vCenter is the recurring case in this series: no confirmed orchestrator today runs a signed script against vCenter under a service identity. The compensating control is a CyberArk Privileged Session Manager (PSM) session — approved first in ServiceNow, then time-boxed, proxied, and recorded — with the recording itself as the evidence artifact. That closure is booked honestly as a **documented-process** closure, not represented as automated validation it cannot provide.
 
+**A working reference implementation exists for this pattern — it is not only a design recommendation.** The OrgComp Day-2 Automation Kit (`docs/customer-documents/orgcomp-series/servicenow-day2/`), a deployable ServiceNow scoped application rather than a design document, already implements ticket-to-machine actuation for the AD/Entra joiner-mover-leaver and credential-lifecycle surface. `AdHybridClient.js` dispatches every synced-object AD write (`New-ADUser`, `Disable-ADAccount`, `Set-ADAccountPassword`, `Add-ADGroupMember`) through a domain-joined, in-boundary MID Server under a delegated, least-privilege service account — *"NEVER Domain Admin,"* per the script's own header — never through an operator's interactive session. The kit's ServiceNow-side actuator states the same doctrine in its own words, written independently of this paper: *"ServiceNow raises, routes and evidences; it NEVER writes to the estate"* (`Day2NativeActuator.js`). The admin-initiated password-reset path is explicitly commented as *"the approver-gated fallback"* behind self-service reset, and the daily morning sync-health check — RDP-to-the-sync-host in the series' own documented "as-found" anti-pattern (`OrgComp_Operator_Runbook_Day2_Compliant.qmd`, Task 6) — is already closed in this kit as a read-only automated reconciliation job.
+
+::: {.callout-tip}
+## Verified, with real limits
+This assessment sampled the kit's two most load-bearing files (`Day2NativeActuator.js`, `AdHybridClient.js`) and its current-state overview doc, not all ~10 Script Includes and 4 control-map JSONs line by line — strong supporting evidence, not a completeness audit. The kit is AD/Entra-scoped and does not touch vCenter, so it does not exercise this section's own PSM exception path above; that path remains a documented recommendation without a sampled reference implementation as of this writing.
+:::
+
 ## 5. Closure Necessity — the Argument, in the Vendors' Own Terms
 
 Each platform book states the same finding, in the same words, changing only the vendor name. Quoting all three side by side makes the structural (not vendor-specific) nature of the claim concrete:
@@ -214,6 +221,7 @@ This paper's core claim — that a native console cannot be the evidence system 
 - [Vol III Book 07 — Multi-Cloud Evidence Fabric](../orgcomp-series/Vol_III_Book_07_OrgComp_Multi_Cloud_Evidence_Fabric.qmd) — where the coordination layer's output joins the cross-environment evidence fabric.
 - [Vol I Book 03 — Certificates, Tokens & Cryptographic Identity](../orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.qmd) — the deliberate exception (§9): why routine PKI lifecycle closes through protocol automation, not a ServiceNow task.
 - [Vol III Book 01 — Privileged Access Management](../orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd) — the CyberArk PSM session-recording capability §4's vCenter compensating control relies on.
+- [OrgComp Day-2 Automation Kit](../orgcomp-series/servicenow-day2/README.md) — §4's working reference implementation of ticket-to-machine actuation for the AD/Entra surface.
 
 ## Provenance
 
@@ -232,6 +240,8 @@ This paper names specific, dated vendor capabilities — SmartRAMP 20x, the VMwa
 | Closure Necessity argument (Azure/AWS/VMware) | Vol VII Books 03, 06, 07 (this repo) |
 | Attestation pipeline (CA-2/CA-5/CA-7, OSCAL/KSI emit) | Vol VII Book 04 (this repo) |
 | ServiceNow Compliance App record model (`x_fed_compliance`) | Vol VII Book 05 (this repo) |
+| §4's "working reference implementation" claims — MID-Server-dispatched AD writes under a delegated service account, "ServiceNow ... NEVER writes to the estate," the approver-gated password-reset fallback, the automated morning-check reconciliation | `docs/customer-documents/orgcomp-series/servicenow-day2/script-includes/AdHybridClient.js`, `Day2NativeActuator.js`, `CURRENT-STATE-OPERATOR-USAGE.md` (this repo) — sampled, not exhaustively audited; see the callout above |
+| The morning-check RDP anti-pattern the Day-2 kit's automated reconciliation replaces | `docs/customer-documents/orgcomp-series/OrgComp_Operator_Runbook_Day2_Compliant.qmd`, Task 6 |
 | PAIN-rating remediation timeframes (VDR-TFR-PVR) | FedRAMP — <https://www.fedramp.gov/2026/reference/vulnerability-detection-and-response/> |
 | Risk-based remediation prioritization (KEV catalog) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
 | SAM (SailPoint IGA) canon status — distinct from reserved `sailpoint-nerm` slot (ADR-059) | `docs/customer-documents/orgcomp-series/servicenow-day2/START-HERE.md` |
