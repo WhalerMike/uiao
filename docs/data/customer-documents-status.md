@@ -29,8 +29,8 @@
 | `substrate/` | 1 | 0 | 2 | 9 | 4 | 16 |
 | `uiao-orgcomp-integration/` | 0 | 0 | 7 | 7 | 1 | 15 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
-| `whitepapers/` | 0 | 0 | 6 | 13 | 1 | 20 |
-| **Total** | **21** | **303** | **315** | **135** | **53** | **827** |
+| `whitepapers/` | 0 | 0 | 5 | 14 | 1 | 20 |
+| **Total** | **21** | **303** | **314** | **136** | **53** | **827** |
 
 ## Section detail
 
@@ -341,7 +341,7 @@
 | [`docs/customer-documents/orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd) | 138 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VII_Book_05_OrgComp_ServiceNow_Compliance_App.qmd) | 137 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VII_Book_06_OrgComp_AWS_Control_Compliance_Automation.qmd) | 156 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd) | 152 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd) | 220 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_VII_Book_08_OrgComp_Native_IAM_RBAC_Access_Governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VII_Book_08_OrgComp_Native_IAM_RBAC_Access_Governance.qmd) | 116 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_VI_Book_00_OrgComp_Implementation_Overview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VI_Book_00_OrgComp_Implementation_Overview.qmd) | 130 | Authored | ✅ | 3/3 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_VI_Book_01_OrgComp_Landing_Zone_Network_as_Code.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_VI_Book_01_OrgComp_Landing_Zone_Network_as_Code.qmd) | 139 | Authored | ✅ | 3/3 | — |
@@ -966,11 +966,11 @@
 | [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 1769 | Substantial | ✅ | 12/12 | — |
 | [`docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd) | 253 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/modernization-journey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-journey.qmd) | 488 | Substantial | ✅ | 11/11 | — |
-| [`docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd) | 232 | Authored | ✅ | 5/5 | — |
 | [`docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd) | 139 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd) | 345 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd) | 454 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd) | 452 | Substantial | ✅ | 10/10 | — |
+| [`docs/customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.qmd) | 253 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd) | 268 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd) | 654 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd) | 255 | Substantial | ✅ | 3/3 | — |
