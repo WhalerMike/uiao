@@ -988,7 +988,7 @@
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [AODIM — Attribute-Oriented Directory & Identity Model](customer-documents/whitepapers/aodim-executive-whitepaper.html)
   - [UIAO vs Microsoft Native Tools — Gap Analysis](customer-documents/whitepapers/uiao-vs-native-tools.html)
-  - [OrgComp vs. Native Cloud Consoles — Why Changing State Isn't Compliance Evidence](customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.html)
+  - [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence](customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.html)
   - [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.html)
   - [Choose Your Partners — The OrgPath Composability Matrix](customer-documents/whitepapers/orgpath-composability-matrix.html)
   - [SCuBAGear Integration — Whitepaper](customer-documents/whitepapers/scubagear-integration-whitepaper.html)
