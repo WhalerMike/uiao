@@ -32,15 +32,28 @@ exactly — `Class.create`, config from `gs.getProperty`, MID-routed transport,
 **Transport (starter skeleton).** `_ps(cmdlet, params)` renders the cmdlet with
 its parameters, pins the preferred DC (`-Server`), and dispatches it to the AD MID
 via an `ecc_queue` output record (topic `PowerShell`). The ECC output is
-asynchronous, so a successful return means **dispatched**, not **verified** — the
-Flow's VERIFY clause re-reads AD state on the same DC to confirm the post-state.
-Replace this with your hardened PowerShell activity or Integration Hub AD spoke
-for production; keep the fail-closed contract (any error → `ok:false`).
+asynchronous, so a successful return means **dispatched**, not **verified** —
+closure is supposed to depend on the Flow's VERIFY clause re-reading AD state on
+the same DC. **That re-read does not exist as shipped.** `AdHybridClient` has no
+read method (`getUserAd` or equivalent), and `EntraHelpdeskGate.verify` only reads
+Graph — so an AD-leg dispatch is currently recorded as closed without anything
+ever confirming the on-prem write took. Two more confirmed defects in
+`_ps`/`_render` specifically, from an external security review (2026-07-29):
+parameter *names* reach the rendered command unescaped (only values are quoted),
+which is a command-injection path from any caller-supplied attribute key; and
+`_merge` lets a caller-supplied attribute bag override the approved
+`Identity`/target. Replace this with your hardened PowerShell activity or
+Integration Hub AD spoke for production (§7) — do not run this skeleton against a
+live domain until the re-read, the injection path, and the target-override are
+fixed; keep the fail-closed contract (any error → `ok:false`).
 
 **Boundary discipline.** The MID runs inside the ATO boundary; its service account
-holds **delegated, least-privilege AD rights** on the specific OUs it manages —
-never Domain Admin. The write and the verify re-read hit the same DC
-(`x_fed_day2_ops.ad_dc`) to avoid replication-lag false reads.
+is *intended* to hold **delegated, least-privilege AD rights** on the specific OUs
+it manages — never Domain Admin — though that delegation is currently asserted in
+comments, not verified by anything in the kit (an effective-permissions dump is a
+pre-production must-do, not optional). The write and the (not-yet-implemented)
+verify re-read are designed to hit the same DC (`x_fed_day2_ops.ad_dc`) to avoid
+replication-lag false reads once the re-read exists.
 
 ## 2. The router — choosing the leg
 
@@ -122,10 +135,13 @@ cloud-native path is:
   `actuator_ad` to a real public method on `AdHybridClient` — a current-state AD
   write path with nothing behind it fails the build, exactly as a missing cloud
   actuator does.
-- **Four hybrid ATF suites** (see `atf/README.md`) prove the routing and the AD
-  leg with `test_mode = true` — synced → AD leg, cloud-only → Graph leg, an
-  unclassifiable object failing closed to clause `route`, and the AD-leg write
-  flagging `synced:true` so verify allows for sync latency.
+- **Four hybrid ATF suites** (see `atf/README.md`) prove the routing with
+  `test_mode = true` — synced → AD leg, cloud-only → Graph leg, an unclassifiable
+  object failing closed to clause `route`, and the AD-leg write flagging
+  `synced:true`. **These suites prove routing, not the AD leg's actuation
+  logic:** `test_mode` short-circuits `AdHybridClient` before `_ps`/`_render` run,
+  so the command-rendering, injection, and merge-precedence behavior described in
+  §1 above has never been exercised by any test in this kit.
 
 ## 7. Production: migrating the AD leg to the Integration Hub AD Spoke
 
@@ -149,16 +165,27 @@ maps, and the ATF suites all stand.
 **Why the spoke for production**
 
 - **No command-string rendering.** The spoke takes structured inputs, so the
-  `_render` step (and its quoting/injection surface) disappears — you pass fields,
-  not an interpolated PowerShell line.
+  `_render` step disappears — including its confirmed injection surface
+  (parameter *names*, not just values, are interpolated into the rendered command
+  unescaped; see §1) — you pass fields, not an interpolated PowerShell line. The
+  spoke also removes the need for `_merge`'s bag-precedence logic, which currently
+  lets a caller-supplied `Identity` override the approved target.
+- **Removes the cleartext-password path.** `setPasswordAd` currently renders the
+  temporary password into `ecc_queue.payload` in cleartext (confirmed by the
+  2026-07-29 security review). The **Reset Password** spoke action should
+  generate the password at the MID (or resolve it from a credential alias) and
+  return a delivery handle instead — the temporary password must not transit
+  ServiceNow at all.
 - **Supported and versioned.** The spoke actions are maintained by ServiceNow and
   travel with platform upgrades; the skeleton is yours to keep working.
 - **Same boundary discipline.** The spoke still runs over the **domain-joined,
   in-boundary MID** against the pinned writable DC (`ad_dc`), under the same
   delegated, least-privilege service account — never Domain Admin.
-- **Structured outputs for verify.** Spoke actions return typed results, so the
-  Flow's VERIFY re-read and the evidence record capture the AD post-state without
-  parsing stdout.
+- **Structured outputs for verify — this is also where the missing AD read-back
+  gets built.** Spoke actions return typed results, so the Flow's VERIFY re-read
+  and the evidence record can capture the AD post-state without parsing stdout —
+  but note that today, neither the skeleton nor the spoke path has that re-read
+  implemented; it is the largest piece of missing work described in §1.
 
 **What stays the same**
 

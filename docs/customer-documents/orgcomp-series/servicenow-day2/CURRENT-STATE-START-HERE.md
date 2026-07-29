@@ -94,16 +94,35 @@ advice, no warranty) apply unchanged. Additionally:
    as a MID PowerShell dispatch (the ActiveDirectory module) via the ECC queue.
    Pin it to **your** hardened PowerShell activity or Integration Hub AD spoke, and
    validate the delegated rights against your OU model, before production.
-2. **Sync latency is real.** An AD write is authoritative but not instantaneous in
-   Entra — it lands on the next Entra Connect cycle. The Flow's VERIFY clause
-   re-reads **AD** (on the pinned DC) for the on-prem post-state and **Entra** for
-   the cloud post-state; do not treat a dispatch as closure, and account for sync
-   timing in any Entra-side verify.
+2. **Sync latency is real, and AD-leg verification does not exist yet.** An AD
+   write is authoritative but not instantaneous in Entra — it lands on the next
+   Entra Connect cycle. As designed, the Flow's VERIFY clause should re-read
+   **AD** (on the pinned DC) for the on-prem post-state and **Entra** for the
+   cloud post-state before treating a dispatch as closure. **As shipped, that AD
+   re-read does not exist:** `AdHybridClient` has no read method, and
+   `EntraHelpdeskGate.verify` only reads Graph. Every AD-leg method currently
+   returns its post-state (e.g. `disableUserAd`'s `accountEnabled: false`) as an
+   asserted fact the moment the asynchronous dispatch is queued — never having
+   observed AD. Do not treat an AD-leg evidence record as verified closure until a
+   real AD read-back is added (see `CURRENT-STATE-SCRIPTS.md` §1).
 3. **The routing predicate is authoritative, not cosmetic.** `hybrid_mode = true`
    plus `onPremisesSyncEnabled = true` sends a task to the AD leg. If you flip
    `hybrid_mode` to `false` while identities are still AD-mastered, cloud writes to
    synced attributes **will be silently reverted by sync** — a correctness bug, not
    a style choice.
+4. **Three more starter-skeleton defects, confirmed by an external security
+   review (2026-07-29) — do not point this at a live directory yet.** `_render`
+   (the PowerShell command builder) escapes parameter *values* but not parameter
+   *names*; a hostile attribute key reaching `setUserAttributesAd` drives
+   arbitrary cmdlet execution on the MID. `_merge` gives precedence to the
+   caller-supplied attribute bag, so a bag containing `Identity` overrides the
+   approved target — the write can land on a different object than the one
+   approved. `setPasswordAd` writes the temporary password into
+   `ecc_queue.payload` in cleartext. None of the three is exercised by the ATF
+   suite, because `test_mode` short-circuits every method before it reaches the
+   vulnerable code. Fix all three — plus the verify gap in item 2 above — before
+   setting `test_mode = false` against a real domain; see
+   `CURRENT-STATE-SCRIPTS.md` §7 for the production-hardening path.
 
 ## 6. Where to go next
 
