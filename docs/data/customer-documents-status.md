@@ -29,8 +29,8 @@
 | `substrate/` | 1 | 0 | 2 | 9 | 4 | 16 |
 | `uiao-orgcomp-integration/` | 0 | 0 | 7 | 7 | 1 | 15 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
-| `whitepapers/` | 0 | 0 | 6 | 13 | 1 | 20 |
-| **Total** | **21** | **303** | **315** | **135** | **53** | **827** |
+| `whitepapers/` | 0 | 0 | 5 | 14 | 1 | 20 |
+| **Total** | **21** | **303** | **314** | **136** | **53** | **827** |
 
 ## Section detail
 
@@ -966,7 +966,7 @@
 | [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 1769 | Substantial | ✅ | 12/12 | — |
 | [`docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd) | 253 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/modernization-journey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-journey.qmd) | 488 | Substantial | ✅ | 11/11 | — |
-| [`docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd) | 234 | Authored | ✅ | 5/5 | — |
+| [`docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd) | 253 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd) | 139 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd) | 345 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd) | 454 | Substantial | ✅ | 2/2 | — |

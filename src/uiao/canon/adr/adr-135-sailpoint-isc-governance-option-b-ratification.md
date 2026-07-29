@@ -4,7 +4,7 @@ title: "SailPoint ISC Governance — Option-B Ratification and Native Cloud IAM/
 status: ACCEPTED
 decided: 2026-07-28
 deciders: Michael Stratton
-updated: 2026-07-28
+updated: 2026-07-29
 next_review: 2027-01-28
 review_trigger: The `sailpoint-isc-governance` slot promotes from reserved to active (a per-adapter activation ADR is required first); a VMware/vCenter permission-governance adapter is proposed (this ADR explicitly does not cover that surface); AGENTS.md's cloud-boundary statement is next amended for an unrelated reason (verify this ADR's addition survived); ADR-092's control-plane slot model is revised
 impact: "Ratifies the Option-B boundary-expansion decision that ADR-059 explicitly deferred to a future ADR — the `sailpoint-isc-governance` and `sailpoint-machine-identity` conformance slots, and the `commercial-exception-sailpoint-isc` gcc-boundary enum value, landed in PR #924 citing ADR-059 but were never actually decided by a ratifying ADR of their own; this is that ADR. Corrects a second standing gap: AGENTS.md's cloud-boundary statement was never amended to list the third Commercial exception, even though the schema enum has carried it since PR #924. Binds `sailpoint-isc-governance` to ADR-092's Active Governance identity control-plane slot as the incorporated provider for native cloud IAM/RBAC entitlement reconciliation (Azure RBAC, AWS IAM) — explicitly at governance rung L1 (Observe), read-only, feeding the same ServiceNow-coordinated evidence pipeline the OrgComp series already uses for CM-6/RA-5/SI-2, not a second parallel front door. Explicitly does not cover VMware/vCenter permissions — no evidence exists that SailPoint's CIEM reaches that surface, and this ADR does not invent a slot to paper over the gap. Does not activate the slot (still `status: reserved`); activation remains a future per-adapter ADR per existing precedent. Registry-shaped and doctrine-shaped; no runtime, schema, or registry-content change beyond the AGENTS.md sentence."
@@ -97,5 +97,5 @@ No slot is allocated, reserved, or implied for VMware/vCenter role and permissio
 - `src/uiao/canon/adapter-registry.yaml` — `sailpoint-isc-governance`, `sailpoint-machine-identity` entries (PR #924).
 - `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` — `gcc-boundary` enum, `commercial-exception-sailpoint-isc` value.
 - `src/uiao/canon/data/control-planes.yml` — the identity control-plane slot.
-- `docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd` §7/§10 — the customer-facing argument this ADR's binding supports; see also the companion OrgComp book this ADR enables.
+- `docs/customer-documents/whitepapers/orgcomp-vs-native-cloud-consoles.qmd` §8/§11 — the customer-facing argument this ADR's binding supports; see also the companion OrgComp book this ADR enables.
 - `AGENTS.md` — cloud-boundary statement, amended by this ADR.
