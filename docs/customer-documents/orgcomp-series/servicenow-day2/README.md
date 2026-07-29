@@ -1,7 +1,7 @@
 # `x_fed_day2_ops` — ServiceNow Day-2 Operations scoped app
 
 > Status: DRAFT importable skeleton · Surface: `inbox/` (not canon) · Tracks issue #1139
-> Scope: **FedRAMP Moderate + Microsoft GCC Moderate** only. Date Code: 2026-07-12 15:00 ET
+> Scope: **FedRAMP Moderate + Microsoft GCC Moderate** only. Date Code: 2026-07-29 17:15 ET
 
 The importable scoped app for the day-2 **helpdesk / landing-zone / app-reg / telephony**
 catalog — the common Entra / M365 / Azure operator tasks (`inbox/Federal_Compliance_Automation_Roadmap.md`
@@ -34,6 +34,13 @@ Every catalog item is a governed request, not a portal click:
    tenant admin** (scoped, logged, individually-approved write only).
 4. **Evidence** — every action a change/approval record (CM-3 / AU-2), reconciled to the
    IPAM/DDI-keyed CMDB (CM-8), feeding Vol VII Book 04 attestation.
+
+Step 3 is the whole point, not an implementation detail: the ticket authorizes a
+machine to act, never a person to log into the tenant and act on the ticket's
+behalf. This kit is cited as a working reference implementation of that
+discipline in the [`ticket-to-machine-not-ticket-to-human`
+whitepaper](../../whitepapers/ticket-to-machine-not-ticket-to-human.qmd) §4 —
+`AdHybridClient.js` and `Day2NativeActuator.js` in particular.
 
 ## Catalog items (v0)
 
