@@ -30,6 +30,7 @@ build bundles it — and its self-check *expects* it — automatically from here
 | [`mid/compliance-validate.sh`](./mid/compliance-validate.sh) | MID Server script | Runs the per-surface read/validate on the in-boundary MID host; one JSON verdict out |
 | [`atf/README.md`](./atf/README.md) | ATF test spec | Happy path + negatives (unreconciled asset, self-approval, SLA breach) via `test_mode` |
 | [`update-set/README.md`](./update-set/README.md) | update set | How the app assembles into one importable XML |
+| [`LIVE-VALIDATION-M365-TENANT.md`](./LIVE-VALIDATION-M365-TENANT.md) | validation runbook | SER-4: proving `ComplianceGate._checkWriteScope` against a real Microsoft 365 Developer Program tenant, not just `test_mode` fixtures |
 
 ## The pattern (Vol VII Books 00–04, as code)
 

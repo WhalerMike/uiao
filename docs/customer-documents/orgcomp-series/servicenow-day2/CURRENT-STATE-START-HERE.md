@@ -98,35 +98,51 @@ advice, no warranty) apply unchanged. Additionally:
    as a MID PowerShell dispatch (the ActiveDirectory module) via the ECC queue.
    Pin it to **your** hardened PowerShell activity or Integration Hub AD spoke, and
    validate the delegated rights against your OU model, before production.
-2. **Sync latency is real, and AD-leg verification does not exist yet.** An AD
-   write is authoritative but not instantaneous in Entra — it lands on the next
-   Entra Connect cycle. As designed, the Flow's VERIFY clause should re-read
-   **AD** (on the pinned DC) for the on-prem post-state and **Entra** for the
-   cloud post-state before treating a dispatch as closure. **As shipped, that AD
-   re-read does not exist:** `AdHybridClient` has no read method, and
-   `EntraHelpdeskGate.verify` only reads Graph. Every AD-leg method currently
-   returns its post-state (e.g. `disableUserAd`'s `accountEnabled: false`) as an
-   asserted fact the moment the asynchronous dispatch is queued — never having
-   observed AD. Do not treat an AD-leg evidence record as verified closure until a
-   real AD read-back is added (see `CURRENT-STATE-SCRIPTS.md` §1).
+2. **Sync latency is real.** An AD write is authoritative but not instantaneous
+   in Entra — it lands on the next Entra Connect cycle. The Flow's VERIFY clause
+   re-reads **AD** (on the pinned DC, via `AdHybridClient.getUserAd` /
+   `isGroupMemberAd`) for the on-prem post-state and **Entra** for the cloud
+   projection (`EntraHelpdeskGate._verifyAd`, `_projectionNote`) — fixed by the
+   P0-4 remediation (commit `7d2423c74`). No write method asserts post-state
+   itself; every write returns only `{ ok, dispatched, ecc_sys_id }`, and closure
+   depends on this read-back. **What is not yet proven:** the read-back has been
+   exercised by a mock ServiceNow harness executing the real script against
+   fixture data (`0d452b75f`), not against a live domain controller — see the
+   ServiceNow PDI + AD lab validation tracks below.
 3. **The routing predicate is authoritative, not cosmetic.** `hybrid_mode = true`
    plus `onPremisesSyncEnabled = true` sends a task to the AD leg. If you flip
    `hybrid_mode` to `false` while identities are still AD-mastered, cloud writes to
    synced attributes **will be silently reverted by sync** — a correctness bug, not
    a style choice.
-4. **Three more starter-skeleton defects, confirmed by an external security
-   review (2026-07-29) — do not point this at a live directory yet.** `_render`
-   (the PowerShell command builder) escapes parameter *values* but not parameter
-   *names*; a hostile attribute key reaching `setUserAttributesAd` drives
-   arbitrary cmdlet execution on the MID. `_merge` gives precedence to the
-   caller-supplied attribute bag, so a bag containing `Identity` overrides the
-   approved target — the write can land on a different object than the one
-   approved. `setPasswordAd` writes the temporary password into
-   `ecc_queue.payload` in cleartext. None of the three is exercised by the ATF
-   suite, because `test_mode` short-circuits every method before it reaches the
-   vulnerable code. Fix all three — plus the verify gap in item 2 above — before
-   setting `test_mode = false` against a real domain; see
-   `CURRENT-STATE-SCRIPTS.md` §7 for the production-hardening path.
+4. **Three starter-skeleton defects confirmed by an external security review
+   (2026-07-29) were remediated in commit `7d2423c74` — fixed, not merely
+   patched over.** The command-string renderer is gone entirely: `_dispatch`
+   emits a structured JSON payload that `mid/Invoke-Day2AdAction.ps1` binds via
+   splatting, so no caller-supplied text is ever concatenated into executable
+   PowerShell. Target-override is refused outright: reserved parameters
+   (`identity`, `server`, `credential`, …) are rejected if present in caller
+   input (`_assertNoReserved` / `AdHybridClient.RESERVED`) and applied by the
+   class itself, after validation, never merged from caller-supplied data.
+   `setPasswordAd` no longer accepts or transports a password at all — the MID
+   generates it and returns a delivery handle; `opts.tempPassword` is refused
+   loudly. **What remains genuinely open, and requires real infrastructure or a
+   decision only the author can make — not more code review:**
+   - The `ecc_queue` insert ACL on the target instance — anyone who can insert a
+     `topic = 'PowerShell'` / `agent = 'mid.server.<x>'` record can drive AD
+     writes directly, bypassing the Flow entirely. This is an instance
+     platform-configuration fact, not something the scoped app controls (see
+     `CURRENT-STATE-BUILD-DELTA.md` §5).
+   - The delegated AD rights themselves are asserted in code comments, never
+     verified — an effective-permissions dump against a real domain is still
+     outstanding.
+   - Two ATF specs (`atf-negative-verify-read-failure.xml`,
+     `atf-negative-verify-wrong-state.xml`) inject fixture fields no version of
+     `verify()` has ever read, because `test_mode` short-circuits to a synthetic
+     pass before reaching any state-inspection logic. Fixing them means first
+     deciding how `verify()`'s test-mode contract should simulate a failure —
+     a design question, left open by design (see `0d452b75f`).
+   See `CURRENT-STATE-SCRIPTS.md` §7 for the production-hardening path (the
+   Integration Hub AD spoke migration) regardless.
 
 ## 6. Where to go next
 

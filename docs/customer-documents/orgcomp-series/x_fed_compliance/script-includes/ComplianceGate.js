@@ -106,8 +106,155 @@ ComplianceGate.prototype = {
         if (gs.getProperty('x_fed_compliance.scope_check_enabled', 'false') !== 'true') {
             return 'unverified';
         }
-        // TODO(per-tenant): perform the Graph scope read here and return the verdict.
-        return 'unverified';
+        return this._checkWriteScope();
+    },
+
+    // SER-4: the live Graph scope read. Confirms the app registration's OWN
+    // service principal (x_fed_compliance.service_principal_id) holds no
+    // write-shaped grant, over EITHER surface Graph exposes a grant on:
+    //   * appRoleAssignments      — application (app-only) permissions. The
+    //     assignment record itself only carries an appRoleId (a GUID); the
+    //     human-readable permission string ("Directory.ReadWrite.All") lives
+    //     on the RESOURCE service principal's own appRoles collection, so
+    //     each distinct resourceId is resolved once via _resolveAppRoleValue.
+    //   * oauth2PermissionGrants  — delegated permissions, already carried as
+    //     human-readable space-delimited scope strings on `.scope`.
+    // Same discipline as preflight/verify above: ANY read failure, missing
+    // config, unparseable body, or response shape that isn't the array this
+    // method expects returns 'unverified', never a default 'confirmed-readonly'.
+    // A failed read must never look like a clean posture.
+    _checkWriteScope: function () {
+        if (this.testMode) return this._checkWriteScopeFixture();
+
+        var spId = gs.getProperty('x_fed_compliance.service_principal_id', '');
+        if (!spId) {
+            this.log.err('scope check enabled but x_fed_compliance.service_principal_id is not set — unverified');
+            return 'unverified';
+        }
+
+        var appRoleAssignments = this._graphGet('/v1.0/servicePrincipals/' + spId + '/appRoleAssignments');
+        var delegatedGrants = this._graphGet("/v1.0/oauth2PermissionGrants?$filter=clientId eq '" + spId + "'");
+        if (!Array.isArray(appRoleAssignments) || !Array.isArray(delegatedGrants)) {
+            this.log.err('scope check: Graph read failed or returned an unexpected shape — unverified');
+            return 'unverified';
+        }
+
+        var resourceAppRolesCache = {};
+        for (var i = 0; i < appRoleAssignments.length; i++) {
+            var grant = appRoleAssignments[i];
+            if (!grant || !grant.resourceId || !grant.appRoleId) {
+                this.log.err('scope check: appRoleAssignment missing resourceId/appRoleId — unverified');
+                return 'unverified';
+            }
+            if (!resourceAppRolesCache.hasOwnProperty(grant.resourceId)) {
+                var resourceSp = this._graphGet('/v1.0/servicePrincipals/' + grant.resourceId + '?$select=appRoles');
+                if (!resourceSp || !Array.isArray(resourceSp.appRoles)) {
+                    this.log.err('scope check: could not resolve appRoles for resource ' + grant.resourceId + ' — unverified');
+                    return 'unverified';
+                }
+                resourceAppRolesCache[grant.resourceId] = resourceSp.appRoles;
+            }
+            var roleValue = this._resolveAppRoleValue(resourceAppRolesCache[grant.resourceId], grant.appRoleId);
+            if (roleValue === null) {
+                this.log.err('scope check: appRoleId ' + grant.appRoleId + ' not found on resource ' +
+                              grant.resourceId + ' — unverified');
+                return 'unverified';
+            }
+            if (this._isWriteShaped(roleValue)) return 'holds-write';
+        }
+
+        for (var j = 0; j < delegatedGrants.length; j++) {
+            var scopeStr = (delegatedGrants[j] && delegatedGrants[j].scope) || '';
+            var scopes = scopeStr.split(/\s+/);
+            for (var k = 0; k < scopes.length; k++) {
+                if (scopes[k] && this._isWriteShaped(scopes[k])) return 'holds-write';
+            }
+        }
+
+        return 'confirmed-readonly';
+    },
+
+    // test_mode fixture path for _checkWriteScope — deterministic, no tenant
+    // credentials, same discipline as ComplianceIngest._fixture. Drives the
+    // SAME _isWriteShaped matching logic production uses, from a JSON fixture
+    // property (x_fed_compliance.test_fixture_scope_grants) shaped like:
+    //   {"appRoleAssignments": ["Directory.Read.All"], "delegatedScopes": ["User.Read"]}
+    // A missing/unparseable fixture fails closed to 'unverified' rather than
+    // defaulting to a clean posture.
+    _checkWriteScopeFixture: function () {
+        var raw = gs.getProperty('x_fed_compliance.test_fixture_scope_grants', '');
+        var fixture;
+        try {
+            fixture = raw ? JSON.parse(raw) : { appRoleAssignments: [], delegatedScopes: [] };
+        } catch (e) {
+            this.log.err('scope check fixture unparseable — unverified: ' + e);
+            return 'unverified';
+        }
+        var roles = fixture.appRoleAssignments || [];
+        for (var i = 0; i < roles.length; i++) {
+            if (this._isWriteShaped(roles[i])) return 'holds-write';
+        }
+        var scopes = fixture.delegatedScopes || [];
+        for (var j = 0; j < scopes.length; j++) {
+            if (this._isWriteShaped(scopes[j])) return 'holds-write';
+        }
+        return 'confirmed-readonly';
+    },
+
+    // Judgment call (verify against how this instance is actually wired):
+    // Graph's write-shaped permission names are not exclusively *.ReadWrite.* —
+    // this also catches the *.Write.*, *.FullControl.* and *.Manage.* shapes
+    // (e.g. Mail.Write, Sites.FullControl.All, Sites.Manage.All) since those are
+    // write-capable grants a read-only compliance checker must not hold either.
+    // Deliberately does NOT scope the check to only the surfaces this app reads
+    // (Directory/Policy/SecurityEvents) — ANY write-shaped grant on the identity
+    // disqualifies it, on the theory that a supposedly read-only checker holding
+    // write ANYWHERE is itself the confused-deputy risk this guard exists for.
+    // Also out of scope: delegated grants like Directory.AccessAsUser.All, which
+    // carry no "Write" in the name but inherit whatever rights the signed-in user
+    // has — a real gap, not caught by name-shape matching.
+    _isWriteShaped: function (permissionName) {
+        return /(\.|^)(ReadWrite|Write|FullControl|Manage)(\.|$)/.test(String(permissionName || ''));
+    },
+
+    // Resolve an appRoleId (GUID) granted via appRoleAssignments to its
+    // human-readable permission string, from the RESOURCE service principal's
+    // own appRoles collection (the assignment record itself never carries the
+    // readable value). Returns null — not a guess — if the id isn't found.
+    _resolveAppRoleValue: function (appRolesList, appRoleId) {
+        for (var i = 0; i < appRolesList.length; i++) {
+            if (appRolesList[i] && appRolesList[i].id === appRoleId) {
+                return appRolesList[i].value || null;
+            }
+        }
+        return null;
+    },
+
+    // One outbound Graph GET, MID-routed via the same credential alias and
+    // calling convention ComplianceIngest._rest already uses (rest/README.md:
+    // x_fed_compliance.graph, GET method named 'get', ${path} string parameter).
+    // Returns the parsed `.value` collection (Graph's OData list shape) when
+    // present, else the parsed body itself (a single-resource GET); returns
+    // null — never [] or {} — on ANY failure, so a failed read can never be
+    // mistaken by a caller for an empty, clean grant list.
+    _graphGet: function (path) {
+        try {
+            var rm = new sn_ws.RESTMessageV2('x_fed_compliance.graph', 'get');
+            rm.setStringParameterNoEscape('path', path);
+            var midServer = gs.getProperty('x_fed_compliance.mid_server', '');
+            if (midServer) rm.setMIDServer(midServer);
+            var resp = rm.execute();
+            if (resp.getStatusCode() !== 200) {
+                this.log.err('scope check read failed ' + path + ' -> ' + resp.getStatusCode());
+                return null;
+            }
+            var parsed = JSON.parse(resp.getBody());
+            if (parsed && parsed.hasOwnProperty('value')) return parsed.value;
+            return parsed;
+        } catch (e) {
+            this.log.err('scope check read exception on ' + path + ': ' + e);
+            return null;
+        }
     },
 
     type: 'ComplianceGate'

@@ -12,6 +12,8 @@ update set. Negatives are the point:
 | `sod_indeterminate_is_refused` | `preflight` fails when `requester_id` or `approver_id` is empty — SoD is fail-closed, not skipped |
 | `write_scope_voids_attestation` | with `test_fixture_write_scopes=true`, the gate refuses to run at all |
 | `scope_check_unverified_is_refused` | in a non-test run with `scope_check_enabled` unset, `preflight` refuses — an UNVERIFIED read-only check fails closed exactly like `holds-write` (no false assurance) |
+| `scope_check_confirmed_readonly` (`atf-scope-check-confirmed-readonly.xml`) | SER-4: `ComplianceGate._checkWriteScope()` with a `test_fixture_scope_grants` fixture holding only `*.Read.*` application permissions and a `User.Read` delegated scope returns `'confirmed-readonly'` |
+| `scope_check_holds_write` (`atf-scope-check-holds-write.xml`) | SER-4: `_checkWriteScope()` returns `'holds-write'` when the fixture includes one write-shaped grant — either an application permission (`Directory.ReadWrite.All`) or a delegated scope (`Mail.ReadWrite`) — even alongside otherwise read-shaped roles |
 | `retest_failed_blocks_closure` | a task whose re-read still shows drift cannot close; escalates |
 | `retest_read_failure_is_inconclusive` | a READ_FAILED sentinel in the re-read → `RETEST_INCONCLUSIVE`, task does NOT close (a failed read is not closure) |
 | `retest_asset_not_observed_is_inconclusive` | the asset absent from the re-read → `RETEST_INCONCLUSIVE`; closure needs an affirmative compliant observation |

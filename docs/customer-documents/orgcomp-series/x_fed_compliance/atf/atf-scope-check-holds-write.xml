@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - _checkWriteScope returns 'holds-write' for a write-scoped
+  app registration (SER-4)
+  PRECONDITION: x_fed_compliance.test_mode = 'true' - no live Graph connectivity.
+  Scope: x_fed_compliance.  STARTER SKELETON (see atf/README.md).
+
+  The confused-deputy half of SER-4: if the fixture app registration holds even
+  ONE write-shaped grant (here Directory.ReadWrite.All alongside otherwise
+  read-shaped roles) the check must return 'holds-write', not 'confirmed-readonly'
+  and not 'unverified' - a single write-shaped grant anywhere disqualifies the
+  identity outright, regardless of how many other roles are read-shaped.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Compliance: _checkWriteScope returns holds-write when any grant is write-shaped</name>
+    <sys_scope>x_fed_compliance</sys_scope>
+    <active>true</active>
+    <description>Given a fixture app registration holding Directory.ReadWrite.All among its application permissions, _checkWriteScope must return 'holds-write'.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Fixture a write-scoped registration; assert _checkWriteScope flags it.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var savedFixture = gs.getProperty('x_fed_compliance.test_fixture_scope_grants', '');
+  try {
+    gs.setProperty('x_fed_compliance.test_fixture_scope_grants', JSON.stringify({
+      appRoleAssignments: ['Policy.Read.All', 'Directory.ReadWrite.All'],
+      delegatedScopes: []
+    }));
+    var gate = new x_fed_compliance.ComplianceGate();
+    var verdict = gate._checkWriteScope();
+    if (verdict !== 'holds-write') {
+      stepResult.setFailed("expected 'holds-write' when Directory.ReadWrite.All is granted, got '" + verdict + "'");
+      return;
+    }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_compliance.test_fixture_scope_grants', savedFixture);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>A write-shaped DELEGATED scope alone (no write-shaped app role) must also trip holds-write.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var savedFixture = gs.getProperty('x_fed_compliance.test_fixture_scope_grants', '');
+  try {
+    gs.setProperty('x_fed_compliance.test_fixture_scope_grants', JSON.stringify({
+      appRoleAssignments: ['Directory.Read.All'],
+      delegatedScopes: ['User.Read', 'Mail.ReadWrite']
+    }));
+    var gate = new x_fed_compliance.ComplianceGate();
+    var verdict = gate._checkWriteScope();
+    if (verdict !== 'holds-write') {
+      stepResult.setFailed("expected 'holds-write' when a delegated scope (Mail.ReadWrite) is write-shaped, got '" + verdict + "'");
+      return;
+    }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_compliance.test_fixture_scope_grants', savedFixture);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
