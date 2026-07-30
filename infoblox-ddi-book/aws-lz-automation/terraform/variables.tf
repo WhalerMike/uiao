@@ -212,14 +212,59 @@ variable "tags" {
 ########################################################################
 
 # --- SG source scoping (contract §4: never 0.0.0.0/0) ----------------
+#
+# SER-3 remediation: an exact-string "!contains(list, \"0.0.0.0/0\")" test is
+# defeated by splitting the address space into two halves that together cover
+# all of IPv4 -- e.g. ["0.0.0.0/1","128.0.0.0/1"], or four /2 blocks -- since
+# none of those literal strings equal "0.0.0.0/0". Every source-CIDR variable
+# below now floors the accepted prefix length instead of string-matching one
+# forbidden literal, which catches the exact case AND the split-halves
+# evasion. min_cidr_prefix documents the floor; it cannot be referenced
+# inside a `validation` block (Terraform forbids cross-variable references
+# there), so the floor is also written as the literal 8 in each condition —
+# keep the two in sync if you raise the floor.
+
+variable "min_cidr_prefix" {
+  description = <<-EOT
+    Shortest IPv4 prefix length accepted in any source-CIDR list. /8 permits a
+    large private range while rejecting the split-halves evasion of an exact
+    "0.0.0.0/0" test. Raise it (e.g. 16) where the estate allows. Not directly
+    referenceable inside a variable's own `validation` block (Terraform
+    restriction) -- the CIDR variables below hard-code the same floor (8);
+    keep them in sync if this changes.
+  EOT
+  type        = number
+  default     = 8
+
+  validation {
+    condition     = var.min_cidr_prefix >= 1 && var.min_cidr_prefix <= 32
+    error_message = "min_cidr_prefix must be between 1 and 32."
+  }
+}
 
 variable "mgmt_source_cidrs" {
   description = "CIDR(s) allowed to reach management ports (443/tcp, and 22/tcp if enabled). Scope tightly to jumpboxes/bastion/mgmt subnets. MUST NOT be 0.0.0.0/0."
   type        = list(string)
 
   validation {
-    condition     = length(var.mgmt_source_cidrs) > 0 && !contains(var.mgmt_source_cidrs, "0.0.0.0/0")
-    error_message = "mgmt_source_cidrs must be non-empty and must not contain 0.0.0.0/0 (contract §4 forbids open management)."
+    condition     = length(var.mgmt_source_cidrs) > 0
+    error_message = "mgmt_source_cidrs must be non-empty (contract §4 forbids open management)."
+  }
+
+  validation {
+    condition = alltrue([
+      for c in var.mgmt_source_cidrs :
+      can(cidrhost(c, 0)) && tonumber(split("/", c)[1]) >= 8
+    ])
+    error_message = "Every mgmt_source_cidrs entry must be a valid CIDR with a prefix of /8 or longer. A prefix shorter than /8 (including 0.0.0.0/0 and split-halves pairs like 0.0.0.0/1 + 128.0.0.0/1) is effectively the whole internet."
+  }
+
+  validation {
+    condition = !alltrue([
+      contains(var.mgmt_source_cidrs, "0.0.0.0/1"),
+      contains(var.mgmt_source_cidrs, "128.0.0.0/1")
+    ])
+    error_message = "0.0.0.0/1 together with 128.0.0.0/1 covers the entire IPv4 space."
   }
 }
 
@@ -229,8 +274,19 @@ variable "monitoring_source_cidrs" {
   default     = []
 
   validation {
-    condition     = !contains(var.monitoring_source_cidrs, "0.0.0.0/0")
-    error_message = "monitoring_source_cidrs must not contain 0.0.0.0/0."
+    condition = alltrue([
+      for c in var.monitoring_source_cidrs :
+      can(cidrhost(c, 0)) && tonumber(split("/", c)[1]) >= 8
+    ])
+    error_message = "Every monitoring_source_cidrs entry must be a valid CIDR with a prefix of /8 or longer (0.0.0.0/0 and split-halves evasions are rejected)."
+  }
+
+  validation {
+    condition = !alltrue([
+      contains(var.monitoring_source_cidrs, "0.0.0.0/1"),
+      contains(var.monitoring_source_cidrs, "128.0.0.0/1")
+    ])
+    error_message = "0.0.0.0/1 together with 128.0.0.0/1 covers the entire IPv4 space."
   }
 }
 
@@ -239,8 +295,24 @@ variable "dns_client_cidrs" {
   type        = list(string)
 
   validation {
-    condition     = length(var.dns_client_cidrs) > 0 && !contains(var.dns_client_cidrs, "0.0.0.0/0")
-    error_message = "dns_client_cidrs must list at least one spoke/on-prem CIDR and must not be 0.0.0.0/0."
+    condition     = length(var.dns_client_cidrs) > 0
+    error_message = "dns_client_cidrs must list at least one spoke/on-prem CIDR."
+  }
+
+  validation {
+    condition = alltrue([
+      for c in var.dns_client_cidrs :
+      can(cidrhost(c, 0)) && tonumber(split("/", c)[1]) >= 8
+    ])
+    error_message = "Every dns_client_cidrs entry must be a valid CIDR with a prefix of /8 or longer (0.0.0.0/0 and split-halves evasions are rejected)."
+  }
+
+  validation {
+    condition = !alltrue([
+      contains(var.dns_client_cidrs, "0.0.0.0/1"),
+      contains(var.dns_client_cidrs, "128.0.0.0/1")
+    ])
+    error_message = "0.0.0.0/1 together with 128.0.0.0/1 covers the entire IPv4 space."
   }
 }
 
@@ -250,8 +322,19 @@ variable "grid_peer_cidrs" {
   default     = []
 
   validation {
-    condition     = !contains(var.grid_peer_cidrs, "0.0.0.0/0")
-    error_message = "grid_peer_cidrs must not contain 0.0.0.0/0."
+    condition = alltrue([
+      for c in var.grid_peer_cidrs :
+      can(cidrhost(c, 0)) && tonumber(split("/", c)[1]) >= 8
+    ])
+    error_message = "Every grid_peer_cidrs entry must be a valid CIDR with a prefix of /8 or longer (0.0.0.0/0 and split-halves evasions are rejected)."
+  }
+
+  validation {
+    condition = !alltrue([
+      contains(var.grid_peer_cidrs, "0.0.0.0/1"),
+      contains(var.grid_peer_cidrs, "128.0.0.0/1")
+    ])
+    error_message = "0.0.0.0/1 together with 128.0.0.0/1 covers the entire IPv4 space."
   }
 }
 

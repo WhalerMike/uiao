@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - test_mode is bound to the environment (P0-5)
+  PRECONDITION: run this suite on a declared non-prod instance.
+
+  Why this test exists: test_mode was a bare sys_properties boolean. Set true on
+  a production instance - by update-set promotion, admin error, or a clone-back
+  from sub-prod - every client returned canned successes AND canned post-state,
+  so the app emitted a complete, plausible, FALSE evidence trail indexed to real
+  NIST controls, and the attestation pipeline downstream could not tell.
+
+  The mitigation was nine prose warnings, which is a procedural control on an
+  integrity property.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: test_mode refuses to actuate on an undeclared instance and stamps synthetic evidence</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>test_mode is honoured only on an instance listed in nonprod_instances; elsewhere the app refuses. Evidence produced under it is machine-detectable as synthetic.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>With the instance removed from the allowlist, actuation must refuse rather than proceed in either direction.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var saved = gs.getProperty('x_fed_day2_ops.nonprod_instances', '');
+  try {
+    gs.setProperty('x_fed_day2_ops.nonprod_instances', 'some-other-instance');
+    var env = new x_fed_day2_ops.Day2Env();
+    if (env.isTestMode()) { stepResult.setFailed('test_mode honoured on an undeclared instance (P0-5 regressed)'); return; }
+    if (!env.isRefusing()) { stepResult.setFailed('property set on an undeclared instance did not trigger refusal'); return; }
+    var gate = new x_fed_day2_ops.EntraHelpdeskGate();
+    var pre = gate.preflight({ requester_id: 'r', approver_id: 'a' });
+    if (pre.ok) { stepResult.setFailed('preflight passed while the environment guard was refusing'); return; }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_day2_ops.nonprod_instances', saved);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Evidence produced under test_mode must be stamped synthetic so the attestation pipeline can reject it mechanically.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) { stepResult.setFailed('precondition not met: test_mode is not active on this instance'); return; }
+  var stamp = env.evidenceStamp();
+  if (stamp.test_mode !== true || stamp.synthetic !== true) {
+    stepResult.setFailed('evidence stamp does not mark the record synthetic under test_mode');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

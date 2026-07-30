@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - a request with no origin is refused at clause 1 (P0-6)
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' AND this instance listed in
+  x_fed_day2_ops.nonprod_instances (see Day2Env / P0-5).
+
+  Why this test exists: MacdrOrchestrator.run() previously began at clause 2 and
+  wrote request.ritm / sam_request_id into the evidence record without ever
+  validating them. The clause carrying the most doctrinal weight in the series
+  had the least enforcement, and no test.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: request with no origin is refused at clause 1</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A governed request carrying neither sam_request_id nor ritm nor a declared break-glass must stop at clause origin and must not reach authorize.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>No origin fields at all; assert the chain stops at 'origin'.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var orch = new x_fed_day2_ops.MacdrOrchestrator();
+  var called = false;
+  var r = orch.run(
+    { requester_id: 'day2-requester-sysid', approver_id: 'day2-approver-sysid', verb: 'disableUser' },
+    function () { called = true; return { ok: true }; },
+    { action: 'disableUser', target: { userId: 'u1' } }
+  );
+  if (r.ok) { stepResult.setFailed('origin-less request was accepted (P0-6 regressed)'); return; }
+  if (r.clause !== 'origin') { stepResult.setFailed('stopped at ' + r.clause + ', expected origin'); return; }
+  if (called) { stepResult.setFailed('actuation ran despite no origin'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>An unresolvable sam_request_id must also be refused - a claimed origin is not an origin.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var orch = new x_fed_day2_ops.MacdrOrchestrator();
+  var r = orch.run(
+    { requester_id: 'day2-requester-sysid', approver_id: 'day2-approver-sysid',
+      verb: 'disableUser', sam_request_id: 'IIQ-DOES-NOT-EXIST-0001' },
+    function () { return { ok: true }; },
+    { action: 'disableUser', target: { userId: 'u1' } }
+  );
+  if (r.ok || r.clause !== 'origin') {
+    stepResult.setFailed('an unresolvable sam_request_id was treated as a valid origin');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

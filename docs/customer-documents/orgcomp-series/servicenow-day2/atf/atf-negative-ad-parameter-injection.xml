@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - hostile parameter NAMES are refused by the allowlist (P0-1)
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' on a declared non-prod instance.
+
+  Why this test exists: AdHybridClient._render() interpolated caller-supplied
+  parameter names into a PowerShell command string unescaped, and NOTHING in the
+  12-spec ATF suite exercised that path - every test ran under test_mode, which
+  short-circuited before _render in every method. The injection path had never
+  been executed by any test in the kit.
+
+  Note the shape: these assertions must hold in test_mode too, which is why
+  validation in the remediated client runs BEFORE the test_mode branch.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: hostile AD parameter names and reserved keys are refused</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>Caller-supplied attribute keys must be allowlisted. Injection-shaped keys, unknown keys and reserved keys are all refusals, not pass-throughs.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>An injection-shaped parameter name must be refused.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var hostile = {};
+  hostile["X'; Add-ADGroupMember -Identity 'Domain Admins' -Members 'svc'; #"] = 'value';
+  var r = ad.setUserAttributesAd('jdoe', hostile);
+  if (r.ok) { stepResult.setFailed('injection-shaped parameter name was accepted (P0-1 regressed)'); return; }
+  if (('' + r.error).indexOf('illegal parameter name') === -1) {
+    stepResult.setFailed('refused, but not by the name validator: ' + r.error); return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>A well-formed but non-allowlisted parameter must also be refused.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var r = ad.setUserAttributesAd('jdoe', { scriptPath: '\\\\evil\\share\\run.bat' });
+  if (r.ok) { stepResult.setFailed('non-allowlisted parameter accepted - allowlist is not closed'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>P0-2: a caller-supplied Identity must never override the approved target.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var r = ad.setUserAttributesAd('jdoe', { Identity: 'Administrator', title: 'x' });
+  if (r.ok) { stepResult.setFailed('caller-supplied Identity was accepted (P0-2 regressed)'); return; }
+  if (('' + r.error).indexOf('reserved parameter') === -1) {
+    stepResult.setFailed('refused, but not as a reserved-parameter override: ' + r.error); return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>P0-3: password material must never be accepted by setPasswordAd.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var r = ad.setPasswordAd('jdoe', { tempPassword: 'Sup3rSecret!' });
+  if (r.ok) { stepResult.setFailed('setPasswordAd accepted password material (P0-3 regressed)'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

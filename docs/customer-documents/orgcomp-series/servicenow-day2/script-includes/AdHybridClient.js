@@ -1,194 +1,351 @@
 // Script Include: AdHybridClient  (application scope: x_fed_day2_ops)
-// -----------------------------------------------------------------------------
-// CURRENT-STATE actuation path for the hybrid identity estate.
+// =============================================================================
+// REMEDIATED BUILD — replaces the string-rendering skeleton.
 //
-// WHY THIS EXISTS. Today the agency's Entra ID users are SYNCED FROM ACTIVE
-// DIRECTORY (Entra Connect); Active Directory is the identity master and Entra
-// is its synchronized projection. For a synced object
-// (Entra `onPremisesSyncEnabled = true`) the authoritative write for the account
-// lifecycle and its on-prem-mastered attributes MUST land in AD and then flow
-// to Entra on the next sync cycle. Writing those directly in Entra Graph is
-// wrong: Entra Connect overwrites cloud edits to synced attributes on the next
-// cycle, and admin-initiated actions like a cloud password reset are not
-// supported for a synced user unless password writeback is enabled.
+// What changed and why (external security review Rev 1/Rev 2):
 //
-// So this client is the AD leg of the Day-2 kit's CURRENT-STATE configuration
-// (property `x_fed_day2_ops.hybrid_mode = 'true'`). It is the sibling of
-// EntraHelpdeskClient (the Graph leg): the router in the Flow sends
-// synced-object lifecycle / attribute / password / AD-sourced-group work HERE,
-// and keeps cloud-native work (MFA methods, Azure RBAC, guests, app consent,
-// cloud-only groups) on the Graph leg. In the 2027 TARGET state
-// (`hybrid_mode = 'false'`, OPM-HRIT SSOT, cloud-native provisioning) the router
-// sends everything to Graph and this client is dormant.
+//   P0-1  Command injection. The old _render() interpolated caller-supplied
+//         parameter NAMES into a PowerShell command string unescaped. There is
+//         no command string here any more: _dispatch() emits a structured JSON
+//         payload that mid/Invoke-Day2AdAction.ps1 binds via splatting. Nothing
+//         a caller supplies is ever concatenated into executable text.
 //
-// Boundary discipline (mirrors EntraHelpdeskClient / Vol IX Book 00):
-//   * AD actuation runs on a DOMAIN-JOINED, in-boundary MID Server
-//     (property x_fed_day2_ops.ad_mid_server) — the PowerShell / LDAP call and
-//     its credential never leave the ATO boundary. This is a DIFFERENT MID from
-//     the Graph MID only if AD reachability requires it.
-//   * The MID's service account holds DELEGATED, least-privilege AD rights on
-//     the specific OUs it manages (create/disable users, reset password, manage
-//     membership of the delegated groups) — NEVER Domain Admin.
-//   * The preferred writable DC comes from x_fed_day2_ops.ad_dc so the write and
-//     the read-back verify hit the same DC (avoid replication-lag false reads).
+//   P0-2  Target substitution. The old _merge() let a caller-supplied attribute
+//         bag override the approved `Identity`. Reserved parameters are now
+//         rejected outright if they appear in caller input (_assertNoReserved),
+//         and are applied by this class AFTER validation, never merged from the
+//         caller side.
 //
-// STARTER SKELETON — the transport below is modeled as a MID PowerShell dispatch
-// (ActiveDirectory module). Pin it to your hardened PowerShell activity or the
-// Integration Hub AD spoke before production, and validate the delegated rights
-// against your OU model. test_mode (x_fed_day2_ops.test_mode = 'true') returns
-// deterministic canned values so the ATF suites drive the Flow with NO live AD
-// connectivity. Never enable test_mode in production.
-// -----------------------------------------------------------------------------
+//   P0-3  Cleartext credential. setPasswordAd() no longer accepts or transports
+//         a password. The MID wrapper generates it, applies it as a SecureString
+//         and returns only a delivery handle; ecc_queue never holds secret
+//         material. opts.tempPassword is explicitly REFUSED so old callers fail
+//         loudly rather than silently leaking.
+//
+//   P0-4  No verification. Read-back methods now exist (getUserAd,
+//         getGroupMembersAd, isGroupMemberAd) against the pinned DC, plus
+//         resolveDispatch() to read the ECC response record. A write returns
+//         { ok, dispatched, ecc_sys_id } and NEVER asserts post-state.
+//
+//   NEW-2 Protected-group deny-list was name/substring based, missed nesting,
+//         and did not guard removal. Classification now lives in
+//         PrivilegeClassifier (SID + transitive), and BOTH add and remove are
+//         gated.
+//
+//   P1-3  createUserAd's target OU is now validated against the same allowlist
+//         moveUserOuAd uses.
+//
+// Boundary discipline is unchanged: a domain-joined, in-boundary MID Server,
+// a delegated least-privilege service account (NEVER Domain Admin — still
+// asserted here and still requiring an effective-permissions dump to verify),
+// and a pinned writable DC so write and read-back are replication-consistent.
+// =============================================================================
 var AdHybridClient = Class.create();
+
+// --- Parameter contracts -----------------------------------------------------
+// Every action declares exactly which caller-supplied keys are permitted. An
+// unknown key is a refusal, not a pass-through. This is the allowlist that
+// replaces escaping: nothing outside these names can reach the MID at all.
+AdHybridClient.ACTIONS = {
+    'create-user':      { allowed: ['samAccountName', 'upn', 'givenName', 'surname', 'displayName', 'ou'],
+                          required: ['samAccountName', 'upn', 'ou'] },
+    'disable-user':     { allowed: [], required: [] },
+    'move-object':      { allowed: ['targetOu'], required: ['targetOu'] },
+    'set-attributes':   { allowed: ['title', 'department', 'company', 'description', 'office',
+                                    'telephoneNumber', 'mobile', 'manager', 'employeeId',
+                                    'employeeType', 'streetAddress', 'city', 'state',
+                                    'postalCode', 'country', 'givenName', 'surname',
+                                    'displayName', 'extensionAttribute1', 'extensionAttribute2',
+                                    'extensionAttribute3', 'extensionAttribute4',
+                                    'extensionAttribute5'],
+                          required: [] },
+    'reset-password':   { allowed: ['mustChangeAtLogon', 'deliveryRef'], required: [] },
+    'add-group-member': { allowed: ['group'], required: ['group'] },
+    'remove-group-member': { allowed: ['group'], required: ['group'] },
+    'get-user':         { allowed: ['properties'], required: [] },
+    'get-group-members': { allowed: ['group', 'recursive'], required: ['group'] }
+};
+
+// Parameters this class controls. A caller may never supply them — supplying one
+// is treated as an attempted target/transport override and refused.
+AdHybridClient.RESERVED = ['identity', 'server', 'credential', 'path', 'confirm',
+                           'reset', 'newpassword', 'passthru', 'authtype', 'partition'];
+
 AdHybridClient.prototype = {
 
     initialize: function () {
-        this.midServer = gs.getProperty('x_fed_day2_ops.ad_mid_server', '');
-        this.dc = gs.getProperty('x_fed_day2_ops.ad_dc', '');            // preferred writable DC
-        this.disabledOu = gs.getProperty('x_fed_day2_ops.ad_disabled_ou', '');
-        this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
-        this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.AdHybridClient] ' + m); } };
-        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
+        this.midServer   = gs.getProperty('x_fed_day2_ops.ad_mid_server', '');
+        this.dc          = gs.getProperty('x_fed_day2_ops.ad_dc', '');
+        this.disabledOu  = gs.getProperty('x_fed_day2_ops.ad_disabled_ou', '');
+        this.boundary    = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
+        this.env         = new x_fed_day2_ops.Day2Env();
+        this.testMode    = this.env.isTestMode();
+        this.log = {
+            err:  function (m) { gs.error('[x_fed_day2_ops.AdHybridClient] ' + Day2Env.scrub(m)); },
+            warn: function (m) { gs.warn('[x_fed_day2_ops.AdHybridClient] ' + Day2Env.scrub(m)); }
+        };
     },
 
-    // --- Routing predicate: is this object AD-mastered (synced) or cloud-only? -
-    // The router reads the Entra user's onPremisesSyncEnabled (via the Graph leg)
-    // and calls this. true  -> lifecycle/attribute/password/AD-group writes come
-    // HERE; false -> the object is cloud-only, everything stays on the Graph leg.
+    // --- Routing predicate ---------------------------------------------------
     isAdMastered: function (entraUser) {
         return !!(entraUser && entraUser.onPremisesSyncEnabled === true);
     },
 
-    // --- Joiner: create the account in AD; sync projects it into Entra (AC-2). -
-    // Cloud-only entitlements (license, cloud groups) are assigned on the Graph
-    // leg AFTER the synced object appears in Entra — not here.
+    // =========================================================================
+    // WRITES — each returns { ok, dispatched, ecc_sys_id }. `ok` means the job
+    // was ACCEPTED FOR DISPATCH. It never means the change took. Post-state is
+    // established only by a read-back (see the READS section) — this is the
+    // P0-4 contract and it is deliberate that no write method returns any field
+    // resembling an observation.
+    // =========================================================================
+
     createUserAd: function (payload) {
-        // payload: { samAccountName, upn, givenName, sn, displayName, ou, ... }
-        if (this.testMode) return { ok: true, distinguishedName: 'CN=' + payload.samAccountName + ',' + (payload.ou || 'OU=Users'), synced: true };
-        return this._ps('New-ADUser', {
-            Name: payload.displayName, SamAccountName: payload.samAccountName,
-            UserPrincipalName: payload.upn, GivenName: payload.givenName, Surname: payload.sn,
-            Path: payload.ou, Enabled: true
+        payload = payload || {};
+        if (!this._isAllowedOu(payload.ou))
+            return this._refuse('create-user', 'target OU is outside x_fed_day2_ops.ad_managed_ous: ' + payload.ou);
+        return this._dispatch('create-user', null, payload);
+    },
+
+    disableUserAd: function (identity) {
+        var disable = this._dispatch('disable-user', identity, {});
+        if (!disable.ok) return disable;
+        if (!this.disabledOu)
+            return { ok: true, dispatched: true, ecc_sys_id: disable.ecc_sys_id,
+                     note: 'disable dispatched; no ad_disabled_ou configured so no move was dispatched' };
+        var move = this._dispatch('move-object', identity, { targetOu: this.disabledOu });
+        return { ok: disable.ok && move.ok, dispatched: true,
+                 ecc_sys_id: disable.ecc_sys_id, ecc_sys_id_move: move.ecc_sys_id };
+    },
+
+    // P0-3: no password crosses this boundary. The MID generates it.
+    setPasswordAd: function (identity, opts) {
+        opts = opts || {};
+        if (opts.tempPassword || opts.password || opts.newPassword) {
+            this.log.err('setPasswordAd refused: caller supplied password material. ' +
+                         'The MID Server generates and applies the password; ServiceNow must never hold or transport it (IA-5).');
+            return { ok: false, error: 'password material must not be passed to this method (IA-5) — the MID generates it' };
+        }
+        return this._dispatch('reset-password', identity, {
+            mustChangeAtLogon: (opts.mustChangeAtLogon === false) ? false : true,
+            deliveryRef: opts.deliveryRef || ''
         });
     },
 
-    // --- Leaver: disable in AD, move to the disabled OU; sync flows the disable -
-    // to Entra. Session/token revoke and cloud-owned object reassignment are
-    // CLOUD actions — they run on the Graph leg, not here (AC-2).
-    disableUserAd: function (samOrDn) {
-        if (this.testMode) return { ok: true, id: samOrDn, accountEnabled: false, movedToDisabledOu: !!this.disabledOu, synced: true };
-        var disable = this._ps('Disable-ADAccount', { Identity: samOrDn });
-        var moved = this.disabledOu ? this._ps('Move-ADObject', { Identity: samOrDn, TargetPath: this.disabledOu }) : { ok: true, skipped: 'no disabled OU configured' };
-        return { ok: disable.ok && moved.ok, id: samOrDn, accountEnabled: false, disableStatus: disable, moveStatus: moved };
+    setUserAttributesAd: function (identity, attrs) {
+        return this._dispatch('set-attributes', identity, attrs || {});
     },
 
-    // --- Credential: reset the password in AD; it syncs to Entra (IA-5). -------
-    // Prefer SSPR with writeback; this admin path is the approver-gated fallback.
-    setPasswordAd: function (samOrDn, opts) {
-        if (this.testMode) return { ok: true, id: samOrDn, action: 'ad-password-reset', synced: true };
-        var reset = this._ps('Set-ADAccountPassword', { Identity: samOrDn, Reset: true, NewPassword: opts.tempPassword });
-        var mustChange = this._ps('Set-ADUser', { Identity: samOrDn, ChangePasswordAtLogon: true });
-        return { ok: reset.ok && mustChange.ok, id: samOrDn, resetStatus: reset, mustChangeStatus: mustChange };
+    moveUserOuAd: function (identity, targetOu) {
+        if (!this._isAllowedOu(targetOu))
+            return this._refuse('move-object', 'target OU is outside x_fed_day2_ops.ad_managed_ous: ' + targetOu);
+        return this._dispatch('move-object', identity, { targetOu: targetOu });
     },
 
-    // --- Mover: set on-prem-mastered attributes / move OU in AD; syncs (AC-6). -
-    // Cloud-only access changes (licenses, cloud groups) run on the Graph leg.
-    setUserAttributesAd: function (samOrDn, attrs) {
-        if (this.testMode) return { ok: true, id: samOrDn, applied: Object.keys(attrs || {}), synced: true };
-        return this._ps('Set-ADUser', this._merge({ Identity: samOrDn }, attrs));
+    // NEW-2: both directions gated. Removing a break-glass account from a
+    // Tier-0 group is a denial-of-recovery primitive and was previously
+    // unguarded while the add was blocked.
+    addGroupMemberAd: function (group, member) {
+        return this._groupWrite('add-group-member', group, member);
     },
 
-    moveUserOuAd: function (samOrDn, targetOu) {
-        if (this.testMode) return { ok: true, id: samOrDn, targetOu: targetOu };
-        if (!this._isAllowedOu(targetOu)) {
-            return { ok: false, error: 'refusing to move to an OU outside the managed allowlist: ' + targetOu };
+    removeGroupMemberAd: function (group, member) {
+        return this._groupWrite('remove-group-member', group, member);
+    },
+
+    _groupWrite: function (action, group, member) {
+        var verdict = new x_fed_day2_ops.PrivilegeClassifier().classifyAdGroup(group);
+        if (verdict.status !== 'confirmed-unprivileged') {
+            this.log.warn(action + ' refused for group ' + group + ': ' + verdict.reason);
+            return { ok: false, error: 'refused: ' + verdict.reason, classification: verdict.status };
         }
-        return this._ps('Move-ADObject', { Identity: samOrDn, TargetPath: targetOu });
+        return this._dispatch(action, member, { group: group });
     },
-    _isAllowedOu: function (targetOu) {
-        var allow = gs.getProperty('x_fed_day2_ops.ad_managed_ous', '');
-        if (!allow) return false;   // fail closed: no allowlist configured means no moves permitted
-        var ous = allow.split(',');
-        var norm = ('' + targetOu).trim().toLowerCase();
-        for (var i = 0; i < ous.length; i++) { if (norm === ous[i].trim().toLowerCase()) return true; }
+
+    // =========================================================================
+    // READS — the P0-4 verification path. These dispatch a read job and return
+    // its ECC sys_id; resolveDispatch() turns that into an observation.
+    //
+    // The ECC queue is asynchronous. Two supported patterns:
+    //   (a) Flow: dispatch, wait on the ECC response, then call resolveDispatch.
+    //       This is the production pattern.
+    //   (b) awaitDispatch(): a BOUNDED poll for ATF and synchronous server
+    //       scripts. It is capped and it fails closed on timeout — a timeout is
+    //       'inconclusive', never 'verified'.
+    // =========================================================================
+
+    getUserAd: function (identity, properties) {
+        return this._dispatch('get-user', identity, { properties: properties || [] });
+    },
+
+    getGroupMembersAd: function (group, recursive) {
+        return this._dispatch('get-group-members', null, { group: group, recursive: !!recursive });
+    },
+
+    // Direct-membership assertion. Returns tri-state: true / false / null where
+    // null means INCONCLUSIVE (never conflate with false at the call site).
+    isGroupMemberAd: function (group, member, recursive) {
+        if (this.testMode) return this.env.testFixture('ad_is_group_member', false);
+        var d = this.getGroupMembersAd(group, recursive);
+        if (!d.ok) return null;
+        var res = this.awaitDispatch(d.ecc_sys_id);
+        if (!res.ok || !res.data || !res.data.members) return null;
+        var want = ('' + member).toLowerCase();
+        for (var i = 0; i < res.data.members.length; i++) {
+            var m = res.data.members[i] || {};
+            if (('' + (m.samAccountName || '')).toLowerCase() === want ||
+                ('' + (m.distinguishedName || '')).toLowerCase() === want ||
+                ('' + (m.sid || '')).toLowerCase() === want) return true;
+        }
         return false;
     },
 
-    // --- Access: AD-SOURCED (synced) group membership (AC-6). ------------------
-    // Only for groups that originate in AD and sync to Entra. Cloud-only / M365
-    // groups are managed on the Graph leg — the router decides by group source.
-    // The deny-list below is defense-in-depth ONLY — it is not a substitute for
-    // verifying the MID service account's actual AD delegation, which remains a
-    // separate, still-open pre-production item (see CURRENT-STATE-SCRIPTS.md §1).
-    addGroupMemberAd: function (groupSamOrDn, memberSamOrDn) {
-        if (this.testMode) return { ok: true, groupId: groupSamOrDn, memberId: memberSamOrDn, synced: true };
-        if (this._isProtectedGroup(groupSamOrDn)) {
-            return { ok: false, error: 'refusing to modify a protected/tier-0 group via the AD leg: ' + groupSamOrDn };
-        }
-        return this._ps('Add-ADGroupMember', { Identity: groupSamOrDn, Members: memberSamOrDn });
-    },
-    _isProtectedGroup: function (groupSamOrDn) {
-        var defaults = 'Domain Admins,Enterprise Admins,Schema Admins,Administrators,Account Operators,Backup Operators,Server Operators,Print Operators,Domain Controllers,Read-only Domain Controllers,Group Policy Creator Owners,Cert Publishers,Key Admins,Enterprise Key Admins,DnsAdmins';
-        var denyList = gs.getProperty('x_fed_day2_ops.ad_protected_groups', defaults).split(',');
-        var name = ('' + groupSamOrDn).toLowerCase();
-        for (var i = 0; i < denyList.length; i++) {
-            var entry = denyList[i].trim().toLowerCase();
-            if (entry && name.indexOf(entry) !== -1) return true;
-        }
-        return false;
+    // Read the ECC response record for a dispatch. Returns
+    // { ok, status, data, reason }. FAIL CLOSED: a missing, errored or
+    // unparseable response is ok:false — never an assumed success.
+    resolveDispatch: function (eccSysId) {
+        if (!eccSysId) return { ok: false, reason: 'no ecc_sys_id supplied' };
+        var gr = new GlideRecord('ecc_queue');
+        gr.addQuery('response_to', eccSysId);
+        gr.addQuery('queue', 'input');
+        gr.orderByDesc('sys_created_on');
+        gr.setLimit(1);
+        gr.query();
+        if (!gr.next()) return { ok: false, reason: 'no ECC response yet — inconclusive, not closed' };
+
+        var state = gr.getValue('state');
+        if (state === 'error')
+            return { ok: false, reason: 'MID reported error: ' + Day2Env.scrub(gr.getValue('error_string') || '') };
+
+        var payload = gr.getValue('payload') || '';
+        var parsed;
+        try { parsed = JSON.parse(payload); }
+        catch (e) { return { ok: false, reason: 'MID response unparseable — inconclusive' }; }
+
+        if (!parsed || parsed.ok !== true)
+            return { ok: false, status: parsed ? parsed.status : null,
+                     reason: parsed && parsed.error ? Day2Env.scrub(parsed.error) : 'MID reported failure' };
+        return { ok: true, data: parsed.data || {}, dc: parsed.dc || null, observed_at: parsed.observed_at || null };
     },
 
-    removeGroupMemberAd: function (groupSamOrDn, memberSamOrDn) {
-        if (this.testMode) return { ok: true, groupId: groupSamOrDn, memberId: memberSamOrDn, removed: true };
-        return this._ps('Remove-ADGroupMember', { Identity: groupSamOrDn, Members: memberSamOrDn, Confirm: false });
+    // Bounded wait. Cap is deliberately small — this is a convenience for ATF
+    // and synchronous scripts, not the production path.
+    awaitDispatch: function (eccSysId, maxMs) {
+        var cap = Math.min(parseInt(maxMs || gs.getProperty('x_fed_day2_ops.ad_await_ms', '15000'), 10) || 15000, 60000);
+        var waited = 0, step = 1000;
+        while (waited < cap) {
+            var r = this.resolveDispatch(eccSysId);
+            if (r.ok || (r.reason && r.reason.indexOf('no ECC response yet') === -1)) return r;
+            gs.sleep(step);
+            waited += step;
+        }
+        return { ok: false, reason: 'timed out waiting for MID response after ' + cap + 'ms — inconclusive, not closed' };
     },
 
-    // --- Internal: MID-dispatched PowerShell (ActiveDirectory module). ---------
-    // Skeleton transport: writes an ECC-queue output record targeting the
-    // domain-joined MID, pinned to the preferred DC so the verify re-read is
-    // replication-consistent. Replace with your hardened PowerShell activity /
-    // AD spoke for production; keep the fail-closed contract (any error -> ok:false).
-    _ps: function (cmdlet, params) {
+    // =========================================================================
+    // Internals
+    // =========================================================================
+
+    // P0-1 / P0-2. Builds a STRUCTURED payload. No command text is assembled
+    // anywhere in this class; the MID wrapper binds these as native parameters.
+    _dispatch: function (action, identity, callerArgs) {
         try {
+            var contract = AdHybridClient.ACTIONS[action];
+            if (!contract) return { ok: false, error: 'unknown action: ' + action };
             if (!this.midServer) return { ok: false, error: 'ad_mid_server not configured — refusing to actuate' };
-            var args = this._merge({}, params);
-            if (this.dc) args.Server = this.dc;                          // pin the DC
-            var command = this._render(cmdlet, args);
+
+            var check = this._validateArgs(contract, callerArgs);
+            if (!check.ok) {
+                this.log.err(action + ' refused: ' + check.reason);
+                return { ok: false, error: check.reason };
+            }
+
+            // Reserved parameters are set HERE, after validation, and can never
+            // be supplied or overridden by the caller (P0-2).
+            var job = {
+                schema: 1,
+                action: action,
+                identity: identity ? ('' + identity) : null,
+                server: this.dc || null,
+                boundary: this.boundary,
+                args: check.args,
+                requested_at: new GlideDateTime().getValue()
+            };
+            if (this.testMode) job.test_mode = true;
+
+            if (this.testMode) {
+                // Canned dispatch acknowledgement only. Note what is NOT here:
+                // no post-state, no `synced`, no `accountEnabled`. test_mode may
+                // simulate a dispatch; it may not simulate an observation.
+                return { ok: true, dispatched: true, ecc_sys_id: 'test-ecc-' + action, test_mode: true };
+            }
+
             var gr = new GlideRecord('ecc_queue');
             gr.initialize();
             gr.setValue('agent', 'mid.server.' + this.midServer);
-            gr.setValue('topic', 'PowerShell');
-            gr.setValue('name', cmdlet);
+            gr.setValue('topic', 'Command');
+            gr.setValue('name', 'Invoke-Day2AdAction');
             gr.setValue('source', 'x_fed_day2_ops.AdHybridClient');
-            gr.setValue('payload', command);
+            gr.setValue('queue', 'output');
+            gr.setValue('payload', JSON.stringify(job));
             var id = gr.insert();
-            // The ECC output is asynchronous; the Flow's VERIFY clause re-reads AD
-            // state on the same DC to confirm the post-state (a dispatch is not a
-            // closure). Returning ok here means "dispatched", not "verified".
-            return { ok: !!id, dispatched: true, ecc_sys_id: '' + id, cmdlet: cmdlet };
+            if (!id) return { ok: false, error: 'ECC dispatch insert failed' };
+            return { ok: true, dispatched: true, ecc_sys_id: '' + id, action: action };
         } catch (e) {
-            this.log.logErr('_ps ' + cmdlet + ' failed: ' + e);
-            return { ok: false, error: '' + e };
+            this.log.err('_dispatch ' + action + ' failed: ' + e);
+            return { ok: false, error: 'dispatch failed' };
         }
     },
 
-    _render: function (cmdlet, args) {
-        var parts = [cmdlet];
-        for (var k in args) {
-            if (!args.hasOwnProperty(k)) continue;
-            var v = args[k];
-            if (v === true) { parts.push('-' + k); }
-            else if (v === false || v === null || v === undefined) { continue; }
-            else { parts.push('-' + k + " '" + ('' + v).replace(/'/g, "''") + "'"); }
-        }
-        return parts.join(' ');
-    },
-
-    _merge: function (a, b) {
+    // The allowlist. Three refusals, in order of severity:
+    //   1. a reserved parameter appeared in caller input  -> override attempt
+    //   2. a key is not in the action's allowed set       -> unknown parameter
+    //   3. a key is not a bare identifier                 -> injection attempt
+    _validateArgs: function (contract, callerArgs) {
         var out = {}, k;
-        for (k in a) { if (a.hasOwnProperty(k)) out[k] = a[k]; }
-        for (k in (b || {})) { if (b.hasOwnProperty(k)) out[k] = b[k]; }
-        return out;
+        callerArgs = callerArgs || {};
+
+        for (k in callerArgs) {
+            if (!callerArgs.hasOwnProperty(k)) continue;
+
+            if (!/^[A-Za-z][A-Za-z0-9]*$/.test(k))
+                return { ok: false, reason: 'illegal parameter name (must be a bare identifier): ' + JSON.stringify(k) };
+
+            if (AdHybridClient.RESERVED.indexOf(('' + k).toLowerCase()) !== -1)
+                return { ok: false, reason: 'reserved parameter may not be supplied by the caller: ' + k };
+
+            if (contract.allowed.indexOf(k) === -1)
+                return { ok: false, reason: 'parameter not permitted for this action: ' + k };
+
+            var v = callerArgs[k];
+            if (v === null || v === undefined) continue;
+            if (typeof v === 'object' && !(v instanceof Array))
+                return { ok: false, reason: 'parameter value must be scalar or array: ' + k };
+            out[k] = v;
+        }
+
+        for (var i = 0; i < contract.required.length; i++) {
+            var req = contract.required[i];
+            if (out[req] === undefined || out[req] === null || ('' + out[req]).trim() === '')
+                return { ok: false, reason: 'required parameter missing: ' + req };
+        }
+        return { ok: true, args: out };
+    },
+
+    _isAllowedOu: function (targetOu) {
+        var allow = gs.getProperty('x_fed_day2_ops.ad_managed_ous', '');
+        if (!allow) return false;   // fail closed: no allowlist means no writes to any OU
+        if (!targetOu) return false;
+        var ous = allow.split(',');
+        var norm = ('' + targetOu).trim().toLowerCase();
+        for (var i = 0; i < ous.length; i++) {
+            if (norm === ous[i].trim().toLowerCase()) return true;
+        }
+        return false;
+    },
+
+    _refuse: function (action, reason) {
+        this.log.warn(action + ' refused: ' + reason);
+        return { ok: false, error: 'refused: ' + reason };
     },
 
     type: 'AdHybridClient'

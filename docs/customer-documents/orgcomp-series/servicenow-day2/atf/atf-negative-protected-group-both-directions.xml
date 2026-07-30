@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - protected-group writes refused in BOTH directions (NEW-2)
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' on a declared non-prod
+  instance; x_fed_day2_ops.test_fixture_privileged_ad_group = 'true'.
+
+  Why this test exists: the 2026-07-30 build added a deny-list to
+  addGroupMemberAd and left removeGroupMemberAd completely unguarded. You could
+  not add to Domain Admins but you could remove from it - stripping break-glass
+  accounts out of Tier-0 groups is a denial-of-recovery primitive, and it was the
+  half of the pair nobody tested.
+
+  Also asserts the tri-state contract: an INCONCLUSIVE classification must be
+  refused exactly like a privileged one.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: protected AD group refused for both add and remove</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>Membership writes against a privileged or unclassifiable AD group must be refused whichever direction they run.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>ADD to a privileged group must be refused.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var r = ad.addGroupMemberAd('CN=Domain Admins,CN=Users,DC=example,DC=test', 'jdoe');
+  if (r.ok) { stepResult.setFailed('add to a privileged group was accepted'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>REMOVE from a privileged group must be refused too - this is the half that was unguarded.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var ad = new x_fed_day2_ops.AdHybridClient();
+  var r = ad.removeGroupMemberAd('CN=Domain Admins,CN=Users,DC=example,DC=test', 'breakglass-01');
+  if (r.ok) { stepResult.setFailed('remove from a privileged group was accepted (NEW-2 regressed)'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>An INCONCLUSIVE classification must be treated as privileged, not as clean.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var pc = new x_fed_day2_ops.PrivilegeClassifier();
+  var v = pc.classifyRequest({});           // nothing classifiable
+  if (v.status !== 'inconclusive') {
+    stepResult.setFailed('an unclassifiable request returned ' + v.status + ', expected inconclusive');
+    return;
+  }
+  var gate = new x_fed_day2_ops.EntraHelpdeskGate();
+  var pre = gate.preflight({ requester_id: 'r', approver_id: 'a' });   // no expiry
+  if (pre.ok) {
+    stepResult.setFailed('inconclusive classification did not force the AC-6 expiry requirement');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

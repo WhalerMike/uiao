@@ -65,23 +65,85 @@ SamCorrelationClient.prototype = {
     // plane — it writes a ServiceNow record, never the estate and never SAM.
     // The RITM<->IdentityRequest key is what makes the closure attestable back to
     // the access DECISION, not just the action.
-    recordLineage: function (ritmNumber, samRequestId, entraObjectId) {
+    //
+    // ritmNumber may be null: the P0-7 remediation writes lineage BEFORE the
+    // RITM exists (fail-closed ordering — no executable request without an
+    // audit trail), then binds the RITM once created via attachRitmToLineage.
+    // Only samRequestId is required up front. verification (optional) carries
+    // the pull-verify/JWS result that authorized this lineage record, so the
+    // evidence reflects what was actually confirmed, not just what was pushed.
+    recordLineage: function (ritmNumber, samRequestId, entraObjectId, verification) {
         if (this.testMode)
             return { ok: true, sys_id: 'test-lineage-0001', ritm: ritmNumber, sam_request: samRequestId };
-        if (!ritmNumber || !samRequestId)
-            return { ok: false, reason: 'lineage requires both the RITM number and the SAM request id (AU-2)' };
+        if (!samRequestId)
+            return { ok: false, reason: 'lineage requires the SAM request id (AU-2)' };
         var gr = new GlideRecord(this.tblIntegration);
         if (!gr.isValid()) return { ok: false, reason: 'integration table ' + this.tblIntegration + ' not found' };
         gr.initialize();
         gr.setValue('record_type', 'sam_lineage');
-        gr.setValue('ritm', ritmNumber);
+        gr.setValue('ritm', ritmNumber || '');
         gr.setValue('sam_flavor', this.flavor);
         gr.setValue('sam_request_id', samRequestId);
         gr.setValue('sam_source_id', this.sourceId);
         gr.setValue('entra_object_id', entraObjectId || '');
         gr.setValue('boundary', this.boundary);
+        if (verification) {
+            gr.setValue('verified_by', verification.verified_by || '');
+            gr.setValue('verified_at', verification.verified_at || '');
+            gr.setValue('verified_authority', verification.verified_authority || '');
+            gr.setValue('verified_status', verification.verified_status || '');
+            gr.setValue('verified_item', verification.verified_item || '');
+        }
         var id = gr.insert();
-        return { ok: !!id, sys_id: '' + id, ritm: ritmNumber, sam_request: samRequestId };
+        return { ok: !!id, sys_id: '' + id, ritm: ritmNumber || '', sam_request: samRequestId };
+    },
+
+    // Bind a lineage record written before the RITM existed (recordLineage
+    // with ritmNumber=null) to the RITM now that it's been created. Plain
+    // ServiceNow bookkeeping — no IIQ/ISC specifics required.
+    attachRitmToLineage: function (lineageSysId, ritmNumber, ritmSysId) {
+        if (!lineageSysId || !ritmNumber || !ritmSysId)
+            return { ok: false, reason: 'attachRitmToLineage requires lineageSysId, ritmNumber, and ritmSysId' };
+        if (this.testMode)
+            return { ok: true, sys_id: lineageSysId, ritm: ritmNumber };
+        var gr = new GlideRecord(this.tblIntegration);
+        if (!gr.get(lineageSysId))
+            return { ok: false, reason: 'lineage record ' + lineageSysId + ' not found' };
+        gr.setValue('ritm', ritmNumber);
+        gr.setValue('ritm_sys_id', ritmSysId);
+        var updated = gr.update();
+        return { ok: !!updated, sys_id: lineageSysId, ritm: ritmNumber };
+    },
+
+    // -------------------------------------------------------------------------
+    // NOT IMPLEMENTED — deliberate fail-closed stub, not a placeholder someone
+    // forgot. A real implementation needs this tenant's actual IIQ (or ISC)
+    // REST/SCIM contract — endpoint shape, auth, response parsing — which
+    // cannot be filled in generically. With this stub in place,
+    // sam_inbound_ritm.js's verifyWithSam() always refuses
+    // ('verification_unavailable') whenever x_fed_day2_ops.iiq_verify_endpoint
+    // is configured, which is the same safe, inert state as leaving it
+    // unconfigured — a real pull-verify integration, not a functional one.
+    // Replace this method's body with a MID-routed call to the tenant's IIQ
+    // IdentityRequest / ISC access-request API before relying on it.
+    // -------------------------------------------------------------------------
+    fetchIdentityRequest: function (samRequestId) {
+        return { ok: false, reason: 'fetchIdentityRequest is not implemented for this tenant — wire it to your ' +
+                 'IIQ/ISC REST or SCIM API before relying on x_fed_day2_ops.iiq_verify_endpoint (fail closed)' };
+    },
+
+    // -------------------------------------------------------------------------
+    // NOT IMPLEMENTED — same fail-closed rationale as fetchIdentityRequest.
+    // A real implementation MUST validate: the signature against publicKey,
+    // the issuer, the expiry, AND that the claims bind to the asserted
+    // sam_request_id — a validly-signed assertion that covers a DIFFERENT
+    // request is the obvious bypass a shallow "signature checks out"
+    // implementation would miss (see sam_inbound_ritm.js's subject-mismatch
+    // check for the equivalent guard on the pull-verify path).
+    // -------------------------------------------------------------------------
+    verifyJws: function (jws, publicKey) {
+        return { ok: false, reason: 'verifyJws is not implemented for this tenant — wire real JWS signature/issuer/' +
+                 'expiry/subject-binding verification before relying on x_fed_day2_ops.sam_jws_public_key (fail closed)' };
     },
 
     // Validate an inbound IIQ-pushed payload (used by the scripted REST endpoint).

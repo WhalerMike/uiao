@@ -103,6 +103,20 @@ resource "aws_instance" "grid" {
   # First-boot vNIOS configuration (temp_license + admin pw + grid join).
   user_data_base64 = base64encode(local.grid_user_data[count.index])
 
+  # SER-2 Fix 1: require IMDSv2. Blocks the SSRF -> IMDSv1 -> user-data path
+  # that would expose the bootstrap secrets embedded in user_data_base64
+  # above to anything able to make an outbound request from the instance.
+  # hop_limit 1 keeps the response off container networks on the host. This
+  # does NOT remove the secrets from user-data or Terraform state (see
+  # versions.tf's state-as-secret-store note) -- it closes the unauthenticated
+  # read path, which is the more urgent half of the two.
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "disabled"
+  }
+
   # Encrypted root + a data volume for the NIOS DB (size per member role; ch.4/§9).
   root_block_device {
     encrypted   = true # EBS encryption at rest (KMS); SC-28

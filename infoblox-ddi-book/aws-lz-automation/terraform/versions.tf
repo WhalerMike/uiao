@@ -56,6 +56,30 @@ terraform {
 # the commercial/GCC-Moderate boundary this module targets.
 # ---------------------------------------------------------------------------
 
+# SER-2: this module reads the vNIOS/NIOS-X bootstrap secrets (admin password,
+# grid shared secret, SaaS join token) via `data "aws_secretsmanager_secret_version"`
+# / `data "aws_ssm_parameter"` in main.tf, which Terraform persists into STATE
+# IN PLAINTEXT by design (data-source reads are not treated specially). The
+# IMDSv2 requirement added in grid.tf/universal_ddi.tf closes the unauthenticated
+# SSRF->user-data read path, but the state file itself still contains all three
+# secrets until the module is restructured so the instance fetches them at boot
+# under its own instance profile instead of receiving them via Terraform. Until
+# then, treat the backend as a secret store:
+#   * S3 with SSE-KMS on a customer-managed key, bucket policy denying
+#     unencrypted transport
+#   * DynamoDB state locking
+#   * bucket versioning ON, and access logging to a separate account
+#   * read access restricted to the pipeline role -- not the whole platform team
+# terraform {
+#   backend "s3" {
+#     bucket         = "..."
+#     key            = "ddi/terraform.tfstate"
+#     kms_key_id     = "arn:aws:kms:..."
+#     encrypt        = true
+#     dynamodb_table = "..."
+#   }
+# }
+
 provider "aws" {
   region = var.region
   # partition defaults to "aws" (commercial .com). Do NOT target us-gov-* /

@@ -74,6 +74,15 @@ InfobloxDDIGate.prototype = {
         return this.runGate(env).overall === 'pass';
     },
 
+    // Names the wrapper is permitted to export. Anything else is dropped and
+    // logged. Keep in sync with the wrapper's own allowlist — both sides
+    // validate; neither trusts the other.
+    ALLOWED_ENV: ['SCRIPTS_DIR', 'DDI_VIP', 'TEST_FQDN', 'EXPECTED_IP',
+                  'PRIVATELINK_FQDN', 'PRIVATELINK_EXPECTED_IP',
+                  'GRID_MASTER', 'INFOBLOX_USERNAME', 'INFOBLOX_PASSWORD',
+                  'WAPI_VERSION', 'DDI_API_FLAVOR', 'STALE_THRESHOLD_MIN',
+                  'DNS_TIMEOUT', 'DNS_PORT'],
+
     // Dispatch to the MID Server. Implement with your standard pattern —
     // an ECC queue "command" probe, a Scripted REST callback, or the
     // MIDServer/Command capability. Env vars are passed to the wrapper.
@@ -86,7 +95,9 @@ InfobloxDDIGate.prototype = {
         // Flow on the ECC response, or use an orchestration Activity that blocks on it.
         // Also note JavascriptProbe runs JavaScript on the MID; to run the bash
         // wrapper use a CommandProbe (or a shell-invoking script). Left inline only to
-        // show the shape (name → invocation → verdict string).
+        // show the shape (name → invocation → verdict string). The injection fix below
+        // is independent of that rework and should be carried into whichever dispatch
+        // pattern you land on.
         var probe = new global.JavascriptProbe(this.midServer);
         probe.setName('x_infoblox_ddi.validate');
         probe.setJavascript(this._buildInvocation(script, env));
@@ -94,11 +105,57 @@ InfobloxDDIGate.prototype = {
         return probe.getResponse ? probe.getResponse() : '{"overall":"fail","checks":[]}';
     },
 
+    // SER-1 remediation: single opaque argument, no interpolation of caller
+    // data into shell text. The old version built `export k=...` lines by
+    // string concatenation — JSON.stringify quotes a VALUE for bash but does
+    // not stop $()/backtick command substitution inside double quotes, and the
+    // KEY was never escaped at all (the same defect class as
+    // AdHybridClient._render in the Day-2 kit — two independent instances
+    // means this was a house pattern, not a one-off). Here the env map is
+    // JSON-serialized, base64-encoded, and passed as ONE argv element; the
+    // wrapper (mid/infoblox-ddi-validate.sh) decodes it and exports only
+    // allowlisted names via a plain assignment, which bash never re-parses.
     _buildInvocation: function (script, env) {
-        var exports = '';
-        for (var k in env) exports += 'export ' + k + '=' + JSON.stringify('' + env[k]) + '; ';
-        return exports + 'bash ' + gs.getProperty('x_infoblox_ddi.mid_scripts_dir',
-            '/opt/servicenow/mid/agent/scripts/ddi') + '/' + script;
+        var safe = this._filterEnv(env);
+        var json = JSON.stringify(safe);
+        var b64 = GlideStringUtil.base64Encode(json);
+
+        // b64 is [A-Za-z0-9+/=] by construction, so it cannot carry shell
+        // metacharacters. The script name and directory come from properties,
+        // never from the request. Nothing else is concatenated.
+        if (!/^[A-Za-z0-9+/=]+$/.test(b64)) {
+            this.log.logErr('_buildInvocation: encoded payload failed its own charset check — refusing to dispatch');
+            return 'exit 64';
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test('' + script)) {
+            this.log.logErr('_buildInvocation: illegal script name — refusing to dispatch');
+            return 'exit 64';
+        }
+
+        var dir = gs.getProperty('x_infoblox_ddi.mid_scripts_dir',
+                                 '/opt/servicenow/mid/agent/scripts/ddi');
+        return "bash '" + dir.replace(/'/g, "'\\''") + "/" + script + "' --env-b64 " + b64;
+    },
+
+    // Allowlist filter. Values are carried as JSON, so they need no escaping —
+    // but names are still constrained to bare identifiers so a malformed key
+    // cannot survive into the wrapper's export loop.
+    _filterEnv: function (env) {
+        var out = {};
+        env = env || {};
+        for (var k in env) {
+            if (!env.hasOwnProperty(k)) continue;
+            if (!/^[A-Z][A-Z0-9_]*$/.test(k)) {
+                this.log.logErr('_filterEnv: dropped illegal env name');
+                continue;
+            }
+            if (this.ALLOWED_ENV.indexOf(k) === -1) {
+                this.log.logErr('_filterEnv: dropped env name not on the allowlist: ' + k);
+                continue;
+            }
+            out[k] = '' + env[k];
+        }
+        return out;
     },
 
     type: 'InfobloxDDIGate'

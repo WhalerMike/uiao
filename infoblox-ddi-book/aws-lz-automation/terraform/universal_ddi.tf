@@ -77,6 +77,15 @@ resource "aws_instance" "niosx" {
 
   user_data_base64 = base64encode(local.uddi_user_data)
 
+  # SER-2 Fix 1: require IMDSv2 -- see grid.tf's aws_instance.grid for the
+  # full rationale (same fix, same reasoning, applied to the NIOS-X host).
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "disabled"
+  }
+
   root_block_device {
     encrypted   = true
     volume_type = "gp3"

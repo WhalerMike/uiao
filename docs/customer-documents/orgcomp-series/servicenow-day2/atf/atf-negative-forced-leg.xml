@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE - the actuation leg is derived, not accepted (NEW-1)
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' on a declared non-prod
+  instance; x_fed_day2_ops.hybrid_mode = 'true'.
+
+  Why this test exists: the P1-4 fix introduced skipPim = (request.actuation_leg
+  === 'ad'), keyed on a CALLER-SUPPLIED field. With clause 1 unenforced, any
+  caller could set actuation_leg:'ad' on a Graph request and skip PIM elevation
+  entirely - the clause the kit describes as "no activation id, no actuation".
+  A control keyed on a caller-supplied discriminator is not a control.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 negative: caller-supplied actuation_leg cannot force the AD path</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A cloud-only object with a caller-forged actuation_leg of 'ad' must still route to the Graph leg and must still run the ELEVATE clause.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Forge actuation_leg='ad' on a cloud-only object; assert the derived leg wins.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var orch = new x_fed_day2_ops.MacdrOrchestrator();
+  var req = {
+    requester_id: 'day2-requester-sysid',
+    approver_id:  'day2-approver-sysid',
+    verb: 'disableUser',
+    breakglass: true,
+    breakglass_approver_id: 'day2-approver-sysid',
+    breakglass_justification: 'ATF: forced-leg negative test',
+    expiry: '2099-12-31 00:00:00',            // satisfies AC-6 regardless of
+                                               // privileged classification, so
+                                               // this request actually reaches
+                                               // clause 3 (ELEVATE) instead of
+                                               // stopping earlier at 'authorize'
+                                               // -- a request that never gets
+                                               // that far can't test whether
+                                               // ELEVATE was correctly skipped
+    actuation_leg: 'ad',                      // FORGED by the caller
+    entra_user: { onPremisesSyncEnabled: false }   // cloud-only in truth
+  };
+  var r = orch.run(req, function () { return { ok: true }; },
+                   { action: 'disableUser', target: { userId: 'u1' } });
+
+  if (req.actuation_leg !== 'graph') {
+    stepResult.setFailed('caller-supplied actuation_leg survived derivation (NEW-1 regressed): ' + req.actuation_leg);
+    return;
+  }
+  // The request must actually have reached clause 3 for the next check to
+  // mean anything -- if it stopped earlier, this test would silently pass
+  // regardless of whether the ELEVATE-skip logic has a bug (the defect this
+  // revision of the test fixes).
+  if (!r.trail || !r.trail.elevate) {
+    stepResult.setFailed('request did not reach clause ELEVATE (stopped at ' + (r.clause || 'unknown') +
+                          ') -- this test cannot verify the PIM-skip guard without reaching that clause');
+    return;
+  }
+  if (r.trail.elevate.skipped === true) {
+    stepResult.setFailed('ELEVATE was skipped on a Graph-leg request - PIM bypass reachable');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>An unclassifiable object must fail closed at clause route, not default to a leg.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var orch = new x_fed_day2_ops.MacdrOrchestrator();
+  var r = orch.run(
+    { requester_id: 'day2-requester-sysid', approver_id: 'day2-approver-sysid',
+      verb: 'disableUser', breakglass: true,
+      breakglass_approver_id: 'day2-approver-sysid',
+      breakglass_justification: 'ATF: unclassified routing negative test' },   // no entra_user
+    function () { return { ok: true }; },
+    { action: 'disableUser', target: { userId: 'u1' } }
+  );
+  if (r.ok || r.clause !== 'route') {
+    stepResult.setFailed('unclassified object did not fail closed at route (stopped at ' + r.clause + ')');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

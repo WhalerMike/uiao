@@ -13,6 +13,36 @@
 # STARTER SKELETON.
 set -uo pipefail
 
+# SER-1 companion change. InfobloxDDIGate._buildInvocation no longer exports
+# env vars via unescaped `export k=v` string concatenation (command injection,
+# see Script Include header) -- it passes the whole env map as one opaque
+# base64-encoded JSON argument instead. Decode it here and export only the
+# allowlisted names, via plain assignment (never eval/re-parsed as shell).
+ENV_B64=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env-b64) ENV_B64="${2:-}"; shift 2 ;;
+    *) echo "unexpected argument: $1" >&2; exit 2 ;;
+  esac
+done
+if [[ -n "$ENV_B64" ]]; then
+  ALLOWED="SCRIPTS_DIR DDI_VIP TEST_FQDN EXPECTED_IP PRIVATELINK_FQDN \
+           PRIVATELINK_EXPECTED_IP GRID_MASTER INFOBLOX_USERNAME \
+           INFOBLOX_PASSWORD WAPI_VERSION DDI_API_FLAVOR \
+           STALE_THRESHOLD_MIN DNS_TIMEOUT DNS_PORT"
+  ENV_JSON="$(printf '%s' "$ENV_B64" | base64 -d)"
+  for name in $ALLOWED; do
+    value="$(printf '%s' "$ENV_JSON" | jq -r --arg n "$name" '.[$n] // empty')"
+    [[ -n "$value" ]] && export "$name=$value"      # assignment, never eval
+  done
+  unset ENV_B64 ENV_JSON
+fi
+# SER-7 is NOT closed by the above: INFOBLOX_PASSWORD is still exported here
+# and inherited by the three child scripts below, visible in
+# /proc/<pid>/environ to the same user. Closing that needs a coordinated
+# 0600-temp-file change across this script and the three validation/*.sh
+# scripts it invokes -- deliberately not done here, see the patch notes.
+
 SCRIPTS_DIR="${SCRIPTS_DIR:-./validation}"
 declare -a NAMES=(dns-validation discovery-sync-check ipam-conflict-check)
 declare -a RESULTS=()

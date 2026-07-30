@@ -1,111 +1,186 @@
 // Script Include: EntraHelpdeskGate  (application scope: x_fed_day2_ops)
-// -----------------------------------------------------------------------------
-// Post-action validation gate for the Day-2 Operations app (Vol IX). After a
-// helpdesk action actuates on Entra, the gate RE-READS the target through Graph
-// and confirms the intended state actually took — closure proven by observation,
-// not by the write returning 200. The verdict + evidence is what the Flow stamps
-// on the request (CM-3 / AU-2) and reconciles to the CMDB (CM-8).
+// =============================================================================
+// REMEDIATED BUILD.
 //
-// It also enforces two safety invariants the workflow must never violate:
-//   * SEPARATION OF DUTIES — requester != approver (CM-5). A self-approved
-//     privileged request is a hard fail. INDETERMINATE (either id missing) also
-//     fails — the check is fail-CLOSED, never skipped.
-//   * LEAST PRIVILEGE — a privileged group/role grant must carry an expiry
-//     (AC-6); a standing elevation from a helpdesk click is refused. `privileged`
-//     is coerced (ServiceNow catalog variables arrive as the string 'true'), and
-//     is ALSO derived server-side from the target against the allowlists in
-//     x_fed_day2_ops.privileged_role_template_ids / .privileged_group_ids — a
-//     client-supplied false can never override a derived-true classification.
-//     Limitation: a request with no role_template_id/group_id/target_id can't be
-//     classified against the allowlists and falls back to the self-declared flag
-//     alone; the caller must populate one of those fields for full coverage.
+//   P1-1 / NEW-3  Privilege classification moved out to PrivilegeClassifier, so
+//                 both legs use one implementation with one keying scheme.
+//                 'inconclusive' is now treated as privileged — the previous
+//                 fallthrough returned false for anything it could not classify,
+//                 which is the wrong direction for a safety gate.
 //
-// test_mode returns deterministic PASS verdicts so ATF can drive the Flow with no
-// live Graph. Never enable in production.
-// -----------------------------------------------------------------------------
+//   P0-4          verify() is leg-aware. An AD-leg action is verified by
+//                 re-reading AD on the pinned DC; the Entra projection is
+//                 recorded SEPARATELY as a sync-latency-tolerant reconciliation
+//                 and is never the closure assertion. Previously AD-leg writes
+//                 had no post-state assertion at all while the Entra read raced
+//                 Entra Connect sync.
+//
+//   NEW-6         Membership is asserted DIRECTLY. checkMemberGroups evaluates
+//                 TRANSITIVE membership, so it returned true when the user was
+//                 a member via nesting even if the intended direct add failed —
+//                 a false pass in the closure-by-observation step.
+//
+//   P0-5          test_mode goes through Day2Env, and a verify under test_mode
+//                 is marked synthetic rather than returning a bare pass.
+// =============================================================================
 var EntraHelpdeskGate = Class.create();
 EntraHelpdeskGate.prototype = {
 
     initialize: function () {
         this.client = new x_fed_day2_ops.EntraHelpdeskClient();
-        // Scoped logging via gs.* — a scoped app cannot `new GSLog(...)` a global
-        // Script Include without the `global.` prefix, and GSLog may not exist on
-        // every instance; gs.error/warn always resolve. (Sweep: js-cannot-run.)
+        this.env = new x_fed_day2_ops.Day2Env();
+        this.testMode = this.env.isTestMode();
         this.log = {
-            err: function (m) { gs.error('[x_fed_day2_ops.EntraHelpdeskGate] ' + m); },
-            warn: function (m) { gs.warn('[x_fed_day2_ops.EntraHelpdeskGate] ' + m); }
+            err:  function (m) { gs.error('[x_fed_day2_ops.EntraHelpdeskGate] ' + Day2Env.scrub(m)); },
+            warn: function (m) { gs.warn('[x_fed_day2_ops.EntraHelpdeskGate] ' + Day2Env.scrub(m)); }
         };
-        this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
 
-    // Coerce a ServiceNow variable (boolean true OR string 'true') to boolean.
     _truthy: function (v) { return v === true || v === 'true'; },
 
-    // Safety gate — run BEFORE actuation. Returns {ok, reason}. FAIL CLOSED.
+    // --- Safety gate — BEFORE actuation. FAIL CLOSED. ------------------------
     preflight: function (request) {
-        // CM-5: separation of duties. Missing either id is INDETERMINATE, not a
-        // pass — a request with no populated requester/approver must not proceed.
+        request = request || {};
+
+        var guard = this.env.guard();          // P0-5
+        if (!guard.ok) return { ok: false, reason: guard.reason };
+
+        // CM-5 separation of duties. Missing either id is INDETERMINATE.
         if (!request.requester_id || !request.approver_id)
             return { ok: false, reason: 'SoD indeterminate: requester/approver not populated (CM-5)' };
         if (request.requester_id === request.approver_id)
             return { ok: false, reason: 'SoD violation: requester == approver (CM-5)' };
-        // AC-6: privileged grant must be time-bound. Coerce string variables, and
-        // OR in the server-derived classification — a self-declared-false flag
-        // must never suppress a target that the allowlists say IS privileged.
-        var privileged = this._truthy(request.privileged) || this._classifyPrivileged(request);
-        if (privileged && !request.expiry)
-            return { ok: false, reason: 'Least privilege: privileged grant requires an expiry (AC-6)' };
-        return { ok: true, reason: 'preflight ok' };
-    },
 
-    // Server-side privilege classification — do not trust the client flag alone.
-    // Checks the request's target against the configured allowlists so a caller
-    // can't dodge the AC-6 expiry requirement by leaving `privileged` unticked.
-    _classifyPrivileged: function (request) {
-        var roleIds = gs.getProperty('x_fed_day2_ops.privileged_role_template_ids', '');
-        var groupIds = gs.getProperty('x_fed_day2_ops.privileged_group_ids', '');
-        // groupId (camelCase) reuses the SAME catalog field the client actuates
-        // with (variable-set-helpdesk-identity.xml's group_id -> groupId); the
-        // other two are gate-only fields with their own snake_case mappings.
-        var target = request.role_template_id || request.groupId || request.target_id || '';
-        if (!target) return false;   // nothing to classify against; self-declared flag still applies
-        var ids = (roleIds + ',' + groupIds).split(',');
-        for (var i = 0; i < ids.length; i++) {
-            var id = ids[i].trim();
-            if (id && id === ('' + target).trim()) return true;
+        // AC-6 least privilege. Server-derived classification ORs with the
+        // self-declared flag: a client-supplied false can never suppress it.
+        var verdict = new x_fed_day2_ops.PrivilegeClassifier().classifyRequest(request);
+        var declared = this._truthy(request.privileged);
+        var privileged = declared || verdict.status === 'privileged' || verdict.status === 'inconclusive';
+
+        if (privileged && !request.expiry) {
+            return { ok: false,
+                     reason: 'Least privilege: privileged grant requires an expiry (AC-6) [classification: ' +
+                             verdict.status + ' — ' + verdict.reason + ']',
+                     classification: verdict.status };
         }
-        return false;
+        return { ok: true, reason: 'preflight ok', classification: verdict.status, privileged: privileged };
     },
 
-    // Verify gate — run AFTER actuation. Re-reads state and asserts the intended
-    // post-state actually took. FAIL CLOSED: a failed/unparseable re-read, or an
-    // action with no post-state assertion, returns ok:false (inconclusive), never
-    // a pass. A 2xx on the read is NOT closure — the property must be observed.
-    verify: function (action, target) {
-        if (this.testMode) return { ok: true, evidence: { action: action, target: target, verified: true } };
+    // --- Verify gate — AFTER actuation. -------------------------------------
+    // FAIL CLOSED on every branch that is not an affirmative observation.
+    // verifyArgs.leg is set by the orchestrator from the SERVER-DERIVED routing
+    // decision, never from caller input (see MacdrOrchestrator NEW-1).
+    verify: function (action, target, leg) {
+        target = target || {};
+        if (this.testMode) {
+            return { ok: true, synthetic: true,
+                     evidence: { action: action, target: target, verified: true,
+                                 note: 'test_mode: synthetic verdict, not an observation' } };
+        }
+        return (leg === 'ad') ? this._verifyAd(action, target) : this._verifyGraph(action, target);
+    },
+
+    // -------- AD leg: observe on the pinned DC (P0-4) ------------------------
+    _verifyAd: function (action, target) {
+        var ad = new x_fed_day2_ops.AdHybridClient();
+
+        if (action === 'addGroupMember' || action === 'removeGroupMember') {
+            var isMember = ad.isGroupMemberAd(target.groupId, target.userId, false);
+            if (isMember === null)
+                return { ok: false, evidence: { action: action, leg: 'ad',
+                         reason: 'AD membership re-read inconclusive — not closed' } };
+            var want = (action === 'addGroupMember');
+            return { ok: isMember === want,
+                     evidence: { action: action, leg: 'ad', asserted: isMember === want,
+                                 observed_member: isMember,
+                                 entra_projection: this._projectionNote(target.userId) } };
+        }
+
+        var d = ad.getUserAd(target.identity || target.userId,
+                             ['distinguishedName', 'enabled', 'userAccountControl', 'pwdLastSet']);
+        if (!d.ok)
+            return { ok: false, evidence: { action: action, leg: 'ad',
+                     reason: 'AD re-read could not be dispatched — inconclusive, not closed' } };
+
+        var res = ad.awaitDispatch(d.ecc_sys_id);
+        if (!res.ok || !res.data)
+            return { ok: false, evidence: { action: action, leg: 'ad',
+                     reason: 'AD re-read inconclusive: ' + (res.reason || 'no data') } };
+
+        var u = res.data, asserted;
+        switch (action) {
+            case 'disableUser':   asserted = (u.enabled === false); break;
+            case 'createUser':    asserted = !!u.distinguishedName; break;
+            case 'resetPassword': asserted = (('' + u.pwdLastSet) === '0'); break;   // must-change-at-logon
+            case 'moveOu':        asserted = !!u.distinguishedName &&
+                                   ('' + u.distinguishedName).toLowerCase().indexOf(('' + (target.targetOu || '')).toLowerCase()) !== -1;
+                                  break;
+            case 'setAttributes': asserted = this._attributesMatch(u, target.expected || {}); break;
+            default:
+                return { ok: false, evidence: { action: action, leg: 'ad',
+                         reason: 'no AD post-state assertion defined for action — verification inconclusive' } };
+        }
+        return { ok: !!asserted,
+                 evidence: { action: action, leg: 'ad', asserted: !!asserted, dc: res.dc,
+                             observed_at: res.observed_at,
+                             entra_projection: this._projectionNote(target.userId) } };
+    },
+
+    _attributesMatch: function (observed, expected) {
+        for (var k in expected) {
+            if (!expected.hasOwnProperty(k)) continue;
+            if (('' + observed[k]) !== ('' + expected[k])) return false;
+        }
+        return true;
+    },
+
+    // The Entra side of an AD-leg write is a PROJECTION, not the closure. It
+    // lands on the next Entra Connect cycle, so a mismatch here is expected and
+    // must never fail the task. Recorded for reconciliation only.
+    _projectionNote: function (userId) {
+        if (!userId) return { status: 'not-checked' };
+        var r = this.client._graph('GET', '/users/' + userId, null);
+        if (!r.ok) return { status: 'unavailable', note: 'Entra projection not read; sync latency is expected' };
+        var u;
+        try { u = JSON.parse(r.body) || {}; }
+        catch (e) { return { status: 'unparseable' }; }
+        return { status: 'observed', accountEnabled: u.accountEnabled,
+                 note: 'projection only — not the closure assertion (Entra Connect latency)' };
+    },
+
+    // -------- Graph leg ------------------------------------------------------
+    _verifyGraph: function (action, target) {
+        if (action === 'addGroupMember' || action === 'removeGroupMember') {
+            var m = this._isDirectMember(target.groupId, target.userId);
+            if (m === null)
+                return { ok: false, evidence: { action: action, leg: 'graph',
+                         reason: 'membership re-read inconclusive — not closed' } };
+            var want = (action === 'addGroupMember');
+            return { ok: m === want,
+                     evidence: { action: action, leg: 'graph', asserted: m === want, observed_member: m } };
+        }
 
         var r = this.client._graph('GET', '/users/' + target.userId, null);
         if (!r.ok)
-            return { ok: false, evidence: { action: action, status: r.status, reason: 're-read failed — inconclusive, not closed' } };
+            return { ok: false, evidence: { action: action, leg: 'graph', status: r.status,
+                     reason: 're-read failed — inconclusive, not closed' } };
         var user;
         try { user = JSON.parse(r.body) || {}; }
-        catch (e) { return { ok: false, evidence: { action: action, reason: 're-read unparseable — inconclusive' } }; }
+        catch (e) { return { ok: false, evidence: { action: action, leg: 'graph',
+                             reason: 're-read unparseable — inconclusive' } }; }
 
         var asserted;
         switch (action) {
-            case 'disableUser':
-                asserted = (user.accountEnabled === false); break;
-            case 'createUser':
-                asserted = !!user.id; break;
-            case 'assignLicense':
-                asserted = this._hasLicense(user, target.skuId); break;
-            case 'addGroupMember':
-                asserted = this._isMember(target.groupId, target.userId); break;
+            case 'disableUser':   asserted = (user.accountEnabled === false); break;
+            case 'createUser':    asserted = !!user.id; break;
+            case 'assignLicense': asserted = this._hasLicense(user, target.skuId); break;
             default:
-                // No post-state assertion defined — do NOT claim verified.
-                return { ok: false, evidence: { action: action, reason: 'no post-state assertion for action — verification inconclusive' } };
+                return { ok: false, evidence: { action: action, leg: 'graph',
+                         reason: 'no post-state assertion for action — verification inconclusive' } };
         }
-        return { ok: asserted, evidence: { action: action, asserted: asserted, accountEnabled: user.accountEnabled } };
+        return { ok: !!asserted,
+                 evidence: { action: action, leg: 'graph', asserted: !!asserted,
+                             accountEnabled: user.accountEnabled } };
     },
 
     _hasLicense: function (user, skuId) {
@@ -114,18 +189,20 @@ EntraHelpdeskGate.prototype = {
         return false;
     },
 
-    _isMember: function (groupId, userId) {
-        // Affirmative membership check via Graph's checkMemberGroups action — a
-        // 2xx status is NOT membership; the returned group id set must actually
-        // contain groupId. A failed or unparseable read is NOT membership.
-        var r = this.client._graph('POST', '/users/' + userId + '/checkMemberGroups', { groupIds: [groupId] });
-        if (!r.ok) return false;
+    // NEW-6: DIRECT membership only. checkMemberGroups is transitive and would
+    // pass on a nested membership the actuation did not create.
+    // Tri-state: true / false / null (inconclusive).
+    _isDirectMember: function (groupId, userId) {
+        if (!groupId || !userId) return null;
+        var path = '/groups/' + groupId + "/members?$select=id&$filter=id eq '" + userId + "'";
+        var r = this.client._graph('GET', path, null);
+        if (!r.ok) return null;
         try {
             var body = JSON.parse(r.body) || {};
-            var ids = body.value || [];
-            for (var i = 0; i < ids.length; i++) { if (ids[i] === groupId) return true; }
+            var vals = body.value || [];
+            for (var i = 0; i < vals.length; i++) { if (vals[i].id === userId) return true; }
             return false;
-        } catch (e) { return false; }
+        } catch (e) { return null; }
     },
 
     type: 'EntraHelpdeskGate'
