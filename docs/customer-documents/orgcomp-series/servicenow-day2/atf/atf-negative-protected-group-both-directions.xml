@@ -52,17 +52,27 @@
   <sys_atf_step action="INSERT_OR_UPDATE">
     <order>300</order>
     <step_config_title>Server - Run Server Side Script</step_config_title>
-    <description>An INCONCLUSIVE classification must be treated as privileged, not as clean.</description>
+    <description>An INCONCLUSIVE classification (a target WAS supplied but could not be resolved) must be treated as privileged, not as clean.</description>
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
+  // NOTE: classifyRequest({}) -- a request with NO group/role field at all --
+  // is deliberately NOT this case. That shape means "not a privilege-grant
+  // action" (a password reset, a disable, an attribute change) and correctly
+  // classifies as confirmed-unprivileged; forcing it to inconclusive would
+  // require an AC-6 expiry on requests that were never about privilege in the
+  // first place (this exact regression broke atf-happy-path.xml when tried).
+  // INCONCLUSIVE is for the other case: a target field WAS supplied but
+  // classification couldn't resolve it -- e.g. a cloud groupId with no
+  // privileged_role_template_ids/privileged_group_ids configured to check
+  // against, which is exactly what this step now supplies.
   var pc = new x_fed_day2_ops.PrivilegeClassifier();
-  var v = pc.classifyRequest({});           // nothing classifiable
+  var v = pc.classifyRequest({ groupId: 'unresolvable-cloud-group-id' });
   if (v.status !== 'inconclusive') {
-    stepResult.setFailed('an unclassifiable request returned ' + v.status + ', expected inconclusive');
+    stepResult.setFailed('a supplied-but-unresolvable target returned ' + v.status + ', expected inconclusive');
     return;
   }
   var gate = new x_fed_day2_ops.EntraHelpdeskGate();
-  var pre = gate.preflight({ requester_id: 'r', approver_id: 'a' });   // no expiry
+  var pre = gate.preflight({ requester_id: 'r', approver_id: 'a', groupId: 'unresolvable-cloud-group-id' });   // no expiry
   if (pre.ok) {
     stepResult.setFailed('inconclusive classification did not force the AC-6 expiry requirement');
     return;

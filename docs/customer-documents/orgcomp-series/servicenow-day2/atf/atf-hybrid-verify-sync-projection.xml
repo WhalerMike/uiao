@@ -1,35 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ATF HYBRID - the AD leg flags sync projection so verify allows for latency.
+  ATF HYBRID - the AD leg dispatches cleanly; latency-aware Entra projection
+  is a documented, currently UNTESTABLE-IN-TEST_MODE property, not asserted here.
   PRECONDITION: x_fed_day2_ops.test_mode = 'true' - no live AD/Graph connectivity.
   Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
 
-  An AD-leg write is authoritative in Active Directory immediately (on the pinned
-  DC) but only PROJECTS into Entra on the next Entra Connect cycle. The AD-leg
-  result must flag synced:true so the Flow's VERIFY clause re-reads AD for the
-  immediate on-prem post-state and allows for sync latency on the Entra-side
-  re-read. A create/disable that did not signal it syncs would let verify check
-  Entra too early and close falsely - a dispatch, or an un-synced read, is not
-  closure.
+  Superseded design note (kept so the history is legible): this test used to
+  assert createUserAd returned `synced: true` on its dispatch result, and the
+  Flow's VERIFY clause was meant to read that flag to decide whether to allow
+  for Entra Connect latency before checking the cloud-side projection. Under
+  the P0-4 remediation, write methods carry NO field resembling an observation
+  (no synced, no accountEnabled); `synced` no longer exists on any
+  AdHybridClient return. The latency-tolerant behavior moved to
+  EntraHelpdeskGate._verifyAd's _projectionNote(), which re-reads Entra
+  AFTER actuation and records the projection as informational evidence that
+  never fails the task (see EntraHelpdeskGate.js's P0-4 comment block).
+
+  That mechanism is CURRENTLY UNREACHABLE UNDER test_mode: EntraHelpdeskGate.
+  verify() checks `this.testMode` FIRST and returns a synthetic pass before
+  ever branching to _verifyAd/_verifyGraph; true even for leg='ad', so
+  _projectionNote() never executes in this ATF suite's configuration
+  (confirmed by direct execution, not just reading: forcing leg='ad' under
+  test_mode never reaches _verifyAd). This predates this remediation; it was
+  already true of the original verify(). Exercising the actual latency-
+  tolerant projection behavior requires test_mode=false and a live Graph
+  connection; see the external review's "Independent checks" list, item 3.
+  This test now asserts only what test_mode CAN prove: the AD-leg dispatch
+  itself succeeds and carries no observation-shaped field.
 -->
 <record_update table="sys_atf_test">
   <sys_atf_test action="INSERT_OR_UPDATE">
-    <name>Day-2 hybrid: the AD leg flags sync projection for latency-aware verify</name>
+    <name>Day-2 hybrid: the AD leg dispatches a create cleanly (no observation fields)</name>
     <sys_scope>x_fed_day2_ops</sys_scope>
     <active>true</active>
-    <description>AD-leg createUserAd reports synced:true so the Flow verify allows for Entra Connect latency on the cloud-side re-read.</description>
+    <description>AD-leg createUserAd reports a successful dispatch with no accountEnabled/synced field. The Entra-projection latency-tolerance behavior itself (EntraHelpdeskGate._verifyAd/_projectionNote) is untestable under test_mode -- see the comment above -- and is NOT asserted here.</description>
   </sys_atf_test>
 
   <sys_atf_step action="INSERT_OR_UPDATE">
     <order>100</order>
     <step_config_title>Server - Run Server Side Script</step_config_title>
-    <description>Assert the AD-leg create signals that its result projects into Entra via sync.</description>
+    <description>Assert the AD-leg create dispatches successfully and asserts no post-state.</description>
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
   var ad = new x_fed_day2_ops.AdHybridClient();
   var r = ad.createUserAd({ samAccountName: 'jdoe', upn: 'jdoe@tenant.onmicrosoft.com', displayName: 'J Doe', ou: 'OU=Users' });
-  if (!(r && r.ok && r.synced === true)) {
-    stepResult.setFailed('AD-leg createUserAd did not flag synced projection - Entra verify could close before sync lands: ' + JSON.stringify(r));
+  if (!(r && r.ok === true && r.dispatched === true)) {
+    stepResult.setFailed('AD-leg createUserAd did not report a successful dispatch: ' + JSON.stringify(r));
+    return;
+  }
+  if (r.hasOwnProperty('accountEnabled') || r.hasOwnProperty('synced')) {
+    stepResult.setFailed('AD-leg createUserAd return carries an observation-shaped field (accountEnabled/synced) -- P0-4 regressed: ' + JSON.stringify(r));
     return;
   }
   stepResult.setSuccess();

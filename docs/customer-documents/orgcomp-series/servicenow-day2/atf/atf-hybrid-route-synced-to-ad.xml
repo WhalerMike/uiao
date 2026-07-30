@@ -15,13 +15,13 @@
     <name>Day-2 hybrid: a synced object routes to the AD leg</name>
     <sys_scope>x_fed_day2_ops</sys_scope>
     <active>true</active>
-    <description>onPremisesSyncEnabled=true classifies as AD-mastered and the AD-leg disable reports an AD-mastered, syncing write.</description>
+    <description>onPremisesSyncEnabled=true classifies as AD-mastered and the AD-leg dispatches the disable. It does NOT assert post-state on the dispatch return (P0-4: write methods carry no field resembling an observation) -- post-state comes only from a genuine read-back (getUserAd/isGroupMemberAd), which requires live AD and is out of scope for test_mode.</description>
   </sys_atf_test>
 
   <sys_atf_step action="INSERT_OR_UPDATE">
     <order>100</order>
     <step_config_title>Server - Run Server Side Script</step_config_title>
-    <description>Assert the router predicate + the AD-leg actuation contract for a synced object.</description>
+    <description>Assert the router predicate + the AD-leg dispatch contract for a synced object.</description>
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
   var ad = new x_fed_day2_ops.AdHybridClient();
@@ -30,10 +30,18 @@
     stepResult.setFailed('a synced object (onPremisesSyncEnabled=true) did not classify as AD-mastered');
     return;
   }
-  // 2. The AD-leg disable must actuate the on-prem master and flag that it syncs.
+  // 2. The AD-leg disable must be ACCEPTED FOR DISPATCH. It must NOT assert
+  // post-state (no accountEnabled, no synced) -- ok/dispatched means the ECC
+  // job was queued, never that the change took. A genuine post-state
+  // assertion only comes from getUserAd/isGroupMemberAd against a live DC,
+  // which test_mode cannot exercise (see atf-hybrid-verify-sync-projection.xml).
   var r = ad.disableUserAd('test-user-0001');
-  if (!(r && r.ok && r.accountEnabled === false && r.synced === true)) {
-    stepResult.setFailed('AD-leg disableUserAd did not report an AD-mastered, syncing disable: ' + JSON.stringify(r));
+  if (!(r && r.ok === true && r.dispatched === true)) {
+    stepResult.setFailed('AD-leg disableUserAd did not report a successful dispatch: ' + JSON.stringify(r));
+    return;
+  }
+  if (r.hasOwnProperty('accountEnabled') || r.hasOwnProperty('synced')) {
+    stepResult.setFailed('AD-leg disableUserAd return carries an observation-shaped field (accountEnabled/synced) -- P0-4 regressed: ' + JSON.stringify(r));
     return;
   }
   stepResult.setSuccess();
