@@ -213,8 +213,14 @@ ComplianceGate.prototype = {
     // Also out of scope: delegated grants like Directory.AccessAsUser.All, which
     // carry no "Write" in the name but inherit whatever rights the signed-in user
     // has — a real gap, not caught by name-shape matching.
+    //
+    // Case-insensitive by design: real Graph responses are consistently
+    // PascalCase, but this is a security check, not a display string — a
+    // caller (or a hand-typed test fixture) supplying "directory.readwrite.all"
+    // must not silently pass as read-only because of a casing mismatch. Found
+    // by adversarial fixture testing, not by a real Graph response.
     _isWriteShaped: function (permissionName) {
-        return /(\.|^)(ReadWrite|Write|FullControl|Manage)(\.|$)/.test(String(permissionName || ''));
+        return /(\.|^)(ReadWrite|Write|FullControl|Manage)(\.|$)/i.test(String(permissionName || ''));
     },
 
     // Resolve an appRoleId (GUID) granted via appRoleAssignments to its
