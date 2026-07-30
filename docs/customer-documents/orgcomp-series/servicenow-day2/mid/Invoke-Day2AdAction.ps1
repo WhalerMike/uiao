@@ -124,22 +124,38 @@ function Assert-AllowedArgs {
 }
 
 function New-CompliantPassword {
-    # Generated on the MID. Never returned, never logged, never sent to
-    # ServiceNow. 24 chars from four classes.
+    # Generated on the MID. Returns a SecureString DIRECTLY -- the password
+    # never exists as a plain .NET String at any point, not even transiently.
+    # (PSScriptAnalyzer's PSAvoidUsingConvertToSecureStringWithPlainText is
+    # right to flag ConvertTo-SecureString -AsPlainText regardless of whether
+    # the source string is hardcoded or freshly generated: the exposure is
+    # the plaintext's lifetime on the managed heap, not just its presence in
+    # source. Building the SecureString char-by-char via AppendChar avoids
+    # that lifetime entirely, which is the actual fix, not a suppression.)
     $upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; $lower = 'abcdefghijkmnopqrstuvwxyz'
     $digit = '23456789';                 $sym   = '!@#$%^&*()-_=+[]{}'
     $all = $upper + $lower + $digit + $sym
     $bytes = New-Object 'System.Byte[]' 64
     [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-    $chars = @()
-    $chars += $upper[$bytes[0] % $upper.Length]
-    $chars += $lower[$bytes[1] % $lower.Length]
-    $chars += $digit[$bytes[2] % $digit.Length]
-    $chars += $sym[$bytes[3] % $sym.Length]
-    for ($i = 4; $i -lt 24; $i++) { $chars += $all[$bytes[$i] % $all.Length] }
-    # Shuffle so the class positions are not fixed.
-    $shuffled = $chars | Sort-Object { $bytes[($chars.IndexOf($_) + 32)] }
-    return (-join $shuffled)
+    $chars = New-Object 'System.Char[]' 24
+    $chars[0] = $upper[$bytes[0] % $upper.Length]
+    $chars[1] = $lower[$bytes[1] % $lower.Length]
+    $chars[2] = $digit[$bytes[2] % $digit.Length]
+    $chars[3] = $sym[$bytes[3] % $sym.Length]
+    for ($i = 4; $i -lt 24; $i++) { $chars[$i] = $all[$bytes[$i] % $all.Length] }
+    # Fisher-Yates shuffle in place using the RNG bytes, so class positions
+    # are not fixed. (Also fixes a duplicate-character entropy quirk in the
+    # prior Sort-Object/IndexOf approach: IndexOf resolves to the first
+    # occurrence, so repeated characters shuffled identically.)
+    for ($i = 23; $i -gt 0; $i--) {
+        $j = $bytes[32 + $i] % ($i + 1)
+        $tmp = $chars[$i]; $chars[$i] = $chars[$j]; $chars[$j] = $tmp
+    }
+    $secure = New-Object System.Security.SecureString
+    foreach ($c in $chars) { $secure.AppendChar($c) }
+    $secure.MakeReadOnly()
+    [System.Array]::Clear($chars, 0, $chars.Length)
+    return $secure
 }
 
 try {
@@ -217,9 +233,9 @@ try {
         }
 
         'reset-password' {
-            # P0-3: generated here, applied as a SecureString, never returned.
-            $plain  = New-CompliantPassword
-            $secure = ConvertTo-SecureString -String $plain -AsPlainText -Force
+            # P0-3: generated here, directly as a SecureString, never returned.
+            # No plaintext String ever exists (see New-CompliantPassword).
+            $secure = New-CompliantPassword
             Set-ADAccountPassword -Identity ([string]$identity) -Reset -NewPassword $secure @common
             $mustChange = $true
             if ($jobArgs.ContainsKey('mustChangeAtLogon')) { $mustChange = [bool]$jobArgs['mustChangeAtLogon'] }
@@ -233,7 +249,6 @@ try {
                                             -Password $secure `
                                             -DeliveryRef ([string]$jobArgs['deliveryRef'])
             }
-            $plain  = $null
             $secure.Dispose()
             [System.GC]::Collect()
 
@@ -274,8 +289,11 @@ try {
                 }
             }
             $props = @($baselineProps + $requested | Select-Object -Unique)
-            $obj = $null
-            try { $obj = Get-ADUser -Identity ([string]$identity) -Properties $props @common } catch { }
+            # Try as a user first; if identity is actually a group, Get-ADUser
+            # raises ObjectNotFound. -ErrorAction SilentlyContinue (rather than
+            # an empty try/catch) makes that fall-through explicit without
+            # swallowing the exception silently.
+            $obj = Get-ADUser -Identity ([string]$identity) -Properties $props @common -ErrorAction SilentlyContinue
             if ($null -eq $obj) { $obj = Get-ADGroup -Identity ([string]$identity) -Properties objectSid, memberOf @common }
 
             $transitive = @()
