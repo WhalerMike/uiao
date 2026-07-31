@@ -983,7 +983,7 @@
   - [UIAO Governance OS — Whitepaper](customer-documents/whitepapers/uiao-governance-os-whitepaper.html)
   - [Zero Trust Governance — Whitepaper](customer-documents/whitepapers/zero-trust-governance-whitepaper.html)
   - [Modernization Governance — Whitepaper](customer-documents/whitepapers/modernization-governance-whitepaper.html)
-  - [From Mainframe to Application-Aware Modernization](customer-documents/whitepapers/modernization-journey.html)
+  - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/modernization-journey.html)
   - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [AODIM — Attribute-Oriented Directory & Identity Model](customer-documents/whitepapers/aodim-executive-whitepaper.html)
