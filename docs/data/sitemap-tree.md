@@ -983,7 +983,7 @@
   - [UIAO Governance OS — Whitepaper](customer-documents/whitepapers/uiao-governance-os-whitepaper.html)
   - [Zero Trust Governance — Whitepaper](customer-documents/whitepapers/zero-trust-governance-whitepaper.html)
   - [Modernization Governance — Whitepaper](customer-documents/whitepapers/modernization-governance-whitepaper.html)
-  - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/modernization-journey.html)
+  - [From Mainframe to Application-Aware Modernization](customer-documents/whitepapers/modernization-journey.html)
   - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [AODIM — Attribute-Oriented Directory & Identity Model](customer-documents/whitepapers/aodim-executive-whitepaper.html)
@@ -1001,6 +1001,7 @@
   - [UIAO Git Server Interfaces — Windows Server 2025 Deployment](customer-documents/whitepapers/git-server-interfaces-whitepaper.html)
   - [Next Generation DNS](customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.html)
   - [SD-WAN vs. DIA Under TIC 3.0](customer-documents/whitepapers/tic3-sdwan-vs-dia.html)
+  - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/federal-application-aware-networking-architecture.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)
   - [AODIM Architecture Document](customer-documents/architecture-series/aodim-architecture.html)
