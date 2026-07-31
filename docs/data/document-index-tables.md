@@ -109,6 +109,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 |-------|--------|----------|
 | [AD to Entra ID — The Structural Migration Problem](whitepapers/ad-to-entraid-migration-problem.html) | Active | Executive, Customer |
 | [AODIM — Attribute-Oriented Directory & Identity Model](whitepapers/aodim-executive-whitepaper.html) | Active | Executive, Customer |
+| [Assessment Tools vs. Closing BOD-25-01 Findings](whitepapers/bod-25-01-close-before-assess.html) | Active | Executive, Customer, Assessor, Architect |
 | [Federal AI Governance — Submission Readiness Brief](whitepapers/federal-ai-governance-submission-readiness.html) | Active | Executive, Customer |
 | [Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization](whitepapers/federal-hrit-productization.html) | Active | Executive, Customer, Assessor |
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
@@ -124,6 +125,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence](whitepapers/ticket-to-machine-not-ticket-to-human.html) | Draft | Executive, Customer, Technical, Assessor |
 | [UIAO Governance OS — Whitepaper](whitepapers/uiao-governance-os-whitepaper.html) | Active | Executive, Customer, Assessor |
 | [UIAO vs Microsoft Native Tools — Gap Analysis](whitepapers/uiao-vs-native-tools.html) | Active | Executive, Customer, Technical |
+| [Zero Trust Governance Principles](whitepapers/zero-trust-governance-principles.html) | Active | Executive, Customer, Assessor, Architect |
 | [Zero Trust Governance — Whitepaper](whitepapers/zero-trust-governance-whitepaper.html) | Active | Executive, Customer, Assessor |
 | [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](whitepapers/zta-scuba-relationship.html) | Active | Executive, Customer, Technical |
 

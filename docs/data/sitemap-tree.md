@@ -993,6 +993,8 @@
   - [Choose Your Partners — The OrgPath Composability Matrix](customer-documents/whitepapers/orgpath-composability-matrix.html)
   - [SCuBAGear Integration — Whitepaper](customer-documents/whitepapers/scubagear-integration-whitepaper.html)
   - [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](customer-documents/whitepapers/zta-scuba-relationship.html)
+  - [Assessment Tools vs. Closing BOD-25-01 Findings](customer-documents/whitepapers/bod-25-01-close-before-assess.html)
+  - [Zero Trust Governance Principles](customer-documents/whitepapers/zero-trust-governance-principles.html)
   - [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](customer-documents/whitepapers/federal-ssot-alignment.html)
   - [Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization](customer-documents/whitepapers/federal-hrit-productization.html)
   - [Federal AI Governance — Submission Readiness Brief](customer-documents/whitepapers/federal-ai-governance-submission-readiness.html)

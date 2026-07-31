@@ -1,0 +1,788 @@
+---
+title: "Zero Trust Governance Principles"
+subtitle: "Why CISA's cross-cutting capabilities — not another per-pillar tool — are what moves a program past Initial maturity"
+doc-type: whitepaper
+audience: [Executive, Customer, Assessor, Architect]
+status: Active
+created-at: 2026-07-31
+updated-at: 2026-07-31
+version: "1.0"
+---
+
+# Zero Trust Governance Principles
+
+## Why CISA's cross-cutting capabilities — not another per-pillar tool — are what moves a program past Initial maturity
+
+::: {.content-visible when-format="html"}
+::: {.callout-tip appearance="simple"}
+**[Download this whitepaper as DOCX](zero-trust-governance-principles.docx)** — a Word copy of
+this page, regenerated on every site deploy. (Also available from the
+**Other Formats** link in the page sidebar.)
+:::
+:::
+
+### Executive summary
+
+CISA's Zero Trust Maturity Model (ZTMM) v2.0 defines five pillars — Identity,
+Devices, Networks, Applications & Workloads, Data — each progressing through
+four stages: Traditional, Initial, Advanced, Optimal. Most federal Zero Trust
+programs read the model as a five-pillar shopping list, spend two-plus years
+acquiring a point solution per pillar, and then stall at Initial or low
+Advanced maturity. The reason is structural, and it is in the model itself:
+CISA's ZTMM does not define maturity as five independent pillar scores. It
+defines maturity as five pillars **operated through three cross-cutting
+capabilities** — Visibility and Analytics, Automation and Orchestration, and
+Governance — that run underneath and across all five. A program that fully
+tools every pillar but never builds the cross-cutting layer cannot reach
+Advanced or Optimal, because those stages are explicitly defined in terms of
+continuous, automated, cross-pillar behavior — exactly what the cross-cutting
+capabilities, not the pillar tools, are responsible for producing.
+
+This paper sets out the governance principles that close that gap: what
+specific adversary techniques these principles exist to defeat, why identity
+is a necessary anchor but not a sufficient one — and why treating it as a
+single, self-authenticating root of trust recreates the same failure mode
+Zero Trust is supposed to retire — why privileged and administrative identity
+need controls of their own, why continuous evidence is a governance property
+and not a per-tool feature, why governance has to include enforcement and not
+only visibility, and how the federal cloud-boundary constraints most agencies
+operate under (GCC-class environments, TIC 3.0 boundary requirements) have to
+be modeled explicitly rather than assumed away. It also makes a point that
+gets lost as soon as an agency starts collecting per-vendor scorecards: **Zero
+Trust has to be owned and assessed at the agency level, even though —
+especially because — individual cloud service providers each offer their own
+native assessment tool.** A CSP's own tool can only ever see its own platform;
+the agency is the only party positioned to hold one Zero Trust posture across
+all of them. None of this is vendor guidance — every claim traces to CISA,
+NIST, OMB, and documented incident source material, cited throughout.
+
+![Horse before the cart — unify Network, CSPs, and VMware first; let assessment confirm it](images/zero-trust-governance-principles-image-01-horse-before-the-cart.png){#fig-zero-trust-governance-principles-image-01 fig-alt="Two side-by-side panels on a white background, each showing a stylized (non-photographic) horse-and-cart illustration. Left panel, titled THE WRONG WAY — Cart Before the Horse, on a light red background: a red-tinted cart sits in front, a grey horse trails behind, connected by a tangled red dashed zigzag line; the cart is labeled ASSESSMENT with a red question mark and confirms nothing real; below the horse, three separate dashed red tags read NETWORK, CSP, and VMWARE, scattered and unconnected, captioned three silos, never unified — the scan just measures the disorder. Right panel, titled THE RIGHT WAY — Horse Before the Cart, on a light teal background: a navy horse leads, connected by a teal line to a white box labeled NETWORK + CSP + VMWARE under the heading ONE UNIFIED ARCHITECTURE, which connects via a teal line to a blue cart labeled ASSESSMENT with a teal checkmark and confirms compliance; caption below reads one naming and identity plane behind Network, every CSP, and VMware alike. A bottom callout bar spans both panels: A whole-agency Zero Trust score is only as real as the architecture behind it. Assess Network, CSPs, and VMware as one governed system — not three separate scans stitched together after the fact. Clean illustrative style, navy (#0D1B2E), teal (#1E8C8C), red (#C0392B) accents, no photographs, no vendor logos." width="100%"}
+
+### 1. Why Zero Trust programs stall below Advanced
+
+Three governance failure patterns recur across federal Zero Trust programs,
+independent of which pillar tools an agency has bought:
+
+**Pattern 1 — pillars are administered, not governed.** Each pillar gets an
+owner, a tool, and a roadmap, but there is no shared authority correlating
+decisions across them. An identity assertion evaluated in the Identity pillar
+is not verifiable from the Data pillar; device posture from the Devices
+pillar cannot be correlated with workload identity in Applications &
+Workloads. Cross-pillar policy decisions degrade to the lowest common
+denominator — usually a static allow-list — because no governance layer
+resolves the pillars against each other.
+
+**Pattern 2 — evidence is per-tool, not per-claim.** Each pillar's tool emits
+evidence shaped by its own vendor's schema. Assembling that into a single
+authorization narrative for a FedRAMP or Authority to Operate package is a
+manual, point-in-time exercise, and it does not survive re-execution: the
+tool's configuration has usually drifted since the evidence was captured, so
+"re-run the audit" produces a different answer than the one on file.
+
+**Pattern 3 — drift is discovered at audit time, not continuously.** Absent a
+governance-level drift capability, the gap between declared policy and
+runtime reality surfaces only when an assessor finds it — a Security Control
+Assessment, a 3PAO review, or an incident. By then remediation is reactive,
+and the agency has been carrying undisclosed risk for however long the drift
+went undetected.
+
+CISA's own ZTMM v2.0 Advanced and Optimal stage criteria call for exactly the
+properties these three patterns block: continuous verification, automated
+policy evaluation, and cross-pillar correlation. None of the three is
+achievable by adding another per-pillar tool. They are, definitionally,
+governance-capability work.
+
+### 2. What Zero Trust actually defends against
+
+Every principle in this paper exists to defeat specific, documented adversary
+techniques — not to satisfy an abstract maturity model for its own sake.
+Grounding the model in actual incidents matters because a governance program
+that reaches every CISA maturity criterion on paper can still miss the
+intrusion pattern it was meant to stop.
+
+Four attack patterns motivate the principles that follow:
+
+- **Identity-plane compromise at the root.** In 2023, a China-based actor
+  tracked as Storm-0558 stole a Microsoft signing key and exploited a
+  token-validation flaw to forge authentication tokens, reading email at
+  roughly 25 organizations — including the U.S. Department of State and
+  Department of Commerce — for weeks before detection. The federal Cyber
+  Safety Review Board's subsequent report called the breach "preventable."
+  This is the direct counter-example to treating identity as an
+  unconditionally trusted root: when the root of trust is compromised, the
+  blast radius is every relying party that trusted it, and it can happen
+  without a single endpoint or network control ever firing. §4 and §5 return
+  to this.
+- **Hypervisor and virtualization-layer compromise that bypasses guest-OS
+  telemetry entirely.** The February 2023 "ESXiArgs" ransomware campaign
+  exploited a two-year-old, unauthenticated heap-overflow vulnerability
+  (CVE-2021-21974) in ESXi's OpenSLP service, compromising thousands of
+  internet-facing hosts before CISA and the FBI issued a joint advisory. In
+  July 2024, CVE-2024-37085 — an ESXi Active Directory-integration
+  authentication bypass — was exploited by multiple ransomware operators to
+  gain full administrative control of domain-joined hypervisors by
+  recreating a deleted "ESXi Admins" AD group; ESXi trusted the group's
+  *name*, not a verified, continuously-resolved identity. Both cases share a
+  property no guest-OS-level Zero Trust control can see: the attacker never
+  touches a monitored workload, because the hypervisor sits *beneath* every
+  guest's telemetry. §9 returns to this directly.
+- **Lateral movement through flat, VPN-reachable network segments.**
+  Implicit trust granted by network location — a VPN tunnel, a flat virtual
+  network, an unsegmented VLAN — is the mechanism, not an incidental detail,
+  behind most large-scale ransomware and lateral-movement campaigns. It is
+  the specific thing NIST SP 800-207 defines Zero Trust against.
+- **Abuse of the governance and evidence layer itself** — an agency that
+  names an owner and writes a policy but never wires in automated,
+  preventive enforcement has built a reporting system, not a control. §7
+  treats this as a first-class governance failure, not a footnote.
+
+None of the principles that follow are abstractions from the ZTMM document
+alone; each is a direct architectural response to one of these four
+patterns.
+
+### 3. The model most agencies read half of
+
+[CISA's Zero Trust Maturity Model v2.0](https://www.cisa.gov/zero-trust-maturity-model)
+is usually summarized as "five pillars, four stages" — and that summary is
+incomplete. The model explicitly layers **three cross-cutting capabilities**
+underneath and across the five pillars: **Visibility and Analytics**,
+**Automation and Orchestration**, and **Governance**. These are how an agency
+operates the pillars at scale rather than by hand, and CISA's own stage
+descriptions for Advanced and Optimal maturity are written in terms of these
+capabilities, not additional pillar features.
+
+| Cross-cutting capability | What it means operationally | Why pillar tooling alone can't provide it |
+|---|---|---|
+| **Visibility and Analytics** | A single, correlated view of signal across all five pillars — not five separate dashboards | Each pillar tool sees only its own pillar; correlation requires a layer that ingests all five |
+| **Automation and Orchestration** | Policy decisions and remediation actions execute automatically, at machine speed, across pillar boundaries | Per-pillar tools automate within their own pillar; cross-pillar orchestration is, by definition, above any single tool |
+| **Governance** | The authority and mechanism to set policy, hold every pillar accountable to a common standard, and — critically — enforce that standard automatically rather than only observe it | Governance is inherently a cross-pillar function; a tool can supply telemetry or even a policy engine, but the organizational authority to set the standard, and the mandate to enforce it, cannot be purchased as a product |
+
+Of the three, **Governance is the capability most federal Zero Trust programs
+shortchange** — not because no vendor sells governance-adjacent tooling (GRC,
+CNAPP, and CSPM platforms all ship governance modules), but because none of
+those tools substitutes for the organizational authority and enforcement
+mandate governance actually requires. Budget and staffing default to pillar
+tooling instead, in part because tooling is procurable and organizational
+authority is not. The remainder of this paper is a set of concrete governance
+principles for closing that gap — including, in §7, the distinction between
+governance that merely observes and governance that enforces.
+
+### 4. Principle one — identity is a necessary anchor, not a sufficient one
+
+NIST SP 800-207, *Zero Trust Architecture*, defines the Zero Trust core logic
+as a Policy Decision Point that evaluates subject identity **together with**
+device state, resource sensitivity, and behavioral/environmental signals for
+every access request. This is worth stating precisely, because it is
+commonly compressed into "identity is the new perimeter." NIST 800-207 does
+not rank identity as the supreme, self-authenticating signal above the
+others; it requires continuous evaluation of *multiple* signals precisely
+because no single signal, including identity, should ever be trusted
+unconditionally. An architecture that treats a validated identity as
+sufficient on its own — rather than as one input a policy engine continuously
+re-evaluates alongside device posture and behavior — has rebuilt the old
+perimeter model one layer up: an identity perimeter instead of a network one,
+with everything behind a valid token or session inheriting trust the same way
+everything behind a firewall once did.
+
+Storm-0558 (§2) is the concrete demonstration of why this matters. The root
+of trust was Microsoft's own token-signing infrastructure; when it was
+compromised, every relying party that trusted a validly-signed token was
+exposed, and the compromise was invisible to every control operating below
+the identity layer. Centralizing trust in identity is still the right
+architectural move — Pattern 1's cross-pillar correlation problem (§1) is
+genuinely intractable without it — but centralizing trust also centralizes
+risk, and a governance program that elevates identity architecturally
+without also hardening it operationally has traded one single point of
+failure for another.
+
+OMB's M-22-09 makes the same structural point about identity's *priority*,
+not its *sufficiency*: phishing-resistant MFA and enterprise-managed identity
+are prerequisites the other pillars build on. The governance principle that
+follows from both sources together:
+
+**identity has to function as the addressing root the other pillars resolve
+against, and that root has to be defended as the highest-value target in the
+architecture — not treated as self-authenticating once established.** In
+practice, this means both of the following are true at once:
+
+- A device's compliance record should be *keyed to* an identity-plane
+  object, not maintained in a separate device inventory reconciled by hand —
+  this is the architectural half.
+- The identity plane itself needs continuous access evaluation (re-checking
+  session validity as conditions change, not trusting a token for its full
+  nominal lifetime), short token lifetimes, hardware-bound or
+  phishing-resistant credentials, and signing-key material protected in
+  hardware (HSM-backed, with rotation and access logging) — this is the
+  operational half, and it is not optional simply because the architectural
+  half is sound.
+
+This is the architectural reason the cross-pillar correlation problem in
+Pattern 1 (§1) is tractable at all: if every pillar resolves against the
+same identity plane, cross-pillar correlation reduces to *resolving identity
+consistently*, which a governed identity plane already has to do. It is
+also, unavoidably, the reason a compromise of that plane is catastrophic
+rather than contained — which is precisely why §5 treats privileged and
+administrative identity as a distinct principle rather than folding it into
+this one.
+
+### 5. Principle two — privileged and administrative identity is the highest-value target, and needs controls of its own
+
+If identity is the addressing root (§4), administrative identity is the root
+of the root: a Global Administrator credential, a hypervisor management-plane
+admin, or a CSP account-root/organization-management identity has reach
+across everything the identity plane touches. CVE-2024-37085 (§2) is the
+sharpest available illustration of why this cannot be an afterthought: ESXi's
+Active Directory integration trusted an AD group **by name**, not by a
+continuously re-verified, non-recreatable identity — an attacker with
+sufficient AD permissions could delete and recreate the "ESXi Admins" group
+and inherit full hypervisor administrative rights, because the hypervisor
+never re-validated that the group's membership was the group it originally
+trusted. Identity-plane trust and privileged-access trust are not the same
+problem, and a governance program that solves the first without a distinct
+answer for the second leaves exactly this gap open.
+
+Concrete governance requirements this principle imposes, none of which the
+identity-as-root architecture in §4 provides by itself:
+
+1. **Privileged access is time-boxed and just-in-time**, not standing. A
+   Global Admin or hypervisor-admin role held continuously is a
+   continuously-available blast radius; granted for a bounded window against
+   a specific, logged request, it is not.
+2. **Break-glass accounts are governed artifacts, not an unwritten
+   exception.** Every emergency-access path needs its own owner, its own
+   monitoring, and its own periodic validation that it still requires
+   emergency status — an undocumented break-glass account is a permanent,
+   unaudited standing privilege wearing an excuse.
+3. **Privileged-plane changes are independently verified, not
+   self-attested.** The CVE-2024-37085 failure mode — trusting a security
+   group's name without re-verifying its provenance — generalizes: any
+   control that grants elevated access based on group membership, role
+   assignment, or tag needs a mechanism confirming that membership was not
+   itself attacker-created.
+4. **Admin-plane telemetry is monitored as its own high-priority stream**,
+   not folded into general device or identity logging where a
+   privileged-access event is one line among thousands.
+
+None of this substitutes for §4's identity-as-root architecture — it is the
+answer to the question that architecture creates but does not itself
+resolve: *if identity is the root, who is watching the root's own
+administrators?*
+
+### 6. Principle three — continuous evidence is a governance property, not a tool feature
+
+CISA's Optimal maturity stage requires continuous, automated verification;
+NIST SP 800-137 (*Information Security Continuous Monitoring*) and NIST
+800-53's CA-7 control describe the same requirement as an ongoing program,
+not a point-in-time assessment. CISA's [Binding Operational Directive
+25-01](https://www.cisa.gov/news-events/directives/bod-25-01-implementing-secure-practices-cloud-services)
+operationalizes this for federal cloud services specifically: agencies must
+not only assess Microsoft 365 configuration against the SCuBA baseline, they
+must integrate that assessment with continuous-monitoring infrastructure and
+**remediate deviations** on an ongoing basis — a scan report alone does not
+satisfy the directive. **BOD 25-01's scope is M365-specific** — it does not
+itself mandate continuous monitoring for a CSP's non-M365 workloads, an
+agency's network boundary, or a VMware estate — but it is useful here as
+evidence that "continuous, remediated" is already a live federal expectation
+in at least one domain, not a novel or aspirational standard this paper is
+inventing. §9 extends the *principle*, not the *directive's legal scope*, to
+the rest of the whole-agency estate.
+
+Evidence that actually supports Advanced/Optimal maturity has three
+properties, none of which a single pillar tool produces on its own:
+
+1. **Continuous** — captured as state changes occur, not on a periodic or
+   audit-triggered cycle.
+2. **Cross-pillar** — a single evidence record spans identity, device, and
+   workload context rather than requiring an analyst to stitch together five
+   tools' outputs by hand.
+3. **Reproducible** — re-executable by an independent assessor without
+   coordinating with the system operator, so the evidence on file matches
+   what a re-run produces.
+
+Governance is what makes these properties structural rather than
+aspirational: it is the layer that defines a common evidence schema every
+pillar tool's output is normalized into, assigns an owner for cross-pillar
+correlation, and treats an open finding as either being actively remediated
+or as a documented, dated, owned exception — never a silent gap. Absent that
+governance layer, "continuous monitoring" collapses into "we ran the scan
+again," which is Pattern 3 (§1) with a recurring calendar invite attached.
+
+### 7. Principle four — governance sets policy; enforcement is what makes it stick
+
+Every principle so far describes what governance should require. None of it
+works if "governance" means only visibility and documentation. A program
+that names an owner (§1, Pattern 1), detects drift (§1, Pattern 3), and files
+an exception record has built a **detective** control — it can tell you,
+after the fact, that something went wrong. It has not built a **preventive**
+one, which stops the wrong thing from happening, or automatically contains
+it, in the moment.
+
+This distinction matters because the failure mode this paper spends its
+first several sections describing — an agency that runs an assessment,
+collects a finding, and never closes it — is exactly what a governance
+program without enforcement teeth reproduces one layer up. "We have a
+documented exception process" is not meaningfully different from "we ran the
+scan again" (§1, Pattern 3) if the exception process has no expiry, no
+automated re-check, and no mechanism that blocks the underlying condition
+from recurring.
+
+Concrete enforcement mechanisms a governance program has to include, not
+merely the policies they enforce:
+
+- **Preventive, not just detective, policy gates** — a cloud guardrail (a
+  deny-effect policy, a service-control-policy boundary) that blocks a
+  non-compliant resource from being created, not a scan that reports it
+  after the fact.
+- **Automated conditional blocking at the identity plane** — a policy that
+  denies a sign-in outside declared risk parameters in real time, not a
+  report that the sign-in occurred.
+- **Hypervisor and infrastructure lockdown as a default posture**, not an
+  optional hardening step — ESXi lockdown mode, restricted direct-console
+  access, and verified (not name-trusted) AD-group provenance (§5) are
+  enforcement, where a hardening checklist alone is documentation.
+- **Time-bound exceptions that expire and re-trigger review automatically**
+  — an exception without an expiry is a permanent, silent policy override
+  wearing a governance label.
+
+Governance that only observes is a more sophisticated version of the
+assessment-without-remediation problem this whole paper argues against.
+Governance that enforces is the difference between a maturity claim and an
+actual control.
+
+### 8. Principle five — the federal cloud boundary has to be modeled explicitly, not assumed away
+
+Agencies operating in Microsoft's Government Community Cloud (GCC) — the
+common FedRAMP Moderate-authorized federal case — inherit a structural
+constraint that commercial Zero Trust guidance does not account for:
+**feature availability narrows** relative to the commercial tier. Microsoft's
+own service-description documentation for
+[GCC](https://learn.microsoft.com/en-us/office365/servicedescriptions/office-365-platform-service-description/office-365-us-government/gcc)
+documents this directly: new features ship to commercial tenants first and
+reach GCC on a lag that sometimes runs months to years — and some
+commercial-tier telemetry and analytics features never reach GCC at all.
+(Higher government-community tiers exist above GCC for higher-impact
+workloads; this paper is scoped to the FedRAMP Moderate / GCC case and does
+not address them.) Independently, [TIC
+3.0](https://www.cisa.gov/resources-tools/programs/trusted-internet-connections-tic)
+(per OMB M-19-26) imposes its own boundary-monitoring requirements on top of
+whatever the cloud tier natively provides.
+
+The governance principle: **an agency's Zero Trust maturity ceiling in a
+given tier is a function of what that tier's telemetry actually exposes, and
+that has to be assessed and documented, not assumed to match commercial
+guidance.** Concretely, governance owes the program three things the cloud
+tier alone does not provide:
+
+1. **A capability-disposition inventory** — which pillar signals actually
+   function in the agency's tier, verified directly, not inferred from
+   commercial documentation.
+2. **Explicit compensating controls** where a tier's native telemetry is
+   absent — an agency-side mechanism that closes the gap, with the gap and
+   its compensation both named in the authorization package rather than left
+   implicit.
+3. **A boundary posture treated as a first-class governed artifact** in the
+   ATO documentation, not an assumption buried in a network diagram nobody
+   re-validates.
+
+Federal programs that skip this step routinely discover, at 3PAO review,
+that their Zero Trust maturity claim for a pillar assumes telemetry their
+tier does not actually deliver — a finding that is entirely avoidable with an
+explicit capability inventory done up front.
+
+### 9. Whole-agency scope: Network, CSPs, and VMware are one system, not three
+
+Federal Zero Trust programs routinely inventory and assess Network, cloud
+service providers (CSPs), and on-premises virtualization (VMware and similar
+hypervisor estates) as three separate exercises — a network team's TIC 3.0
+boundary review, a cloud security team's per-CSP posture scan, and a
+virtualization team's hypervisor hardening checklist — each producing its own
+report, on its own schedule, to its own owner. A "whole-agency" Zero Trust
+maturity score assembled by stapling these three reports together is not a
+whole-agency assessment. It is three partial assessments wearing one cover
+page — the horse-before-the-cart problem above, applied across infrastructure
+domains instead of within one of them.
+
+The root issue is architectural, not organizational: Network, every CSP an
+agency operates in, and any on-premises virtualization estate all have to
+resolve against **the same naming and identity plane** before any of them can
+produce evidence that means the same thing as the others'. NIST SP 800-207
+states the Zero Trust core logic — a policy engine evaluating subject
+identity, device state, and resource sensitivity together (§4) — as
+infrastructure-agnostic by design: the policy decision does not change
+because a workload happens to run on-network, in a CSP, or on a
+virtualization hypervisor. If an agency's Network, CSP, and VMware estates
+each maintain independent asset inventories, independent naming, and
+independent identity assertions, that infrastructure-agnostic policy logic
+has nothing consistent to evaluate — the same physical workload can appear
+as three different objects to three different assessors.
+
+**The hypervisor case is not just a naming problem — it is a distinct threat
+class.** As §2 established, ESXiArgs (CVE-2021-21974) and the ESXi
+AD-integration bypass (CVE-2024-37085) both compromise a layer that sits
+*beneath* every guest workload's own telemetry: an attacker who compromises
+ESXi or vCenter can encrypt or exfiltrate every VM on the host without a
+single guest-OS-level EDR, identity, or network control ever generating an
+alert, because none of them observe the hypervisor layer. This has a direct
+implication for the "resolve to the same identity plane" principle above:
+vCenter's Single Sign-On domain is frequently its **own** identity source,
+federated (if at all) into the agency's broader identity plane as a
+deliberate integration project with its own risk — CVE-2024-37085 is
+precisely a case where that federation (trusting an AD group by name) was
+the exploited weakness, not a hardening the federation added. Unifying
+VMware into the agency identity plane is the right target state; treating it
+as already accomplished, or as a low-risk configuration change, is not.
+
+Three architectural facts a whole-agency program has to reconcile before
+assessing:
+
+1. **One authoritative asset inventory, not three.** NIST 800-53's CM-8
+   (System Component Inventory) and CISA's Binding Operational Directive 23-01
+   (asset and vulnerability visibility) both require a single, authoritative
+   accounting of what the agency operates — not "the network team's asset
+   list, the cloud team's tag taxonomy, and the virtualization team's
+   inventory, reconciled manually at audit time." Every CSP an agency
+   operates in, and any VMware or equivalent virtualization estate, has to
+   resolve to the same asset identity the network layer already tracks.
+2. **One naming and address-resolution authority, not per-platform DNS/DHCP/IPAM.**
+   NIST SC-20/21/22 (secure, resilient name and address resolution) apply the
+   same requirement regardless of whether a workload sits on-network, behind
+   a CSP's native DNS, or on a virtualized overlay network. Per-platform
+   naming reconciled after the fact — rather than authoritative from a single
+   source before the fact — is exactly the "solve it at audit time" pattern
+   that produces reactive remediation instead of continuous evidence (§6).
+3. **VPN-perimeter thinking does not extend to any of the three.** A
+   site-to-site VPN, a CSP's default virtual-network boundary, and a flat
+   virtualized network segment are, architecturally, the same mistake: each
+   extends implicit trust to everyone already inside a network boundary,
+   which is precisely what CISA's ZTMM Networks pillar and NIST SP 800-207
+   both define Zero Trust against. Micro-segmentation and policy enforcement
+   have to apply identically whether the workload is on-premises, in any CSP,
+   or in a virtualized cluster — an agency that Zero-Trust-segments its cloud
+   workloads but leaves its on-premises virtualization estate on a flat,
+   VPN-reachable network has not solved the root issue; it has moved it.
+
+**A fourth fact the first three create and do not resolve on their own: the
+unification layer itself becomes the highest-value target in the estate.** A
+single authoritative Network + CSP + VMware naming/identity plane is, by
+construction, a complete asset map of the agency's entire attack surface and
+— if it also carries reconciliation privileges across all three domains — a
+privileged-access broker in its own right. An agency that builds this
+unification and does not separately harden it has built the single most
+attractive target in its own architecture and left it undefended. At
+minimum, governance for the unification layer itself requires: its
+administrative access treated under the privileged-identity controls in §5
+(time-boxed, independently verified, not standing); its own high-priority
+telemetry stream, monitored distinctly from the domains it unifies; and a
+blast-radius design that assumes the unification layer will eventually be
+targeted directly, not only reached through one of the three domains it
+reconciles.
+
+(As in §6: BOD 25-01 is still M365-specific and doesn't itself extend to
+CSPs, network, or VMware — this section's argument rests on the
+infrastructure-agnostic NIST 800-207/CM-8/SC-20-22 controls, not on the
+directive's legal scope.)
+
+**The practical consequence:** an agency cannot honestly claim whole-agency
+Zero Trust maturity by running a cloud-configuration assessor against its
+CSPs, a separate posture scan against its network boundary, and a separate
+hardening checklist against its VMware estate, then presenting three passing
+reports as one score. Each report is real and each is useful — but "whole
+agency" requires the identity and naming unification in points 1–3 above to
+exist **first**, so that the three assessments measure the same underlying
+architecture rather than three architecturally disconnected estates that
+happen to share a compliance deadline.
+
+### 10. A worked example: why even Microsoft's own tools don't add up to "whole agency"
+
+Two free, read-only Microsoft-ecosystem assessment tools illustrate the §9
+principle concretely, because federal agencies routinely treat them as
+interchangeable, or as together constituting full Zero Trust coverage — both
+are mistakes, in opposite directions:
+
+| | CISA SCuBA / ScubaGear | Microsoft's Zero Trust Assessment |
+|---|---|---|
+| Question it answers | Compliance — is our M365 configuration aligned with the federal baseline? | Maturity — how close is our environment to Zero Trust? |
+| Federal mandate? | Yes — BOD 25-01 requires deploying it against every in-scope M365 tenant, integrating with CISA's continuous-monitoring feed, and remediating deviations (§6) | No — it is Microsoft's own guidance, not a federal directive |
+| Scope | M365 workloads: Exchange Online, Defender for Office 365, SharePoint/OneDrive, Teams, Power Platform | Broader Microsoft cloud: Entra identity, Intune (devices), Azure, Microsoft Purview (data) |
+| Where they overlap | Almost entirely Entra identity — legacy authentication, MFA, Conditional Access, privileged-role hygiene, risky users | Same identity surface, evaluated at greater depth than SCuBA's prescriptive baseline |
+
+Outside identity the two barely touch the same ground: SCuBA owns Exchange,
+Defender for Office 365, Teams, and Power Platform, none of which the Zero
+Trust Assessment evaluates at all; the Zero Trust Assessment owns Intune
+devices, Azure infrastructure, and Purview data, none of which SCuBA
+evaluates. Running only one of the two leaves the other's workloads
+unassessed — dropping SCuBA because "the Zero Trust Assessment covers
+identity" leaves Exchange, Teams, and Power Platform unassessed against the
+federal baseline; dropping the Zero Trust Assessment because "SCuBA already
+runs" leaves devices, Azure, and data entirely unmeasured.
+
+But running **both**, fully, still does not produce a whole-agency Zero Trust
+assessment — because both tools, however complementary, are scoped to one
+vendor's ecosystem. §9 already established why: Network, every CSP, and any
+on-premises virtualization estate have to reconcile to one authoritative
+naming/identity plane before an assessment score means the same thing across
+them. The SCuBA/Zero-Trust-Assessment pair is the sharpest available
+illustration of that principle inside a *single* vendor's stack: even
+Microsoft, which controls both tools, did not converge them into one
+assessment, because a compliance-baseline check and a maturity assessment are
+structurally different questions. Multiply that by every other CSP an agency
+operates — each of which offers its own native posture and compliance
+tooling — plus any on-premises virtualization estate, and "run every vendor's
+native tool and call it whole-agency Zero Trust" produces exactly as many
+disconnected reports as there are vendors, not one agency-level answer.
+
+**The governance principle this reinforces: agency-level Zero Trust ownership
+cannot be delegated to any single CSP's assessment tool, no matter how good
+that tool is.** A CSP assessing its own platform is necessarily scoped to its
+own platform; it has no visibility into, and no structural incentive to
+reconcile against, the other CSPs, the network layer, or the virtualization
+estate the agency also runs. The agency — not any vendor — is the only party
+positioned to hold one Zero Trust posture across all of them, which is
+exactly the reconciliation work §9 describes and no per-CSP tool can
+substitute for.
+
+Practical guidance for the specific SCuBA / Zero Trust Assessment case:
+
+- **Keep ScubaGear for BOD-25-01** — it is the tool the directive actually
+  names, including the M365 workloads the Zero Trust Assessment does not
+  touch.
+- **Add the Zero Trust Assessment for maturity breadth** across Intune,
+  Azure, and Purview — surfaces SCuBA's baseline does not reach.
+- **Reconcile both at the control level** (NIST SP 800-53 / FedRAMP
+  Moderate) rather than expecting either tool's output to substitute for the
+  other's; they use different finding identifiers and severity models.
+- **One federal caveat:** in a GCC-class tenant, feature availability
+  narrows (§8), so a Zero Trust Assessment run there is structurally capped
+  in what it can even measure for Identity, Devices, and Networks without
+  agency-built analytics on top — worth knowing before treating its score as
+  definitive.
+- **None of this — for Microsoft's ecosystem or any other CSP's — substitutes
+  for the agency-level reconciliation in §9.** Two well-run Microsoft tools
+  are still a Microsoft-scoped answer, not an agency-wide one.
+
+### 11. What maturity actually requires, pillar by pillar
+
+**A note on sourcing, up front:** the table below is this paper's synthesis
+of CISA's Advanced/Optimal criteria, phrased for readability. It is **not** a
+verbatim quotation of the ZTMM v2.0 document and should not be cited as
+CISA's exact language in a control crosswalk — consult the source document
+directly for authoritative wording.
+
+CISA's own Advanced/Optimal criteria, read pillar by pillar, are consistently
+about continuous, automated, identity-anchored behavior rather than a bigger
+tool:
+
+| Pillar | What "Advanced/Optimal" requires (per CISA ZTMM v2.0, paraphrased) | The governance dependency |
+|---|---|---|
+| **Identity** | Continuous validation, phishing-resistant authentication, dynamic risk-based access decisions | Requires identity to be the addressing root (§4) other pillars resolve against — and its own root-of-trust hardened per §4–§5 |
+| **Devices** | Continuous, real-time device compliance and vulnerability visibility with automated response | Requires cross-pillar correlation (§3, via Automation and Orchestration) between device posture and identity/workload context |
+| **Networks** | Distributed micro-segmentation, encrypted traffic, dynamic policy enforcement | Requires network policy to be *derived from* identity/workload context, not independently administered (§4), and enforced preventively, not just observed (§7) |
+| **Applications & Workloads** | Continuous authorization, immutable workloads, application-level micro-segmentation | Requires workload identity to resolve against the same identity plane as users and devices |
+| **Data** | Continuous data inventory, automated categorization, and dynamic access control tied to data sensitivity | Requires the evidence properties in §6 — cross-pillar, continuous, reproducible — to actually classify and track data at the pace access decisions require |
+
+Every row's Advanced/Optimal criterion depends on a cross-cutting capability,
+not a bigger pillar-specific tool. This is the structural reason "buy a
+better tool for the pillar we're weakest in" does not move the maturity
+needle the way agencies expect it to.
+
+### 12. Tools agencies already have: mapping remediation to what's already licensed
+
+§7 argued governance needs enforcement, not just visibility; §5 argued
+privileged and administrative identity need controls of their own. Both are
+routinely treated as if they required new procurement. For most federal
+agencies they don't — much of what those two principles call for is already
+sitting, unconfigured, inside two platforms most agencies have already
+licensed for other purposes, plus native tooling inside every major CSP's
+government-authorized tier. What follows is an inventory check, not a
+product endorsement: before budgeting for a gap, confirm whether the
+capability already exists in something already paid for.
+
+**ServiceNow — the workflow/orchestration layer.** ServiceNow's Government
+Community Cloud is authorized at a level that meets FedRAMP Moderate
+requirements. (Naming collision worth flagging: ServiceNow calls its own
+environment "GCC" too, distinct from Microsoft's GCC tier in §8 — confirm
+which "GCC" a given document means.) Two specific mappings:
+
+- §7's "time-bound exceptions that expire and re-trigger review
+  automatically" is what a workflow/GRC platform's ticketing and
+  exception-lifecycle modules exist to do — an exception with an assigned
+  owner, an expiry date, and an automated re-open trigger is exactly §7's
+  governance-as-enforcement, provided those fields are actually populated
+  and the automation actually runs. The platform supplies the mechanism, not
+  the discipline.
+- §6's requirement for "a common evidence schema every pillar tool's output
+  is normalized into" describes exactly the role a workflow platform can
+  play as the cross-pillar evidence and correlation-owner home Pattern 1
+  (§1) says is missing — again, only if it's actually configured that way,
+  not simply licensed.
+
+**SailPoint — the identity-governance layer.** SailPoint Identity Security
+Cloud holds a FedRAMP Moderate ATO (325 controls, hosted on AWS GovCloud),
+with FedRAMP-authorized add-ons for Non-Employee Risk Management and Data
+Access Security. This maps directly onto §4 (identity as the addressing
+root) and, more specifically, §5 (privileged and administrative identity):
+identity governance and administration platforms are built for periodic
+access certification, separation-of-duties enforcement, and third-party/
+non-employee identity risk — the product category *is* §5's "privileged
+access is time-boxed" and "privileged-plane changes are independently
+verified" requirements, if certification campaigns are actually scoped to
+catch group-membership drift (the CVE-2024-37085 failure mode, §2) and not
+just initial provisioning.
+
+**Native CSP tooling.** Every major CSP ships a policy-enforcement
+mechanism and a posture/drift-detection tool inside its government-authorized
+tier:
+
+| CSP | Preventive enforcement | Posture / drift detection | Government-tier FedRAMP status |
+|---|---|---|---|
+| Microsoft Azure | Azure Policy (deny-effect guardrails) | Microsoft Defender for Cloud | Azure Government: authorized at a level meeting FedRAMP Moderate; Azure Policy ships a FedRAMP-Moderate-mapped built-in initiative |
+| AWS | Service Control Policies (AWS Organizations) | AWS Security Hub | AWS GovCloud (US): authorized at a level meeting FedRAMP Moderate; Security Hub is in scope |
+| Google Cloud | Organization Policy Service / VPC Service Controls | Security Command Center | Assured Workloads: authorized services (including Security Command Center) meet FedRAMP Moderate per Google's own guidance |
+| Oracle Cloud Infrastructure | OCI IAM policies | Cloud Guard | Oracle Cloud for Government: authorized at a level meeting FedRAMP Moderate; Cloud Guard is in scope |
+
+Each of these is a real, verified, government-authorized mechanism for
+exactly the preventive-enforcement pattern §7 calls for — **within its own
+platform.** None of the four reconciles across CSPs, the network layer, or a
+VMware estate, which is precisely §9's and §10's point generalized past
+Microsoft's ecosystem: a CSP's native tool is scoped to what that CSP can
+see. ServiceNow and SailPoint are the two tool classes actually positioned
+to span the silos, because workflow orchestration and identity governance
+are not CSP-native categories — but neither is a substitute for the
+naming/asset reconciliation §9 requires. They are the enforcement and
+governance layer that sits *on top of* that reconciliation once it exists,
+not the reconciliation itself.
+
+**Two verification caveats, not a substitute for reading the ATO package:**
+FedRAMP authorization is per-service and per-region — a vendor meeting
+Moderate requirements somewhere does not mean every feature, in every
+region, is inside a given agency's own authorization boundary; confirm the
+specific service is named in the system's own inheritance package. And a tool being licensed and
+authorized is not the same as it being configured for the purpose described
+here — the same governance-vs-enforcement gap in §7 applies to whether a
+ServiceNow exception record actually expires or a SailPoint certification
+campaign actually runs on schedule, not just whether the platform is present.
+
+### 13. What an agency can do this quarter
+
+Concrete, vendor-agnostic governance steps, in order of leverage:
+
+1. **Inventory which pillar evidence is actually reproducible today.** For
+   each ZTMM pillar, can an independent assessor re-run the evidence pipeline
+   without coordinating with your operations staff? Where the answer is no,
+   that is where governance investment should go first — not into another
+   pillar tool.
+2. **Name an owner for cross-pillar correlation.** Pattern 1 (§1) persists as
+   long as no one is accountable for reconciling identity, device, and
+   workload signals against each other. This is an organizational decision,
+   not a procurement.
+3. **Stand up continuous drift detection as a governance function**, not a
+   per-tool feature — even a manual quarterly reconciliation between declared
+   policy and observed configuration is a structural improvement over
+   discovering drift at audit time (Pattern 3, §1).
+4. **Model your cloud boundary explicitly.** If operating in GCC or an
+   equivalent FedRAMP Moderate government-community tier, produce the
+   capability-disposition inventory described in §8 before claiming a
+   maturity stage that assumes commercial-tier telemetry your tier does not
+   deliver.
+5. **Reconcile Network, CSP, and VMware asset identity to one authoritative
+   source before scoring any of them — and treat that unified source as a
+   Tier-0 asset in its own right (§9).** If the network team, the cloud
+   security team, and the virtualization team cannot point to the same
+   authoritative naming/asset record for a given workload, the "whole-agency"
+   score is not measuring one architecture; once they can, the unification
+   layer itself needs the same privileged-access hardening as any other
+   crown-jewel system.
+6. **Assign agency-level ownership of the Zero Trust posture, separate from
+   any CSP relationship.** Per §10, no CSP's native assessment tool — however
+   good — is scoped to see past its own platform. If the only place your
+   Zero Trust posture is "owned" is inside each CSP's own console or report,
+   no one is actually accountable for the agency-wide picture; name that
+   owner explicitly.
+7. **Convert at least one detective control into a preventive one this
+   quarter.** Per §7, pick the single highest-leverage drift finding your
+   program currently only documents, and wire in an automated block — a
+   deny-effect cloud policy, a Conditional Access rule, ESXi lockdown mode —
+   rather than adding it to next quarter's remediation list again.
+8. **Put privileged and administrative access under time-boxed,
+   independently-verified control**, per §5 — starting with whichever admin
+   plane (identity, hypervisor, or CSP management account) currently has the
+   most standing, non-expiring access.
+
+None of these requires a multi-year program or a new procurement. Each is a
+governance decision that compounds — and each is exactly the kind of
+investment the "Governance" cross-cutting capability in CISA's own model
+calls for.
+
+### 14. Honest limits
+
+- CISA's ZTMM does not prescribe *how* to implement the three cross-cutting
+  capabilities — the principles above are one architecturally sound reading
+  of the model's Advanced/Optimal criteria, not the only path.
+- The capability-disposition work in §8 is tenant-specific: Microsoft's
+  service descriptions establish that feature availability narrows in GCC
+  relative to commercial in general, but don't substitute for an agency
+  verifying its own tenant's actual telemetry.
+- "Continuous" evidence (§6) is a target property, not a claim every agency
+  can reach immediately — the honest first step is usually identifying which
+  pillar evidence is *not yet* reproducible.
+- The whole-agency argument (§9) is architectural, not an integration design.
+  Which CSPs and hypervisor platform an agency runs, and how exactly to
+  unify their naming and asset identity, are per-agency engineering
+  decisions this paper doesn't prescribe.
+- The SCuBA / Zero Trust Assessment comparison (§10) is a
+  Microsoft-ecosystem worked example, not a universal claim about every
+  CSP's tooling — the overlap percentages are specific to those two tools;
+  only the "can't delegate ownership to a vendor's tool" principle
+  generalizes.
+- The incidents cited (§2, §4, §5, §9) are illustrative, not a threat
+  catalogue — a real program's threat model should come from its own risk
+  assessment. And this paper doesn't cover OT/ICS or mainframe estates,
+  which many agencies also operate and to which the ZTMM pillars apply
+  differently.
+- The FedRAMP authorization statuses in §12 are a snapshot, verified at the
+  time of writing, of specific named products (ServiceNow Government
+  Community Cloud, SailPoint Identity Security Cloud, and each CSP's
+  government-authorized tier). Authorization scope changes as vendors add
+  services and renew ATOs; confirm current status against FedRAMP's own
+  marketplace listing before relying on it, and treat §12's tool mapping as
+  a starting inventory, not an audit finding.
+
+### 15. Conclusion
+
+CISA's Zero Trust Maturity Model is frequently read as a five-pillar
+checklist. Read correctly, it's a five-pillar model **operated through**
+three cross-cutting capabilities, and Governance is the one federal programs
+invest in least and need most to reach Advanced or Optimal maturity.
+
+The principles in this paper follow one thread: identity is a necessary
+anchor, not a self-authenticating one — which is exactly why its
+administrators, its evidence trail, its enforcement, its cloud boundary, and
+its reach across Network, CSPs, and VMware all need governing in their own
+right, not just the identity assertion itself. None of that is a product to
+buy. It's what CISA's model already requires — read in full, and read
+against how these architectures actually fail in practice — of any program
+serious about the *whole* agency, rather than a horse somewhere behind a
+cart that already left.
+
+### Sources
+
+- CISA, [Zero Trust Maturity Model v2.0](https://www.cisa.gov/zero-trust-maturity-model)
+- NIST SP 800-207, *Zero Trust Architecture*
+- NIST SP 800-137, *Information Security Continuous Monitoring (ISCM) for Federal Information Systems and Organizations*
+- NIST SP 800-53 Rev 5, controls CA-7 (Continuous Monitoring), CM-8 (System Component Inventory), SC-20/21/22 (Secure Name/Address Resolution)
+- OMB M-22-09, *Moving the U.S. Government Toward Zero Trust Cybersecurity Principles*
+- Executive Order 14028, *Improving the Nation's Cybersecurity*
+- CISA, [Binding Operational Directive 25-01](https://www.cisa.gov/news-events/directives/bod-25-01-implementing-secure-practices-cloud-services), *Implementing Secure Practices for Cloud Services*
+- CISA, Binding Operational Directive 23-01, *Improving Asset Visibility and Vulnerability Detection on Federal Networks*
+- OMB M-19-26; CISA, [Trusted Internet Connections (TIC) 3.0](https://www.cisa.gov/resources-tools/programs/trusted-internet-connections-tic)
+- Microsoft, [Office 365 GCC service description](https://learn.microsoft.com/en-us/office365/servicedescriptions/office-365-platform-service-description/office-365-us-government/gcc)
+- Microsoft Security Response Center, [Analysis of Storm-0558 techniques for unauthorized email access](https://www.microsoft.com/en-us/security/blog/2023/07/14/analysis-of-storm-0558-techniques-for-unauthorized-email-access/) (July 2023)
+- U.S. Department of Homeland Security, Cyber Safety Review Board, review of the summer 2023 Microsoft Exchange Online intrusion (2024)
+- CISA and FBI, joint advisory on the ESXiArgs ransomware campaign exploiting CVE-2021-21974 (February 2023)
+- Reporting on VMware ESXi authentication-bypass CVE-2024-37085 exploited by ransomware operators (July 2024)
+- ServiceNow, [Government Community Cloud and FedRAMP](https://www.servicenow.com/company/media/press-room/servicenow-secures-fedramp-high-authorization.html) — authorization meets FedRAMP Moderate requirements
+- SailPoint, [FedRAMP-authorized Identity Security Cloud](https://www.sailpoint.com/solutions/fedramp-isc) — FedRAMP Moderate ATO; FedRAMP-authorized Non-Employee Risk Management and Data Access Security
+- Amazon Web Services, [FedRAMP compliance](https://aws.amazon.com/compliance/fedramp/) and [AWS Security Hub FedRAMP authorization](https://aws.amazon.com/about-aws/whats-new/2021/04/aws-security-hub-achieves-fedramp-high-authorization-to-enable-security-posture-management-for-high-impact-workloads/) — meets FedRAMP Moderate requirements
+- Microsoft, [FedRAMP compliance offering](https://learn.microsoft.com/en-us/azure/compliance/offerings/offering-fedramp) and [FedRAMP-Moderate-mapped regulatory compliance in Azure Policy](https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high)
+- Google Cloud, [FedRAMP compliance](https://cloud.google.com/security/compliance/fedramp) and [FedRAMP authorization for Security Command Center and additional services](https://cloud.google.com/blog/topics/public-sector/google-cloud-achieves-fedramp-high-authorization-on-100-additional-services) — meets FedRAMP Moderate requirements
+- Oracle, [FedRAMP-authorized Oracle Government Cloud](https://www.oracle.com/government/govcloud/fedramp-high-jab/) — meets FedRAMP Moderate requirements

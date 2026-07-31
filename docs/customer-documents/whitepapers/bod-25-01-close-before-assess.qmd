@@ -1,0 +1,281 @@
+---
+title: "Assessment Tools vs. Closing BOD-25-01 Findings"
+subtitle: "Why the order — remediate, then assess — is the difference between a compliance posture and a growing deviation list"
+doc-type: whitepaper
+audience: [Executive, Customer, Assessor, Architect]
+status: Active
+canon-source: "src/uiao/canon/adapter-registry.yaml#scubagear"
+canon-reference:
+  - "docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd"
+  - "docs/customer-documents/whitepapers/zta-scuba-relationship.qmd"
+  - "docs/customer-documents/orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd"
+  - "docs/customer-documents/orgcomp-series/Vol_VII_Book_02_OrgComp_M365_Control_Compliance_Automation.qmd"
+  - "docs/customer-documents/orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd"
+  - "tools/ztttdrift/README.md"
+  - "tools/scubadrift/README.md"
+derived-from: "uiao canon"
+created-at: 2026-07-31
+updated-at: 2026-07-31
+version: "1.0"
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-01-31
+---
+
+# Assessment Tools vs. Closing BOD-25-01 Findings
+
+## Why the order — remediate, then assess — is the difference between a compliance posture and a growing deviation list
+
+::: {.content-visible when-format="html"}
+::: {.callout-tip appearance="simple"}
+**[Download this whitepaper as DOCX](bod-25-01-close-before-assess.docx)** — a Word copy of
+this page, regenerated on every site deploy. (Also available from the
+**Other Formats** link in the page sidebar.)
+:::
+:::
+
+### Executive summary
+
+CISA [Binding Operational Directive 25-01](https://cyber.dhs.gov/bod/25-01/),
+*Implementing Secure Practices for Cloud Services*, requires federal civilian
+agencies to identify their Microsoft 365 tenants, implement the SCuBA Secure
+Configuration Baselines against them, deploy CISA's SCuBAGear assessment tool,
+integrate with CISA's continuous-monitoring infrastructure, and **remediate
+deviations** from the baselines. Agencies met the directive's early deadlines —
+tenant identification by February 21, 2025, and SCuBAGear deployment with
+continuous reporting active by April 25, 2025 — and many now treat "SCuBAGear
+is running and reporting" as the compliance answer itself.
+
+It is not. SCuBAGear measures deviation from a baseline; it does not close any
+of them. Neither does Microsoft's Zero Trust Assessment (ZTTT), which many
+agencies run alongside SCuBA to gauge broader Zero Trust maturity. Both tools
+are, by design, **read-only diagnostic instruments** — the same category as a
+thermometer. A thermometer that reports a fever every day for a year is not a
+treatment plan, and an agency that runs SCuBAGear on a schedule without an
+architecture to close what it finds is reading the same thermometer on a loop.
+
+This whitepaper makes the case, with the numbers behind it, for a specific
+sequencing discipline: **close the architectural gap first, then assess** —
+and keep assessing continuously afterward, because that continuous
+reporting loop is itself a BOD-25-01 obligation, not an optional extra. Run in
+the wrong order, SCuBAGear and ZTTT each produce an accurate, growing list of
+findings with no mechanism to act on them coherently. Run in the right order,
+the same tools become exactly what the directive intends: confirmation that a
+built architecture is holding, continuously, in evidence an assessor can trust.
+
+![Six-phase sequence — architecture before assessment](images/bod-25-01-close-before-assess-diagram-01-six-phase-sequence.png){#fig-bod-25-01-close-before-assess-diagram-01 fig-alt="A horizontal six-box sequence on a white background. Boxes 1 through 4 — Understand (gaps and root causes), Design (closure patterns), Implement (runbooks and deploys), and Govern (SCRM, POA&M, RACI) — are filled solid navy with white text and connected by teal arrows. Box 5, Validate, is highlighted with a light teal fill and navy border, labeled 'SCuBAGear + ZTTT run here'. Box 6, Authorize, is filled medium blue, labeled 'KSI-ready evidence'. Each box carries a small numbered navy badge (1-6) in its top-left corner. Below boxes 1-4, a navy bracket is labeled 'CLOSE FINDINGS FIRST — build the architecture the finding depends on'. Below boxes 5-6, a teal bracket is labeled 'THEN ASSESS & AUTHORIZE — confirmation, not discovery'. A light ice-blue callout bar spans the bottom, reading: BOD-25-01's \"remediate deviations\" clause is phases 1-4, not phase 5. Running the assessor before the architecture exists produces an accurate, growing findings list — not a closed one. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
+
+### 1. What BOD-25-01 actually requires
+
+BOD 25-01 is narrower and more concrete than "improve cloud security." Its
+obligations, as issued:
+
+| Obligation | What it requires | Status as of this writing |
+|---|---|---|
+| Tenant inventory | Report the tenant name and system-owning agency/component for every in-scope M365 tenant | Due Feb 21, 2025 — a one-time inventory action |
+| Baseline implementation | Configure each tenant to the published SCuBA Secure Configuration Baselines (SCBs); currently M365 only, with CISA free to add more SaaS products as it publishes further baselines | Ongoing — baselines revise; agencies must track revisions |
+| Tool deployment | Deploy CISA's SCuBAGear against every in-scope tenant | Due Apr 25, 2025 |
+| Continuous reporting | Integrate SCuBAGear output with CISA's continuous-monitoring infrastructure on an ongoing basis | Active since Apr 25, 2025 |
+| **Remediation** | **Remediate deviations from the SCBs** | **Open-ended, ongoing obligation — this is the line agencies underweight** |
+
+Four of these five rows are administrative or mechanical: report a tenant
+name, install a PowerShell tool, wire up a feed. The fifth — remediation — is
+architectural work, and it is the row the directive is actually *for*. A
+SCuBAGear report that faithfully lists forty deviations against the SCB every
+week satisfies rows one through four. It does not satisfy row five, and row
+five is not optional under the directive's own text.
+
+### 2. What the assessors measure, and what they don't
+
+SCuBAGear and Microsoft's Zero Trust Assessment are both, in UIAO's adapter
+taxonomy, `class: conformance` instruments — see the
+[SCuBAGear Integration whitepaper](scubagear-integration-whitepaper.qmd) for
+the full canonical treatment. Neither writes to a tenant. Both read
+configuration state and score it against a baseline (SCuBA's prescriptive
+SHALL/SHOULD policies) or a maturity model (ZTTT's pillar-scored checks against
+Microsoft's Zero Trust guidance). The
+[Microsoft Zero Trust Assessment and CISA SCuBA whitepaper](zta-scuba-relationship.qmd)
+covers the two tools' relationship in detail — they overlap almost entirely on
+one surface (Entra identity) and otherwise cover different ground (SCuBA:
+Exchange, Defender for Office 365, Teams, Power Platform; ZTTT: Intune devices,
+Azure networking, Microsoft Purview data).
+
+The distinction this whitepaper turns on is not *which* tool an agency should
+run — the answer there is "both, for different questions" — it is what
+*either* tool is structurally capable of doing once it runs. Neither can:
+
+- **Design the Entra Conditional Access policy set, NTLM elimination
+  sequence, and Arc Managed Identity chain** that moves a tenant's Zero Trust
+  identity pillar from "Traditional" to "Advanced." ZTTT can score the gap; it
+  cannot close it.
+- **Design the DDI/IPAM grid** that makes DNSSEC and the network-layer
+  controls SCuBA checks for actually enforceable across every environment the
+  agency operates. SCuBAGear can tell you DNSSEC is disabled; it cannot build
+  the naming-and-addressing plane underneath it.
+- **Resolve the GCC-Moderate boundary conflict** documented in
+  [B.1.1](../orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd),
+  where TIC 3.0, Zero Trust, and FedRAMP 20x pull in genuinely different
+  directions. Both assessors report symptoms of that conflict as separate
+  findings; neither identifies the conflict as structural, because that is not
+  what a conformance check does.
+
+BOD 25-01's own "remediate deviations" clause presumes an agency *can*
+remediate — that there is an architecture capable of absorbing the fix. Where
+that architecture does not yet exist, "remediate" collapses into "re-run the
+scan and file another POA&M line," which is compliance theater dressed as
+continuous monitoring.
+
+### 3. The coverage arithmetic — why "just run the assessor" undercounts the work
+
+The Federal Organization Compliance (OrgComp) series quantifies this gap
+against FedRAMP 20x's Key Security Indicators, in the section
+["Why This Series — Not SCuBA, ZTTT, or Any Single-Vendor Assessment
+Tool"](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd) of Book
+00. The arithmetic generalizes directly to the BOD-25-01 case:
+
+**SCuBA-based rules attest 10 of 29 rules in the series' internal KSI
+decomposition (KSI-001 through KSI-010)** — exactly the rules that reduce to
+M365 tenant configuration state, which is exactly the surface SCuBAGear
+measures. **The other 19 exist as evaluable rules only because architecture
+was built underneath them** — SBOM/VEX supply-chain evidence, privacy
+data-flow mapping, training-effectiveness records, incident-response and
+continuity architecture. No amount of running SCuBAGear or the Zero Trust
+Assessment more often produces evidence for those 19. They are not
+configuration-drift findings; they are architecture that has not yet been
+built.
+
+The same shape holds for the BOD-25-01 remediation clause specifically: some
+SCuBA deviations are one-line configuration flips an administrator can close
+today. Others — legacy authentication still reachable because no phased
+NTLM-elimination plan exists, or Conditional Access gaps that trace back to an
+absent device-identity/NAC layer — are unclosable without the underlying
+architecture. Treating both classes of finding identically, as "SCuBAGear
+says fix it," is how a remediation backlog becomes permanent instead of
+shrinking.
+
+### 4. The correct sequence: architecture before assessment
+
+OrgComp's modernization sequence — Understand, Design, Implement, Govern,
+**Validate**, Authorize — deliberately places assessment tools at step five,
+not step one:
+
+| Phase | What happens | Where assessment tools fit |
+|---|---|---|
+| 1 — Understand | Identify gaps and root causes against the target control set (including the SCuBA SCBs and Zero Trust pillars) | *Not yet run* — running an assessor here just produces an unowned findings list |
+| 2 — Design | Select the architectural pattern that closes each gap with continuous evidence (DDI/PKI grid, NAC, Entra CBA, Conditional Access design) | *Not yet run* |
+| 3 — Implement | Execute the runbooks, deploy the infrastructure, configure the integrations | *Not yet run* |
+| 4 — Govern | Establish SCRM, POA&M, ISPP, and RACI structures to own what gets built | *Not yet run* |
+| **5 — Validate** | Confirm the built architecture produces the compliance state it was designed to produce | **SCuBAGear and the Zero Trust Assessment run here — as confirmation, not discovery** |
+| 6 — Authorize | Submit KSI-ready, machine-readable evidence to FedRAMP 20x evaluators | Continuous SCuBAGear/ZTTT evidence feeds the OSCAL bundle |
+
+An agency that runs SCuBAGear before phase 2 is, in the series' words,
+"reading a thermometer before the treatment plan exists." The findings are
+accurate. There is no framework yet to act on them coherently, so they
+accumulate as a list of point fixes that never add up to a defensible,
+integrated posture — and BOD-25-01's continuous-reporting feed just reports
+that accumulation to CISA faithfully, on schedule, forever.
+
+### 5. Closing findings first — what "architecture" concretely means here
+
+For the specific surface BOD-25-01 governs (M365 / Entra), closing findings
+before assessing means building, in this order, the layers a SCuBA deviation
+or a ZTTT maturity gap actually depends on:
+
+1. **Naming and addressing (DDI/PKI).** DNSSEC, certificate issuance, and
+   several SCuBA network-adjacent checks are unenforceable without a
+   functioning DDI/IPAM grid and certificate lifecycle underneath them.
+2. **Device and workload identity (NAC, Entra CBA, managed identity).**
+   The Conditional Access policy set SCuBA checks for, and the identity-pillar
+   maturity ZTTT scores, both assume devices and workloads carry verifiable
+   identity — which requires 802.1X/NAC on the network side and
+   certificate-based auth or Arc managed identity on the workload side.
+3. **Legacy-authentication elimination.** A phased NTLM/legacy-auth
+   elimination sequence, not a single Conditional Access toggle, is what
+   actually closes the SCuBA and ZTTT findings that reference legacy
+   protocols — flipping the toggle without the elimination plan just breaks
+   access for whatever still depends on the legacy path.
+4. **Governance of exceptions.** Not every deviation is closable immediately.
+   BOD-25-01 remediation does not mean zero deviations at all times; it means
+   every open deviation is either being actively remediated or is a
+   documented, dated, owned risk-acceptance — never a silent gap.
+
+Only once these layers exist does "remediate deviations" become a bounded,
+completable task instead of an open-ended chase.
+
+### 6. Then assess — continuously, because the directive requires it
+
+BOD-25-01's continuous-reporting obligation is not satisfied by re-running
+SCuBAGear manually before an audit. It requires exactly what a point-in-time
+scan cannot provide on its own: a durable run-to-run record, aging of open
+deviations against a remediation SLA, and a clean signal for "this deviation
+is newly introduced" versus "this deviation is a known, governed exception."
+UIAO's toolkit builds that layer directly on top of the assessors' output,
+without reimplementing either assessor:
+
+- **[ScubaDrift](../../../tools/scubadrift/README.md)** layers drift,
+  exception-lifecycle, and continuous-monitoring gating on top of SCuBAGear's
+  pass/fail policy verdicts.
+- **[ZTTTdrift](../../../tools/ztttdrift/README.md)** does the same for
+  Zero Trust maturity-stage assessments (Microsoft ZTTT / CISA ZTMM-style
+  self-assessments): it splits every below-target finding into
+  **actionable new drift**, **lapsed acceptance**, or **governed exception**,
+  flags retirable acceptances, computes run-to-run drift, and gates a
+  continuous-monitoring pipeline — exiting non-zero only when something is
+  genuinely unowned. Both tools are explicit about what they are not: neither
+  is an assessor, a maturity model, or a remediator. They stand on the
+  assessment tool's output; they do not replace it or guess at its export
+  format.
+
+This is the mechanism that turns BOD-25-01's "remediate deviations" and
+"continuous reporting" clauses from a narrative claim into something a 3PAO
+or CISA can independently verify: a deterministic, re-runnable disposition of
+every open finding, dated, owned, and aging against an SLA.
+[Vol VII Book 02](../orgcomp-series/Vol_VII_Book_02_OrgComp_M365_Control_Compliance_Automation.qmd)
+of the OrgComp series documents the operating model that turns SCuBA baseline
+drift specifically into typed remediation tasks with closure evidence — the
+same pattern this whitepaper argues for at the directive level.
+
+### 7. Honest limits
+
+- **This is not a substitute for the directive's own deadlines.** BOD-25-01's
+  tenant-inventory and tool-deployment deadlines already passed
+  (Feb 21 and Apr 25, 2025, respectively). Nothing here changes those; the
+  sequencing argument applies to how an agency spends its *ongoing*
+  remediation effort, not to whether it deploys SCuBAGear in the first place.
+- **Some deviations genuinely are one-line fixes.** Not every SCuBA or ZTTT
+  finding requires the architecture described in §5. The point is not "never
+  fix anything until the architecture is done" — it is "don't mistake the
+  scan for the fix," and to route findings to the right response (immediate
+  config change vs. architectural work vs. governed exception) rather than
+  treating all deviations as equally actionable.
+- **ZTTT is not itself a BOD-25-01 requirement.** The directive names SCuBA
+  and SCuBAGear specifically; ZTTT is a Microsoft-authored maturity assessment
+  many agencies run for broader Zero Trust posture. Conflating the two — or
+  assuming ZTTT coverage substitutes for SCuBA's federal baseline, or vice
+  versa — reintroduces the gap the
+  [ZTA/SCuBA relationship whitepaper](zta-scuba-relationship.qmd) exists to
+  close.
+- **Coverage arithmetic (10 of 29) is the OrgComp series' internal KSI
+  decomposition**, not a FedRAMP-published figure. It is a useful proxy for
+  "how much of the target control set reduces to configuration state a
+  conformance tool can see," not a claim about any specific agency's control
+  catalogue, which will vary.
+
+### 8. Conclusion
+
+BOD-25-01 asks agencies to do two structurally different things: run an
+assessor, and remediate what it finds. SCuBAGear and Microsoft's Zero Trust
+Assessment do the first job well — they are accurate, read-only, and
+increasingly continuous. Neither does, or is designed to do, the second.
+Confusing "the scan is running" with "the finding is closed" produces a
+compliant-looking reporting feed sitting on top of an unclosed, growing
+remediation backlog — technically satisfying rows one through four of the
+directive while quietly failing row five.
+
+The order that actually satisfies BOD-25-01 — architecture, then assessment,
+then continuous re-assessment — is the same order OrgComp's six-phase
+modernization sequence has argued for since Book 00: build the thing that
+closes the gap, then measure that it's closed, then keep measuring. Run in
+that order, SCuBAGear and ZTTT stop being a list of open findings and become
+what the directive actually intended them to be: continuous, independently
+verifiable proof that a real architecture is holding.
