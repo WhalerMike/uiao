@@ -92,11 +92,13 @@ def unsafe_clients() -> dict[str, str]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--allow-unsafe", action="store_true",
-                    help="report but do not fail. Sub-prod builds only -- never in a "
-                         "promotion pipeline, which is the one place this gate matters.")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument(
+        "--allow-unsafe",
+        action="store_true",
+        help="report but do not fail. Sub-prod builds only -- never in a "
+        "promotion pipeline, which is the one place this gate matters.",
+    )
     args = ap.parse_args()
 
     banners = unsafe_clients()
@@ -115,9 +117,7 @@ def main() -> int:
             reason = v.get("unsafe_for_production")
             if reason:
                 if len(str(reason).strip()) < 25:
-                    problems.append(
-                        f"  {lane}/{key}: unsafe_for_production is not a real reason: {reason!r}"
-                    )
+                    problems.append(f"  {lane}/{key}: unsafe_for_production is not a real reason: {reason!r}")
                 else:
                     problems.append(
                         f"  {lane}/{key}: control {v.get('control')} is bound to an actuator "
@@ -143,24 +143,25 @@ def main() -> int:
 
     print("Day-2 production safety (NEW-4)")
     print("=" * 68)
-    print(f"governed items: {n_items} | actuator bindings checked: {n_bound} | "
-          f"clients flagged unsafe: {len(banners)}")
+    print(f"governed items: {n_items} | actuator bindings checked: {n_bound} | clients flagged unsafe: {len(banners)}")
     if banners:
         for c, r in sorted(banners.items()):
             print(f"  flagged: {c}.js -- {r}")
 
     if problems:
         verdict = "WARN" if args.allow_unsafe else "FAIL"
-        print(f"\n{verdict} -- {len(problems)} control claim(s) certified against "
-              f"code that must not run in production:")
+        print(
+            f"\n{verdict} -- {len(problems)} control claim(s) certified against code that must not run in production:"
+        )
         print("\n".join(problems))
         if args.allow_unsafe:
-            print("\n--allow-unsafe was passed: reporting only. Do not use this flag "
-                  "in a promotion pipeline.")
+            print("\n--allow-unsafe was passed: reporting only. Do not use this flag in a promotion pipeline.")
             return 0
-        print("\nRemove the @unsafe-for-production banner (or the item's "
-              "unsafe_for_production field) once the defect is fixed; this gate "
-              "then goes green on its own.")
+        print(
+            "\nRemove the @unsafe-for-production banner (or the item's "
+            "unsafe_for_production field) once the defect is fixed; this gate "
+            "then goes green on its own."
+        )
         return 1
 
     print("\nOK -- no control claim is bound to an actuator marked unsafe for production.")
