@@ -9,8 +9,8 @@ status: Draft
 canon-source: "src/uiao/canon/adr/adr-004-workload-identity-federation-default.md + src/uiao/canon/adr/adr-091-sql-server-authentication-transformation.md"
 repo-path: docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd
 created-at: 2026-06-07
-updated-at: 2026-07-27
-version: "1.1"
+updated-at: 2026-08-03
+version: "1.2"
 lifecycle: draft
 tiers_adopted: []
 lifecycle_review: 2026-12-22
@@ -453,3 +453,37 @@ relying on specific dates or parameter names, as vendor schedules move.
 - [Workload identity federation](https://docs.snowflake.com/en/user-guide/workload-identity-federation)
   and its [GA announcement (2025-08-14)](https://docs.snowflake.com/en/release-notes/2025/other/2025-08-14-wif)
 - [Overview of Snowflake authentication](https://docs.snowflake.com/en/user-guide/security-authentication-overview)
+
+## Call to Action
+
+This paper is a reading, not a roadmap — nothing here is blocked on
+UIAO shipping a Snowflake adapter. The four-step discipline in the
+walkthrough can be applied by hand today; only its *automation*
+depends on the boundary decision below.
+
+::: {.callout-important}
+## Three steps that don't require a new adapter
+
+1. **Classify every Snowflake principal today, manually.**
+   `DESCRIBE USER` and the account-level login-history views answer the
+   `password` / `keypair` / `federated` classification Part 2 would
+   otherwise automate — the same inventory step the platform-analogous
+   SQL Server transformation (`ADR-091`) starts with.
+2. **Treat a stored key pair as the bridge it is, not the
+   destination.** Rotate on a defined cadence and track rotation as a
+   compliance signal now, even without a drift engine watching it —
+   key-pair auth is correct and replay-resistant, but `ADR-004`'s
+   credential-free destination is still the target.
+3. **Answer the boundary question before the automation question.** If
+   Snowflake is in scope for a GCC-Moderate deployment, the first real
+   decision is not "build the adapter" — it's the gating-ADR
+   conversation (`ADR-059`/`ADR-033` pattern) that would classify it
+   under a `gcc-boundary` value, or under `commercial-general`
+   (`ADR-129`) for a non-federal engagement. That conversation can start
+   independently of any engineering work.
+:::
+
+If and when that boundary decision authorizes it, the adapter shape in
+Part 2 and the OrgPath-rendered access model in Part 3 are already
+worked out — this document is the design sketch waiting on that
+decision, not a blocker to today's manual discipline.
