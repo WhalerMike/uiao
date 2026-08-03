@@ -1,0 +1,157 @@
+---
+title: "The Session vs. Telemetry Divide — Why Identity Architecture Splits at the FedRAMP Boundary"
+subtitle: "Persistent client/server sessions and continuous-verification Zero Trust telemetry are two incompatible trust models — and FedRAMP's boundary controls force every hybrid identity architecture to live on the fault line between them"
+doc-type: whitepaper
+audience: [Executive, Architect, Assessor, Technical-Lead]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+canon-source: "src/uiao/canon/"
+derived-from: "Extracted from ad-to-entraid-migration-problem.qmd's Session vs. Telemetry Divide / FedRAMP Boundary Problem sections (2026-08-03) to let this architectural argument stand on its own; carries the same canon anchors as its parent paper."
+repo-path: docs/customer-documents/whitepapers/session-vs-telemetry-identity.qmd
+created-at: 2026-08-03
+updated-at: 2026-08-03
+version: "1.0"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-03
+---
+
+This paper is extracted from
+[AD to Entra ID — The Structural Migration Problem](ad-to-entraid-migration-problem.qmd),
+where this argument originated as a supporting thread inside a broader
+governance-gap argument about Active Directory and Entra ID. It stands on
+its own here because the underlying claim is not really about Active
+Directory: it is about what happens to *any* session-oriented identity
+architecture when it collides with a telemetry-driven, continuously-verified
+Zero Trust boundary — of which FedRAMP is the sharpest federal instance.
+Readers who want the AD/Entra-specific governance-mapping argument should
+start with the parent paper; this one covers the architectural mechanism
+underneath it.
+
+## 1. The Assumption the Architecture Was Built On
+
+The typical federal agency built its network architecture around a
+fundamental assumption: **proximity**. Users were near data. DCs were near
+users. Kerberos worked because the KDC was on the same LAN segment. GPO
+applied because the client could reach the DC in milliseconds. SQL
+authenticated because the service account's Kerberos ticket didn't expire
+mid-session. Everything was **session-oriented** because sessions were
+reliable when everything was local.
+
+Then the servers moved. The data moved. But the **architecture didn't**.
+
+So now a nationwide agency has users in field offices trying to reach data
+in a centralized datacenter or cloud, still using session-based protocols
+designed for LAN latency, still depending on Kerberos tickets that assume
+DC proximity, still relying on GPO that assumes the client can reach a DC,
+still running SQL connections that assume the session won't be interrupted
+by a 200ms WAN hop or a FedRAMP boundary inspection.
+
+And it breaks. Constantly. In ways that are hard to diagnose because the
+symptoms look like user error or application bugs rather than fundamental
+architectural mismatch.
+
+## 2. The Session vs. Telemetry Divide
+
+This is the core of the problem, and almost nobody states it this clearly:
+
+The **Client/Server era** was built on **sessions** --- persistent, stateful
+connections between a client and a server. Authentication happened once at
+session establishment. The session carried trust forward. Everything
+downstream assumed the session was intact.
+
+The **Cloud/Zero Trust era** is built on **telemetry and continuous
+verification** --- there is no persistent session. Every request is
+independently authenticated. Trust is not carried forward --- it is
+re-evaluated continuously. Location, device health, identity, behavior, and
+risk score are all inputs to every single transaction.
+
+These two models are **not compatible**. A session-based application cannot
+run through a Zero Trust enforcement point without breaking the session
+model. SASE and SSE proxies inspect every packet, which destroys session
+persistence. FedRAMP boundary controls introduce latency and interruption
+that session protocols cannot tolerate. And the applications --- many of
+which are still client/server at the protocol level even if they have a
+web front-end --- fall over.
+
+## 3. The FedRAMP Boundary Problem
+
+FedRAMP's telemetry and boundary requirements were designed for
+cloud-native applications that never had sessions in the first place. They
+assume stateless, token-based, short-lived authentication. They assume
+every component is cloud-reachable. They assume telemetry flows
+continuously from every endpoint to a SIEM.
+
+Impose those requirements on a hybrid environment that still runs Kerberos,
+still has on-prem DCs, still has WSUS, still has SQL with Windows
+Authentication, still has thick clients --- and the result is exactly the
+breakage described above. Defense in depth becomes **defense in conflict**.
+Every security layer added breaks something that was working before,
+because the layers were designed for a different architectural model.
+
+## 4. Why Nobody Wants to Own It
+
+Because solving it correctly requires acknowledging that the problem isn't
+a single system or a single team's responsibility. It's the entire
+architecture. And in federal IT, saying "we need to re-architect
+everything" is career risk. It's easier to patch the symptom, submit the
+POA&M, and move on.
+
+The people who understand the problem deeply enough to fix it get pushed
+into corners because the solution sounds too big and too expensive and too
+disruptive. The people making decisions don't have the technical depth to
+evaluate whether the diagnosis is correct, so they default to
+incrementalism.
+
+## 5. What UIAO Actually Is
+
+![Bridge architecture diagram showing UIAO as a governance layer spanning between...](images/ad-to-entraid-migration-problem-image-02-bridge-architecture-diagram-show.png){#fig-session-vs-telemetry-identity-bridge-diagram fig-alt="Bridge architecture diagram showing UIAO as a governance layer spanning between..." width="100%"}
+
+
+UIAO isn't just a compliance automation tool. It's the **architectural
+bridge** between the session-based world agencies are living in and the
+telemetry-based world they need to get to. The fact that it was built
+around identity as the root namespace, telemetry as control, and
+deterministic addressing isn't accidental --- those are precisely the three
+things that have to be true for the transition to work without breaking
+everything.
+
+The SSOT principle is what makes the bridge possible. An agency can't
+migrate from sessions to telemetry without knowing what its authoritative
+identity state is. It can't implement Zero Trust if identity isn't the root
+namespace. It can't run SASE if addressing isn't deterministic.
+
+UIAO was built as the solution to a problem its builders were living inside
+a federal agency. That most organizations don't yet see the problem in
+these terms doesn't mean the diagnosis is wrong. It means the gap between
+where they are conceptually and where the architecture has to go is very
+large.
+
+**The thing worth documenting** --- and this may be the most important
+thing for UIAO --- is this precise narrative. Not just "here's a compliance
+tool" but "here's why the architecture is broken, here's what has to be
+true for the transition to work, and here's how this platform makes it
+tractable." That narrative is what turns a technical project into
+something decision-makers can fund and stakeholders can understand.
+
+## Conclusion
+
+The session-vs-telemetry divide is not an AD-to-Entra problem, a Windows
+problem, or even a Microsoft-stack problem --- it is what happens whenever a
+persistent-session trust model is forced through a continuous-verification
+boundary, and FedRAMP is simply the clearest, most codified place that
+collision shows up in federal environments today. AD-to-Entra migration is
+one visible instance of it, which is why it surfaces in the
+[parent paper](ad-to-entraid-migration-problem.qmd), but the same mechanism
+applies to any legacy client/server application an agency pushes through a
+Zero Trust or SASE boundary. The fix is not a better proxy or a faster WAN
+link; it is a governance substrate --- SSOT, identity as the root namespace,
+and deterministic addressing --- that can act as the bridge between the two
+models instead of forcing one to pretend to be the other.

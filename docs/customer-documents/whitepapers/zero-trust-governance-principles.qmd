@@ -5,8 +5,8 @@ doc-type: whitepaper
 audience: [Executive, Customer, Assessor, Architect]
 status: Active
 created-at: 2026-07-31
-updated-at: 2026-07-31
-version: "1.0"
+updated-at: 2026-08-03
+version: "1.1"
 ---
 
 # Zero Trust Governance Principles
@@ -391,174 +391,36 @@ explicit capability inventory done up front.
 
 ### 9. Whole-agency scope: Network, CSPs, and VMware are one system, not three
 
-Federal Zero Trust programs routinely inventory and assess Network, cloud
-service providers (CSPs), and on-premises virtualization (VMware and similar
-hypervisor estates) as three separate exercises — a network team's TIC 3.0
-boundary review, a cloud security team's per-CSP posture scan, and a
-virtualization team's hypervisor hardening checklist — each producing its own
-report, on its own schedule, to its own owner. A "whole-agency" Zero Trust
-maturity score assembled by stapling these three reports together is not a
-whole-agency assessment. It is three partial assessments wearing one cover
-page — the horse-before-the-cart problem above, applied across infrastructure
-domains instead of within one of them.
-
-The root issue is architectural, not organizational: Network, every CSP an
-agency operates in, and any on-premises virtualization estate all have to
-resolve against **the same naming and identity plane** before any of them can
-produce evidence that means the same thing as the others'. NIST SP 800-207
-states the Zero Trust core logic — a policy engine evaluating subject
-identity, device state, and resource sensitivity together (§4) — as
-infrastructure-agnostic by design: the policy decision does not change
-because a workload happens to run on-network, in a CSP, or on a
-virtualization hypervisor. If an agency's Network, CSP, and VMware estates
-each maintain independent asset inventories, independent naming, and
-independent identity assertions, that infrastructure-agnostic policy logic
-has nothing consistent to evaluate — the same physical workload can appear
-as three different objects to three different assessors.
-
-**The hypervisor case is not just a naming problem — it is a distinct threat
-class.** As §2 established, ESXiArgs (CVE-2021-21974) and the ESXi
-AD-integration bypass (CVE-2024-37085) both compromise a layer that sits
-*beneath* every guest workload's own telemetry: an attacker who compromises
-ESXi or vCenter can encrypt or exfiltrate every VM on the host without a
-single guest-OS-level EDR, identity, or network control ever generating an
-alert, because none of them observe the hypervisor layer. This has a direct
-implication for the "resolve to the same identity plane" principle above:
-vCenter's Single Sign-On domain is frequently its **own** identity source,
-federated (if at all) into the agency's broader identity plane as a
-deliberate integration project with its own risk — CVE-2024-37085 is
-precisely a case where that federation (trusting an AD group by name) was
-the exploited weakness, not a hardening the federation added. Unifying
-VMware into the agency identity plane is the right target state; treating it
-as already accomplished, or as a low-risk configuration change, is not.
-
-Three architectural facts a whole-agency program has to reconcile before
-assessing:
-
-1. **One authoritative asset inventory, not three.** NIST 800-53's CM-8
-   (System Component Inventory) and CISA's Binding Operational Directive 23-01
-   (asset and vulnerability visibility) both require a single, authoritative
-   accounting of what the agency operates — not "the network team's asset
-   list, the cloud team's tag taxonomy, and the virtualization team's
-   inventory, reconciled manually at audit time." Every CSP an agency
-   operates in, and any VMware or equivalent virtualization estate, has to
-   resolve to the same asset identity the network layer already tracks.
-2. **One naming and address-resolution authority, not per-platform DNS/DHCP/IPAM.**
-   NIST SC-20/21/22 (secure, resilient name and address resolution) apply the
-   same requirement regardless of whether a workload sits on-network, behind
-   a CSP's native DNS, or on a virtualized overlay network. Per-platform
-   naming reconciled after the fact — rather than authoritative from a single
-   source before the fact — is exactly the "solve it at audit time" pattern
-   that produces reactive remediation instead of continuous evidence (§6).
-3. **VPN-perimeter thinking does not extend to any of the three.** A
-   site-to-site VPN, a CSP's default virtual-network boundary, and a flat
-   virtualized network segment are, architecturally, the same mistake: each
-   extends implicit trust to everyone already inside a network boundary,
-   which is precisely what CISA's ZTMM Networks pillar and NIST SP 800-207
-   both define Zero Trust against. Micro-segmentation and policy enforcement
-   have to apply identically whether the workload is on-premises, in any CSP,
-   or in a virtualized cluster — an agency that Zero-Trust-segments its cloud
-   workloads but leaves its on-premises virtualization estate on a flat,
-   VPN-reachable network has not solved the root issue; it has moved it.
-
-**A fourth fact the first three create and do not resolve on their own: the
-unification layer itself becomes the highest-value target in the estate.** A
-single authoritative Network + CSP + VMware naming/identity plane is, by
-construction, a complete asset map of the agency's entire attack surface and
-— if it also carries reconciliation privileges across all three domains — a
-privileged-access broker in its own right. An agency that builds this
-unification and does not separately harden it has built the single most
-attractive target in its own architecture and left it undefended. At
-minimum, governance for the unification layer itself requires: its
-administrative access treated under the privileged-identity controls in §5
-(time-boxed, independently verified, not standing); its own high-priority
-telemetry stream, monitored distinctly from the domains it unifies; and a
-blast-radius design that assumes the unification layer will eventually be
-targeted directly, not only reached through one of the three domains it
-reconciles.
-
-(As in §6: BOD 25-01 is still M365-specific and doesn't itself extend to
-CSPs, network, or VMware — this section's argument rests on the
-infrastructure-agnostic NIST 800-207/CM-8/SC-20-22 controls, not on the
-directive's legal scope.)
-
-**The practical consequence:** an agency cannot honestly claim whole-agency
-Zero Trust maturity by running a cloud-configuration assessor against its
-CSPs, a separate posture scan against its network boundary, and a separate
-hardening checklist against its VMware estate, then presenting three passing
-reports as one score. Each report is real and each is useful — but "whole
-agency" requires the identity and naming unification in points 1–3 above to
-exist **first**, so that the three assessments measure the same underlying
-architecture rather than three architecturally disconnected estates that
-happen to share a compliance deadline.
+Network, every CSP an agency operates, and any on-premises virtualization
+estate have to resolve against the same naming and identity plane before a
+"whole-agency" Zero Trust score means anything — three separate assessments
+stapled together is not one assessment, it is three partial assessments
+wearing one cover page. The hypervisor case is a distinct threat class, not
+just a naming problem: ESXiArgs (CVE-2021-21974) and the ESXi AD-integration
+bypass (CVE-2024-37085) both compromise a layer beneath every guest
+workload's own telemetry, and vCenter's own identity domain is frequently
+unfederated from the agency's broader identity plane. Once that unification
+exists, it becomes the highest-value target in the estate in its own right
+and needs the same privileged-access hardening as any other crown-jewel
+system. The full argument — including the three architectural facts a
+whole-agency program has to reconcile and the case for treating the
+unification layer as a Tier-0 asset — is covered in *[Zero Trust Requires
+Whole-Agency Scope](zero-trust-whole-agency-unification.qmd)*.
 
 ### 10. A worked example: why even Microsoft's own tools don't add up to "whole agency"
 
-Two free, read-only Microsoft-ecosystem assessment tools illustrate the §9
-principle concretely, because federal agencies routinely treat them as
-interchangeable, or as together constituting full Zero Trust coverage — both
-are mistakes, in opposite directions:
-
-| | CISA SCuBA / ScubaGear | Microsoft's Zero Trust Assessment |
-|---|---|---|
-| Question it answers | Compliance — is our M365 configuration aligned with the federal baseline? | Maturity — how close is our environment to Zero Trust? |
-| Federal mandate? | Yes — BOD 25-01 requires deploying it against every in-scope M365 tenant, integrating with CISA's continuous-monitoring feed, and remediating deviations (§6) | No — it is Microsoft's own guidance, not a federal directive |
-| Scope | M365 workloads: Exchange Online, Defender for Office 365, SharePoint/OneDrive, Teams, Power Platform | Broader Microsoft cloud: Entra identity, Intune (devices), Azure, Microsoft Purview (data) |
-| Where they overlap | Almost entirely Entra identity — legacy authentication, MFA, Conditional Access, privileged-role hygiene, risky users | Same identity surface, evaluated at greater depth than SCuBA's prescriptive baseline |
-
-Outside identity the two barely touch the same ground: SCuBA owns Exchange,
-Defender for Office 365, Teams, and Power Platform, none of which the Zero
-Trust Assessment evaluates at all; the Zero Trust Assessment owns Intune
-devices, Azure infrastructure, and Purview data, none of which SCuBA
-evaluates. Running only one of the two leaves the other's workloads
-unassessed — dropping SCuBA because "the Zero Trust Assessment covers
-identity" leaves Exchange, Teams, and Power Platform unassessed against the
-federal baseline; dropping the Zero Trust Assessment because "SCuBA already
-runs" leaves devices, Azure, and data entirely unmeasured.
-
-But running **both**, fully, still does not produce a whole-agency Zero Trust
-assessment — because both tools, however complementary, are scoped to one
-vendor's ecosystem. §9 already established why: Network, every CSP, and any
-on-premises virtualization estate have to reconcile to one authoritative
-naming/identity plane before an assessment score means the same thing across
-them. The SCuBA/Zero-Trust-Assessment pair is the sharpest available
-illustration of that principle inside a *single* vendor's stack: even
-Microsoft, which controls both tools, did not converge them into one
-assessment, because a compliance-baseline check and a maturity assessment are
-structurally different questions. Multiply that by every other CSP an agency
-operates — each of which offers its own native posture and compliance
-tooling — plus any on-premises virtualization estate, and "run every vendor's
-native tool and call it whole-agency Zero Trust" produces exactly as many
-disconnected reports as there are vendors, not one agency-level answer.
-
-**The governance principle this reinforces: agency-level Zero Trust ownership
-cannot be delegated to any single CSP's assessment tool, no matter how good
-that tool is.** A CSP assessing its own platform is necessarily scoped to its
-own platform; it has no visibility into, and no structural incentive to
-reconcile against, the other CSPs, the network layer, or the virtualization
-estate the agency also runs. The agency — not any vendor — is the only party
-positioned to hold one Zero Trust posture across all of them, which is
-exactly the reconciliation work §9 describes and no per-CSP tool can
-substitute for.
-
-Practical guidance for the specific SCuBA / Zero Trust Assessment case:
-
-- **Keep ScubaGear for BOD-25-01** — it is the tool the directive actually
-  names, including the M365 workloads the Zero Trust Assessment does not
-  touch.
-- **Add the Zero Trust Assessment for maturity breadth** across Intune,
-  Azure, and Purview — surfaces SCuBA's baseline does not reach.
-- **Reconcile both at the control level** (NIST SP 800-53 / FedRAMP
-  Moderate) rather than expecting either tool's output to substitute for the
-  other's; they use different finding identifiers and severity models.
-- **One federal caveat:** in a GCC-class tenant, feature availability
-  narrows (§8), so a Zero Trust Assessment run there is structurally capped
-  in what it can even measure for Identity, Devices, and Networks without
-  agency-built analytics on top — worth knowing before treating its score as
-  definitive.
-- **None of this — for Microsoft's ecosystem or any other CSP's — substitutes
-  for the agency-level reconciliation in §9.** Two well-run Microsoft tools
-  are still a Microsoft-scoped answer, not an agency-wide one.
+Even inside a single vendor's ecosystem, two complementary, free Microsoft
+assessment tools — CISA's SCuBA/ScubaGear (a BOD 25-01-mandated M365
+compliance check) and Microsoft's own Zero Trust Assessment (a broader
+maturity check across Entra, Intune, Azure, and Purview) — overlap almost
+entirely on identity and barely touch the same ground anywhere else, and
+running both together still does not add up to a whole-agency answer.
+That's because both tools are scoped to one vendor's platform:
+agency-level Zero Trust ownership cannot be delegated to any single CSP's
+assessment tool, however good. The full worked example, including practical
+guidance for running SCuBA and the Zero Trust Assessment together, is
+covered in *[Zero Trust Requires Whole-Agency
+Scope](zero-trust-whole-agency-unification.qmd)*.
 
 ### 11. What maturity actually requires, pillar by pillar
 
