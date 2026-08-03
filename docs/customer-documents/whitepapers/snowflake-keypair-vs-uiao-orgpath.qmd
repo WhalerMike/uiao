@@ -10,7 +10,7 @@ canon-source: "src/uiao/canon/adr/adr-004-workload-identity-federation-default.m
 repo-path: docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd
 created-at: 2026-06-07
 updated-at: 2026-08-03
-version: "1.2"
+version: "1.3"
 lifecycle: draft
 tiers_adopted: []
 lifecycle_review: 2026-12-22
@@ -38,6 +38,22 @@ registration path now exists without a new enum value: ADR-129 added the
 govern this class of problem*, not as accepted normative coverage of Snowflake.
 The Snowflake product facts are cited to Snowflake's own documentation; the
 UIAO/OrgPath positions are cited to canon.
+:::
+
+::: {.callout-note}
+## Before the doctrine discussion — three things you can do today
+
+This paper spends most of its length on how UIAO and OrgPath doctrine
+*would* extend to Snowflake if a boundary decision ever authorizes it.
+None of that is required to act. **Classify every principal by hand**
+(`DESCRIBE USER` plus login history), **treat any stored key pair as
+the bridge it is, not the destination** (rotate it on a defined
+cadence now), and **settle the GCC-Moderate boundary question before
+the automation question** (the `ADR-059`/`ADR-033` pattern, or
+`commercial-general` per `ADR-129` for non-federal work). All three are
+manual, adapter-independent, and executable with no UIAO product in
+place — the full Call to Action, with citations, is at the end of this
+document.
 :::
 
 ![Three narratives — one movement: credential journey across Snowflake, UIAO, and OrgPath lenses](images/snowflake-keypair-vs-uiao-orgpath-diagram-02-three-narratives-comparison.png){#fig-snowflake-diagram-02 fig-alt="Three vertical columns representing three altitude narratives. Left column navy: Snowflake Narrative - product deprecation, deadline driven, exits are key pair, OAuth, and Workload Identity Federation. Center column teal: UIAO Narrative - credential lifecycle, what the credential becomes, three tiers: password must be eliminated red, key pair endorsed Phase A amber, federation target Phase B teal. Right column amber: OrgPath Narrative - access authority, who the credential is for, facet predicate Dept=Finance AND Role=Analyst maps to Snowflake warehouse role, stray grant equals DRIFT-AUTHZ finding. Bottom navy bar: three altitudes not three ways to tell same story. White background." width="100%"}
@@ -141,224 +157,105 @@ The key-pair conversion is the move you make under deadline pressure; federation
 is the move the platform tells you is the destination. The rest of this document
 is about making that distinction governable rather than incidental.
 
-## Part 2 — How UIAO would do it
+## Part 2 — How the doctrine would extend
 
-UIAO already has a fully-formed doctrine for this exact problem shape. It was
-written for SQL Server and for Kerberos/NTLM, but the logic is platform-agnostic
-because the object classes are the same everywhere: a shared secret, a stored
-credential, and a federated identity. UIAO's reading of the Snowflake conversion
-is four moves, in order.
+UIAO already has a doctrine for this exact problem shape — written for SQL
+Server and for Kerberos/NTLM — and it transfers because the object classes
+are the same everywhere: a shared secret, a stored credential, and a
+federated identity. Reading the Snowflake conversion through that doctrine
+compresses to four moves.
 
-### Move 1 — The password is a `type-S` login; it must end, not rotate
-
-`ADR-091` governs the SQL Server engine-authentication transformation, and its
-governing sentence about SQL Authentication transfers to a Snowflake password
-without modification: such a credential "produces no Entra ID sign-in events and
+**The password is a `type-S` login; it must end, not rotate.** `ADR-091`'s
+verdict on SQL Server passwords — "produces no Entra ID sign-in events and
 is invisible to Conditional Access and Defender for Identity; it is not an
-acceptable steady-state credential." A Snowflake password is the identical
-object — a platform-local shared secret, replayable, invisible to the identity
-provider. UIAO's position on it is not "rotate it more often" or "make it
-longer." It is **eliminate it**. On this point UIAO and Snowflake's deprecation
-agree completely, which is why the conversion is endorsed without
-qualification. The disagreement is entirely about what comes next.
+acceptable steady-state credential" — transfers to a Snowflake password
+unmodified. UIAO and Snowflake's own deprecation schedule agree completely
+here; the conversion is endorsed without qualification.
 
-### Move 2 — The raw key pair is the interim posture, not the destination
+**The raw key pair is the interim posture, not the destination.** Following
+the pattern `ADR-068` sets for Kerberos/NTLM and `ADR-091 §4` carries
+forward, a Snowflake RSA key pair is replay-resistant and public-key based
+(pointing at IA-5(2) and IA-2(8)) — but authentication still terminates at
+Snowflake, so Conditional Access never evaluates it. That makes it an
+**exception-register entry**: an inability-to-federate reason, a
+compensating control, and a sunset date, per the same `ADR-068`/`ADR-091 §4`
+exception process.
 
-`ADR-068` (Kerberos/NTLM elimination) establishes the pattern that a
-cryptographic, non-password credential can be the **authorized *interim* posture**
-while the federated steady state is stood up — the role it assigns to
-Certificate-Based Authentication as the interim NTLM-replacement, carried forward
-in `ADR-091 §4` as "the authorized interim posture." A Snowflake RSA key pair
-occupies that slot precisely. It is unambiguously better than a password — it is
-replay-resistant and public-key based, which is the direction the IA-5(2)
-(public-key authentication) and IA-2(8) (replay resistance) controls point — but
-the authentication still **terminates at Snowflake**. No Entra sign-in event is
-produced, so **Conditional Access never evaluates it**: not device compliance,
-not Named Locations, not sign-in risk. Under UIAO doctrine that makes raw
-key-pair auth an **exception-register entry**, and the exception process
-(per `ADR-068` / `ADR-091 §4`) requires four things on each entry: the
-inability-to-federate reason, a named compensating control, a maximum duration,
-and a **sunset date**.
+**The stored private key is a credential UIAO already rejected.** A
+Snowflake `.p8` private key is exportable software key material — the same
+*stored bootstrap credential* `ADR-004` (**ACCEPTED**) prohibits for new
+integrations, permitting certificate-based auth "only when the external
+platform lacks OIDC issuer capability." Mapped onto Snowflake, the password
+is the prohibited client secret, the RSA key pair is the certificate-based
+fallback, and WIF is the default. The "key-pair conversion" relocates risk
+from password-in-config to key-in-PEM; it does not leave the
+stored-credential class UIAO already named and rejected.
 
-### Move 3 — The stored private key is a credential UIAO already named and rejected
+**The destination is federation — no long-lived secret anywhere.** `ADR-002`
+makes the Managed Identity the credential-free destination and `ADR-004`
+makes WIF the default for external-platform integrations. On Snowflake that
+means human users land on Entra SSO (Conditional Access applies, per
+`ADR-008` / OMB M-22-09) and service users land on Snowflake's own workload
+identity federation — an Azure Managed Identity exchanged for a short-lived
+token, with no RSA private key at rest. This is the Snowflake analogue of
+"Managed Identity, not service-principal-with-secret," and it's the same
+move Snowflake's own WIF documentation describes.
 
-This is the move most key-pair-conversion projects miss. A Snowflake private key
-lives in a `.p8` PEM file on the client — exportable software key material unless
-deliberately engineered otherwise. It can be copied, committed to a repository,
-baked into a container image, or left on a developer laptop. UIAO has a name for
-this object: it is a **stored bootstrap credential**, and `ADR-004` (Workload
-Identity Federation as Default for External Integrations, *ACCEPTED*) rejects it
-as the target for new integrations in language that reads as if it were written
-for Snowflake. `ADR-004`'s decision: workload identity federation "is the default
-target for all external platform integrations… **Client secrets are prohibited
-for new integrations. Certificate-based auth is permitted only when the external
-platform lacks OIDC issuer capability.**"
+Closure follows `ADR-091`'s continuous-verification standard: a reappearing
+password or an over-age key is a live finding, not an annual-review note —
+which is exactly where OrgPath picks up the thread.
 
-Map that onto Snowflake one-to-one: the Snowflake password is the prohibited
-client secret; the RSA key pair is the certificate-based fallback "permitted only
-when the external platform lacks OIDC issuer capability"; and WIF is the default.
-UIAO's verdict is therefore not a novel opinion about Snowflake — it is the
-direct application of an accepted ADR. The "key-pair conversion" relocates the
-risk from *password in a config file* to *private key in a PEM file*; it does not
-escape the stored-credential class. That is acceptable as a bridge and
-unacceptable as a destination.
+## Part 3 — How OrgPath would extend
 
-### Move 4 — The destination is federation; no long-lived secret anywhere
+Part 2 governs the credential; OrgPath governs the orthogonal axis — *which*
+principals reach *which* Snowflake roles, and whether that mapping is
+computed or hand-maintained. A key-pair conversion that modernizes the
+credential while leaving role membership in a spreadsheet has solved only
+half the problem.
 
-`ADR-002` makes the Managed Identity the credential-free destination (the
-platform mints a short-lived token; nothing is stored), and `ADR-004` makes WIF
-the default for exactly the external-platform integration class Snowflake service
-accounts belong to. The Snowflake-native realizations that reach this bar are the
-other two exits Snowflake named:
+The mechanism reuses the seam the SQL Server transformation already
+consumes: OrgPath's vendor-neutral facet schema (`ADR-078`, bound to the
+Codebook under `ADR-035`/`UIAO_151`) drives **Entra dynamic security groups**
+(`ADR-036`) instead of hand-authored membership; those groups federate into
+Snowflake through the same SSO/SCIM path Part 2 stands up for
+authentication, mapping to Snowflake **roles**. A principal holds a role
+because their HR-driven OrgPath facts say they belong there, and loses it
+automatically when those facts change — a mover/leaver event re-renders the
+group and the grant follows, no ticket required. Delegation rides the same
+structure: an **Administrative Unit** (`ADR-037`) scoped to an OrgPath
+branch bounds who may edit those access groups.
 
-- **Human users → Entra SSO (SAML / OAuth).** The sign-in becomes an Entra
-  event, so Conditional Access and Identity Protection apply — MFA, device
-  compliance, location, and sign-in risk are enforced *at the IdP*, the
-  zero-trust posture `ADR-008` requires, anchored to OMB M-22-09. The password
-  is gone and so is the blind spot.
-- **Service users → Workload Identity Federation.** An Azure **Managed Identity**
-  (or other OIDC workload identity) is exchanged for a short-lived Snowflake
-  token, **with no RSA private key at rest**. This is the Snowflake analogue of
-  "Arc Managed Identity, not service-principal-with-secret," and it is the move
-  Snowflake's own WIF documentation describes as removing stored key pairs
-  entirely. Snowflake's WIF supports the Entra-ID provider directly, so the
-  credential authority becomes the same Entra tenant that governs every other
-  identity in the estate.
-
-### Move 5 — Closure is continuous, not a point-in-time checkbox
-
-`ADR-091` closes a transformation only under *continuous* verification: a new
-`type-S` login appearing, or a mode reverting, is a compliance violation, not a
-note for the next audit. The Snowflake equivalent of a closed conversion is:
-**zero users with password authentication enabled outside the exception
-register; every key-pair user inside the register carrying a sunset date toward
-federation; every active key inside its rotation SLA.** A newly-created
-password-enabled user, or a key past its rotation age, is not a finding that
-waits for the annual review — under UIAO it is a live **DRIFT-IDENTITY** event,
-which is precisely where OrgPath enters.
-
-## Part 3 — How OrgPath would do it
-
-Everything in Part 2 was about *the credential* — what a Snowflake principal uses
-to prove identity. OrgPath governs the orthogonal axis: *which* principals reach
-*which* Snowflake roles, and whether that mapping is computed or hand-maintained.
-A key-pair conversion that perfectly modernizes the credential while leaving
-role membership in a spreadsheet has solved the smaller half of the problem.
-
-### OrgPath is the access-authority, not another authenticator
-
-OrgPath is the organizational coordinate system Microsoft's identity stack does
-not supply on its own: a vendor-neutral multi-facet schema (`ADR-078`, the
-15-facet model; `ADR-098` defines per-IdP binding profiles, with the Entra
-`extensionAttribute` slot table as the reference binding) — region, division,
-department, account-type, clearance, and the rest — populated from HR data and
-bound to a governed **Codebook** (`UIAO_151`, `ADR-035`) that defines the legal
-values for each facet. It is not a packed path string in a single attribute and
-it is not a credential; it is the structured truth about *who a principal is in
-the organization*, which is exactly the input an access decision needs.
-
-The SQL Server transformation already consumes OrgPath at one structural point —
-access control — and the Snowflake case is the same seam in a different platform.
-On SQL Server, OU-derived AD groups become **Entra dynamic security groups whose
-membership is computed from OrgPath facets** rather than maintained by helpdesk
-ticket; those groups become the database's `type-E` logins. The canonical rules
-are not hand-authored `New-MgGroup` calls — they are **rendered** by the
-dynamic-group library from
-[`dynamic-groups.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/dynamic-groups.yaml)
-against the active Codebook, under `ADR-036` and `ADR-084`.
-
-### The Snowflake mapping
-
-Snowflake's access model is role-based: privileges attach to roles, roles are
-granted to users. OrgPath's contribution is to make **role membership a function
-of organizational facts** instead of an accumulation of manual `GRANT ROLE`
-statements. The chain is the same shape as the SQL Server seam:
-
-- An Entra **dynamic security group** is rendered from per-facet predicates
-  (`ADR-036`) — e.g. *division = Finance* **and** *account-type = service* — with
-  no hand-authored membership.
-- That group is federated into Snowflake through the **SSO/SCIM** path, where it
-  maps to a Snowflake **role**. (Snowflake supports SCIM provisioning and
-  role mapping from Entra; the federation is the same one Move 4 stands up for
-  authentication, now carrying authorization too.)
-- A principal therefore obtains the Finance-service role **because their HR-driven
-  OrgPath facets say they belong there**, and loses it automatically when those
-  facts change — a mover/leaver event re-renders the group, and the Snowflake
-  grant follows without a ticket.
-
-Delegation rides the same structure. The people who manage those access groups
-get a scope through an **Administrative Unit** (`ADR-037`) shaped by the same
-OrgPath branch structure — a data-platform owner administers the Snowflake access
-groups for their division and nothing else. The structure that drives the grants
-also bounds who may edit them.
-
-### Drift is where OrgPath closes the loop the conversion opens
-
-Move 5 said a stray password-enabled user or an over-age key is a
-**DRIFT-IDENTITY** event. OrgPath's drift engine (`ADR-040`, `UIAO_163`) is the
-machinery that makes that statement operational rather than aspirational. It
-compares the *observed* Snowflake state against the *computed* desired state and
-emits a typed finding when they diverge:
-
-| Observed condition on Snowflake | Desired state | Drift class |
-|---|---|---|
-| A user has password authentication enabled | Password disabled; key-pair (registered exception) or federated | DRIFT-IDENTITY |
-| A key-pair user has no entry in the exception register / no sunset date | Every interim key-pair carries reason + compensating control + sunset | DRIFT-PROVENANCE |
-| An active RSA key is past its rotation SLA | Key age within policy (`RSA_PUBLIC_KEY` / `RSA_PUBLIC_KEY_2` rotated) | DRIFT-IDENTITY |
-| A role is granted to a user whose OrgPath facets don't satisfy the rule | Role membership = the rendered dynamic-group predicate | DRIFT-AUTHZ |
-| A service user holds an exportable private key where WIF is available | Federated (WIF) per `ADR-004` default | DRIFT-IDENTITY |
-
-The difference from a conventional Snowflake access review is the tense. A review
-asks "is this correct *today*?" once a quarter. The drift engine asks it
-continuously, expresses the answer as a typed event the substrate already knows
-how to route, and treats a re-introduced password or an unauthorized grant as a
-**change in who can reach the data**, not a cosmetic configuration delta. That is
-the same continuous-closure posture `ADR-091` demands for SQL Server, applied to
-the Snowflake estate.
+The drift engine (`ADR-040`, `UIAO_163`) is what makes the closure claim
+above operational rather than aspirational: it compares observed Snowflake
+state — password-enabled users, key age, role membership — against the
+OrgPath-computed desired state, and treats a reappeared password, an
+unrotated key, or an out-of-rule grant as a typed `DRIFT-IDENTITY`,
+`DRIFT-AUTHZ`, or `DRIFT-PROVENANCE` finding, not a question for the next
+quarterly review.
 
 ## The three narratives, side by side
 
-The clearest way to see the difference is to put the same migration through all
-three lenses at once. The Snowflake narrative is correct about the destination
-for humans (SSO) and correct that key-pair is *a* valid exit; UIAO and OrgPath
-add the altitude that turns a deadline-driven credential swap into a governed
+The Snowflake narrative is correct about the destination for humans (SSO)
+and correct that key-pair is *a* valid exit; UIAO and OrgPath add the
+altitude that turns a deadline-driven credential swap into a governed
 end-state.
 
-| Dimension | Snowflake narrative | UIAO reading | OrgPath reading |
-|---|---|---|---|
-| **Password** | Deprecated on a schedule; block single-factor sign-in | `type-S` shared secret — **eliminate** (`ADR-091`) | n/a (credential, not access) |
-| **Key pair (the conversion)** | An accepted, exempt credential; the recommended service-account exit | **Authorized interim posture** — exception-register entry with compensating control + sunset (`ADR-068`, `ADR-091 §4`); a *stored bootstrap credential* rejected as a *target* by `ADR-004` | n/a |
-| **Human steady state** | MFA, or SSO (SAML/OAuth) | Entra SSO so Conditional Access applies (`ADR-008`, OMB M-22-09) | OrgPath facets → dynamic group → Snowflake role |
-| **Service steady state** | Key pair, OAuth, or WIF | **WIF / Managed Identity — no stored secret** (`ADR-004`, `ADR-002`) | OrgPath facets (incl. account-type=service) → role |
-| **Who gets which role** | Manual `GRANT ROLE`, or SCIM | (out of scope — authentication axis) | **Computed** from per-facet predicates (`ADR-036`, `ADR-078`); SCIM-federated |
-| **Delegation** | Account/security admins | (out of scope) | Administrative Unit scoped to the OrgPath branch (`ADR-037`) |
-| **Closure** | Deadline passes; project closed | **Continuously verified** (`ADR-091`) | Drift engine emits DRIFT-IDENTITY / -AUTHZ / -PROVENANCE (`ADR-040`, `UIAO_163`) |
-| **Replay resistance (IA-2(8)) / public-key (IA-5(2))** | ✅ once on key pair or SSO | ✅ — and IdP-visible only at the federated end state | ✅ inherited |
+| Dimension | Snowflake narrative | UIAO + OrgPath reading |
+|---|---|---|
+| **Password** | Deprecated on a schedule | Eliminated (`ADR-091`), not rotated |
+| **Key pair** | Accepted, exempt service-account exit | Authorized interim posture — exception-register entry with sunset (`ADR-068`, `ADR-091 §4`); a stored credential `ADR-004` rejects as a *target* |
+| **Steady state** | Key pair, OAuth, or WIF | WIF / Managed Identity, no stored secret (`ADR-004`, `ADR-002`); role membership computed from OrgPath facets (`ADR-036`, `ADR-078`) |
+| **Who gets which role** | Manual `GRANT ROLE`, or SCIM | Computed continuously from per-facet predicates, SCIM-federated |
+| **Closure** | Deadline passes; project closed | Continuously verified; drift engine emits typed findings (`ADR-040`, `UIAO_163`) |
 
-### A worked sequence
-
-For a single Snowflake service account that authenticates with a password today,
-the governed conversion is:
-
-1. **Inventory and classify** (OrgPath / drift): the account surfaces as a
-   password-bearing principal → DRIFT-IDENTITY. Its OrgPath facets (or the lack
-   of them) determine which role it *should* hold.
-2. **Phase A — convert to key pair** (UIAO interim): register the RSA public key,
-   disable the password, and **file the exception** — reason ("workload not yet
-   on a WIF-capable runtime"), compensating control (passphrase-encrypted key in
-   a restricted secret store, rotation SLA), and a **sunset date**. The deadline
-   is met; the password is gone; the residual risk is named, not hidden.
-3. **Phase B — federate** (UIAO destination): move the workload onto a
-   WIF-capable identity (Azure Managed Identity / OIDC), configure Snowflake WIF
-   for the `TYPE = SERVICE` user, and **retire the key pair**. The exception
-   closes; no long-lived secret remains.
-4. **Throughout — govern access** (OrgPath): the role the account holds is the
-   one its facets compute to; a change in organizational fact re-renders the
-   grant; an out-of-rule grant is DRIFT-AUTHZ. Closure is continuous.
-
-A pure Snowflake project stops at step 2 and calls it done. The UIAO/OrgPath
-reading treats step 2 as the bridge it is, drives toward step 3, and never lets
-step 4 fall back to manual.
+For a single password-bearing service account, the governed sequence
+compresses to three moves: **classify** it (OrgPath surfaces it as a
+`DRIFT-IDENTITY` finding), **convert** to key pair under the exception
+register as an interim bridge, and **federate** to retire the exception
+permanently — with role membership computed from OrgPath facets throughout,
+never falling back to a manual grant. A pure Snowflake project stops at the
+conversion step and calls it done; the UIAO/OrgPath reading treats it as a
+bridge and keeps closure continuous.
 
 ## Where this would sit in the substrate
 
@@ -457,9 +354,9 @@ relying on specific dates or parameter names, as vendor schedules move.
 ## Call to Action
 
 This paper is a reading, not a roadmap — nothing here is blocked on
-UIAO shipping a Snowflake adapter. The four-step discipline in the
-walkthrough can be applied by hand today; only its *automation*
-depends on the boundary decision below.
+UIAO shipping a Snowflake adapter. The classify/convert/federate
+discipline in Parts 2-3 can be applied by hand today; only its
+*automation* depends on the boundary decision below.
 
 ::: {.callout-important}
 ## Three steps that don't require a new adapter

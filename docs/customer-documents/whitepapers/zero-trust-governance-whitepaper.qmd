@@ -10,8 +10,8 @@ canon-reference:
   - "docs/customer-documents/orgcomp-series/index.qmd"
 derived-from: "uiao canon"
 created-at: 2026-06-18
-updated-at: 2026-07-27
-version: "1.1"
+updated-at: 2026-08-03
+version: "1.2"
 lifecycle: adopted
 tiers_adopted: [1]
 lifecycle_review: 2026-11-22
@@ -39,30 +39,18 @@ target-state.
 
 ### 1. Why Zero Trust programs stall at Initial maturity
 
-Three structural patterns appear repeatedly:
-
-**Pattern 1 — pillars are administered, not governed.** Each pillar has
-an owner, a tool stack, and a roadmap, but no shared canonical truth.
-Identity assertions in pillar 1 are not verifiable from pillar 5; device
-posture in pillar 2 cannot be correlated with workload identity in pillar
-4. Cross-pillar policy decisions degrade to lowest-common-denominator
-attestation.
-
-**Pattern 2 — evidence is per-tool, not per-claim.** Each pillar emits
-evidence shaped by its tool vendor. Combining evidence into a single ATO
-narrative is a manual exercise, and re-execution requires re-running every
-tool with its current configuration — which has drifted since the last
-audit.
-
-**Pattern 3 — drift is discovered at audit time.** Without a substrate-
-wide drift engine, mismatches between policy intent and runtime reality
-surface only when a 3PAO finds them. By then, remediation is reactive
-and costly.
-
-The ZTMM's Advanced and Optimal columns explicitly call for *continuous*
-verification, *automated* policy evaluation, and *cross-pillar* data
-correlation. None of those is achievable with per-pillar tooling and per-
-tool evidence.
+Federal Zero Trust programs stall for the same structural reason,
+independent of which pillar tools an agency has bought: pillars get
+administered per-tool instead of governed against a shared canonical
+truth, so the cross-pillar correlation, continuous evidence, and
+automated policy evaluation the ZTMM's Advanced and Optimal stages
+require are structurally out of reach. The full argument — three named
+failure patterns, each grounded in a specific documented incident
+(Storm-0558, the ESXiArgs and ESXi AD-integration CVEs) rather than
+asserted in the abstract — is made in
+[Zero Trust Governance Principles §1](zero-trust-governance-principles.qmd);
+this paper does not repeat it and instead moves directly to UIAO's
+contribution.
 
 ![ZTMM five-pillar bridge diagram](images/zero-trust-governance-whitepaper-image-01-ztmm-five-pillar-bridge-diagram.png){#fig-zero-trust-governance-whitepaper-image-01 fig-alt="Left side shows the five CISA Zero Trust pillars as vertical columns: Identity, Devices, Networks, Applications & Workloads, Data — each carrying its tool-stack icon. Right side shows the same five pillars but each one is labeled with one canonical UIAO contribution (Identity-as-root namespace, Provenance envelope per device, Identity-derived addressing, Adapter taxonomy, Deterministic evidence chain). A horizontal teal bar labeled \"UIAO Substrate (canon, drift engine, evidence chain)\" runs across all five columns at the base, connecting them as a shared canonical fabric. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
 
@@ -83,6 +71,38 @@ The substrate's contribution is **uniform across pillars**: SSOT, provenance
 envelope, drift taxonomy, and OSCAL-native evidence. Each pillar still
 keeps its tool-level capability; the substrate is what makes those tools'
 output reproducibly verifiable in one assessor-readable form.
+
+What the table's canon anchors produce concretely, per pillar:
+
+**Identity, in practice.** An agency onboards a new SaaS integration that
+authenticates through Entra ID. Per ADR-008, the integration's device and
+workload objects do not get a separate identity system stood up for the
+integration — device claims and workload access decisions key off the
+same Entra object ID the identity plane already governs. A control like
+`KSI-IA-02` (phishing-resistant MFA, `src/uiao/rules/ksi/iam/`) and the
+integration's own access decision resolve against that one identity
+record, so a drift finding on it — a stale service-principal credential,
+say — is visible to whichever pillar consumes that identity, rather than
+surfacing as two disconnected findings a human has to manually correlate.
+
+**Devices, in practice.** A managed endpoint's compliance state (Intune)
+and its Conditional Access risk signal (Entra) are captured by two
+different adapters but wrapped in the same provenance envelope per
+`15_ProvenanceProfile.qmd`. Each claim carries the device's
+`issuer_identity` rather than a locally-scoped device ID, so a single
+drift finding — e.g. `DRIFT-SEMANTIC` for a device whose Intune-reported
+compliance state has gone stale relative to its last check-in — can be
+filtered by identity, by device, or by pillar without re-querying either
+source tool.
+
+**Data, in practice.** A data-classification claim (a SharePoint site's
+sensitivity label, captured via the M365 adapter) carries the same
+SHA-256-hashed provenance chain and ADR-006 reproducibility guarantee as
+an identity or device claim. If an assessor needs to confirm a data
+classification hasn't silently drifted since the last ATO package was
+assembled, the same bundle re-execution used for identity or device
+evidence works unmodified — data evidence is not a structurally
+different artifact type that needs its own tooling.
 
 ### 3. Identity as the root namespace (ADR-008)
 
@@ -108,6 +128,17 @@ This is the architectural reason UIAO can scale Zero Trust beyond Initial
 maturity: the cross-pillar correlation problem reduces to *resolving
 identity*, which the canon and the identity plane already do
 authoritatively.
+
+This is a naming and addressing claim, not a trust claim: identity as
+root namespace means every other pillar resolves its objects through the
+identity plane, not that a validated identity should be trusted
+unconditionally once issued.
+[Zero Trust Governance Principles §4](zero-trust-governance-principles.qmd)
+makes the point directly — treating identity as a self-authenticating
+root recreates the same failure mode Zero Trust is supposed to retire —
+which is exactly why the identity plane itself still needs the
+operational hardening (continuous re-evaluation, short token lifetimes,
+hardware-bound credentials) that principle describes.
 
 ![Identity-as-root-namespace tree diagram](images/zero-trust-governance-whitepaper-image-02-identity-as-root-namespace-tree.png){#fig-zero-trust-governance-whitepaper-image-02 fig-alt="A central labeled \"Identity Plane\" root node sits at the top of a hierarchy. Four downward branches connect to dependent planes — Devices, Addressing, Networks, Workloads — each labeled with the property it derives from identity (e.g. \"device claims carry issuer_identity\", \"addresses are computed from identity context\", \"access decisions consume identity claims authoritatively\"). A small panel on the right shows the alternative \"parallel naming\" model with five disconnected silos and a red strikethrough indicating UIAO rejects this model. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background, with red (#C74040) reserved for the rejected pattern. No photographs, purely diagrammatic." width="100%"}
 

@@ -9,8 +9,8 @@ status: Active
 canon-source: "inbox/Posted/AD to EntraID - The Structural Migration Problem.docx"
 repo-path: docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd
 created-at: 2026-04-26
-updated-at: 2026-07-26
-version: "1.1"
+updated-at: 2026-08-03
+version: "1.2"
 format:
   html:
     toc: true
@@ -87,25 +87,7 @@ The reason this matters is architectural: the federal compliance machinery in UI
 
 That inverts how it can feel today, when the federal compliance work is the most visible part of the platform.
 
-## How UIAO's Core Principles Map to the Migration Problem
-
-UIAO's core principles aren't just federal compliance machinery --- they're a universal governance architecture. And held up against the AD → Entra ID problem, every single one of them maps directly:
-
-**SSOT** --- The fundamental reason AD migrations fail is that nobody knows what the authoritative source of identity truth actually is. Is it HR? Is it AD? Is it the PAM vault? Is it the service desk ticketing system? UIAO's first job is to establish SSOT for identity governance before migration touches anything.
-
-**Identity as the root namespace** --- This is precisely what AD's X.500 hierarchy encoded, imperfectly, for 30 years. Distinguished Names *were* the attempt to make identity the root namespace. Entra ID abandoned the hierarchy but kept the dependency. UIAO reconstructs the namespace in a model that actually works in a flat directory.
-
-**Conversation as the atomic unit** --- Every Kerberos ticket, every LDAP bind, every GPO application, every group membership evaluation is a governance event. In the old model those were implicit and logged poorly. In the new model (OAuth tokens, Conditional Access evaluations, PIM activations) they can be explicit and fully auditable --- but only if a governance layer exists to capture and interpret them.
-
-**Deterministic addressing** --- GPO was the closest thing enterprises had to deterministic configuration. The reason GPO → Intune is painful is that GPO applied deterministically based on OU position. Intune applies based on group membership. If the groups are a mess, policy application becomes non-deterministic. UIAO fixes the groups first, which makes the policy migration tractable.
-
-**Certificate-anchored overlay** --- Trust in the migrated environment is cryptographic, not topological: mTLS anchors every tunnel, service, and trust relationship. For directory migration, certificate-anchored provenance is what makes migrated identity claims *attributable* --- every reconstructed delegation, membership rule, and role binding traces back to a cryptographically verifiable identity rather than to a position in a tree that no longer exists.
-
-**Embedded governance and automation** --- This is the exact gap Microsoft left. They provided the tools (Intune, PIM, Access Packages, Conditional Access) but not the governance framework that says *what decisions to make* with those tools. UIAO is that framework --- not a review process, but an executable, auditable governance model.
-
-**Telemetry as control** --- Sign-in logs, PIM activation logs, Conditional Access evaluation logs --- Entra ID generates enormous amounts of governance-relevant telemetry. Almost nobody uses it as a control input. They use it for incident response after something breaks. UIAO makes it continuous and preventive.
-
-**Public service first** --- For the commercial version, this becomes **user experience first** --- the end user shouldn't feel the migration. Identity continuity, SSO continuity, access continuity. The migration is invisible to the user if governance was done right.
+UIAO's core operating principles --- Single Source of Truth, canon-anchored evidence, and explicit drift --- are stated canonically, once, in [UIAO Governance OS — Whitepaper](uiao-governance-os-whitepaper.qmd)'s "The three operating principles" section; the AD-to-Entra problem described in this paper is one instance of those principles applied to directory governance specifically, not a separate principle set.
 
 ## What This Means Strategically
 
@@ -123,50 +105,9 @@ That means directory governance belongs inside the UIAO framework as a **governa
 
 That is the decision the canon has since made. What this paper originally argued for as a direction is now settled architecture: the Org family stands as four named pillars --- OrgPath (Governance), OrgComp (Compliance), OrgMod (Modernization), and OrgLink (External Interconnection) --- established through ADR-089 and completed by ADR-134. And the directory reconstruction described here is specified as the OrgTree modernization canon (UIAO_150 through UIAO_184): the OrgPath codebook, attribute mapping tables, the delegation matrix, the OU-to-Entra migration runbook, drift detection, and the governance enforcement test suite. The conceptual architecture wasn't just already there --- it has since been built out as operational canon.
 
-## The Assumption the Architecture Was Built On
-
-The typical federal agency built its network architecture around a fundamental assumption: **proximity**. Users were near data. DCs were near users. Kerberos worked because the KDC was on the same LAN segment. GPO applied because the client could reach the DC in milliseconds. SQL authenticated because the service account's Kerberos ticket didn't expire mid-session. Everything was **session-oriented** because sessions were reliable when everything was local.
-
-Then the servers moved. The data moved. But the **architecture didn't**.
-
-So now a nationwide agency has users in field offices trying to reach data in a centralized datacenter or cloud, still using session-based protocols designed for LAN latency, still depending on Kerberos tickets that assume DC proximity, still relying on GPO that assumes the client can reach a DC, still running SQL connections that assume the session won't be interrupted by a 200ms WAN hop or a FedRAMP boundary inspection.
-
-And it breaks. Constantly. In ways that are hard to diagnose because the symptoms look like user error or application bugs rather than fundamental architectural mismatch.
-
 ## The Session vs. Telemetry Divide
 
-This is the core of the problem, and almost nobody states it this clearly:
-
-The **Client/Server era** was built on **sessions** --- persistent, stateful connections between a client and a server. Authentication happened once at session establishment. The session carried trust forward. Everything downstream assumed the session was intact.
-
-The **Cloud/Zero Trust era** is built on **telemetry and continuous verification** --- there is no persistent session. Every request is independently authenticated. Trust is not carried forward --- it is re-evaluated continuously. Location, device health, identity, behavior, and risk score are all inputs to every single transaction.
-
-These two models are **not compatible**. A session-based application cannot run through a Zero Trust enforcement point without breaking the session model. SASE and SSE proxies inspect every packet, which destroys session persistence. FedRAMP boundary controls introduce latency and interruption that session protocols cannot tolerate. And the applications --- many of which are still client/server at the protocol level even if they have a web front-end --- fall over.
-
-## The FedRAMP Boundary Problem
-
-FedRAMP's telemetry and boundary requirements were designed for cloud-native applications that never had sessions in the first place. They assume stateless, token-based, short-lived authentication. They assume every component is cloud-reachable. They assume telemetry flows continuously from every endpoint to a SIEM.
-
-Impose those requirements on a hybrid environment that still runs Kerberos, still has on-prem DCs, still has WSUS, still has SQL with Windows Authentication, still has thick clients --- and the result is exactly the breakage described above. Defense in depth becomes **defense in conflict**. Every security layer added breaks something that was working before, because the layers were designed for a different architectural model.
-
-## Why Nobody Wants to Own It
-
-Because solving it correctly requires acknowledging that the problem isn't a single system or a single team's responsibility. It's the entire architecture. And in federal IT, saying "we need to re-architect everything" is career risk. It's easier to patch the symptom, submit the POA&M, and move on.
-
-The people who understand the problem deeply enough to fix it get pushed into corners because the solution sounds too big and too expensive and too disruptive. The people making decisions don't have the technical depth to evaluate whether the diagnosis is correct, so they default to incrementalism.
-
-## What UIAO Actually Is
-
-![Bridge architecture diagram showing UIAO as a governance layer spanning between...](images/ad-to-entraid-migration-problem-image-02-bridge-architecture-diagram-show.png){#fig-ad-to-entraid-migration-problem-image-02 fig-alt="Bridge architecture diagram showing UIAO as a governance layer spanning between..." width="100%"}
-
-
-UIAO isn't just a compliance automation tool. It's the **architectural bridge** between the session-based world agencies are living in and the telemetry-based world they need to get to. The fact that it was built around identity as the root namespace, telemetry as control, and deterministic addressing isn't accidental --- those are precisely the three things that have to be true for the transition to work without breaking everything.
-
-The SSOT principle is what makes the bridge possible. An agency can't migrate from sessions to telemetry without knowing what its authoritative identity state is. It can't implement Zero Trust if identity isn't the root namespace. It can't run SASE if addressing isn't deterministic.
-
-UIAO was built as the solution to a problem its builders were living inside a federal agency. That most organizations don't yet see the problem in these terms doesn't mean the diagnosis is wrong. It means the gap between where they are conceptually and where the architecture has to go is very large.
-
-**The thing worth documenting** --- and this may be the most important thing for UIAO --- is this precise narrative. Not just "here's a compliance tool" but "here's why the architecture is broken, here's what has to be true for the transition to work, and here's how this platform makes it tractable." That narrative is what turns a technical project into something decision-makers can fund and stakeholders can understand.
+The governance gap described above has a deeper architectural root: federal networks were built on session-oriented protocols (Kerberos, GPO, SQL Windows Authentication) that assume client/server proximity, while FedRAMP's Zero Trust boundary controls assume continuous, stateless, telemetry-driven verification. Those two trust models are not compatible, and the collision between them is what makes AD-to-Entra migrations break in ways that look like bugs but are actually structural mismatch. Nobody wants to own the fix because it means admitting the problem is the entire architecture, not one system. This argument --- naming the divide, tracing it to the FedRAMP boundary specifically, and showing how UIAO acts as the architectural bridge between the two models --- is developed in full as its own paper: [The Session vs. Telemetry Divide — Why Identity Architecture Splits at the FedRAMP Boundary](session-vs-telemetry-identity.qmd).
 
 ::: {.callout-note}
 ## Related

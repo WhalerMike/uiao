@@ -11,8 +11,8 @@ canon-reference:
   - "src/uiao/canon/adr/adr-044-substrate-governance-realignment.md"
 derived-from: "uiao canon"
 created-at: 2026-06-18
-updated-at: 2026-07-27
-version: "1.1"
+updated-at: 2026-08-03
+version: "1.2"
 lifecycle: adopted
 tiers_adopted: [1]
 lifecycle_review: 2026-11-22
@@ -130,37 +130,82 @@ concepts.
 
 The naming is deliberate. A *framework* is something an application
 consumes; an *operating system* is something an application runs on.
-UIAO's substrate exhibits three OS-level properties that frameworks do
-not:
+UIAO's substrate provides a bounded process model for every adapter and
+CI gate, a single scheduler for canonical change (the canon-change ADR
+process), and a stable read interface to canon
+(`importlib.resources.files("uiao.canon")`) — properties that let
+independent adapter authors, review surfaces, and deployment regimes
+build on the same substrate without each requiring its own governance
+machinery. Since ADR-092, canon names this posture **Active
+Governance**: an active reconciliation control plane that observes,
+reconciles, and actuates through a graduated L0–L4 ladder
+(federal default ceiling L3, human-approved actuation) while never
+becoming the in-path enforcer.
 
-1. **Process model.** Every adapter, generator, and CI gate is a
-   bounded, observable process with declared inputs (canon), outputs
-   (evidence), and drift findings. Substrate-level visibility is built
-   in.
-2. **Resource arbitration.** The canon-change ADR process is the
-   substrate's scheduler — only one canonical truth exists at a time
-   for any given concern, and changes go through a queued, reviewed
-   process rather than ad-hoc commits.
-3. **Stable system call interface.** Code reads canon via
-   `importlib.resources.files("uiao.canon")` regardless of installation
-   mode (editable, wheel, package). The canon API is the substrate's
-   syscall interface; agencies build on it without depending on
-   filesystem layout.
+#### 4.1 Worked example: one control, telemetry to OSCAL
 
-These properties are why the substrate can host independent adapter
-authors (modernization adapters, conformance adapters), independent
-review surfaces (canon ADR review, adapter PR review, runtime test
-review), and independent deployment regimes (federal, GCC-Moderate, the
-named Commercial exceptions per ADR-059) without each requiring its
-own governance machinery.
+Sections 3, 6, and 7 describe the evidence chain, the canon-anchored
+claim shape, and the ATO package properties separately. Tracing a
+single control end to end through all four pipeline stages makes the
+abstraction concrete.
 
-Since ADR-092, the canon names this product posture **Active
-Governance**: the substrate is an active reconciliation control plane
-that governs provider data planes — it observes, reconciles, and
-actuates through a graduated L0–L4 ladder (federal default ceiling L3,
-human-approved actuation) while never becoming the in-path enforcer.
-The OS metaphor extends naturally: the drift engine is the interrupt
-handler, and the actuation ladder is the privilege model.
+Take **KSI-IA-02** (phishing-resistant multi-factor authentication for
+GCC-Moderate access), one of the KSI rules shipped in
+`src/uiao/rules/ksi/iam/`.
+
+**Stage 1 — telemetry capture.** The Entra adapter (`evidence_sources:
+entra_id, graph_api` per the KSI's own declaration) polls Conditional
+Access policy state and per-user authentication-method registration on
+its configured interval, observing whether MFA is enforced and which
+method satisfies it (FIDO2, certificate-based auth, or a weaker,
+non-phishing-resistant factor).
+
+**Stage 2 — claim normalization.** The raw Graph response is wrapped in
+the canonical provenance envelope. The shape below is illustrative —
+it shows the fields the envelope carries, not a captured record:
+
+```json
+{
+  "claim_id": "clm-<uuid>",
+  "control_id": "KSI-IA-02",
+  "issuer_identity": "<entra-object-id>",
+  "source_classification": "authoritative",
+  "extraction_timestamp": "<ISO-8601 timestamp>",
+  "lineage_hash": "sha256:<hash of the source Graph record>",
+  "assertion": "phishing_resistant_mfa_required: true"
+}
+```
+
+**Stage 3 — bundle assembly and seal.** Every KSI-IA-02 claim captured
+in the reporting interval is assembled into an evidence bundle. Per
+ADR-006, each claim already carries a SHA-256 of its source record; the
+bundle hash is computed over the per-claim hashes and the bundle is
+sealed:
+
+```json
+{
+  "bundle_id": "bnd-<uuid>",
+  "control_id": "KSI-IA-02",
+  "claims": ["clm-<uuid-1>", "clm-<uuid-2>", "..."],
+  "bundle_hash": "sha256:<hash over the per-claim hashes>",
+  "canon_version": "<substrate-manifest version at capture time>",
+  "sealed_at": "<ISO-8601 timestamp>"
+}
+```
+
+**Stage 4 — OSCAL emission.** The sealed bundle drives an OSCAL
+Assessment Result entry (and, where the control maps to a system
+component, a Component Definition) keyed to KSI-IA-02, ready to feed
+the KSI dashboard, the SSP control narrative, and — if the pass
+criterion fails — a POA&M item. Because the same canon version
+processing the same inputs always produces a byte-identical bundle
+(ADR-006), an assessor can re-run the pipeline months later and verify
+the bundle hash matches, without needing the original operator
+available to explain how the evidence was assembled.
+
+That is the whole substrate, for one control: a poll, a hash, a seal,
+and a citation — repeated across every KSI rule the agency has brought
+under adapter coverage.
 
 ### 5. The three-layer rule model
 
