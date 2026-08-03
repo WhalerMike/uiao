@@ -980,6 +980,7 @@
   - [UIAO Governance OS — Full A-Z Canonical Document Suite](customer-documents/executive-governance-series/governance-os-canonical-suite.html)
 - **Whitepapers**
   - [Whitepapers](customer-documents/whitepapers/index.html)
+  - [Whitepaper Reading Guide](customer-documents/whitepapers/reading-guide.html)
   - [UIAO Governance OS — Whitepaper](customer-documents/whitepapers/uiao-governance-os-whitepaper.html)
   - [Zero Trust Governance — Whitepaper](customer-documents/whitepapers/zero-trust-governance-whitepaper.html)
   - [Modernization Governance — Whitepaper](customer-documents/whitepapers/modernization-governance-whitepaper.html)
