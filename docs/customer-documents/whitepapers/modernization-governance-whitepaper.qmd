@@ -11,8 +11,8 @@ canon-reference:
   - "docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd"
 derived-from: "uiao canon"
 created-at: 2026-06-18
-updated-at: 2026-07-27
-version: "1.1"
+updated-at: 2026-08-03
+version: "1.2"
 lifecycle: adopted
 tiers_adopted: [1]
 lifecycle_review: 2026-11-22
@@ -126,36 +126,12 @@ substrate change rather than a tooling change.
 ### 3. AODIM — the attribute-oriented directory and identity model
 
 The architectural pattern UIAO uses to govern the inversion is
-**AODIM** (Attribute-Oriented Directory & Identity Model). Documented
-in the
-[AODIM Architecture](../architecture-series/aodim-architecture.qmd) and
-[AODIM Executive Whitepaper](aodim-executive-whitepaper.qmd), AODIM's
-core principle is:
-
-> Identity attributes define organizational structure; access is
-> computed, not assigned.
-
-The worked substrate for this principle — the governed facet schema,
-dynamic-group library, and AU delegation model — is the
-[OrgPath](../../orgpath/index.qmd) pillar, told end to end in the
-[OrgPath narrative series](../orgpath-narrative/index.qmd).
-
-Operationally, AODIM declares:
-
-- **Authoritative attributes** — the small set of identity attributes
-  the substrate treats as canonical (e.g. assignment scope,
-  organizational role, classification clearance). Every downstream
-  policy consumes these.
-- **Computed groups** — group membership is a function of attributes,
-  not a manually administered list.
-- **Policy-as-data** — conditional access, PIM, and entitlement
-  policies evaluate attributes; their *intent* lives in canon and their
-  *evaluation* in the runtime layer.
-
-AODIM is not a Microsoft-specific pattern. It is the substrate's
-architectural posture for any cloud identity platform; Entra ID is the
-practical case because it is what most federal agencies are migrating
-to.
+**AODIM** (Attribute-Oriented Directory & Identity Model): identity
+attributes define organizational structure, and access is computed
+from them rather than assigned. AODIM's authoritative-attribute set,
+computed-group model, and policy-as-data mechanics are documented in
+full in the
+[AODIM Executive Whitepaper](aodim-executive-whitepaper.qmd).
 
 ### 4. The substrate's role in migration
 
@@ -166,7 +142,7 @@ structural mechanisms that make AODIM-anchored migration tractable:
 | Mechanism | Migration role |
 |---|---|
 | **Canon SSOT** | The attribute model lives in canon, not in the directory. Migrating the tenant does not migrate the model. |
-| **Modernization adapters** | `modernization-registry.yaml` (28 entries) declares change-making adapters — including `bluecat-address-manager` and `infoblox` from the retired `uiao-gos`, now first-class modernization adapters. Each maps a piece of pre-migration infrastructure to its post-migration target. |
+| **Modernization adapters** | `modernization-registry.yaml` (28 entries) declares change-making adapters, including first-class `bluecat-address-manager` and `infoblox` adapters for the addressing plane. Each maps a piece of pre-migration infrastructure to its post-migration target. |
 | **Provenance envelope** | Identity claims emitted during and after migration carry `source_classification` (authoritative / derived / synthesized), making the migration's evidence reproducibly classifiable. |
 | **Drift engine** | Schema and provenance drift surface attribute or group-rule mismatches in CI; runtime detection for identity and authorization drift is partially implemented and maturing. |
 
@@ -208,6 +184,40 @@ sequences within that plan:
 Steps 1–3 are governance-led. Step 4 is the technical event most
 programs treat as the migration. Step 5 is what determines whether the
 migration delivers cloud-native value.
+
+**Walking one attribute through all five phases.** The phases above are
+sequenced abstractly; concretely, here is what happens to a single
+authoritative attribute — **classification clearance** — from canon
+authoring through post-cutover cleanup:
+
+1. **Canon-first.** Classification clearance is authored in
+   `src/uiao/canon/` as one of AODIM's authoritative attributes: its
+   allowed values, its authoritative source (the HR/personnel system of
+   record), and the policies permitted to consume it are declared
+   before any tenant work begins.
+2. **Modernization-adapter.** The identity adapter for Entra ID is
+   configured to read classification clearance from its authoritative
+   source and write it into the tenant as a directory attribute,
+   emitting a canonical claim with a `source_classification:
+   authoritative` provenance tag from the first sync.
+3. **Compensating-enforcement.** Where a GCC-Moderate boundary gap
+   means Entra ID cannot itself enforce a classification-scoped
+   conditional access rule, a compensating enforcement adapter
+   evaluates the same attribute against the same canonical policy and
+   emits evidence in the same shape — so the AO sees one continuous
+   claim regardless of which layer enforced it.
+4. **Cutover.** At the AO checkpoint, classification clearance's
+   authoritative source switches from the on-prem AD attribute to the
+   Entra ID directory attribute. Because the attribute's definition
+   lives in canon and did not change at cutover, only its supplying
+   system did, this is a single auditable event rather than a
+   re-classification exercise.
+5. **Drift-driven cleanup.** Post-cutover, the drift engine compares
+   classification-clearance values and their provenance chains against
+   canon. A record whose AD-era clearance value never migrated
+   cleanly, or whose provenance chain breaks between HR system and
+   tenant, surfaces as a tracked finding with a remediation contract —
+   not a silent access-control error discovered later.
 
 ### 6. What this means for an ATO package
 

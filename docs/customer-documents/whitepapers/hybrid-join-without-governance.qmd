@@ -11,7 +11,7 @@ derived-from: "Expansion of the entra-security-baseline-federal-crosswalk T3 row
 repo-path: docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd
 created-at: 2026-06-08
 updated-at: 2026-08-03
-version: "1.2"
+version: "1.3"
 format:
   html:
     toc: true
@@ -197,19 +197,41 @@ program looks like this:
 
    ![The L0–L4 actuation ladder with the federal default ceiling at L3; tenant-wide device-state and Conditional Access changes are high-blast-radius and permanently L3-capped, so L4 autonomy is locked for this operation class](images/hybrid-join-without-governance-diagram-04-actuation-ceiling.png){#fig-actuation-ceiling fig-alt="Ascending staircase blueprint of five steps L0 Record, L1 Observe, L2 Advise, L3 Gated actuation (emphasized navy), L4 Autonomous (faded, dashed). An amber dashed line across the top of L3 reads 'FEDERAL DEFAULT CEILING = L3.' A red lock on the L4 step reads 'not permitted for this class.' A red callout explains a tenant-wide device-state or CA change touches all 50,000 devices, so it is permanently L3-capped and always routes to review. Footer: halt_on_critical — any P1 finding suspends autonomy." width="100%"}
 
-3. **Bake the enforcement.** Conditional Access runs **report-only** first; the
+3. **Execute the wave through `plan()` / `apply()`, not ad hoc scripts.** The CLI
+   entry point for adapter operations is `uiao adapter run entra` (a Typer
+   command in `src/uiao/cli/adapter.py` that dispatches into the Entra adapter
+   family under `src/uiao/adapters/`). The OrgPath-scoped wave itself is
+   computed and executed by that family's `EntraDynamicGroupAdapter`: its
+   `plan(observed)` method is pure — it diffs the canonical dynamic-group
+   library (the wave's declared target state, keyed to the OrgPath-bound
+   `extensionAttribute` slot) against the tenant's observed group state and
+   returns a list of `FacetOperation` records, one per group whose membership
+   rule needs to be created or updated, without making a single Graph call.
+   That diff is what L1 Observe and L2 Advise are, concretely. `apply(operations,
+   dry_run=True)` — `dry_run=True` is the method's default — is the
+   report-only execution of that plan: every operation is evaluated and
+   recorded as *would-send*, and nothing reaches Graph. Promotion to
+   `dry_run=False` is a separate, explicit call an operator makes per wave
+   after review — the code-level shape of the L3 gate above. One class of
+   operation never crosses that gate regardless of `dry_run`: operations in
+   `governance_review_ops` (today, the `phantom`-group verb, flagged for
+   removal) are always skipped by `apply()` whether `dry_run` is `True` or
+   `False` — a standing human-sign-off set that promoting a wave out of
+   dry-run cannot silently sweep past. ([ADR-084
+   §C4–C5](../../../src/uiao/canon/adr/adr-084-phase5-consumer-architecture.md))
+4. **Bake the enforcement.** Conditional Access runs **report-only** first; the
    control plane reconciles "registered and compliant" coverage against the
    OrgPath-scoped target population before any wave flips CA to enforce — so the
    lockout failure mode in §3 cannot occur silently.
-4. **Reconcile duplicates and lifecycle.** Phantom/stale device objects are
+5. **Reconcile duplicates and lifecycle.** Phantom/stale device objects are
    classified as drift ([ADR-074](../../../src/uiao/canon/adr/adr-074-drift-ssot-contention.md))
    and resolved against canon, not left to inflate the managed-device count.
-5. **Emit evidence an AO can sign.** Every wave produces signed
+6. **Emit evidence an AO can sign.** Every wave produces signed
    `plan / apply / reconcile` evidence. The accreditation sentence is not "it
    enforces managed-device sign-in" but "this operation class is at L3, gated,
    with dry-run record and rollback" — a sentence an authorizing official can put
    their name to.
-6. **Cover the whole denominator.** Non-Windows, BYOD, and guest surfaces are
+7. **Cover the whole denominator.** Non-Windows, BYOD, and guest surfaces are
    driven through Intune-first onboarding
    ([ADR-071](../../../src/uiao/canon/adr/adr-071-intune-first-asset-onboarding.md)) so the
    control is satisfied for its real population, not just the Windows slice.
@@ -221,6 +243,16 @@ accredited** — the loss ledger of §3 is paid down rather than run up.
 ---
 
 ## 6. The two paths side by side
+
+§2 named the exact provider mechanism that flips the fleet unattended — SCP,
+GPO, the `Automatic-Device-Join` scheduled task, `dsregcmd /status`. §5 names
+the equivalent governed mechanism at the same level of specificity —
+`EntraDynamicGroupAdapter.plan()` computing the wave's operations,
+`apply(dry_run=True)` as the default report-only execution, an explicit
+`dry_run=False` promotion as the L3 gate, and `governance_review_ops` as the
+operations that stay human-gated no matter what. Both are real code paths in
+this repository, not aspirational description. Same end state; the entire
+difference is what stands between the plan and the write.
 
 ![Both paths reach the same end state — devices hybrid-joined with Conditional Access enforcing — but the ungoverned flip spends the loss ledger while the governed wave pipeline pays it down](images/hybrid-join-without-governance-diagram-03-two-paths.png){#fig-two-paths fig-alt="Two-lane blueprint. Top lane 'UNGOVERNED': an SCP+GPO box, a red arrow 'fleet flips, unattended — minutes of effort' to a hybrid-joined fleet box, with red loss chips below: no owner/OrgPath, duplicate objects, lockout risk, non-Windows invisible, unattributable. Bottom lane 'GOVERNED': a teal pipeline OrgPath target → L1 Observe → L2 Advise (report-only CA) → L3 Gated wave (human approves, amber-outlined) → Reconcile (signed evidence) → Hybrid-joined + accredited. Caption: same technical end state; the governed path keeps every change owned, addressable, attributable, reversible." width="100%"}
 
