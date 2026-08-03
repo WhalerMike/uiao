@@ -8,8 +8,8 @@ author: Michael Stratton
 derived-from: "Narrative synthesis of a federal agency modernization arc. Synthesizes an internal technical position paper on application-data separation and cloud migration readiness together with mature IBM z/OS Connect / RACF PassTicket product capability. Vendor- and product-neutral: cites only NIST, OMB, CISA, and FedRAMP — carries no UIAO-specific claims and is not reconciled to any UIAO ADR."
 repo-path: docs/customer-documents/whitepapers/federal-application-aware-networking-architecture.qmd
 created-at: 2026-07-31
-updated-at: 2026-07-31
-version: "1.0"
+updated-at: 2026-08-02
+version: "1.1"
 format:
   html:
     toc: true
@@ -28,6 +28,38 @@ lifecycle_review: 2026-12-31
 this page, regenerated on every site deploy. (Also available from the
 **Other Formats** link in the page sidebar.)
 :::
+
+## Executive Summary
+
+Federal agency IT architecture has evolved through four historical eras —
+brutal mainframe centralization, distributed decentralization, security-driven
+complexity, and cloud-forced fragmentation — without ever replacing the single
+source of truth the mainframe originally provided. The result: regional
+identity domains that never reconciled, duplicate payments, records that
+cannot be traced to an authoritative source, and a session-based
+authentication model (Kerberos/Active Directory) that breaks under the
+physics of distance and the security architecture layered on top of it.
+
+This is not a technology gap. It is an architecture gap, and it is well
+understood: commercial industries — banking, healthcare, manufacturing — hit
+and solved this same problem between roughly 2014 and 2022. The physics is
+fixed: bandwidth does not reduce latency, and no amount of infrastructure
+spend changes the propagation floor of light through fiber. What changes the
+outcome is architecture — separating the system of record from the in-path
+enforcer, making the network application-aware rather than packet-aware,
+replacing session-based identity with token-based identity, governing
+infrastructure actively rather than assessing it periodically, and reducing
+the number of synchronous round-trips an application makes to its data,
+including at the mainframe boundary itself.
+
+FedRAMP's 20x Consolidated Rules, phasing in through 2026 and mandatory
+January 1, 2027, convert this from an architectural preference into a
+compliance deadline: continuous, machine-readable evidence replaces periodic
+assessment, and agencies that have not made this transition will not be able
+to produce it. The path forward is five principles, each traced to a
+specific NIST, OMB, CISA, or FedRAMP requirement — this is vendor-neutral,
+product-neutral guidance, not a pitch for any specific platform. Concrete next
+steps are laid out in the **Call to Action** at the end of this document.
 
 ::: {.callout-note}
 ## For decision makers: read this page first
@@ -786,3 +818,56 @@ mandate, standard, or policy that requires or validates it.
 | Machine-readable KSI evidence; no manual evidence assembly | FedRAMP 20x Consolidated Rules — Class A/B/C pipelines open Aug 3/31, 2026 | FedRAMP 20x JSON evidence format; GitHub-published structured rules |
 | Reduce synchronous round-trip count before separating an application from authoritative data | OMB Circular A-130 (sound engineering practice); EO 14028 | NIST SP 800-53 Rev 5 SA-8 (Security and Privacy Engineering Principles) |
 | Bridge mainframe RACF/SAF access to token-based identity via API gateway and PassTicket | OMB M-22-09 (modern authentication); BOD 25-01 | NIST SP 800-207; CISA ZTMM v2.0 Identity pillar |
+
+---
+
+## Call to Action
+
+This whitepaper describes a well-worn commercial transition your agency has
+not yet completed, under a federal compliance deadline that is no longer
+negotiable. The following steps convert the five principles into an
+execution plan.
+
+::: {.callout-important}
+## Six steps to start this quarter
+
+1. **Inventory the actual architecture, not the assumed one.** Document
+   every regional AD domain, every MPLS circuit, every location where DIA
+   has been installed without a SASE/SD-WAN control stack behind it, and
+   every application that makes synchronous calls across a WAN boundary to
+   a mainframe or legacy data store. Most agencies cannot answer this today
+   — that is the first gap to close.
+2. **Run a physics-based latency audit before the next migration
+   decision.** For every workload being considered for cloud migration,
+   measure — do not assume — its round-trip count and the fixed
+   propagation floor of the distance involved. Do not approve a migration
+   until the answer is known.
+3. **Assign an owner to each of the five principles.** Single source of
+   truth, application-aware networking, token-based identity, active
+   governance, and round-trip reduction are five separate engineering
+   disciplines with five different natural owners — data governance,
+   network engineering, identity engineering, compliance/ConMon, and
+   application architecture, respectively. None of them will move if
+   nobody owns them.
+4. **Put the FedRAMP 20x dates on the calendar now.** July 28, 2026
+   (FedRAMP Ready ceases), August 3 and 31, 2026 (Class A/B/C pipelines
+   open), January 1, 2027 (Consolidated Rules mandatory), June 11, 2027
+   (no new Rev5). Continuous monitoring built after these dates pass is a
+   remediation project, not a modernization project.
+5. **Pilot the mainframe token-bridge pattern on one low-risk transaction
+   class before committing to a timeline.** Discrete, atomic, read-mostly
+   transactions are the correct first candidates — not the highest-value
+   or highest-visibility ones. Prove the PassTicket/Identity Propagation
+   pattern against your specific z/OS estate before scheduling the harder,
+   pseudo-conversational transactions.
+6. **Bring this document to the people who can act on it.** The CIO/CISO
+   office owns the FedRAMP 20x deadline; the network team owns Principles
+   2 and 5; the identity team owns Principle 3; the mainframe and
+   application teams own the token-bridge chapter. This document is
+   written to be handed to all four without modification.
+:::
+
+None of this requires a specific vendor decision on day one. It requires an
+inventory, an owner, and a date. The architecture described in this
+whitepaper is not aspirational — it is what the commercial sector already
+runs, and what federal compliance now requires.
