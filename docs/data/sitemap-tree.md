@@ -981,6 +981,7 @@
 - **Whitepapers**
   - [Whitepapers](customer-documents/whitepapers/index.html)
   - [Whitepaper Reading Guide](customer-documents/whitepapers/reading-guide.html)
+  - [Federal Compliance for Moderate Agencies](customer-documents/whitepapers/federal-compliance-for-moderate-agencies.html)
   - [UIAO Governance OS — Whitepaper](customer-documents/whitepapers/uiao-governance-os-whitepaper.html)
   - [Zero Trust Governance — Whitepaper](customer-documents/whitepapers/zero-trust-governance-whitepaper.html)
   - [Modernization Governance — Whitepaper](customer-documents/whitepapers/modernization-governance-whitepaper.html)
