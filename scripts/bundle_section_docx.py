@@ -121,6 +121,17 @@ DEFAULT_SECTIONS = [
 # Filename stems (without .docx) skipped from every bundle.
 SKIP_STEMS = {"index", "ROADMAP", "document-index", "TREE"}
 
+# Sections whose "bundle" is a zip of the individual page .docx files rather
+# than one docxcompose-merged .docx. whitepapers stays in DEFAULT_SECTIONS
+# above (so --all still processes it) but is redirected to _zip_pages in
+# main() instead of _bundle_one, because a single merged
+# whitepapers-bundle.docx concatenating all ~22 long-form papers had grown
+# too large to be a usable download; a zip keeps each paper as its own file
+# (openable individually, no 20+-chapter Word doc to scroll through) at a
+# fraction of the total size. Add a section name here to switch it from
+# merged-docx to zipped-pages; see _zip_pages / _bundle_filename_zip.
+ZIP_INSTEAD_OF_DOCX_SECTIONS = {"whitepapers"}
+
 # Sections that are organized as multi-chapter "books" (Book_NN.qmd +
 # Book_NN_CPT_MM.qmd). For these, in addition to the whole-section
 # bundle, emit one Book_NN-bundle.docx per book so a reader can download
@@ -298,6 +309,43 @@ def _bundle_filename(section: str) -> str:
     (``operational-guides`` -> ``operational-guides-bundle.docx``).
     """
     return f"{Path(section).name}-bundle.docx"
+
+
+def _bundle_filename_zip(section: str) -> str:
+    """Return the zip-bundle filename for a section path (see _zip_pages)."""
+    return f"{Path(section).name}-bundle.zip"
+
+
+def _zip_pages(site_root: Path, section: str) -> tuple[bool, str]:
+    """Zip a section's page .docx files individually instead of merging them.
+
+    Used for sections in ZIP_INSTEAD_OF_DOCX_SECTIONS where one
+    docxcompose-merged .docx would be an unwieldy single download. Reuses
+    _collect_docx so the page set (and its index/ROADMAP/prior-bundle
+    exclusions) matches exactly what _bundle_one would have merged — only
+    the packaging differs. Each page is stored under its filename only
+    (no directory prefix), matching the flat layout a reader expects when
+    unzipping "the whitepapers" into one folder.
+    """
+    section_dir = site_root / section
+    if not section_dir.is_dir():
+        return False, f"{section}: directory not found at {section_dir}"
+
+    zip_name = _bundle_filename_zip(section)
+    zip_path = section_dir / zip_name
+
+    pages = _collect_docx(section_dir, zip_name)
+    if not pages:
+        return False, f"{section}: no page .docx files found under {section_dir}"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        for page in pages:
+            z.write(page, arcname=page.name)
+
+    return (
+        True,
+        f"{section}: zipped {len(pages)} page(s) -> {zip_path.relative_to(site_root.parent)}",
+    )
 
 
 # Roman-numeral volume ranks for the OrgComp series reading order. Plain
@@ -569,7 +617,10 @@ def main(argv: list[str] | None = None) -> int:
 
     failures = 0
     for section in sections:
-        ok, msg = _bundle_one(site_root, section)
+        if section in ZIP_INSTEAD_OF_DOCX_SECTIONS:
+            ok, msg = _zip_pages(site_root, section)
+        else:
+            ok, msg = _bundle_one(site_root, section)
         prefix = "OK   " if ok else "WARN "
         print(f"{prefix} {msg}")
         if not ok:
