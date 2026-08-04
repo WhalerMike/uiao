@@ -12,6 +12,7 @@ on:
       - 'scripts/bundle_section_docx.py'
       - 'scripts/build_scubadrift_download.py'
       - 'scripts/build_orgcomp_download.py'
+      - 'scripts/build_orgcomp_markdown_download.py'
       - 'scripts/build_day2_kit_download.py'
       - 'tools/scubadrift/**'
       - '.github/workflows/quarto.yml'
@@ -524,9 +525,78 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  render_md_orgcomp:
+    # Additive, parallel to render_docx: renders the orgcomp-series section to
+    # plain GitHub-Flavored Markdown (in addition to DOCX) so the series can
+    # ship as an AI-friendly markdown-only download alongside the Word kit —
+    # LLM context windows and AI "project" uploads take Markdown far more
+    # cleanly than .docx. Scoped to orgcomp-series only (not the whole
+    # customer-documents tree) — that is the only section the markdown kit
+    # covers. Rendering via Quarto (not converting the rendered HTML) matters
+    # because ``--to gfm`` still resolves ``{{< meta agency.* >}}`` shortcodes
+    # and the profile-conditional FOUO banner the same way ``--to docx``
+    # does, and produces plain content with no site-navigation chrome (gfm
+    # is not a website format, so Quarto emits just the document, no navbar/
+    # sidebar/TOC panel to strip afterward).
+    name: Render Markdown — orgcomp-series section
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Quarto (resilient install)
+        # Same resilient install as the HTML / DOCX-shard jobs.
+        run: |
+          set -euo pipefail
+          resolve_latest() {
+            curl -fsSLI -o /dev/null -w '%{url_effective}' \
+              https://github.com/quarto-dev/quarto-cli/releases/latest \
+              | sed 's#.*/tag/v##'
+          }
+          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
+          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
+          echo "Quarto $ver"
+          deb="quarto-${ver}-linux-amd64.deb"
+          curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
+            -o "/tmp/${deb}" \
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+          sudo dpkg -i "/tmp/${deb}"
+          quarto --version
+
+      - name: Set up Python (SVG rasterizer)
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Rasterize SVG figures to PNG (ADR-093)
+        # See the HTML job: sibling PNGs are untracked build artifacts and
+        # must exist before the render resolves figure references.
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet cairosvg Pillow pyyaml
+          bash scripts/ci_render_untracked_figures.sh
+
+      - name: Render orgcomp-series Markdown
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          mapfile -t all < <(find customer-documents/orgcomp-series -name '*.qmd' | sort)
+          echo "OrgComp Markdown files: ${#all[@]}"
+          for f in "${all[@]}"; do
+            quarto render "$f" --to gfm --no-execute-daemon
+          done
+
+      - name: Upload orgcomp-series Markdown artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: orgcomp-md
+          path: docs/_site/customer-documents/orgcomp-series/**/*.md
+          retention-days: 1
+          if-no-files-found: error
+
   assemble:
     name: Assemble combined site
-    needs: [render_html, render_docx, render_docx_canon, render_docx_adr, render_docx_schemas, render_docx_academy, render_docx_findings]
+    needs: [render_html, render_docx, render_docx_canon, render_docx_adr, render_docx_schemas, render_docx_academy, render_docx_findings, render_md_orgcomp]
     runs-on: ubuntu-latest
     steps:
       - name: Download HTML site
@@ -644,6 +714,27 @@ jobs:
             cp -a _docx_findings/. _site/findings/
           fi
 
+      - name: Download orgcomp-series Markdown
+        uses: actions/download-artifact@v8
+        with:
+          name: orgcomp-md
+          path: _md_orgcomp
+
+      - name: Merge orgcomp-series Markdown into site
+        # _md_orgcomp mirrors `docs/_site/customer-documents/orgcomp-series/`
+        # (the LCD of its artifact path), so copying onto
+        # `_site/customer-documents/orgcomp-series/` lays each rendered .md
+        # beside its companion .docx/.html — same filename stem, different
+        # extension, so there is no collision with the DOCX merge above.
+        run: |
+          set -euo pipefail
+          if [ -d _md_orgcomp ]; then
+            mkdir -p _site/customer-documents/orgcomp-series
+            cp -a _md_orgcomp/. _site/customer-documents/orgcomp-series/
+          fi
+          find _site/customer-documents/orgcomp-series -maxdepth 1 -name '*.md' | wc -l \
+            | xargs -I{} echo "Merged {} orgcomp-series Markdown files into site"
+
       # Per-section .docx bundles: concatenate every page-level .docx in
       # each top-level customer-documents section into one downloadable
       # `<section>-bundle.docx` alongside the per-page renders. The
@@ -657,6 +748,7 @@ jobs:
             scripts/bundle_section_docx.py
             scripts/build_scubadrift_download.py
             scripts/build_orgcomp_download.py
+            scripts/build_orgcomp_markdown_download.py
             scripts/build_day2_kit_download.py
             tools/scubadrift
             .github/maintenance
@@ -771,8 +863,9 @@ jobs:
       - name: Build standalone Day-2 kit download
         # The day-2 kit as its own zip (orgcomp-day2-kit-latest.zip) — source +
         # the rendered kit .docx — so an implementation team has a stable URL
-        # instead of the kit only inside the 48 MB federal bundle. Non-fatal,
-        # skipped in maintenance mode.
+        # instead of the kit only inside the 48 MB federal bundle. Also emits
+        # the two markdown-only doc zips (docs, no source, no Word) for AI
+        # import. Non-fatal, skipped in maintenance mode.
         if: env.MAINTENANCE_MODE != 'true'
         run: |
           python _repo/scripts/build_day2_kit_download.py \
@@ -781,6 +874,20 @@ jobs:
               --out _site/download \
               --date-code "$(date -u +%Y-%m-%d)" \
             || echo "::warning::Day-2 kit build failed (non-fatal)"
+
+      - name: Build OrgComp markdown-only kit (AI-friendly export)
+        # Same book set as the federal series kit above, packaged as plain
+        # Markdown from the render_md_orgcomp job's output instead of Word/
+        # PowerPoint — for pasting into an AI tool or uploading to an AI
+        # "project". Non-fatal, skipped in maintenance mode.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: |
+          python _repo/scripts/build_orgcomp_markdown_download.py \
+              --site-root _site \
+              --src-root _repo \
+              --out _site/download \
+              --date-code "$(date -u +%Y-%m-%d)" \
+            || echo "::warning::OrgComp markdown kit build failed (non-fatal)"
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).

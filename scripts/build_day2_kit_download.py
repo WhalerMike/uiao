@@ -122,6 +122,41 @@ ZIP_NAMES = {
     "target": "orgcomp-day2-kit-hrit-latest.zip",
 }
 
+# --- Markdown-only doc kits (docs only, no source, no Word) — for AI import. ----
+# Reuses the same numbered reading-order dicts as the Word docx/ set above, but
+# resolves each stem's ``.md`` sibling in _site (rendered by render_md_orgcomp)
+# instead of its ``.docx``. No servicenow-day2/ kit source, no MANIFEST — just
+# the doc set, meant to be pasted into an AI tool or uploaded to an AI project.
+ZIP_NAMES_MD = {
+    "current": "orgcomp-day2-kit-active-directory-docs-markdown-latest.zip",
+    "target": "orgcomp-day2-kit-hrit-docs-markdown-latest.zip",
+}
+README_MD = {
+    "current": (
+        "OrgComp Day-2 Automation Kit — CURRENT STATE edition — Markdown docs\n"
+        "=====================================================================\n"
+        "FedRAMP Moderate / GCC Moderate. De-branded (no agency names).\n"
+        "Build date: {date}\n\n"
+        "Plain Markdown, docs only — no ServiceNow kit source, no Word. For pasting\n"
+        "into an AI tool or uploading to an AI 'project'. For the deployable kit\n"
+        "(Script Includes, ATF, catalog/flow/update-set, plus these docs as Word), see\n"
+        "orgcomp-day2-kit-active-directory-latest.zip.\n\n"
+        "START HERE: 0_START_HERE.md, then 2_Build_Delta.md, then 5_Operator_Usage.md.\n"
+    ),
+    "target": (
+        "OrgComp Day-2 Automation Kit — 2027 TARGET STATE edition — Markdown docs\n"
+        "==========================================================================\n"
+        "FedRAMP Moderate / GCC Moderate. De-branded (no agency names).\n"
+        "Build date: {date}\n\n"
+        "Plain Markdown, docs only — no ServiceNow kit source, no Word. For pasting\n"
+        "into an AI tool or uploading to an AI 'project'. For the deployable kit\n"
+        "(Script Includes, ATF, catalog/flow/update-set, plus these docs as Word), see\n"
+        "orgcomp-day2-kit-hrit-latest.zip.\n\n"
+        "START HERE: 0_START_HERE.md, then 7_Build_Specification.md, then\n"
+        "2_Variables_Reference.md.\n"
+    ),
+}
+
 README_CURRENT = """OrgComp Day-2 Automation Kit — CURRENT STATE edition
 ====================================================
 FedRAMP Moderate / GCC Moderate. De-branded (no agency names).
@@ -238,6 +273,55 @@ def collect(site_root: Path, src_root: Path, edition: str) -> tuple[dict[str, Pa
     return members, notes
 
 
+def collect_markdown(site_root: Path, edition: str) -> tuple[dict[str, Path], list[str]]:
+    """Return {archive_name: source .md file} for this edition's numbered doc set.
+
+    Same reading-order dicts as the Word docx/ set (``TARGET_DOCX_SET`` /
+    ``CURRENT_DOCX_SET``), resolved to the ``.md`` sibling rendered by
+    render_md_orgcomp instead of the ``.docx``.
+    """
+    members: dict[str, Path] = {}
+    notes: list[str] = []
+    site_series = site_root / SITE_SERIES_REL
+    docx_set = CURRENT_DOCX_SET if edition == "current" else TARGET_DOCX_SET
+
+    n_set = 0
+    for stem, docx_name in docx_set.items():
+        md = site_series / f"{stem}.md"
+        if md.is_file():
+            members[Path(docx_name).with_suffix(".md").name] = md
+            n_set += 1
+    notes.append(f"markdown doc set: {n_set}/{len(docx_set)}")
+
+    return members, notes
+
+
+def build_markdown_one(site_root: Path, out_dir: Path, date_code: str, edition: str) -> int:
+    members, notes = collect_markdown(site_root, edition)
+    label = "Current State" if edition == "current" else "2027 Target State"
+    print(f"OrgComp Day-2 Automation Kit — {label} edition — Markdown docs")
+    print("=" * 52)
+    for n in notes:
+        print(" ", n)
+
+    if not members:
+        print(f"\nWARNING: no markdown docs found in _site for {label} — skipping markdown zip.")
+        return 0
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    root = ROOTS[edition]
+    zip_path = out_dir / ZIP_NAMES_MD[edition]
+    readme = README_MD[edition].format(date=date_code)
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(f"{root}/README.txt", readme)
+        for arc, src in sorted(members.items()):
+            z.write(src, f"{root}/{arc}")
+
+    size_kb = zip_path.stat().st_size / 1024
+    print(f"Wrote {zip_path}  ({len(members) + 1} files, {size_kb:.1f} KB)\n")
+    return 0
+
+
 def build_one(site_root: Path, src_root: Path, out_dir: Path, date_code: str, edition: str) -> int:
     members, notes = collect(site_root, src_root, edition)
     label = "Current State" if edition == "current" else "2027 Target State"
@@ -289,6 +373,10 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
     rc = 0
     for edition in ("current", "target"):
         rc |= build_one(site_root, src_root, out_dir, date_code, edition)
+        # Markdown-only doc zips are additive and never fatal to the main
+        # kit build — a missing markdown render (e.g. render_md_orgcomp
+        # skipped) just means no markdown zip this deploy.
+        rc |= build_markdown_one(site_root, out_dir, date_code, edition)
     return rc
 
 
