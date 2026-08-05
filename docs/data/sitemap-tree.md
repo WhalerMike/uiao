@@ -1008,6 +1008,7 @@
   - [DNS Record Types and Universal DDI Ecosystem Integrations — Reference Companion](customer-documents/whitepapers/infoblox-dns-reference.html)
   - [SD-WAN vs. DIA Under TIC 3.0](customer-documents/whitepapers/tic3-sdwan-vs-dia.html)
   - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/federal-application-aware-networking-architecture.html)
+  - [Field Office WAN Transformation and Distribution Point Consolidation](customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)
   - [AODIM Architecture Document](customer-documents/architecture-series/aodim-architecture.html)
