@@ -5,7 +5,7 @@ version: "0.2"
 status: Draft
 owner: "Michael Stratton"
 created_at: "2026-05-10"
-updated_at: "2026-06-18"
+updated_at: "2026-08-06"
 mas-scope: "in-scope"
 ---
 
@@ -80,7 +80,7 @@ Out of scope for this document:
 | Catalog metadata.version | `0.1.0` |
 | KSI themes present | 10 (KSI-CMT · KSI-CNA · KSI-CED · KSI-IAM · KSI-INR · KSI-MLA · KSI-PIY · KSI-RPL · KSI-SVC · KSI-SCR) |
 | KSI controls present | 46 |
-| Local KSI rules in `src/uiao/ksi/rules/` | 14 (KSI-001 … KSI-014; KSI-011…014 are KSI-CMT scaffolds per ADR-111) |
+| Local KSI rules in `src/uiao/ksi/rules/` | 29 (KSI-001 … KSI-029; KSI-011…014 are KSI-CMT scaffolds per ADR-111) |
 
 This mapping is **valid only against this pinned SHA**. When the pin
 advances per ADR-061 D2, this document and the YAML companion are
@@ -116,54 +116,85 @@ for the CR26 control.
 | KSI-012 | Immutable Redeployment over Direct Modification | CM-2, SA-10 | KSI-CMT-RMV | low (scaffold) | RMV favors version-controlled redeploy over in-place mutation; scaffold targets deployment provenance. Evidence binding pending CR26 VER. |
 | KSI-013 | Change-Procedure Effectiveness Review | CM-3, CA-7 | KSI-CMT-RVP | low (scaffold) | RVP requires persistent review of change-management effectiveness; scaffold targets the ConMon review cadence. Evidence binding pending CR26 VER. |
 | KSI-014 | Automated Validation Throughout Deployment | CM-3(2), SA-11 | KSI-CMT-VTD | low (scaffold) | VTD requires automated testing/validation across deployment; scaffold targets deployment-validation telemetry. Evidence binding pending CR26 VER. |
+| KSI-015 | Supply Chain Risk Mitigation | SR-2, SR-3, PM-30 | KSI-SCR-MIT | high | SBOM/VDR/VEX tooling plus a CI-blocking dependency-scan gate cover identify, review, and mitigate; PM-30 is satisfied by organizational risk-appetite/charter evidence. |
+| KSI-016 | Supply Chain Monitoring | SR-6, SR-8, CA-7 | KSI-SCR-MON | high | Vendor PSIRT/advisory subscriptions satisfy CR26's contractual-notification path directly; CI-gate SBOM-diff scanning on every PR adds the active-monitoring side. |
+| KSI-017 | Endpoint Inventory Visibility | CM-8, RA-5, RA-5(5) | KSI-PIY-GIV | high | Authenticated vulnerability-scan coverage across every managed endpoint continuously populates the inventory GIV requires. |
+| KSI-018 | Endpoint Entity State Resolution | CM-7, CM-7(1), CM-8 | KSI-PIY-RES | high | Automated policy enforcement gives on-demand resolution of any endpoint's current configuration and compliance posture. |
+| KSI-019 | Endpoint Inventory State Recording | CM-8, RA-5, RA-5(2) | KSI-PIY-RIS | high | Continuous scanning tracks device onboard/offboard/reconfigure events as a change-logged inventory record. |
+| KSI-020 | SDLC Security Review | SA-11, SA-15, SA-8, SR-3 | KSI-PIY-RSD | high | CI-gate SBOM/provenance scanning and container signing at build time is the automated SDLC security review RSD requires. |
+| KSI-021 | Privileged Access via Defined Paths | IA-11, AC-11, AC-12, AC-6(5) | KSI-PIY-RVD | high | PIM just-in-time activation plus a PAW architecture is the single, monitored, identity-anchored privileged-access path RVD requires. |
+| KSI-022 | Cybersecurity Training Effectiveness Review | AT-2, AT-2(1), AT-2(2), AT-3, AT-3(3), AT-3(5), AT-4, CP-3, IR-2 | KSI-CED-RAT | high | Role-based training matrices plus a machine-readable completion-threshold record satisfy RAT's persistent-review-across-dimensions requirement. |
+| KSI-023 | Incident After Action Report Generation | IR-3, IR-4, IR-4(1), IR-8, CP-4 | KSI-INR-AAR | high | SOAR closed-loop incident records carry a mandatory AAR artifact; tabletop exercises independently produce a signed, lessons-learned AAR. |
+| KSI-024 | Incident Response Procedure Effectiveness Review | IR-4, IR-6, IR-6(1), IR-6(3), IR-7, IR-7(1), IR-8, IR-8(1), SI-4(5) | KSI-INR-RIR | high | SOAR playbook review metrics plus the annual IR test's procedure-effectiveness finding log satisfy persistent review directly. |
+| KSI-025 | Past Incident Pattern Review | IR-3, IR-4, IR-4(1), IR-5, IR-8 | KSI-INR-RPI | high | Continuous threat-intel correlation and hunting queries over the closed-incident corpus is the pattern-and-previously-unidentified-vulnerability review RPI requires. |
+| KSI-026 | Backup Alignment with Recovery Objectives | CM-2(3), CP-6, CP-9, CP-10, CP-10(2), SI-12 | KSI-RPL-ABO | high | Backup review is anchored to BIA-derived RTO/RPO rather than an independent backup schedule — the direct ABO expression. |
+| KSI-027 | Recovery Plan Alignment with Objectives | CP-2, CP-2(1), CP-2(3), CP-4(1), CP-6, CP-6(1), CP-6(3), CP-7, CP-7(1), CP-7(2), CP-7(3), CP-8, CP-8(1), CP-8(2), CP-10, CP-10(2) | KSI-RPL-ARP | high | The Contingency Plan's BIA-anchored objectives plus its technical recovery components are ARP's plan-to-objective alignment directly. |
+| KSI-028 | Recovery Objective Review | CP-2(3), CP-10 | KSI-RPL-RRO | high | Annual BIA review with mission-owner sign-off is the persistent RTO/RPO re-validation RRO requires. |
+| KSI-029 | Recovery Capability Testing | CP-2(1), CP-2(3), CP-4, CP-4(1), CP-6(1), CP-9(1), CP-10, IR-3, IR-3(2) | KSI-RPL-TRC | high | Tabletop exercises plus annual backup-restore testing against defined objectives is TRC's capability-testing requirement directly. |
 
 Coverage summary:
 
-- 14 of 14 local rules have at least one CR26 mapping (100% forward coverage).
-- 4 of 14 are `medium` confidence — these are the rows most likely to
-  shift in governance review and should be re-examined when CR26 issues
-  control-level intent statements.
-- 4 of 14 are `low` confidence **scaffolds** (KSI-011…014, KSI-CMT theme):
+- 29 of 29 local rules have at least one CR26 mapping (100% forward coverage).
+- 4 of 29 are `medium` confidence (all in KSI-001…010) — these are the
+  rows most likely to shift in governance review and should be
+  re-examined when CR26 issues control-level intent statements.
+- 4 of 29 are `low` confidence **scaffolds** (KSI-011…014, KSI-CMT theme):
   the rule files exist and carry `Status: scaffold`, but their evidence
   bindings are not yet evaluable. They finalize when the CR26 VDR/VER
   evidence contract publishes (ADR-111 ratification gate; FINDING-PGM-003 §4).
+- The remaining 15 (KSI-015…029, added since this document's last
+  narrative update) are all `high` confidence — each binds to a named
+  evidence-contract slot (`slot-04` through `slot-08`) rather than an
+  asserted mapping.
 
 ---
 
 ## 4. Reverse coverage — CR26 themes the local corpus addresses
 
-The 14 local rules touch **21 of the 46** CR26 KSI controls
-(~46%). The table below lists every CR26 theme and the local rules
+The 29 local rules touch **32 of the 46** CR26 KSI controls
+(~70%). The table below lists every CR26 theme and the local rules
 that contribute to it.
 
 | CR26 theme | Title | Controls | Covered by local rules | Gap |
 |---|---|---:|---|---|
+| KSI-CED | Cybersecurity Education | 1 | KSI-022 (RAT) | 0 controls — **theme fully covered** |
 | KSI-CMT | Change Management | 4 | KSI-011 (LMC), KSI-012 (RMV), KSI-013 (RVP), KSI-014 (VTD) — all `scaffold` | 0 controls — **theme covered by scaffolds** (not yet evaluable; ADR-111) |
 | KSI-CNA | Cloud Native Architecture | 8 | KSI-007 (RNT), KSI-008 (MAT) | 6 controls — DFP · EIS · IBP · OFA · RVP · ULN |
-| KSI-CED | Cybersecurity Education | 1 | none | **all 1 control** — RAT |
 | KSI-IAM | Identity and Access Management | 6 | KSI-001 (APM, SNU), KSI-002 (APM), KSI-003 (ELP, AAM), KSI-006 (ELP), KSI-009 (ELP, JIT, SUS) | 0 controls — **theme fully covered** |
-| KSI-INR | Incident Response | 3 | none | **all 3 controls** — AAR · RIR · RPI |
+| KSI-INR | Incident Response | 3 | KSI-023 (AAR), KSI-024 (RIR), KSI-025 (RPI) | 0 controls — **theme fully covered** |
 | KSI-MLA | Monitoring, Logging, and Auditing | 5 | KSI-005 (LET, RVL) | 3 controls — ALA · EVC · OSM |
-| KSI-PIY | Policy and Inventory | 5 | none | **all 5 controls** — GIV · RES · RIS · RSD · RVD |
-| KSI-RPL | Recovery Planning | 4 | none | **all 4 controls** — ABO · ARP · RRO · TRC |
-| KSI-SVC | Service Configuration | 8 | KSI-004 (SNT, RUD), KSI-006 (RUD), KSI-007 (VCM), KSI-008 (VCM), KSI-010 (RUD) | 4 controls — ACM · ASM · EIS · PRR · VRI |
-| KSI-SCR | Supply Chain Risk | 2 | none | **all 2 controls** — MIT · MON |
+| KSI-PIY | Policy and Inventory | 5 | KSI-017 (GIV), KSI-018 (RES), KSI-019 (RIS), KSI-020 (RSD), KSI-021 (RVD) | 0 controls — **theme fully covered** |
+| KSI-RPL | Recovery Planning | 4 | KSI-026 (ABO), KSI-027 (ARP), KSI-028 (RRO), KSI-029 (TRC) | 0 controls — **theme fully covered** |
+| KSI-SVC | Service Configuration | 8 | KSI-004 (SNT, RUD), KSI-006 (RUD), KSI-007 (VCM), KSI-008 (VCM), KSI-010 (RUD) | 5 controls — ACM · ASM · EIS · PRR · VRI |
+| KSI-SCR | Supply Chain Risk | 2 | KSI-015 (MIT), KSI-016 (MON) | 0 controls — **theme fully covered** |
 
-**Themes uiao currently has zero local rules for: 5 of 10** —
-KSI-CED · KSI-INR · KSI-PIY · KSI-RPL · KSI-SCR. (KSI-CMT exited this
-list 2026-06-18 with the KSI-011…014 scaffolds per ADR-111 / FINDING-PGM-003
-§4 — the rules exist but are not yet evaluable.)
+**Themes uiao currently has zero local rules for: 0 of 10.** The five
+themes this document previously named as zero-coverage — KSI-CED,
+KSI-INR, KSI-PIY, KSI-RPL, KSI-SCR — are now fully covered by
+KSI-015…029, added since this document's narrative was last current
+(§3). KSI-CMT exited zero-coverage earlier still, 2026-06-18, with the
+KSI-011…014 scaffolds per ADR-111 / FINDING-PGM-003 §4 — the rules
+exist but are not yet evaluable.
 
-These gaps are expected: the local KSI corpus was authored against
-the SCuBA M365 assessment surface (ScubaGear) and naturally clusters
-on identity, mail, sharing, and DLP. CR26 spans the full FedRAMP 20x
-architecture, including recovery, supply chain, and policy/inventory —
-surfaces uiao has not yet wired to a SCuBA-style evaluator. The KSI-CMT
-(change management) theme is the first non-SCuBA theme seeded: its
-scaffolds bind to substrate-native change/drift telemetry (UIAO_110,
-UIAO_132 §3) rather than ScubaGear. Closing the remaining gaps, and
-making the KSI-CMT scaffolds evaluable, is downstream work tracked in
-FINDING-PGM-003 §4 and gated on the CR26 VDR/VER evidence contract.
+The remaining true gap is **14 controls across three themes**:
+KSI-CNA (6 of 8 open), KSI-MLA (3 of 5 open), KSI-SVC (5 of 8 open) —
+plus the 4 KSI-CMT controls mapped but not yet evaluable pending the
+CR26 VDR/VER evidence contract. Where the original local KSI corpus
+(KSI-001…010) was authored against the SCuBA M365 assessment surface
+and naturally clustered on identity, mail, sharing, and DLP, KSI-015…029
+closed the *process and lifecycle* themes — training, incident
+response, recovery planning, supply chain, endpoint inventory — each
+bound to its own non-SCuBA evidence source (SOAR playbooks, BIA/CP
+review records, SBOM/VDR tooling, Defender vulnerability-management
+scans). What remains open is deeper *infrastructure-configuration*
+ground: CNA's cloud-native architecture controls (data-flow protection,
+encryption-in-storage, immutable/bootstrapping practices, unsupported
+component tracking), MLA's alerting/event-correlation/monitoring depth
+beyond the mailbox-audit surface KSI-005 covers, and SVC's asset/
+configuration/patch-response controls beyond the network-egress and
+content-validation surface KSI-004/007/008/010 cover. Closing these,
+and making the KSI-CMT scaffolds evaluable, is downstream work tracked
+in FINDING-PGM-003 §4 and gated on the CR26 VDR/VER evidence contract.
 
 ---
 
@@ -180,9 +211,9 @@ FINDING-PGM-003 §4 and gated on the CR26 VDR/VER evidence contract.
    and emits `DRIFT-PROVENANCE` when a CR26 ID cited there is not
    present in the pinned snapshot. This is the test that keeps this
    document honest as the catalog evolves.
-3. **Gap labelling drives roadmap.** The 29 CR26 controls without a
-   local rule are the candidates for new KSI rule authoring. Each new
-   rule lands with its own row added to §3 above.
+3. **Gap labelling drives roadmap.** The 14 CR26 controls without a
+   local rule (§4) are the candidates for new KSI rule authoring. Each
+   new rule lands with its own row added to §3 above.
 
 ---
 
@@ -209,8 +240,9 @@ FINDING-PGM-003 §4 and gated on the CR26 VDR/VER evidence contract.
 
 - [`ADR-061`](../adr/adr-061-fedramp-cr26-catalog-vendoring.md) — CR26
   catalog vendoring policy
-- [`ADR-047`](../adr/adr-047-fedramp-20x-integration.md) — FedRAMP 20x
-  integration decision
+- [`ADR-106`](../adr/adr-106-fedramp-20x-integration.md) — FedRAMP 20x
+  integration decision (this document previously cited "ADR-047," a
+  different, unrelated ADR — corrected)
 - [`UIAO_133`](./fedramp-20x-integration.md) §1 — gap this document
   closes; §2 — emission contract this mapping feeds
 - [`UIAO_132`](./fedramp-rfc-0026-ca7-integration.md) — CA-7

@@ -141,6 +141,14 @@ evidence contract (ADR-111).
 
 ## 4. Finding: `UIAO_137`'s Coverage Narrative Has Drifted From Its Own Rule Corpus
 
+**RESOLVED 2026-08-06.** `UIAO_137` §2–§5 were regenerated against the
+live rule corpus and the live CR26 catalog snapshot: the rule count now
+reads 29 (not 14), coverage reads 32 of 46 (~70%, not 21 of 46), and the
+"zero local rules" framing for KSI-CED/INR/PIY/RPL/SCR was replaced with
+their actual (full) coverage. The finding below is preserved as the
+record of what was found and why; it no longer describes the current
+document.
+
 This is a documentation-staleness finding, stated with the same load-bearing
 honesty [B.1.3 §11](B1-3-rebuilding-boundary-blocked-analytics.qmd) applies
 to the rebuild-compensation ceiling.
@@ -169,6 +177,18 @@ count in `ksi/rules/` diverges from the count asserted in
 already applies via its `generate_rebuild_coverage.py` generator comment.
 
 ## 5. Finding: The Boundary Gap Registry's `ksi_ids` Field Does Not Reconcile Against Either KSI Namespace
+
+**RESOLVED 2026-08-06.** Every `ksi_ids` value described below as
+non-resolving or topically wrong has been corrected in
+`gcc-boundary-gap-registry.yaml` against the `rules/ksi/` NIST-family
+corpus, resolved from each gap's own `nist_controls` field — the same
+derivation §7's "corrected trace" table below already worked out.
+`GAP-ENT-001` was already correct and is unchanged. The registry's
+summary block was also found to have drifted (undercounting `total_gaps`
+as 15 against the actual 17 entries, and misclassifying `GAP-INT-006` as
+unmitigated when its `status` is `COMPENSATED`) and was corrected in the
+same pass. The finding below is preserved as the record of what was
+found; it no longer describes the registry's current state.
 
 `gcc-boundary-gap-registry.yaml` (ADR-033 §3; header states *"ATO artifact:
 yes — feeds SSP Section 13"*) carries a `ksi_ids` array on every gap entry,
@@ -316,7 +336,7 @@ to (`GAP-INT-001`, Endpoint Analytics):
 | `nist_controls` | `SI-4`, `SI-2` |
 | `compensating_control` | a registered ID naming the in-boundary telemetry component (§6.3) |
 | `status` | `COMPENSATED` |
-| `ksi_ids` | `KSI-047`, `KSI-048` *(does not resolve — see §5)* |
+| `ksi_ids` | `KSI-SI-04`, `KSI-SI-02` *(corrected 2026-08-06 — see §5)* |
 | `ato_note` | *(paraphrased)* the SSP must not claim Endpoint Analytics as a functioning SI-4 implementation, and must instead document the in-boundary telemetry component (§6.3) as the compensating control |
 
 The `ato_note` field exists specifically to prevent SSP overclaiming — it is
@@ -324,16 +344,17 @@ the registry's own guard against the exact failure mode ADR-033's
 "Context" section describes: an SSP claiming an inherited Microsoft control
 that is, in practice, non-functional in GCC-Moderate.
 
-As of the current registry snapshot: **15 gaps** tracked, **11 compensated**,
+As of the current registry snapshot (post-2026-08-06 reconciliation, §5):
+**17 gaps** tracked, **13 compensated**,
 **3 unmitigated**, of which two are `P1` and carry explicit AO
 risk-acceptance requirements — `GAP-INT-008` (Windows Device Health
 Attestation, no compensating control, called out in its own `ato_note` as
 *"the most significant security control gap in the GCC-Moderate Intune
 deployment"*) and `GAP-ARC-004` (Defender for Servers telemetry — a
 compensating control is named in the registry but the gap's `status` stays
-`GAP_UNMITIGATED` pending verification; also flagged in §5 for its
-non-matching `ksi_ids`). One entry (`GAP-ENT-001`) is structurally different
-from the other fourteen: it is a `DRIFT-AUTHZ` detection gap (the underlying
+`GAP_UNMITIGATED` pending verification; its `ksi_ids` were corrected in §5's
+reconciliation). One entry (`GAP-ENT-001`) is structurally different
+from the other sixteen: it is a `DRIFT-AUTHZ` detection gap (the underlying
 Entra feature works; the upstream SCuBA baseline check `MS.AAD.7.4v1` does
 not flag the specific PIM-for-Groups escalation path — tracked upstream at
 `cisagov/ScubaGear#2072`), not a `DRIFT-BOUNDARY` telemetry gap, riding in
@@ -437,12 +458,13 @@ the in-boundary compensating controls §6.1–6.4 build.
 
 ## 7. Cross-Reference: Registry Gap → NIST Control → Compensating Control → KSI (Corrected)
 
-For the entries where §5 found a resolvable KSI reference — either because
-the registry cited the correct namespace (`GAP-ENT-001`) or because the
-correct mapping can be derived from the `nist_controls` field already
-present on every entry — the corrected trace looks like this. This table is
-illustrative of the reconciliation §5 recommends, not a claim that the
-registry has been updated to match it:
+**As of the 2026-08-06 reconciliation (§5), this table is no longer
+illustrative — it is what `gcc-boundary-gap-registry.yaml` now says.**
+For the four entries below, the registry's `ksi_ids` field was corrected
+to the mapping already derivable from each gap's own `nist_controls`
+field, resolved against `rules/ksi/`. The same correction was applied to
+every other non-resolving entry in the registry (§5); these four are
+shown because they were §5's worked examples.
 
 | Gap | NIST controls | Compensating control | Correct KSI reference (§2 namespace) |
 |---|---|---|---|
